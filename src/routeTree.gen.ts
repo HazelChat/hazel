@@ -13,6 +13,9 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as AppLayoutImport } from './routes/_app/layout'
 import { Route as AppIndexImport } from './routes/_app/index'
+import { Route as AppServerIdLayoutImport } from './routes/_app/$serverId/layout'
+import { Route as AppServerIdIndexImport } from './routes/_app/$serverId/index'
+import { Route as AppServerIdChatIdImport } from './routes/_app/$serverId/chat/$id'
 
 // Create/Update Routes
 
@@ -27,6 +30,24 @@ const AppIndexRoute = AppIndexImport.update({
   getParentRoute: () => AppLayoutRoute,
 } as any)
 
+const AppServerIdLayoutRoute = AppServerIdLayoutImport.update({
+  id: '/$serverId',
+  path: '/$serverId',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
+
+const AppServerIdIndexRoute = AppServerIdIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppServerIdLayoutRoute,
+} as any)
+
+const AppServerIdChatIdRoute = AppServerIdChatIdImport.update({
+  id: '/chat/$id',
+  path: '/chat/$id',
+  getParentRoute: () => AppServerIdLayoutRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/solid-router' {
@@ -38,6 +59,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppLayoutImport
       parentRoute: typeof rootRoute
     }
+    '/_app/$serverId': {
+      id: '/_app/$serverId'
+      path: '/$serverId'
+      fullPath: '/$serverId'
+      preLoaderRoute: typeof AppServerIdLayoutImport
+      parentRoute: typeof AppLayoutImport
+    }
     '/_app/': {
       id: '/_app/'
       path: '/'
@@ -45,16 +73,45 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppIndexImport
       parentRoute: typeof AppLayoutImport
     }
+    '/_app/$serverId/': {
+      id: '/_app/$serverId/'
+      path: '/'
+      fullPath: '/$serverId/'
+      preLoaderRoute: typeof AppServerIdIndexImport
+      parentRoute: typeof AppServerIdLayoutImport
+    }
+    '/_app/$serverId/chat/$id': {
+      id: '/_app/$serverId/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/$serverId/chat/$id'
+      preLoaderRoute: typeof AppServerIdChatIdImport
+      parentRoute: typeof AppServerIdLayoutImport
+    }
   }
 }
 
 // Create and export the route tree
 
+interface AppServerIdLayoutRouteChildren {
+  AppServerIdIndexRoute: typeof AppServerIdIndexRoute
+  AppServerIdChatIdRoute: typeof AppServerIdChatIdRoute
+}
+
+const AppServerIdLayoutRouteChildren: AppServerIdLayoutRouteChildren = {
+  AppServerIdIndexRoute: AppServerIdIndexRoute,
+  AppServerIdChatIdRoute: AppServerIdChatIdRoute,
+}
+
+const AppServerIdLayoutRouteWithChildren =
+  AppServerIdLayoutRoute._addFileChildren(AppServerIdLayoutRouteChildren)
+
 interface AppLayoutRouteChildren {
+  AppServerIdLayoutRoute: typeof AppServerIdLayoutRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppLayoutRouteChildren: AppLayoutRouteChildren = {
+  AppServerIdLayoutRoute: AppServerIdLayoutRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -64,25 +121,39 @@ const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '': typeof AppLayoutRouteWithChildren
+  '/$serverId': typeof AppServerIdLayoutRouteWithChildren
   '/': typeof AppIndexRoute
+  '/$serverId/': typeof AppServerIdIndexRoute
+  '/$serverId/chat/$id': typeof AppServerIdChatIdRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/$serverId': typeof AppServerIdIndexRoute
+  '/$serverId/chat/$id': typeof AppServerIdChatIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_app': typeof AppLayoutRouteWithChildren
+  '/_app/$serverId': typeof AppServerIdLayoutRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/$serverId/': typeof AppServerIdIndexRoute
+  '/_app/$serverId/chat/$id': typeof AppServerIdChatIdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/'
+  fullPaths: '' | '/$serverId' | '/' | '/$serverId/' | '/$serverId/chat/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/_app' | '/_app/'
+  to: '/' | '/$serverId' | '/$serverId/chat/$id'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/$serverId'
+    | '/_app/'
+    | '/_app/$serverId/'
+    | '/_app/$serverId/chat/$id'
   fileRoutesById: FileRoutesById
 }
 
@@ -110,12 +181,29 @@ export const routeTree = rootRoute
     "/_app": {
       "filePath": "_app/layout.tsx",
       "children": [
+        "/_app/$serverId",
         "/_app/"
+      ]
+    },
+    "/_app/$serverId": {
+      "filePath": "_app/$serverId/layout.tsx",
+      "parent": "/_app",
+      "children": [
+        "/_app/$serverId/",
+        "/_app/$serverId/chat/$id"
       ]
     },
     "/_app/": {
       "filePath": "_app/index.tsx",
       "parent": "/_app"
+    },
+    "/_app/$serverId/": {
+      "filePath": "_app/$serverId/index.tsx",
+      "parent": "/_app/$serverId"
+    },
+    "/_app/$serverId/chat/$id": {
+      "filePath": "_app/$serverId/chat/$id.tsx",
+      "parent": "/_app/$serverId"
     }
   }
 }
