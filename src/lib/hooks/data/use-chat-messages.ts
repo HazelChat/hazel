@@ -20,3 +20,5 @@ export const useChatMessages = (channelId: string) => {
 
 	return { messages, isLoading }
 }
+
+export type Message = ReturnType<Awaited<ReturnType<typeof useChatMessages>>['messages']>[number]

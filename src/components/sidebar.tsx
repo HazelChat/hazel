@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/solid-router"
 import { useAuth } from "clerk-solidjs"
-import { For, Show, createMemo } from "solid-js"
+import { For, createMemo } from "solid-js"
 import { useDmChannels } from "~/lib/hooks/data/use-dm-channels"
 import { IconHashtag } from "./icons/hashtag"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
