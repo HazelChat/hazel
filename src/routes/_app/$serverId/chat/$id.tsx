@@ -3,6 +3,7 @@ import { For, Show, createMemo } from "solid-js"
 import { twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 import { ChatImage } from "~/components/chat-ui/chat-image"
+import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { ReactionTags } from "~/components/chat-ui/reaction-tags"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -111,101 +112,3 @@ function RouteComponent() {
 		</div>
 	</div>
 }
-
-function ChatMessage(props: { message: Message, isLastMessage: boolean, isGroupStart: boolean, isGroupEnd: boolean }) {
-	const z = useZero()
-	const showAvatar = props.isGroupStart
-
-	const messageTime = createMemo(() => {
-		return new Date(props.message.createdAt!).toLocaleTimeString("en-US", {
-			hour: "2-digit",
-			minute: "2-digit",
-			hour12: false,
-		})
-	})
-
-	const attachedCount = createMemo(() => {
-		return props.message.attachedFiles?.length ?? 0
-	})
-
-	const itemClass = createMemo(() => twMerge(
-		"relative overflow-hidden rounded-md",
-		attachedCount() === 1 ? "max-h-[300px]" : attachedCount() === 2 ? "aspect-video" : "aspect-square",
-	))
-
-	return <div class={chatMessageStyles({
-		isGettingRepliedTo: false,
-		isGroupStart: props.isGroupStart,
-		isGroupEnd: props.isGroupEnd,
-	})}>
-		<div class="flex gap-4">
-			<Show when={showAvatar}>
-				<Avatar>
-					<AvatarImage src={props.message.author?.avatarUrl} />
-					<AvatarFallback>
-						{props.message.author?.displayName.slice(0, 2)}
-					</AvatarFallback>
-				</Avatar>
-			</Show>
-			<Show when={!showAvatar}>
-				<div class="w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
-					{messageTime()}
-				</div>
-			</Show>
-			<div class="min-w-0 flex-1">
-				<Show when={showAvatar}>
-					<div class="flex items-baseline gap-2">
-						<span class="font-semibold">{props.message.author?.displayName}</span>
-						<span class="text-muted-fg text-xs">{messageTime()}</span>
-					</div>
-				</Show>
-				{/* TODO: This should be a markdown viewer */}
-				<p class="text-sm">{props.message.content}</p>
-				<div class="flex flex-col gap-2 pt-2">
-					<Show when={attachedCount() > 0}>
-						<div class={twMerge(
-							"mt-2",
-							attachedCount() === 1
-								? "flex max-w-[400px]"
-								: `grid grid-cols-${attachedCount() === 3 ? 3 : 2} max-w-lg`,
-							"gap-1",
-						)}
-						>
-							{props.message.attachedFiles?.slice(0, 4).map((file) => (
-								<div class={itemClass()}>
-									<ChatImage src={`${import.meta.env.VITE_BUCKET_URL}/${file}`} alt={file} />
-								</div>
-							))}
-						</div>
-					</Show>
-					<ReactionTags message={props.message} />
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-export const chatMessageStyles = tv({
-	base: "group relative flex flex-col px-4 py-1 transition-colors hover:bg-muted/50",
-	variants: {
-		variant: {
-			chat: "rounded-l-none",
-			pinned: "border p-3",
-		},
-		isGettingRepliedTo: {
-			true: "border-primary border-l-2 bg-primary/20 hover:bg-primary/15",
-			false: "",
-		},
-		isGroupStart: {
-			true: "mt-2",
-			false: "",
-		},
-		isGroupEnd: {
-			true: "mb-2",
-			false: "",
-		},
-	},
-	defaultVariants: {
-		variant: "chat",
-	},
-})

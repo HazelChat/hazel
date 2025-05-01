@@ -37,7 +37,7 @@ export function ReactionTags(props: ReactionTagsProps) {
     return <div class="flex gap-2">
         <For each={reactionGroups()}>
             {(group) => {
-                return <div class="flex items-center gap-1 bg-primary/50 rounded-full px-2 cursor-pointer" onClick={() => {
+                return <div class="flex items-center gap-1 bg-primary/50 hover:bg-primary/70 rounded-full px-2 cursor-pointer" onClick={() => {
                     
                     const currentSelectedEmoji = currentSelectedEmojis().find((reaction) => reaction.emoji === group.emoji)
 
