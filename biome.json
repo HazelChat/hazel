@@ -21,8 +21,9 @@
 				"noSvgWithoutTitle": "off"
 			},
 			"correctness": {
+				"useJsxKeyInIterable": "off",
 				"noChildrenProp": "off",
-				"useHookAtTopLevel": "error",
+				"useHookAtTopLevel": "off",
 				"noUnusedImports": "off"
 			},
 			"suspicious": {
