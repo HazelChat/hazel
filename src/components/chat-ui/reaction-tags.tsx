@@ -1,5 +1,6 @@
 import { createMemo, For } from "solid-js"
 import type { Message } from "~/lib/hooks/data/use-chat-messages"
+import { newId } from "~/lib/id-helpers"
 import { useZero } from "~/lib/zero-context"
 
 type MessageReaction = {
@@ -28,17 +29,33 @@ export function ReactionTags(props: ReactionTagsProps) {
 		return Object.values(groups)
     })
 
-    const currentSelectedEmoji = createMemo(() => {
-        return reactionGroups().find((group) => group.reactions.some((reaction) => reaction.userId === userId))
+    const currentSelectedEmojis = createMemo(() => {
+        return props.message.reactions.filter((reaction) => reaction.userId === userId)
     })
 
 
     return <div class="flex gap-2">
         <For each={reactionGroups()}>
             {(group) => {
-                return <p>
-                    {group.emoji}
-                </p>
+                return <div class="flex items-center gap-1 bg-primary/50 rounded-full px-2 cursor-pointer" onClick={() => {
+                    
+                    const currentSelectedEmoji = currentSelectedEmojis().find((reaction) => reaction.emoji === group.emoji)
+
+                    if(currentSelectedEmoji) {
+                        z.mutate.reactions.delete({
+                            id: currentSelectedEmoji.id
+                        })
+                    } else {
+                        z.mutate.reactions.insert({
+                            messageId: props.message.id,
+                            userId,
+                            emoji: group.emoji,
+                            id: newId('reactions')
+                        })
+                    }
+                }}>
+                    {group.emoji} <span class="ml-1 text-xs">{group.reactions.length}</span>
+                </div>
             }}
         </For>
     </div>

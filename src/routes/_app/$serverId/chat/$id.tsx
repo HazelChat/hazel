@@ -4,6 +4,7 @@ import { twMerge } from "tailwind-merge"
 import { tv } from "tailwind-variants"
 import { ChatImage } from "~/components/chat-ui/chat-image"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
+import { ReactionTags } from "~/components/chat-ui/reaction-tags"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { useChatMessages, type Message } from "~/lib/hooks/data/use-chat-messages"
 import { useZero } from "~/lib/zero-context"
@@ -177,6 +178,7 @@ function ChatMessage(props: { message: Message, isLastMessage: boolean, isGroupS
 							))}
 						</div>
 					</Show>
+					<ReactionTags message={props.message} />
 				</div>
 			</div>
 		</div>
