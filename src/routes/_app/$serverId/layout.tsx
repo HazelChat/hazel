@@ -1,33 +1,21 @@
-import { Outlet, createFileRoute, useNavigate } from "@tanstack/solid-router"
-import { Show, createEffect } from "solid-js"
-import { useCurrentUser } from "~/lib/hooks/data/use-current-user"
+import { Splitter } from "@ark-ui/solid"
+import { Outlet, createFileRoute } from "@tanstack/solid-router"
+import { Sidebar } from "~/components/sidebar"
 
 export const Route = createFileRoute("/_app/$serverId")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { user, isLoading } = useCurrentUser()
-
-	const navigate = useNavigate()
-
-	if (isLoading()) {
-		return <p>Loading...</p>
-	}
-
-	createEffect(() => {
-		if (!isLoading()) {
-			if (!user()) {
-				navigate({ to: "/onboarding", replace: true })
-			}
-		}
-	})
-
 	return (
-		<Show when={!isLoading()} fallback={<p>Loading...</p>}>
-			<Show when={user()}>
+		<Splitter.Root panels={[{ id: "a", minSize: 15, maxSize: 20 }, { id: "b" }]}>
+			<Splitter.Panel id="a">
+				<Sidebar />
+			</Splitter.Panel>
+			<Splitter.ResizeTrigger class="h-12 w-1 bg-primary" id="a:b" aria-label="Resize" />
+			<Splitter.Panel id="b">
 				<Outlet />
-			</Show>
-		</Show>
+			</Splitter.Panel>
+		</Splitter.Root>
 	)
 }

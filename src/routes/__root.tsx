@@ -1,7 +1,7 @@
 import { Outlet, createRootRouteWithContext } from "@tanstack/solid-router"
 import { TanStackRouterDevtools } from "@tanstack/solid-router-devtools"
 import { ClerkProvider, SignIn, useAuth } from "clerk-solidjs"
-import { Match, Show, Switch, createEffect, createSignal, onCleanup } from "solid-js"
+import { Match, Show, Suspense, Switch, createEffect, createSignal, onCleanup } from "solid-js"
 import { initZero } from "../lib/zero-client"
 import { ZeroProvider } from "../lib/zero-context"
 
@@ -19,7 +19,9 @@ function AuthInner() {
 			</Match>
 
 			<Match when={isLoaded() && !userId()}>
-				<SignIn />
+				<div class="flex h-screen flex-col items-center justify-center">
+					<SignIn />
+				</div>
 			</Match>
 
 			<Match when={isLoaded() && userId()}>
@@ -71,7 +73,9 @@ function ZeroInner() {
 	return (
 		<Show when={zero()} fallback={<p>Loading...</p>}>
 			<ZeroProvider zero={zero()!}>
-				<Outlet />
+				<Suspense>
+					<Outlet />
+				</Suspense>
 			</ZeroProvider>
 		</Show>
 	)

@@ -1,31 +1,9 @@
-import { Outlet, createFileRoute, useNavigate } from "@tanstack/solid-router"
-import { Show, Suspense, createEffect } from "solid-js"
-import { useCurrentUser } from "~/lib/hooks/data/use-current-user"
+import { Outlet, createFileRoute } from "@tanstack/solid-router"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { user, isLoading } = useCurrentUser()
-
-	const navigate = useNavigate()
-
-	createEffect(() => {
-		if (!isLoading()) {
-			if (!user()) {
-				navigate({ to: "/onboarding", replace: true })
-			}
-		}
-	})
-
-	return (
-		<Show when={!isLoading()} fallback={<p>Loading...</p>}>
-			<Show when={user()}>
-				<Suspense>
-					<Outlet />
-				</Suspense>
-			</Show>
-		</Show>
-	)
+	return <Outlet />
 }

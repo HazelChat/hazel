@@ -1,4 +1,5 @@
 import { Dialog, DialogCloseTrigger } from "@ark-ui/solid"
+import { useNavigate } from "@tanstack/solid-router"
 import { createSignal } from "solid-js"
 import { Portal } from "solid-js/web"
 import { Button } from "~/components/ui/button"
@@ -11,8 +12,13 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog"
 import { TextField } from "~/components/ui/text-field"
+import { newId } from "~/lib/id-helpers"
+import { useZero } from "~/lib/zero-context"
 
 export const Serveronboarding = () => {
+	const navigate = useNavigate()
+
+	const z = useZero()
 	const [createModalOpen, setCreateModalOpen] = createSignal(false)
 	const [joinModalOpen, setJoinModalOpen] = createSignal(false)
 
@@ -34,20 +40,99 @@ export const Serveronboarding = () => {
 						<DialogTitle>Join a Server</DialogTitle>
 						<DialogDescription>Enter an invite code to join an existing server.</DialogDescription>
 					</DialogHeader>
-					<form>
-						<TextField label="Server Name" placeholder="Enter your server name" />
-					</form>
+					<form
+						class="flex flex-col gap-4"
+						onSubmit={async (e) => {
+							console.log("submit")
+							e.preventDefault()
 
-					<DialogFooter class="justify-between!">
-						<DialogCloseTrigger
-							asChild={(props) => (
-								<Button {...props} intent="outline">
-									Cancel
-								</Button>
-							)}
+							const newServerId = newId("server")
+							const defaultChannelId = newId("serverChannels")
+
+							const formData = new FormData(e.currentTarget)
+
+							const serverName = formData.get("serverName")
+
+							if (!serverName) {
+								return
+							}
+
+							try {
+								await z.mutateBatch(async (tx) => {
+									await tx.server.insert({
+										id: newServerId,
+										name: serverName.toString(),
+										ownerId: z.userID,
+										slug: serverName
+											.toString()
+											.toLowerCase()
+											.replace(/\s+/g, "-")
+											.replace(/[^a-z0-9-]/g, ""),
+										createdAt: new Date().getTime(),
+										updatedAt: new Date().getTime(),
+										imageUrl: "",
+									})
+
+									// Add owner as a member
+									await tx.serverMembers.insert({
+										id: newId("serverMembers"),
+										userId: z.userID,
+										serverId: newServerId,
+										role: "owner",
+										joinedAt: new Date().getTime(),
+									})
+
+									// Create a default 'general' channel
+									await tx.serverChannels.insert({
+										id: defaultChannelId,
+										serverId: newServerId,
+										name: "general",
+										channelType: "public",
+										createdAt: new Date().getTime(),
+										updatedAt: new Date().getTime(),
+									})
+
+									// Add owner to the default channel
+									await tx.channelMembers.insert({
+										userId: z.userID,
+										channelId: defaultChannelId,
+										joinedAt: new Date().getTime(),
+									})
+								})
+
+								// Navigate to the new server's default channel
+								navigate({
+									to: "/$serverId/chat/$id",
+									params: { serverId: newServerId, id: defaultChannelId },
+								})
+
+								setCreateModalOpen(false)
+							} catch (error) {
+								console.error("Failed to create server:", error)
+								// TODO: Add user-facing error handling
+							}
+
+							setCreateModalOpen(false)
+						}}
+					>
+						<TextField
+							label="Server Name"
+							name="serverName"
+							required
+							placeholder="Enter your server name"
 						/>
-						<Button>Join Server</Button>
-					</DialogFooter>
+
+						<DialogFooter class="justify-between!">
+							<DialogCloseTrigger
+								asChild={(props) => (
+									<Button type="button" {...props} intent="outline">
+										Cancel
+									</Button>
+								)}
+							/>
+							<Button type="submit">Create Server</Button>
+						</DialogFooter>
+					</form>
 				</DialogContent>
 			</DialogRoot>
 		</div>

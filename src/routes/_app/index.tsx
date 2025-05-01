@@ -1,41 +1,31 @@
-import { Splitter } from "@ark-ui/solid"
-import { useQuery } from "@rocicorp/zero/solid"
-import { createFileRoute } from "@tanstack/solid-router"
-import { ClerkLoaded, ClerkLoading, SignInButton, SignedIn, SignedOut, UserButton, useAuth } from "clerk-solidjs"
+import { Link, createFileRoute } from "@tanstack/solid-router"
 import { For, Show } from "solid-js"
-import { useCurrentUser } from "~/lib/hooks/data/use-current-user"
-import { Sidebar } from "../../components/sidebar"
-import { useZero } from "../../lib/zero-context"
+import { Card, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { useUserServers } from "~/lib/hooks/data/use-user-servers"
 
 export const Route = createFileRoute("/_app/")({
 	component: App,
 })
 
 function App() {
-	const z = useZero()
-	console.log(z)
-
-	const { user, isLoading } = useCurrentUser()
+	const { servers } = useUserServers()
 
 	return (
-		<main class="flex w-full">
-			<Splitter.Root panels={[{ id: "a", minSize: 15, maxSize: 20 }, { id: "b" }]}>
-				<Splitter.Panel id="a">
-					<Sidebar />
-				</Splitter.Panel>
-				<Splitter.ResizeTrigger class="h-12 w-1 bg-primary" id="a:b" aria-label="Resize" />
-				<Splitter.Panel id="b">
-					<Show when={!isLoading()} fallback={<p>Loading...</p>}>
-						<p>Welcome, {user()?.displayName}</p>
-					</Show>
-					<SignedIn>
-						<UserButton />
-					</SignedIn>
-					<SignedOut>
-						<SignInButton />
-					</SignedOut>
-				</Splitter.Panel>
-			</Splitter.Root>
+		<main class="container mx-auto flex w-full py-14">
+			<div class="flex flex-row gap-3">
+				<For each={servers()}>
+					{(server) => (
+						<Link to="/$serverId" params={{ serverId: server.id }}>
+							<Card>
+								<CardHeader>
+									<CardTitle>{server.name}</CardTitle>
+									<CardDescription>{server.owner?.displayName}</CardDescription>
+								</CardHeader>
+							</Card>
+						</Link>
+					)}
+				</For>
+			</div>
 		</main>
 	)
 }
