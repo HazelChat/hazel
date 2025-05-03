@@ -9,6 +9,7 @@ import { Dialog } from "~/components/ui/dialog"
 import { Menu } from "~/components/ui/menu"
 import { Popover } from "~/components/ui/popover"
 import { Separator } from "~/components/ui/separator"
+import { Tabs } from "~/components/ui/tabs"
 import { TextField } from "~/components/ui/text-field"
 import { Tooltip } from "~/components/ui/tooltip"
 
@@ -165,6 +166,24 @@ function RouteComponent() {
 			<div class="flex flex-row gap-3">
 				<Separator />
 				<Separator orientation="vertical" />
+			</div>
+			<div class="flex flex-row gap-3">
+				<Tabs>
+					<Tabs.List>
+						<Tabs.Trigger value="tab1">Tab 1</Tabs.Trigger>
+						<Tabs.Trigger value="tab2">Tab 2</Tabs.Trigger>
+						<Tabs.Trigger value="tab3">Tab 3</Tabs.Trigger>
+					</Tabs.List>
+					<Tabs.Content value="tab1">
+						<p>Tab 1 Content</p>
+					</Tabs.Content>
+					<Tabs.Content value="tab2">
+						<p>Tab 2 Content</p>
+					</Tabs.Content>
+					<Tabs.Content value="tab3">
+						<p>Tab 3 Content</p>
+					</Tabs.Content>
+				</Tabs>
 			</div>
 		</div>
 	)

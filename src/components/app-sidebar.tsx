@@ -11,6 +11,7 @@ import { Avatar } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Dialog } from "./ui/dialog"
 import { Sidebar } from "./ui/sidebar"
+import { Tabs } from "./ui/tabs"
 
 export interface SidebarProps {
 	class?: string
@@ -61,6 +62,18 @@ export const AppSidebar = (props: SidebarProps) => {
 								<Dialog.Title>Join a Channel</Dialog.Title>
 								<Dialog.Description>Enter the name of the channel you want to join.</Dialog.Description>
 							</Dialog.Header>
+							<Tabs defaultValue={"join"}>
+								<Tabs.List>
+									<Tabs.Trigger value="join">Join</Tabs.Trigger>
+									<Tabs.Trigger value="create">Create New</Tabs.Trigger>
+								</Tabs.List>
+								<Tabs.Content value="join">
+									<p>Public Content</p>
+								</Tabs.Content>
+								<Tabs.Content value="create">
+									<p>Private Content</p>
+								</Tabs.Content>
+							</Tabs>
 						</Dialog.Content>
 					</Dialog>
 				}
