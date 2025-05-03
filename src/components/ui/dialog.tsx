@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge"
 
 export const DialogRoot = ArkDialog.Root
 export const DialogTrigger = ArkDialog.Trigger
+export const DialogCloseTrigger = ArkDialog.CloseTrigger
 
 export const DialogBackdrop = (props: ArkDialog.BackdropProps) => {
 	return (
@@ -72,6 +73,7 @@ const Dialog = Object.assign(DialogRoot, {
 	Title: DialogTitle,
 	Trigger: DialogTrigger,
 	Description: DialogDescription,
+	CloseTrigger: DialogCloseTrigger,
 })
 
 export { Dialog }

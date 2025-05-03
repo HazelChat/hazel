@@ -14,6 +14,7 @@ import { useZero } from "~/lib/zero-context"
 import { newId } from "~/lib/id-helpers"
 import { Popover } from "../ui/popover"
 import { Menu } from "../ui/menu"
+import { ConfirmDialog } from "./confirm-dialog"
 
 function extractTextFromJsonNodes(nodes: any[]): string {
 	if (!Array.isArray(nodes)) return ""
@@ -376,6 +377,16 @@ export function ChatMessage(props: {
 					</div>
 				</div>
 			</div>
+			<ConfirmDialog
+				open={!!pendingAction()}
+				title={pendingAction()?.label}
+				message={pendingAction()?.confirmMessage || "Are you sure?"}
+				onCancel={() => setPendingAction(null)}
+				onConfirm={async () => {
+					await pendingAction()?.onAction()
+					setPendingAction(null)
+				}}
+			/>
 		</div>
 	)
 }
