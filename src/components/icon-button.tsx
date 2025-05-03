@@ -2,7 +2,7 @@ import { twMerge } from "tailwind-merge"
 import { Button, type ButtonProps } from "./ui/button"
 import { splitProps, type JSX } from "solid-js"
 
-export function IconButton(allProps: { class: string; children: JSX.Element } & ButtonProps) {
+export function IconButton(allProps: { class?: string; children: JSX.Element } & ButtonProps) {
 	// Split the props to extract rest
 	const [props, rest] = splitProps(allProps, ["class", "children"])
 

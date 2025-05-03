@@ -1,5 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/solid-router"
-import { type Accessor, For, createEffect, createMemo, on, onMount } from "solid-js"
+import { type Accessor, For, createEffect, createMemo, createSignal, on, onMount } from "solid-js"
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
@@ -8,6 +8,10 @@ import { createChangeEffect } from "~/lib/utils/signals"
 
 export const Route = createFileRoute("/_app/$serverId/chat/$id")({
 	component: RouteComponent,
+})
+
+export const chatStore$ = createSignal({
+	replyToMessageId: null as string | null,
 })
 
 function RouteComponent() {
