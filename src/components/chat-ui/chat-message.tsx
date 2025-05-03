@@ -54,8 +54,18 @@ export function ChatMessage(props: {
 		),
 	)
 
+	const scrollToMessage = (id: string) => {
+		const el = document.getElementById(`message-${id}`)
+		if (el) {
+			el.scrollIntoView({ behavior: "smooth", block: "center" })
+			el.classList.add("bg-primary/20")
+			setTimeout(() => el.classList.remove("bg-primary/20"), 1500)
+		}
+	}
+
 	return (
 		<div
+			id={`message-${props.message.id}`}
 			class={chatMessageStyles({
 				isGettingRepliedTo: false,
 				isGroupStart: props.isGroupStart,
@@ -63,7 +73,9 @@ export function ChatMessage(props: {
 			})}
 		>
 			<Show when={props.message.replyToMessageId}>
-				<Button class="flex w-fit items-center gap-1 pl-12 text-left" intent="ghost">
+				<Button class="flex w-fit items-center gap-1 pl-12 text-left" intent="ghost" onClick={() => {
+					if (props.message.replyToMessageId) scrollToMessage(props.message.replyToMessageId)
+				}}>
 					<Avatar class="size-4">
 						<AvatarImage src={props.message.replyToMessage?.author?.avatarUrl} />
 						<AvatarFallback>{props.message.replyToMessage?.author?.displayName.slice(0, 2)}</AvatarFallback>
