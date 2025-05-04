@@ -13,6 +13,7 @@ export const ServerSelectSidebar = () => {
 			<For each={servers()}>
 				{(server) => (
 					<Avatar
+						class="cursor-pointer"
 						onClick={() =>
 							navigate({
 								to: "/$serverId",

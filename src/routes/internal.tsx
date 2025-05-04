@@ -29,6 +29,8 @@ function RouteComponent() {
 			{ label: "Svelte", value: "svelte", disabled: true },
 			{ label: "Vue", value: "vue" },
 		],
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
 	})
 
 	return (

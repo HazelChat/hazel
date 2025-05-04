@@ -10,7 +10,8 @@ const buttonVariants = tv({
 		intent: {
 			default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
 			destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-			outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+			outline:
+				"bg-muted hover:bg-background dark:bg-muted/25 dark:hover:bg-muted/50 dark:border-border inset-shadow-2xs inset-shadow-white dark:inset-shadow-transparent relative flex border border-zinc-300 shadow-sm shadow-zinc-950/10 ring-0 duration-150",
 			secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
 			ghost: "hover:bg-accent hover:text-accent-foreground",
 			link: "text-primary underline-offset-4 hover:underline",

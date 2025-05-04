@@ -19,7 +19,7 @@ export const CreateChannelForm = (props: CreateChannelFormProps) => {
 
 	const form = createForm(() => ({
 		defaultValues: {
-			channelType: "",
+			channelType: "public",
 			name: "",
 		},
 		validators: {
