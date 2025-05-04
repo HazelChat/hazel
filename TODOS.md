@@ -8,6 +8,7 @@
 - Remove input after message send
 - Better Image Components with Dialog (see discord)
 - Emoji Picker 
+- Add day/week/year to pinned message list
 
 -- Later TODOS
 - Threads
@@ -30,3 +31,8 @@
 - Members page
 - Kick User
 - Manage Roles
+
+
+# Investigations
+- Look into [campsite](https://github.com/campsite/campsite) for product inspiration
+ - Run it locally
