@@ -2,8 +2,8 @@ import { Outlet, createRootRouteWithContext } from "@tanstack/solid-router"
 import { TanStackRouterDevtools } from "@tanstack/solid-router-devtools"
 import { ClerkProvider, SignIn, useAuth } from "clerk-solidjs"
 import { Match, Show, Suspense, Switch, createEffect, createSignal, onCleanup } from "solid-js"
-import { initZero } from "../lib/zero-client"
-import { ZeroProvider } from "../lib/zero-context"
+import { initZero } from "../lib/zero/zero-client"
+import { ZeroProvider } from "../lib/zero/zero-context"
 
 export const Route = createRootRouteWithContext()({
 	component: RootComponent,

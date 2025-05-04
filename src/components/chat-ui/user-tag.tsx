@@ -1,5 +1,5 @@
 import { twMerge } from "tailwind-merge"
-import type { User } from "~/lib/schema"
+import type { User } from "~/lib/zero/schema"
 
 export function UserTag(props: { user: User; className?: string }) {
 	return (

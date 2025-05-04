@@ -1,6 +1,6 @@
 import { useQuery } from "@rocicorp/zero/solid"
 import { createMemo } from "solid-js"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 export const useUserServers = () => {
 	const z = useZero()

@@ -1,7 +1,7 @@
 import { useQuery } from "@rocicorp/zero/solid"
 import { createMemo } from "solid-js"
-import { CACHE_AWHILE } from "~/lib/query-cache-policy"
-import { useZero } from "~/lib/zero-context"
+import { CACHE_AWHILE } from "~/lib/zero/query-cache-policy"
+import { useZero } from "~/lib/zero/zero-context"
 
 export const useCurrentUser = () => {
 	const z = useZero()

@@ -8,7 +8,7 @@
 		"build": "vite build && tsc",
 		"serve": "vite preview",
 		"test": "vitest run",
-		"generate:zero": "bunx drizzle-zero generate --format -o ./src/lib/drizzle-zero.gen.ts",
+		"generate:zero": "bunx drizzle-zero generate --format -o ./src/lib/zero/drizzle-zero.gen.ts",
 		"postinstall": "bun run generate:zero"
 	},
 	"dependencies": {

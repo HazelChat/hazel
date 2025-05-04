@@ -1,6 +1,6 @@
 import { useQuery } from "@rocicorp/zero/solid"
 import { type Accessor, createMemo } from "solid-js"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 export const useDmChannels = (serverId: Accessor<string>) => {
 	const z = useZero()

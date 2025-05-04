@@ -3,7 +3,7 @@ import { type Accessor, For, Show } from "solid-js"
 import { IconHashtag } from "~/components/icons/hashtag"
 import { Sidebar } from "~/components/ui/sidebar"
 import { usePublicServers } from "~/lib/hooks/data/use-public-servers"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 export interface JoinPublicChannelProps {
 	serverId: Accessor<string>

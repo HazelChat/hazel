@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button"
 import { SelectNative } from "~/components/ui/select-native"
 import { TextField } from "~/components/ui/text-field"
 import { newId } from "~/lib/id-helpers"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 export interface CreateChannelFormProps {
 	serverId: Accessor<string>

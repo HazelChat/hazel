@@ -3,7 +3,7 @@ import { type } from "arktype"
 import { IconInternet } from "~/components/icons/internet"
 import { Button } from "~/components/ui/button"
 import { TextField } from "~/components/ui/text-field"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 import { Route } from ".."
 
 export const Useronboarding = () => {

@@ -2,7 +2,7 @@ import { useAuth } from "clerk-solidjs"
 import { For, createMemo } from "solid-js"
 import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { newId } from "~/lib/id-helpers"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 type MessageReaction = {
 	id: string

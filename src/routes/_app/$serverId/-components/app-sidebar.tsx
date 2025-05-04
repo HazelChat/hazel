@@ -3,7 +3,7 @@ import { useAuth } from "clerk-solidjs"
 import { For, createMemo, createSignal } from "solid-js"
 import { useDmChannels } from "~/lib/hooks/data/use-dm-channels"
 import { useServerChannels } from "~/lib/hooks/data/use-server-channels"
-import type { Channel } from "~/lib/schema"
+import type { Channel } from "~/lib/zero/schema"
 import { IconHashtag } from "../../../../components/icons/hashtag"
 
 import { IconPlusSmall } from "../../../../components/icons/plus-small"

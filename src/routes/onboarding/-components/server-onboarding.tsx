@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button"
 import { Dialog } from "~/components/ui/dialog"
 import { TextField } from "~/components/ui/text-field"
 import { newId } from "~/lib/id-helpers"
-import { useZero } from "~/lib/zero-context"
+import { useZero } from "~/lib/zero/zero-context"
 
 export const Serveronboarding = () => {
 	const navigate = useNavigate()
