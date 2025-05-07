@@ -2,13 +2,12 @@
 
 ## Chat UI
 - Add markdown rendering
-- Fix Reply to message Styling
+- Fix Reply to Preview of Message if it's a markdown thing like a image display an icon
 - Emoji Picker
 - Add day/week/year to pinned message list
 - Image preview
     - Add next/prev image support when there are multiple images in a message (including keyboard support)
     - Maybe show metadata like filename, filesize and resolution somewhere
-    - Add zoom
 
 -- Later TODOS
 - Threads

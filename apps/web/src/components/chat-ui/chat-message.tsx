@@ -470,7 +470,7 @@ export function ChatMessage(props: {
 			/>
 
 			<ImageViewerModal
-				selectedImage={selectedImage()}
+				selectedImage={selectedImage}
 				setSelectedImage={setSelectedImage}
 				author={props.message.author}
 				createdAt={props.message.createdAt!}
