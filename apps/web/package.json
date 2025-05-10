@@ -16,9 +16,9 @@
 	"dependencies": {
 		"@ark-ui/solid": "^5.9.0",
 		"@rocicorp/zero": "^0.19.2025050203",
-		"@tailwindcss/vite": "^4.1.5",
+		"@tailwindcss/vite": "^4.1.6",
 		"@tanstack/router-plugin": "^1.120.3",
-		"@tanstack/solid-form": "^1.10.0",
+		"@tanstack/solid-form": "^1.11.1",
 		"@tanstack/solid-router": "^1.120.3",
 		"@tanstack/solid-router-devtools": "^1.120.3",
 		"@maki-chat/markdown": "workspace:*",
@@ -32,7 +32,7 @@
 	"devDependencies": {
 		"drizzle-kit": "^0.31.1",
 		"drizzle-zero": "0.9.3",
-		"tailwindcss": "^4.1.5",
+		"tailwindcss": "^4.1.6",
 		"tw-animate-css": "^1.2.9",
 		"typescript": "^5.8.3",
 		"vite": "^6.3.5",

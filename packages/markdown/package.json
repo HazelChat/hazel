@@ -7,7 +7,7 @@
 	"dependencies": {
 		"hast": "^1.0.0",
 		"highlight.js": "^11.11.1",
-		"property-information": "^7.0.0",
+		"property-information": "^7.1.0",
 		"rehype-highlight": "^7.0.2",
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",

@@ -1,5 +1,8 @@
 # TODOs
 
+## Zero
+- Fix Zero Permissions
+
 ## Chat UI
 - Add markdown rendering
 - Fix Reply to Preview of Message if it's a markdown thing like a image display an icon
