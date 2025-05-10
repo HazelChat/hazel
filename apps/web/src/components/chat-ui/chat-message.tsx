@@ -280,7 +280,7 @@ export function ChatMessage(props: {
 				isGroupStart: props.isGroupStart,
 				isGroupEnd: props.isGroupEnd,
 				isPinned: isPinned(),
-				class: "rounded-l-none",
+				class: "rounded-l-none [contain-intrinsic-size:auto_60px] [content-visibility:auto]",
 			})}
 		>
 			<Show when={props.message.replyToMessageId}>
