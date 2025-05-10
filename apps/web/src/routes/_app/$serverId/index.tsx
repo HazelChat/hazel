@@ -7,7 +7,7 @@ import { IconSearch } from "~/components/icons/search"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { TextField } from "~/components/ui/text-field"
-import { useServerMemmbers } from "~/lib/hooks/data/use-server-members"
+import { useServerMembers } from "~/lib/hooks/data/use-server-members"
 import { newId } from "~/lib/id-helpers"
 import { useZero } from "~/lib/zero/zero-context"
 
@@ -23,7 +23,8 @@ function RouteComponent() {
 
 	const [searchQuery, setSearchQuery] = createSignal("")
 
-	const { members } = useServerMemmbers({ serverId, searchQuery })
+	const { members } = useServerMembers({ serverId, searchQuery })
+
 	const navigate = Route.useNavigate()
 
 	const { userId } = useAuth()
