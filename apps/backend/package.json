@@ -10,7 +10,14 @@
 	},
 	"devDependencies": {
 		"typescript": "^5.8.3",
+		"@maki-chat/api-schema": "workspace:*",
+		"@maki-chat/markdown": "workspace:*",
 		"wrangler": "^4.14.4"
 	},
-	"packageManager": "bun@1.2.12"
+	"packageManager": "bun@1.2.12",
+	"dependencies": {
+		"@effect/platform": "^0.81.1",
+		"effect": "^3.14.22",
+		"nanoid": "^5.1.5"
+	}
 }

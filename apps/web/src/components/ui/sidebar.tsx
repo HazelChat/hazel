@@ -490,7 +490,7 @@ const SidebarMenuButton: Component<SidebarMenuButtonProps> = (props) => {
 			data-sidebar="menu-button"
 			data-size={local.size}
 			data-active={local.isActive?.()}
-			class={cn(sidebarMenuButtonVariants({ variant: local.variant, size: local.size }), local.class)}
+			class={sidebarMenuButtonVariants({ variant: local.variant, size: local.size, class: local.class })}
 			{...rest}
 		/>
 	)

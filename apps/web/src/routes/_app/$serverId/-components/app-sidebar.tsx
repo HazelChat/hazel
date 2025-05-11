@@ -23,6 +23,7 @@ import { IconX } from "~/components/icons/x"
 import { Menu } from "~/components/ui/menu"
 import { IconSignOut } from "~/components/ui/signout"
 
+import { cn } from "~/lib/utils"
 import { useZero } from "~/lib/zero/zero-context"
 import { CreateChannelForm } from "./create-channel-form"
 import { CreateDmDialog } from "./create-dm-dialog"
@@ -190,7 +191,12 @@ export const ChannelItem = (props: ChannelItemProps) => {
 				)}
 			>
 				<IconHashtag class="size-5 text-muted-foreground" />
-				<p class="text-ellipsis text-nowrap text-muted-foreground group-hover/sidebar-item:text-foreground">
+				<p
+					class={cn(
+						"text-ellipsis text-nowrap text-muted-foreground group-hover/sidebar-item:text-foreground",
+						isMuted() && "opacity-60",
+					)}
+				>
 					{props.channel().name}
 				</p>
 			</Sidebar.MenuButton>
@@ -271,8 +277,12 @@ const DmChannelLink = (props: DmChannelLinkProps) => {
 						)}
 					</Index>
 				</div>
-				<p class="truncate text-muted-foreground group-hover/sidebar-item:text-foreground">
-					{/* Derive display name directly from props */}
+				<p
+					class={cn(
+						"truncate text-muted-foreground group-hover/sidebar-item:text-foreground",
+						props.channel().isMuted && "opacity-60",
+					)}
+				>
 					{props
 						.channel()
 						.friends.map((friend) => friend.displayName)
