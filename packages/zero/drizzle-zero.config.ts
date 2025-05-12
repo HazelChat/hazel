@@ -44,6 +44,14 @@ export default drizzleZeroConfig(schema, {
 			isHidden: true,
 			isMuted: true,
 		},
+		channelNotifications: {
+			channelId: true,
+			userId: true,
+			lastSeenMessageId: true,
+			notificationCount: true,
+			createdAt: true,
+			updatedAt: true,
+		},
 		messages: {
 			id: true,
 			content: true,
