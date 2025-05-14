@@ -24,5 +24,8 @@
 			"localConnectionString": "postgresql://user:password@127.0.0.1:5430/postgres"
 		}
 	],
+	"placement": {
+		"mode": "smart"
+	},
 	"vars": {}
 }
