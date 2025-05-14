@@ -1,8 +1,8 @@
 import { createQuery } from "@rocicorp/zero/solid"
-import { createMemo } from "solid-js"
+import { type Accessor, createMemo } from "solid-js"
 import { useZero } from "~/lib/zero/zero-context"
 
-export const useChatMessages = (channelId: string) => {
+export const useChatMessages = (channelId: Accessor<string>) => {
 	const z = useZero()
 
 	const [messages, messagesResult] = createQuery(() =>
@@ -13,7 +13,7 @@ export const useChatMessages = (channelId: string) => {
 			.related("childMessages")
 			.related("reactions")
 			.related("pinnedInChannels")
-			.where(({ cmp }) => cmp("channelId", "=", channelId))
+			.where(({ cmp }) => cmp("channelId", "=", channelId()))
 			.orderBy("createdAt", "desc"),
 	)
 

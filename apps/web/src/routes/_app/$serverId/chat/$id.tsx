@@ -19,7 +19,9 @@ function RouteComponent() {
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 	let messagesRef: HTMLDivElement | undefined
 
-	const { messages, channelMember, isLoading } = useChat(params.id)
+	const channelId = createMemo(() => params.id)
+
+	const { messages, channelMember } = useChat(channelId)
 
 	const lastMessageId = createMemo(() => {
 		return messages().at(0)?.id
