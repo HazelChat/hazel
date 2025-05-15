@@ -37,6 +37,7 @@
         "@maki-chat/markdown": "workspace:*",
         "@maki-chat/zero": "workspace:*",
         "@rocicorp/zero": "^0.19.2025050203",
+        "@solid-primitives/intersection-observer": "^2.2.1",
         "@tailwindcss/vite": "^4.1.6",
         "@tanstack/router-plugin": "^1.120.3",
         "@tanstack/solid-form": "^1.11.1",
@@ -649,6 +650,8 @@
     "@solid-primitives/destructure": ["@solid-primitives/destructure@0.1.17", "", { "dependencies": { "@solid-primitives/utils": "^6.2.3" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-MTjEIIeiw36Png0tze70XnhQ79IbkreX8v0qpjJ77+CLT5MkVQtFoiNHGkZPyw7UtkZQE08qvV6KAJw8s9dCwg=="],
 
     "@solid-primitives/event-listener": ["@solid-primitives/event-listener@2.4.1", "", { "dependencies": { "@solid-primitives/utils": "^6.3.1" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-Xc/lBCeuh9LwzR4lYbMDtopwWK7N9b4o+FmI4uoI8DOtVGYi0Ip20DG8PtwHk+g31lHgvwtFFVKfnUx2UaqZJg=="],
+
+    "@solid-primitives/intersection-observer": ["@solid-primitives/intersection-observer@2.2.1", "", { "dependencies": { "@solid-primitives/utils": "^6.3.1" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-q8lTWTzagqBKihp8zu/W6226xdTPGyUWo4jNvqdJeZZoXpG5E1lGKEzidYWK1POqfvElBIC0pyEHxaoMlxfW5g=="],
 
     "@solid-primitives/keyboard": ["@solid-primitives/keyboard@1.3.1", "", { "dependencies": { "@solid-primitives/event-listener": "^2.4.1", "@solid-primitives/rootless": "^1.5.1", "@solid-primitives/utils": "^6.3.1" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-ib4xPC5ioOGj2A/5PqFTJvWbgGVx/5okFEoU0qXhCrehVB84gPBhKFNRqTlpiYzCbVHPIUZCTO2ZMkqzJdIA2w=="],
 

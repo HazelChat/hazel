@@ -63,13 +63,15 @@ type ChatAction = {
 	popoverContent?: JSX.Element
 }
 
-export function ChatMessage(props: {
+interface ChatMessageProps extends JSX.HTMLAttributes<HTMLDivElement> {
 	serverId: Accessor<string>
 	message: Message
 	isGroupStart: boolean
 	isGroupEnd: boolean
 	isFirstNewMessage?: boolean
-}) {
+}
+
+export function ChatMessage(props: ChatMessageProps) {
 	const z = useZero()
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 	const showAvatar = createMemo(() => props.isGroupStart)
@@ -285,6 +287,8 @@ export function ChatMessage(props: {
 				isPinned: isPinned(),
 				class: "rounded-l-none",
 			})}
+			data-id={props.message.id}
+			ref={props.ref}
 		>
 			<Show when={props.isFirstNewMessage}>
 				<div class="absolute top-1 right-1 z-10">

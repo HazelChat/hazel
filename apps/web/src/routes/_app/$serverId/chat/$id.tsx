@@ -1,11 +1,14 @@
 import { createFileRoute, useParams } from "@tanstack/solid-router"
-import { type Accessor, Index, Show, createEffect, createMemo, createSignal } from "solid-js"
+import { type Accessor, Index, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { ChatMessage } from "~/components/chat-ui/chat-message"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { useChat } from "~/lib/hooks/data/use-chat"
-import { type Message, useChatMessages } from "~/lib/hooks/data/use-chat-messages"
+import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { createChangeEffect } from "~/lib/utils/signals"
+
+import { createIntersectionObserver } from "@solid-primitives/intersection-observer"
+import { useZero } from "~/lib/zero/zero-context"
 
 export const Route = createFileRoute("/_app/$serverId/chat/$id")({
 	component: RouteComponent,
@@ -16,6 +19,7 @@ export const chatStore$ = createSignal({
 })
 
 function RouteComponent() {
+	const z = useZero()
 	const navigate = Route.useNavigate()
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })
 	let messagesRef: HTMLDivElement | undefined
@@ -23,6 +27,34 @@ function RouteComponent() {
 	const channelId = createMemo(() => params().id)
 
 	const { messages, channelMember, channel, isChannelLoading } = useChat(channelId)
+
+	const [targets, setTargets] = createSignal<Element[]>([])
+
+	createIntersectionObserver(
+		targets,
+		async (entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					const lastMessageId = channelMember()?.lastSeenMessageId
+					if (!lastMessageId) {
+						return
+					}
+
+					const dataId = entry.target.getAttribute("data-id")
+
+					if (lastMessageId === dataId) {
+						await z.mutate.channelMembers.update({
+							channelId: channelId(),
+							userId: z.userID,
+							lastSeenMessageId: null,
+							notificationCount: 0,
+						})
+					}
+				}
+			}
+		},
+		{ threshold: 0.4 },
+	)
 
 	createEffect(() => {
 		if (!channel() && !isChannelLoading()) {
@@ -142,9 +174,17 @@ function RouteComponent() {
 								</div>
 
 								<Index each={group()[1]()}>
-									{(message) => {
+									{(message, i) => {
 										return (
 											<ChatMessage
+												ref={(el) => {
+													if (el) {
+														setTargets((prev) => {
+															if (!prev.includes(el)) return [...prev, el]
+															return prev
+														})
+													}
+												}}
 												message={message().message}
 												isGroupStart={message().isGroupStart}
 												isGroupEnd={message().isGroupEnd}
