@@ -18,7 +18,6 @@
 		"@maki-chat/markdown": "workspace:*",
 		"@maki-chat/zero": "workspace:*",
 		"@rocicorp/zero": "^0.19.2025050203",
-		"@solid-primitives/intersection-observer": "^2.2.1",
 		"@tailwindcss/vite": "^4.1.7",
 		"@tanstack/router-plugin": "^1.120.5",
 		"@tanstack/solid-form": "^1.11.1",
