@@ -1,7 +1,7 @@
 import { html } from "property-information"
 import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
-import { type Component, createMemo, createRenderEffect, mergeProps } from "solid-js"
+import { type Component, createEffect, createMemo, createRenderEffect, mergeProps } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { type PluggableList, unified } from "unified"
 import { VFile } from "vfile"
@@ -94,14 +94,16 @@ export const Markdown: Component<Partial<SolidMarkdownOptions>> = (opts) => {
 		})
 	}
 
+	createEffect(() => {
+		console.log(node.children, opts.children)
+	})
+
 	return (
-		<>
-			<div class={options.class}>
-				<MarkdownRoot
-					context={{ options, schema: html, listDepth: 0 }}
-					node={options.renderingStrategy === "memo" ? generateNode() : node}
-				/>
-			</div>
-		</>
+		<div class={options.class}>
+			<MarkdownRoot
+				context={{ options, schema: html, listDepth: 0 }}
+				node={options.renderingStrategy === "memo" ? generateNode() : node}
+			/>
+		</div>
 	)
 }

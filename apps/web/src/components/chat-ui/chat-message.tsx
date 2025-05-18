@@ -465,7 +465,7 @@ export function ChatMessage(props: ChatMessageProps) {
 									rel="noopener noreferrer"
 								/>
 							),
-							text: Text,
+
 							h1: (props) => <h1 class="font-bold text-xl" {...props} />,
 							blockquote: (props) => (
 								<blockquote
