@@ -11,7 +11,7 @@
 - Add some Date viewer to shown messages
 - Fix weird Avatar flashing caused by reloads (probbaly means to fork virtua and change For to Index for our usecase)
 - Image preview
-    - Add next/prev image support when there are multiple images in a message (including keyboard support)
+    - Add multiple images in the prop
     - Maybe show metadata like filename, filesize and resolution somewhere
 
 -- Later TODOS

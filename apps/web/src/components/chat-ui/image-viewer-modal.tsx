@@ -1,5 +1,5 @@
 import { Format } from "@ark-ui/solid"
-import { type Accessor, For, Show, createEffect, createSignal } from "solid-js"
+import { type Accessor, For, Index, Show, createEffect, createSignal } from "solid-js"
 
 import { IconCopy } from "~/components/icons/copy"
 import { IconDownload } from "~/components/icons/download"
@@ -17,6 +17,7 @@ import { Dialog, DialogBackdrop } from "../ui/dialog"
 
 import { Dialog as ArkDialog } from "@ark-ui/solid"
 import { twMerge } from "tailwind-merge"
+import { Carousel } from "../ui/carousel"
 
 interface ImageViewerModalProps {
 	selectedImage: Accessor<string | null>
@@ -138,23 +139,49 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 								</span>
 							</div>
 						</div>
-						{/* Keep aspect ratio */}
-						<div
-							class="max-h-[85vh] max-w-[90vw] transition-transform duration-200 ease-in"
-							style={{
-								transform: props.selectedImage() ? "scale(1)" : "scale(0.0)",
-							}}
+						<Show
+							when={props.selectedImage()}
+							fallback={
+								<img
+									src={
+										props.selectedImage()?.startsWith("https")
+											? props.selectedImage()!
+											: `${props.bucketUrl}/${props.selectedImage()}`
+									}
+									alt={props.selectedImage()!}
+									class="max-h-[90vh] max-w-[90vw] rounded-md"
+								/>
+							}
 						>
-							<img
-								src={
-									props.selectedImage()?.startsWith("https")
-										? props.selectedImage()!
-										: `${props.bucketUrl}/${props.selectedImage()}`
-								}
-								alt={props.selectedImage()!}
-								class="max-h-[90vh] max-w-[90vw] rounded-md"
-							/>
-						</div>
+							<Carousel class="mx-36" slideCount={3}>
+								<Carousel.ItemGroup>
+									<Index each={[props.selectedImage(), props.selectedImage(), props.selectedImage()]}>
+										{(image, index) => (
+											<Carousel.Item index={index}>
+												<img
+													src={
+														image()?.startsWith("https")
+															? image()!
+															: `${props.bucketUrl}/${image()}`
+													}
+													alt={`Slide ${index}`}
+													class="max-h-[90vh] max-w-[90vw] rounded-md"
+												/>
+											</Carousel.Item>
+										)}
+									</Index>
+								</Carousel.ItemGroup>
+								<Carousel.Control>
+									<Carousel.PrevTrigger />
+									<Carousel.NextTrigger />
+								</Carousel.Control>
+								<Carousel.IndicatorGroup>
+									<Index each={[props.selectedImage(), props.selectedImage(), props.selectedImage()]}>
+										{(_, index) => <Carousel.Indicator index={index} />}
+									</Index>
+								</Carousel.IndicatorGroup>
+							</Carousel>
+						</Show>
 
 						<div class="absolute top-3 right-5">
 							<For each={imageModalActions}>
