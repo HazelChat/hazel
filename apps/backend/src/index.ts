@@ -28,6 +28,27 @@ export default {
 			return await oldUploadHandler(request)!
 		}
 
+		// Assets server for DEV
+		if (url.pathname.startsWith("/assets/")) {
+			const key = url.pathname.replace("/assets/", "")
+			if (!key) {
+				return new Response("Missing file key in URL path", { status: 400 })
+			}
+			const object = await env.FILE_BUCKET.get(key)
+			if (object === null) {
+				return new Response("Object Not Found", { status: 404 })
+			}
+
+			const headers = new Headers()
+			object.writeHttpMetadata(headers)
+			headers.set("etag", object.httpEtag)
+			// Add content disposition if you want downloads to use original filename (requires storing it)
+			// headers.set('Content-Disposition', `inline; filename="${originalFilenameStoredSomewhere}"`);
+			return new Response(object.body, {
+				headers,
+			})
+		}
+
 		const ConfigLayer = Layer.setConfigProvider(
 			ConfigProvider.fromJson({ ...env, DATABASE_URL: env.HYPERDRIVE.connectionString }),
 		)

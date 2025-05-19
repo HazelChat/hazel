@@ -11,7 +11,12 @@ import { Button } from "~/components/ui/button"
 import { toaster } from "~/components/ui/toaster"
 import { Tooltip } from "~/components/ui/tooltip"
 
+import { Portal } from "solid-js/web"
 import type { Message } from "~/lib/hooks/data/use-chat-messages"
+import { Dialog, DialogBackdrop } from "../ui/dialog"
+
+import { Dialog as ArkDialog } from "@ark-ui/solid"
+import { twMerge } from "tailwind-merge"
 
 interface ImageViewerModalProps {
 	selectedImage: Accessor<string | null>
@@ -22,21 +27,6 @@ interface ImageViewerModalProps {
 }
 
 export function ImageViewerModal(props: ImageViewerModalProps) {
-	const [isVisible, setIsVisible] = createSignal(true)
-
-	// Set visibility after component mounts to trigger animation
-	createEffect(() => {
-		if (props.selectedImage()) {
-			setTimeout(() => setIsVisible(true), 10)
-		}
-	})
-
-	// Reset visibility when image changes
-	const handleClose = () => {
-		setIsVisible(false)
-		setTimeout(() => props.setSelectedImage(null), 300) // Match transition duration
-	}
-
 	const imageModalActions = [
 		{
 			label: "Download",
@@ -122,56 +112,67 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 	]
 
 	return (
-		<Show when={props.selectedImage()}>
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-			<div
-				class="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-black/80 transition-opacity duration-200 ease-in-out"
-				style={{ opacity: isVisible() ? "1" : "0.0" }}
-				onClick={handleClose}
-			>
-				<div class="absolute top-3 left-5 flex items-center gap-2">
-					<Avatar src={props.author?.avatarUrl} name={props.author?.displayName!} />
-					<div class="flex flex-col">
-						<span class="text-sm">{props.author?.displayName}</span>
-
-						<span class="text-muted-foreground text-xs">
-							<Format.RelativeTime value={new Date(props.createdAt)} />
-						</span>
-					</div>
-				</div>
-				{/* Keep aspect ratio */}
-				<div
-					class="max-h-[85vh] max-w-[90vw] transition-transform duration-200 ease-in"
-					style={{
-						transform: isVisible() ? "scale(1)" : "scale(0.0)",
-					}}
-				>
-					<img
-						src={
-							props.selectedImage()?.startsWith("https")
-								? props.selectedImage()!
-								: `${props.bucketUrl}/${props.selectedImage()}`
-						}
-						alt={props.selectedImage()!}
-						class="max-h-[90vh] max-w-[90vw] rounded-md"
-					/>
-				</div>
-
-				<div class="absolute top-3 right-5">
-					<For each={imageModalActions}>
-						{(action) => (
-							<Tooltip openDelay={0} closeDelay={0}>
-								<Tooltip.Trigger>
-									<Button intent="ghost" size="square" onClick={(e) => action.onClick(e)}>
-										{action.icon}
-									</Button>
-								</Tooltip.Trigger>
-								<Tooltip.Content>{action.label}</Tooltip.Content>
-							</Tooltip>
+		<Dialog
+			open={!!props.selectedImage()}
+			onOpenChange={(details) => props.setSelectedImage(details.open ? props.selectedImage() : null)}
+		>
+			<Portal>
+				<DialogBackdrop />
+				<ArkDialog.Positioner>
+					<ArkDialog.Content
+						class={twMerge(
+							"fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ease-in-out",
 						)}
-					</For>
-				</div>
-			</div>
-		</Show>
+						onClick={(e) => {
+							if (e.target !== e.currentTarget) return
+							props.setSelectedImage(null)
+						}}
+					>
+						<div class="absolute top-3 left-5 flex items-center gap-2">
+							<Avatar src={props.author?.avatarUrl} name={props.author?.displayName!} />
+							<div class="flex flex-col">
+								<span class="text-sm">{props.author?.displayName}</span>
+
+								<span class="text-muted-foreground text-xs">
+									<Format.RelativeTime value={new Date(props.createdAt)} />
+								</span>
+							</div>
+						</div>
+						{/* Keep aspect ratio */}
+						<div
+							class="max-h-[85vh] max-w-[90vw] transition-transform duration-200 ease-in"
+							style={{
+								transform: props.selectedImage() ? "scale(1)" : "scale(0.0)",
+							}}
+						>
+							<img
+								src={
+									props.selectedImage()?.startsWith("https")
+										? props.selectedImage()!
+										: `${props.bucketUrl}/${props.selectedImage()}`
+								}
+								alt={props.selectedImage()!}
+								class="max-h-[90vh] max-w-[90vw] rounded-md"
+							/>
+						</div>
+
+						<div class="absolute top-3 right-5">
+							<For each={imageModalActions}>
+								{(action) => (
+									<Tooltip openDelay={0} closeDelay={0}>
+										<Tooltip.Trigger>
+											<Button intent="ghost" size="square" onClick={(e) => action.onClick(e)}>
+												{action.icon}
+											</Button>
+										</Tooltip.Trigger>
+										<Tooltip.Content>{action.label}</Tooltip.Content>
+									</Tooltip>
+								)}
+							</For>
+						</div>
+					</ArkDialog.Content>
+				</ArkDialog.Positioner>
+			</Portal>
+		</Dialog>
 	)
 }
