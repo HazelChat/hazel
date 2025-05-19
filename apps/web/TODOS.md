@@ -15,7 +15,6 @@
     - Maybe show metadata like filename, filesize and resolution somewhere
 
 -- Later TODOS
-- Threads
 - Delete Message
 - Edit Message
 
