@@ -7,7 +7,7 @@ import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
 import { Popover } from "../ui/popover"
-import { chatMessageStyles } from "./chat-message"
+import { chatMessageStyles } from "./message/message-styles"
 
 export function PinnedModal() {
 	const z = useZero()
