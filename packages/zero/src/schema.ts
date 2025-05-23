@@ -164,7 +164,8 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		},
 		server: {
 			row: {
-				select: [server_isMemberOfServer, server_isPublicServer],
+				select: ANYONE_CAN,
+				// select: [server_isMemberOfServer, server_isPublicServer],
 				// TODO: We probably want some restrictions on here, like max servers per user.
 				insert: ANYONE_CAN,
 				update: {
