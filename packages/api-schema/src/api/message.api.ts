@@ -39,3 +39,25 @@ export const MessageApiGroup = HttpApiGroup.make("Message")
 			.addSuccess(Message.json)
 			.addError(NotFound),
 	)
+// .add(
+// 	HttpApiEndpoint.get("getMessages")`/messages`
+// 		.setUrlParams(
+// 			Schema.Struct({
+// 				cursor: Schema.optional(Schema.String),
+// 				limit: Schema.optional(
+// 					Schema.NumberFromString.pipe(Schema.int(), Schema.positive(), Schema.lessThanOrEqualTo(100)),
+// 				),
+// 			}),
+// 		)
+// 		.addSuccess(
+// 			Schema.Struct({
+// 				data: Schema.Array(Message.json),
+// 				pagination: Schema.Struct({
+// 					hasNext: Schema.Boolean,
+// 					hasPrevious: Schema.Boolean,
+// 					nextCursor: Schema.optional(Schema.String),
+// 					previousCursor: Schema.optional(Schema.String),
+// 				}),
+// 			}),
+// 		),
+// )

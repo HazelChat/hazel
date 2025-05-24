@@ -1,10 +1,8 @@
 import { Schema } from "effect"
 import { UserId } from "./user"
 
-import { Model } from "@effect/sql"
-
 import { types } from "cassandra-driver"
-import type { Brand } from "effect/Brand"
+import * as Model from "../model"
 
 export const ChannelId = Schema.String.pipe(Schema.brand("@hazel/channel-id"))
 export type ChannelId = Schema.Schema.Type<typeof ChannelId>
