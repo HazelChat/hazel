@@ -16,6 +16,7 @@ import type { LiveManagedRuntime } from "./lib/services/live-layer"
 import { RuntimeProvider } from "./lib/services/runtime"
 
 import { QueryClient as TanstackQueryClient } from "@tanstack/solid-query"
+import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
 
 const router = createRouter({
 	routeTree,
@@ -59,7 +60,8 @@ const InnerProviders = () => {
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			{/* <ReactQueryDevtools initialIsOpen={false} /> */}
+			<SolidQueryDevtools initialIsOpen={false} />
+			{/* <TanStackRouterDevtools position="bottom-right" /> */}
 
 			<RuntimeProvider runtime={runtime}>
 				<RouterProvider router={router} />

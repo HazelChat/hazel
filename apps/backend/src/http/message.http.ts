@@ -5,7 +5,7 @@ import { MakiApi } from "@maki-chat/api-schema"
 import { NotFound } from "@maki-chat/api-schema/errors.js"
 import { MessageService } from "@maki-chat/backend-shared/services"
 
-export const MessageApiLive = HttpApiBuilder.group(MakiApi, "Message", (handlers) =>
+export const MessageApiLive = HttpApiBuilder.group(MakiApi, "message", (handlers) =>
 	Effect.gen(function* () {
 		const messageService = yield* MessageService
 

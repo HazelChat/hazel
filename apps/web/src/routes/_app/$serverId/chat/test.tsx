@@ -1,18 +1,24 @@
-import { Format } from "@ark-ui/solid"
+import type { ChannelId } from "@maki-chat/api-schema/schema/message.js"
 import { createFileRoute } from "@tanstack/solid-router"
-import { DateTime } from "effect"
 
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
-import { createInfiniteMessages } from "~/lib/hooks/use-message-infinite"
+import { Button } from "~/components/ui/button"
+import { MessageQueries } from "~/lib/services/data-access/message-queries"
 
 export const Route = createFileRoute("/_app/$serverId/chat/test")({
 	component: InfiniteScrollMessages,
 })
 
 function InfiniteScrollMessages() {
+	const [channelId, setChannelId] = createSignal<ChannelId>("cha_IWzcz6x7V-" as ChannelId)
 	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement>()
 
-	const messagesQuery = createInfiniteMessages(20)
+	// const messagesQuery = createInfiniteMessages(20)
+
+	const messagesQuery = MessageQueries.createPaginatedMessagesQuery({
+		channelId,
+		limit: 20,
+	})
 
 	createEffect(() => {
 		const hasNextPage = messagesQuery.hasNextPage
@@ -41,6 +47,7 @@ function InfiniteScrollMessages() {
 
 	return (
 		<div class="messages-container">
+			<Button onClick={() => setChannelId("cha_IWzcz6x7VB" as ChannelId)}>Set Channel</Button>
 			<Show when={messagesQuery.isLoading}>
 				<div class="loading">Loading messages...</div>
 			</Show>

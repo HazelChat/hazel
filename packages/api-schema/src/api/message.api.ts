@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { NotFound } from "../errors"
 import { ChannelId, Message, MessageCursorResult, MessageId } from "../schema/message"
 
-export const MessageApiGroup = HttpApiGroup.make("Message")
+export const MessageApiGroup = HttpApiGroup.make("message")
 	.add(
 		HttpApiEndpoint.post("createMessage")`/:channelId/messages`
 			.setPayload(Message.jsonCreate)
