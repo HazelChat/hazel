@@ -2,9 +2,12 @@ import { useParams } from "@tanstack/solid-router"
 import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 
 import { Badge } from "~/components/ui/badge"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { useZero } from "~/lib/zero/zero-context"
 
+import type { Message } from "@maki-chat/api-schema/schema/message.js"
+import { Option } from "effect"
+import { useChat } from "~/components/chat-state/chat-store"
+import { useIsPinned } from "~/lib/hooks/data/use-is-pinned"
 import { MessageActions } from "./message-actions"
 import { MessageContent } from "./message-content"
 import { MessageHeader } from "./message-header"
@@ -22,11 +25,16 @@ interface ChatMessageProps {
 
 export function ChatMessage(props: ChatMessageProps) {
 	const z = useZero()
-	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
 
-	const isRepliedTo = createMemo(() => !!props.message().replyToMessageId)
+	const isRepliedTo = createMemo(() => Option.isSome(props.message().replyToMessageId))
 	const showAvatar = createMemo(() => props.isGroupStart() || isRepliedTo())
-	const isPinned = createMemo(() => props.message().pinnedInChannels?.some((p) => p.channelId === params.id))
+
+	const { state } = useChat()
+
+	const channelId = createMemo(() => state.channelId)
+	const messageId = createMemo(() => props.message().id)
+
+	const { isPinned } = useIsPinned(channelId, messageId)
 
 	const scrollToMessage = (id: string) => {
 		const el = document.getElementById(`message-${id}`)
@@ -68,7 +76,7 @@ export function ChatMessage(props: ChatMessageProps) {
 			</Show>
 
 			<Show when={isRepliedTo()}>
-				<MessageReply message={props.message()} onReplyClick={scrollToMessage} />
+				<MessageReply message={props.message} onReplyClick={scrollToMessage} />
 			</Show>
 
 			<div class="flex gap-4">

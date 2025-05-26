@@ -1,17 +1,18 @@
+import type { Message } from "@maki-chat/api-schema/schema/message.js"
 import { type Accessor, For, Show, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
 
 interface ThreadButtonProps {
-	message: Accessor<Message>
+	threadChannelId: string
 }
 
 export function ThreadButton(props: ThreadButtonProps) {
 	const { setState } = useChat()
 
-	const threadMessages = createMemo(() => props.message().threadChannel?.messages ?? [])
+	// TODO: Fetch thread messages here
+	const threadMessages: Accessor<any[]> = () => []
 
 	const topFourAuthors = createMemo(() => {
 		const authors: { displayName: string; avatarUrl: string }[] = []
@@ -28,7 +29,7 @@ export function ThreadButton(props: ThreadButtonProps) {
 			intent="ghost"
 			class="mt-1 flex w-full justify-start px-1"
 			onClick={() => {
-				setState("openThreadId", props.message().threadChannelId)
+				setState("openThreadId", props.threadChannelId)
 			}}
 		>
 			<For each={topFourAuthors().authors}>

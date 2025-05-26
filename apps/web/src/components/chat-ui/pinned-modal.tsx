@@ -57,7 +57,7 @@ export function PinnedModal() {
 											onClick={(e) => {
 												e.stopPropagation()
 												z.mutate.pinnedMessages.delete({
-													id: pinnedMessage.id,
+													messageId: pinnedMessage.messageId,
 												})
 											}}
 											size="icon-small"

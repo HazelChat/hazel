@@ -1,6 +1,6 @@
 import type { User } from "@maki-chat/zero"
 import { Link, useNavigate } from "@tanstack/solid-router"
-import type { Accessor } from "solid-js"
+import { type Accessor, Show } from "solid-js"
 import { createJoinChannelMutation } from "~/lib/actions/user-actions"
 import { useZero } from "~/lib/zero/zero-context"
 import { IconChat } from "../icons/chat"
@@ -70,19 +70,31 @@ export const UserPopoverContent = (props: UserPopoverContentProps) => {
 	)
 }
 
-export interface UserAvatarProps extends UserPopoverContentProps, Omit<AvatarProps, "name" | "src"> {}
+export interface UserAvatarProps extends Omit<UserPopoverContentProps, "user">, Omit<AvatarProps, "name" | "src"> {
+	user?: User
+}
 
 export const UserAvatar = (props: UserAvatarProps) => {
 	return (
-		<Popover lazyMount>
-			<Popover.Trigger
-				asChild={(popoverProps) => (
-					<Avatar src={props.user.avatarUrl} name={props.user.displayName} {...props} {...popoverProps} />
-				)}
-			/>
-			<Popover.Content class="p-0">
-				<UserPopoverContent {...props} />
-			</Popover.Content>
-		</Popover>
+		<Show
+			when={props.user}
+			fallback={<Avatar name={props.user?.displayName ?? "Loading.."} src={props.user?.avatarUrl} {...props} />}
+		>
+			<Popover lazyMount>
+				<Popover.Trigger
+					asChild={(popoverProps) => (
+						<Avatar
+							src={props.user!.avatarUrl}
+							name={props.user!.displayName}
+							{...props}
+							{...popoverProps}
+						/>
+					)}
+				/>
+				<Popover.Content class="p-0">
+					<UserPopoverContent {...props} user={props.user!} />
+				</Popover.Content>
+			</Popover>
+		</Show>
 	)
 }

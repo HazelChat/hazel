@@ -11,19 +11,22 @@
 	},
 	"devDependencies": {
 		"@maki-chat/api-schema": "workspace:*",
+		"@maki-chat/backend-shared": "workspace:*",
 		"@maki-chat/markdown": "workspace:*",
 		"typescript": "^5.8.3",
-		"wrangler": "^4.15.2"
+		"wrangler": "^4.16.1"
 	},
 	"packageManager": "bun@1.2.12",
 	"dependencies": {
-		"@effect/platform": "^0.82.3",
+		"@effect/experimental": "^0.46.7",
+		"@effect/platform": "^0.82.7",
+		"@effect/sql-pg": "^0.36.7",
 		"@rocicorp/zero": "^0.20.2025052100",
 		"@supabase/supabase-js": "^2.49.8",
 		"ably": "^2.9.0",
 		"drizzle-orm": "^0.43.1",
-		"effect": "^3.15.2",
+		"effect": "^3.15.4",
 		"nanoid": "^5.1.5",
-		"postgres": "^3.4.5"
+		"postgres": "^3.4.7"
 	}
 }

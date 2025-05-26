@@ -1,0 +1,23 @@
+import type { ChannelId, MessageId } from "@maki-chat/api-schema/schema/message.js"
+import { createQuery } from "@rocicorp/zero/solid"
+import { type Accessor, createMemo } from "solid-js"
+import { CACHE_AWHILE } from "~/lib/zero/query-cache-policy"
+import { useZero } from "~/lib/zero/zero-context"
+
+export const useIsPinned = (channelId: Accessor<ChannelId>, messageId: Accessor<MessageId>) => {
+	const z = useZero()
+
+	const pinnedMessageQuery = createMemo(() =>
+		z.query.pinnedMessages
+			.where((eq) => eq.and(eq.cmp("channelId", "=", channelId()), eq.cmp("messageId", "=", messageId())))
+			.one(),
+	)
+
+	const [pinnedMessage, status] = createQuery(pinnedMessageQuery, CACHE_AWHILE)
+
+	const isLoading = createMemo(() => status().type !== "complete")
+
+	const isPinned = createMemo(() => !!pinnedMessage())
+
+	return { isPinned, isLoading }
+}

@@ -1,13 +1,39 @@
 import { HttpApiBuilder, HttpApiScalar, HttpMiddleware, HttpServer } from "@effect/platform"
-import { ConfigProvider, Layer } from "effect"
+import { ConfigProvider, Layer, Redacted, String } from "effect"
 
 import { addCorsHeaders, oldUploadHandler } from "./http/old-upload"
 
+import { Database, MessageService } from "@maki-chat/backend-shared/services"
 import { AuthorizationLive } from "./authorization.live"
 import { HttpLive } from "./http"
 import { Jose } from "./services/jose"
 
-const Live = HttpLive.pipe(Layer.provide(AuthorizationLive), Layer.provide(Jose.Default))
+import { PgClient } from "@effect/sql-pg"
+import { SqlCassandra } from "@maki-chat/backend-shared"
+
+const SqlLiveCass = SqlCassandra.layer({
+	contactPoints: ["127.0.0.1"],
+	localDataCenter: "datacenter1",
+	keyspace: "chat",
+	clientOptions: {
+		queryOptions: {
+			prepare: false,
+		},
+		pooling: {
+			maxRequestsPerConnection: 1,
+		},
+	},
+
+	transformQueryNames: String.camelToSnake,
+	transformResultNames: String.snakeToCamel,
+})
+
+const Live = HttpLive.pipe(
+	Layer.provide(AuthorizationLive),
+	Layer.provide(Jose.Default),
+	Layer.provide(MessageService.Default),
+	// Layer.provide(SqlLiveCass),
+)
 
 const HttpApiScalarLayer = HttpApiScalar.layer().pipe(Layer.provide(Live))
 
@@ -55,12 +81,28 @@ export default {
 			)
 		}
 
+		const PgLive = PgClient.layer({
+			url: Redacted.make(env.HYPERDRIVE.connectionString),
+
+			transformQueryNames: String.camelToSnake,
+			transformResultNames: String.snakeToCamel,
+		})
+
+		const DatabaseLive = Database.layer({
+			url: Redacted.make(env.HYPERDRIVE.connectionString),
+			ssl: false,
+		})
+
 		const ConfigLayer = Layer.setConfigProvider(
 			ConfigProvider.fromJson({ ...env, DATABASE_URL: env.HYPERDRIVE.connectionString }),
 		)
 
 		const { dispose, handler } = HttpApiBuilder.toWebHandler(
-			Layer.mergeAll(Live, HttpApiScalarLayer, HttpServer.layerContext).pipe(Layer.provide(ConfigLayer)),
+			Layer.mergeAll(Live, HttpApiScalarLayer, HttpServer.layerContext).pipe(
+				Layer.provide(ConfigLayer),
+				Layer.provide(PgLive),
+				Layer.provide(DatabaseLive),
+			),
 			{
 				middleware: HttpMiddleware.cors(),
 			},

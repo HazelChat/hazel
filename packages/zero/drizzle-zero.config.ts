@@ -59,9 +59,9 @@ export default drizzleZeroConfig(schema, {
 			attachedFiles: true,
 			createdAt: true,
 			updatedAt: true,
+			optimisticId: true,
 		},
 		pinnedMessages: {
-			id: true,
 			messageId: true,
 			channelId: true,
 		},

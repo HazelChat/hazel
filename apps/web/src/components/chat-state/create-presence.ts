@@ -17,10 +17,13 @@ export const createPresence = () => {
 	let typingTimeout: NodeJS.Timeout | undefined
 
 	const [isTyping, setIsTyping] = createSignal(false)
+	const [isSubscribed, setIsSubscribed] = createSignal(false)
 
 	const { state, setState } = useChat()
 
 	const channel = createMemo(() => {
+		if (!userId()) throw new Error("UserId is not defined")
+
 		return supabase.channel(`channel-${state.channelId}`, {
 			config: {
 				presence: {
@@ -31,6 +34,8 @@ export const createPresence = () => {
 	})
 
 	const trackPresence = async (data: Partial<PresenceUser>) => {
+		if (!isSubscribed()) return
+
 		await channel().track({
 			user_id: userId(),
 			online_at: new Date().toISOString(),
@@ -61,6 +66,7 @@ export const createPresence = () => {
 	createEffect(() => {
 		channel().subscribe(async (status) => {
 			if (status === "SUBSCRIBED") {
+				setIsSubscribed(true)
 				await trackPresence({})
 			}
 		})

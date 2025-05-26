@@ -1,20 +1,24 @@
+import type { ChannelId, Message } from "@maki-chat/api-schema/schema/message.js"
 import { type Accessor, createEffect, createMemo, createSignal, on } from "solid-js"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
 import { useChat } from "~/lib/hooks/data/use-chat"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
+import { MessageQueries } from "~/lib/services/data-access/message-queries"
 import { Route } from "../$id"
 
 const PAGE_SIZE = 30
 
-export function Channel(props: { channelId: Accessor<string>; serverId: Accessor<string> }) {
-	const [limit, setLimit] = createSignal(PAGE_SIZE)
-
+export function Channel(props: { channelId: Accessor<ChannelId>; serverId: Accessor<string> }) {
 	const navigate = Route.useNavigate()
 
-	const { messages, channel, isChannelLoading, channelMember } = useChat(props.channelId, limit)
+	const { channel, isChannelLoading, channelMember } = useChat(props.channelId, () => 20)
+
+	const paginatedMessages = MessageQueries.createPaginatedMessagesQuery({
+		channelId: props.channelId,
+		limit: PAGE_SIZE,
+	})
 
 	// Redirect when channel is not found
 	createEffect(() => {
@@ -29,10 +33,7 @@ export function Channel(props: { channelId: Accessor<string>; serverId: Accessor
 	const processedMessages = createMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
 
-		const allMessages = [...messages()]
-			.reverse()
-			.slice()
-			.sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime())
+		const allMessages = (paginatedMessages.data?.pages.flatMap((page) => page.data) ?? []).reverse()
 
 		const result: Array<{
 			message: Message
@@ -47,8 +48,8 @@ export function Channel(props: { channelId: Accessor<string>; serverId: Accessor
 
 			let isGroupStart = true
 			if (prevMessage) {
-				const currentTime = new Date(currentMessage.createdAt!).getTime()
-				const prevTime = new Date(prevMessage.createdAt!).getTime()
+				const currentTime = currentMessage.createdAt.epochMillis
+				const prevTime = prevMessage.createdAt.epochMillis
 				const timeDiff = currentTime - prevTime
 				if (currentMessage.authorId === prevMessage.authorId && timeDiff < timeThreshold) {
 					isGroupStart = false
@@ -57,8 +58,8 @@ export function Channel(props: { channelId: Accessor<string>; serverId: Accessor
 
 			let isGroupEnd = true
 			if (nextMessage) {
-				const currentTime = new Date(currentMessage.createdAt!).getTime()
-				const nextTime = new Date(nextMessage.createdAt!).getTime()
+				const currentTime = currentMessage.createdAt.epochMillis
+				const nextTime = nextMessage.createdAt.epochMillis
 				const timeDiff = nextTime - currentTime
 				if (currentMessage.authorId === nextMessage.authorId && timeDiff < timeThreshold) {
 					isGroupEnd = false
@@ -94,7 +95,7 @@ export function Channel(props: { channelId: Accessor<string>; serverId: Accessor
 		<div class="flex flex-1 flex-col">
 			<VList
 				class="flex-1"
-				overscan={3}
+				overscan={7}
 				shift
 				data={processedMessages()}
 				ref={setVlistRef}
@@ -105,9 +106,9 @@ export function Channel(props: { channelId: Accessor<string>; serverId: Accessor
 
 					setShouldStickToBottom(offset >= vlistRef()!.scrollSize - vlistRef()!.viewportSize - 120)
 
-					if (offset < 150) {
-						if (limit() <= messages().length) {
-							setLimit(messages().length + PAGE_SIZE)
+					if (offset < 300) {
+						if (paginatedMessages.hasNextPage && paginatedMessages.fetchStatus !== "fetching") {
+							paginatedMessages.fetchNextPage()
 						}
 					}
 				}}

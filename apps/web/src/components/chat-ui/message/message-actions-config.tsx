@@ -1,4 +1,6 @@
+import { ChannelId, type Message } from "@maki-chat/api-schema/schema/message.js"
 import { useParams } from "@tanstack/solid-router"
+import { Option } from "effect"
 import { type Accessor, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 
@@ -10,8 +12,8 @@ import { IconReply } from "~/components/icons/reply"
 import { IconThread } from "~/components/icons/thread"
 import { IconTrash } from "~/components/icons/trash"
 
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
 import { newId } from "~/lib/id-helpers"
+import { MessageQueries } from "~/lib/services/data-access/message-queries"
 import { useZero } from "~/lib/zero/zero-context"
 
 interface CreateMessageActionsProps {
@@ -24,7 +26,11 @@ interface CreateMessageActionsProps {
 export function createMessageActions(props: CreateMessageActionsProps) {
 	const z = useZero()
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })()
-	const { setState } = useChat()
+	const { setState, state } = useChat()
+
+	const channelId = createMemo(() => state.channelId)
+
+	const deleteMessageMutation = MessageQueries.deleteMutation(channelId)
 
 	return createMemo(() => [
 		{
@@ -41,14 +47,16 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			label: "Thread",
 			icon: <IconThread class="size-4" />,
 			onAction: async () => {
-				const threadChannelId = props.message().threadChannelId ?? newId("serverChannels")
+				const threadChannelId = Option.getOrElse(props.message().threadChannelId, () =>
+					ChannelId.make(newId("serverChannels")),
+				)
 
 				if (!props.message().threadChannelId) {
 					await z.mutateBatch(async (tx) => {
 						await tx.serverChannels.insert({
 							id: threadChannelId,
 							serverId: props.serverId(),
-							name: `Thread ${props.message().author?.displayName}`,
+							name: "Thread name should be generated with AI",
 							channelType: "thread",
 							parentChannelId: props.message().channelId,
 							createdAt: Date.now(),
@@ -91,16 +99,15 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			onAction: async () => {
 				if (props.isPinned()) {
 					await z.mutate.pinnedMessages.delete({
-						id: props.message().pinnedInChannels?.find((p) => p.channelId === params.id)!.id,
-					})
-				} else {
-					const id = newId("pinnedMessages")
-					await z.mutate.pinnedMessages.insert({
-						id,
 						messageId: props.message().id,
-						channelId: props.message().channelId!,
 					})
+					return
 				}
+
+				await z.mutate.pinnedMessages.insert({
+					messageId: props.message().id,
+					channelId: props.message().channelId!,
+				})
 			},
 			hotkey: "p",
 			showMenu: true,
@@ -117,7 +124,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			key: "delete",
 			label: "Delete",
 			icon: <IconTrash class="size-4" />,
-			onAction: async () => z.mutate.messages.delete({ id: props.message().id }),
+			onAction: async () => deleteMessageMutation.mutateAsync(props.message().id),
 			hotkey: "del",
 			showMenu: true,
 			isDanger: true,

@@ -1,12 +1,13 @@
+import type { ChannelId, MessageId } from "@maki-chat/api-schema/schema/message.js"
 import { type JSX, createContext, createEffect, splitProps, useContext } from "solid-js"
 import { createStore } from "solid-js/store"
 
 interface ChatStore extends InputChatStore {
-	replyToMessageId: string | null
-	openThreadId: string | null
+	replyToMessageId: MessageId | null
+	openThreadId: ChannelId | null
 	imageDialog: {
 		open: boolean
-		messageId: string | null
+		messageId: MessageId | null
 		selectedImage: string | null
 	}
 	onlineUserIds: string[]
@@ -14,7 +15,7 @@ interface ChatStore extends InputChatStore {
 }
 
 interface InputChatStore {
-	channelId: string
+	channelId: ChannelId
 }
 
 const createChatStore = (props: InputChatStore) => {

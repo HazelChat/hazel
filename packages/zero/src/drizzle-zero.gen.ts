@@ -113,54 +113,6 @@ export const schema = {
             "id"
           >,
         },
-        content: {
-          type: "string",
-          optional: false,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "messages",
-            "content"
-          >,
-        },
-        channelId: {
-          type: "string",
-          optional: true,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "messages",
-            "channelId"
-          >,
-        },
-        threadChannelId: {
-          type: "string",
-          optional: true,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "messages",
-            "threadChannelId"
-          >,
-          serverName: "thread_channel_id",
-        },
-        authorId: {
-          type: "string",
-          optional: false,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "messages",
-            "authorId"
-          >,
-          serverName: "author_id",
-        },
-        replyToMessageId: {
-          type: "string",
-          optional: true,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "messages",
-            "replyToMessageId"
-          >,
-          serverName: "reply_to_message_id",
-        },
         attachedFiles: {
           type: "json",
           optional: true,
@@ -170,6 +122,35 @@ export const schema = {
             "attachedFiles"
           >,
           serverName: "attached_files",
+        },
+        authorId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "authorId"
+          >,
+          serverName: "author_id",
+        },
+        channelId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "channelId"
+          >,
+          serverName: "channel_id",
+        },
+        content: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "content"
+          >,
         },
         createdAt: {
           type: "number",
@@ -181,6 +162,26 @@ export const schema = {
           >,
           serverName: "created_at",
         },
+        replyToMessageId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "replyToMessageId"
+          >,
+          serverName: "reply_to_message_id",
+        },
+        threadChannelId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "threadChannelId"
+          >,
+          serverName: "thread_channel_id",
+        },
         updatedAt: {
           type: "number",
           optional: true,
@@ -191,21 +192,22 @@ export const schema = {
           >,
           serverName: "updated_at",
         },
+        optimisticId: {
+          type: "string",
+          optional: true,
+          customType: null as unknown as ZeroCustomType<
+            typeof zeroSchema,
+            "messages",
+            "optimisticId"
+          >,
+          serverName: "optimistic_id",
+        },
       },
       primaryKey: ["id"],
     },
     pinnedMessages: {
       name: "pinnedMessages",
       columns: {
-        id: {
-          type: "string",
-          optional: false,
-          customType: null as unknown as ZeroCustomType<
-            typeof zeroSchema,
-            "pinnedMessages",
-            "id"
-          >,
-        },
         messageId: {
           type: "string",
           optional: false,
@@ -227,7 +229,7 @@ export const schema = {
           serverName: "channel_id",
         },
       },
-      primaryKey: ["id"],
+      primaryKey: ["messageId"],
       serverName: "pinned_messages",
     },
     reactions: {

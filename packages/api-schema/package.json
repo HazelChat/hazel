@@ -7,8 +7,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform": "^0.82.3",
-		"effect": "^3.15.2"
+		"@effect/platform": "^0.82.7",
+		"effect": "^3.15.4"
 	},
 	"devDependencies": {
 		"@total-typescript/tsconfig": "^1.0.4",
@@ -16,6 +16,7 @@
 	},
 	"exports": {
 		".": "./src/index.ts",
+		"./schema": "./src/schema/index.ts",
 		"./*": "./src/*"
 	}
 }

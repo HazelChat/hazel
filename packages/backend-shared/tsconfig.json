@@ -1,0 +1,5 @@
+{
+	"compilerOptions": {},
+	"extends": "@total-typescript/tsconfig/bundler/no-dom/library",
+	"include": ["src", "../api-schema/src/model.ts"]
+}

@@ -2,6 +2,7 @@ import { createFileRoute, useParams } from "@tanstack/solid-router"
 import { Show, createEffect, createMemo } from "solid-js"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 
+import type { ChannelId } from "@maki-chat/api-schema/schema/message.js"
 import { ChatProvider, useChat } from "~/components/chat-state/chat-store"
 import { ImageViewerModal } from "~/components/chat-ui/image-viewer-modal"
 import { IconX } from "~/components/icons/x"
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/_app/$serverId/chat/$id")({
 function Root() {
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })
 	return (
-		<ChatProvider channelId={params().id}>
+		<ChatProvider channelId={params().id as ChannelId}>
 			<RouteComponent />
 		</ChatProvider>
 	)
@@ -27,7 +28,7 @@ function RouteComponent() {
 
 	const params = useParams({ from: "/_app/$serverId/chat/$id" })
 	const serverId = createMemo(() => params().serverId)
-	const channelId = createMemo(() => params().id)
+	const channelId = createMemo(() => params().id as ChannelId)
 
 	return (
 		<div class="flex h-screen flex-col">
@@ -74,7 +75,7 @@ function ChatImageViewerModal() {
 	)
 }
 
-function ThreadChannel(props: { channelId: string; serverId: string }) {
+function ThreadChannel(props: { channelId: ChannelId; serverId: string }) {
 	const { setState } = useChat()
 
 	const channelId = createMemo(() => props.channelId)

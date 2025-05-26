@@ -1,5 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
-import { ConfigError, Schema } from "effect"
+import { Schema } from "effect"
 import { Authorization } from "../authorization"
 
 export const ZeroApiGroup = HttpApiGroup.make("Zero")

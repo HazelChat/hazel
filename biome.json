@@ -31,7 +31,8 @@
 				"noConfusingVoidType": "off",
 				"noExplicitAny": "off",
 				"noArrayIndexKey": "off",
-				"noConsoleLog": "warn"
+				"noConsoleLog": "warn",
+				"noShadowRestrictedNames": "off"
 			},
 			"nursery": {
 				"useSortedClasses": "error"

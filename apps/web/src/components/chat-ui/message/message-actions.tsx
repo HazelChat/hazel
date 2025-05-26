@@ -6,8 +6,8 @@ import { Button, buttonVariants } from "~/components/ui/button"
 import { Menu } from "~/components/ui/menu"
 import { Popover } from "~/components/ui/popover"
 import { Tooltip } from "~/components/ui/tooltip"
-import type { Message } from "~/lib/hooks/data/use-chat-messages"
 
+import type { Message } from "@maki-chat/api-schema/schema/message.js"
 import { ConfirmDialog } from "../confirm-dialog"
 import { createMessageActions } from "./message-actions-config"
 

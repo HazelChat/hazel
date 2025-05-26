@@ -1,6 +1,9 @@
+version: '3.8'
+
 services:
   zstart_postgres:
     image: postgres:16.2-alpine
+    container_name: postgres_db
     shm_size: 1g
     user: postgres
     restart: always
@@ -10,22 +13,77 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - 5430:5432
+      - "5430:5432" # PostgreSQL port exposed to host at 5430
     environment:
       POSTGRES_USER: user
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: password
     command: |
-      postgres 
+      postgres
       -c wal_level=logical
-      -c max_wal_senders=10 
-      -c max_replication_slots=5 
-      -c hot_standby=on 
+      -c max_wal_senders=10
+      -c max_replication_slots=5
+      -c hot_standby=on
       -c hot_standby_feedback=on
     volumes:
       - maki-chat_pgdata:/var/lib/postgresql/data
       - ./:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+  scylla-node1:
+    image: scylladb/scylla:latest
+    container_name: scylla-node1
+    command: "--smp 1 --developer-mode=1"
+    ports: # Exposing ports for scylla-node1
+      - "9042:9042"   # CQL: host_port:container_port
+      - "10000:10000" # REST API
+    volumes:
+      - scylla_node1_data:/var/lib/scylla
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  scylla-node2:
+    image: scylladb/scylla:latest
+    container_name: scylla-node2
+    command: "--seeds=scylla-node1 --smp 1 --developer-mode=1"
+    ports: # Exposing ports for scylla-node2 (note different host ports)
+      - "9043:9042"   # CQL
+      - "10001:10000" # REST API
+    volumes:
+      - scylla_node2_data:/var/lib/scylla
+    restart: unless-stopped
+    depends_on:
+      - scylla-node1
+    networks:
+      - app-network
+
+  scylla-node3:
+    image: scylladb/scylla:latest
+    container_name: scylla-node3
+    command: "--seeds=scylla-node1 --smp 1 --developer-mode=1"
+    ports: # Exposing ports for scylla-node3 (note different host ports)
+      - "9044:9042"   # CQL
+      - "10002:10000" # REST API
+    volumes:
+      - scylla_node3_data:/var/lib/scylla
+    restart: unless-stopped
+    depends_on:
+      - scylla-node1
+    networks:
+      - app-network
 
 volumes:
   maki-chat_pgdata:
     driver: local
+  scylla_node1_data:
+    driver: local
+  scylla_node2_data:
+    driver: local
+  scylla_node3_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

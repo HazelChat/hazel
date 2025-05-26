@@ -20,6 +20,7 @@
 	},
 	"trustedDependencies": ["@rocicorp/zero-sqlite3"],
 	"dependencies": {
+		"@effect/sql-pg": "^0.36.7",
 		"turbo": "^2.5.3"
 	}
 }
