@@ -21,7 +21,7 @@
 		"noUncheckedSideEffectImports": true,
 		"paths": {
 			"~/*": ["./src/*"],
-			"convex/*": ["./convex/*"]
+			"convex-hazel/*": ["./convex/*"]
 		}
 	}
 }

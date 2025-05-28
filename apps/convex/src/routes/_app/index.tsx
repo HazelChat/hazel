@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/solid-router"
-import { api } from "convex/_generated/api"
 import { createEffect } from "solid-js"
 import { createPaginatedQuery } from "~/lib/convex"
 
