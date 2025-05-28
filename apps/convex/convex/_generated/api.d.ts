@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as channelMembers from "../channelMembers.js";
+import type * as lib_user from "../lib/user.js";
 import type * as messages from "../messages.js";
 import type * as middleware_authenticated from "../middleware/authenticated.js";
 import type * as pinnedMessages from "../pinnedMessages.js";
@@ -33,6 +34,7 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   channelMembers: typeof channelMembers;
+  "lib/user": typeof lib_user;
   messages: typeof messages;
   "middleware/authenticated": typeof middleware_authenticated;
   pinnedMessages: typeof pinnedMessages;
