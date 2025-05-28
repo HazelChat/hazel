@@ -5,8 +5,6 @@ export const Route = createFileRoute("/_app")({
 	beforeLoad: async ({ context }) => {
 		const token = await context.auth.getToken()
 
-		console.log("called tokens")
-
 		if (!token) {
 			throw redirect({
 				to: "/sign-in",

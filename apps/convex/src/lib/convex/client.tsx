@@ -360,7 +360,7 @@ export function createMutation<Mutation extends FunctionReference<"mutation">>(
 ): SolidMutation<Mutation> {
 	const client = useConvex()
 
-	return createMemo(() => createMutationInternal(mutation, client)) as unknown as SolidMutation<Mutation>
+	return createMutationInternal(mutation, client)
 }
 
 export function createAction<Action extends FunctionReference<"action">>(action: Action): SolidAction<Action> {
