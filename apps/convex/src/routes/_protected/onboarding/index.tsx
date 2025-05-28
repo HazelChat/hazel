@@ -9,7 +9,7 @@ const searchType = type({
 	"step?": "'user' | 'server'",
 })
 
-export const Route = createFileRoute("/_app/onboarding/")({
+export const Route = createFileRoute("/_protected/onboarding/")({
 	component: RouteComponent,
 	validateSearch: searchType,
 })

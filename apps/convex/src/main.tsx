@@ -11,7 +11,7 @@ import "./styles/toast.css"
 
 import { ClerkProvider, useAuth } from "clerk-solidjs"
 import { Toaster } from "./components/ui/toaster"
-import { ConvexProvider, ConvexSolidClient } from "./lib/convex"
+import { ConvexSolidClient } from "./lib/convex"
 import { ConvexProviderWithClerk } from "./lib/convex-clerk"
 
 const router = createRouter({
@@ -21,6 +21,7 @@ const router = createRouter({
 	defaultPreloadStaleTime: 0,
 	context: {
 		auth: undefined!,
+		convex: undefined!,
 	},
 })
 
@@ -30,6 +31,8 @@ declare module "@tanstack/solid-router" {
 	}
 }
 
+const convex = new ConvexSolidClient("http://127.0.0.1:3210")
+
 const InnerProviders = () => {
 	const auth = useAuth()
 
@@ -38,12 +41,11 @@ const InnerProviders = () => {
 			router={router}
 			context={{
 				auth: auth,
+				convex: convex,
 			}}
 		/>
 	)
 }
-
-const convex = new ConvexSolidClient("http://127.0.0.1:3210")
 
 function App() {
 	return (

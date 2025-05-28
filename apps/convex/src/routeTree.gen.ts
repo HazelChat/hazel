@@ -11,30 +11,35 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as ProtectedLayoutImport } from './routes/_protected/layout'
 import { Route as AuthLayoutImport } from './routes/_auth/layout'
-import { Route as AppLayoutImport } from './routes/_app/layout'
-import { Route as AppIndexImport } from './routes/_app/index'
+import { Route as ProtectedOtherPageImport } from './routes/_protected/other-page'
 import { Route as AuthSignUpImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInImport } from './routes/_auth/sign-in'
-import { Route as AppOtherPageImport } from './routes/_app/other-page'
-import { Route as AppOnboardingIndexImport } from './routes/_app/onboarding/index'
+import { Route as ProtectedOnboardingIndexImport } from './routes/_protected/onboarding/index'
+import { Route as ProtectedAppIndexImport } from './routes/_protected/_app/index'
+import { Route as ProtectedAppServerIdLayoutImport } from './routes/_protected/_app/$serverId/layout'
+import { Route as ProtectedAppServerIdIndexImport } from './routes/_protected/_app/$serverId/index'
+import { Route as ProtectedAppServerIdSettingsImport } from './routes/_protected/_app/$serverId/settings'
+import { Route as ProtectedAppServerIdBillingImport } from './routes/_protected/_app/$serverId/billing'
+import { Route as ProtectedAppServerIdChatIdImport } from './routes/_protected/_app/$serverId/chat/$id'
 
 // Create/Update Routes
+
+const ProtectedLayoutRoute = ProtectedLayoutImport.update({
+  id: '/_protected',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AuthLayoutRoute = AuthLayoutImport.update({
   id: '/_auth',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AppLayoutRoute = AppLayoutImport.update({
-  id: '/_app',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const AppIndexRoute = AppIndexImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppLayoutRoute,
+const ProtectedOtherPageRoute = ProtectedOtherPageImport.update({
+  id: '/other-page',
+  path: '/other-page',
+  getParentRoute: () => ProtectedLayoutRoute,
 } as any)
 
 const AuthSignUpRoute = AuthSignUpImport.update({
@@ -49,29 +54,58 @@ const AuthSignInRoute = AuthSignInImport.update({
   getParentRoute: () => AuthLayoutRoute,
 } as any)
 
-const AppOtherPageRoute = AppOtherPageImport.update({
-  id: '/other-page',
-  path: '/other-page',
-  getParentRoute: () => AppLayoutRoute,
-} as any)
-
-const AppOnboardingIndexRoute = AppOnboardingIndexImport.update({
+const ProtectedOnboardingIndexRoute = ProtectedOnboardingIndexImport.update({
   id: '/onboarding/',
   path: '/onboarding/',
-  getParentRoute: () => AppLayoutRoute,
+  getParentRoute: () => ProtectedLayoutRoute,
 } as any)
+
+const ProtectedAppIndexRoute = ProtectedAppIndexImport.update({
+  id: '/_app/',
+  path: '/',
+  getParentRoute: () => ProtectedLayoutRoute,
+} as any)
+
+const ProtectedAppServerIdLayoutRoute = ProtectedAppServerIdLayoutImport.update(
+  {
+    id: '/_app/$serverId',
+    path: '/$serverId',
+    getParentRoute: () => ProtectedLayoutRoute,
+  } as any,
+)
+
+const ProtectedAppServerIdIndexRoute = ProtectedAppServerIdIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProtectedAppServerIdLayoutRoute,
+} as any)
+
+const ProtectedAppServerIdSettingsRoute =
+  ProtectedAppServerIdSettingsImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => ProtectedAppServerIdLayoutRoute,
+  } as any)
+
+const ProtectedAppServerIdBillingRoute =
+  ProtectedAppServerIdBillingImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => ProtectedAppServerIdLayoutRoute,
+  } as any)
+
+const ProtectedAppServerIdChatIdRoute = ProtectedAppServerIdChatIdImport.update(
+  {
+    id: '/chat/$id',
+    path: '/chat/$id',
+    getParentRoute: () => ProtectedAppServerIdLayoutRoute,
+  } as any,
+)
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AppLayoutImport
-      parentRoute: typeof rootRoute
-    }
     '/_auth': {
       id: '/_auth'
       path: ''
@@ -79,12 +113,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AuthLayoutImport
       parentRoute: typeof rootRoute
     }
-    '/_app/other-page': {
-      id: '/_app/other-page'
-      path: '/other-page'
-      fullPath: '/other-page'
-      preLoaderRoute: typeof AppOtherPageImport
-      parentRoute: typeof AppLayoutImport
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof ProtectedLayoutImport
+      parentRoute: typeof rootRoute
     }
     '/_auth/sign-in': {
       id: '/_auth/sign-in'
@@ -100,40 +134,66 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AuthSignUpImport
       parentRoute: typeof AuthLayoutImport
     }
-    '/_app/': {
-      id: '/_app/'
+    '/_protected/other-page': {
+      id: '/_protected/other-page'
+      path: '/other-page'
+      fullPath: '/other-page'
+      preLoaderRoute: typeof ProtectedOtherPageImport
+      parentRoute: typeof ProtectedLayoutImport
+    }
+    '/_protected/_app/$serverId': {
+      id: '/_protected/_app/$serverId'
+      path: '/$serverId'
+      fullPath: '/$serverId'
+      preLoaderRoute: typeof ProtectedAppServerIdLayoutImport
+      parentRoute: typeof ProtectedLayoutImport
+    }
+    '/_protected/_app/': {
+      id: '/_protected/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexImport
-      parentRoute: typeof AppLayoutImport
+      preLoaderRoute: typeof ProtectedAppIndexImport
+      parentRoute: typeof ProtectedLayoutImport
     }
-    '/_app/onboarding/': {
-      id: '/_app/onboarding/'
+    '/_protected/onboarding/': {
+      id: '/_protected/onboarding/'
       path: '/onboarding'
       fullPath: '/onboarding'
-      preLoaderRoute: typeof AppOnboardingIndexImport
-      parentRoute: typeof AppLayoutImport
+      preLoaderRoute: typeof ProtectedOnboardingIndexImport
+      parentRoute: typeof ProtectedLayoutImport
+    }
+    '/_protected/_app/$serverId/billing': {
+      id: '/_protected/_app/$serverId/billing'
+      path: '/billing'
+      fullPath: '/$serverId/billing'
+      preLoaderRoute: typeof ProtectedAppServerIdBillingImport
+      parentRoute: typeof ProtectedAppServerIdLayoutImport
+    }
+    '/_protected/_app/$serverId/settings': {
+      id: '/_protected/_app/$serverId/settings'
+      path: '/settings'
+      fullPath: '/$serverId/settings'
+      preLoaderRoute: typeof ProtectedAppServerIdSettingsImport
+      parentRoute: typeof ProtectedAppServerIdLayoutImport
+    }
+    '/_protected/_app/$serverId/': {
+      id: '/_protected/_app/$serverId/'
+      path: '/'
+      fullPath: '/$serverId/'
+      preLoaderRoute: typeof ProtectedAppServerIdIndexImport
+      parentRoute: typeof ProtectedAppServerIdLayoutImport
+    }
+    '/_protected/_app/$serverId/chat/$id': {
+      id: '/_protected/_app/$serverId/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/$serverId/chat/$id'
+      preLoaderRoute: typeof ProtectedAppServerIdChatIdImport
+      parentRoute: typeof ProtectedAppServerIdLayoutImport
     }
   }
 }
 
 // Create and export the route tree
-
-interface AppLayoutRouteChildren {
-  AppOtherPageRoute: typeof AppOtherPageRoute
-  AppIndexRoute: typeof AppIndexRoute
-  AppOnboardingIndexRoute: typeof AppOnboardingIndexRoute
-}
-
-const AppLayoutRouteChildren: AppLayoutRouteChildren = {
-  AppOtherPageRoute: AppOtherPageRoute,
-  AppIndexRoute: AppIndexRoute,
-  AppOnboardingIndexRoute: AppOnboardingIndexRoute,
-}
-
-const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
-  AppLayoutRouteChildren,
-)
 
 interface AuthLayoutRouteChildren {
   AuthSignInRoute: typeof AuthSignInRoute
@@ -149,60 +209,138 @@ const AuthLayoutRouteWithChildren = AuthLayoutRoute._addFileChildren(
   AuthLayoutRouteChildren,
 )
 
+interface ProtectedAppServerIdLayoutRouteChildren {
+  ProtectedAppServerIdBillingRoute: typeof ProtectedAppServerIdBillingRoute
+  ProtectedAppServerIdSettingsRoute: typeof ProtectedAppServerIdSettingsRoute
+  ProtectedAppServerIdIndexRoute: typeof ProtectedAppServerIdIndexRoute
+  ProtectedAppServerIdChatIdRoute: typeof ProtectedAppServerIdChatIdRoute
+}
+
+const ProtectedAppServerIdLayoutRouteChildren: ProtectedAppServerIdLayoutRouteChildren =
+  {
+    ProtectedAppServerIdBillingRoute: ProtectedAppServerIdBillingRoute,
+    ProtectedAppServerIdSettingsRoute: ProtectedAppServerIdSettingsRoute,
+    ProtectedAppServerIdIndexRoute: ProtectedAppServerIdIndexRoute,
+    ProtectedAppServerIdChatIdRoute: ProtectedAppServerIdChatIdRoute,
+  }
+
+const ProtectedAppServerIdLayoutRouteWithChildren =
+  ProtectedAppServerIdLayoutRoute._addFileChildren(
+    ProtectedAppServerIdLayoutRouteChildren,
+  )
+
+interface ProtectedLayoutRouteChildren {
+  ProtectedOtherPageRoute: typeof ProtectedOtherPageRoute
+  ProtectedAppServerIdLayoutRoute: typeof ProtectedAppServerIdLayoutRouteWithChildren
+  ProtectedAppIndexRoute: typeof ProtectedAppIndexRoute
+  ProtectedOnboardingIndexRoute: typeof ProtectedOnboardingIndexRoute
+}
+
+const ProtectedLayoutRouteChildren: ProtectedLayoutRouteChildren = {
+  ProtectedOtherPageRoute: ProtectedOtherPageRoute,
+  ProtectedAppServerIdLayoutRoute: ProtectedAppServerIdLayoutRouteWithChildren,
+  ProtectedAppIndexRoute: ProtectedAppIndexRoute,
+  ProtectedOnboardingIndexRoute: ProtectedOnboardingIndexRoute,
+}
+
+const ProtectedLayoutRouteWithChildren = ProtectedLayoutRoute._addFileChildren(
+  ProtectedLayoutRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
-  '': typeof AuthLayoutRouteWithChildren
-  '/other-page': typeof AppOtherPageRoute
+  '': typeof ProtectedLayoutRouteWithChildren
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/': typeof AppIndexRoute
-  '/onboarding': typeof AppOnboardingIndexRoute
+  '/other-page': typeof ProtectedOtherPageRoute
+  '/$serverId': typeof ProtectedAppServerIdLayoutRouteWithChildren
+  '/': typeof ProtectedAppIndexRoute
+  '/onboarding': typeof ProtectedOnboardingIndexRoute
+  '/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
+  '/$serverId/settings': typeof ProtectedAppServerIdSettingsRoute
+  '/$serverId/': typeof ProtectedAppServerIdIndexRoute
+  '/$serverId/chat/$id': typeof ProtectedAppServerIdChatIdRoute
 }
 
 export interface FileRoutesByTo {
   '': typeof AuthLayoutRouteWithChildren
-  '/other-page': typeof AppOtherPageRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/': typeof AppIndexRoute
-  '/onboarding': typeof AppOnboardingIndexRoute
+  '/other-page': typeof ProtectedOtherPageRoute
+  '/': typeof ProtectedAppIndexRoute
+  '/onboarding': typeof ProtectedOnboardingIndexRoute
+  '/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
+  '/$serverId/settings': typeof ProtectedAppServerIdSettingsRoute
+  '/$serverId': typeof ProtectedAppServerIdIndexRoute
+  '/$serverId/chat/$id': typeof ProtectedAppServerIdChatIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/_app': typeof AppLayoutRouteWithChildren
   '/_auth': typeof AuthLayoutRouteWithChildren
-  '/_app/other-page': typeof AppOtherPageRoute
+  '/_protected': typeof ProtectedLayoutRouteWithChildren
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/_app/': typeof AppIndexRoute
-  '/_app/onboarding/': typeof AppOnboardingIndexRoute
+  '/_protected/other-page': typeof ProtectedOtherPageRoute
+  '/_protected/_app/$serverId': typeof ProtectedAppServerIdLayoutRouteWithChildren
+  '/_protected/_app/': typeof ProtectedAppIndexRoute
+  '/_protected/onboarding/': typeof ProtectedOnboardingIndexRoute
+  '/_protected/_app/$serverId/billing': typeof ProtectedAppServerIdBillingRoute
+  '/_protected/_app/$serverId/settings': typeof ProtectedAppServerIdSettingsRoute
+  '/_protected/_app/$serverId/': typeof ProtectedAppServerIdIndexRoute
+  '/_protected/_app/$serverId/chat/$id': typeof ProtectedAppServerIdChatIdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/other-page' | '/sign-in' | '/sign-up' | '/' | '/onboarding'
+  fullPaths:
+    | ''
+    | '/sign-in'
+    | '/sign-up'
+    | '/other-page'
+    | '/$serverId'
+    | '/'
+    | '/onboarding'
+    | '/$serverId/billing'
+    | '/$serverId/settings'
+    | '/$serverId/'
+    | '/$serverId/chat/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '' | '/other-page' | '/sign-in' | '/sign-up' | '/' | '/onboarding'
+  to:
+    | ''
+    | '/sign-in'
+    | '/sign-up'
+    | '/other-page'
+    | '/'
+    | '/onboarding'
+    | '/$serverId/billing'
+    | '/$serverId/settings'
+    | '/$serverId'
+    | '/$serverId/chat/$id'
   id:
     | '__root__'
-    | '/_app'
     | '/_auth'
-    | '/_app/other-page'
+    | '/_protected'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
-    | '/_app/'
-    | '/_app/onboarding/'
+    | '/_protected/other-page'
+    | '/_protected/_app/$serverId'
+    | '/_protected/_app/'
+    | '/_protected/onboarding/'
+    | '/_protected/_app/$serverId/billing'
+    | '/_protected/_app/$serverId/settings'
+    | '/_protected/_app/$serverId/'
+    | '/_protected/_app/$serverId/chat/$id'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  AppLayoutRoute: typeof AppLayoutRouteWithChildren
   AuthLayoutRoute: typeof AuthLayoutRouteWithChildren
+  ProtectedLayoutRoute: typeof ProtectedLayoutRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  AppLayoutRoute: AppLayoutRouteWithChildren,
   AuthLayoutRoute: AuthLayoutRouteWithChildren,
+  ProtectedLayoutRoute: ProtectedLayoutRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -215,16 +353,8 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/_app",
-        "/_auth"
-      ]
-    },
-    "/_app": {
-      "filePath": "_app/layout.tsx",
-      "children": [
-        "/_app/other-page",
-        "/_app/",
-        "/_app/onboarding/"
+        "/_auth",
+        "/_protected"
       ]
     },
     "/_auth": {
@@ -234,9 +364,14 @@ export const routeTree = rootRoute
         "/_auth/sign-up"
       ]
     },
-    "/_app/other-page": {
-      "filePath": "_app/other-page.tsx",
-      "parent": "/_app"
+    "/_protected": {
+      "filePath": "_protected/layout.tsx",
+      "children": [
+        "/_protected/other-page",
+        "/_protected/_app/$serverId",
+        "/_protected/_app/",
+        "/_protected/onboarding/"
+      ]
     },
     "/_auth/sign-in": {
       "filePath": "_auth/sign-in.tsx",
@@ -246,13 +381,43 @@ export const routeTree = rootRoute
       "filePath": "_auth/sign-up.tsx",
       "parent": "/_auth"
     },
-    "/_app/": {
-      "filePath": "_app/index.tsx",
-      "parent": "/_app"
+    "/_protected/other-page": {
+      "filePath": "_protected/other-page.tsx",
+      "parent": "/_protected"
     },
-    "/_app/onboarding/": {
-      "filePath": "_app/onboarding/index.tsx",
-      "parent": "/_app"
+    "/_protected/_app/$serverId": {
+      "filePath": "_protected/_app/$serverId/layout.tsx",
+      "parent": "/_protected",
+      "children": [
+        "/_protected/_app/$serverId/billing",
+        "/_protected/_app/$serverId/settings",
+        "/_protected/_app/$serverId/",
+        "/_protected/_app/$serverId/chat/$id"
+      ]
+    },
+    "/_protected/_app/": {
+      "filePath": "_protected/_app/index.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/onboarding/": {
+      "filePath": "_protected/onboarding/index.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/_app/$serverId/billing": {
+      "filePath": "_protected/_app/$serverId/billing.tsx",
+      "parent": "/_protected/_app/$serverId"
+    },
+    "/_protected/_app/$serverId/settings": {
+      "filePath": "_protected/_app/$serverId/settings.tsx",
+      "parent": "/_protected/_app/$serverId"
+    },
+    "/_protected/_app/$serverId/": {
+      "filePath": "_protected/_app/$serverId/index.tsx",
+      "parent": "/_protected/_app/$serverId"
+    },
+    "/_protected/_app/$serverId/chat/$id": {
+      "filePath": "_protected/_app/$serverId/chat/$id.tsx",
+      "parent": "/_protected/_app/$serverId"
     }
   }
 }

@@ -1,17 +1,21 @@
 import { DialogCloseTrigger } from "@ark-ui/solid"
 import { useNavigate } from "@tanstack/solid-router"
+import { api } from "convex-hazel/_generated/api"
 import { createSignal } from "solid-js"
 
 import { Button } from "~/components/ui/button"
 import { Dialog } from "~/components/ui/dialog"
 import { TextField } from "~/components/ui/text-field"
 import { toaster } from "~/components/ui/toaster"
+import { createMutation } from "~/lib/convex"
 
 export const Serveronboarding = () => {
 	const navigate = useNavigate()
 
 	const [createModalOpen, setCreateModalOpen] = createSignal(false)
 	const [joinModalOpen, setJoinModalOpen] = createSignal(false)
+
+	const createServer = createMutation(api.servers.createServer)
 
 	return (
 		<div class="flex h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground">
@@ -48,58 +52,23 @@ export const Serveronboarding = () => {
 							}
 
 							try {
-								// await z.mutateBatch(async (tx) => {
-								// 	await tx.server.insert({
-								// 		id: newServerId,
-								// 		name: serverName.toString(),
-								// 		ownerId: z.userID,
-								// 		slug: serverName
-								// 			.toString()
-								// 			.toLowerCase()
-								// 			.replace(/\s+/g, "-")
-								// 			.replace(/[^a-z0-9-]/g, ""),
-								// 		createdAt: new Date().getTime(),
-								// 		updatedAt: new Date().getTime(),
-								// 		imageUrl: "",
-								// 	})
-
-								// 	// Add owner as a member
-								// 	await tx.serverMembers.insert({
-								// 		id: newId("serverMembers"),
-								// 		userId: z.userID,
-								// 		serverId: newServerId,
-								// 		role: "owner",
-								// 		joinedAt: new Date().getTime(),
-								// 	})
-
-								// 	// Create a default 'general' channel
-								// 	await tx.serverChannels.insert({
-								// 		id: defaultChannelId,
-								// 		serverId: newServerId,
-								// 		name: "general",
-								// 		channelType: "public",
-								// 		createdAt: new Date().getTime(),
-								// 		updatedAt: new Date().getTime(),
-								// 	})
-
-								// 	// Add owner to the default channel
-								// 	await tx.channelMembers.insert({
-								// 		userId: z.userID,
-								// 		channelId: defaultChannelId,
-								// 		joinedAt: new Date().getTime(),
-								// 	})
-								// })
-
-								// // Navigate to the new server's default channel
-								// navigate({
-								// 	to: "/$serverId/chat/$id",
-								// 	params: { serverId: newServerId, id: defaultChannelId },
-								// })
+								const serverId = await createServer({
+									name: serverName.toString(),
+									slug: serverName.toString().toLowerCase(),
+								})
 
 								setCreateModalOpen(false)
+								navigate({
+									to: "/$serverId",
+									params: { serverId: serverId },
+								})
 							} catch (error) {
 								console.error("Failed to create server:", error)
-								// TODO: Add user-facing error handling
+								toaster.error({
+									title: "Failed to create server",
+									description: "Failed to create server. Please try again.",
+									type: "error",
+								})
 							}
 
 							setCreateModalOpen(false)

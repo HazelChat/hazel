@@ -96,4 +96,7 @@ export class User {
 	// 		throw new Error("You do not have permission to view this user")
 	// 	}
 	// }
+	public get doc(): Doc<"users"> {
+		return this.user
+	}
 }
