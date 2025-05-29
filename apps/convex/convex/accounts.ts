@@ -1,19 +1,17 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
-import { withAccount } from "./middleware/withAccount"
+import { mutation } from "./_generated/server"
+import { accountQuery } from "./middleware/withAccount"
 
-export const getAccount = query(
-	withAccount({
-		args: {
-			id: v.id("accounts"),
-		},
-		handler: async (ctx, args) => {
-			await ctx.account.validateCanViewAccount({ ctx, accountId: args.id })
+export const getAccount = accountQuery({
+	args: {
+		id: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		await ctx.account.validateCanViewAccount({ ctx, accountId: args.id })
 
-			return await ctx.db.get(args.id)
-		},
-	}),
-)
+		return await ctx.db.get(args.id)
+	},
+})
 
 export const createAccount = mutation({
 	args: {

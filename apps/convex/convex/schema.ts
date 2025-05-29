@@ -44,7 +44,9 @@ export default defineSchema({
 		joinedAt: v.number(),
 		lastSeen: v.number(),
 		deletedAt: v.optional(v.number()),
-	}).index("by_accountId", ["accountId"]),
+	})
+		.index("by_accountId", ["accountId"])
+		.index("by_serverId", ["serverId"]),
 	messages: defineTable({
 		attachedFiles: v.array(v.string()),
 		content: v.string(),
@@ -82,7 +84,7 @@ export default defineSchema({
 	pinnedMessages: defineTable({
 		messageId: v.id("messages"),
 		channelId: v.id("channels"),
-	}),
+	}).index("by_channelId", ["channelId"]),
 	reactions: defineTable({
 		messageId: v.id("messages"),
 		userId: v.id("users"),

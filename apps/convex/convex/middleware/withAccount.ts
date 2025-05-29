@@ -1,36 +1,33 @@
+import { mutation, query } from "convex-hazel/_generated/server"
 import { Account } from "convex-hazel/lib/activeRecords/account"
-import type {
-	ArgsArrayForOptionalValidator,
-	DefaultArgsForOptionalValidator,
-	GenericMutationCtx,
-	GenericQueryCtx,
-} from "convex/server"
-import type { PropertyValidators, Validator } from "convex/values"
+import { customMutation, customQuery } from "convex-hazel/lib/activeRecords/customFunctions"
 
-export const withAccount = <
-	TContext extends GenericQueryCtx<any> | GenericMutationCtx<any>,
-	TArgs extends PropertyValidators | Validator<any, "required", any> | void,
-	TResult,
-	TOneOrZeroArgs extends ArgsArrayForOptionalValidator<TArgs> = DefaultArgsForOptionalValidator<TArgs>,
->({
-	args,
-	handler,
-}: {
-	args: TArgs
-	handler: (ctx: TContext & { account: Account }, ...args: TOneOrZeroArgs) => Promise<TResult>
-}) => {
-	return {
-		args,
-		handler: async (ctx: TContext, ...args: TOneOrZeroArgs): Promise<TResult> => {
-			const identity = await ctx.auth.getUserIdentity()
+export const accountQuery = customQuery(query, {
+	args: {},
+	input: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity()
 
-			if (identity === null) {
-				throw new Error("Not authenticated")
-			}
+		if (identity === null) {
+			throw new Error("Not authenticated")
+		}
 
-			const account = await Account.fromIdentity(ctx, identity)
+		const account = await Account.fromIdentity(ctx, identity)
 
-			return await handler({ ...ctx, account }, ...args)
-		},
-	}
-}
+		return { ctx: { ...ctx, account }, args }
+	},
+})
+
+export const accountMutation = customMutation(mutation, {
+	args: {},
+	input: async (ctx, args) => {
+		const identity = await ctx.auth.getUserIdentity()
+
+		if (identity === null) {
+			throw new Error("Not authenticated")
+		}
+
+		const account = await Account.fromIdentity(ctx, identity)
+
+		return { ctx: { ...ctx, account }, args }
+	},
+})
