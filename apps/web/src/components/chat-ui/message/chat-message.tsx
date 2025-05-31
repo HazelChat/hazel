@@ -1,4 +1,3 @@
-import { useParams } from "@tanstack/solid-router"
 import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 
 import { Badge } from "~/components/ui/badge"
