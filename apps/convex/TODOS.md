@@ -10,3 +10,4 @@ Needs to be investigated
  - Optmistic updates not really working it seems like 
 - Add isLoading and error state to createQuery
 - Add error tuple to createMutation
+- Add convex client tests to our sdk

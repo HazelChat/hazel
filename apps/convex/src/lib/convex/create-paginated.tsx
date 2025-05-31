@@ -416,7 +416,13 @@ export function insertAtTop<Query extends PaginatedQueryReference>(options: {
 		if (argsToMatch === undefined) {
 			return true
 		}
-		return Object.keys(argsToMatch).every((k) => compareValues(argsToMatch[k], q.args[k]) === 0)
+		return Object.keys(argsToMatch).every(
+			(k) =>
+				compareValues(
+					(argsToMatch as Record<string, unknown>)[k] as Value,
+					(q.args as Record<string, unknown>)[k] as Value,
+				) === 0,
+		)
 	})
 	const firstPage = queriesThatMatch.find((q) => q.args.paginationOpts.cursor === null)
 	if (firstPage === undefined || firstPage.value === undefined) {
@@ -434,13 +440,20 @@ export function insertAtBottomIfLoaded<Query extends PaginatedQueryReference>(op
 	localQueryStore: OptimisticLocalStore
 	item: PaginatedQueryItem<Query>
 }) {
+	console.debug('[Convex] insertAtBottomIfLoaded called', options);
 	const { paginatedQuery, localQueryStore, item, argsToMatch } = options
 	const queries = localQueryStore.getAllQueries(paginatedQuery)
 	const queriesThatMatch = queries.filter((q) => {
 		if (argsToMatch === undefined) {
 			return true
 		}
-		return Object.keys(argsToMatch).every((k) => compareValues(argsToMatch[k], q.args[k]) === 0)
+		return Object.keys(argsToMatch).every(
+			(k) =>
+				compareValues(
+					argsToMatch[k as keyof typeof argsToMatch] as Value,
+					q.args[k as keyof typeof q.args] as Value,
+				) === 0,
+		)
 	})
 
 	const lastPage = queriesThatMatch.find((q) => q.value?.isDone)
@@ -469,7 +482,13 @@ export function insertAtPosition<Query extends PaginatedQueryReference>(options:
 	const queryGroups: Record<string, any[]> = {}
 
 	for (const query of queries) {
-		if (argsToMatch !== undefined && !Object.keys(argsToMatch).every((k) => argsToMatch[k] === query.args[k])) {
+		if (
+			argsToMatch !== undefined &&
+			!Object.keys(argsToMatch).every((k) => {
+				const key = k as keyof typeof argsToMatch
+				return argsToMatch[key] === (query.args as any)[key]
+			})
+		) {
 			continue
 		}
 		const key = JSON.stringify(

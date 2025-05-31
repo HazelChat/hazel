@@ -301,29 +301,31 @@ export function FloatingBar() {
 	const showAttachmentArea = createMemo(() => successfulKeys().length > 0)
 
 	async function handleSubmit(text: string) {
-		if (!auth.userId()) return
+		const userId = auth.userId()
+		if (!userId) return
 
-		if (isUploading()) {
-			console.warn("Upload in progress. Please wait.")
-			return
-		}
+		setTimeout(async () => {
+			if (isUploading()) {
+				console.warn("Upload in progress. Please wait.")
+				return
+			}
 
-		if (text.trim().length === 0 && successfulKeys().length === 0) return
-		const content = text.trim()
+			if (text.trim().length === 0 && successfulKeys().length === 0) return
 
-		// TODO: If we are not a channel member and the channel is a thread, we need to add the current user as a channel member
-		await createMessage({
-			content: content,
-			replyToMessageId: state.replyToMessageId || undefined,
-			attachedFiles: successfulKeys(),
-			serverId: state.serverId,
-			channelId: state.channelId,
-		})
+			const content = text.trim()
 
-		setInput("")
-		setState("replyToMessageId", null)
+			await createMessage({
+				content: content,
+				replyToMessageId: state.replyToMessageId || undefined,
+				attachedFiles: successfulKeys(),
+				serverId: state.serverId,
+				channelId: state.channelId,
+			})
 
-		trackTyping(false)
+			setInput("")
+			setState("replyToMessageId", null)
+			trackTyping(false)
+		}, 0)
 	}
 
 	return (
@@ -365,7 +367,7 @@ export function FloatingBar() {
 					onKeyDown={(e) => {
 						if (e.key === "Enter" && !e.shiftKey) {
 							e.preventDefault()
-							handleSubmit(input())
+							queueMicrotask(() => handleSubmit(input()))
 						}
 					}}
 				/>

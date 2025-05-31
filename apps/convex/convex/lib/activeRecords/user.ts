@@ -64,18 +64,6 @@ export class User {
 		}
 	}
 
-	public async canAccessPinnedMessage(args: { ctx: GenericContext; pinnedMessageId: Id<"pinnedMessages"> }) {
-		const pinnedMessage = await args.ctx.db.get(args.pinnedMessageId)
-		if (!pinnedMessage) throw new Error("Pinned message not found")
-
-		return await this.isMemberOfChannel({ ctx: args.ctx, channelId: pinnedMessage.channelId })
-	}
-	public async validateCanAccessPinnedMessage(args: { ctx: GenericContext; pinnedMessageId: Id<"pinnedMessages"> }) {
-		if (!(await this.canAccessPinnedMessage(args))) {
-			throw new Error("You do not have permission to delete this pinned message")
-		}
-	}
-
 	// public async canViewUser({ ctx, userId }: { ctx: GenericContext; userId: Id<"users"> }) {
 	// 	if(userId === this.user._id) return true
 	// }
