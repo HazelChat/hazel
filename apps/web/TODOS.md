@@ -9,6 +9,7 @@
 - File uploads with convex
 - Readd threads
 
+- Simple Mobile App with Push Notifications
 
 # Improvements 
 - Add local caching for messages 
