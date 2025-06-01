@@ -99,5 +99,5 @@ export default defineSchema({
 		accountId: v.id("accounts"),
 		targetedResourceId: v.optional(v.union(v.id("channels"), v.id("servers"))),
 		resourceId: v.optional(v.union(v.id("messages"))),
-	}),
+	}).index("by_accountId", ["accountId"]),
 })

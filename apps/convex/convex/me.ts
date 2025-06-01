@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { accountQuery } from "./middleware/withAccount"
+import { userQuery } from "./middleware/withUser"
 
 export const get = accountQuery({
 	args: {},
@@ -18,6 +19,17 @@ export const getUser = accountQuery({
 			.withIndex("by_accountId_serverId", (q) =>
 				q.eq("accountId", ctx.account.id).eq("serverId", args.serverId),
 			)
+			.first()
+	},
+})
+
+export const getLatestNotifcation = accountQuery({
+	args: {},
+	handler: async (ctx, args) => {
+		return ctx.db
+			.query("notifications")
+			.withIndex("by_accountId", (q) => q.eq("accountId", ctx.account.id))
+			.order("desc")
 			.first()
 	},
 })

@@ -13,6 +13,7 @@ import { ClerkProvider, useAuth } from "clerk-solidjs"
 import { Toaster } from "./components/ui/toaster"
 import { ConvexSolidClient } from "./lib/convex"
 import { ConvexProviderWithClerk } from "./lib/convex-clerk"
+import { NotificationManager } from "./lib/notification-manager"
 
 const router = createRouter({
 	routeTree,
@@ -51,8 +52,10 @@ function App() {
 	return (
 		<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
 			<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-				<Toaster />
-				<InnerProviders />
+				<NotificationManager>
+					<Toaster />
+					<InnerProviders />
+				</NotificationManager>
 			</ConvexProviderWithClerk>
 		</ClerkProvider>
 	)
