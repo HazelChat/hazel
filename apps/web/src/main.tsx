@@ -1,5 +1,5 @@
 import { RouterProvider, createRouter } from "@tanstack/solid-router"
-import { Suspense, render } from "solid-js/web"
+import { Show, Suspense, render } from "solid-js/web"
 
 import "solid-devtools"
 
@@ -10,6 +10,7 @@ import "./styles/code.css"
 import "./styles/toast.css"
 
 import { ClerkProvider, useAuth } from "clerk-solidjs"
+import { FpsCounter } from "./components/devtools/fps-counter"
 import { Toaster } from "./components/ui/toaster"
 import { ConvexSolidClient } from "./lib/convex"
 import { ConvexProviderWithClerk } from "./lib/convex-clerk"
@@ -55,6 +56,9 @@ function App() {
 				<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
 					<Toaster />
 					<InnerProviders />
+					<Show when={import.meta.env.DEV}>
+						<FpsCounter />
+					</Show>
 				</ConvexProviderWithClerk>
 			</Suspense>
 		</ClerkProvider>

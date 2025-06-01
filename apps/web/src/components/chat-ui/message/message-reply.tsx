@@ -1,7 +1,7 @@
 import { Markdown } from "@maki-chat/markdown"
 import { api } from "convex-hazel/_generated/api"
 import type { Doc, Id } from "convex-hazel/_generated/dataModel"
-import { type Accessor, Show, createMemo } from "solid-js"
+import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 import { twJoin } from "tailwind-merge"
 import { useChat } from "~/components/chat-state/chat-store"
 import { IconCode } from "~/components/icons/code"
@@ -22,14 +22,14 @@ export function MessageReply(props: MessageReplyProps) {
 
 	const replyToMessageId = createMemo(() => props.message().replyToMessageId)
 
-	const reployToMessage = createQuery(api.messages.getMessage, {
+	const replyToMessage = createQuery(api.messages.getMessage, {
 		id: replyToMessageId()!,
 		channelId: state.channelId,
 		serverId: state.serverId,
 	})
 
 	return (
-		<Show when={reployToMessage()} keyed>
+		<Show when={replyToMessage()} keyed>
 			{(replyToMessage) => (
 				<div>
 					<svg
@@ -83,7 +83,9 @@ export function MessageReply(props: MessageReplyProps) {
 									),
 									p: (props) => <span class="">{props.children}</span>,
 									h1: (props) => <span class="font-bold">{props.children}</span>,
-									blockquote: (props) => <IconQuote class="inline-flex text-muted-foreground" />,
+									blockquote: (props) => (
+										<IconQuote class="inline-flex text-muted-foreground" />
+									),
 									pre: (props) => <IconCode class="inline-flex text-muted-foreground" />,
 									img: (parentProps) => {
 										return <IconImage class="inline-flex text-muted-foreground" />
