@@ -7,6 +7,7 @@
 		"dev": "vite --port 3000",
 		"start": "vite --port 3000",
 		"build": "vite build",
+		"convex:deploy": "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_UR --cmd='bun run build' ",
 		"serve": "vite preview",
 		"test": "vitest",
 		"test:once": "vitest run",
