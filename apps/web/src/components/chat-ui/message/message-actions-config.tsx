@@ -1,6 +1,6 @@
+import type { Doc } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { ChannelId } from "@maki-chat/api-schema/schema/message.js"
-import { api } from "convex-hazel/_generated/api"
-import type { Doc } from "convex-hazel/_generated/dataModel"
 import { Option } from "effect"
 import { type Accessor, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"

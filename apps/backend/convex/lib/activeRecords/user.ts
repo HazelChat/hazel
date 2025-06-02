@@ -1,5 +1,5 @@
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
-import type { MutationCtx, QueryCtx } from "convex-hazel/_generated/server"
+import type { Doc, Id } from "@hazel/backend"
+import type { MutationCtx, QueryCtx } from "@hazel/backend/server"
 import type { UserIdentity } from "convex/server"
 import { Account } from "./account"
 
@@ -46,7 +46,10 @@ export class User {
 
 		return channel.type === "public" || (await this.isMemberOfChannel({ ctx, channelId }))
 	}
-	public async validateCanViewChannel({ ctx, channelId }: { ctx: GenericContext; channelId: Id<"channels"> }) {
+	public async validateCanViewChannel({
+		ctx,
+		channelId,
+	}: { ctx: GenericContext; channelId: Id<"channels"> }) {
 		if (!(await this.canViewChannel({ ctx, channelId }))) {
 			throw new Error("You do not have access to this channel")
 		}

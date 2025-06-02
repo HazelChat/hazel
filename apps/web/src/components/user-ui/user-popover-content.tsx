@@ -1,6 +1,6 @@
+import type { Doc, Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { Link, useNavigate } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import { type Accessor, Show } from "solid-js"
 import { createMutation } from "~/lib/convex"
 import { IconChat } from "../icons/chat"
@@ -69,7 +69,9 @@ export const UserPopoverContent = (props: UserPopoverContentProps) => {
 	)
 }
 
-export interface UserAvatarProps extends Omit<UserPopoverContentProps, "user">, Omit<AvatarProps, "name" | "src"> {
+export interface UserAvatarProps
+	extends Omit<UserPopoverContentProps, "user">,
+		Omit<AvatarProps, "name" | "src"> {
 	user?: Doc<"users">
 }
 
@@ -77,7 +79,13 @@ export const UserAvatar = (props: UserAvatarProps) => {
 	return (
 		<Show
 			when={props.user}
-			fallback={<Avatar name={props.user?.displayName ?? "Loading.."} src={props.user?.avatarUrl} {...props} />}
+			fallback={
+				<Avatar
+					name={props.user?.displayName ?? "Loading.."}
+					src={props.user?.avatarUrl}
+					{...props}
+				/>
+			}
 		>
 			<Popover lazyMount>
 				<Popover.Trigger

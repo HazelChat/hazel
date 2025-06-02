@@ -1,15 +1,15 @@
 import type { TestConvex } from "convex-test"
 import { describe, expect, test } from "vitest"
 import { api } from "../convex/_generated/api"
+import type schema from "../convex/schema"
 import {
 	convexTest,
+	createAccount,
 	createChannel,
 	createServerAndAccount,
-	randomIdentity,
 	createUser,
-	createAccount,
+	randomIdentity,
 } from "./utils/data-generator"
-import type schema from "../convex/schema"
 
 async function setupServerAndUser(convexTest: TestConvex<typeof schema>) {
 	const t = randomIdentity(convexTest)
@@ -305,11 +305,11 @@ describe("channel", () => {
 			type: "direct",
 		})
 
-		await t.mutation(api.channels.createChannel, {
-			serverId: server,
-			name: "Single Channel",
-			type: "single",
-		})
+		// await t.mutation(api.channels.createChannel, {
+		// 	serverId: server,
+		// 	name: "Single Channel",
+		// 	type: "single",
+		// })
 
 		await t.mutation(api.channels.createChannel, {
 			serverId: server,

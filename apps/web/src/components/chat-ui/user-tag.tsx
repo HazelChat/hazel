@@ -1,4 +1,4 @@
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
 import { twMerge } from "tailwind-merge"
 
 export function UserTag(props: { user: Doc<"users"> | undefined; className?: string }) {

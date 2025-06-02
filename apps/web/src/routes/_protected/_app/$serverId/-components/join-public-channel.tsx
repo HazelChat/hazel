@@ -1,6 +1,6 @@
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { useNavigate } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
 import { type Accessor, For, Show, createMemo } from "solid-js"
 import { IconHashtag } from "~/components/icons/hashtag"
 import { createMutation, createQuery } from "~/lib/convex"
@@ -45,7 +45,9 @@ export const JoinPublicChannel = (props: JoinPublicChannelProps) => {
 						}}
 					>
 						<IconHashtag class="size-5 text-muted-foreground" />
-						<p class="text-muted-foreground group-hover/sidebar-item:text-foreground">{channel.name}</p>
+						<p class="text-muted-foreground group-hover/sidebar-item:text-foreground">
+							{channel.name}
+						</p>
 					</button>
 				)}
 			</For>

@@ -1,6 +1,6 @@
+import type { Doc, Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { Markdown } from "@maki-chat/markdown"
-import { api } from "convex-hazel/_generated/api"
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
 import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 import { twJoin } from "tailwind-merge"
 import { useChat } from "~/components/chat-state/chat-store"

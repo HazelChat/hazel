@@ -1,5 +1,5 @@
+import type { Doc } from "@hazel/backend"
 import { useAuth } from "clerk-solidjs"
-import type { Doc } from "convex-hazel/_generated/dataModel"
 import { type Accessor, For, Show, createEffect, createMemo } from "solid-js"
 import { createPresence } from "~/lib/convex-presence/create-presence"
 import { createTypingIndicator } from "~/lib/convex-presence/create-typing-indicator"

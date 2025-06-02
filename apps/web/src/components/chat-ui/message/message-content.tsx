@@ -6,8 +6,8 @@ import { cn } from "~/lib/utils"
 import { ChatImage } from "./chat-image"
 import { ThreadButton } from "./thread-button"
 
+import type { Doc } from "@hazel/backend"
 import { Markdown } from "@maki-chat/markdown"
-import type { Doc } from "convex-hazel/_generated/dataModel"
 import { useChat } from "~/components/chat-state/chat-store"
 import type { Message } from "~/lib/types"
 import { ReactionTags } from "./reaction-tags"
@@ -64,7 +64,10 @@ export function MessageContent(props: MessageContentProps) {
 						/>
 					),
 					pre: (props) => (
-						<pre class={twJoin("bg-muted/50", "border", "font-mono", "rounded", "text-sm")} {...props} />
+						<pre
+							class={twJoin("bg-muted/50", "border", "font-mono", "rounded", "text-sm")}
+							{...props}
+						/>
 					),
 					img: (parentProps) => {
 						const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
@@ -133,7 +136,9 @@ export function MessageContent(props: MessageContentProps) {
 									/>
 									{attachedCount() > 4 && index() === 3 && (
 										<div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60">
-											<span class="font-semibold text-lg text-white">+{attachedCount() - 4}</span>
+											<span class="font-semibold text-lg text-white">
+												+{attachedCount() - 4}
+											</span>
 										</div>
 									)}
 								</div>

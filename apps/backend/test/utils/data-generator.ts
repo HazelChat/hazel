@@ -1,7 +1,7 @@
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Id } from "@hazel/backend"
+import { type TestConvex, type TestConvexForDataModel, convexTest as _convexTest } from "convex-test"
 import { api } from "../../convex/_generated/api"
 import schema from "../../convex/schema"
-import { convexTest as _convexTest, type TestConvex, type TestConvexForDataModel } from "convex-test"
 import { modules } from "../../convex/test.setup"
 
 export function randomIdentity(convexTest: TestConvex<typeof schema>) {

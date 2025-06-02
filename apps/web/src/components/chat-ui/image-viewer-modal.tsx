@@ -15,7 +15,7 @@ import { Portal } from "solid-js/web"
 import { Dialog, DialogBackdrop } from "../ui/dialog"
 
 import { Dialog as ArkDialog } from "@ark-ui/solid"
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
 import { twMerge } from "tailwind-merge"
 import { Carousel } from "../ui/carousel"
 
@@ -80,7 +80,11 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 					console.error("Failed to copy image:", error)
 				}
 
-				toaster.create({ title: "Image copied", description: "Your image has been copied.", type: "success" })
+				toaster.create({
+					title: "Image copied",
+					description: "Your image has been copied.",
+					type: "success",
+				})
 			},
 		},
 		{
@@ -158,7 +162,9 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 								loop
 								slideCount={props.availableImages().length}
 								page={props.availableImages().indexOf(selectedImage())}
-								onPageChange={(details) => setSelectedImage(props.availableImages()[details.page])}
+								onPageChange={(details) =>
+									setSelectedImage(props.availableImages()[details.page])
+								}
 								onClick={(e) => {
 									if ((e.target as HTMLElement).tagName.toLowerCase() === "div") {
 										props.onOpenChange(false)
@@ -201,7 +207,11 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 								{(action) => (
 									<Tooltip openDelay={0} closeDelay={0}>
 										<Tooltip.Trigger>
-											<Button intent="ghost" size="square" onClick={(e) => action.onClick(e)}>
+											<Button
+												intent="ghost"
+												size="square"
+												onClick={(e) => action.onClick(e)}
+											>
 												{action.icon}
 											</Button>
 										</Tooltip.Trigger>

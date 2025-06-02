@@ -1,5 +1,5 @@
+import type { Doc } from "@hazel/backend"
 import { useAuth } from "clerk-solidjs"
-import type { Doc } from "convex-hazel/_generated/dataModel"
 import { type Accessor, For, createMemo } from "solid-js"
 
 type MessageReaction = {

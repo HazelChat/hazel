@@ -1,6 +1,6 @@
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { useParams } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
 import { For, createMemo } from "solid-js"
 import { IconPin } from "~/components/icons/pin"
 import { createMutation, createQuery } from "~/lib/convex"

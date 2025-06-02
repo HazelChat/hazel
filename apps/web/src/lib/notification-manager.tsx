@@ -1,5 +1,5 @@
-import { api } from "convex-hazel/_generated/api"
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { createEffect, createSignal, on } from "solid-js"
 import type { JSX } from "solid-js/jsx-runtime"
 import { createQuery } from "./convex"

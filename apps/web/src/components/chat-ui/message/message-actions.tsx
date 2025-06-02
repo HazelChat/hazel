@@ -7,7 +7,7 @@ import { Menu } from "~/components/ui/menu"
 import { Popover } from "~/components/ui/popover"
 import { Tooltip } from "~/components/ui/tooltip"
 
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
 import { ConfirmDialog } from "../confirm-dialog"
 import { createMessageActions } from "./message-actions-config"
 
@@ -56,7 +56,9 @@ export function MessageActions(props: MessageActionsProps) {
 										</Button>
 										<Tooltip.Content>
 											{a.label}
-											{a.hotkey && <span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>}
+											{a.hotkey && (
+												<span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>
+											)}
 										</Tooltip.Content>
 									</Tooltip.Trigger>
 								</Tooltip>
@@ -71,7 +73,9 @@ export function MessageActions(props: MessageActionsProps) {
 									</Tooltip.Trigger>
 									<Tooltip.Content>
 										{a.label}
-										{a.hotkey && <span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>}
+										{a.hotkey && (
+											<span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>
+										)}
 									</Tooltip.Content>
 									<Popover.Content>{a.popoverContent}</Popover.Content>
 								</Tooltip>

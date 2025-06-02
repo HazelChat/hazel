@@ -1,6 +1,6 @@
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { useParams } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
 import { For, Match, Show, Switch } from "solid-js"
 import { createQuery } from "~/lib/convex"
 import { useChat } from "../chat-state/chat-store"

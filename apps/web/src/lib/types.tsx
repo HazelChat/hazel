@@ -1,4 +1,4 @@
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
 
 export type Message = Doc<"messages"> & {
 	author: Doc<"users">

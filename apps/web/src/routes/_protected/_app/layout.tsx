@@ -1,5 +1,5 @@
+import { api } from "@hazel/backend/api"
 import { Outlet, createFileRoute, redirect } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
 import { NotificationManager } from "~/lib/notification-manager"
 
 export const Route = createFileRoute("/_protected/_app")({

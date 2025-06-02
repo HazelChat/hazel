@@ -1,4 +1,4 @@
-import { internalMutation } from "convex-hazel/_generated/server"
+import { internalMutation } from "@hazel/backend/server"
 import { asyncMap } from "convex-helpers"
 import { v } from "convex/values"
 

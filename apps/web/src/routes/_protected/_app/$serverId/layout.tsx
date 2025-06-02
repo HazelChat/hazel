@@ -1,6 +1,7 @@
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
+
 import { Outlet, createFileRoute, redirect } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
 import { Sidebar } from "~/components/ui/sidebar"
 import { removeCurrentServerId, setCurrentServerId } from "~/lib/helpers/localstorage"
 import { AppSidebar } from "./-components/app-sidebar"

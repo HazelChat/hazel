@@ -1,5 +1,5 @@
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { type Accessor, Show, createEffect, createMemo, createSignal, on } from "solid-js"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"

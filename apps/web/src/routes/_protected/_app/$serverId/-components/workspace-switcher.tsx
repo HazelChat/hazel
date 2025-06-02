@@ -1,5 +1,5 @@
+import { api } from "@hazel/backend/api"
 import { Link, useParams } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
 import { For, createMemo } from "solid-js"
 import { IconChevronUpDown } from "~/components/icons/chevron-up-down"
 import { IconPlus } from "~/components/icons/plus"
@@ -28,7 +28,11 @@ export const WorkspaceSwitcher = () => {
 								class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 								{...props()}
 							>
-								<Avatar size="xs" src={activeServer()?.imageUrl} name={activeServer()?.name!} />
+								<Avatar
+									size="xs"
+									src={activeServer()?.imageUrl}
+									name={activeServer()?.name!}
+								/>
 								<div class="grid flex-1 text-left text-sm leading-tight">
 									<span class="truncate font-semibold">{activeServer()?.name}</span>
 								</div>
@@ -55,7 +59,9 @@ export const WorkspaceSwitcher = () => {
 										)}
 									>
 										<Avatar size="xs" src={server.imageUrl} name={server.name} />
-										<span class="truncate text-muted-foreground text-xs">{server.name}</span>
+										<span class="truncate text-muted-foreground text-xs">
+											{server.name}
+										</span>
 									</Menu.Item>
 								)}
 							</For>

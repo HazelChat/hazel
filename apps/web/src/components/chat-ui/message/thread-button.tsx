@@ -1,4 +1,4 @@
-import type { Doc } from "convex-hazel/_generated/dataModel"
+import type { Doc } from "@hazel/backend"
 import { type Accessor, For, Show, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 import { Avatar } from "~/components/ui/avatar"

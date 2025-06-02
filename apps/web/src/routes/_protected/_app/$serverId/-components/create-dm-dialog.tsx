@@ -9,8 +9,8 @@ import { Dialog } from "~/components/ui/dialog"
 import { ListBox } from "~/components/ui/list-box"
 import { TextField } from "~/components/ui/text-field"
 
-import { api } from "convex-hazel/_generated/api"
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
+import type { Doc, Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import { createMutation, createQuery } from "~/lib/convex"
 
 export interface CreateDmDialogProps {
@@ -98,7 +98,11 @@ export const CreateDmDialog = (props: CreateDmDialogProps) => {
 								{(item) => (
 									<ListBox.Item item={item()}>
 										<div class="flex items-center gap-3">
-											<Avatar size="xs" src={item().avatarUrl} name={item().displayName} />
+											<Avatar
+												size="xs"
+												src={item().avatarUrl}
+												name={item().displayName}
+											/>
 											<ListBox.ItemText>{item().displayName}</ListBox.ItemText>
 										</div>
 

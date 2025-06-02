@@ -2,7 +2,7 @@ import { type Accessor, Show, createEffect, createMemo } from "solid-js"
 
 import { Badge } from "~/components/ui/badge"
 
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Id } from "@hazel/backend"
 import { useChat } from "~/components/chat-state/chat-store"
 import type { Message } from "~/lib/types"
 import { MessageActions } from "./message-actions"

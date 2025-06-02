@@ -1,8 +1,14 @@
 import type { TestConvex } from "convex-test"
 import { describe, expect, test } from "vitest"
 import { api } from "../convex/_generated/api"
-import { convexTest, createAccount, createServerAndAccount, createUser, randomIdentity } from "./utils/data-generator"
 import type schema from "../convex/schema"
+import {
+	convexTest,
+	createAccount,
+	createServerAndAccount,
+	createUser,
+	randomIdentity,
+} from "./utils/data-generator"
 
 async function setupServer(convexTest: TestConvex<typeof schema>) {
 	const t = randomIdentity(convexTest)

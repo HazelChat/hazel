@@ -1,5 +1,5 @@
+import { api } from "@hazel/backend/api"
 import { Link, createFileRoute, redirect, useNavigate } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
 import { For, createEffect } from "solid-js"
 import { Card } from "~/components/ui/card"
 import { createQuery } from "~/lib/convex"

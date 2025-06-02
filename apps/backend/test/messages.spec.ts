@@ -1,17 +1,16 @@
-import type { TestConvex, TestConvexForDataModel } from "convex-test"
+import type schema from "@hazel/backend/schema"
+import type { TestConvex } from "convex-test"
 import { describe, expect, test } from "vitest"
 import { api } from "../convex/_generated/api"
 import {
 	convexTest,
-	createChannel,
-	createServerAndAccount,
-	randomIdentity,
-	createUser,
 	createAccount,
+	createChannel,
 	createMessage,
+	createServerAndAccount,
+	createUser,
+	randomIdentity,
 } from "./utils/data-generator"
-import type schema from "../convex/schema"
-import type { Id } from "../convex/_generated/dataModel"
 
 async function setupServerAndUser(convexTest: TestConvex<typeof schema>) {
 	const t = randomIdentity(convexTest)

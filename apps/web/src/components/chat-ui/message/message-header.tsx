@@ -1,4 +1,4 @@
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
+import type { Doc, Id } from "@hazel/backend"
 import { type Accessor, Show, createMemo } from "solid-js"
 import { UserAvatar } from "~/components/user-ui/user-popover-content"
 import type { Message } from "~/lib/types"

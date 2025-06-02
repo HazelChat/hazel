@@ -1,6 +1,6 @@
 import { DialogCloseTrigger } from "@ark-ui/solid"
+import { api } from "@hazel/backend/api"
 import { useNavigate } from "@tanstack/solid-router"
-import { api } from "convex-hazel/_generated/api"
 import { createSignal } from "solid-js"
 
 import { Button } from "~/components/ui/button"
@@ -20,7 +20,9 @@ export const Serveronboarding = () => {
 	return (
 		<div class="flex h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground">
 			<h1 class="font-bold text-3xl">Welcome!</h1>
-			<p class="text-muted-foreground">Get started by creating a new server or joining an existing one.</p>
+			<p class="text-muted-foreground">
+				Get started by creating a new server or joining an existing one.
+			</p>
 			<div class="mt-6 flex gap-4">
 				<Button onClick={() => setCreateModalOpen(true)} size="large">
 					Create My Own Server
@@ -33,7 +35,9 @@ export const Serveronboarding = () => {
 				<Dialog.Content>
 					<Dialog.Header>
 						<Dialog.Title>Create a Server</Dialog.Title>
-						<Dialog.Description>Enter an invite code to join an existing server.</Dialog.Description>
+						<Dialog.Description>
+							Enter an invite code to join an existing server.
+						</Dialog.Description>
 					</Dialog.Header>
 					<form
 						class="flex flex-col gap-4"
@@ -97,7 +101,9 @@ export const Serveronboarding = () => {
 				<Dialog.Content>
 					<Dialog.Header>
 						<Dialog.Title>Join a Server</Dialog.Title>
-						<Dialog.Description>Enter an invite code to join an existing server.</Dialog.Description>
+						<Dialog.Description>
+							Enter an invite code to join an existing server.
+						</Dialog.Description>
 					</Dialog.Header>
 					<form
 						class="flex flex-col gap-4"
@@ -152,7 +158,12 @@ export const Serveronboarding = () => {
 							setJoinModalOpen(false)
 						}}
 					>
-						<TextField label="ServerID" name="serverId" required placeholder="Enter your server ID" />
+						<TextField
+							label="ServerID"
+							name="serverId"
+							required
+							placeholder="Enter your server ID"
+						/>
 
 						<Dialog.Footer class="justify-between!">
 							<DialogCloseTrigger

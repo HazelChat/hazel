@@ -21,8 +21,8 @@ import { IconX } from "~/components/icons/x"
 import { Menu } from "~/components/ui/menu"
 import { IconSignOut } from "~/components/ui/signout"
 
-import { api } from "convex-hazel/_generated/api"
-import type { Id } from "convex-hazel/_generated/dataModel"
+import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
 import type { FunctionReturnType } from "convex/server"
 import { createMutation, createQuery } from "~/lib/convex"
 import { cn } from "~/lib/utils"
@@ -234,7 +234,11 @@ const DmChannelLink = (props: DmChannelLinkProps) => {
 					<Index each={props.channel().members}>
 						{(member) => (
 							<div class="inline-block">
-								<Avatar class="size-7" src={member().user.avatarUrl} name={member().user.displayName} />
+								<Avatar
+									class="size-7"
+									src={member().user.avatarUrl}
+									name={member().user.displayName}
+								/>
 							</div>
 						)}
 					</Index>

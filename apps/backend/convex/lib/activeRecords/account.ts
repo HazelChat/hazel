@@ -1,5 +1,5 @@
-import type { Doc, Id } from "convex-hazel/_generated/dataModel"
-import type { MutationCtx } from "convex-hazel/_generated/server"
+import type { Doc, Id } from "@hazel/backend"
+import type { MutationCtx } from "@hazel/backend/server"
 import type { UserIdentity } from "convex/server"
 import type { GenericContext } from "./user"
 
