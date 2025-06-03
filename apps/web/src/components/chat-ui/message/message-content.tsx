@@ -69,6 +69,8 @@ export function MessageContent(props: MessageContentProps) {
 							{...props}
 						/>
 					),
+					li: (props) => <li class="" {...props} />,
+					ul: (props) => <ul class="list-inside list-disc" {...props} />,
 					img: (parentProps) => {
 						const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
 						return (

@@ -73,8 +73,7 @@ export const sendNotification = internalMutation({
 			.collect()
 
 		const filteredChannelMembers = channelMembers.filter(
-			(member) => !member.isMuted,
-			// && member.userId !== args.userId,
+			(member) => !member.isMuted && member.userId !== args.userId,
 		)
 
 		await asyncMap(filteredChannelMembers, async (member) => {
