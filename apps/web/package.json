@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@ark-ui/solid": "^5.11.0",
+		"@bigmistqke/solid-contenteditable": "^0.0.11",
 		"@convex-dev/expo-push-notifications": "^0.2.2",
 		"@hazel/backend": "workspace:*",
 		"@tanstack/router-plugin": "^1.120.13",
