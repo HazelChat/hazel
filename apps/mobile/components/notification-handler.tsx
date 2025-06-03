@@ -64,6 +64,8 @@ async function registerForPushNotificationsAsync(channelId: string) {
 			return
 		}
 		const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId
+		console.log("PROJECT_ID:", projectId)
+		console.log("USER_ID:", "XD")
 		if (!projectId) {
 			handleRegistrationError("Project ID not found")
 		}
@@ -112,9 +114,10 @@ export const NotificationHandler = ({ userId }: { userId: string }) => {
 			<Text>Your Expo push token: {expoPushToken}</Text>
 			<View style={{ alignItems: "center", justifyContent: "center" }}>
 				<Text>Title: {notification?.request.content.title} </Text>
-				<Text>Body: {notification?.request.content.body}</Text>
+				<Text>Body: {notification?.request.content.body} WOW</Text>
 				<Text>Data: {notification && JSON.stringify(notification.request.content.data)}</Text>
 			</View>
+
 			<Button
 				title="Register Push Token"
 				onPress={async () => {
