@@ -1,11 +1,11 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { type Accessor, Show, createEffect, createMemo, createSignal, on } from "solid-js"
+import { type Accessor, Show, createEffect, createMemo, createSignal, on, onMount } from "solid-js"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
-import { createCachedPaginatedQuery, createQuery } from "~/lib/convex"
+import { createCachedPaginatedQuery, createQuery, resetPaginationId } from "~/lib/convex"
 import type { Message } from "~/lib/types"
 
 const PAGE_SIZE = 30
@@ -41,22 +41,23 @@ type ListItemMessage = {
 type ListItemSkeleton = { type: "skeleton"; id: string; isGroupStart: boolean }
 
 export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: Accessor<Id<"servers">> }) {
+	onMount(() => resetPaginationId())
 	const channel = createQuery(api.channels.getChannel, {
 		channelId: props.channelId(),
 		serverId: props.serverId(),
 	})
 
-       const paginatedMessages = createCachedPaginatedQuery(
-               api.messages.getMessages,
-               {
-                       channelId: props.channelId(),
-                       serverId: props.serverId(),
-               },
-               {
-                       initialNumItems: PAGE_SIZE,
-               },
-               `messages:${props.serverId()}:${props.channelId()}`,
-       )
+	const paginatedMessages = createCachedPaginatedQuery(
+		api.messages.getMessages,
+		{
+			channelId: props.channelId(),
+			serverId: props.serverId(),
+		},
+		{
+			initialNumItems: PAGE_SIZE,
+		},
+		`messages:${props.serverId()}:${props.channelId()}`,
+	)
 
 	const [pendingLoads, setPendingLoads] = createSignal(0)
 
@@ -75,8 +76,8 @@ export function Channel(props: { channelId: Accessor<Id<"channels">>; serverId: 
 
 	const processedMessages = createMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
-               const source = paginatedMessages.results()
-               const allMessages = source.slice().reverse()
+		const source = paginatedMessages.results()
+		const allMessages = source.slice().reverse()
 
 		const result: Array<{
 			message: Message
