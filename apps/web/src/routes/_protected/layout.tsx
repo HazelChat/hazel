@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/solid-router"
 import { useConvexAuth } from "~/lib/convex/convex-auth-state"
 
-import { For, Match, Show, Switch, createEffect } from "solid-js"
+import { Match, Switch, createEffect } from "solid-js"
 
 export const Route = createFileRoute("/_protected")({
 	component: RouteComponent,

@@ -9,7 +9,6 @@
 - File uploads with convex
 - Readd threads
 - Readd last read message
-
 - Call Feature
 
 
