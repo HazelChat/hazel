@@ -1,6 +1,8 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo"
 import { Link } from "expo-router"
-import { Text, View } from "react-native"
+import { Button, Text, View } from "react-native"
+
+import * as Sentry from "@sentry/react-native"
 
 export default function Page() {
 	const { user } = useUser()

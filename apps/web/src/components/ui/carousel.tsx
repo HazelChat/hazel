@@ -28,7 +28,10 @@ export function CarouselItem(props: {
 	children: JSX.Element
 }) {
 	return (
-		<ArkCarousel.Item index={props.index} class={twMerge("flex items-center justify-center", props.class)}>
+		<ArkCarousel.Item
+			index={props.index}
+			class={twMerge("flex items-center justify-center", props.class)}
+		>
 			{props.children}
 		</ArkCarousel.Item>
 	)
@@ -40,7 +43,10 @@ export function CarouselControl(props: {
 }) {
 	return (
 		<ArkCarousel.Control
-			class={twMerge("pointer-events-none absolute inset-0 flex items-center justify-between px-2", props.class)}
+			class={twMerge(
+				"pointer-events-none absolute inset-0 flex items-center justify-between px-2",
+				props.class,
+			)}
 		>
 			{props.children}
 		</ArkCarousel.Control>

@@ -31,7 +31,7 @@
 				"noConfusingVoidType": "off",
 				"noExplicitAny": "off",
 				"noArrayIndexKey": "off",
-				"noConsoleLog": "warn",
+				"noConsoleLog": "off",
 				"noShadowRestrictedNames": "off"
 			},
 			"nursery": {

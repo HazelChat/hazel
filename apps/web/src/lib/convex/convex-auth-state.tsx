@@ -85,7 +85,9 @@ export function ConvexProviderWithAuth(props: {
 	})
 
 	const isLoading = createMemo(() => isConvexAuthenticated() === null)
-	const isAuthenticated = createMemo(() => props.createAuth().isAuthenticated() && (isConvexAuthenticated() ?? false))
+	const isAuthenticated = createMemo(
+		() => props.createAuth().isAuthenticated() && (isConvexAuthenticated() ?? false),
+	)
 
 	const authContextValue = {
 		isLoading: isLoading,

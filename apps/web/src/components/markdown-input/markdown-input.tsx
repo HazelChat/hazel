@@ -22,7 +22,9 @@ interface MarkdownInputProps<CustomTokenType extends string = never> extends Bas
 	renderers?: RenderFunctions<BaseTokenType | CustomTokenType>
 }
 
-export function MarkdownInput<CustomTokenType extends string = never>(props: MarkdownInputProps<CustomTokenType>) {
+export function MarkdownInput<CustomTokenType extends string = never>(
+	props: MarkdownInputProps<CustomTokenType>,
+) {
 	const [baseProps, divProps] = splitProps(props, [
 		"value",
 		"onValueChange",

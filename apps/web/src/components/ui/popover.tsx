@@ -54,7 +54,12 @@ export const PopoverTitle = (props: PopoverPrimitive.TitleProps) => {
 export const PopoverDescription = (props: PopoverPrimitive.TitleProps) => {
 	const [local, rest] = splitProps(props, ["class"])
 
-	return <PopoverPrimitive.Description class={twMerge("text-muted-foreground text-sm", local.class)} {...rest} />
+	return (
+		<PopoverPrimitive.Description
+			class={twMerge("text-muted-foreground text-sm", local.class)}
+			{...rest}
+		/>
+	)
 }
 
 const Popover = Object.assign(PopoverRoot, {

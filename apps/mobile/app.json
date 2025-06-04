@@ -52,6 +52,14 @@
 				}
 			],
 			"expo-notifications"
+			[
+				"@sentry/react-native/expo",
+				{
+					"url": "https://sentry.io/",
+					"project": "hazel-chat",
+					"organization": "hazel-pd"
+				}
+			]
 		],
 		"experiments": {
 			"typedRoutes": true

@@ -1,14 +1,6 @@
 import type { Element, Root, Text } from "hast"
 import { svg } from "property-information"
-import {
-       type Component,
-       For,
-       Match,
-       Show,
-       Switch,
-       createMemo,
-       onCleanup,
-} from "solid-js"
+import { type Component, For, Match, Show, Switch, createMemo, onCleanup } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import type { Context, SolidMarkdownNames } from "./types"
 import { addProperty, flattenPosition, getElementsBeforeCount, getInputElement } from "./utils"
@@ -27,10 +19,20 @@ export const MarkdownChildren: Component<{
 		{(child, index) => (
 			<Switch>
 				<Match when={child.type === "element"}>
-					<MarkdownNode context={props.context} index={index()} node={child as Element} parent={props.node} />
+					<MarkdownNode
+						context={props.context}
+						index={index()}
+						node={child as Element}
+						parent={props.node}
+					/>
 				</Match>
 				<Match when={child.type === "text" && child.value !== "\n"}>
-					<MarkdownText context={props.context} index={index()} node={child as Text} parent={props.node} />
+					<MarkdownText
+						context={props.context}
+						index={index()}
+						node={child as Text}
+						parent={props.node}
+					/>
 				</Match>
 			</Switch>
 		)}
@@ -60,7 +62,8 @@ export const MarkdownText: Component<{
 			end: { line: null, column: null, offset: null },
 		}
 
-		const component = options.components && own.call(options.components, "text") ? options.components.text : null
+		const component =
+			options.components && own.call(options.components, "text") ? options.components.text : null
 		const basic = typeof component === "string" //|| component === React.Fragment;
 
 		properties.key = ["text", position.start.line, position.start.column, props.index].join("-")
@@ -95,21 +98,21 @@ export const MarkdownText: Component<{
 }
 
 export const MarkdownNode: Component<{
-        context: Context
-        node: Element
-        index: number
-        parent: Element | Root
+	context: Context
+	node: Element
+	index: number
+	parent: Element | Root
 }> = (props) => {
-       const incrementListDepth = props.node.tagName === "ol" || props.node.tagName === "ul"
-       if (incrementListDepth) {
-               props.context.listDepth++
-               onCleanup(() => {
-                       props.context.listDepth--
-               })
-       }
-        const childProps = createMemo(() => {
-                const context = { ...props.context }
-                const options = context.options
+	const incrementListDepth = props.node.tagName === "ol" || props.node.tagName === "ul"
+	if (incrementListDepth) {
+		props.context.listDepth++
+		onCleanup(() => {
+			props.context.listDepth--
+		})
+	}
+	const childProps = createMemo(() => {
+		const context = { ...props.context }
+		const options = context.options
 		const parentSchema = context.schema
 		const node = props.node
 		const name = node.tagName as SolidMarkdownNames
@@ -132,7 +135,6 @@ export const MarkdownNode: Component<{
 			}
 		}
 
-
 		// Restore parent schema.
 		context.schema = parentSchema
 
@@ -143,7 +145,8 @@ export const MarkdownNode: Component<{
 			end: { line: null, column: null, offset: null },
 		}
 
-		const component = options.components && own.call(options.components, name) ? options.components[name] : name
+		const component =
+			options.components && own.call(options.components, name) ? options.components[name] : name
 		const basic = typeof component === "string" //|| component === React.Fragment;
 
 		properties.key = [name, position.start.line, position.start.column, props.index].join("-")
@@ -173,7 +176,12 @@ export const MarkdownNode: Component<{
 
 		if (
 			!basic &&
-			(name === "h1" || name === "h2" || name === "h3" || name === "h4" || name === "h5" || name === "h6")
+			(name === "h1" ||
+				name === "h2" ||
+				name === "h3" ||
+				name === "h4" ||
+				name === "h5" ||
+				name === "h6")
 		) {
 			properties.level = Number.parseInt(name.charAt(1), 10)
 		}

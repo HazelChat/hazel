@@ -17,7 +17,10 @@ const ListboxLabel = (props: ArkListbox.LabelProps) => {
 	const [local, labelProps] = splitProps(props, ["class"])
 	return (
 		<ArkListbox.Label
-			class={twMerge("block font-medium text-muted-foreground text-sm leading-none tracking-tight", local.class)}
+			class={twMerge(
+				"block font-medium text-muted-foreground text-sm leading-none tracking-tight",
+				local.class,
+			)}
 			{...labelProps}
 		/>
 	)

@@ -13,7 +13,8 @@
 		"dev:zero-cache": "zero-cache-dev -p ./packages/zero/src/schema.ts",
 		"dev:db-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up -d",
 		"dev:db-down": "docker compose --env-file .env -f ./docker/docker-compose.yml down",
-		"dev:clean": "source .env && docker volume rm -f maki-chat_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*"
+		"dev:clean": "source .env && docker volume rm -f maki-chat_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*",
+		"format:fix": "biome check --write"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4"

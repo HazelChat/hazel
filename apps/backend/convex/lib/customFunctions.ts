@@ -1,17 +1,3 @@
-/**
- * This file contains helpers for defining custom functions that modify the
- * context and arguments of a Convex function. Allows you to:
- *
- * - Run authentication logic before the request starts.
- * - Look up commonly used data and add it to the ctx argument.
- * - Replace a ctx or argument field with a different value, such as a version
- *   of `db` that runs custom functions on data access.
- * - Consume arguments from the client that are not passed to the query, such
- *   as taking in an authentication parameter like an API key or session ID.
- *   These arguments must be sent up by the client along with each request.
- */
-import type { GenericValidator, ObjectType, PropertyValidators, Validator } from "convex/values"
-import { asObjectValidator, v } from "convex/values"
 import type {
 	ActionBuilder,
 	ArgsArrayForOptionalValidator,
@@ -30,6 +16,20 @@ import type {
 	RegisteredQuery,
 	ReturnValueForOptionalValidator,
 } from "convex/server"
+/**
+ * This file contains helpers for defining custom functions that modify the
+ * context and arguments of a Convex function. Allows you to:
+ *
+ * - Run authentication logic before the request starts.
+ * - Look up commonly used data and add it to the ctx argument.
+ * - Replace a ctx or argument field with a different value, such as a version
+ *   of `db` that runs custom functions on data access.
+ * - Consume arguments from the client that are not passed to the query, such
+ *   as taking in an authentication parameter like an API key or session ID.
+ *   These arguments must be sent up by the client along with each request.
+ */
+import type { GenericValidator, ObjectType, PropertyValidators, Validator } from "convex/values"
+import { asObjectValidator, v } from "convex/values"
 import { omit, pick } from "./utils"
 
 /**
@@ -403,7 +403,8 @@ export type CustomBuilder<
 	ArgsValidator extends PropertyValidators | void | Validator<any, any, any>,
 	ReturnsValidator extends PropertyValidators | GenericValidator | void,
 	ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
-	OneOrZeroArgs extends ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
+	OneOrZeroArgs extends
+		ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
 >(
 	func:
 		| {
@@ -414,7 +415,10 @@ export type CustomBuilder<
 					...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
 				) => ReturnValue
 		  }
-		| ((ctx: Overwrite<InputCtx, ModCtx>, ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>) => ReturnValue),
+		| ((
+				ctx: Overwrite<InputCtx, ModCtx>,
+				...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
+		  ) => ReturnValue),
 ) => Registration<
 	FuncType,
 	Visibility,
@@ -428,7 +432,14 @@ export type CustomBuilder<
 	ReturnValue
 >
 
-export type CustomCtx<Builder> = Builder extends CustomBuilder<any, any, infer ModCtx, any, infer InputCtx, any>
+export type CustomCtx<Builder> = Builder extends CustomBuilder<
+	any,
+	any,
+	infer ModCtx,
+	any,
+	infer InputCtx,
+	any
+>
 	? Overwrite<InputCtx, ModCtx>
 	: never
 

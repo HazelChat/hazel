@@ -78,7 +78,9 @@ export const Markdown: Component<Partial<SolidMarkdownOptions>> = (opts) => {
 		if (typeof children === "string") {
 			file.value = children
 		} else if (children !== undefined && options.children !== null) {
-			console.warn(`[solid-markdown] Warning: please pass a string as \`children\` (not: \`${typeof children}\`)`)
+			console.warn(
+				`[solid-markdown] Warning: please pass a string as \`children\` (not: \`${typeof children}\`)`,
+			)
 		}
 
 		const hastNode = processor.runSync(processor.parse(file), file)

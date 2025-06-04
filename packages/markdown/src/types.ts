@@ -59,7 +59,8 @@ type OrderedListComponent = Component<
 	JSX.IntrinsicElements["ol"] & SolidMarkdownProps & { depth: number; ordered: true }
 >
 type TableCellComponent = Component<
-	JSX.IntrinsicElements["table"] & SolidMarkdownProps & { style?: Record<string, unknown>; isHeader: boolean }
+	JSX.IntrinsicElements["table"] &
+		SolidMarkdownProps & { style?: Record<string, unknown>; isHeader: boolean }
 >
 type TableRowComponent = Component<JSX.IntrinsicElements["tr"] & SolidMarkdownProps & { isHeader: boolean }>
 type UnorderedListComponent = Component<

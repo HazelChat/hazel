@@ -2,7 +2,14 @@ import type { JSX } from "solid-js"
 
 export function IconGroup(props: JSX.IntrinsicElements["svg"]) {
 	return (
-		<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+		<svg
+			{...props}
+			xmlns="http://www.w3.org/2000/svg"
+			width="24"
+			height="24"
+			viewBox="0 0 24 24"
+			fill="none"
+		>
 			<path
 				d="M10.5 7C10.5 8.79493 9.04493 10.25 7.25 10.25C5.45507 10.25 4 8.79493 4 7C4 5.20507 5.45507 3.75 7.25 3.75C9.04493 3.75 10.5 5.20507 10.5 7Z"
 				stroke="currentColor"

@@ -56,14 +56,24 @@ const MenuItem: Component<MenuItemProps> = (props) => {
 // Menu Shortcut (Custom component)
 const MenuShortcut: Component<ComponentProps<"span">> = (props) => {
 	const [local, spanProps] = splitProps(props, ["class"])
-	return <span class={twMerge("ml-auto text-muted-foreground text-xs tracking-widest", local.class)} {...spanProps} />
+	return (
+		<span
+			class={twMerge("ml-auto text-muted-foreground text-xs tracking-widest", local.class)}
+			{...spanProps}
+		/>
+	)
 }
 
 // Menu Label (using ItemGroupLabel)
 type MenuLabelProps = ComponentProps<typeof ArkMenu.ItemGroupLabel>
 const MenuLabel: Component<MenuLabelProps> = (props) => {
 	const [local, labelProps] = splitProps(props, ["class"])
-	return <ArkMenu.ItemGroupLabel class={twMerge("px-2 py-1.5 font-semibold text-sm", local.class)} {...labelProps} />
+	return (
+		<ArkMenu.ItemGroupLabel
+			class={twMerge("px-2 py-1.5 font-semibold text-sm", local.class)}
+			{...labelProps}
+		/>
+	)
 }
 
 // Menu Separator

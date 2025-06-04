@@ -1,4 +1,7 @@
-export function setElementAnchorAndFocus(element: HTMLElement, { anchor, focus }: { anchor: number; focus?: number }) {
+export function setElementAnchorAndFocus(
+	element: HTMLElement,
+	{ anchor, focus }: { anchor: number; focus?: number },
+) {
 	const selection = document.getSelection()!
 	const range = document.createRange()
 

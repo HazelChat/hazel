@@ -6,7 +6,12 @@ type CardProps = JSX.HTMLAttributes<HTMLDivElement>
 
 const CardRoot: Component<CardProps> = (props) => {
 	const [local, rest] = splitProps(props, ["class"])
-	return <div class={twMerge("rounded-xl border bg-card text-card-foreground shadow", local.class)} {...rest} />
+	return (
+		<div
+			class={twMerge("rounded-xl border bg-card text-card-foreground shadow", local.class)}
+			{...rest}
+		/>
+	)
 }
 
 type CardHeaderProps = JSX.HTMLAttributes<HTMLDivElement>

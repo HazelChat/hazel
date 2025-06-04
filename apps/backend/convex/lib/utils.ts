@@ -19,9 +19,9 @@ import type { BetterOmit, Expand } from "convex/server"
  * @returns A new object with the keys you omitted removed.
  */
 export function omit<T extends Record<string, any>, Keys extends (keyof T)[]>(obj: T, keys: Keys) {
-	return Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k as Keys[number]))) as Expand<
-		BetterOmit<T, Keys[number]>
-	>
+	return Object.fromEntries(
+		Object.entries(obj).filter(([k]) => !keys.includes(k as Keys[number])),
+	) as Expand<BetterOmit<T, Keys[number]>>
 }
 
 /**

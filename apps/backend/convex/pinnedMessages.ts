@@ -42,7 +42,9 @@ export const createPinnedMessage = userMutation({
 		const channel = await ctx.db.get(args.channelId)
 		if (!channel) throw new Error("Channel not found")
 
-		const pinnedMessage = channel.pinnedMessages.find((pinnedMessage) => pinnedMessage.messageId === args.messageId)
+		const pinnedMessage = channel.pinnedMessages.find(
+			(pinnedMessage) => pinnedMessage.messageId === args.messageId,
+		)
 		if (pinnedMessage) throw new Error("Message already pinned")
 
 		await ctx.db.patch(args.channelId, {

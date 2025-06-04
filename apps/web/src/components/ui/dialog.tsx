@@ -45,14 +45,19 @@ export const DialogContent = (props: ArkDialog.ContentProps) => {
 export const DialogHeader = (props: JSX.IntrinsicElements["div"]) => {
 	const [local, rest] = splitProps(props, ["class"])
 
-	return <div class={twMerge("flex flex-col space-y-1.5 text-center sm:text-left", local.class)} {...rest} />
+	return (
+		<div class={twMerge("flex flex-col space-y-1.5 text-center sm:text-left", local.class)} {...rest} />
+	)
 }
 
 export const DialogFooter = (props: JSX.IntrinsicElements["div"]) => {
 	const [local, rest] = splitProps(props, ["class"])
 
 	return (
-		<div class={twMerge("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", local.class)} {...rest} />
+		<div
+			class={twMerge("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", local.class)}
+			{...rest}
+		/>
 	)
 }
 
@@ -60,7 +65,10 @@ export const DialogTitle = (props: ArkDialog.TitleProps) => {
 	const [local, rest] = splitProps(props, ["class"])
 
 	return (
-		<ArkDialog.Title class={twMerge("font-semibold text-lg leading-none tracking-tight", local.class)} {...rest} />
+		<ArkDialog.Title
+			class={twMerge("font-semibold text-lg leading-none tracking-tight", local.class)}
+			{...rest}
+		/>
 	)
 }
 

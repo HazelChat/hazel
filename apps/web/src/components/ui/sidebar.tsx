@@ -90,7 +90,14 @@ type SidebarProviderProps = ParentProps<{
 }>
 
 const SidebarProvider: Component<SidebarProviderProps> = (props) => {
-	const [local, rest] = splitProps(props, ["defaultOpen", "open", "onOpenChange", "class", "style", "children"])
+	const [local, rest] = splitProps(props, [
+		"defaultOpen",
+		"open",
+		"onOpenChange",
+		"class",
+		"style",
+		"children",
+	])
 
 	const isMobile = useIsMobile()
 	const [openMobile, setOpenMobile] = createSignal(false)
@@ -360,7 +367,13 @@ const SidebarInset: Component<JSX.HTMLAttributes<HTMLElement>> = (props) => {
 // --- Input (using TextField) ---
 const SidebarInput: Component<TextFieldProps> = (props) => {
 	const [local, rest] = splitProps(props, ["class"])
-	return <TextField data-sidebar="input" class={cn("h-8 w-full bg-background shadow-none", local.class)} {...rest} />
+	return (
+		<TextField
+			data-sidebar="input"
+			class={cn("h-8 w-full bg-background shadow-none", local.class)}
+			{...rest}
+		/>
+	)
 }
 
 // --- Header ---
@@ -378,7 +391,13 @@ const SidebarFooter: Component<JSX.HTMLAttributes<HTMLDivElement>> = (props) => 
 // --- Separator ---
 const SidebarSeparator: Component<JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
 	const [local, rest] = splitProps(props, ["class"])
-	return <Separator data-sidebar="separator" class={cn("mx-2 w-auto bg-sidebar-border", local.class)} {...rest} />
+	return (
+		<Separator
+			data-sidebar="separator"
+			class={cn("mx-2 w-auto bg-sidebar-border", local.class)}
+			{...rest}
+		/>
+	)
 }
 
 // --- Content ---
@@ -399,7 +418,13 @@ const SidebarContent: Component<JSX.HTMLAttributes<HTMLDivElement>> = (props) =>
 // --- Group ---
 const SidebarGroup: Component<JSX.HTMLAttributes<HTMLDivElement>> = (props) => {
 	const [local, rest] = splitProps(props, ["class"])
-	return <div data-sidebar="group" class={cn("relative flex w-full min-w-0 flex-col p-2", local.class)} {...rest} />
+	return (
+		<div
+			data-sidebar="group"
+			class={cn("relative flex w-full min-w-0 flex-col p-2", local.class)}
+			{...rest}
+		/>
+	)
 }
 
 // --- Group Label ---
@@ -490,7 +515,11 @@ const SidebarMenuButton: Component<SidebarMenuButtonProps> = (props) => {
 			data-sidebar="menu-button"
 			data-size={local.size}
 			data-active={local.isActive?.()}
-			class={sidebarMenuButtonVariants({ variant: local.variant, size: local.size, class: local.class })}
+			class={sidebarMenuButtonVariants({
+				variant: local.variant,
+				size: local.size,
+				class: local.class,
+			})}
 			{...rest}
 		/>
 	)
@@ -566,7 +595,9 @@ const SidebarMenuBadge: Component<JSX.HTMLAttributes<HTMLDivElement>> = (props) 
 }
 
 // --- Menu Skeleton ---
-const SidebarMenuSkeleton: Component<JSX.HTMLAttributes<HTMLDivElement> & { showIcon?: boolean }> = (props) => {
+const SidebarMenuSkeleton: Component<JSX.HTMLAttributes<HTMLDivElement> & { showIcon?: boolean }> = (
+	props,
+) => {
 	const [local, rest] = splitProps(props, ["class", "showIcon"])
 
 	// Random width for skeleton text

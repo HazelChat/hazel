@@ -9,7 +9,7 @@ export interface MentionSuggestionsProps {
 export function MentionSuggestions(props: MentionSuggestionsProps) {
 	return (
 		<Show when={props.suggestions.length > 0}>
-			<ul class="absolute z-50 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg">
+			<ul class="absolute z-50 mt-1 w-48 rounded border border-gray-300 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
 				<For each={props.suggestions}>
 					{(username, i) => (
 						<li

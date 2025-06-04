@@ -28,7 +28,9 @@ export const Toaster = () => {
 			{(toast) => (
 				<ArkToast.Root class={toastVariants()}>
 					<ArkToast.Title>{toast().title}</ArkToast.Title>
-					<ArkToast.Description class="text-muted-foreground">{toast().description}</ArkToast.Description>
+					<ArkToast.Description class="text-muted-foreground">
+						{toast().description}
+					</ArkToast.Description>
 					<Show when={toast()}>
 						<ArkToast.ActionTrigger>{toast().action?.label}</ArkToast.ActionTrigger>
 					</Show>

@@ -2,7 +2,14 @@ import type { JSX } from "solid-js"
 
 export function IconUserPlus(props: JSX.IntrinsicElements["svg"]) {
 	return (
-		<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+		<svg
+			{...props}
+			xmlns="http://www.w3.org/2000/svg"
+			width="24"
+			height="24"
+			viewBox="0 0 24 24"
+			fill="none"
+		>
 			<path
 				d="M14.75 6.5C14.75 8.57107 13.0711 10.25 11 10.25C8.92893 10.25 7.25 8.57107 7.25 6.5C7.25 4.42893 8.92893 2.75 11 2.75C13.0711 2.75 14.75 4.42893 14.75 6.5Z"
 				stroke="currentColor"

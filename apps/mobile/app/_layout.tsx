@@ -15,13 +15,27 @@ import { tokenCache } from "@clerk/clerk-expo/token-cache"
 import { ConvexReactClient } from "convex/react"
 import { Text } from "react-native"
 
+import * as Sentry from "@sentry/react-native"
+
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
 	unsavedChangesWarning: false,
 })
 
-console.log("CONVEX_URL:", process.env.EXPO_PUBLIC_CONVEX_URL)
+import { isRunningInExpoGo } from "expo"
 
-export default function RootLayout() {
+const navigationIntegration = Sentry.reactNavigationIntegration({
+	enableTimeToInitialDisplay: !isRunningInExpoGo(),
+})
+
+Sentry.init({
+	dsn: "https://0ee2b32bf56d2c4f7185ae72172ef3c3@o4509442487746560.ingest.de.sentry.io/4509442494103632",
+	debug: true,
+	tracesSampleRate: 1.0,
+	integrations: [navigationIntegration],
+	enableNativeFramesTracking: !isRunningInExpoGo(),
+})
+
+export default Sentry.wrap(function RootLayout() {
 	const colorScheme = useColorScheme()
 	const [loaded] = useFonts({
 		SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
@@ -51,4 +65,4 @@ export default function RootLayout() {
 			</ThemeProvider>
 		</ClerkProvider>
 	)
-}
+})
