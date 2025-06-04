@@ -51,7 +51,7 @@
 					"backgroundColor": "#ffffff"
 				}
 			],
-			"expo-notifications"
+			"expo-notifications",
 			[
 				"@sentry/react-native/expo",
 				{
