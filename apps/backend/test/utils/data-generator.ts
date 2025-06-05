@@ -1,5 +1,6 @@
 import type { Id } from "@hazel/backend"
 import { type TestConvex, type TestConvexForDataModel, convexTest as _convexTest } from "convex-test"
+import { vi } from "vitest"
 import { api } from "../../convex/_generated/api"
 import schema from "../../convex/schema"
 import { modules } from "../../convex/test.setup"
@@ -9,7 +10,9 @@ export function randomIdentity(convexTest: TestConvex<typeof schema>) {
 }
 
 export function convexTest() {
-	return _convexTest(schema, modules)
+	const t = _convexTest(schema, modules)
+
+	return t
 }
 
 export async function createAccount(
@@ -66,7 +69,9 @@ export async function createMessage(
 		attachedFiles?: string[]
 	},
 ) {
-	return await t.mutation(api.messages.createMessage, {
+	vi.useFakeTimers()
+
+	const message = await t.mutation(api.messages.createMessage, {
 		serverId: props.serverId,
 		channelId: props.channelId,
 		content: props.content ?? "Test message content",
@@ -74,4 +79,8 @@ export async function createMessage(
 		threadChannelId: props.threadChannelId,
 		attachedFiles: props.attachedFiles || [],
 	})
+
+	await t.finishAllScheduledFunctions(vi.runAllTimers)
+
+	return message
 }

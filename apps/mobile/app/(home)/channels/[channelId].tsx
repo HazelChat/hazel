@@ -1,3 +1,4 @@
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react"
 import { useLocalSearchParams } from "expo-router"
@@ -5,7 +6,7 @@ import { useState } from "react"
 import { Button, FlatList, Text, TextInput, View } from "react-native"
 
 export default function ChannelView() {
-	const { channelId } = useLocalSearchParams<{ channelId: string }>()
+	const { channelId } = useLocalSearchParams<{ channelId: Id<"channels"> }>()
 	const servers = useQuery(api.servers.getServersForUser, {})
 	const serverId = servers?.[0]?._id
 

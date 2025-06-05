@@ -9,19 +9,17 @@
 		"dev": "turbo dev",
 		"build": "turbo build typecheck",
 		"typecheck": "turbo build typecheck",
-		"setup:dev": "bun run ./scripts/setup-dev.ts",
-		"dev:zero-cache": "zero-cache-dev -p ./packages/zero/src/schema.ts",
-		"dev:db-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up -d",
-		"dev:db-down": "docker compose --env-file .env -f ./docker/docker-compose.yml down",
-		"dev:clean": "source .env && docker volume rm -f maki-chat_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*",
-		"format:fix": "biome check --write"
+		"format:fix": "biome check --write",
+		"test": "vitest",
+		"test:once": "vitest run",
+		"test:debug": "vitest --inspect-brk --no-file-parallelism",
+		"test:coverage": "vitest run --coverage --coverage.reporter=text"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4"
+		"@biomejs/biome": "^1.9.4",
+		"@vitest/coverage-v8": "3.2.1",
+		"turbo": "^2.5.4"
 	},
 	"trustedDependencies": ["@rocicorp/zero-sqlite3"],
-	"dependencies": {
-		"@effect/sql-pg": "^0.36.7",
-		"turbo": "^2.5.3"
-	}
+	"dependencies": {}
 }

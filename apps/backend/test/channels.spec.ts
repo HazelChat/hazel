@@ -6,6 +6,7 @@ import {
 	convexTest,
 	createAccount,
 	createChannel,
+	createMessage,
 	createServerAndAccount,
 	createUser,
 	randomIdentity,
@@ -90,12 +91,19 @@ describe("channel", () => {
 		// Create parent channel
 		const parentChannelId = await createChannel(t, { serverId: server })
 
+		const messageId = await createMessage(t, {
+			serverId: server,
+			channelId: parentChannelId,
+			content: "Message in parent channel",
+		})
+
 		// Create thread channel
 		const threadChannelId = await t.mutation(api.channels.createChannel, {
 			serverId: server,
 			name: "Thread Channel",
 			type: "thread",
 			parentChannelId,
+			threadMessageId: messageId,
 		})
 
 		const channels = await t.query(api.channels.getChannels, { serverId: server })
@@ -311,19 +319,13 @@ describe("channel", () => {
 		// 	type: "single",
 		// })
 
-		await t.mutation(api.channels.createChannel, {
-			serverId: server,
-			name: "Thread Channel",
-			type: "thread",
-		})
-
 		const channels = await t.query(api.channels.getChannels, { serverId: server })
 
 		// Public, private, and thread should be in serverChannels
 		expect(channels.serverChannels).toHaveLength(2)
 
 		// Direct and single should be in dmChannels
-		expect(channels.dmChannels).toHaveLength(2)
+		expect(channels.dmChannels).toHaveLength(1)
 	})
 
 	test("hidden channels are still returned but marked as hidden", async () => {

@@ -8,12 +8,12 @@
 		"convex:deploy": "npx convex deploy --cmd-url-env-var-name VITE_CONVEX_URL --cmd='cd ../web && bun run build' "
 	},
 	"dependencies": {
-		"convex": "^1.24.6",
+		"convex": "^1.24.8",
 		"convex-test": "^0.0.37"
 	},
 	"devDependencies": {
 		"typescript": "5.8.3",
-		"vitest": "^3.2.0"
+		"vitest": "^3.2.1"
 	},
 	"exports": {
 		".": {

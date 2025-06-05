@@ -2,8 +2,7 @@ import { defineConfig } from "vitest/config"
 
 export default defineConfig({
 	test: {
-		environment: "edge-runtime",
-		server: { deps: { inline: ["convex-test"] } },
+		projects: ["packages/*", "apps/*"],
 		coverage: {
 			reporter: ["text", "json-summary", "json"],
 			reportOnFailure: true,

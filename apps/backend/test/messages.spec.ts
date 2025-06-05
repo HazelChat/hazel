@@ -1,6 +1,6 @@
 import type schema from "@hazel/backend/schema"
 import type { TestConvex } from "convex-test"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { api } from "../convex/_generated/api"
 import {
 	convexTest,
@@ -209,14 +209,13 @@ describe("messages", () => {
 			id: messageId,
 		})
 
-		const messages = await t.query(api.messages.getMessages, {
-			serverId: server,
-			channelId,
-			paginationOpts: { numItems: 10, cursor: null },
-		})
-
-		// Message should be marked as deleted (soft delete)
-		expect(messages.page[0]?.deletedAt).toBeDefined()
+		await expect(
+			t.query(api.messages.getMessage, {
+				id: messageId,
+				channelId,
+				serverId: server,
+			}),
+		).rejects.toThrowError()
 	})
 
 	test("user cannot delete another user's message", async () => {
@@ -336,8 +335,7 @@ describe("messages", () => {
 			content: "First message",
 		})
 
-		// Small delay to ensure different timestamps
-		await new Promise((resolve) => setTimeout(resolve, 10))
+		vi.advanceTimersByTime(10)
 
 		const message2Id = await createMessage(t, {
 			serverId: server,
@@ -346,7 +344,7 @@ describe("messages", () => {
 			content: "Second message",
 		})
 
-		await new Promise((resolve) => setTimeout(resolve, 10))
+		vi.advanceTimersByTime(10)
 
 		const message3Id = await createMessage(t, {
 			serverId: server,
@@ -903,7 +901,8 @@ describe("pinning", () => {
 		await expect(
 			t2.mutation(api.pinnedMessages.deletePinnedMessage, {
 				serverId: server,
-				id: pinnedMessageId,
+				messageId: messageId,
+				channelId: separateChannelId,
 			}),
 		).rejects.toThrow()
 	})

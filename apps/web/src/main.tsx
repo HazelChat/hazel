@@ -11,10 +11,11 @@ import "./styles/toast.css"
 
 import { ClerkProvider, useAuth } from "clerk-solidjs"
 import { FpsCounter } from "./components/devtools/fps-counter"
+import { IconLoader } from "./components/icons/loader"
+import { Logo } from "./components/logo"
 import { Toaster } from "./components/ui/toaster"
 import { ConvexSolidClient } from "./lib/convex"
 import { ConvexProviderWithClerk } from "./lib/convex-clerk"
-import { NotificationManager } from "./lib/notification-manager"
 import { ThemeProvider, applyInitialTheme } from "./lib/theme"
 
 applyInitialTheme()
@@ -28,6 +29,14 @@ const router = createRouter({
 		auth: undefined!,
 		convex: undefined!,
 	},
+	defaultPendingComponent: () => (
+		<div class="flex min-h-screen items-center justify-center">
+			<div class="flex flex-col items-center justify-center gap-3">
+				<Logo class="h-12" />
+				<IconLoader class="animate-spin" />
+			</div>
+		</div>
+	),
 })
 
 declare module "@tanstack/solid-router" {

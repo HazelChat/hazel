@@ -19,7 +19,7 @@ function RouteComponent() {
 	const { theme, setTheme } = useTheme()
 
 	return (
-		<div class="space-y-4">
+		<div class="space-y-4 px-4 py-2">
 			<Card>
 				<Card.Header>
 					<Card.Title>Notifications</Card.Title>
@@ -32,21 +32,13 @@ function RouteComponent() {
 									<span class="text-muted-foreground text-sm">
 										{status.paused ? "Paused" : "Active"}
 									</span>
-									<Button
-										onClick={() => api.expo.pauseNotificationsForUser({})}
-										size="small"
-									>
-										{status.paused ? "Resume" : "Pause"}
-									</Button>
+									<Button size="small">{status.paused ? "Resume" : "Pause"}</Button>
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-muted-foreground text-sm">
 										{status.hasToken ? "Registered" : "Not Registered"}
 									</span>
-									<Button
-										onClick={() => api.expo.recordPushNotificationToken({})}
-										size="small"
-									>
+									<Button size="small">
 										{status.hasToken ? "Unregister" : "Register"}
 									</Button>
 								</div>
