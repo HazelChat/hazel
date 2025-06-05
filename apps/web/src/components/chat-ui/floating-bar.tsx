@@ -189,6 +189,21 @@ const createGlobalEditorFocus = (props: {
 	const { setState, state } = useChat()
 	const input = createMemo(() => state.inputText)
 
+	// Track mouse position
+	const [mousePosition, setMousePosition] = createSignal({ x: 0, y: 0 })
+
+	createEffect(() => {
+		const handleMouseMove = (event: MouseEvent) => {
+			setMousePosition({ x: event.clientX, y: event.clientY })
+		}
+
+		document.addEventListener("mousemove", handleMouseMove)
+
+		onCleanup(() => {
+			document.removeEventListener("mousemove", handleMouseMove)
+		})
+	})
+
 	createEffect(() => {
 		const ref = props.editorRef()
 		if (!ref) {
@@ -210,6 +225,29 @@ const createGlobalEditorFocus = (props: {
 					'input, textarea, select, [contenteditable="true"], [contenteditable=""]',
 				)
 				if (isInputContext) {
+					return
+				}
+			}
+
+			// Find the closest chat input to the mouse cursor
+			const chatInputs = document.querySelectorAll("#chat-input-editor")
+			const mouse = mousePosition()
+
+			if (chatInputs.length > 1) {
+				const distances = [...chatInputs].map((input) => {
+					const center = getElementCenter(input)
+					return {
+						input,
+						distance: calculateDistance(mouse.x, mouse.y, center.x, center.y),
+					}
+				})
+
+				// Sort by distance and get the closest one
+				distances.sort((a, b) => a.distance - b.distance)
+				const closestChatInput = distances[0]?.input
+
+				// If the current ref is not the closest chat input, don't focus it
+				if (closestChatInput && closestChatInput !== ref) {
 					return
 				}
 			}
@@ -271,6 +309,7 @@ export function FloatingBar() {
 					updatedAt: Date.now(),
 					authorId: author._id,
 					reactions: [],
+					threadMessages: [],
 				},
 			})
 		},
@@ -357,6 +396,7 @@ export function FloatingBar() {
 					ref={(ref) => {
 						setEditorRef(ref)
 					}}
+					id="chat-input-editor"
 					value={() => state.inputText}
 					onValueChange={(value) => {
 						trackTyping(true)
@@ -481,3 +521,17 @@ const attachmentStatusStyles = tv({
 		},
 	},
 })
+
+// Helper function to calculate distance between two points
+const calculateDistance = (x1: number, y1: number, x2: number, y2: number) => {
+	return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+}
+
+// Helper function to get the center point of an element
+const getElementCenter = (element: Element) => {
+	const rect = element.getBoundingClientRect()
+	return {
+		x: rect.left + rect.width / 2,
+		y: rect.top + rect.height / 2,
+	}
+}

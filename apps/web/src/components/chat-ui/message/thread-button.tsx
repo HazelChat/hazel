@@ -7,17 +7,15 @@ import type { Message } from "~/lib/types"
 
 interface ThreadButtonProps {
 	threadChannelId: string
+	threadMessages: Message["threadMessages"]
 }
 
 export function ThreadButton(props: ThreadButtonProps) {
 	const { setState } = useChat()
 
-	// TODO: Fetch thread messages here
-	const threadMessages: Accessor<Message[]> = createMemo(() => [])
-
 	const topFourAuthors = createMemo(() => {
 		const authors: { displayName: string; avatarUrl: string }[] = []
-		for (const message of threadMessages()) {
+		for (const message of props.threadMessages) {
 			if (
 				message.author?.avatarUrl &&
 				!authors.some((a) => a.avatarUrl === message.author!.avatarUrl)
@@ -46,11 +44,11 @@ export function ThreadButton(props: ThreadButtonProps) {
 				<span class="text-muted-foreground text-xs">+{topFourAuthors().total - 4}</span>
 			</Show>
 			<div class="ml-1 flex items-center gap-1">
-				<p class="text-muted-foreground text-xs">{threadMessages().length} messages</p>
+				<p class="text-muted-foreground text-xs">{props.threadMessages.length} messages</p>
 				<span class="mx-1 text-muted-foreground text-xs">&middot;</span>
 				<p class="text-muted-foreground text-xs">
 					Last message{" "}
-					{new Date(threadMessages()[0]?._creationTime).toLocaleTimeString("en-US", {
+					{new Date(props.threadMessages.at(-1)?._creationTime!).toLocaleTimeString("en-US", {
 						hour: "2-digit",
 						minute: "2-digit",
 						hour12: false,

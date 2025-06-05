@@ -17,7 +17,7 @@ interface ChatMessageProps {
 	isGroupStart: Accessor<boolean>
 	isGroupEnd: Accessor<boolean>
 	isFirstNewMessage: Accessor<boolean>
-	isThread: Accessor<boolean>
+	isThread: boolean
 }
 
 export function ChatMessage(props: ChatMessageProps) {

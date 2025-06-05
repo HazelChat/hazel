@@ -12,11 +12,12 @@ import { IconThread } from "~/components/icons/thread"
 import { IconTrash } from "~/components/icons/trash"
 
 import { createMutation } from "~/lib/convex"
+import type { Message } from "~/lib/types"
 
 interface CreateMessageActionsProps {
-	message: Accessor<Doc<"messages">>
+	message: Accessor<Message>
+	isThread: boolean
 	isPinned: Accessor<boolean>
-	isThread: Accessor<boolean>
 }
 
 export function createMessageActions(props: CreateMessageActionsProps) {
@@ -63,7 +64,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 				setState("openThreadId", threadChannelId)
 			},
 			hotkey: "t",
-			showButton: !props.isThread(),
+			showButton: !props.isThread && !(props.message().threadMessages?.length > 0),
 		},
 		{
 			key: "reply",

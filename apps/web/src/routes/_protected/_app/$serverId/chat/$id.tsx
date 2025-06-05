@@ -37,7 +37,8 @@ function Root() {
 }
 
 function RouteComponent() {
-	const { state } = useChat()
+	const { state, setState } = useChat()
+	const openThreadId = createMemo(() => state.openThreadId!)
 
 	const params = Route.useParams()
 	const serverId = createMemo(() => params().serverId as Id<"servers">)
@@ -47,9 +48,15 @@ function RouteComponent() {
 		<div class="flex h-screen flex-col">
 			<ChatTopbar />
 			<div class="flex flex-1">
-				<Channel channelId={channelId} serverId={serverId} />
-				<Show when={state.openThreadId}>
-					<ThreadChannel channelId={state.openThreadId!} serverId={serverId()} />
+				<Channel channelId={channelId} serverId={serverId} isThread={false} />
+				<Show when={openThreadId()}>
+					<ChatProvider channelId={openThreadId} serverId={serverId}>
+						<ThreadChannel
+							channelId={openThreadId()}
+							serverId={serverId()}
+							closeThread={() => setState("openThreadId", null)}
+						/>
+					</ChatProvider>
 				</Show>
 			</div>
 			<ChatImageViewerModal />
@@ -95,7 +102,11 @@ function ChatImageViewerModal() {
 	)
 }
 
-function ThreadChannel(props: { channelId: Id<"channels">; serverId: Id<"servers"> }) {
+function ThreadChannel(props: {
+	channelId: Id<"channels">
+	serverId: Id<"servers">
+	closeThread: () => void
+}) {
 	const { setState } = useChat()
 
 	const channelId = createMemo(() => props.channelId)
@@ -105,11 +116,11 @@ function ThreadChannel(props: { channelId: Id<"channels">; serverId: Id<"servers
 		<div class="flex flex-1 flex-col border-l">
 			<div class="flex items-center justify-between border-b bg-sidebar p-4">
 				<p>Thread</p>
-				<Button intent="ghost" size="icon-small" onClick={() => setState("openThreadId", null)}>
+				<Button intent="ghost" size="icon-small" onClick={props.closeThread}>
 					<IconX class="size-4" />
 				</Button>
 			</div>
-			<Channel channelId={channelId} serverId={serverId} />
+			<Channel channelId={channelId} serverId={serverId} isThread={true} />
 		</div>
 	)
 }

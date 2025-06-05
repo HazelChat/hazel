@@ -46,7 +46,35 @@ export const getMessages = userQuery({
 			.order("desc")
 			.paginate(args.paginationOpts)
 
-		const messagesWithAuthor = await asyncMap(messages.page, async (message) => {
+		const messagesWithThreadMessages = await asyncMap(messages.page, async (message) => {
+			if (message.threadChannelId) {
+				const threadMessages = await ctx.db
+					.query("messages")
+					.filter((q) => q.eq(q.field("channelId"), message.threadChannelId))
+					.collect()
+
+				const threadMessagesWithAuthor = await asyncMap(threadMessages, async (message) => {
+					const messageAuthor = await ctx.db.get(message.authorId)
+					if (!messageAuthor) throw new Error("Message author not found")
+					return {
+						...message,
+						author: messageAuthor,
+					}
+				})
+
+				return {
+					...message,
+					threadMessages: threadMessagesWithAuthor,
+				}
+			}
+
+			return {
+				...message,
+				threadMessages: [],
+			}
+		})
+
+		const messagesWithAuthor = await asyncMap(messagesWithThreadMessages, async (message) => {
 			const messageAuthor = await ctx.db.get(message.authorId)
 
 			// TODO: This should not happen when user is deleted we should give all messages to a default user

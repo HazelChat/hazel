@@ -1,4 +1,4 @@
-import { type Accessor, For, Show, createSignal } from "solid-js"
+import { type Accessor, For, Show, createMemo, createSignal } from "solid-js"
 import { twMerge } from "tailwind-merge"
 
 import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
@@ -10,12 +10,13 @@ import { Tooltip } from "~/components/ui/tooltip"
 import type { Doc } from "@hazel/backend"
 import { ConfirmDialog } from "../confirm-dialog"
 import { createMessageActions } from "./message-actions-config"
+import type { Message } from "~/lib/types"
 
 interface MessageActionsProps {
-	message: Accessor<Doc<"messages">>
+	message: Accessor<Message>
 	serverId: Accessor<string>
 	isPinned: Accessor<boolean>
-	isThread: Accessor<boolean>
+	isThread: boolean
 }
 
 export function MessageActions(props: MessageActionsProps) {
