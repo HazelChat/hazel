@@ -20,11 +20,20 @@ import { ConvexProviderWithClerk } from "./lib/convex-clerk"
 import { ConvexQueryClient } from "./lib/convex-query"
 import { ThemeProvider, applyInitialTheme } from "./lib/theme"
 
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister"
+
+import { persistQueryClient } from "@tanstack/query-persist-client-core"
+import { createEffect, onCleanup } from "solid-js"
+
 applyInitialTheme()
 
 const convex = new ConvexSolidClient(import.meta.env.VITE_CONVEX_URL)
 
 const convexQueryClient = new ConvexQueryClient(convex)
+
+const persister = createSyncStoragePersister({
+	storage: localStorage,
+})
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -78,6 +87,18 @@ declare module "@tanstack/solid-router" {
 
 const InnerProviders = () => {
 	const auth = useAuth()
+
+	createEffect(() => {
+		const [unsubscribe] = persistQueryClient({
+			queryClient,
+			persister,
+			maxAge: 1000 * 60 * 60 * 24,
+		})
+
+		onCleanup(() => {
+			unsubscribe()
+		})
+	})
 
 	return (
 		<RouterProvider

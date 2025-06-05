@@ -28,6 +28,8 @@
 		"@bigmistqke/solid-contenteditable": "^0.0.11",
 		"@convex-dev/expo-push-notifications": "^0.2.4",
 		"@hazel/backend": "workspace:*",
+		"@tanstack/query-persist-client-core": "^5.80.6",
+		"@tanstack/query-sync-storage-persister": "^5.80.6",
 		"@tanstack/router-plugin": "1.121.0-alpha.22",
 		"@tanstack/solid-form": "^1.12.1",
 		"@tanstack/solid-query": "^5.80.6",
