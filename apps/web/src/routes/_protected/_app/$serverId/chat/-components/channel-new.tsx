@@ -11,14 +11,11 @@ import {
 	createSignal,
 	mapArray,
 	on,
-	onMount,
 } from "solid-js"
-import { createStore, reconcile } from "solid-js/store"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
-import { createCachedPaginatedQuery, createQuery, resetPaginationId } from "~/lib/convex"
 import { convexQuery } from "~/lib/convex-query"
 import { useConvexInfiniteQuery } from "~/lib/convex-query/infinite"
 import type { Message } from "~/lib/types"
@@ -77,48 +74,50 @@ export function ChannelNew(props: {
 		return messagesQuery.data?.pages.flatMap((page) => page.page).reverse() ?? []
 	})
 
-	const processedMessages = createMemo(
-		mapArray(
-			messages,
-			(message, index) => {
-				const timeThreshold = 5 * 60 * 1000
+	const processedMessages = createMemo(() => {
+		const timeThreshold = 5 * 60 * 1000
+		const allMessages = messages()
 
-				const prevMessage = () => messages()[index() - 1]
-				const nextMessage = () => messages()[index() + 1]
+		const result: Array<{
+			message: Message
+			isGroupStart: boolean
+			isGroupEnd: boolean
+		}> = []
 
-				const isGroupStart = () => {
-					const prev = prevMessage()
-					if (!prev) {
-						return true
-					}
+		for (let i = 0; i < allMessages.length; i++) {
+			const currentMessage = allMessages[i]
+			const prevMessage = i > 0 ? allMessages[i - 1] : null
+			const nextMessage = i < allMessages.length - 1 ? allMessages[i + 1] : null
 
-					const timeDiff = message._creationTime - prev._creationTime
-					return !(
-						message.authorId === prev.authorId &&
-						timeDiff < timeThreshold &&
-						!prev.replyToMessageId
-					)
+			let isGroupStart = true
+			if (prevMessage) {
+				const currentTime = currentMessage._creationTime
+				const prevTime = prevMessage._creationTime
+				const timeDiff = currentTime - prevTime
+				if (
+					currentMessage.authorId === prevMessage.authorId &&
+					timeDiff < timeThreshold &&
+					!prevMessage.replyToMessageId
+				) {
+					isGroupStart = false
 				}
+			}
 
-				const isGroupEnd = () => {
-					const next = nextMessage()
-					if (!next) {
-						return true
-					}
-
-					const timeDiff = next._creationTime - message._creationTime
-					return !(message.authorId === next.authorId && timeDiff < timeThreshold)
+			let isGroupEnd = true
+			if (nextMessage) {
+				const currentTime = currentMessage._creationTime
+				const nextTime = nextMessage._creationTime
+				const timeDiff = nextTime - currentTime
+				if (currentMessage.authorId === nextMessage.authorId && timeDiff < timeThreshold) {
+					isGroupEnd = false
 				}
+			}
 
-				return {
-					message,
-					isGroupStart: isGroupStart(),
-					isGroupEnd: isGroupEnd(),
-				}
-			},
-			{ fallback: () => [] },
-		),
-	)
+			result.push({ message: currentMessage, isGroupStart, isGroupEnd })
+		}
+
+		return result
+	})
 
 	const [shouldStickToBottom, setShouldStickToBottom] = createSignal(true)
 	const [vlistRef, setVlistRef] = createSignal<VListHandle | undefined>(undefined)

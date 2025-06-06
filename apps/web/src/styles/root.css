@@ -213,15 +213,15 @@
 }
 
 
-    /* * {
-        animation-duration: 1s;
-        animation-name: render;
-      }
-      @keyframes render {
-        from {
-          background: rgba(88, 166, 255, 0.5);
-        }
-        to {
-          background: transparent;
-        }
-      } */
+/* * {
+	animation-duration: 1s;
+	animation-name: render;
+}
+@keyframes render {
+	from {
+		background: rgba(88, 166, 255, 0.5);
+	}
+	to {
+		background: transparent;
+	}
+} */

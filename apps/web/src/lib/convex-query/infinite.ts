@@ -54,10 +54,6 @@ export function useConvexInfiniteQuery<Query extends PaginatedQueryReference>(
 		getNextPageParam: (lastPage) => {
 			return lastPage.isDone ? undefined : lastPage.continueCursor
 		},
-		// select: (data) => ({
-		// 	pages: [...data.pages].reverse(),
-		// 	pageParams: [...data.pageParams].reverse(),
-		// }),
 		initialPageParam: null,
 		enabled: !isDisabled,
 	}
