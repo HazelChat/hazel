@@ -11,6 +11,7 @@ import { IconX } from "~/components/icons/x"
 import { Button } from "~/components/ui/button"
 import { convexQuery } from "~/lib/convex-query"
 import { Channel } from "./-components/channel"
+import { ChannelNew } from "./-components/channel-new"
 
 export const Route = createFileRoute("/_protected/_app/$serverId/chat/$id")({
 	component: Root,
@@ -48,7 +49,9 @@ function RouteComponent() {
 		<div class="flex h-screen flex-col">
 			<ChatTopbar />
 			<div class="flex flex-1">
-				<Channel channelId={channelId} serverId={serverId} isThread={false} />
+				<ChannelNew channelId={channelId} serverId={serverId} isThread={true} />
+
+				{/* <Channel channelId={channelId} serverId={serverId} isThread={false} /> */}
 				<Show when={openThreadId()}>
 					<ChatProvider channelId={openThreadId} serverId={serverId}>
 						<ThreadChannel
@@ -107,8 +110,6 @@ function ThreadChannel(props: {
 	serverId: Id<"servers">
 	closeThread: () => void
 }) {
-	const { setState } = useChat()
-
 	const channelId = createMemo(() => props.channelId)
 	const serverId = createMemo(() => props.serverId)
 
@@ -120,7 +121,7 @@ function ThreadChannel(props: {
 					<IconX class="size-4" />
 				</Button>
 			</div>
-			<Channel channelId={channelId} serverId={serverId} isThread={true} />
+			<ChannelNew channelId={channelId} serverId={serverId} isThread={true} />
 		</div>
 	)
 }

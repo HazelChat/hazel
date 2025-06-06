@@ -25,6 +25,8 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { persistQueryClient } from "@tanstack/query-persist-client-core"
 import { createEffect, onCleanup } from "solid-js"
 
+import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
+
 applyInitialTheme()
 
 const convex = new ConvexSolidClient(import.meta.env.VITE_CONVEX_URL)
@@ -47,7 +49,7 @@ const queryClient = new QueryClient({
 const router = createRouter({
 	routeTree,
 	defaultPreload: "intent",
-	scrollRestoration: true,
+	// scrollRestoration: true,
 	defaultPreloadStaleTime: 0,
 
 	context: {
@@ -56,6 +58,7 @@ const router = createRouter({
 		queryClient,
 	},
 	defaultErrorComponent: (err) => {
+		console.error(err)
 		return (
 			<div class="flex min-h-screen items-center justify-center">
 				<div class="flex flex-col items-center justify-center gap-3">
@@ -112,6 +115,7 @@ const InnerProviders = () => {
 function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
+			<SolidQueryDevtools />
 			<ThemeProvider>
 				<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
 					<Suspense>
