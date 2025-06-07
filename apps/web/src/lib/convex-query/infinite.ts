@@ -100,11 +100,11 @@ export function useConvexInfiniteQuery<Query extends PaginatedQueryReference>(
 				const unsubscribe = watch.onUpdate(() => {
 					const result = watch.localQueryResult()
 
-					console.debug(
-						"[Convex Real-time] Invalidating infinite query:",
-						queryOptions.queryKey,
-						result,
-					)
+					// console.debug(
+					// 	"[Convex Real-time] Invalidating infinite query:",
+					// 	queryOptions.queryKey,
+					// 	result,
+					// )
 
 					if (result) {
 						queryClient.setQueryData(

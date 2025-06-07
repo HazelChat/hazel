@@ -118,7 +118,7 @@ function App() {
 			<SolidQueryDevtools />
 			<ThemeProvider>
 				<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-					<Suspense>
+					<Suspense fallback={<div>Loading...</div>}>
 						<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
 							<Toaster />
 							<InnerProviders />
