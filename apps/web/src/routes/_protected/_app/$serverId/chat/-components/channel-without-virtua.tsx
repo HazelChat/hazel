@@ -23,7 +23,7 @@ import { convexQuery } from "~/lib/convex-query"
 import { useConvexInfiniteQuery } from "~/lib/convex-query/infinite"
 import type { Message } from "~/lib/types"
 
-const PAGE_SIZE = 30
+const PAGE_SIZE = 35
 
 // Skeleton component for loading messages
 const MessageSkeleton = (props: { isGroupStart: boolean }) => (
