@@ -101,7 +101,7 @@ export default defineSchema({
 		resourceId: v.optional(v.union(v.id("messages"))),
 	}).index("by_accountId", ["accountId"]),
 
-	presence: defineTable({
+	old_presence: defineTable({
 		user: v.string(),
 		room: v.string(),
 		present: v.boolean(),
@@ -111,7 +111,7 @@ export default defineSchema({
 		.index("room_present_join", ["room", "present", "latestJoin"])
 		.index("room_user", ["room", "user"]),
 
-	presence_heartbeats: defineTable({
+	old_presence_heartbeats: defineTable({
 		user: v.string(),
 		room: v.string(),
 		markAsGone: v.id("_scheduled_functions"),

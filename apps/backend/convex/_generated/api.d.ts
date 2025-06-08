@@ -27,6 +27,7 @@ import type * as pinnedMessages from "../pinnedMessages.js";
 import type * as presence from "../presence.js";
 import type * as servers from "../servers.js";
 import type * as social from "../social.js";
+import type * as typingIndicator from "../typingIndicator.js";
 import type * as users from "../users.js";
 
 import type {
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   servers: typeof servers;
   social: typeof social;
+  typingIndicator: typeof typingIndicator;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
@@ -234,6 +236,45 @@ export declare const components: {
         "mutation",
         "internal",
         { logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR"; userId: string },
+        null
+      >;
+    };
+  };
+  presence: {
+    public: {
+      disconnect: FunctionReference<
+        "mutation",
+        "internal",
+        { sessionToken: string },
+        null
+      >;
+      heartbeat: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          interval?: number;
+          roomId: string;
+          sessionId: string;
+          userId: string;
+        },
+        { roomToken: string; sessionToken: string }
+      >;
+      list: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; roomToken: string },
+        Array<{ lastDisconnected: number; online: boolean; userId: string }>
+      >;
+      removeRoom: FunctionReference<
+        "mutation",
+        "internal",
+        { roomId: string },
+        null
+      >;
+      removeRoomUser: FunctionReference<
+        "mutation",
+        "internal",
+        { roomId: string; userId: string },
         null
       >;
     };
