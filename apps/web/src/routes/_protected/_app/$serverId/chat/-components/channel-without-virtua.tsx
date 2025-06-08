@@ -174,13 +174,13 @@ export function ChannelWithoutVirtua(props: {
 			messagesQuery.fetchNextPage()
 		}
 
-		// if (isBottom) {
-		// 	console.log("is bottom", messagesQuery.hasPreviousPage, messagesQuery.isFetchingPreviousPage)
-		// 	if (messagesQuery.hasPreviousPage && !messagesQuery.isFetchingPreviousPage) {
-		// 		console.log("fetching previous page")
-		// 		messagesQuery.fetchPreviousPage()
-		// 	}
-		// }
+		if (isAtBottom) {
+			console.log("is bottom", messagesQuery.hasPreviousPage, messagesQuery.isFetchingPreviousPage)
+			if (messagesQuery.hasPreviousPage && !messagesQuery.isFetchingPreviousPage) {
+				console.log("fetching previous page")
+				messagesQuery.fetchPreviousPage()
+			}
+		}
 	}
 
 	return (
