@@ -6,10 +6,7 @@ import { Match, Switch, createEffect } from "solid-js"
 export const Route = createFileRoute("/_protected")({
 	component: RouteComponent,
 	beforeLoad: async ({ context }) => {
-		console.log("before load")
-		// await context.convex.awaitAuth()
-
-		console.log("after load")
+		await context.convex.awaitAuth()
 	},
 })
 
