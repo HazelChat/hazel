@@ -15,26 +15,25 @@ export const Route = createFileRoute("/_protected/_app/$serverId")({
 		queryClient.ensureQueryData(
 			convexQuery(api.channels.getChannels, { serverId: params.serverId as Id<"servers"> }),
 		),
-})
+	beforeLoad: async ({ context, params }) => {
+		const server = await context.convex
+			.query(api.servers.getServerForUser, {
+				serverId: params.serverId as Id<"servers">,
+			})
+			.catch(() => null)
 
-function RouteComponent() {
-	const navigate = Route.useNavigate()
-	const params = Route.useParams()
-	const serverQuery = useQuery(() =>
-		convexQuery(api.servers.getServerForUser, {
-			serverId: params().serverId as Id<"servers">,
-		}),
-	)
-
-	createEffect(() => {
-		if (!serverQuery.data && serverQuery.status !== "pending") {
+		if (!server) {
 			removeCurrentServerId()
-			navigate({
+			throw redirect({
 				to: "/",
 			})
 		}
-	})
 
+		setCurrentServerId(server._id)
+	},
+})
+
+function RouteComponent() {
 	return (
 		<Suspense>
 			<Sidebar.Provider>
