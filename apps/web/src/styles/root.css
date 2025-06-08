@@ -213,7 +213,7 @@
 }
 
 
-* {
+/* * {
 	animation-duration: 1s;
 	animation-name: render;
 }
@@ -224,4 +224,4 @@
 	to {
 		background: transparent;
 	}
-}
+} */

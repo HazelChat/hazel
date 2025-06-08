@@ -73,7 +73,7 @@
       "dependencies": {
         "@100mslive/hms-video-store": "^0.12.35",
         "@ark-ui/solid": "^5.13.0",
-        "@bigmistqke/solid-contenteditable": "^0.0.11",
+        "@bigmistqke/solid-contenteditable": "0.0.12",
         "@hazel/backend": "workspace:*",
         "@solid-primitives/storage": "^4.3.2",
         "@tanstack/query-persist-client-core": "^5.80.6",
@@ -332,7 +332,7 @@
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 
-    "@bigmistqke/solid-contenteditable": ["@bigmistqke/solid-contenteditable@0.0.11", "", { "dependencies": { "eslint-scope": "^7.2.2", "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-gw9F+uatyte4y9g9uX71WAG1601EHRhkCplQssIPyCUscxwdKDDMJYuDJQkll3afyi4HLEXuCOvBGSVTOwjedw=="],
+    "@bigmistqke/solid-contenteditable": ["@bigmistqke/solid-contenteditable@0.0.12", "", { "dependencies": { "eslint-scope": "^7.2.2", "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-BiDhKRxWtqrc10MUEGcNDIoyWZL77aHdIxH1hmyJhZZXmhcqN70roXC8ZJwjwvvYCaqjUI5BCwnL6wpGHYz8sw=="],
 
     "@biomejs/biome": ["@biomejs/biome@1.9.4", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "1.9.4", "@biomejs/cli-darwin-x64": "1.9.4", "@biomejs/cli-linux-arm64": "1.9.4", "@biomejs/cli-linux-arm64-musl": "1.9.4", "@biomejs/cli-linux-x64": "1.9.4", "@biomejs/cli-linux-x64-musl": "1.9.4", "@biomejs/cli-win32-arm64": "1.9.4", "@biomejs/cli-win32-x64": "1.9.4" }, "bin": { "biome": "bin/biome" } }, "sha512-1rkd7G70+o9KkTn5KLmDYXihGoTaIGO9PIIN2ZB7UJxFrWw04CZHPYiMRjYsaDvVV7hP1dYNRLxSANLaBFGpog=="],
 
