@@ -2,7 +2,7 @@ import type { HMSPeer, HMSScreenVideoTrack, HMSVideoTrack } from "@100mslive/hms
 import { Toggle } from "@ark-ui/solid"
 import type { Id } from "@hazel/backend"
 import { createFileRoute } from "@tanstack/solid-router"
-import { For, Show, createEffect, createSignal } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js"
 import { IconCallCancel } from "~/components/icons/call-cancel"
 import { IconMic } from "~/components/icons/mic"
 import { IconMicOff } from "~/components/icons/mic-off"
@@ -128,19 +128,28 @@ const VideoComponent = (props: { peer: HMSPeer & { track: HMSVideoTrack | null }
 	const [isSpeaking, setIsSpeaking] = createSignal(false)
 	let videoElement: HTMLVideoElement | undefined
 
-	createEffect(() => {
-		if (!videoElement) {
-			return
-		}
+	const isEnabled = createMemo(() => !!props.peer.track?.enabled)
 
-		if (props.peer.track) {
-			if (props.peer.track.enabled) {
-				hmsActions.attachVideo(props.peer.track.id, videoElement)
-			} else {
-				hmsActions.detachVideo(props.peer.track.id, videoElement)
+	createEffect(
+		on(isEnabled, (enabled) => {
+			if (!videoElement) return
+
+			if (!props.peer.track) {
+				return
 			}
-		}
-	})
+
+			if (enabled) {
+				console.log("Attaching video...")
+				hmsActions.attachVideo(props.peer.track!.id, videoElement)
+			} else {
+				hmsActions.detachVideo(props.peer.track!.id, videoElement)
+			}
+		}),
+	)
+
+	// createEffect(() => {
+	// 	console.log(props.peer.track)
+	// })
 
 	return (
 		<div
