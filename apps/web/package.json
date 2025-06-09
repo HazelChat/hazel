@@ -41,7 +41,11 @@
 		"clerk-solidjs": "^2.0.10",
 		"convex": "^1.24.8",
 		"convex-helpers": "^0.1.92",
+		"remark-gfm": "^4.0.1",
+		"remark-html": "^16.0.1",
+		"remark-sugar-high": "^0.6.0",
 		"solid-js": "^1.9.7",
+		"sugar-high": "^0.9.3",
 		"tailwind-merge": "^3.3.0",
 		"tailwind-variants": "^1.0.0",
 		"virtua": "0.41.3"
