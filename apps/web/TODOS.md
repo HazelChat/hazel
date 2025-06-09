@@ -1,5 +1,4 @@
 - Add convex client tests to our sdk
-
 - Move Pinned Message back to separate table
 
 # Features
@@ -15,7 +14,6 @@
 # Improvements 
 
 - Delete Notification after it was seen (maybe just a simple cron cleanup job)
-- Improve typing presence todo less calls
 - Move all mutations to tanstack query
 
 - Add more presence types (away, busy)
