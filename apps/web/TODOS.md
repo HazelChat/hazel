@@ -9,6 +9,7 @@
     - Start call in channel
     - Show active call in channel + show call history
 
+# Fixes
 
 
 # Improvements 

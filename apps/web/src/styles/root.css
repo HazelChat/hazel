@@ -234,6 +234,10 @@
 	font-weight: 700;
 }
 
+.sh__line {
+	display: block;
+	width: 100%;
+}
 
 /* * {
 	animation-duration: 1s;
