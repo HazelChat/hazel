@@ -1,5 +1,5 @@
 import { Link, useParams } from "@tanstack/solid-router"
-import { type Accessor, Index, Match, Switch, createMemo, createSignal } from "solid-js"
+import { type Accessor, Index, Match, Switch, createEffect, createMemo, createSignal } from "solid-js"
 import { IconHashtag } from "~/components/icons/hashtag"
 
 import { IconPlusSmall } from "~/components/icons/plus-small"
@@ -48,12 +48,15 @@ export const AppSidebar = (props: SidebarProps) => {
 
 	const channelsQuery = useQuery(() => convexQuery(api.channels.getChannels, { serverId: serverId() }))
 
-	const serverChannels = createMemo(() => channelsQuery.data?.serverChannels || [])
 	const dmChannels = createMemo(() => channelsQuery.data?.dmChannels || [])
 
 	const [createChannelModalOpen, setCreateChannelModalOpen] = createSignal(false)
 
 	const presenceState = createPresence(serverId, () => meQuery.data?._id!)
+
+	createEffect(() => {
+		console.log(channelsQuery.data?.serverChannels[0].isMuted)
+	})
 
 	return (
 		<Sidebar {...props}>
@@ -99,7 +102,7 @@ export const AppSidebar = (props: SidebarProps) => {
 						</Dialog>
 					</Sidebar.GroupAction>
 					<Sidebar.Menu>
-						<Index each={serverChannels()}>
+						<Index each={channelsQuery.data?.serverChannels}>
 							{(channel) => <ChannelItem channel={channel} serverId={serverId} />}
 						</Index>
 					</Sidebar.Menu>

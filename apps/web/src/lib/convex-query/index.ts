@@ -200,6 +200,8 @@ export class ConvexQueryClient {
 						any,
 						{},
 					]
+
+					console.log(event.query.queryKey, args)
 					const watch = this.convexClient.watchQuery(
 						func,
 						args,

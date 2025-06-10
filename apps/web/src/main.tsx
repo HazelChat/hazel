@@ -45,6 +45,8 @@ const queryClient = new QueryClient({
 	},
 })
 
+convexQueryClient.connect(queryClient)
+
 const router = createRouter({
 	routeTree,
 	defaultPreload: "intent",
