@@ -67,21 +67,14 @@ export function MessageActions(props: MessageActionsProps) {
 								</Tooltip>
 							}
 						>
-							<Popover lazyMount>
-								<Tooltip>
-									<Tooltip.Trigger>
-										<Button intent="ghost" size="square">
-											{a.icon}
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content>
-										{a.label}
-										{a.hotkey && (
-											<span class="ml-2 text-muted-fg text-xs">[{a.hotkey}]</span>
-										)}
-									</Tooltip.Content>
-									<Popover.Content>{a.popoverContent}</Popover.Content>
-								</Tooltip>
+							<Popover lazyMount open={open()} onOpenChange={() => setOpen((prev) => !prev)}>
+								<Popover.Trigger>
+									<Button intent="ghost" size="square">
+										{a.icon}
+									</Button>
+								</Popover.Trigger>
+
+								<Popover.Content>{a.popoverContent} </Popover.Content>
 							</Popover>
 						</Show>
 					)}

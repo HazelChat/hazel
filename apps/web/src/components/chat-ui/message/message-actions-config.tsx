@@ -11,8 +11,11 @@ import { IconReply } from "~/components/icons/reply"
 import { IconThread } from "~/components/icons/thread"
 import { IconTrash } from "~/components/icons/trash"
 
+import type { Id } from "@hazel/backend"
+import { useAuth } from "clerk-solidjs"
 import { createMutation } from "~/lib/convex"
 import type { Message } from "~/lib/types"
+import { EmojiPicker } from "./emoji-picker"
 
 interface CreateMessageActionsProps {
 	message: Accessor<Message>
@@ -32,6 +35,37 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 
 	const createThreadMutation = createMutation(api.channels.createChannel)
 
+	const { userId } = useAuth()
+
+	const createReactionMutation = createMutation(api.messages.createReaction)
+	const deleteReactionMutation = createMutation(api.messages.deleteReaction)
+
+	async function toggleReaction(emoji: string) {
+		const alreadyReacted = props
+			.message()
+			.reactions.some((r) => r.userId === userId() && r.emoji === emoji)
+
+		try {
+			if (alreadyReacted) {
+				await deleteReactionMutation({
+					serverId: state.serverId,
+					id: props.message()._id,
+					emoji,
+				})
+			} else {
+				await createReactionMutation({
+					serverId: state.serverId,
+					messageId: props.message()._id,
+					userId: userId()! as Id<"users">,
+					emoji,
+				})
+			}
+		} catch (err) {
+			// eslint-disable-next-line no-console
+			console.error("Failed to toggle reaction", err)
+		}
+	}
+
 	return createMemo(() => [
 		{
 			key: "add-reaction",
@@ -40,7 +74,11 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 			onAction: () => {},
 			hotkey: "r",
 			showButton: true,
-			popoverContent: <div class="py-3">{/* Emoji picker content */}</div>,
+			popoverContent: (
+				<div class="py-2">
+					<EmojiPicker onSelect={toggleReaction} />
+				</div>
+			),
 		},
 		{
 			key: "thread",
