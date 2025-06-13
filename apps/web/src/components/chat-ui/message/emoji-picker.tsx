@@ -1,5 +1,15 @@
 import type { JSX, Resource } from "solid-js"
-import { For, Match, Show, Switch, createMemo, createResource, createSignal, onMount } from "solid-js"
+import {
+	For,
+	Match,
+	Show,
+	Switch,
+	createEffect,
+	createMemo,
+	createResource,
+	createSignal,
+	onMount,
+} from "solid-js"
 import { IconSearch } from "~/components/icons/search"
 import { Popover } from "~/components/ui/popover"
 import { TextField } from "~/components/ui/text-field"
@@ -287,7 +297,10 @@ export function EmojiPicker(props: EmojiPickerProps) {
 	}
 
 	const { active, setActive, onKeyDown } = createList({
-		items: () => searchResults().map((e) => e.slug),
+		items: () =>
+			search().length > 0
+				? searchResults().map((e, index) => index)
+				: displayGroups().flatMap((e) => e.emojis.map((e, index) => index)),
 		orientation: "horizontal",
 		handleTab: true,
 	})
@@ -305,10 +318,14 @@ export function EmojiPicker(props: EmojiPickerProps) {
 					aria-label="Search emojis"
 					onKeyDown={(e) => {
 						if (e.key === "Enter") {
-							const emojiSlug = active()
-							if (emojiSlug === null) return
+							const index = active()
 
-							const emoji = searchResults().find((e) => e.slug === emojiSlug)
+							const allEmojis = search()
+								? searchResults()
+								: displayGroups().flatMap((e) => e.emojis)
+
+							const emoji = allEmojis[index ?? 0]
+
 							if (emoji) handleSelect(emoji)
 						} else if (e.key === "Escape") {
 							setSearch("")
@@ -316,7 +333,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
 							onKeyDown(e)
 						}
 					}}
-					onFocus={() => setActive(searchResults()[0]?.slug)}
+					onFocus={() => setActive(0)}
 					onBlur={() => setActive(null)}
 					autofocus
 					class="flex-grow"
@@ -343,16 +360,16 @@ export function EmojiPicker(props: EmojiPickerProps) {
 							>
 								<div class="grid grid-cols-8 gap-1">
 									<For each={searchResults()}>
-										{(item) => (
+										{(item, index) => (
 											// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
 											<div
 												role="option"
 												tabindex="0"
-												aria-selected={active() === item.slug}
-												onMouseMove={() => setActive(item.slug)}
+												aria-selected={active() === index()}
+												onMouseMove={() => setActive(index())}
 												class="rounded p-1 text-2xl leading-none hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
 												classList={{
-													"bg-accent": active() === item.slug,
+													"bg-accent": active() === index(),
 												}}
 												onClick={() => handleSelect(item)}
 											>
@@ -371,43 +388,55 @@ export function EmojiPicker(props: EmojiPickerProps) {
 						{/* Grouped Browse View */}
 						<Match when={search().length <= 1}>
 							<For each={displayGroups()}>
-								{(group) => (
-									<Show when={group.emojis.length > 0}>
-										<div class="sticky top-0 z-10 flex items-center gap-2 rounded-md bg-background px-1 py-1.5 font-medium text-muted-foreground text-sm">
-											<span class="text-base">
-												{group.slug === RECENTS_SLUG ? "🕘" : group.emojis[0]?.emoji}
-											</span>
-											<span>{group.name}</span>
-										</div>
-										<div class="grid grid-cols-8 gap-1 py-2">
-											<For each={group.emojis}>
-												{(item) => (
-													// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
-													<div
-														role="option"
-														tabindex="0"
-														aria-selected={active() === item.slug}
-														onMouseMove={() => setActive(item.slug)}
-														class="rounded p-1 text-2xl leading-none hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-														classList={{
-															"bg-accent": active() === item.slug,
-														}}
-														onClick={() => handleSelect(item)}
-													>
-														{getEmojiWithSkinTone(
-															allEmojisData()!,
-															item,
-															getSkinToneComponent(
-																componentsData()!,
-																skinTone(),
-															),
-														)}
-													</div>
-												)}
-											</For>
-										</div>
-									</Show>
-								)}
+								{(group, groupIndex) => {
+									// Calculate the offset for this group
+									let offset = 0
+									for (let i = 0; i < groupIndex(); i++) {
+										offset += displayGroups()[i].emojis.length
+									}
+									return (
+										<Show when={group.emojis.length > 0}>
+											<div class="sticky top-0 z-10 flex items-center gap-2 rounded-md bg-background px-1 py-1.5 font-medium text-muted-foreground text-sm">
+												<span class="text-base">
+													{group.slug === RECENTS_SLUG
+														? "🕘"
+														: group.emojis[0]?.emoji}
+												</span>
+												<span>{group.name}</span>
+											</div>
+											<div class="grid grid-cols-8 gap-1 py-2">
+												<For each={group.emojis}>
+													{(item, emojiIndex) => {
+														const globalIndex = offset + emojiIndex()
+														return (
+															// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+															<div
+																role="option"
+																tabindex="0"
+																aria-selected={active() === globalIndex}
+																onMouseMove={() => setActive(globalIndex)}
+																class="rounded p-1 text-2xl leading-none hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+																classList={{
+																	"bg-accent": active() === globalIndex,
+																}}
+																onClick={() => handleSelect(item)}
+															>
+																{getEmojiWithSkinTone(
+																	allEmojisData()!,
+																	item,
+																	getSkinToneComponent(
+																		componentsData()!,
+																		skinTone(),
+																	),
+																)}
+															</div>
+														)
+													}}
+												</For>
+											</div>
+										</Show>
+									)
+								}}
 							</For>
 						</Match>
 					</Switch>
