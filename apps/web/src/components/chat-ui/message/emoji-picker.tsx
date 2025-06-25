@@ -10,7 +10,7 @@ import {
 	createSignal,
 	onMount,
 } from "solid-js"
-import { IconSearch } from "~/components/icons/search"
+import { IconSearchStroke } from "~/components/iconsv2"
 import { Popover } from "~/components/ui/popover"
 import { TextField } from "~/components/ui/text-field"
 
@@ -313,7 +313,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
 					placeholder="Search emojis..."
 					value={search()}
 					onInput={(e) => setSearch(e.currentTarget.value)}
-					suffix={<IconSearch class="mr-2 size-4 text-muted-foreground" />}
+					suffix={<IconSearchStroke class="mr-2 size-4 text-muted-foreground" />}
 					role="searchbox"
 					aria-label="Search emojis"
 					onKeyDown={(e) => {

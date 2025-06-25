@@ -2,7 +2,7 @@ import { api } from "@hazel/backend/api"
 import { createFileRoute } from "@tanstack/solid-router"
 import { Show, createSignal } from "solid-js"
 
-import { IconLoader } from "~/components/icons/loader"
+import { IconSpinnerStroke } from "~/components/iconsv2"
 import { Button } from "~/components/ui/button"
 import { Card } from "~/components/ui/card"
 import { toaster } from "~/components/ui/toaster"
@@ -49,7 +49,7 @@ function RouteComponent() {
 					</Show>
 
 					<Show when={status() === "loading"}>
-						<IconLoader class="size-6 animate-spin" />
+						<IconSpinnerStroke class="size-6 animate-spin" />
 						<p>Joining...</p>
 					</Show>
 

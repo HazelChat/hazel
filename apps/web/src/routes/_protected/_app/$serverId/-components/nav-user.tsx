@@ -1,11 +1,7 @@
 import { Link } from "@tanstack/solid-router"
 import { useAuth, useUser } from "clerk-solidjs"
 import type { Accessor } from "solid-js"
-import { IconChevronUpDown } from "~/components/icons/chevron-up-down"
-import { IconCreditCard } from "~/components/icons/credit-card"
-import { IconPaperPlane } from "~/components/icons/paper-plane"
-import { IconSettings } from "~/components/icons/settings"
-import { IconSupport } from "~/components/icons/support"
+import { IconChevronSortVerticalStroke, IconCreditCardStroke, IconAirplaneStroke, IconSettings01Stroke, IconSupportHeartStroke } from "~/components/iconsv2"
 import { Avatar } from "~/components/ui/avatar"
 import { Menu } from "~/components/ui/menu"
 import { Sidebar } from "~/components/ui/sidebar"
@@ -62,7 +58,7 @@ export const NavUser = (props: NavUserProps) => {
 									/>
 								)}
 							>
-								<IconSettings class="size-4" />
+								<IconSettings01Stroke class="size-4" />
 								Settings
 							</Menu.Item>
 							<Menu.Item
@@ -77,18 +73,18 @@ export const NavUser = (props: NavUserProps) => {
 									/>
 								)}
 							>
-								<IconCreditCard class="size-4" />
+								<IconCreditCardStroke class="size-4" />
 								Billing
 							</Menu.Item>
 						</Menu.ItemGroup>
 						<Menu.Separator />
 						<Menu.ItemGroup>
 							<Menu.Item value="support">
-								<IconSupport class="size-4" />
+								<IconSupportHeartStroke class="size-4" />
 								Support
 							</Menu.Item>
 							<Menu.Item value="help">
-								<IconPaperPlane class="size-4" />
+								<IconAirplaneStroke class="size-4" />
 								Feedback
 							</Menu.Item>
 						</Menu.ItemGroup>

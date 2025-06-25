@@ -3,12 +3,13 @@ import { type Accessor, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 
 import { IconBrandLinear } from "~/components/icons/brand/linear"
-import { IconCopy } from "~/components/icons/copy"
-import { IconPin } from "~/components/icons/pin"
-import { IconReply } from "~/components/icons/reply"
-import { IconThread } from "~/components/icons/thread"
-import { IconTrash } from "~/components/icons/trash"
-import { IconArrowBigTurnLeft1, IconCopy1, IconDeleteDustbin021, IconPinSlant1 } from "~/components/iconsv2"
+import {
+	IconArrowBigTurnLeft1,
+	IconCopy1,
+	IconDeleteDustbin021,
+	IconPinSlant1,
+	IconThreads1,
+} from "~/components/iconsv2"
 
 import { createMutation } from "~/lib/convex"
 import type { Message } from "~/lib/types"
@@ -35,7 +36,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 		{
 			key: "thread",
 			label: "Thread",
-			icon: <IconThread class="size-4" />,
+			icon: <IconThreads1 class="size-4" />,
 			onAction: async () => {
 				let threadChannelId = props.message().threadChannelId || null
 

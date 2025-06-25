@@ -3,10 +3,7 @@ import { useQuery } from "@tanstack/solid-query"
 import { Link, useParams } from "@tanstack/solid-router"
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 
-import { IconCopy } from "~/components/icons/copy"
-import { IconLoader } from "~/components/icons/loader"
-import { IconPeopleAdd } from "~/components/icons/people-add"
-import { IconPlusStroke } from "~/components/iconsv2"
+import { IconCopy1, IconPlusStroke, IconSpinnerStroke, IconUserPlus1 } from "~/components/iconsv2"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Dialog } from "~/components/ui/dialog"
@@ -95,7 +92,7 @@ export const WorkspaceSwitcher = () => {
 										setInviteDialogOpen(true)
 									}}
 								>
-									<IconPeopleAdd class="size-4" />
+									<IconUserPlus1 class="size-4" />
 									<div class="font-medium text-muted-foreground">Invite People</div>
 								</Menu.Item>
 							</Menu.ItemGroup>
@@ -155,11 +152,11 @@ export const WorkspaceSwitcher = () => {
 											when={generating()}
 											fallback={
 												<span class="flex flex-row items-center gap-2">
-													<IconCopy /> Copy link
+													<IconCopy1 /> Copy link
 												</span>
 											}
 										>
-											<IconLoader class="mr-2 size-4 animate-spin" /> Generating
+											<IconSpinnerStroke class="mr-2 size-4 animate-spin" /> Generating
 										</Show>
 									</Button>
 								}
@@ -173,7 +170,7 @@ export const WorkspaceSwitcher = () => {
 										toaster.success({ title: "Copied invite link" })
 									}}
 								>
-									<IconCopy />
+									<IconCopy1 />
 									Copy link
 								</Button>
 							</Show>

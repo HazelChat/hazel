@@ -6,7 +6,7 @@ import { createMemo, Show, Suspense } from "solid-js"
 import { ChatProvider, useChat } from "~/components/chat-state/chat-store"
 import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { ImageViewerModal } from "~/components/chat-ui/image-viewer-modal"
-import { IconX } from "~/components/icons/x"
+import { IconXComStroke } from "~/components/iconsv2"
 import { Button } from "~/components/ui/button"
 import { convexQuery } from "~/lib/convex-query"
 import { ChannelVirtua } from "./-components/channel-virtua"
@@ -133,7 +133,7 @@ function ThreadChannel(props: {
 			<div class="flex items-center justify-between border-b bg-sidebar p-4">
 				<p>Thread</p>
 				<Button intent="ghost" size="icon-small" onClick={props.closeThread}>
-					<IconX class="size-4" />
+					<IconXComStroke class="size-4" />
 				</Button>
 			</div>
 			<ChannelWithoutVirtua channelId={channelId} serverId={serverId} isThread={() => true} />

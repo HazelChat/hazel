@@ -17,8 +17,7 @@ import { ThreadButton } from "./thread-button"
 
 import { Markdown } from "@maki-chat/markdown"
 import { useChat } from "~/components/chat-state/chat-store"
-import { IconCheck } from "~/components/icons/check"
-import { IconCopy } from "~/components/icons/copy"
+import { IconCheckTickSingleStroke, IconCopyStroke } from "~/components/iconsv2"
 import type { Message } from "~/lib/types"
 import { ReactionTags } from "./reaction-tags"
 
@@ -119,8 +118,8 @@ export function MessageContent(props: MessageContentProps) {
 													"!opacity-100 bg-emerald-500/20 text-emerald-500",
 											)}
 										>
-											<Show when={isCopied()} fallback={<IconCopy class="size-4" />}>
-												<IconCheck class="size-4" />
+											<Show when={isCopied()} fallback={<IconCopyStroke class="size-4" />}>
+												<IconCheckTickSingleStroke class="size-4" />
 											</Show>
 										</button>
 									</div>

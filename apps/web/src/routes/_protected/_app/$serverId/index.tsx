@@ -1,12 +1,14 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { useQueries, useQuery } from "@tanstack/solid-query"
+import { useQuery } from "@tanstack/solid-query"
 import { createFileRoute } from "@tanstack/solid-router"
-import { For, Show, Suspense, createMemo, createSignal } from "solid-js"
-import { IconChat } from "~/components/icons/chat"
-import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
-import { IconLoader } from "~/components/icons/loader"
-import { IconSearch } from "~/components/icons/search"
+import { createSignal, For, Show, Suspense } from "solid-js"
+import {
+	IconChatStroke,
+	IconSearchStroke,
+	IconSpinnerStroke,
+	IconThreeDotsMenuHorizontalStroke,
+} from "~/components/iconsv2"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { TextField } from "~/components/ui/text-field"
@@ -36,7 +38,10 @@ function RouteComponent() {
 	const handleOpenChat = async ({
 		targetUserId,
 		serverId,
-	}: { targetUserId: Id<"users">; serverId: Id<"servers"> }) => {
+	}: {
+		targetUserId: Id<"users">
+		serverId: Id<"servers">
+	}) => {
 		if (!targetUserId) {
 			return
 		}
@@ -57,13 +62,13 @@ function RouteComponent() {
 					onInput={(props) => {
 						setSearchQuery(props.target.value)
 					}}
-					prefix={<IconSearch class="ml-3 size-5" />}
+					prefix={<IconSearchStroke class="ml-3 size-5" />}
 					placeholder="Search Members"
 				/>
 				<Suspense
 					fallback={
 						<div>
-							<IconLoader class="animate-spin" />
+							<IconSpinnerStroke class="animate-spin" />
 						</div>
 					}
 				>
@@ -90,10 +95,10 @@ function RouteComponent() {
 												})
 											}
 										>
-											<IconChat />
+											<IconChatStroke />
 										</Button>
 										<Button intent="ghost" size="square">
-											<IconHorizontalDots />
+											<IconThreeDotsMenuHorizontalStroke />
 										</Button>
 									</div>
 								</Show>

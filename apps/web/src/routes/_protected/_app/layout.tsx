@@ -2,7 +2,7 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
 import { Outlet, createFileRoute } from "@tanstack/solid-router"
 import { Match, Switch, createEffect } from "solid-js"
-import { IconLoader } from "~/components/icons/loader"
+import { IconSpinnerStroke } from "~/components/iconsv2"
 import { Logo } from "~/components/logo"
 import { convexQuery } from "~/lib/convex-query"
 import { useConvexAuth } from "~/lib/convex/convex-auth-state"
@@ -44,7 +44,7 @@ function RouteComponent() {
 				<div class="flex min-h-screen items-center justify-center">
 					<div class="flex flex-col items-center justify-center gap-3">
 						<Logo class="h-12" />
-						<IconLoader class="animate-spin" />
+						<IconSpinnerStroke class="animate-spin" />
 						<p>Loading your account...</p>
 					</div>
 				</div>

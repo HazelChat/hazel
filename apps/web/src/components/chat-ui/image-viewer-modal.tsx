@@ -1,11 +1,7 @@
 import { Format } from "@ark-ui/solid"
 import { type Accessor, For, Index, Show, createEffect, createSignal } from "solid-js"
 
-import { IconCopy } from "~/components/icons/copy"
-import { IconDownload } from "~/components/icons/download"
-import { IconLink } from "~/components/icons/link"
-import { IconOpenLink } from "~/components/icons/open-link"
-import { IconCircleXSolid } from "~/components/icons/solid/circle-x-solid"
+import { IconCopyStroke, IconDownloadDownStroke, IconLinkSlantStroke, IconExternalLinkCircleStroke, IconXComStroke } from "~/components/iconsv2"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { toaster } from "~/components/ui/toaster"
@@ -34,7 +30,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 	const imageModalActions = [
 		{
 			label: "Download",
-			icon: <IconDownload />,
+			icon: <IconDownloadDownStroke />,
 			onClick: async (e: MouseEvent) => {
 				e.stopPropagation()
 				const imageUrl = selectedImage()?.startsWith("https")
@@ -62,7 +58,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 		},
 		{
 			label: "Copy Image",
-			icon: <IconCopy />,
+			icon: <IconCopyStroke />,
 			onClick: async (e: MouseEvent) => {
 				e.stopPropagation()
 				const imageUrl = selectedImage()?.startsWith("https")
@@ -89,7 +85,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 		},
 		{
 			label: "Copy Image URL",
-			icon: <IconLink />,
+			icon: <IconLinkSlantStroke />,
 			onClick: (e: MouseEvent) => {
 				e.stopPropagation()
 				navigator.clipboard.writeText(`${props.bucketUrl}/${selectedImage()}`)
@@ -103,7 +99,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 		},
 		{
 			label: "Open in Browser",
-			icon: <IconOpenLink />,
+			icon: <IconExternalLinkCircleStroke />,
 			onClick: (e: MouseEvent) => {
 				e.stopPropagation()
 				window.open(`${props.bucketUrl}/${selectedImage()}`, "_blank")
@@ -111,7 +107,7 @@ export function ImageViewerModal(props: ImageViewerModalProps) {
 		},
 		{
 			label: "Close",
-			icon: <IconCircleXSolid />,
+			icon: <IconXComStroke />,
 			onClick: (e: MouseEvent) => {
 				e.stopPropagation()
 				props.onOpenChange(false)

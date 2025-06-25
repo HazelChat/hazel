@@ -5,7 +5,7 @@ import { type Accessor, createSignal, For, Suspense } from "solid-js"
 import { twMerge } from "tailwind-merge"
 import { useChat } from "~/components/chat-state/chat-store"
 import { IconEmojiAdd } from "~/components/icons/emoji-add"
-import { IconHorizontalDots } from "~/components/icons/horizontal-dots"
+import { IconThreeDotsMenuHorizontalStroke } from "~/components/iconsv2"
 
 import { Button, buttonVariants } from "~/components/ui/button"
 import { Menu } from "~/components/ui/menu"
@@ -142,7 +142,7 @@ export function MessageActions(props: MessageActionsProps) {
 
 				<Menu open={open()} onOpenChange={(value) => setOpen(value.open)} lazyMount>
 					<Menu.Trigger class={twMerge(buttonVariants({ intent: "ghost", size: "square" }))}>
-						<IconHorizontalDots class="size-4" />
+						<IconThreeDotsMenuHorizontalStroke class="size-4" />
 					</Menu.Trigger>
 					<Menu.Content class="z-20">
 						<For each={actions().filter((a) => a.showMenu)}>
