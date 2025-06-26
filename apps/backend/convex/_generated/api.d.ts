@@ -11,6 +11,7 @@
 import type * as accounts from "../accounts.js";
 import type * as background_index from "../background/index.js";
 import type * as channels from "../channels.js";
+import type * as confect from "../confect.js";
 import type * as crons from "../crons.js";
 import type * as expo from "../expo.js";
 import type * as http from "../http.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   "background/index": typeof background_index;
   channels: typeof channels;
+  confect: typeof confect;
   crons: typeof crons;
   expo: typeof expo;
   http: typeof http;
