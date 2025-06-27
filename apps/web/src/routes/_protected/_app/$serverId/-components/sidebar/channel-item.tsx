@@ -3,7 +3,7 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
 import { Link } from "@tanstack/solid-router"
 import type { FunctionReturnType } from "convex/server"
-import { type Accessor, createMemo, Index, Match, Switch } from "solid-js"
+import { type Accessor, createMemo, Index, Match, Show, Switch } from "solid-js"
 import {
 	IconHashtagStroke,
 	IconMultipleCrossCancelStroke,
@@ -43,6 +43,11 @@ export const ChannelItem = (props: ChannelItemProps) => {
 				<p class={cn("text-ellipsis text-nowrap", props.channel().isMuted && "opacity-60")}>
 					{props.channel().name}
 				</p>
+				<Show when={props.channel().currentUser.notificationCount > 0}>
+					<div class="-translate-y-1/2 absolute top-1/2 right-1 flex h-2.5 items-center justify-center rounded-lg border bg-muted p-2 text-xs transition-all duration-200 group-focus-within/menu-item:right-6 group-hover/menu-action:right-6 group-hover/menu-item:right-6 group-data-[state=open]/menu-action:right-6 [&:has(+[data-sidebar=menu-action][data-state=open])]:right-6">
+						{props.channel().currentUser.notificationCount}
+					</div>
+				</Show>
 			</Sidebar.MenuButton>
 			<Menu positioning={{ placement: "bottom" }}>
 				<Menu.Trigger
@@ -210,6 +215,11 @@ export const DmChannelLink = (props: DmChannelLinkProps) => {
 						</Match>
 					</Switch>
 				</div>
+				<Show when={props.channel().currentUser.notificationCount > 0}>
+					<div class="-translate-y-1/2 absolute top-1/2 right-1 flex h-2.5 items-center justify-center rounded-lg border bg-muted p-2 text-xs transition-all duration-200 group-focus-within/menu-item:right-6 group-hover/menu-action:right-6 group-hover/menu-item:right-6 group-data-[state=open]/menu-action:right-6 [&:has(+[data-sidebar=menu-action][data-state=open])]:right-6">
+						{props.channel().currentUser.notificationCount}
+					</div>
+				</Show>
 			</Sidebar.MenuButton>
 
 			<Menu positioning={{ placement: "bottom-start" }}>
