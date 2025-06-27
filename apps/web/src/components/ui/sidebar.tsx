@@ -22,9 +22,10 @@ import { Button } from "~/components/ui/button"
 import { Separator } from "~/components/ui/separator"
 import { Sheet, SheetContent } from "~/components/ui/sheet"
 import { Skeleton } from "~/components/ui/skeleton"
-import { KobaltTextField, TextField, TextFieldInput } from "~/components/ui/text-field"
+import { KobaltTextField, TextFieldInput } from "~/components/ui/text-field"
 
 import { cn } from "~/lib/utils"
+import { IconSidebar1 } from "../iconsv2"
 import { Tooltip } from "./tooltip"
 
 const MOBILE_BREAKPOINT = 768
@@ -253,7 +254,7 @@ const SidebarRoot: Component<SidebarProps> = (rawProps) => {
 	)
 }
 
-type SidebarTriggerProps<T extends ValidComponent = "button"> = ButtonProps & {
+type SidebarTriggerProps<_T extends ValidComponent = "button"> = ButtonProps & {
 	onClick?: (event: MouseEvent) => void
 }
 
@@ -266,25 +267,14 @@ const SidebarTrigger = <T extends ValidComponent = "button">(props: SidebarTrigg
 			data-sidebar="trigger"
 			intent="ghost"
 			size="icon"
-			class={cn("size-7", local.class)}
+			class={cn("flex size-7 items-center justify-center", local.class)}
 			onClick={(event: MouseEvent) => {
 				local.onClick?.(event)
 				toggleSidebar()
 			}}
 			{...others}
 		>
-			<svg
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="size-4"
-			>
-				<rect width="18" height="18" x="3" y="3" rx="2" />
-				<path d="M9 3v18" />
-			</svg>
+			<IconSidebar1 class="size-4!" />
 			<span class="sr-only">Toggle Sidebar</span>
 		</Button>
 	)
@@ -321,7 +311,7 @@ const SidebarInset: Component<ComponentProps<"main">> = (props) => {
 		<main
 			class={cn(
 				"relative flex min-h-svh flex-1 flex-col bg-background",
-				"peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+				"peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
 				local.class,
 			)}
 			{...others}
@@ -407,7 +397,7 @@ const SidebarGroupLabel = <T extends ValidComponent = "div">(
 			as="div"
 			data-sidebar="group-label"
 			class={cn(
-				"flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+				"flex h-8 shrink-0 items-center rounded-md px-2 font-medium text-sidebar-foreground/70 text-xs outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				"group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
 				local.class,
 			)}
@@ -427,9 +417,9 @@ const SidebarGroupAction = <T extends ValidComponent = "button">(
 			as="button"
 			data-sidebar="group-action"
 			class={cn(
-				"absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+				"absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				// Increases the hit area of the button on mobile.
-				"after:absolute after:-inset-2 after:md:hidden",
+				"after:-inset-2 after:absolute after:md:hidden",
 				"group-data-[collapsible=icon]:hidden",
 				local.class,
 			)}

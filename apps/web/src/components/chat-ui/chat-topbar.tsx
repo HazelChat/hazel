@@ -9,6 +9,7 @@ import { useChat } from "../chat-state/chat-store"
 import { IconHashtagStroke, IconPhone2, IconSearch1 } from "../iconsv2"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
+import { Sidebar } from "../ui/sidebar"
 import { TextField } from "../ui/text-field"
 import { PinnedModal } from "./pinned-modal"
 
@@ -39,6 +40,8 @@ export function ChatTopbar() {
 					{(channel) => (
 						<>
 							<div class="flex items-center gap-2">
+								<Sidebar.Trigger class="md:hidden" />
+
 								<Switch>
 									<Match when={channel().type === "single" || channel().type === "direct"}>
 										<Show when={filteredMembers().length === 1}>
@@ -104,7 +107,7 @@ export function ChatTopbar() {
 									</div>
 								</Show>
 
-								<div>
+								<div class="hidden md:block">
 									<TextField
 										aria-label="Search"
 										placeholder="Search"

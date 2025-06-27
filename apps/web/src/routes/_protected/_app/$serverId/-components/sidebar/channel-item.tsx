@@ -120,7 +120,7 @@ const FavoriteChannelMenuItem = (props: {
 
 	return (
 		<Menu.Item
-			value="mute"
+			value="favorite"
 			onSelect={async () => {
 				await updateChannelPreferences({
 					channelId: props.channelId() as Id<"channels">,

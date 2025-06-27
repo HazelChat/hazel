@@ -1,7 +1,7 @@
 import { createFileRoute, useElementScrollRestoration } from "@tanstack/solid-router"
-import { type VirtualItem, createVirtualizer } from "@tanstack/solid-virtual"
+import { createVirtualizer, type VirtualItem } from "@tanstack/solid-virtual"
 
-import { type Accessor, For, type JSX, createEffect, createMemo, createSignal } from "solid-js"
+import { type Accessor, createEffect, createMemo, createSignal, For, type JSX } from "solid-js"
 
 export const Route = createFileRoute("/_protected/_app/$serverId/test")({
 	component: RouteComponent,
@@ -21,11 +21,10 @@ const estimateSize = () => 30
 
 const count = 1000
 
-const items = generateItems(count)
-
-console.log(items)
-
 function RouteComponent() {
+	const items = generateItems(count)
+
+	console.log(items)
 	return (
 		<div
 			style={{
