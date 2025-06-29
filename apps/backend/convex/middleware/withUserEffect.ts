@@ -1,6 +1,5 @@
 import type { Id as IdType } from "@hazel/backend"
-import { Id } from "@rjdellecese/confect/server"
-import { makeGenericFunctions } from "confect-plus/server"
+import { Id, makeGenericFunctions } from "confect-plus/server"
 import type { DefaultFunctionArgs, UserIdentity } from "convex/server"
 import { Effect, Option, Schema } from "effect"
 import {
