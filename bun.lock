@@ -15,7 +15,7 @@
       "dependencies": {
         "@convex-dev/expo-push-notifications": "^0.2.4",
         "@convex-dev/presence": "^0.1.5",
-        "confect-plus": "0.0.29",
+        "confect-plus": "0.0.28",
         "convex": "^1.25.0",
         "effect": "^3.16.10",
       },
@@ -1491,7 +1491,7 @@
 
     "confbox": ["confbox@0.2.2", "", {}, "sha512-1NB+BKqhtNipMsov4xI/NnhCKp9XG9NamYp5PVm9klAT0fsrNPjaFICsCFhNhwZJKNh7zB/3q8qXz0E9oaMNtQ=="],
 
-    "confect-plus": ["confect-plus@0.0.29", "", { "peerDependencies": { "@effect/platform": "^0.80.15", "convex": "^1.23.0", "effect": "^3.14.15" } }, "sha512-YgFxJn33JhpF1Igo9QqeQgvoYZW81A25n1hJ8sfJt0yFPTU5mQygyYZGRuU+gHizSE4LtC1yOXn1EiKjwuuwUw=="],
+    "confect-plus": ["confect-plus@0.0.28", "", { "peerDependencies": { "@effect/platform": "^0.80.15", "convex": "^1.23.0", "effect": "^3.14.15" } }, "sha512-8R785wglTrdP4RS8tD8WARq7/vtipNv+jPEqpxWghwmKThutvWM5sWJoznEO/RcWyPfl0wpHJ5JfAocg0pljFA=="],
 
     "connect": ["connect@3.7.0", "", { "dependencies": { "debug": "2.6.9", "finalhandler": "1.1.2", "parseurl": "~1.3.3", "utils-merge": "1.0.1" } }, "sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ=="],
 

@@ -1,46 +1,33 @@
 import { PushNotifications } from "@convex-dev/expo-push-notifications"
-import { Id } from "confect-plus/server"
-import { Effect, Schema } from "effect"
 import { v } from "convex/values"
 import { api, components } from "./_generated/api"
-import type { Id as IdType } from "./_generated/dataModel"
+import type { Id } from "./_generated/dataModel"
 import { internalMutation } from "./_generated/server"
-import { ConfectMutationCtx, ConfectQueryCtx } from "./confect"
-import { accountMutation, accountQuery } from "./middleware/withAccountEffect"
+import { accountMutation, accountQuery } from "./middleware/withAccount"
 
-type AccountId = IdType<"accounts">
+type AccountId = Id<"accounts">
 
 const pushNotifications = new PushNotifications<AccountId>(components.pushNotifications)
 
 export const recordPushNotificationToken = accountMutation({
-	args: Schema.Struct({
-		token: Schema.String,
-	}),
-	returns: Schema.Null,
-	handler: Effect.fn(function* ({ token, account }) {
-		const ctx = yield* ConfectMutationCtx
-		
-		yield* Effect.promise(() => pushNotifications.recordToken(ctx as any, {
-			userId: account._id,
-			pushToken: token,
-		}))
-		
-		return null
-	}),
+	args: { token: v.string() },
+	handler: async (ctx, args) => {
+		await pushNotifications.recordToken(ctx, {
+			userId: ctx.account.id,
+			pushToken: args.token,
+		})
+	},
 })
 
 export const getStatusForUser = accountQuery({
-	args: Schema.Struct({}),
-	returns: Schema.Any,
-	handler: Effect.fn(function* ({ account }) {
-		const ctx = yield* ConfectQueryCtx
-		
-		const res = yield* Effect.promise(() => pushNotifications.getStatusForUser(ctx as any, {
-			userId: account._id,
-		}))
+	args: {},
+	handler: async (ctx) => {
+		const res = await pushNotifications.getStatusForUser(ctx, {
+			userId: ctx.account.id,
+		})
 
 		return res
-	}),
+	},
 })
 
 export const sendPushNotification = internalMutation({

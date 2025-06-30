@@ -11,7 +11,7 @@
 	"dependencies": {
 		"@convex-dev/expo-push-notifications": "^0.2.4",
 		"@convex-dev/presence": "^0.1.5",
-		"confect-plus": "0.0.29",
+		"confect-plus": "0.0.28",
 		"convex": "^1.25.0",
 		"effect": "^3.16.10"
 	},

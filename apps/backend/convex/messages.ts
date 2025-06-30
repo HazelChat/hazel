@@ -124,7 +124,7 @@ export const createMessage = userMutation({
 		replyToMessageId: Schema.optional(Id.Id("messages")),
 		attachedFiles: Schema.Array(Schema.String),
 	}),
-	returns: Schema.Any,
+	returns: Id.Id("messages"),
 	handler: Effect.fn(function* ({
 		content,
 		channelId,

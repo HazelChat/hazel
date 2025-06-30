@@ -1,28 +1,16 @@
-import { Id } from "confect-plus/server"
-import { Effect, Option, Schema } from "effect"
 import { v } from "convex/values"
 import { mutation } from "./_generated/server"
-import { ConfectQueryCtx } from "./confect"
-import { accountQuery } from "./middleware/withAccountEffect"
+import { accountQuery } from "./middleware/withAccount"
 
 export const getAccount = accountQuery({
-	args: Schema.Struct({
-		id: Id.Id("accounts"),
-	}),
-	returns: Schema.Union(Schema.Any, Schema.Null),
-	handler: Effect.fn(function* ({ id }) {
-		const ctx = yield* ConfectQueryCtx
+	args: {
+		id: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		await ctx.account.validateCanViewAccount({ ctx, accountId: args.id })
 
-		// TODO: Add validation logic for viewing account permissions
-		// For now, just return the account if it exists
-		const accountOption = yield* ctx.db.get(id)
-
-		if (Option.isNone(accountOption)) {
-			return null
-		}
-
-		return accountOption.value
-	}),
+		return await ctx.db.get(args.id)
+	},
 })
 
 export const createAccount = mutation({

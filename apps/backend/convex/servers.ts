@@ -1,29 +1,18 @@
 import { paginationOptsValidator } from "convex/server"
-import { Id } from "confect-plus/server"
-import { Effect, Option, Schema } from "effect"
+import { v } from "convex/values"
 import { query } from "./_generated/server"
-import { ConfectQueryCtx, ConfectMutationCtx } from "./confect"
-import { accountMutation, accountQuery } from "./middleware/withAccountEffect"
+import { accountMutation, accountQuery } from "./middleware/withAccount"
 
 export const getServer = accountQuery({
-	args: Schema.Struct({
-		serverId: Id.Id("servers"),
-	}),
-	returns: Schema.Union(Schema.Any, Schema.Null),
-	handler: Effect.fn(function* ({ serverId }) {
-		const ctx = yield* ConfectQueryCtx
-
-		const serverOption = yield* ctx.db
+	args: {
+		serverId: v.id("servers"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
 			.query("servers")
-			.withIndex("by_id", (q) => q.eq("_id", serverId))
+			.withIndex("by_id", (q) => q.eq("_id", args.serverId))
 			.first()
-
-		if (Option.isNone(serverOption)) {
-			return null
-		}
-
-		return serverOption.value
-	}),
+	},
 })
 
 export const getServers = query({
@@ -36,94 +25,63 @@ export const getServers = query({
 })
 
 export const getServerForUser = accountQuery({
-	args: Schema.Struct({
-		serverId: Id.Id("servers"),
-	}),
-	returns: Schema.Union(Schema.Any, Schema.Null),
-	handler: Effect.fn(function* ({ serverId, account }) {
-		const ctx = yield* ConfectQueryCtx
-
-		const serverMemberOption = yield* ctx.db
+	args: {
+		serverId: v.id("servers"),
+	},
+	handler: async (ctx, args) => {
+		const serverMember = await ctx.db
 			.query("users")
 			.withIndex("by_accountId_serverId", (q) =>
-				q.eq("accountId", account._id).eq("serverId", serverId),
+				q.eq("accountId", ctx.account.doc._id).eq("serverId", args.serverId),
 			)
 			.first()
 
-		if (Option.isNone(serverMemberOption)) {
-			return null
-		}
+		if (!serverMember) return null
 
-		const serverMember = serverMemberOption.value
-		const serverOption = yield* ctx.db.get(serverMember.serverId)
+		const server = await ctx.db.get(serverMember.serverId)
 
-		if (Option.isNone(serverOption)) {
-			return null
-		}
-
-		return serverOption.value
-	}),
+		return server
+	},
 })
 
 export const getServersForUser = accountQuery({
-	args: Schema.Struct({}),
-	returns: Schema.Array(Schema.Any),
-	handler: Effect.fn(function* ({ account }) {
-		const ctx = yield* ConfectQueryCtx
-
-		const serverMembers = yield* ctx.db
+	args: {},
+	handler: async (ctx) => {
+		const serverMembers = await ctx.db
 			.query("users")
-			.withIndex("by_accountId_serverId", (q) => q.eq("accountId", account._id))
+			.withIndex("by_accountId_serverId", (q) => q.eq("accountId", ctx.account.doc._id))
 			.collect()
 
-		const servers = yield* Effect.forEach(
-			serverMembers,
-			Effect.fn(function* (member) {
-				const serverOption = yield* ctx.db.get(member.serverId)
-				if (Option.isNone(serverOption)) {
-					return yield* Effect.fail(new Error("Server not found"))
-				}
-				return serverOption.value
+		const servers = await Promise.all(
+			serverMembers.map(async (member) => {
+				const server = await ctx.db.get(member.serverId)
+				return server!
 			}),
 		)
 
 		return servers
-	}),
+	},
 })
 
 export const createServer = accountMutation({
-	args: Schema.Struct({
-		name: Schema.String,
-		imageUrl: Schema.optional(Schema.String),
-	}),
-	returns: Id.Id("servers"),
-	handler: Effect.fn(function* ({ name, imageUrl, account }) {
-		const ctx = yield* ConfectMutationCtx
-
-		const serverId = yield* ctx.db.insert("servers", {
-			name,
-			imageUrl,
+	args: {
+		name: v.string(),
+		imageUrl: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const serverId = await ctx.db.insert("servers", {
+			name: args.name,
+			imageUrl: args.imageUrl,
 			updatedAt: Date.now(),
 		})
 
-		// Create user for this account in the new server
-		const userId = yield* ctx.db.insert("users", {
-			accountId: account._id,
-			serverId,
-			displayName: account.displayName,
-			tag: account.displayName,
-			avatarUrl: account.avatarUrl,
-			role: "owner",
-			status: "online",
-			joinedAt: Date.now(),
-			lastSeen: Date.now(),
+		const user = await ctx.account.createUserFromAccount({ ctx, serverId })
+
+		await ctx.db.patch(serverId, {
+			creatorId: user,
 		})
 
-		yield* ctx.db.patch(serverId, {
-			creatorId: userId,
-		})
-
-		yield* ctx.db.insert("channels", {
+		await ctx.db.insert("channels", {
 			serverId: serverId,
 			name: "general",
 			type: "public",
@@ -132,5 +90,5 @@ export const createServer = accountMutation({
 		})
 
 		return serverId
-	}),
+	},
 })

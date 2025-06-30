@@ -29,7 +29,7 @@ export const accountQuery = <
 	UserConvexArgs extends DefaultFunctionArgs,
 	UserConfectArgs,
 	ConvexReturns,
-	ConfectReturns = ConvexReturns,
+	ConfectReturns,
 	E = never,
 >({
 	args: accountArgs,
@@ -89,7 +89,7 @@ export const accountMutation = <
 	UserConvexArgs extends DefaultFunctionArgs,
 	UserConfectArgs,
 	ConvexReturns,
-	ConfectReturns = ConvexReturns,
+	ConfectReturns,
 	E = never,
 >({
 	args: accountArgs,

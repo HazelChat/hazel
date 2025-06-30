@@ -2,22 +2,34 @@ import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
 import { Link, useLocation, useParams } from "@tanstack/solid-router"
+import type { FunctionReturnType } from "convex/server"
 import { type Accessor, createMemo, createSignal, Index, Match, Suspense, Switch } from "solid-js"
 
 import {
 	IconChatChatting1,
 	IconGridDashboard01DuoSolid,
+	IconHashtagStroke,
+	IconMultipleCrossCancelStroke,
 	IconNotificationBellOn1,
+	IconPhone2,
 	IconPlusStroke,
+	IconThreeDotsMenuHorizontalStroke,
+	IconVolumeMute1,
+	IconVolumeOne1,
 } from "~/components/iconsv2"
+import { Avatar } from "~/components/ui/avatar"
 import { IconButton } from "~/components/ui/button"
 import { Dialog } from "~/components/ui/dialog"
+import { Menu } from "~/components/ui/menu"
 import { Sidebar } from "~/components/ui/sidebar"
+import { IconSignOut } from "~/components/ui/signout"
 import { Skeleton } from "~/components/ui/skeleton"
 import { Tabs } from "~/components/ui/tabs"
-
+import { UserAvatar } from "~/components/ui/user-avatar"
+import { createMutation } from "~/lib/convex"
 import { usePresenceState } from "~/lib/convex-presence"
 import { convexQuery } from "~/lib/convex-query"
+import { cn } from "~/lib/utils"
 import { CreateChannelForm } from "../create-channel-form"
 import { CreateDmDialog } from "../create-dm-dialog"
 import { JoinPublicChannel } from "../join-public-channel"
