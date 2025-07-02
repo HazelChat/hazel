@@ -14,13 +14,15 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
 import { createMutation, insertAtTop } from "~/lib/convex"
 import { convexQuery } from "~/lib/convex-query"
+import { useHotkey, useLayer } from "~/lib/hotkey-manager"
+import { useKeyboardSounds } from "~/lib/keyboard-sounds"
 import { useChat } from "../chat-state/chat-store"
-import { createPresence } from "../chat-state/create-presence"
 import { setElementAnchorAndFocus } from "../markdown-input/utils"
 import { useUploadFile } from "~/lib/convex-r2"
 
 const createGlobalEditorFocus = (props: {
 	editorRef: () => HTMLDivElement | undefined
+	playSound: () => void
 }) => {
 	const { setState, state } = useChat()
 	const input = createMemo(() => state.inputText)
@@ -92,6 +94,8 @@ const createGlobalEditorFocus = (props: {
 
 			if (isPrintableKey) {
 				event.preventDefault()
+				
+				props.playSound()
 
 				const content = input() + event.key
 
@@ -127,9 +131,9 @@ type Attachment = {
 
 export function FloatingBar() {
 	const auth = useAuth()
+	const { playSound } = useKeyboardSounds()
 
 	const { state, setState } = useChat()
-	const { trackTyping } = createPresence()
 
 	const meQuery = useQuery(() => ({
 		...convexQuery(api.me.getUser, { serverId: state.serverId }),
@@ -202,6 +206,8 @@ export function FloatingBar() {
 		}
 	}
 
+	const stopTyping = createMutation(api.typingIndicator.stop)
+
 	const createMessage = createMutation(api.messages.createMessage).withOptimisticUpdate(
 		(localStore, args) => {
 			const author = meQuery.data
@@ -231,11 +237,23 @@ export function FloatingBar() {
 		},
 	)
 
+	useLayer("chat-input", 200)
+
+	useHotkey("chat-input", {
+		key: "Enter",
+		shift: false,
+		description: "Submit message",
+		preventDefault: true,
+		handler: () => {
+			queueMicrotask(() => handleSubmit(state.inputText))
+		},
+	})
+
 	const [editorRef, setEditorRef] = createSignal<HTMLDivElement>()
 	const [fileInputRef, setFileInputRef] = createSignal<HTMLInputElement>()
 	const [isDragOver, setIsDragOver] = createSignal(false)
 
-	createGlobalEditorFocus({ editorRef })
+	createGlobalEditorFocus({ editorRef, playSound })
 
 	async function handleSubmit(text: string) {
 		const userId = auth.userId()
@@ -249,6 +267,10 @@ export function FloatingBar() {
 		const successFiles = selectedFiles().filter((file) => file.status === "success")
 
 		const content = text.trim()
+
+		stopTyping({
+			channelId: state.channelId,
+		})
 
 		createMessage({
 			content: content,
@@ -268,7 +290,6 @@ export function FloatingBar() {
 		}
 
 		setState("inputText", "")
-		trackTyping(false)
 	}
 
 	return (
@@ -330,14 +351,7 @@ export function FloatingBar() {
 					id="chat-input-editor"
 					value={() => state.inputText}
 					onValueChange={(value) => {
-						trackTyping(true)
 						setState("inputText", value)
-					}}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && !e.shiftKey) {
-							e.preventDefault()
-							queueMicrotask(() => handleSubmit(state.inputText))
-						}
 					}}
 				/>
 
@@ -366,11 +380,16 @@ function ReplyInfo(props: {
 	const channelId = createMemo(() => state.channelId)
 
 	const messageQuery = useQuery(() => ({
-		...convexQuery(api.messages.getMessage, {
-			id: replyToMessageId(),
-			channelId: channelId(),
-			serverId: state.serverId,
-		}),
+		...convexQuery(
+			api.messages.getMessage,
+			!replyToMessageId()
+				? "skip"
+				: {
+						id: replyToMessageId(),
+						channelId: channelId(),
+						serverId: state.serverId,
+					},
+		),
 		enabled: !!replyToMessageId(),
 	}))
 

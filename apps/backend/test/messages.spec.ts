@@ -454,7 +454,6 @@ describe("reactions", () => {
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "👍",
 		})
 
@@ -483,7 +482,6 @@ describe("reactions", () => {
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "👍",
 		})
 
@@ -517,7 +515,6 @@ describe("reactions", () => {
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "👍",
 		})
 
@@ -526,7 +523,6 @@ describe("reactions", () => {
 			t.mutation(api.messages.createReaction, {
 				serverId: server,
 				messageId,
-				userId,
 				emoji: "👍",
 			}),
 		).rejects.toThrow("You have already reacted to this message")
@@ -545,21 +541,18 @@ describe("reactions", () => {
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "👍",
 		})
 
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "❤️",
 		})
 
 		await t.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId,
 			emoji: "😂",
 		})
 
@@ -595,14 +588,12 @@ describe("reactions", () => {
 		await t1.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId: user1Id,
 			emoji: "👍",
 		})
 
 		await t2.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId: user2Id,
 			emoji: "👍",
 		})
 
@@ -638,7 +629,6 @@ describe("reactions", () => {
 		await t1.mutation(api.messages.createReaction, {
 			serverId: server,
 			messageId,
-			userId: user1Id,
 			emoji: "👍",
 		})
 
@@ -668,7 +658,6 @@ describe("reactions", () => {
 			t2.mutation(api.messages.createReaction, {
 				serverId: server,
 				messageId,
-				userId: user2Id,
 				emoji: "👍",
 			}),
 		).rejects.toThrow()
@@ -693,7 +682,6 @@ describe("reactions", () => {
 			t.mutation(api.messages.createReaction, {
 				serverId: server,
 				messageId,
-				userId,
 				emoji: "👍",
 			}),
 		).rejects.toThrow("Message not found")

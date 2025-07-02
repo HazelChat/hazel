@@ -1,27 +1,32 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
+import { useElementScrollRestoration } from "@tanstack/solid-router"
 import {
 	type Accessor,
 	type Component,
-	For,
-	type JSX,
-	Show,
 	createEffect,
 	createMemo,
 	createSignal,
+	For,
+	type JSX,
 	mapArray,
 	on,
 	onCleanup,
 	onMount,
+	Show,
 } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
 import { FloatingBar } from "~/components/chat-ui/floating-bar"
 import { ChatMessage } from "~/components/chat-ui/message/chat-message"
+import { IconChevronDown } from "~/components/icons/chevron-down"
+import { Button } from "~/components/ui/button"
 import { convexQuery } from "~/lib/convex-query"
 import { useConvexInfiniteQuery } from "~/lib/convex-query/infinite"
+import { createNextPrevPaginatedQuery } from "~/lib/infinite/infinite-convex"
 import type { Message } from "~/lib/types"
+import { MessageOnScreen } from "./messages-onscreen"
 
 const PAGE_SIZE = 35
 
@@ -49,7 +54,7 @@ export const MessageSkeleton = (props: { isGroupStart: boolean }) => (
 export function ChannelWithoutVirtua(props: {
 	channelId: Accessor<Id<"channels">>
 	serverId: Accessor<Id<"servers">>
-	isThread: boolean
+	isThread: Accessor<boolean>
 }) {
 	const [isInitialRender, setIsInitialRender] = createSignal(true)
 
@@ -79,7 +84,7 @@ export function ChannelWithoutVirtua(props: {
 		setTimeout(() => {
 			bottomRef?.scrollIntoView({ behavior: "auto" })
 			setIsInitialRender(false)
-		}, 400)
+		}, 0)
 	})
 
 	createEffect(
@@ -156,6 +161,12 @@ export function ChannelWithoutVirtua(props: {
 		}),
 	)
 
+	onMount(() => {
+		if (scrollContainerRef) {
+			scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight
+		}
+	})
+
 	const handleScroll = (e: Event) => {
 		const target = e.currentTarget as HTMLDivElement
 		if (!target || isInitialRender()) return
@@ -180,8 +191,26 @@ export function ChannelWithoutVirtua(props: {
 	}
 
 	return (
-		<div class="flex flex-1 flex-col overflow-hidden">
-			<div class="flex-1 overflow-y-auto" ref={scrollContainerRef} onScroll={handleScroll}>
+		<div class="relative flex flex-1 flex-col overflow-hidden">
+			<Show when={processedMessages().length === 0 && messagesQuery.isSuccess}>
+				<div class="flex size-full flex-col items-center justify-center p-4 sm:p-8">
+					<div class="mask-radial-at-center mask-radial-from-black mask-radial-to-transparent relative aspect-square w-full max-w-sm">
+						{/* Your masked image */}
+						<img
+							src="/images/squirrle_ocean.png"
+							alt="squirrel"
+							class="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.png)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover"
+						/>
+					</div>
+					<p class="font-bold font-mono text-xl">Quiet as an ocean gazing squirrel...</p>
+				</div>
+			</Show>
+			<div
+				class="flex-1 overflow-y-auto"
+				id="chat-scrollarea"
+				ref={scrollContainerRef}
+				onScroll={handleScroll}
+			>
 				<Show
 					when={!messagesQuery.isLoading}
 					fallback={
@@ -220,6 +249,17 @@ export function ChannelWithoutVirtua(props: {
 				</Show>
 				<div ref={bottomRef} class="h-[1px] flex-1" />
 			</div>
+
+			<Show when={!shouldStickToBottom()}>
+				<Button
+					intent="secondary"
+					size="icon"
+					class="absolute right-4 bottom-28 z-10 size-7! border"
+					onClick={() => bottomRef?.scrollIntoView({ behavior: "smooth" })}
+				>
+					<IconChevronDown class="size-4" />
+				</Button>
+			</Show>
 
 			<div class="mx-2 flex flex-col gap-1.5">
 				<FloatingBar />

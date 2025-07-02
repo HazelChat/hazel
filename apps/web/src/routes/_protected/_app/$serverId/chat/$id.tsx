@@ -1,13 +1,12 @@
-import { createFileRoute } from "@tanstack/solid-router"
-import { Show, Suspense, createMemo } from "solid-js"
-import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
-
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
+import { createFileRoute } from "@tanstack/solid-router"
+import { createMemo, Show, Suspense } from "solid-js"
 import { ChatProvider, useChat } from "~/components/chat-state/chat-store"
+import { ChatTopbar } from "~/components/chat-ui/chat-topbar"
 import { ImageViewerModal } from "~/components/chat-ui/image-viewer-modal"
-import { IconX } from "~/components/icons/x"
+import { IconXComStroke } from "~/components/iconsv2"
 import { Button } from "~/components/ui/button"
 import { convexQuery } from "~/lib/convex-query"
 import { ChannelWithoutVirtua } from "./-components/channel-without-virtua"
@@ -15,14 +14,14 @@ import { ChannelWithoutVirtua } from "./-components/channel-without-virtua"
 export const Route = createFileRoute("/_protected/_app/$serverId/chat/$id")({
 	component: Root,
 	loader: async ({ context: { queryClient }, params }) => {
-		await Promise.all([
-			queryClient.ensureQueryData(
+		queryClient
+			.ensureQueryData(
 				convexQuery(api.channels.getChannel, {
 					channelId: params.id as Id<"channels">,
 					serverId: params.serverId as Id<"servers">,
 				}),
-			),
-		])
+			)
+			.catch(() => undefined)
 	},
 })
 
@@ -52,8 +51,9 @@ function RouteComponent() {
 			<ChatTopbar />
 			<div class="flex flex-1 overflow-hidden">
 				<div class="flex min-w-0 flex-1 flex-col">
-					{/* <ChannelVirtua channelId={channelId} serverId={serverId} isThread={false} /> */}
-					<ChannelWithoutVirtua channelId={channelId} serverId={serverId} isThread={false} />
+					{/* <ChannelVirtua channelId={channelId} serverId={serverId} isThread={() => false} /> */}
+					<ChannelWithoutVirtua channelId={channelId} serverId={serverId} isThread={() => false} />
+					{/* <ChannelWithVirtual channelId={channelId} serverId={serverId} isThread={() => false} /> */}
 				</div>
 
 				<Show when={openThreadId()}>
@@ -79,35 +79,42 @@ function ChatImageViewerModal() {
 	const messageId = createMemo(() => state.imageDialog.messageId!)
 
 	const messageQuery = useQuery(() => ({
-		...convexQuery(api.messages.getMessage, {
-			id: messageId(),
-			channelId: state.channelId,
-			serverId: state.serverId,
-		}),
+		...convexQuery(
+			api.messages.getMessage,
+			!messageId()
+				? "skip"
+				: {
+						id: messageId(),
+						channelId: state.channelId,
+						serverId: state.serverId,
+					},
+		),
 		enabled: !!messageId(),
 	}))
 
 	const availableImages = createMemo(() => messageQuery.data?.attachedFiles ?? [])
-	// const defaultImageKey = createMemo(() => state.imageDialog.selectedImageKey!)
+	const defaultImageKey = createMemo(() => state.imageDialog.selectedImageKey!)
 
 	return (
-		<Show when={messageQuery.data && state.imageDialog.selectedImageKey}>
-			<ImageViewerModal
-				availableImages={availableImages}
-				defaultImageKey={state.imageDialog.selectedImageKey!}
-				onOpenChange={() =>
-					setState("imageDialog", (prev) => ({
-						...prev,
-						open: false,
-						messageId: null,
-						selectedImageKey: null,
-					}))
-				}
-				author={messageQuery.data!.author}
-				createdAt={messageQuery.data!._creationTime!}
-				bucketUrl={import.meta.env.VITE_BUCKET_URL}
-			/>
-		</Show>
+		<Suspense>
+			<Show when={messageQuery.data && defaultImageKey()}>
+				<ImageViewerModal
+					availableImages={availableImages}
+					defaultImageKey={defaultImageKey()}
+					onOpenChange={() =>
+						setState("imageDialog", (prev) => ({
+							...prev,
+							open: false,
+							messageId: null,
+							selectedImageKey: null,
+						}))
+					}
+					author={messageQuery.data!.author}
+					createdAt={messageQuery.data!._creationTime!}
+					bucketUrl={import.meta.env.VITE_BUCKET_URL}
+				/>
+			</Show>
+		</Suspense>
 	)
 }
 
@@ -124,10 +131,10 @@ function ThreadChannel(props: {
 			<div class="flex items-center justify-between border-b bg-sidebar p-4">
 				<p>Thread</p>
 				<Button intent="ghost" size="icon-small" onClick={props.closeThread}>
-					<IconX class="size-4" />
+					<IconXComStroke class="size-4" />
 				</Button>
 			</div>
-			<ChannelWithoutVirtua channelId={channelId} serverId={serverId} isThread={true} />
+			<ChannelWithoutVirtua channelId={channelId} serverId={serverId} isThread={() => true} />
 		</div>
 	)
 }

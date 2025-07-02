@@ -1,124 +1,133 @@
-import { defineSchema, defineTable } from "convex/server"
+import { defineSchema, defineTable, Id } from "@rjdellecese/confect/server"
 import { v } from "convex/values"
+import { Schema } from "effect"
 
-export default defineSchema({
-	servers: defineTable({
-		name: v.string(),
-		imageUrl: v.optional(v.string()),
+export const confectSchema = defineSchema({
+	servers: defineTable(
+		Schema.Struct({
+			name: Schema.String,
+			imageUrl: Schema.optional(Schema.String),
 
-		// This value is always set, but it needs to be optional because the server is created before the user is created
-		// (this is the way to do circular references in Convex)
-		creatorId: v.optional(v.id("users")),
+			creatorId: Schema.optional(Id.Id("users")),
 
-		updatedAt: v.number(),
-		deletedAt: v.optional(v.number()),
-	}),
-	channels: defineTable({
-		name: v.string(),
-		type: v.union(
-			v.literal("public"),
-			v.literal("private"),
-			v.literal("thread"),
-			v.literal("direct"),
-			v.literal("single"),
-		),
-
-		serverId: v.id("servers"),
-		parentChannelId: v.optional(v.id("channels")),
-
-		pinnedMessages: v.array(v.object({ messageId: v.id("messages"), pinnedAt: v.number() })),
-
-		// This is a hash based on all participant ids in the channel (should be Single an Direct only)
-		participantHash: v.optional(v.string()),
-
-		updatedAt: v.number(),
-		deletedAt: v.optional(v.number()),
-	}).index("by_serverId_and_participantHash", ["serverId", "participantHash"]),
-	users: defineTable({
-		displayName: v.string(),
-		tag: v.string(),
-		avatarUrl: v.string(),
-
-		role: v.union(v.literal("member"), v.literal("admin"), v.literal("owner")),
-		status: v.union(v.literal("online"), v.literal("offline"), v.literal("away")),
-
-		accountId: v.id("accounts"),
-		serverId: v.id("servers"),
-
-		joinedAt: v.number(),
-		lastSeen: v.number(),
-		deletedAt: v.optional(v.number()),
-	})
+			updatedAt: Schema.Number,
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	),
+	channels: defineTable(
+		Schema.Struct({
+			name: Schema.String,
+			type: Schema.Union(
+				Schema.Literal("public"),
+				Schema.Literal("private"),
+				Schema.Literal("thread"),
+				Schema.Literal("direct"),
+				Schema.Literal("single"),
+			),
+			serverId: Id.Id("servers"),
+			parentChannelId: Schema.optional(Id.Id("channels")),
+			pinnedMessages: Schema.Array(
+				Schema.Struct({
+					messageId: Id.Id("messages"),
+					pinnedAt: Schema.Number,
+				}),
+			),
+			participantHash: Schema.optional(Schema.String),
+			updatedAt: Schema.Number,
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	).index("by_serverId_and_participantHash", ["serverId", "participantHash"]),
+	users: defineTable(
+		Schema.Struct({
+			displayName: Schema.String,
+			tag: Schema.String,
+			avatarUrl: Schema.String,
+			role: Schema.Union(Schema.Literal("member"), Schema.Literal("admin"), Schema.Literal("owner")),
+			status: Schema.Union(Schema.Literal("online"), Schema.Literal("offline"), Schema.Literal("away")),
+			accountId: Id.Id("accounts"),
+			serverId: Id.Id("servers"),
+			joinedAt: Schema.Number,
+			lastSeen: Schema.Number,
+			settings: Schema.optional(Schema.Struct({})),
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	)
 		.index("by_accountId_serverId", ["accountId", "serverId"])
 		.index("by_server_id", ["serverId"]),
-	messages: defineTable({
-		attachedFiles: v.array(
-			v.object({
-				key: v.string(),
-				fileName: v.string(),
-			}),
-		),
-		content: v.string(),
-
-		authorId: v.id("users"),
-		channelId: v.id("channels"),
-
-		replyToMessageId: v.optional(v.id("messages")),
-		threadChannelId: v.optional(v.id("channels")),
-
-		reactions: v.array(
-			v.object({
-				userId: v.id("users"),
-				emoji: v.string(),
-			}),
-		),
-
-		updatedAt: v.number(),
-		deletedAt: v.optional(v.number()),
-	}).index("by_channelId", ["channelId"]),
-	accounts: defineTable({
-		externalId: v.string(),
-		displayName: v.string(),
-		avatarUrl: v.string(),
-
-		tokenIdentifier: v.string(),
-
-		deletedAt: v.optional(v.number()),
-	})
+	messages: defineTable(
+		Schema.Struct({
+			attachedFiles: Schema.Array(
+				Schema.Struct({
+					key: Schema.String,
+					fileName: Schema.String,
+				}),
+			),
+			content: Schema.String,
+			authorId: Id.Id("users"),
+			channelId: Id.Id("channels"),
+			replyToMessageId: Schema.optional(Id.Id("messages")),
+			threadChannelId: Schema.optional(Id.Id("channels")),
+			reactions: Schema.Array(
+				Schema.Struct({
+					userId: Id.Id("users"),
+					emoji: Schema.String,
+				}),
+			),
+			updatedAt: Schema.Number,
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	).index("by_channelId", ["channelId"]),
+	accounts: defineTable(
+		Schema.Struct({
+			externalId: Schema.String,
+			displayName: Schema.String,
+			avatarUrl: Schema.String,
+			tokenIdentifier: Schema.String,
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	)
 		.index("by_externalId", ["externalId"])
 		.index("bg_tokenIdentifier", ["tokenIdentifier"]),
-	channelMembers: defineTable({
-		userId: v.id("users"),
-		channelId: v.id("channels"),
-
-		isHidden: v.boolean(),
-		isMuted: v.boolean(),
-
-		lastSeenMessageId: v.optional(v.id("messages")),
-		notificationCount: v.number(),
-
-		joinedAt: v.number(),
-		deletedAt: v.optional(v.number()),
-	}).index("by_channelIdAndUserId", ["channelId", "userId"]),
-	notifications: defineTable({
-		accountId: v.id("accounts"),
-		targetedResourceId: v.optional(v.union(v.id("channels"), v.id("servers"))),
-		resourceId: v.optional(v.union(v.id("messages"))),
-	}).index("by_accountId", ["accountId"]),
-
-	old_presence: defineTable({
-		user: v.string(),
-		room: v.string(),
-		present: v.boolean(),
-		latestJoin: v.number(),
-		data: v.any(),
-	})
-		.index("room_present_join", ["room", "present", "latestJoin"])
-		.index("room_user", ["room", "user"]),
-
-	old_presence_heartbeats: defineTable({
-		user: v.string(),
-		room: v.string(),
-		markAsGone: v.id("_scheduled_functions"),
-	}).index("by_room_user", ["room", "user"]),
+	channelMembers: defineTable(
+		Schema.Struct({
+			userId: Id.Id("users"),
+			channelId: Id.Id("channels"),
+			isHidden: Schema.Boolean,
+			isMuted: Schema.Boolean,
+			isFavorite: Schema.Boolean,
+			lastSeenMessageId: Schema.optional(Id.Id("messages")),
+			notificationCount: Schema.Number,
+			joinedAt: Schema.Number,
+			deletedAt: Schema.optional(Schema.Number),
+		}),
+	).index("by_channelIdAndUserId", ["channelId", "userId"]),
+	notifications: defineTable(
+		Schema.Struct({
+			accountId: Id.Id("accounts"),
+			targetedResourceId: Schema.optional(Schema.Union(Id.Id("channels"), Id.Id("servers"))),
+			resourceId: Schema.optional(Schema.Union(Id.Id("messages"))),
+		}),
+	).index("by_accountId_targetedResourceId", ["accountId", "targetedResourceId"]),
+	typingIndicators: defineTable(
+		Schema.Struct({
+			channelId: Id.Id("channels"),
+			accountId: Id.Id("accounts"),
+			lastTyped: Schema.Number,
+		}),
+	)
+		.index("by_accountId", ["channelId", "accountId"])
+		.index("by_channel_timestamp", ["channelId", "lastTyped"])
+		.index("by_timestamp", ["lastTyped"]),
+	invites: defineTable(
+		Schema.Struct({
+			serverId: Id.Id("servers"),
+			creatorId: Id.Id("users"),
+			code: Schema.String,
+			expiresAt: Schema.optional(Schema.Number),
+			revokedAt: Schema.optional(Schema.Number),
+			createdAt: Schema.Number,
+		}),
+	).index("by_code", ["code"]),
 })
+
+export default confectSchema.convexSchemaDefinition

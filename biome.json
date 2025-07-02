@@ -1,10 +1,9 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.3/schema.json",
-	"organizeImports": {
-		"enabled": true
-	},
+	"$schema": "https://biomejs.dev/schemas/2.0.5/schema.json",
+	
+	 "assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"files": {
-		"ignore": ["**/*.js"]
+		"includes": ["**/*.{ts,tsx,json}"]
 	},
 	"linter": {
 		"enabled": true,
@@ -19,7 +18,9 @@
 				"noBannedTypes": "warn"
 			},
 			"a11y": {
-				"noSvgWithoutTitle": "off"
+				"noSvgWithoutTitle": "off",
+				"useFocusableInteractive": "off",
+				"useSemanticElements": "off"
 			},
 			"correctness": {
 				"useHookAtTopLevel": "off",
@@ -29,24 +30,22 @@
 				"useYield": "off"
 			},
 			"suspicious": {
+				"noReactSpecificProps": "error",
 				"noConfusingVoidType": "off",
 				"noExplicitAny": "off",
 				"noArrayIndexKey": "off",
-				"noConsoleLog": "off",
 				"noShadowRestrictedNames": "off"
 			},
 			"nursery": {
 				"useSortedClasses": "error"
 			}
-		},
-		"ignore": ["node_modules", ".next", "dist"]
+		}
 	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
 		"indentWidth": 4,
-		"lineWidth": 110,
-		"ignore": ["node_modules", ".next", "dist"]
+		"lineWidth": 110
 	},
 	"javascript": {
 		"formatter": {

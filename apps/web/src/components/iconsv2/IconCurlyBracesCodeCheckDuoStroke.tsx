@@ -1,0 +1,19 @@
+// duo-stroke/development
+import type { Component, JSX } from 'solid-js';
+
+export const IconCurlyBracesCodeCheckDuoStroke: Component<JSX.IntrinsicElements["svg"]> = (props) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={props.width || "24"}
+      height={props.height || "24"}
+      fill="none"
+      viewBox="0 0 24 24"
+      {...props}
+    >
+      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4a3 3 0 0 0-3 3v2a3 3 0 0 1-3 3 3 3 0 0 1 3 3v2a3 3 0 0 0 3 3m8-16a3 3 0 0 1 3 3v2a3 3 0 0 0 3 3 3 3 0 0 0-3 3v2a3 3 0 0 1-3 3" opacity=".28" fill="none"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 12.259 2.036 2.034A13 13 0 0 1 15 10" fill="none"/>
+    </svg>
+  );
+};
+
+export default IconCurlyBracesCodeCheckDuoStroke;

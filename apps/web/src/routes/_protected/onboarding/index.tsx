@@ -7,6 +7,7 @@ import { Useronboarding } from "./-components/user-onboarding"
 
 const searchType = type({
 	"step?": "'user' | 'server'",
+	"redirectTo?": "string",
 })
 
 export const Route = createFileRoute("/_protected/onboarding/")({
@@ -23,7 +24,7 @@ function RouteComponent() {
 		<div class="flex h-screen items-center justify-center">
 			<Switch>
 				<Match when={currentStep() === "user"}>
-					<Useronboarding />
+					<Useronboarding redirectTo={searchData().redirectTo} />
 				</Match>
 				<Match when={currentStep() === "server"}>
 					<Serveronboarding />

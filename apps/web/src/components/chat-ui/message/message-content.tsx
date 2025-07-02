@@ -1,17 +1,23 @@
-import { type Accessor, For, Show, createMemo, createSignal, splitProps } from "solid-js"
+import { Markdown } from "@maki-chat/markdown"
+import {
+	type Accessor,
+	createMemo,
+	createSignal,
+	ErrorBoundary,
+	For,
+	Show,
+	Suspense,
+	splitProps,
+} from "solid-js"
 import { reconcile } from "solid-js/store"
 import { twJoin } from "tailwind-merge"
-
+import { useChat } from "~/components/chat-state/chat-store"
+import { IconCheckTickSingleStroke, IconCopyStroke } from "~/components/iconsv2"
+import type { Message } from "~/lib/types"
 import { cn } from "~/lib/utils"
 import { ChatImage } from "./chat-image"
-import { ThreadButton } from "./thread-button"
-
-import { Markdown } from "@maki-chat/markdown"
-import { useChat } from "~/components/chat-state/chat-store"
-import { IconCheck } from "~/components/icons/check"
-import { IconCopy } from "~/components/icons/copy"
-import type { Message } from "~/lib/types"
 import { ReactionTags } from "./reaction-tags"
+import { ThreadButton } from "./thread-button"
 
 interface MessageContentProps {
 	message: Accessor<Message>
@@ -40,110 +46,132 @@ export function MessageContent(props: MessageContentProps) {
 					<span class="text-muted-foreground text-xs">{messageTime()}</span>
 				</div>
 			</Show>
-
-			<Markdown
-				children={props.message().content}
-				components={{
-					a: (props) => (
-						<a
-							class={twJoin([
-								"outline-0 outline-offset-2 transition-[color,_opacity] focus-visible:outline-2 focus-visible:outline-ring forced-colors:outline-[Highlight]",
-								"disabled:cursor-default disabled:opacity-60 forced-colors:disabled:text-[GrayText]",
-								"text-primary hover:underline",
-							])}
-							{...props}
-							target="_blank"
-							rel="noopener noreferrer"
-						/>
-					),
-					p: (props) => <p class="" {...props} />,
-					h1: (props) => <h1 class="font-bold text-xl" {...props} />,
-					blockquote: (props) => (
-						<blockquote
-							class="rounded-[1px] border-primary border-l-4 bg-primary/10 py-0.5 pl-2 text-primary-fg italic"
-							{...props}
-						/>
-					),
-					pre: (props) => {
-						const [preProps, rest] = splitProps(props, ["class", "children"])
-						const [isCopied, setIsCopied] = createSignal(false)
-						let preRef: HTMLPreElement | undefined
-
-						const handleCopy = async () => {
-							if (preRef?.textContent) {
-								try {
-									await navigator.clipboard.writeText(preRef.textContent)
-									setIsCopied(true)
-									setTimeout(() => setIsCopied(false), 2000)
-								} catch (err) {
-									console.error("Failed to copy text: ", err)
-								}
-							}
-						}
-
-						return (
-							<div class="group relative flex max-w-2xl items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 font-mono">
-								<pre
-									ref={preRef}
-									class={twJoin("flex-grow", "text-sm", "overflow-x-auto", preProps.class)}
-									{...rest}
-								>
-									{preProps.children}
-								</pre>
-								<button
-									type="button"
-									onClick={handleCopy}
-									aria-label="Copy code"
-									class={twJoin(
-										"rounded-md p-1.5",
-										"text-muted-foreground/80",
-										"opacity-0 focus:opacity-100 group-hover:opacity-100",
-										"transition-all duration-200",
-										"hover:bg-muted hover:text-muted-foreground",
-										isCopied() && "!opacity-100 bg-emerald-500/20 text-emerald-500",
-									)}
-								>
-									{isCopied() ? <IconCheck class="size-4" /> : <IconCopy class="size-4" />}
-								</button>
-							</div>
-						)
-					},
-					li: (props) => <li class="" {...props} />,
-					ul: (props) => {
-						return (
-							<ul
-								class="list-inside list-disc"
-								style={{ "padding-left": `${props.depth * 4}px` }}
+			<ErrorBoundary fallback={<p>{props.message().content}</p>}>
+				<Markdown
+					children={props.message().content}
+					components={{
+						a: (props) => (
+							<a
+								class={twJoin([
+									"outline-0 outline-offset-2 transition-[color,_opacity] focus-visible:outline-2 focus-visible:outline-ring forced-colors:outline-[Highlight]",
+									"disabled:cursor-default disabled:opacity-60 forced-colors:disabled:text-[GrayText]",
+									"text-primary hover:underline",
+								])}
+								{...props}
+								target="_blank"
+								rel="noopener noreferrer"
+							/>
+						),
+						p: (props) => <p class="" {...props} />,
+						h1: (props) => <h1 class="font-bold text-xl" {...props} />,
+						blockquote: (props) => (
+							<blockquote
+								class="rounded-[1px] border-primary border-l-4 bg-primary/10 py-0.5 pl-2 text-primary-fg italic"
 								{...props}
 							/>
-						)
-					},
-					img: (parentProps) => {
-						const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
-						return (
-							<div class={"relative aspect-video max-h-[300px] overflow-hidden rounded-md"}>
-								<ChatImage
-									src={imgProps.src!}
-									alt={imgProps.alt!}
-									// TODO: We need to make the new image system work with URL-only images.
-									onClick={() => {
-										// setState(
-										// 	"imageDialog",
-										// 	reconcile({
-										// 		open: true,
-										// 		messageId: props.message()._id,
-										// 		selectedImageKey: imgProps.src!,
-										// 	}),
-										// )
-									}}
-									{...rest}
+						),
+						pre: (props) => {
+							const [preProps, rest] = splitProps(props, ["class", "children"])
+							const [isCopied, setIsCopied] = createSignal(false)
+							let preRef: HTMLPreElement | undefined
+
+							const handleCopy = async () => {
+								if (preRef?.textContent) {
+									try {
+										await navigator.clipboard.writeText(preRef.textContent)
+										setIsCopied(true)
+										setTimeout(() => setIsCopied(false), 2000)
+									} catch (err) {
+										console.error("Failed to copy text: ", err)
+									}
+								}
+							}
+
+							return (
+								<div class="group relative flex max-w-2xl items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5 font-mono">
+									<pre
+										ref={preRef}
+										class={twJoin(
+											"flex-grow",
+											"text-sm",
+											"overflow-x-auto",
+											"font-code",
+											preProps.class,
+										)}
+										{...rest}
+									>
+										{preProps.children}
+									</pre>
+									<div class="flex self-start">
+										<button
+											type="button"
+											onClick={handleCopy}
+											aria-label="Copy code"
+											class={twJoin(
+												"rounded-md p-1.5",
+												"text-muted-foreground/80",
+												"opacity-0 focus:opacity-100 group-hover:opacity-100",
+												"transition-all duration-200",
+												"hover:bg-muted hover:text-muted-foreground",
+												isCopied() &&
+													"!opacity-100 bg-emerald-500/20 text-emerald-500",
+											)}
+										>
+											<Show
+												when={isCopied()}
+												fallback={<IconCopyStroke class="size-4" />}
+											>
+												<IconCheckTickSingleStroke class="size-4" />
+											</Show>
+										</button>
+									</div>
+								</div>
+							)
+						},
+						li: (props) => <li class="" {...props} />,
+						ul: (props) => {
+							return (
+								<ul
+									class="list-inside list-disc"
+									style={{ "padding-left": `${props.depth * 4}px` }}
+									{...props}
 								/>
-							</div>
-						)
-					},
-				}}
-				renderingStrategy="memo"
-			/>
+							)
+						},
+						code: (props) => {
+							return (
+								<code
+									class="rounded-md border bg-muted/50 p-1 font-code text-sm"
+									{...props}
+								/>
+							)
+						},
+						img: (parentProps) => {
+							const [imgProps, rest] = splitProps(parentProps, ["src", "alt", "onClick"])
+							return (
+								<div class={"relative aspect-video max-h-[300px] overflow-hidden rounded-md"}>
+									<ChatImage
+										src={imgProps.src!}
+										alt={imgProps.alt!}
+										onClick={() => {
+											setState(
+												"imageDialog",
+												reconcile({
+													open: true,
+													messageId: props.message()._id,
+													selectedImageKey: imgProps.src!,
+												}),
+											)
+										}}
+										{...rest}
+									/>
+								</div>
+							)
+						},
+					}}
+					renderingStrategy="memo"
+				/>
+			</ErrorBoundary>
 
 			<div class="flex flex-col gap-2">
 				<Show when={attachedCount() > 0}>
@@ -196,7 +224,9 @@ export function MessageContent(props: MessageContentProps) {
 						</For>
 					</div>
 				</Show>
-				<ReactionTags message={props.message} />
+				<Suspense>
+					<ReactionTags message={props.message} />
+				</Suspense>
 			</div>
 
 			<Show when={props.message().threadChannelId && props.message().threadMessages?.length > 0}>

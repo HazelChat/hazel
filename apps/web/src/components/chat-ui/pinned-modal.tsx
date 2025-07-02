@@ -1,12 +1,12 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/solid-query"
+import { useMutation, useQuery } from "@tanstack/solid-query"
 import { useParams } from "@tanstack/solid-router"
-import { For, createMemo } from "solid-js"
-import { IconPin } from "~/components/icons/pin"
+import { createMemo, For } from "solid-js"
 import { createMutation } from "~/lib/convex"
 import { convexQuery } from "~/lib/convex-query"
 import { IconCircleXSolid } from "../icons/solid/circle-x-solid"
+import { IconPin1 } from "../iconsv2"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
 import { Popover } from "../ui/popover"
@@ -24,7 +24,9 @@ export function PinnedModal() {
 		}),
 	)
 
-	const deletePinnedMessageMutation = createMutation(api.pinnedMessages.deletePinnedMessage)
+	const deletePinnedMessageMutation = useMutation(() => ({
+		mutationFn: createMutation(api.pinnedMessages.deletePinnedMessage),
+	}))
 
 	const sortedPins = createMemo(() =>
 		[...(pinnedMessagesQuery.data || [])].sort((a, b) => a.pinnedAt - b.pinnedAt),
@@ -46,17 +48,18 @@ export function PinnedModal() {
 		<Popover>
 			<Popover.Trigger>
 				<Button size="square" intent="ghost">
-					<IconPin class="size-4" />
+					<IconPin1 class="size-4" />
 				</Button>
 			</Popover.Trigger>
 			<Popover.Content>
 				<Popover.Title class="mb-2 flex gap-2">
-					<IconPin /> Pinned Messages
+					<IconPin1 class="size-4" /> Pinned Messages
 				</Popover.Title>
 				<div class="flex flex-col gap-2">
 					<For each={sortedPins()}>
 						{(pinnedMessage) => (
 							// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+							// biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
 							<div
 								onClick={() => scrollToMessage(pinnedMessage.messageId)}
 								class={chatMessageStyles({ variant: "pinned" })}
@@ -66,7 +69,7 @@ export function PinnedModal() {
 										<Button
 											onClick={(e) => {
 												e.stopPropagation()
-												deletePinnedMessageMutation({
+												deletePinnedMessageMutation.mutate({
 													channelId: channelId() as Id<"channels">,
 													messageId: pinnedMessage.messageId,
 													serverId: serverId() as Id<"servers">,

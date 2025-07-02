@@ -1,6 +1,10 @@
 import {
+	type HMSAudioTrack,
 	type HMSConfig,
 	HMSReactiveStore,
+       type HMSTrackID,
+       selectAudioTrackByID,
+       selectAudioTrackVolume,
 	selectIsConnectedToRoom,
 	selectIsLocalAudioEnabled,
 	selectIsLocalScreenShared,
@@ -32,8 +36,10 @@ export function useCallManager(props: { serverId: Id<"servers"> }) {
 	const [store, setStore] = createStore({
 		peers: hmsStore.getState(selectPeers).map((peer) => {
 			const track = hmsStore.getState(selectVideoTrackByID(peer.videoTrack))
+                        const audio = hmsStore.getState(selectAudioTrackByID(peer.audioTrack))
+                        const volume = hmsStore.getState(selectAudioTrackVolume(peer.audioTrack))
 
-			return { ...peer, track }
+                        return { ...peer, track, audio, volume: volume ?? 100 }
 		}),
 		isConnected: hmsStore.getState(selectIsConnectedToRoom),
 		local: {
@@ -98,6 +104,14 @@ export function useCallManager(props: { serverId: Id<"servers"> }) {
 		}
 	}
 
+	const setPeerVolume = async (trackId: HMSTrackID, volume: number) => {
+		try {
+			await hmsActions.setVolume(volume, trackId)
+		} catch (error) {
+			console.error("Error setting volume:", error)
+		}
+	}
+
 	createEffect(() => {
 		const unsubscribe = hmsStore.subscribe((store) => {
 			const localAudioEnabled = selectIsLocalAudioEnabled(store)
@@ -112,11 +126,13 @@ export function useCallManager(props: { serverId: Id<"servers"> }) {
 
 			setStore("isConnected", !!selectIsConnectedToRoom(store))
 
-			const peers = selectPeers(store).map((peer) => {
-				const track = selectVideoTrackByID(peer.videoTrack)(store)
+                        const peers = selectPeers(store).map((peer) => {
+                                const track = selectVideoTrackByID(peer.videoTrack)(store)
+                                const audio = selectAudioTrackByID(peer.audioTrack)(store)
+                                const volume = selectAudioTrackVolume(peer.audioTrack)(store)
 
-				return { ...peer, track }
-			})
+                                return { ...peer, track, audio, volume: volume ?? 100 }
+                        })
 
 			setStore("peers", reconcile(peers, { key: "id" }))
 
@@ -145,5 +161,6 @@ export function useCallManager(props: { serverId: Id<"servers"> }) {
 		setLocalAudio,
 		toggleScreenShare,
 		setLocalVideo,
+		setPeerVolume,
 	}
 }

@@ -1,36 +1,21 @@
-import { Outlet, createFileRoute } from "@tanstack/solid-router"
+import { createFileRoute, Navigate, Outlet } from "@tanstack/solid-router"
+import { Match, Switch } from "solid-js"
 import { useConvexAuth } from "~/lib/convex/convex-auth-state"
-
-import { Match, Switch, createEffect } from "solid-js"
 
 export const Route = createFileRoute("/_protected")({
 	component: RouteComponent,
-	beforeLoad: async ({ context }) => {
-		await Promise.race([
-			context.convex.awaitAuth(),
-			new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
-		])
-	},
 })
 
 function RouteComponent() {
-	const navigate = Route.useNavigate()
 	const { isLoading, isAuthenticated } = useConvexAuth()
-
-	createEffect(() => {
-		if (!isAuthenticated() && !isLoading()) {
-			navigate({
-				to: "/sign-in",
-			})
-		}
-	})
 
 	return (
 		<Switch>
-			<Match when={isLoading()}>
-				<p>Loading auth...</p>
+			<Match when={!isAuthenticated() && !isLoading()}>
+				<Navigate to="/sign-in" search={{ redirectTo: window.location.pathname }} />
 			</Match>
-			<Match when={isAuthenticated()}>
+
+			<Match when={isAuthenticated() && !isLoading()}>
 				<Outlet />
 			</Match>
 		</Switch>

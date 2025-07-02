@@ -1,9 +1,10 @@
 // src/components/ui/button.tsx
 
-import { type HTMLArkProps, ark } from "@ark-ui/solid"
+import { ark, type HTMLArkProps } from "@ark-ui/solid"
 import { type Component, splitProps } from "solid-js"
 // Keep tailwind-variants
-import { type VariantProps, tv } from "tailwind-variants"
+import { tv, type VariantProps } from "tailwind-variants"
+import { cn } from "~/lib/utils"
 
 const buttonVariants = tv({
 	base: "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -53,4 +54,16 @@ const Button: Component<ButtonProps> = (props) => {
 	)
 }
 
-export { Button, buttonVariants }
+const IconButton = (props: HTMLArkProps<"button">) => {
+	return (
+		<ark.button
+			{...props}
+			class={cn(
+				`flex size-6 items-center justify-center gap-2 whitespace-nowrap text-muted-foreground hover:text-primary`,
+				props.class,
+			)}
+		/>
+	)
+}
+
+export { Button, buttonVariants, IconButton }

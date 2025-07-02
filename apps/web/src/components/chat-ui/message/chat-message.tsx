@@ -1,9 +1,9 @@
-import { type Accessor, Show, createEffect, createMemo } from "solid-js"
-
-import { Badge } from "~/components/ui/badge"
-
 import type { Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
+import { type Accessor, createEffect, createMemo, ErrorBoundary, Show, Suspense } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
+import { Badge } from "~/components/ui/badge"
+import { createMutation } from "~/lib/convex"
 import type { Message } from "~/lib/types"
 import { MessageActions } from "./message-actions"
 import { MessageContent } from "./message-content"
@@ -17,7 +17,7 @@ interface ChatMessageProps {
 	isGroupStart: Accessor<boolean>
 	isGroupEnd: Accessor<boolean>
 	isFirstNewMessage: Accessor<boolean>
-	isThread: boolean
+	isThread: Accessor<boolean>
 }
 
 export function ChatMessage(props: ChatMessageProps) {
@@ -31,6 +31,8 @@ export function ChatMessage(props: ChatMessageProps) {
 	const isPinned = () =>
 		state.channel?.pinnedMessages.find((m) => m.messageId === messageId()) !== undefined
 
+	const setNotificationAsRead = createMutation(api.notifications.setNotifcationAsRead)
+
 	const scrollToMessage = (id: string) => {
 		const el = document.getElementById(`message-${id}`)
 		if (el) {
@@ -42,13 +44,10 @@ export function ChatMessage(props: ChatMessageProps) {
 
 	createEffect(async () => {
 		if (props.isFirstNewMessage()) {
-			console.log("TODO: Implement setting lastSeenMessageId to null")
-			// await z.mutate.channelMembers.update({
-			// 	channelId: props.message().channelId!,
-			// 	userId: z.userID,
-			// 	lastSeenMessageId: null,
-			// 	notificationCount: 0,
-			// })
+			await setNotificationAsRead({
+				channelId: props.message().channelId!,
+				serverId: props.serverId(),
+			})
 		}
 	})
 
@@ -76,15 +75,17 @@ export function ChatMessage(props: ChatMessageProps) {
 			</Show>
 
 			<div class="flex gap-4">
-				<MessageActions
-					message={props.message}
-					serverId={props.serverId}
-					isPinned={isPinned}
-					isThread={props.isThread}
-				/>
+				<Suspense>
+					<MessageActions
+						message={props.message}
+						serverId={props.serverId}
+						isGroupStart={props.isGroupStart}
+						isPinned={isPinned}
+						isThread={props.isThread}
+					/>
+				</Suspense>
 
 				<MessageHeader message={props.message} showAvatar={showAvatar} serverId={props.serverId} />
-
 				<MessageContent message={props.message} serverId={props.serverId} showAvatar={showAvatar} />
 			</div>
 		</div>

@@ -1,32 +1,25 @@
-import type { Component, JSX } from "solid-js"
-import { createMemo, splitProps } from "solid-js"
-import { twMerge } from "tailwind-merge"
+import type { PolymorphicProps } from "@kobalte/core/polymorphic"
+import * as SeparatorPrimitive from "@kobalte/core/separator"
+import type { ValidComponent } from "solid-js"
+import { splitProps } from "solid-js"
 
-type SeparatorProps = JSX.HTMLAttributes<HTMLDivElement> & {
-	orientation?: "horizontal" | "vertical"
+import { cn } from "~/lib/utils"
+
+type SeparatorRootProps<T extends ValidComponent = "hr"> = SeparatorPrimitive.SeparatorRootProps<T> & {
+	class?: string | undefined
 }
 
-const Separator: Component<SeparatorProps> = (props) => {
-	const [local, rest] = splitProps(props, ["class", "orientation"])
-	const orientation = createMemo(() => local.orientation ?? "horizontal")
-
+const Separator = <T extends ValidComponent = "hr">(props: PolymorphicProps<T, SeparatorRootProps<T>>) => {
+	const [local, others] = splitProps(props as SeparatorRootProps, ["class", "orientation"])
 	return (
-		// biome-ignore lint/a11y/useFocusableInteractive: <explanation>
-		<div
-			// Apply accessibility role and orientation
-			role="separator"
-			aria-orientation={orientation()}
-			// Merge Tailwind classes
-			class={twMerge(
-				// Base styles
+		<SeparatorPrimitive.Root
+			orientation={local.orientation ?? "horizontal"}
+			class={cn(
 				"shrink-0 bg-border",
-				// Orientation-specific styles
-				orientation() === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
-				// User-provided classes
+				local.orientation === "vertical" ? "h-full w-px" : "h-px w-full",
 				local.class,
 			)}
-			// Pass down any other div attributes
-			{...rest}
+			{...others}
 		/>
 	)
 }

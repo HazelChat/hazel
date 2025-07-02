@@ -1,0 +1,19 @@
+// stroke/money-&-payments
+import type { Component, JSX } from 'solid-js';
+
+export const IconCurrencySignRubleStroke: Component<JSX.IntrinsicElements["svg"]> = (props) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={props.width || "24"}
+      height={props.height || "24"}
+      fill="none"
+      viewBox="0 0 24 24"
+      {...props}
+    >
+      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h6a4 4 0 0 0 0-8h-3.143c-.798 0-1.197 0-1.518.112A2 2 0 0 0 8.112 5.34C8 5.66 8 6.06 8 6.857zm0 0H5m3 0v4m0 5v-5m-3 0h3m7 0H8" fill="none"/>
+    </svg>
+  );
+};
+
+export default IconCurrencySignRubleStroke;

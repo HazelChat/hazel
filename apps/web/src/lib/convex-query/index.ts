@@ -1,12 +1,12 @@
 import {
+	hashKey,
+	notifyManager,
 	type QueryCache,
 	type QueryClient,
 	type QueryFunction,
 	type QueryFunctionContext,
 	type QueryKey,
 	type SolidQueryOptions,
-	hashKey,
-	notifyManager,
 } from "@tanstack/solid-query"
 import { ConvexHttpClient } from "convex/browser"
 import {
@@ -16,6 +16,7 @@ import {
 	getFunctionName,
 } from "convex/server"
 import { convexToJson } from "convex/values"
+import { reconcile } from "solid-js/store" // Add this import
 import { ConvexSolidClient, type ConvexSolidClientOptions, type Watch } from "../convex/client"
 
 const isServer = typeof window === "undefined"
@@ -148,7 +149,44 @@ export class ConvexQueryClient {
 					// Return `undefined` to signal not to create one.
 					return undefined
 				}
-				return value
+
+				function deepReconcile(prev: any, next: any): any {
+					// If both are arrays, use reconcile
+					if (Array.isArray(prev) && Array.isArray(next)) {
+						return reconcile(next, { key: "id", merge: true })(prev)
+					}
+
+					// If both are plain objects, recursively apply deepReconcile to properties
+					if (
+						prev &&
+						next &&
+						typeof prev === "object" &&
+						typeof next === "object" &&
+						Object.prototype.toString.call(prev) === "[object Object]" &&
+						Object.prototype.toString.call(next) === "[object Object]"
+					) {
+						const result = { ...prev }
+						for (const key in next) {
+							if (key in prev) {
+								result[key] = deepReconcile(prev[key], next[key])
+							} else {
+								result[key] = next[key]
+							}
+						}
+						// Remove keys that don't exist in next
+						for (const key in prev) {
+							if (!(key in next)) {
+								delete result[key]
+							}
+						}
+						return result
+					}
+
+					// Otherwise return the new value
+					return next
+				}
+
+				return deepReconcile(prev, value)
 			})
 		} else {
 			const { error } = result
@@ -181,6 +219,8 @@ export class ConvexQueryClient {
 				return
 			}
 
+			// if (event.query.isDisabled()) return
+
 			switch (event.type) {
 				// A query has been GC'd so no stale value will be available.
 				// In Convex this means we should unsubscribe.
@@ -200,6 +240,7 @@ export class ConvexQueryClient {
 						any,
 						{},
 					]
+
 					const watch = this.convexClient.watchQuery(
 						func,
 						args,

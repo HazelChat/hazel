@@ -1,5 +1,5 @@
-import { RouterProvider, createRouter } from "@tanstack/solid-router"
-import { Show, Suspense, render } from "solid-js/web"
+import { createRouter, RouterProvider } from "@tanstack/solid-router"
+import { render, Show, Suspense } from "solid-js/web"
 
 import "solid-devtools"
 
@@ -8,7 +8,9 @@ import { routeTree } from "./routeTree.gen"
 import "./styles/root.css"
 import "./styles/toast.css"
 
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister"
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
+import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
 import { ClerkProvider, useAuth } from "clerk-solidjs"
 import { FpsCounter } from "./components/devtools/fps-counter"
 import { IconLoader } from "./components/icons/loader"
@@ -17,14 +19,12 @@ import { Toaster } from "./components/ui/toaster"
 import { ConvexSolidClient } from "./lib/convex"
 import { ConvexProviderWithClerk } from "./lib/convex-clerk"
 import { ConvexQueryClient } from "./lib/convex-query"
-import { ThemeProvider, applyInitialTheme } from "./lib/theme"
+import { HotkeyProvider } from "./lib/hotkey-manager"
+import { KeyboardSoundsProvider } from "./lib/keyboard-sounds"
+import { applyInitialTheme, ThemeProvider } from "./lib/theme"
 
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister"
-
-import { persistQueryClient } from "@tanstack/query-persist-client-core"
-import { createEffect, onCleanup } from "solid-js"
-
-import { SolidQueryDevtools } from "@tanstack/solid-query-devtools"
+import "@fontsource-variable/geist-mono/index.css"
+import "@fontsource-variable/geist/index.css"
 
 applyInitialTheme()
 
@@ -32,23 +32,28 @@ const convex = new ConvexSolidClient(import.meta.env.VITE_CONVEX_URL)
 
 const convexQueryClient = new ConvexQueryClient(convex)
 
-// const persister = createSyncStoragePersister({
-// 	storage: localStorage,
-// })
+const _persister = createSyncStoragePersister({
+	storage: localStorage,
+})
 
 const queryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			queryKeyHashFn: convexQueryClient.hashFn(),
 			queryFn: convexQueryClient.queryFn(),
+
+			gcTime: 1000 * 60 * 60 * 24,
 		},
 	},
 })
 
+convexQueryClient.connect(queryClient)
+
 const router = createRouter({
 	routeTree,
 	defaultPreload: "intent",
-	// scrollRestoration: true,
+	scrollToTopSelectors: ["#chat-scrollarea"],
+	scrollRestoration: false,
 	defaultPreloadStaleTime: 0,
 
 	defaultViewTransition: true,
@@ -118,17 +123,21 @@ function App() {
 		<QueryClientProvider client={queryClient}>
 			<SolidQueryDevtools />
 			<ThemeProvider>
-				<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-					<Suspense fallback={<div>Loading...</div>}>
-						<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-							<Toaster />
-							<InnerProviders />
-							<Show when={import.meta.env.DEV}>
-								<FpsCounter />
-							</Show>
-						</ConvexProviderWithClerk>
-					</Suspense>
-				</ClerkProvider>
+				<KeyboardSoundsProvider>
+					<ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+						<Suspense fallback={<div>Loading...</div>}>
+							<HotkeyProvider>
+								<ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+									<Toaster />
+									<InnerProviders />
+									<Show when={import.meta.env.DEV}>
+										<FpsCounter />
+									</Show>
+								</ConvexProviderWithClerk>
+							</HotkeyProvider>
+						</Suspense>
+					</ClerkProvider>
+				</KeyboardSoundsProvider>
 			</ThemeProvider>
 		</QueryClientProvider>
 	)

@@ -1,4 +1,5 @@
 import { type Component, createSignal, onCleanup, onMount } from "solid-js"
+import { useHotkey, useHotkeys } from "~/lib/hotkey-manager"
 
 export const FpsCounter: Component = () => {
 	const getInitialVisibility = (): boolean => {
@@ -42,26 +43,25 @@ export const FpsCounter: Component = () => {
 		}
 	}
 
-	const handleKeyDown = (event: KeyboardEvent) => {
-		if (event.metaKey && event.key === "g") {
-			event.preventDefault()
+	useHotkey("global", {
+		key: "g",
+		meta: true,
+		description: "Toggle FPS counter",
+		handler: () => {
 			toggleVisibility()
-		}
-	}
+		},
+	})
 
 	onMount(() => {
 		lastTime = performance.now()
 		frameCount = 0
 		animationFrameId = requestAnimationFrame(loop)
-
-		document.addEventListener("keydown", handleKeyDown)
 	})
 
 	onCleanup(() => {
 		if (animationFrameId !== undefined) {
 			cancelAnimationFrame(animationFrameId)
 		}
-		document.removeEventListener("keydown", handleKeyDown)
 	})
 
 	return (

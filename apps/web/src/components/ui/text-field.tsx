@@ -1,6 +1,21 @@
 import type { Field } from "@ark-ui/solid"
-import { type JSXElement, Show, splitProps } from "solid-js"
+import type { PolymorphicProps } from "@kobalte/core"
+import * as TextFieldPrimitive from "@kobalte/core/text-field"
+import { type JSXElement, mergeProps, Show, splitProps, type ValidComponent } from "solid-js"
+import { cn } from "~/lib/utils"
 import { FieldErrorText, FieldGroup, FieldHelperText, FieldInput, FieldLabel, FieldRoot } from "./field"
+
+type KobaltTextFieldTextFieldRootProps<T extends ValidComponent = "div"> =
+	TextFieldPrimitive.TextFieldRootProps<T> & {
+		class?: string | undefined
+	}
+
+export const KobaltTextField = <T extends ValidComponent = "div">(
+	props: PolymorphicProps<T, KobaltTextFieldTextFieldRootProps<T>>,
+) => {
+	const [local, others] = splitProps(props as KobaltTextFieldTextFieldRootProps, ["class"])
+	return <TextFieldPrimitive.Root class={cn("flex flex-col gap-1", local.class)} {...others} />
+}
 
 export interface TextFieldProps extends Omit<Field.InputProps, "prefix"> {
 	label?: string
@@ -46,5 +61,49 @@ export const TextField = (props: TextFieldProps) => {
 			</Show>
 			<FieldErrorText>{specialProps.errorText}</FieldErrorText>
 		</FieldRoot>
+	)
+}
+
+type TextFieldInputProps<T extends ValidComponent = "input"> = TextFieldPrimitive.TextFieldInputProps<T> & {
+	class?: string | undefined
+	type?:
+		| "button"
+		| "checkbox"
+		| "color"
+		| "date"
+		| "datetime-local"
+		| "email"
+		| "file"
+		| "hidden"
+		| "image"
+		| "month"
+		| "number"
+		| "password"
+		| "radio"
+		| "range"
+		| "reset"
+		| "search"
+		| "submit"
+		| "tel"
+		| "text"
+		| "time"
+		| "url"
+		| "week"
+}
+
+export const TextFieldInput = <T extends ValidComponent = "input">(
+	rawProps: PolymorphicProps<T, TextFieldInputProps<T>>,
+) => {
+	const props = mergeProps<TextFieldInputProps<T>[]>({ type: "text" }, rawProps)
+	const [local, others] = splitProps(props as TextFieldInputProps, ["type", "class"])
+	return (
+		<TextFieldPrimitive.Input
+			type={local.type}
+			class={cn(
+				"flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground",
+				local.class,
+			)}
+			{...others}
+		/>
 	)
 }

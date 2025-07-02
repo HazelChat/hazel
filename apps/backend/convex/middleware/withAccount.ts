@@ -13,7 +13,7 @@ export const accountQuery = customQuery(query, {
 
 		const account = await Account.fromIdentity(ctx, identity)
 
-		return { ctx: { ...ctx, account }, args }
+		return { ctx: { ...ctx, account, identity }, args }
 	},
 })
 
@@ -28,6 +28,6 @@ export const accountMutation = customMutation(mutation, {
 
 		const account = await Account.fromIdentity(ctx, identity)
 
-		return { ctx: { ...ctx, account }, args }
+		return { ctx: { ...ctx, account, identity }, args }
 	},
 })

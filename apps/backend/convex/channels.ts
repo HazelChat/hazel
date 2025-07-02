@@ -1,12 +1,12 @@
 import { v } from "convex/values"
-import { userMutation, userQuery } from "./middleware/withUser"
-
 import { asyncMap } from "convex-helpers"
 import type { Id } from "./_generated/dataModel"
+import { userMutation, userQuery } from "./middleware/withUser"
 
 export const getChannels = userQuery({
 	args: {
 		serverId: v.id("servers"),
+		favoriteFilter: v.optional(v.object({ favorite: v.boolean() })),
 	},
 	handler: async (ctx, args) => {
 		const channels = await ctx.db
@@ -41,11 +41,20 @@ export const getChannels = userQuery({
 				members: members.filter((member) => member !== null),
 				isMuted: currentUser?.isMuted || false,
 				isHidden: currentUser?.isHidden || false,
+				isFavorite: currentUser?.isFavorite || false,
 				currentUser,
 			}
 		})
 
-		const filteredChannels = channelsWithMembers.filter((channel) => channel !== null)
+		const filteredChannels = channelsWithMembers
+			.filter((channel) => channel !== null)
+			.filter((channel) =>
+				args.favoriteFilter
+					? args.favoriteFilter.favorite
+						? channel.currentUser?.isFavorite
+						: !channel.currentUser?.isFavorite
+					: true,
+			)
 
 		const dmChannels = filteredChannels.filter(
 			(channel) => channel.type !== "private" && channel.type !== "public",
@@ -175,6 +184,7 @@ export const createChannel = userMutation({
 			joinedAt: Date.now(),
 			isHidden: false,
 			isMuted: false,
+			isFavorite: false,
 			notificationCount: 0,
 		})
 
@@ -187,6 +197,7 @@ export const createChannel = userMutation({
 					joinedAt: Date.now(),
 					isHidden: false,
 					isMuted: false,
+					isFavorite: false,
 					notificationCount: 0,
 				})
 			})
@@ -204,7 +215,7 @@ export const createChannel = userMutation({
 	},
 })
 
-export function createParticipantHash(userIds: Id<"users">[]) {
+function createParticipantHash(userIds: Id<"users">[]) {
 	return userIds.sort().join(":")
 }
 
@@ -243,6 +254,7 @@ export const creatDmChannel = userMutation({
 				joinedAt: Date.now(),
 				isHidden: false,
 				isMuted: false,
+				isFavorite: false,
 				notificationCount: 0,
 			}),
 			ctx.db.insert("channelMembers", {
@@ -251,6 +263,7 @@ export const creatDmChannel = userMutation({
 				joinedAt: Date.now(),
 				isHidden: false,
 				isMuted: false,
+				isFavorite: false,
 				notificationCount: 0,
 			}),
 		])
@@ -299,6 +312,7 @@ export const joinChannel = userMutation({
 			joinedAt: Date.now(),
 			isHidden: false,
 			isMuted: false,
+			isFavorite: false,
 			notificationCount: 0,
 		})
 	},
@@ -310,6 +324,7 @@ export const updateChannelPreferences = userMutation({
 		channelId: v.id("channels"),
 		isMuted: v.optional(v.boolean()),
 		isHidden: v.optional(v.boolean()),
+		isFavorite: v.optional(v.boolean()),
 	},
 	handler: async (ctx, { serverId, channelId, ...args }) => {
 		const channelMember = await ctx.db

@@ -12,8 +12,11 @@ import type * as accounts from "../accounts.js";
 import type * as attachments from "../attachments.js";
 import type * as background_index from "../background/index.js";
 import type * as channels from "../channels.js";
+import type * as confect from "../confect.js";
+import type * as crons from "../crons.js";
 import type * as expo from "../expo.js";
 import type * as http from "../http.js";
+import type * as invites from "../invites.js";
 import type * as lib_activeRecords_account from "../lib/activeRecords/account.js";
 import type * as lib_activeRecords_user from "../lib/activeRecords/user.js";
 import type * as lib_compare from "../lib/compare.js";
@@ -24,6 +27,7 @@ import type * as me from "../me.js";
 import type * as messages from "../messages.js";
 import type * as middleware_withAccount from "../middleware/withAccount.js";
 import type * as middleware_withUser from "../middleware/withUser.js";
+import type * as notifications from "../notifications.js";
 import type * as pinnedMessages from "../pinnedMessages.js";
 import type * as presence from "../presence.js";
 import type * as servers from "../servers.js";
@@ -50,8 +54,11 @@ declare const fullApi: ApiFromModules<{
   attachments: typeof attachments;
   "background/index": typeof background_index;
   channels: typeof channels;
+  confect: typeof confect;
+  crons: typeof crons;
   expo: typeof expo;
   http: typeof http;
+  invites: typeof invites;
   "lib/activeRecords/account": typeof lib_activeRecords_account;
   "lib/activeRecords/user": typeof lib_activeRecords_user;
   "lib/compare": typeof lib_compare;
@@ -62,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   "middleware/withAccount": typeof middleware_withAccount;
   "middleware/withUser": typeof middleware_withUser;
+  notifications: typeof notifications;
   pinnedMessages: typeof pinnedMessages;
   presence: typeof presence;
   servers: typeof servers;
@@ -390,6 +398,18 @@ export declare const components: {
         "internal",
         { limit?: number; roomToken: string },
         Array<{ lastDisconnected: number; online: boolean; userId: string }>
+      >;
+      listRoom: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; onlineOnly?: boolean; roomId: string },
+        Array<{ lastDisconnected: number; online: boolean; userId: string }>
+      >;
+      listUser: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; onlineOnly?: boolean; userId: string },
+        Array<{ lastDisconnected: number; online: boolean; roomId: string }>
       >;
       removeRoom: FunctionReference<
         "mutation",

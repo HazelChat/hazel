@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button"
 import { TextField } from "~/components/ui/text-field"
 import { createMutation } from "~/lib/convex"
 
-export const Useronboarding = () => {
+export const Useronboarding = ({ redirectTo }: { redirectTo?: string }) => {
 	const createAccount = createMutation(api.accounts.createAccount)
 
 	const navigate = useNavigate({
@@ -33,6 +33,10 @@ export const Useronboarding = () => {
 				displayName: value.displayName,
 				tag: value.tag,
 			})
+
+			if (redirectTo) {
+				navigate({ to: redirectTo, replace: true })
+			}
 
 			navigate({ to: "/onboarding", search: { step: "server" } })
 		},

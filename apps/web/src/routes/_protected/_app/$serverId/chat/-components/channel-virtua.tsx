@@ -1,17 +1,7 @@
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
-import {
-	type Accessor,
-	ErrorBoundary,
-	For,
-	Show,
-	createEffect,
-	createMemo,
-	createSignal,
-	mapArray,
-	on,
-} from "solid-js"
+import { type Accessor, createEffect, createMemo, createSignal, on, Show } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { VList, type VListHandle } from "virtua/solid"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"
@@ -24,7 +14,7 @@ import type { Message } from "~/lib/types"
 const PAGE_SIZE = 30
 
 // Skeleton component for loading messages
-const MessageSkeleton = (props: { isGroupStart: boolean }) => (
+const _MessageSkeleton = (props: { isGroupStart: boolean }) => (
 	<div class="flex gap-3 px-4 py-2">
 		<Show when={props.isGroupStart}>
 			<div class="h-10 w-10 animate-pulse rounded-full bg-muted" />
@@ -56,7 +46,7 @@ type ListItemSkeleton = { type: "skeleton"; id: string; isGroupStart: boolean }
 export function ChannelVirtua(props: {
 	channelId: Accessor<Id<"channels">>
 	serverId: Accessor<Id<"servers">>
-	isThread: boolean
+	isThread: Accessor<boolean>
 }) {
 	const channelQuery = useQuery(() =>
 		convexQuery(api.channels.getChannel, {

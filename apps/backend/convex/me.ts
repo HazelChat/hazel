@@ -25,10 +25,10 @@ export const getUser = accountQuery({
 
 export const getLatestNotifcation = accountQuery({
 	args: {},
-	handler: async (ctx, args) => {
+	handler: async (ctx, _args) => {
 		return ctx.db
 			.query("notifications")
-			.withIndex("by_accountId", (q) => q.eq("accountId", ctx.account.id))
+			.withIndex("by_accountId_targetedResourceId", (q) => q.eq("accountId", ctx.account.id))
 			.order("desc")
 			.first()
 	},

@@ -1,22 +1,17 @@
-import type { Doc } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { type Accessor, createMemo } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 
 import { IconBrandLinear } from "~/components/icons/brand/linear"
-import { IconCopy } from "~/components/icons/copy"
-import { IconPin } from "~/components/icons/pin"
-import { IconPlus } from "~/components/icons/plus"
-import { IconReply } from "~/components/icons/reply"
 import { IconThread } from "~/components/icons/thread"
-import { IconTrash } from "~/components/icons/trash"
+import { IconArrowBigTurnLeft1, IconCopy1, IconDeleteDustbin021, IconPinSlant1 } from "~/components/iconsv2"
 
 import { createMutation } from "~/lib/convex"
 import type { Message } from "~/lib/types"
 
 interface CreateMessageActionsProps {
 	message: Accessor<Message>
-	isThread: boolean
+	isThread: Accessor<boolean>
 	isPinned: Accessor<boolean>
 }
 
@@ -33,15 +28,6 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 	const createThreadMutation = createMutation(api.channels.createChannel)
 
 	return createMemo(() => [
-		{
-			key: "add-reaction",
-			label: "Add Reaction",
-			icon: <IconPlus />,
-			onAction: () => {},
-			hotkey: "r",
-			showButton: true,
-			popoverContent: <div class="py-3">{/* Emoji picker content */}</div>,
-		},
 		{
 			key: "thread",
 			label: "Thread",
@@ -62,12 +48,12 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 				setState("openThreadId", threadChannelId)
 			},
 			hotkey: "t",
-			showButton: !props.isThread && !(props.message().threadMessages?.length > 0),
+			showButton: !props.isThread() && !(props.message().threadMessages?.length > 0),
 		},
 		{
 			key: "reply",
 			label: "Reply",
-			icon: <IconReply class="size-4" />,
+			icon: <IconArrowBigTurnLeft1 class="size-4" />,
 			onAction: () => {
 				setState("replyToMessageId", props.message()._id)
 			},
@@ -85,7 +71,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 		{
 			key: "pin",
 			label: props.isPinned() ? "Unpin" : "Pin",
-			icon: <IconPin class="size-4" />,
+			icon: <IconPinSlant1 class="size-4" />,
 			onAction: async () => {
 				if (props.isPinned()) {
 					await unpinMessageMutation({
@@ -108,7 +94,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 		{
 			key: "copy-text",
 			label: "Copy Text",
-			icon: <IconCopy class="size-4" />,
+			icon: <IconCopy1 class="size-4" />,
 			onAction: () => navigator.clipboard.writeText(props.message().content),
 			hotkey: "c",
 			showMenu: true,
@@ -116,7 +102,7 @@ export function createMessageActions(props: CreateMessageActionsProps) {
 		{
 			key: "delete",
 			label: "Delete",
-			icon: <IconTrash class="size-4" />,
+			icon: <IconDeleteDustbin021 class="size-4" />,
 			onAction: async () =>
 				deleteMessageMutation({
 					id: props.message()._id,

@@ -65,10 +65,12 @@ export const Markdown: Component<Partial<SolidMarkdownOptions>> = (opts) => {
 		const processor = unified()
 			.use(remarkParse)
 			.use(remarkGfm)
-			.use(remarkBreaks)
 			.use(highlight as any)
 
+			.use(remarkBreaks)
+
 			.use(options.remarkPlugins || [])
+
 			.use(remarkRehype, { allowDangerousHtml: true })
 			.use(remarkHtml, { sanitize: false })
 

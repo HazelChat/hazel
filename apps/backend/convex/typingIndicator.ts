@@ -1,144 +1,110 @@
-/**
- * Functions related to reading & writing presence data.
- *
- * Note: this file does not currently implement authorization.
- * That is left as an exercise to the reader. Some suggestions for a production
- * app:
- * - Use Convex `auth` to authenticate users rather than passing up a "user"
- * - Check that the user is allowed to be in a given room.
- */
 import { v } from "convex/values"
-import { internal } from "./_generated/api"
-import type { Doc } from "./_generated/dataModel"
-import { internalMutation, mutation, query } from "./_generated/server"
-import { userMutation } from "./middleware/withUser"
+import { internalMutation, query } from "./_generated/server"
+import { accountMutation, accountQuery } from "./middleware/withAccount"
 
-const LIST_LIMIT = 20
-const MARK_AS_GONE_MS = 8_000
+import { asyncMap } from "convex-helpers"
+
+// The duration in milliseconds to consider a user as "still typing".
+// After this timeout, they will be considered to have stopped typing.
+const TYPING_TIMEOUT = 5000 // 5 seconds
 
 /**
- * Overwrites the presence data for a given user in a room.
+ * Updates the "last typed" timestamp for a user in a room.
+ * This is an "upsert" operation.
+ * - If the user is not already marked as typing, a new document is created.
+ * - If the user is already typing, their timestamp is updated.
  *
- * It will also set the "updated" timestamp to now, and create the presence
- * document if it doesn't exist yet.
- *
- * @param room - The location associated with the presence data. Examples:
- * page, chat channel, game instance.
- * @param user - The user associated with the presence data.
+ * This mutation should be called from the client whenever the user types.
  */
-export const update = userMutation({
-	args: { room: v.string(), user: v.string(), data: v.any() },
-	handler: async (ctx, { room, user, data }) => {
+export const update = accountMutation({
+	args: {
+		channelId: v.id("channels"),
+	},
+	handler: async (ctx, { channelId }) => {
 		const existing = await ctx.db
-			.query("old_presence")
-			.withIndex("room_user", (q) => q.eq("room", room).eq("user", user))
+			.query("typingIndicators")
+			.withIndex("by_accountId", (q) => q.eq("channelId", channelId).eq("accountId", ctx.account.id))
 			.unique()
 
 		if (existing) {
-			const patch: Partial<Doc<"old_presence">> = {
-				data: {
-					...data,
-					user: ctx.user.doc,
-				},
-			}
-			if (existing.present === false) {
-				patch.present = true
-				patch.latestJoin = Date.now()
-			}
-			await ctx.db.patch(existing._id, patch)
+			await ctx.db.patch(existing._id, { lastTyped: Date.now() })
 		} else {
-			await ctx.db.insert("old_presence", {
-				user,
-				data: {
-					...data,
-					user: ctx.user.doc,
-				},
-				room,
-				present: true,
-				latestJoin: Date.now(),
+			await ctx.db.insert("typingIndicators", {
+				channelId,
+				accountId: ctx.account.id,
+				lastTyped: Date.now(),
 			})
 		}
 	},
 })
 
 /**
- * Updates the "updated" timestamp for a given user's presence in a room.
- *
- * @param room - The location associated with the presence data. Examples:
- * page, chat channel, game instance.
- * @param user - The user associated with the presence data.
+ * Returns a list of users who are actively typing in a room.
+ * This query filters out users whose `lastTyped` timestamp is older
+ * than the `TYPING_TIMEOUT`.
  */
-export const heartbeat = mutation({
-	args: { room: v.string(), user: v.string() },
-	handler: async (ctx, { room, user }) => {
-		const existing = await ctx.db
-			.query("old_presence_heartbeats")
-			.withIndex("by_room_user", (q) => q.eq("room", room).eq("user", user))
-			.unique()
+export const list = accountQuery({
+	args: {
+		channelId: v.id("channels"),
+	},
+	handler: async (ctx, { channelId }) => {
+		const threshold = Date.now() - TYPING_TIMEOUT
 
-		const markAsGone = await ctx.scheduler.runAfter(
-			MARK_AS_GONE_MS,
-			internal.typingIndicator.markAsGone,
-			{
-				room,
-				user,
-			},
-		)
+		const typingIndicators = await ctx.db
+			.query("typingIndicators")
+			.withIndex("by_channel_timestamp", (q) => q.eq("channelId", channelId).gt("lastTyped", threshold))
+			.collect()
+
+		const typingIndicatorsWithUsers = await asyncMap(typingIndicators, async (indicator) => {
+			if (indicator.accountId === ctx.account.id) return null
+
+			const account = await ctx.db.get(indicator.accountId)
+
+			if (!account) return null
+
+			return {
+				...indicator,
+				account,
+			}
+		})
+
+		return typingIndicatorsWithUsers.filter((indicator) => indicator !== null)
+	},
+})
+
+export const stop = accountMutation({
+	args: {
+		channelId: v.id("channels"),
+	},
+	handler: async (ctx, { channelId }) => {
+		const existing = await ctx.db
+			.query("typingIndicators")
+			.withIndex("by_accountId", (q) => q.eq("channelId", channelId).eq("accountId", ctx.account.id))
+			.unique()
 
 		if (existing) {
-			const watchdog = await ctx.db.system.get(existing.markAsGone)
-			if (watchdog && watchdog.state.kind === "pending") {
-				await ctx.scheduler.cancel(watchdog._id)
-			}
-			await ctx.db.patch(existing._id, {
-				markAsGone,
-			})
-		} else {
-			await ctx.db.insert("old_presence_heartbeats", {
-				user,
-				room,
-				markAsGone,
-			})
+			await ctx.db.delete(existing._id)
 		}
 	},
 })
 
-export const markAsGone = internalMutation({
-	args: { room: v.string(), user: v.string() },
-	handler: async (ctx, args) => {
-		const presence = await ctx.db
-			.query("old_presence")
-			.withIndex("room_user", (q) => q.eq("room", args.room).eq("user", args.user))
-			.unique()
-		if (!presence || presence.present === false) {
-			return
-		}
-		await ctx.db.patch(presence._id, { present: false })
-	},
-})
+const STALE_TIMEOUT = 60 * 60 * 1000
 
 /**
- * Lists the presence data for N users in a room, ordered by recent update.
- *
- * @param room - The location associated with the presence data. Examples:
- * page, chat channel, game instance.
- * @returns A list of presence objects, ordered by recent update, limited to
- * the most recent N.
+ * Internal mutation to clean up old, stale typing indicators from the database.
+ * This is run by a cron job and is not intended to be called by the client.
  */
-export const list = query({
-	args: { room: v.string() },
-	handler: async (ctx, { room }) => {
-		const presence = await ctx.db
-			.query("old_presence")
-			.withIndex("room_present_join", (q) => q.eq("room", room))
-			.take(LIST_LIMIT)
+export const cleanupOld = internalMutation({
+	handler: async (ctx) => {
+		const threshold = Date.now() - STALE_TIMEOUT
 
-		return presence.map(({ _creationTime, latestJoin, user, data, present }) => ({
-			created: _creationTime,
-			latestJoin,
-			user,
-			data,
-			present,
-		}))
+		const staleIndicators = await ctx.db
+			.query("typingIndicators")
+			.withIndex("by_timestamp", (q) => q.lt("lastTyped", threshold))
+			.take(100)
+
+		await Promise.all(staleIndicators.map((doc) => ctx.db.delete(doc._id)))
+
+		console.log(`Cleaned up ${staleIndicators.length} stale typing indicators.`)
 	},
 })

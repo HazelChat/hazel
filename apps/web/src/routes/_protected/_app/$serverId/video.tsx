@@ -1,5 +1,5 @@
 import type { HMSPeer, HMSScreenVideoTrack, HMSVideoTrack } from "@100mslive/hms-video-store"
-import { Toggle } from "@ark-ui/solid"
+import { Slider, Toggle } from "@ark-ui/solid"
 import type { Id } from "@hazel/backend"
 import { createFileRoute } from "@tanstack/solid-router"
 import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js"
@@ -18,9 +18,10 @@ export const Route = createFileRoute("/_protected/_app/$serverId/video")({
 
 function RouteComponent() {
 	const params = Route.useParams()
-	const { store, joinCall, leaveCall, setLocalAudio, setLocalVideo, toggleScreenShare } = useCallManager({
-		serverId: params().serverId as Id<"servers">,
-	})
+	const { store, joinCall, leaveCall, setLocalAudio, setLocalVideo, toggleScreenShare, setPeerVolume } =
+		useCallManager({
+			serverId: params().serverId as Id<"servers">,
+		})
 	const [roomCode, setRoomCode] = createSignal("ahf-hxjo-caw")
 
 	const handleJoinCall = async () => {
@@ -78,8 +79,25 @@ function RouteComponent() {
 					<ul class="space-y-1 text-sm">
 						<For each={store.peers}>
 							{(peer) => (
-								<li>
+								<li class="flex items-center gap-2">
 									{peer.name} ({peer.isLocal ? "You" : "Remote"})
+                                                                       <Show when={peer.audio}>
+                                                                              <Slider.Root
+                                                                               class="flex w-24 touch-none select-none items-center"
+                                                                               value={[peer.volume]}
+                                                                               min={0}
+                                                                               max={100}
+                                                                               step={1}
+                                                                               onValueChange={(e) => setPeerVolume(peer.audio!.id, e.value[0])}
+                                                                              >
+                                                                               <Slider.Control class="w-full">
+                                                                                      <Slider.Track class="relative h-1 w-full grow rounded-full bg-muted">
+                                                                                             <Slider.Range class="absolute h-full rounded-full bg-primary" />
+                                                                                      </Slider.Track>
+                                                                                      <Slider.Thumb index={0} class="block size-3 rounded-full border border-border bg-background" />
+                                                                               </Slider.Control>
+                                                                              </Slider.Root>
+                                                                       </Show>
 								</li>
 							)}
 						</For>

@@ -29,7 +29,11 @@ export const convexInfiniteQuery = <Query extends PaginatedQueryReference>(
 	})
 
 	const isDisabled = args === "skip"
-	const queryKey = [getFunctionName(query), isDisabled ? {} : JSON.stringify(convexToJson(args as any))]
+	const queryKey = [
+		"convexInfiniteQuery",
+		getFunctionName(query),
+		isDisabled ? {} : JSON.stringify(convexToJson(args as any)),
+	]
 
 	const queryOptions: SolidInfiniteQueryOptions<any, Error, any, any, any> = {
 		queryKey,

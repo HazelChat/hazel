@@ -1,7 +1,7 @@
 import { internalMutation } from "@hazel/backend/server"
-import { asyncMap } from "convex-helpers"
 import { v } from "convex/values"
-import { internal } from "../_generated/api"
+import { asyncMap } from "convex-helpers"
+import { api, internal } from "../_generated/api"
 
 const markdownToPlainText = (markdown: string): string => {
 	if (!markdown) return ""
@@ -24,7 +24,7 @@ const markdownToPlainText = (markdown: string): string => {
 	text = text.replace(/~~(.*?)~~/g, "$1")
 
 	// Convert links [text](url) to just the text
-	text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+	text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
 
 	// Remove headers (# ## ### etc)
 	text = text.replace(/^#{1,6}\s+/gm, "")
@@ -33,13 +33,13 @@ const markdownToPlainText = (markdown: string): string => {
 	text = text.replace(/^>\s+/gm, "")
 
 	// Convert unordered lists (remove - * +)
-	text = text.replace(/^[\s]*[-\*\+]\s+/gm, "• ")
+	text = text.replace(/^[\s]*[-*+]\s+/gm, "• ")
 
 	// Convert ordered lists (remove numbers)
 	text = text.replace(/^[\s]*\d+\.\s+/gm, "• ")
 
 	// Remove horizontal rules
-	text = text.replace(/^[-\*_]{3,}$/gm, "")
+	text = text.replace(/^[-*_]{3,}$/gm, "")
 
 	// Clean up extra whitespace and newlines
 	text = text.replace(/\n{3,}/g, "\n\n")
@@ -90,12 +90,30 @@ export const sendNotification = internalMutation({
 			})
 		})
 
+		const onlineUsers = await ctx.runQuery(internal.presence.listRoom, {
+			roomId: args.channelId,
+			onlineOnly: true,
+		})
+
 		await asyncMap(filteredChannelMembers, async (member) => {
+			if (!onlineUsers.find((user) => user.userId === member.userId)) return
+
+			await ctx.db.patch(member._id, {
+				notificationCount: member.notificationCount + 1,
+				lastSeenMessageId: member.lastSeenMessageId ?? message._id,
+			})
+
 			const user = await ctx.db.get(member.userId)
-			if (!user) return
+
+			if (!user) {
+				return
+			}
+
 			const account = await ctx.db.get(user.accountId)
 
-			if (!account) return
+			if (!account) {
+				return
+			}
 
 			const title =
 				channel.type === "single" || channel.type === "direct"
@@ -103,6 +121,7 @@ export const sendNotification = internalMutation({
 					: `${author.displayName} (#${channel.name}, ${server.name})`
 
 			const plainTextContent = markdownToPlainText(message.content)
+
 			await ctx.scheduler.runAfter(0, internal.expo.sendPushNotification, {
 				title: title,
 				to: account._id,

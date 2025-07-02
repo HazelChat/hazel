@@ -49,7 +49,10 @@ export class User {
 	public async validateCanViewChannel({
 		ctx,
 		channelId,
-	}: { ctx: GenericContext; channelId: Id<"channels"> }) {
+	}: {
+		ctx: GenericContext
+		channelId: Id<"channels">
+	}) {
 		if (!(await this.canViewChannel({ ctx, channelId }))) {
 			throw new Error("You do not have access to this channel")
 		}
@@ -81,5 +84,9 @@ export class User {
 
 	public get id(): Id<"users"> {
 		return this.user._id
+	}
+
+	public get accountId(): Id<"accounts"> {
+		return this.account.id
 	}
 }

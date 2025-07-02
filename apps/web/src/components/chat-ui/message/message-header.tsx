@@ -18,8 +18,6 @@ export function MessageHeader(props: MessageHeaderProps) {
 		})
 	})
 
-	const authorId = createMemo(() => props.message().authorId)
-
 	return (
 		<>
 			<Show when={props.showAvatar()}>

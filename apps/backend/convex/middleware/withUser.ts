@@ -14,7 +14,7 @@ export const userQuery = customQuery(query, {
 
 		const user = await User.fromIdentity(ctx, identity, args.serverId)
 
-		return { ctx: { ...ctx, user }, args }
+		return { ctx: { ...ctx, user, identity }, args }
 	},
 })
 
@@ -29,6 +29,6 @@ export const userMutation = customMutation(mutation, {
 
 		const user = await User.fromIdentity(ctx, identity, args.serverId)
 
-		return { ctx: { ...ctx, user }, args }
+		return { ctx: { ...ctx, user, identity }, args }
 	},
 })

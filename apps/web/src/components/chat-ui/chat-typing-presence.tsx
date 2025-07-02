@@ -1,45 +1,19 @@
-import type { Doc } from "@hazel/backend"
-import { useAuth } from "clerk-solidjs"
-import { type Accessor, For, Show, createEffect, createMemo } from "solid-js"
-import { createPresence } from "~/lib/convex-presence/create-presence"
-import { createTypingIndicator } from "~/lib/convex-presence/create-typing-indicator"
+import { For, Show, createMemo } from "solid-js"
+import { createTypingIndicator } from "~/lib/hooks/create-typing-indicator"
 import { useChat } from "../chat-state/chat-store"
 
 export const ChatTypingPresence = () => {
 	const { state } = useChat()
 
-	const { userId, ...rest } = useAuth()
-
 	const inputText = createMemo(() => state.inputText)
+	const channelId = createMemo(() => state.channelId)
 
-	const [data, others, updatePresence] = createPresence<{
-		typing: boolean
-		user: Doc<"users">
-	}>(
-		() => state.serverId,
-		() => state.channelId,
-		userId as Accessor<string>,
-		{
-			typing: false as boolean,
-			user: undefined!,
-		},
-	)
-
-	const isTyping = createMemo(() => data().typing)
-
-	createTypingIndicator(isTyping, inputText, updatePresence)
-
-	const presence = createMemo(() => {
-		const res = others()
-		if (!res) return []
-
-		return res.filter((p) => p.data.typing)
-	})
+	const { typingUsers } = createTypingIndicator(channelId, inputText)
 
 	return (
 		<div class="mb-2 h-3">
 			<Show
-				when={presence().length < 3}
+				when={typingUsers().length < 3}
 				fallback={
 					<div class="flex items-center gap-2 text-muted-foreground text-xs">
 						<div class="flex gap-1">
@@ -49,13 +23,13 @@ export const ChatTypingPresence = () => {
 						</div>
 
 						<div class="flex items-center gap-1">
-							<span class="font-medium">{presence().length} users</span>
+							<span class="font-medium">{typingUsers().length} users</span>
 							<span>are typing</span>
 						</div>
 					</div>
 				}
 			>
-				<For each={presence()}>
+				<For each={typingUsers()}>
 					{(precense) => (
 						<div class="flex items-center gap-2 text-muted-foreground text-xs">
 							<div class="flex gap-1">
@@ -65,7 +39,7 @@ export const ChatTypingPresence = () => {
 							</div>
 
 							<div class="flex items-center gap-1">
-								<span class="font-medium">{precense.data.user.displayName}</span>
+								<span class="font-medium">{precense.account.displayName}</span>
 								<span>is typing</span>
 							</div>
 						</div>
