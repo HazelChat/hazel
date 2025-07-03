@@ -46,6 +46,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		const messages = await t.query(api.messages.getMessages, {
@@ -65,12 +66,15 @@ describe("messages", () => {
 		const ct = convexTest()
 		const { server, userId, channelId, t } = await setupServerAndUser(ct)
 
-		const attachedFiles = ["file1.jpg", "file2.pdf", "file3.txt"]
+		const attachedFiles = [
+			{ key: "file1-key", fileName: "file1.jpg" },
+			{ key: "file2-key", fileName: "file2.pdf" },
+			{ key: "file3-key", fileName: "file3.txt" },
+		]
 
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
-
 			attachedFiles,
 		})
 
@@ -91,7 +95,7 @@ describe("messages", () => {
 		const originalMessageId = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "Original message",
 		})
 
@@ -99,7 +103,7 @@ describe("messages", () => {
 		const replyMessageId = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "This is a reply",
 			replyToMessageId: originalMessageId,
 		})
@@ -126,7 +130,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "Message in thread",
 			threadChannelId,
 		})
@@ -147,7 +151,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "Original content",
 		})
 
@@ -181,6 +185,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "User 1's message",
 		})
 
@@ -201,6 +206,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Delete the message
@@ -232,6 +238,7 @@ describe("messages", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// User 2 tries to delete User 1's message
@@ -253,7 +260,7 @@ describe("messages", () => {
 			const messageId = await createMessage(t, {
 				serverId: server,
 				channelId,
-
+				attachedFiles: [],
 				content: `Message ${i + 1}`,
 			})
 			messageIds.push(messageId)
@@ -297,6 +304,7 @@ describe("messages", () => {
 			createMessage(t2, {
 				serverId: server,
 				channelId: separateChannelId,
+				attachedFiles: [],
 			}),
 		).rejects.toThrow()
 	})
@@ -331,7 +339,7 @@ describe("messages", () => {
 		const message1Id = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "First message",
 		})
 
@@ -340,7 +348,7 @@ describe("messages", () => {
 		const message2Id = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "Second message",
 		})
 
@@ -349,7 +357,7 @@ describe("messages", () => {
 		const message3Id = await createMessage(t, {
 			serverId: server,
 			channelId,
-
+			attachedFiles: [],
 			content: "Third message",
 		})
 
@@ -374,6 +382,7 @@ describe("messages", () => {
 			createMessage(t, {
 				serverId: server,
 				channelId,
+				attachedFiles: [],
 				content: "",
 			}),
 		).rejects.toThrow()
@@ -387,6 +396,7 @@ describe("messages", () => {
 			createMessage(t, {
 				serverId: server,
 				channelId,
+				attachedFiles: [],
 				content: "   \n\t   ",
 			}),
 		).rejects.toThrow()
@@ -406,12 +416,14 @@ describe("messages", () => {
 		const message1Id = await createMessage(t1, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "Message from user 1",
 		})
 
 		const message2Id = await createMessage(t2, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "Message from user 2",
 		})
 
@@ -448,6 +460,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Add reaction
@@ -476,6 +489,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Add reaction
@@ -509,6 +523,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Add reaction
@@ -535,6 +550,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Add multiple different reactions
@@ -582,6 +598,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Both users add reactions
@@ -623,6 +640,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// User 1 adds reaction
@@ -651,6 +669,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId: separateChannelId,
+			attachedFiles: [],
 		})
 
 		// User 2 tries to react without being a member
@@ -672,6 +691,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 		await t.mutation(api.messages.deleteMessage, {
 			serverId: server,
@@ -694,6 +714,7 @@ describe("reactions", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Try to remove reaction that doesn't exist
@@ -715,6 +736,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Pin the message
@@ -742,6 +764,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Pin the message
@@ -775,18 +798,21 @@ describe("pinning", () => {
 		const message1Id = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "First message",
 		})
 
 		const message2Id = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "Second message",
 		})
 
 		const message3Id = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "Third message",
 		})
 
@@ -830,6 +856,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId: separateChannelId,
+			attachedFiles: [],
 		})
 
 		// User 2 tries to pin message without being a member
@@ -851,6 +878,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId: separateChannelId,
+			attachedFiles: [],
 		})
 
 		await t1.mutation(api.pinnedMessages.createPinnedMessage, {
@@ -877,6 +905,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t1, {
 			serverId: server,
 			channelId: separateChannelId,
+			attachedFiles: [],
 		})
 
 		const pinnedMessageId = await t1.mutation(api.pinnedMessages.createPinnedMessage, {
@@ -906,12 +935,14 @@ describe("pinning", () => {
 		const message1Id = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 			content: "Message in channel 1",
 		})
 
 		const message2Id = await createMessage(t, {
 			serverId: server,
 			channelId: channel2Id,
+			attachedFiles: [],
 			content: "Message in channel 2",
 		})
 
@@ -954,6 +985,7 @@ describe("pinning", () => {
 		const messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
+			attachedFiles: [],
 		})
 
 		// Pin the message

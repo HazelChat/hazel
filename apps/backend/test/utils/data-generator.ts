@@ -1,5 +1,5 @@
 import type { Id } from "@hazel/backend"
-import { type TestConvex, type TestConvexForDataModel, convexTest as _convexTest } from "convex-test"
+import { convexTest as _convexTest, type TestConvex, type TestConvexForDataModel } from "convex-test"
 import { vi } from "vitest"
 import { api } from "../../convex/_generated/api"
 import schema from "../../convex/schema"
@@ -66,7 +66,10 @@ export async function createMessage(
 		content?: string
 		replyToMessageId?: Id<"messages">
 		threadChannelId?: Id<"channels">
-		attachedFiles?: string[]
+		attachedFiles: {
+			key: string
+			fileName: string
+		}[]
 	},
 ) {
 	vi.useFakeTimers()
@@ -77,7 +80,7 @@ export async function createMessage(
 		content: props.content ?? "Test message content",
 		replyToMessageId: props.replyToMessageId,
 		threadChannelId: props.threadChannelId,
-		attachedFiles: props.attachedFiles || [],
+		attachedFiles: props.attachedFiles,
 	})
 
 	await t.finishAllScheduledFunctions(vi.runAllTimers)

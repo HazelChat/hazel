@@ -95,6 +95,7 @@ describe("channel", () => {
 			serverId: server,
 			channelId: parentChannelId,
 			content: "Message in parent channel",
+			attachedFiles: [],
 		})
 
 		// Create thread channel
