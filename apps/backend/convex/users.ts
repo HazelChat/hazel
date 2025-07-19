@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 import { accountMutation } from "./middleware/withAccount"
-import { userQuery } from "./middleware/withUser"
 import { organizationServerQuery } from "./middleware/withOrganizationServer"
+import { userQuery } from "./middleware/withUser"
 
 export const getUsers = userQuery({
 	args: {},

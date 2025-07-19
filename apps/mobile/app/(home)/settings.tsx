@@ -1,7 +1,7 @@
-import { View, Text } from "react-native"
 import { useUser } from "@clerk/clerk-expo"
-import { SignOutButton } from "@/components/SignOutButton"
+import { Text, View } from "react-native"
 import { NotificationHandler } from "@/components/notification-handler"
+import { SignOutButton } from "@/components/SignOutButton"
 
 export default function Settings() {
 	const { user } = useUser()

@@ -11,9 +11,7 @@ import type { Value } from "convex/values"
  *
  * @public
  */
-export type AuthTokenFetcher = (args: {
-	forceRefreshToken: boolean
-}) => Promise<string | null | undefined>
+export type AuthTokenFetcher = (args: { forceRefreshToken: boolean }) => Promise<string | null | undefined>
 
 export function parseArgs(args: Record<string, Value> | undefined): Record<string, Value> {
 	if (args === undefined) {

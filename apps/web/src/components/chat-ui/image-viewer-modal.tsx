@@ -1,19 +1,21 @@
-import { Format } from "@ark-ui/solid"
-import { type Accessor, For, Index, Show, createEffect, createSignal } from "solid-js"
-
-import { IconCopyStroke, IconDownloadDownStroke, IconLinkSlantStroke, IconExternalLinkCircleStroke, IconXComStroke } from "~/components/iconsv2"
+import { Dialog as ArkDialog, Format } from "@ark-ui/solid"
+import type { Doc } from "@hazel/backend"
+import { type Accessor, createEffect, createSignal, For, Index, Show } from "solid-js"
+import { Portal } from "solid-js/web"
+import { twMerge } from "tailwind-merge"
+import {
+	IconCopyStroke,
+	IconDownloadDownStroke,
+	IconExternalLinkCircleStroke,
+	IconLinkSlantStroke,
+	IconXComStroke,
+} from "~/components/iconsv2"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { toaster } from "~/components/ui/toaster"
 import { Tooltip } from "~/components/ui/tooltip"
-
-import { Portal } from "solid-js/web"
-import { Dialog, DialogBackdrop } from "../ui/dialog"
-
-import { Dialog as ArkDialog } from "@ark-ui/solid"
-import type { Doc } from "@hazel/backend"
-import { twMerge } from "tailwind-merge"
 import { Carousel } from "../ui/carousel"
+import { Dialog, DialogBackdrop } from "../ui/dialog"
 
 interface ImageViewerModalProps {
 	defaultImage: Accessor<string>

@@ -1,20 +1,19 @@
 import type { JSX, Resource } from "solid-js"
 import {
-	For,
-	Match,
-	Show,
-	Switch,
 	createEffect,
 	createMemo,
 	createResource,
 	createSignal,
+	For,
+	Match,
 	onMount,
+	Show,
+	Switch,
 } from "solid-js"
+import { createList } from "solid-list"
 import { IconSearchStroke } from "~/components/iconsv2"
 import { Popover } from "~/components/ui/popover"
 import { TextField } from "~/components/ui/text-field"
-
-import { createList } from "solid-list"
 
 // -----------------------------------------------------------------------------
 // Data Configuration & Loading
@@ -74,7 +73,7 @@ export async function loadEmojiData(): Promise<EmojiData> {
 
 		const processedData: EmojiData = {}
 		for (const emojiChar in rawData) {
-			if (Object.prototype.hasOwnProperty.call(rawData, emojiChar)) {
+			if (Object.hasOwn(rawData, emojiChar)) {
 				processedData[emojiChar] = {
 					...rawData[emojiChar],
 					emoji: emojiChar,
@@ -163,10 +162,7 @@ function getEmojiWithSkinTone(emojis: EmojiData, emoji: Emoji, skinToneComponent
 const RECENTS_KEY = "solid-emoji-picker-recents"
 const RECENTS_SLUG = "recents"
 
-function SkinToneSelector(props: {
-	value?: EmojiSkinTone
-	onChange: (skinTone?: EmojiSkinTone) => void
-}) {
+function SkinToneSelector(props: { value?: EmojiSkinTone; onChange: (skinTone?: EmojiSkinTone) => void }) {
 	const TONES: EmojiSkinTone[] = ["light", "medium-light", "medium", "medium-dark", "dark"]
 	const TONE_COLORS: Record<EmojiSkinTone, string> = {
 		light: "bg-[#FFDAB9]",

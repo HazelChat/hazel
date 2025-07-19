@@ -1,20 +1,18 @@
+import type { Root } from "hast"
 import { html } from "property-information"
+import remarkBreaks from "remark-breaks"
+import remarkGfm from "remark-gfm"
+import remarkHtml from "remark-html"
 import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
+import { highlight } from "remark-sugar-high"
 import { type Component, createEffect, createMemo, createRenderEffect, mergeProps } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { type PluggableList, unified } from "unified"
 import { VFile } from "vfile"
-import type { Options as TransformOptions } from "./types"
-
-import remarkGfm from "remark-gfm"
-import remarkHtml from "remark-html"
-import { highlight } from "remark-sugar-high"
-
-import type { Root } from "hast"
-import remarkBreaks from "remark-breaks"
 import rehypeFilter, { type Options as FilterOptions } from "./rehype-filter"
 import { MarkdownRoot } from "./renderer"
+import type { Options as TransformOptions } from "./types"
 
 type CoreOptions = {
 	children: string

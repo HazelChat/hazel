@@ -1,9 +1,10 @@
 import type { Element, Root, Text } from "hast"
 import { svg } from "property-information"
-import { type Component, For, Match, Show, Switch, createMemo, onCleanup } from "solid-js"
+import { type Component, createMemo, For, Match, onCleanup, Show, Switch } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import type { Context, SolidMarkdownNames } from "./types"
 import { addProperty, flattenPosition, getElementsBeforeCount, getInputElement } from "./utils"
+
 const own = {}.hasOwnProperty
 
 export const MarkdownRoot: Component<{

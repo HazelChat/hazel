@@ -1,7 +1,7 @@
-import { type HTMLArkProps, ark } from "@ark-ui/solid"
+import { ark, type HTMLArkProps } from "@ark-ui/solid"
 import { splitProps } from "solid-js"
 
-import { type VariantProps, tv } from "tailwind-variants"
+import { tv, type VariantProps } from "tailwind-variants"
 
 export type AvatarProps = {
 	name: string

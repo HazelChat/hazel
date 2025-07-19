@@ -2,9 +2,9 @@ import {
 	type HMSAudioTrack,
 	type HMSConfig,
 	HMSReactiveStore,
-       type HMSTrackID,
-       selectAudioTrackByID,
-       selectAudioTrackVolume,
+	type HMSTrackID,
+	selectAudioTrackByID,
+	selectAudioTrackVolume,
 	selectIsConnectedToRoom,
 	selectIsLocalAudioEnabled,
 	selectIsLocalScreenShared,
@@ -36,10 +36,10 @@ export function useCallManager() {
 	const [store, setStore] = createStore({
 		peers: hmsStore.getState(selectPeers).map((peer) => {
 			const track = hmsStore.getState(selectVideoTrackByID(peer.videoTrack))
-                        const audio = hmsStore.getState(selectAudioTrackByID(peer.audioTrack))
-                        const volume = hmsStore.getState(selectAudioTrackVolume(peer.audioTrack))
+			const audio = hmsStore.getState(selectAudioTrackByID(peer.audioTrack))
+			const volume = hmsStore.getState(selectAudioTrackVolume(peer.audioTrack))
 
-                        return { ...peer, track, audio, volume: volume ?? 100 }
+			return { ...peer, track, audio, volume: volume ?? 100 }
 		}),
 		isConnected: hmsStore.getState(selectIsConnectedToRoom),
 		local: {
@@ -126,13 +126,13 @@ export function useCallManager() {
 
 			setStore("isConnected", !!selectIsConnectedToRoom(store))
 
-                        const peers = selectPeers(store).map((peer) => {
-                                const track = selectVideoTrackByID(peer.videoTrack)(store)
-                                const audio = selectAudioTrackByID(peer.audioTrack)(store)
-                                const volume = selectAudioTrackVolume(peer.audioTrack)(store)
+			const peers = selectPeers(store).map((peer) => {
+				const track = selectVideoTrackByID(peer.videoTrack)(store)
+				const audio = selectAudioTrackByID(peer.audioTrack)(store)
+				const volume = selectAudioTrackVolume(peer.audioTrack)(store)
 
-                                return { ...peer, track, audio, volume: volume ?? 100 }
-                        })
+				return { ...peer, track, audio, volume: volume ?? 100 }
+			})
 
 			setStore("peers", reconcile(peers, { key: "id" }))
 

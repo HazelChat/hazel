@@ -48,24 +48,14 @@ export const NavUser = () => {
 						<Menu.ItemGroup>
 							<Menu.Item
 								value="settings"
-								asChild={(parentProps) => (
-									<Link
-										to="/app/settings"
-										{...parentProps()}
-									/>
-								)}
+								asChild={(parentProps) => <Link to="/app/settings" {...parentProps()} />}
 							>
 								<IconSettings01Stroke class="size-4" />
 								Settings
 							</Menu.Item>
 							<Menu.Item
 								value="billing"
-								asChild={(parentProps) => (
-									<Link
-										to="/app/billing"
-										{...parentProps()}
-									/>
-								)}
+								asChild={(parentProps) => <Link to="/app/billing" {...parentProps()} />}
 							>
 								<IconCreditCardStroke class="size-4" />
 								Billing

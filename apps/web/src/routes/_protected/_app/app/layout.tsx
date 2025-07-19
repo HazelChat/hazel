@@ -29,22 +29,14 @@ function RouteComponent() {
 	const queryClient = useQueryClient()
 	const navigate = Route.useNavigate()
 
-	const serverQuery = useQuery(() =>
-		convexQuery(api.servers.getCurrentServer, {}),
-	)
+	const serverQuery = useQuery(() => convexQuery(api.servers.getCurrentServer, {}))
 
-	const meQuery = useQuery(() =>
-		convexQuery(api.me.getCurrentUser, {}),
-	)
+	const meQuery = useQuery(() => convexQuery(api.me.getCurrentUser, {}))
 
 	createEffect(async () => {
 		await Promise.all([
-			queryClient.prefetchQuery(
-				convexQuery(api.servers.getCurrentServer, {}),
-			),
-			queryClient.prefetchQuery(
-				convexQuery(api.me.getCurrentUser, {}),
-			),
+			queryClient.prefetchQuery(convexQuery(api.servers.getCurrentServer, {})),
+			queryClient.prefetchQuery(convexQuery(api.me.getCurrentUser, {})),
 			queryClient.prefetchQuery(convexQuery(api.me.get, {})),
 			queryClient.prefetchQuery(
 				convexQuery(api.channels.getChannelsForOrganization, {

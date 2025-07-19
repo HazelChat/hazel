@@ -87,10 +87,7 @@ export const ChannelItem = (props: ChannelItemProps) => {
 	)
 }
 
-const MuteMenuItem = (props: {
-	channelId: Accessor<string>
-	isMuted: Accessor<boolean>
-}) => {
+const MuteMenuItem = (props: { channelId: Accessor<string>; isMuted: Accessor<boolean> }) => {
 	const updateChannelPreferences = createMutation(api.channels.updateChannelPreferencesForOrganization)
 
 	return (
@@ -109,10 +106,7 @@ const MuteMenuItem = (props: {
 	)
 }
 
-const FavoriteChannelMenuItem = (props: {
-	channelId: Accessor<string>
-	isFavorite: Accessor<boolean>
-}) => {
+const FavoriteChannelMenuItem = (props: { channelId: Accessor<string>; isFavorite: Accessor<boolean> }) => {
 	const updateChannelPreferences = createMutation(api.channels.updateChannelPreferencesForOrganization)
 
 	return (

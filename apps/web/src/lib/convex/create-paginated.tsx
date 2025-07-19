@@ -1,15 +1,14 @@
 import type { OptimisticLocalStore } from "convex/browser"
+import type { FunctionArgs, FunctionReference } from "convex/server"
 import {
 	type BetterOmit,
 	type Expand,
 	type FunctionReturnType,
+	getFunctionName,
 	type PaginationOptions,
 	type PaginationResult,
-	getFunctionName,
 } from "convex/server"
-import type { FunctionArgs, FunctionReference } from "convex/server"
-import { ConvexError, type Infer, type Value, convexToJson } from "convex/values"
-import { compareValues } from "convex/values"
+import { ConvexError, compareValues, convexToJson, type Infer, type Value } from "convex/values"
 import { type Accessor, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { useConvex } from "./client"
@@ -262,7 +261,7 @@ export function createPaginatedQuery<Query extends PaginatedQueryReference>(
 
 	const results = createMemo(() => {
 		const currState = currentState()
-		let currResult: any = undefined
+		let currResult: any
 
 		const allItems = []
 		for (const pageKey of currState.pageKeys) {

@@ -1,12 +1,11 @@
-import { Button, Platform, Text, View } from "react-native"
+import { api } from "@hazel/backend/api"
 
 import { useMutation } from "convex/react"
 import Constants from "expo-constants"
 import * as Device from "expo-device"
 import * as Notifications from "expo-notifications"
 import { useEffect, useState } from "react"
-
-import { api } from "@hazel/backend/api"
+import { Button, Platform, Text, View } from "react-native"
 import { ThemedText } from "./ThemedText"
 
 Notifications.setNotificationHandler({

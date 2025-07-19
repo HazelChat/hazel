@@ -8,11 +8,10 @@ import {
 	type FieldSelectProps,
 } from "@ark-ui/solid"
 import { type JSX, Show, splitProps } from "solid-js"
-import { tv } from "tailwind-variants"
-import { focusStyles } from "~/lib/primitive"
-import { useKeyboardSounds } from "~/lib/keyboard-sounds"
-
 import { twMerge } from "tailwind-merge"
+import { tv } from "tailwind-variants"
+import { useKeyboardSounds } from "~/lib/keyboard-sounds"
+import { focusStyles } from "~/lib/primitive"
 import { IconChevronDown } from "../icons/chevron-down"
 
 const fieldStyles = tv({

@@ -1,4 +1,4 @@
-import { type ParentProps, createContext, createSignal, onMount, useContext } from "solid-js"
+import { createContext, createSignal, onMount, type ParentProps, useContext } from "solid-js"
 
 export type Theme = "light" | "dark"
 

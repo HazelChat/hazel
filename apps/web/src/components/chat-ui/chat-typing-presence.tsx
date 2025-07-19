@@ -1,4 +1,4 @@
-import { For, Show, createMemo } from "solid-js"
+import { createMemo, For, Show } from "solid-js"
 import { createTypingIndicator } from "~/lib/hooks/create-typing-indicator"
 import { useChat } from "../chat-state/chat-store"
 

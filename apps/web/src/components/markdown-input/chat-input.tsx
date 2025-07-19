@@ -1,8 +1,7 @@
 import { type Accessor, type JSX, onMount, splitProps } from "solid-js"
-import { MarkdownInput } from "./markdown-input"
-import { useKeyboardSounds } from "~/lib/keyboard-sounds"
-
 import { highlight } from "sugar-high"
+import { useKeyboardSounds } from "~/lib/keyboard-sounds"
+import { MarkdownInput } from "./markdown-input"
 
 export interface ChatInputProps extends JSX.HTMLAttributes<HTMLDivElement> {
 	value: Accessor<string>
@@ -12,14 +11,14 @@ export interface ChatInputProps extends JSX.HTMLAttributes<HTMLDivElement> {
 export const ChatInput = (props: ChatInputProps) => {
 	const [baseProps, divProps] = splitProps(props, ["class", "value", "onValueChange"])
 	const { playSound } = useKeyboardSounds()
-	
+
 	const handleKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
 		const isPrintableKey = event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey
 		if (isPrintableKey || event.key === "Backspace" || event.key === "Delete") {
 			playSound()
 		}
 	}
-	
+
 	return (
 		<MarkdownInput
 			class="w-full py-3 outline-none"

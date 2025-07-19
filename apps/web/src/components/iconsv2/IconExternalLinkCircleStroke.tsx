@@ -1,19 +1,26 @@
 // stroke/arrows-&-chevrons
-import type { Component, JSX } from 'solid-js';
+import type { Component, JSX } from "solid-js"
 
 export const IconExternalLinkCircleStroke: Component<JSX.IntrinsicElements["svg"]> = (props) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={props.width || "24"}
-      height={props.height || "24"}
-      fill="none"
-      viewBox="0 0 24 24"
-      {...props}
-    >
-      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.974 13.5A7.11 7.11 0 0 1 12.89 20H12a8 8 0 0 1-8-8v-.889a7.11 7.11 0 0 1 6.5-7.085m9.26 5.429c.262-1.633.31-3.285.142-4.914a.5.5 0 0 0-.142-.3m0 0a.5.5 0 0 0-.301-.143 18.8 18.8 0 0 0-4.913.142m5.214 0L10 14" fill="none"/>
-    </svg>
-  );
-};
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={props.width || "24"}
+			height={props.height || "24"}
+			fill="none"
+			viewBox="0 0 24 24"
+			{...props}
+		>
+			<path
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M19.974 13.5A7.11 7.11 0 0 1 12.89 20H12a8 8 0 0 1-8-8v-.889a7.11 7.11 0 0 1 6.5-7.085m9.26 5.429c.262-1.633.31-3.285.142-4.914a.5.5 0 0 0-.142-.3m0 0a.5.5 0 0 0-.301-.143 18.8 18.8 0 0 0-4.913.142m5.214 0L10 14"
+				fill="none"
+			/>
+		</svg>
+	)
+}
 
-export default IconExternalLinkCircleStroke;
+export default IconExternalLinkCircleStroke

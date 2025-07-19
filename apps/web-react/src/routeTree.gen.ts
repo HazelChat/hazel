@@ -8,138 +8,131 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestRouteImport } from './routes/test'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppSettingsLayoutRouteImport } from './routes/_app/settings/layout'
-import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as rootRouteImport } from "./routes/__root"
+import { Route as AppSettingsIndexRouteImport } from "./routes/_app/settings/index"
+import { Route as AppSettingsLayoutRouteImport } from "./routes/_app/settings/layout"
+import { Route as IndexRouteImport } from "./routes/index"
+import { Route as LoginRouteImport } from "./routes/login"
+import { Route as TestRouteImport } from "./routes/test"
 
 const TestRoute = TestRouteImport.update({
-  id: '/test',
-  path: '/test',
-  getParentRoute: () => rootRouteImport,
+	id: "/test",
+	path: "/test",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
+	id: "/login",
+	path: "/login",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
+	id: "/",
+	path: "/",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const AppSettingsLayoutRoute = AppSettingsLayoutRouteImport.update({
-  id: '/_app/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
+	id: "/_app/settings",
+	path: "/settings",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSettingsLayoutRoute,
+	id: "/",
+	path: "/",
+	getParentRoute: () => AppSettingsLayoutRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/test': typeof TestRoute
-  '/settings': typeof AppSettingsLayoutRouteWithChildren
-  '/settings/': typeof AppSettingsIndexRoute
+	"/": typeof IndexRoute
+	"/login": typeof LoginRoute
+	"/test": typeof TestRoute
+	"/settings": typeof AppSettingsLayoutRouteWithChildren
+	"/settings/": typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/test': typeof TestRoute
-  '/settings': typeof AppSettingsIndexRoute
+	"/": typeof IndexRoute
+	"/login": typeof LoginRoute
+	"/test": typeof TestRoute
+	"/settings": typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/test': typeof TestRoute
-  '/_app/settings': typeof AppSettingsLayoutRouteWithChildren
-  '/_app/settings/': typeof AppSettingsIndexRoute
+	__root__: typeof rootRouteImport
+	"/": typeof IndexRoute
+	"/login": typeof LoginRoute
+	"/test": typeof TestRoute
+	"/_app/settings": typeof AppSettingsLayoutRouteWithChildren
+	"/_app/settings/": typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/test' | '/settings' | '/settings/'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/test' | '/settings'
-  id:
-    | '__root__'
-    | '/'
-    | '/login'
-    | '/test'
-    | '/_app/settings'
-    | '/_app/settings/'
-  fileRoutesById: FileRoutesById
+	fileRoutesByFullPath: FileRoutesByFullPath
+	fullPaths: "/" | "/login" | "/test" | "/settings" | "/settings/"
+	fileRoutesByTo: FileRoutesByTo
+	to: "/" | "/login" | "/test" | "/settings"
+	id: "__root__" | "/" | "/login" | "/test" | "/_app/settings" | "/_app/settings/"
+	fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
-  TestRoute: typeof TestRoute
-  AppSettingsLayoutRoute: typeof AppSettingsLayoutRouteWithChildren
+	IndexRoute: typeof IndexRoute
+	LoginRoute: typeof LoginRoute
+	TestRoute: typeof TestRoute
+	AppSettingsLayoutRoute: typeof AppSettingsLayoutRouteWithChildren
 }
 
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/test': {
-      id: '/test'
-      path: '/test'
-      fullPath: '/test'
-      preLoaderRoute: typeof TestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/settings/': {
-      id: '/_app/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof AppSettingsIndexRouteImport
-      parentRoute: typeof AppSettingsLayoutRoute
-    }
-  }
+declare module "@tanstack/react-router" {
+	interface FileRoutesByPath {
+		"/test": {
+			id: "/test"
+			path: "/test"
+			fullPath: "/test"
+			preLoaderRoute: typeof TestRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/login": {
+			id: "/login"
+			path: "/login"
+			fullPath: "/login"
+			preLoaderRoute: typeof LoginRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/": {
+			id: "/"
+			path: "/"
+			fullPath: "/"
+			preLoaderRoute: typeof IndexRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/_app/settings": {
+			id: "/_app/settings"
+			path: "/settings"
+			fullPath: "/settings"
+			preLoaderRoute: typeof AppSettingsLayoutRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/_app/settings/": {
+			id: "/_app/settings/"
+			path: "/"
+			fullPath: "/settings/"
+			preLoaderRoute: typeof AppSettingsIndexRouteImport
+			parentRoute: typeof AppSettingsLayoutRoute
+		}
+	}
 }
 
 interface AppSettingsLayoutRouteChildren {
-  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+	AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsLayoutRouteChildren: AppSettingsLayoutRouteChildren = {
-  AppSettingsIndexRoute: AppSettingsIndexRoute,
+	AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
-const AppSettingsLayoutRouteWithChildren =
-  AppSettingsLayoutRoute._addFileChildren(AppSettingsLayoutRouteChildren)
+const AppSettingsLayoutRouteWithChildren = AppSettingsLayoutRoute._addFileChildren(
+	AppSettingsLayoutRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  LoginRoute: LoginRoute,
-  TestRoute: TestRoute,
-  AppSettingsLayoutRoute: AppSettingsLayoutRouteWithChildren,
+	IndexRoute: IndexRoute,
+	LoginRoute: LoginRoute,
+	TestRoute: TestRoute,
+	AppSettingsLayoutRoute: AppSettingsLayoutRouteWithChildren,
 }
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()

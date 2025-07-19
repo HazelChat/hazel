@@ -1,10 +1,10 @@
-import { EmailSignIn } from "@/components/email-signin"
 import { useSSO } from "@clerk/clerk-expo"
 import { FontAwesome } from "@expo/vector-icons"
 import * as AuthSession from "expo-auth-session"
 import * as WebBrowser from "expo-web-browser"
 import React, { useCallback, useEffect } from "react"
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
+import { EmailSignIn } from "@/components/email-signin"
 
 export const useWarmUpBrowser = () => {
 	useEffect(() => {

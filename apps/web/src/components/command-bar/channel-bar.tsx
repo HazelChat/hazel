@@ -14,10 +14,10 @@ import { setCommandBarState } from "./command-bar"
 
 export const ChannelBar = () => {
 	const navigate = useNavigate()
-	
+
 	const serverQuery = useQuery(() => convexQuery(api.servers.getCurrentServer, {}))
 	const serverId = createMemo(() => serverQuery.data?._id as Id<"servers">)
-	
+
 	const channelQuery = useQuery(() =>
 		convexQuery(api.channels.getChannels, {
 			serverId: serverId(),

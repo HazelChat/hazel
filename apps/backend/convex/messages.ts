@@ -2,8 +2,8 @@ import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { asyncMap } from "convex-helpers"
 import { internal } from "./_generated/api"
-import { userMutation, userQuery } from "./middleware/withUser"
 import { organizationServerMutation, organizationServerQuery } from "./middleware/withOrganizationServer"
+import { userMutation, userQuery } from "./middleware/withUser"
 
 export const getMessageForOrganization = organizationServerQuery({
 	args: {

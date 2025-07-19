@@ -11,10 +11,7 @@ export function CarouselRoot(props: CarouselRootProps) {
 	)
 }
 
-export function CarouselItemGroup(props: {
-	class?: string
-	children: JSX.Element
-}) {
+export function CarouselItemGroup(props: { class?: string; children: JSX.Element }) {
 	return (
 		<ArkCarousel.ItemGroup class={twMerge("overflow-hidden rounded-lg shadow-lg", props.class)}>
 			{props.children}
@@ -22,11 +19,7 @@ export function CarouselItemGroup(props: {
 	)
 }
 
-export function CarouselItem(props: {
-	index: number
-	class?: string
-	children: JSX.Element
-}) {
+export function CarouselItem(props: { index: number; class?: string; children: JSX.Element }) {
 	return (
 		<ArkCarousel.Item
 			index={props.index}
@@ -37,10 +30,7 @@ export function CarouselItem(props: {
 	)
 }
 
-export function CarouselControl(props: {
-	class?: string
-	children: JSX.Element
-}) {
+export function CarouselControl(props: { class?: string; children: JSX.Element }) {
 	return (
 		<ArkCarousel.Control
 			class={twMerge(
@@ -53,10 +43,7 @@ export function CarouselControl(props: {
 	)
 }
 
-export function CarouselPrevTrigger(props: {
-	class?: string
-	children?: any
-}) {
+export function CarouselPrevTrigger(props: { class?: string; children?: any }) {
 	return (
 		<ArkCarousel.PrevTrigger
 			class={twMerge(
@@ -74,10 +61,7 @@ export function CarouselPrevTrigger(props: {
 	)
 }
 
-export function CarouselNextTrigger(props: {
-	class?: string
-	children?: any
-}) {
+export function CarouselNextTrigger(props: { class?: string; children?: any }) {
 	return (
 		<ArkCarousel.NextTrigger
 			class={twMerge(
@@ -95,10 +79,7 @@ export function CarouselNextTrigger(props: {
 	)
 }
 
-export function CarouselIndicatorGroup(props: {
-	class?: string
-	children: JSX.Element
-}) {
+export function CarouselIndicatorGroup(props: { class?: string; children: JSX.Element }) {
 	return (
 		<ArkCarousel.IndicatorGroup
 			class={twMerge(
@@ -111,10 +92,7 @@ export function CarouselIndicatorGroup(props: {
 	)
 }
 
-export function CarouselIndicator(props: {
-	index: number
-	class?: string
-}) {
+export function CarouselIndicator(props: { index: number; class?: string }) {
 	return (
 		<ArkCarousel.Indicator
 			index={props.index}

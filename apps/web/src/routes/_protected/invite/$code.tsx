@@ -1,6 +1,6 @@
 import { api } from "@hazel/backend/api"
 import { createFileRoute } from "@tanstack/solid-router"
-import { Show, createSignal } from "solid-js"
+import { createSignal, Show } from "solid-js"
 
 import { IconSpinnerStroke } from "~/components/iconsv2"
 import { Button } from "~/components/ui/button"

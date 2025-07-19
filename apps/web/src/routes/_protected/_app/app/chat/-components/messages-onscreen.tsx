@@ -1,4 +1,4 @@
-import { type ParentComponent, Show, createSignal, onCleanup, onMount } from "solid-js"
+import { createSignal, onCleanup, onMount, type ParentComponent, Show } from "solid-js"
 
 type MessageOnScreenProps = {
 	/**

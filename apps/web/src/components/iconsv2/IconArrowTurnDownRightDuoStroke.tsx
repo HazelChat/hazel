@@ -1,19 +1,35 @@
 // duo-stroke/arrows-&-chevrons
-import type { Component, JSX } from 'solid-js';
+import type { Component, JSX } from "solid-js"
 
 export const IconArrowTurnDownRightDuoStroke: Component<JSX.IntrinsicElements["svg"]> = (props) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={props.width || "24"}
-      height={props.height || "24"}
-      fill="none"
-      viewBox="0 0 24 24"
-      {...props}
-    >
-      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 15h-8c-2.8 0-4.2 0-5.27-.545a5 5 0 0 1-2.185-2.185C4 11.2 4 9.8 4 7V4" opacity=".28" fill="none"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.141 20a25.2 25.2 0 0 0 4.684-4.505.79.79 0 0 0 0-.99A25.2 25.2 0 0 0 15.141 10" fill="none"/>
-    </svg>
-  );
-};
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={props.width || "24"}
+			height={props.height || "24"}
+			fill="none"
+			viewBox="0 0 24 24"
+			{...props}
+		>
+			<path
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M20 15h-8c-2.8 0-4.2 0-5.27-.545a5 5 0 0 1-2.185-2.185C4 11.2 4 9.8 4 7V4"
+				opacity=".28"
+				fill="none"
+			/>
+			<path
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M15.141 20a25.2 25.2 0 0 0 4.684-4.505.79.79 0 0 0 0-.99A25.2 25.2 0 0 0 15.141 10"
+				fill="none"
+			/>
+		</svg>
+	)
+}
 
-export default IconArrowTurnDownRightDuoStroke;
+export default IconArrowTurnDownRightDuoStroke

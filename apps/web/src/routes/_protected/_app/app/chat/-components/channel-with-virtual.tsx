@@ -6,16 +6,16 @@ import { createVirtualizer } from "@tanstack/solid-virtual"
 import {
 	type Accessor,
 	type Component,
-	For,
-	type JSX,
-	Show,
 	createEffect,
 	createMemo,
 	createSignal,
+	For,
+	type JSX,
 	mapArray,
 	on,
 	onCleanup,
 	onMount,
+	Show,
 } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { ChatTypingPresence } from "~/components/chat-ui/chat-typing-presence"

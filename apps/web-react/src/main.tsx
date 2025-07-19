@@ -2,10 +2,9 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { AuthKitProvider } from "@workos-inc/authkit-react"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
-
-import { routeTree } from "./routeTree.gen"
 import reportWebVitals from "./reportWebVitals.ts"
-import "@/styles/globals.css";
+import { routeTree } from "./routeTree.gen"
+import "@/styles/globals.css"
 
 const router = createRouter({
 	routeTree,

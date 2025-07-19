@@ -1,5 +1,5 @@
-import { userQuery } from "./middleware/withUser"
 import { organizationServerQuery } from "./middleware/withOrganizationServer"
+import { userQuery } from "./middleware/withUser"
 
 export const getFriendsForOrganization = organizationServerQuery({
 	args: {},

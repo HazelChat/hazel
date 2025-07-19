@@ -1,19 +1,44 @@
 // contrast/arrows-&-chevrons
-import type { Component, JSX } from 'solid-js';
+import type { Component, JSX } from "solid-js"
 
 export const IconDoubleChevronRight1: Component<JSX.IntrinsicElements["svg"]> = (props) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={props.width || "24"}
-      height={props.height || "24"}
-      fill="none"
-      viewBox="0 0 24 24"
-      {...props}
-    >
-      <g fill="currentColor" opacity=".28"><path fill="currentColor"  d="M16.894 11.702A20.4 20.4 0 0 0 13 8l.165 2.205a24 24 0 0 1 0 3.59L13 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"/><path fill="currentColor"  d="M10.894 11.702A20.4 20.4 0 0 0 7 8l.165 2.205a24 24 0 0 1 0 3.59L7 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"/></g><path stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.894 11.702A20.4 20.4 0 0 0 13 8l.165 2.205a24 24 0 0 1 0 3.59L13 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"/><path stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.894 11.702A20.4 20.4 0 0 0 7 8l.165 2.205a24 24 0 0 1 0 3.59L7 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"/>
-    </svg>
-  );
-};
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={props.width || "24"}
+			height={props.height || "24"}
+			fill="none"
+			viewBox="0 0 24 24"
+			{...props}
+		>
+			<g fill="currentColor" opacity=".28">
+				<path
+					fill="currentColor"
+					d="M16.894 11.702A20.4 20.4 0 0 0 13 8l.165 2.205a24 24 0 0 1 0 3.59L13 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"
+				/>
+				<path
+					fill="currentColor"
+					d="M10.894 11.702A20.4 20.4 0 0 0 7 8l.165 2.205a24 24 0 0 1 0 3.59L7 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"
+				/>
+			</g>
+			<path
+				stroke="currentColor"
+				fill="none"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M16.894 11.702A20.4 20.4 0 0 0 13 8l.165 2.205a24 24 0 0 1 0 3.59L13 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"
+			/>
+			<path
+				stroke="currentColor"
+				fill="none"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M10.894 11.702A20.4 20.4 0 0 0 7 8l.165 2.205a24 24 0 0 1 0 3.59L7 16a20.4 20.4 0 0 0 3.894-3.702.47.47 0 0 0 0-.596Z"
+			/>
+		</svg>
+	)
+}
 
-export default IconDoubleChevronRight1;
+export default IconDoubleChevronRight1

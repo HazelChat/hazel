@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router"
 
 import { type } from "arktype"
-import { Match, Switch, createMemo } from "solid-js"
+import { createMemo, Match, Switch } from "solid-js"
 import { Serveronboarding } from "./-components/server-onboarding"
 import { Useronboarding } from "./-components/user-onboarding"
 

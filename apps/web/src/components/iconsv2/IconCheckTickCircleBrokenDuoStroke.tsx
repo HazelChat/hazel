@@ -1,19 +1,35 @@
 // duo-stroke/general
-import type { Component, JSX } from 'solid-js';
+import type { Component, JSX } from "solid-js"
 
 export const IconCheckTickCircleBrokenDuoStroke: Component<JSX.IntrinsicElements["svg"]> = (props) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={props.width || "24"}
-      height={props.height || "24"}
-      fill="none"
-      viewBox="0 0 24 24"
-      {...props}
-    >
-      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10.336a9.15 9.15 0 0 1-16.365 7.092A9.15 9.15 0 0 1 16.254 3.897" opacity=".28" fill="none"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21.035 5.403-.793.541a25.64 25.64 0 0 0-7.799 8.447l-.359.629L8.61 11" fill="none"/>
-    </svg>
-  );
-};
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={props.width || "24"}
+			height={props.height || "24"}
+			fill="none"
+			viewBox="0 0 24 24"
+			{...props}
+		>
+			<path
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M21 10.336a9.15 9.15 0 0 1-16.365 7.092A9.15 9.15 0 0 1 16.254 3.897"
+				opacity=".28"
+				fill="none"
+			/>
+			<path
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="m21.035 5.403-.793.541a25.64 25.64 0 0 0-7.799 8.447l-.359.629L8.61 11"
+				fill="none"
+			/>
+		</svg>
+	)
+}
 
-export default IconCheckTickCircleBrokenDuoStroke;
+export default IconCheckTickCircleBrokenDuoStroke

@@ -52,12 +52,7 @@ export const WorkspaceSwitcher = () => {
 										<Menu.Item
 											class="flex items-center gap-2"
 											value={server._id}
-											asChild={(props) => (
-												<Link
-													to="/app"
-													{...props()}
-												/>
-											)}
+											asChild={(props) => <Link to="/app" {...props()} />}
 										>
 											<Avatar size="xs" src={server.imageUrl} name={server.name} />
 											<span class="truncate text-muted-foreground text-xs">

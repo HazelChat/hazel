@@ -1,5 +1,5 @@
 import type { Doc } from "@hazel/backend"
-import { type Accessor, For, Show, createMemo } from "solid-js"
+import { type Accessor, createMemo, For, Show } from "solid-js"
 import { useChat } from "~/components/chat-state/chat-store"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"

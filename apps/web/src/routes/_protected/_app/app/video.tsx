@@ -2,7 +2,7 @@ import type { HMSPeer, HMSScreenVideoTrack, HMSVideoTrack } from "@100mslive/hms
 import { Slider, Toggle } from "@ark-ui/solid"
 import type { Id } from "@hazel/backend"
 import { createFileRoute } from "@tanstack/solid-router"
-import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js"
+import { createEffect, createMemo, createSignal, For, on, Show } from "solid-js"
 import { IconCallCancel } from "~/components/icons/call-cancel"
 import { IconMic } from "~/components/icons/mic"
 import { IconMicOff } from "~/components/icons/mic-off"
@@ -78,23 +78,26 @@ function RouteComponent() {
 							{(peer) => (
 								<li class="flex items-center gap-2">
 									{peer.name} ({peer.isLocal ? "You" : "Remote"})
-                                                                       <Show when={peer.audio}>
-                                                                              <Slider.Root
-                                                                               class="flex w-24 touch-none select-none items-center"
-                                                                               value={[peer.volume]}
-                                                                               min={0}
-                                                                               max={100}
-                                                                               step={1}
-                                                                               onValueChange={(e) => setPeerVolume(peer.audio!.id, e.value[0])}
-                                                                              >
-                                                                               <Slider.Control class="w-full">
-                                                                                      <Slider.Track class="relative h-1 w-full grow rounded-full bg-muted">
-                                                                                             <Slider.Range class="absolute h-full rounded-full bg-primary" />
-                                                                                      </Slider.Track>
-                                                                                      <Slider.Thumb index={0} class="block size-3 rounded-full border border-border bg-background" />
-                                                                               </Slider.Control>
-                                                                              </Slider.Root>
-                                                                       </Show>
+									<Show when={peer.audio}>
+										<Slider.Root
+											class="flex w-24 touch-none select-none items-center"
+											value={[peer.volume]}
+											min={0}
+											max={100}
+											step={1}
+											onValueChange={(e) => setPeerVolume(peer.audio!.id, e.value[0])}
+										>
+											<Slider.Control class="w-full">
+												<Slider.Track class="relative h-1 w-full grow rounded-full bg-muted">
+													<Slider.Range class="absolute h-full rounded-full bg-primary" />
+												</Slider.Track>
+												<Slider.Thumb
+													index={0}
+													class="block size-3 rounded-full border border-border bg-background"
+												/>
+											</Slider.Control>
+										</Slider.Root>
+									</Show>
 								</li>
 							)}
 						</For>

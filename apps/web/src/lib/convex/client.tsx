@@ -1,23 +1,22 @@
+import type { BaseConvexClientOptions, ConnectionState, QueryJournal } from "convex/browser"
 import { BaseConvexClient, type OptimisticUpdate, type QueryToken } from "convex/browser"
-import type { BaseConvexClientOptions, ConnectionState } from "convex/browser"
-import type { QueryJournal } from "convex/browser"
 import {
 	type FunctionArgs,
 	type FunctionReference,
 	type FunctionReturnType,
+	getFunctionName,
 	type OptionalRestArgs,
 	type UserIdentityAttributes,
-	getFunctionName,
 } from "convex/server"
-import { type Value, convexToJson } from "convex/values"
+import { convexToJson, type Value } from "convex/values"
 import {
 	type Accessor,
 	type Context,
-	type JSX,
 	createContext,
 	createEffect,
 	createMemo,
 	createSignal,
+	type JSX,
 	onCleanup,
 	useContext,
 } from "solid-js"
@@ -292,10 +291,7 @@ export const ConvexContext: Context<ConvexSolidClient | undefined> = createConte
 	ConvexSolidClient | undefined
 >()
 
-export function ConvexProvider(props: {
-	client: ConvexSolidClient
-	children: JSX.Element
-}) {
+export function ConvexProvider(props: { client: ConvexSolidClient; children: JSX.Element }) {
 	return <ConvexContext.Provider value={props.client}>{props.children}</ConvexContext.Provider>
 }
 

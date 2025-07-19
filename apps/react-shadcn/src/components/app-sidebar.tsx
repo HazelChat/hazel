@@ -1,5 +1,7 @@
-import { Link } from "@tanstack/react-router"
-import { Dialog } from "./ui/dialog"
+import IconChatChatting1 from "./icons/IconChatChatting1"
+import IconChatChattingDuoSolid from "./icons/IconChatChattingDuoSolid"
+import IconGridDashboard01DuoSolid from "./icons/IconGridDashboard01DuoSolid"
+import IconNotificationBellOn1 from "./icons/IconNotificationBellOn1"
 import {
 	Sidebar,
 	SidebarContent,
@@ -32,14 +34,14 @@ export const AppSidebar = () => {
 									// 	exact: true,
 									// }}
 								>
-									{/* <IconGridDashboard01DuoSolid /> */}
+									<IconGridDashboard01DuoSolid />
 									<span>Home</span>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2">
-									{/* <IconChatChatting1 /> */}
-									{/* <IconChatChattingDuoSolid /> */}
+									<IconChatChatting1 />
+									<IconChatChattingDuoSolid />
 									<span>Chat</span>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
@@ -57,7 +59,7 @@ export const AppSidebar = () => {
 						<SidebarGroupContent>
 							<SidebarMenuItem>
 								<SidebarMenuButton>
-									{/* <IconNotificationBellOn1 />  */}
+									<IconNotificationBellOn1 />
 									Notifications
 									<SidebarMenuBadge className="rounded-full bg-destructive">
 										1

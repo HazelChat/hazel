@@ -1,11 +1,9 @@
-import type { Value } from "convex/values"
-import { compareValues, convexToJson, jsonToConvex } from "convex/values"
 import type {
 	DataModelFromSchemaDefinition,
 	DocumentByInfo,
 	DocumentByName,
-	GenericDataModel,
 	GenericDatabaseReader,
+	GenericDataModel,
 	IndexNames,
 	IndexRange,
 	IndexRangeBuilder,
@@ -20,6 +18,8 @@ import type {
 	SystemDataModel,
 	TableNamesInDataModel,
 } from "convex/server"
+import type { Value } from "convex/values"
+import { compareValues, convexToJson, jsonToConvex } from "convex/values"
 
 export type IndexKey = Value[]
 
@@ -366,8 +366,8 @@ abstract class QueryStream<T extends GenericStreamItem> implements GenericOrdere
 				break
 			}
 		}
-		let pageStatus: "SplitRecommended" | "SplitRequired" | undefined = undefined
-		let splitCursor: IndexKey | undefined = undefined
+		let pageStatus: "SplitRecommended" | "SplitRequired" | undefined
+		let splitCursor: IndexKey | undefined
 		if (indexKeys.length === maxRowsToRead) {
 			pageStatus = "SplitRequired"
 			splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)]
@@ -995,7 +995,7 @@ export class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
 							}),
 						)
 						// Find index for the value with the lowest index key.
-						let minIndexKeyAndIndex: [IndexKey, number] | undefined = undefined
+						let minIndexKeyAndIndex: [IndexKey, number] | undefined
 						for (let i = 0; i < results.length; i++) {
 							const result = results[i]!
 							if (result.done || !result.value) {
@@ -1113,7 +1113,7 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
 	iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
 		const iterables = this.#streams.map((stream) => stream.iterWithKeys())
 		const comparisonInversion = this.#order === "asc" ? 1 : -1
-		let previousIndexKey: IndexKey | undefined = undefined
+		let previousIndexKey: IndexKey | undefined
 		return {
 			[Symbol.asyncIterator]() {
 				const iterators = iterables.map((iterable) => iterable[Symbol.asyncIterator]())
@@ -1557,7 +1557,7 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
 		this.#stream = stream
 		this.#distinctIndexFields = distinctIndexFields
 		// distinctIndexFields must be a prefix of the stream's ordering index fields
-		let distinctIndexFieldsLength: number | undefined = undefined
+		let distinctIndexFieldsLength: number | undefined
 		for (const orderingIndexFields of getOrderingIndexFields(stream)) {
 			const prefix = orderingIndexFields.slice(0, distinctIndexFields.length)
 			if (equalIndexFields(prefix, distinctIndexFields)) {

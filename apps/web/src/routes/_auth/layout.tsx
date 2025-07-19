@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute } from "@tanstack/solid-router"
+import { createFileRoute, Outlet } from "@tanstack/solid-router"
 
 export const Route = createFileRoute("/_auth")({
 	component: RouteComponent,

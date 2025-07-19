@@ -1,22 +1,19 @@
+import type { Doc, Id } from "@hazel/backend"
+import { api } from "@hazel/backend/api"
+import { useQuery } from "@tanstack/solid-query"
 import { useNavigate } from "@tanstack/solid-router"
-import { type Accessor, For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
+import { type Accessor, createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
+import { createMultiList } from "solid-list"
+import { IconCheck } from "~/components/icons/check"
 import { IconPlusSmall } from "~/components/icons/plus-small"
 import { Avatar } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Dialog } from "~/components/ui/dialog"
-
 import { TextField } from "~/components/ui/text-field"
-
-import type { Doc, Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/solid-query"
-import { createMultiList } from "solid-list"
-import { IconCheck } from "~/components/icons/check"
 import { createMutation } from "~/lib/convex"
 import { convexQuery } from "~/lib/convex-query"
 import { cn } from "~/lib/utils"
-
 
 export const CreateDmDialog = () => {
 	const friendsQuery = useQuery(() => convexQuery(api.social.getFriendsForOrganization, {}))

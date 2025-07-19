@@ -1,8 +1,7 @@
 import { v } from "convex/values"
+import { asyncMap } from "convex-helpers"
 import { internalMutation, query } from "./_generated/server"
 import { accountMutation, accountQuery } from "./middleware/withAccount"
-
-import { asyncMap } from "convex-helpers"
 
 // The duration in milliseconds to consider a user as "still typing".
 // After this timeout, they will be considered to have stopped typing.

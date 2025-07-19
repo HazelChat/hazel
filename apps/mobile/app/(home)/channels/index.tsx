@@ -1,7 +1,7 @@
-import { Link } from "expo-router"
-import { useQuery } from "convex/react"
 import { api } from "@hazel/backend/api"
-import { View, Text, FlatList, TouchableOpacity } from "react-native"
+import { useQuery } from "convex/react"
+import { Link } from "expo-router"
+import { FlatList, Text, TouchableOpacity, View } from "react-native"
 
 export default function ChannelList() {
 	const servers = useQuery(api.servers.getServersForUser, {})

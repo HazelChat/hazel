@@ -1,13 +1,13 @@
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/solid-query"
 import { createFileRoute } from "@tanstack/solid-router"
-import { Show, Suspense, createSignal } from "solid-js"
+import { createSignal, Show, Suspense } from "solid-js"
 import { Button } from "~/components/ui/button"
 import { Card } from "~/components/ui/card"
 import { SelectNative } from "~/components/ui/select-native"
 import { convexQuery } from "~/lib/convex-query"
-import { useTheme } from "~/lib/theme"
 import { useKeyboardSounds } from "~/lib/keyboard-sounds"
+import { useTheme } from "~/lib/theme"
 
 export const Route = createFileRoute("/_protected/_app/app/settings")({
 	component: RouteComponent,

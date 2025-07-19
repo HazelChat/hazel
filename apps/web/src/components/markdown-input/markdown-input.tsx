@@ -1,7 +1,7 @@
 import { ContentEditable } from "@bigmistqke/solid-contenteditable"
-import { type Accessor, For, type JSX, Show, createSignal, splitProps } from "solid-js"
+import { type Accessor, createSignal, For, type JSX, Show, splitProps } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import { type BaseTokenType, type Token, type TokenPattern, parseMarkdownTokens } from "./parser"
+import { type BaseTokenType, parseMarkdownTokens, type Token, type TokenPattern } from "./parser"
 
 type TokenRenderer<T extends string> = (token: Token<T>) => JSX.Element
 

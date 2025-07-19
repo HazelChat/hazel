@@ -1,16 +1,15 @@
+import { makePersisted } from "@solid-primitives/storage"
 import {
 	type DefinedUseInfiniteQueryResult,
 	type InfiniteData,
-	type SolidInfiniteQueryOptions,
 	useInfiniteQuery as internalUseInfiniteQuery,
+	type SolidInfiniteQueryOptions,
 	useQueryClient,
 } from "@tanstack/solid-query"
 import { type FunctionReturnType, getFunctionName } from "convex/server"
 import { convexToJson } from "convex/values"
 import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
 import { type PaginatedQueryArgs, type PaginatedQueryReference, useConvex } from "../convex"
-
-import { makePersisted } from "@solid-primitives/storage"
 
 export interface ConvexPaginatedQueryOptions {
 	numItems: number
@@ -132,33 +131,28 @@ export function useConvexInfiniteQuery<Query extends PaginatedQueryReference>(
 					// )
 
 					if (result) {
-						queryClient.setQueryData(
-							queryOptions.queryKey,
-							(oldData: {
-								pages: any[]
-							}) => {
-								if (!oldData) return oldData
+						queryClient.setQueryData(queryOptions.queryKey, (oldData: { pages: any[] }) => {
+							if (!oldData) return oldData
 
-								const currentPage = oldData.pages[pageIndex]
+							const currentPage = oldData.pages[pageIndex]
 
-								if (
-									currentPage &&
-									currentPage.page?.length === result.page?.length &&
-									JSON.stringify(currentPage.page) === JSON.stringify(result.page) &&
-									currentPage.continueCursor === result.continueCursor
-								) {
-									return oldData
-								}
+							if (
+								currentPage &&
+								currentPage.page?.length === result.page?.length &&
+								JSON.stringify(currentPage.page) === JSON.stringify(result.page) &&
+								currentPage.continueCursor === result.continueCursor
+							) {
+								return oldData
+							}
 
-								const newPages = [...oldData.pages]
-								newPages[pageIndex] = result
+							const newPages = [...oldData.pages]
+							newPages[pageIndex] = result
 
-								return {
-									...oldData,
-									pages: newPages,
-								}
-							},
-						)
+							return {
+								...oldData,
+								pages: newPages,
+							}
+						})
 					}
 				})
 
