@@ -13,6 +13,8 @@ import { Route as AppLayoutRouteImport } from './routes/app/layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
+import { Route as AppChatRouteImport } from './routes/app/chat'
 
 const AppLayoutRoute = AppLayoutRouteImport.update({
   id: '/app',
@@ -34,15 +36,29 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppLayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppLayoutRouteWithChildren
+  '/app/chat': typeof AppChatRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/chat': typeof AppChatRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/app': typeof AppIndexRoute
 }
@@ -50,15 +66,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppLayoutRouteWithChildren
+  '/app/chat': typeof AppChatRoute
+  '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/auth/login' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/chat'
+    | '/app/notifications'
+    | '/auth/login'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/login' | '/app'
-  id: '__root__' | '/' | '/app' | '/auth/login' | '/app/'
+  to: '/' | '/app/chat' | '/app/notifications' | '/auth/login' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/chat'
+    | '/app/notifications'
+    | '/auth/login'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -97,14 +128,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppLayoutRoute
+    }
+    '/app/chat': {
+      id: '/app/chat'
+      path: '/chat'
+      fullPath: '/app/chat'
+      preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppLayoutRoute
+    }
   }
 }
 
 interface AppLayoutRouteChildren {
+  AppChatRoute: typeof AppChatRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppLayoutRouteChildren: AppLayoutRouteChildren = {
+  AppChatRoute: AppChatRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
