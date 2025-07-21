@@ -2,7 +2,8 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { ChannelItem, DmChannelLink } from "./channel-item"
 import IconChatChatting1 from "./icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "./icons/IconGridDashboard01DuoSolid"
 import IconNotificationBellOn1 from "./icons/IconNotificationBellOn1"
@@ -26,9 +27,27 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 
 export const AppSidebar = () => {
+	const channelsQuery = useQuery(
+		convexQuery(api.channels.getChannelsForOrganization, {
+			favoriteFilter: {
+				favorite: false,
+			},
+		}),
+	)
+
+	const dmChannels = useMemo(() => channelsQuery.data?.dmChannels || [], [channelsQuery.data])
+
+	const [createChannelModalOpen, setCreateChannelModalOpen] = useState(false)
+
+	// TODO: Add presence state when available
+	const presenceState = { presenceList: [] }
+
 	return (
 		<Sidebar collapsible="icon" className="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
-			<Sidebar collapsible="none" className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r">
+			<Sidebar
+				collapsible="none"
+				className="w-[calc(var(--sidebar-width-icon)+1px)]! border-primary border-r"
+			>
 				<SidebarHeader>{/* <WorkspaceSwitcher /> */}</SidebarHeader>
 				<SidebarContent>
 					<SidebarGroup>
@@ -64,7 +83,7 @@ export const AppSidebar = () => {
 				</SidebarContent>
 				<SidebarFooter>{/* <NavUser /> */}</SidebarFooter>
 			</Sidebar>
-			<Sidebar collapsible="none" className="hidden flex-1 md:flex">
+			<Sidebar collapsible="none" className="hidden flex-1 border-primary md:flex">
 				<SidebarHeader className="gap-3.5 p-4">
 					<div className="flex w-full items-center justify-between">
 						<ActiveServer />
@@ -89,8 +108,8 @@ export const AppSidebar = () => {
 						<SidebarGroupLabel>Channels</SidebarGroupLabel>
 						<SidebarGroupAction>
 							<Dialog
-							// open={createChannelModalOpen()}
-							// onOpenChange={(details) => setCreateChannelModalOpen(details.open)}
+								open={createChannelModalOpen}
+								onOpenChange={setCreateChannelModalOpen}
 							>
 								<DialogTrigger asChild>
 									<IconButton className="size-4.5" asChild>
@@ -119,9 +138,9 @@ export const AppSidebar = () => {
 						</SidebarGroupAction>
 						<SidebarGroupContent>
 							<SidebarMenu>
-								{/* <Index each={channelsQuery.data?.serverChannels}>
-									{(channel) => <ChannelItem channel={channel} />}
-								</Index> */}
+								{channelsQuery.data?.organizationChannels?.map((channel) => (
+									<ChannelItem key={channel._id} channel={channel} />
+								))}
 							</SidebarMenu>
 						</SidebarGroupContent>
 					</SidebarGroup>
@@ -129,14 +148,13 @@ export const AppSidebar = () => {
 						<SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
 						<SidebarGroupAction>{/* <CreateDmDialog /> */}</SidebarGroupAction>
 						<SidebarMenu>
-							{/* <Index each={dmChannels()}>
-									{(channel) => (
-										<DmChannelLink
-											userPresence={presenceState.presenceList}
-											channel={channel}
-										/>
-									)}
-								</Index> */}
+							{dmChannels.map((channel) => (
+								<DmChannelLink
+									key={channel._id}
+									userPresence={presenceState.presenceList}
+									channel={channel}
+								/>
+							))}
 						</SidebarMenu>
 					</SidebarGroup>
 				</SidebarContent>
