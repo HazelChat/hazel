@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Color } from "react-aria-components"
 import { ColorField, ColorSwatch, parseColor, Radio, RadioGroup } from "react-aria-components"
 import { Dark, Light, System } from "~/components/application/modals/appearances"
+import { generateRgbShades } from "~/components/application/modals/base-components/generate-shades"
 
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { SectionLabel } from "~/components/application/section-headers/section-label"
@@ -22,23 +23,68 @@ export const Route = createFileRoute("/app/settings/")({
 
 function AppearanceSettings() {
 	const colorSwatches = [
-		"#535862",
-		"#099250",
-		"#1570EF",
-		"#444CE7",
-		"#6938EF",
-		"#BA24D5",
-		"#DD2590",
-		"#E04F16",
+		{ hex: "#535862", name: "gray" },
+		{ hex: "#099250", name: "green" },
+		{ hex: "#1570EF", name: "blue" },
+		{ hex: "#444CE7", name: "indigo" },
+		{ hex: "#6938EF", name: "purple" },
+		{ hex: "#BA24D5", name: "fuchsia" },
+		{ hex: "#DD2590", name: "pink" },
+		{ hex: "#E04F16", name: "orange" },
 	]
 
-	const [customColor, setCustomColor] = useState<Color>(parseColor("#7F56D9"))
-	const [color, setColor] = useState<Color>(customColor)
+	// Get saved color from localStorage or default
+	const getSavedColor = () => {
+		try {
+			const savedColorHex = localStorage.getItem("brand-color")
+			if (savedColorHex) {
+				return parseColor(savedColorHex)
+			}
+		} catch {
+			// localStorage not available or invalid color
+		}
+		return parseColor("#7F56D9") // Default color
+	}
+
+	const [customColor, setCustomColor] = useState<Color>(getSavedColor())
+	const [color, setColor] = useState<Color>(getSavedColor())
 	const [_uploadedAvatar, _setUploadedAvatar] = useState<string | undefined>(
 		"https://www.untitledui.com/logos/images/ContrastAI.jpg",
 	)
 
 	const { theme, setTheme } = useTheme()
+
+	useEffect(() => {
+		// Save color to localStorage
+		try {
+			localStorage.setItem("brand-color", color.toString("hex"))
+		} catch {
+			// localStorage not available
+		}
+
+		const existingColorSwatch = colorSwatches.find((swatch) => swatch.hex === color.toString("hex"))
+		if (existingColorSwatch) {
+			const shades = ["25", "50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
+
+			// Re-map the brand color variables to the existing primitive color variables.
+			shades.forEach((shade) =>
+				document.documentElement.style.setProperty(
+					`--color-brand-${shade}`,
+					`var(--color-${existingColorSwatch.name}-${shade})`,
+				),
+			)
+
+			return
+		}
+
+		const shades = generateRgbShades(color.toString("hex"))
+		if (!shades) return
+
+		// Set the brand color variables to the new custom color shades.
+		Object.entries(shades).forEach(([key, { r, g, b }]) =>
+			document.documentElement.style.setProperty(`--color-brand-${key}`, `rgb(${r} ${g} ${b})`),
+		)
+	}, [color])
 
 	const handleCustomColorChange = (value: Color | null) => {
 		if (!value) return
@@ -106,16 +152,16 @@ function AppearanceSettings() {
 							className="flex flex-col items-start gap-4 md:flex-row md:items-center"
 						>
 							<div className="flex gap-2">
-								{colorSwatches.map((color) => (
+								{colorSwatches.map((swatch) => (
 									<Radio
-										key={color}
-										value={color}
-										aria-label={parseColor(color).getColorName("en-US")}
+										key={swatch.hex}
+										value={swatch.hex}
+										aria-label={parseColor(swatch.hex).getColorName("en-US")}
 									>
 										{({ isSelected, isFocused }) => (
 											<ColorSwatch
-												id={`color-${color}`}
-												color={color}
+												id={`color-${swatch.hex}`}
+												color={swatch.hex}
 												className={cx(
 													"-outline-offset-1 size-7 cursor-pointer rounded-full outline-1 outline-black/10",
 													(isSelected || isFocused) &&
