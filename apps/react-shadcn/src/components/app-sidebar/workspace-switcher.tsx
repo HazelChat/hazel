@@ -47,7 +47,7 @@ export const WorkspaceSwitcher = () => {
 				>
 					<Avatar
 						size="xs"
-						src={currentOrg?.logoUrl}
+						src={currentOrg?.logoUrl || `https://avatar.vercel.sh/${currentOrg?.workosId}`}
 						initials={currentOrg?.name?.slice(0, 2).toUpperCase() || "??"}
 						alt={currentOrg?.name || "Organization"}
 					/>
@@ -67,7 +67,7 @@ export const WorkspaceSwitcher = () => {
 									<div className="flex items-center gap-2">
 										<Avatar
 											size="xs"
-											src={org.logoUrl}
+											src={org.logoUrl || `https://avatar.vercel.sh/${org.workosId}`}
 											initials={org.name.slice(0, 2).toUpperCase()}
 											alt={org.name}
 										/>
