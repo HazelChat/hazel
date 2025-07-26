@@ -54,7 +54,7 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/app/chat" search={{ channelId: channel._id }}>
+				<Link to="/app/chat/$id" params={{ id: channel._id }}>
 					<IconHashtagStroke className="size-5" />
 					<p className={cn("text-ellipsis text-nowrap", channel.isMuted && "opacity-60")}>
 						{channel.name}
@@ -77,7 +77,7 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 					</SidebarMenuAction>
 				</Pressable>
 
-				<Dropdown.Popover placement="left top">
+				<Dropdown.Popover placement="right top" className="w-42">
 					<Dropdown.Menu>
 						<Dropdown.Item
 							onAction={handleToggleMute}
@@ -169,7 +169,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/app/chat" search={{ channelId: channel._id }}>
+				<Link to="/app/chat/$id" params={{ id: channel._id }}>
 					<div className="-space-x-4 flex items-center justify-center">
 						{channel.type === "single" && filteredMembers.length === 1 ? (
 							<div className="flex items-center justify-center gap-3">
@@ -225,7 +225,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 						<span className="sr-only">More</span>
 					</SidebarMenuAction>
 				</Pressable>
-				<Dropdown.Popover>
+				<Dropdown.Popover placement="right top" className="w-42">
 					<Dropdown.Menu>
 						<Dropdown.Section>
 							<Dropdown.Item
