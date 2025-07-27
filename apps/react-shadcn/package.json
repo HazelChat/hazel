@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@convex-dev/react-query": "^0.0.0-alpha.11",
+		"@fontsource/inter": "^5.2.6",
 		"@hazel/backend": "workspace:*",
 		"@radix-ui/react-avatar": "^1.1.10",
 		"@radix-ui/react-dialog": "^1.1.14",

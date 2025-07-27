@@ -1,4 +1,4 @@
-import { useConvexMutation } from "@convex-dev/react-query"
+import { useConvexAction } from "@convex-dev/react-query"
 import { api } from "@hazel/backend/api"
 import { Building02 } from "@untitledui/icons"
 import { useCallback, useState } from "react"
@@ -24,7 +24,7 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 	const [slugError, setSlugError] = useState("")
 	const [logoUrlError, setLogoUrlError] = useState("")
 
-	const createOrganizationMutation = useConvexMutation(api.organizations.create)
+	const createOrganizationAction = useConvexAction(api.organizations.create)
 
 	// Generate slug from name
 	const generateSlug = useCallback((name: string) => {
@@ -102,13 +102,13 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 
 		setIsCreating(true)
 		try {
-			await createOrganizationMutation({
+			await createOrganizationAction({
 				name: name.trim(),
 				slug: slug.trim(),
 				logoUrl: logoUrl.trim() || undefined,
 			})
 
-			toast.success(`Organization "${name}" created successfully`)
+			toast.success(`Organization "${name}" created successfully!`)
 
 			// Close modal and reset state
 			onOpenChange(false)
@@ -118,14 +118,14 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 			setSlugError("")
 			setLogoUrlError("")
 
-			// The WorkOS organization is created asynchronously, so we can't switch immediately
-			// Instead, we'll show a success message and let the user know
-			toast.info("Setting up your new organization. Please wait a moment and then refresh the page.")
+			// The organization has been created in WorkOS
+			// The webhook will handle creating the Convex records
+			toast.info("Your new organization is being set up. The page will refresh shortly.")
 
-			// Optionally refresh after a delay to allow WorkOS creation to complete
+			// Refresh after a short delay to allow the webhook to process
 			setTimeout(() => {
 				window.location.reload()
-			}, 3000)
+			}, 2000)
 		} catch (error: any) {
 			console.error("Failed to create organization:", error)
 			if (error.message?.includes("slug already exists")) {
@@ -140,7 +140,6 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 
 	const handleClose = () => {
 		onOpenChange(false)
-		// Reset state when closing
 		setName("")
 		setSlug("")
 		setLogoUrl("")

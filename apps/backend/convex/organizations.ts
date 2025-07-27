@@ -1,55 +1,51 @@
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
-import { internalAction, internalMutation, internalQuery, query } from "./_generated/server"
+import { action, internalQuery, query } from "./_generated/server"
 import { accountMutation, accountQuery } from "./middleware/withAccount"
 import { organizationServerMutation } from "./middleware/withOrganization"
 
-export const create = accountMutation({
+export const create = action({
 	args: {
 		name: v.string(),
 		slug: v.string(),
 		logoUrl: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		// Check if slug is already taken
-		const existingOrg = await ctx.db
-			.query("organizations")
-			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
-			.first()
+		// Get the user identity from auth
+		const identity = await ctx.auth.getUserIdentity()
+		if (!identity) {
+			throw new Error("Not authenticated")
+		}
+
+		// Check if slug already exists
+		const existingOrg = await ctx.runQuery(internal.organizations.checkSlugExists, {
+			slug: args.slug,
+		})
 
 		if (existingOrg) {
 			throw new Error("Organization slug already exists")
 		}
 
-		// For now, we'll create the organization with a temporary WorkOS ID
-		// and schedule the WorkOS creation to happen asynchronously
-		const tempWorkosId = `org_temp_${Math.random().toString(36).substring(2, 11)}`
+		// Create the organization directly in WorkOS
+		const workosResult: { success: boolean; organization?: any; error?: string } = await ctx.runAction(
+			internal.workosActions.createWorkosOrganization,
+			{
+				name: args.name,
+				slug: args.slug,
+				creatorUserId: identity.subject, // Use the WorkOS user ID from identity
+			},
+		)
 
-		// Create organization in Convex first
-		const organizationId = await ctx.db.insert("organizations", {
-			workosId: tempWorkosId,
-			name: args.name,
+		if (!workosResult.success || !workosResult.organization) {
+			throw new Error(workosResult.error || "Failed to create organization in WorkOS")
+		}
+
+		return {
+			workosId: workosResult.organization.id,
+			name: workosResult.organization.name,
 			slug: args.slug,
 			logoUrl: args.logoUrl,
-		})
-
-		// Add creator as owner
-		await ctx.db.insert("organizationMembers", {
-			organizationId,
-			userId: ctx.account.doc._id,
-			role: "owner",
-			joinedAt: Date.now(),
-		})
-
-		// Schedule WorkOS organization creation
-		await ctx.scheduler.runAfter(0, internal.organizations.createInWorkOS, {
-			organizationId,
-			name: args.name,
-			slug: args.slug,
-			creatorUserId: ctx.account.doc.externalId,
-		})
-
-		return { organizationId, workosId: tempWorkosId }
+		}
 	},
 })
 
@@ -260,45 +256,16 @@ export const getAllOrganizations = internalQuery({
 	},
 })
 
-// Internal action to create organization in WorkOS after Convex creation
-export const createInWorkOS = internalAction({
+// Internal query to check if slug exists
+export const checkSlugExists = internalQuery({
 	args: {
-		organizationId: v.id("organizations"),
-		name: v.string(),
 		slug: v.string(),
-		creatorUserId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		// Call WorkOS to create the organization
-		const workosResult = await ctx.runAction(internal.workosActions.createWorkosOrganization, {
-			name: args.name,
-			slug: args.slug,
-			creatorUserId: args.creatorUserId,
-		})
-
-		if (workosResult.success && workosResult.organization) {
-			// Update the organization with the real WorkOS ID
-			await ctx.runMutation(internal.organizations.updateWorkosId, {
-				organizationId: args.organizationId,
-				workosId: workosResult.organization.id,
-			})
-		} else {
-			// If WorkOS creation failed, we might want to mark the organization
-			// or handle this error in some way
-			console.error("Failed to create organization in WorkOS:", workosResult.error)
-		}
-	},
-})
-
-// Internal mutation to update WorkOS ID after successful creation
-export const updateWorkosId = internalMutation({
-	args: {
-		organizationId: v.id("organizations"),
-		workosId: v.string(),
-	},
-	handler: async (ctx, args) => {
-		await ctx.db.patch(args.organizationId, {
-			workosId: args.workosId,
-		})
+		const org = await ctx.db
+			.query("organizations")
+			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
+			.first()
+		return !!org
 	},
 })

@@ -165,13 +165,11 @@ export const createWorkosOrganization = internalAction({
 	}),
 	handler: async (_ctx, { name, slug, creatorUserId }) => {
 		try {
-			// Create the organization in WorkOS
 			const organization = await workos.organizations.createOrganization({
 				name,
 				domains: [],
 			})
 
-			// Add the creator as an owner member
 			await workos.userManagement.createOrganizationMembership({
 				userId: creatorUserId,
 				organizationId: organization.id,
