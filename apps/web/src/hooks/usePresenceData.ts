@@ -1,6 +1,6 @@
+import usePresence from "@convex-dev/presence/react"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
-import usePresence from "@convex-dev/presence/react"
 
 // Re-export the PresenceState type from the package
 export interface PresenceState {

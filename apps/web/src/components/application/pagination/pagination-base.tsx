@@ -1,5 +1,5 @@
 import type { CSSProperties, FC, HTMLAttributes, ReactNode } from "react"
-import React, {
+import {
 	cloneElement,
 	createContext,
 	isValidElement,

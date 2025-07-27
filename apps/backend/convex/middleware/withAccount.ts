@@ -31,4 +31,3 @@ export const accountMutation = customMutation(mutation, {
 		return { ctx: { ...ctx, account, identity }, args }
 	},
 })
-

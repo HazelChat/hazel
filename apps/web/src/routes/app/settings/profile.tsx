@@ -6,7 +6,6 @@ import { useAuth } from "@workos-inc/authkit-react"
 import { type } from "arktype"
 import { useEffect } from "react"
 import { toast } from "sonner"
-import { useAppForm } from "~/hooks/use-app-form"
 import { SectionFooter } from "~/components/application/section-footers/section-footer"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { SectionLabel } from "~/components/application/section-headers/section-label"
@@ -14,6 +13,7 @@ import { Button } from "~/components/base/buttons/button"
 import { Form } from "~/components/base/form/form"
 import { InputBase, TextField } from "~/components/base/input/input"
 import { Label } from "~/components/base/input/label"
+import { useAppForm } from "~/hooks/use-app-form"
 
 export const Route = createFileRoute("/app/settings/profile")({
 	component: ProfileSettings,

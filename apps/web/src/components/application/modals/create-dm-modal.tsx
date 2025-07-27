@@ -17,11 +17,11 @@ import { Input } from "~/components/base/input/input"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconCheckTickCircle from "~/components/icons/IconCheckTickCircle"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
-import { cx } from "~/utils/cx"
 import { useAppForm } from "~/hooks/use-app-form"
+import { cx } from "~/utils/cx"
 
 const dmFormSchema = type({
-	userId: "string"
+	userId: "string",
 })
 
 type DmFormData = typeof dmFormSchema.infer
@@ -42,13 +42,13 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 
 	const form = useAppForm({
 		defaultValues: {
-			userId: ""
+			userId: "",
 		} as DmFormData,
 		validators: {
 			onChange: dmFormSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const user = friendsQuery.data?.find(u => u?._id === value.userId)
+			const user = friendsQuery.data?.find((u) => u?._id === value.userId)
 			if (!user) return
 
 			try {
@@ -208,9 +208,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 								>
 									Cancel
 								</Button>
-								<form.Subscribe
-									selector={(state) => [state.canSubmit, state.isSubmitting]}
-								>
+								<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
 									{([canSubmit, isSubmitting]) => (
 										<Button
 											color="primary"

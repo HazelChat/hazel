@@ -1,6 +1,5 @@
 import { v } from "convex/values"
 import { asyncMap } from "convex-helpers"
-import { Account } from "./lib/activeRecords/account"
 import { userMutation } from "./middleware/withUser"
 
 export const setNotifcationAsRead = userMutation({

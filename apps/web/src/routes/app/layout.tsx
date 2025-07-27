@@ -1,6 +1,3 @@
-import { convexQuery } from "@convex-dev/react-query"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router"
 import { Authenticated, Unauthenticated } from "convex/react"
 import { AppSidebar } from "~/components/app-sidebar/app-sidebar"
@@ -12,17 +9,10 @@ export const Route = createFileRoute("/app")({
 })
 
 function RouteComponent() {
-	// Fetch organization and user data
-	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
-	const userQuery = useQuery(convexQuery(api.me.getCurrentUser, {}))
-
-	const organizationId = organizationQuery.data?.directive === "success" ? organizationQuery.data.data._id : undefined
-	const userId = userQuery.data?._id
-
 	return (
 		<>
 			<Authenticated>
-				<PresenceProvider organizationId={organizationId} userId={userId}>
+				<PresenceProvider>
 					<SidebarProvider>
 						<AppSidebar />
 						<SidebarInset>

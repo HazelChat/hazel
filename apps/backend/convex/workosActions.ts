@@ -11,7 +11,7 @@ export const verifyWorkosWebhook = internalAction({
 		payload: v.any(),
 		signature: v.string(),
 	}),
-	handler: async (_ctx, { payload, signature }) => {
+	handler: async (_ctx, { payload }) => {
 		try {
 			// const event = await workos.webhooks.constructEvent({
 			// 	sigHeader: signature,
@@ -164,7 +164,7 @@ export const createWorkosOrganization = internalAction({
 		slug: v.string(),
 		creatorUserId: v.string(),
 	}),
-	handler: async (_ctx, { name, slug, creatorUserId }) => {
+	handler: async (_ctx, { name, creatorUserId }) => {
 		try {
 			const organization = await workos.organizations.createOrganization({
 				name,

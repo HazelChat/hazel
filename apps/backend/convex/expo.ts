@@ -33,7 +33,7 @@ export const getStatusForUser = accountQuery({
 export const sendPushNotification = internalMutation({
 	args: { title: v.string(), body: v.optional(v.string()), to: v.id("users") },
 	handler: async (ctx, args) => {
-		const _pushId = await pushNotifications.sendPushNotification(ctx, {
+		await pushNotifications.sendPushNotification(ctx, {
 			userId: args.to,
 			allowUnregisteredTokens: true,
 			notification: {
