@@ -17,6 +17,7 @@ import { Avatar } from "~/components/base/avatar/avatar"
 import { Badge, type BadgeColor, BadgeWithDot } from "~/components/base/badges/badges"
 import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
+import { usePresence } from "~/components/presence/presence-provider"
 
 export const Route = createFileRoute("/app/settings/team")({
 	component: RouteComponent,
@@ -38,6 +39,8 @@ function RouteComponent() {
 	const resendInvitationMutation = useConvexMutation(api.invitations.resendInvitation)
 	const revokeInvitationMutation = useConvexMutation(api.invitations.revokeInvitation)
 
+	const { isUserOnline } = usePresence()
+
 	const isLoading = teamMembersQuery === undefined
 	const isInvitationsLoading = invitationsQuery === undefined
 
@@ -47,7 +50,7 @@ function RouteComponent() {
 			name: `${user.firstName} ${user.lastName}`,
 			email: user.email,
 			avatarUrl: user.avatarUrl,
-			status: user.status === "online" ? "Active" : "Offline",
+			status: isUserOnline(user._id) ? "Active" : "Offline",
 			role: user.role,
 		})) || []
 
@@ -160,6 +163,7 @@ function RouteComponent() {
 												src={member.avatarUrl}
 												initials={getInitials(member.name)}
 												alt={member.name}
+												status={member.status === "Active" ? "online" : "offline"}
 											/>
 											<p className="font-medium text-primary text-sm">{member.name}</p>
 										</div>
@@ -267,7 +271,7 @@ function RouteComponent() {
 									</Table.Cell>
 
 									<Table.Cell>
-										<p className="text-tertiary text-sm">
+										<p className="text-sm text-tertiary">
 											{invitation.inviterName || "System"}
 										</p>
 									</Table.Cell>
@@ -277,7 +281,7 @@ function RouteComponent() {
 										</BadgeWithDot>
 									</Table.Cell>
 									<Table.Cell>
-										<p className="text-tertiary text-sm">
+										<p className="text-sm text-tertiary">
 											{formatTimeRemaining(invitation.timeUntilExpiry)}
 										</p>
 									</Table.Cell>

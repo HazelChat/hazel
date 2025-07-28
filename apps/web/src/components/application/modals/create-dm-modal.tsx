@@ -16,6 +16,7 @@ import { CloseButton } from "~/components/base/buttons/close-button"
 import { Input } from "~/components/base/input/input"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconCheckTickCircle from "~/components/icons/IconCheckTickCircle"
+import { usePresence } from "~/components/presence/presence-provider"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
 import { useAppForm } from "~/hooks/use-app-form"
 import { cx } from "~/utils/cx"
@@ -36,6 +37,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const [selectedUser, setSelectedUser] = useState<Doc<"users"> | null>(null)
 
 	const navigate = useNavigate()
+	const { isUserOnline } = usePresence()
 
 	const friendsQuery = useQuery(convexQuery(api.social.getFriendsForOrganization, {}))
 	const createDmChannelMutation = useConvexMutation(api.channels.createDmChannel)
@@ -178,12 +180,17 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 															src={user?.avatarUrl}
 															initials={`${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`}
 															alt={`${user?.firstName || ""} ${user?.lastName || ""}`}
+															status={
+																isUserOnline(user?._id || "")
+																	? "online"
+																	: "offline"
+															}
 														/>
 														<div className="flex flex-col">
 															<p className="font-medium text-primary text-sm">
 																{user?.firstName || ""} {user?.lastName || ""}
 															</p>
-															{user?.status === "online" && (
+															{isUserOnline(user?._id || "") && (
 																<span className="text-success text-xs">
 																	Active now
 																</span>
