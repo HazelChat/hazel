@@ -38,7 +38,7 @@ export const ToastsOverlay = () => {
 				<div
 					key={position}
 					className={cx(
-						"pointer-events-none fixed z-40 hidden h-72.5 w-130 transition duration-500 xs:block",
+						"pointer-events-none fixed z-40 xs:block hidden h-72.5 w-130 transition duration-500",
 						style.className,
 						positions.includes(position as keyof typeof styles)
 							? "visible opacity-100"
@@ -51,7 +51,7 @@ export const ToastsOverlay = () => {
 			))}
 			<div
 				className={cx(
-					"pointer-events-none fixed right-0 bottom-0 left-0 z-40 h-67.5 w-full bg-linear-to-t from-black/10 to-transparent transition duration-500 xs:hidden",
+					"pointer-events-none fixed right-0 bottom-0 left-0 z-40 xs:hidden h-67.5 w-full bg-linear-to-t from-black/10 to-transparent transition duration-500",
 					positions.length > 0 ? "visible opacity-100" : "invisible opacity-0",
 				)}
 			/>

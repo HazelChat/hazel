@@ -295,8 +295,8 @@ export function EmojiPicker(props: EmojiPickerProps) {
 	const { active, setActive, onKeyDown } = createList({
 		items: () =>
 			search().length > 0
-				? searchResults().map((e, index) => index)
-				: displayGroups().flatMap((e) => e.emojis.map((e, index) => index)),
+				? searchResults().map((_e, index) => index)
+				: displayGroups().flatMap((e) => e.emojis.map((_e, index) => index)),
 		orientation: "horizontal",
 		handleTab: true,
 	})

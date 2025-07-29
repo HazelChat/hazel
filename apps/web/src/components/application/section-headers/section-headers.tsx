@@ -2,7 +2,7 @@ import type { ComponentPropsWithRef } from "react"
 import { cx } from "~/utils/cx"
 
 const SectionHeaderRoot = (props: ComponentPropsWithRef<"div">) => (
-	<div {...props} className={cx("flex flex-col gap-5 border-b border-secondary pb-5", props.className)}>
+	<div {...props} className={cx("flex flex-col gap-5 border-secondary border-b pb-5", props.className)}>
 		{props.children}
 	</div>
 )
@@ -20,7 +20,7 @@ const SectionHeaderActions = (props: ComponentPropsWithRef<"div">) => (
 )
 
 const SectionHeaderHeading = (props: ComponentPropsWithRef<"h2">) => (
-	<h2 {...props} className={cx("text-lg font-semibold text-primary", props.className)}>
+	<h2 {...props} className={cx("font-semibold text-lg text-primary", props.className)}>
 		{props.children}
 	</h2>
 )

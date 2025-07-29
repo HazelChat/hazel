@@ -9,7 +9,8 @@ import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { Select } from "~/components/base/select/select"
-import { IconHashtagStroke, IconPlusStroke } from "~/components/icons"
+import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
+import IconPlusStroke from "~/components/icons/IconPlusStroke"
 import { useAppForm } from "~/hooks/use-app-form"
 
 const channelSchema = type({

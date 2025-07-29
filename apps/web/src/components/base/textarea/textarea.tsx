@@ -31,10 +31,10 @@ export const TextAreaBase = ({ className, ...props }: TextAreaBaseProps) => {
 			}
 			className={(state) =>
 				cx(
-					"w-full scroll-py-3 rounded-lg bg-primary px-3.5 py-3 text-md text-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset placeholder:text-placeholder autofill:rounded-lg autofill:text-primary focus:outline-hidden",
+					"w-full scroll-py-3 rounded-lg bg-primary px-3.5 py-3 text-md text-primary shadow-xs ring-1 ring-primary ring-inset transition duration-100 ease-linear placeholder:text-placeholder autofill:rounded-lg autofill:text-primary focus:outline-hidden",
 
 					// Resize handle
-					"[&::-webkit-resizer]:bg-(image:--resize-handle-bg) [&::-webkit-resizer]:bg-contain dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark)",
+					"[&::-webkit-resizer]:bg-(image:--resize-handle-bg) dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark) [&::-webkit-resizer]:bg-contain",
 
 					state.isFocused && !state.isDisabled && "ring-2 ring-brand",
 					state.isDisabled && "cursor-not-allowed bg-disabled_subtle text-disabled ring-disabled",

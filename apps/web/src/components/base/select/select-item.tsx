@@ -30,7 +30,7 @@ export const SelectItem = ({
 	const { size } = useContext(SelectContext)
 
 	const labelOrChildren = label || (typeof children === "string" ? children : "")
-	const textValue = supportingText ? labelOrChildren + " " + supportingText : labelOrChildren
+	const textValue = supportingText ? `${labelOrChildren} ${supportingText}` : labelOrChildren
 
 	return (
 		<AriaListBoxItem
@@ -58,7 +58,7 @@ export const SelectItem = ({
 			{(state) => (
 				<div
 					className={cx(
-						"flex cursor-pointer items-center gap-2 rounded-md outline-hidden select-none",
+						"flex cursor-pointer select-none items-center gap-2 rounded-md outline-hidden",
 						state.isSelected && "bg-active",
 						state.isDisabled && "cursor-not-allowed",
 						state.isFocused && "bg-primary_hover",
@@ -83,7 +83,7 @@ export const SelectItem = ({
 						<AriaText
 							slot="label"
 							className={cx(
-								"truncate text-md font-medium whitespace-nowrap text-primary",
+								"truncate whitespace-nowrap font-medium text-md text-primary",
 								state.isDisabled && "text-disabled",
 							)}
 						>
@@ -94,7 +94,7 @@ export const SelectItem = ({
 							<AriaText
 								slot="description"
 								className={cx(
-									"text-md whitespace-nowrap text-tertiary",
+									"whitespace-nowrap text-md text-tertiary",
 									state.isDisabled && "text-disabled",
 								)}
 							>

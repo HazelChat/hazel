@@ -82,7 +82,7 @@ function AppearanceSettings() {
 		)
 	}, [color])
 
-	const handleCustomColorChange = (value: Color | null) => {
+	const _handleCustomColorChange = (value: Color | null) => {
 		if (!value) return
 
 		// Always update the selected color when custom color changes

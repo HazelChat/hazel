@@ -67,7 +67,7 @@ describe("messages", () => {
 
 		const attachedFiles = ["file1.jpg", "file2.pdf", "file3.txt"]
 
-		const messageId = await createMessage(t, {
+		const _messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
 
@@ -123,7 +123,7 @@ describe("messages", () => {
 
 		const threadChannelId = await createChannel(t, { serverId: server })
 
-		const messageId = await createMessage(t, {
+		const _messageId = await createMessage(t, {
 			serverId: server,
 			channelId,
 
@@ -328,7 +328,7 @@ describe("messages", () => {
 		const { server, userId, channelId, t } = await setupServerAndUser(ct)
 
 		// Create messages with slight delays to ensure different timestamps
-		const message1Id = await createMessage(t, {
+		const _message1Id = await createMessage(t, {
 			serverId: server,
 			channelId,
 
@@ -337,7 +337,7 @@ describe("messages", () => {
 
 		vi.advanceTimersByTime(10)
 
-		const message2Id = await createMessage(t, {
+		const _message2Id = await createMessage(t, {
 			serverId: server,
 			channelId,
 
@@ -346,7 +346,7 @@ describe("messages", () => {
 
 		vi.advanceTimersByTime(10)
 
-		const message3Id = await createMessage(t, {
+		const _message3Id = await createMessage(t, {
 			serverId: server,
 			channelId,
 
@@ -403,13 +403,13 @@ describe("messages", () => {
 		})
 
 		// Both users create messages
-		const message1Id = await createMessage(t1, {
+		const _message1Id = await createMessage(t1, {
 			serverId: server,
 			channelId,
 			content: "Message from user 1",
 		})
 
-		const message2Id = await createMessage(t2, {
+		const _message2Id = await createMessage(t2, {
 			serverId: server,
 			channelId,
 			content: "Message from user 2",
@@ -879,7 +879,7 @@ describe("pinning", () => {
 			channelId: separateChannelId,
 		})
 
-		const pinnedMessageId = await t1.mutation(api.pinnedMessages.createPinnedMessage, {
+		const _pinnedMessageId = await t1.mutation(api.pinnedMessages.createPinnedMessage, {
 			serverId: server,
 			messageId,
 			channelId: separateChannelId,

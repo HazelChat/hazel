@@ -364,7 +364,7 @@ export function createQuery<Query extends FunctionReference<"query">>(
 		return { skip, argsObject }
 	})
 
-	const queryName = getFunctionName(query)
+	const _queryName = getFunctionName(query)
 	const client = useConvex()
 
 	const [result, setResult] = createSignal<Query["_returnType"] | undefined>(undefined)

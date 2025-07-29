@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_protected/_app/app/profile/$id")({
 
 function RouteComponent() {
 	const params = Route.useParams()
-	const nav = useNavigate()
+	const _nav = useNavigate()
 	const userQuery = useQuery(() =>
 		convexQuery(api.users.getUserForOrganization, {
 			userId: params().id as Id<"users">,

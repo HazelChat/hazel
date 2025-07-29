@@ -84,8 +84,6 @@ export const MessageComposer = () => {
 				className={"h-32 w-full resize-none"}
 			/>
 
-			<ButtonUtility icon={Recording02} size="xs" color="tertiary" className="absolute top-2 right-2" />
-
 			<div className="absolute right-3.5 bottom-2 flex items-center gap-2">
 				<div className="flex items-center gap-0.5">
 					<ButtonUtility icon={Attachment01} size="xs" color="tertiary" />

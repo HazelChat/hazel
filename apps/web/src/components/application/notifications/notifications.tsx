@@ -44,7 +44,7 @@ export const IconNotification = ({
 	const showProgress = typeof progress === "number"
 
 	return (
-		<div className="relative z-[var(--z-index)] flex max-w-full flex-col gap-4 rounded-xl bg-primary_alt p-4 shadow-lg ring ring-secondary_alt xs:w-[var(--width)] xs:flex-row">
+		<div className="relative z-[var(--z-index)] flex xs:w-[var(--width)] max-w-full xs:flex-row flex-col gap-4 rounded-xl bg-primary_alt p-4 shadow-lg ring ring-secondary_alt">
 			<FeaturedIcon
 				icon={icon || iconMap[color]}
 				color={color === "default" ? "gray" : color}
@@ -60,8 +60,8 @@ export const IconNotification = ({
 				)}
 			>
 				<div className="flex flex-col gap-1">
-					<p className="text-sm font-semibold text-fg-primary">{title}</p>
-					<p className="text-sm text-fg-secondary">{description}</p>
+					<p className="font-semibold text-fg-primary text-sm">{title}</p>
+					<p className="text-fg-secondary text-sm">{description}</p>
 				</div>
 
 				{showProgress && (
@@ -119,16 +119,16 @@ export const AvatarNotification = ({
 	onConfirm,
 }: AvatarNotificationProps) => {
 	return (
-		<div className="relative z-[var(--z-index)] flex max-w-full flex-col items-start gap-4 rounded-xl bg-primary_alt p-4 shadow-lg ring ring-secondary_alt xs:w-[var(--width)] xs:flex-row">
+		<div className="relative z-[var(--z-index)] flex xs:w-[var(--width)] max-w-full xs:flex-row flex-col items-start gap-4 rounded-xl bg-primary_alt p-4 shadow-lg ring ring-secondary_alt">
 			<Avatar size="md" src={avatar} alt={name} status="online" />
 
 			<div className="flex flex-col gap-3 pr-8">
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center gap-2">
-						<p className="text-sm font-semibold text-fg-primary">{name}</p>
-						<span className="text-sm text-fg-quaternary">{date}</span>
+						<p className="font-semibold text-fg-primary text-sm">{name}</p>
+						<span className="text-fg-quaternary text-sm">{date}</span>
 					</div>
-					<p className="text-sm text-fg-secondary">{content}</p>
+					<p className="text-fg-secondary text-sm">{content}</p>
 				</div>
 
 				<div className="flex gap-3">
@@ -182,9 +182,9 @@ export const ImageNotification = ({
 					"--width": "496px",
 				} as React.CSSProperties
 			}
-			className="relative z-[var(--z-index)] flex max-w-full flex-col gap-3 rounded-xl bg-primary_alt p-4 shadow-lg max-md:ring-1 max-md:ring-secondary_alt xs:w-[var(--width)] xs:flex-row xs:gap-0 md:p-0"
+			className="relative z-[var(--z-index)] flex xs:w-[var(--width)] max-w-full xs:flex-row flex-col gap-3 xs:gap-0 rounded-xl bg-primary_alt p-4 shadow-lg max-md:ring-1 max-md:ring-secondary_alt md:p-0"
 		>
-			<div className="-my-px hidden w-40 shrink-0 overflow-hidden rounded-l-xl outline-1 -outline-offset-1 outline-black/10 md:block">
+			<div className="-my-px -outline-offset-1 hidden w-40 shrink-0 overflow-hidden rounded-l-xl outline-1 outline-black/10 md:block">
 				<img
 					aria-hidden="true"
 					src={imageMobile}
@@ -195,8 +195,8 @@ export const ImageNotification = ({
 
 			<div className="flex flex-col gap-4 rounded-r-xl bg-primary_alt md:gap-3 md:p-4 md:pl-5 md:ring-1 md:ring-secondary_alt">
 				<div className="flex flex-col gap-1 pr-8">
-					<p className="text-sm font-semibold text-fg-primary">{title}</p>
-					<p className="text-sm text-fg-secondary">{description}</p>
+					<p className="font-semibold text-fg-primary text-sm">{title}</p>
+					<p className="text-fg-secondary text-sm">{description}</p>
 				</div>
 
 				<div className="h-40 w-full overflow-hidden rounded-md bg-secondary md:hidden">

@@ -34,7 +34,7 @@ export const SidebarNavigationSectionsSubheadings = ({
 				{items.map((group) => (
 					<li key={group.label}>
 						<div className="px-5 pb-1">
-							<p className="text-xs font-bold text-quaternary uppercase">{group.label}</p>
+							<p className="font-bold text-quaternary text-xs uppercase">{group.label}</p>
 						</div>
 						<ul className="px-4 pb-5">
 							{group.items.map((item) => (

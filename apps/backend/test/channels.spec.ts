@@ -98,7 +98,7 @@ describe("channel", () => {
 		})
 
 		// Create thread channel
-		const threadChannelId = await t.mutation(api.channels.createChannel, {
+		const _threadChannelId = await t.mutation(api.channels.createChannel, {
 			serverId: server,
 			name: "Thread Channel",
 			type: "thread",
@@ -118,7 +118,7 @@ describe("channel", () => {
 		const ct = convexTest()
 		const { server, userId, t } = await setupServerAndUser(ct)
 
-		const channelId = await createChannel(t, { serverId: server })
+		const _channelId = await createChannel(t, { serverId: server })
 		const channels = await t.query(api.channels.getChannels, { serverId: server })
 
 		const channel = channels.serverChannels[0]
@@ -279,7 +279,7 @@ describe("channel", () => {
 		const { server, user1Id, user2Id, t1, t2 } = await setupMultipleUsers(ct)
 
 		// User 1 creates a channel
-		const channelId = await createChannel(t1, { serverId: server })
+		const _channelId = await createChannel(t1, { serverId: server })
 
 		// User 1 should see the channel
 		const channels1 = await t1.query(api.channels.getChannels, { serverId: server })

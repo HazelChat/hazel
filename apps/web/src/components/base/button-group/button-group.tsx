@@ -108,7 +108,7 @@ export const ButtonGroup = ({ children, size = "md", className, ...otherProps }:
 		<ButtonGroupContext.Provider value={{ size }}>
 			<AriaToggleButtonGroup
 				selectionMode="single"
-				className={cx("relative z-0 inline-flex w-max -space-x-px rounded-lg shadow-xs", className)}
+				className={cx("-space-x-px relative z-0 inline-flex w-max rounded-lg shadow-xs", className)}
 				{...otherProps}
 			>
 				{children}

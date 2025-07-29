@@ -9,7 +9,7 @@ export function ChatHeader() {
 
 	if (!channel) {
 		return (
-			<div className="flex h-14 items-center border-b border-border px-4">
+			<div className="flex h-14 items-center border-border border-b px-4">
 				<div className="h-4 w-32 animate-pulse rounded bg-muted" />
 			</div>
 		)
@@ -20,7 +20,7 @@ export function ChatHeader() {
 	const onlineCount = channel.members?.filter((member) => isUserOnline(member.userId)).length || 0
 
 	return (
-		<div className="flex h-14 items-center justify-between border-b border-sidebar-border bg-sidebar px-4">
+		<div className="flex h-14 items-center justify-between border-sidebar-border border-b bg-sidebar px-4">
 			<div className="flex items-center gap-3">
 				{isDirectMessage ? (
 					<>
@@ -33,7 +33,7 @@ export function ChatHeader() {
 							/>
 						)}
 						<div>
-							<h2 className="text-sm font-semibold">
+							<h2 className="font-semibold text-sm">
 								{channel.members
 									?.map((member) => `${member.user.firstName} ${member.user.lastName}`)
 									.join(", ") || "Direct Message"}
@@ -44,8 +44,8 @@ export function ChatHeader() {
 					<>
 						<IconHashtagStroke className="size-5 text-muted-foreground" />
 						<div>
-							<h2 className="text-sm font-semibold">{channel.name}</h2>
-							<p className="text-xs text-muted-foreground">
+							<h2 className="font-semibold text-sm">{channel.name}</h2>
+							<p className="text-muted-foreground text-xs">
 								{onlineCount} of {memberCount} online
 							</p>
 						</div>

@@ -13,7 +13,7 @@ export function MessageList() {
 		if (lastMessageRef.current) {
 			lastMessageRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-	}, [messages])
+	}, [])
 
 	// Handle scroll for pagination
 	const handleScroll = () => {
@@ -29,7 +29,7 @@ export function MessageList() {
 	if (isLoadingMessages) {
 		return (
 			<div className="flex h-full items-center justify-center">
-				<div className="text-sm text-muted-foreground">Loading messages...</div>
+				<div className="text-muted-foreground text-sm">Loading messages...</div>
 			</div>
 		)
 	}
@@ -38,8 +38,8 @@ export function MessageList() {
 		return (
 			<div className="flex h-full items-center justify-center">
 				<div className="text-center">
-					<p className="text-sm text-muted-foreground">No messages yet</p>
-					<p className="text-xs text-muted-foreground">Start the conversation!</p>
+					<p className="text-muted-foreground text-sm">No messages yet</p>
+					<p className="text-muted-foreground text-xs">Start the conversation!</p>
 				</div>
 			</div>
 		)
@@ -69,7 +69,7 @@ export function MessageList() {
 				.map(([date, dateMessages]) => (
 					<div key={date}>
 						<div className="sticky top-0 z-10 my-4 flex items-center justify-center">
-							<span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+							<span className="rounded-full bg-muted px-3 py-1 text-muted-foreground text-xs">
 								{date}
 							</span>
 						</div>
@@ -93,7 +93,7 @@ export function MessageList() {
 				<div className="py-2 text-center">
 					<button
 						onClick={loadMoreMessages}
-						className="text-xs text-muted-foreground hover:text-foreground"
+						className="text-muted-foreground text-xs hover:text-foreground"
 					>
 						Load more messages
 					</button>

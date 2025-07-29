@@ -23,7 +23,7 @@ export function OnlineUsersIndicator() {
 	}
 
 	return (
-		<div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+		<div className="flex items-center gap-2 px-3 py-2 text-muted-foreground text-sm">
 			<div className="h-2 w-2 rounded-full bg-green-500" />
 			<span>{onlineCount} online</span>
 		</div>

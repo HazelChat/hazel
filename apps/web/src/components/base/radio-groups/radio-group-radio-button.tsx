@@ -58,7 +58,7 @@ export const RadioGroupRadioButton = ({
 									size === "md" ? "size-5" : "size-4",
 									isSelected ? "bg-brand-solid" : "ring-1 ring-primary",
 									isDisabled && "bg-disabled_subtle ring-1 ring-disabled",
-									isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
+									isFocusVisible && "outline-2 outline-focus-ring outline-offset-2",
 								)}
 							>
 								<div
@@ -80,8 +80,8 @@ export const RadioGroupRadioButton = ({
 								>
 									<span
 										className={cx(
-											"text-sm font-medium text-secondary",
-											size === "md" ? "text-md font-medium" : "text-sm font-medium",
+											"font-medium text-secondary text-sm",
+											size === "md" ? "font-medium text-md" : "font-medium text-sm",
 										)}
 									>
 										{plan.title}

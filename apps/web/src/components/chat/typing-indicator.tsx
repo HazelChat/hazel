@@ -26,7 +26,7 @@ export function TypingIndicator() {
 
 	return (
 		<div className="px-4 py-2">
-			<div className="flex items-center gap-2 text-sm text-muted-foreground">
+			<div className="flex items-center gap-2 text-muted-foreground text-sm">
 				<div className="flex gap-1">
 					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
 					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />

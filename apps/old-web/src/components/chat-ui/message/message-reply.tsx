@@ -83,11 +83,11 @@ export function MessageReply(props: MessageReplyProps) {
 									),
 									p: (props) => <span class="">{props.children}</span>,
 									h1: (props) => <span class="font-bold">{props.children}</span>,
-									blockquote: (props) => (
+									blockquote: (_props) => (
 										<IconQuote class="inline-flex text-muted-foreground" />
 									),
-									pre: (props) => <IconCode class="inline-flex text-muted-foreground" />,
-									img: (parentProps) => {
+									pre: (_props) => <IconCode class="inline-flex text-muted-foreground" />,
+									img: (_parentProps) => {
 										return <IconImage class="inline-flex text-muted-foreground" />
 									},
 								}}
@@ -152,13 +152,13 @@ export function MessageReply(props: MessageReplyProps) {
 										),
 										p: (props) => <span class="">{props.children}</span>,
 										h1: (props) => <span class="font-bold">{props.children}</span>,
-										blockquote: (props) => (
+										blockquote: (_props) => (
 											<IconQuote class="inline-flex text-muted-foreground" />
 										),
-										pre: (props) => (
+										pre: (_props) => (
 											<IconCode class="inline-flex text-muted-foreground" />
 										),
-										img: (parentProps) => {
+										img: (_parentProps) => {
 											return <IconImage class="inline-flex text-muted-foreground" />
 										},
 									}}

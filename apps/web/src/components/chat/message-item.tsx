@@ -20,7 +20,7 @@ export function MessageItem({ message }: MessageItemProps) {
 	const { editMessage, deleteMessage, addReaction, removeReaction } = useChat()
 	const [isEditing, setIsEditing] = useState(false)
 	const [editContent, setEditContent] = useState(message.content)
-	const [showReactionPicker, setShowReactionPicker] = useState(false)
+	const [_showReactionPicker, setShowReactionPicker] = useState(false)
 
 	// Get current user to check if message is from them
 	const { data: currentUser } = useQuery(convexQuery(api.me.getCurrentUser, {}))
@@ -52,21 +52,21 @@ export function MessageItem({ message }: MessageItemProps) {
 	const commonEmojis = ["👍", "❤️", "😂", "🎉", "🤔", "👎"]
 
 	return (
-		<div className="group relative mb-4 flex gap-3 hover:bg-muted/30 px-2 py-1 rounded">
+		<div className="group relative mb-4 flex gap-3 rounded px-2 py-1 hover:bg-muted/30">
 			<Avatar
 				size="sm"
 				src={message.author.avatarUrl}
 				alt={`${message.author.firstName} ${message.author.lastName}`}
 			/>
-			<div className="flex-1 min-w-0">
+			<div className="min-w-0 flex-1">
 				<div className="flex items-baseline gap-2">
-					<span className="text-sm font-semibold">
+					<span className="font-semibold text-sm">
 						{message.author.firstName} {message.author.lastName}
 					</span>
-					<span className="text-xs text-muted-foreground">
+					<span className="text-muted-foreground text-xs">
 						{formatDistanceToNow(new Date(message._creationTime), { addSuffix: true })}
 					</span>
-					{message.updatedAt && <span className="text-xs text-muted-foreground">(edited)</span>}
+					{message.updatedAt && <span className="text-muted-foreground text-xs">(edited)</span>}
 				</div>
 
 				{isEditing ? (
@@ -85,12 +85,11 @@ export function MessageItem({ message }: MessageItemProps) {
 								}
 							}}
 							className="w-full rounded border border-border bg-background p-2 text-sm"
-							autoFocus
 						/>
 						<div className="mt-2 flex gap-2">
 							<button
 								onClick={handleEdit}
-								className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground"
+								className="rounded bg-primary px-3 py-1 text-primary-foreground text-xs"
 							>
 								Save
 							</button>
@@ -106,7 +105,7 @@ export function MessageItem({ message }: MessageItemProps) {
 						</div>
 					</div>
 				) : (
-					<p className="mt-1 text-sm whitespace-pre-wrap break-words">{message.content}</p>
+					<p className="mt-1 whitespace-pre-wrap break-words text-sm">{message.content}</p>
 				)}
 
 				{/* Reactions */}
@@ -134,7 +133,7 @@ export function MessageItem({ message }: MessageItemProps) {
 								className={cn(
 									"flex items-center gap-1 rounded-full px-2 py-1 text-xs",
 									data.hasReacted
-										? "bg-primary/20 text-primary border border-primary/30"
+										? "border border-primary/30 bg-primary/20 text-primary"
 										: "bg-muted hover:bg-muted/80",
 								)}
 							>
@@ -147,7 +146,7 @@ export function MessageItem({ message }: MessageItemProps) {
 
 				{/* Thread preview */}
 				{message.threadMessages && message.threadMessages.length > 0 && (
-					<button className="mt-2 flex items-center gap-2 text-xs text-primary hover:underline">
+					<button className="mt-2 flex items-center gap-2 text-primary text-xs hover:underline">
 						<span>{message.threadMessages.length} replies</span>
 						<span className="text-muted-foreground">
 							Last reply{" "}
@@ -160,13 +159,13 @@ export function MessageItem({ message }: MessageItemProps) {
 			</div>
 
 			{/* Message actions */}
-			<div className="absolute right-2 top-1 opacity-0 group-hover:opacity-100 transition-opacity">
+			<div className="absolute top-1 right-2 opacity-0 transition-opacity group-hover:opacity-100">
 				<div className="flex items-center gap-1 rounded border border-border bg-background shadow-sm">
 					{commonEmojis.slice(0, 3).map((emoji) => (
 						<button
 							key={emoji}
 							onClick={() => handleReaction(emoji)}
-							className="p-1.5 hover:bg-muted text-sm"
+							className="p-1.5 text-sm hover:bg-muted"
 						>
 							{emoji}
 						</button>
@@ -192,13 +191,13 @@ export function MessageItem({ message }: MessageItemProps) {
 						<>
 							<button
 								onClick={() => setIsEditing(true)}
-								className="p-1.5 hover:bg-muted text-xs"
+								className="p-1.5 text-xs hover:bg-muted"
 							>
 								Edit
 							</button>
 							<button
 								onClick={handleDelete}
-								className="p-1.5 hover:bg-muted text-xs text-destructive"
+								className="p-1.5 text-destructive text-xs hover:bg-muted"
 							>
 								Delete
 							</button>

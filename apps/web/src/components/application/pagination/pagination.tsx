@@ -26,7 +26,7 @@ const PaginationItem = ({
 			isCurrent={isCurrent}
 			className={({ isSelected }) =>
 				cx(
-					"flex size-10 cursor-pointer items-center justify-center p-3 text-sm font-medium text-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-secondary focus-visible:z-10 focus-visible:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2",
+					"flex size-10 cursor-pointer items-center justify-center p-3 font-medium text-quaternary text-sm outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-secondary focus-visible:z-10 focus-visible:bg-primary_hover focus-visible:outline-2 focus-visible:outline-offset-2",
 					rounded ? "rounded-full" : "rounded-lg",
 					isSelected && "bg-primary_hover text-secondary",
 				)
@@ -59,7 +59,7 @@ const MobilePagination = ({ page = 1, total = 10, className, onPageChange }: Mob
 				onClick={() => onPageChange?.(Math.max(0, page - 1))}
 			/>
 
-			<span className="text-sm text-fg-secondary">
+			<span className="text-fg-secondary text-sm">
 				Page <span className="font-medium">{page}</span> of{" "}
 				<span className="font-medium">{total}</span>
 			</span>
@@ -90,7 +90,7 @@ export const PaginationPageDefault = ({
 			page={page}
 			total={total}
 			className={cx(
-				"flex w-full items-center justify-between gap-3 border-t border-secondary pt-4 md:pt-5",
+				"flex w-full items-center justify-between gap-3 border-secondary border-t pt-4 md:pt-5",
 				className,
 			)}
 		>
@@ -126,7 +126,7 @@ export const PaginationPageDefault = ({
 							)}
 						</div>
 
-						<div className="flex justify-center text-sm whitespace-pre text-fg-secondary md:hidden">
+						<div className="flex justify-center whitespace-pre text-fg-secondary text-sm md:hidden">
 							Page <span className="font-medium">{currentPage}</span> of{" "}
 							<span className="font-medium">{total}</span>
 						</div>
@@ -165,7 +165,7 @@ export const PaginationPageMinimalCenter = ({
 			page={page}
 			total={total}
 			className={cx(
-				"flex w-full items-center justify-between gap-3 border-t border-secondary pt-4 md:pt-5",
+				"flex w-full items-center justify-between gap-3 border-secondary border-t pt-4 md:pt-5",
 				className,
 			)}
 		>
@@ -195,7 +195,7 @@ export const PaginationPageMinimalCenter = ({
 							)}
 						</div>
 
-						<div className="flex justify-center text-sm whitespace-pre text-fg-secondary md:hidden">
+						<div className="flex justify-center whitespace-pre text-fg-secondary text-sm md:hidden">
 							Page <span className="font-medium">{currentPage}</span> of{" "}
 							<span className="font-medium">{total}</span>
 						</div>
@@ -222,7 +222,7 @@ export const PaginationCardDefault = ({ rounded, page = 1, total = 10, ...props 
 			{...props}
 			page={page}
 			total={total}
-			className="flex w-full items-center justify-between gap-3 border-t border-secondary px-4 py-3 md:px-6 md:pt-3 md:pb-4"
+			className="flex w-full items-center justify-between gap-3 border-secondary border-t px-4 py-3 md:px-6 md:pt-3 md:pb-4"
 		>
 			<div className="flex flex-1 justify-start">
 				<Pagination.PrevTrigger asChild>
@@ -250,7 +250,7 @@ export const PaginationCardDefault = ({ rounded, page = 1, total = 10, ...props 
 							)}
 						</div>
 
-						<div className="flex justify-center text-sm whitespace-pre text-fg-secondary md:hidden">
+						<div className="flex justify-center whitespace-pre text-fg-secondary text-sm md:hidden">
 							Page <span className="font-medium">{currentPage}</span> of{" "}
 							<span className="font-medium">{total}</span>
 						</div>
@@ -290,7 +290,7 @@ export const PaginationCardMinimal = ({
 	className,
 }: PaginationCardMinimalProps) => {
 	return (
-		<div className={cx("border-t border-secondary px-4 py-3 md:px-6 md:pt-3 md:pb-4", className)}>
+		<div className={cx("border-secondary border-t px-4 py-3 md:px-6 md:pt-3 md:pb-4", className)}>
 			<MobilePagination page={page} total={total} onPageChange={onPageChange} />
 
 			<nav
@@ -310,7 +310,7 @@ export const PaginationCardMinimal = ({
 
 				<span
 					className={cx(
-						"text-sm font-medium text-fg-secondary",
+						"font-medium text-fg-secondary text-sm",
 						align === "right" && "order-first mr-auto",
 						align === "left" && "order-last ml-auto",
 					)}
@@ -349,7 +349,7 @@ export const PaginationButtonGroup = ({
 	return (
 		<div
 			className={cx(
-				"flex border-t border-secondary px-4 py-3 md:px-6 md:pt-3 md:pb-4",
+				"flex border-secondary border-t px-4 py-3 md:px-6 md:pt-3 md:pb-4",
 				align === "left" && "justify-start",
 				align === "center" && "justify-center",
 				align === "right" && "justify-end",

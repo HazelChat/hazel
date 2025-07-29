@@ -94,7 +94,7 @@ const TableCardHeader = ({ title, badge, description, contentTrailing, className
 	return (
 		<div
 			className={cx(
-				"relative flex flex-col items-start gap-4 border-b border-secondary bg-primary px-4 md:flex-row",
+				"relative flex flex-col items-start gap-4 border-secondary border-b bg-primary px-4 md:flex-row",
 				size === "sm" ? "py-4 md:px-5" : "py-5 md:px-6",
 				className,
 			)}
@@ -213,7 +213,7 @@ const TableHead = ({ className, tooltip, label, children, ...props }: TableHeadP
 			{...props}
 			className={(state) =>
 				cx(
-					"relative p-0 px-6 py-2 outline-hidden focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-bg-primary focus-visible:ring-inset",
+					"relative p-0 px-6 py-2 outline-hidden focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset focus-visible:ring-offset-bg-primary",
 					selectionBehavior === "toggle" && "nth-2:pl-3",
 					state.allowsSorting && "cursor-pointer",
 					typeof className === "function" ? className(state) : className,
@@ -224,7 +224,7 @@ const TableHead = ({ className, tooltip, label, children, ...props }: TableHeadP
 				<AriaGroup className="flex items-center gap-1">
 					<div className="flex items-center gap-1">
 						{label && (
-							<span className="text-xs font-semibold whitespace-nowrap text-quaternary">
+							<span className="whitespace-nowrap font-semibold text-quaternary text-xs">
 								{label}
 							</span>
 						)}
@@ -282,7 +282,7 @@ const TableRow = <T extends object>({
 			{...props}
 			className={(state) =>
 				cx(
-					"relative outline-focus-ring transition-colors after:pointer-events-none hover:bg-secondary focus-visible:outline-2 focus-visible:-outline-offset-2",
+					"focus-visible:-outline-offset-2 relative outline-focus-ring transition-colors after:pointer-events-none hover:bg-secondary focus-visible:outline-2",
 					size === "sm" ? "h-14" : "h-18",
 					highlightSelectedRow && "selected:bg-secondary",
 
@@ -322,7 +322,7 @@ const TableCell = ({ className, children, ...props }: TableCellProps) => {
 			{...props}
 			className={(state) =>
 				cx(
-					"relative text-sm text-tertiary outline-focus-ring focus-visible:z-1 focus-visible:outline-2 focus-visible:-outline-offset-2",
+					"focus-visible:-outline-offset-2 relative text-sm text-tertiary outline-focus-ring focus-visible:z-1 focus-visible:outline-2",
 					size === "sm" && "px-5 py-3",
 					size === "md" && "px-6 py-4",
 

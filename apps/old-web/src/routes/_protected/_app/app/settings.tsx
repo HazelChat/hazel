@@ -111,7 +111,7 @@ function RouteComponent() {
 								<option value="alps-blue">Alps Blue</option>
 							</SelectNative>
 							<div class="space-y-1">
-								<label class="text-sm text-muted-foreground">Volume</label>
+								<label class="text-muted-foreground text-sm">Volume</label>
 								<input
 									type="range"
 									min="0"
@@ -120,7 +120,7 @@ function RouteComponent() {
 									onInput={(e) => setVolume(Number(e.currentTarget.value))}
 									class="w-full"
 								/>
-								<div class="text-xs text-muted-foreground text-right">{volume()}%</div>
+								<div class="text-right text-muted-foreground text-xs">{volume()}%</div>
 							</div>
 						</div>
 					</Show>

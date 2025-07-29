@@ -83,14 +83,14 @@ export function ChangeRoleModal({
 								onClick={() => onOpenChange(false)}
 								theme="light"
 								size="lg"
-								className="absolute right-3 top-3"
+								className="absolute top-3 right-3"
 							/>
 							<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
 								<div className="relative w-max">
 									<FeaturedIcon color="gray" size="lg" theme="modern" icon={User02} />
 								</div>
 								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="text-md font-semibold text-primary">
+									<AriaHeading slot="title" className="font-semibold text-md text-primary">
 										Change role for {user.name}
 									</AriaHeading>
 									<p className="text-sm text-tertiary">

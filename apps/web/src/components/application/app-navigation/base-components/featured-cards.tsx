@@ -23,8 +23,8 @@ export const FeaturedCardOnboardingSteps = ({
 		<div className="relative flex flex-col gap-4 rounded-xl bg-primary p-4 ring-1 ring-secondary ring-inset">
 			<div className="flex flex-col gap-3">
 				<div className="flex justify-between">
-					<span className="text-sm font-semibold text-primary">{title}</span>
-					<span className="text-sm text-quaternary">{supportingText}</span>
+					<span className="font-semibold text-primary text-sm">{title}</span>
+					<span className="text-quaternary text-sm">{supportingText}</span>
 				</div>
 
 				<div className="flex">

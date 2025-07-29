@@ -59,11 +59,11 @@ export const convexInfiniteQuery = <Query extends PaginatedQueryReference>(
 		getNextPageParam: (lastPage) => {
 			return lastPage.isDone ? undefined : lastPage.continueCursor
 		},
-		getPreviousPageParam: (firstPage: any, allPGES: any, pageParam: string) => {
+		getPreviousPageParam: (_firstPage: any, _allPGES: any, pageParam: string) => {
 			// TODO: FIXME
 			const firstPageCursorIndex = cursorStore().findIndex((cursor) => cursor === pageParam)
 
-			const prevCursor = cursorStore()[firstPageCursorIndex - 1]
+			const _prevCursor = cursorStore()[firstPageCursorIndex - 1]
 
 			return null
 		},

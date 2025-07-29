@@ -59,7 +59,7 @@ export const RadioGroupPaymentIcon = ({
 										<AriaLabel
 											className={cx(
 												"pointer-events-none text-secondary",
-												size === "md" ? "text-md font-medium" : "text-sm font-medium",
+												size === "md" ? "font-medium text-md" : "font-medium text-sm",
 											)}
 										>
 											{card.title}

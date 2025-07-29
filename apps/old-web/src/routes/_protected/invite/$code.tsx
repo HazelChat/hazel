@@ -35,7 +35,7 @@ function RouteComponent() {
 							onClick={async () => {
 								setStatus("loading")
 								try {
-									const serverId = await acceptInvite({ code: params().code })
+									const _serverId = await acceptInvite({ code: params().code })
 									navigate({ to: "/app" })
 								} catch (err) {
 									console.error(err)

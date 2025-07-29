@@ -105,7 +105,7 @@ export const ProgressBar = ({
 			return (
 				<div className="flex items-center gap-3">
 					{baseProgressBar}
-					<span className="shrink-0 text-sm font-medium text-secondary tabular-nums">
+					<span className="shrink-0 font-medium text-secondary text-sm tabular-nums">
 						{formattedValue}
 					</span>
 				</div>
@@ -114,7 +114,7 @@ export const ProgressBar = ({
 			return (
 				<div className="flex flex-col items-end gap-2">
 					{baseProgressBar}
-					<span className="text-sm font-medium text-secondary tabular-nums">{formattedValue}</span>
+					<span className="font-medium text-secondary text-sm tabular-nums">{formattedValue}</span>
 				</div>
 			)
 		case "top-floating":
@@ -123,9 +123,9 @@ export const ProgressBar = ({
 					{baseProgressBar}
 					<div
 						style={{ left: `${percentage}%` }}
-						className="absolute -top-2 -translate-x-1/2 -translate-y-full rounded-lg bg-primary_alt px-3 py-2 shadow-lg ring-1 ring-secondary_alt"
+						className="-top-2 -translate-x-1/2 -translate-y-full absolute rounded-lg bg-primary_alt px-3 py-2 shadow-lg ring-1 ring-secondary_alt"
 					>
-						<div className="text-xs font-semibold text-secondary tabular-nums">
+						<div className="font-semibold text-secondary text-xs tabular-nums">
 							{formattedValue}
 						</div>
 					</div>
@@ -137,9 +137,9 @@ export const ProgressBar = ({
 					{baseProgressBar}
 					<div
 						style={{ left: `${percentage}%` }}
-						className="absolute -bottom-2 -translate-x-1/2 translate-y-full rounded-lg bg-primary_alt px-3 py-2 shadow-lg ring-1 ring-secondary_alt"
+						className="-bottom-2 -translate-x-1/2 absolute translate-y-full rounded-lg bg-primary_alt px-3 py-2 shadow-lg ring-1 ring-secondary_alt"
 					>
-						<div className="text-xs font-semibold text-secondary">{formattedValue}</div>
+						<div className="font-semibold text-secondary text-xs">{formattedValue}</div>
 					</div>
 				</div>
 			)

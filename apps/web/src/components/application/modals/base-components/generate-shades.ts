@@ -78,7 +78,7 @@ function hexToRgb(hexColor: string): RgbColor | null {
 	const g = parseInt(hex.substring(2, 4), 16)
 	const b = parseInt(hex.substring(4, 6), 16)
 
-	if (isNaN(r) || isNaN(g) || isNaN(b)) {
+	if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
 		console.error(`Invalid characters in hex string "${hexColor}" resulting in NaN.`)
 		return null
 	}

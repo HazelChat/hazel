@@ -369,7 +369,6 @@ const PaginationItem = ({
 			className={computedClassName}
 			aria-current={isCurrent ? "page" : undefined}
 			aria-label={ariaLabel || `Page ${value}`}
-			role="listitem"
 		>
 			{children}
 		</button>

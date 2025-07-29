@@ -35,7 +35,7 @@ export const RadioButtonBase = ({
 				size === "md" && "size-5 min-h-5 min-w-5",
 				isSelected && !isDisabled && "bg-brand-solid ring-bg-brand-solid",
 				isDisabled && "cursor-not-allowed border-disabled bg-disabled_subtle",
-				isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
+				isFocusVisible && "outline-2 outline-focus-ring outline-offset-2",
 				className,
 			)}
 		>
@@ -103,7 +103,7 @@ export const RadioButton = ({ label, hint, className, size = "sm", ...ariaRadioP
 					{(label || hint) && (
 						<div className={cx("inline-flex flex-col", sizes[size].textWrapper)}>
 							{label && (
-								<p className={cx("text-secondary select-none", sizes[size].label)}>{label}</p>
+								<p className={cx("select-none text-secondary", sizes[size].label)}>{label}</p>
 							)}
 							{hint && (
 								<span

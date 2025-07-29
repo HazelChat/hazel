@@ -33,7 +33,7 @@ export const CreateServerDialog = (props: CreateServerDialogProps) => {
 
 						if (!serverName) return
 						try {
-							const serverId = await createServer({
+							const _serverId = await createServer({
 								name: serverName.toString(),
 							})
 							props.onOpenChange(false)

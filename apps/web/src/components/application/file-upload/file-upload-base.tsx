@@ -21,7 +21,7 @@ export const getReadableFileSize = (bytes: number) => {
 	const suffixes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
 
 	const i = Math.floor(Math.log(bytes) / Math.log(1024))
-	return Math.floor(bytes / 1024 ** i) + " " + suffixes[i]
+	return `${Math.floor(bytes / 1024 ** i)} ${suffixes[i]}`
 }
 
 interface FileUploadDropZoneProps {
@@ -198,7 +198,7 @@ export const FileUploadDropZone = ({
 			onDragEnd={handleDragOut}
 			onDrop={handleDrop}
 			className={cx(
-				"relative flex flex-col items-center gap-3 rounded-xl bg-primary px-6 py-4 text-tertiary ring-1 ring-secondary transition duration-100 ease-linear ring-inset",
+				"relative flex flex-col items-center gap-3 rounded-xl bg-primary px-6 py-4 text-tertiary ring-1 ring-secondary ring-inset transition duration-100 ease-linear",
 				isDraggingOver && "ring-2 ring-brand",
 				isDisabled && "cursor-not-allowed bg-disabled_subtle ring-disabled_subtle",
 				className,
@@ -283,7 +283,7 @@ export const FileListItemProgressBar = ({
 		<motion.li
 			layout="position"
 			className={cx(
-				"relative flex gap-3 rounded-xl bg-primary p-4 ring-1 ring-secondary transition-shadow duration-100 ease-linear ring-inset",
+				"relative flex gap-3 rounded-xl bg-primary p-4 ring-1 ring-secondary ring-inset transition-shadow duration-100 ease-linear",
 				failed && "ring-2 ring-error",
 				className,
 			)}
@@ -295,19 +295,19 @@ export const FileListItemProgressBar = ({
 				variant={fileIconVariant ?? "default"}
 			/>
 			<FileTypeIcon
-				className="size-10 shrink-0 not-dark:hidden"
+				className="not-dark:hidden size-10 shrink-0"
 				type={type ?? "empty"}
 				theme="dark"
 				variant={fileIconVariant ?? "default"}
 			/>
 
 			<div className="flex min-w-0 flex-1 flex-col items-start">
-				<div className="flex w-full max-w-full min-w-0 flex-1">
+				<div className="flex w-full min-w-0 max-w-full flex-1">
 					<div className="min-w-0 flex-1">
-						<p className="truncate text-sm font-medium text-secondary">{name}</p>
+						<p className="truncate font-medium text-secondary text-sm">{name}</p>
 
 						<div className="mt-0.5 flex items-center gap-2">
-							<p className="truncate text-sm whitespace-nowrap text-tertiary">
+							<p className="truncate whitespace-nowrap text-sm text-tertiary">
 								{getReadableFileSize(size)}
 							</p>
 
@@ -318,18 +318,18 @@ export const FileListItemProgressBar = ({
 									<CheckCircle className="size-4 stroke-[2.5px] text-fg-success-primary" />
 								)}
 								{isComplete && (
-									<p className="text-sm font-medium text-success-primary">Complete</p>
+									<p className="font-medium text-sm text-success-primary">Complete</p>
 								)}
 
 								{!isComplete && !failed && (
-									<UploadCloud02 className="stroke-[2.5px size-4 text-fg-quaternary" />
+									<UploadCloud02 className="size-4 stroke-[2.5px text-fg-quaternary" />
 								)}
 								{!isComplete && !failed && (
-									<p className="text-sm font-medium text-quaternary">Uploading...</p>
+									<p className="font-medium text-quaternary text-sm">Uploading...</p>
 								)}
 
 								{failed && <XCircle className="size-4 text-fg-error-primary" />}
-								{failed && <p className="text-sm font-medium text-error-primary">Failed</p>}
+								{failed && <p className="font-medium text-error-primary text-sm">Failed</p>}
 							</div>
 						</div>
 					</div>
@@ -395,7 +395,7 @@ export const FileListItemProgressFill = ({
 			{/* Inner ring. */}
 			<div
 				className={cx(
-					"absolute inset-0 size-full rounded-[inherit] ring-1 ring-secondary transition duration-100 ease-linear ring-inset",
+					"absolute inset-0 size-full rounded-[inherit] ring-1 ring-secondary ring-inset transition duration-100 ease-linear",
 					failed && "ring-2 ring-error",
 				)}
 			/>
@@ -406,7 +406,7 @@ export const FileListItemProgressFill = ({
 				variant={fileIconVariant ?? "solid"}
 			/>
 			<FileTypeIcon
-				className="relative size-10 shrink-0 not-dark:hidden"
+				className="relative not-dark:hidden size-10 shrink-0"
 				type={type ?? "empty"}
 				theme="dark"
 				variant={fileIconVariant ?? "solid"}
@@ -415,7 +415,7 @@ export const FileListItemProgressFill = ({
 			<div className="relative flex min-w-0 flex-1">
 				<div className="relative flex min-w-0 flex-1 flex-col items-start">
 					<div className="w-full min-w-0 flex-1">
-						<p className="truncate text-sm font-medium text-secondary">{name}</p>
+						<p className="truncate font-medium text-secondary text-sm">{name}</p>
 
 						<div className="mt-0.5 flex items-center gap-2">
 							<p className="text-sm text-tertiary">

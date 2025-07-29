@@ -109,7 +109,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 								onClick={() => onOpenChange(false)}
 								theme="light"
 								size="lg"
-								className="absolute right-3 top-3"
+								className="absolute top-3 right-3"
 							/>
 							<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
 								<div className="relative w-max">
@@ -117,11 +117,11 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 									<BackgroundPattern
 										pattern="circle"
 										size="sm"
-										className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+										className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
 									/>
 								</div>
 								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="text-md font-semibold text-primary">
+									<AriaHeading slot="title" className="font-semibold text-md text-primary">
 										Invite team members
 									</AriaHeading>
 									<p className="text-sm text-tertiary">
@@ -133,7 +133,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 							<div className="h-5 w-full" />
 							<div className="flex flex-col items-start justify-start gap-3 px-4 sm:px-6">
 								{invites.map((invite, index) => (
-									<div key={invite.id} className="flex w-full gap-3 items-center">
+									<div key={invite.id} className="flex w-full items-center gap-3">
 										<div className="flex flex-1 gap-3">
 											<div className="flex-1">
 												{index === 0 && <Label>Email address</Label>}
@@ -184,7 +184,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 									Add another
 								</Button>
 							</div>
-							<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pb-6 sm:pt-8">
+							<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pt-8 sm:pb-6">
 								<Button
 									color="secondary"
 									size="lg"

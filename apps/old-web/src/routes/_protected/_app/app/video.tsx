@@ -143,7 +143,7 @@ function RouteComponent() {
 }
 
 const VideoComponent = (props: { peer: HMSPeer & { track: HMSVideoTrack | null } }) => {
-	const [isSpeaking, setIsSpeaking] = createSignal(false)
+	const [isSpeaking, _setIsSpeaking] = createSignal(false)
 	let videoElement: HTMLVideoElement | undefined
 
 	const isEnabled = createMemo(() => !!props.peer.track?.enabled)

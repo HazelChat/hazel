@@ -67,7 +67,7 @@ export const RadioGroupIconCard = ({ items, size = "sm", className, ...props }: 
 								<span
 									className={cx(
 										"mr-1 text-secondary",
-										size === "md" ? "text-lg font-semibold" : "text-md font-semibold",
+										size === "md" ? "font-semibold text-lg" : "font-semibold text-md",
 									)}
 								>
 									{plan.title}
@@ -89,8 +89,8 @@ export const RadioGroupIconCard = ({ items, size = "sm", className, ...props }: 
 											className={cx(
 												"text-secondary",
 												size === "md"
-													? "text-display-md font-semibold"
-													: "text-display-sm font-semibold",
+													? "font-semibold text-display-md"
+													: "font-semibold text-display-sm",
 											)}
 										>
 											{plan.price}

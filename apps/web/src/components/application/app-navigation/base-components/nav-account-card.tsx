@@ -86,7 +86,7 @@ export const NavAccountMenu = ({
 			{...dialogProps}
 			ref={dialogRef}
 			className={cx(
-				"w-66 rounded-xl bg-secondary_alt shadow-lg ring ring-secondary_alt outline-hidden",
+				"w-66 rounded-xl bg-secondary_alt shadow-lg outline-hidden ring ring-secondary_alt",
 				className,
 			)}
 		>
@@ -96,8 +96,8 @@ export const NavAccountMenu = ({
 					<NavAccountCardMenuItem label="Account settings" icon={Settings01} shortcut="⌘S" />
 					<NavAccountCardMenuItem label="Documentation" icon={BookOpen01} />
 				</div>
-				<div className="flex flex-col gap-0.5 border-t border-secondary py-1.5">
-					<div className="px-3 pt-1.5 pb-1 text-xs font-semibold text-tertiary">Switch account</div>
+				<div className="flex flex-col gap-0.5 border-secondary border-t py-1.5">
+					<div className="px-3 pt-1.5 pb-1 font-semibold text-tertiary text-xs">Switch account</div>
 
 					<div className="flex flex-col gap-0.5 px-1.5">
 						{placeholderAccounts.map((account) => (
@@ -163,12 +163,12 @@ const NavAccountCardMenuItem = ({
 					"outline-focus-ring group-focus-visible/item:outline-2 group-focus-visible/item:outline-offset-2",
 				)}
 			>
-				<div className="flex gap-2 text-sm font-semibold text-secondary group-hover/item:text-secondary_hover">
+				<div className="flex gap-2 font-semibold text-secondary text-sm group-hover/item:text-secondary_hover">
 					{Icon && <Icon className="size-5 text-fg-quaternary" />} {label}
 				</div>
 
 				{shortcut && (
-					<kbd className="flex rounded px-1 py-px font-body text-xs font-medium text-tertiary ring-1 ring-secondary ring-inset">
+					<kbd className="flex rounded px-1 py-px font-body font-medium text-tertiary text-xs ring-1 ring-secondary ring-inset">
 						{shortcut}
 					</kbd>
 				)}
@@ -211,7 +211,7 @@ export const NavAccountCard = ({
 
 			<div className="absolute top-1.5 right-1.5">
 				<AriaDialogTrigger>
-					<AriaButton className="flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2 pressed:bg-primary_hover pressed:text-fg-quaternary_hover">
+					<AriaButton className="flex cursor-pointer items-center justify-center rounded-md pressed:bg-primary_hover p-1.5 pressed:text-fg-quaternary_hover text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2">
 						<ChevronSelectorVertical className="size-4 shrink-0" />
 					</AriaButton>
 					<AriaPopover
@@ -222,9 +222,9 @@ export const NavAccountCard = ({
 							cx(
 								"will-change-transform",
 								isEntering &&
-									"duration-150 ease-out animate-in fade-in placement-right:origin-left placement-right:slide-in-from-left-0.5 placement-top:origin-bottom placement-top:slide-in-from-bottom-0.5 placement-bottom:origin-top placement-bottom:slide-in-from-top-0.5",
+									"fade-in placement-right:slide-in-from-left-0.5 placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5 placement-bottom:origin-top placement-right:origin-left placement-top:origin-bottom animate-in duration-150 ease-out",
 								isExiting &&
-									"duration-100 ease-in animate-out fade-out placement-right:origin-left placement-right:slide-out-to-left-0.5 placement-top:origin-bottom placement-top:slide-out-to-bottom-0.5 placement-bottom:origin-top placement-bottom:slide-out-to-top-0.5",
+									"fade-out placement-right:slide-out-to-left-0.5 placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5 placement-bottom:origin-top placement-right:origin-left placement-top:origin-bottom animate-out duration-100 ease-in",
 							)
 						}
 					>

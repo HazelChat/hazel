@@ -69,10 +69,10 @@ export function ChannelWithVirtual(props: {
 
 	const [messages, setMessages] = createStore<Message[]>([])
 	const [isFetchingUp, setIsFetchingUp] = createSignal(false)
-	const [scrollSnapshot, setScrollSnapshot] = createSignal({ height: 0 })
+	const [scrollSnapshot, _setScrollSnapshot] = createSignal({ height: 0 })
 
 	let scrollContainerRef: HTMLDivElement | undefined
-	const [shouldStickToBottom, setShouldStickToBottom] = createSignal(true)
+	const [_shouldStickToBottom, _setShouldStickToBottom] = createSignal(true)
 
 	const scrollRestorationId = "myVirtualizedContent"
 

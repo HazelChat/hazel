@@ -52,7 +52,7 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
 						"relative flex items-center rounded-md px-2.5 py-2 outline-focus-ring transition duration-100 ease-linear",
 						!state.isDisabled && "group-hover:bg-primary_hover",
 						state.isFocused && "bg-primary_hover",
-						state.isFocusVisible && "outline-2 -outline-offset-2",
+						state.isFocusVisible && "-outline-offset-2 outline-2",
 					)}
 				>
 					{Icon && (
@@ -67,7 +67,7 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
 
 					<span
 						className={cx(
-							"grow truncate text-sm font-semibold",
+							"grow truncate font-semibold text-sm",
 							state.isDisabled ? "text-disabled" : "text-secondary",
 							state.isFocused && "text-secondary_hover",
 						)}
@@ -78,7 +78,7 @@ const DropdownItem = ({ label, children, addon, icon: Icon, unstyled, ...props }
 					{addon && (
 						<span
 							className={cx(
-								"ml-3 shrink-0 rounded px-1 py-px text-xs font-medium ring-1 ring-secondary ring-inset",
+								"ml-3 shrink-0 rounded px-1 py-px font-medium text-xs ring-1 ring-secondary ring-inset",
 								state.isDisabled ? "text-disabled" : "text-quaternary",
 							)}
 						>
@@ -101,7 +101,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 			{...props}
 			className={(state) =>
 				cx(
-					"h-min overflow-y-auto py-1 outline-hidden select-none",
+					"h-min select-none overflow-y-auto py-1 outline-hidden",
 					typeof props.className === "function" ? props.className(state) : props.className,
 				)
 			}
@@ -120,9 +120,9 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
 				cx(
 					"w-62 overflow-auto rounded-lg bg-primary shadow-lg ring-1 ring-secondary_alt will-change-transform",
 					state.isEntering &&
-						"duration-150 ease-out animate-in fade-in placement-right:origin-left placement-right:slide-in-from-left-0.5 placement-top:origin-bottom placement-top:slide-in-from-bottom-0.5 placement-bottom:origin-top placement-bottom:slide-in-from-top-0.5",
+						"fade-in placement-right:slide-in-from-left-0.5 placement-top:slide-in-from-bottom-0.5 placement-bottom:slide-in-from-top-0.5 placement-bottom:origin-top placement-right:origin-left placement-top:origin-bottom animate-in duration-150 ease-out",
 					state.isExiting &&
-						"duration-100 ease-in animate-out fade-out placement-right:origin-left placement-right:slide-out-to-left-0.5 placement-top:origin-bottom placement-top:slide-out-to-bottom-0.5 placement-bottom:origin-top placement-bottom:slide-out-to-top-0.5",
+						"fade-out placement-right:slide-out-to-left-0.5 placement-top:slide-out-to-bottom-0.5 placement-bottom:slide-out-to-top-0.5 placement-bottom:origin-top placement-right:origin-left placement-top:origin-bottom animate-out duration-100 ease-in",
 					typeof props.className === "function" ? props.className(state) : props.className,
 				)
 			}

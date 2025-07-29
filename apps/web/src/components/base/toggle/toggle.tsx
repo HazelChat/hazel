@@ -133,7 +133,7 @@ export const Toggle = ({ label, hint, className, size = "sm", slim, ...ariaSwitc
 					{(label || hint) && (
 						<div className={cx("flex flex-col", sizes[size].textWrapper)}>
 							{label && (
-								<p className={cx("text-secondary select-none", sizes[size].label)}>{label}</p>
+								<p className={cx("select-none text-secondary", sizes[size].label)}>{label}</p>
 							)}
 							{hint && (
 								<span

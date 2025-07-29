@@ -72,7 +72,7 @@ export const RadioGroupIconSimple = ({
 										<span
 											className={cx(
 												"text-secondary",
-												size === "md" ? "text-md font-medium" : "text-sm font-medium",
+												size === "md" ? "font-medium text-md" : "font-medium text-sm",
 											)}
 										>
 											{plan.title}

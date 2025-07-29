@@ -259,7 +259,7 @@ function RouteComponent() {
 										onClick={() => setRemoveUserId(null)}
 										theme="light"
 										size="lg"
-										className="absolute right-3 top-3"
+										className="absolute top-3 right-3"
 									/>
 									<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
 										<div className="relative w-max">
@@ -273,7 +273,7 @@ function RouteComponent() {
 										<div className="z-10 flex flex-col gap-0.5">
 											<AriaHeading
 												slot="title"
-												className="text-md font-semibold text-primary"
+												className="font-semibold text-md text-primary"
 											>
 												Remove team member
 											</AriaHeading>
@@ -283,7 +283,7 @@ function RouteComponent() {
 											</p>
 										</div>
 									</div>
-									<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pb-6 sm:pt-8">
+									<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pt-8 sm:pb-6">
 										<Button
 											color="secondary"
 											size="lg"

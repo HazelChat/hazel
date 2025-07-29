@@ -176,7 +176,7 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 													.join(", ")}
 											/>
 											{!field.state.meta.errors?.length && field.state.value && (
-												<p className="text-xs text-tertiary">
+												<p className="text-tertiary text-xs">
 													Your organization URL will be: /app/{field.state.value}
 												</p>
 											)}
