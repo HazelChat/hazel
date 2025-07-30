@@ -59,6 +59,43 @@ export function MessageList() {
 		{} as Record<string, typeof messages>,
 	)
 
+	// Auto-scroll to bottom on new messages
+	useEffect(() => {
+		if (lastMessageRef.current) {
+			lastMessageRef.current.scrollIntoView({ behavior: "smooth" })
+		}
+	}, [])
+
+	// Handle scroll for pagination
+	const handleScroll = () => {
+		const container = scrollContainerRef.current
+		if (!container || !hasMoreMessages) return
+
+		// Load more when scrolled to top
+		if (container.scrollTop === 0) {
+			loadMoreMessages()
+		}
+	}
+
+	if (isLoadingMessages) {
+		return (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground text-sm">Loading messages...</div>
+			</div>
+		)
+	}
+
+	if (messages.length === 0) {
+		return (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-center">
+					<p className="text-muted-foreground text-sm">No messages yet</p>
+					<p className="text-muted-foreground text-xs">Start the conversation!</p>
+				</div>
+			</div>
+		)
+	}
+
 	return (
 		<div
 			ref={scrollContainerRef}
