@@ -10,14 +10,6 @@ import { createContext, useContext, useEffect, useId } from "react"
 import { HintText } from "~/components/base/input/hint-text"
 import { Label } from "~/components/base/input/label"
 import { cx } from "~/utils/cx"
-import { CharacterCount } from "./text-editor-character-count"
-import { TextEditorToolbar } from "./text-editor-toolbar"
-import { TextEditorTooltip } from "./text-editor-tooltip"
-
-// Creates a data URL for an SVG resize handle with a given color.
-const getResizeHandleBg = (color: string) => {
-	return `url(data:image/svg+xml;base64,${btoa(`<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2L2 10" stroke="${color}" stroke-linecap="round"/><path d="M11 7L7 11" stroke="${color}" stroke-linecap="round"/></svg>`)})`
-}
 
 type EditorContextType = {
 	editor: Editor
@@ -39,25 +31,19 @@ const useEditorContext = () => {
 
 interface TextEditorRootProps extends Partial<EditorOptions> {
 	className?: string
-	isDisabled?: boolean
 	limit?: number
 	placeholder?: string
-	isInvalid?: boolean
 	children?: ReactNode | ((item: Editor) => ReactNode)
 	inputClassName?: string
 	ref?: Ref<HTMLDivElement>
-	onSubmit?: (editor: Editor) => void | Promise<void>
 }
 
 const TextEditorRoot = ({
 	className,
 	inputClassName,
 	children,
-	isInvalid,
-	isDisabled,
 	limit,
 	placeholder = "Write something...",
-	onSubmit,
 	...editorOptions
 }: TextEditorRootProps) => {
 	const id = useId()
@@ -65,7 +51,7 @@ const TextEditorRoot = ({
 
 	const editor = useEditor({
 		...editorOptions,
-		editable: !isDisabled,
+		editable: false,
 		immediatelyRender: true,
 		extensions: [
 			StarterKit.configure({
@@ -110,7 +96,6 @@ const TextEditorRoot = ({
 				emptyEditorClass:
 					"first:before:text-placeholder first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
 			}),
-			CharacterCount,
 		],
 
 		editorProps: {
@@ -118,27 +103,12 @@ const TextEditorRoot = ({
 				id: editorId,
 				"aria-labelledby": `${editorId}-label`,
 				"aria-describedby": `${editorId}-hint`,
-				style: `
-                    --resize-handle-bg: ${getResizeHandleBg("#D5D7DA")};
-                    --resize-handle-bg-dark: ${getResizeHandleBg("#373A41")};
-                `,
-				class: cx(
-					"w-full min-h-[3rem] max-h-[18rem] scroll-py-3 overflow-y-auto rounded-lg bg-primary p-5 text-md leading-[1.5] text-primary caret-fg-brand-primary shadow-xs ring-1 ring-primary transition duration-100 ease-linear ring-inset selection:bg-fg-brand-primary/10 placeholder:text-placeholder autofill:rounded-lg autofill:text-primary focus:ring-2 focus:ring-brand focus:outline-hidden",
 
-					isDisabled && "cursor-not-allowed bg-disabled_subtle text-disabled ring-disabled",
-					isInvalid && "ring-error_subtle focus:ring-2 focus:ring-error",
+				class: cx(
+					"w-full overflow-y-auto text-md leading-[1.5] text-primary caret-fg-brand-primary shadow-xs transition duration-100 ease-linear ring-inset selection:bg-fg-brand-primary/10 placeholder:text-placeholder autofill:rounded-lg autofill:text-primary focus:ring-2 focus:ring-brand focus:outline-hidden",
+
 					inputClassName,
 				),
-			},
-			handleDOMEvents: {
-				keydown: (_view, event) => {
-					if (onSubmit && event.key === "Enter" && !event.shiftKey) {
-						event.preventDefault()
-						onSubmit(editor!)
-						return true
-					}
-					return false
-				},
 			},
 		},
 	})
@@ -185,7 +155,7 @@ const TextEditorRoot = ({
 	}
 
 	return (
-		<EditorContext.Provider value={{ editor, isDisabled, limit, isInvalid, editorId }}>
+		<EditorContext.Provider value={{ editor, limit, editorId }}>
 			<div className={cx("flex w-full flex-col gap-3", className)}>
 				{typeof children === "function" ? children(editor) : children}
 			</div>
@@ -246,8 +216,6 @@ const TextEditorHintText = ({ children, ...props }: TextEditorHintTextProps) => 
 
 export const TextEditor = {
 	Root: TextEditorRoot,
-	Toolbar: TextEditorToolbar,
-	Tooltip: TextEditorTooltip,
 	Content: TextEditorContent,
 	Label: TextEditorLabel,
 	HintText: TextEditorHintText,

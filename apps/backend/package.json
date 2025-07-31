@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"convex-test": "^0.0.37",
-		"typescript": "5.8.3",
+		"typescript": "5.9.2",
 		"vitest": "^3.2.4"
 	},
 	"exports": {

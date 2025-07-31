@@ -16,20 +16,8 @@ import { ConvexReactClient } from "convex/react"
 import { Toaster } from "./components/application/notifications/toaster.tsx"
 import { ConvexProviderWithAuthKit } from "./components/convex-provider-with-authkit.tsx"
 import { ThemeProvider } from "./components/theme-provider.tsx"
+import { convex, convexQueryClient, queryClient } from "./db/index.ts"
 import reportWebVitals from "./reportWebVitals.ts"
-
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
-
-const convexQueryClient = new ConvexQueryClient(convex)
-
-const queryClient: QueryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			queryKeyHashFn: convexQueryClient.hashFn(),
-			queryFn: convexQueryClient.queryFn(),
-		},
-	},
-})
 
 convexQueryClient.connect(queryClient)
 

@@ -119,6 +119,56 @@ export const getChannelsForOrganization = organizationServerQuery({
 	},
 })
 
+export const list = organizationServerQuery({
+	args: {},
+	handler: async (ctx, args) => {
+		const user = ctx.account.doc
+
+		const channels = await ctx.db
+			.query("channels")
+			.withIndex("by_organizationId_and_participantHash", (q) =>
+				q.eq("organizationId", ctx.organizationId),
+			)
+			.filter((q) => q.neq(q.field("type"), "thread"))
+			.collect()
+
+		const channelsWithMembers = await asyncMap(channels, async (channel) => {
+			const channelMembers = await ctx.db
+				.query("channelMembers")
+				.withIndex("by_channelIdAndUserId", (q) => q.eq("channelId", channel._id))
+				.collect()
+
+			const currentUser = channelMembers.find((member) => member.userId === user._id)
+
+			if (!currentUser) return null
+
+			const members = await asyncMap(channelMembers, async (member) => {
+				const memberUser = await ctx.db.get(member.userId)
+
+				if (!memberUser) return null
+
+				return {
+					...member,
+					user: memberUser,
+				}
+			})
+
+			return {
+				...channel,
+				members: members.filter((member) => member !== null),
+				isMuted: currentUser?.isMuted || false,
+				isHidden: currentUser?.isHidden || false,
+				isFavorite: currentUser?.isFavorite || false,
+				currentUser,
+			}
+		})
+
+		const filteredChannels = channelsWithMembers.filter((channel) => channel !== null)
+
+		return filteredChannels
+	},
+})
+
 export const getChannels = userQuery({
 	args: {
 		favoriteFilter: v.optional(v.object({ favorite: v.boolean() })),
