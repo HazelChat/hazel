@@ -166,7 +166,12 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 	}
 
 	// Extract messages and pagination functions based on result state
-	const messages = messagesResult._tag === "Loaded" ? messagesResult.page : []
+	const messages = 
+		messagesResult._tag === "Loaded" || 
+		messagesResult._tag === "LoadingNextResults" || 
+		messagesResult._tag === "LoadingPrevResults" 
+			? messagesResult.page 
+			: []
 	const loadNext = messagesResult._tag === "Loaded" ? (messagesResult.loadNext ?? undefined) : undefined
 	const loadPrev = messagesResult._tag === "Loaded" ? (messagesResult.loadPrev ?? undefined) : undefined
 	const isLoadingMessages = messagesResult._tag === "LoadingInitialResults"
