@@ -78,6 +78,25 @@ export function MessageList() {
 		}
 	}, [hasMoreMessages, isLoadingMessages, loadMoreMessages])
 
+	// Flatten messages for virtual list - must be declared before any returns
+	const flattenedItems = useMemo(() => {
+		const items: Array<{ type: "date" | "message" | "loadMore"; data: any }> = []
+
+		// Add load more button at the top if there are more messages
+		if (hasMoreMessages) {
+			items.push({ type: "loadMore", data: null })
+		}
+
+		Object.entries(groupedMessages).forEach(([date, dateMessages]) => {
+			items.push({ type: "date", data: date })
+			dateMessages.forEach((processedMessage) => {
+				items.push({ type: "message", data: processedMessage })
+			})
+		})
+
+		return items
+	}, [groupedMessages, hasMoreMessages])
+
 	if (isLoadingMessages) {
 		return (
 			<div className="flex h-full items-center justify-center">
@@ -100,25 +119,6 @@ export function MessageList() {
 			</div>
 		)
 	}
-
-	// Flatten messages for virtual list
-	const flattenedItems = useMemo(() => {
-		const items: Array<{ type: "date" | "message" | "loadMore"; data: any }> = []
-
-		// Add load more button at the top if there are more messages
-		if (hasMoreMessages) {
-			items.push({ type: "loadMore", data: null })
-		}
-
-		Object.entries(groupedMessages).forEach(([date, dateMessages]) => {
-			items.push({ type: "date", data: date })
-			dateMessages.forEach((processedMessage) => {
-				items.push({ type: "message", data: processedMessage })
-			})
-		})
-
-		return items
-	}, [groupedMessages, hasMoreMessages])
 
 	return (
 		<VList ref={vlistRef} style={{ height: "100%", width: "100%" }} onScroll={handleScroll} overscan={5}>
