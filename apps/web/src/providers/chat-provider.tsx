@@ -185,18 +185,18 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 		setIsLoadingMore(true)
 
 		try {
-			// Create the convex query configuration
-			const query = convexQuery(api.messages.getMessages, {
-				channelId,
-				organizationId,
-				paginationOpts: { numItems: 50, cursor: nextCursor },
-			})
+			// Create a new query with the cursor
+			const queryConfig = convexQuery(
+				api.messages.getMessages,
+				{
+					channelId,
+					organizationId,
+					paginationOpts: { numItems: 50, cursor: nextCursor },
+				}
+			)
 
-			// Fetch using the query configuration
-			const data = await queryClient.fetchQuery({
-				queryKey: query.queryKey,
-				queryFn: query.queryFn,
-			})
+			// Use queryClient to fetch with the entire query config
+			const data = await queryClient.fetchQuery(queryConfig)
 
 			if (data?.page) {
 				setAllMessages((prev) => [...prev, ...data.page])
