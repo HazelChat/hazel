@@ -23,6 +23,7 @@ import {
 	EmojiPickerFooter,
 	EmojiPickerSearch,
 } from "../base/emoji-picker/emoji-picker"
+import { DeleteMessageModal } from "./delete-message-modal"
 
 type Message = FunctionReturnType<typeof api.messages.getMessages>["page"][0]
 
@@ -57,6 +58,7 @@ export function MessageToolbar({
 }: MessageToolbarProps) {
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
 	const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
 	const handleReaction = (emoji: string) => {
 		trackEmojiUsage(emoji)
@@ -145,7 +147,7 @@ export function MessageToolbar({
 						<Button
 							size="sm"
 							color="tertiary-destructive"
-							onClick={onDelete}
+							onClick={() => setDeleteModalOpen(true)}
 							aria-label="Delete message"
 							className="!p-1.5 hover:bg-error-primary"
 						>
@@ -198,6 +200,13 @@ export function MessageToolbar({
 					</Dropdown.Popover>
 				</Dropdown.Root>
 			</div>
+
+			{/* Delete Confirmation Modal */}
+			<DeleteMessageModal
+				isOpen={deleteModalOpen}
+				onOpenChange={setDeleteModalOpen}
+				onConfirm={onDelete}
+			/>
 		</div>
 	)
 }
