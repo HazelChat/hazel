@@ -97,8 +97,16 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 		),
 	)
 
-	// Fetch typing users - TODO: Implement when API is available
-	const typingUsers: TypingUsers = []
+	// Fetch typing users
+	const typingUsersQuery = useQuery(
+		convexQuery(api.typingIndicator.list, organizationId ? { channelId, organizationId } : "skip"),
+	)
+	const typingUsers: TypingUsers = typingUsersQuery.data || []
+	
+	// Debug: Log typing users updates
+	if (typingUsers.length > 0) {
+		console.log("[DEBUG] Typing users in channel:", typingUsers.map(u => u.user.firstName).join(", "))
+	}
 
 	// Mutations
 	const sendMessageMutation = useConvexMutation(api.messages.createMessage)
@@ -108,6 +116,8 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 	const removeReactionMutation = useConvexMutation(api.messages.deleteReaction)
 	const pinMessageMutation = useConvexMutation(api.pinnedMessages.createPinnedMessage)
 	const unpinMessageMutation = useConvexMutation(api.pinnedMessages.deletePinnedMessage)
+	const updateTypingMutation = useConvexMutation(api.typingIndicator.update)
+	const stopTypingMutation = useConvexMutation(api.typingIndicator.stop)
 
 	// Message operations
 	const sendMessage = ({
@@ -187,13 +197,21 @@ export function ChatProvider({ channelId, children }: ChatProviderProps) {
 	}
 
 	const startTyping = () => {
-		// TODO: Implement when typing API is available
-		console.log("Start typing")
+		if (!organizationId) return
+		console.log("[DEBUG] Current user started typing in channel:", channelId)
+		updateTypingMutation({
+			organizationId,
+			channelId,
+		})
 	}
 
 	const stopTyping = () => {
-		// TODO: Implement when typing API is available
-		console.log("Stop typing")
+		if (!organizationId) return
+		console.log("[DEBUG] Current user stopped typing in channel:", channelId)
+		stopTypingMutation({
+			organizationId,
+			channelId,
+		})
 	}
 
 	const createThread = (messageId: Id<"messages">) => {
