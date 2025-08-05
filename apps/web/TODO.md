@@ -5,6 +5,7 @@
 
 
 - Typing indicator
-
+- Rework for OrgID to be in url path
+- Readd Thread Channels
 - Add Command Palette
 - Make Presence Work better and add Away Status
