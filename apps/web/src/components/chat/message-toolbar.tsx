@@ -12,7 +12,7 @@ import {
 	Trash01,
 } from "@untitledui/icons"
 import type { FunctionReturnType } from "convex/server"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogTrigger, MenuTrigger, Popover } from "react-aria-components"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { Button } from "../base/buttons/button"
@@ -46,6 +46,7 @@ interface MessageToolbarProps {
 	onPin?: () => void
 	onReport?: () => void
 	onViewDetails?: () => void
+	onMenuOpenChange?: (isOpen: boolean) => void
 }
 
 export function MessageToolbar({
@@ -62,18 +63,28 @@ export function MessageToolbar({
 	onPin,
 	onReport,
 	onViewDetails,
+	onMenuOpenChange,
 }: MessageToolbarProps) {
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
 	const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+	const [dropdownOpen, setDropdownOpen] = useState(false)
 
 	const handleReaction = (emoji: string) => {
 		trackEmojiUsage(emoji)
 		onReaction(emoji)
 	}
 
+	// Notify parent when any menu is open
+	useEffect(() => {
+		const isAnyMenuOpen = emojiPickerOpen || deleteModalOpen || dropdownOpen
+		onMenuOpenChange?.(isAnyMenuOpen)
+	}, [emojiPickerOpen, deleteModalOpen, dropdownOpen, onMenuOpenChange])
+
+	const isAnyMenuOpen = emojiPickerOpen || deleteModalOpen || dropdownOpen
+
 	return (
-		<div className="-translate-y-1/2 absolute top-0 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+		<div className={`-translate-y-1/2 absolute top-0 right-2 transition-opacity ${isAnyMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
 			<div className="flex items-center gap-px rounded-lg border border-primary bg-primary shadow-sm">
 				{/* Quick Reactions */}
 				{topEmojis.map((emoji) => (
@@ -167,7 +178,7 @@ export function MessageToolbar({
 				<div className="mx-0.5 h-4 w-px bg-border" />
 
 				{/* More Options Dropdown */}
-				<Dropdown.Root>
+				<Dropdown.Root onOpenChange={setDropdownOpen}>
 					<MenuTrigger>
 						<Button
 							size="sm"
