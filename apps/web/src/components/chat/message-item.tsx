@@ -50,6 +50,7 @@ export function MessageItem({
 	} = useChat()
 	const [isEditing, setIsEditing] = useState(false)
 	const [hasBeenHovered, setHasBeenHovered] = useState(false)
+	const [isMenuOpen, setIsMenuOpen] = useState(false)
 	const hoverTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
 	const { data: currentUser } = useQuery(
@@ -328,8 +329,8 @@ export function MessageItem({
 				</div>
 			</div>
 
-			{/* Message Toolbar - Only render when hovered to improve performance */}
-			{hasBeenHovered && (
+			{/* Message Toolbar - Only render when hovered or menu is open to improve performance */}
+			{(hasBeenHovered || isMenuOpen) && (
 				<MessageToolbar
 					message={message}
 					isOwnMessage={isOwnMessage}
@@ -364,6 +365,7 @@ export function MessageItem({
 						// TODO: Implement view details
 						console.log("View details")
 					}}
+					onMenuOpenChange={setIsMenuOpen}
 				/>
 			)}
 		</div>
