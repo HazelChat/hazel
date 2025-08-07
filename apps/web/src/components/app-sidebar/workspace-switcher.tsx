@@ -1,6 +1,7 @@
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useAuth } from "@workos-inc/authkit-react"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
@@ -16,6 +17,7 @@ export const WorkspaceSwitcher = () => {
 	const [inviteModalOpen, setInviteModalOpen] = useState(false)
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
 	const { switchToOrganization } = useAuth()
+	const navigate = useNavigate()
 
 	// Get current organization
 	const organizationQuery = useQuery(convexQuery(api.me.getOrganization, {}))
@@ -27,9 +29,31 @@ export const WorkspaceSwitcher = () => {
 
 	const handleOrganizationSwitch = async (workosOrgId: string) => {
 		try {
+			// First switch the WorkOS session
 			await switchToOrganization({ organizationId: workosOrgId })
-			// Reload the page to refresh the session and update the UI
-			window.location.reload()
+			
+			// Find the organization to get its Convex ID
+			const targetOrg = organizations.find(org => org.workosId === workosOrgId)
+			if (targetOrg) {
+				// Get the current route path to preserve sub-routes
+				const currentPath = window.location.pathname
+				const pathSegments = currentPath.split('/')
+				
+				// Determine which sub-route we're in (if any)
+				let targetRoute = `/app/${targetOrg._id}`
+				
+				// If we're in a sub-route under the org, preserve it
+				if (pathSegments.length > 3 && pathSegments[1] === 'app') {
+					// Keep everything after /app/$orgId/
+					const subPath = pathSegments.slice(3).join('/')
+					if (subPath) {
+						targetRoute = `/app/${targetOrg._id}/${subPath}`
+					}
+				}
+				
+				// Navigate to the new organization path
+				await navigate({ to: targetRoute as any })
+			}
 		} catch (error) {
 			console.error("Failed to switch organization:", error)
 		}
