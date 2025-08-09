@@ -128,10 +128,11 @@ describe("channel", () => {
 		const messageId = await createMessage(t, {
 			channelId: parentChannelId,
 			content: "Message in parent channel",
+			organizationId: organization,
 		})
 
 		// Create thread channel
-		const _threadChannelId = await t.mutation(api.channels.createChannelForOrganization, {
+		const _threadChannelId = await t.mutation(api.channels.createChannel, {
 			organizationId: organization,
 			name: "Thread Channel",
 			type: "thread",

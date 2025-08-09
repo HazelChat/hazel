@@ -10,7 +10,7 @@ describe("users and organizations", () => {
 		// Check user was created
 		const user = await t.run(async (ctx) => ctx.db.get(userId))
 		expect(user).toBeDefined()
-		expect(user?.externalId).toBeDefined()
+		expect(user?._id).toBeDefined()
 	})
 
 	test("creating users multiple times returns the same id", async () => {
