@@ -13,6 +13,7 @@
 	"dependencies": {
 		"@convex-dev/presence": "^0.1.5",
 		"@convex-dev/react-query": "^0.0.0-alpha.11",
+		"@convex-dev/workos": "^0.0.1",
 		"@floating-ui/dom": "^1.7.3",
 		"@fontsource/inter": "^5.2.6",
 		"@hazel/backend": "workspace:*",

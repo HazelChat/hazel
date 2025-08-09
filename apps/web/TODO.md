@@ -3,6 +3,9 @@
 - Webhook for invitation.created failing
 
 
+- Update Convex to use WorkOS new docs https://docs.convex.dev/auth/authkit
+
+
 - Typing indicator
 - Add Command Palette
 - Make all Icons use one Icon Lib
