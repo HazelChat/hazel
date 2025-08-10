@@ -137,15 +137,17 @@ export const AppSidebar = () => {
 						<SidebarGroupAction>
 							<CreateDmButton />
 						</SidebarGroupAction>
-						<SidebarMenu>
-							{dmChannels.map((channel) => (
-								<DmChannelLink
-									key={channel._id}
-									userPresence={presenceList}
-									channel={channel}
-								/>
-							))}
-						</SidebarMenu>
+						<SidebarGroupContent>
+							<SidebarMenu>
+								{dmChannels.map((channel) => (
+									<DmChannelLink
+										key={channel._id}
+										userPresence={presenceList}
+										channel={channel}
+									/>
+								))}
+							</SidebarMenu>
+						</SidebarGroupContent>
 					</SidebarGroup>
 				</SidebarContent>
 			</Sidebar>
