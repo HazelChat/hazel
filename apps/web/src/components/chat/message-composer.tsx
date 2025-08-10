@@ -1,5 +1,5 @@
-import type { Editor } from "@tiptap/react"
 import type { Id } from "@hazel/backend"
+import type { Editor } from "@tiptap/react"
 import { useEffect, useImperativeHandle, useRef, useState } from "react"
 
 import { useChat } from "~/providers/chat-provider"
