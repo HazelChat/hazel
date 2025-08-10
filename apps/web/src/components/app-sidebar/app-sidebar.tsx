@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "@tanstack/react-router"
 import { useEffect, useMemo } from "react"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
-import { NewChannelModal } from "../application/modals/new-channel-modal"
 import IconChatChatting1 from "../icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "../icons/IconGridDashboard01DuoSolid"
 import IconNotificationBellOn1 from "../icons/IconNotificationBellOn1"
@@ -24,6 +23,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "../ui/sidebar"
+import { ChannelActionsDropdown } from "./channel-actions-dropdown"
 import { ChannelItem, DmChannelLink } from "./channel-item"
 import { NavUser } from "./nav-user"
 import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
@@ -122,7 +122,7 @@ export const AppSidebar = () => {
 					<SidebarGroup>
 						<SidebarGroupLabel>Channels</SidebarGroupLabel>
 						<SidebarGroupAction>
-							<NewChannelModal />
+							<ChannelActionsDropdown />
 						</SidebarGroupAction>
 						<SidebarGroupContent>
 							<SidebarMenu>

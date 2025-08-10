@@ -10,7 +10,7 @@ export function ChatHeader() {
 
 	if (!channel) {
 		return (
-			<div className="flex h-14 flex-shrink-0 items-center border-border border-b px-4">
+			<div className="flex h-14 flex-shrink-0 items-center border-sidebar-border border-b px-4">
 				<div className="h-4 w-32 animate-pulse rounded bg-muted" />
 			</div>
 		)
