@@ -1,24 +1,20 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { Doc, Id } from "@hazel/backend"
 import { FileIcon } from "@untitledui/file-icons"
-import { Download01, File04, ImageIndentLeft } from "@untitledui/icons"
+import { Download01 } from "@untitledui/icons"
 import { useState } from "react"
-import { Button } from "react-aria-components"
 import { cx } from "~/utils/cx"
 import { ButtonUtility } from "../base/buttons/button-utility"
 
-interface Attachment {
-	_id: Id<"attachments">
+// Enriched attachment type that includes metadata from R2
+type EnrichedAttachment = Doc<"attachments"> & {
 	fileName: string
 	fileSize: number
 	mimeType: string
-	status: string
+	publicUrl: string
 }
 
 interface MessageAttachmentsProps {
-	attachments: Attachment[]
+	attachments: (EnrichedAttachment | null)[]
 	organizationId: Id<"organizations">
 }
 
