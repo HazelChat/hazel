@@ -106,15 +106,50 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 	return (
 		<div className={"relative flex h-max items-center gap-3"}>
 			<div className="w-full">
-				{replyToMessageId && (
-					<ReplyIndicator
-						replyToMessageId={replyToMessageId}
-						onClose={() => setReplyToMessageId(null)}
-					/>
+				{/* Container for reply indicator and attachment preview */}
+				{(replyToMessageId || attachmentIds.length > 0) && (
+					<div className="rounded-t-lg border border-primary border-b-0 bg-secondary">
+						{replyToMessageId && (
+							<div className="flex items-center justify-between gap-2 px-3 py-2">
+								<ReplyIndicator
+									replyToMessageId={replyToMessageId}
+									onClose={() => setReplyToMessageId(null)}
+								/>
+							</div>
+						)}
+						{attachmentIds.length > 0 && (
+							<div className={cx("px-3 py-2", replyToMessageId && "border-primary border-t")}>
+								<div className="flex flex-wrap gap-2">
+									{attachmentIds.map((attachmentId) => {
+										const upload = uploads.find((u) => u.attachmentId === attachmentId)
+										const fileName = upload?.fileName || "File"
+										return (
+											<div
+												key={attachmentId}
+												className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1"
+											>
+												<Attachment01 className="size-3 text-fg-quaternary" />
+												<span className="text-secondary text-xs">{fileName}</span>
+												<ButtonUtility
+													icon={XClose}
+													size="xs"
+													color="tertiary"
+													onClick={() => handleRemoveAttachment(attachmentId)}
+												/>
+											</div>
+										)
+									})}
+								</div>
+							</div>
+						)}
+					</div>
 				)}
 				<TextEditor.Root
 					className="relative w-full gap-2"
-					inputClassName={cx("p-4", replyToMessageId && "rounded-t-none")}
+					inputClassName={cx(
+						"p-4",
+						(replyToMessageId || attachmentIds.length > 0) && "rounded-t-none",
+					)}
 					onSubmit={handleSubmit}
 					onUpdate={handleEditorUpdate}
 				>
