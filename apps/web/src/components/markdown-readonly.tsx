@@ -5,7 +5,7 @@ import { createPlateEditor } from "platejs/react"
 import { memo, useMemo } from "react"
 import { BasicNodesKit } from "./editor/plugins/basic-nodes-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
-import { EditorStatic, type editorVariants } from "./ui/editor-static"
+import { EditorStatic, type editorVariants } from "./editor-ui/editor-static"
 
 const editor = createPlateEditor({
 	plugins: [...BasicNodesKit, ...MarkdownKit],

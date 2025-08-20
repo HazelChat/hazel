@@ -73,7 +73,7 @@ function ThreadContent({ threadChannelId, originalMessageId, organizationId, onC
 								</span>
 							</div>
 							<div className="mt-1">
-								<MarkdownReadonly value={originalMessage.jsonContent}></MarkdownReadonly>
+								<MarkdownReadonly content={originalMessage.content}></MarkdownReadonly>
 							</div>
 						</div>
 					</div>
