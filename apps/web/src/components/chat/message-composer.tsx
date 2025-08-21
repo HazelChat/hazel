@@ -62,11 +62,7 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 	}
 
 	const handleEditorUpdate = (content: string) => {
-		// Debug log for current user typing
-		console.log("[DEBUG] User typing, content length:", content.length)
-
 		if (content && !isTyping) {
-			console.log("[DEBUG] User started typing")
 			setIsTyping(true)
 			startTyping()
 		}
@@ -79,7 +75,6 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 
 			// Set a new timeout to stop typing after 3 seconds of inactivity
 			typingTimeoutRef.current = setTimeout(() => {
-				console.log("[DEBUG] User stopped typing due to inactivity")
 				setIsTyping(false)
 				stopTyping()
 			}, 3000)
@@ -87,7 +82,6 @@ export const MessageComposer = ({ ref, placeholder = "Type a message..." }: Mess
 
 		// If content is empty and user was typing, stop typing
 		if (!content && isTyping) {
-			console.log("[DEBUG] User stopped typing (empty content)")
 			setIsTyping(false)
 			stopTyping()
 			if (typingTimeoutRef.current) {

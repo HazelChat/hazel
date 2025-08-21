@@ -62,23 +62,22 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 		)
 
 		const focusEditor = useCallback(() => {
-			const editorElement = document.querySelector('[data-slate-editor="true"]') as HTMLElement
-
-			editorElement?.focus()
-		}, [])
+			editor.tf.focus({
+				edge: "end",
+			})
+		}, [editor])
 
 		const resetAndFocus = useCallback(() => {
 			editor.tf.reset()
 			setTimeout(() => {
-				editor.tf.select({
-					anchor: { path: [0, 0], offset: 0 },
-					focus: { path: [0, 0], offset: 0 },
+				editor.tf.focus({
+					at: {
+						anchor: { path: [0, 0], offset: 0 },
+						focus: { path: [0, 0], offset: 0 },
+					},
 				})
-
-				editor.tf.focus()
-				focusEditor()
 			}, 0)
-		}, [editor, focusEditor])
+		}, [editor])
 
 		useImperativeHandle(
 			ref,
@@ -104,8 +103,6 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 				const cleaned = str.replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, "")
 				return cleaned.length === 0
 			}
-
-			console.log("textContent", !!textContent, textContent.length)
 
 			if (!textContent || textContent.length === 0 || isEffectivelyEmpty(textContent)) return
 

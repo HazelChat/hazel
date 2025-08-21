@@ -3,8 +3,6 @@ import { useChat } from "~/hooks/use-chat"
 export function TypingIndicator() {
 	const { typingUsers } = useChat()
 
-	console.log("[DEBUG] Typing users:", typingUsers.map((u) => u.user.firstName).join(", "))
-
 	if (typingUsers.length === 0) {
 		return (
 			<div className="px-4 py-2">
