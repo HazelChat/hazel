@@ -38,6 +38,7 @@ import IconSearch1 from "~/components/icons/IconSearch1";
 import { Separator } from "~/components/ui/separator";
 import { Keyboard } from "~/components/ui/keyboard";
 import { cva } from "class-variance-authority"
+import IconSearchStroke from "~/components/icons/IconSearchStroke";
 
 interface CommandMenuProviderProps {
   isPending?: boolean
@@ -166,9 +167,9 @@ const CommandMenuSearch = ({ className, placeholder, ...props }: CommandMenuSear
       {isPending ? (
         <Loader className="size-4.5" variant="spin" />
       ) : (
-        <IconSearch1
+        <IconSearchStroke
           data-slot="command-menu-search-icon"
-          className="size-5 shrink-0 text-primary"
+          className="size-5 shrink-0 text-tertiary"
         />
       )}
       <Input

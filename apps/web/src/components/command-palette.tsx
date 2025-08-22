@@ -9,29 +9,28 @@ import {
   CommandMenuShortcut,
 } from "~/components/ui/command-menu"
 import IconSettings01Stroke from "~/components/icons/IconSettings01Stroke";
+import IconGridDashboard01DuoSolid from "~/components/icons/IconGridDashboard01DuoSolid";
+import IconGridDashboard01Stroke from "~/components/icons/IconGridDashboard01Stroke";
+import IconChatChatting1 from "~/components/icons/IconChatChatting1";
 
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   return (
     <CommandMenu shortcut="k" isOpen={isOpen} onOpenChange={setIsOpen}>
-      <CommandMenuSearch placeholder="Quick search..." />
+      <CommandMenuSearch placeholder="Where would you like to go?" />
       <CommandMenuList>
         <CommandMenuSection>
-          <CommandMenuItem href="#" textValue="home">
+          <CommandMenuItem href="#" textValue="all channels">
+            <IconChatChatting1/>
+            <CommandMenuLabel>All channels</CommandMenuLabel>
+          </CommandMenuItem>
+          <CommandMenuItem href="#" textValue="members">
+            <IconGridDashboard01Stroke/>
+            <CommandMenuLabel>Members</CommandMenuLabel>
+          </CommandMenuItem>
+          <CommandMenuItem href="#" textValue="settings">
             <IconSettings01Stroke/>
             <CommandMenuLabel>Settings</CommandMenuLabel>
-          </CommandMenuItem>
-          <CommandMenuItem href="#" textValue="orders">
-            <CommandMenuLabel>Orders</CommandMenuLabel>
-            <CommandMenuShortcut keys="⌘o" />
-          </CommandMenuItem>
-          <CommandMenuItem href="#" textValue="products">
-            <CommandMenuLabel>Products</CommandMenuLabel>
-            <CommandMenuShortcut keys="⌘p" />
-          </CommandMenuItem>
-          <CommandMenuItem href="#" textValue="collections">
-            <CommandMenuLabel>Collections</CommandMenuLabel>
-            <CommandMenuShortcut keys="⌘⇧c" />
           </CommandMenuItem>
         </CommandMenuSection>
       </CommandMenuList>
