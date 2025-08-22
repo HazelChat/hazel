@@ -365,9 +365,7 @@ export const getChannelMembers = userQuery({
 		})
 
 		// Filter out null results and apply limit
-		const filteredMembers = membersWithUsers
-			.filter((member) => member !== null)
-			.slice(0, limit)
+		const filteredMembers = membersWithUsers.filter((member) => member !== null).slice(0, limit)
 
 		return filteredMembers
 	},

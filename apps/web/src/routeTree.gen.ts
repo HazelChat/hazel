@@ -26,6 +26,7 @@ import { Route as AppOrgIdSettingsNotificationsRouteImport } from './routes/_app
 import { Route as AppOrgIdSettingsInvitationsRouteImport } from './routes/_app/$orgId/settings/invitations'
 import { Route as AppOrgIdSettingsIntegrationsRouteImport } from './routes/_app/$orgId/settings/integrations'
 import { Route as AppOrgIdSettingsEmailRouteImport } from './routes/_app/$orgId/settings/email'
+import { Route as AppOrgIdSettingsDebugRouteImport } from './routes/_app/$orgId/settings/debug'
 import { Route as AppOrgIdSettingsBillingRouteImport } from './routes/_app/$orgId/settings/billing'
 import { Route as AppOrgIdChatIdRouteImport } from './routes/_app/$orgId/chat/$id'
 
@@ -116,6 +117,11 @@ const AppOrgIdSettingsEmailRoute = AppOrgIdSettingsEmailRouteImport.update({
   path: '/email',
   getParentRoute: () => AppOrgIdSettingsLayoutRoute,
 } as any)
+const AppOrgIdSettingsDebugRoute = AppOrgIdSettingsDebugRouteImport.update({
+  id: '/debug',
+  path: '/debug',
+  getParentRoute: () => AppOrgIdSettingsLayoutRoute,
+} as any)
 const AppOrgIdSettingsBillingRoute = AppOrgIdSettingsBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/$orgId/': typeof AppOrgIdIndexRoute
   '/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
   '/$orgId/settings/billing': typeof AppOrgIdSettingsBillingRoute
+  '/$orgId/settings/debug': typeof AppOrgIdSettingsDebugRoute
   '/$orgId/settings/email': typeof AppOrgIdSettingsEmailRoute
   '/$orgId/settings/integrations': typeof AppOrgIdSettingsIntegrationsRoute
   '/$orgId/settings/invitations': typeof AppOrgIdSettingsInvitationsRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/$orgId': typeof AppOrgIdIndexRoute
   '/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
   '/$orgId/settings/billing': typeof AppOrgIdSettingsBillingRoute
+  '/$orgId/settings/debug': typeof AppOrgIdSettingsDebugRoute
   '/$orgId/settings/email': typeof AppOrgIdSettingsEmailRoute
   '/$orgId/settings/integrations': typeof AppOrgIdSettingsIntegrationsRoute
   '/$orgId/settings/invitations': typeof AppOrgIdSettingsInvitationsRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/_app/$orgId/': typeof AppOrgIdIndexRoute
   '/_app/$orgId/chat/$id': typeof AppOrgIdChatIdRoute
   '/_app/$orgId/settings/billing': typeof AppOrgIdSettingsBillingRoute
+  '/_app/$orgId/settings/debug': typeof AppOrgIdSettingsDebugRoute
   '/_app/$orgId/settings/email': typeof AppOrgIdSettingsEmailRoute
   '/_app/$orgId/settings/integrations': typeof AppOrgIdSettingsIntegrationsRoute
   '/_app/$orgId/settings/invitations': typeof AppOrgIdSettingsInvitationsRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/$orgId/'
     | '/$orgId/chat/$id'
     | '/$orgId/settings/billing'
+    | '/$orgId/settings/debug'
     | '/$orgId/settings/email'
     | '/$orgId/settings/integrations'
     | '/$orgId/settings/invitations'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/$orgId'
     | '/$orgId/chat/$id'
     | '/$orgId/settings/billing'
+    | '/$orgId/settings/debug'
     | '/$orgId/settings/email'
     | '/$orgId/settings/integrations'
     | '/$orgId/settings/invitations'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_app/$orgId/'
     | '/_app/$orgId/chat/$id'
     | '/_app/$orgId/settings/billing'
+    | '/_app/$orgId/settings/debug'
     | '/_app/$orgId/settings/email'
     | '/_app/$orgId/settings/integrations'
     | '/_app/$orgId/settings/invitations'
@@ -375,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgIdSettingsEmailRouteImport
       parentRoute: typeof AppOrgIdSettingsLayoutRoute
     }
+    '/_app/$orgId/settings/debug': {
+      id: '/_app/$orgId/settings/debug'
+      path: '/debug'
+      fullPath: '/$orgId/settings/debug'
+      preLoaderRoute: typeof AppOrgIdSettingsDebugRouteImport
+      parentRoute: typeof AppOrgIdSettingsLayoutRoute
+    }
     '/_app/$orgId/settings/billing': {
       id: '/_app/$orgId/settings/billing'
       path: '/billing'
@@ -394,6 +413,7 @@ declare module '@tanstack/react-router' {
 
 interface AppOrgIdSettingsLayoutRouteChildren {
   AppOrgIdSettingsBillingRoute: typeof AppOrgIdSettingsBillingRoute
+  AppOrgIdSettingsDebugRoute: typeof AppOrgIdSettingsDebugRoute
   AppOrgIdSettingsEmailRoute: typeof AppOrgIdSettingsEmailRoute
   AppOrgIdSettingsIntegrationsRoute: typeof AppOrgIdSettingsIntegrationsRoute
   AppOrgIdSettingsInvitationsRoute: typeof AppOrgIdSettingsInvitationsRoute
@@ -406,6 +426,7 @@ interface AppOrgIdSettingsLayoutRouteChildren {
 const AppOrgIdSettingsLayoutRouteChildren: AppOrgIdSettingsLayoutRouteChildren =
   {
     AppOrgIdSettingsBillingRoute: AppOrgIdSettingsBillingRoute,
+    AppOrgIdSettingsDebugRoute: AppOrgIdSettingsDebugRoute,
     AppOrgIdSettingsEmailRoute: AppOrgIdSettingsEmailRoute,
     AppOrgIdSettingsIntegrationsRoute: AppOrgIdSettingsIntegrationsRoute,
     AppOrgIdSettingsInvitationsRoute: AppOrgIdSettingsInvitationsRoute,

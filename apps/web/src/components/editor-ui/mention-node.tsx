@@ -131,7 +131,7 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
 	)
 }
 
-const MENTIONABLES = [
+const _MENTIONABLES = [
 	{ key: "0", text: "Aayla Secura" },
 	{ key: "1", text: "Adi Gallia" },
 	{

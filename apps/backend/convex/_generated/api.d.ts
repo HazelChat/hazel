@@ -26,6 +26,7 @@ import type * as messages from "../messages.js";
 import type * as middleware_withAccount from "../middleware/withAccount.js";
 import type * as middleware_withOrganization from "../middleware/withOrganization.js";
 import type * as middleware_withUser from "../middleware/withUser.js";
+import type * as mockData from "../mockData.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as pinnedMessages from "../pinnedMessages.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "middleware/withAccount": typeof middleware_withAccount;
   "middleware/withOrganization": typeof middleware_withOrganization;
   "middleware/withUser": typeof middleware_withUser;
+  mockData: typeof mockData;
   notifications: typeof notifications;
   organizations: typeof organizations;
   pinnedMessages: typeof pinnedMessages;
