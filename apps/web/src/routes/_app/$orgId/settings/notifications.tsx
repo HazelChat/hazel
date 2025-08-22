@@ -8,6 +8,7 @@ import { SectionHeader } from "~/components/application/section-headers/section-
 import { SectionLabel } from "~/components/application/section-headers/section-label"
 import { Button } from "~/components/base/buttons/button"
 import { Form } from "~/components/base/form/form"
+import { RadioGroupCheckbox } from "~/components/base/radio-groups/radio-group-checkbox"
 import { Toggle } from "~/components/base/toggle/toggle"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 
@@ -32,7 +33,7 @@ function NotificationsSettings() {
 			// Save settings (in real app, this would be an API call)
 			await new Promise((resolve) => setTimeout(resolve, 500))
 			toast.success("Notification settings saved")
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to save settings")
 		} finally {
 			setIsSubmitting(false)
@@ -100,7 +101,7 @@ function NotificationsSettings() {
 						{settings.enabled && (
 							<>
 								<div className="space-y-2">
-									<label className="text-sm font-medium text-secondary">
+									<label className="font-medium text-secondary text-sm">
 										Notification sound
 									</label>
 									<div className="flex gap-2">
@@ -142,7 +143,7 @@ function NotificationsSettings() {
 
 								<div className="space-y-2">
 									<div className="flex items-center justify-between">
-										<label className="text-sm font-medium text-secondary">Volume</label>
+										<label className="font-medium text-secondary text-sm">Volume</label>
 										<span className="text-sm text-tertiary">
 											{Math.round(settings.volume * 100)}%
 										</span>
@@ -188,7 +189,7 @@ function NotificationsSettings() {
 						onChange={(value) =>
 							setMessagePreference(value as "all" | "mentions" | "direct" | "none")
 						}
-						options={[
+						items={[
 							{
 								value: "all",
 								label: "All messages",
@@ -235,7 +236,7 @@ function NotificationsSettings() {
 
 						{emailNotifications && (
 							<div className="space-y-2">
-								<label className="text-sm font-medium text-secondary">
+								<label className="font-medium text-secondary text-sm">
 									Email digest frequency
 								</label>
 								<div className="flex gap-2">
@@ -292,7 +293,7 @@ function NotificationsSettings() {
 						{doNotDisturb && (
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<label className="mb-2 block text-sm font-medium text-secondary">
+									<label className="mb-2 block font-medium text-secondary text-sm">
 										Start time
 									</label>
 									<input
@@ -303,7 +304,7 @@ function NotificationsSettings() {
 									/>
 								</div>
 								<div>
-									<label className="mb-2 block text-sm font-medium text-secondary">
+									<label className="mb-2 block font-medium text-secondary text-sm">
 										End time
 									</label>
 									<input
