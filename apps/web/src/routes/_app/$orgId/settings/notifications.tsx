@@ -10,7 +10,6 @@ import { Form } from "~/components/base/form/form"
 import { RadioGroupCheckbox } from "~/components/base/radio-groups/radio-group-checkbox"
 import { Toggle } from "~/components/base/toggle/toggle"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
-import { Label } from "~/components/base/input/label";
 import { cx } from "~/utils/cx";
 
 export const Route = createFileRoute("/_app/$orgId/settings/notifications")({
@@ -144,7 +143,7 @@ function NotificationsSettings() {
 
 								<div className="flex flex-col gap-y-2">
 									<div className="flex items-center justify-between">
-										<Label className="font-medium text-secondary text-sm">Volume</Label>
+										<label className="font-medium text-secondary text-sm">Volume</label>
 										<span className="text-sm tabular-numbs text-tertiary">
 											{Math.round(settings.volume * 100)}%
 										</span>
