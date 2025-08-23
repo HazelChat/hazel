@@ -194,7 +194,7 @@ export const Tab = (props: TabComponentProps) => {
 			{...otherProps}
 			className={(prop) =>
 				cx(
-					"z-10 flex h-max cursor-pointer selected:inset-ring-tertiary items-center inset-ring inset-ring-transparent justify-center gap-2 whitespace-nowrap rounded-md text-quaternary transition duration-100 ease-linear",
+					"inset-ring inset-ring-transparent selected:inset-ring-tertiary z-10 flex h-max cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-quaternary transition duration-100 ease-linear",
 					"group-orientation-vertical:justify-start",
 					fullwidth && "w-full flex-1",
 					sizes[size][type],

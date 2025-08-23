@@ -130,7 +130,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>
 				<EditorContainer
 					className={cx(
-						"relative flex h-max flex-col rounded-xl bg-secondary inset-ring inset-ring-secondary",
+						"relative inset-ring inset-ring-secondary flex h-max flex-col rounded-xl bg-secondary",
 						className,
 					)}
 				>

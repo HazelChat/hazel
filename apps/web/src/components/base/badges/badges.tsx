@@ -2,7 +2,14 @@ import { X as CloseX } from "@untitledui/icons"
 import type { MouseEventHandler, ReactNode } from "react"
 import { Dot } from "~/components/foundations/dot-icon"
 import { cx } from "~/utils/cx"
-import type { BadgeColors, BadgeTypes, BadgeTypeToColorMap, FlagTypes, IconComponentType, Sizes, } from "./badge-types"
+import type {
+	BadgeColors,
+	BadgeTypes,
+	BadgeTypeToColorMap,
+	FlagTypes,
+	IconComponentType,
+	Sizes,
+} from "./badge-types"
 import { badgeTypes } from "./badge-types"
 
 export const filledColors: Record<BadgeColors, { root: string; addon: string; addonButton: string }> = {

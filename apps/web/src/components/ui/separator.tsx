@@ -1,5 +1,5 @@
 import { Separator as Divider, type SeparatorProps } from "react-aria-components"
-import { cx } from "~/utils/cx";
+import { cx } from "~/utils/cx"
 
 const Separator = ({ orientation = "horizontal", className, ...props }: SeparatorProps) => {
 	return (

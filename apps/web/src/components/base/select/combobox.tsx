@@ -2,16 +2,16 @@ import { SearchLg as SearchIcon } from "@untitledui/icons"
 import type { FocusEventHandler, PointerEventHandler, RefAttributes, RefObject } from "react"
 import { useCallback, useContext, useRef, useState } from "react"
 import type {
-  ComboBoxProps as AriaComboBoxProps,
-  GroupProps as AriaGroupProps,
-  ListBoxProps as AriaListBoxProps,
+	ComboBoxProps as AriaComboBoxProps,
+	GroupProps as AriaGroupProps,
+	ListBoxProps as AriaListBoxProps,
 } from "react-aria-components"
 import {
-  ComboBox as AriaComboBox,
-  ComboBoxStateContext,
-  Group as AriaGroup,
-  Input as AriaInput,
-  ListBox as AriaListBox,
+	ComboBox as AriaComboBox,
+	Group as AriaGroup,
+	Input as AriaInput,
+	ListBox as AriaListBox,
+	ComboBoxStateContext,
 } from "react-aria-components"
 import { HintText } from "~/components/base/input/hint-text"
 import { Label } from "~/components/base/input/label"
@@ -116,7 +116,7 @@ const ComboBoxValue = ({
 						>
 							<span
 								className={cx(
-									"pointer-events-none select-none rounded px-1 py-px font-medium text-quaternary text-xs inset-ring inset-ring-secondary",
+									"pointer-events-none inset-ring inset-ring-secondary select-none rounded px-1 py-px font-medium text-quaternary text-xs",
 									isDisabled && "bg-transparent text-disabled",
 								)}
 								aria-hidden="true"

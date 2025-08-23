@@ -9,9 +9,9 @@ import { Button } from "~/components/base/buttons/button"
 import { Form } from "~/components/base/form/form"
 import { RadioGroupCheckbox } from "~/components/base/radio-groups/radio-group-checkbox"
 import { Toggle } from "~/components/base/toggle/toggle"
+import { Separator } from "~/components/ui/separator"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
-import { cx } from "~/utils/cx";
-import { Separator } from "~/components/ui/separator";
+import { cx } from "~/utils/cx"
 
 export const Route = createFileRoute("/_app/$orgId/settings/notifications")({
 	component: NotificationsSettings,
@@ -63,12 +63,12 @@ function NotificationsSettings() {
 			<div className="flex flex-col gap-y-6">
 				{/* Desktop Notifications */}
 				<NotificationSection>
-          <SectionLabel.Root
-            size="sm"
-            title="Desktop notifications"
-            description="Show alerts directly on your desktop when new activity happens"
-            className="max-lg:hidden space-y-1"
-          />
+					<SectionLabel.Root
+						size="sm"
+						title="Desktop notifications"
+						description="Show alerts directly on your desktop when new activity happens"
+						className="space-y-1 max-lg:hidden"
+					/>
 
 					<Toggle
 						size="sm"
@@ -79,16 +79,16 @@ function NotificationsSettings() {
 					/>
 				</NotificationSection>
 
-				<Separator className='my-3'/>
+				<Separator className="my-3" />
 
 				{/* Sound Settings */}
 				<NotificationSection>
-          <SectionLabel.Root
-            size="sm"
-            title="Sound notifications"
-            description="Play a sound to notify you when new activity occurs"
-            className="max-lg:hidden space-y-1"
-          />
+					<SectionLabel.Root
+						size="sm"
+						title="Sound notifications"
+						description="Play a sound to notify you when new activity occurs"
+						className="space-y-1 max-lg:hidden"
+					/>
 
 					<div className="space-y-4">
 						<Toggle
@@ -145,7 +145,7 @@ function NotificationsSettings() {
 								<div className="flex flex-col gap-y-2">
 									<div className="flex items-center justify-between">
 										<label className="font-medium text-secondary text-sm">Volume</label>
-										<span className="text-sm tabular-numbs text-tertiary">
+										<span className="tabular-numbs text-sm text-tertiary">
 											{Math.round(settings.volume * 100)}%
 										</span>
 									</div>
@@ -174,16 +174,16 @@ function NotificationsSettings() {
 					</div>
 				</NotificationSection>
 
-				<Separator className='my-3'/>
+				<Separator className="my-3" />
 
 				{/* Message Preferences */}
 				<NotificationSection>
-          <SectionLabel.Root
-            size="sm"
-            title="Message notifications"
-            description="Choose when you want to be notified about new messages and conversations"
-            className="max-lg:hidden space-y-1"
-          />
+					<SectionLabel.Root
+						size="sm"
+						title="Message notifications"
+						description="Choose when you want to be notified about new messages and conversations"
+						className="space-y-1 max-lg:hidden"
+					/>
 
 					<RadioGroupCheckbox
 						value={messagePreference}
@@ -215,16 +215,16 @@ function NotificationsSettings() {
 					/>
 				</NotificationSection>
 
-				<Separator className='my-3'/>
+				<Separator className="my-3" />
 
 				{/* Email Notifications */}
 				<NotificationSection>
-          <SectionLabel.Root
-            size="sm"
-            title="Email notifications"
-            description="Receive updates by email when you are away"
-            className="max-lg:hidden space-y-1"
-          />
+					<SectionLabel.Root
+						size="sm"
+						title="Email notifications"
+						description="Receive updates by email when you are away"
+						className="space-y-1 max-lg:hidden"
+					/>
 
 					<div className="space-y-4">
 						<Toggle
@@ -271,17 +271,16 @@ function NotificationsSettings() {
 					</div>
 				</NotificationSection>
 
-				<Separator className='my-3'/>
+				<Separator className="my-3" />
 
 				{/* Quiet Hours */}
 				<NotificationSection>
-
-          <SectionLabel.Root
-            size="sm"
-            title="Quiet hours"
-            description="Mute notifications during selected times"
-            className="max-lg:hidden space-y-1"
-          />
+					<SectionLabel.Root
+						size="sm"
+						title="Quiet hours"
+						description="Mute notifications during selected times"
+						className="space-y-1 max-lg:hidden"
+					/>
 
 					<div className="space-y-4">
 						<Toggle
@@ -333,8 +332,6 @@ function NotificationsSettings() {
 	)
 }
 
-const NotificationSection = ({ className, ...props }: React.ComponentProps<'div'>)=> {
-  return (
-    <div className={cx("grid grid-cols-1 lg:grid-cols-[24rem_1fr] lg:gap-14", className)} {...props}/>
-  )
+const NotificationSection = ({ className, ...props }: React.ComponentProps<"div">) => {
+	return <div className={cx("grid grid-cols-1 lg:grid-cols-[24rem_1fr] lg:gap-14", className)} {...props} />
 }

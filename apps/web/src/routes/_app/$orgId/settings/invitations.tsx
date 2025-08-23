@@ -88,14 +88,21 @@ function RouteComponent() {
 					title="Pending invitations"
 					description="Manage pending invitations sent to team members."
 					className="pb-5"
-					badge={pendingInvitations.length === 0 ? undefined :
-						<Badge className='rounded-full' color="gray" type="modern" size="sm">
-							{pendingInvitations.length} pending
-						</Badge>
+					badge={
+						pendingInvitations.length === 0 ? undefined : (
+							<Badge className="rounded-full" color="gray" type="modern" size="sm">
+								{pendingInvitations.length} pending
+							</Badge>
+						)
 					}
 					contentTrailing={
 						<div className="flex gap-3">
-							<Button color='secondary' size="md" iconLeading={Plus} onClick={() => setShowInviteModal(true)}>
+							<Button
+								color="secondary"
+								size="md"
+								iconLeading={Plus}
+								onClick={() => setShowInviteModal(true)}
+							>
 								Invite user
 							</Button>
 						</div>
@@ -142,7 +149,12 @@ function RouteComponent() {
 										</p>
 									</Table.Cell>
 									<Table.Cell>
-										<BadgeWithDot className='rounded-full' color="warning" size="sm" type="modern">
+										<BadgeWithDot
+											className="rounded-full"
+											color="warning"
+											size="sm"
+											type="modern"
+										>
 											Pending
 										</BadgeWithDot>
 									</Table.Cell>

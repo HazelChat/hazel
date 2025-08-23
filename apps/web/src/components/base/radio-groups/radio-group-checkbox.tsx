@@ -38,7 +38,7 @@ export const RadioGroupCheckbox = ({ items, size = "sm", className, ...props }: 
 					value={plan.value}
 					className={({ isDisabled, isFocusVisible, isSelected }) =>
 						cx(
-							"relative flex cursor-pointer items-start gap-1 rounded-xl bg-primary p-4 outline-focus-ring inset-ring",
+							"relative inset-ring flex cursor-pointer items-start gap-1 rounded-xl bg-primary p-4 outline-focus-ring",
 							size === "md" ? "gap-3" : "gap-2",
 							isSelected ? "inset-ring-brand" : "inset-ring-secondary",
 							isDisabled && "cursor-not-allowed bg-disabled_subtle ring-disabled_subtle",
@@ -65,7 +65,7 @@ export const RadioGroupCheckbox = ({ items, size = "sm", className, ...props }: 
 							>
 								<AriaLabel
 									className={cx(
-										"pointer-events-none font-medium text-primary flex",
+										"pointer-events-none flex font-medium text-primary",
 										size === "md" ? "gap-1.5" : "gap-1",
 									)}
 								>

@@ -120,7 +120,12 @@ function RouteComponent() {
 					}
 					contentTrailing={
 						<div className="flex gap-3">
-							<Button color='secondary' size="md" iconLeading={Plus} onClick={() => setShowInviteModal(true)}>
+							<Button
+								color="secondary"
+								size="md"
+								iconLeading={Plus}
+								onClick={() => setShowInviteModal(true)}
+							>
 								Invite user
 							</Button>
 						</div>
@@ -152,18 +157,20 @@ function RouteComponent() {
 												src={member.avatarUrl}
 												initials={getInitials(member.name)}
 												alt={member.name}
-                        className='*:rounded-md rounded-md size-9'
+												className="size-9 rounded-md *:rounded-md"
 												status={member.status === "Active" ? "online" : "offline"}
 											/>
 											<div className="flex flex-col">
-                        <span className="text-primary font-medium text-sm/6">{member.name}</span>
-                        <span className='text-tertiary'>{member.email}</span>
-                      </div>
+												<span className="font-medium text-primary text-sm/6">
+													{member.name}
+												</span>
+												<span className="text-tertiary">{member.email}</span>
+											</div>
 										</div>
 									</Table.Cell>
 									<Table.Cell>
 										<BadgeWithDot
-                      className='rounded-full'
+											className="rounded-full"
 											color={
 												member.status === "Active"
 													? "success"
@@ -179,7 +186,7 @@ function RouteComponent() {
 									</Table.Cell>
 									<Table.Cell>
 										<Badge
-                      className='rounded-full'
+											className="rounded-full"
 											color={
 												roleToBadgeColorsMap[
 													member.role as keyof typeof roleToBadgeColorsMap

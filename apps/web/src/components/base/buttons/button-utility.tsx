@@ -1,5 +1,5 @@
 import type { LinkProps } from "@tanstack/react-router"
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, DetailedHTMLProps, FC, ReactNode, } from "react"
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, DetailedHTMLProps, FC, ReactNode } from "react"
 import { isValidElement } from "react"
 import type { Placement } from "react-aria"
 import type { ButtonProps as AriaButtonProps } from "react-aria-components"

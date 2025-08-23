@@ -110,7 +110,7 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 			<ModalOverlay isDismissable>
 				<Modal>
 					<Dialog>
-						<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-130 [--gutter:--spacing(6)] [--gap:--spacing(1.5)] lg:[--gap:--spacing(2)]">
+						<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all [--gap:--spacing(1.5)] [--gutter:--spacing(6)] sm:max-w-130 lg:[--gap:--spacing(2)]">
 							<CloseButton
 								onClick={() => onOpenChange(false)}
 								theme="light"
@@ -140,44 +140,44 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 							<div className="flex flex-col items-start justify-start gap-(--gap) px-4 sm:px-(--gutter)">
 								{invites.map((invite, index) => (
 									<div key={invite.id} className="flex w-full items-center gap-(--gap)">
-                    <div className="space-y-1.5 w-full">
-                      {index === 0 && <Label>Email address</Label>}
-                      <Input
-                        size="md"
-                        placeholder="colleague@company.com"
-                        icon={Mail01}
-                        value={invite.email}
-                        onChange={(value) =>
-                          updateInviteEntry(invite.id, "email", value)
-                        }
-                        isInvalid={
-                          invite.email !== "" && !validateEmail(invite.email)
-                        }
-                      />
-                    </div>
-                    <div className='flex-1 justify-end items-center flex gap-(--gap)'>
-                      <div className="w-28 space-y-1.5">
-                        {index === 0 && <Label>Role</Label>}
-                        <Select
-                          size="md"
-                          selectedKey={invite.role}
-                          onSelectionChange={(value) =>
-                            updateInviteEntry(invite.id, "role", value as string)
-                          }
-                        >
-                          <Select.Item id="member">Member</Select.Item>
-                          <Select.Item id="admin">Admin</Select.Item>
-                        </Select>
-                      </div>
-                      {invites.length > 1 && index > 0 && (
-                        <ButtonUtility
-                          color="tertiary"
-                          className="*:data-icon:size-6 *:data-icon:stroke-[1.5px] p-[--spacing(2.3)]"
-                          icon={X}
-                          onClick={() => removeInviteEntry(invite.id)}
-                        />
-                      )}
-                    </div>
+										<div className="w-full space-y-1.5">
+											{index === 0 && <Label>Email address</Label>}
+											<Input
+												size="md"
+												placeholder="colleague@company.com"
+												icon={Mail01}
+												value={invite.email}
+												onChange={(value) =>
+													updateInviteEntry(invite.id, "email", value)
+												}
+												isInvalid={
+													invite.email !== "" && !validateEmail(invite.email)
+												}
+											/>
+										</div>
+										<div className="flex flex-1 items-center justify-end gap-(--gap)">
+											<div className="w-28 space-y-1.5">
+												{index === 0 && <Label>Role</Label>}
+												<Select
+													size="md"
+													selectedKey={invite.role}
+													onSelectionChange={(value) =>
+														updateInviteEntry(invite.id, "role", value as string)
+													}
+												>
+													<Select.Item id="member">Member</Select.Item>
+													<Select.Item id="admin">Admin</Select.Item>
+												</Select>
+											</div>
+											{invites.length > 1 && index > 0 && (
+												<ButtonUtility
+													color="tertiary"
+													className="p-[--spacing(2.3)] *:data-icon:size-6 *:data-icon:stroke-[1.5px]"
+													icon={X}
+													onClick={() => removeInviteEntry(invite.id)}
+												/>
+											)}
+										</div>
 									</div>
 								))}
 								<Button
