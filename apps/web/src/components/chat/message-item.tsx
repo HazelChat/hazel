@@ -221,7 +221,7 @@ export function MessageItem({
                 )}
               </div>
 
-              <div className='bg-tertiary inset-shadow-2xs inset-shadow-white/10 dark:inset-shadow-black/10 rounded-t-lg p-4'>
+              <div className='bg-tertiary inset-shadow-2xs inset-shadow-gray-500/15 rounded-t-lg p-4'>
                 <div className="-mt-12">
                   <Avatar
                     size="xl"
