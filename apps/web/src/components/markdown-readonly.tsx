@@ -3,10 +3,10 @@ import type { VariantProps } from "class-variance-authority"
 import type { PlateStaticProps } from "platejs"
 import { createPlateEditor } from "platejs/react"
 import { memo, useMemo } from "react"
+import { EditorStatic, type editorVariants } from "./editor/editor-ui/editor-static"
 import { BasicNodesKit } from "./editor/plugins/basic-nodes-kit"
 import { MarkdownKit } from "./editor/plugins/markdown-kit"
 import { MentionKit } from "./editor/plugins/mention-kit"
-import { EditorStatic, type editorVariants } from "./editor-ui/editor-static"
 
 const editor = createPlateEditor({
 	plugins: [...BasicNodesKit, ...MarkdownKit, ...MentionKit],

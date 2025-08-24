@@ -32,19 +32,6 @@ type Group = {
 
 const groups: Group[] = [
 	{
-		group: "AI",
-		items: [
-			{
-				focusEditor: false,
-				icon: <Code02 />,
-				value: "AI",
-				onSelect: (editor) => {
-					editor.getApi(AIChatPlugin).aiChat.show()
-				},
-			},
-		],
-	},
-	{
 		group: "Basic blocks",
 		items: [
 			{
