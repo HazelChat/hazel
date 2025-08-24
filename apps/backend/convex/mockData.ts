@@ -60,6 +60,23 @@ export const generateMockData = userMutation({
 			email: ctx.user.doc.email,
 		})
 
+		// Add current user as organization member if not already a member
+		const currentUserMembership = await ctx.db
+			.query("organizationMembers")
+			.withIndex("by_organizationId_userId", (q) =>
+				q.eq("organizationId", organizationId).eq("userId", currentUserId),
+			)
+			.first()
+
+		if (!currentUserMembership) {
+			await ctx.db.insert("organizationMembers", {
+				organizationId,
+				userId: currentUserId,
+				role: "admin", // Current user should be admin since they're generating the data
+				joinedAt: Date.now(),
+			})
+		}
+
 		for (const mockUser of mockUsers) {
 			// Check if user already exists
 			const existingUser = await ctx.db
@@ -81,7 +98,17 @@ export const generateMockData = userMutation({
 					lastSeen: Date.now(),
 					status: Math.random() > 0.5 ? "online" : "offline",
 				})
+			}
 
+			// Check if user is already a member of the organization
+			const existingMembership = await ctx.db
+				.query("organizationMembers")
+				.withIndex("by_organizationId_userId", (q) =>
+					q.eq("organizationId", organizationId).eq("userId", userId),
+				)
+				.first()
+
+			if (!existingMembership) {
 				// Add user to organization
 				await ctx.db.insert("organizationMembers", {
 					organizationId,
