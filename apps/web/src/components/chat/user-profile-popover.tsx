@@ -48,7 +48,7 @@ export function UserProfilePopover({
 
 	return (
 		<DialogTrigger>
-			<Button className="outline-hidden">
+			<Button className="size-fit outline-hidden">
 				<Avatar size="md" alt={fullName} src={user.avatarUrl} />
 			</Button>
 			<Popover
