@@ -328,6 +328,10 @@ export const syncUsers = internalMutation({
 			for (const existingUser of existingUsers) {
 				if (!workosUserIds.has(existingUser.externalId) && !existingUser.deletedAt) {
 					try {
+						if (existingUser.externalId.startsWith("mock_")) {
+							continue
+						}
+
 						await ctx.db.patch(existingUser._id, {
 							deletedAt: Date.now(),
 						})
@@ -483,6 +487,10 @@ export const syncOrganizationMemberships = internalMutation({
 			for (const existingMembership of existingMemberships) {
 				if (!seenUserIds.has(existingMembership.userId) && !existingMembership.deletedAt) {
 					try {
+						const user = await ctx.db.get(existingMembership.userId)
+						if (user?.externalId.startsWith("mock_")) {
+							continue
+						}
 						await ctx.db.patch(existingMembership._id, {
 							deletedAt: Date.now(),
 						})
