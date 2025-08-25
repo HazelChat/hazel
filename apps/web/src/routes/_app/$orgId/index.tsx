@@ -3,15 +3,20 @@ import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { User01 } from "@untitledui/icons"
+import { PhoneCall01, SwitchHorizontal02, UserDown01, UserX01, VolumeX } from "@untitledui/icons"
 import { useMemo, useState } from "react"
 import { Avatar } from "~/components/base/avatar/avatar"
-import { Button } from "~/components/base/buttons/button"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { Input } from "~/components/base/input/input"
 import { IconChatStroke } from "~/components/icons/IconChatStroke"
 import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
+import IconPlusStroke from "~/components/icons/IconPlusStroke";
+import IconUserUser03 from "~/components/icons/IconUserUser03";
+import IconAlertCircle from "~/components/icons/IconAlertCircle";
+import IconClipboard from "~/components/icons/IconClipboard";
+import { twJoin } from "tailwind-merge"
+import { ButtonUtility } from "~/components/base/buttons/button-utility";
 
 export const Route = createFileRoute("/_app/$orgId/")({
 	component: RouteComponent,
@@ -56,7 +61,7 @@ function RouteComponent() {
 	}
 
 	return (
-			<div className="flex flex-col sm:py-12 p-4 gap-6">
+			<div className="flex flex-col sm:py-4 p-4 gap-6">
 				<div className="w-full">
 					<h1 className="mb-2 font-semibold text-2xl">Members</h1>
 					<p className="text-secondary">Browse and connect with members in your organization</p>
@@ -91,45 +96,51 @@ function RouteComponent() {
 							return (
 								<div
 									key={member._id}
-									className="flex items-center justify-between gap-4 rounded-lg px-3 py-2 transition-colors hover:bg-tertiary/40"
+									className={twJoin(
+                    "flex items-center justify-between gap-4 rounded-lg px-3 py-2",
+
+                  currentUserQuery.data?._id !== member._id && "group hover:bg-tertiary/40 transition-colors"
+                  )}
 								>
-									<div className="flex items-center gap-3">
-										<Avatar src={member.avatarUrl} alt={fullName || "User"} size="md" />
+									<div className="flex items-center gap-2 sm:gap-3">
+										<Avatar src={member.avatarUrl} alt={fullName || "User"} size="sm" />
 										<div>
-											<p className="font-medium">{fullName || "Unknown User"}</p>
-											<p className="text-secondary text-sm">{member.email}</p>
-											{member.role && (
-												<p className="text-brand-primary text-xs capitalize">
-													{member.role}
-												</p>
-											)}
+											<p className="font-semibold flex items-center gap-x-2 text-sm/6">{fullName || "Unknown User"} / 		{member.role && (
+                        <p className="text-tertiary text-xs capitalize">
+                          {member.role}
+                        </p>
+                      )}</p>
+											<p className="text-tertiary text-xs">{member.email}</p>
+
 										</div>
 									</div>
 
 									{currentUserQuery.data?._id !== member._id && (
 										<div className="flex items-center gap-2">
-											<Button
-												color="tertiary"
-												size="sm"
+											<ButtonUtility
 												onClick={() => handleOpenChat(member._id)}
-												className="p-2"
-											>
-												<IconChatStroke className="size-5" />
-											</Button>
+												className="sm:inline-grid hidden inset-ring-0 group-hover:bg-tertiary pressed:bg-tertiary"
+                        size='sm'
+                        icon={IconChatStroke}
+											/>
                       <Dropdown.Root>
-
-                      <Button color="tertiary" size="sm" className="p-2">
-												<IconThreeDotsMenuHorizontalStroke className="size-5" />
-											</Button>
+                        <ButtonUtility className='inset-ring-0 group-hover:bg-tertiary pressed:bg-tertiary' size="sm" icon={IconThreeDotsMenuHorizontalStroke}/>
                         <Dropdown.Popover>
                           <Dropdown.Menu>
                             <Dropdown.Section>
-                              <Dropdown.Item>
-                              </Dropdown.Item>
+                              <Dropdown.Item icon={IconChatStroke}>Message</Dropdown.Item>
+                              <Dropdown.Item icon={IconUserUser03}>View profile</Dropdown.Item>
+                              <Dropdown.Item icon={PhoneCall01}>Start call</Dropdown.Item>
+                              <Dropdown.Item icon={IconClipboard}>Copy email</Dropdown.Item>
                             </Dropdown.Section>
                             <Dropdown.Separator />
                             <Dropdown.Section>
-                              <Dropdown.Item></Dropdown.Item>
+                              <Dropdown.Item icon={IconPlusStroke}>Add to channel</Dropdown.Item>
+                              <Dropdown.Item icon={SwitchHorizontal02}>Change role</Dropdown.Item>
+                              <Dropdown.Item icon={VolumeX}>Mute user</Dropdown.Item>
+                              <Dropdown.Item icon={UserDown01}>Kick</Dropdown.Item>
+                              <Dropdown.Item icon={UserX01}>Ban</Dropdown.Item>
+                              <Dropdown.Item icon={IconAlertCircle}>Report</Dropdown.Item>
                             </Dropdown.Section>
                           </Dropdown.Menu>
                         </Dropdown.Popover>
