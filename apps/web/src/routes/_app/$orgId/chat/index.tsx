@@ -179,7 +179,7 @@ function DmCard({
 			<Link
 				to="/$orgId/chat/$id"
 				params={{ orgId, id: channel._id }}
-				className="flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:bg-quaternary/40"
+				className="flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 inset-ring inset-ring-transaparent hover:inset-ring-secondary hover:bg-quaternary/40"
 			>
 				<div className="flex items-center gap-3">
 					<Avatar
@@ -208,7 +208,7 @@ function DmCard({
 		<Link
 			to="/$orgId/chat/$id"
 			params={{ orgId, id: channel._id }}
-			className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-muted/40 hover:bg-tertiary"
+			className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 inset-ring inset-ring-transaparent hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
 			<div className="flex items-center gap-2.5">
 				<div className="-space-x-4 flex">
@@ -231,7 +231,7 @@ function DmCard({
 							<span className="text-tertiary">+{otherMembers.length - 3} more</span>
 						)}
 					</h3>
-					<p className="text-secondary text-sm">{otherMembers.length} participants</p>
+					<p className="text-tertiary text-sm">{otherMembers.length} participants</p>
 				</div>
 			</div>
 			{channel.currentUser?.notificationCount > 0 && (
