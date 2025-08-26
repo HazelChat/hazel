@@ -17,6 +17,7 @@ import IconPlusStroke from "~/components/icons/IconPlusStroke"
 import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
 import IconUserUser03 from "~/components/icons/IconUserUser03"
+import { SectionDescription, SectionHeader, SectionTitle } from "~/components/section-header";
 
 export const Route = createFileRoute("/_app/$orgId/")({
 	component: RouteComponent,
@@ -61,11 +62,11 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 p-4 sm:py-4">
-			<div className="w-full">
-				<h1 className="mb-2 font-semibold text-2xl">Members</h1>
-				<p className="text-secondary">Browse and connect with members in your organization</p>
-			</div>
+		<div className="flex flex-col gap-6 p-6 lg:p-12">
+			<SectionHeader>
+				<SectionTitle>Members</SectionTitle>
+        <SectionDescription>Explore your organization and connect with fellow members.</SectionDescription>
+      </SectionHeader>
 
 			<div className="w-full">
 				<Input
