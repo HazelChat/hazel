@@ -4,12 +4,12 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { TabList, TabPanel, Tabs } from "~/components/application/tabs/tabs"
 import { Avatar } from "~/components/base/avatar/avatar"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
 import IconLockCloseStroke from "~/components/icons/IconLockCloseStroke"
 import { usePresence } from "~/components/presence/presence-provider"
-import { SectionDescription, SectionHeader, SectionTitle } from "~/components/section-header"
 import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgId/chat/")({
@@ -45,13 +45,16 @@ function RouteComponent() {
 
 	return (
 		<div className="flex flex-col gap-6 p-6 lg:p-12">
-			<SectionHeader>
-				<SectionTitle>All channels</SectionTitle>
-				<SectionDescription>
-					Discover communities and join the discussions that matter to you.
-				</SectionDescription>
-			</SectionHeader>
-
+			<SectionHeader.Root>
+				<SectionHeader.Group>
+					<div className="space-y-0.5">
+						<SectionHeader.Heading>All channels</SectionHeader.Heading>
+						<SectionHeader.Subheading>
+							Discover communities and join the discussions that matter to you.
+						</SectionHeader.Subheading>
+					</div>
+				</SectionHeader.Group>
+			</SectionHeader.Root>
 			<Tabs>
 				<TabList
 					className="mb-2 w-auto rounded-lg border border-primary p-1"

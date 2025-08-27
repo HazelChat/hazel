@@ -6,6 +6,7 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { PhoneCall01, SwitchHorizontal02, UserDown01, UserX01, VolumeX } from "@untitledui/icons"
 import { useMemo, useState } from "react"
 import { twJoin } from "tailwind-merge"
+import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
@@ -17,7 +18,6 @@ import IconPlusStroke from "~/components/icons/IconPlusStroke"
 import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
 import IconUserUser03 from "~/components/icons/IconUserUser03"
-import { SectionDescription, SectionHeader, SectionTitle } from "~/components/section-header"
 
 export const Route = createFileRoute("/_app/$orgId/")({
 	component: RouteComponent,
@@ -63,12 +63,16 @@ function RouteComponent() {
 
 	return (
 		<div className="flex flex-col gap-6 p-6 lg:p-12">
-			<SectionHeader>
-				<SectionTitle>Members</SectionTitle>
-				<SectionDescription>
-					Explore your organization and connect with fellow members.
-				</SectionDescription>
-			</SectionHeader>
+			<SectionHeader.Root>
+				<SectionHeader.Group>
+					<div className="space-y-0.5">
+						<SectionHeader.Heading>Members</SectionHeader.Heading>
+						<SectionHeader.Subheading>
+							Explore your organization and connect with fellow members.
+						</SectionHeader.Subheading>
+					</div>
+				</SectionHeader.Group>
+			</SectionHeader.Root>
 
 			<div className="w-full">
 				<Input
