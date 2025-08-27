@@ -4,6 +4,7 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import IconChat1 from "~/components/icons/IconChat1"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
 import IconChatChatting1 from "../icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "../icons/IconGridDashboard01DuoSolid"
@@ -30,7 +31,7 @@ import { NavUser } from "./nav-user"
 import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 
-export const AppSidebar = () => {
+export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
 	const { isMobile } = useSidebar()
 	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as Id<"organizations">
@@ -106,6 +107,12 @@ export const AppSidebar = () => {
 										</SidebarMenuBadge>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton onClick={() => setOpenCmd(true)}>
+										<IconChat1 />
+										Find conversation
+									</SidebarMenuButton>
+								</SidebarMenuItem>
 							</SidebarGroup>
 							<SidebarFavoriteGroup />
 							<SidebarGroup>
@@ -161,6 +168,13 @@ export const AppSidebar = () => {
 									<SidebarMenuBadge className="rounded-full bg-destructive">
 										1
 									</SidebarMenuBadge>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton onClick={() => setOpenCmd(true)}>
+									<IconChat1 />
+									Find conversation
+									<span className="ml-auto font-mono text-xs">⌘K</span>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						</SidebarGroupContent>

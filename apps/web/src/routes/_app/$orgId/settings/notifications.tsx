@@ -294,10 +294,14 @@ function NotificationsSettings() {
 						{doNotDisturb && (
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<label className="mb-2 block font-medium text-secondary text-sm">
+									<label
+										htmlFor="start-time"
+										className="mb-2 block font-medium text-secondary text-sm"
+									>
 										Start time
 									</label>
 									<input
+										id="start-time"
 										type="time"
 										value={quietHoursStart}
 										onChange={(e) => setQuietHoursStart(e.target.value)}
@@ -305,10 +309,14 @@ function NotificationsSettings() {
 									/>
 								</div>
 								<div>
-									<label className="mb-2 block font-medium text-secondary text-sm">
+									<label
+										htmlFor="end-time"
+										className="mb-2 block font-medium text-secondary text-sm"
+									>
 										End time
 									</label>
 									<input
+										id="end-time"
 										type="time"
 										value={quietHoursEnd}
 										onChange={(e) => setQuietHoursEnd(e.target.value)}

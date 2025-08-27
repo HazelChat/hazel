@@ -6,6 +6,7 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { PhoneCall01, SwitchHorizontal02, UserDown01, UserX01, VolumeX } from "@untitledui/icons"
 import { useMemo, useState } from "react"
 import { twJoin } from "tailwind-merge"
+import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
@@ -61,11 +62,17 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 p-4 sm:py-4">
-			<div className="w-full">
-				<h1 className="mb-2 font-semibold text-2xl">Members</h1>
-				<p className="text-secondary">Browse and connect with members in your organization</p>
-			</div>
+		<div className="flex flex-col gap-6 p-6 lg:p-12">
+			<SectionHeader.Root>
+				<SectionHeader.Group>
+					<div className="space-y-0.5">
+						<SectionHeader.Heading>Members</SectionHeader.Heading>
+						<SectionHeader.Subheading>
+							Explore your organization and connect with fellow members.
+						</SectionHeader.Subheading>
+					</div>
+				</SectionHeader.Group>
+			</SectionHeader.Root>
 
 			<div className="w-full">
 				<Input
@@ -100,7 +107,7 @@ function RouteComponent() {
 									"flex items-center justify-between gap-4 rounded-lg px-3 py-2",
 
 									currentUserQuery.data?._id !== member._id &&
-										"group transition-colors hover:bg-tertiary/40",
+										"group inset-ring inset-ring-transparent hover:inset-ring-secondary hover:bg-quaternary/40",
 								)}
 							>
 								<div className="flex items-center gap-2 sm:gap-2.5">

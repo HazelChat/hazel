@@ -4,6 +4,8 @@ import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import { SectionHeader } from "~/components/application/section-headers/section-headers"
+import { TabList, TabPanel, Tabs } from "~/components/application/tabs/tabs"
 import { Avatar } from "~/components/base/avatar/avatar"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
 import IconLockCloseStroke from "~/components/icons/IconLockCloseStroke"
@@ -42,49 +44,75 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 p-4 sm:py-12">
-			<div className="w-full">
-				<h1 className="mb-2 font-semibold text-2xl">All Channels</h1>
-				<p className="text-secondary">Browse and join conversations</p>
-			</div>
-
-			{publicChannels.length > 0 && (
-				<div className="w-full">
-					<h2 className="mb-4 font-semibold text-lg">Public Channels</h2>
-					<div className="space-y-2">
-						{publicChannels.map((channel) => (
-							<ChannelCard key={channel._id} channel={channel} />
-						))}
+		<div className="flex flex-col gap-6 p-6 lg:p-12">
+			<SectionHeader.Root>
+				<SectionHeader.Group>
+					<div className="space-y-0.5">
+						<SectionHeader.Heading>All channels</SectionHeader.Heading>
+						<SectionHeader.Subheading>
+							Discover communities and join the discussions that matter to you.
+						</SectionHeader.Subheading>
 					</div>
-				</div>
-			)}
+				</SectionHeader.Group>
+			</SectionHeader.Root>
+			<Tabs>
+				<TabList
+					className="mb-2 w-auto rounded-lg border border-primary p-1"
+					items={[
+						{ label: "Public", id: "public" },
+						{ label: "Private", id: "private" },
+						{ label: "Direct message", id: "dms" },
+					]}
+				/>
 
-			{privateChannels.length > 0 && (
-				<div className="w-full">
-					<h2 className="mb-4 font-semibold text-lg">Private Channels</h2>
-					<div className="space-y-2">
-						{privateChannels.map((channel) => (
-							<ChannelCard key={channel._id} channel={channel} isPrivate />
-						))}
-					</div>
-				</div>
-			)}
-
-			{dmChannels.length > 0 && (
-				<div className="w-full">
-					<h2 className="mb-4 font-semibold text-lg">Direct Messages</h2>
-					<div className="space-y-2">
-						{dmChannels.map((channel) => (
-							<DmCard
-								key={channel._id}
-								channel={channel}
-								currentUserId={me?._id}
-								presenceList={presenceList}
-							/>
-						))}
-					</div>
-				</div>
-			)}
+				<TabPanel id="public">
+					{publicChannels.length > 0 && (
+						<div className="w-full rounded-lg border border-primary p-2">
+							<h2 className="sr-only">Public Channels</h2>
+							<div className="space-y-2">
+								{publicChannels.map((channel) => (
+									<ChannelCard key={channel._id} channel={channel} />
+								))}
+							</div>
+						</div>
+					)}
+				</TabPanel>
+				<TabPanel id="private">
+					{privateChannels.length > 0 && (
+						<div className="w-full rounded-lg border border-primary p-2">
+							<h2 className="sr-only">Private Channels</h2>
+							<div className="space-y-2">
+								{privateChannels.map((channel) => (
+									<ChannelCard key={channel._id} channel={channel} isPrivate />
+								))}
+							</div>
+						</div>
+					)}
+				</TabPanel>
+				<TabPanel id="dms">
+					{dmChannels.length > 0 && (
+						<div className="w-full rounded-lg border border-primary p-2">
+							<div className="space-y-2">
+								{dmChannels.length > 0 && (
+									<div className="w-full">
+										<h2 className="sr-only">Direct Messages</h2>
+										<div className="space-y-2">
+											{dmChannels.map((channel) => (
+												<DmCard
+													key={channel._id}
+													channel={channel}
+													currentUserId={me?._id}
+													presenceList={presenceList}
+												/>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+				</TabPanel>
+			</Tabs>
 
 			{!publicChannels.length && !privateChannels.length && !dmChannels.length && (
 				<div className="flex h-64 items-center justify-center">
@@ -101,10 +129,10 @@ function ChannelCard({ channel, isPrivate = false }: { channel: any; isPrivate?:
 		<Link
 			to="/$orgId/chat/$id"
 			params={{ orgId, id: channel._id }}
-			className="flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors hover:bg-quaternary/40"
+			className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
 			<div className="flex items-center gap-3">
-				<div className="flex h-10 w-10 items-center justify-center">
+				<div className="inset-ring inset-ring-secondary flex size-10 items-center justify-center rounded-md bg-primary">
 					{isPrivate ? (
 						<IconLockCloseStroke className="size-5 text-secondary" />
 					) : (
@@ -113,7 +141,9 @@ function ChannelCard({ channel, isPrivate = false }: { channel: any; isPrivate?:
 				</div>
 				<div>
 					<div className="flex items-center gap-2">
-						<h3 className={cn("font-medium", channel.isMuted && "opacity-60")}>{channel.name}</h3>
+						<h3 className={cn("font-semibold text-sm/5", channel.isMuted && "opacity-60")}>
+							{channel.name}
+						</h3>
 						{channel.isFavorite && <span className="text-amber-500">★</span>}
 					</div>
 					{channel.description && (
@@ -154,7 +184,7 @@ function DmCard({
 			<Link
 				to="/$orgId/chat/$id"
 				params={{ orgId, id: channel._id }}
-				className="flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors hover:bg-quaternary/40"
+				className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 			>
 				<div className="flex items-center gap-3">
 					<Avatar
@@ -183,26 +213,30 @@ function DmCard({
 		<Link
 			to="/$orgId/chat/$id"
 			params={{ orgId, id: channel._id }}
-			className="flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors hover:bg-muted/40"
+			className="inset-ring inset-ring inset-ring-transparent inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
-			<div className="flex items-center gap-3">
-				<div className="-space-x-2 flex">
+			<div className="flex items-center gap-2.5">
+				<div className="-space-x-4 flex">
 					{otherMembers.slice(0, 3).map((member: any) => (
 						<Avatar
 							key={member.user._id}
-							className="size-10 border-2 border-background"
+							className="size-9 border-1 border-primary"
 							src={member.user.avatarUrl}
 							alt={member.user.firstName[0]}
 						/>
 					))}
 				</div>
 				<div>
-					<h3 className={cn("font-medium", channel.isMuted && "opacity-60")}>
+					<h3 className={cn("font-semibold text-sm/6", channel.isMuted && "opacity-60")}>
 						{otherMembers
+							.slice(0, 3)
 							.map((member: any) => `${member.user.firstName} ${member.user.lastName}`)
-							.join(", ")}
+							.join(", ")}{" "}
+						{otherMembers.length > 3 && (
+							<span className="text-tertiary">+{otherMembers.length - 3} more</span>
+						)}
 					</h3>
-					<p className="text-secondary text-sm">{otherMembers.length} participants</p>
+					<p className="text-sm text-tertiary">{otherMembers.length} participants</p>
 				</div>
 			</div>
 			{channel.currentUser?.notificationCount > 0 && (

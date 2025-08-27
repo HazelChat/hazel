@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { useState } from "react"
 import { AppSidebar } from "~/components/app-sidebar/app-sidebar"
 import { SidebarMobile } from "~/components/app-sidebar/sidebar-mobile"
 import { CommandPalette } from "~/components/command-palette"
@@ -11,15 +12,16 @@ export const Route = createFileRoute("/_app/$orgId")({
 })
 
 function RouteComponent() {
+	const [openCmd, setOpenCmd] = useState(false)
 	return (
 		<PresenceProvider>
 			<SidebarProvider>
 				<NotificationManager />
-				<AppSidebar />
+				<AppSidebar setOpenCmd={setOpenCmd} />
 				<SidebarInset>
 					<SidebarMobile />
 					<Outlet />
-					<CommandPalette />
+					<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />
 				</SidebarInset>
 			</SidebarProvider>
 		</PresenceProvider>
