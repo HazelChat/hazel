@@ -1,10 +1,12 @@
 import { convexQuery } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
+import { useLiveQuery } from "@tanstack/react-db"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
 import IconChat1 from "~/components/icons/IconChat1"
+import { channelCollection } from "~/db/collections"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
 import IconChatChatting1 from "../icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "../icons/IconGridDashboard01DuoSolid"
@@ -36,6 +38,12 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as Id<"organizations">
 
+	const { data: channels } = useLiveQuery((q) =>
+		q
+			.from({ channel: channelCollection(organizationId) })
+			.orderBy(({ channel }) => channel._creationTime, "asc"),
+	)
+
 	const channelsQuery = useQuery(
 		convexQuery(
 			api.channels.getChannelsForOrganization,
@@ -49,6 +57,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 				: "skip",
 		),
 	)
+
+	console.log(channels, channelsQuery.data)
 
 	const dmChannels = useMemo(() => channelsQuery.data?.dmChannels || [], [channelsQuery.data])
 

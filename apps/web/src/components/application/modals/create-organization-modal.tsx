@@ -120,131 +120,127 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 	}
 
 	return (
-		<AriaDialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
-			<ModalOverlay isDismissable>
-				<Modal>
-					<Dialog>
-						<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-130">
-							<CloseButton
-								onClick={handleClose}
-								theme="light"
-								size="lg"
-								className="absolute top-3 right-3"
-							/>
-							<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
-								<div className="relative w-max">
-									<FeaturedIcon color="gray" size="lg" theme="modern" icon={Building02} />
-									<BackgroundPattern
-										pattern="circle"
-										size="sm"
-										className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
-									/>
-								</div>
-								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="font-semibold text-md text-primary">
-										Create a new organization
-									</AriaHeading>
-									<p className="text-sm text-tertiary">
-										Set up a new workspace for your team
-									</p>
-								</div>
-							</div>
-							<div className="h-5 w-full" />
-							<div className="flex flex-col gap-4 px-4 sm:px-6">
-								{/* Organization Name */}
-								<form.AppField
-									name="name"
-									children={(field) => (
-										<field.Input
-											label={"Organization name"}
-											id="org-name"
-											size="md"
-											placeholder="Acme Inc."
-											value={field.state.value}
-											onChange={(value) => field.handleChange(value)}
-											onBlur={field.handleBlur}
-											isInvalid={!!field.state.meta.errors?.length}
-											autoFocus
-											hint={field.state.meta.errors
-												?.map((error) => error?.message)
-												.join(", ")}
-										/>
-									)}
-								/>
-
-								{/* Organization Slug */}
-								<form.AppField
-									name="slug"
-									children={(field) => (
-										<div className="flex flex-col gap-1.5">
-											<field.Input
-												label="Organization slug"
-												id="org-slug"
-												size="md"
-												placeholder="acme-inc"
-												value={field.state.value}
-												onChange={(value) => field.handleChange(value)}
-												onBlur={field.handleBlur}
-												isInvalid={!!field.state.meta.errors?.length}
-												hint={field.state.meta.errors
-													?.map((error) => error?.message)
-													.join(", ")}
-											/>
-											{!field.state.meta.errors?.length && field.state.value && (
-												<p className="text-tertiary text-xs">
-													Your organization URL will be: /{field.state.value}
-												</p>
-											)}
-										</div>
-									)}
-								/>
-
-								{/* Logo URL (Optional) */}
-								<form.AppField
-									name="logoUrl"
-									children={(field) => (
-										<field.Input
-											label="Logo URL (optional)"
-											id="org-logo"
-											size="md"
-											placeholder="https://example.com/logo.png"
-											value={field.state.value}
-											onChange={(value) => field.handleChange(value)}
-											onBlur={field.handleBlur}
-											isInvalid={!!field.state.meta.errors?.length}
-											hint={field.state.meta.errors
-												?.map((error) => error?.message)
-												.join(", ")}
-										/>
-									)}
+		<ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
+			<Modal>
+				<Dialog>
+					<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-130">
+						<CloseButton
+							onClick={handleClose}
+							theme="light"
+							size="lg"
+							className="absolute top-3 right-3"
+						/>
+						<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
+							<div className="relative w-max">
+								<FeaturedIcon color="gray" size="lg" theme="modern" icon={Building02} />
+								<BackgroundPattern
+									pattern="circle"
+									size="sm"
+									className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
 								/>
 							</div>
-							<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pt-8 sm:pb-6">
-								<Button
-									color="secondary"
-									size="lg"
-									onClick={handleClose}
-									isDisabled={form.state.isSubmitting}
-								>
-									Cancel
-								</Button>
-								<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-									{([canSubmit, isSubmitting]) => (
-										<Button
-											color="primary"
-											size="lg"
-											onClick={form.handleSubmit}
-											isDisabled={!canSubmit || isSubmitting}
-										>
-											{isSubmitting ? "Creating..." : "Create organization"}
-										</Button>
-									)}
-								</form.Subscribe>
+							<div className="z-10 flex flex-col gap-0.5">
+								<AriaHeading slot="title" className="font-semibold text-md text-primary">
+									Create a new organization
+								</AriaHeading>
+								<p className="text-sm text-tertiary">Set up a new workspace for your team</p>
 							</div>
 						</div>
-					</Dialog>
-				</Modal>
-			</ModalOverlay>
-		</AriaDialogTrigger>
+						<div className="h-5 w-full" />
+						<div className="flex flex-col gap-4 px-4 sm:px-6">
+							{/* Organization Name */}
+							<form.AppField
+								name="name"
+								children={(field) => (
+									<field.Input
+										label={"Organization name"}
+										id="org-name"
+										size="md"
+										placeholder="Acme Inc."
+										value={field.state.value}
+										onChange={(value) => field.handleChange(value)}
+										onBlur={field.handleBlur}
+										isInvalid={!!field.state.meta.errors?.length}
+										autoFocus
+										hint={field.state.meta.errors
+											?.map((error) => error?.message)
+											.join(", ")}
+									/>
+								)}
+							/>
+
+							{/* Organization Slug */}
+							<form.AppField
+								name="slug"
+								children={(field) => (
+									<div className="flex flex-col gap-1.5">
+										<field.Input
+											label="Organization slug"
+											id="org-slug"
+											size="md"
+											placeholder="acme-inc"
+											value={field.state.value}
+											onChange={(value) => field.handleChange(value)}
+											onBlur={field.handleBlur}
+											isInvalid={!!field.state.meta.errors?.length}
+											hint={field.state.meta.errors
+												?.map((error) => error?.message)
+												.join(", ")}
+										/>
+										{!field.state.meta.errors?.length && field.state.value && (
+											<p className="text-tertiary text-xs">
+												Your organization URL will be: /{field.state.value}
+											</p>
+										)}
+									</div>
+								)}
+							/>
+
+							{/* Logo URL (Optional) */}
+							<form.AppField
+								name="logoUrl"
+								children={(field) => (
+									<field.Input
+										label="Logo URL (optional)"
+										id="org-logo"
+										size="md"
+										placeholder="https://example.com/logo.png"
+										value={field.state.value}
+										onChange={(value) => field.handleChange(value)}
+										onBlur={field.handleBlur}
+										isInvalid={!!field.state.meta.errors?.length}
+										hint={field.state.meta.errors
+											?.map((error) => error?.message)
+											.join(", ")}
+									/>
+								)}
+							/>
+						</div>
+						<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pt-8 sm:pb-6">
+							<Button
+								color="secondary"
+								size="lg"
+								onClick={handleClose}
+								isDisabled={form.state.isSubmitting}
+							>
+								Cancel
+							</Button>
+							<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+								{([canSubmit, isSubmitting]) => (
+									<Button
+										color="primary"
+										size="lg"
+										onClick={form.handleSubmit}
+										isDisabled={!canSubmit || isSubmitting}
+									>
+										{isSubmitting ? "Creating..." : "Create organization"}
+									</Button>
+								)}
+							</form.Subscribe>
+						</div>
+					</div>
+				</Dialog>
+			</Modal>
+		</ModalOverlay>
 	)
 }

@@ -140,160 +140,151 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	}
 
 	return (
-		<AriaDialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
-			<ModalOverlay isDismissable>
-				<Modal>
-					<Dialog>
-						<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-130">
-							<CloseButton
-								onClick={handleClose}
-								theme="light"
-								size="lg"
-								className="absolute top-3 right-3"
-							/>
-							<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
-								<div className="relative w-max">
-									<FeaturedIcon
-										color="gray"
-										size="lg"
-										theme="modern"
-										icon={MessageSquare02}
-									/>
-									<BackgroundPattern
-										pattern="circle"
-										size="sm"
-										className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
-									/>
-								</div>
-								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="font-semibold text-md text-primary">
-										Start a conversation
-									</AriaHeading>
-									<p className="text-sm text-tertiary">
-										Select one or more team members to start a conversation
-									</p>
-								</div>
+		<ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
+			<Modal>
+				<Dialog>
+					<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-130">
+						<CloseButton
+							onClick={handleClose}
+							theme="light"
+							size="lg"
+							className="absolute top-3 right-3"
+						/>
+						<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
+							<div className="relative w-max">
+								<FeaturedIcon color="gray" size="lg" theme="modern" icon={MessageSquare02} />
+								<BackgroundPattern
+									pattern="circle"
+									size="sm"
+									className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
+								/>
 							</div>
-							<div className="h-5 w-full" />
-							<div className="flex flex-col gap-4 px-4 sm:px-6">
-								{/* Search Input */}
-								<div className="flex flex-col gap-2">
-									<Input
-										size="md"
-										placeholder="Search team members..."
-										icon={Mail01}
-										value={searchQuery}
-										onChange={setSearchQuery}
-									/>
-									{selectedUsers.length > 0 && (
-										<div className="flex items-center gap-2">
-											<span className="text-sm text-tertiary">
-												{selectedUsers.length} selected
-											</span>
-											<div className="-space-x-2 flex">
-												{selectedUsers.slice(0, 3).map((user) => (
-													<Avatar
-														key={user._id}
-														size="xs"
-														src={user.avatarUrl}
-														initials={`${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`}
-														alt={`${user.firstName || ""} ${user.lastName || ""}`}
-													/>
-												))}
-												{selectedUsers.length > 3 && (
-													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary font-medium text-primary text-xs">
-														+{selectedUsers.length - 3}
-													</div>
-												)}
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* Users List */}
-								<div className="max-h-64 overflow-y-auto">
-									{filteredUsers.length === 0 ? (
-										<p className="py-8 text-center text-sm text-tertiary">
-											{searchQuery ? "No users found" : "No team members available"}
-										</p>
-									) : (
-										<div className="flex flex-col gap-1">
-											{filteredUsers.map((user) => (
-												<button
-													key={user?._id}
-													type="button"
-													onClick={() => user && toggleUserSelection(user)}
-													className={cx(
-														"flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary",
-														selectedUsers.some((u) => u._id === user?._id) &&
-															"bg-secondary ring ring-border-brand ring-inset",
-													)}
-												>
-													<div className="flex items-center gap-3">
-														<Avatar
-															size="sm"
-															src={user?.avatarUrl}
-															initials={`${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`}
-															alt={`${user?.firstName || ""} ${user?.lastName || ""}`}
-															status={
-																isUserOnline(user?._id || "")
-																	? "online"
-																	: "offline"
-															}
-														/>
-														<div className="flex flex-col">
-															<p className="font-medium text-primary text-sm">
-																{user?.firstName || ""} {user?.lastName || ""}
-															</p>
-															{isUserOnline(user?._id || "") && (
-																<span className="text-success text-xs">
-																	Active now
-																</span>
-															)}
-														</div>
-													</div>
-													{selectedUsers.some((u) => u._id === user?._id) && (
-														<IconCheckTickCircle className="size-5 text-brand" />
-													)}
-												</button>
-											))}
-										</div>
-									)}
-								</div>
+							<div className="z-10 flex flex-col gap-0.5">
+								<AriaHeading slot="title" className="font-semibold text-md text-primary">
+									Start a conversation
+								</AriaHeading>
+								<p className="text-sm text-tertiary">
+									Select one or more team members to start a conversation
+								</p>
 							</div>
-							<ModalFooter>
-								<Button
-									color="secondary"
-									size="lg"
-									onClick={handleClose}
-									isDisabled={form.state.isSubmitting}
-								>
-									Cancel
-								</Button>
-								<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-									{([canSubmit, isSubmitting]) => (
-										<Button
-											color="primary"
-											size="lg"
-											onClick={form.handleSubmit}
-											isDisabled={
-												!canSubmit || isSubmitting || selectedUsers.length === 0
-											}
-										>
-											{isSubmitting
-												? "Creating..."
-												: selectedUsers.length > 1
-													? `Start group conversation (${selectedUsers.length})`
-													: "Start conversation"}
-										</Button>
-									)}
-								</form.Subscribe>
-							</ModalFooter>
 						</div>
-					</Dialog>
-				</Modal>
-			</ModalOverlay>
-		</AriaDialogTrigger>
+						<div className="h-5 w-full" />
+						<div className="flex flex-col gap-4 px-4 sm:px-6">
+							{/* Search Input */}
+							<div className="flex flex-col gap-2">
+								<Input
+									size="md"
+									placeholder="Search team members..."
+									icon={Mail01}
+									value={searchQuery}
+									onChange={setSearchQuery}
+								/>
+								{selectedUsers.length > 0 && (
+									<div className="flex items-center gap-2">
+										<span className="text-sm text-tertiary">
+											{selectedUsers.length} selected
+										</span>
+										<div className="-space-x-2 flex">
+											{selectedUsers.slice(0, 3).map((user) => (
+												<Avatar
+													key={user._id}
+													size="xs"
+													src={user.avatarUrl}
+													initials={`${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`}
+													alt={`${user.firstName || ""} ${user.lastName || ""}`}
+												/>
+											))}
+											{selectedUsers.length > 3 && (
+												<div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary font-medium text-primary text-xs">
+													+{selectedUsers.length - 3}
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+							</div>
+
+							{/* Users List */}
+							<div className="max-h-64 overflow-y-auto">
+								{filteredUsers.length === 0 ? (
+									<p className="py-8 text-center text-sm text-tertiary">
+										{searchQuery ? "No users found" : "No team members available"}
+									</p>
+								) : (
+									<div className="flex flex-col gap-1">
+										{filteredUsers.map((user) => (
+											<button
+												key={user?._id}
+												type="button"
+												onClick={() => user && toggleUserSelection(user)}
+												className={cx(
+													"flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary",
+													selectedUsers.some((u) => u._id === user?._id) &&
+														"bg-secondary ring ring-border-brand ring-inset",
+												)}
+											>
+												<div className="flex items-center gap-3">
+													<Avatar
+														size="sm"
+														src={user?.avatarUrl}
+														initials={`${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`}
+														alt={`${user?.firstName || ""} ${user?.lastName || ""}`}
+														status={
+															isUserOnline(user?._id || "")
+																? "online"
+																: "offline"
+														}
+													/>
+													<div className="flex flex-col">
+														<p className="font-medium text-primary text-sm">
+															{user?.firstName || ""} {user?.lastName || ""}
+														</p>
+														{isUserOnline(user?._id || "") && (
+															<span className="text-success text-xs">
+																Active now
+															</span>
+														)}
+													</div>
+												</div>
+												{selectedUsers.some((u) => u._id === user?._id) && (
+													<IconCheckTickCircle className="size-5 text-brand" />
+												)}
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+						<ModalFooter>
+							<Button
+								color="secondary"
+								size="lg"
+								onClick={handleClose}
+								isDisabled={form.state.isSubmitting}
+							>
+								Cancel
+							</Button>
+							<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+								{([canSubmit, isSubmitting]) => (
+									<Button
+										color="primary"
+										size="lg"
+										onClick={form.handleSubmit}
+										isDisabled={!canSubmit || isSubmitting || selectedUsers.length === 0}
+									>
+										{isSubmitting
+											? "Creating..."
+											: selectedUsers.length > 1
+												? `Start group conversation (${selectedUsers.length})`
+												: "Start conversation"}
+									</Button>
+								)}
+							</form.Subscribe>
+						</ModalFooter>
+					</div>
+				</Dialog>
+			</Modal>
+		</ModalOverlay>
 	)
 }
 

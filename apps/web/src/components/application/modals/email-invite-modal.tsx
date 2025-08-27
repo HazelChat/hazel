@@ -106,114 +106,108 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 	}
 
 	return (
-		<AriaDialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
-			<ModalOverlay isDismissable>
-				<Modal>
-					<Dialog>
-						<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all [--gap:--spacing(1.5)] [--gutter:--spacing(6)] sm:max-w-130 lg:[--gap:--spacing(2)]">
-							<CloseButton
-								onClick={() => onOpenChange(false)}
-								theme="light"
-								size="sm"
-								className="absolute top-[calc(var(--gutter)/2)] right-[calc(var(--gutter)/2)]"
-							/>
-							<div className="flex flex-col gap-4 px-4 pt-5 sm:px-(--gutter) sm:pt-(--gutter)">
-								<div className="relative w-max">
-									<FeaturedIcon color="gray" size="lg" theme="modern" icon={UsersPlus} />
-									<BackgroundPattern
-										pattern="circle"
-										size="sm"
-										className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
-									/>
-								</div>
-								<div className="z-10 flex flex-col gap-0.5">
-									<AriaHeading slot="title" className="font-semibold text-md text-primary">
-										Invite team members
-									</AriaHeading>
-									<p className="text-sm text-tertiary">
-										Invite colleagues to join your organization. They'll receive an email
-										invitation.
-									</p>
-								</div>
+		<ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
+			<Modal>
+				<Dialog>
+					<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all [--gap:--spacing(1.5)] [--gutter:--spacing(6)] sm:max-w-130 lg:[--gap:--spacing(2)]">
+						<CloseButton
+							onClick={() => onOpenChange(false)}
+							theme="light"
+							size="sm"
+							className="absolute top-[calc(var(--gutter)/2)] right-[calc(var(--gutter)/2)]"
+						/>
+						<div className="flex flex-col gap-4 px-4 pt-5 sm:px-(--gutter) sm:pt-(--gutter)">
+							<div className="relative w-max">
+								<FeaturedIcon color="gray" size="lg" theme="modern" icon={UsersPlus} />
+								<BackgroundPattern
+									pattern="circle"
+									size="sm"
+									className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2"
+								/>
 							</div>
-							<div className="h-5 w-full" />
-							<div className="flex flex-col items-start justify-start gap-(--gap) px-4 sm:px-(--gutter)">
-								{invites.map((invite, index) => (
-									<div key={invite.id} className="flex w-full items-center gap-(--gap)">
-										<div className="w-full space-y-1.5">
-											{index === 0 && <Label>Email address</Label>}
-											<Input
-												size="md"
-												placeholder="colleague@company.com"
-												icon={Mail01}
-												value={invite.email}
-												onChange={(value) =>
-													updateInviteEntry(invite.id, "email", value)
-												}
-												isInvalid={
-													invite.email !== "" && !validateEmail(invite.email)
-												}
-											/>
-										</div>
-										<div className="flex flex-1 items-center justify-end gap-(--gap)">
-											<div className="w-28 space-y-1.5">
-												{index === 0 && <Label>Role</Label>}
-												<Select
-													size="md"
-													selectedKey={invite.role}
-													onSelectionChange={(value) =>
-														updateInviteEntry(invite.id, "role", value as string)
-													}
-												>
-													<Select.Item id="member">Member</Select.Item>
-													<Select.Item id="admin">Admin</Select.Item>
-												</Select>
-											</div>
-											{invites.length > 1 && index > 0 && (
-												<ButtonUtility
-													color="tertiary"
-													className="p-[--spacing(2.3)] *:data-icon:size-6 *:data-icon:stroke-[1.5px]"
-													icon={X}
-													onClick={() => removeInviteEntry(invite.id)}
-												/>
-											)}
-										</div>
-									</div>
-								))}
-								<Button
-									size="md"
-									color="link-color"
-									iconLeading={Plus}
-									onClick={addInviteEntry}
-									isDisabled={invites.length >= 10}
-								>
-									Add another
-								</Button>
+							<div className="z-10 flex flex-col gap-0.5">
+								<AriaHeading slot="title" className="font-semibold text-md text-primary">
+									Invite team members
+								</AriaHeading>
+								<p className="text-sm text-tertiary">
+									Invite colleagues to join your organization. They'll receive an email
+									invitation.
+								</p>
 							</div>
-							<ModalFooter>
-								<Button
-									color="secondary"
-									size="lg"
-									onClick={() => onOpenChange(false)}
-									isDisabled={isSubmitting}
-								>
-									Cancel
-								</Button>
-								<Button
-									color="primary"
-									size="lg"
-									onClick={handleSubmit}
-									isDisabled={isSubmitting || invites.every((i) => !i.email)}
-								>
-									{isSubmitting
-										? "Sending..."
-										: `Send invite${invites.filter((i) => validateEmail(i.email)).length > 1 ? "s" : ""}`}
-								</Button>
-							</ModalFooter>
 						</div>
-					</Dialog>
-				</Modal>
-			</ModalOverlay>
-		</AriaDialogTrigger>
+						<div className="h-5 w-full" />
+						<div className="flex flex-col items-start justify-start gap-(--gap) px-4 sm:px-(--gutter)">
+							{invites.map((invite, index) => (
+								<div key={invite.id} className="flex w-full items-center gap-(--gap)">
+									<div className="w-full space-y-1.5">
+										{index === 0 && <Label>Email address</Label>}
+										<Input
+											size="md"
+											placeholder="colleague@company.com"
+											icon={Mail01}
+											value={invite.email}
+											onChange={(value) => updateInviteEntry(invite.id, "email", value)}
+											isInvalid={invite.email !== "" && !validateEmail(invite.email)}
+										/>
+									</div>
+									<div className="flex flex-1 items-center justify-end gap-(--gap)">
+										<div className="w-28 space-y-1.5">
+											{index === 0 && <Label>Role</Label>}
+											<Select
+												size="md"
+												selectedKey={invite.role}
+												onSelectionChange={(value) =>
+													updateInviteEntry(invite.id, "role", value as string)
+												}
+											>
+												<Select.Item id="member">Member</Select.Item>
+												<Select.Item id="admin">Admin</Select.Item>
+											</Select>
+										</div>
+										{invites.length > 1 && index > 0 && (
+											<ButtonUtility
+												color="tertiary"
+												className="p-[--spacing(2.3)] *:data-icon:size-6 *:data-icon:stroke-[1.5px]"
+												icon={X}
+												onClick={() => removeInviteEntry(invite.id)}
+											/>
+										)}
+									</div>
+								</div>
+							))}
+							<Button
+								size="md"
+								color="link-color"
+								iconLeading={Plus}
+								onClick={addInviteEntry}
+								isDisabled={invites.length >= 10}
+							>
+								Add another
+							</Button>
+						</div>
+						<ModalFooter>
+							<Button
+								color="secondary"
+								size="lg"
+								onClick={() => onOpenChange(false)}
+								isDisabled={isSubmitting}
+							>
+								Cancel
+							</Button>
+							<Button
+								color="primary"
+								size="lg"
+								onClick={handleSubmit}
+								isDisabled={isSubmitting || invites.every((i) => !i.email)}
+							>
+								{isSubmitting
+									? "Sending..."
+									: `Send invite${invites.filter((i) => validateEmail(i.email)).length > 1 ? "s" : ""}`}
+							</Button>
+						</ModalFooter>
+					</div>
+				</Dialog>
+			</Modal>
+		</ModalOverlay>
 	)
 }

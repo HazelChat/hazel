@@ -3,7 +3,7 @@ import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { PhoneCall01, SwitchHorizontal02, UserDown01, UserX01, VolumeX } from "@untitledui/icons"
+import { PhoneCall01 } from "@untitledui/icons"
 import { useMemo, useState } from "react"
 import { twJoin } from "tailwind-merge"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
@@ -11,10 +11,8 @@ import { Avatar } from "~/components/base/avatar/avatar"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { Input } from "~/components/base/input/input"
-import IconAlertCircle from "~/components/icons/IconAlertCircle"
 import { IconChatStroke } from "~/components/icons/IconChatStroke"
 import IconClipboard from "~/components/icons/IconClipboard"
-import IconPlusStroke from "~/components/icons/IconPlusStroke"
 import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
 import IconUserUser03 from "~/components/icons/IconUserUser03"
@@ -29,16 +27,12 @@ function RouteComponent() {
 	const navigate = useNavigate()
 	const [searchQuery, setSearchQuery] = useState("")
 
-	// Fetch members from the organization
 	const membersQuery = useQuery(convexQuery(api.social.getMembersForOrganization, { organizationId }))
 
-	// Get current user data
 	const currentUserQuery = useQuery(convexQuery(api.me.get, {}))
 
-	// Mutation to create DM channel
 	const createDmChannel = useConvexMutation(api.channels.createDmChannel)
 
-	// Filter members based on search query
 	const filteredMembers = useMemo(() => {
 		if (!membersQuery.data || !searchQuery) return membersQuery.data || []
 
@@ -157,23 +151,6 @@ function RouteComponent() {
 														</Dropdown.Item>
 														<Dropdown.Item icon={IconClipboard}>
 															Copy email
-														</Dropdown.Item>
-													</Dropdown.Section>
-													<Dropdown.Separator />
-													<Dropdown.Section>
-														<Dropdown.Item icon={IconPlusStroke}>
-															Add to channel
-														</Dropdown.Item>
-														<Dropdown.Item icon={SwitchHorizontal02}>
-															Change role
-														</Dropdown.Item>
-														<Dropdown.Item icon={VolumeX}>
-															Mute user
-														</Dropdown.Item>
-														<Dropdown.Item icon={UserDown01}>Kick</Dropdown.Item>
-														<Dropdown.Item icon={UserX01}>Ban</Dropdown.Item>
-														<Dropdown.Item icon={IconAlertCircle}>
-															Report
 														</Dropdown.Item>
 													</Dropdown.Section>
 												</Dropdown.Menu>
