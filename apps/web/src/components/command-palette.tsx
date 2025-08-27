@@ -9,15 +9,15 @@ import {
 	CommandMenuItem,
 	CommandMenuLabel,
 	CommandMenuList,
+	type CommandMenuProps,
 	CommandMenuSearch,
 	CommandMenuSection,
 	CommandMenuShortcut,
 } from "~/components/ui/command-menu"
 
-export function CommandPalette() {
-	const [isOpen, setIsOpen] = useState(false)
+export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenChange">) {
 	return (
-		<CommandMenu shortcut="k" isOpen={isOpen} onOpenChange={setIsOpen}>
+		<CommandMenu shortcut="k" {...props}>
 			<CommandMenuSearch placeholder="Where would you like to go?" />
 			<CommandMenuList>
 				<CommandMenuSection>

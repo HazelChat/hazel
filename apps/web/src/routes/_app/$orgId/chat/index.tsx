@@ -47,8 +47,10 @@ function RouteComponent() {
 		<div className="flex flex-col gap-6 p-6 lg:p-12">
 			<SectionHeader>
 				<SectionTitle>All channels</SectionTitle>
-        <SectionDescription>Discover communities and join the discussions that matter to you.</SectionDescription>
-      </SectionHeader>
+				<SectionDescription>
+					Discover communities and join the discussions that matter to you.
+				</SectionDescription>
+			</SectionHeader>
 
 			<Tabs>
 				<TabList
@@ -179,7 +181,7 @@ function DmCard({
 			<Link
 				to="/$orgId/chat/$id"
 				params={{ orgId, id: channel._id }}
-				className="flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 inset-ring inset-ring-transparent hover:inset-ring-secondary hover:bg-quaternary/40"
+				className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 			>
 				<div className="flex items-center gap-3">
 					<Avatar
@@ -208,7 +210,7 @@ function DmCard({
 		<Link
 			to="/$orgId/chat/$id"
 			params={{ orgId, id: channel._id }}
-			className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 inset-ring inset-ring-transparent hover:inset-ring-secondary hover:bg-quaternary/40"
+			className="inset-ring inset-ring inset-ring-transparent inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
 			<div className="flex items-center gap-2.5">
 				<div className="-space-x-4 flex">
@@ -231,7 +233,7 @@ function DmCard({
 							<span className="text-tertiary">+{otherMembers.length - 3} more</span>
 						)}
 					</h3>
-					<p className="text-tertiary text-sm">{otherMembers.length} participants</p>
+					<p className="text-sm text-tertiary">{otherMembers.length} participants</p>
 				</div>
 			</div>
 			{channel.currentUser?.notificationCount > 0 && (
