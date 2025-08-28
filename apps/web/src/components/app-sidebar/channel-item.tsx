@@ -96,15 +96,13 @@ export const ChannelItem = ({ channel }: ChannelItemProps) => {
 				</Link>
 			</SidebarMenuButton>
 			<Dropdown.Root>
-				<Pressable>
-					<SidebarMenuAction
-						showOnHover
-						className="rounded-sm text-foreground data-[state=open]:bg-muted"
-					>
-						<IconThreeDotsMenuHorizontalStroke className="text-foreground" />
-						<span className="sr-only">More</span>
-					</SidebarMenuAction>
-				</Pressable>
+				<SidebarMenuAction
+					showOnHover
+					className="rounded-sm text-foreground data-[state=open]:bg-muted"
+				>
+					<IconThreeDotsMenuHorizontalStroke className="text-foreground" />
+					<span className="sr-only">More</span>
+				</SidebarMenuAction>
 
 				<Dropdown.Popover placement="right top" className="w-42">
 					<Dropdown.Menu>
@@ -257,7 +255,7 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 									}
 								/>
 
-								<p className={cn("max-w-20 truncate", channel.isMuted && "opacity-60")}>
+								<p className={cn("max-w-40 truncate", channel.isMuted && "opacity-60")}>
 									{`${filteredMembers[0].user.firstName} ${filteredMembers[0].user.lastName}`}
 								</p>
 							</div>
@@ -286,10 +284,8 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 										/>
 									)}
 								</div>
-								<p className={cn("max-w-20 truncate", channel.isMuted && "opacity-60")}>
-									{filteredMembers
-										.map((member) => `${member.user.firstName} ${member.user.lastName}`)
-										.join(", ")}
+								<p className={cn("max-w-40 truncate", channel.isMuted && "opacity-60")}>
+									{filteredMembers.map((member) => member.user.firstName).join(", ")}
 								</p>
 							</div>
 						)}
@@ -303,15 +299,13 @@ export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => 
 			</SidebarMenuButton>
 
 			<Dropdown.Root>
-				<Pressable>
-					<SidebarMenuAction
-						showOnHover
-						className="rounded-sm text-foreground data-[state=open]:bg-muted"
-					>
-						<IconThreeDotsMenuHorizontalStroke className="text-foreground" />
-						<span className="sr-only">More</span>
-					</SidebarMenuAction>
-				</Pressable>
+				<SidebarMenuAction
+					showOnHover
+					className="rounded-sm text-foreground data-[state=open]:bg-muted"
+				>
+					<IconThreeDotsMenuHorizontalStroke className="text-foreground" />
+					<span className="sr-only">More</span>
+				</SidebarMenuAction>
 				<Dropdown.Popover placement="right top" className="w-42">
 					<Dropdown.Menu>
 						<Dropdown.Section>

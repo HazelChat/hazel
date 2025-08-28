@@ -105,6 +105,7 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 							</SidebarMenuItem>
 						</SidebarGroupContent>
 					</SidebarGroup>
+
 					{isMobile && (
 						<SidebarGroupContent className="sm:hidden">
 							<SidebarGroup>
@@ -162,6 +163,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 					<NavUser />
 				</SidebarFooter>
 			</Sidebar>
+
+			{/* Desktop */}
 			<Sidebar collapsible="none" className="hidden flex-1 border-primary md:flex">
 				<SidebarHeader className="gap-3.5 p-4">
 					<div className="flex w-full items-center justify-between">

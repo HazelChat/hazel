@@ -2,6 +2,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { LeftIndent01 } from "@untitledui/icons"
 import { cva, type VariantProps } from "class-variance-authority"
 import * as React from "react"
+import { Button as PrimitiveButton } from "react-aria-components"
 import { Separator } from "~/components/ui/separator"
 import { Sheet, SheetBody, SheetContent } from "~/components/ui/sheet"
 import { Skeleton } from "~/components/ui/skeleton"
@@ -512,17 +513,13 @@ function SidebarMenuButton({
 
 function SidebarMenuAction({
 	className,
-	asChild = false,
 	showOnHover = false,
 	...props
-}: React.ComponentProps<"button"> & {
-	asChild?: boolean
+}: React.ComponentProps<typeof PrimitiveButton> & {
 	showOnHover?: boolean
 }) {
-	const Comp = asChild ? Slot : "button"
-
 	return (
-		<Comp
+		<PrimitiveButton
 			data-slot="sidebar-menu-action"
 			data-sidebar="menu-action"
 			className={cn(
@@ -533,6 +530,8 @@ function SidebarMenuAction({
 				"peer-data-[size=default]/menu-button:top-1.5",
 				"peer-data-[size=lg]/menu-button:top-2.5",
 				"group-data-[collapsible=icon]:hidden",
+				"group-focus-within/menu-item:opacity-100",
+				"pressed:opacity-100",
 				showOnHover &&
 					"group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[status=active]/menu-button:text-sidebar-accent-foreground md:opacity-0",
 				className,
