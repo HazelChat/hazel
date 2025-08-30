@@ -1,21 +1,10 @@
 import { relations } from "drizzle-orm"
 import { attachmentsTable } from "./attachments"
-import {
-	channelMembersTable,
-	channelsTable,
-	directMessageParticipantsTable,
-} from "./channels"
+import { channelMembersTable, channelsTable, directMessageParticipantsTable } from "./channels"
 import { invitationsTable } from "./invitations"
-import {
-	messageAttachmentsTable,
-	messageReactionsTable,
-	messagesTable,
-} from "./messages"
+import { messageAttachmentsTable, messageReactionsTable, messagesTable } from "./messages"
 import { notificationsTable } from "./notifications"
-import {
-	organizationMembersTable,
-	organizationsTable,
-} from "./organizations"
+import { organizationMembersTable, organizationsTable } from "./organizations"
 import { pinnedMessagesTable } from "./pinned-messages"
 import { presenceTable } from "./presence"
 import { typingIndicatorsTable } from "./typing-indicators"
@@ -36,101 +25,86 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 }))
 
 // Organizations relations
-export const organizationsRelations = relations(
-	organizationsTable,
-	({ many }) => ({
-		members: many(organizationMembersTable),
-		channels: many(channelsTable),
-		invitations: many(invitationsTable),
-		attachments: many(attachmentsTable),
-		directMessageChannels: many(directMessageParticipantsTable),
-	}),
-)
+export const organizationsRelations = relations(organizationsTable, ({ many }) => ({
+	members: many(organizationMembersTable),
+	channels: many(channelsTable),
+	invitations: many(invitationsTable),
+	attachments: many(attachmentsTable),
+	directMessageChannels: many(directMessageParticipantsTable),
+}))
 
 // Organization members relations
-export const organizationMembersRelations = relations(
-	organizationMembersTable,
-	({ one, many }) => ({
-		organization: one(organizationsTable, {
-			fields: [organizationMembersTable.organizationId],
-			references: [organizationsTable.id],
-		}),
-		user: one(usersTable, {
-			fields: [organizationMembersTable.userId],
-			references: [usersTable.id],
-		}),
-		invitedByUser: one(usersTable, {
-			fields: [organizationMembersTable.invitedBy],
-			references: [usersTable.id],
-		}),
-		notifications: many(notificationsTable),
-		typingIndicators: many(typingIndicatorsTable),
+export const organizationMembersRelations = relations(organizationMembersTable, ({ one, many }) => ({
+	organization: one(organizationsTable, {
+		fields: [organizationMembersTable.organizationId],
+		references: [organizationsTable.id],
 	}),
-)
+	user: one(usersTable, {
+		fields: [organizationMembersTable.userId],
+		references: [usersTable.id],
+	}),
+	invitedByUser: one(usersTable, {
+		fields: [organizationMembersTable.invitedBy],
+		references: [usersTable.id],
+	}),
+	notifications: many(notificationsTable),
+	typingIndicators: many(typingIndicatorsTable),
+}))
 
 // Channels relations
-export const channelsRelations = relations(
-	channelsTable,
-	({ one, many }) => ({
-		organization: one(organizationsTable, {
-			fields: [channelsTable.organizationId],
-			references: [organizationsTable.id],
-		}),
-		parentChannel: one(channelsTable, {
-			fields: [channelsTable.parentChannelId],
-			references: [channelsTable.id],
-			relationName: "channelThreads",
-		}),
-		childChannels: many(channelsTable, {
-			relationName: "channelThreads",
-		}),
-		members: many(channelMembersTable),
-		messages: many(messagesTable),
-		threadMessages: many(messagesTable),
-		pinnedMessages: many(pinnedMessagesTable),
-		directMessageParticipants: many(directMessageParticipantsTable),
-		attachments: many(attachmentsTable),
-		typingIndicators: many(typingIndicatorsTable),
+export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
+	organization: one(organizationsTable, {
+		fields: [channelsTable.organizationId],
+		references: [organizationsTable.id],
 	}),
-)
+	parentChannel: one(channelsTable, {
+		fields: [channelsTable.parentChannelId],
+		references: [channelsTable.id],
+		relationName: "channelThreads",
+	}),
+	childChannels: many(channelsTable, {
+		relationName: "channelThreads",
+	}),
+	members: many(channelMembersTable),
+	messages: many(messagesTable),
+	threadMessages: many(messagesTable),
+	pinnedMessages: many(pinnedMessagesTable),
+	directMessageParticipants: many(directMessageParticipantsTable),
+	attachments: many(attachmentsTable),
+	typingIndicators: many(typingIndicatorsTable),
+}))
 
 // Channel members relations
-export const channelMembersRelations = relations(
-	channelMembersTable,
-	({ one }) => ({
-		channel: one(channelsTable, {
-			fields: [channelMembersTable.channelId],
-			references: [channelsTable.id],
-		}),
-		user: one(usersTable, {
-			fields: [channelMembersTable.userId],
-			references: [usersTable.id],
-		}),
-		lastSeenMessage: one(messagesTable, {
-			fields: [channelMembersTable.lastSeenMessageId],
-			references: [messagesTable.id],
-		}),
+export const channelMembersRelations = relations(channelMembersTable, ({ one }) => ({
+	channel: one(channelsTable, {
+		fields: [channelMembersTable.channelId],
+		references: [channelsTable.id],
 	}),
-)
+	user: one(usersTable, {
+		fields: [channelMembersTable.userId],
+		references: [usersTable.id],
+	}),
+	lastSeenMessage: one(messagesTable, {
+		fields: [channelMembersTable.lastSeenMessageId],
+		references: [messagesTable.id],
+	}),
+}))
 
 // Direct message participants relations
-export const directMessageParticipantsRelations = relations(
-	directMessageParticipantsTable,
-	({ one }) => ({
-		channel: one(channelsTable, {
-			fields: [directMessageParticipantsTable.channelId],
-			references: [channelsTable.id],
-		}),
-		user: one(usersTable, {
-			fields: [directMessageParticipantsTable.userId],
-			references: [usersTable.id],
-		}),
-		organization: one(organizationsTable, {
-			fields: [directMessageParticipantsTable.organizationId],
-			references: [organizationsTable.id],
-		}),
+export const directMessageParticipantsRelations = relations(directMessageParticipantsTable, ({ one }) => ({
+	channel: one(channelsTable, {
+		fields: [directMessageParticipantsTable.channelId],
+		references: [channelsTable.id],
 	}),
-)
+	user: one(usersTable, {
+		fields: [directMessageParticipantsTable.userId],
+		references: [usersTable.id],
+	}),
+	organization: one(organizationsTable, {
+		fields: [directMessageParticipantsTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+}))
 
 // Messages relations
 export const messagesRelations = relations(messagesTable, ({ one, many }) => ({
@@ -161,126 +135,105 @@ export const messagesRelations = relations(messagesTable, ({ one, many }) => ({
 }))
 
 // Message reactions relations
-export const messageReactionsRelations = relations(
-	messageReactionsTable,
-	({ one }) => ({
-		message: one(messagesTable, {
-			fields: [messageReactionsTable.messageId],
-			references: [messagesTable.id],
-		}),
-		user: one(usersTable, {
-			fields: [messageReactionsTable.userId],
-			references: [usersTable.id],
-		}),
+export const messageReactionsRelations = relations(messageReactionsTable, ({ one }) => ({
+	message: one(messagesTable, {
+		fields: [messageReactionsTable.messageId],
+		references: [messagesTable.id],
 	}),
-)
+	user: one(usersTable, {
+		fields: [messageReactionsTable.userId],
+		references: [usersTable.id],
+	}),
+}))
 
 // Message attachments relations
-export const messageAttachmentsRelations = relations(
-	messageAttachmentsTable,
-	({ one }) => ({
-		message: one(messagesTable, {
-			fields: [messageAttachmentsTable.messageId],
-			references: [messagesTable.id],
-		}),
-		attachment: one(attachmentsTable, {
-			fields: [messageAttachmentsTable.attachmentId],
-			references: [attachmentsTable.id],
-		}),
+export const messageAttachmentsRelations = relations(messageAttachmentsTable, ({ one }) => ({
+	message: one(messagesTable, {
+		fields: [messageAttachmentsTable.messageId],
+		references: [messagesTable.id],
 	}),
-)
+	attachment: one(attachmentsTable, {
+		fields: [messageAttachmentsTable.attachmentId],
+		references: [attachmentsTable.id],
+	}),
+}))
 
 // Attachments relations
-export const attachmentsRelations = relations(
-	attachmentsTable,
-	({ one, many }) => ({
-		organization: one(organizationsTable, {
-			fields: [attachmentsTable.organizationId],
-			references: [organizationsTable.id],
-		}),
-		channel: one(channelsTable, {
-			fields: [attachmentsTable.channelId],
-			references: [channelsTable.id],
-		}),
-		message: one(messagesTable, {
-			fields: [attachmentsTable.messageId],
-			references: [messagesTable.id],
-		}),
-		uploadedBy: one(usersTable, {
-			fields: [attachmentsTable.uploadedBy],
-			references: [usersTable.id],
-		}),
-		messageAttachments: many(messageAttachmentsTable),
+export const attachmentsRelations = relations(attachmentsTable, ({ one, many }) => ({
+	organization: one(organizationsTable, {
+		fields: [attachmentsTable.organizationId],
+		references: [organizationsTable.id],
 	}),
-)
+	channel: one(channelsTable, {
+		fields: [attachmentsTable.channelId],
+		references: [channelsTable.id],
+	}),
+	message: one(messagesTable, {
+		fields: [attachmentsTable.messageId],
+		references: [messagesTable.id],
+	}),
+	uploadedBy: one(usersTable, {
+		fields: [attachmentsTable.uploadedBy],
+		references: [usersTable.id],
+	}),
+	messageAttachments: many(messageAttachmentsTable),
+}))
 
 // Invitations relations
-export const invitationsRelations = relations(
-	invitationsTable,
-	({ one }) => ({
-		organization: one(organizationsTable, {
-			fields: [invitationsTable.organizationId],
-			references: [organizationsTable.id],
-		}),
-		invitedBy: one(usersTable, {
-			fields: [invitationsTable.invitedBy],
-			references: [usersTable.id],
-			relationName: "invitationsSent",
-		}),
-		acceptedBy: one(usersTable, {
-			fields: [invitationsTable.acceptedBy],
-			references: [usersTable.id],
-			relationName: "invitationsAccepted",
-		}),
+export const invitationsRelations = relations(invitationsTable, ({ one }) => ({
+	organization: one(organizationsTable, {
+		fields: [invitationsTable.organizationId],
+		references: [organizationsTable.id],
 	}),
-)
+	invitedBy: one(usersTable, {
+		fields: [invitationsTable.invitedBy],
+		references: [usersTable.id],
+		relationName: "invitationsSent",
+	}),
+	acceptedBy: one(usersTable, {
+		fields: [invitationsTable.acceptedBy],
+		references: [usersTable.id],
+		relationName: "invitationsAccepted",
+	}),
+}))
 
 // Pinned messages relations
-export const pinnedMessagesRelations = relations(
-	pinnedMessagesTable,
-	({ one }) => ({
-		channel: one(channelsTable, {
-			fields: [pinnedMessagesTable.channelId],
-			references: [channelsTable.id],
-		}),
-		message: one(messagesTable, {
-			fields: [pinnedMessagesTable.messageId],
-			references: [messagesTable.id],
-		}),
-		pinnedBy: one(usersTable, {
-			fields: [pinnedMessagesTable.pinnedBy],
-			references: [usersTable.id],
-		}),
+export const pinnedMessagesRelations = relations(pinnedMessagesTable, ({ one }) => ({
+	channel: one(channelsTable, {
+		fields: [pinnedMessagesTable.channelId],
+		references: [channelsTable.id],
 	}),
-)
+	message: one(messagesTable, {
+		fields: [pinnedMessagesTable.messageId],
+		references: [messagesTable.id],
+	}),
+	pinnedBy: one(usersTable, {
+		fields: [pinnedMessagesTable.pinnedBy],
+		references: [usersTable.id],
+	}),
+}))
 
 // Notifications relations
-export const notificationsRelations = relations(
-	notificationsTable,
-	({ one }) => ({
-		member: one(organizationMembersTable, {
-			fields: [notificationsTable.memberId],
-			references: [organizationMembersTable.id],
-		}),
-		// Note: targetedResourceId and resourceId can reference different tables
-		// These would need to be handled at the application level since they're polymorphic
+export const notificationsRelations = relations(notificationsTable, ({ one }) => ({
+	member: one(organizationMembersTable, {
+		fields: [notificationsTable.memberId],
+		references: [organizationMembersTable.id],
 	}),
-)
+	// Note: targetedResourceId and resourceId can reference different tables
+	// These would need to be handled at the application level since they're polymorphic
+}))
 
 // Typing indicators relations
-export const typingIndicatorsRelations = relations(
-	typingIndicatorsTable,
-	({ one }) => ({
-		channel: one(channelsTable, {
-			fields: [typingIndicatorsTable.channelId],
-			references: [channelsTable.id],
-		}),
-		member: one(organizationMembersTable, {
-			fields: [typingIndicatorsTable.memberId],
-			references: [organizationMembersTable.id],
-		}),
+export const typingIndicatorsRelations = relations(typingIndicatorsTable, ({ one }) => ({
+	channel: one(channelsTable, {
+		fields: [typingIndicatorsTable.channelId],
+		references: [channelsTable.id],
 	}),
-)
+	member: one(organizationMembersTable, {
+		fields: [typingIndicatorsTable.memberId],
+		references: [organizationMembersTable.id],
+	}),
+}))
 
 // Presence relations
 export const presenceRelations = relations(presenceTable, ({ one }) => ({

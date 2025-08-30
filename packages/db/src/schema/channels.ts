@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm"
-import { boolean, index, integer, pgEnum, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core"
+import {
+	boolean,
+	index,
+	integer,
+	pgEnum,
+	pgTable,
+	timestamp,
+	uniqueIndex,
+	uuid,
+	varchar,
+} from "drizzle-orm/pg-core"
 
 // Channel types
 export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "thread", "direct", "single"])
@@ -17,9 +27,7 @@ export const channelsTable = pgTable(
 		// For direct/group channels - sorted list of participant IDs for uniqueness
 		// In PostgreSQL, we'll handle this with a separate table and unique constraint
 		createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { mode: "date" })
-			.notNull()
-			.defaultNow(),
+		updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 		deletedAt: timestamp("deleted_at", { mode: "date" }),
 	},
 	(table) => [

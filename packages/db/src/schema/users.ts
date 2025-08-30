@@ -17,9 +17,7 @@ export const usersTable = pgTable(
 		lastSeen: timestamp("last_seen", { mode: "date" }).notNull().defaultNow(),
 		settings: text("settings").default("{}"), // JSONB stored as text for now
 		createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { mode: "date" })
-			.notNull()
-			.defaultNow(),
+		updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 		deletedAt: timestamp("deleted_at", { mode: "date" }),
 	},
 	(table) => [

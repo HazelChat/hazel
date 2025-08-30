@@ -1,5 +1,5 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
-import { Message } from "@hazel/db"
+import { Channel, Message } from "@hazel/db"
 import { Schema } from "effect"
 import { Authorization } from "./lib/auth"
 import { TransactionId } from "./lib/create-transactionId"
@@ -34,6 +34,29 @@ export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundErro
 	}),
 ) {}
 
+export class CreateChannelResponse extends Schema.Class<CreateChannelResponse>("CreateChannelResponse")({
+	data: Channel.Model.json,
+	transactionId: TransactionId,
+}) {}
+
+export class ChannelGroup extends HttpApiGroup.make("channels")
+	.add(
+		HttpApiEndpoint.post("create")`/`
+			.setPayload(Channel.Model.jsonCreate)
+			.addSuccess(CreateChannelResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Create Channel",
+					description: "Create a new channel in an organization",
+					summary: "Create a new channel",
+				}),
+			),
+	)
+	.prefix("/channels")
+	.middleware(Authorization) {}
+
 export class MessageGroup extends HttpApiGroup.make("messages")
 	.add(
 		HttpApiEndpoint.post("create")`/`
@@ -54,6 +77,7 @@ export class MessageGroup extends HttpApiGroup.make("messages")
 	.middleware(Authorization) {}
 
 export class HazelApi extends HttpApi.make("HazelApp")
+	.add(ChannelGroup)
 	.add(MessageGroup)
 	.add(RootGroup)
 	.annotateContext(

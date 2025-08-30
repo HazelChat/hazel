@@ -1,21 +1,21 @@
 {
-    "name": "@hazel/db",
-    "version": "0.0.0",
-    "private": true,
-    "type": "module",
-    "main": "src/index.ts",
-    "scripts": {
-        "db": "drizzle-kit"
-    },
-    "devDependencies": {
-        "drizzle-kit": "^0.31.4",
-        "typescript": "^5.9.2"
-    },
-    "dependencies": {
-        "@effect/experimental": "^0.54.6",
-        "drizzle-orm": "^0.44.5",
-        "effect": "^3.17.9",
-        "postgres": "^3.4.7",
-        "uuid": "^11.1.0"
-    }
+	"name": "@hazel/db",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"db": "drizzle-kit"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.4",
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@effect/experimental": "^0.54.6",
+		"drizzle-orm": "^0.44.5",
+		"effect": "^3.17.9",
+		"postgres": "^3.4.7",
+		"uuid": "^11.1.0"
+	}
 }

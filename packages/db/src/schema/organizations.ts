@@ -16,9 +16,7 @@ export const organizationsTable = pgTable(
 		// Settings as JSONB - storing as text for now, can be migrated to jsonb column
 		settings: text("settings").default("{}"),
 		createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { mode: "date" })
-			.notNull()
-			.defaultNow(),
+		updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 		deletedAt: timestamp("deleted_at", { mode: "date" }),
 	},
 	(table) => [

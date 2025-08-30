@@ -156,7 +156,7 @@ const makeService = (config: Config) =>
 		 * @returns A function that takes raw input and an optional transaction executor,
 		 *          returns an Effect that includes Schema.ParseError in its error channel.
 		 */
-		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, R>(
+		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, _R>(
 			inputSchema: InputSchema,
 			queryFn: (
 				execute: <T>(
