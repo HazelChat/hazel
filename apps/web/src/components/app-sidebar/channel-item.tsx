@@ -1,8 +1,9 @@
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
+import { useConvexMutation } from "@convex-dev/react-query"
 import type { Id } from "@hazel/backend"
+import type { OrganizationId } from "@hazel/db/schema"
 import { api } from "@hazel/backend/api"
 import type { Channel } from "@hazel/db/models"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link, useParams } from "@tanstack/react-router"
 import type { FunctionReturnType } from "convex/server"
 import { useCallback } from "react"
@@ -23,6 +24,7 @@ import IconThreeDotsMenuHorizontalStroke from "../icons/IconThreeDotsMenuHorizon
 import IconVolumeMute1 from "../icons/IconVolumeMute1"
 import IconVolumeOne1 from "../icons/IconVolumeOne1"
 import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar"
+import { useUser } from "~/lib/auth"
 
 type ChannelType = typeof Channel.Model.Type
 export interface EnrichedChannel extends ChannelType {
@@ -201,17 +203,14 @@ interface DmChannelLinkProps {
 
 export const DmChannelLink = ({ channel, userPresence }: DmChannelLinkProps) => {
 	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as Id<"organizations">
-
-	const { data: me } = useQuery(
-		convexQuery(api.me.getCurrentUser, organizationId ? { organizationId } : "skip"),
-	)
+	const organizationId = params?.orgId as OrganizationId
+	const { user: me } = useUser()
 	const queryClient = useQueryClient()
 	const updateChannelPreferencesMutation = useConvexMutation(
 		api.channels.updateChannelPreferencesForOrganization,
 	)
 
-	const filteredMembers = (channel.members || []).filter((member) => member.userId !== me?._id)
+	const filteredMembers = (channel.members || []).filter((member) => member.userId !== me?.id)
 
 	const handleToggleMute = useCallback(() => {
 		if (organizationId) {

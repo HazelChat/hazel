@@ -1,48 +1,47 @@
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
-import type { Doc, Id } from "@hazel/backend"
+import type { Id } from "@hazel/backend"
 import { api } from "@hazel/backend/api"
+import type { Channel, Message, PinnedMessage } from "@hazel/db/models"
+import type { ChannelId, MessageId, OrganizationId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@workos-inc/authkit-react"
 import type { FunctionReturnType } from "convex/server"
-import { useNextPrevPaginatedQuery } from "convex-use-next-prev-paginated-query"
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { channelCollection, messageCollection, pinnedMessageCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 
-type MessagesResponse = FunctionReturnType<typeof api.messages.getMessages>
-type Message = MessagesResponse["page"][0]
-type Channel = FunctionReturnType<typeof api.channels.getChannel>
-type PinnedMessage = FunctionReturnType<typeof api.pinnedMessages.getPinnedMessages>[0]
 type TypingUser = FunctionReturnType<typeof api.typingIndicator.list>[0]
 type TypingUsers = TypingUser[]
 
 interface ChatContextValue {
-	channelId: Id<"channels">
-	organizationId: Id<"organizations">
-	channel: Channel | undefined
-	messages: Message[]
-	pinnedMessages: PinnedMessage[] | undefined
+	channelId: ChannelId
+	organizationId: OrganizationId
+	channel: typeof Channel.Model.Type | undefined
+	messages: (typeof Message.Model.Type)[]
+	pinnedMessages: (typeof PinnedMessage.Model.Type)[] | undefined
 	loadNext: (() => void) | undefined
 	loadPrev: (() => void) | undefined
 	isLoadingMessages: boolean
 	isLoadingNext: boolean
 	isLoadingPrev: boolean
-	sendMessage: (props: { content: string; attachments?: Id<"attachments">[] }) => void
-	editMessage: (messageId: Id<"messages">, content: string) => Promise<void>
-	deleteMessage: (messageId: Id<"messages">) => void
-	addReaction: (messageId: Id<"messages">, emoji: string) => void
-	removeReaction: (messageId: Id<"messages">, emoji: string) => void
-	pinMessage: (messageId: Id<"messages">) => void
-	unpinMessage: (messageId: Id<"messages">) => void
+	sendMessage: (props: { content: string; attachments?: string[] }) => void
+	editMessage: (messageId: MessageId, content: string) => Promise<void>
+	deleteMessage: (messageId: MessageId) => void
+	addReaction: (messageId: MessageId, emoji: string) => void
+	removeReaction: (messageId: MessageId, emoji: string) => void
+	pinMessage: (messageId: MessageId) => void
+	unpinMessage: (messageId: MessageId) => void
 	startTyping: () => void
 	stopTyping: () => void
 	typingUsers: TypingUsers
-	createThread: (messageId: Id<"messages">) => Promise<void>
-	openThread: (threadChannelId: Id<"channels">, originalMessageId: Id<"messages">) => void
+	createThread: (messageId: MessageId) => Promise<void>
+	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
 	closeThread: () => void
-	activeThreadChannelId: Id<"channels"> | null
-	activeThreadMessageId: Id<"messages"> | null
-	replyToMessageId: Id<"messages"> | null
-	setReplyToMessageId: (messageId: Id<"messages"> | null) => void
+	activeThreadChannelId: ChannelId | null
+	activeThreadMessageId: MessageId | null
+	replyToMessageId: MessageId | null
+	setReplyToMessageId: (messageId: MessageId | null) => void
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined)
@@ -56,8 +55,8 @@ export function useChat() {
 }
 
 interface ChatProviderProps {
-	channelId: Id<"channels">
-	organizationId: Id<"organizations">
+	channelId: ChannelId
+	organizationId: OrganizationId
 	children: ReactNode
 }
 
@@ -66,15 +65,15 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	const { playSound } = useNotificationSound()
 
 	// Reply state
-	const [replyToMessageId, setReplyToMessageId] = useState<Id<"messages"> | null>(null)
+	const [replyToMessageId, setReplyToMessageId] = useState<MessageId | null>(null)
 	// Thread state
-	const [activeThreadChannelId, setActiveThreadChannelId] = useState<Id<"channels"> | null>(null)
-	const [activeThreadMessageId, setActiveThreadMessageId] = useState<Id<"messages"> | null>(null)
+	const [activeThreadChannelId, setActiveThreadChannelId] = useState<ChannelId | null>(null)
+	const [activeThreadMessageId, setActiveThreadMessageId] = useState<MessageId | null>(null)
 
 	// Keep track of previous messages to show during loading
-	const previousMessagesRef = useRef<Message[]>([])
+	const previousMessagesRef = useRef<(typeof Message.Model.Type)[]>([])
 	// Keep track of the channel ID to clear messages when switching channels
-	const previousChannelIdRef = useRef<Id<"channels"> | null>(null)
+	const previousChannelIdRef = useRef<ChannelId | null>(null)
 	// Keep track of pagination functions to avoid losing them during loading
 	const loadNextRef = useRef<(() => void) | undefined>(undefined)
 	const loadPrevRef = useRef<(() => void) | undefined>(undefined)
@@ -93,25 +92,44 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		previousChannelIdRef.current = channelId
 	}, [channelId])
 
-	const channelQuery = useQuery(convexQuery(api.channels.getChannel, { channelId, organizationId }))
-
-	const messagesResult = useNextPrevPaginatedQuery(
-		api.messages.getMessages,
-		{
-			channelId,
-			organizationId,
-		},
-		{ initialNumItems: 50 },
+	// Get channel data from TanStack DB
+	const { data: channelData } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.where(({ channel }) => eq(channel.id, channelId))
+				.orderBy(({ channel }) => channel.createdAt, "desc")
+				.limit(1),
+		[channelId],
 	)
 
-	// Fetch pinned messages
-	const pinnedMessagesQuery = useQuery(
-		convexQuery(api.pinnedMessages.getPinnedMessages, { channelId, organizationId }),
+	const channel = channelData?.[0]
+
+	// Fetch messages from TanStack DB (TODO: Add pagination)
+	const { data: messagesData, isLoading: messagesLoading } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.where(({ message }) => eq(message.channelId, channelId))
+				.orderBy(({ message }) => message.createdAt, "desc")
+				.limit(50), // TODO: Implement proper pagination
+		[channelId],
+	)
+
+	// Fetch pinned messages from TanStack DB
+	const { data: pinnedMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ pinned: pinnedMessageCollection })
+				.where(({ pinned }) => eq(pinned.channelId, channelId))
+				.orderBy(({ pinned }) => pinned.pinnedAt, "desc"),
+		[channelId],
 	)
 
 	// Fetch typing users
-	const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
-	const typingUsers: TypingUsers = typingUsersQuery.data || []
+	// TODO: Implement
+	// const typingUsersQuery = useQuery(convexQuery(api.typingIndicator.list, { channelId, organizationId }))
+	const typingUsers: TypingUsers = []
 
 	// Mutations
 	const sendMessageMutation = useConvexMutation(api.messages.createMessage)
@@ -137,77 +155,77 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			channelId,
 			organizationId,
 			content,
-			attachedFiles: attachments || [],
-			replyToMessageId: replyToMessageId || undefined,
+			attachedFiles: attachments?.map((id) => id) || [], // TODO: Update mutation to use proper attachment IDs
+			replyToMessageId: replyToMessageId || undefined, // TODO: Update mutation to use MessageId
 		})
 		// Clear reply state after sending
 		setReplyToMessageId(null)
 	}
 
-	const editMessage = async (messageId: Id<"messages">, content: string) => {
+	const editMessage = async (messageId: MessageId, content: string) => {
 		await editMessageMutation({
 			organizationId,
-			id: messageId,
+			id: messageId, // TODO: Update mutation to use MessageId
 			content,
 		})
 	}
 
-	const deleteMessage = (messageId: Id<"messages">) => {
+	const deleteMessage = (messageId: MessageId) => {
 		deleteMessageMutation({
 			organizationId,
-			id: messageId,
+			id: messageId, // TODO: Update mutation to use MessageId
 		})
 	}
 
-	const addReaction = (messageId: Id<"messages">, emoji: string) => {
+	const addReaction = (messageId: MessageId, emoji: string) => {
 		addReactionMutation({
 			organizationId,
-			messageId,
+			messageId: messageId, // TODO: Update mutation to use MessageId
 			emoji,
 		})
 	}
 
-	const removeReaction = (messageId: Id<"messages">, emoji: string) => {
+	const removeReaction = (messageId: MessageId, emoji: string) => {
 		removeReactionMutation({
 			organizationId,
-			id: messageId,
+			id: messageId, // TODO: Update mutation to use MessageId
 			emoji,
 		})
 	}
 
-	const pinMessage = (messageId: Id<"messages">) => {
+	const pinMessage = (messageId: MessageId) => {
 		pinMessageMutation({
 			organizationId,
-			messageId,
-			channelId,
+			messageId: messageId, // TODO: Update mutation to use MessageId
+			channelId: channelId, // TODO: Update mutation to use ChannelId
 		})
 	}
 
-	const unpinMessage = (messageId: Id<"messages">) => {
+	const unpinMessage = (messageId: MessageId) => {
 		unpinMessageMutation({
 			organizationId,
-			messageId,
-			channelId,
+			messageId: messageId, // TODO: Update mutation to use MessageId
+			channelId: channelId, // TODO: Update mutation to use ChannelId
 		})
 	}
 
 	const startTyping = () => {
 		updateTypingMutation({
 			organizationId,
-			channelId,
+			channelId: channelId, // TODO: Update mutation to use ChannelId
 		})
 	}
 
 	const stopTyping = () => {
 		stopTypingMutation({
 			organizationId,
-			channelId,
+			channelId: channelId, // TODO: Update mutation to use ChannelId
 		})
 	}
 
-	const createThread = async (messageId: Id<"messages">) => {
+	const createThread = async (messageId: MessageId) => {
 		// Find the message to create thread for
-		const message = messages.find((m) => m._id === messageId)
+		const message = messages.find((m) => m.id === messageId)
 		if (!message) {
 			console.error("Message not found for thread creation")
 			return
@@ -224,8 +242,8 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 				organizationId,
 				name: "Thread",
 				type: "thread" as const,
-				parentChannelId: channelId,
-				threadMessageId: messageId,
+				parentChannelId: channelId, // TODO: Update mutation to use ChannelId
+				threadMessageId: messageId, // TODO: Update mutation to use MessageId
 			})
 
 			// Open the newly created thread
@@ -234,7 +252,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		}
 	}
 
-	const openThread = (threadChannelId: Id<"channels">, originalMessageId: Id<"messages">) => {
+	const openThread = (threadChannelId: ChannelId, originalMessageId: MessageId) => {
 		setActiveThreadChannelId(threadChannelId)
 		setActiveThreadMessageId(originalMessageId)
 	}
@@ -244,8 +262,10 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		setActiveThreadMessageId(null)
 	}
 
-	// Extract messages and pagination functions based on result state
-	const currentMessages = messagesResult._tag === "Loaded" ? messagesResult.page : []
+	console.log("messagesData", messagesData)
+
+	// Use messages directly from TanStack DB
+	const currentMessages = messagesData || []
 
 	// Update previous messages when we have new data
 	if (currentMessages.length > 0) {
@@ -270,9 +290,8 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			const newMessages = messages.slice(0, newMessagesCount)
 
 			// Check if any of the new messages are from other users
-			const hasOtherUserMessages = newMessages.some(
-				(msg) => msg.author?.email && msg.author.email !== user?.email,
-			)
+			// TODO: Join with users to get author info
+			const hasOtherUserMessages = newMessages.some((msg) => msg.authorId !== user?.id)
 
 			// Only play sound if window is not focused to avoid duplicate with NotificationManager
 			if (hasOtherUserMessages && document.hidden) {
@@ -281,29 +300,24 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		}
 
 		prevMessageCountRef.current = messages.length
-	}, [messages.length, channelId, user?.email, playSound, messages.slice])
+	}, [messages.length, channelId, user?.id, playSound, messages])
 
-	// Update pagination function refs when available
-	if (messagesResult._tag === "Loaded") {
-		loadNextRef.current = messagesResult.loadNext ?? undefined
-		loadPrevRef.current = messagesResult.loadPrev ?? undefined
-	}
-
-	// Use stored functions during loading states
-	const loadNext = loadNextRef.current
-	const loadPrev = loadPrevRef.current
-	const isLoadingMessages = messagesResult._tag === "LoadingInitialResults"
-	const isLoadingNext = messagesResult._tag === "LoadingNextResults"
-	const isLoadingPrev = messagesResult._tag === "LoadingPrevResults"
+	// TODO: Implement pagination for TanStack DB
+	// For now, set these to undefined/false
+	const loadNext = undefined
+	const loadPrev = undefined
+	const isLoadingMessages = messagesLoading
+	const isLoadingNext = false
+	const isLoadingPrev = false
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Dependencies are correctly managed
 	const contextValue = useMemo<ChatContextValue>(
 		() => ({
 			channelId,
 			organizationId,
-			channel: channelQuery.data,
+			channel,
 			messages,
-			pinnedMessages: pinnedMessagesQuery.data,
+			pinnedMessages,
 			loadNext,
 			loadPrev,
 			isLoadingMessages,
@@ -329,9 +343,9 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		}),
 		[
 			channelId,
-			channelQuery.data,
+			channel,
 			messages,
-			pinnedMessagesQuery.data,
+			pinnedMessages,
 			loadNext,
 			loadPrev,
 			isLoadingMessages,

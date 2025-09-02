@@ -1,5 +1,21 @@
 # Convex to TanStack DB Migration Tracker
 
+## Migration Progress Summary
+
+### ✅ Completed Migrations (15 queries)
+- **Organizations**: 5 queries migrated
+- **Channels**: 4 queries migrated (including chat-provider)
+- **Users**: 3 queries migrated (all using `useUser()` hook)
+- **Messages**: 1 query migrated (chat-provider messages query)
+- **Pinned Messages**: 1 query migrated
+- **Notifications**: 1 query migrated
+
+### 🚧 Remaining Work
+- **Message queries**: 3 queries
+- **Channel relations**: 2 queries (favorites, threads)
+- **Attachments/Social**: 2 queries
+- **Real-time features**: 3 queries (typing indicator, presence - skipped for now)
+
 ## Query Migrations
 
 ### ✅ Easy - Direct Collection Queries (Start Here)
@@ -12,14 +28,14 @@
 - [x] `app-sidebar/workspace-switcher.tsx:30` - `api.organizations.getUserOrganizations` → `organizationMemberCollection` joined with `organizationCollection`
 
 #### Channels
-- [ ] `routes/_app/$orgId/chat/index.tsx:22` - `api.channels.getChannelsForOrganization` → `channelCollection` with org filter
-- [ ] `notification-manager.tsx:19` - `api.channels.getChannelsForOrganization` → `channelCollection` with org filter
-- [ ] `providers/chat-provider.tsx:96` - `api.channels.getChannel` → `channelCollection` by ID
+- [x] `routes/_app/$orgId/chat/index.tsx:22` - `api.channels.getChannelsForOrganization` → `channelCollection` joined with `channelMemberCollection`
+- [x] `notification-manager.tsx:19` - `api.channels.getChannelsForOrganization` → `channelCollection` joined with `channelMemberCollection`
+- [x] `providers/chat-provider.tsx:96` - `api.channels.getChannel` → `channelCollection` by ID
 
 #### Users
-- [ ] `routes/_app/$orgId/chat/index.tsx:23` - `api.me.getCurrentUser` → `userCollection` with auth user filter
-- [ ] `chat/message-item.tsx:74` - `api.me.getCurrentUser` → `userCollection` with auth user filter
-- [ ] `app-sidebar/channel-item.tsx:206` - `api.me.getCurrentUser` → `userCollection` with auth user filter
+- [x] `routes/_app/$orgId/chat/index.tsx:23` - `api.me.getCurrentUser` → Using `useUser()` hook
+- [x] `chat/message-item.tsx:74` - `api.me.getCurrentUser` → Using `useUser()` hook
+- [x] `app-sidebar/channel-item.tsx:206` - `api.me.getCurrentUser` → Using `useUser()` hook
 - [ ] `editor/editor-ui/mention-node.tsx:81` - `api.organizationMembers.getOrganizationMember` → `organizationMemberCollection` by ID
 
 ### 🔄 Medium - Queries with Joins/Relations
@@ -28,7 +44,7 @@
 - [ ] `chat/message-reply-section.tsx:20` - `api.messages.getMessageById` → `messageCollection` by ID
 - [ ] `chat/reply-indicator.tsx:17` - `api.messages.getMessageById` → `messageCollection` by ID
 - [ ] `chat/thread-panel.tsx:24` - `api.messages.getMessageById` → `messageCollection` by ID
-- [ ] `providers/chat-provider.tsx:108` - `api.messages.getPinnedMessages` → `pinnedMessageCollection` with channel filter
+- [x] `providers/chat-provider.tsx:108` - `api.messages.getPinnedMessages` → `pinnedMessageCollection` with channel filter
 
 #### Channels with Relations
 - [ ] `chat/thread-panel.tsx:33` - `api.channels.getThreadChannel` → `channelCollection` with thread filter

@@ -33,7 +33,6 @@ import { DeleteMessageModal } from "./delete-message-modal"
 type Message = FunctionReturnType<typeof api.messages.getMessages>["page"][0]
 
 interface MessageToolbarProps {
-	message: Message
 	isOwnMessage: boolean
 	isPinned?: boolean
 	onReaction: (emoji: string) => void
@@ -51,7 +50,6 @@ interface MessageToolbarProps {
 }
 
 export function MessageToolbar({
-	message,
 	isOwnMessage,
 	isPinned = false,
 	onReaction,

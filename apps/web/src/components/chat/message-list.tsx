@@ -41,7 +41,7 @@ export function MessageList() {
 			const isGroupStart =
 				!prevMessage ||
 				message.authorId !== prevMessage.authorId ||
-				message._creationTime - prevMessage._creationTime > timeThreshold ||
+				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
 				!!prevMessage.replyToMessageId
 
 			// Determine isGroupEnd
@@ -50,7 +50,7 @@ export function MessageList() {
 			const isGroupEnd =
 				!nextMessage ||
 				message.authorId !== nextMessage.authorId ||
-				nextMessage._creationTime - message._creationTime > timeThreshold
+				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
 
 			// TODO: Implement these when channel data is available
 			const isFirstNewMessage = false // Will be based on lastSeenMessageId
@@ -70,7 +70,7 @@ export function MessageList() {
 	const groupedMessages = useMemo(() => {
 		return processedMessages.reduce(
 			(groups, processedMessage) => {
-				const date = new Date(processedMessage.message._creationTime).toDateString()
+				const date = new Date(processedMessage.message.createdAt).toDateString()
 				if (!groups[date]) {
 					groups[date] = []
 				}
@@ -246,9 +246,9 @@ export function MessageList() {
 					</div>
 					{dateMessages.map((processedMessage) => (
 						<div
-							key={processedMessage.message._id}
+							key={processedMessage.message.id}
 							style={{ overflowAnchor: "none" }}
-							data-message-id={processedMessage.message._id}
+							data-message-id={processedMessage.message.id}
 						>
 							<MessageItem
 								message={processedMessage.message}

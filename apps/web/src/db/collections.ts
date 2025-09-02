@@ -7,6 +7,7 @@ import {
 	DirectMessageParticipant,
 	Invitation,
 	Message,
+	MessageReaction,
 	Notification,
 	Organization,
 	OrganizationMember,
@@ -30,7 +31,7 @@ export const organizationCollection = createCollection(
 				table: "organizations",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Organization.Model.json),
@@ -47,7 +48,7 @@ export const invitationCollection = createCollection(
 				table: "invitations",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Invitation.Model.json),
@@ -64,7 +65,7 @@ export const messageCollection = createCollection(
 				table: "messages",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Message.Model.json),
@@ -86,6 +87,23 @@ export const messageCollection = createCollection(
 	}),
 )
 
+export const messageReactionCollection = createCollection(
+	electricCollectionOptions({
+		id: "message_reactions",
+		shapeOptions: {
+			url: electricUrl,
+			params: {
+				table: "message_reactions",
+			},
+			parser: {
+				timestamp: (date) => new Date(date),
+			},
+		},
+		schema: Schema.standardSchemaV1(MessageReaction.Model.json),
+		getKey: (item) => item.id,
+	}),
+)
+
 export const pinnedMessageCollection = createCollection(
 	electricCollectionOptions({
 		id: "pinned_messages",
@@ -95,7 +113,7 @@ export const pinnedMessageCollection = createCollection(
 				table: "pinned_messages",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(PinnedMessage.Model.json),
@@ -112,7 +130,7 @@ export const notificationCollection = createCollection(
 				table: "notifications",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Notification.Model.json),
@@ -129,7 +147,7 @@ export const userCollection = createCollection(
 				table: "users",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(User.Model.json),
@@ -146,7 +164,7 @@ export const organizationMemberCollection = createCollection(
 				table: "organization_members",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(OrganizationMember.Model.json),
@@ -163,7 +181,7 @@ export const channelCollection = createCollection(
 				table: "channels",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Channel.Model.json),
@@ -180,7 +198,7 @@ export const channelMemberCollection = createCollection(
 				table: "channel_members",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(ChannelMember.Model.json),
@@ -197,7 +215,7 @@ export const attachmentCollection = createCollection(
 				table: "attachments",
 			},
 			parser: {
-				timestamptz: (date) => new Date(date),
+				timestamp: (date) => new Date(date),
 			},
 		},
 		schema: Schema.standardSchemaV1(Attachment.Model.json),

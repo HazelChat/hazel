@@ -1,7 +1,5 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
@@ -10,6 +8,13 @@ import { Avatar } from "~/components/base/avatar/avatar"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
 import IconLockCloseStroke from "~/components/icons/IconLockCloseStroke"
 import { usePresence } from "~/components/presence/presence-provider"
+import {
+	channelCollection,
+	channelMemberCollection,
+	directMessageParticipantCollection,
+	userCollection,
+} from "~/db/collections"
+import { useUser } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgId/chat/")({
@@ -18,24 +23,79 @@ export const Route = createFileRoute("/_app/$orgId/chat/")({
 
 function RouteComponent() {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as Id<"organizations">
-	const channelsQuery = useQuery(convexQuery(api.channels.getChannelsForOrganization, { organizationId }))
-	const { data: me } = useQuery(convexQuery(api.me.getCurrentUser, { organizationId }))
-	const { presenceList } = usePresence()
+	const organizationId = orgId as OrganizationId
+	const { user: me } = useUser()
+	// const { presenceList } = usePresence()
+
+	const presenceList: any[] = [] // TODO: Add presence list
+
+	// Get all channels for this organization that the user is a member of
+	const { data: userChannels, isLoading: channelsLoading } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, organizationId),
+						eq(q.member.userId, me?.id || ""),
+						eq(q.member.isHidden, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[me?.id, organizationId],
+	)
 
 	const publicChannels = useMemo(
-		() => channelsQuery.data?.organizationChannels?.filter((ch) => ch.type === "public") || [],
-		[channelsQuery.data],
+		() =>
+			userChannels
+				?.filter((row) => row.channel.type === "public")
+				.map((row) => ({
+					_id: row.channel.id,
+					name: row.channel.name,
+					type: row.channel.type,
+					isMuted: row.member.isMuted,
+					isFavorite: row.member.isFavorite,
+					currentUser: { notificationCount: row.member.notificationCount || 0 },
+					members: [], // TODO: Add member count
+				})) || [],
+		[userChannels],
 	)
 
 	const privateChannels = useMemo(
-		() => channelsQuery.data?.organizationChannels?.filter((ch) => ch.type === "private") || [],
-		[channelsQuery.data],
+		() =>
+			userChannels
+				?.filter((row) => row.channel.type === "private")
+				.map((row) => ({
+					_id: row.channel.id,
+					name: row.channel.name,
+					type: row.channel.type,
+					isMuted: row.member.isMuted,
+					isFavorite: row.member.isFavorite,
+					currentUser: { notificationCount: row.member.notificationCount || 0 },
+					members: [], // TODO: Add member count
+				})) || [],
+		[userChannels],
 	)
 
-	const dmChannels = useMemo(() => channelsQuery.data?.dmChannels || [], [channelsQuery.data])
+	const dmChannels = useMemo(
+		() =>
+			userChannels
+				?.filter((row) => row.channel.type === "direct" || row.channel.type === "single")
+				.map((row) => ({
+					_id: row.channel.id,
+					name: row.channel.name,
+					type: row.channel.type,
+					isMuted: row.member.isMuted,
+					currentUser: { notificationCount: row.member.notificationCount || 0 },
+					members: [], // TODO: Add DM participants
+				})) || [],
+		[userChannels],
+	)
 
-	if (channelsQuery.isLoading) {
+	if (channelsLoading) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2"></div>
@@ -101,7 +161,7 @@ function RouteComponent() {
 												<DmCard
 													key={channel._id}
 													channel={channel}
-													currentUserId={me?._id}
+													currentUserId={me?.id}
 													presenceList={presenceList}
 												/>
 											))}

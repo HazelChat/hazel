@@ -18,6 +18,12 @@ export const MessageId = Schema.UUID.pipe(Schema.brand("@HazelChat/MessageId")).
 })
 export type MessageId = Schema.Schema.Type<typeof MessageId>
 
+export const MessageReactionId = Schema.UUID.pipe(Schema.brand("@HazelChat/MessageReactionId")).annotations({
+	description: "The ID of the message reaction",
+	title: "Message Reaction ID",
+})
+export type MessageReactionId = Schema.Schema.Type<typeof MessageReactionId>
+
 export const AttachmentId = Schema.UUID.pipe(Schema.brand("@HazelChat/AttachmentId")).annotations({
 	description: "The ID of the attachment being replied to",
 	title: "Attachment ID",

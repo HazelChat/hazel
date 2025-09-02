@@ -86,7 +86,7 @@ export function PinnedMessagesModal() {
 														</span>
 														<span className="text-secondary text-xs">
 															{format(
-																pinnedMessage.message._creationTime,
+																pinnedMessage.message.createdAt,
 																"MMM d, h:mm a",
 															)}
 														</span>
