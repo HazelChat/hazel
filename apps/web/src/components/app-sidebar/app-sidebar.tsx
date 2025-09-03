@@ -1,5 +1,5 @@
 import type { OrganizationId } from "@hazel/db/schema"
-import { and, eq, inArray, or, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { Link, useParams } from "@tanstack/react-router"
 import { useAuth } from "@workos-inc/authkit-react"
 import { useMemo } from "react"
@@ -8,7 +8,6 @@ import {
 	channelCollection,
 	channelMemberCollection,
 	organizationCollection,
-	userCollection,
 } from "~/db/collections"
 import { useUser } from "~/lib/auth"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
@@ -31,7 +30,7 @@ import {
 	useSidebar,
 } from "../ui/sidebar"
 import { ChannelActionsDropdown } from "./channel-actions-dropdown"
-import { ChannelItem, DmChannelLink, type EnrichedChannel } from "./channel-item"
+import { ChannelItem, DmChannelLink } from "./channel-item"
 import { NavUser } from "./nav-user"
 import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
 import { WorkspaceSwitcher } from "./workspace-switcher"
@@ -178,59 +177,6 @@ const ChannelGroup = (props: { organizationId: OrganizationId }) => {
 		return userChannels.map((row) => row.channel.id)
 	}, [userChannels])
 
-	const { data: allParticipants } = useLiveQuery((q) => {
-		return q
-			.from({ member: channelMemberCollection })
-			.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
-			.where((q) => inArray(q.member.channelId, channelIds))
-	})
-
-	const channels = useMemo(() => {
-		if (!userChannels || !user?.id) return []
-
-		// Create a map of channel participants
-		const participantsByChannel = new Map<string, Array<any>>()
-
-		if (allParticipants) {
-			// Debug: log the structure
-			if (allParticipants.length > 0) {
-				console.log("Participant structure:", allParticipants[0])
-			}
-
-			allParticipants.forEach((row) => {
-				// The data should be under member and user keys after the join
-				const member = row.member
-				const user = row.user
-				const channelId = member?.channelId
-
-				if (channelId && !participantsByChannel.has(channelId)) {
-					participantsByChannel.set(channelId, [])
-				}
-				if (channelId) {
-					participantsByChannel.get(channelId)!.push({
-						userId: member.userId,
-						user: user,
-					})
-				}
-			})
-		}
-
-		// Build enriched channels
-		return userChannels.map((row) => {
-			const channel: EnrichedChannel = {
-				...row.channel,
-				members: participantsByChannel.get(row.channel.id) || [],
-				isMuted: row.member.isMuted || false,
-				isFavorite: row.member.isFavorite || false,
-				isHidden: row.member.isHidden || false,
-				currentUser: {
-					notificationCount: row.member.notificationCount || 0,
-				},
-			}
-			return channel
-		})
-	}, [userChannels, allParticipants, user?.id])
-
 	return (
 		<SidebarGroup>
 			<SidebarGroupLabel>Channels</SidebarGroupLabel>
@@ -239,8 +185,8 @@ const ChannelGroup = (props: { organizationId: OrganizationId }) => {
 			</SidebarGroupAction>
 			<SidebarGroupContent>
 				<SidebarMenu>
-					{channels.map((channel) => (
-						<ChannelItem key={channel.id} channelId={channel.id} />
+					{channelIds.map((channelId) => (
+						<ChannelItem key={channelId} channelId={channelId} />
 					))}
 				</SidebarMenu>
 			</SidebarGroupContent>
@@ -275,52 +221,6 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 		return userDmChannels.map((row) => row.channel.id)
 	}, [userDmChannels])
 
-	const { data: dmParticipants } = useLiveQuery((q) => {
-		return q
-			.from({ member: channelMemberCollection })
-			.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
-			.where((q) => inArray(q.member.channelId, dmChannelIds))
-	})
-
-	const dmChannels = useMemo(() => {
-		if (!userDmChannels || !user?.id) return []
-
-		const participantsByChannel = new Map<string, Array<any>>()
-
-		if (dmParticipants) {
-			dmParticipants.forEach((row) => {
-				const member = row.member
-				const user = row.user
-				const channelId = member?.channelId
-
-				if (channelId && !participantsByChannel.has(channelId)) {
-					participantsByChannel.set(channelId, [])
-				}
-				if (channelId) {
-					participantsByChannel.get(channelId)!.push({
-						userId: member.userId,
-						user: user,
-					})
-				}
-			})
-		}
-
-		// Build enriched channels
-		return userDmChannels.map((row) => {
-			const channel: EnrichedChannel = {
-				...row.channel,
-				members: participantsByChannel.get(row.channel.id) || [],
-				isMuted: row.member.isMuted || false,
-				isFavorite: row.member.isFavorite || false,
-				isHidden: row.member.isHidden || false,
-				currentUser: {
-					notificationCount: row.member.notificationCount || 0,
-				},
-			}
-			return channel
-		})
-	}, [userDmChannels, dmParticipants, user?.id])
-
 	return (
 		<SidebarGroup>
 			<SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
@@ -329,9 +229,9 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 			</SidebarGroupAction>
 			<SidebarGroupContent>
 				<SidebarMenu>
-					{dmChannels.map((channel) => (
+					{dmChannelIds.map((channelId) => (
 						// TODO: Add presence
-						<DmChannelLink key={channel.id} userPresence={[]} channel={channel} />
+						<DmChannelLink key={channelId} channelId={channelId} userPresence={[]} />
 					))}
 				</SidebarMenu>
 			</SidebarGroupContent>
