@@ -7,6 +7,7 @@ import { useChat } from "~/hooks/use-chat"
 import { Avatar } from "../base/avatar/avatar"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import { IconPinSlant } from "../icons/IconPinSlant"
+import { MessageAuthorHeader } from "./message-item"
 import { UserProfilePopover } from "./user-profile-popover"
 
 export function PinnedMessagesModal() {
@@ -92,18 +93,7 @@ export function PinnedMessagesModal() {
 											<div className="flex gap-3 pr-8">
 												<UserProfilePopover userId={pinnedMessage.message.authorId} />
 												<div className="min-w-0 flex-1">
-													<div className="flex items-baseline gap-2">
-														<span className="font-medium text-sm">
-															{pinnedMessage.messageAuthor.firstName}{" "}
-															{pinnedMessage.messageAuthor.lastName}
-														</span>
-														<span className="text-secondary text-xs">
-															{format(
-																pinnedMessage.message.createdAt,
-																"MMM d, h:mm a",
-															)}
-														</span>
-													</div>
+													<MessageAuthorHeader message={pinnedMessage.message} />
 													<p className="mt-1 line-clamp-2 text-secondary text-sm">
 														{pinnedMessage.message.content}
 													</p>
@@ -112,7 +102,8 @@ export function PinnedMessagesModal() {
 
 											{/* Pinned Date */}
 											<div className="mt-2 text-secondary text-xs">
-												Pinned {format(pinnedMessage.pinnedAt, "MMM d 'at' h:mm a")}
+												Pinned{" "}
+												{format(pinnedMessage.pinned.pinnedAt, "MMM d 'at' h:mm a")}
 											</div>
 										</button>
 									))}

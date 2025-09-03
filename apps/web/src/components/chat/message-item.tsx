@@ -1,27 +1,20 @@
 import type { Id } from "@hazel/backend"
 import type { Message } from "@hazel/db/models"
-import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/db/schema"
+import type { ChannelId, MessageId, UserId } from "@hazel/db/schema"
 import { count, eq, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
 import { format } from "date-fns"
 import { useRef, useState } from "react"
-import { Heading as AriaHeading, Button, DialogTrigger } from "react-aria-components"
+import { Button } from "react-aria-components"
 import { toast } from "sonner"
-import { Dialog, Modal, ModalFooter, ModalOverlay } from "~/components/application/modals/modal"
 import { Button as StyledButton } from "~/components/base/buttons/button"
-import { CloseButton } from "~/components/base/buttons/close-button"
-import { Checkbox } from "~/components/base/checkbox/checkbox"
-import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
-import IconUserPlusStroke from "~/components/icons/IconUserPlusStroke"
-import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
 import {
 	attachmentCollection,
 	channelCollection,
 	messageCollection,
 	messageReactionCollection,
+	pinnedMessageCollection,
 	userCollection,
 } from "~/db/collections"
-import { useMessage } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
 import { useUser } from "~/lib/auth"
 import { cx } from "~/utils/cx"
@@ -42,35 +35,22 @@ interface MessageItemProps {
 	isPinned?: boolean
 }
 
-const channels = [
-	{ id: "ch_001", name: "general", description: "Casual discussions and announcements" },
-	{ id: "ch_002", name: "development", description: "Talk about coding, debugging, and dev tools" },
-	{ id: "ch_003", name: "design", description: "Share UI/UX ideas and design feedback" },
-	{ id: "ch_004", name: "random", description: "Off-topic chat and fun conversations" },
-]
-
 export function MessageItem({
 	message,
 	isGroupStart = false,
 	isGroupEnd = false,
 	isFirstNewMessage = false,
-	isPinned = false,
 }: MessageItemProps) {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const {
 		addReaction,
 		removeReaction,
 		setReplyToMessageId,
 		pinMessage,
 		unpinMessage,
-		pinnedMessages,
+		channelId,
 		createThread,
-		openThread,
 	} = useChat()
 
-	const organizationId = orgId as OrganizationId
-
-	const [openInviteUserToSpecificChannel, setOpenInviteUserToSpecificChannel] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 	const [hasBeenHovered, setHasBeenHovered] = useState(false)
 	const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -78,10 +58,20 @@ export function MessageItem({
 
 	const { user: currentUser } = useUser()
 	const isOwnMessage = currentUser?.id === message?.authorId
-	const isEdited = message?.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
 	const showAvatar = isGroupStart || !!message?.replyToMessageId
 	const isRepliedTo = !!message?.replyToMessageId
+
+	// Query for pinned messages in current channel
+	const { data: pinnedMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ pinned: pinnedMessageCollection })
+				.where(({ pinned }) => eq(pinned.channelId, channelId))
+				.select(({ pinned }) => pinned),
+		[channelId],
+	)
+
 	const isMessagePinned = pinnedMessages?.some((p) => p.messageId === message?.id) || false
 
 	const { data: reactions } = useLiveQuery((q) =>
@@ -248,33 +238,7 @@ export function MessageItem({
 				{/* Main Content Row */}
 				<div className="flex gap-4">
 					{showAvatar ? (
-						<UserProfilePopover
-							userId={message.authorId}
-							isOwnProfile={isOwnMessage}
-							isFavorite={false} // TODO: Get favorite status from state
-							isMuted={false} // TODO: Get muted status from state
-							onInviteToChannel={() => setOpenInviteUserToSpecificChannel(true)}
-							onEditProfile={() => {
-								// TODO: Implement edit profile
-								console.log("Edit profile")
-							}}
-							onViewFullProfile={() => {
-								// TODO: Implement view full profile
-								console.log("View full profile")
-							}}
-							onToggleMute={() => {
-								// TODO: Implement mute/unmute functionality
-								console.log("Toggle mute")
-							}}
-							onToggleFavorite={() => {
-								// TODO: Implement favorite/unfavorite functionality
-								console.log("Toggle favorite")
-							}}
-							onCopyUserId={() => {
-								// Additional callback after copying user ID
-								console.log("User ID copied:", message.authorId)
-							}}
-						/>
+						<UserProfilePopover userId={message.authorId} />
 					) : (
 						<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-secondary leading-tight opacity-0 group-hover:opacity-100">
 							{format(message.createdAt, "HH:mm")}
@@ -504,7 +468,7 @@ const ThreadMessageIndicator = ({
 	)
 }
 
-const MessageAuthorHeader = ({ message }: { message: typeof Message.Model.Type }) => {
+export const MessageAuthorHeader = ({ message }: { message: typeof Message.Model.Type }) => {
 	const { data } = useLiveQuery(
 		(q) =>
 			q
