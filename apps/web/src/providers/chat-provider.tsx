@@ -1,4 +1,3 @@
-import type { api } from "@hazel/backend/api"
 import type { Channel, Message } from "@hazel/db/models"
 import {
 	ChannelId,
@@ -9,7 +8,6 @@ import {
 	UserId,
 } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { useAuth } from "@workos-inc/authkit-react"
 import type { FunctionReturnType } from "convex/server"
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { v4 as uuid } from "uuid"
@@ -22,7 +20,7 @@ import {
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useUser } from "~/lib/auth"
 
-type TypingUser = FunctionReturnType<typeof api.typingIndicator.list>[0]
+type TypingUser = any
 type TypingUsers = TypingUser[]
 
 interface ChatContextValue {

@@ -1,7 +1,6 @@
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Tooltip, TooltipTrigger } from "~/components/base/tooltip/tooltip"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
-import { usePresence } from "~/components/presence/presence-provider"
 import { useChannel } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
 import { ButtonUtility } from "../base/buttons/button-utility"
@@ -10,7 +9,11 @@ import { PinnedMessagesModal } from "./pinned-messages-modal"
 
 export function ChatHeader() {
 	const { channelId } = useChat()
-	const { isUserOnline } = usePresence()
+
+	// TODO: XD
+	const { isUserOnline } = {
+		isUserOnline: (...args: any[]) => true,
+	}
 
 	const { channel } = useChannel(channelId)
 

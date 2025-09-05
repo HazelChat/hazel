@@ -22,7 +22,6 @@ import { CloseButton } from "~/components/base/buttons/close-button"
 import { Input } from "~/components/base/input/input"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconCheckTickCircle from "~/components/icons/IconCheckTickCircle"
-import { usePresence } from "~/components/presence/presence-provider"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
 import {
 	channelCollection,
@@ -53,7 +52,11 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const navigate = useNavigate()
 	const { orgId } = useParams({ from: "/_app/$orgId" })
 	const organizationId = orgId as OrganizationId
-	const { isUserOnline } = usePresence()
+
+	// TODO: Implement
+	const { isUserOnline } = {
+		isUserOnline: (...args: any[]) => true,
+	}
 	const { user } = useUser()
 
 	const { data: organizationUsers } = useLiveQuery(

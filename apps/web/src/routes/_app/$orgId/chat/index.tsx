@@ -7,13 +7,7 @@ import { TabList, TabPanel, Tabs } from "~/components/application/tabs/tabs"
 import { Avatar } from "~/components/base/avatar/avatar"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
 import IconLockCloseStroke from "~/components/icons/IconLockCloseStroke"
-import { usePresence } from "~/components/presence/presence-provider"
-import {
-	channelCollection,
-	channelMemberCollection,
-	directMessageParticipantCollection,
-	userCollection,
-} from "~/db/collections"
+import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useUser } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 

@@ -1,4 +1,3 @@
-import type { Id } from "@hazel/backend"
 import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
 import { useParams } from "@tanstack/react-router"
 import { Attachment01, FaceSmile, ItalicSquare, XClose } from "@untitledui/icons"

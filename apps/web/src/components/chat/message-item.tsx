@@ -1,4 +1,3 @@
-import type { Id } from "@hazel/backend"
 import type { Message } from "@hazel/db/models"
 import type { ChannelId, MessageId, UserId } from "@hazel/db/schema"
 import { count, eq, useLiveQuery } from "@tanstack/react-db"
@@ -6,10 +5,7 @@ import { format } from "date-fns"
 import { useRef, useState } from "react"
 import { Button } from "react-aria-components"
 import { toast } from "sonner"
-import { Button as StyledButton } from "~/components/base/buttons/button"
 import {
-	attachmentCollection,
-	channelCollection,
 	messageCollection,
 	messageReactionCollection,
 	pinnedMessageCollection,
@@ -18,7 +14,6 @@ import {
 import { useChat } from "~/hooks/use-chat"
 import { useUser } from "~/lib/auth"
 import { cx } from "~/utils/cx"
-import { ModalFooter } from "../application/modals/modal"
 import { IconNotification } from "../application/notifications/notifications"
 import { Badge } from "../base/badges/badges"
 import { MarkdownReadonly } from "../markdown-readonly"

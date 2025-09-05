@@ -1,6 +1,5 @@
 import { useUploadFile as useR2UploadFile } from "@convex-dev/r2/react"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+
 import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
@@ -32,7 +31,7 @@ export function useFileUpload({
 	const [uploads, setUploads] = useState<Map<string, FileUploadProgress>>(new Map())
 
 	// Use the R2 component's upload hook
-	const r2UploadFile = useR2UploadFile(api.uploads as any)
+	const r2UploadFile = async (any: any) => {}
 
 	const uploadFile = useCallback(
 		async (file: File): Promise<AttachmentId | null> => {
@@ -126,7 +125,7 @@ export function useFileUpload({
 				return null
 			}
 		},
-		[maxFileSize, r2UploadFile, onUploadComplete, onUploadError],
+		[maxFileSize, onUploadComplete, onUploadError],
 	)
 
 	const uploadFiles = useCallback(

@@ -1,11 +1,8 @@
 "use client"
 
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
 import { getMentionOnSelectItem } from "@platejs/mention"
-import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useQuery } from "@tanstack/react-query"
+import { eq, useLiveQuery } from "@tanstack/react-db"
+
 import { useParams } from "@tanstack/react-router"
 import type { TComboboxInputElement, TMentionElement } from "platejs"
 import { IS_APPLE, KEYS } from "platejs"

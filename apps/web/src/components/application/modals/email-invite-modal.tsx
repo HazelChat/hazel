@@ -1,6 +1,3 @@
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useParams } from "@tanstack/react-router"
 import { Mail01, Plus, UsersPlus, X } from "@untitledui/icons"
 import { useState } from "react"
 import { Heading as AriaHeading } from "react-aria-components"

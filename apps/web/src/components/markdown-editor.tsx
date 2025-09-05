@@ -1,6 +1,5 @@
 "use client"
 
-import type { Id } from "@hazel/backend"
 import type { AttachmentId } from "@hazel/db/schema"
 import { Plate, usePlateEditor } from "platejs/react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react"

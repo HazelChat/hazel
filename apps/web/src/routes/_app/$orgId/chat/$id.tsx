@@ -1,4 +1,3 @@
-import type { Id } from "@hazel/backend"
 import type { ChannelId, OrganizationId } from "@hazel/db/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChatHeader } from "~/components/chat/chat-header"

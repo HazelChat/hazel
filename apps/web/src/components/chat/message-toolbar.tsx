@@ -1,17 +1,4 @@
-import type { api } from "@hazel/backend/api"
-import {
-	Copy01,
-	DotsVertical,
-	Edit04,
-	Flag01,
-	Mail01,
-	MessageSquare02,
-	Plus,
-	Share06,
-	Stars02,
-	Trash01,
-} from "@untitledui/icons"
-import type { FunctionReturnType } from "convex/server"
+import { Copy01, DotsVertical, Edit04, Flag01, Mail01, Share06, Stars02, Trash01 } from "@untitledui/icons"
 import { useEffect, useState } from "react"
 import { Dialog, DialogTrigger, MenuTrigger, Popover } from "react-aria-components"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
@@ -24,13 +11,10 @@ import {
 	EmojiPickerSearch,
 } from "../base/emoji-picker/emoji-picker"
 import IconArrowBigTurnLeft1 from "../icons/IconArrowBigTurnLeft1"
-import IconThreads from "../icons/IconThreads"
-import IconThreads1 from "../icons/IconThreads1"
+
 import { IconEmojiAdd } from "../temp-icons/emoji-add"
 import { IconThread } from "../temp-icons/thread"
 import { DeleteMessageModal } from "./delete-message-modal"
-
-type Message = FunctionReturnType<typeof api.messages.getMessages>["page"][0]
 
 interface MessageToolbarProps {
 	isOwnMessage: boolean
