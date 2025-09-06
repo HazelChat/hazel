@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { InvitationId, OrganizationId, UserId } from "../lib/schema"
 import * as M from "../services/model"
-import { baseFields } from "./utils"
+import { JsonDate } from "./utils"
 
 export const InvitationStatus = Schema.Literal("pending", "accepted", "expired", "revoked")
 export type InvitationStatus = Schema.Schema.Type<typeof InvitationStatus>
@@ -12,10 +12,10 @@ export class Model extends M.Class<Model>("Invitation")({
 	organizationId: OrganizationId,
 	email: Schema.String,
 	invitedBy: Schema.NullOr(UserId),
-	invitedAt: Schema.Date,
-	expiresAt: Schema.Date,
+	invitedAt: JsonDate,
+	expiresAt: JsonDate,
 	status: InvitationStatus,
-	acceptedAt: Schema.NullOr(Schema.Date),
+	acceptedAt: Schema.NullOr(JsonDate),
 	acceptedBy: Schema.NullOr(UserId),
 }) {}
 

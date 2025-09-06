@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { UserId } from "../lib/schema"
 import * as M from "../services/model"
-import { baseFields } from "./utils"
+import { baseFields, JsonDate } from "./utils"
 
 export const UserStatus = Schema.Literal("online", "offline", "away")
 export type UserStatus = Schema.Schema.Type<typeof UserStatus>
@@ -14,7 +14,7 @@ export class Model extends M.Class<Model>("User")({
 	lastName: Schema.String,
 	avatarUrl: Schema.String,
 	status: UserStatus,
-	lastSeen: Schema.Date,
+	lastSeen: JsonDate,
 	settings: Schema.NullOr(
 		Schema.Record({
 			key: Schema.String,

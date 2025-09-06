@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from "../lib/schema"
 import * as M from "../services/model"
-import { baseFields } from "./utils"
+import { JsonDate } from "./utils"
 
 export const AttachmentStatus = Schema.Literal("uploading", "complete", "failed")
 export type AttachmentStatus = Schema.Schema.Type<typeof AttachmentStatus>
@@ -15,7 +15,7 @@ export class Model extends M.Class<Model>("Attachment")({
 	r2Key: Schema.String,
 	uploadedBy: UserId,
 	status: AttachmentStatus,
-	uploadedAt: Schema.Date,
+	uploadedAt: JsonDate,
 }) {}
 
 export const Insert = Model.insert

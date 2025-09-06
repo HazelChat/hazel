@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import { NotificationId } from "../lib/schema"
 import * as M from "../services/model"
-import { baseFields } from "./utils"
+import { JsonDate } from "./utils"
 
 export class Model extends M.Class<Model>("Notification")({
 	id: M.Generated(NotificationId),
@@ -10,7 +10,7 @@ export class Model extends M.Class<Model>("Notification")({
 	targetedResourceType: Schema.NullOr(Schema.String),
 	resourceId: Schema.NullOr(Schema.UUID),
 	resourceType: Schema.NullOr(Schema.String),
-	readAt: Schema.NullOr(Schema.Date),
+	readAt: Schema.NullOr(JsonDate),
 }) {}
 
 export const Insert = Model.insert

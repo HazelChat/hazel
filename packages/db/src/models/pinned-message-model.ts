@@ -1,13 +1,13 @@
-import { Schema } from "effect"
 import { ChannelId, MessageId, PinnedMessageId, UserId } from "../lib/schema"
 import * as M from "../services/model"
+import { JsonDate } from "./utils"
 
 export class Model extends M.Class<Model>("PinnedMessage")({
 	id: M.Generated(PinnedMessageId),
 	channelId: ChannelId,
 	messageId: MessageId,
 	pinnedBy: UserId,
-	pinnedAt: Schema.Date,
+	pinnedAt: JsonDate,
 }) {}
 
 export const Insert = Model.insert
