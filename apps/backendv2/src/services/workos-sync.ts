@@ -267,6 +267,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								joinedAt: new Date(),
 								invitedBy: null,
 								deletedAt: null,
+								createdAt: new Date(),
 							}),
 							() => {
 								if (existing) {
@@ -389,7 +390,6 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 									? new Date(workosInvitation.acceptedAt)
 									: null,
 								acceptedBy: null,
-								deletedAt: null,
 							}),
 							() => {
 								if (existing) {
@@ -555,7 +555,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 							const user = yield* userRepo.findByExternalId(typedEvent.data.userId)
 
 							if (Option.isSome(org) && Option.isSome(user)) {
-								const memberData = {
+								yield* orgMemberRepo.upsertByOrgAndUser({
 									organizationId: org.value.id,
 									userId: user.value.id,
 									role: (typedEvent.data.role.slug || "member") as
@@ -565,8 +565,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 									joinedAt: new Date(),
 									invitedBy: null,
 									deletedAt: null,
-								}
-								yield* orgMemberRepo.upsertByOrgAndUser(memberData)
+									createdAt: new Date(),
+								})
 							}
 							break
 						}

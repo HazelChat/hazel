@@ -27,7 +27,13 @@ export const HttpOrganizationLive = HttpApiBuilder.group(HazelApi, "organization
 
 								const txid = yield* generateTransactionId(tx)
 
-								return { createdOrganization, txid }
+								return {
+									createdOrganization: {
+										...createdOrganization,
+										settings: createdOrganization.settings as any,
+									},
+									txid,
+								}
 							}),
 						)
 						.pipe(
@@ -65,7 +71,13 @@ export const HttpOrganizationLive = HttpApiBuilder.group(HazelApi, "organization
 
 								const txid = yield* generateTransactionId(tx)
 
-								return { updatedOrganization, txid }
+								return {
+									updatedOrganization: {
+										...updatedOrganization,
+										settings: updatedOrganization.settings as any,
+									},
+									txid,
+								}
 							}),
 						)
 						.pipe(

@@ -15,7 +15,12 @@ export class Model extends M.Class<Model>("User")({
 	avatarUrl: Schema.String,
 	status: UserStatus,
 	lastSeen: Schema.Date,
-	settings: Schema.NullOr(Schema.String),
+	settings: Schema.NullOr(
+		Schema.Record({
+			key: Schema.String,
+			value: Schema.Any,
+		}),
+	),
 	...baseFields,
 }) {}
 

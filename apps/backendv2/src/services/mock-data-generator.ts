@@ -30,7 +30,8 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 					lastName: `User${i}`,
 					avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
 					status: (["online", "offline", "away"] as const)[i % 3],
-					lastSeen: new Date().toISOString(),
+					lastSeen: new Date(),
+
 					settings: null,
 					deletedAt: null,
 				}))
@@ -48,7 +49,8 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 							| "owner"
 							| "admin"
 							| "member",
-						joinedAt: new Date().toISOString(),
+						joinedAt: new Date(),
+						createdAt: new Date(),
 						invitedBy: null,
 						deletedAt: null,
 					})),
@@ -110,7 +112,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 								isFavorite: channelIndex === 0, // Favorite the general channel
 								lastSeenMessageId: null,
 								notificationCount: 0,
-								joinedAt: new Date().toISOString(),
+								joinedAt: new Date(),
 								deletedAt: null,
 							}
 						})

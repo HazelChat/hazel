@@ -16,7 +16,7 @@ export const usersTable = pgTable(
 		avatarUrl: text().notNull(),
 		status: userStatusEnum().notNull().default("offline"),
 		lastSeen: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
-		settings: jsonb(),
+		settings: jsonb().$type<Record<string, any>>(),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),

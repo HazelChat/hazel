@@ -22,7 +22,6 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 							Effect.fnUntraced(function* (tx) {
 								const createdPinnedMessage = yield* PinnedMessageRepo.insert({
 									...payload,
-									deletedAt: null,
 								}).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId(tx)
