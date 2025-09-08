@@ -31,6 +31,7 @@
 		"@opentelemetry/sdk-trace-web": "^2.0.1",
 		"@workos-inc/node": "^7.69.1",
 		"effect": "^3.17.13",
+		"jose": "^6.1.0",
 		"pg": "^8.16.3"
 	}
 }

@@ -83,7 +83,7 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 	),
 	Layer.provide(MainLive),
 	Layer.provide(TracerLive),
-	Layer.provide(AuthorizationLive),
+	Layer.provide(AuthorizationLive.pipe(Layer.provide(UserRepo.Default))),
 	Layer.provide(BunHttpServer.layer({ port: 3003 })),
 	Layer.launch,
 	BunRuntime.runMain,
