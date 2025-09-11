@@ -14,6 +14,7 @@ import { HttpOrganizationMemberLive } from "./routes/organization-members.http"
 import { HttpOrganizationLive } from "./routes/organizations.http"
 import { HttpPinnedMessageLive } from "./routes/pinned-messages.http"
 import { HttpRootLive } from "./routes/root.http"
+import { HttpTypingIndicatorLive } from "./routes/typing-indicators.http"
 import { HttpUserLive } from "./routes/users.http"
 import { HttpWebhookLive } from "./routes/webhooks.http"
 
@@ -33,6 +34,7 @@ export const HttpApiRoutes = HttpLayerRouter.addHttpApi(HazelApi, {
 	Layer.provide(HttpOrganizationMemberLive),
 	Layer.provide(HttpAttachmentLive),
 	Layer.provide(HttpDirectMessageParticipantLive),
+	Layer.provide(HttpTypingIndicatorLive),
 	Layer.provide(HttpWebhookLive),
 	Layer.provide(HttpMockDataLive),
 )

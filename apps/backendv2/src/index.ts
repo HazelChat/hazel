@@ -24,6 +24,7 @@ import { NotificationRepo } from "./repositories/notification-repo"
 import { OrganizationMemberRepo } from "./repositories/organization-member-repo"
 import { OrganizationRepo } from "./repositories/organization-repo"
 import { PinnedMessageRepo } from "./repositories/pinned-message-repo"
+import { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
 import { UserRepo } from "./repositories/user-repo"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
@@ -77,6 +78,7 @@ const MainLive = Layer.mergeAll(
 	PinnedMessageRepo.Default,
 	AttachmentRepo.Default,
 	NotificationRepo.Default,
+	TypingIndicatorRepo.Default,
 	DatabaseLive,
 	MultipartUpload.layerWithoutS3Service,
 ).pipe(

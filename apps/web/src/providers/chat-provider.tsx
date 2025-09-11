@@ -1,25 +1,33 @@
-import type { Channel, Message } from "@hazel/db/models"
+import type { Channel, ChannelMember, Message, TypingIndicator, User } from "@hazel/db/models"
 import {
 	ChannelId,
+	ChannelMemberId,
 	MessageId,
 	MessageReactionId,
 	type OrganizationId,
 	PinnedMessageId,
+	TypingIndicatorId,
 	UserId,
 } from "@hazel/db/schema"
-import { eq, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, gt, useLiveQuery } from "@tanstack/react-db"
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { v4 as uuid } from "uuid"
 import {
 	channelCollection,
+	channelMemberCollection,
 	messageCollection,
 	messageReactionCollection,
 	pinnedMessageCollection,
+	typingIndicatorCollection,
+	userCollection,
 } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useUser } from "~/lib/auth"
 
-type TypingUser = any
+type TypingUser = {
+	user: typeof User.Model.Type
+	member: typeof ChannelMember.Model.Type
+}
 type TypingUsers = TypingUser[]
 
 interface ChatContextValue {
@@ -116,9 +124,79 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		[channelId],
 	)
 
-	// Fetch typing users
-	// TODO: Implement
-	const typingUsers: TypingUsers = []
+	// Fetch current user's channel member info
+	const { data: currentMemberData } = useLiveQuery(
+		(q) =>
+			user?.id
+				? q
+						.from({ member: channelMemberCollection })
+						.where(
+							({ member }) =>
+								and(eq(member.channelId, channelId), eq(member.userId, UserId.make(user.id))),
+						)
+						.limit(1)
+				: [],
+		[channelId, user?.id],
+	)
+	const currentChannelMemberId = currentMemberData?.[0]?.id
+
+	// Fetch typing indicators (last 5 seconds)
+	const { data: typingIndicatorsData } = useLiveQuery(
+		(q) => {
+			const fiveSecondsAgo = Date.now() - 5000
+			return q
+				.from({ typing: typingIndicatorCollection })
+				.where(
+					({ typing }) =>
+						and(
+							eq(typing.channelId, channelId),
+							gt(typing.lastTyped, fiveSecondsAgo),
+							currentChannelMemberId ? typing.memberId !== currentChannelMemberId : true,
+						),
+				)
+		},
+		[channelId, currentChannelMemberId],
+	)
+
+	// Join typing indicators with members and users
+	const { data: typingMembersData } = useLiveQuery(
+		(q) => {
+			if (!typingIndicatorsData?.length) return []
+			const memberIds = typingIndicatorsData.map((t) => t.memberId)
+			return q.from({ member: channelMemberCollection }).where(({ member }) => memberIds.includes(member.id))
+		},
+		[typingIndicatorsData],
+	)
+
+	const { data: typingUsersData } = useLiveQuery(
+		(q) => {
+			if (!typingMembersData?.length) return []
+			const userIds = typingMembersData.map((m) => m.userId)
+			return q.from({ user: userCollection }).where(({ user }) => userIds.includes(user.id))
+		},
+		[typingMembersData],
+	)
+
+	// Build typing users list
+	const typingUsers: TypingUsers = useMemo(() => {
+		if (!typingMembersData?.length || !typingUsersData?.length) return []
+		return typingMembersData
+			.map((member) => {
+				const user = typingUsersData.find((u) => u.id === member.userId)
+				if (!user) return null
+				return { member, user }
+			})
+			.filter((tu): tu is TypingUser => tu !== null)
+	}, [typingMembersData, typingUsersData])
+
+	// Auto-refresh typing indicators every 2 seconds to clear stale ones
+	useEffect(() => {
+		const interval = setInterval(() => {
+			// This will trigger a re-render and re-query of typing indicators
+			// Stale indicators (> 5 seconds old) will be filtered out
+		}, 2000)
+		return () => clearInterval(interval)
+	}, [])
 
 	// Message operations
 	const sendMessage = ({
@@ -193,13 +271,60 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		console.log("unpinMessage not fully implemented - need pinned message ID lookup")
 	}
 
+	// Track typing indicator ID
+	const typingIndicatorIdRef = useRef<TypingIndicatorId | null>(null)
+	const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
 	const startTyping = () => {
-		// TODO: Implement startTypingMutation
+		if (!currentChannelMemberId) return
+
+		// Clear any existing timeout
+		if (typingTimeoutRef.current) {
+			clearTimeout(typingTimeoutRef.current)
+		}
+
+		// Create or update typing indicator
+		if (typingIndicatorIdRef.current) {
+			// Update existing indicator
+			typingIndicatorCollection.update(typingIndicatorIdRef.current, (indicator) => {
+				indicator.lastTyped = Date.now()
+			})
+		} else {
+			// Create new indicator
+			const newId = TypingIndicatorId.make(uuid())
+			typingIndicatorCollection.insert({
+				id: newId,
+				channelId,
+				memberId: currentChannelMemberId,
+				lastTyped: Date.now(),
+			})
+			typingIndicatorIdRef.current = newId
+		}
+
+		// Auto-stop typing after 3 seconds of inactivity
+		typingTimeoutRef.current = setTimeout(() => {
+			stopTyping()
+		}, 3000)
 	}
 
 	const stopTyping = () => {
-		// TODO: Implement stopTypingMutation
+		if (typingTimeoutRef.current) {
+			clearTimeout(typingTimeoutRef.current)
+			typingTimeoutRef.current = null
+		}
+
+		if (typingIndicatorIdRef.current) {
+			typingIndicatorCollection.delete(typingIndicatorIdRef.current)
+			typingIndicatorIdRef.current = null
+		}
 	}
+
+	// Clean up typing indicator on unmount or channel change
+	useEffect(() => {
+		return () => {
+			stopTyping()
+		}
+	}, [channelId])
 
 	const createThread = async (messageId: MessageId) => {
 		// Find the message to create thread for

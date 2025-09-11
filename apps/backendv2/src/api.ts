@@ -11,6 +11,7 @@ import {
 	Organization,
 	OrganizationMember,
 	PinnedMessage,
+	TypingIndicator,
 	User,
 } from "@hazel/db/models"
 import {
@@ -25,6 +26,7 @@ import {
 	OrganizationId,
 	OrganizationMemberId,
 	PinnedMessageId,
+	TypingIndicatorId,
 	UserId,
 } from "@hazel/db/schema"
 import { Schema } from "effect"
@@ -914,6 +916,73 @@ export class MockDataGroup extends HttpApiGroup.make("mockData")
 	.prefix("/mock-data")
 	.middleware(Authorization) {}
 
+export class TypingIndicatorResponse extends Schema.Class<TypingIndicatorResponse>("TypingIndicatorResponse")({
+	data: TypingIndicator.Model.json,
+	transactionId: TransactionId,
+}) {}
+
+export class TypingIndicatorNotFoundError extends Schema.TaggedError<TypingIndicatorNotFoundError>(
+	"TypingIndicatorNotFoundError",
+)(
+	"TypingIndicatorNotFoundError",
+	{
+		typingIndicatorId: Schema.UUID,
+	},
+	HttpApiSchema.annotations({
+		status: 404,
+		description: "The typing indicator was not found",
+	}),
+) {}
+
+export class TypingIndicatorGroup extends HttpApiGroup.make("typingIndicators")
+	.add(
+		HttpApiEndpoint.post("create")`/`
+			.setPayload(TypingIndicator.Model.json)
+			.addSuccess(TypingIndicatorResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Create Typing Indicator",
+					description: "Record that a user is typing in a channel",
+					summary: "Start typing",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.patch("update")`/{id}`
+			.setPayload(TypingIndicator.Model.json)
+			.setPath(Schema.Struct({ id: TypingIndicatorId }))
+			.addSuccess(TypingIndicatorResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.addError(TypingIndicatorNotFoundError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Update Typing Indicator",
+					description: "Update the typing indicator timestamp",
+					summary: "Update typing",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.del("delete")`/{id}`
+			.setPath(Schema.Struct({ id: TypingIndicatorId }))
+			.addSuccess(TypingIndicatorResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.addError(TypingIndicatorNotFoundError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Delete Typing Indicator",
+					description: "Remove typing indicator when user stops typing",
+					summary: "Stop typing",
+				}),
+			),
+	)
+	.prefix("/typing-indicators")
+	.middleware(Authorization) {}
+
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(ChannelGroup)
 	.add(ChannelMemberGroup)
@@ -927,6 +996,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(OrganizationMemberGroup)
 	.add(AttachmentGroup)
 	.add(DirectMessageParticipantGroup)
+	.add(TypingIndicatorGroup)
 	.add(RootGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)

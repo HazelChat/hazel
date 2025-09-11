@@ -10,6 +10,7 @@ import {
 	Organization,
 	OrganizationMember,
 	PinnedMessage,
+	TypingIndicator,
 	User,
 } from "@hazel/db/models"
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
@@ -842,6 +843,75 @@ export const directMessageParticipantCollection = createCollection(
 					return yield* client.directMessageParticipants.delete({
 						path: {
 							id: deletedDirectMessageParticipant.id,
+						},
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
+	}),
+)
+
+export const typingIndicatorCollection = createCollection(
+	electricCollectionOptions({
+		id: "typing_indicators",
+		shapeOptions: {
+			url: electricUrl,
+			params: {
+				table: "typing_indicators",
+			},
+		},
+		schema: Schema.standardSchemaV1(TypingIndicator.Model.json),
+		getKey: (item) => item.id,
+		onInsert: async ({ transaction }) => {
+			const workOsClient = await authClient
+			const _accessToken = await workOsClient.getAccessToken()
+			const { modified: newTypingIndicator } = transaction.mutations[0]
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* getBackendClient(_accessToken)
+
+					return yield* client.typingIndicators.create({
+						payload: newTypingIndicator,
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
+		onUpdate: async ({ transaction }) => {
+			const { modified: newTypingIndicator } = transaction.mutations[0]
+			const workOsClient = await authClient
+			const _accessToken = await workOsClient.getAccessToken()
+
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* getBackendClient(_accessToken)
+
+					return yield* client.typingIndicators.update({
+						payload: newTypingIndicator,
+						path: {
+							id: newTypingIndicator.id,
+						},
+					})
+				}),
+			)
+
+			return { txid: results.transactionId }
+		},
+		onDelete: async ({ transaction }) => {
+			const { original: deletedTypingIndicator } = transaction.mutations[0]
+			const workOsClient = await authClient
+			const _accessToken = await workOsClient.getAccessToken()
+
+			const results = await Effect.runPromise(
+				Effect.gen(function* () {
+					const client = yield* getBackendClient(_accessToken)
+
+					return yield* client.typingIndicators.delete({
+						path: {
+							id: deletedTypingIndicator.id,
 						},
 					})
 				}),
