@@ -7,7 +7,7 @@ export const AttachmentStatus = Schema.Literal("uploading", "complete", "failed"
 export type AttachmentStatus = Schema.Schema.Type<typeof AttachmentStatus>
 
 export class Model extends M.Class<Model>("Attachment")({
-	id: M.Generated(AttachmentId),
+	id: M.GeneratedByApp(AttachmentId),
 	organizationId: OrganizationId,
 	channelId: Schema.NullOr(ChannelId),
 	messageId: Schema.NullOr(MessageId),

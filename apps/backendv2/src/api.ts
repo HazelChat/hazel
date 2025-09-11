@@ -741,7 +741,7 @@ export class AttachmentGroup extends HttpApiGroup.make("attachments")
 			.setPayload(
 				HttpApiSchema.Multipart(
 					Schema.Struct({
-						files: Multipart.FilesSchema,
+						file: Multipart.SingleFileSchema,
 					}),
 				),
 			)

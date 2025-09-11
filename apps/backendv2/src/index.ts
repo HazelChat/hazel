@@ -7,6 +7,8 @@ import {
 	HttpServerResponse,
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { S3 } from "@effect-aws/client-s3"
+import { MultipartUpload } from "@effect-aws/s3"
 import { Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
@@ -75,7 +77,8 @@ const MainLive = Layer.mergeAll(
 	AttachmentRepo.Default,
 	NotificationRepo.Default,
 	DatabaseLive,
-)
+	MultipartUpload.layerWithoutS3Service,
+).pipe(Layer.provide(S3.layer({})))
 
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(

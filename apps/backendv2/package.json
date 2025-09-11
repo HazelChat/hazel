@@ -18,6 +18,8 @@
 		"typescript": "^5.9.2"
 	},
 	"dependencies": {
+		"@effect-aws/client-s3": "^1.10.3",
+		"@effect-aws/s3": "^0.2.3",
 		"@effect/opentelemetry": "^0.56.4",
 		"@effect/platform": "^0.90.6",
 		"@effect/platform-bun": "^0.79.0",
