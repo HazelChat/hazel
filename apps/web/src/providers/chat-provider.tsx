@@ -140,12 +140,20 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		(q) =>
 			q
 				.from({ member: channelMemberCollection })
-				.where(({ member }) => eq(member.channelId, channelId)),
+				.where(({ member }) => eq(member.channelId, channelId))
+				.orderBy(({ member }) => member.createdAt, "desc"),
 		[channelId],
 	)
 
 	// Fetch all users in the organization (they should already be synced)
-	const { data: usersData } = useLiveQuery((q) => q.from({ user: userCollection }).limit(100), [])
+	const { data: usersData } = useLiveQuery(
+		(q) =>
+			q
+				.from({ user: userCollection })
+				.orderBy(({ user }) => user.createdAt, "desc")
+				.limit(100),
+		[],
+	)
 
 	// Get current user's channel member
 	const currentChannelMember = useMemo(() => {
@@ -312,13 +320,12 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		}
 	}
 
-	// Clean up typing indicator on unmount or channel change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		return () => {
 			stopTyping()
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [channelId])
+	}, [])
 
 	const createThread = async (messageId: MessageId) => {
 		// Find the message to create thread for
