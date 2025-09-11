@@ -1,8 +1,5 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query"
-import { api } from "@hazel/backend/api"
 import { createFileRoute } from "@tanstack/react-router"
 import { Mail01 } from "@untitledui/icons"
-import { useAuth } from "@workos-inc/authkit-react"
 import { type } from "arktype"
 import { useEffect } from "react"
 import { toast } from "sonner"
@@ -12,7 +9,9 @@ import { Button } from "~/components/base/buttons/button"
 import { Form } from "~/components/base/form/form"
 import { InputBase, TextField } from "~/components/base/input/input"
 import { Label } from "~/components/base/input/label"
+import { userCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
+import { useUser } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/$orgId/settings/profile")({
 	component: ProfileSettings,
@@ -26,9 +25,7 @@ const profileSchema = type({
 type ProfileFormData = typeof profileSchema.infer
 
 function ProfileSettings() {
-	const { user } = useAuth()
-	const currentUser = useConvexQuery(api.me.get)
-	const updateProfileMutation = useConvexMutation(api.me.updateProfile)
+	const { user } = useUser()
 
 	const form = useAppForm({
 		defaultValues: {
@@ -39,8 +36,13 @@ function ProfileSettings() {
 			onChange: profileSchema,
 		},
 		onSubmit: async ({ value }) => {
+			if (!user) return
 			try {
-				await updateProfileMutation(value)
+				const tx = userCollection.update(user.id, (draft) => {
+					draft.firstName = value.firstName
+					draft.lastName = value.lastName
+				})
+				await tx.isPersisted.promise
 				toast.success("Profile updated successfully")
 			} catch (error) {
 				console.error("Error updating profile:", error)
@@ -49,13 +51,12 @@ function ProfileSettings() {
 		},
 	})
 
-	// Update form values when user data is loaded
 	useEffect(() => {
-		if (currentUser) {
-			form.setFieldValue("firstName", currentUser.firstName || "")
-			form.setFieldValue("lastName", currentUser.lastName || "")
+		if (user) {
+			form.setFieldValue("firstName", user.firstName || "")
+			form.setFieldValue("lastName", user.lastName || "")
 		}
-	}, [currentUser, form])
+	}, [user, form])
 
 	return (
 		<Form

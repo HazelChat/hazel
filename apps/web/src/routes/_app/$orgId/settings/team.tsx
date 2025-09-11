@@ -1,6 +1,5 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { AlertTriangle, Plus, Trash01, User02 } from "@untitledui/icons"
 import { useState } from "react"
@@ -18,7 +17,8 @@ import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
-import { usePresence } from "~/components/presence/presence-provider"
+import { organizationMemberCollection, userCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/$orgId/settings/team")({
 	component: RouteComponent,
@@ -32,38 +32,26 @@ function RouteComponent() {
 	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
 	const [changeRoleUser, setChangeRoleUser] = useState<{
-		id: Id<"users">
+		id: UserId
+		memberId: OrganizationMemberId
 		name: string
 		role: string
 	} | null>(null)
-	const [removeUserId, setRemoveUserId] = useState<Id<"users"> | null>(null)
+	const [removeUserId, setRemoveUserId] = useState<UserId | null>(null)
 
-	const organizationId = orgId as Id<"organizations">
+	const organizationId = orgId as OrganizationId
 
-	const teamMembersQuery = useConvexQuery(api.users.getUsers, {
-		organizationId,
-	})
-	const removeMemberMutation = useConvexMutation(api.organizations.removeMember)
-	const currentUserQuery = useConvexQuery(api.me.get)
-	const organizationQuery = useConvexQuery(api.organizations.getOrganizationById, {
-		organizationId,
-	})
+	const { data: teamMembers } = useLiveQuery(
+		(q) =>
+			q
+				.from({ members: organizationMemberCollection })
+				.where(({ members }) => eq(members.organizationId, organizationId))
+				.innerJoin({ user: userCollection }, ({ members, user }) => eq(members.userId, user.id))
+				.select(({ members, user }) => ({ ...members, user })),
+		[organizationId],
+	)
 
-	const { isUserOnline } = usePresence()
-
-	const isLoading = teamMembersQuery === undefined
-	const currentUser = currentUserQuery
-	const _organization = organizationQuery
-
-	const teamMembers =
-		teamMembersQuery?.map((user) => ({
-			id: user._id,
-			name: `${user.firstName} ${user.lastName}`,
-			email: user.email,
-			avatarUrl: user.avatarUrl,
-			status: isUserOnline(user._id) ? "Active" : "Offline",
-			role: user.role,
-		})) || []
+	const { user } = useUser()
 
 	const roleToBadgeColorsMap: Record<string, BadgeColor<"pill-color">> = {
 		owner: "brand",
@@ -73,12 +61,17 @@ function RouteComponent() {
 
 	const getInitials = (name: string) => {
 		const [firstName, lastName] = name.split(" ")
-		return `${firstName.charAt(0)}${lastName.charAt(0)}`
+		return `${firstName?.charAt(0)}${lastName?.charAt(0)}`
 	}
 
-	const handleRemoveUser = async (userId: Id<"users">) => {
+	const handleRemoveUser = async (userId: UserId) => {
 		try {
-			await removeMemberMutation({ organizationId, userId })
+			const membership = teamMembers?.find((m) => m.userId === userId)
+			if (!membership) return
+			const tx = organizationMemberCollection.delete(membership.id)
+
+			await tx.isPersisted.promise
+
 			toast.success("Member removed", {
 				description: "The member has been removed from the organization.",
 			})
@@ -91,16 +84,14 @@ function RouteComponent() {
 	}
 
 	const canManageUser = (_userRole: string, targetUserRole: string) => {
-		if (!currentUser) return false
-		const currentUserMember = teamMembers.find((m) => m.id === currentUser._id)
+		if (!user) return false
+		const currentUserMember = teamMembers.find((m) => m.userId === user.id)
 		if (!currentUserMember) return false
 
 		const currentRole = currentUserMember.role
 
-		// Owners can manage everyone
 		if (currentRole === "owner") return true
 
-		// Admins can only manage members
 		if (currentRole === "admin" && targetUserRole === "member") return true
 
 		return false
@@ -131,128 +122,122 @@ function RouteComponent() {
 						</div>
 					}
 				/>
-				{isLoading ? (
-					<div className="flex h-64 items-center justify-center">
-						<p className="text-sm text-tertiary">Loading team members...</p>
-					</div>
-				) : (
-					<Table
-						aria-label="Team members"
-						sortDescriptor={sortDescriptor}
-						onSortChange={setSortDescriptor}
-						className="bg-primary"
-					>
-						<Table.Header className="bg-primary">
-							<Table.Head id="name" isRowHeader label="Name" allowsSorting className="w-full" />
-							<Table.Head id="status" label="Status" allowsSorting />
-							<Table.Head id="role" label="Role" allowsSorting />
-							<Table.Head id="actions" />
-						</Table.Header>
-						<Table.Body items={teamMembers}>
-							{(member) => (
-								<Table.Row id={member.id} className="odd:bg-secondary_subtle">
-									<Table.Cell>
-										<div className="flex w-max items-center gap-3">
-											<Avatar
-												src={member.avatarUrl}
-												initials={getInitials(member.name)}
-												alt={member.name}
-												className="size-9 rounded-md *:rounded-md"
-												status={member.status === "Active" ? "online" : "offline"}
-											/>
-											<div className="flex flex-col">
-												<span className="font-medium text-primary text-sm/6">
-													{member.name}
-												</span>
-												<span className="text-tertiary">{member.email}</span>
-											</div>
-										</div>
-									</Table.Cell>
-									<Table.Cell>
-										<BadgeWithDot
-											className="rounded-full"
-											color={
-												member.status === "Active"
-													? "success"
-													: member.status === "Offline"
-														? "gray"
-														: "gray"
-											}
-											size="sm"
-											type="modern"
-										>
-											{member.status}
-										</BadgeWithDot>
-									</Table.Cell>
-									<Table.Cell>
-										<Badge
-											className="rounded-full"
-											color={
-												roleToBadgeColorsMap[
-													member.role as keyof typeof roleToBadgeColorsMap
-												] ?? "gray"
-											}
-											type="pill-color"
-											size="sm"
-										>
-											{member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-										</Badge>
-									</Table.Cell>
 
-									<Table.Cell className="px-4">
-										{currentUser &&
-											member.id !== currentUser._id &&
-											canManageUser(member.role, member.role) && (
-												<Dropdown.Root>
-													<Dropdown.DotsButton />
-													<Dropdown.Popover>
-														<Dropdown.Menu
-															onAction={(key) => {
-																const action = key as string
-																if (action === "change-role") {
-																	setChangeRoleUser({
-																		id: member.id,
-																		name: member.name,
-																		role: member.role,
-																	})
-																} else if (action === "remove") {
-																	setRemoveUserId(member.id)
-																}
-															}}
-														>
-															<Dropdown.Item
-																id="change-role"
-																label="Change role"
-																icon={User02}
-															/>
-															<Dropdown.Separator />
-															<Dropdown.Item
-																id="remove"
-																label="Remove from team"
-																icon={Trash01}
-															/>
-														</Dropdown.Menu>
-													</Dropdown.Popover>
-												</Dropdown.Root>
+				<Table
+					aria-label="Team members"
+					sortDescriptor={sortDescriptor}
+					onSortChange={setSortDescriptor}
+					className="bg-primary"
+				>
+					<Table.Header className="bg-primary">
+						<Table.Head id="name" isRowHeader label="Name" allowsSorting className="w-full" />
+						<Table.Head id="status" label="Status" allowsSorting />
+						<Table.Head id="role" label="Role" allowsSorting />
+						<Table.Head id="actions" />
+					</Table.Header>
+					<Table.Body items={teamMembers}>
+						{(member) => (
+							<Table.Row id={member.id} className="odd:bg-secondary_subtle">
+								<Table.Cell>
+									<div className="flex w-max items-center gap-3">
+										<Avatar
+											src={member.user.avatarUrl}
+											initials={getInitials(
+												`${member.user.firstName} ${member.user.lastName}`,
 											)}
-									</Table.Cell>
-								</Table.Row>
-							)}
-						</Table.Body>
-					</Table>
-				)}
+											alt={`${member.user.firstName} ${member.user.lastName}`}
+											className="size-9 rounded-md *:rounded-md"
+											// TODO: Readd
+											status={"online"}
+										/>
+										<div className="flex flex-col">
+											<span className="font-medium text-primary text-sm/6">
+												{`${member.user.firstName} ${member.user.lastName}`}
+											</span>
+											<span className="text-tertiary">{member.user.email}</span>
+										</div>
+									</div>
+								</Table.Cell>
+								<Table.Cell>
+									<BadgeWithDot
+										className="rounded-full"
+										// biome-ignore lint/correctness/noConstantCondition: <explanation>
+										color={true ? "success" : true ? "gray" : "gray"}
+										size="sm"
+										type="modern"
+									>
+										Online
+									</BadgeWithDot>
+								</Table.Cell>
+								<Table.Cell>
+									<Badge
+										className="rounded-full"
+										color={
+											roleToBadgeColorsMap[
+												member.role as keyof typeof roleToBadgeColorsMap
+											] ?? "gray"
+										}
+										type="pill-color"
+										size="sm"
+									>
+										{member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+									</Badge>
+								</Table.Cell>
+
+								<Table.Cell className="px-4">
+									{user &&
+										member.userId !== user.id &&
+										canManageUser(member.role, member.role) && (
+											<Dropdown.Root>
+												<Dropdown.DotsButton />
+												<Dropdown.Popover>
+													<Dropdown.Menu
+														onAction={(key) => {
+															const action = key as string
+															if (action === "change-role") {
+																setChangeRoleUser({
+																	id: member.userId,
+																	name: `${member.user.firstName} ${member.user.lastName}`,
+																	memberId: member.id,
+																	role: member.role,
+																})
+															} else if (action === "remove") {
+																setRemoveUserId(member.userId)
+															}
+														}}
+													>
+														<Dropdown.Item
+															id="change-role"
+															label="Change role"
+															icon={User02}
+														/>
+														<Dropdown.Separator />
+														<Dropdown.Item
+															id="remove"
+															label="Remove from team"
+															icon={Trash01}
+														/>
+													</Dropdown.Menu>
+												</Dropdown.Popover>
+											</Dropdown.Root>
+										)}
+								</Table.Cell>
+							</Table.Row>
+						)}
+					</Table.Body>
+				</Table>
+
 				<PaginationCardDefault page={1} total={Math.ceil(teamMembers.length / 10)} />
 			</TableCard.Root>
 
 			<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
 
-			{changeRoleUser && currentUser && (
+			{changeRoleUser && user && (
 				<ChangeRoleModal
 					isOpen={!!changeRoleUser}
 					onOpenChange={(open) => !open && setChangeRoleUser(null)}
 					user={changeRoleUser}
-					organizationId={organizationId}
-					currentUserRole={teamMembers.find((m) => m.id === currentUser._id)?.role || "member"}
+					currentUserRole={teamMembers.find((m) => m.userId === user.id)?.role || "member"}
 				/>
 			)}
 

@@ -1,4 +1,4 @@
-import type { Id } from "@hazel/backend"
+import type { ChannelId, OrganizationId } from "@hazel/db/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChatHeader } from "~/components/chat/chat-header"
 import { MessageComposer } from "~/components/chat/message-composer"
@@ -33,9 +33,9 @@ function ChatContent() {
 			{activeThreadChannelId && activeThreadMessageId && (
 				<div className="slide-in-from-right w-[480px] animate-in duration-200">
 					<ThreadPanel
+						organizationId={organizationId}
 						threadChannelId={activeThreadChannelId}
 						originalMessageId={activeThreadMessageId}
-						organizationId={organizationId}
 						onClose={closeThread}
 					/>
 				</div>
@@ -46,10 +46,10 @@ function ChatContent() {
 
 function RouteComponent() {
 	const { orgId, id } = Route.useParams()
-	const organizationId = orgId as Id<"organizations">
+	const organizationId = orgId as OrganizationId
 
 	return (
-		<ChatProvider channelId={id as Id<"channels">} organizationId={organizationId}>
+		<ChatProvider channelId={id as ChannelId} organizationId={organizationId}>
 			<ChatContent />
 		</ChatProvider>
 	)

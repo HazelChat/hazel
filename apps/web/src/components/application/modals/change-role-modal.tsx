@@ -1,6 +1,4 @@
-import { useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import type { OrganizationMemberId, UserId } from "@hazel/db/schema"
 import { User02 } from "@untitledui/icons"
 import { useCallback, useState } from "react"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
@@ -10,31 +8,24 @@ import { CloseButton } from "~/components/base/buttons/close-button"
 import { Label } from "~/components/base/input/label"
 import { RadioButton, RadioGroup } from "~/components/base/radio-buttons/radio-buttons"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
+import { organizationMemberCollection } from "~/db/collections"
 import { Dialog, Modal, ModalOverlay } from "./modal"
 
 interface ChangeRoleModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
 	user: {
-		id: Id<"users">
+		memberId: OrganizationMemberId
+		id: UserId
 		name: string
 		role: string
 	}
-	organizationId: Id<"organizations">
 	currentUserRole: string
 }
 
-export function ChangeRoleModal({
-	isOpen,
-	onOpenChange,
-	user,
-	organizationId,
-	currentUserRole,
-}: ChangeRoleModalProps) {
+export function ChangeRoleModal({ isOpen, onOpenChange, user, currentUserRole }: ChangeRoleModalProps) {
 	const [selectedRole, setSelectedRole] = useState(user.role)
 	const [isSubmitting, setIsSubmitting] = useState(false)
-
-	const updateRoleMutation = useConvexMutation(api.organizations.updateMemberRole)
 
 	const handleSubmit = useCallback(async () => {
 		if (selectedRole === user.role) {
@@ -44,11 +35,12 @@ export function ChangeRoleModal({
 
 		setIsSubmitting(true)
 		try {
-			await updateRoleMutation({
-				organizationId,
-				userId: user.id,
-				newRole: selectedRole as "member" | "admin" | "owner",
+			const tx = organizationMemberCollection.update(user.memberId, (draft) => {
+				draft.role = selectedRole as "member" | "admin" | "owner"
 			})
+
+			await tx.isPersisted.promise
+
 			toast.success("Role updated", {
 				description: `${user.name}'s role has been updated to ${selectedRole}`,
 			})
@@ -60,7 +52,7 @@ export function ChangeRoleModal({
 		} finally {
 			setIsSubmitting(false)
 		}
-	}, [selectedRole, user, organizationId, updateRoleMutation, onOpenChange])
+	}, [selectedRole, user, onOpenChange])
 
 	const roleOptions = [
 		{ value: "member", label: "Member", description: "Can view and participate in channels" },

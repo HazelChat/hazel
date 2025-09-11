@@ -1,9 +1,11 @@
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import { useAtomSet } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
+import { useMutation } from "@tanstack/react-query"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { PhoneCall01 } from "@untitledui/icons"
+import { Effect } from "effect"
+import { useStoreAtomState } from "platejs/react"
 import { useMemo, useState } from "react"
 import { twJoin } from "tailwind-merge"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
@@ -16,6 +18,9 @@ import IconClipboard from "~/components/icons/IconClipboard"
 import { IconSearchStroke } from "~/components/icons/IconSearchStroke"
 import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeDotsMenuHorizontalStroke"
 import IconUserUser03 from "~/components/icons/IconUserUser03"
+import { organizationMemberCollection, userCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
+import { HazelApiClient } from "~/lib/client"
 
 export const Route = createFileRoute("/_app/$orgId/")({
 	component: RouteComponent,
@@ -23,33 +28,56 @@ export const Route = createFileRoute("/_app/$orgId/")({
 
 function RouteComponent() {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as Id<"organizations">
+	const organizationId = orgId as OrganizationId
 	const navigate = useNavigate()
 	const [searchQuery, setSearchQuery] = useState("")
 
-	const membersQuery = useQuery(convexQuery(api.social.getMembersForOrganization, { organizationId }))
+	const createDmChannel = useAtomSet(HazelApiClient.mutation("channels", "create"), {
+		mode: "promise",
+	})
 
-	const currentUserQuery = useQuery(convexQuery(api.me.get, {}))
+	const { data: membersData } = useLiveQuery(
+		(q) =>
+			q
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
+				.where(({ member }) => eq(member.organizationId, organizationId))
+				.select(({ member, user }) => ({
+					...user,
+					role: member.role,
+					joinedAt: member.joinedAt,
+				})),
+		[organizationId],
+	)
 
-	const createDmChannel = useConvexMutation(api.channels.createDmChannel)
+	const { user } = useUser()
 
 	const filteredMembers = useMemo(() => {
-		if (!membersQuery.data || !searchQuery) return membersQuery.data || []
+		if (!membersData || !searchQuery) return membersData || []
 
-		return membersQuery.data.filter((member: any) => {
+		return membersData.filter((member: any) => {
 			const searchLower = searchQuery.toLowerCase()
 			const fullName = `${member.firstName} ${member.lastName}`.toLowerCase()
 			const email = member.email?.toLowerCase() || ""
 			return fullName.includes(searchLower) || email.includes(searchLower)
 		})
-	}, [membersQuery.data, searchQuery])
+	}, [membersData, searchQuery])
 
-	const handleOpenChat = async (targetUserId: Id<"users">) => {
+	const handleOpenChat = async (targetUserId: string) => {
 		if (!targetUserId) return
 
 		try {
-			const channelId = await createDmChannel({ organizationId, userId: targetUserId })
-			await navigate({ to: "/$orgId/chat/$id", params: { orgId, id: channelId } })
+			const result = await createDmChannel({
+				payload: {
+					name: "New DM",
+					type: "direct",
+					parentChannelId: null,
+					organizationId: orgId as OrganizationId,
+				},
+			})
+			if (result.data.id) {
+				await navigate({ to: "/$orgId/chat/$id", params: { orgId, id: result.data.id } })
+			}
 		} catch (error) {
 			console.error("Failed to create DM channel:", error)
 		}
@@ -81,7 +109,7 @@ function RouteComponent() {
 			</div>
 
 			<div className="w-full space-y-2">
-				{membersQuery.isLoading ? (
+				{!membersData ? (
 					<div className="flex items-center justify-center py-8">
 						<div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2"></div>
 					</div>
@@ -92,15 +120,16 @@ function RouteComponent() {
 							: "No members in this organization"}
 					</div>
 				) : (
-					filteredMembers.map((member: any) => {
+					filteredMembers.map((member) => {
 						const fullName = `${member.firstName} ${member.lastName}`.trim()
+						const isCurrentUser = user && user.id === member.id
 						return (
 							<div
-								key={member._id}
+								key={member.id}
 								className={twJoin(
 									"flex items-center justify-between gap-4 rounded-lg px-3 py-2",
 
-									currentUserQuery.data?._id !== member._id &&
+									!isCurrentUser &&
 										"group inset-ring inset-ring-transparent hover:inset-ring-secondary hover:bg-quaternary/40",
 								)}
 							>
@@ -123,10 +152,10 @@ function RouteComponent() {
 									</div>
 								</div>
 
-								{currentUserQuery.data?._id !== member._id && (
+								{!isCurrentUser && (
 									<div className="flex items-center gap-2">
 										<ButtonUtility
-											onClick={() => handleOpenChat(member._id)}
+											onClick={() => handleOpenChat(member.id)}
 											className="inset-ring-0 hidden pressed:bg-tertiary group-hover:bg-tertiary sm:inline-grid"
 											size="sm"
 											icon={IconChatStroke}

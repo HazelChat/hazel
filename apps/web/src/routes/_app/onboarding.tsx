@@ -1,6 +1,4 @@
-import { convexQuery } from "@convex-dev/react-query"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { Building02, Users01 } from "@untitledui/icons"
 import { useState } from "react"
@@ -8,6 +6,8 @@ import { CreateOrganizationModal } from "~/components/application/modals/create-
 import { Button } from "~/components/base/buttons/button"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconMagicWand from "~/components/icons/IconMagicWand"
+import { organizationCollection, organizationMemberCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/onboarding")({
 	component: OnboardingPage,
@@ -15,14 +15,25 @@ export const Route = createFileRoute("/_app/onboarding")({
 
 function OnboardingPage() {
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
+	const { user } = useUser()
 
 	// Check if user already has organizations
-	const userOrganizationsQuery = useQuery(convexQuery(api.organizations.getUserOrganizations, {}))
+	const { data: userOrganizations } = useLiveQuery(
+		(q) =>
+			q
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
+					eq(member.organizationId, org.id),
+				)
+				.where(({ member }) => eq(member.userId, user?.id || ""))
+				.orderBy(({ member }) => member.createdAt, "asc"),
+		[user?.id],
+	)
 
 	// If user has organizations, redirect to the first one
-	if (userOrganizationsQuery.data && userOrganizationsQuery.data.length > 0) {
-		const firstOrg = userOrganizationsQuery.data[0]
-		return <Navigate to="/$orgId" params={{ orgId: firstOrg._id }} />
+	if (userOrganizations && userOrganizations.length > 0) {
+		const firstOrg = userOrganizations[0]!
+		return <Navigate to="/$orgId" params={{ orgId: firstOrg.org.id }} />
 	}
 
 	return (

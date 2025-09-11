@@ -1,17 +1,15 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useLiveQuery } from "@tanstack/react-db"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { Link, useParams } from "@tanstack/react-router"
+import { useAuth } from "@workos-inc/authkit-react"
 import { useMemo } from "react"
 import IconChat1 from "~/components/icons/IconChat1"
-import { channelCollection } from "~/db/collections"
+import { channelCollection, channelMemberCollection, organizationCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 import { CreateDmButton } from "../application/modals/create-dm-modal"
 import IconChatChatting1 from "../icons/IconChatChatting1"
 import IconGridDashboard01DuoSolid from "../icons/IconGridDashboard01DuoSolid"
 import IconNotificationBellOn1 from "../icons/IconNotificationBellOn1"
-import { usePresence } from "../presence/presence-provider"
 import {
 	Sidebar,
 	SidebarContent,
@@ -36,33 +34,8 @@ import { WorkspaceSwitcher } from "./workspace-switcher"
 export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
 	const { isMobile } = useSidebar()
 	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as Id<"organizations">
+	const organizationId = params?.orgId as OrganizationId
 
-	const { data: channels } = useLiveQuery((q) =>
-		q
-			.from({ channel: channelCollection(organizationId) })
-			.orderBy(({ channel }) => channel._creationTime, "asc"),
-	)
-
-	const channelsQuery = useQuery(
-		convexQuery(
-			api.channels.getChannelsForOrganization,
-			organizationId
-				? {
-						organizationId,
-						favoriteFilter: {
-							favorite: false,
-						},
-					}
-				: "skip",
-		),
-	)
-
-	console.log(channels, channelsQuery.data)
-
-	const dmChannels = useMemo(() => channelsQuery.data?.dmChannels || [], [channelsQuery.data])
-
-	const { presenceList } = usePresence()
 	return (
 		<Sidebar collapsible="icon" className="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
 			<Sidebar
@@ -126,36 +99,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 								</SidebarMenuItem>
 							</SidebarGroup>
 							<SidebarFavoriteGroup />
-							<SidebarGroup>
-								<SidebarGroupLabel>Channels</SidebarGroupLabel>
-								<SidebarGroupAction>
-									<ChannelActionsDropdown />
-								</SidebarGroupAction>
-								<SidebarGroupContent>
-									<SidebarMenu>
-										{channelsQuery.data?.organizationChannels?.map((channel) => (
-											<ChannelItem key={channel._id} channel={channel} />
-										))}
-									</SidebarMenu>
-								</SidebarGroupContent>
-							</SidebarGroup>
-							<SidebarGroup>
-								<SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
-								<SidebarGroupAction>
-									<CreateDmButton />
-								</SidebarGroupAction>
-								<SidebarGroupContent>
-									<SidebarMenu>
-										{dmChannels.map((channel) => (
-											<DmChannelLink
-												key={channel._id}
-												userPresence={presenceList}
-												channel={channel}
-											/>
-										))}
-									</SidebarMenu>
-								</SidebarGroupContent>
-							</SidebarGroup>
+							<ChannelGroup organizationId={organizationId} />
+							<DmChannelGroup organizationId={organizationId} />
 						</SidebarGroupContent>
 					)}
 				</SidebarContent>
@@ -193,39 +138,102 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 						</SidebarGroupContent>
 					</SidebarGroup>
 					<SidebarFavoriteGroup />
-					<SidebarGroup>
-						<SidebarGroupLabel>Channels</SidebarGroupLabel>
-						<SidebarGroupAction>
-							<ChannelActionsDropdown />
-						</SidebarGroupAction>
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{channelsQuery.data?.organizationChannels?.map((channel) => (
-									<ChannelItem key={channel._id} channel={channel} />
-								))}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-					<SidebarGroup>
-						<SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
-						<SidebarGroupAction>
-							<CreateDmButton />
-						</SidebarGroupAction>
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{dmChannels.map((channel) => (
-									<DmChannelLink
-										key={channel._id}
-										userPresence={presenceList}
-										channel={channel}
-									/>
-								))}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
+					<ChannelGroup organizationId={organizationId} />
+					<DmChannelGroup organizationId={organizationId} />
 				</SidebarContent>
 			</Sidebar>
 		</Sidebar>
+	)
+}
+
+const ChannelGroup = (props: { organizationId: OrganizationId }) => {
+	const { user } = useUser()
+
+	const { data: userChannels } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, props.organizationId),
+						or(eq(q.channel.type, "public"), eq(q.channel.type, "private")),
+						eq(q.member.userId, user?.id || ""),
+						eq(q.member.isHidden, false),
+						eq(q.member.isFavorite, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[user?.id, props.organizationId],
+	)
+
+	const channelIds = useMemo(() => {
+		if (!userChannels) return []
+		return userChannels.map((row) => row.channel.id)
+	}, [userChannels])
+
+	return (
+		<SidebarGroup>
+			<SidebarGroupLabel>Channels</SidebarGroupLabel>
+			<SidebarGroupAction>
+				<ChannelActionsDropdown />
+			</SidebarGroupAction>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					{channelIds.map((channelId) => (
+						<ChannelItem key={channelId} channelId={channelId} />
+					))}
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+	)
+}
+
+const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
+	const { user } = useUser()
+
+	const { data: userDmChannels } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, props.organizationId),
+						or(eq(q.channel.type, "direct"), eq(q.channel.type, "single")),
+						eq(q.member.userId, user?.id),
+						eq(q.member.isHidden, false),
+						eq(q.member.isFavorite, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[user?.id, props.organizationId],
+	)
+
+	const dmChannelIds = useMemo(() => {
+		if (!userDmChannels) return []
+		return userDmChannels.map((row) => row.channel.id)
+	}, [userDmChannels])
+
+	return (
+		<SidebarGroup>
+			<SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
+			<SidebarGroupAction>
+				<CreateDmButton />
+			</SidebarGroupAction>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					{dmChannelIds.map((channelId) => (
+						// TODO: Add presence
+						<DmChannelLink key={channelId} channelId={channelId} userPresence={[]} />
+					))}
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
 	)
 }
 
@@ -233,11 +241,14 @@ const ActiveServer = () => {
 	const { orgId } = useParams({
 		from: "/_app/$orgId",
 	})
-	const { data } = useQuery(
-		convexQuery(api.organizations.getOrganizationById, {
-			organizationId: orgId as Id<"organizations">,
-		}),
+
+	const { data } = useLiveQuery(
+		(q) =>
+			q
+				.from({ organization: organizationCollection })
+				.where(({ organization }) => eq(organization.id, orgId as OrganizationId)),
+		[orgId],
 	)
 
-	return <div className="font-semibold text-foreground text-lg">{data?.name}</div>
+	return <div className="font-semibold text-foreground text-lg">{data[0]?.name}</div>
 }

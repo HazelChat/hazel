@@ -1,13 +1,29 @@
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { X } from "@untitledui/icons"
 import { format } from "date-fns"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
+import { messageCollection, pinnedMessageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { Avatar } from "../base/avatar/avatar"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import { IconPinSlant } from "../icons/IconPinSlant"
+import { MessageAuthorHeader } from "./message-item"
+import { UserProfilePopover } from "./user-profile-popover"
 
 export function PinnedMessagesModal() {
-	const { pinnedMessages, unpinMessage } = useChat()
+	const { channelId, unpinMessage } = useChat()
+
+	const { data: pinnedMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ pinned: pinnedMessageCollection })
+				.where(({ pinned }) => eq(pinned.channelId, channelId))
+				.innerJoin({ message: messageCollection }, ({ pinned, message }) =>
+					eq(pinned.messageId, message.id),
+				)
+				.orderBy(({ pinned }) => pinned.pinnedAt, "desc"),
+		[channelId],
+	)
 
 	const scrollToMessage = (messageId: string) => {
 		const element = document.getElementById(`message-${messageId}`)
@@ -22,7 +38,9 @@ export function PinnedMessagesModal() {
 		}
 	}
 
-	const sortedPins = [...(pinnedMessages || [])].sort((a, b) => a.pinnedAt - b.pinnedAt)
+	const sortedPins = [...(pinnedMessages || [])].sort(
+		(a, b) => a.pinned.pinnedAt.getTime() - b.pinned.pinnedAt.getTime(),
+	)
 
 	return (
 		<DialogTrigger>
@@ -53,8 +71,8 @@ export function PinnedMessagesModal() {
 								<div className="flex flex-col">
 									{sortedPins.map((pinnedMessage) => (
 										<button
-											key={pinnedMessage.messageId}
-											onClick={() => scrollToMessage(pinnedMessage.messageId)}
+											key={pinnedMessage.pinned.messageId}
+											onClick={() => scrollToMessage(pinnedMessage.pinned.messageId)}
 											className="group relative w-full cursor-pointer border-primary border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary"
 											type="button"
 										>
@@ -62,7 +80,7 @@ export function PinnedMessagesModal() {
 											<button
 												onClick={(e) => {
 													e.stopPropagation()
-													unpinMessage(pinnedMessage.messageId)
+													unpinMessage(pinnedMessage.pinned.messageId)
 												}}
 												className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-tertiary group-hover:opacity-100"
 												aria-label="Unpin message"
@@ -73,24 +91,9 @@ export function PinnedMessagesModal() {
 
 											{/* Message Content */}
 											<div className="flex gap-3 pr-8">
-												<Avatar
-													size="sm"
-													src={pinnedMessage.messageAuthor.avatarUrl}
-													alt={`${pinnedMessage.messageAuthor.firstName} ${pinnedMessage.messageAuthor.lastName}`}
-												/>
+												<UserProfilePopover userId={pinnedMessage.message.authorId} />
 												<div className="min-w-0 flex-1">
-													<div className="flex items-baseline gap-2">
-														<span className="font-medium text-sm">
-															{pinnedMessage.messageAuthor.firstName}{" "}
-															{pinnedMessage.messageAuthor.lastName}
-														</span>
-														<span className="text-secondary text-xs">
-															{format(
-																pinnedMessage.message._creationTime,
-																"MMM d, h:mm a",
-															)}
-														</span>
-													</div>
+													<MessageAuthorHeader message={pinnedMessage.message} />
 													<p className="mt-1 line-clamp-2 text-secondary text-sm">
 														{pinnedMessage.message.content}
 													</p>
@@ -99,7 +102,8 @@ export function PinnedMessagesModal() {
 
 											{/* Pinned Date */}
 											<div className="mt-2 text-secondary text-xs">
-												Pinned {format(pinnedMessage.pinnedAt, "MMM d 'at' h:mm a")}
+												Pinned{" "}
+												{format(pinnedMessage.pinned.pinnedAt, "MMM d 'at' h:mm a")}
 											</div>
 										</button>
 									))}

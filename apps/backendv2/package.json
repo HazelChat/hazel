@@ -1,0 +1,40 @@
+{
+	"name": "@hazel/backendv2",
+	"module": "src/index.ts",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts",
+		"./api": "./src/api.ts"
+	},
+	"scripts": {
+		"dev": "bun run --hot src/index.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@effect/language-service": "^0.38.1",
+		"@types/bun": "latest",
+		"drizzle-kit": "^0.31.4",
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@effect-aws/client-s3": "^1.10.3",
+		"@effect-aws/s3": "^0.2.3",
+		"@effect/opentelemetry": "^0.56.4",
+		"@effect/platform": "^0.90.6",
+		"@effect/platform-bun": "^0.79.0",
+		"@effect/platform-node": "^0.96.0",
+		"@effect/rpc": "^0.69.1",
+		"@effect/sql": "^0.44.2",
+		"@effect/sql-pg": "^0.45.1",
+		"@hazel/db": "workspace:*",
+		"@opentelemetry/sdk-logs": "^0.203.0",
+		"@opentelemetry/sdk-metrics": "^2.0.1",
+		"@opentelemetry/sdk-trace-node": "^2.0.1",
+		"@opentelemetry/sdk-trace-web": "^2.0.1",
+		"@workos-inc/node": "^7.69.1",
+		"effect": "^3.17.13",
+		"jose": "^6.1.0",
+		"pg": "^8.16.3"
+	}
+}

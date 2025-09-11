@@ -1,6 +1,6 @@
 "use client"
 
-import type { Id } from "@hazel/backend"
+import type { AttachmentId } from "@hazel/db/schema"
 import { Plate, usePlateEditor } from "platejs/react"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react"
 import { Node } from "slate"
@@ -24,14 +24,14 @@ interface MarkdownEditorProps {
 	className?: string
 	onSubmit?: (content: string) => void | Promise<void>
 	onUpdate?: (content: string) => void
-	attachmentIds?: Id<"attachments">[]
-	setAttachmentIds?: (ids: Id<"attachments">[]) => void
+	attachmentIds?: AttachmentId[]
+	setAttachmentIds?: (ids: AttachmentId[]) => void
 	uploads?: Array<{
 		fileId: string
 		fileName: string
 		progress: number
 		status: string
-		attachmentId?: Id<"attachments">
+		attachmentId?: AttachmentId
 	}>
 }
 

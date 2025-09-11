@@ -1,25 +1,27 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { Avatar } from "~/components/base/avatar/avatar"
-import IconAlignLeft from "~/components/icons/IconAlignLeft"
-import IconAlignLeft1 from "~/components/icons/IconAlignLeft1"
-import IconAlignLeftStroke from "~/components/icons/IconAlignLeftStroke"
+
 import { Separator } from "~/components/ui/separator"
 import { SidebarTrigger } from "~/components/ui/sidebar"
-import { cx } from "~/utils/cx"
+import { organizationCollection } from "~/db/collections"
 
 export function SidebarMobile() {
 	const params = useParams({ strict: false })
-	const organizationId = params.orgId as Id<"organizations"> | undefined
+	const organizationId = params.orgId as OrganizationId
 
-	const organizationByIdQuery = useQuery(
-		convexQuery(api.organizations.getOrganizationById, organizationId ? { organizationId } : "skip"),
+	const { data: organizations } = useLiveQuery(
+		(q) =>
+			q
+				.from({ org: organizationCollection })
+				.where(({ org }) => eq(org.id, organizationId))
+				.orderBy(({ org }) => org.createdAt, "desc")
+				.limit(1),
+		[organizationId],
 	)
 
-	const currentOrg = organizationId ? organizationByIdQuery.data : null
+	const currentOrg = organizations?.[0]
 	return (
 		<nav className="flex items-center border-tertiary border-b bg-secondary p-2 sm:hidden">
 			<SidebarTrigger

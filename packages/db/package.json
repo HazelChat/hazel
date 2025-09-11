@@ -1,0 +1,26 @@
+{
+	"name": "@hazel/db",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./models": "./src/models/index.ts",
+		"./schema": "./src/schema/index.ts"
+	},
+	"scripts": {
+		"db": "drizzle-kit"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.4",
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@effect/experimental": "^0.54.6",
+		"drizzle-orm": "^0.44.5",
+		"effect": "^3.17.13",
+		"postgres": "^3.4.7",
+		"uuid": "^13.0.0"
+	}
+}

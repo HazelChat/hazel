@@ -1,16 +1,15 @@
 "use client"
 
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
 import { getMentionOnSelectItem } from "@platejs/mention"
-import { useQuery } from "@tanstack/react-query"
+import { eq, useLiveQuery } from "@tanstack/react-db"
+
 import { useParams } from "@tanstack/react-router"
 import type { TComboboxInputElement, TMentionElement } from "platejs"
 import { IS_APPLE, KEYS } from "platejs"
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement, useFocused, useReadOnly, useSelected } from "platejs/react"
 import * as React from "react"
+import { channelMemberCollection, userCollection } from "~/db/collections"
 import { useMounted } from "~/hooks/use-mounted"
 import { cn } from "~/lib/utils"
 import {
@@ -41,9 +40,9 @@ export function MentionElement(
 				"inline-block rounded-md bg-brand-primary/30 px-1.5 py-0.5 align-baseline font-medium",
 				!readOnly && "cursor-pointer",
 				selected && focused && "ring-2 ring-brand",
-				element.children[0][KEYS.bold] === true && "font-bold",
-				element.children[0][KEYS.italic] === true && "italic",
-				element.children[0][KEYS.underline] === true && "underline",
+				element.children[0]![KEYS.bold] === true && "font-bold",
+				element.children[0]![KEYS.italic] === true && "italic",
+				element.children[0]![KEYS.underline] === true && "underline",
 			)}
 			attributes={{
 				...props.attributes,
@@ -74,17 +73,23 @@ export function MentionElement(
 const onSelectItem = getMentionOnSelectItem()
 
 export function MentionInputElement(props: PlateElementProps<TComboboxInputElement>) {
-	const { id, orgId } = useParams({ from: "/_app/$orgId/chat/$id" })
+	const { id } = useParams({ from: "/_app/$orgId/chat/$id" })
 	const { editor, element } = props
 	const [search, setSearch] = React.useState("")
 
-	const { data } = useQuery(
-		convexQuery(api.channels.getChannelMembers, {
-			channelId: id as Id<"channels">,
-			limit: 100,
-			searchQuery: search,
-			organizationId: orgId as Id<"organizations">,
-		}),
+	const { data: channelMembers } = useLiveQuery((q) =>
+		q
+			.from({ channelMember: channelMemberCollection })
+			.innerJoin({ user: userCollection }, ({ channelMember, user }) =>
+				eq(channelMember.userId, user.id),
+			)
+			.where(({ channelMember }) => eq(channelMember.channelId, id))
+			.limit(100)
+			.orderBy(({ channelMember }) => channelMember.joinedAt, "desc")
+			.select(({ channelMember, user }) => ({
+				...channelMember,
+				user,
+			})),
 	)
 
 	return (
@@ -105,9 +110,9 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
 					<InlineComboboxEmpty>No results</InlineComboboxEmpty>
 
 					<InlineComboboxGroup>
-						{data?.map((item) => (
+						{channelMembers.map((item) => (
 							<InlineComboboxItem
-								key={item._id}
+								key={item.id}
 								value={item.userId}
 								onClick={() => {
 									onSelectItem(

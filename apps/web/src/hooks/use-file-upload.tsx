@@ -1,10 +1,11 @@
-import { useUploadFile as useR2UploadFile } from "@convex-dev/r2/react"
-import { useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
+import { AttachmentId as AttachmentIdSchema, UserId } from "@hazel/db/schema"
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
+import { v4 as uuid } from "uuid"
 import { IconNotification } from "~/components/application/notifications/notifications"
+import { uploadAttachment } from "~/db/actions"
+import { useUser } from "~/lib/auth"
 
 export interface FileUploadProgress {
 	fileId: string
@@ -12,31 +13,36 @@ export interface FileUploadProgress {
 	fileSize: number
 	progress: number
 	status: "pending" | "uploading" | "complete" | "failed"
-	attachmentId?: Id<"attachments">
+	attachmentId?: AttachmentId
 	error?: string
 }
 
 interface UseFileUploadOptions {
-	organizationId: Id<"organizations">
-	onUploadComplete?: (attachmentId: Id<"attachments">) => void
+	organizationId: OrganizationId
+	channelId: ChannelId
+	onUploadComplete?: (attachmentId: AttachmentId) => void
 	onUploadError?: (error: Error) => void
 	maxFileSize?: number // in bytes
 }
 
 export function useFileUpload({
 	organizationId,
+	channelId,
 	onUploadComplete,
 	onUploadError,
 	maxFileSize = 10 * 1024 * 1024, // 10MB default
 }: UseFileUploadOptions) {
 	const [uploads, setUploads] = useState<Map<string, FileUploadProgress>>(new Map())
-
-	// Use the R2 component's upload hook
-	const r2UploadFile = useR2UploadFile(api.uploads as any)
-	const createAttachment = useConvexMutation(api.uploads.createAttachment)
+	const { user } = useUser()
 
 	const uploadFile = useCallback(
-		async (file: File): Promise<Id<"attachments"> | null> => {
+		async (file: File): Promise<AttachmentId | null> => {
+			if (!user?.id) {
+				const error = new Error("User not authenticated")
+				onUploadError?.(error)
+				return null
+			}
+
 			const fileId = `${file.name}-${Date.now()}`
 
 			// Validate file size
@@ -74,20 +80,31 @@ export function useFileUpload({
 					const upload = next.get(fileId)
 					if (upload) {
 						upload.status = "uploading"
-						upload.progress = 50 // Approximate progress
+						upload.progress = 25
 					}
 					return next
 				})
 
-				// Upload file using R2 component hook
-				// This returns the R2 key of the uploaded file
-				const r2Key = await r2UploadFile(file)
+				// Generate attachment ID
+				const attachmentId = AttachmentIdSchema.make(uuid())
 
-				// Create attachment record in database
-				const attachmentId = await createAttachment({
-					r2Key,
-					fileName: file.name,
+				// Use the uploadAttachment action
+				await uploadAttachment({
 					organizationId,
+					file,
+					channelId: channelId,
+					userId: UserId.make(user.id),
+					attachmentId,
+				})
+
+				// Update progress after upload
+				setUploads((prev) => {
+					const next = new Map(prev)
+					const upload = next.get(fileId)
+					if (upload) {
+						upload.progress = 75
+					}
+					return next
 				})
 
 				// Update status to complete
@@ -131,14 +148,14 @@ export function useFileUpload({
 				return null
 			}
 		},
-		[maxFileSize, r2UploadFile, createAttachment, organizationId, onUploadComplete, onUploadError],
+		[maxFileSize, onUploadComplete, onUploadError, organizationId, channelId, user?.id],
 	)
 
 	const uploadFiles = useCallback(
-		async (files: FileList | File[]): Promise<Id<"attachments">[]> => {
+		async (files: FileList | File[]): Promise<AttachmentId[]> => {
 			const fileArray = Array.from(files)
 			const results = await Promise.all(fileArray.map(uploadFile))
-			return results.filter((id): id is Id<"attachments"> => id !== null)
+			return results.filter((id): id is AttachmentId => id !== null)
 		},
 		[uploadFile],
 	)

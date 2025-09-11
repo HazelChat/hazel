@@ -1,37 +1,40 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { and, eq, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
-import { useMemo } from "react"
+import { channelCollection, channelMemberCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 import { ChannelItem, DmChannelLink } from "./app-sidebar/channel-item"
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "./ui/sidebar"
 
 export const SidebarFavoriteGroup = () => {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as Id<"organizations">
+	const organizationId = orgId as OrganizationId
 
-	const favoritedChannelsQuery = useQuery(
-		convexQuery(api.channels.getChannelsForOrganization, {
-			organizationId,
-			favoriteFilter: {
-				favorite: true,
-			},
-		}),
+	const { user } = useUser()
+
+	const { data } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, organizationId),
+						eq(q.member.userId, user?.id || ""),
+						eq(q.member.isFavorite, true),
+						eq(q.member.isHidden, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[user?.id, organizationId],
 	)
 
 	// TODO: Add presence state when available
 	const userPresenceState = { presenceList: [] }
 
-	const channels = useMemo(
-		() => [
-			...(favoritedChannelsQuery.data?.dmChannels || []),
-			...(favoritedChannelsQuery.data?.organizationChannels || []),
-		],
-		[favoritedChannelsQuery.data],
-	)
-
-	if (channels.length === 0) {
+	if (data.length === 0) {
 		return null
 	}
 
@@ -40,15 +43,15 @@ export const SidebarFavoriteGroup = () => {
 			<SidebarGroupLabel>Favorites</SidebarGroupLabel>
 			<SidebarGroupContent>
 				<SidebarMenu>
-					{channels.map((channel) => {
+					{data.map(({ channel }) => {
 						if (channel.type === "private" || channel.type === "public") {
-							return <ChannelItem key={channel._id} channel={channel} />
+							return <ChannelItem key={channel.id} channelId={channel.id} />
 						}
 						return (
 							<DmChannelLink
-								key={channel._id}
+								key={channel.id}
 								userPresence={userPresenceState.presenceList}
-								channel={channel}
+								channelId={channel.id}
 							/>
 						)
 					})}

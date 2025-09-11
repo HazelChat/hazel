@@ -1,29 +1,14 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { MessageId } from "@hazel/db/schema"
+import { useMessage } from "~/db/hooks"
 import { Avatar } from "../base/avatar/avatar"
 
 interface MessageReplySectionProps {
-	replyToMessageId: Id<"messages">
-	channelId: Id<"channels">
-	organizationId: Id<"organizations">
+	replyToMessageId: MessageId
 	onClick?: () => void
 }
 
-export function MessageReplySection({
-	replyToMessageId,
-	channelId,
-	organizationId,
-	onClick,
-}: MessageReplySectionProps) {
-	const { data: replyMessage, isLoading } = useQuery(
-		convexQuery(api.messages.getMessage, {
-			id: replyToMessageId,
-			channelId,
-			organizationId,
-		}),
-	)
+export function MessageReplySection({ replyToMessageId, onClick }: MessageReplySectionProps) {
+	const { data, isLoading } = useMessage(replyToMessageId)
 
 	return (
 		<div className="relative">
@@ -56,18 +41,18 @@ export function MessageReplySection({
 						<div className="size-4 animate-pulse rounded-full bg-quaternary" />
 						<span className="text-secondary text-sm">Loading...</span>
 					</>
-				) : replyMessage ? (
+				) : data ? (
 					<>
 						<Avatar
 							size="xxs"
-							alt={`${replyMessage.author.firstName} ${replyMessage.author.lastName}`}
-							src={replyMessage.author.avatarUrl}
+							alt={`${data.author.firstName} ${data.author.lastName}`}
+							src={data.author.avatarUrl}
 						/>
 						<span className="text-secondary text-sm hover:underline">
-							{replyMessage.author.firstName} {replyMessage.author.lastName}
+							{data.author.firstName} {data.author.lastName}
 						</span>
 						<span className="max-w-xs truncate text-ellipsis text-foreground text-xs">
-							{replyMessage.content.split("\n")[0]}
+							{data.content.split("\n")[0]}
 						</span>
 					</>
 				) : (

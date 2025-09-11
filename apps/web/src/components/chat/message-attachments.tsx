@@ -1,21 +1,14 @@
-import type { Doc, Id } from "@hazel/backend"
+import type { Attachment } from "@hazel/db/models"
+import type { MessageId } from "@hazel/db/schema"
 import { FileIcon } from "@untitledui/file-icons"
 import { Download01 } from "@untitledui/icons"
 import { useState } from "react"
+import { useAttachments } from "~/db/hooks"
 import { cx } from "~/utils/cx"
 import { ButtonUtility } from "../base/buttons/button-utility"
 
-// Enriched attachment type that includes metadata from R2
-type EnrichedAttachment = Doc<"attachments"> & {
-	fileName: string
-	fileSize: number
-	mimeType: string
-	publicUrl: string
-}
-
 interface MessageAttachmentsProps {
-	attachments: (EnrichedAttachment | null)[]
-	organizationId: Id<"organizations">
+	messageId: MessageId
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -53,7 +46,7 @@ const getFileTypeFromName = (fileName: string): string => {
 }
 
 interface AttachmentItemProps {
-	attachment: EnrichedAttachment
+	attachment: typeof Attachment.Model.Type
 }
 
 function AttachmentItem({ attachment }: AttachmentItemProps) {
@@ -63,7 +56,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const handleDownload = () => {
 		// Create a temporary anchor element to trigger download
 		const link = document.createElement("a")
-		link.href = attachment.publicUrl
+		link.href = "TODO LINK"
 		link.download = attachment.fileName
 		link.target = "_blank"
 		document.body.appendChild(link)
@@ -81,7 +74,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 			<div className="group relative inline-block">
 				<div className="relative overflow-hidden rounded-lg bg-secondary">
 					<img
-						src={attachment.publicUrl}
+						src={"TODO LINK"}
 						alt={attachment.fileName}
 						className="h-48 w-64 object-cover"
 						onError={() => setImageError(true)}
@@ -107,12 +100,8 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 		return (
 			<div className="group relative inline-block">
 				<div className="relative overflow-hidden rounded-lg bg-secondary">
-					<video
-						src={attachment.publicUrl}
-						className="h-48 w-64 object-cover"
-						controls
-						preload="metadata"
-					>
+					{/** biome-ignore lint/a11y/useMediaCaption: <explanation> */}
+					<video src={"TODO LINK"} className="h-48 w-64 object-cover" controls preload="metadata">
 						Your browser does not support the video tag.
 					</video>
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
@@ -151,16 +140,15 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	)
 }
 
-export function MessageAttachments({ attachments, organizationId }: MessageAttachmentsProps) {
-	// Filter out null attachments
-	const validAttachments = attachments.filter((a): a is EnrichedAttachment => a !== null)
+export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
+	const { attachments } = useAttachments(messageId)
 
-	if (validAttachments.length === 0) {
+	if (attachments.length === 0) {
 		return null
 	}
 
 	// Check if all attachments are images/videos for grid layout
-	const allMedia = validAttachments.every((attachment) => {
+	const allMedia = attachments.every((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
 		return ["jpg", "png", "gif", "webp", "svg", "mp4", "webm"].includes(fileType)
 	})
@@ -172,8 +160,8 @@ export function MessageAttachments({ attachments, organizationId }: MessageAttac
 				allMedia ? "grid max-w-2xl grid-cols-2 gap-2" : "flex max-w-md flex-col gap-2",
 			)}
 		>
-			{validAttachments.map((attachment) => (
-				<AttachmentItem key={attachment._id} attachment={attachment} />
+			{attachments.map((attachment) => (
+				<AttachmentItem key={attachment.id} attachment={attachment} />
 			))}
 		</div>
 	)

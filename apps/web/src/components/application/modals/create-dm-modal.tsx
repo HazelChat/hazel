@@ -1,13 +1,19 @@
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
-import type { Doc, Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { User } from "@hazel/db/models"
+import {
+	ChannelId,
+	ChannelMemberId,
+	DirectMessageParticipantId,
+	type OrganizationId,
+	type UserId,
+} from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { Mail01, MessageSquare02, Plus, UsersPlus } from "@untitledui/icons"
+import { Mail01, MessageSquare02, Plus } from "@untitledui/icons"
 import { type } from "arktype"
 import { useMemo, useState } from "react"
-import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
+import { Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
+import { v4 as uuid } from "uuid"
 import { Dialog, Modal, ModalFooter, ModalOverlay } from "~/components/application/modals/modal"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Button } from "~/components/base/buttons/button"
@@ -16,9 +22,16 @@ import { CloseButton } from "~/components/base/buttons/close-button"
 import { Input } from "~/components/base/input/input"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconCheckTickCircle from "~/components/icons/IconCheckTickCircle"
-import { usePresence } from "~/components/presence/presence-provider"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
+import {
+	channelCollection,
+	channelMemberCollection,
+	directMessageParticipantCollection,
+	organizationMemberCollection,
+	userCollection,
+} from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
+import { useUser } from "~/lib/auth"
 import { cx } from "~/utils/cx"
 
 const dmFormSchema = type({
@@ -34,16 +47,29 @@ interface CreateDmModalProps {
 
 export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const [searchQuery, setSearchQuery] = useState("")
-	const [selectedUsers, setSelectedUsers] = useState<Doc<"users">[]>([])
+	const [selectedUsers, setSelectedUsers] = useState<(typeof User.Model.Type)[]>([])
 
 	const navigate = useNavigate()
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as Id<"organizations">
-	const { isUserOnline } = usePresence()
+	const organizationId = orgId as OrganizationId
 
-	const friendsQuery = useQuery(convexQuery(api.social.getFriendsForOrganization, { organizationId }))
-	const createDmChannelMutation = useConvexMutation(api.channels.createDmChannel)
-	const createGroupDmChannelMutation = useConvexMutation(api.channels.createGroupDmChannel)
+	// TODO: Implement
+	const { isUserOnline } = {
+		isUserOnline: (..._args: any[]) => true,
+	}
+	const { user } = useUser()
+
+	const { data: organizationUsers } = useLiveQuery(
+		(q) =>
+			q
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
+				.where(({ member }) => eq(member.organizationId, organizationId))
+				.select(({ user }) => ({
+					...user,
+				})),
+		[organizationId],
+	)
 
 	const form = useAppForm({
 		defaultValues: {
@@ -53,25 +79,78 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 			onChange: dmFormSchema,
 		},
 		onSubmit: async ({ value }) => {
-			if (value.userIds.length === 0) return
+			if (value.userIds.length === 0 || !user?.id) return
 
 			try {
-				let channelId: Id<"channels">
+				const channelId = ChannelId.make(uuid())
 
+				// Create the channel
 				if (value.userIds.length === 1) {
 					// Single DM
-					channelId = await createDmChannelMutation({
-						userId: value.userIds[0] as Id<"users">,
+					const _test = channelCollection.insert({
+						id: channelId,
+						name: "",
+						type: "direct",
+						organizationId,
+						parentChannelId: null,
+						createdAt: new Date(),
+						updatedAt: null,
+						deletedAt: null,
+					})
+
+					// Add participants to direct message
+					const currentUserId = user?.id as UserId
+					const otherUserId = value.userIds[0] as UserId
+
+					directMessageParticipantCollection.insert({
+						id: DirectMessageParticipantId.make(uuid()),
+						channelId,
+						userId: currentUserId,
 						organizationId,
 					})
-					const user = friendsQuery.data?.find((u) => u?._id === value.userIds[0])
-					toast.success(`Started conversation with ${user?.firstName}`)
+
+					directMessageParticipantCollection.insert({
+						id: DirectMessageParticipantId.make(uuid()),
+						channelId,
+						userId: otherUserId,
+						organizationId,
+					})
+
+					const targetUser = organizationUsers?.find((u) => u?.id === value.userIds[0])
+					toast.success(`Started conversation with ${targetUser?.firstName}`)
 				} else {
 					// Group DM
-					channelId = await createGroupDmChannelMutation({
-						userIds: value.userIds as Id<"users">[],
+					// TODO: NOT GONNA WORK NEEDS TRANSACTION
+					const _test = channelCollection.insert({
+						id: channelId,
+						name: "",
+						type: "direct",
 						organizationId,
+						parentChannelId: null,
+						createdAt: new Date(),
+						updatedAt: null,
+						deletedAt: null,
 					})
+
+					// Add all participants including current user
+					const allUserIds = [user?.id as UserId, ...value.userIds.map((id) => id as UserId)]
+
+					for (const userId of allUserIds) {
+						channelMemberCollection.insert({
+							id: ChannelMemberId.make(uuid()),
+							channelId,
+							userId,
+							isHidden: false,
+							isMuted: false,
+							isFavorite: false,
+							lastSeenMessageId: null,
+							notificationCount: 0,
+							joinedAt: new Date(),
+							createdAt: new Date(),
+							deletedAt: null,
+						})
+					}
+
 					toast.success(`Created group conversation with ${value.userIds.length} people`)
 				}
 
@@ -95,11 +174,14 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	})
 
 	const filteredUsers = useMemo(() => {
-		const users = friendsQuery.data || []
-		if (!searchQuery.trim()) return users
+		const users = organizationUsers || []
+		// Filter out current user
+		const otherUsers = users.filter((u) => u?.id !== user?.id)
+
+		if (!searchQuery.trim()) return otherUsers
 
 		const query = searchQuery.toLowerCase()
-		const userss = users.filter((user) => {
+		return otherUsers.filter((user) => {
 			if (!user) return false
 			const firstName = user.firstName || ""
 			const lastName = user.lastName || ""
@@ -110,9 +192,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 				fullName.toLowerCase().includes(query)
 			)
 		})
-
-		return userss.filter(Boolean)
-	}, [friendsQuery.data, searchQuery])
+	}, [organizationUsers, searchQuery, user?.id])
 
 	const handleClose = () => {
 		onOpenChange(false)
@@ -122,12 +202,12 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 		setSearchQuery("")
 	}
 
-	const toggleUserSelection = (user: Doc<"users">) => {
-		const isSelected = selectedUsers.some((u) => u._id === user._id)
-		let newSelection: Doc<"users">[]
+	const toggleUserSelection = (user: typeof User.Model.Type) => {
+		const isSelected = selectedUsers.some((u) => u.id === user.id)
+		let newSelection: (typeof User.Model.Type)[]
 
 		if (isSelected) {
-			newSelection = selectedUsers.filter((u) => u._id !== user._id)
+			newSelection = selectedUsers.filter((u) => u.id !== user.id)
 		} else {
 			newSelection = [...selectedUsers, user]
 		}
@@ -135,7 +215,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 		setSelectedUsers(newSelection)
 		form.setFieldValue(
 			"userIds",
-			newSelection.map((u) => u._id),
+			newSelection.map((u) => u.id),
 		)
 	}
 
@@ -187,7 +267,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 										<div className="-space-x-2 flex">
 											{selectedUsers.slice(0, 3).map((user) => (
 												<Avatar
-													key={user._id}
+													key={user.id}
 													size="xs"
 													src={user.avatarUrl}
 													initials={`${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`}
@@ -214,12 +294,12 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 									<div className="flex flex-col gap-1">
 										{filteredUsers.map((user) => (
 											<button
-												key={user?._id}
+												key={user?.id}
 												type="button"
 												onClick={() => user && toggleUserSelection(user)}
 												className={cx(
 													"flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors hover:bg-secondary",
-													selectedUsers.some((u) => u._id === user?._id) &&
+													selectedUsers.some((u) => u.id === user?.id) &&
 														"bg-secondary ring ring-border-brand ring-inset",
 												)}
 											>
@@ -230,7 +310,7 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 														initials={`${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`}
 														alt={`${user?.firstName || ""} ${user?.lastName || ""}`}
 														status={
-															isUserOnline(user?._id || "")
+															isUserOnline(user?.id || "")
 																? "online"
 																: "offline"
 														}
@@ -239,14 +319,14 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 														<p className="font-medium text-primary text-sm">
 															{user?.firstName || ""} {user?.lastName || ""}
 														</p>
-														{isUserOnline(user?._id || "") && (
+														{isUserOnline(user?.id || "") && (
 															<span className="text-success text-xs">
 																Active now
 															</span>
 														)}
 													</div>
 												</div>
-												{selectedUsers.some((u) => u._id === user?._id) && (
+												{selectedUsers.some((u) => u.id === user?.id) && (
 													<IconCheckTickCircle className="size-5 text-brand" />
 												)}
 											</button>

@@ -1,16 +1,17 @@
-import { useConvexAction } from "@convex-dev/react-query"
-import { api } from "@hazel/backend/api"
+import { OrganizationId } from "@hazel/db/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { Building02 } from "@untitledui/icons"
 import { type } from "arktype"
 import { useCallback, useEffect } from "react"
-import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
+import { Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
+import { v4 as uuid } from "uuid"
 import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
+import { organizationCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
 
 const organizationSchema = type({
@@ -27,7 +28,6 @@ interface CreateOrganizationModalProps {
 }
 
 export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganizationModalProps) => {
-	const createOrganizationAction = useConvexAction(api.organizations.create)
 	const navigate = useNavigate()
 
 	const generateSlug = useCallback((name: string) => {
@@ -49,11 +49,19 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				await createOrganizationAction({
+				const tx = organizationCollection.insert({
+					id: OrganizationId.make(uuid()),
 					name: value.name.trim(),
 					slug: value.slug.trim(),
-					logoUrl: value.logoUrl?.trim() || undefined,
+					logoUrl: value.logoUrl?.trim() || null,
+					workosId: uuid(),
+					settings: {},
+					createdAt: new Date(),
+					updatedAt: null,
+					deletedAt: null,
 				})
+
+				await tx.isPersisted.promise
 
 				toast.success(`Organization "${value.name}" created successfully!`)
 

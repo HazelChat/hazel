@@ -1,6 +1,5 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import type { InvitationId, OrganizationId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { Plus, RefreshCcw02, XClose } from "@untitledui/icons"
 import { useState } from "react"
@@ -12,6 +11,7 @@ import { Table, TableCard } from "~/components/application/table/table"
 import { Badge, BadgeWithDot } from "~/components/base/badges/badges"
 import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
+import { invitationCollection, userCollection } from "~/db/collections"
 
 export const Route = createFileRoute("/_app/$orgId/settings/invitations")({
 	component: RouteComponent,
@@ -25,14 +25,29 @@ function RouteComponent() {
 	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
 
-	const invitationsQuery = useConvexQuery(api.invitations.getInvitations, {
-		organizationId: params.orgId as Id<"organizations">,
-	})
-	const resendInvitationMutation = useConvexMutation(api.invitations.resendInvitation)
-	const revokeInvitationMutation = useConvexMutation(api.invitations.revokeInvitation)
+	const organizationId = params.orgId as OrganizationId
 
-	const isInvitationsLoading = invitationsQuery === undefined
-	const pendingInvitations = invitationsQuery?.filter((inv) => !inv.isExpired) || []
+	const { data: invitations } = useLiveQuery(
+		(q) =>
+			q
+				.from({
+					invitation: invitationCollection,
+				})
+				.leftJoin(
+					{
+						invitee: userCollection,
+					},
+					({ invitation, invitee }) => eq(invitation.invitedBy, invitee.id),
+				)
+				.where(({ invitation }) => eq(invitation.organizationId, organizationId))
+				.select(({ invitation, invitee }) => ({
+					...invitation,
+					invitee,
+				})),
+		[organizationId],
+	)
+
+	const pendingInvitations = invitations?.filter((inv) => inv.status === "pending") || []
 
 	const formatTimeRemaining = (milliseconds: number) => {
 		if (milliseconds <= 0) return "Expired"
@@ -49,12 +64,12 @@ function RouteComponent() {
 		return "Expires soon"
 	}
 
-	const handleResendInvitation = async (invitationId: Id<"invitations">) => {
+	const handleResendInvitation = async (_invitationId: InvitationId) => {
 		try {
-			await resendInvitationMutation({
-				invitationId,
-				organizationId: params.orgId as Id<"organizations">,
-			})
+			// TODO: Resend mutation
+			// await resendInvitationMutation({
+			// 	invitationId,
+			// })
 			toast.info("Invitation resent", {
 				description: "The invitation has been resent successfully.",
 			})
@@ -65,12 +80,11 @@ function RouteComponent() {
 		}
 	}
 
-	const handleRevokeInvitation = async (invitationId: Id<"invitations">) => {
+	const handleRevokeInvitation = async (_invitationId: InvitationId) => {
 		try {
-			await revokeInvitationMutation({
-				invitationId,
-				organizationId: params.orgId as Id<"organizations">,
-			})
+			// await revokeInvitationMutation({
+			// 	invitationId,
+			// })
 			toast.info("Invitation revoked", {
 				description: "The invitation has been revoked successfully.",
 			})
@@ -108,11 +122,7 @@ function RouteComponent() {
 						</div>
 					}
 				/>
-				{isInvitationsLoading ? (
-					<div className="flex h-64 items-center justify-center">
-						<p className="text-sm text-tertiary">Loading invitations...</p>
-					</div>
-				) : pendingInvitations.length === 0 ? (
+				{pendingInvitations.length === 0 ? (
 					<div className="flex h-64 items-center justify-center">
 						<p className="text-sm text-tertiary">No pending invitations</p>
 					</div>
@@ -138,14 +148,14 @@ function RouteComponent() {
 						</Table.Header>
 						<Table.Body items={pendingInvitations}>
 							{(invitation) => (
-								<Table.Row id={invitation._id} className="odd:bg-secondary_subtle">
+								<Table.Row id={invitation.id} className="odd:bg-secondary_subtle">
 									<Table.Cell>
 										<p className="font-medium text-primary text-sm">{invitation.email}</p>
 									</Table.Cell>
 
 									<Table.Cell>
 										<p className="text-sm text-tertiary">
-											{invitation.inviterName || "System"}
+											{invitation.invitedBy || "System"}
 										</p>
 									</Table.Cell>
 									<Table.Cell>
@@ -160,7 +170,7 @@ function RouteComponent() {
 									</Table.Cell>
 									<Table.Cell>
 										<p className="text-sm text-tertiary">
-											{formatTimeRemaining(invitation.timeUntilExpiry)}
+											{formatTimeRemaining(invitation.expiresAt.getTime() - Date.now())}
 										</p>
 									</Table.Cell>
 									<Table.Cell className="px-4">
@@ -170,14 +180,14 @@ function RouteComponent() {
 												color="tertiary"
 												tooltip="Resend invitation"
 												icon={RefreshCcw02}
-												onClick={() => handleResendInvitation(invitation._id)}
+												onClick={() => handleResendInvitation(invitation.id)}
 											/>
 											<ButtonUtility
 												size="xs"
 												color="tertiary"
 												tooltip="Revoke invitation"
 												icon={XClose}
-												onClick={() => handleRevokeInvitation(invitation._id)}
+												onClick={() => handleRevokeInvitation(invitation.id)}
 											/>
 										</div>
 									</Table.Cell>

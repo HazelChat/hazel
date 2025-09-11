@@ -13,11 +13,11 @@ export function TypingIndicator() {
 
 	const typingText = () => {
 		if (typingUsers.length === 1) {
-			return `${typingUsers[0].user.firstName} is typing...`
+			return `${typingUsers[0]!.user.firstName} is typing...`
 		} else if (typingUsers.length === 2) {
-			return `${typingUsers[0].user.firstName} and ${typingUsers[1].user.firstName} are typing...`
+			return `${typingUsers[0]!.user.firstName} and ${typingUsers[1]!.user.firstName} are typing...`
 		} else {
-			return `${typingUsers[0].user.firstName} and ${typingUsers.length - 1} others are typing...`
+			return `${typingUsers[0]!.user.firstName} and ${typingUsers.length - 1} others are typing...`
 		}
 	}
 

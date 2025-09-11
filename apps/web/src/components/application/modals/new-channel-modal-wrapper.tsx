@@ -1,16 +1,17 @@
-import { useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
+import { ChannelId, ChannelMemberId, type OrganizationId } from "@hazel/db/schema"
 import { useParams } from "@tanstack/react-router"
 import { type } from "arktype"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
+import { v4 as uuid } from "uuid"
 import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { Select } from "~/components/base/select/select"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
+import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
+import { useUser } from "~/lib/auth"
 
 const channelSchema = type({
 	name: "string > 2",
@@ -26,9 +27,8 @@ interface NewChannelModalWrapperProps {
 
 export const NewChannelModalWrapper = ({ isOpen, setIsOpen }: NewChannelModalWrapperProps) => {
 	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as Id<"organizations">
-
-	const createChannelMutation = useConvexMutation(api.channels.createChannelForOrganization)
+	const { user } = useUser()
+	const organizationId = orgId as OrganizationId
 
 	const form = useAppForm({
 		defaultValues: {
@@ -39,8 +39,19 @@ export const NewChannelModalWrapper = ({ isOpen, setIsOpen }: NewChannelModalWra
 			onChange: channelSchema,
 		},
 		onSubmit: async ({ value }) => {
+			if (!user?.id) return
 			try {
-				await createChannelMutation({ ...value, organizationId })
+				channelCollection.insert({
+					id: ChannelId.make(uuid()),
+					name: value.name,
+					type: value.type,
+					organizationId,
+					parentChannelId: null,
+					createdAt: new Date(),
+					updatedAt: null,
+					deletedAt: null,
+				})
+
 				toast.success("Channel created successfully")
 				setIsOpen(false)
 				form.reset()

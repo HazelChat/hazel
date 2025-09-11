@@ -32,11 +32,11 @@ function RouteComponent() {
 			? "appearance" // Default to appearance when at /_app/settings
 			: pathSegments[pathSegments.length - 1]
 
-	const [selectedTab, setSelectedTab] = useState<string>(currentTab)
+	const [selectedTab, setSelectedTab] = useState<string>(currentTab!)
 
 	// Update selected tab when location changes
 	useEffect(() => {
-		setSelectedTab(currentTab)
+		setSelectedTab(currentTab!)
 	}, [currentTab])
 
 	return (

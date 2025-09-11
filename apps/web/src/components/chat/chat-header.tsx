@@ -1,17 +1,21 @@
-import { Link } from "@tanstack/react-router"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Tooltip, TooltipTrigger } from "~/components/base/tooltip/tooltip"
 import IconHashtagStroke from "~/components/icons/IconHashtagStroke"
-import { usePresence } from "~/components/presence/presence-provider"
+import { useChannel } from "~/db/hooks"
 import { useChat } from "~/hooks/use-chat"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import IconPhone from "../icons/IconPhone"
-import IconPhoneDuoSolid from "../icons/IconPhoneDuoSolid"
 import { PinnedMessagesModal } from "./pinned-messages-modal"
 
 export function ChatHeader() {
-	const { channel } = useChat()
-	const { isUserOnline } = usePresence()
+	const { channelId } = useChat()
+
+	// TODO: XD
+	const { isUserOnline } = {
+		isUserOnline: (..._args: any[]) => true,
+	}
+
+	const { channel } = useChannel(channelId)
 
 	if (!channel) {
 		return (
@@ -31,9 +35,9 @@ export function ChatHeader() {
 						{channel.members && channel.members.length > 0 && (
 							<Avatar
 								size="sm"
-								src={channel.members[0].user.avatarUrl}
-								alt={`${channel.members[0].user.firstName} ${channel.members[0].user.lastName}`}
-								status={isUserOnline(channel.members[0].userId) ? "online" : "offline"}
+								src={channel.members[0]?.user.avatarUrl}
+								alt={`${channel.members[0]?.user.firstName} ${channel.members[0]?.user.lastName}`}
+								status={isUserOnline(channel.members[0]?.userId!) ? "online" : "offline"}
 							/>
 						)}
 						<div>

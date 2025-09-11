@@ -1,11 +1,11 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate, useParams } from "@tanstack/react-router"
 import { useAuth } from "@workos-inc/authkit-react"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
+import { organizationCollection, organizationMemberCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 import { cx } from "~/utils/cx"
 import { CreateOrganizationModal } from "../application/modals/create-organization-modal"
 import { EmailInviteModal } from "../application/modals/email-invite-modal"
@@ -20,17 +20,34 @@ export const WorkspaceSwitcher = () => {
 	const { switchToOrganization } = useAuth()
 	const navigate = useNavigate()
 	const params = useParams({ strict: false })
+	const { user } = useUser()
 
-	const organizationId = params.orgId as Id<"organizations"> | undefined
+	const organizationId = params.orgId as OrganizationId
 
-	const organizationByIdQuery = useQuery(
-		convexQuery(api.organizations.getOrganizationById, organizationId ? { organizationId } : "skip"),
+	const { data: currentOrgData } = useLiveQuery(
+		(q) =>
+			q
+				.from({ org: organizationCollection })
+				.where(({ org }) => eq(org.id, organizationId))
+				.orderBy(({ org }) => org.createdAt, "desc")
+				.limit(1),
+		[organizationId],
 	)
 
-	const userOrganizationsQuery = useQuery(convexQuery(api.organizations.getUserOrganizations, {}))
+	const { data: userOrganizations } = useLiveQuery(
+		(q) =>
+			q
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
+					eq(member.organizationId, org.id),
+				)
+				.where(({ member }) => eq(member.userId, user?.id || ""))
+				.orderBy(({ member }) => member.createdAt, "asc"),
+		[user?.id],
+	)
 
-	const currentOrg = organizationId ? organizationByIdQuery.data : null
-	const organizations = userOrganizationsQuery.data || []
+	const currentOrg = currentOrgData?.[0]
+	const organizations = userOrganizations?.map((row) => row.org) || []
 
 	const handleOrganizationSwitch = async (workosOrgId: string) => {
 		try {
@@ -39,16 +56,16 @@ export const WorkspaceSwitcher = () => {
 				const currentPath = window.location.pathname
 				const pathSegments = currentPath.split("/")
 
-				let targetRoute = `/_app/${targetOrg._id}`
+				let targetRoute = `/${targetOrg.id}`
 
 				if (pathSegments.length > 3 && pathSegments[1] === "app") {
 					const subPath = pathSegments.slice(3).join("/")
 					if (subPath) {
-						targetRoute = `/_app/${targetOrg._id}/${subPath}`
+						targetRoute = `/${targetOrg.id}/${subPath}`
 					}
 				}
 
-				await navigate({ to: targetRoute as any })
+				await navigate({ to: targetRoute })
 
 				await switchToOrganization({ organizationId: workosOrgId })
 			}
@@ -85,7 +102,7 @@ export const WorkspaceSwitcher = () => {
 							</Dropdown.SectionHeader>
 							{organizations.map((org) => (
 								<Dropdown.Item
-									key={org._id}
+									key={org.id}
 									onAction={() => handleOrganizationSwitch(org.workosId)}
 								>
 									<div className="flex items-center gap-2">
@@ -96,7 +113,7 @@ export const WorkspaceSwitcher = () => {
 											alt={org.name}
 										/>
 										<span className="truncate text-fg-secondary text-xs">{org.name}</span>
-										{currentOrg?._id === org._id && (
+										{currentOrg?.id === org.id && (
 											<span className="ml-auto text-fg-quaternary text-xs">✓</span>
 										)}
 									</div>

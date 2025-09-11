@@ -1,29 +1,14 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
-import { useParams } from "@tanstack/react-router"
-import { useOnlineUsersCount } from "~/hooks/usePresenceData"
+import { useUser } from "~/lib/auth"
 
 /**
  * Simple component to display the number of online users in the current organization
  */
 export function OnlineUsersIndicator() {
-	// Get current organization and user
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { user } = useUser()
 
-	const organizationId = orgId as Id<"organizations">
-	const userQuery = useQuery(
-		convexQuery(api.me.getCurrentUser, {
-			organizationId,
-		}),
-	)
+	const onlineCount = 12
 
-	const userId = userQuery.data?._id
-
-	const onlineCount = useOnlineUsersCount(organizationId, userId)
-
-	if (!organizationId || !userId) {
+	if (!user?.id) {
 		return null
 	}
 

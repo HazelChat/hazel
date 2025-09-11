@@ -1,4 +1,7 @@
+import type { UserId } from "@hazel/db/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { DotsHorizontal } from "@untitledui/icons"
+import { useState } from "react"
 import { Button, DialogTrigger, Dialog as PrimitiveDialog } from "react-aria-components"
 import { toast } from "sonner"
 import { Avatar } from "~/components/base/avatar/avatar"
@@ -9,42 +12,85 @@ import { Popover } from "~/components/base/select/popover"
 import { TextArea } from "~/components/base/textarea/textarea"
 import { Tooltip } from "~/components/base/tooltip/tooltip"
 import IconPencilEdit from "~/components/icons/IconPencilEdit"
+import { userCollection } from "~/db/collections"
+import { useUser } from "~/lib/auth"
 import { IconNotification } from "../application/notifications/notifications"
 import IconPhone2 from "../icons/IconPhone2"
 import IconStar from "../icons/IconStar"
 
 interface UserProfilePopoverProps {
-	user: {
-		_id?: string
-		firstName: string
-		lastName: string
-		email?: string
-		avatarUrl?: string
-	}
-	isOwnProfile: boolean
-	isFavorite?: boolean
-	isMuted?: boolean
-	onInviteToChannel: () => void
-	onEditProfile?: () => void
-	onViewFullProfile?: () => void
-	onToggleMute?: () => void
-	onToggleFavorite?: () => void
-	onCopyUserId?: () => void
+	userId: UserId
 }
 
-export function UserProfilePopover({
-	user,
-	isOwnProfile,
-	isFavorite = false,
-	isMuted = false,
-	onInviteToChannel,
-	onEditProfile,
-	onViewFullProfile,
-	onToggleMute,
-	onToggleFavorite,
-	onCopyUserId,
-}: UserProfilePopoverProps) {
+export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
+	const { user: currentUser } = useUser()
+	const { data } = useLiveQuery((q) => q.from({ user: userCollection }).where((q) => eq(q.user.id, userId)))
+	const user = data[0]
+
+	// Internal state for user interactions
+	const [isFavorite, setIsFavorite] = useState(false)
+	const [isMuted, setIsMuted] = useState(false)
+
+	if (!user) return null
+
+	const isOwnProfile = currentUser?.id === userId
 	const fullName = `${user.firstName} ${user.lastName}`
+
+	const handleCopyUserId = () => {
+		navigator.clipboard.writeText(user.id)
+		toast.custom((t) => (
+			<IconNotification
+				title="User ID copied!"
+				description="User ID has been copied to your clipboard."
+				color="success"
+				onClose={() => toast.dismiss(t)}
+			/>
+		))
+	}
+
+	const handleToggleFavorite = () => {
+		setIsFavorite(!isFavorite)
+		toast.custom((t) => (
+			<IconNotification
+				title={isFavorite ? "Removed from favorites" : "Added to favorites"}
+				description={
+					isFavorite
+						? `${fullName} has been removed from your favorites.`
+						: `${fullName} has been added to your favorites.`
+				}
+				color="success"
+				onClose={() => toast.dismiss(t)}
+			/>
+		))
+	}
+
+	const handleToggleMute = () => {
+		setIsMuted(!isMuted)
+		toast.custom((t) => (
+			<IconNotification
+				title={isMuted ? "Unmuted" : "Muted"}
+				description={
+					isMuted
+						? `You will now receive notifications from ${fullName}.`
+						: `You will no longer receive notifications from ${fullName}.`
+				}
+				color="success"
+				onClose={() => toast.dismiss(t)}
+			/>
+		))
+	}
+
+	const handleCall = () => {
+		// TODO: Implement actual calling functionality
+		toast.custom((t) => (
+			<IconNotification
+				title="Calling..."
+				description={`Starting call with ${fullName}`}
+				color="default"
+				onClose={() => toast.dismiss(t)}
+			/>
+		))
+	}
 
 	return (
 		<DialogTrigger>
@@ -59,7 +105,7 @@ export function UserProfilePopover({
 				placement="right top"
 			>
 				<PrimitiveDialog className="outline-hidden">
-					{({ close }) => (
+					{() => (
 						<>
 							{/* user background image */}
 							<div className="relative h-32">
@@ -71,25 +117,7 @@ export function UserProfilePopover({
 											placement="bottom"
 										>
 											<ButtonUtility
-												onClick={() => {
-													onToggleFavorite?.()
-													toast.custom((t) => (
-														<IconNotification
-															title={
-																isFavorite
-																	? "Removed from favorites"
-																	: "Added to favorites"
-															}
-															description={
-																isFavorite
-																	? `${fullName} has been removed from your favorites.`
-																	: `${fullName} has been added to your favorites.`
-															}
-															color="success"
-															onClose={() => toast.dismiss(t)}
-														/>
-													))
-												}}
+												onClick={handleToggleFavorite}
 												color={isFavorite ? "secondary" : "tertiary"}
 												size="xs"
 												icon={IconStar}
@@ -101,10 +129,7 @@ export function UserProfilePopover({
 
 										<Tooltip arrow title="Call user" placement="bottom">
 											<ButtonUtility
-												onClick={() => {
-													close()
-													onInviteToChannel()
-												}}
+												onClick={handleCall}
 												color="tertiary"
 												size="xs"
 												icon={IconPhone2}
@@ -124,49 +149,12 @@ export function UserProfilePopover({
 											<Dropdown.Popover className="w-40">
 												<Dropdown.Menu>
 													<Dropdown.Section>
-														<Dropdown.Item onAction={onViewFullProfile}>
-															View full profile
-														</Dropdown.Item>
-													</Dropdown.Section>
-													<Dropdown.Separator />
-													<Dropdown.Section>
-														<Dropdown.Item
-															onAction={() => {
-																onToggleMute?.()
-																toast.custom((t) => (
-																	<IconNotification
-																		title={isMuted ? "Unmuted" : "Muted"}
-																		description={
-																			isMuted
-																				? `You will now receive notifications from ${fullName}.`
-																				: `You will no longer receive notifications from ${fullName}.`
-																		}
-																		color="success"
-																		onClose={() => toast.dismiss(t)}
-																	/>
-																))
-															}}
-														>
+														<Dropdown.Item onAction={handleToggleMute}>
 															{isMuted ? "Unmute" : "Mute"}
 														</Dropdown.Item>
 													</Dropdown.Section>
 													<Dropdown.Separator />
-													<Dropdown.Item
-														onAction={() => {
-															if (user._id) {
-																navigator.clipboard.writeText(user._id)
-																toast.custom((t) => (
-																	<IconNotification
-																		title="User ID copied!"
-																		description="User ID has been copied to your clipboard."
-																		color="success"
-																		onClose={() => toast.dismiss(t)}
-																	/>
-																))
-																onCopyUserId?.()
-															}
-														}}
-													>
+													<Dropdown.Item onAction={handleCopyUserId}>
 														Copy user ID
 													</Dropdown.Item>
 												</Dropdown.Menu>
@@ -196,7 +184,10 @@ export function UserProfilePopover({
 												size="sm"
 												className="w-full"
 												iconLeading={IconPencilEdit}
-												onClick={onEditProfile}
+												onClick={() => {
+													// TODO: Implement edit profile functionality
+													console.log("Edit profile clicked")
+												}}
 											>
 												Edit profile
 											</StyledButton>

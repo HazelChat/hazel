@@ -1,13 +1,12 @@
-import type { Id } from "@hazel/backend"
+import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
 import { useParams } from "@tanstack/react-router"
-import { Attachment01, ChevronDown, FaceSmile, ItalicSquare, Microphone02, XClose } from "@untitledui/icons"
+import { Attachment01, FaceSmile, ItalicSquare, XClose } from "@untitledui/icons"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { cx } from "~/utils/cx"
-import { Avatar } from "../base/avatar/avatar"
 import { Button } from "../base/buttons/button"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import {
@@ -22,14 +21,14 @@ export interface MessageComposerActionsRef {
 }
 
 interface MessageComposerActionsProps {
-	attachmentIds: Id<"attachments">[]
-	setAttachmentIds: (ids: Id<"attachments">[]) => void
+	attachmentIds: AttachmentId[]
+	setAttachmentIds: (ids: AttachmentId[]) => void
 	uploads: Array<{
 		fileId: string
 		fileName: string
 		progress: number
 		status: string
-		attachmentId?: Id<"attachments">
+		attachmentId?: AttachmentId
 	}>
 	onSubmit?: () => Promise<void>
 	onEmojiSelect?: (emoji: string) => void
@@ -43,8 +42,11 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 		const { trackEmojiUsage } = useEmojiStats()
 
+		const { channelId } = useChat()
+
 		const { uploadFiles, clearUploads, isUploading } = useFileUpload({
-			organizationId: orgId as Id<"organizations">,
+			organizationId: orgId as OrganizationId,
+			channelId,
 			onUploadComplete: (attachmentId) => {
 				setAttachmentIds([...attachmentIds, attachmentId])
 			},

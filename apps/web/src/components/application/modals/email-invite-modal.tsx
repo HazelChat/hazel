@@ -1,10 +1,6 @@
-import { useConvexMutation } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useParams } from "@tanstack/react-router"
 import { Mail01, Plus, UsersPlus, X } from "@untitledui/icons"
 import { useState } from "react"
-import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
+import { Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
 import { Dialog, Modal, ModalFooter, ModalOverlay } from "~/components/application/modals/modal"
 import { Button } from "~/components/base/buttons/button"
@@ -30,11 +26,6 @@ interface InviteEntry {
 export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps) => {
 	const [invites, setInvites] = useState<InviteEntry[]>([{ id: "1", email: "", role: "member" }])
 	const [isSubmitting, setIsSubmitting] = useState(false)
-
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as Id<"organizations">
-
-	const inviteMemberMutation = useConvexMutation(api.organizations.inviteMember)
 
 	const addInviteEntry = () => {
 		setInvites([
@@ -73,14 +64,9 @@ export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps
 		let successCount = 0
 		let errorCount = 0
 
-		// Send invitations
 		for (const invite of validInvites) {
 			try {
-				await inviteMemberMutation({
-					email: invite.email,
-					role: invite.role,
-					organizationId,
-				})
+				// TODO: Add invitation here
 				successCount++
 			} catch (error) {
 				errorCount++

@@ -1,10 +1,8 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { ChannelId, MessageId, OrganizationId } from "@hazel/db/schema"
 import { X } from "@untitledui/icons"
 import { format } from "date-fns"
 import { Button } from "react-aria-components"
+import { useMessage } from "~/db/hooks"
 import { ChatProvider } from "~/providers/chat-provider"
 import { Avatar } from "../base/avatar/avatar"
 import { MarkdownReadonly } from "../markdown-readonly"
@@ -13,29 +11,14 @@ import { MessageList } from "./message-list"
 import { TypingIndicator } from "./typing-indicator"
 
 interface ThreadPanelProps {
-	threadChannelId: Id<"channels">
-	originalMessageId: Id<"messages">
-	organizationId: Id<"organizations">
+	threadChannelId: ChannelId
+	originalMessageId: MessageId
+	organizationId: OrganizationId
 	onClose: () => void
 }
 
-function ThreadContent({ threadChannelId, originalMessageId, organizationId, onClose }: ThreadPanelProps) {
-	// Fetch the original message (parent message)
-	const { data: originalMessage } = useQuery(
-		convexQuery(api.messages.getMessage, {
-			organizationId,
-			channelId: threadChannelId,
-			id: originalMessageId,
-		}),
-	)
-
-	// Fetch thread channel info
-	const { data: threadChannel } = useQuery(
-		convexQuery(api.channels.getChannel, {
-			organizationId,
-			channelId: threadChannelId,
-		}),
-	)
+function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPanelProps) {
+	const { data: originalMessage } = useMessage(originalMessageId)
 
 	return (
 		<div className="flex h-full flex-col border-secondary border-l bg-primary">
@@ -43,11 +26,6 @@ function ThreadContent({ threadChannelId, originalMessageId, organizationId, onC
 			<div className="flex items-center justify-between border-secondary border-b px-4 py-3">
 				<div className="flex items-center gap-2">
 					<h2 className="font-semibold">Thread</h2>
-					{threadChannel && (
-						<span className="text-sm text-tertiary">
-							{threadChannel.members?.length || 0} participants
-						</span>
-					)}
 				</div>
 				<Button onPress={onClose} className="rounded p-1 hover:bg-tertiary" aria-label="Close thread">
 					<X className="size-4" />
@@ -69,7 +47,7 @@ function ThreadContent({ threadChannelId, originalMessageId, organizationId, onC
 									{originalMessage.author.firstName} {originalMessage.author.lastName}
 								</span>
 								<span className="text-tertiary text-xs">
-									{format(originalMessage._creationTime, "MMM d, HH:mm")}
+									{format(originalMessage.createdAt, "MMM d, HH:mm")}
 								</span>
 							</div>
 							<div className="mt-1">
@@ -97,15 +75,15 @@ function ThreadContent({ threadChannelId, originalMessageId, organizationId, onC
 export function ThreadPanel({
 	threadChannelId,
 	originalMessageId,
-	organizationId,
 	onClose,
+	organizationId,
 }: ThreadPanelProps) {
 	return (
 		<ChatProvider channelId={threadChannelId} organizationId={organizationId}>
 			<ThreadContent
+				organizationId={organizationId}
 				threadChannelId={threadChannelId}
 				originalMessageId={originalMessageId}
-				organizationId={organizationId}
 				onClose={onClose}
 			/>
 		</ChatProvider>

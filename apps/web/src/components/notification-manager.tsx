@@ -1,14 +1,15 @@
-import { convexQuery } from "@convex-dev/react-query"
-import type { Id } from "@hazel/backend"
-import { api } from "@hazel/backend/api"
-import { useQuery } from "@tanstack/react-query"
+import type { OrganizationId } from "@hazel/db/schema"
+import { and, eq, useLiveQuery } from "@tanstack/react-db"
 import { useParams } from "@tanstack/react-router"
 import { useEffect, useRef } from "react"
+import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
+import { useUser } from "~/lib/auth"
 
 export function NotificationManager() {
 	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as Id<"organizations">
+	const organizationId = params?.orgId as OrganizationId
+	const { user } = useUser()
 	const { playSound } = useNotificationSound()
 
 	// Track previous notification counts per channel
@@ -16,36 +17,36 @@ export function NotificationManager() {
 	const isFirstRender = useRef(true)
 
 	// Subscribe to channels to monitor notification counts
-	const channelsQuery = useQuery(
-		convexQuery(
-			api.channels.getChannelsForOrganization,
-			organizationId
-				? {
-						organizationId,
-						favoriteFilter: {
-							favorite: false,
-						},
-					}
-				: "skip",
-		),
+	const { data: userChannels } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
+					eq(member.channelId, channel.id),
+				)
+				.where((q) =>
+					and(
+						eq(q.channel.organizationId, organizationId),
+						eq(q.member.userId, user?.id),
+						eq(q.member.isHidden, false),
+						eq(q.member.isFavorite, false),
+					),
+				)
+				.orderBy(({ channel }) => channel.createdAt, "asc"),
+		[organizationId, user?.id],
 	)
 
 	useEffect(() => {
-		if (!channelsQuery.data) return
-
-		const allChannels = [
-			...(channelsQuery.data.organizationChannels || []),
-			...(channelsQuery.data.dmChannels || []),
-		]
+		if (!userChannels) return
 
 		// Check each channel for notification count changes
-		for (const channel of allChannels) {
-			const channelId = channel._id
-			const currentCount = channel.currentUser?.notificationCount || 0
+		for (const row of userChannels) {
+			const channelId = row.channel.id
+			const currentCount = row.member.notificationCount || 0
 			const prevCount = prevNotificationCounts.current.get(channelId) || 0
 
 			// Play sound if count increased (and not on first render)
-			if (!isFirstRender.current && currentCount > prevCount && !channel.isMuted) {
+			if (!isFirstRender.current && currentCount > prevCount && !row.member.isMuted) {
 				playSound()
 			}
 
@@ -57,7 +58,7 @@ export function NotificationManager() {
 		if (isFirstRender.current) {
 			isFirstRender.current = false
 		}
-	}, [channelsQuery.data, playSound])
+	}, [userChannels, playSound])
 
 	// This component doesn't render anything
 	return null
