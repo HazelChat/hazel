@@ -1,6 +1,6 @@
 import { FetchHttpClient, HttpApiClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { AtomHttpApi } from "@effect-atom/atom-react"
-import { HazelApi } from "@hazel/backendv2/api"
+import { HazelApi } from "@hazel/backend/api"
 import { Effect } from "effect"
 
 export const getBackendClient = (accessToken: string) =>

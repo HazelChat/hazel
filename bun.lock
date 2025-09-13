@@ -13,8 +13,8 @@
         "typescript": "^5.9.2",
       },
     },
-    "apps/backendv2": {
-      "name": "@hazel/backendv2",
+    "apps/backend": {
+      "name": "@hazel/backend",
       "dependencies": {
         "@effect-aws/client-s3": "^1.10.3",
         "@effect-aws/s3": "^0.2.3",
@@ -52,7 +52,7 @@
         "@effect-atom/atom-react": "^0.1.15",
         "@effect/platform": "^0.90.6",
         "@fontsource/inter": "^5.2.6",
-        "@hazel/backendv2": "workspace:*",
+        "@hazel/backend": "workspace:*",
         "@hazel/db": "workspace:*",
         "@paper-design/shaders-react": "^0.0.51",
         "@platejs/ai": "^49.2.15",
@@ -496,7 +496,7 @@
 
     "@formatjs/intl-localematcher": ["@formatjs/intl-localematcher@0.6.1", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-ePEgLgVCqi2BBFnTMWPfIghu6FkbZnnBVhO2sSxvLfrdFw7wCHAHiDoM2h4NRgjbaY7+B7HgOLZGkK187pZTZg=="],
 
-    "@hazel/backendv2": ["@hazel/backendv2@workspace:apps/backendv2"],
+    "@hazel/backend": ["@hazel/backend@workspace:apps/backend"],
 
     "@hazel/db": ["@hazel/db@workspace:packages/db"],
 

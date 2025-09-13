@@ -17,7 +17,7 @@
 		"@effect-atom/atom-react": "^0.1.15",
 		"@effect/platform": "^0.90.6",
 		"@fontsource/inter": "^5.2.6",
-		"@hazel/backendv2": "workspace:*",
+		"@hazel/backend": "workspace:*",
 		"@hazel/db": "workspace:*",
 		"@paper-design/shaders-react": "^0.0.51",
 		"@platejs/ai": "^49.2.15",
