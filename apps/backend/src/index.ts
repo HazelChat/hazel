@@ -9,7 +9,7 @@ import {
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { S3 } from "@effect-aws/client-s3"
 import { MultipartUpload } from "@effect-aws/s3"
-import { Layer } from "effect"
+import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentRepo } from "./repositories/attachment-repo"
@@ -100,7 +100,7 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 	Layer.provide(MainLive),
 	Layer.provide(TracerLive),
 	Layer.provide(AuthorizationLive.pipe(Layer.provide(UserRepo.Default))),
-	Layer.provide(BunHttpServer.layer({ port: 3003 })),
+	Layer.provide(BunHttpServer.layerConfig({ port: Config.number("PORT").pipe(Config.withDefault(3003)) })),
 	Layer.launch,
 	BunRuntime.runMain,
 )
