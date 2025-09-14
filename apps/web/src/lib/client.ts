@@ -5,7 +5,7 @@ import { Effect } from "effect"
 
 export const getBackendClient = (accessToken: string) =>
 	HttpApiClient.make(HazelApi, {
-		baseUrl: "http://localhost:3003",
+		baseUrl: import.meta.env.VITE_BACKEND_URL || "http://localhost:3003",
 		transformClient: (client) => {
 			const pipedClient = client
 
@@ -19,5 +19,14 @@ export const getBackendClient = (accessToken: string) =>
 export class HazelApiClient extends AtomHttpApi.Tag<HazelApiClient>()("HazelApiClient", {
 	api: HazelApi,
 	httpClient: FetchHttpClient.layer,
-	baseUrl: "http://localhost:3003",
+	baseUrl: import.meta.env.VITE_BACKEND_URL || "http://localhost:3003",
+	// // TODO: Implement
+	// transformClient: (client) => {
+	// 	const pipedClient = client
+
+	// 	return HttpClient.mapRequest(
+	// 		pipedClient,
+	// 		HttpClientRequest.setHeader("Authorization", `Bearer ${accessToken}`),
+	// 	)
+	// },
 }) {}
