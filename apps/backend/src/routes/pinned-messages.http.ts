@@ -1,9 +1,10 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse } from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { PinnedMessagePolicy } from "../policies/pinned-message-policy"
 import { PinnedMessageRepo } from "../repositories/pinned-message-repo"
 
 export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessages", (handlers) =>
@@ -22,7 +23,10 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 								const createdPinnedMessage = yield* PinnedMessageRepo.insert({
 									...payload,
 									pinnedBy: user.id,
-								}).pipe(Effect.map((res) => res[0]!))
+								}).pipe(
+									Effect.map((res) => res[0]!),
+									policyUse(PinnedMessagePolicy.canCreate(payload.channelId))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -93,7 +97,9 @@ export const HttpPinnedMessageLive = HttpApiBuilder.group(HazelApi, "pinnedMessa
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* PinnedMessageRepo.deleteById(path.id)
+								yield* PinnedMessageRepo.deleteById(path.id).pipe(
+									policyUse(PinnedMessagePolicy.canDelete(path.id))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 

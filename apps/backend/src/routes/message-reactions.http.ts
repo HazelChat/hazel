@@ -1,9 +1,10 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse } from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { MessageReactionPolicy } from "../policies/message-reaction-policy"
 import { MessageReactionRepo } from "../repositories/message-reaction-repo"
 
 export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageReactions", (handlers) =>
@@ -22,7 +23,10 @@ export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageRe
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									...payload,
 									userId: user.id,
-								}).pipe(Effect.map((res) => res[0]!))
+								}).pipe(
+									Effect.map((res) => res[0]!),
+									policyUse(MessageReactionPolicy.canCreate(payload.messageId))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -93,7 +97,9 @@ export const HttpMessageReactionLive = HttpApiBuilder.group(HazelApi, "messageRe
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* MessageReactionRepo.deleteById(path.id)
+								yield* MessageReactionRepo.deleteById(path.id).pipe(
+									policyUse(MessageReactionPolicy.canDelete(path.id))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 

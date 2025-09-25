@@ -68,17 +68,13 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 			.handle(
 				"update",
 				Effect.fn(function* ({ payload, path }) {
-					// TODO: Verify the user has permission to update this channel
-					// This would typically check organization membership and channel permissions
-					// For now, we'll just update the channel
-
 					const { updatedChannel, txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
 								const updatedChannel = yield* ChannelRepo.update({
 									id: path.id,
 									...payload,
-								})
+								}).pipe(policyUse(ChannelPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -109,14 +105,12 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 			.handle(
 				"delete",
 				Effect.fn(function* ({ path }) {
-					// TODO: Verify the user has permission to delete this channel
-					// This would typically check organization membership and admin permissions
-					// For now, we'll just delete the channel
-
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* ChannelRepo.deleteById(path.id)
+								yield* ChannelRepo.deleteById(path.id).pipe(
+									policyUse(ChannelPolicy.canDelete(path.id))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 

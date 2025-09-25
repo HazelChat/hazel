@@ -1,9 +1,10 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse } from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { ChannelMemberPolicy } from "../policies/channel-member-policy"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 
 export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMembers", (handlers) =>
@@ -16,10 +17,6 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 				Effect.fn(function* ({ payload }) {
 					const user = yield* CurrentUser.Context
 
-					// TODO: Verify the user has permission to add members to this channel
-					// This would typically check organization membership and channel permissions
-					// For now, we'll just add the member
-
 					const { createdChannelMember, txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
@@ -29,7 +26,10 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 									userId: user.id,
 									joinedAt: new Date(),
 									deletedAt: null,
-								}).pipe(Effect.map((res) => res[0]!))
+								}).pipe(
+									Effect.map((res) => res[0]!),
+									policyUse(ChannelMemberPolicy.canCreate(payload.channelId))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -60,17 +60,13 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 			.handle(
 				"update",
 				Effect.fn(function* ({ payload, path }) {
-					// TODO: Verify the user has permission to update this channel member
-					// This would typically check if it's their own membership or admin permissions
-					// For now, we'll just update the channel member
-
 					const { updatedChannelMember, txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
 								const updatedChannelMember = yield* ChannelMemberRepo.update({
 									id: path.id,
 									...payload,
-								})
+								}).pipe(policyUse(ChannelMemberPolicy.canUpdate(path.id)))
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -101,14 +97,12 @@ export const HttpChannelMemberLive = HttpApiBuilder.group(HazelApi, "channelMemb
 			.handle(
 				"delete",
 				Effect.fn(function* ({ path }) {
-					// TODO: Verify the user has permission to remove this channel member
-					// This would typically check if it's their own membership or admin permissions
-					// For now, we'll just remove the channel member
-
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* ChannelMemberRepo.deleteById(path.id)
+								yield* ChannelMemberRepo.deleteById(path.id).pipe(
+									policyUse(ChannelMemberPolicy.canDelete(path.id))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 

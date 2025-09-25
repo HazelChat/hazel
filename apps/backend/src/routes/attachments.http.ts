@@ -2,11 +2,12 @@ import { FileSystem, HttpApiBuilder } from "@effect/platform"
 import { MultipartUpload } from "@effect-aws/s3"
 import { Database } from "@hazel/db"
 import { AttachmentId } from "@hazel/db/schema"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse } from "@hazel/effect-lib"
 import { randomUUIDv7 } from "bun"
 import { Config, Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { AttachmentPolicy } from "../policies/attachment-policy"
 import { AttachmentRepo } from "../repositories/attachment-repo"
 
 export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", (handlers) =>
@@ -58,7 +59,10 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 									fileName: fileName,
 									fileSize: Number(stats.size),
 									uploadedAt: new Date(),
-								}).pipe(Effect.map((res) => res[0]!))
+								}).pipe(
+									Effect.map((res) => res[0]!),
+									policyUse(AttachmentPolicy.canCreate())
+								)
 
 								const txid = yield* generateTransactionId(tx)
 
@@ -93,7 +97,9 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 					const { txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								yield* AttachmentRepo.deleteById(path.id)
+								yield* AttachmentRepo.deleteById(path.id).pipe(
+									policyUse(AttachmentPolicy.canDelete(path.id))
+								)
 
 								const txid = yield* generateTransactionId(tx)
 
