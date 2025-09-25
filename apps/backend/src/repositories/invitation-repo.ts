@@ -9,6 +9,7 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 	effect: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.invitationsTable, Invitation.Model, {
 			idColumn: "id",
+			name: "invitation",
 		})
 		const db = yield* Database.Database
 

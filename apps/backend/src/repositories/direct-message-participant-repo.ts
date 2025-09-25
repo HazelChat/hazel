@@ -13,6 +13,7 @@ export class DirectMessageParticipantRepo extends Effect.Service<DirectMessagePa
 				DirectMessageParticipant.Model,
 				{
 					idColumn: "id",
+					name: "directMessageParticipant",
 				},
 			)
 

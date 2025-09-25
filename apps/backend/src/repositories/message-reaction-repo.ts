@@ -11,6 +11,7 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 			MessageReaction.Model,
 			{
 				idColumn: "id",
+				name: "messageReaction",
 			},
 		)
 

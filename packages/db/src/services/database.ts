@@ -12,6 +12,7 @@ import * as Redacted from "effect/Redacted"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import postgres from "postgres"
+import type { AuthorizedActor, PolicyFn } from "../schema"
 import * as schema from "../schema"
 
 export type TransactionClient = PgTransaction<
@@ -158,7 +159,14 @@ const makeService = (config: Config) =>
 		 * @returns A function that takes raw input and an optional transaction executor,
 		 *          returns an Effect that includes Schema.ParseError in its error channel.
 		 */
-		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, _R>(
+		const makeQueryWithSchema = <
+			InputSchema extends Schema.Schema.AnyNoContext,
+			A,
+			E,
+			R,
+			Action extends string,
+			Entity extends string,
+		>(
 			inputSchema: InputSchema,
 			queryFn: (
 				execute: <T>(
@@ -167,21 +175,24 @@ const makeService = (config: Config) =>
 				validatedInput: Schema.Schema.Type<InputSchema>,
 				options?: { spanPrefix?: string },
 			) => Effect.Effect<A, E, never>,
+			policy: PolicyFn<AuthorizedActor<Action, Entity>>,
 		) => {
 			return (
 				rawData: unknown,
 				tx?: <T>(
 					fn: (client: TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-			): Effect.Effect<A, E | DatabaseError | ParseError, never> => {
+			): Effect.Effect<A, E | DatabaseError | ParseError, R | AuthorizedActor<Action, Entity>> => {
 				const executor = tx ?? execute
 
 				return Effect.gen(function* () {
-					const validatedInput = yield* Schema.validate(inputSchema)(rawData)
+					// TODO: Maybe we should use `Schema.encode` here
+					const validatedInput = yield* Schema.encodeUnknown(inputSchema)(rawData)
 
 					const result = yield* queryFn(executor, validatedInput)
 					return result
 				}).pipe(
+					policy,
 					Effect.withSpan("queryWithSchema", {
 						attributes: { "input.schema": inputSchema.ast.toString() },
 					}),
@@ -189,19 +200,31 @@ const makeService = (config: Config) =>
 			}
 		}
 
-		const makeQuery = <Input, A, E, R>(
+		// Generic query maker - should work without changes if execute/transaction are correct
+		const makeQuery = <Input, A, E, R, Action extends string, Entity extends string>(
 			queryFn: (
-				execute: <T>(
+				executor: <T>(
 					fn: (client: Client | TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError>,
 				input: Input,
 			) => Effect.Effect<A, E, R>,
+			policy: PolicyFn<AuthorizedActor<Action, Entity>>,
 		) => {
 			return (
 				input: Input,
-				tx?: <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, DatabaseError>,
-			) => {
-				return queryFn(tx ?? execute, input)
+				// The transaction executor type passed here must match the one defined in `transaction`
+				tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
+			): Effect.Effect<A, E | DatabaseError, R | AuthorizedActor<Action, Entity>> => {
+				// Ensure the executor type matches what queryFn expects
+				const executor = tx ?? execute
+				// Cast needed if the queryFn strictly expects the execute signature type
+				// but receives the tx signature type. They should be compatible.
+				return queryFn(
+					executor as <T>(
+						fn: (client: Client | TransactionClient) => Promise<T>,
+					) => Effect.Effect<T, DatabaseError>,
+					input,
+				).pipe(policy)
 			}
 		}
 

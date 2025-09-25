@@ -11,6 +11,7 @@ export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("Chan
 			ChannelMember.Model,
 			{
 				idColumn: "id",
+				name: "channelMember",
 			},
 		)
 

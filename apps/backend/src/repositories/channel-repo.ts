@@ -8,6 +8,7 @@ export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
 	effect: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.channelsTable, Channel.Model, {
 			idColumn: "id",
+			name: "channel",
 		})
 
 		return baseRepo
