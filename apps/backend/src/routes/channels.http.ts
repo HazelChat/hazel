@@ -1,10 +1,17 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
 import { ChannelMemberId } from "@hazel/db/schema"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import {
+	CurrentUser,
+	InternalServerError,
+	policyUse,
+	withRemapDbErrors,
+	withSystemActor,
+} from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { ChannelPolicy } from "../policies/channel-policy"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
 
@@ -28,7 +35,10 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 								const createdChannel = yield* ChannelRepo.insert({
 									...payload,
 									deletedAt: null,
-								}).pipe(Effect.map((res) => res[0]!))
+								}).pipe(
+									policyUse(ChannelPolicy.canCreate(payload.organizationId)),
+									Effect.map((res) => res[0]!),
+								)
 
 								yield* ChannelMemberRepo.insert({
 									channelId: createdChannel.id,
@@ -40,27 +50,14 @@ export const HttpChannelLive = HttpApiBuilder.group(HazelApi, "channels", (handl
 									notificationCount: 0,
 									joinedAt: new Date(),
 									deletedAt: null,
-								})
+								}).pipe(withSystemActor)
 
 								const txid = yield* generateTransactionId(tx)
 
 								return { createdChannel, txid }
 							}),
 						)
-						.pipe(
-							Effect.catchTags({
-								DatabaseError: (err) =>
-									new InternalServerError({
-										message: "Error Creating Channel",
-										cause: err,
-									}),
-								ParseError: (err) =>
-									new InternalServerError({
-										message: "Error Parsing Response Schema",
-										cause: err,
-									}),
-							}),
-						)
+						.pipe(withRemapDbErrors("Channel", "create"))
 
 					return {
 						data: createdChannel,

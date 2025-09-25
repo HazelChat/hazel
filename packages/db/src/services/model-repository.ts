@@ -30,7 +30,7 @@ export function makeRepository<
 				db.makeQueryWithSchema(
 					schema.insert as Schema.Schema<S["insert"]>,
 					(execute, input) => execute((client) => client.insert(table).values([input]).returning()),
-					policyRequire(options.name, "insert"),
+					policyRequire(options.name, "create"),
 				)(data),
 			) as unknown as Effect.Effect<RecordType[], DatabaseError | ParseError>
 
@@ -38,7 +38,7 @@ export function makeRepository<
 			db.makeQueryWithSchema(
 				schema.insert as Schema.Schema<S["insert"]>,
 				(execute, input) => execute((client) => client.insert(table).values(input)),
-				policyRequire(options.name, "insert"),
+				policyRequire(options.name, "create"),
 			)(data) as unknown as Effect.Effect<void, DatabaseError | ParseError>
 
 		const update = (data: S["update"]["Type"]) =>

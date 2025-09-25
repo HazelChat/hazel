@@ -670,12 +670,12 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 	readonly insert: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<RecordType[], DatabaseError | ParseError, AuthorizedActor<Name, "insert">>
+	) => Effect.Effect<RecordType[], DatabaseError | ParseError, AuthorizedActor<Name, "create">>
 
 	readonly insertVoid: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError | ParseError, AuthorizedActor<Name, "insert">>
+	) => Effect.Effect<void, DatabaseError | ParseError, AuthorizedActor<Name, "create">>
 
 	readonly update: (
 		update: PartialExcept<S["update"]["Type"], Col>,
