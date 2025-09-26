@@ -8,7 +8,11 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 
 		const organziationMemberRepo = yield* OrganizationMemberRepo
 
-		const canCreate = () => UnauthorizedError.refail(policyEntity, "create")(Effect.succeed(true))
+		const canCreate = () =>
+			UnauthorizedError.refail(
+				policyEntity,
+				"create",
+			)(policy(policyEntity, "create", (_actor) => Effect.succeed(true)))
 
 		const canUpdate = (id: OrganizationId) =>
 			UnauthorizedError.refail(

@@ -22,13 +22,12 @@ import { MessageReactionPolicy } from "./policies/message-reaction-policy"
 import { OrganizationMemberPolicy } from "./policies/organization-member-policy"
 import { OrganizationPolicy } from "./policies/organization-policy"
 import { PinnedMessagePolicy } from "./policies/pinned-message-policy"
+import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
-import { DirectMessageParticipantRepo } from "./repositories/direct-message-participant-repo"
 import { InvitationRepo } from "./repositories/invitation-repo"
-import { MessageReactionRepo } from "./repositories/message-reaction-repo"
 import { MessageRepo } from "./repositories/message-repo"
 import { NotificationRepo } from "./repositories/notification-repo"
 import { OrganizationMemberRepo } from "./repositories/organization-member-repo"
@@ -98,7 +97,7 @@ const PolicyLive = Layer.mergeAll(
 	UserPolicy.Default,
 	AttachmentPolicy.Default,
 	PinnedMessagePolicy.Default,
-	TypingIndicatorRepo.Default,
+	TypingIndicatorPolicy.Default,
 )
 
 const MainLive = Layer.mergeAll(
