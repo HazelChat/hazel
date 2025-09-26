@@ -31,6 +31,9 @@ import { NavUser } from "./nav-user"
 import { SidebarFavoriteGroup } from "./sidebar-favorite-group"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 
+import { ErrorBoundary } from "react-error-boundary";
+
+
 export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
 	const { isMobile } = useSidebar()
 	const params = useParams({ from: "/_app/$orgId" })
@@ -43,7 +46,9 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 				className="w-[calc(var(--sidebar-width-icon)+1px)]! border-primary border-r"
 			>
 				<SidebarHeader>
-					<WorkspaceSwitcher />
+					<ErrorBoundary fallback={<div>Error</div>}>
+						<WorkspaceSwitcher />
+					</ErrorBoundary>
 				</SidebarHeader>
 				<SidebarContent>
 					<SidebarGroup>

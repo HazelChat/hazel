@@ -67,6 +67,7 @@
 		"react-aria": "^3.43.2",
 		"react-aria-components": "^1.12.2",
 		"react-dom": "19.1.1",
+		"react-error-boundary": "^6.0.0",
 		"react-stately": "^3.41.0",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
