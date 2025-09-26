@@ -1,6 +1,6 @@
 import { and, Database, eq, ModelRepository, schema } from "@hazel/db"
 import { TypingIndicator } from "@hazel/db/models"
-import type { ChannelId, ChannelMemberId } from "@hazel/db/schema"
+import { type ChannelId, type ChannelMemberId, policyRequire } from "@hazel/db/schema"
 import { Effect } from "effect"
 import { DatabaseLive } from "../services/database"
 
@@ -13,6 +13,7 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 			TypingIndicator.Model,
 			{
 				idColumn: "id",
+				name: "TypingIndicator",
 			},
 		)
 
@@ -24,17 +25,19 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 			channelId: ChannelId
 			memberId: ChannelMemberId
 		}) =>
-			db.makeQuery((execute, _data) =>
-				execute((client) =>
-					client
-						.delete(schema.typingIndicatorsTable)
-						.where(
-							and(
-								eq(schema.typingIndicatorsTable.channelId, channelId),
-								eq(schema.typingIndicatorsTable.memberId, memberId),
+			db.makeQuery(
+				(execute, _data) =>
+					execute((client) =>
+						client
+							.delete(schema.typingIndicatorsTable)
+							.where(
+								and(
+									eq(schema.typingIndicatorsTable.channelId, channelId),
+									eq(schema.typingIndicatorsTable.memberId, memberId),
+								),
 							),
-						),
-				),
+					),
+				policyRequire("TypingIndicator", "delete"),
 			)({ channelId, memberId })
 
 		return {

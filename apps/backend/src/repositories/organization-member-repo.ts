@@ -14,6 +14,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 				OrganizationMember.Model,
 				{
 					idColumn: "id",
+					name: "OrganizationMember",
 				},
 			)
 			const db = yield* Database.Database

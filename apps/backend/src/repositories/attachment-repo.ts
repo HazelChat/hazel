@@ -8,6 +8,7 @@ export class AttachmentRepo extends Effect.Service<AttachmentRepo>()("Attachment
 	effect: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.attachmentsTable, Attachment.Model, {
 			idColumn: "id",
+			name: "attachment",
 		})
 
 		return baseRepo

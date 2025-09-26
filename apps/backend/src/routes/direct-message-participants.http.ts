@@ -1,9 +1,10 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse } from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
+import { DirectMessageParticipantPolicy } from "../policies/direct-message-participant-policy"
 import { DirectMessageParticipantRepo } from "../repositories/direct-message-participant-repo"
 
 export const HttpDirectMessageParticipantLive = HttpApiBuilder.group(
@@ -26,7 +27,12 @@ export const HttpDirectMessageParticipantLive = HttpApiBuilder.group(
 										yield* DirectMessageParticipantRepo.insert({
 											...payload,
 											userId: user.id,
-										}).pipe(Effect.map((res) => res[0]!))
+										}).pipe(
+											Effect.map((res) => res[0]!),
+											policyUse(
+												DirectMessageParticipantPolicy.canCreate(payload.channelId),
+											),
+										)
 
 									const txid = yield* generateTransactionId(tx)
 
@@ -64,7 +70,7 @@ export const HttpDirectMessageParticipantLive = HttpApiBuilder.group(
 										yield* DirectMessageParticipantRepo.update({
 											id: path.id,
 											...payload,
-										})
+										}).pipe(policyUse(DirectMessageParticipantPolicy.canUpdate(path.id)))
 
 									const txid = yield* generateTransactionId(tx)
 
@@ -98,7 +104,9 @@ export const HttpDirectMessageParticipantLive = HttpApiBuilder.group(
 						const { txid } = yield* db
 							.transaction(
 								Effect.fnUntraced(function* (tx) {
-									yield* DirectMessageParticipantRepo.deleteById(path.id)
+									yield* DirectMessageParticipantRepo.deleteById(path.id).pipe(
+										policyUse(DirectMessageParticipantPolicy.canDelete(path.id)),
+									)
 
 									const txid = yield* generateTransactionId(tx)
 

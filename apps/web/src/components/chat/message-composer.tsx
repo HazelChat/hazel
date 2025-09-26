@@ -32,10 +32,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 			q
 				.from({ member: channelMemberCollection })
 				.where(({ member }) =>
-					and(
-						eq(member.channelId, channelId),
-						eq(member.userId, user?.id || '')
-					)
+					and(eq(member.channelId, channelId), eq(member.userId, user?.id || "")),
 				)
 				.orderBy(({ member }) => member.createdAt, "desc")
 				.limit(1),

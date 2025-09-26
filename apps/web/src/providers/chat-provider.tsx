@@ -259,7 +259,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		console.log("unpinMessage not fully implemented - need pinned message ID lookup")
 	}
 
-
 	const createThread = async (messageId: MessageId) => {
 		// Find the message to create thread for
 		const message = messages.find((m) => m.id === messageId)
