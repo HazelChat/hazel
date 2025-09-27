@@ -59,8 +59,8 @@ const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute).pipe(
 	Layer.provide(
 		HttpLayerRouter.cors({
-			allowedOrigins: ["*"],
-			allowedMethods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
+			allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 			credentials: true,
 		}),
 	),

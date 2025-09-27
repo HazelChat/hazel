@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const refreshUser = async () => {
 		try {
 			const response = await fetch(`${backendUrl}/users/me`, {
-				credentials: "include", // Include cookies in the request
+				credentials: "include", 
 			})
 
 			if (response.ok) {
@@ -49,9 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	// Login by fetching the authorization URL from backend
 	const login = async (returnTo?: string) => {
 		const loginUrl = new URL(`${backendUrl}/auth/login`)
-		if (returnTo) {
-			loginUrl.searchParams.append("returnTo", returnTo)
-		}
+		loginUrl.searchParams.append("returnTo", returnTo || location.href)
 
 		const response = await fetch(loginUrl.toString(), {
 			credentials: "include",

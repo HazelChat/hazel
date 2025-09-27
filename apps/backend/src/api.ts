@@ -117,7 +117,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 		HttpApiEndpoint.get("login")`/login`
 			.addSuccess(LoginResponse)
 			.addError(InternalServerError)
-			.setUrlParams(Schema.Struct({ returnTo: Schema.optional(Schema.String) }))
+			.setUrlParams(Schema.Struct({ returnTo: Schema.String, workosOrganizationId: Schema.optional(Schema.String), invitationToken: Schema.optional(Schema.String) }))
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Login",
@@ -179,5 +179,4 @@ export class HazelApi extends HttpApi.make("HazelApp")
 		}),
 	) {}
 
-// Re-export commonly used types from collections for backward compatibility
 export * from "./api/electric/collections"

@@ -12,29 +12,29 @@ export const HttpUserLive = HttpApiBuilder.group(HazelApi, "users", (handlers) =
 		const db = yield* Database.Database
 
 		return handlers
-			.handle(
-				"me",
-				Effect.gen(function* () {
-					const currentUser = yield* CurrentUser.Schema
-					const userRepo = yield* UserRepo
+			// .handle(
+			// 	"me",
+			// 	Effect.gen(function* () {
+			// 		const currentUser = yield* CurrentUser.Schema
+			// 		const userRepo = yield* UserRepo
 
-					const user = yield* userRepo.findById(currentUser.id).pipe(
-						Effect.orDie,
-					)
+			// 		const user = yield* userRepo.findById(currentUser.id).pipe(
+			// 			Effect.orDie,
+			// 		)
 
-					if (!user) {
-						return yield* Effect.fail(
-							new InternalServerError({
-								message: "Current user not found",
-								detail: "The authenticated user could not be found in the database",
-								cause: new Error("User not found"),
-							}),
-						)
-					}
+			// 		if (!user) {
+			// 			return yield* Effect.fail(
+			// 				new InternalServerError({
+			// 					message: "Current user not found",
+			// 					detail: "The authenticated user could not be found in the database",
+			// 					cause: new Error("User not found"),
+			// 				}),
+			// 			)
+			// 		}
 
-					return user
-				}),
-			)
+			// 		return user
+			// 	}),
+			// )
 			.handle(
 				"create",
 				Effect.fn(function* ({ payload }) {
