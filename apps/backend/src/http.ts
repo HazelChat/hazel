@@ -2,6 +2,7 @@ import { HttpLayerRouter } from "@effect/platform"
 import { Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpAttachmentLive } from "./routes/attachments.http"
+import { HttpAuthLive } from "./routes/auth.http"
 import { HttpChannelMemberLive } from "./routes/channel-members.http"
 import { HttpChannelLive } from "./routes/channels.http"
 import { HttpDirectMessageParticipantLive } from "./routes/direct-message-participants.http"
@@ -22,6 +23,7 @@ export const HttpApiRoutes = HttpLayerRouter.addHttpApi(HazelApi, {
 	openapiPath: "/docs/openapi.json",
 }).pipe(
 	Layer.provide(HttpRootLive),
+	Layer.provide(HttpAuthLive),
 	Layer.provide(HttpChannelLive),
 	Layer.provide(HttpChannelMemberLive),
 	Layer.provide(HttpMessageLive),

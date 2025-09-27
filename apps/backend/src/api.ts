@@ -103,6 +103,39 @@ export class MockDataGroup extends HttpApiGroup.make("mockData")
 	.prefix("/mock-data")
 	.middleware(CurrentUser.Authorization) {}
 
+export class AuthCallbackRequest extends Schema.Class<AuthCallbackRequest>("AuthCallbackRequest")({
+	code: Schema.String,
+	state: Schema.optional(Schema.String),
+}) {}
+
+export class AuthGroup extends HttpApiGroup.make("auth")
+	.add(
+		HttpApiEndpoint.get("login")`/login`
+			.addSuccess(Schema.Void, { status: 302 })
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Login",
+					description: "Redirect to WorkOS for authentication",
+					summary: "Initiate login flow",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("callback")`/callback`
+			.addSuccess(Schema.Void, { status: 302 })
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "OAuth Callback",
+					description: "Handle OAuth callback from WorkOS and set session cookie",
+					summary: "Process OAuth callback",
+				}),
+			),
+	)
+	.prefix("/auth") {}
+
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(ChannelGroup)
 	.add(ChannelMemberGroup)
@@ -118,6 +151,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(DirectMessageParticipantGroup)
 	.add(TypingIndicatorGroup)
 	.add(RootGroup)
+	.add(AuthGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)
 	.annotateContext(
