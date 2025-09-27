@@ -1,5 +1,6 @@
 import type { ChannelId, ChannelMemberId } from "@hazel/db/schema"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { upsertTypingIndicator } from "~/atoms/typing-indicator-atom"
 import { TypingIndicatorService } from "~/services/typing-indicator-service"
 
 interface UseTypingOptions {
@@ -54,6 +55,10 @@ export function useTyping({
 				memberId,
 				debounceDelay,
 				typingTimeout,
+				onUpsert: upsertTypingIndicator,
+				onDelete: async () => {
+					// We don't actually delete anymore, we let the backend cleanup handle it
+				},
 			})
 
 			isInitializedRef.current = true

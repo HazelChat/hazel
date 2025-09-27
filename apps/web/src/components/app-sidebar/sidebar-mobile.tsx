@@ -14,9 +14,7 @@ export function SidebarMobile() {
 	const { data: organizations } = useLiveQuery(
 		(q) =>
 			organizationId
-				? q
-						.from({ org: organizationCollection })
-						.where(({ org }) => eq(org.id, organizationId))
+				? q.from({ org: organizationCollection }).where(({ org }) => eq(org.id, organizationId))
 				: null,
 		[organizationId],
 	)

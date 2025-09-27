@@ -18,26 +18,14 @@ export const HttpTypingIndicatorLive = HttpApiBuilder.group(HazelApi, "typingInd
 					const { typingIndicator, txid } = yield* db
 						.transaction(
 							Effect.fnUntraced(function* (tx) {
-								// First, delete any existing typing indicator for this user in this channel
-								yield* TypingIndicatorRepo.deleteByChannelAndMember({
+								// Use upsert to create or update typing indicator
+								const result = yield* TypingIndicatorRepo.upsertByChannelAndMember({
 									channelId: payload.channelId,
 									memberId: payload.memberId,
-								}).pipe(
-									policyUse(
-										TypingIndicatorPolicy.canDelete({
-											memberId: payload.memberId,
-										}),
-									),
-								)
+									lastTyped: payload.lastTyped ?? Date.now(),
+								}).pipe(policyUse(TypingIndicatorPolicy.canCreate(payload.channelId)))
 
-								// Then create a new one with current timestamp
-								const typingIndicator = yield* TypingIndicatorRepo.insert({
-									...payload,
-									lastTyped: Date.now(),
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(TypingIndicatorPolicy.canCreate(payload.channelId)),
-								)
+								const typingIndicator = result[0]!
 
 								const txid = yield* generateTransactionId(tx)
 

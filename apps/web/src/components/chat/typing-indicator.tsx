@@ -1,14 +1,13 @@
 import { useChat } from "~/hooks/use-chat"
+import { useTypingIndicators } from "~/hooks/use-typing-indicators"
 
 export function TypingIndicator() {
-	const { typingUsers } = useChat()
+	const { channelId } = useChat()
+
+	const { typingUsers } = useTypingIndicators({ channelId })
 
 	if (typingUsers.length === 0) {
-		return (
-			<div className="px-4 py-2">
-				
-			</div>
-		)
+		return <div className="px-4 py-2"></div>
 	}
 
 	const typingText = () => {
@@ -25,9 +24,9 @@ export function TypingIndicator() {
 		<div className="px-4 py-2">
 			<div className="flex h-3 items-center gap-2 text-quaternary text-xs">
 				<div className="flex gap-1">
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.3s]" />
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.15s]" />
-					<span className="inline-block h-2 w-2 animate-bounce rounded-full bg-quaternary" />
+					<span className="inline-block size-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.3s]" />
+					<span className="inline-block size-2 animate-bounce rounded-full bg-quaternary [animation-delay:-0.15s]" />
+					<span className="inline-block size-2 animate-bounce rounded-full bg-quaternary" />
 				</div>
 				<span>{typingText()}</span>
 			</div>

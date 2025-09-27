@@ -902,11 +902,11 @@ export const typingIndicatorCollection = createCollection(
 		onDelete: async ({ transaction }) => {
 			const { original: deletedTypingIndicator } = transaction.mutations[0]
 			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
+			const accessToken = await workOsClient.getAccessToken()
 
 			const results = await Effect.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* getBackendClient(accessToken)
 
 					return yield* client.typingIndicators.delete({
 						path: {

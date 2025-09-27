@@ -1,4 +1,4 @@
-import type { Channel, ChannelMember, Message, User } from "@hazel/db/models"
+import type { Channel, Message } from "@hazel/db/models"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -14,21 +14,12 @@ import { v4 as uuid } from "uuid"
 import { sendMessage as sendMessageAction } from "~/db/actions"
 import {
 	channelCollection,
-	channelMemberCollection,
 	messageCollection,
 	messageReactionCollection,
 	pinnedMessageCollection,
-	typingIndicatorCollection,
-	userCollection,
 } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useUser } from "~/lib/auth"
-
-type TypingUser = {
-	user: typeof User.Model.Type
-	member: typeof ChannelMember.Model.Type
-}
-type TypingUsers = TypingUser[]
 
 interface ChatContextValue {
 	channelId: ChannelId
@@ -47,7 +38,6 @@ interface ChatContextValue {
 	removeReaction: (reactionId: MessageReactionId) => void
 	pinMessage: (messageId: MessageId) => void
 	unpinMessage: (messageId: MessageId) => void
-	typingUsers: TypingUsers
 	createThread: (messageId: MessageId) => Promise<void>
 	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
 	closeThread: () => void
@@ -122,75 +112,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		[channelId],
 	)
 
-	// Fetch typing indicators for this channel
-	const { data: typingIndicatorsData } = useLiveQuery(
-		(q) =>
-			q
-				.from({ typing: typingIndicatorCollection })
-				.where(({ typing }) => eq(typing.channelId, channelId))
-				.orderBy(({ typing }) => typing.lastTyped, "desc")
-				.limit(10),
-		[channelId],
-	)
 
-	// Fetch all channel members
-	const { data: channelMembersData } = useLiveQuery(
-		(q) =>
-			q
-				.from({ member: channelMemberCollection })
-				.where(({ member }) => eq(member.channelId, channelId))
-				.orderBy(({ member }) => member.createdAt, "desc"),
-		[channelId],
-	)
-
-	// Fetch all users in the organization (they should already be synced)
-	const { data: usersData } = useLiveQuery(
-		(q) =>
-			q
-				.from({ user: userCollection })
-				.orderBy(({ user }) => user.createdAt, "desc")
-				.limit(100),
-		[],
-	)
-
-	// Get current user's channel member
-	const currentChannelMember = useMemo(() => {
-		if (!user?.id || !channelMembersData) return null
-		return channelMembersData.find((m) => m.userId === user.id)
-	}, [user?.id, channelMembersData])
-
-	// Build typing users list with client-side filtering
-	const typingUsers: TypingUsers = useMemo(() => {
-		if (!typingIndicatorsData || !channelMembersData || !usersData) return []
-
-		const fiveSecondsAgo = Date.now() - 5000
-
-		return typingIndicatorsData
-			.filter((indicator) => {
-				// Filter out stale indicators
-				if (indicator.lastTyped < fiveSecondsAgo) return false
-				// Filter out current user
-				if (currentChannelMember && indicator.memberId === currentChannelMember.id) return false
-				return true
-			})
-			.map((indicator) => {
-				const member = channelMembersData.find((m) => m.id === indicator.memberId)
-				if (!member) return null
-				const user = usersData.find((u) => u.id === member.userId)
-				if (!user) return null
-				return { member, user }
-			})
-			.filter((tu): tu is TypingUser => tu !== null)
-	}, [typingIndicatorsData, channelMembersData, usersData, currentChannelMember])
-
-	// Auto-refresh to update typing indicators
-	const [, setRefreshTick] = useState(0)
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setRefreshTick((tick) => tick + 1)
-		}, 2000)
-		return () => clearInterval(interval)
-	}, [])
 
 	// Message operations
 	const sendMessage = ({ content, attachments }: { content: string; attachments?: AttachmentId[] }) => {
@@ -364,7 +286,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			removeReaction,
 			pinMessage,
 			unpinMessage,
-			typingUsers,
 			createThread,
 			openThread,
 			closeThread,
@@ -382,7 +303,6 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			isLoadingMessages,
 			isLoadingNext,
 			isLoadingPrev,
-			typingUsers,
 			organizationId,
 			activeThreadChannelId,
 			activeThreadMessageId,

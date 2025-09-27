@@ -9,7 +9,7 @@ import {
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { S3 } from "@effect-aws/client-s3"
 import { MultipartUpload } from "@effect-aws/s3"
-import { Config, Layer } from "effect"
+import { Config, Effect, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -128,6 +128,7 @@ const MainLive = Layer.mergeAll(
 	),
 )
 
+// Start the server
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
 		(request) => request.url === "/health" || request.method === "OPTIONS",
@@ -139,3 +140,6 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 	Layer.launch,
 	BunRuntime.runMain,
 )
+
+// Note: The typing indicator cleanup will be started manually after server startup
+// to avoid complexity with the Layer system

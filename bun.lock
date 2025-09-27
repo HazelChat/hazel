@@ -34,6 +34,7 @@
         "effect": "^3.17.14",
         "jose": "^6.1.0",
         "pg": "^8.16.3",
+        "uuid": "^13.0.0",
       },
       "devDependencies": {
         "@effect/language-service": "^0.38.1",

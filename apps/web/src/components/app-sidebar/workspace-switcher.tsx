@@ -49,7 +49,6 @@ export const WorkspaceSwitcher = () => {
 		[session?.id],
 	)
 
-
 	const currentOrg = currentOrgData?.[0]
 	const organizations = userOrganizations?.map((row) => row.org) || []
 

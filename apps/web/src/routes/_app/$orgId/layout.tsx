@@ -40,8 +40,7 @@ function RouteComponent() {
 			<AppSidebar setOpenCmd={setOpenCmd} />
 			<SidebarInset>
 				<ErrorBoundary fallback={<></>}>
-				<SidebarMobile />
-
+					<SidebarMobile />
 				</ErrorBoundary>
 				<Outlet />
 				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />

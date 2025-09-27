@@ -25,17 +25,26 @@ export class TypingIndicatorNotFoundError extends Schema.TaggedError<TypingIndic
 	},
 ) {}
 
+// Payload for creating/upserting typing indicator
+export class CreateTypingIndicatorPayload extends Schema.Class<CreateTypingIndicatorPayload>(
+	"CreateTypingIndicatorPayload",
+)({
+	channelId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelId")),
+	memberId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelMemberId")),
+	lastTyped: Schema.optional(Schema.Number),
+}) {}
+
 export class TypingIndicatorGroup extends HttpApiGroup.make("typingIndicators")
 	.add(
 		HttpApiEndpoint.post("create")`/`
-			.setPayload(TypingIndicator.Model.json)
+			.setPayload(CreateTypingIndicatorPayload)
 			.addSuccess(TypingIndicatorResponse)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.annotateContext(
 				OpenApi.annotations({
-					title: "Create Typing Indicator",
-					description: "Record that a user is typing in a channel",
+					title: "Create/Upsert Typing Indicator",
+					description: "Record that a user is typing in a channel (upserts if exists)",
 					summary: "Start typing",
 				}),
 			),

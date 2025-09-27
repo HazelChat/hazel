@@ -1,5 +1,5 @@
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/effect-lib"
-import { bigint, index, pgTable, uuid } from "drizzle-orm/pg-core"
+import { bigint, index, pgTable, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 // Typing indicators table - ephemeral data for real-time typing status
 export const typingIndicatorsTable = pgTable(
@@ -11,7 +11,7 @@ export const typingIndicatorsTable = pgTable(
 		lastTyped: bigint({ mode: "number" }).notNull(),
 	},
 	(table) => [
-		index("typing_indicators_member_idx").on(table.channelId, table.memberId),
+		uniqueIndex("typing_indicators_channel_member_unique").on(table.channelId, table.memberId),
 		index("typing_indicators_channel_timestamp_idx").on(table.channelId, table.lastTyped),
 		index("typing_indicators_timestamp_idx").on(table.lastTyped),
 	],

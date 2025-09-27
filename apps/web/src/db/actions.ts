@@ -1,10 +1,18 @@
-import { AttachmentId, type ChannelId, MessageId, type OrganizationId, type UserId } from "@hazel/db/schema"
+import {
+	AttachmentId,
+	type ChannelId,
+	ChannelMemberId,
+	MessageId,
+	type OrganizationId,
+	TypingIndicatorId,
+	type UserId,
+} from "@hazel/db/schema"
 import { createOptimisticAction } from "@tanstack/react-db"
 import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
 import { getBackendClient } from "~/lib/client"
 import { authClient } from "~/providers/workos-provider"
-import { attachmentCollection, messageCollection } from "./collections"
+import { attachmentCollection, messageCollection, typingIndicatorCollection } from "./collections"
 
 export const uploadAttachment = createOptimisticAction<{
 	organizationId: OrganizationId
