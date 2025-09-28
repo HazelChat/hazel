@@ -10,10 +10,16 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 
 export class Context extends C.Tag("CurrentUser")<Context, Schema>() {}
 
+export const Cookie = HttpApiSecurity.apiKey({
+	in: "cookie",
+	key: "workos-session",
+})
+
 export class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorization", {
 	failure: UnauthorizedError,
 	provides: Context,
 	security: {
+		cookie: Cookie,
 		bearer: HttpApiSecurity.bearer,
 	},
 }) {}

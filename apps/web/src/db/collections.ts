@@ -16,7 +16,7 @@ import {
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection } from "@tanstack/react-db"
 import { Effect, Schema } from "effect"
-import { getBackendClient } from "~/lib/client"
+import { getBackendClient } from "~/lib/services/common/apiClient"
 import { authClient } from "~/providers/workos-provider"
 
 const electricUrl: string = import.meta.env.VITE_ELECTRIC_URL

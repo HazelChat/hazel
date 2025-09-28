@@ -7,3 +7,7 @@ export const OrganizationId = Schema.UUID.pipe(Schema.brand("@HazelChat/Organiza
 	description: "The ID of the organization",
 	title: "Organization ID",
 })
+
+export const AuthState = Schema.Struct({
+	returnTo: Schema.String,
+})

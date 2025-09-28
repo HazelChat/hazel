@@ -10,7 +10,7 @@ import {
 import { createOptimisticAction } from "@tanstack/react-db"
 import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
-import { getBackendClient } from "~/lib/client"
+import { getBackendClient } from "~/lib/services/common/apiClient"
 import { authClient } from "~/providers/workos-provider"
 import { attachmentCollection, messageCollection, typingIndicatorCollection } from "./collections"
 

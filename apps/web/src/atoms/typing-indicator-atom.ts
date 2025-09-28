@@ -1,6 +1,6 @@
-import { type ChannelId, type ChannelMemberId, TypingIndicatorId } from "@hazel/db/schema"
+import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/db/schema"
 import { Effect } from "effect"
-import { getBackendClient } from "~/lib/client"
+import { getBackendClient } from "~/lib/services/common/apiClient"
 import { authClient } from "~/providers/workos-provider"
 
 interface UpsertTypingIndicatorParams {

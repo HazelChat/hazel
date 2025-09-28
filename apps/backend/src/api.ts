@@ -117,7 +117,13 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 		HttpApiEndpoint.get("login")`/login`
 			.addSuccess(LoginResponse)
 			.addError(InternalServerError)
-			.setUrlParams(Schema.Struct({ returnTo: Schema.String, workosOrganizationId: Schema.optional(Schema.String), invitationToken: Schema.optional(Schema.String) }))
+			.setUrlParams(
+				Schema.Struct({
+					returnTo: Schema.String,
+					workosOrganizationId: Schema.optional(Schema.String),
+					invitationToken: Schema.optional(Schema.String),
+				}),
+			)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Login",
@@ -131,6 +137,12 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.addSuccess(Schema.Void, { status: 302 })
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
+			.setUrlParams(
+				Schema.Struct({
+					code: Schema.String,
+					state: Schema.String,
+				}),
+			)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "OAuth Callback",
@@ -139,18 +151,18 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 				}),
 			),
 	)
-	// .add(
-	// 	HttpApiEndpoint.post("logout")`/logout`
-	// 		.addSuccess(Schema.Struct({ message: Schema.String }))
-	// 		.addError(InternalServerError)
-	// 		.annotateContext(
-	// 			OpenApi.annotations({
-	// 				title: "Logout",
-	// 				description: "Clear session and logout user",
-	// 				summary: "End user session",
-	// 			}),
-	// 		),
-	// )
+	.add(
+		HttpApiEndpoint.post("logout")`/logout`
+			.addSuccess(Schema.Void)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Logout",
+					description: "Clear session and logout user",
+					summary: "End user session",
+				}),
+			),
+	)
 	.prefix("/auth") {}
 
 export class HazelApi extends HttpApi.make("HazelApp")

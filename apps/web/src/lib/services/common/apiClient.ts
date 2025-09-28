@@ -1,7 +1,15 @@
 import { FetchHttpClient, HttpApiClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { AtomHttpApi } from "@effect-atom/atom-react"
 import { HazelApi } from "@hazel/backend/api"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
+
+const CustomFetchLive = FetchHttpClient.layer.pipe(
+	Layer.provide(
+		Layer.succeed(FetchHttpClient.RequestInit, {
+			credentials: "include",
+		}),
+	),
+)
 
 export const getBackendClient = (accessToken: string) =>
 	HttpApiClient.make(HazelApi, {
@@ -18,15 +26,6 @@ export const getBackendClient = (accessToken: string) =>
 
 export class HazelApiClient extends AtomHttpApi.Tag<HazelApiClient>()("HazelApiClient", {
 	api: HazelApi,
-	httpClient: FetchHttpClient.layer,
+	httpClient: CustomFetchLive,
 	baseUrl: import.meta.env.VITE_BACKEND_URL || "http://localhost:3003",
-	// // TODO: Implement
-	// transformClient: (client) => {
-	// 	const pipedClient = client
-
-	// 	return HttpClient.mapRequest(
-	// 		pipedClient,
-	// 		HttpClientRequest.setHeader("Authorization", `Bearer ${accessToken}`),
-	// 	)
-	// },
 }) {}

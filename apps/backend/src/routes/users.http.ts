@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
 import { generateTransactionId } from "../lib/create-transactionId"
 import { UserPolicy } from "../policies/user-policy"
@@ -12,29 +12,14 @@ export const HttpUserLive = HttpApiBuilder.group(HazelApi, "users", (handlers) =
 		const db = yield* Database.Database
 
 		return handlers
-			// .handle(
-			// 	"me",
-			// 	Effect.gen(function* () {
-			// 		const currentUser = yield* CurrentUser.Schema
-			// 		const userRepo = yield* UserRepo
+			.handle(
+				"me",
+				Effect.fn(function* () {
+					const currentUser = yield* CurrentUser.Context
 
-			// 		const user = yield* userRepo.findById(currentUser.id).pipe(
-			// 			Effect.orDie,
-			// 		)
-
-			// 		if (!user) {
-			// 			return yield* Effect.fail(
-			// 				new InternalServerError({
-			// 					message: "Current user not found",
-			// 					detail: "The authenticated user could not be found in the database",
-			// 					cause: new Error("User not found"),
-			// 				}),
-			// 			)
-			// 		}
-
-			// 		return user
-			// 	}),
-			// )
+					return currentUser
+				}),
+			)
 			.handle(
 				"create",
 				Effect.fn(function* ({ payload }) {
