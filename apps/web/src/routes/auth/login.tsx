@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router"
-import { useAuth } from "../../providers/auth-provider"
 import { useEffect, useState } from "react"
+import { useAuth } from "../../providers/auth-provider"
 
 export const Route = createFileRoute("/auth/login")({
 	component: LoginPage,
@@ -21,11 +21,10 @@ function LoginPage() {
 		if (!user && !isLoading && !isRedirecting && !error) {
 			// Attempt to login
 			setIsRedirecting(true)
-			login(search.returnTo || "/")
-				.catch((err) => {
-					setError(err.message || "Failed to initiate login")
-					setIsRedirecting(false)
-				})
+			login({ returnTo: location.host + search.returnTo || location.href }).catch((err) => {
+				setError(err.message || "Failed to initiate login")
+				setIsRedirecting(false)
+			})
 		}
 	}, [user, isLoading, login, search.returnTo, isRedirecting, error])
 
@@ -52,7 +51,7 @@ function LoginPage() {
 							setError(null)
 							setIsRedirecting(false)
 						}}
-						className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition-colors"
+						className="rounded-lg bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
 					>
 						Try Again
 					</button>
@@ -64,7 +63,6 @@ function LoginPage() {
 	return (
 		<div className="flex h-screen items-center justify-center">
 			<div className="text-center">
-				
 				<h1 className="mb-4 font-semibold text-2xl">Redirecting to login...</h1>
 				<div className="mx-auto h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2"></div>
 			</div>
