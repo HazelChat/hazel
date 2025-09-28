@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "@tanstack/react-router"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
-import { useUser } from "~/lib/auth"
+import { useAuth } from "~/providers/auth-provider"
 import { cx } from "~/utils/cx"
 import { CreateOrganizationModal } from "../application/modals/create-organization-modal"
 import { EmailInviteModal } from "../application/modals/email-invite-modal"
@@ -18,7 +18,7 @@ export const WorkspaceSwitcher = () => {
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
 
 	const params = useParams({ strict: false })
-	const { user, session, switchToOrganization } = useUser()
+	const { user, login } = useAuth()
 	const navigate = useNavigate()
 
 	const organizationId = params.orgId as OrganizationId
@@ -37,7 +37,7 @@ export const WorkspaceSwitcher = () => {
 
 	const { data: userOrganizations } = useLiveQuery(
 		(q) =>
-			user?.id && session?.id
+			user?.id
 				? q
 						.from({ member: organizationMemberCollection })
 						.innerJoin({ org: organizationCollection }, ({ member, org }) =>
@@ -46,7 +46,7 @@ export const WorkspaceSwitcher = () => {
 						.where(({ member }) => eq(member.userId, user.id))
 						.orderBy(({ member }) => member.createdAt, "asc")
 				: null,
-		[session?.id],
+		[user?.id],
 	)
 
 	const currentOrg = currentOrgData?.[0]
@@ -70,7 +70,7 @@ export const WorkspaceSwitcher = () => {
 
 				await navigate({ to: targetRoute })
 
-				await switchToOrganization({ organizationId: workosOrgId })
+				await login({ workosOrganizationId: workosOrgId })
 			}
 		} catch (error) {
 			console.error("Failed to switch organization:", error)

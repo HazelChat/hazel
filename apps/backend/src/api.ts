@@ -152,7 +152,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			),
 	)
 	.add(
-		HttpApiEndpoint.post("logout")`/logout`
+		HttpApiEndpoint.get("logout")`/logout`
 			.addSuccess(Schema.Void)
 			.addError(InternalServerError)
 			.annotateContext(

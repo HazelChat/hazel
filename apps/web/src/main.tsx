@@ -13,8 +13,6 @@ import { Loader } from "./components/loader.tsx"
 import { ThemeProvider } from "./components/theme-provider.tsx"
 import { AuthProvider } from "./providers/auth-provider.tsx"
 import reportWebVitals from "./reportWebVitals.ts"
-import { AuthKitProvider } from "@workos-inc/authkit-react"
-import { WorkOsProvider } from "./providers/workos-provider.tsx"
 
 const router = createRouter({
 	routeTree,
@@ -26,15 +24,10 @@ const router = createRouter({
 	defaultPendingComponent: Loader,
 	Wrap: ({ children }) => (
 		<ThemeProvider>
-			<WorkOsProvider
-			>
-
 			<AuthProvider>
 				<Toaster />
 				{children}
 			</AuthProvider>
-			</WorkOsProvider>
-
 		</ThemeProvider>
 	),
 })

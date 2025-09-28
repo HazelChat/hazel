@@ -4,7 +4,6 @@ import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
 import { ApiClient } from "~/lib/services/common/api-client"
 import { runtime } from "~/lib/services/common/runtime"
-import { authClient } from "~/providers/workos-provider"
 import { attachmentCollection, messageCollection, typingIndicatorCollection } from "./collections"
 
 export const uploadAttachment = createOptimisticAction<{

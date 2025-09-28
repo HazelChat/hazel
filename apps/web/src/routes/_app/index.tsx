@@ -2,14 +2,14 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { Loader } from "~/components/loader"
 import { organizationCollection } from "~/db/collections"
-import { useUser } from "~/lib/auth"
+import { useAuth } from "~/providers/auth-provider"
 
 export const Route = createFileRoute("/_app/")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { user, workosOrganizationId, isLoading: isAuthLoading } = useUser()
+	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const { data: organizations, isLoading } = useLiveQuery(
 		(q) => {
@@ -17,11 +17,11 @@ function RouteComponent() {
 				.from({
 					organizatios: organizationCollection,
 				})
-				.where(({ organizatios }) => eq(organizatios.workosId, workosOrganizationId))
+				.where(({ organizatios }) => eq(organizatios.workosId, user?.workosOrganizationId))
 				.orderBy(({ organizatios }) => organizatios.createdAt, "asc")
 				.limit(1)
 		},
-		[user?.id, workosOrganizationId],
+		[user?.id, user?.workosOrganizationId],
 	)
 
 	if (isLoading || isAuthLoading) {
