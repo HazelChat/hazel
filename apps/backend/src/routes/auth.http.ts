@@ -135,12 +135,14 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 		.handle("logout", () =>
 			Effect.gen(function* () {
 				const workos = yield* WorkOS
+				const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
 
 				const logoutUrl = yield* workos.getLogoutUrl().pipe(Effect.orDie)
 
 				yield* HttpApiBuilder.securitySetCookie(CurrentUser.Cookie, Redacted.make(""), {
 					secure: Bun.env.NODE_ENV === "production",
 					sameSite: "lax",
+					domain: cookieDomain,
 					path: "/",
 					maxAge: 0,
 				})
