@@ -20,7 +20,7 @@ import { IconThreeDotsMenuHorizontalStroke } from "~/components/icons/IconThreeD
 import IconUserUser03 from "~/components/icons/IconUserUser03"
 import { organizationMemberCollection, userCollection } from "~/db/collections"
 import { useUser } from "~/lib/auth"
-import { HazelApiClient } from "~/lib/services/common/apiClient"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 
 export const Route = createFileRoute("/_app/$orgId/")({
 	component: RouteComponent,

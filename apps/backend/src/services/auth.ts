@@ -48,8 +48,6 @@ export const AuthorizationLive = Layer.effect(
 						),
 					)
 
-					console.log("session", session)
-
 					if (!session.authenticated) {
 						return yield* Effect.fail(
 							new UnauthorizedError({

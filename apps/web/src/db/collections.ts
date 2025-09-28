@@ -16,8 +16,8 @@ import {
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection } from "@tanstack/react-db"
 import { Effect, Schema } from "effect"
-import { getBackendClient } from "~/lib/services/common/apiClient"
-import { authClient } from "~/providers/workos-provider"
+import { ApiClient } from "~/lib/services/common/api-client"
+import { runtime } from "~/lib/services/common/runtime"
 
 const electricUrl: string = import.meta.env.VITE_ELECTRIC_URL
 
@@ -37,12 +37,10 @@ export const organizationCollection = createCollection(
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
 			const { modified: newOrganization } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizations.create({
 						payload: newOrganization,
@@ -54,12 +52,10 @@ export const organizationCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newOrganization } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizations.update({
 						payload: newOrganization,
@@ -74,12 +70,10 @@ export const organizationCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedOrganization } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizations.delete({
 						path: {
@@ -109,12 +103,10 @@ export const invitationCollection = createCollection(
 		schema: Schema.standardSchemaV1(Invitation.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newInvitation } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.invitations.create({
 						payload: newInvitation,
@@ -126,12 +118,10 @@ export const invitationCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newInvitation } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.invitations.update({
 						payload: newInvitation,
@@ -146,12 +136,10 @@ export const invitationCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedInvitation } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.invitations.delete({
 						path: {
@@ -183,12 +171,9 @@ export const messageCollection = createCollection(
 		onInsert: async ({ transaction }) => {
 			const { modified: newMessage } = transaction.mutations[0]
 
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
-
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messages.create({
 						payload: newMessage,
@@ -200,12 +185,10 @@ export const messageCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newMessage } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messages.update({
 						payload: newMessage,
@@ -220,12 +203,10 @@ export const messageCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedMessage } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messages.delete({
 						path: {
@@ -255,12 +236,10 @@ export const messageReactionCollection = createCollection(
 		schema: Schema.standardSchemaV1(MessageReaction.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newMessageReaction } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messageReactions.create({
 						payload: newMessageReaction,
@@ -272,12 +251,10 @@ export const messageReactionCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newMessageReaction } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messageReactions.update({
 						payload: newMessageReaction,
@@ -292,12 +269,10 @@ export const messageReactionCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedMessageReaction } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.messageReactions.delete({
 						path: {
@@ -327,12 +302,10 @@ export const pinnedMessageCollection = createCollection(
 		schema: Schema.standardSchemaV1(PinnedMessage.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newPinnedMessage } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.pinnedMessages.create({
 						payload: newPinnedMessage,
@@ -344,12 +317,10 @@ export const pinnedMessageCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newPinnedMessage } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.pinnedMessages.update({
 						payload: newPinnedMessage,
@@ -364,12 +335,10 @@ export const pinnedMessageCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedPinnedMessage } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.pinnedMessages.delete({
 						path: {
@@ -399,12 +368,10 @@ export const notificationCollection = createCollection(
 		schema: Schema.standardSchemaV1(Notification.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newNotification } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.notifications.create({
 						payload: newNotification,
@@ -416,12 +383,10 @@ export const notificationCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newNotification } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.notifications.update({
 						payload: newNotification,
@@ -436,12 +401,10 @@ export const notificationCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedNotification } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.notifications.delete({
 						path: {
@@ -471,12 +434,10 @@ export const userCollection = createCollection(
 		schema: Schema.standardSchemaV1(User.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newUser } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.users.create({
 						payload: newUser,
@@ -488,12 +449,10 @@ export const userCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newUser } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.users.update({
 						payload: newUser,
@@ -508,12 +467,10 @@ export const userCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedUser } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.users.delete({
 						path: {
@@ -543,12 +500,10 @@ export const organizationMemberCollection = createCollection(
 		schema: Schema.standardSchemaV1(OrganizationMember.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newOrganizationMember } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizationMembers.create({
 						payload: newOrganizationMember,
@@ -560,12 +515,10 @@ export const organizationMemberCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newOrganizationMember } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizationMembers.update({
 						payload: newOrganizationMember,
@@ -580,12 +533,10 @@ export const organizationMemberCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedOrganizationMember } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.organizationMembers.delete({
 						path: {
@@ -616,12 +567,10 @@ export const channelCollection = createCollection(
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
 			const { modified: newChannel } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channels.create({
 						payload: newChannel,
@@ -633,12 +582,10 @@ export const channelCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newChannel } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channels.update({
 						payload: newChannel,
@@ -653,12 +600,10 @@ export const channelCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedChannel } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channels.delete({
 						path: {
@@ -690,12 +635,9 @@ export const channelMemberCollection = createCollection(
 		onInsert: async ({ transaction }) => {
 			const { modified: newChannelMember } = transaction.mutations[0]
 
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
-
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channelMembers.create({
 						payload: newChannelMember,
@@ -707,12 +649,10 @@ export const channelMemberCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newChannelMember } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channelMembers.update({
 						payload: newChannelMember,
@@ -727,12 +667,10 @@ export const channelMemberCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedChannelMember } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.channelMembers.delete({
 						path: {
@@ -763,12 +701,10 @@ export const attachmentCollection = createCollection(
 		getKey: (item) => item.id,
 		onDelete: async ({ transaction }) => {
 			const { original: deletedAttachment } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.attachments.delete({
 						path: {
@@ -795,12 +731,10 @@ export const directMessageParticipantCollection = createCollection(
 		schema: Schema.standardSchemaV1(DirectMessageParticipant.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newDirectMessageParticipant } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.directMessageParticipants.create({
 						payload: newDirectMessageParticipant,
@@ -812,12 +746,10 @@ export const directMessageParticipantCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newDirectMessageParticipant } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.directMessageParticipants.update({
 						payload: newDirectMessageParticipant,
@@ -832,12 +764,10 @@ export const directMessageParticipantCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedDirectMessageParticipant } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.directMessageParticipants.delete({
 						path: {
@@ -864,12 +794,10 @@ export const typingIndicatorCollection = createCollection(
 		schema: Schema.standardSchemaV1(TypingIndicator.Model.json),
 		getKey: (item) => item.id,
 		onInsert: async ({ transaction }) => {
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 			const { modified: newTypingIndicator } = transaction.mutations[0]
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.typingIndicators.create({
 						payload: newTypingIndicator,
@@ -881,12 +809,10 @@ export const typingIndicatorCollection = createCollection(
 		},
 		onUpdate: async ({ transaction }) => {
 			const { modified: newTypingIndicator } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const _accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(_accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.typingIndicators.update({
 						payload: newTypingIndicator,
@@ -901,12 +827,10 @@ export const typingIndicatorCollection = createCollection(
 		},
 		onDelete: async ({ transaction }) => {
 			const { original: deletedTypingIndicator } = transaction.mutations[0]
-			const workOsClient = await authClient
-			const accessToken = await workOsClient.getAccessToken()
 
-			const results = await Effect.runPromise(
+			const results = await runtime.runPromise(
 				Effect.gen(function* () {
-					const client = yield* getBackendClient(accessToken)
+					const client = yield* ApiClient
 
 					return yield* client.typingIndicators.delete({
 						path: {

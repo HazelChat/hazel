@@ -2,7 +2,7 @@ import { useAtom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { CurrentUser } from "@hazel/db/schema"
 import type { ReactNode } from "react"
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
-import { HazelApiClient } from "~/lib/services/common/apiClient"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 
 type User = typeof CurrentUser.Schema.Type
 

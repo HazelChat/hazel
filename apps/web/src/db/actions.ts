@@ -1,16 +1,9 @@
-import {
-	AttachmentId,
-	type ChannelId,
-	ChannelMemberId,
-	MessageId,
-	type OrganizationId,
-	TypingIndicatorId,
-	type UserId,
-} from "@hazel/db/schema"
+import { AttachmentId, type ChannelId, MessageId, type OrganizationId, type UserId } from "@hazel/db/schema"
 import { createOptimisticAction } from "@tanstack/react-db"
 import { Effect } from "effect"
 import { v4 as uuid } from "uuid"
-import { getBackendClient } from "~/lib/services/common/apiClient"
+import { ApiClient } from "~/lib/services/common/api-client"
+import { runtime } from "~/lib/services/common/runtime"
 import { authClient } from "~/providers/workos-provider"
 import { attachmentCollection, messageCollection, typingIndicatorCollection } from "./collections"
 
@@ -39,9 +32,6 @@ export const uploadAttachment = createOptimisticAction<{
 		return { attachmentId }
 	},
 	mutationFn: async (props, _params) => {
-		const workOsClient = await authClient
-		const accessToken = await workOsClient.getAccessToken()
-
 		const formData = new FormData()
 		// Ensure file name is included when appending file
 		formData.append("file", props.file, props.file.name)
@@ -49,9 +39,9 @@ export const uploadAttachment = createOptimisticAction<{
 		formData.append("channelId", props.channelId)
 		formData.append("fileName", props.file.name) // Also send file name separately
 
-		const { transactionId } = await Effect.runPromise(
+		const { transactionId } = await runtime.runPromise(
 			Effect.gen(function* () {
-				const client = yield* getBackendClient(accessToken)
+				const client = yield* ApiClient
 
 				return yield* client.attachments.upload({
 					payload: formData,
@@ -89,12 +79,9 @@ export const sendMessage = createOptimisticAction<{
 		return { messageId }
 	},
 	mutationFn: async (props, _params) => {
-		const workOsClient = await authClient
-		const accessToken = await workOsClient.getAccessToken()
-
-		const { transactionId } = await Effect.runPromise(
+		const { transactionId } = await runtime.runPromise(
 			Effect.gen(function* () {
-				const client = yield* getBackendClient(accessToken)
+				const client = yield* ApiClient
 
 				// Create the message with attachmentIds
 				return yield* client.messages.create({

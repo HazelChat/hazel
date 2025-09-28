@@ -12,7 +12,7 @@ import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { Form } from "~/components/base/form/form"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
-import { HazelApiClient } from "~/lib/services/common/apiClient"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 
 export const Route = createFileRoute("/_app/$orgId/settings/debug")({
 	component: DebugSettings,
