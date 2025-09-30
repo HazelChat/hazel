@@ -1,12 +1,13 @@
 import type { ChannelId, OrganizationId } from "@hazel/db/schema"
 import { Link, useParams } from "@tanstack/react-router"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import IconDeleteDustbin011 from "~/components/icons/IconDeleteDustbin011"
 import IconPencilEdit from "~/components/icons/IconPencilEdit"
 import { channelMemberCollection } from "~/db/collections"
 import { useChannelWithCurrentUser } from "~/db/hooks"
 import { useAuth } from "~/providers/auth-provider"
 import { cx } from "~/utils/cx"
+import { RenameChannelModal } from "../application/modals/rename-channel-modal"
 import { Avatar } from "../base/avatar/avatar"
 import { Dropdown } from "../base/dropdown/dropdown"
 import IconHashtagStroke from "../icons/IconHashtagStroke"
@@ -25,6 +26,7 @@ export interface ChannelItemProps {
 export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 	const params = useParams({ from: "/_app/$orgId" })
 	const organizationId = params?.orgId as OrganizationId
+	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
 
 	const { channel } = useChannelWithCurrentUser(channelId)
 
@@ -47,6 +49,10 @@ export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 			member.isFavorite = !member.isFavorite
 		})
 	}, [channel.currentUser.id])
+
+	const handleRename = useCallback(() => {
+		setIsRenameModalOpen(true)
+	}, [])
 
 	return (
 		<SidebarMenuItem>
@@ -99,6 +105,7 @@ export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 						</Dropdown.Item>
 						<Dropdown.Separator />
 						<Dropdown.Item
+							onAction={handleRename}
 							icon={(props) => (
 								<IconPencilEdit className={cx("text-amber-500", props.className)} />
 							)}
@@ -140,6 +147,11 @@ export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 					</Dropdown.Menu>
 				</Dropdown.Popover>
 			</Dropdown.Root>
+			<RenameChannelModal
+				channelId={channelId}
+				isOpen={isRenameModalOpen}
+				onOpenChange={setIsRenameModalOpen}
+			/>
 		</SidebarMenuItem>
 	)
 }

@@ -44,7 +44,7 @@
 		"@tanstack/electric-db-collection": "0.1.25",
 		"@tanstack/query-db-collection": "0.2.22",
 		"@tanstack/react-db": "0.1.23",
-		"@tanstack/react-form": "^1.23.4",
+		"@tanstack/react-form": "^1.23.5",
 		"@tanstack/react-query": "^5.90.2",
 		"@tanstack/react-router": "^1.132.7",
 		"@tanstack/react-router-devtools": "^1.132.11",
