@@ -13,7 +13,7 @@ import { Button } from "~/components/base/buttons/button"
 import { ButtonUtility } from "~/components/base/buttons/button-utility"
 import { invitationCollection, userCollection } from "~/db/collections"
 
-export const Route = createFileRoute("/_app/$orgId/settings/invitations")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/invitations")({
 	component: RouteComponent,
 })
 
@@ -25,7 +25,7 @@ function RouteComponent() {
 	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
 
-	const organizationId = params.orgId as OrganizationId
+	const organizationId = params.orgSlug as OrganizationId
 
 	const { data: invitations } = useLiveQuery(
 		(q) =>

@@ -5,7 +5,7 @@ import { TabList, Tabs } from "~/components/application/tabs/tabs"
 import { Input } from "~/components/base/input/input"
 import { NativeSelect } from "~/components/base/select/select-native"
 
-export const Route = createFileRoute("/_app/$orgId/settings")({
+export const Route = createFileRoute("/_app/$orgSlug/settings")({
 	component: RouteComponent,
 })
 
@@ -23,7 +23,7 @@ const tabs = [
 function RouteComponent() {
 	const location = useLocation()
 	const navigate = useNavigate()
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 
 	// Extract the current tab from the pathname
 	const pathSegments = location.pathname.split("/")
@@ -72,9 +72,9 @@ function RouteComponent() {
 								navigate({
 									to:
 										tabId === "appearance"
-											? "/$orgId/settings"
-											: `/$orgId/settings/${tabId}`,
-									params: { orgId },
+											? "/$orgSlug/settings"
+											: "/$orgSlug/settings/${tabId}",
+									params: { orgSlug },
 								})
 							}}
 							options={tabs.map((tab) => ({ label: tab.label, value: tab.id }))}
@@ -90,9 +90,9 @@ function RouteComponent() {
 								navigate({
 									to:
 										tabId === "appearance"
-											? "/$orgId/settings"
-											: `/$orgId/settings/${tabId}`,
-									params: { orgId },
+											? "/$orgSlug/settings"
+											: "/$orgSlug/settings/${tabId}",
+									params: { orgSlug },
 								})
 							}}
 						>

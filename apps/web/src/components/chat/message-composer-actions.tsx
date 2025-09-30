@@ -36,7 +36,7 @@ interface MessageComposerActionsProps {
 
 export const MessageComposerActions = forwardRef<MessageComposerActionsRef, MessageComposerActionsProps>(
 	({ attachmentIds, setAttachmentIds, uploads, onEmojiSelect }, ref) => {
-		const { orgId } = useParams({ from: "/_app/$orgId" })
+		const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 		const fileInputRef = useRef<HTMLInputElement>(null)
 		const [showUploadProgress, setShowUploadProgress] = useState(false)
 		const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
@@ -45,7 +45,7 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const { channelId } = useChat()
 
 		const { uploadFiles, clearUploads, isUploading } = useFileUpload({
-			organizationId: orgId as OrganizationId,
+			organizationId: orgSlug as OrganizationId,
 			channelId,
 			onUploadComplete: (attachmentId) => {
 				setAttachmentIds([...attachmentIds, attachmentId])

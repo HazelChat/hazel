@@ -538,7 +538,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								logoUrl: null,
 								settings: null,
 								deletedAt: null,
-								slug: null,
+								slug: typedEvent.data.name
+									.toLowerCase()
+									.replace(/[^a-z0-9]+/g, "-")
+									.replace(/^-|-$/g, ""),
 							})
 							break
 						}

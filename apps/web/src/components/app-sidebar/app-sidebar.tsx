@@ -33,8 +33,8 @@ import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
 	const { isMobile } = useSidebar()
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const params = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = params?.orgSlug as OrganizationId
 
 	return (
 		<Sidebar collapsible="icon" className="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
@@ -53,8 +53,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={"/$orgId"}
-										params={{ orgId: organizationId }}
+										to={"/$orgSlug"}
+										params={{ orgSlug: organizationId }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -67,8 +67,8 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 							<SidebarMenuItem>
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
-										to={"/$orgId/chat"}
-										params={{ orgId: organizationId }}
+										to={"/$orgSlug/chat"}
+										params={{ orgSlug: organizationId }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -240,16 +240,16 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 }
 
 const ActiveServer = () => {
-	const { orgId } = useParams({
-		from: "/_app/$orgId",
+	const { orgSlug } = useParams({
+		from: "/_app/$orgSlug",
 	})
 
 	const { data } = useLiveQuery(
 		(q) =>
 			q
 				.from({ organization: organizationCollection })
-				.where(({ organization }) => eq(organization.id, orgId as OrganizationId)),
-		[orgId],
+				.where(({ organization }) => eq(organization.id, orgSlug as OrganizationId)),
+		[orgSlug],
 	)
 
 	return <div className="font-semibold text-foreground text-lg">{data[0]?.name}</div>

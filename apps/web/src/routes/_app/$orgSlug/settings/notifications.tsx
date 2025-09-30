@@ -14,7 +14,7 @@ import { Separator } from "~/components/ui/separator"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { cx } from "~/utils/cx"
 
-export const Route = createFileRoute("/_app/$orgId/settings/notifications")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/notifications")({
 	component: NotificationsSettings,
 })
 

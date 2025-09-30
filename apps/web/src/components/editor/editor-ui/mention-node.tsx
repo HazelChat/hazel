@@ -73,7 +73,7 @@ export function MentionElement(
 const onSelectItem = getMentionOnSelectItem()
 
 export function MentionInputElement(props: PlateElementProps<TComboboxInputElement>) {
-	const { id } = useParams({ from: "/_app/$orgId/chat/$id" })
+	const { id } = useParams({ from: "/_app/$orgSlug/chat/$id" })
 	const { editor, element } = props
 	const [search, setSearch] = React.useState("")
 

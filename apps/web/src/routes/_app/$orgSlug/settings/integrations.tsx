@@ -7,7 +7,7 @@ import { TabList, Tabs } from "~/components/application/tabs/tabs"
 import { Button } from "~/components/base/buttons/button"
 import { Toggle } from "~/components/base/toggle/toggle"
 
-export const Route = createFileRoute("/_app/$orgId/settings/integrations")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/integrations")({
 	component: IntegrationsSettings,
 })
 
@@ -136,7 +136,7 @@ function IntegrationsSettings() {
 									<div className="w-max shrink-0 rounded-lg bg-white p-0.5 shadow-xs ring-1 ring-secondary ring-inset">
 										<img
 											src={integration.logo}
-											alt={`${integration.name} logo`}
+											alt={"${integration.name} logo"}
 											className="size-12 object-contain"
 										/>
 									</div>

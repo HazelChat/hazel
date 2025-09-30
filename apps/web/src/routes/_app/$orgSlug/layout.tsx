@@ -15,7 +15,7 @@ import {
 	organizationMemberCollection,
 } from "~/db/collections"
 
-export const Route = createFileRoute("/_app/$orgId")({
+export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
 	loader: async () => {
 		// TODO: Should be scoped to the organization

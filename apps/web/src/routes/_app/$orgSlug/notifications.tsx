@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-export const Route = createFileRoute("/_app/$orgId/notifications")({
+export const Route = createFileRoute("/_app/$orgSlug/notifications")({
 	component: RouteComponent,
 })
 

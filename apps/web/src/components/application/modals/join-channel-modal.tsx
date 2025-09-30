@@ -23,7 +23,7 @@ interface JoinChannelModalProps {
 
 export const JoinChannelModal = ({ isOpen, setIsOpen }: JoinChannelModalProps) => {
 	const [searchQuery, setSearchQuery] = useState("")
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { user } = useAuth()
 
 	const { data: userChannels } = useLiveQuery(
@@ -49,7 +49,7 @@ export const JoinChannelModal = ({ isOpen, setIsOpen }: JoinChannelModalProps) =
 				)
 				.select(({ channel }) => ({ ...channel }))
 		},
-		[user?.id, orgId],
+		[user?.id, orgSlug],
 	)
 
 	console.log("unjoinedChannels", unjoinedChannels)

@@ -22,13 +22,13 @@ import { organizationMemberCollection, userCollection } from "~/db/collections"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/")({
+export const Route = createFileRoute("/_app/$orgSlug/")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = orgSlug as OrganizationId
 	const navigate = useNavigate()
 	const [searchQuery, setSearchQuery] = useState("")
 
@@ -72,11 +72,11 @@ function RouteComponent() {
 					name: "New DM",
 					type: "direct",
 					parentChannelId: null,
-					organizationId: orgId as OrganizationId,
+					organizationId: orgSlug as OrganizationId,
 				},
 			})
 			if (result.data.id) {
-				await navigate({ to: "/$orgId/chat/$id", params: { orgId, id: result.data.id } })
+				await navigate({ to: "/$orgSlug/chat/$id", params: { orgSlug, id: result.data.id } })
 			}
 		} catch (error) {
 			console.error("Failed to create DM channel:", error)

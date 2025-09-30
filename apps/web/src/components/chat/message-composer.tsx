@@ -19,7 +19,7 @@ interface MessageComposerProps {
 }
 
 export const MessageComposer = ({ placeholder = "Type a message..." }: MessageComposerProps) => {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { user } = useAuth()
 	const { sendMessage, replyToMessageId, setReplyToMessageId, channelId } = useChat()
 	const editorRef = useRef<MarkdownEditorRef | null>(null)
@@ -52,7 +52,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 	})
 
 	const { uploads, uploadFiles, removeUpload, retryUpload } = useFileUpload({
-		organizationId: orgId as OrganizationId,
+		organizationId: orgSlug as OrganizationId,
 		channelId: channelId,
 		onUploadComplete: (attachmentId) => {
 			setAttachmentIds((prev) => [...prev, attachmentId])
@@ -70,7 +70,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 					...attachments,
 					fileName: attachments.fileName,
 				})),
-		[orgId],
+		[orgSlug],
 	)
 
 	const handleRemoveAttachment = (attachmentId: AttachmentId) => {

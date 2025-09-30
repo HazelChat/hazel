@@ -13,7 +13,7 @@ import { userCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/settings/profile")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/profile")({
 	component: ProfileSettings,
 })
 

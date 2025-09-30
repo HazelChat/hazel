@@ -7,8 +7,8 @@ import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useAuth } from "~/providers/auth-provider"
 
 export function NotificationManager() {
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const params = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = params?.orgSlug as OrganizationId
 	const { user } = useAuth()
 	const { playSound } = useNotificationSound()
 

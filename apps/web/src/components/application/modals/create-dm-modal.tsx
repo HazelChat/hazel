@@ -38,8 +38,8 @@ export const CreateDmModal = ({ isOpen, onOpenChange }: CreateDmModalProps) => {
 	const [selectedUsers, setSelectedUsers] = useState<(typeof User.Model.Type)[]>([])
 
 	const _navigate = useNavigate()
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = orgSlug as OrganizationId
 
 	// TODO: Implement
 	const { isUserOnline } = {

@@ -8,7 +8,7 @@ import { TypingIndicator } from "~/components/chat/typing-indicator"
 import { useChat } from "~/hooks/use-chat"
 import { ChatProvider } from "~/providers/chat-provider"
 
-export const Route = createFileRoute("/_app/$orgId/chat/$id")({
+export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	component: RouteComponent,
 })
 
@@ -45,8 +45,8 @@ function ChatContent() {
 }
 
 function RouteComponent() {
-	const { orgId, id } = Route.useParams()
-	const organizationId = orgId as OrganizationId
+	const { orgSlug, id } = Route.useParams()
+	const organizationId = orgSlug as OrganizationId
 
 	return (
 		<ChatProvider channelId={id as ChannelId} organizationId={organizationId}>

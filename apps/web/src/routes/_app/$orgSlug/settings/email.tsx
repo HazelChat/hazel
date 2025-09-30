@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { Form } from "~/components/base/form/form"
 
-export const Route = createFileRoute("/_app/$orgId/settings/billing")({
-	component: BillingSettings,
+export const Route = createFileRoute("/_app/$orgSlug/settings/email")({
+	component: EmailSettings,
 })
 
-function BillingSettings() {
+function EmailSettings() {
 	return (
 		<Form
 			className="flex flex-col gap-6 px-4 lg:px-8"
@@ -19,16 +19,16 @@ function BillingSettings() {
 			<SectionHeader.Root>
 				<SectionHeader.Group>
 					<div className="flex flex-1 flex-col justify-center gap-0.5 self-stretch">
-						<SectionHeader.Heading>Billing</SectionHeader.Heading>
+						<SectionHeader.Heading>Email</SectionHeader.Heading>
 						<SectionHeader.Subheading>
-							Manage your billing information and subscription.
+							Manage your email preferences and notifications.
 						</SectionHeader.Subheading>
 					</div>
 				</SectionHeader.Group>
 			</SectionHeader.Root>
 
 			<div className="flex flex-col gap-5">
-				<p className="text-secondary">Billing settings coming soon...</p>
+				<p className="text-secondary">Email settings coming soon...</p>
 			</div>
 		</Form>
 	)

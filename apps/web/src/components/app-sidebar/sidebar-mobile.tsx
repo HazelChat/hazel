@@ -9,7 +9,7 @@ import { organizationCollection } from "~/db/collections"
 
 export function SidebarMobile() {
 	const params = useParams({ strict: false })
-	const organizationId = params.orgId as OrganizationId
+	const organizationId = params.orgSlug as OrganizationId
 
 	const { data: organizations } = useLiveQuery(
 		(q) =>

@@ -21,7 +21,7 @@ export const WorkspaceSwitcher = () => {
 	const { user, login } = useAuth()
 	const navigate = useNavigate()
 
-	const organizationId = params.orgId as OrganizationId
+	const organizationId = params.orgSlug as OrganizationId
 
 	const { data: currentOrgData } = useLiveQuery(
 		(q) =>
@@ -59,12 +59,12 @@ export const WorkspaceSwitcher = () => {
 				const currentPath = window.location.pathname
 				const pathSegments = currentPath.split("/")
 
-				let targetRoute = `/${targetOrg.id}`
+				let targetRoute = `/${targetOrg.slug}`
 
 				if (pathSegments.length > 3 && pathSegments[1] === "app") {
 					const subPath = pathSegments.slice(3).join("/")
 					if (subPath) {
-						targetRoute = `/${targetOrg.id}/${subPath}`
+						targetRoute = `/${targetOrg.slug}/${subPath}`
 					}
 				}
 

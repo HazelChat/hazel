@@ -26,9 +26,9 @@ interface NewChannelModalWrapperProps {
 }
 
 export const NewChannelModalWrapper = ({ isOpen, setIsOpen }: NewChannelModalWrapperProps) => {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { user } = useAuth()
-	const organizationId = orgId as OrganizationId
+	const organizationId = orgSlug as OrganizationId
 
 	const form = useAppForm({
 		defaultValues: {

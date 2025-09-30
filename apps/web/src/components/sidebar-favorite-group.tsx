@@ -7,8 +7,8 @@ import { ChannelItem, DmChannelLink } from "./app-sidebar/channel-item"
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "./ui/sidebar"
 
 export const SidebarFavoriteGroup = () => {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = orgSlug as OrganizationId
 
 	const { user } = useAuth()
 

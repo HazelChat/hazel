@@ -29,8 +29,9 @@ function RouteComponent() {
 	}
 
 	if (organizations && organizations.length > 0) {
-		const orgId = organizations[0]?.id!
-		return <Navigate to="/$orgId" params={{ orgId }} />
+		
+		const orgSlug = organizations[0]?.slug!
+		return <Navigate to="/$orgSlug" params={{ orgSlug }} />
 	}
 
 	// Redirect to onboarding if user has no organization

@@ -71,9 +71,9 @@ export function ChatHeader() {
 
 			<div className="flex items-center gap-2">
 				<ButtonUtility
-					to="/$orgId/call"
+					to="/$orgSlug/call"
 					params={{
-						orgId: channel.organizationId,
+						orgSlug: channel.organizationId,
 					}}
 					size="sm"
 					color="tertiary"

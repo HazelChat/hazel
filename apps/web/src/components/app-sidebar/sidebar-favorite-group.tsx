@@ -8,8 +8,8 @@ import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } fro
 import { ChannelItem, DmChannelLink } from "./channel-item"
 
 export const SidebarFavoriteGroup = () => {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = orgSlug as OrganizationId
 	const { user } = useAuth()
 
 	const { data: favoriteChannels } = useLiveQuery(

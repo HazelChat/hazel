@@ -11,13 +11,13 @@ import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { cn } from "~/lib/utils"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/chat/")({
+export const Route = createFileRoute("/_app/$orgSlug/chat/")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
-	const organizationId = orgId as OrganizationId
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = orgSlug as OrganizationId
 	const { user: me } = useAuth()
 	// const { presenceList } = usePresence()
 
@@ -178,11 +178,11 @@ function RouteComponent() {
 }
 
 function ChannelCard({ channel, isPrivate = false }: { channel: any; isPrivate?: boolean }) {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	return (
 		<Link
-			to="/$orgId/chat/$id"
-			params={{ orgId, id: channel._id }}
+			to="/$orgSlug/chat/$id"
+			params={{ orgSlug, id: channel._id }}
 			className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
 			<div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ function DmCard({
 	currentUserId?: string
 	presenceList: any[]
 }) {
-	const { orgId } = useParams({ from: "/_app/$orgId" })
+	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const otherMembers = channel.members.filter((member: any) => member.userId !== currentUserId)
 
 	if (channel.type === "single" && otherMembers.length === 1) {
@@ -236,8 +236,8 @@ function DmCard({
 
 		return (
 			<Link
-				to="/$orgId/chat/$id"
-				params={{ orgId, id: channel._id }}
+				to="/$orgSlug/chat/$id"
+				params={{ orgSlug, id: channel._id }}
 				className="inset-ring inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 			>
 				<div className="flex items-center gap-3">
@@ -265,8 +265,8 @@ function DmCard({
 
 	return (
 		<Link
-			to="/$orgId/chat/$id"
-			params={{ orgId, id: channel._id }}
+			to="/$orgSlug/chat/$id"
+			params={{ orgSlug, id: channel._id }}
 			className="inset-ring inset-ring inset-ring-transparent inset-ring-transparent flex items-center justify-between gap-4 rounded-lg px-2.5 py-2 hover:inset-ring-secondary hover:bg-quaternary/40"
 		>
 			<div className="flex items-center gap-2.5">

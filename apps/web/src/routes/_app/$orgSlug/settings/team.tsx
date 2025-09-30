@@ -20,12 +20,12 @@ import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-ic
 import { organizationMemberCollection, userCollection } from "~/db/collections"
 import { useAuth } from "~/providers/auth-provider"
 
-export const Route = createFileRoute("/_app/$orgId/settings/team")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
 	component: RouteComponent,
 })
 
 function RouteComponent() {
-	const { orgId } = Route.useParams()
+	const { orgSlug } = Route.useParams()
 	const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
 		column: "status",
 		direction: "ascending",
@@ -39,7 +39,7 @@ function RouteComponent() {
 	} | null>(null)
 	const [removeUserId, setRemoveUserId] = useState<UserId | null>(null)
 
-	const organizationId = orgId as OrganizationId
+	const organizationId = orgSlug as OrganizationId
 
 	const { data: teamMembers } = useLiveQuery(
 		(q) =>

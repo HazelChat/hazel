@@ -29,6 +29,17 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 				)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+		const findBySlug = (slug: string) =>
+			db
+				.execute((client) =>
+					client
+						.select()
+						.from(schema.organizationsTable)
+						.where(eq(schema.organizationsTable.slug, slug))
+						.limit(1),
+				)
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 		const upsertByWorkosId = (data: Schema.Schema.Type<typeof Organization.Insert>) =>
 			db
 				.execute((client) =>
@@ -88,6 +99,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 		return {
 			...baseRepo,
 			findByWorkosId,
+			findBySlug,
 			upsertByWorkosId,
 			findAllActive,
 			softDelete,

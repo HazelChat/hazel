@@ -24,8 +24,8 @@ export interface ChannelItemProps {
 }
 
 export const ChannelItem = ({ channelId }: ChannelItemProps) => {
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const params = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = params?.orgSlug as OrganizationId
 	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
 
 	const { channel } = useChannelWithCurrentUser(channelId)
@@ -57,7 +57,7 @@ export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/$orgId/chat/$id" params={{ orgId: organizationId || "", id: channelId }}>
+				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: organizationId || "", id: channelId }}>
 					<IconHashtagStroke className="size-5" />
 					<p
 						className={cx(
@@ -166,8 +166,8 @@ interface DmChannelLinkProps {
 }
 
 export const DmChannelLink = ({ channelId, userPresence }: DmChannelLinkProps) => {
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const params = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = params?.orgSlug as OrganizationId
 
 	const { channel } = useChannelWithCurrentUser(channelId)
 
@@ -200,7 +200,7 @@ export const DmChannelLink = ({ channelId, userPresence }: DmChannelLinkProps) =
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/$orgId/chat/$id" params={{ orgId: organizationId || "", id: channelId }}>
+				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: organizationId || "", id: channelId }}>
 					<div className="-space-x-4 flex items-center justify-center">
 						{channel.type === "single" && filteredMembers.length === 1 ? (
 							<div className="flex items-center justify-center gap-3">

@@ -16,7 +16,7 @@ import { type Theme, useTheme } from "~/components/theme-provider"
 
 import { cx } from "~/utils/cx"
 
-export const Route = createFileRoute("/_app/$orgId/settings/")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/")({
 	component: AppearanceSettings,
 })
 

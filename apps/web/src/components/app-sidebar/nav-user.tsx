@@ -12,8 +12,8 @@ export const NavUser = () => {
 	const { user, logout } = useAuth()
 	const navigate = useNavigate()
 
-	const params = useParams({ from: "/_app/$orgId" })
-	const organizationId = params?.orgId as OrganizationId
+	const params = useParams({ from: "/_app/$orgSlug" })
+	const organizationId = params?.orgSlug as OrganizationId
 
 	return (
 		<Dropdown.Root>
@@ -48,8 +48,8 @@ export const NavUser = () => {
 							onAction={() => {
 								if (organizationId) {
 									navigate({
-										to: "/$orgId/settings",
-										params: { orgId: organizationId },
+										to: "/$orgSlug/settings",
+										params: { orgSlug: organizationId },
 									})
 								}
 							}}

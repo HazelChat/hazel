@@ -14,7 +14,7 @@ import { Form } from "~/components/base/form/form"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 
-export const Route = createFileRoute("/_app/$orgId/settings/debug")({
+export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
 	component: DebugSettings,
 })
 
@@ -22,7 +22,7 @@ function DebugSettings() {
 	const [showMockDataDialog, setShowMockDataDialog] = useState(false)
 	const [isGeneratingMockData, setIsGeneratingMockData] = useState(false)
 
-	const { orgId } = Route.useParams()
+	const { orgSlug } = Route.useParams()
 
 	const generateMockData = useAtomSet(HazelApiClient.mutation("mockData", "generate"), {
 		mode: "promise",
@@ -33,7 +33,7 @@ function DebugSettings() {
 		try {
 			const result = await generateMockData({
 				payload: {
-					organizationId: orgId as OrganizationId,
+					organizationId: orgSlug as OrganizationId,
 					userCount: 10,
 					channelCount: 5,
 					messageCount: 50,
@@ -142,7 +142,7 @@ function DebugSettings() {
 								</div>
 								<div>
 									<span className="text-tertiary">Organization ID:</span>{" "}
-									<span>{orgId}</span>
+									<span>{orgSlug}</span>
 								</div>
 								<div>
 									<span className="text-tertiary">Backend URL:</span>{" "}
