@@ -1,4 +1,4 @@
-import type { AttachmentId, OrganizationId } from "@hazel/db/schema"
+import type { AttachmentId } from "@hazel/db/schema"
 import { Attachment01, FaceSmile, ItalicSquare, XClose } from "@untitledui/icons"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"

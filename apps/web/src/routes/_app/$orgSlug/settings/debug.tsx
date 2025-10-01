@@ -143,7 +143,7 @@ function DebugSettings() {
 								</div>
 								<div>
 									<span className="text-tertiary">Organization ID:</span>{" "}
-									<span>{orgSlug}</span>
+									<span>{organizationId}</span>
 								</div>
 								<div>
 									<span className="text-tertiary">Backend URL:</span>{" "}
