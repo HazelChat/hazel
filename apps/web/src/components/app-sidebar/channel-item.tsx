@@ -1,6 +1,7 @@
 import type { ChannelId, OrganizationId } from "@hazel/db/schema"
-import { Link, useParams } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
+import { useOrganization } from "~/hooks/use-organization"
 import IconDeleteDustbin011 from "~/components/icons/IconDeleteDustbin011"
 import IconPencilEdit from "~/components/icons/IconPencilEdit"
 import { channelMemberCollection } from "~/db/collections"
@@ -24,8 +25,7 @@ export interface ChannelItemProps {
 }
 
 export const ChannelItem = ({ channelId }: ChannelItemProps) => {
-	const params = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = params?.orgSlug as OrganizationId
+	const { slug: orgSlug } = useOrganization()
 	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
 
 	const { channel } = useChannelWithCurrentUser(channelId)
@@ -57,7 +57,7 @@ export const ChannelItem = ({ channelId }: ChannelItemProps) => {
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: organizationId || "", id: channelId }}>
+				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: orgSlug || "", id: channelId }}>
 					<IconHashtagStroke className="size-5" />
 					<p
 						className={cx(
@@ -166,8 +166,7 @@ interface DmChannelLinkProps {
 }
 
 export const DmChannelLink = ({ channelId, userPresence }: DmChannelLinkProps) => {
-	const params = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = params?.orgSlug as OrganizationId
+	const { slug: orgSlug } = useOrganization()
 
 	const { channel } = useChannelWithCurrentUser(channelId)
 
@@ -200,7 +199,7 @@ export const DmChannelLink = ({ channelId, userPresence }: DmChannelLinkProps) =
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton asChild>
-				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: organizationId || "", id: channelId }}>
+				<Link to="/$orgSlug/chat/$id" params={{ orgSlug: orgSlug || "", id: channelId }}>
 					<div className="-space-x-4 flex items-center justify-center">
 						{channel.type === "single" && filteredMembers.length === 1 ? (
 							<div className="flex items-center justify-center gap-3">

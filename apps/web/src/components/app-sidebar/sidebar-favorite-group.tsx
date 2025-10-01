@@ -1,15 +1,14 @@
-import type { ChannelId, OrganizationId } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/db/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import { useOrganization } from "~/hooks/use-organization"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAuth } from "~/providers/auth-provider"
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "../ui/sidebar"
 import { ChannelItem, DmChannelLink } from "./channel-item"
 
 export const SidebarFavoriteGroup = () => {
-	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = orgSlug as OrganizationId
+	const { organizationId } = useOrganization()
 	const { user } = useAuth()
 
 	const { data: favoriteChannels } = useLiveQuery(

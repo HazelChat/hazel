@@ -1,8 +1,9 @@
 import type { OrganizationId } from "@hazel/db/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
-import { Link, useParams } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { useMemo } from "react"
 import { ErrorBoundary } from "react-error-boundary"
+import { useOrganization } from "~/hooks/use-organization"
 import IconChat1 from "~/components/icons/IconChat1"
 import { channelCollection, channelMemberCollection, organizationCollection } from "~/db/collections"
 import { useAuth } from "~/providers/auth-provider"
@@ -33,8 +34,7 @@ import { WorkspaceSwitcher } from "./workspace-switcher"
 
 export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void }) => {
 	const { isMobile } = useSidebar()
-	const params = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = params?.orgSlug as OrganizationId
+	const { organizationId, slug: orgSlug } = useOrganization()
 
 	return (
 		<Sidebar collapsible="icon" className="overflow-hidden *:data-[sidebar=sidebar]:flex-row">
@@ -54,7 +54,7 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
 										to={"/$orgSlug"}
-										params={{ orgSlug: organizationId }}
+										params={{ orgSlug }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -68,7 +68,7 @@ export const AppSidebar = ({ setOpenCmd }: { setOpenCmd: (open: boolean) => void
 								<SidebarMenuButton className="px-2.5 md:px-2" asChild>
 									<Link
 										to={"/$orgSlug/chat"}
-										params={{ orgSlug: organizationId }}
+										params={{ orgSlug }}
 										activeOptions={{
 											exact: true,
 										}}
@@ -240,17 +240,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId }) => {
 }
 
 const ActiveServer = () => {
-	const { orgSlug } = useParams({
-		from: "/_app/$orgSlug",
-	})
+	const { organization } = useOrganization()
 
-	const { data } = useLiveQuery(
-		(q) =>
-			q
-				.from({ organization: organizationCollection })
-				.where(({ organization }) => eq(organization.id, orgSlug as OrganizationId)),
-		[orgSlug],
-	)
-
-	return <div className="font-semibold text-foreground text-lg">{data[0]?.name}</div>
+	return <div className="font-semibold text-foreground text-lg">{organization?.name}</div>
 }

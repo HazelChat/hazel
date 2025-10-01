@@ -1,7 +1,7 @@
-import type { OrganizationId } from "@hazel/db/schema"
-import { useNavigate, useParams } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { Container, HelpCircle, LayersTwo01, LogOut01, Settings01, User01 } from "@untitledui/icons"
 import { Button as AriaButton } from "react-aria-components"
+import { useOrganization } from "~/hooks/use-organization"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { AvatarLabelGroup } from "~/components/base/avatar/avatar-label-group"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
@@ -11,9 +11,7 @@ import { cx } from "~/utils/cx"
 export const NavUser = () => {
 	const { user, logout } = useAuth()
 	const navigate = useNavigate()
-
-	const params = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = params?.orgSlug as OrganizationId
+	const { slug: orgSlug } = useOrganization()
 
 	return (
 		<Dropdown.Root>
@@ -46,10 +44,10 @@ export const NavUser = () => {
 						<Dropdown.Item
 							addon="⌘S"
 							onAction={() => {
-								if (organizationId) {
+								if (orgSlug) {
 									navigate({
 										to: "/$orgSlug/settings",
-										params: { orgSlug: organizationId },
+										params: { orgSlug },
 									})
 								}
 							}}

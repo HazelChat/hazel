@@ -1,14 +1,12 @@
-import type { OrganizationId } from "@hazel/db/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
 import { useEffect, useRef } from "react"
+import { useOrganization } from "~/hooks/use-organization"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useAuth } from "~/providers/auth-provider"
 
 export function NotificationManager() {
-	const params = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = params?.orgSlug as OrganizationId
+	const { organizationId } = useOrganization()
 	const { user } = useAuth()
 	const { playSound } = useNotificationSound()
 

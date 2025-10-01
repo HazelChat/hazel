@@ -4,8 +4,10 @@ import { useNavigate, useParams } from "@tanstack/react-router"
 import { useState } from "react"
 import { Button as AriaButton } from "react-aria-components"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
+import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/providers/auth-provider"
 import { cx } from "~/utils/cx"
+import { getOrganizationRoute } from "~/utils/organization-navigation"
 import { CreateOrganizationModal } from "../application/modals/create-organization-modal"
 import { EmailInviteModal } from "../application/modals/email-invite-modal"
 import { Avatar } from "../base/avatar/avatar"
@@ -17,11 +19,9 @@ export const WorkspaceSwitcher = () => {
 	const [inviteModalOpen, setInviteModalOpen] = useState(false)
 	const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
 
-	const params = useParams({ strict: false })
 	const { user, login } = useAuth()
 	const navigate = useNavigate()
-
-	const organizationId = params.orgSlug as OrganizationId
+	const { organization: currentOrg, organizationId } = useOrganization()
 
 	const { data: currentOrgData } = useLiveQuery(
 		(q) =>
@@ -30,7 +30,6 @@ export const WorkspaceSwitcher = () => {
 						.from({ org: organizationCollection })
 						.where(({ org }) => eq(org.id, organizationId))
 						.orderBy(({ org }) => org.createdAt, "desc")
-						.limit(1)
 				: null,
 		[organizationId],
 	)
@@ -49,26 +48,28 @@ export const WorkspaceSwitcher = () => {
 		[user?.id],
 	)
 
-	const currentOrg = currentOrgData?.[0]
+	// Use the org from hook or fallback to query data
+	const displayOrg = currentOrg || currentOrgData?.[0]
 	const organizations = userOrganizations?.map((row) => row.org) || []
 
 	const handleOrganizationSwitch = async (workosOrgId: string) => {
 		try {
 			const targetOrg = organizations.find((org) => org.workosId === workosOrgId)
 			if (targetOrg) {
+				// Determine current subpath to maintain it after switching
 				const currentPath = window.location.pathname
 				const pathSegments = currentPath.split("/")
+				let subPath: string | undefined
 
-				let targetRoute = `/${targetOrg.slug}`
-
-				if (pathSegments.length > 3 && pathSegments[1] === "app") {
-					const subPath = pathSegments.slice(3).join("/")
-					if (subPath) {
-						targetRoute = `/${targetOrg.slug}/${subPath}`
-					}
+				// Extract subpath if we're in an org route (skip first 2 segments: "", "orgSlug")
+				if (pathSegments.length > 2) {
+					subPath = pathSegments.slice(2).join("/")
 				}
 
-				await navigate({ to: targetRoute })
+				// Get the safe navigation route (handles missing slugs)
+				const route = getOrganizationRoute(targetOrg, subPath)
+
+				await navigate(route)
 
 				await login({ workosOrganizationId: workosOrgId })
 			}
@@ -91,11 +92,11 @@ export const WorkspaceSwitcher = () => {
 				>
 					<Avatar
 						size="xs"
-						src={currentOrg?.logoUrl || `https://avatar.vercel.sh/${currentOrg?.workosId}`}
-						initials={currentOrg?.name?.slice(0, 2).toUpperCase() || "??"}
-						alt={currentOrg?.name || "Organization"}
+						src={displayOrg?.logoUrl || `https://avatar.vercel.sh/${displayOrg?.workosId}`}
+						initials={displayOrg?.name?.slice(0, 2).toUpperCase() || "??"}
+						alt={displayOrg?.name || "Organization"}
 					/>
-					<span className="truncate font-semibold">{currentOrg?.name || "Loading..."}</span>
+					<span className="truncate font-semibold">{displayOrg?.name || "Loading..."}</span>
 				</AriaButton>
 				<Dropdown.Popover className="w-56">
 					<Dropdown.Menu>
@@ -116,7 +117,7 @@ export const WorkspaceSwitcher = () => {
 											alt={org.name}
 										/>
 										<span className="truncate text-fg-secondary text-xs">{org.name}</span>
-										{currentOrg?.id === org.id && (
+										{displayOrg?.id === org.id && (
 											<span className="ml-auto text-fg-quaternary text-xs">✓</span>
 										)}
 									</div>

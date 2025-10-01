@@ -1,14 +1,12 @@
-import type { OrganizationId } from "@hazel/db/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
+import { useOrganization } from "~/hooks/use-organization"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAuth } from "~/providers/auth-provider"
 import { ChannelItem, DmChannelLink } from "./app-sidebar/channel-item"
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "./ui/sidebar"
 
 export const SidebarFavoriteGroup = () => {
-	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
-	const organizationId = orgSlug as OrganizationId
+	const { organizationId } = useOrganization()
 
 	const { user } = useAuth()
 

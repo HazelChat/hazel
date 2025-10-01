@@ -1,25 +1,11 @@
-import type { OrganizationId } from "@hazel/db/schema"
-import { eq, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
+import { useOrganization } from "~/hooks/use-organization"
 import { Avatar } from "~/components/base/avatar/avatar"
 
 import { Separator } from "~/components/ui/separator"
 import { SidebarTrigger } from "~/components/ui/sidebar"
-import { organizationCollection } from "~/db/collections"
 
 export function SidebarMobile() {
-	const params = useParams({ strict: false })
-	const organizationId = params.orgSlug as OrganizationId
-
-	const { data: organizations } = useLiveQuery(
-		(q) =>
-			organizationId
-				? q.from({ org: organizationCollection }).where(({ org }) => eq(org.id, organizationId))
-				: null,
-		[organizationId],
-	)
-
-	const currentOrg = organizations?.[0]
+	const { organization: currentOrg } = useOrganization()
 	return (
 		<nav className="flex items-center border-tertiary border-b bg-secondary p-2 sm:hidden">
 			<SidebarTrigger
