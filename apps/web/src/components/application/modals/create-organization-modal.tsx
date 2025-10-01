@@ -31,11 +31,19 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 	const navigate = useNavigate()
 
 	const generateSlug = useCallback((name: string) => {
-		return name
+		let slug = name
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
 			.toLowerCase()
 			.replace(/[^a-z0-9]+/g, "-")
 			.replace(/^-+|-+$/g, "")
 			.substring(0, 50)
+
+		if (slug.length < 3) {
+			slug = slug.padEnd(3, "0")
+		}
+
+		return slug
 	}, [])
 
 	const form = useAppForm({
