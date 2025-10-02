@@ -1,6 +1,5 @@
 import type { Message } from "@hazel/db/models"
-import type { ChannelId, MessageId } from "@hazel/db/schema"
-import { count, eq, useLiveQuery } from "@tanstack/react-db"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import { useRef, useState } from "react"
 import { Button } from "react-aria-components"
@@ -17,7 +16,7 @@ import { cx } from "~/utils/cx"
 import { IconNotification } from "../application/notifications/notifications"
 import { Badge } from "../base/badges/badges"
 import { MarkdownReadonly } from "../markdown-readonly"
-import { IconThread } from "../temp-icons/thread"
+import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
 import { MessageReplySection } from "./message-reply-section"
 import { MessageToolbar } from "./message-toolbar"
@@ -300,9 +299,9 @@ export function MessageItem({
 							</div>
 						)}
 
-						{/* Thread Button */}
+						{/* Thread Preview */}
 						{message.threadChannelId && (
-							<ThreadMessageIndicator
+							<InlineThreadPreview
 								threadChannelId={message.threadChannelId}
 								messageId={message.id}
 							/>
@@ -353,47 +352,6 @@ export function MessageItem({
 				)}
 			</div>
 		</>
-	)
-}
-
-const ThreadMessageIndicator = ({
-	threadChannelId,
-	messageId,
-}: {
-	threadChannelId: ChannelId
-	messageId: MessageId
-}) => {
-	const { openThread } = useChat()
-
-	const { data } = useLiveQuery((q) =>
-		q
-			.from({ message: messageCollection })
-			.where(({ message }) => eq(message.channelId, threadChannelId))
-			.groupBy(({ message }) => message.channelId)
-			.select(({ message }) => ({
-				count: count(message.id),
-			}))
-			.orderBy(({ message }) => message.createdAt, "desc"),
-	)
-
-	const threadMessageState = data?.[0]
-	if (!threadMessageState) return null
-
-	return (
-		<button
-			type="button"
-			onClick={() => {
-				if (threadChannelId) {
-					openThread(threadChannelId, messageId)
-				}
-			}}
-			className="mt-2 flex items-center gap-2 text-secondary text-sm transition-colors hover:text-primary"
-		>
-			<IconThread className="size-4" />
-			<span>
-				{threadMessageState.count} {threadMessageState.count === 1 ? "reply" : "replies"}
-			</span>
-		</button>
 	)
 }
 
