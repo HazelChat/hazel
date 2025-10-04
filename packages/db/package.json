@@ -20,7 +20,7 @@
 		"@effect/experimental": "^0.54.6",
 		"@hazel/effect-lib": "workspace:*",
 		"drizzle-orm": "^0.44.5",
-		"effect": "^3.18.1",
+		"effect": "^3.18.2",
 		"postgres": "^3.4.7",
 		"uuid": "^13.0.0"
 	}

@@ -37,7 +37,7 @@
 		"@opentelemetry/sdk-trace-web": "^2.1.0",
 		"@workos-inc/node": "^7.70.0",
 		"drizzle-orm": "^0.44.5",
-		"effect": "^3.18.1",
+		"effect": "^3.18.2",
 		"jose": "^6.1.0",
 		"pg": "^8.16.3",
 		"uuid": "^13.0.0"

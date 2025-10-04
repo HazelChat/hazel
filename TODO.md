@@ -4,9 +4,9 @@
 
 
 ## Electric things to figure out
-- How todo this none optimistic 
 - How to get back backend ID from optimistic action
 - Pattern to query data in an action
+- Add Pattern to promise toast
 
 ### Core Features
 - [ ] **File Upload**

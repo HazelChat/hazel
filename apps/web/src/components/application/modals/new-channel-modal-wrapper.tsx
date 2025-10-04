@@ -43,20 +43,21 @@ export const NewChannelModalWrapper = ({ isOpen, setIsOpen }: NewChannelModalWra
 		onSubmit: async ({ value }) => {
 			if (!user?.id) return
 			try {
-				const tx = channelCollection.insert({
-					id: ChannelId.make(uuid()),
-					name: value.name,
-					type: value.type,
-					organizationId: organizationId!,
-					parentChannelId: null,
-					createdAt: new Date(),
-					updatedAt: null,
-					deletedAt: null,
-				})
+				const tx = channelCollection.insert(
+					{
+						id: ChannelId.make(uuid()),
+						name: value.name,
+						type: value.type,
+						organizationId: organizationId!,
+						parentChannelId: null,
+						createdAt: new Date(),
+						updatedAt: null,
+						deletedAt: null,
+					},
+					{},
+				)
 
 				await tx.isPersisted.promise
-
-				console.log(tx)
 
 				const channel = tx.mutations[0]?.changes
 
