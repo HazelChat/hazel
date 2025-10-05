@@ -80,7 +80,7 @@ export function PinnedMessagesModal() {
 											<button
 												onClick={(e) => {
 													e.stopPropagation()
-													unpinMessage(pinnedMessage.pinned.messageId)
+													unpinMessage(pinnedMessage.pinned.id)
 												}}
 												className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-tertiary group-hover:opacity-100"
 												aria-label="Unpin message"

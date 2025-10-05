@@ -3,10 +3,6 @@
 ## High Priority Features
 
 
-## Electric things to figure out
-- How to get back backend ID from optimistic action
-- Pattern to query data in an action
-- Add Pattern to promise toast
 
 ### Core Features
 - [ ] **File Upload**

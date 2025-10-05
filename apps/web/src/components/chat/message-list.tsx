@@ -54,7 +54,7 @@ export function MessageList() {
 
 			// TODO: Implement these when channel data is available
 			const isFirstNewMessage = false // Will be based on lastSeenMessageId
-			const isPinned = false // Will be based on channel.pinnedMessages
+			const isPinned = !!message.pinnedMessage?.id
 
 			return {
 				message,

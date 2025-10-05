@@ -1,4 +1,4 @@
-import type { Channel, Message } from "@hazel/db/models"
+import type { Channel, Message, PinnedMessage } from "@hazel/db/models"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -20,11 +20,15 @@ import {
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useAuth } from "~/providers/auth-provider"
 
+type MessageWithPinned = typeof Message.Model.Type & {
+	pinnedMessage: (typeof PinnedMessage.Model.Type) | null | undefined
+}
+
 interface ChatContextValue {
 	channelId: ChannelId
 	organizationId: OrganizationId
 	channel: typeof Channel.Model.Type | undefined
-	messages: (typeof Message.Model.Type)[]
+	messages: MessageWithPinned[]
 	loadNext: (() => void) | undefined
 	loadPrev: (() => void) | undefined
 	isLoadingMessages: boolean
@@ -36,7 +40,7 @@ interface ChatContextValue {
 	addReaction: (messageId: MessageId, emoji: string) => void
 	removeReaction: (reactionId: MessageReactionId) => void
 	pinMessage: (messageId: MessageId) => void
-	unpinMessage: (messageId: MessageId) => void
+	unpinMessage: (pinnedMessageId: PinnedMessageId) => void
 	createThread: (messageId: MessageId) => Promise<void>
 	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
 	closeThread: () => void
@@ -72,7 +76,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 	const [activeThreadChannelId, setActiveThreadChannelId] = useState<ChannelId | null>(null)
 	const [activeThreadMessageId, setActiveThreadMessageId] = useState<MessageId | null>(null)
 
-	const previousMessagesRef = useRef<(typeof Message.Model.Type)[]>([])
+	const previousMessagesRef = useRef<MessageWithPinned[]>([])
 	const previousChannelIdRef = useRef<ChannelId | null>(null)
 	const loadNextRef = useRef<(() => void) | undefined>(undefined)
 	const loadPrevRef = useRef<(() => void) | undefined>(undefined)
@@ -105,7 +109,14 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		(q) =>
 			q
 				.from({ message: messageCollection })
+				.leftJoin({ pinned: pinnedMessageCollection }, ({ message, pinned }) =>
+					eq(message.id, pinned.messageId),
+				)
 				.where(({ message }) => eq(message.channelId, channelId))
+				.select(({ message, pinned }) => ({
+					...message,
+					pinnedMessage: pinned,
+				}))
 				.orderBy(({ message }) => message.createdAt, "desc")
 				.limit(50), // TODO: Implement proper pagination
 		[channelId],
@@ -180,12 +191,8 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 		})
 	}
 
-	const unpinMessage = (_messageId: MessageId) => {
-		// Find the pinned message record to delete
-		// Note: This would ideally use a proper query to find the pinned message ID
-		// For now, we'll need to implement this based on how pinned messages are stored
-		// TODO: Add proper pinned message lookup logic
-		console.log("unpinMessage not fully implemented - need pinned message ID lookup")
+	const unpinMessage = (pinnedMessageId: PinnedMessageId) => {
+		pinnedMessageCollection.delete(pinnedMessageId)
 	}
 
 	const createThread = async (messageId: MessageId) => {

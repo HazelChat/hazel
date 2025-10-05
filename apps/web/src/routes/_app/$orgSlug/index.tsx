@@ -68,7 +68,7 @@ function RouteComponent() {
 	const handleOpenChat = async (targetUserId: string) => {
 		if (!targetUserId) return
 
-		const exit = await toastExit(
+		toastExit(
 			createDmChannel({
 				payload: {
 					name: "New DM",

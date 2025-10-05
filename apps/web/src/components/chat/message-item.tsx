@@ -1,20 +1,16 @@
-import type { Message } from "@hazel/db/models"
+import type { Message, PinnedMessage } from "@hazel/db/models"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import { useRef, useState } from "react"
 import { Button } from "react-aria-components"
 import { toast } from "sonner"
-import {
-	messageCollection,
-	messageReactionCollection,
-	pinnedMessageCollection,
-	userCollection,
-} from "~/db/collections"
+import { messageCollection, messageReactionCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useAuth } from "~/providers/auth-provider"
 import { cx } from "~/utils/cx"
 import { IconNotification } from "../application/notifications/notifications"
 import { Badge } from "../base/badges/badges"
+import { IconPinSlant } from "../icons/IconPinSlant"
 import { MarkdownReadonly } from "../markdown-readonly"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
@@ -22,8 +18,12 @@ import { MessageReplySection } from "./message-reply-section"
 import { MessageToolbar } from "./message-toolbar"
 import { UserProfilePopover } from "./user-profile-popover"
 
+type MessageWithPinned = typeof Message.Model.Type & {
+	pinnedMessage: (typeof PinnedMessage.Model.Type) | null | undefined
+}
+
 interface MessageItemProps {
-	message: typeof Message.Model.Type
+	message: MessageWithPinned
 	isGroupStart?: boolean
 	isGroupEnd?: boolean
 	isFirstNewMessage?: boolean
@@ -35,6 +35,7 @@ export function MessageItem({
 	isGroupStart = false,
 	isGroupEnd = false,
 	isFirstNewMessage = false,
+	isPinned = false,
 }: MessageItemProps) {
 	const {
 		addReaction,
@@ -42,7 +43,6 @@ export function MessageItem({
 		setReplyToMessageId,
 		pinMessage,
 		unpinMessage,
-		channelId,
 		createThread,
 	} = useChat()
 
@@ -56,18 +56,6 @@ export function MessageItem({
 
 	const showAvatar = isGroupStart || !!message?.replyToMessageId
 	const isRepliedTo = !!message?.replyToMessageId
-
-	// Query for pinned messages in current channel
-	const { data: pinnedMessages } = useLiveQuery(
-		(q) =>
-			q
-				.from({ pinned: pinnedMessageCollection })
-				.where(({ pinned }) => eq(pinned.channelId, channelId))
-				.select(({ pinned }) => pinned),
-		[channelId],
-	)
-
-	const isMessagePinned = pinnedMessages?.some((p) => p.messageId === message?.id) || false
 
 	const { data: reactions } = useLiveQuery((q) =>
 		q.from({ reactions: messageReactionCollection }).where((q) => eq(q.reactions.messageId, message?.id)),
@@ -129,14 +117,14 @@ export function MessageItem({
 			<div
 				id={`message-${message.id}`}
 				className={cx(
-					`group relative flex flex-col rounded-lg py-1 transition-colors md:px-4 md:py-2 md:hover:bg-secondary`,
+					`group relative flex flex-col rounded-lg py-1 transition-all duration-200 md:px-4 md:py-2 md:hover:bg-secondary`,
 					isGroupStart ? "mt-2" : "",
 					isGroupEnd ? "mb-2" : "",
 					isFirstNewMessage
 						? "border-emerald-500 border-l-2 bg-emerald-500/20 hover:bg-emerald-500/15"
 						: "",
-					isMessagePinned
-						? "border-amber-500 border-l-2 bg-amber-500/10 hover:bg-amber-500/15"
+					isPinned
+						? "border-amber-500 border-l-4 bg-amber-500/15 shadow-sm hover:bg-amber-500/20"
 						: "",
 				)}
 				data-id={message.id}
@@ -176,7 +164,7 @@ export function MessageItem({
 					{/* Content Section */}
 					<div className="min-w-0 flex-1">
 						{/* Author header (only when showing avatar) */}
-						{showAvatar && <MessageAuthorHeader message={message} />}
+						{showAvatar && <MessageAuthorHeader message={message} isPinned={isPinned} />}
 
 						{/* Message Content */}
 						{isEditing ? (
@@ -313,7 +301,7 @@ export function MessageItem({
 				{(hasBeenHovered || isMenuOpen) && (
 					<MessageToolbar
 						isOwnMessage={isOwnMessage}
-						isPinned={isMessagePinned}
+						isPinned={isPinned}
 						onReaction={handleReaction}
 						onEdit={() => setIsEditing(true)}
 						onDelete={handleDelete}
@@ -333,9 +321,9 @@ export function MessageItem({
 							console.log("Mark as unread")
 						}}
 						onPin={() => {
-							if (isMessagePinned) {
-								unpinMessage(message.id)
-							} else {
+							if (isPinned && message.pinnedMessage?.id) {
+								unpinMessage(message.pinnedMessage.id)
+							} else if (!isPinned) {
 								pinMessage(message.id)
 							}
 						}}
@@ -355,7 +343,13 @@ export function MessageItem({
 	)
 }
 
-export const MessageAuthorHeader = ({ message }: { message: typeof Message.Model.Type }) => {
+export const MessageAuthorHeader = ({
+	message,
+	isPinned = false,
+}: {
+	message: typeof Message.Model.Type
+	isPinned?: boolean
+}) => {
 	const { data } = useLiveQuery(
 		(q) =>
 			q
@@ -379,6 +373,12 @@ export const MessageAuthorHeader = ({ message }: { message: typeof Message.Model
 				{format(message.createdAt, "HH:mm")}
 				{isEdited && " (edited)"}
 			</span>
+			{isPinned && (
+				<span className="flex items-center gap-1 text-amber-600 text-xs" title="Pinned message">
+					<IconPinSlant className="size-3" />
+					<span>Pinned</span>
+				</span>
+			)}
 		</div>
 	)
 }
