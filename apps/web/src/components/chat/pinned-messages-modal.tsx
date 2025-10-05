@@ -4,9 +4,9 @@ import { format } from "date-fns"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
 import { messageCollection, pinnedMessageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
-import { Avatar } from "../base/avatar/avatar"
 import { ButtonUtility } from "../base/buttons/button-utility"
 import { IconPinSlant } from "../icons/IconPinSlant"
+import PinTack2 from "../icons2/icons/pin-tack-2"
 import { MessageAuthorHeader } from "./message-item"
 import { UserProfilePopover } from "./user-profile-popover"
 
@@ -51,7 +51,7 @@ export function PinnedMessagesModal() {
 					<div className="rounded-lg border border-primary bg-primary shadow-lg">
 						{/* Header */}
 						<div className="flex items-center gap-2 border-primary border-b px-4 py-3">
-							<IconPinSlant className="size-4 text-secondary" />
+							<PinTack2 className="size-4 text-secondary" />
 							<h3 className="font-semibold text-sm">Pinned Messages</h3>
 							<span className="ml-auto text-secondary text-xs">
 								{sortedPins.length} {sortedPins.length === 1 ? "pin" : "pins"}
