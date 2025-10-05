@@ -1,8 +1,10 @@
 import type { InvitationId, OrganizationId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
-import { Plus, RefreshCcw02, XClose } from "@untitledui/icons"
+import { RefreshCcw02 } from "@untitledui/icons"
 import { useState } from "react"
+import IconClose from "~/components/icons/icon-close"
+import IconPlus from "~/components/icons/icon-plus"
 import type { SortDescriptor } from "react-aria-components"
 import { toast } from "sonner"
 import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
@@ -114,7 +116,7 @@ function RouteComponent() {
 							<Button
 								color="secondary"
 								size="md"
-								iconLeading={Plus}
+								iconLeading={IconPlus}
 								onClick={() => setShowInviteModal(true)}
 							>
 								Invite user
@@ -186,7 +188,7 @@ function RouteComponent() {
 												size="xs"
 												color="tertiary"
 												tooltip="Revoke invitation"
-												icon={XClose}
+												icon={IconClose}
 												onClick={() => handleRevokeInvitation(invitation.id)}
 											/>
 										</div>

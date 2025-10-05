@@ -1,7 +1,7 @@
 "use client"
 
-import { X } from "@untitledui/icons"
 import { cva } from "class-variance-authority"
+import IconClose from "~/components/icons/icon-close"
 import * as React from "react"
 import type {
 	ButtonProps,
@@ -217,7 +217,7 @@ const SheetCloseIcon = ({ className, ...props }: SheetCloseIconProps) => {
 				className,
 			)}
 		>
-			<X className="size-4" />
+			<IconClose className="size-4" />
 		</Button>
 	) : null
 }

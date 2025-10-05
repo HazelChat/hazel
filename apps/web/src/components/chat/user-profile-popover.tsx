@@ -1,6 +1,6 @@
 import type { UserId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { DotsHorizontal } from "@untitledui/icons"
+import IconDots from "../icons/icon-dots"
 import { useState } from "react"
 import { Button, DialogTrigger, Dialog as PrimitiveDialog } from "react-aria-components"
 import { toast } from "sonner"
@@ -142,7 +142,7 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 												className="group"
 												color="tertiary"
 												size="xs"
-												icon={DotsHorizontal}
+												icon={IconDots}
 												aria-label="More"
 											/>
 

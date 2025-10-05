@@ -1,5 +1,5 @@
-import { X as CloseX } from "@untitledui/icons"
 import type { MouseEventHandler, ReactNode } from "react"
+import IconClose from "~/components/icons/icon-close"
 import { Dot } from "~/components/foundations/dot-icon"
 import { cx } from "~/utils/cx"
 import type {
@@ -364,7 +364,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(props: BadgeWithButtonProp
 		size = "md",
 		color = "gray",
 		type = "pill-color",
-		icon: Icon = CloseX,
+		icon: Icon = IconClose,
 		buttonLabel,
 		children,
 	} = props

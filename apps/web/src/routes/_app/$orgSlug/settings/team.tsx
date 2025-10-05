@@ -1,8 +1,11 @@
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
-import { AlertTriangle, Plus, Trash01, User02 } from "@untitledui/icons"
+import { AlertTriangle } from "@untitledui/icons"
 import { useState } from "react"
+import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
+import IconPlus from "~/components/icons/icon-plus"
+import IconTrash from "~/components/icons/icon-trash"
 import type { SortDescriptor } from "react-aria-components"
 import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
@@ -114,7 +117,7 @@ function RouteComponent() {
 							<Button
 								color="secondary"
 								size="md"
-								iconLeading={Plus}
+								iconLeading={IconPlus}
 								onClick={() => setShowInviteModal(true)}
 							>
 								Invite user
@@ -209,13 +212,13 @@ function RouteComponent() {
 														<Dropdown.Item
 															id="change-role"
 															label="Change role"
-															icon={User02}
+															icon={IconCircleDottedUser}
 														/>
 														<Dropdown.Separator />
 														<Dropdown.Item
 															id="remove"
 															label="Remove from team"
-															icon={Trash01}
+															icon={IconTrash}
 														/>
 													</Dropdown.Menu>
 												</Dropdown.Popover>

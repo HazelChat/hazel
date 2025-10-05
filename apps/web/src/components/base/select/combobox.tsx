@@ -1,5 +1,5 @@
-import { SearchLg as SearchIcon } from "@untitledui/icons"
 import type { FocusEventHandler, PointerEventHandler, RefAttributes, RefObject } from "react"
+import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import { useCallback, useContext, useRef, useState } from "react"
 import type {
 	ComboBoxProps as AriaComboBoxProps,
@@ -70,7 +70,7 @@ const ComboBoxValue = ({
 		>
 			{({ isDisabled }) => (
 				<>
-					<SearchIcon className="pointer-events-none size-5 text-fg-quaternary" />
+					<IconMagnifier3 className="pointer-events-none size-5 text-fg-quaternary" />
 
 					<div className="relative flex w-full items-center gap-2">
 						{inputValue && (

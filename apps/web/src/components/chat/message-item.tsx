@@ -10,8 +10,7 @@ import { useAuth } from "~/providers/auth-provider"
 import { cx } from "~/utils/cx"
 import { IconNotification } from "../application/notifications/notifications"
 import { Badge } from "../base/badges/badges"
-import { IconPinSlant } from "../icons/IconPinSlant"
-import PinTack2 from "../icons2/icons/pin-tack-2"
+import IconPin from "../icons/icon-pin"
 import { MarkdownReadonly } from "../markdown-readonly"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
@@ -370,7 +369,7 @@ export const MessageAuthorHeader = ({
 			</span>
 			{isPinned && (
 				<span className="flex items-center gap-1 text-amber-600 text-xs" title="Pinned message">
-					<PinTack2 className="size-3" />
+					<IconPin className="size-3" />
 					<span>Pinned</span>
 				</span>
 			)}

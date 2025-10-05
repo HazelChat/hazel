@@ -1,4 +1,11 @@
-import { Copy01, DotsVertical, Edit04, Flag01, Mail01, Share06, Stars02, Trash01 } from "@untitledui/icons"
+import { Flag01 } from "@untitledui/icons"
+import IconCopy from "../icons/icon-copy"
+import IconDotsVertical from "../icons/icon-dots-vertical"
+import IconEdit from "../icons/icon-edit"
+import IconEnvelope from "../icons/icon-envelope"
+import IconShare from "../icons/icon-share"
+import IconStar from "../icons/icon-star"
+import IconTrash from "../icons/icon-trash"
 import { useEffect, useState } from "react"
 import { Dialog, DialogTrigger, MenuTrigger, Popover } from "react-aria-components"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
@@ -10,10 +17,10 @@ import {
 	EmojiPickerFooter,
 	EmojiPickerSearch,
 } from "../base/emoji-picker/emoji-picker"
-import IconArrowBigTurnLeft1 from "../icons/IconArrowBigTurnLeft1"
+import IconReply from "../icons/icon-reply"
 
-import { IconEmojiAdd } from "../temp-icons/emoji-add"
-import { IconThread } from "../temp-icons/thread"
+import IconEmojiAdd from "../icons/icon-emoji-add"
+import IconThread from "../icons/icon-thread"
 import { DeleteMessageModal } from "./delete-message-modal"
 
 interface MessageToolbarProps {
@@ -121,7 +128,7 @@ export function MessageToolbar({
 					aria-label="Copy message"
 					className="!p-1.5 hover:bg-secondary"
 				>
-					<Copy01 className="size-3.5" />
+					<IconCopy className="size-3.5" />
 				</Button>
 
 				{onReply && (
@@ -132,7 +139,7 @@ export function MessageToolbar({
 						aria-label="Reply to message"
 						className="!p-1.5 hover:bg-secondary"
 					>
-						<IconArrowBigTurnLeft1 className="size-3.5" />
+						<IconReply className="size-3.5" />
 					</Button>
 				)}
 
@@ -145,7 +152,7 @@ export function MessageToolbar({
 							aria-label="Edit message"
 							className="!p-1.5 hover:bg-secondary"
 						>
-							<Edit04 className="size-3.5" />
+							<IconEdit className="size-3.5" />
 						</Button>
 
 						<Button
@@ -155,7 +162,7 @@ export function MessageToolbar({
 							aria-label="Delete message"
 							className="!p-1.5 hover:bg-error-primary"
 						>
-							<Trash01 className="size-3.5" />
+							<IconTrash className="size-3.5" />
 						</Button>
 					</>
 				)}
@@ -172,7 +179,7 @@ export function MessageToolbar({
 							aria-label="More options"
 							className="!p-1.5 hover:bg-secondary"
 						>
-							<DotsVertical className="size-3.5" />
+							<IconDotsVertical className="size-3.5" />
 						</Button>
 					</MenuTrigger>
 					<Dropdown.Popover placement="bottom end" className="w-44">
@@ -185,15 +192,23 @@ export function MessageToolbar({
 								/>
 							)}
 							{onForward && (
-								<Dropdown.Item onAction={onForward} icon={Share06} label="Forward message" />
+								<Dropdown.Item
+									onAction={onForward}
+									icon={IconShare}
+									label="Forward message"
+								/>
 							)}
 							{onMarkUnread && (
-								<Dropdown.Item onAction={onMarkUnread} icon={Mail01} label="Mark as unread" />
+								<Dropdown.Item
+									onAction={onMarkUnread}
+									icon={IconEnvelope}
+									label="Mark as unread"
+								/>
 							)}
 							{onPin && (
 								<Dropdown.Item
 									onAction={onPin}
-									icon={Stars02}
+									icon={IconStar}
 									label={isPinned ? "Unpin message" : "Pin message"}
 								/>
 							)}

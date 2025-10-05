@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { VolumeMax, VolumeMin, VolumeX } from "@untitledui/icons"
 import { useState } from "react"
+import IconVolume from "~/components/icons/icon-volume"
+import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { toast } from "sonner"
 import { SectionFooter } from "~/components/application/section-footers/section-footer"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
@@ -136,7 +137,7 @@ function NotificationsSettings() {
 											size="sm"
 											color="secondary"
 											onClick={testSound}
-											iconLeading={VolumeMax}
+											iconLeading={IconVolume}
 										>
 											Test
 										</Button>
@@ -152,11 +153,11 @@ function NotificationsSettings() {
 									</div>
 									<div className="flex items-center gap-3">
 										{settings.volume === 0 ? (
-											<VolumeX className="size-4 text-tertiary" />
+											<IconVolumeMute className="size-4 text-tertiary" />
 										) : settings.volume < 0.5 ? (
-											<VolumeMin className="size-4 text-tertiary" />
+											<IconVolumeMute className="size-4 text-tertiary" />
 										) : (
-											<VolumeMax className="size-4 text-tertiary" />
+											<IconVolume className="size-4 text-tertiary" />
 										)}
 										<Slider
 											minValue={0}

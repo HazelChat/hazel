@@ -1,5 +1,5 @@
-import { SearchLg } from "@untitledui/icons"
 import type { FocusEventHandler, KeyboardEvent, PointerEventHandler, RefAttributes, RefObject } from "react"
+import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import { createContext, useCallback, useContext, useRef, useState } from "react"
 import { FocusScope, useFilter, useFocusManager } from "react-aria"
 import type {
@@ -350,7 +350,7 @@ export const MultiSelectTagsValue = ({
 	shortcut,
 	placeholder,
 	shortcutClassName,
-	placeholderIcon: Icon = SearchLg,
+	placeholderIcon: Icon = IconMagnifier3,
 	// Omit this prop to avoid invalid HTML attribute warning
 	isDisabled: _isDisabled,
 	...otherProps

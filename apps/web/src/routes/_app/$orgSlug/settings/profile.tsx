@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router"
-import { Mail01 } from "@untitledui/icons"
 import { type } from "arktype"
+import IconEnvelope from "~/components/icons/icon-envelope"
 import { useEffect } from "react"
 import { toast } from "sonner"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
@@ -132,7 +132,7 @@ function ProfileSettings() {
 
 					<TextField name="email" type="email" isDisabled value={user?.email}>
 						<Label className="lg:hidden">Email address</Label>
-						<InputBase size="md" icon={Mail01} />
+						<InputBase size="md" icon={IconEnvelope} />
 					</TextField>
 				</div>
 				<div className="flex justify-end">

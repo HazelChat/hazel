@@ -1,7 +1,7 @@
 import type { MessageId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { X } from "@untitledui/icons"
 import { messageCollection, userCollection } from "~/db/collections"
+import IconClose from "../icons/icon-close"
 import { useMessage } from "~/db/hooks"
 import { Button } from "../base/buttons/button"
 
@@ -44,7 +44,7 @@ export function ReplyIndicator({ replyToMessageId, onClose }: ReplyIndicatorProp
 				<span className="max-w-xs truncate text-secondary">{data.content.split("\n")[0]}</span>
 			</div>
 			<Button size="sm" color="tertiary" onClick={onClose} aria-label="Cancel reply" className="!p-1">
-				<X className="size-3.5" />
+				<IconClose className="size-3.5" />
 			</Button>
 		</div>
 	)
