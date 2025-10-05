@@ -9,7 +9,7 @@ import {
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { S3 } from "@effect-aws/client-s3"
 import { MultipartUpload } from "@effect-aws/s3"
-import { Config, Effect, Layer } from "effect"
+import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"

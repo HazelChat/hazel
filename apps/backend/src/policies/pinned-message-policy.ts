@@ -1,6 +1,11 @@
-import { type ChannelId, type PinnedMessageId, policy, UnauthorizedError } from "@hazel/effect-lib"
+import {
+	type ChannelId,
+	type PinnedMessageId,
+	policy,
+	UnauthorizedError,
+	withSystemActor,
+} from "@hazel/effect-lib"
 import { Effect, Option } from "effect"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { PinnedMessageRepo } from "../repositories/pinned-message-repo"
@@ -11,7 +16,6 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 
 		const pinnedMessageRepo = yield* PinnedMessageRepo
 		const channelRepo = yield* ChannelRepo
-		const _channelMemberRepo = yield* ChannelMemberRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 
 		const canUpdate = (id: PinnedMessageId) =>
@@ -31,10 +35,9 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 								}
 
 								// Organization admins can update any message
-								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-									channel.organizationId,
-									actor.id,
-								)
+								const orgMember = yield* organizationMemberRepo
+									.findByOrgAndUser(channel.organizationId, actor.id)
+									.pipe(withSystemActor)
 
 								if (
 									Option.isSome(orgMember) &&
@@ -61,10 +64,9 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
 							// Check if user is an org member
-							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-								channel.organizationId,
-								actor.id,
-							)
+							const orgMember = yield* organizationMemberRepo
+								.findByOrgAndUser(channel.organizationId, actor.id)
+								.pipe(withSystemActor)
 
 							if (Option.isNone(orgMember)) {
 								return yield* Effect.succeed(false)
@@ -104,10 +106,9 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 								}
 
 								// Organization admins can unpin any message
-								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-									channel.organizationId,
-									actor.id,
-								)
+								const orgMember = yield* organizationMemberRepo
+									.findByOrgAndUser(channel.organizationId, actor.id)
+									.pipe(withSystemActor)
 
 								if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 									return yield* Effect.succeed(true)
@@ -122,11 +123,6 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 
 		return { canCreate, canDelete, canUpdate } as const
 	}),
-	dependencies: [
-		PinnedMessageRepo.Default,
-		ChannelRepo.Default,
-		ChannelMemberRepo.Default,
-		OrganizationMemberRepo.Default,
-	],
+	dependencies: [PinnedMessageRepo.Default, ChannelRepo.Default, OrganizationMemberRepo.Default],
 	accessors: true,
 }) {}

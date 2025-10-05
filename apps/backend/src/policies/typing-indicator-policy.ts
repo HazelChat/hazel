@@ -4,6 +4,7 @@ import {
 	policy,
 	type TypingIndicatorId,
 	UnauthorizedError,
+	withSystemActor,
 } from "@hazel/effect-lib"
 import { Effect, Option, pipe } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
@@ -33,8 +34,9 @@ export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>
 						policyEntity,
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							// Check if user is a member of the channel
-							const member = yield* channelMemberRepo.findByChannelAndUser(channelId, actor.id)
+							const member = yield* channelMemberRepo
+								.findByChannelAndUser(channelId, actor.id)
+								.pipe(withSystemActor)
 							return yield* Effect.succeed(Option.isSome(member))
 						}),
 					),

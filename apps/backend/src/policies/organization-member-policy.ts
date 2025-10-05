@@ -5,6 +5,7 @@ import {
 	policyCompose,
 	UnauthorizedError,
 	type UserId,
+	withSystemActor,
 } from "@hazel/effect-lib"
 import { Effect, Option, pipe } from "effect"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
@@ -26,10 +27,9 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
 							// Check if user is already a member or admin of the organization
-							const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
-								organizationId,
-								actor.id,
-							)
+							const currentMember = yield* organizationMemberRepo
+								.findByOrgAndUser(organizationId, actor.id)
+								.pipe(withSystemActor)
 
 							// If user is already a member, they can't create another membership
 							if (Option.isSome(currentMember)) {
@@ -57,10 +57,9 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 									return yield* Effect.succeed(true)
 								}
 
-								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
-									member.organizationId,
-									actor.id,
-								)
+								const currentMember = yield* organizationMemberRepo
+									.findByOrgAndUser(member.organizationId, actor.id)
+									.pipe(withSystemActor)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)
@@ -88,10 +87,9 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 									return yield* Effect.succeed(true)
 								}
 
-								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
-									member.organizationId,
-									actor.id,
-								)
+								const currentMember = yield* organizationMemberRepo
+									.findByOrgAndUser(member.organizationId, actor.id)
+									.pipe(withSystemActor)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)

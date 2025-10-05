@@ -1,4 +1,10 @@
-import { type MessageId, type MessageReactionId, policy, UnauthorizedError } from "@hazel/effect-lib"
+import {
+	type MessageId,
+	type MessageReactionId,
+	policy,
+	UnauthorizedError,
+	withSystemActor,
+} from "@hazel/effect-lib"
 import { Effect, Option } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
@@ -47,10 +53,9 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 								Effect.fn(`${policyEntity}.create`)(function* (actor) {
 									// For public channels, org members can react
 									if (channel.type === "public") {
-										const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-											channel.organizationId,
-											actor.id,
-										)
+										const orgMember = yield* organizationMemberRepo
+											.findByOrgAndUser(channel.organizationId, actor.id)
+											.pipe(withSystemActor)
 
 										if (Option.isSome(orgMember)) {
 											return yield* Effect.succeed(true)
@@ -59,10 +64,9 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 
 									// For private channels, would need to check channel membership
 									// Simplified for now - org admins can react anywhere
-									const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-										channel.organizationId,
-										actor.id,
-									)
+									const orgMember = yield* organizationMemberRepo
+										.findByOrgAndUser(channel.organizationId, actor.id)
+										.pipe(withSystemActor)
 
 									if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 										return yield* Effect.succeed(true)

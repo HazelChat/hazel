@@ -1,4 +1,5 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { withSystemActor } from "@hazel/effect-lib"
 import type { Event } from "@workos-inc/node"
 import { Effect, pipe } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
@@ -83,6 +84,6 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 						? result.error
 						: "Unknown error",
 			})
-		}),
+		}).pipe(withSystemActor),
 	),
 )

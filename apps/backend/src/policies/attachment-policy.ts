@@ -1,4 +1,4 @@
-import { type AttachmentId, policy, UnauthorizedError } from "@hazel/effect-lib"
+import { type AttachmentId, policy, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
 import { Effect, Option } from "effect"
 import { AttachmentRepo } from "../repositories/attachment-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
@@ -83,10 +83,9 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 									}
 
 									// Organization admins can delete any attachment
-									const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-										channel.organizationId,
-										actor.id,
-									)
+									const orgMember = yield* organizationMemberRepo
+										.findByOrgAndUser(channel.organizationId, actor.id)
+										.pipe(withSystemActor)
 
 									if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 										return yield* Effect.succeed(true)
@@ -139,10 +138,9 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 
 									// For private channels, only admins can view
 									// Simplified - would need to check channel membership
-									const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-										channel.organizationId,
-										actor.id,
-									)
+									const orgMember = yield* organizationMemberRepo
+										.findByOrgAndUser(channel.organizationId, actor.id)
+										.pipe(withSystemActor)
 
 									if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 										return yield* Effect.succeed(true)

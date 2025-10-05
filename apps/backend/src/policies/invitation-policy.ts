@@ -5,6 +5,7 @@ import {
 	policyCompose,
 	UnauthorizedError,
 	type UserId,
+	withSystemActor,
 } from "@hazel/effect-lib"
 import { Effect, Option, pipe } from "effect"
 import { InvitationRepo } from "../repositories/invitation-repo"
@@ -27,10 +28,9 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 					"create",
 					Effect.fn(`${policyEntity}.create`)(function* (actor) {
 						// Only organization admins can create invitations
-						const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-							organizationId,
-							actor.id,
-						)
+						const orgMember = yield* organizationMemberRepo
+							.findByOrgAndUser(organizationId, actor.id)
+							.pipe(withSystemActor)
 
 						if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 							return yield* Effect.succeed(true)
@@ -57,10 +57,9 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 							}
 
 							// Organization admins can update any invitation
-							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-								invitation.organizationId,
-								actor.id,
-							)
+							const orgMember = yield* organizationMemberRepo
+								.findByOrgAndUser(invitation.organizationId, actor.id)
+								.pipe(withSystemActor)
 
 							if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 								return yield* Effect.succeed(true)
@@ -88,10 +87,9 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 							}
 
 							// Organization admins can delete any invitation
-							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
-								invitation.organizationId,
-								actor.id,
-							)
+							const orgMember = yield* organizationMemberRepo
+								.findByOrgAndUser(invitation.organizationId, actor.id)
+								.pipe(withSystemActor)
 
 							if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 								return yield* Effect.succeed(true)
