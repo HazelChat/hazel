@@ -1,8 +1,5 @@
 import type { AttachmentId } from "@hazel/db/schema"
 import { ItalicSquare } from "@untitledui/icons"
-import IconPaperclip2 from "../icons/icon-paperclip2"
-import IconEmoji1 from "../icons/icon-emoji-1"
-import IconClose from "../icons/icon-close"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { Dialog, DialogTrigger, Popover } from "react-aria-components"
 import { useChat } from "~/hooks/use-chat"
@@ -18,6 +15,9 @@ import {
 	EmojiPickerFooter,
 	EmojiPickerSearch,
 } from "../base/emoji-picker/emoji-picker"
+import IconClose from "../icons/icon-close"
+import IconEmoji1 from "../icons/icon-emoji-1"
+import IconPaperclip2 from "../icons/icon-paperclip2"
 
 export interface MessageComposerActionsRef {
 	cleanup: () => void

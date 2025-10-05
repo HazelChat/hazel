@@ -1,8 +1,4 @@
 import { ArrowDown, ChevronSelectorVertical } from "@untitledui/icons"
-import IconCopy from "../icons/icon-copy"
-import IconEdit from "../icons/icon-edit"
-import IconSupport from "../icons/icon-support"
-import IconTrash from "../icons/icon-trash"
 import type {
 	ComponentPropsWithRef,
 	HTMLAttributes,
@@ -34,6 +30,10 @@ import { Badge } from "~/components/base/badges/badges"
 import { Checkbox } from "~/components/base/checkbox/checkbox"
 import { Dropdown } from "~/components/base/dropdown/dropdown"
 import { Tooltip, TooltipTrigger } from "~/components/base/tooltip/tooltip"
+import IconCopy from "~/components/icons/icon-copy"
+import IconEdit from "~/components/icons/icon-edit"
+import IconSupport from "~/components/icons/icon-support"
+import IconTrash from "~/components/icons/icon-trash"
 import { cx } from "~/utils/cx"
 
 export const TableRowActionsDropdown = () => (

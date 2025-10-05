@@ -1,7 +1,6 @@
 "use client"
 
 import { cva } from "class-variance-authority"
-import IconClose from "~/components/icons/icon-close"
 import * as React from "react"
 import type {
 	ButtonProps,
@@ -22,6 +21,7 @@ import {
 	Text,
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
+import IconClose from "~/components/icons/icon-close"
 
 type Sides = "top" | "bottom" | "left" | "right"
 

@@ -1,10 +1,10 @@
-import IconTrash from "../icons/icon-trash"
 import { Heading as AriaHeading } from "react-aria-components"
 import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
 import { Button } from "~/components/base/buttons/button"
 import { CloseButton } from "~/components/base/buttons/close-button"
 import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import { BackgroundPattern } from "~/components/shared-assets/background-patterns"
+import IconTrash from "../icons/icon-trash"
 
 interface DeleteMessageModalProps {
 	isOpen: boolean

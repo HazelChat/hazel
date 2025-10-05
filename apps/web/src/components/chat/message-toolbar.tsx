@@ -1,11 +1,4 @@
 import { Flag01 } from "@untitledui/icons"
-import IconCopy from "../icons/icon-copy"
-import IconDotsVertical from "../icons/icon-dots-vertical"
-import IconEdit from "../icons/icon-edit"
-import IconEnvelope from "../icons/icon-envelope"
-import IconShare from "../icons/icon-share"
-import IconStar from "../icons/icon-star"
-import IconTrash from "../icons/icon-trash"
 import { useEffect, useState } from "react"
 import { Dialog, DialogTrigger, MenuTrigger, Popover } from "react-aria-components"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
@@ -17,10 +10,16 @@ import {
 	EmojiPickerFooter,
 	EmojiPickerSearch,
 } from "../base/emoji-picker/emoji-picker"
-import IconReply from "../icons/icon-reply"
-
+import IconCopy from "../icons/icon-copy"
+import IconDotsVertical from "../icons/icon-dots-vertical"
+import IconEdit from "../icons/icon-edit"
 import IconEmojiAdd from "../icons/icon-emoji-add"
+import IconEnvelope from "../icons/icon-envelope"
+import IconReply from "../icons/icon-reply"
+import IconShare from "../icons/icon-share"
+import IconStar from "../icons/icon-star"
 import IconThread from "../icons/icon-thread"
+import IconTrash from "../icons/icon-trash"
 import { DeleteMessageModal } from "./delete-message-modal"
 
 interface MessageToolbarProps {

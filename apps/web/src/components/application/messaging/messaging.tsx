@@ -1,12 +1,12 @@
 import { FileIcon } from "@untitledui/file-icons"
 import { DownloadCloud02, Link03, RefreshCcw02 } from "@untitledui/icons"
-import IconCopy from "../icons/icon-copy"
-import IconEdit from "../icons/icon-edit"
-import IconStar from "../icons/icon-star"
 import type { ComponentPropsWithRef, ReactNode } from "react"
 import { Button as AriaButton } from "react-aria-components"
 import { Avatar } from "~/components/base/avatar/avatar"
 import { Tooltip } from "~/components/base/tooltip/tooltip"
+import IconCopy from "~/components/icons/icon-copy"
+import IconEdit from "~/components/icons/icon-edit"
+import IconStar from "~/components/icons/icon-star"
 import { cx } from "~/utils/cx"
 
 export type Message = {

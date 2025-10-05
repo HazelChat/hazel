@@ -1,9 +1,9 @@
 import type { ButtonProps as AriaButtonProps } from "react-aria-components"
-import IconPlus from "~/components/icons/icon-plus"
 import {
 	Tooltip as AriaTooltip,
 	TooltipTrigger as AriaTooltipTrigger,
 } from "~/components/base/tooltip/tooltip"
+import IconPlus from "~/components/icons/icon-plus"
 import { cx } from "~/utils/cx"
 
 const sizes = {

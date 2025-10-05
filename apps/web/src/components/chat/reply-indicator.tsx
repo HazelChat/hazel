@@ -1,9 +1,9 @@
 import type { MessageId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { messageCollection, userCollection } from "~/db/collections"
-import IconClose from "../icons/icon-close"
 import { useMessage } from "~/db/hooks"
 import { Button } from "../base/buttons/button"
+import IconClose from "../icons/icon-close"
 
 interface ReplyIndicatorProps {
 	replyToMessageId: MessageId

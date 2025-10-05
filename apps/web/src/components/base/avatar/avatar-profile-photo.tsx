@@ -105,7 +105,9 @@ export const AvatarProfilePhoto = ({
 					styles[size].content,
 				)}
 			>
-				{placeholder || <IconCircleDottedUser className={cx("text-fg-quaternary", styles[size].icon)} />}
+				{placeholder || (
+					<IconCircleDottedUser className={cx("text-fg-quaternary", styles[size].icon)} />
+				)}
 			</div>
 		)
 	}

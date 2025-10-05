@@ -1,6 +1,6 @@
 import type { MouseEventHandler, ReactNode } from "react"
-import IconClose from "~/components/icons/icon-close"
 import { Dot } from "~/components/foundations/dot-icon"
+import IconClose from "~/components/icons/icon-close"
 import { cx } from "~/utils/cx"
 import type {
 	BadgeColors,

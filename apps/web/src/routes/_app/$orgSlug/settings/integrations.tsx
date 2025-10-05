@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
-import IconPlus from "~/components/icons/icon-plus"
 import { SectionFooter } from "~/components/application/section-footers/section-footer"
 import { SectionHeader } from "~/components/application/section-headers/section-headers"
 import { TabList, Tabs } from "~/components/application/tabs/tabs"
 import { Button } from "~/components/base/buttons/button"
 import { Toggle } from "~/components/base/toggle/toggle"
+import IconPlus from "~/components/icons/icon-plus"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations")({
 	component: IntegrationsSettings,

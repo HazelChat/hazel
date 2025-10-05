@@ -1,5 +1,4 @@
 import type { FC, RefAttributes } from "react"
-import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import type {
 	ButtonProps as AriaButtonProps,
 	MenuItemProps as AriaMenuItemProps,
@@ -17,6 +16,7 @@ import {
 	Popover as AriaPopover,
 	Separator as AriaSeparator,
 } from "react-aria-components"
+import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import { cx } from "~/utils/cx"
 
 interface DropdownItemProps extends AriaMenuItemProps {
