@@ -91,7 +91,7 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 			const updateStatus = (
 				params: {
 					userId: UserId
-					status: "online" | "away" | "busy" | "dnd"
+					status: "online" | "away" | "busy" | "dnd" | "offline"
 					customMessage?: string | null
 				},
 				tx?: TxFn,

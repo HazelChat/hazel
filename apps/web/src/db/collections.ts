@@ -735,6 +735,20 @@ export const userPresenceStatusCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(UserPresenceStatus.Model.json),
 		getKey: (item) => item.id,
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const { modified: newUserPresenceStatus } = transaction.mutations[0]
+				const client = yield* ApiClient
+
+				const results = yield* client.presence.updateStatus({
+					payload: {
+						status: newUserPresenceStatus.status,
+						customMessage: newUserPresenceStatus.customMessage,
+					},
+				})
+
+				return { txid: results.transactionId }
+			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUserPresenceStatus } = transaction.mutations[0]

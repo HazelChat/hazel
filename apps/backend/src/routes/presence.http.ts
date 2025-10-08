@@ -15,7 +15,7 @@ export const HttpPresenceLive = HttpApiBuilder.group(HazelApi, "presence", (hand
 			.handle(
 				"updateStatus",
 				Effect.fn(function* ({ payload }) {
-					const currentUser = yield* CurrentUser.CurrentUser
+					const currentUser = yield* CurrentUser.Context
 
 					const { status, txid } = yield* db
 						.transaction(
@@ -45,35 +45,25 @@ export const HttpPresenceLive = HttpApiBuilder.group(HazelApi, "presence", (hand
 			.handle(
 				"updateActiveChannel",
 				Effect.fn(function* ({ payload }) {
-					const currentUser = yield* CurrentUser.CurrentUser
+					const currentUser = yield* CurrentUser.Context
 
 					const { status, txid } = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								// Update or create status with active channel
+								// Get existing status to preserve user's status and customMessage
 								const existingOption = yield* UserPresenceStatusRepo.findByUserId(
 									currentUser.id,
-								)
+								).pipe(policyUse(UserPresenceStatusPolicy.canRead()))
+								const existing = Option.getOrNull(existingOption)
 
-								let result
-								if (Option.isSome(existingOption)) {
-									// Update existing
-									const updated = yield* UserPresenceStatusRepo.updateActiveChannel({
-										userId: currentUser.id,
-										activeChannelId: payload.activeChannelId,
-									}).pipe(policyUse(UserPresenceStatusPolicy.canUpdate()))
-
-									result = updated[0]!
-								} else {
-									// Create new
-									result = yield* UserPresenceStatusRepo.upsertByUserId({
-										userId: currentUser.id,
-										status: "online",
-										customMessage: null,
-										activeChannelId: payload.activeChannelId,
-										updatedAt: new Date(),
-									}).pipe(policyUse(UserPresenceStatusPolicy.canUpdate()))
-								}
+								// Upsert with active channel, preserving existing status/customMessage
+								const result = yield* UserPresenceStatusRepo.upsertByUserId({
+									userId: currentUser.id,
+									status: existing?.status ?? "online",
+									customMessage: existing?.customMessage ?? null,
+									activeChannelId: payload.activeChannelId,
+									updatedAt: new Date(),
+								}).pipe(policyUse(UserPresenceStatusPolicy.canUpdate()))
 
 								const txid = yield* generateTransactionId()
 

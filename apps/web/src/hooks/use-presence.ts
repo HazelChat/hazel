@@ -8,7 +8,7 @@ import { useAuth } from "~/providers/auth-provider"
 type PresenceStatus = "online" | "away" | "busy" | "dnd" | "offline"
 
 const AFK_TIMEOUT = 5 * 60 * 1000 // 5 minutes
-const OFFLINE_TIMEOUT = 15 * 60 * 1000 // 15 minutes (when window is hidden)
+const OFFLINE_TIMEOUT = 2 * 60 * 1000 // 2 minutes (when window is hidden)
 const UPDATE_INTERVAL = 30 * 1000 // 30 seconds
 
 export function usePresence() {
@@ -250,25 +250,6 @@ export function usePresence() {
 			}
 		}
 	}, [user?.id, currentPresence?.id, handleActivity, status, updatePresenceStatus])
-
-	// Mark as offline on page unload (tab/browser close)
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			if (currentPresence?.id) {
-				// Mark as offline when closing tab/browser
-				userPresenceStatusCollection.update(currentPresence.id, (draft) => {
-					draft.status = "offline"
-					draft.updatedAt = new Date()
-				})
-			}
-		}
-
-		window.addEventListener("beforeunload", handleBeforeUnload)
-
-		return () => {
-			window.removeEventListener("beforeunload", handleBeforeUnload)
-		}
-	}, [currentPresence?.id])
 
 	return {
 		status: currentPresence?.status ?? status,
