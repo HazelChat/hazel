@@ -1,12 +1,15 @@
-import { Atom, Result, useAtomRefresh, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Effect, Exit } from "effect"
-import type { ReactNode } from "react"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 
 interface LoginOptions {
 	returnTo?: string
 	workosOrganizationId?: string
 	invitationToken?: string
+}
+
+interface LogoutOptions {
+	redirectTo?: string
 }
 
 // ============================================================================
@@ -79,26 +82,23 @@ const loginAtom = HazelApiClient.mutation("auth", "login")
  * Logout function atom
  */
 const logoutAtom = Atom.fn(
-	Effect.fnUntraced(function* () {
-		window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/logout`
+	Effect.fnUntraced(function* (options?: LogoutOptions) {
+		const redirectTo = options?.redirectTo || "/"
+		const logoutUrl = new URL("/auth/logout", import.meta.env.VITE_BACKEND_URL)
+		logoutUrl.searchParams.set("redirectTo", redirectTo)
+		window.location.href = logoutUrl.toString()
 	}),
 )
 
 // ============================================================================
-// Provider & Hook
+// Hook
 // ============================================================================
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-	// No state needed - atoms handle everything!
-	return <>{children}</>
-}
 
 export function useAuth() {
 	const user = useAtomValue(userAtom)
 	const isLoading = useAtomValue(isLoadingAtom)
 	const loginMutation = useAtomSet(loginAtom, { mode: "promiseExit" })
 	const logoutFn = useAtomSet(logoutAtom)
-	const refresh = useAtomRefresh(currentUserQueryAtom)
 
 	const login = async (options?: LoginOptions) => {
 		const exit = await loginMutation({
@@ -118,12 +118,8 @@ export function useAuth() {
 		})
 	}
 
-	const logout = () => {
-		logoutFn()
-	}
-
-	const refreshUser = async () => {
-		refresh()
+	const logout = (options?: LogoutOptions) => {
+		logoutFn(options)
 	}
 
 	return {
@@ -131,6 +127,5 @@ export function useAuth() {
 		isLoading,
 		login,
 		logout,
-		refreshUser,
 	}
 }
