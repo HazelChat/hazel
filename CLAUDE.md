@@ -8,6 +8,7 @@ This is a monorepo with the following structure:
 - `apps/web/` - React frontend using Vite, TanStack Router, and TailwindCSS
 - `apps/backendv2/` - Backend API using Bun runtime and Effect-TS
 - `packages/db/` - Shared database package using Drizzle ORM and PostgreSQL
+- `.context/` - Git Subtrees for context of how to use specific libraries (In this case Effect and Effect Atom)
 
 ## Development Commands
 
