@@ -9,12 +9,13 @@
 	},
 	"files": {
 		"includes": [
-			"**/*.{ts,tsx}"
+			"apps/**/*.{ts,tsx}",
+			"packages/**/*.{ts,tsx}"
 		],
 		"experimentalScannerIgnores": [
-			".context",
-			"node_modules",
-			".turbo"
+			".context/**",
+			"node_modules/**",
+			".turbo/**"
 		]
 	},
 	"linter": {
