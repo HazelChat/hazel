@@ -21,6 +21,7 @@ export const VersionCheck = () => {
 	useEffect(() => {
 		if (versionState?.shouldShowToast) {
 			toast("A new version is available", {
+				id: "version-update",
 				description: "Reload the page to get the latest updates",
 				duration: Number.POSITIVE_INFINITY,
 				action: {
