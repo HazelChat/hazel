@@ -8,9 +8,9 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@effect-atom/atom-react": "^0.3.0",
+		"@effect-atom/atom-react": "^0.3.2",
 		"@tanstack/db": "0.4.8",
-		"effect": "^3.18.2"
+		"effect": "^3.18.4"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3"

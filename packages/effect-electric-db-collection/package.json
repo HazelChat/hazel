@@ -20,7 +20,7 @@
 		"@tanstack/db": "0.4.8",
 		"@tanstack/electric-db-collection": "0.1.32",
 		"@tanstack/store": "^0.7.7",
-		"effect": "^3.18.2"
+		"effect": "^3.18.4"
 	},
 	"sideEffects": false
 }
