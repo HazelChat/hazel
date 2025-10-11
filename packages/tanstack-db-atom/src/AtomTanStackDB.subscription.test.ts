@@ -77,12 +77,12 @@ function createMutableCollection<T extends object>(
 				write!({ type: "insert", value: item })
 				commit!()
 			},
-			update: (key: string | number, item: T) => {
+			update: (_key: string | number, item: T) => {
 				begin!()
 				write!({ type: "update", value: item })
 				commit!()
 			},
-			delete: (key: string | number, item: T) => {
+			delete: (_key: string | number, item: T) => {
 				begin!()
 				write!({ type: "delete", value: item })
 				commit!()

@@ -12,6 +12,7 @@ import { TextArea } from "~/components/base/textarea/textarea"
 import { Tooltip } from "~/components/base/tooltip/tooltip"
 import IconEdit from "~/components/icons/icon-edit"
 import { userCollection, userPresenceStatusCollection } from "~/db/collections"
+import { useChat } from "~/hooks/use-chat"
 import { useAuth } from "~/lib/auth"
 import { IconNotification } from "../application/notifications/notifications"
 import IconDots from "../icons/icon-dots"
@@ -24,18 +25,21 @@ interface UserProfilePopoverProps {
 
 export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 	const { user: currentUser } = useAuth()
-	const { data } = useLiveQuery((q) =>
+	const { authors } = useChat()
+
+	// Get user from batched authors for better performance
+	const user = authors.get(userId)
+
+	// Still need to query presence status separately as it's not part of message data
+	const { data: presenceData } = useLiveQuery((q) =>
 		q
-			.from({ user: userCollection })
-			.leftJoin({ presence: userPresenceStatusCollection }, ({ user, presence }) =>
-				eq(user.id, presence.userId),
-			)
-			.where((q) => eq(q.user.id, userId))
-			.select(({ user, presence }) => ({ user, presence })),
+			.from({ presence: userPresenceStatusCollection })
+			.where(({ presence }) => eq(presence.userId, userId))
+			.select(({ presence }) => presence)
+			.orderBy(({ presence }) => presence.updatedAt, "desc")
+			.limit(1),
 	)
-	const result = data[0]
-	const user = result?.user
-	const presence = result?.presence
+	const presence = presenceData?.[0]
 
 	// Internal state for user interactions
 	const [isFavorite, setIsFavorite] = useState(false)

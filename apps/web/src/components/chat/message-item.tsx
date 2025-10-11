@@ -4,7 +4,7 @@ import { format } from "date-fns"
 import { useRef, useState } from "react"
 import { Button } from "react-aria-components"
 import { toast } from "sonner"
-import { messageCollection, messageReactionCollection, userCollection } from "~/db/collections"
+import { messageCollection, messageReactionCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useAuth } from "~/lib/auth"
 import { cx } from "~/utils/cx"
@@ -344,19 +344,11 @@ export const MessageAuthorHeader = ({
 	message: typeof Message.Model.Type
 	isPinned?: boolean
 }) => {
-	const { data } = useLiveQuery(
-		(q) =>
-			q
-				.from({ user: userCollection })
-				.where(({ user }) => eq(user.id, message.authorId))
-				.orderBy(({ user }) => user.createdAt, "desc")
-				.limit(1),
-		[message.authorId],
-	)
+	// Use batched authors from context instead of individual query
+	const { authors } = useChat()
+	const user = authors.get(message.authorId)
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
-
-	const user = data?.[0]
 
 	if (!user) return null
 

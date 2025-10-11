@@ -1,5 +1,5 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { Channel, Message, PinnedMessage } from "@hazel/db/models"
+import type { Channel, Message, PinnedMessage, User } from "@hazel/db/models"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -16,7 +16,11 @@ import {
 	activeThreadMessageIdAtom,
 	replyToMessageAtomFamily,
 } from "~/atoms/chat-atoms"
-import { channelByIdAtomFamily, messagesByChannelAtomFamily } from "~/atoms/chat-query-atoms"
+import {
+	authorsByChannelAtomFamily,
+	channelByIdAtomFamily,
+	messagesByChannelAtomFamily,
+} from "~/atoms/chat-query-atoms"
 import { sendMessage as sendMessageAction } from "~/db/actions"
 import {
 	channelCollection,
@@ -37,6 +41,7 @@ interface ChatContextValue {
 	channel: typeof Channel.Model.Type | undefined
 	messages: MessageWithPinned[]
 	isLoadingMessages: boolean
+	authors: Map<UserId, typeof User.Model.Type>
 	sendMessage: (props: { content: string; attachments?: AttachmentId[] }) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
 	deleteMessage: (messageId: MessageId) => void
@@ -115,6 +120,9 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			previousMessagesRef.current = messagesData
 		}
 	}, [messagesData, messagesLoading])
+
+	// Read authors from derived atom - automatically batched and cached!
+	const authors = useAtomValue(authorsByChannelAtomFamily(channelId))
 
 	// Message operations
 	const sendMessage = useCallback(
@@ -290,6 +298,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			channel,
 			messages,
 			isLoadingMessages,
+			authors,
 			sendMessage,
 			editMessage,
 			deleteMessage,
@@ -311,6 +320,7 @@ export function ChatProvider({ channelId, organizationId, children }: ChatProvid
 			channel,
 			messages,
 			isLoadingMessages,
+			authors,
 			sendMessage,
 			editMessage,
 			deleteMessage,

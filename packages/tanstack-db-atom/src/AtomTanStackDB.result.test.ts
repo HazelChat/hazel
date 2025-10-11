@@ -134,14 +134,14 @@ describe("Result Pattern Matching", () => {
 		it("should correctly identify initial/waiting state", async () => {
 			const registry = Registry.make()
 
-			let markReady: () => void
+			let _markReady: () => void
 
 			const config: any = {
 				id: "todos",
 				getKey: (todo: Todo) => todo.id,
 				sync: {
 					sync: (params: any) => {
-						markReady = params.markReady
+						_markReady = params.markReady
 						// Don't mark ready immediately
 					},
 				},
@@ -185,7 +185,9 @@ describe("Result Pattern Matching", () => {
 			await vi.runAllTimersAsync()
 
 			const result = registry.get(todosAtom)
-			const todos = Result.getOrElse(result, () => [{ id: "fallback", title: "Fallback", completed: false, userId: "fallback" }])
+			const todos = Result.getOrElse(result, () => [
+				{ id: "fallback", title: "Fallback", completed: false, userId: "fallback" },
+			])
 
 			expect(todos).toHaveLength(1)
 			expect(todos[0]?.title).toBe("Fallback")
@@ -220,7 +222,11 @@ describe("Result Pattern Matching", () => {
 			const registry = Registry.make()
 
 			// Success case
-			const { collection: successCol } = createControlledCollection("todos1", initialTodos, (todo) => todo.id)
+			const { collection: successCol } = createControlledCollection(
+				"todos1",
+				initialTodos,
+				(todo) => todo.id,
+			)
 			const successAtom = makeCollectionAtom(successCol)
 
 			await vi.runAllTimersAsync()
@@ -502,7 +508,10 @@ describe("Result Pattern Matching", () => {
 			const { collection } = createControlledCollection("todos", initialTodos, (todo) => todo.id)
 
 			const firstTodoAtom = makeQuery((q) =>
-				q.from({ todos: collection }).where(({ todos }) => eq(todos.id, "1")).limit(1),
+				q
+					.from({ todos: collection })
+					.where(({ todos }) => eq(todos.id, "1"))
+					.limit(1),
 			)
 
 			await vi.runAllTimersAsync()
@@ -521,7 +530,10 @@ describe("Result Pattern Matching", () => {
 			const { collection } = createControlledCollection("todos", initialTodos, (todo) => todo.id)
 
 			const nonExistentAtom = makeQuery((q) =>
-				q.from({ todos: collection }).where(({ todos }) => eq(todos.id, "999")).limit(1),
+				q
+					.from({ todos: collection })
+					.where(({ todos }) => eq(todos.id, "999"))
+					.limit(1),
 			)
 
 			await vi.runAllTimersAsync()

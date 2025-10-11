@@ -5,7 +5,9 @@ import {
 	messageCountAtomFamily,
 	scrollContainerRefAtomFamily,
 } from "~/atoms/chat-atoms"
+import { processedMessagesByChannelAtomFamily } from "~/atoms/chat-query-atoms"
 import { useChat } from "~/hooks/use-chat"
+
 // TODO: Re-enable when pagination is implemented
 // import { useDebouncedIntersection } from "~/hooks/use-debounced-intersection"
 // import { useLoadingState } from "~/hooks/use-loading-state"
@@ -23,6 +25,9 @@ export function MessageList() {
 	const messageCount = useAtomValue(messageCountAtomFamily(channelId))
 	const setMessageCount = useAtomSet(messageCountAtomFamily(channelId))
 	const setScrollContainerRef = useAtomSet(scrollContainerRefAtomFamily(channelId))
+
+	// Read processed messages from derived atom - no manual processing needed!
+	const processedMessages = useAtomValue(processedMessagesByChannelAtomFamily(channelId))
 
 	// TODO: Re-enable when pagination is implemented
 	// const { saveScrollState, restoreScrollPosition } = useScrollRestoration()
@@ -43,41 +48,6 @@ export function MessageList() {
 	// 	enabled: canLoadBottom && !isLoadingMessages,
 	// 	debounceMs: 400,
 	// })
-
-	const processedMessages = useMemo(() => {
-		const timeThreshold = 5 * 60 * 1000
-		const chronologicalMessages = [...messages].reverse()
-
-		return chronologicalMessages.map((message, index) => {
-			// Determine isGroupStart
-			const prevMessage = index > 0 ? chronologicalMessages[index - 1] : null
-			const isGroupStart =
-				!prevMessage ||
-				message.authorId !== prevMessage.authorId ||
-				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
-				!!prevMessage.replyToMessageId
-
-			// Determine isGroupEnd
-			const nextMessage =
-				index < chronologicalMessages.length - 1 ? chronologicalMessages[index + 1] : null
-			const isGroupEnd =
-				!nextMessage ||
-				message.authorId !== nextMessage.authorId ||
-				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
-
-			// TODO: Implement these when channel data is available
-			const isFirstNewMessage = false // Will be based on lastSeenMessageId
-			const isPinned = !!message.pinnedMessage?.id
-
-			return {
-				message,
-				isGroupStart,
-				isGroupEnd,
-				isFirstNewMessage,
-				isPinned,
-			}
-		})
-	}, [messages])
 
 	// Group messages by date
 	const groupedMessages = useMemo(() => {

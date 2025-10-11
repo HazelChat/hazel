@@ -193,12 +193,7 @@ describe("Timing and Async Behavior", () => {
 
 	it("should handle updates during waiting state", async () => {
 		const registry = Registry.make()
-		const { collection, utils } = createDelayedCollection(
-			"todos",
-			initialTodos,
-			(todo) => todo.id,
-			1000,
-		)
+		const { collection, utils } = createDelayedCollection("todos", initialTodos, (todo) => todo.id, 1000)
 
 		const todosAtom = makeCollectionAtom(collection)
 
