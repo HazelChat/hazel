@@ -29,7 +29,7 @@ const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
 export const emojiUsageAtom = Atom.kvs({
 	runtime: localStorageRuntime,
 	key: "hazel-emoji-usage",
-	schema: Schema.NullOr(EmojiUsageSchema),
+	schema: EmojiUsageSchema,
 	defaultValue: () => ({}) as EmojiUsage,
 })
 
@@ -39,16 +39,16 @@ export const emojiUsageAtom = Atom.kvs({
 export const topEmojisAtom = Atom.make((get) => {
 	const emojiUsage = get(emojiUsageAtom)
 
+	// Always return DEFAULT_EMOJIS if no usage data
 	if (!emojiUsage || Object.keys(emojiUsage).length === 0) {
-		return DEFAULT_EMOJIS as unknown as string[]
+		return [...DEFAULT_EMOJIS]
 	}
 
 	const entries = Object.entries(emojiUsage)
-
 	const sorted = entries.sort((a, b) => b[1] - a[1])
-
 	const topEmojis = sorted.slice(0, 3).map(([emoji]) => emoji)
 
+	// Fill with defaults if we don't have 3 yet
 	if (topEmojis.length < 3) {
 		const remainingDefaults = DEFAULT_EMOJIS.filter((emoji) => !topEmojis.includes(emoji))
 		return [...topEmojis, ...remainingDefaults].slice(0, 3)
@@ -57,26 +57,5 @@ export const topEmojisAtom = Atom.make((get) => {
 	return topEmojis
 }).pipe(Atom.keepAlive)
 
-/**
- * Helper function to track emoji usage imperatively
- */
-export const trackEmojiUsage = (emoji: string) => {
-	Atom.batch(() => {
-		Atom.update(emojiUsageAtom, (prev) => {
-			const current = prev ?? {}
-			return {
-				...current,
-				[emoji]: (current[emoji] || 0) + 1,
-			}
-		})
-	})
-}
-
-/**
- * Helper function to reset emoji statistics imperatively
- */
-export const resetEmojiStats = () => {
-	Atom.batch(() => {
-		Atom.set(emojiUsageAtom, {} as EmojiUsage)
-	})
-}
+// trackEmojiUsage is now provided via useEmojiStats hook
+// resetEmojiStats is now provided via useEmojiStats hook
