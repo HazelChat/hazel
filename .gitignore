@@ -6,3 +6,4 @@ dist-ssr
 .turbo
 .idea
 .env
+version.json

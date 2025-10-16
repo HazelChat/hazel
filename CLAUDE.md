@@ -21,6 +21,16 @@ Available library contexts:
 
 When working with Effect, Effect Atom, or TanStack DB, refer to these directories for best practices, API usage, and implementation patterns.
 
+### Best Practices Guides
+
+**Effect Atom**: See `EFFECT_ATOM_BEST_PRACTICES.md` for comprehensive guidance on:
+- Creating and managing atoms
+- React integration patterns
+- Working with Effects and Results
+- Integration with localStorage, HttpApi, and TanStack DB
+- Performance optimization techniques
+- Real-world examples from this codebase
+
 ## Development Commands
 
 ### Root Level
