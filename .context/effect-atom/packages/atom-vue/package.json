@@ -1,6 +1,6 @@
 {
   "name": "@effect-atom/atom-vue",
-  "version": "0.3.0",
+  "version": "0.3.5",
   "description": "Reactive toolkit for Effect",
   "type": "module",
   "publishConfig": {
@@ -23,7 +23,7 @@
   "license": "MIT",
   "sideEffects": [],
   "devDependencies": {
-    "effect": "^3.18.0",
+    "effect": "^3.18.4",
     "vue": "^3.5.22"
   },
   "peerDependencies": {

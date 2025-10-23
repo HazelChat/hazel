@@ -1,6 +1,6 @@
 {
   "private": true,
-  "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
+  "packageManager": "pnpm@10.18.1+sha512.77a884a165cbba2d8d1c19e3b4880eee6d2fcabd0d879121e282196b80042351d5eb3ca0935fa599da1dc51265cc68816ad2bddd2a2de5ea9fdf92adbec7cd34",
   "workspaces": [
     "packages/*"
   ],
@@ -13,8 +13,9 @@
     "test": "vitest",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
-    "indexgen": "pnpm -r exec build-utils prepare-v2",
-    "docgen": "pnpm -r exec docgen && pnpm docgen-cp",
+    "packages": "pnpm -r --filter !*sample*",
+    "indexgen": "pnpm packages exec build-utils prepare-v2",
+    "docgen": "pnpm packages exec docgen && pnpm docgen-cp",
     "docgen-cp": "node scripts/docs-cp.js"
   },
   "devDependencies": {

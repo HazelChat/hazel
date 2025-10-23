@@ -1,5 +1,49 @@
 # @effect-rx/rx-vue
 
+## 0.3.5
+
+### Patch Changes
+
+- [`28de1bd`](https://github.com/tim-smart/effect-atom/commit/28de1bdf2ef8c5177c5c430b32b43ee6e6f04bd7) Thanks [@tim-smart](https://github.com/tim-smart)! - support object notation for AtomRpc/HttpApi reactivity keys
+
+- Updated dependencies [[`28de1bd`](https://github.com/tim-smart/effect-atom/commit/28de1bdf2ef8c5177c5c430b32b43ee6e6f04bd7)]:
+  - @effect-atom/atom@0.3.4
+
+## 0.3.4
+
+### Patch Changes
+
+- [`9efeff9`](https://github.com/tim-smart/effect-atom/commit/9efeff90b560556d787877e0f321f14c65d5abcc) Thanks [@tim-smart](https://github.com/tim-smart)! - only use authoritive result when not waiting
+
+- Updated dependencies [[`9efeff9`](https://github.com/tim-smart/effect-atom/commit/9efeff90b560556d787877e0f321f14c65d5abcc)]:
+  - @effect-atom/atom@0.3.3
+
+## 0.3.3
+
+### Patch Changes
+
+- [#331](https://github.com/tim-smart/effect-atom/pull/331) [`b68ecaf`](https://github.com/tim-smart/effect-atom/commit/b68ecafcf490bd71033601f79047e95ce979a439) Thanks [@patroza](https://github.com/patroza)! - align Vue `useAtomSet` to the React version
+
+## 0.3.2
+
+### Patch Changes
+
+- [`2321aa5`](https://github.com/tim-smart/effect-atom/commit/2321aa50f4376c6dde535e9c6cf8b2ff5d8db66b) Thanks [@tim-smart](https://github.com/tim-smart)! - wait for all fibers for concurrent mode
+
+- Updated dependencies [[`2321aa5`](https://github.com/tim-smart/effect-atom/commit/2321aa50f4376c6dde535e9c6cf8b2ff5d8db66b)]:
+  - @effect-atom/atom@0.3.2
+
+## 0.3.1
+
+### Patch Changes
+
+- [`b0f28b9`](https://github.com/tim-smart/effect-atom/commit/b0f28b9e2ba8121a53981f2c6063bd903dfa2a36) Thanks [@tim-smart](https://github.com/tim-smart)! - add `concurrent` option to .fn
+
+- [`b0f28b9`](https://github.com/tim-smart/effect-atom/commit/b0f28b9e2ba8121a53981f2c6063bd903dfa2a36) Thanks [@tim-smart](https://github.com/tim-smart)! - improve type safety of context interfaces
+
+- Updated dependencies [[`b0f28b9`](https://github.com/tim-smart/effect-atom/commit/b0f28b9e2ba8121a53981f2c6063bd903dfa2a36), [`b0f28b9`](https://github.com/tim-smart/effect-atom/commit/b0f28b9e2ba8121a53981f2c6063bd903dfa2a36)]:
+  - @effect-atom/atom@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes
