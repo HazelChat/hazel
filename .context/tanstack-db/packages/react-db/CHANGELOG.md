@@ -1,5 +1,95 @@
 # @tanstack/react-db
 
+## 0.1.35
+
+### Patch Changes
+
+- Updated dependencies [[`3c9526c`](https://github.com/TanStack/db/commit/3c9526cd1fd80032ddddff32cf4a23dfa8376888)]:
+  - @tanstack/db@0.4.13
+
+## 0.1.34
+
+### Patch Changes
+
+- Updated dependencies [[`8b29841`](https://github.com/TanStack/db/commit/8b298417964340bbac5ad08a831766f8f1497477), [`8187c6d`](https://github.com/TanStack/db/commit/8187c6d69c4b498e306ac2eb5fc7115e4f8193a5)]:
+  - @tanstack/db@0.4.12
+
+## 0.1.33
+
+### Patch Changes
+
+- Add support for pre-created live query collections in useLiveInfiniteQuery, enabling router loader patterns where live queries can be created, preloaded, and passed to components. ([#684](https://github.com/TanStack/db/pull/684))
+
+- Updated dependencies [[`5566b26`](https://github.com/TanStack/db/commit/5566b26100abdae9b4a041f048aeda1dd726e904)]:
+  - @tanstack/db@0.4.11
+
+## 0.1.32
+
+### Patch Changes
+
+- Add `useLiveInfiniteQuery` hook for infinite scrolling with live updates. ([#669](https://github.com/TanStack/db/pull/669))
+
+  The new `useLiveInfiniteQuery` hook provides an infinite query pattern similar to TanStack Query's `useInfiniteQuery`, but with live updates from your local collection. It uses `liveQueryCollection.utils.setWindow()` internally to efficiently paginate through ordered data without recreating the query on each page fetch.
+
+  **Key features:**
+  - Automatic live updates as data changes in the collection
+  - Efficient pagination using dynamic window adjustment
+  - Peek-ahead mechanism to detect when more pages are available
+  - Compatible with TanStack Query's infinite query API patterns
+
+  **Example usage:**
+
+  ```tsx
+  import { useLiveInfiniteQuery } from "@tanstack/react-db"
+
+  function PostList() {
+    const { data, pages, fetchNextPage, hasNextPage, isLoading } =
+      useLiveInfiniteQuery(
+        (q) =>
+          q
+            .from({ posts: postsCollection })
+            .orderBy(({ posts }) => posts.createdAt, "desc"),
+        {
+          pageSize: 20,
+          getNextPageParam: (lastPage, allPages) =>
+            lastPage.length === 20 ? allPages.length : undefined,
+        }
+      )
+
+    if (isLoading) return <div>Loading...</div>
+
+    return (
+      <div>
+        {pages.map((page, i) => (
+          <div key={i}>
+            {page.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        ))}
+        {hasNextPage && (
+          <button onClick={() => fetchNextPage()}>Load More</button>
+        )}
+      </div>
+    )
+  }
+  ```
+
+  **Requirements:**
+  - Query must include `.orderBy()` for the window mechanism to work
+  - Returns flattened `data` array and `pages` array for flexible rendering
+  - Automatically detects new pages when data is synced to the collection
+
+- Updated dependencies [[`63aa8ef`](https://github.com/TanStack/db/commit/63aa8ef8b09960ce0f93e068d41b37fb0503a21a), [`b0687ab`](https://github.com/TanStack/db/commit/b0687ab4c1476362d7a25e3c1704ab0fb0385455)]:
+  - @tanstack/db@0.4.10
+
+## 0.1.31
+
+### Patch Changes
+
+- Updated dependencies [[`e52be92`](https://github.com/TanStack/db/commit/e52be92ce16b09a095b4b9baf7ac2cf708146f47), [`4a7c44a`](https://github.com/TanStack/db/commit/4a7c44a723223ade4e226745eadffead671fff13), [`ee61bb6`](https://github.com/TanStack/db/commit/ee61bb61f76ca510f113e96baa090940719aac40)]:
+  - @tanstack/db@0.4.9
+
 ## 0.1.30
 
 ### Patch Changes

@@ -1,5 +1,78 @@
 # @tanstack/query-db-collection
 
+## 0.2.35
+
+### Patch Changes
+
+- Updated dependencies [[`3c9526c`](https://github.com/TanStack/db/commit/3c9526cd1fd80032ddddff32cf4a23dfa8376888)]:
+  - @tanstack/db@0.4.13
+
+## 0.2.34
+
+### Patch Changes
+
+- Fix queryCollectionOptions to respect QueryClient defaultOptions when not overridden ([#707](https://github.com/TanStack/db/pull/707))
+
+  Previously, when creating a QueryClient with defaultOptions (e.g., staleTime, retry, refetchOnWindowFocus), these options were ignored by queryCollectionOptions unless explicitly specified again in the collection config. This required duplicating configuration and prevented users from setting global defaults.
+
+  Now, queryCollectionOptions properly respects the QueryClient's defaultOptions as fallbacks. Options explicitly provided in queryCollectionOptions will still override the defaults.
+
+  Example - this now works as expected:
+
+  ```typescript
+  const dbQueryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        staleTime: Infinity,
+      },
+    },
+  })
+
+  queryCollectionOptions({
+    id: "wallet-accounts",
+    queryKey: ["wallet-accounts"],
+    queryClient: dbQueryClient,
+    // staleTime: Infinity is now inherited from defaultOptions
+  })
+  ```
+
+- Fix writeDelete/writeUpdate validation to check synced store only ([#708](https://github.com/TanStack/db/pull/708))
+
+  Fixed issue where calling `writeDelete()` or `writeUpdate()` inside mutation handlers (like `onDelete`) would throw errors when optimistic updates were active. These write operations now correctly validate against the synced store only, not the combined view (synced + optimistic).
+
+  This allows patterns like calling `writeDelete()` inside an `onDelete` handler to work correctly, enabling users to write directly to the synced store while the mutation is being persisted to the backend.
+
+  Fixes #706
+
+## 0.2.33
+
+### Patch Changes
+
+- Updated dependencies [[`8b29841`](https://github.com/TanStack/db/commit/8b298417964340bbac5ad08a831766f8f1497477), [`8187c6d`](https://github.com/TanStack/db/commit/8187c6d69c4b498e306ac2eb5fc7115e4f8193a5)]:
+  - @tanstack/db@0.4.12
+
+## 0.2.32
+
+### Patch Changes
+
+- Updated dependencies [[`5566b26`](https://github.com/TanStack/db/commit/5566b26100abdae9b4a041f048aeda1dd726e904)]:
+  - @tanstack/db@0.4.11
+
+## 0.2.31
+
+### Patch Changes
+
+- Updated dependencies [[`63aa8ef`](https://github.com/TanStack/db/commit/63aa8ef8b09960ce0f93e068d41b37fb0503a21a), [`b0687ab`](https://github.com/TanStack/db/commit/b0687ab4c1476362d7a25e3c1704ab0fb0385455)]:
+  - @tanstack/db@0.4.10
+
+## 0.2.30
+
+### Patch Changes
+
+- Updated dependencies [[`e52be92`](https://github.com/TanStack/db/commit/e52be92ce16b09a095b4b9baf7ac2cf708146f47), [`4a7c44a`](https://github.com/TanStack/db/commit/4a7c44a723223ade4e226745eadffead671fff13), [`ee61bb6`](https://github.com/TanStack/db/commit/ee61bb61f76ca510f113e96baa090940719aac40)]:
+  - @tanstack/db@0.4.9
+
 ## 0.2.29
 
 ### Patch Changes
