@@ -52,11 +52,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 				.from({
 					attachments: attachmentCollection,
 				})
-				.where(({ attachments }) => inArray(attachments.id, attachmentIds))
-				.select(({ attachments }) => ({
-					...attachments,
-					fileName: attachments.fileName,
-				})),
+				.where(({ attachments }) => inArray(attachments.id, attachmentIds)),
 		[attachmentIds],
 	)
 
@@ -75,20 +71,12 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 	return (
 		<div className={"relative flex h-max items-center gap-3"}>
 			<div className="w-full">
-				{/* Container for reply indicator and attachment preview */}
-				{replyToMessageId && (
-					<ReplyIndicator
-						replyToMessageId={replyToMessageId}
-						onClose={() => setReplyToMessageId(null)}
-					/>
-				)}
-
 				{/* Completed Attachments */}
 				{attachmentIds.length > 0 && (
 					<div
 						className={cx(
-							"rounded-t-md border border-secondary border-b-0 px-2 py-1",
-							replyToMessageId && "rounded-none border-secondary border-x border-t",
+							"rounded-t-lg border border-secondary border-b-0 bg-secondary px-2 py-1",
+							replyToMessageId && "border-b-0",
 						)}
 					>
 						<div className="grid grid-cols-2 gap-1 md:grid-cols-3 lg:grid-cols-4">
@@ -101,7 +89,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 								return (
 									<div
 										key={attachmentId}
-										className="group flex items-center gap-2 rounded-lg bg-secondary p-2 transition-colors hover:bg-tertiary"
+										className="group flex items-center gap-2 rounded-lg bg-primary p-2 transition-colors hover:bg-tertiary"
 									>
 										<FileIcon
 											type={fileType}
@@ -126,6 +114,15 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 							})}
 						</div>
 					</div>
+				)}
+
+				{/* Container for reply indicator and attachment preview */}
+				{replyToMessageId && (
+					<ReplyIndicator
+						className={attachmentIds.length > 0 ? "rounded-t-none border-t-0" : ""}
+						replyToMessageId={replyToMessageId}
+						onClose={() => setReplyToMessageId(null)}
+					/>
 				)}
 				<MarkdownEditor
 					ref={editorRef}
