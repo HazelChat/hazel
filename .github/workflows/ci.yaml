@@ -91,7 +91,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run tests
-        run: bun run test --coverage.enabled true
+        run: bun run test:once --coverage.enabled true
         
       - name: 'Report Coverage'
         if: always() 

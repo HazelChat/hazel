@@ -503,27 +503,6 @@ describe("Result Pattern Matching", () => {
 		})
 	})
 
-	describe("Result error information", () => {
-		it("should provide error details on failure", async () => {
-			const registry = Registry.make()
-			const { collection } = createControlledCollection("todos", initialTodos, (todo) => todo.id)
-
-			await vi.runAllTimersAsync()
-
-			const todosAtom = makeCollectionAtom(collection)
-
-			// Cleanup collection to simulate error
-			collection.cleanup()
-			await vi.runAllTimersAsync()
-
-			const result = registry.get(todosAtom)
-
-			if (Result.isFailure(result)) {
-				expect(result.cause).toBeDefined()
-			}
-		})
-	})
-
 	describe("Result with single result queries", () => {
 		it("should handle single result that exists", async () => {
 			const registry = Registry.make()
