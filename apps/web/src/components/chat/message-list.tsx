@@ -256,7 +256,6 @@ export function MessageList() {
 				fetchNextPage={fetchNextPage}
 			/>
 
-			{/* Shared Toolbar - Portaled to document.body with react-aria positioning */}
 			{(hoveredMessageId || isToolbarMenuOpen) &&
 				hoveredMessage &&
 				createPortal(
@@ -276,31 +275,6 @@ export function MessageList() {
 					</div>,
 					document.body,
 				)}
-
-			{/* {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-				<div key={date}>
-					<div className="sticky top-0 z-10 my-4 flex items-center justify-center">
-						<span className="rounded-full bg-muted px-3 py-1 font-mono text-secondary text-xs">
-							{date}
-						</span>
-					</div>
-					{dateMessages.map((processedMessage) => (
-						<div
-							key={processedMessage.message.id}
-							style={{ overflowAnchor: "none" }}
-							data-message-id={processedMessage.message.id}
-						>
-							<MessageItem
-								message={processedMessage.message}
-								isGroupStart={processedMessage.isGroupStart}
-								isGroupEnd={processedMessage.isGroupEnd}
-								isFirstNewMessage={processedMessage.isFirstNewMessage}
-								isPinned={processedMessage.isPinned}
-							/>
-						</div>
-					))}
-				</div>
-			))} */}
 		</div>
 	)
 }
