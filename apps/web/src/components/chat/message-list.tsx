@@ -61,7 +61,9 @@ export function MessageList() {
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 	const targetRef = useRef<HTMLDivElement | null>(null)
 	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
+	const isToolbarHoveredRef = useRef(false)
 	const overlayRef = useRef<HTMLDivElement>(null)
+	const hideTimeoutRef = useRef<number | null>(null)
 
 	const {
 		data,
@@ -88,7 +90,7 @@ export function MessageList() {
 		targetRef,
 		overlayRef,
 		placement: "top end",
-		offset: 8,
+		offset: -12,
 		shouldFlip: true,
 		isOpen: hoveredMessageId !== null,
 	})
@@ -96,14 +98,24 @@ export function MessageList() {
 	// Handle hover changes, but don't clear hover when toolbar menu is open
 	// CRITICAL: Use useCallback to prevent MessageVirtualList from re-rendering on every hover
 	// Only recreates when isToolbarMenuOpen changes (rare)
+	// Uses ref for isToolbarHovered to avoid recreating this callback
 	const handleHoverChange = useCallback(
 		(messageId: string | null, ref: HTMLDivElement | null) => {
 			if (messageId) {
+				// Clear any pending hide timeout when hovering a new message
+				if (hideTimeoutRef.current) {
+					clearTimeout(hideTimeoutRef.current)
+					hideTimeoutRef.current = null
+				}
 				setHoveredMessageId(messageId)
 				targetRef.current = ref
-			} else if (!isToolbarMenuOpen) {
-				setHoveredMessageId(null)
-				targetRef.current = null
+			} else if (!isToolbarMenuOpen && !isToolbarHoveredRef.current) {
+				// Delay hiding to allow moving mouse to toolbar
+				hideTimeoutRef.current = window.setTimeout(() => {
+					setHoveredMessageId(null)
+					targetRef.current = null
+					hideTimeoutRef.current = null
+				}, 200)
 			}
 		},
 		[isToolbarMenuOpen],
@@ -193,15 +205,6 @@ export function MessageList() {
 				opacity: isLoadingMessages && messages.length > 0 ? 0.7 : 1,
 			}}
 		>
-			{/*
-			TODO: Add pagination controls to load older messages
-			Available: _fetchNextPage(), _hasNextPage
-			Implementation options:
-			  1. "Load More" button at top of message list (like Slack)
-			  2. Auto-load when user scrolls near top (like Discord)
-			  3. Intersection Observer on first message
-			*/}
-
 			<MessageVirtualList
 				processedMessages={processedMessages}
 				onHoverChange={handleHoverChange}
@@ -213,7 +216,18 @@ export function MessageList() {
 			{(hoveredMessageId || isToolbarMenuOpen) &&
 				hoveredMessage &&
 				createPortal(
-					<div ref={overlayRef} {...overlayProps} style={{ ...overlayProps.style, zIndex: 50 }}>
+					<div
+						ref={overlayRef}
+						{...overlayProps}
+						style={{ ...overlayProps.style, zIndex: 50 }}
+						role="group"
+						onMouseEnter={() => {
+							isToolbarHoveredRef.current = true
+						}}
+						onMouseLeave={() => {
+							isToolbarHoveredRef.current = false
+						}}
+					>
 						<MessageToolbar message={hoveredMessage} onMenuOpenChange={setIsToolbarMenuOpen} />
 					</div>,
 					document.body,
