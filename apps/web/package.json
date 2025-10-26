@@ -63,7 +63,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
-		"effect": "^3.18.4",
+		"effect": "3.18.4",
 		"frimousse": "^0.3.0",
 		"lowlight": "^3.3.0",
 		"motion": "^12.23.24",

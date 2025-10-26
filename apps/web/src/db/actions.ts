@@ -10,6 +10,7 @@ import {
 import { createOptimisticAction } from "@tanstack/react-db"
 import { Effect } from "effect"
 import { ApiClient } from "~/lib/services/common/api-client"
+import { RpcClient } from "~/lib/services/common/rpc-client"
 import { runtime } from "~/lib/services/common/runtime"
 import {
 	attachmentCollection,
@@ -93,19 +94,18 @@ export const sendMessage = createOptimisticAction<{
 	mutationFn: async (props, _params) => {
 		const { transactionId, data } = await runtime.runPromise(
 			Effect.gen(function* () {
-				const client = yield* ApiClient
+				const client = yield* RpcClient
 
-				// Create the message with attachmentIds
-				return yield* client.messages.create({
-					payload: {
-						channelId: props.channelId,
-						content: props.content,
-						replyToMessageId: props.replyToMessageId || null,
-						threadChannelId: props.threadChannelId || null,
-						attachmentIds: props.attachmentIds || [],
-						deletedAt: null,
-						authorId: props.authorId,
-					},
+				// Create the message with attachmentIds using RPC
+				// Note: authorId will be overridden by backend AuthMiddleware with the authenticated user
+				return yield* client.MessageCreate({
+					channelId: props.channelId,
+					content: props.content,
+					replyToMessageId: props.replyToMessageId || null,
+					threadChannelId: props.threadChannelId || null,
+					attachmentIds: props.attachmentIds || [],
+					deletedAt: null,
+					authorId: props.authorId,
 				})
 			}),
 		)

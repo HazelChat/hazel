@@ -32,8 +32,14 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 		const { trackEmojiUsage } = useEmojiStats()
 
-		const { channelId, addAttachment, isUploading, setIsUploading, addUploadingFile, removeUploadingFile } =
-			useChat()
+		const {
+			channelId,
+			addAttachment,
+			isUploading,
+			setIsUploading,
+			addUploadingFile,
+			removeUploadingFile,
+		} = useChat()
 
 		const { uploadFile } = useFileUpload({
 			organizationId: organizationId!,

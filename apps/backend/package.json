@@ -5,7 +5,9 @@
 	"private": true,
 	"exports": {
 		".": "./src/index.ts",
-		"./api": "./src/api.ts"
+		"./api": "./src/api.ts",
+		"./rpc/groups/*": "./src/rpc/groups/*.ts",
+		"./rpc/middleware/client": "./src/rpc/middleware/client.ts"
 	},
 	"scripts": {
 		"dev": "bun run --hot src/index.ts",
@@ -37,7 +39,7 @@
 		"@opentelemetry/sdk-trace-web": "^2.2.0",
 		"@workos-inc/node": "^7.71.0",
 		"drizzle-orm": "^0.44.7",
-		"effect": "^3.18.4",
+		"effect": "3.18.4",
 		"jose": "^6.1.0",
 		"pg": "^8.16.3"
 	}

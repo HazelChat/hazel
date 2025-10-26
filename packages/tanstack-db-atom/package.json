@@ -10,7 +10,7 @@
 	"dependencies": {
 		"@effect-atom/atom-react": "^0.3.4",
 		"@tanstack/db": "0.4.13",
-		"effect": "^3.18.4"
+		"effect": "3.18.4"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3"

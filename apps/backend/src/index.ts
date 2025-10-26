@@ -7,11 +7,15 @@ import {
 	HttpServerResponse,
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { RpcSerialization, RpcServer } from "@effect/rpc"
 import { S3 } from "@effect-aws/client-s3"
 import { MultipartUpload } from "@effect-aws/s3"
 import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
+import { AuthMiddlewareLive } from "./rpc/middleware/auth"
+import { MessageRpcLive } from "./rpc/handlers/messages"
+import { MessageRpcs } from "./rpc/groups/messages"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
@@ -49,6 +53,10 @@ import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
 export { HazelApi }
 
+// Export RPC groups for frontend consumption
+export { MessageRpcs } from "./rpc/groups/messages"
+export { AuthMiddleware, AuthMiddlewareClientLive } from "./rpc/middleware/auth"
+
 const HealthRouter = HttpLayerRouter.use((router) =>
 	router.add("GET", "/health", HttpServerResponse.text("OK")),
 )
@@ -58,7 +66,26 @@ const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
 	path: "/docs",
 })
 
-const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute).pipe(
+/**
+ * RPC HTTP Protocol Route
+ *
+ * Adds the RPC server on the /rpc endpoint. This runs in parallel with the HttpApi
+ * routes during migration, allowing gradual transition from HttpApi to RPC.
+ *
+ * The RPC endpoint uses HTTP POST with NDJSON serialization for all operations.
+ * Authentication is handled via the AuthMiddleware which reads the workos-session cookie.
+ */
+const RpcRoute = RpcServer.layerHttpRouter({
+	group: MessageRpcs,
+	path: "/rpc",
+	protocol: "http",
+}).pipe(
+	Layer.provide(RpcSerialization.layerNdjson),
+	Layer.provide(MessageRpcLive),
+	Layer.provide(AuthMiddlewareLive),
+)
+
+const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
 	Layer.provide(
 		HttpLayerRouter.cors({
 			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
