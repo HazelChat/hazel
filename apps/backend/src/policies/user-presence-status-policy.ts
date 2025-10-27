@@ -11,25 +11,25 @@ export class UserPresenceStatusPolicy extends Effect.Service<UserPresenceStatusP
 				UnauthorizedError.refail(
 					policyEntity,
 					"create",
-				)(policy(policyEntity, "create", () => Effect.succeed(true)))
+				)(policy(policyEntity, "create", (_actor) => Effect.succeed(true)))
 
 			const canRead = () =>
 				UnauthorizedError.refail(
 					policyEntity,
 					"select",
-				)(policy(policyEntity, "select", () => Effect.succeed(true)))
+				)(policy(policyEntity, "select", (_actor) => Effect.succeed(true)))
 
 			const canUpdate = () =>
 				UnauthorizedError.refail(
 					policyEntity,
 					"update",
-				)(policy(policyEntity, "update", () => Effect.succeed(true)))
+				)(policy(policyEntity, "update", (_actor) => Effect.succeed(true)))
 
 			const canDelete = () =>
 				UnauthorizedError.refail(
 					policyEntity,
 					"delete",
-				)(policy(policyEntity, "delete", () => Effect.succeed(true)))
+				)(policy(policyEntity, "delete", (_actor) => Effect.succeed(true)))
 
 			return { canUpdate, canDelete, canRead, canCreate } as const
 		}),
