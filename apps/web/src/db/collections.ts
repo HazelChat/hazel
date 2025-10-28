@@ -532,9 +532,7 @@ export const directMessageParticipantCollection = createCollection(
 				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
 				const client = yield* RpcClient
 
-				const results = yield* client.directMessageParticipant.create(
-					newDirectMessageParticipant,
-				)
+				const results = yield* client.directMessageParticipant.create(newDirectMessageParticipant)
 
 				return { txid: results.transactionId }
 			}),
@@ -543,9 +541,7 @@ export const directMessageParticipantCollection = createCollection(
 				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
 				const client = yield* RpcClient
 
-				const results = yield* client.directMessageParticipant.update(
-					newDirectMessageParticipant,
-				)
+				const results = yield* client.directMessageParticipant.update(newDirectMessageParticipant)
 
 				return { txid: results.transactionId }
 			}),

@@ -1,7 +1,7 @@
 import { Atom } from "@effect-atom/atom-react"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/db/schema"
-import { Effect } from "effect"
-import { HazelApiClient } from "~/lib/services/common/atom-client"
+import { appRegistry } from "~/lib/registry"
+import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 
 /**
  * Typing indicator state per channel member
@@ -24,12 +24,12 @@ export const typingIndicatorAtomFamily = Atom.family((_key: string) =>
 /**
  * Mutation atom for creating/updating typing indicators
  */
-const upsertTypingIndicatorMutation = HazelApiClient.mutation("typingIndicators", "create")
+const upsertTypingIndicatorMutation = HazelRpcClient.mutation("typingIndicator.create")
 
 /**
  * Mutation atom for deleting typing indicators
  */
-const deleteTypingIndicatorMutation = HazelApiClient.mutation("typingIndicators", "delete")
+const deleteTypingIndicatorMutation = HazelRpcClient.mutation("typingIndicator.delete")
 
 /**
  * Helper function to create atom key from channel and member IDs
@@ -61,31 +61,23 @@ export const upsertTypingIndicator = async ({
 		})
 	})
 
-	// Sync to server via mutation
-	try {
-		await Atom.set(upsertTypingIndicatorMutation, {
-			payload: {
-				channelId,
-				memberId,
-				lastTyped,
-			},
-		})
-	} catch (error) {
-		console.error("Failed to upsert typing indicator:", error)
-	}
+	// Sync to server via mutation using app registry
+	appRegistry.set(upsertTypingIndicatorMutation, {
+		payload: {
+			channelId,
+			memberId,
+			lastTyped,
+		},
+	})
 }
 
 /**
  * Helper function to delete typing indicator imperatively
  */
-export const deleteTypingIndicator = async ({ id }: { id: TypingIndicatorId }) => {
-	try {
-		await Atom.set(deleteTypingIndicatorMutation, {
-			path: { id },
-		})
-	} catch (error) {
-		console.error("Failed to delete typing indicator:", error)
-	}
+export const deleteTypingIndicator = ({ id }: { id: TypingIndicatorId }) => {
+	appRegistry.set(deleteTypingIndicatorMutation, {
+		payload: { id },
+	})
 }
 
 /**

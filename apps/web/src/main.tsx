@@ -8,6 +8,9 @@ import "@fontsource/inter/400.css"
 import "@fontsource/inter/400-italic.css"
 import "./styles/styles.css"
 
+// Initialize app registry and mount runtimes
+import "./lib/registry"
+
 import { Toaster } from "./components/application/notifications/toaster.tsx"
 import { Loader } from "./components/loader.tsx"
 import { ThemeProvider } from "./components/theme-provider.tsx"

@@ -19,6 +19,10 @@ const AtomRpcProtocolLive = RpcProtocolLive.pipe(Layer.provide(AuthMiddlewareCli
  *
  * Provides type-safe RPC calls with React integration via Effect-Atom.
  * Uses a dedicated protocol layer that includes authentication middleware.
+ *
+ * This client is included in the shared runtime (see runtime.ts) and shares
+ * the same WebSocket connection as the regular RpcClient, ensuring efficient
+ * resource usage with a single WebSocket connection for all RPC calls.
  */
 export class HazelRpcClient extends AtomRpc.Tag<HazelRpcClient>()("HazelRpcClient", {
 	group: AllRpcs,
