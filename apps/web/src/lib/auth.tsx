@@ -1,4 +1,5 @@
 import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/db/schema"
 import { Effect, Exit } from "effect"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { router } from "~/main"
@@ -6,7 +7,7 @@ import { HazelRpcClient } from "./services/common/rpc-atom-client"
 
 interface LoginOptions {
 	returnTo?: string
-	workosOrganizationId?: string
+	organizationId?: OrganizationId
 	invitationToken?: string
 }
 

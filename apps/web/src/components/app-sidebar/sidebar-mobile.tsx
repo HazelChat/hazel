@@ -24,7 +24,7 @@ export function SidebarMobile() {
 			<div className="flex items-center gap-x-2">
 				<Avatar
 					size="xxs"
-					src={currentOrg?.logoUrl || `https://avatar.vercel.sh/${currentOrg?.workosId}`}
+					src={currentOrg?.logoUrl || `https://avatar.vercel.sh/${currentOrg?.id}`}
 					initials={currentOrg?.name?.slice(0, 2).toUpperCase() || "??"}
 					alt={currentOrg?.name || "Organization"}
 				/>

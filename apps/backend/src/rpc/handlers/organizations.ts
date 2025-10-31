@@ -1,9 +1,19 @@
 import { Database } from "@hazel/db"
-import { InternalServerError, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import {
+	CurrentUser,
+	InternalServerError,
+	policyUse,
+	withRemapDbErrors,
+	withSystemActor,
+} from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
 import { OrganizationPolicy } from "../../policies/organization-policy"
+import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 import { OrganizationRepo } from "../../repositories/organization-repo"
+import { UserRepo } from "../../repositories/user-repo"
+import { WorkOS } from "../../services/workos"
 import { OrganizationRpcs, OrganizationSlugAlreadyExistsError } from "../groups/organizations"
 
 /**
@@ -79,19 +89,92 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const workos = yield* WorkOS
 
 		return {
 			"organization.create": (payload) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
+							// Get current user from context
+							const currentUser = yield* CurrentUser.Context
+
+							// Get the user's external ID (WorkOS user ID)
+							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
+								Effect.orDie,
+								withSystemActor,
+							)
+							if (userOption._tag === "None") {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "User not found",
+										detail: `Could not find user with ID ${currentUser.id}`,
+									}),
+								)
+							}
+
+							const user = userOption.value
+
+							// Create organization in local database first
 							const createdOrganization = yield* OrganizationRepo.insert({
-								...payload,
+								name: payload.name,
+								slug: payload.slug,
+								logoUrl: payload.logoUrl,
+								settings: payload.settings,
 								deletedAt: null,
 							}).pipe(
 								Effect.map((res) => res[0]!),
 								policyUse(OrganizationPolicy.canCreate()),
 							)
+
+							// Create organization in WorkOS using our DB ID as externalId
+							yield* workos
+								.call((client) =>
+									client.organizations.createOrganization({
+										name: payload.name,
+										externalId: createdOrganization.id,
+									}),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to create organization in WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							// Add current user as owner in WorkOS
+							yield* workos
+								.call((client) =>
+									client.userManagement.createOrganizationMembership({
+										userId: user.externalId,
+										organizationId: createdOrganization.id,
+										roleSlug: "owner",
+									}),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to add user to organization in WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							// Create organization membership in local database
+							yield* OrganizationMemberRepo.upsertByOrgAndUser({
+								organizationId: createdOrganization.id,
+								userId: currentUser.id,
+								role: "owner",
+								joinedAt: new Date(),
+								invitedBy: null,
+								deletedAt: null,
+							}).pipe(withSystemActor)
 
 							const txid = yield* generateTransactionId()
 

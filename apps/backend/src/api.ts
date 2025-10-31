@@ -1,5 +1,5 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
-import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, OrganizationId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
 import { AttachmentGroup, PresencePublicGroup } from "./api/electric/collections"
 import { TransactionId } from "./lib/schema"
@@ -106,7 +106,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.setUrlParams(
 				Schema.Struct({
 					returnTo: Schema.String,
-					workosOrganizationId: Schema.optional(Schema.String),
+					organizationId: Schema.optional(OrganizationId),
 					invitationToken: Schema.optional(Schema.String),
 				}),
 			)

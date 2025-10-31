@@ -10,7 +10,6 @@ export const organizationsTable = pgTable(
 	"organizations",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<OrganizationId>(),
-		workosId: varchar({ length: 255 }).notNull().unique(),
 		name: varchar({ length: 255 }).notNull(),
 		slug: varchar({ length: 100 }).unique(),
 		logoUrl: text(),
@@ -20,7 +19,6 @@ export const organizationsTable = pgTable(
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),
 	},
 	(table) => [
-		index("organizations_workos_id_idx").on(table.workosId),
 		index("organizations_slug_idx").on(table.slug),
 		index("organizations_deleted_at_idx").on(table.deletedAt),
 	],

@@ -5,7 +5,6 @@ import { baseFields } from "./utils"
 
 export class Model extends M.Class<Model>("Organization")({
 	id: M.Generated(OrganizationId),
-	workosId: Schema.String,
 	name: Schema.String,
 	slug: Schema.NullOr(Schema.String),
 	logoUrl: Schema.NullOr(Schema.String),

@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@effect/platform": "0.92.1",
 		"@effect/platform-bun": "0.81.1",
-		"@electric-sql/client": "^1.0.14",
+		"@electric-sql/client": "^1.1.1",
 		"effect": "3.18.4"
 	}
 }

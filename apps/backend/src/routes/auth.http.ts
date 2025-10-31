@@ -17,6 +17,28 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				const state = JSON.stringify(AuthState.make({ returnTo: urlParams.returnTo }))
 
+				let workosOrgId: string
+
+				if (urlParams.organizationId) {
+					const workosOrg = yield* workos
+						.call(async (client) =>
+							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
+						)
+						.pipe(
+							Effect.catchTag("WorkOSApiError", (error) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to get organization from WorkOS",
+										detail: String(error.cause),
+										cause: error,
+									}),
+								),
+							),
+						)
+
+					workosOrgId = workosOrg.id
+				}
+
 				const authorizationUrl = yield* workos
 					.call(async (client) => {
 						const authUrl = client.userManagement.getAuthorizationUrl({
@@ -24,8 +46,8 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 							clientId,
 							redirectUri,
 							state,
-							...(urlParams.workosOrganizationId && {
-								organizationId: urlParams.workosOrganizationId,
+							...(workosOrgId && {
+								organizationId: workosOrgId,
 							}),
 							...(urlParams.invitationToken && { invitationToken: urlParams.invitationToken }),
 						})

@@ -1,5 +1,5 @@
 import { HttpApiBuilder } from "@effect/platform"
-import { CurrentUser, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { CurrentUser, type OrganizationId, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
 import { Config, Effect, Layer, Option, Redacted } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserRepo } from "../repositories/user-repo"
@@ -83,7 +83,7 @@ export const AuthorizationLive = Layer.effect(
 						return new CurrentUser.Schema({
 							id: user.value.id,
 							role: (session.role as "admin" | "member") || "member",
-							workosOrganizationId: session.organizationId,
+							organizationId: session.organizationId as OrganizationId | undefined,
 							avatarUrl: user.value.avatarUrl,
 							firstName: user.value.firstName,
 							lastName: user.value.lastName,
@@ -153,7 +153,7 @@ export const AuthorizationLive = Layer.effect(
 					return new CurrentUser.Schema({
 						id: user.value.id,
 						role: (refreshedSession.role as "admin" | "member") || "member",
-						workosOrganizationId: refreshedSession.organizationId,
+						organizationId: refreshedSession.organizationId as OrganizationId | undefined,
 						avatarUrl: user.value.avatarUrl,
 						firstName: user.value.firstName,
 						lastName: user.value.lastName,
@@ -212,7 +212,7 @@ export const AuthorizationLive = Layer.effect(
 					return new CurrentUser.Schema({
 						id: user.value.id,
 						role: (payload.role as "admin" | "member") || "member",
-						workosOrganizationId: payload.organizationId as string | undefined,
+						organizationId: payload.organizationId as OrganizationId | undefined,
 						avatarUrl: user.value.avatarUrl,
 						firstName: user.value.firstName,
 						lastName: user.value.lastName,

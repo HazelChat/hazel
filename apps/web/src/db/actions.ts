@@ -1,121 +1,23 @@
 import {
-	AttachmentId,
+	type AttachmentId,
 	ChannelId,
 	ChannelMemberId,
 	DirectMessageParticipantId,
 	MessageId,
-	type OrganizationId,
+	OrganizationId,
 	type UserId,
 } from "@hazel/db/schema"
 import { createEffectOptimisticAction } from "@hazel/effect-electric-db-collection"
-import { createOptimisticAction } from "@tanstack/react-db"
 import { Effect } from "effect"
-import { ApiClient } from "~/lib/services/common/api-client"
 import { RpcClient } from "~/lib/services/common/rpc-client"
 import { runtime } from "~/lib/services/common/runtime"
 import {
-	attachmentCollection,
 	channelCollection,
 	channelMemberCollection,
 	directMessageParticipantCollection,
 	messageCollection,
+	organizationCollection,
 } from "./collections"
-
-export const uploadAttachment = createOptimisticAction<{
-	organizationId: OrganizationId
-	file: File
-	channelId: ChannelId
-	userId: UserId
-	attachmentId?: AttachmentId
-}>({
-	onMutate: (props) => {
-		const attachmentId = props.attachmentId || AttachmentId.make(crypto.randomUUID())
-
-		attachmentCollection.insert({
-			id: attachmentId,
-			organizationId: props.organizationId,
-			channelId: props.channelId,
-			messageId: null,
-			fileName: props.file.name,
-			fileSize: props.file.size,
-			uploadedBy: props.userId,
-			status: "uploading" as const,
-			uploadedAt: new Date(),
-		})
-
-		return { attachmentId }
-	},
-	mutationFn: async (props, _params) => {
-		const formData = new FormData()
-		formData.append("file", props.file, props.file.name)
-		formData.append("organizationId", props.organizationId)
-		formData.append("channelId", props.channelId)
-
-		const { transactionId } = await runtime.runPromise(
-			Effect.gen(function* () {
-				const client = yield* ApiClient
-
-				return yield* client.attachments.upload({
-					payload: formData,
-				})
-			}),
-		)
-
-		await attachmentCollection.utils.awaitTxId(transactionId)
-
-		return { transactionId }
-	},
-})
-
-export const sendMessage = createOptimisticAction<{
-	channelId: ChannelId
-	authorId: UserId
-	content: string
-	replyToMessageId?: MessageId | null
-	threadChannelId?: ChannelId | null
-	attachmentIds?: AttachmentId[]
-}>({
-	onMutate: (props) => {
-		const messageId = MessageId.make(crypto.randomUUID())
-
-		messageCollection.insert({
-			id: messageId,
-			channelId: props.channelId,
-			authorId: props.authorId,
-			content: props.content,
-			replyToMessageId: props.replyToMessageId || null,
-			threadChannelId: props.threadChannelId || null,
-			createdAt: new Date(),
-			updatedAt: null,
-			deletedAt: null,
-		})
-
-		return { messageId }
-	},
-	mutationFn: async (props, _params) => {
-		const { transactionId, data } = await runtime.runPromise(
-			Effect.gen(function* () {
-				const client = yield* RpcClient
-
-				// Create the message with attachmentIds using RPC
-				// Note: authorId will be overridden by backend AuthMiddleware with the authenticated user
-				return yield* client.message.create({
-					channelId: props.channelId,
-					content: props.content,
-					replyToMessageId: props.replyToMessageId || null,
-					threadChannelId: props.threadChannelId || null,
-					attachmentIds: props.attachmentIds || [],
-					deletedAt: null,
-					authorId: props.authorId,
-				})
-			}),
-		)
-
-		await messageCollection.utils.awaitTxId(transactionId)
-
-		return { transactionId, data }
-	},
-})
 
 export const sendMessageEffect = createEffectOptimisticAction({
 	onMutate: (props: {
@@ -176,14 +78,14 @@ export const sendMessageEffect = createEffectOptimisticAction({
 	runtime: runtime,
 })
 
-export const createDmChannel = createOptimisticAction<{
-	organizationId: OrganizationId
-	participantIds: UserId[]
-	type: "single" | "direct"
-	name?: string
-	currentUserId: UserId
-}>({
-	onMutate: (props) => {
+export const createDmChannel = createEffectOptimisticAction({
+	onMutate: (props: {
+		organizationId: OrganizationId
+		participantIds: UserId[]
+		type: "single" | "direct"
+		name?: string
+		currentUserId: UserId
+	}) => {
 		const channelId = ChannelId.make(crypto.randomUUID())
 		const now = new Date()
 
@@ -257,26 +159,87 @@ export const createDmChannel = createOptimisticAction<{
 
 		return { channelId }
 	},
-	mutationFn: async (props, _params) => {
-		const { transactionId, data } = await runtime.runPromise(
-			Effect.gen(function* () {
-				const client = yield* RpcClient
+	mutationFn: (
+		props: {
+			organizationId: OrganizationId
+			participantIds: UserId[]
+			type: "single" | "direct"
+			name?: string
+			currentUserId: UserId
+		},
+		_params,
+	) =>
+		Effect.gen(function* () {
+			const client = yield* RpcClient
 
-				return yield* client.channel.createDm({
-					organizationId: props.organizationId,
-					participantIds: props.participantIds,
-					type: props.type,
-					name: props.name,
-				})
-			}),
-		)
+			const result = yield* client.channel.createDm({
+				organizationId: props.organizationId,
+				participantIds: props.participantIds,
+				type: props.type,
+				name: props.name,
+			})
 
-		await Promise.all([
-			channelCollection.utils.awaitTxId(transactionId),
-			directMessageParticipantCollection.utils.awaitTxId(transactionId),
-			channelMemberCollection.utils.awaitTxId(transactionId),
-		])
+			// Wait for all collections to sync
+			yield* Effect.all([
+				Effect.promise(() => channelCollection.utils.awaitTxId(result.transactionId)),
+				Effect.promise(() =>
+					directMessageParticipantCollection.utils.awaitTxId(result.transactionId),
+				),
+				Effect.promise(() => channelMemberCollection.utils.awaitTxId(result.transactionId)),
+			])
 
-		return { transactionId, channelId: data.id }
+			return { transactionId: result.transactionId, channelId: result.data.id }
+		}),
+	runtime: runtime,
+})
+
+export const createOrganization = createEffectOptimisticAction({
+	onMutate: (props: { name: string; slug: string; logoUrl?: string | null }) => {
+		const organizationId = OrganizationId.make(crypto.randomUUID())
+		const now = new Date()
+
+		// Optimistically insert the organization
+		// Note: workosId will be set by backend after creating org in WorkOS
+		organizationCollection.insert({
+			id: organizationId,
+			name: props.name,
+			slug: props.slug,
+			logoUrl: props.logoUrl || null,
+			settings: {},
+			createdAt: now,
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		return { organizationId, slug: props.slug }
 	},
+	mutationFn: (
+		props: {
+			name: string
+			slug: string
+			logoUrl?: string | null
+		},
+		_params,
+	) =>
+		Effect.gen(function* () {
+			const client = yield* RpcClient
+
+			// Backend will create org in WorkOS and return real WorkOS ID
+			const result = yield* client.organization.create({
+				name: props.name,
+				slug: props.slug,
+				logoUrl: props.logoUrl ?? null,
+				settings: null,
+			})
+
+			// Wait for the organization collection to sync
+			yield* Effect.promise(() => organizationCollection.utils.awaitTxId(result.transactionId))
+
+			return {
+				transactionId: result.transactionId,
+				organizationId: result.data.id,
+				slug: result.data.slug,
+			}
+		}),
+	runtime: runtime,
 })

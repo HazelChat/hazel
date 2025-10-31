@@ -159,33 +159,52 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 			// Get all existing organizations
 			const existingOrgs = yield* orgRepo.findAllActive()
-			const existingOrgMap = new Map(existingOrgs.map((o) => [o.workosId, o]))
-			const workosOrgIds = new Set(workosOrgs.data.map((o) => o.id))
+			const existingOrgMap = new Map(existingOrgs.map((o) => [o.id, o]))
+			const workosOrgExternalIds = new Set(
+				workosOrgs.data.map((o) => o.externalId).filter((id): id is string => !!id),
+			)
 
 			// Upsert organizations from WorkOS
 			yield* Effect.all(
 				workosOrgs.data.map((workosOrg) =>
 					collectResult(
-						orgRepo
-							.upsertByWorkosId({
-								workosId: workosOrg.id,
-								name: workosOrg.name,
-								slug: workosOrg.name
-									.toLowerCase()
-									.replace(/[^a-z0-9]+/g, "-")
-									.replace(/^-|-$/g, ""),
-								logoUrl: null,
-								settings: null,
-								deletedAt: null,
-							})
-							.pipe(withSystemActor),
-						() => {
-							if (existingOrgMap.has(workosOrg.id)) {
+						Effect.gen(function* () {
+							// Only sync organizations that have an externalId (created through our API)
+							if (!workosOrg.externalId) {
+								// Skip organizations created directly in WorkOS without going through our API
+								return
+							}
+
+							const orgId = workosOrg.externalId as OrganizationId
+							const existingOrg = existingOrgMap.get(orgId)
+
+							if (existingOrg) {
+								// Update existing organization
+								yield* orgRepo
+									.update({
+										id: orgId,
+										name: workosOrg.name,
+									})
+									.pipe(withSystemActor)
 								result.updated++
 							} else {
+								// Create new organization (edge case: org exists in WorkOS but not in our DB)
+								yield* orgRepo
+									.insert({
+										name: workosOrg.name,
+										slug: workosOrg.name
+											.toLowerCase()
+											.replace(/[^a-z0-9]+/g, "-")
+											.replace(/^-|-$/g, ""),
+										logoUrl: null,
+										settings: null,
+										deletedAt: null,
+									})
+									.pipe(withSystemActor)
 								result.created++
 							}
-						},
+						}),
+						() => {}, // Success already handled in the effect
 						(error) => {
 							result.errors.push(`Error syncing org ${workosOrg.id}: ${error}`)
 						},
@@ -197,13 +216,13 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			// Soft delete organizations that no longer exist in WorkOS
 			yield* Effect.all(
 				existingOrgs
-					.filter((org) => !workosOrgIds.has(org.workosId))
+					.filter((org) => !workosOrgExternalIds.has(org.id))
 					.map((org) =>
 						collectResult(
-							orgRepo.softDeleteByWorkosId(org.workosId).pipe(withSystemActor),
+							orgRepo.softDelete(org.id).pipe(withSystemActor),
 							() => result.deleted++,
 							(error) => {
-								result.errors.push(`Error deleting org ${org.workosId}: ${error}`)
+								result.errors.push(`Error deleting org ${org.id}: ${error}`)
 							},
 						),
 					),
@@ -214,15 +233,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		})
 
 		// Sync organization memberships
-		const syncOrganizationMemberships = (organizationId: OrganizationId, workosOrgId: string) =>
+		const syncOrganizationMemberships = (organizationId: OrganizationId) =>
 			Effect.gen(function* () {
 				const result: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
 
-				// Fetch memberships from WorkOS
+				// Fetch memberships from WorkOS using our organization ID
 				const workosMembershipsResult = yield* pipe(
 					workos.call((client) =>
 						client.userManagement.listOrganizationMemberships({
-							organizationId: workosOrgId,
+							organizationId: organizationId,
 							limit: 100,
 						}),
 					),
@@ -231,7 +250,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 				if (workosMembershipsResult._tag === "Left") {
 					result.errors.push(
-						`Failed to fetch memberships for org ${workosOrgId}: ${workosMembershipsResult.left}`,
+						`Failed to fetch memberships for org ${organizationId}: ${workosMembershipsResult.left}`,
 					)
 					return result
 				}
@@ -319,7 +338,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			})
 
 		// Sync invitations
-		const syncInvitations = (organizationId: OrganizationId, workosOrgId: string) =>
+		const syncInvitations = (organizationId: OrganizationId) =>
 			Effect.gen(function* () {
 				const result: SyncResult & { expired: number } = {
 					created: 0,
@@ -329,11 +348,11 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					errors: [],
 				}
 
-				// Fetch invitations from WorkOS
+				// Fetch invitations from WorkOS using our organization ID
 				const workosInvitationsResult = yield* pipe(
 					workos.call((client) =>
 						client.userManagement.listInvitations({
-							organizationId: workosOrgId,
+							organizationId: organizationId,
 							limit: 100,
 						}),
 					),
@@ -342,7 +361,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 				if (workosInvitationsResult._tag === "Left") {
 					result.errors.push(
-						`Failed to fetch invitations for org ${workosOrgId}: ${workosInvitationsResult.left}`,
+						`Failed to fetch invitations for org ${organizationId}: ${workosInvitationsResult.left}`,
 					)
 					return result
 				}
@@ -464,18 +483,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			yield* Effect.all(
 				organizations.map((org) =>
 					Effect.gen(function* () {
-						yield* Effect.logInfo(`Syncing memberships for org ${org.workosId}...`)
-						const membershipResult = yield* syncOrganizationMemberships(org.id, org.workosId)
+						yield* Effect.logInfo(`Syncing memberships for org ${org.id}...`)
+						const membershipResult = yield* syncOrganizationMemberships(org.id)
 						result.memberships.created += membershipResult.created
 						result.memberships.updated += membershipResult.updated
 						result.memberships.deleted += membershipResult.deleted
 						result.memberships.errors.push(...membershipResult.errors)
 
-						yield* Effect.logInfo(`Syncing invitations for org ${org.workosId}...`)
-						const invitationResult = yield* syncInvitations(
-							org.id as OrganizationId,
-							org.workosId,
-						)
+						yield* Effect.logInfo(`Syncing invitations for org ${org.id}...`)
+						const invitationResult = yield* syncInvitations(org.id as OrganizationId)
 						result.invitations.created += invitationResult.created
 						result.invitations.updated += invitationResult.updated
 						result.invitations.deleted += invitationResult.deleted
@@ -542,29 +558,64 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 						case "organization.created":
 						case "organization.updated": {
-							yield* orgRepo.upsertByWorkosId({
-								workosId: typedEvent.data.id,
-								name: typedEvent.data.name,
-								logoUrl: null,
-								settings: null,
-								deletedAt: null,
-								slug: typedEvent.data.name
-									.toLowerCase()
-									.replace(/[^a-z0-9]+/g, "-")
-									.replace(/^-|-$/g, ""),
-							})
+							// Only sync organizations that have an externalId (created through our API)
+							if (!typedEvent.data.externalId) {
+								yield* Effect.logWarning(
+									`Skipping organization ${typedEvent.data.id} - no externalId set`,
+								)
+								break
+							}
+
+							const orgId = typedEvent.data.externalId as OrganizationId
+							const existingOrg = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+
+							if (Option.isSome(existingOrg)) {
+								// Update existing organization
+								yield* orgRepo
+									.update({
+										id: orgId,
+										name: typedEvent.data.name,
+									})
+									.pipe(withSystemActor)
+							} else {
+								// Create new organization (edge case: org exists in WorkOS but not in our DB)
+								yield* orgRepo
+									.insert({
+										name: typedEvent.data.name,
+										logoUrl: null,
+										settings: null,
+										deletedAt: null,
+										slug: typedEvent.data.name
+											.toLowerCase()
+											.replace(/[^a-z0-9]+/g, "-")
+											.replace(/^-|-$/g, ""),
+									})
+									.pipe(withSystemActor)
+							}
 							break
 						}
 
 						case "organization.deleted": {
-							yield* orgRepo.softDeleteByWorkosId(typedEvent.data.id)
+							// Only sync organizations that have an externalId
+							if (!typedEvent.data.externalId) {
+								yield* Effect.logWarning(
+									`Skipping organization deletion ${typedEvent.data.id} - no externalId set`,
+								)
+								break
+							}
+
+							const orgId = typedEvent.data.externalId as OrganizationId
+							yield* orgRepo.softDelete(orgId).pipe(withSystemActor)
 							break
 						}
 
 						case "organization_membership.added":
 						case "organization_membership.updated": {
-							// First get the organization and user
-							const org = yield* orgRepo.findByWorkosId(typedEvent.data.organizationId)
+							// organizationId in WorkOS is now our organization ID (externalId)
+							const orgId = typedEvent.data.organizationId as OrganizationId
+
+							// Get the organization and user
+							const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
 							const user = yield* userRepo.findByExternalId(typedEvent.data.userId)
 
 							if (Option.isSome(org) && Option.isSome(user)) {
@@ -584,7 +635,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						}
 
 						case "organization_membership.removed": {
-							const org = yield* orgRepo.findByWorkosId(typedEvent.data.organizationId)
+							// organizationId in WorkOS is now our organization ID (externalId)
+							const orgId = typedEvent.data.organizationId as OrganizationId
+
+							const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
 							const user = yield* userRepo.findByExternalId(typedEvent.data.userId)
 
 							if (Option.isSome(org) && Option.isSome(user)) {

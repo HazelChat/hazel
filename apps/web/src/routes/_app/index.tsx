@@ -21,11 +21,11 @@ function RouteComponent() {
 				.from({
 					organizatios: organizationCollection,
 				})
-				.where(({ organizatios }) => eq(organizatios.workosId, user?.workosOrganizationId))
+				.where(({ organizatios }) => eq(organizatios.id, user?.organizationId))
 				.orderBy(({ organizatios }) => organizatios.createdAt, "asc")
 				.limit(1)
 		},
-		[user?.id, user?.workosOrganizationId],
+		[user?.id, user?.organizationId],
 	)
 
 	if (isLoading || isAuthLoading || !isReady) {

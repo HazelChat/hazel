@@ -1,5 +1,5 @@
 import { Headers } from "@effect/platform"
-import { CurrentUser, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { CurrentUser, OrganizationId, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
 import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
 import { UserRepo } from "../../repositories/user-repo"
@@ -138,7 +138,9 @@ export const AuthMiddlewareLive = Layer.scoped(
 				const currentUser = new CurrentUser.Schema({
 					id: user.value.id,
 					role: (session.role as "admin" | "member") || "member",
-					workosOrganizationId: session.organizationId,
+					organizationId: session.organizationId
+						? OrganizationId.make(session.organizationId)
+						: undefined,
 					avatarUrl: user.value.avatarUrl,
 					firstName: user.value.firstName,
 					lastName: user.value.lastName,

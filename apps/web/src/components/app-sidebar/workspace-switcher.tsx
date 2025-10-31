@@ -1,3 +1,4 @@
+import type { OrganizationId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useLocation, useNavigate, useParams } from "@tanstack/react-router"
 import { useState } from "react"
@@ -52,9 +53,9 @@ export const WorkspaceSwitcher = () => {
 	const displayOrg = currentOrg || currentOrgData?.[0]
 	const organizations = userOrganizations?.map((row) => row.org) || []
 
-	const handleOrganizationSwitch = async (workosOrgId: string) => {
+	const handleOrganizationSwitch = async (organizationId: OrganizationId) => {
 		try {
-			const targetOrg = organizations.find((org) => org.workosId === workosOrgId)
+			const targetOrg = organizations.find((org) => org.id === organizationId)
 			if (targetOrg) {
 				// Determine current subpath to maintain it after switching
 				const currentPath = location.pathname
@@ -71,7 +72,7 @@ export const WorkspaceSwitcher = () => {
 
 				await navigate(route)
 
-				await login({ workosOrganizationId: workosOrgId })
+				await login({ organizationId: organizationId })
 			}
 		} catch (error) {
 			console.error("Failed to switch organization:", error)
@@ -92,7 +93,7 @@ export const WorkspaceSwitcher = () => {
 				>
 					<Avatar
 						size="xs"
-						src={displayOrg?.logoUrl || `https://avatar.vercel.sh/${displayOrg?.workosId}`}
+						src={displayOrg?.logoUrl || `https://avatar.vercel.sh/${displayOrg?.id}`}
 						initials={displayOrg?.name?.slice(0, 2).toUpperCase() || "??"}
 						alt={displayOrg?.name || "Organization"}
 					/>
@@ -105,14 +106,11 @@ export const WorkspaceSwitcher = () => {
 								Organizations
 							</Dropdown.SectionHeader>
 							{organizations.map((org) => (
-								<Dropdown.Item
-									key={org.id}
-									onAction={() => handleOrganizationSwitch(org.workosId)}
-								>
+								<Dropdown.Item key={org.id} onAction={() => handleOrganizationSwitch(org.id)}>
 									<div className="flex items-center gap-2">
 										<Avatar
 											size="xs"
-											src={org.logoUrl || `https://avatar.vercel.sh/${org.workosId}`}
+											src={org.logoUrl || `https://avatar.vercel.sh/${org.id}`}
 											initials={org.name.slice(0, 2).toUpperCase()}
 											alt={org.name}
 										/>

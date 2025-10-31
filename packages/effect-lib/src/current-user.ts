@@ -1,11 +1,11 @@
 import { HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
 import { Context as C, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
-import { UserId } from "./schema"
+import { OrganizationId, UserId } from "./schema"
 
 export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	id: UserId,
-	workosOrganizationId: S.optional(S.String),
+	organizationId: S.optional(OrganizationId),
 	role: S.Literal("admin", "member"),
 	avatarUrl: S.optional(S.String),
 	firstName: S.optional(S.String),
