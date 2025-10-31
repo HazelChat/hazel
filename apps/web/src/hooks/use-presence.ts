@@ -108,14 +108,21 @@ const computedPresenceStatusAtom = Atom.make((get) =>
 
 /**
  * Atom that tracks the current route's channel ID
+ * Only extracts channel ID when user is on a chat route (/$orgSlug/chat/$id)
  */
 const currentChannelIdAtom = Atom.make((get) => {
 	let currentChannelId: string | null = null
 
 	const unsubscribe = router.subscribe("onResolved", (event) => {
-		// Extract channel ID from pathname
-		const paramsId = event.toLocation.pathname.split("/").pop()
-		const channelId = paramsId && paramsId.length > 0 ? paramsId : null
+		// Only extract channel ID if we're on a chat route
+		const pathname = event.toLocation.pathname
+		const pathSegments = pathname.split("/")
+
+		// Check if route matches /$orgSlug/chat/$id pattern
+		const chatIndex = pathSegments.indexOf("chat")
+		const isOnChatRoute = chatIndex !== -1 && chatIndex < pathSegments.length - 1
+
+		const channelId = isOnChatRoute ? (pathSegments[chatIndex + 1] ?? null) : null
 
 		if (channelId !== currentChannelId) {
 			currentChannelId = channelId
@@ -126,8 +133,12 @@ const currentChannelIdAtom = Atom.make((get) => {
 	get.addFinalizer(unsubscribe)
 
 	// Get initial value from current route
-	const pathSegments = router.state.location.pathname.split("/")
-	currentChannelId = pathSegments[pathSegments.length - 1] || null
+	const pathname = router.state.location.pathname
+	const pathSegments = pathname.split("/")
+	const chatIndex = pathSegments.indexOf("chat")
+	const isOnChatRoute = chatIndex !== -1 && chatIndex < pathSegments.length - 1
+	currentChannelId = isOnChatRoute ? (pathSegments[chatIndex + 1] ?? null) : null
+
 	return currentChannelId
 }).pipe(Atom.keepAlive)
 

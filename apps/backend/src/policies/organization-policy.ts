@@ -2,7 +2,6 @@ import {
 	type OrganizationId,
 	policy,
 	UnauthorizedError,
-	type UserId,
 	withSystemActor,
 } from "@hazel/effect-lib"
 import { Effect, Option } from "effect"
@@ -44,6 +43,24 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 				),
 			)
 
+		const isMember = (id: OrganizationId) =>
+			UnauthorizedError.refail(
+				policyEntity,
+				"isMember",
+			)(
+				policy(
+					policyEntity,
+					"isMember",
+					Effect.fn(`${policyEntity}.isMember`)(function* (actor) {
+						const currentMember = yield* organziationMemberRepo
+							.findByOrgAndUser(id, actor.id)
+							.pipe(withSystemActor)
+
+						return yield* Effect.succeed(Option.isSome(currentMember))
+					}),
+				),
+			)
+
 		const canDelete = (id: OrganizationId) =>
 			UnauthorizedError.refail(
 				policyEntity,
@@ -68,7 +85,7 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 				),
 			)
 
-		return { canUpdate, canDelete, canCreate } as const
+		return { canUpdate, canDelete, canCreate, isMember } as const
 	}),
 	dependencies: [OrganizationMemberRepo.Default],
 	accessors: true,
