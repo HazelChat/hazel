@@ -66,28 +66,36 @@ export const AuthorizationLive = Layer.effect(
 					)
 
 					if (session.authenticated) {
-						const user = yield* userRepo
+						const userOption = yield* userRepo
 							.findByExternalId(session.user.id)
 							.pipe(Effect.orDie, withSystemActor)
 
-						if (Option.isNone(user)) {
-							// TODO: Should create a new user tbh
-							return yield* Effect.fail(
-								new UnauthorizedError({
-									message: "User not found",
-									detail: `The user ${session.user.id} was not found`,
-								}),
-							)
-						}
+						const user = yield* Option.match(userOption, {
+							onNone: () =>
+								userRepo
+									.upsertByExternalId({
+										externalId: session.user.id,
+										email: session.user.email,
+										firstName: session.user.firstName || "",
+										lastName: session.user.lastName || "",
+										avatarUrl: session.user.profilePictureUrl || "",
+										status: "online" as const,
+										lastSeen: new Date(),
+										settings: null,
+										deletedAt: null,
+									})
+									.pipe(Effect.orDie, withSystemActor),
+							onSome: (user) => Effect.succeed(user),
+						})
 
 						return new CurrentUser.Schema({
-							id: user.value.id,
+							id: user.id,
 							role: (session.role as "admin" | "member") || "member",
 							organizationId: session.organizationId as OrganizationId | undefined,
-							avatarUrl: user.value.avatarUrl,
-							firstName: user.value.firstName,
-							lastName: user.value.lastName,
-							email: user.value.email,
+							avatarUrl: user.avatarUrl,
+							firstName: user.firstName,
+							lastName: user.lastName,
+							email: user.email,
 						})
 					}
 
@@ -136,28 +144,36 @@ export const AuthorizationLive = Layer.effect(
 						},
 					)
 
-					const user = yield* userRepo
+					const userOption = yield* userRepo
 						.findByExternalId(refreshedSession.user.id)
 						.pipe(Effect.orDie, withSystemActor)
 
-					if (Option.isNone(user)) {
-						// TODO: Should create a new user tbh
-						return yield* Effect.fail(
-							new UnauthorizedError({
-								message: "User not found",
-								detail: `The user ${refreshedSession.user.id} was not found`,
-							}),
-						)
-					}
+					const user = yield* Option.match(userOption, {
+						onNone: () =>
+							userRepo
+								.upsertByExternalId({
+									externalId: refreshedSession.user.id,
+									email: refreshedSession.user.email,
+									firstName: refreshedSession.user.firstName || "",
+									lastName: refreshedSession.user.lastName || "",
+									avatarUrl: refreshedSession.user.profilePictureUrl || "",
+									status: "online" as const,
+									lastSeen: new Date(),
+									settings: null,
+									deletedAt: null,
+								})
+								.pipe(Effect.orDie, withSystemActor),
+						onSome: (user) => Effect.succeed(user),
+					})
 
 					return new CurrentUser.Schema({
-						id: user.value.id,
+						id: user.id,
 						role: (refreshedSession.role as "admin" | "member") || "member",
 						organizationId: refreshedSession.organizationId as OrganizationId | undefined,
-						avatarUrl: user.value.avatarUrl,
-						firstName: user.value.firstName,
-						lastName: user.value.lastName,
-						email: user.value.email,
+						avatarUrl: user.avatarUrl,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						email: user.email,
 					})
 				}),
 			bearer: (bearerToken) =>
@@ -194,29 +210,53 @@ export const AuthorizationLive = Layer.effect(
 						)
 					}
 
-					const user = yield* userRepo
+					const userOption = yield* userRepo
 						.findByExternalId(workOsUserId)
 						.pipe(Effect.orDie, withSystemActor)
 
-					if (Option.isNone(user)) {
-						return yield* Effect.fail(
-							new UnauthorizedError({
-								message: "User not found",
-								detail: `The provided token ${rawToken} is missing the user ID`,
-							}),
-						)
-					}
+					const user = yield* Option.match(userOption, {
+						onNone: () =>
+							Effect.gen(function* () {
+								const workosUser = yield* workos
+									.call(async (client) => client.userManagement.getUser(workOsUserId))
+									.pipe(
+										Effect.catchTag("WorkOSApiError", (error) =>
+											Effect.fail(
+												new UnauthorizedError({
+													message: "Failed to fetch user from WorkOS",
+													detail: String(error.cause),
+												}),
+											),
+										),
+									)
 
-					yield* Effect.annotateCurrentSpan("userId", user.value.id)
+								return yield* userRepo
+									.upsertByExternalId({
+										externalId: workosUser.id,
+										email: workosUser.email,
+										firstName: workosUser.firstName || "",
+										lastName: workosUser.lastName || "",
+										avatarUrl: workosUser.profilePictureUrl || "",
+										status: "online" as const,
+										lastSeen: new Date(),
+										settings: null,
+										deletedAt: null,
+									})
+									.pipe(Effect.orDie, withSystemActor)
+							}),
+						onSome: (user) => Effect.succeed(user),
+					})
+
+					yield* Effect.annotateCurrentSpan("userId", user.id)
 
 					return new CurrentUser.Schema({
-						id: user.value.id,
+						id: user.id,
 						role: (payload.role as "admin" | "member") || "member",
 						organizationId: payload.organizationId as OrganizationId | undefined,
-						avatarUrl: user.value.avatarUrl,
-						firstName: user.value.firstName,
-						lastName: user.value.lastName,
-						email: user.value.email,
+						avatarUrl: user.avatarUrl,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						email: user.email,
 					})
 				}),
 		}
