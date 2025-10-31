@@ -3,7 +3,8 @@ import { OrganizationId } from "@hazel/db/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { Building02 } from "@untitledui/icons"
 import { type } from "arktype"
-import { Cause, Exit } from "effect"
+import { Cause, Either, Exit, Match } from "effect"
+import type { FiberId } from "effect/FiberId"
 import { useCallback, useEffect } from "react"
 import { Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
@@ -62,7 +63,7 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 		validators: {
 			onChange: organizationSchema,
 		},
-		onSubmit: async ({ value }) => {
+		onSubmit: async ({ value, formApi }) => {
 			const exit = await createOrganizationMutation({
 				payload: {
 					name: value.name.trim(),
@@ -78,7 +79,23 @@ export const CreateOrganizationModal = ({ isOpen, onOpenChange }: CreateOrganiza
 					onOpenChange(false)
 					form.reset()
 				},
-				onFailure: (_cause) => {
+				onFailure: (cause) => {
+					const result = Cause.failureOrCause(cause)
+
+					if (Either.isLeft(result)) {
+						Match.value(result.left._tag).pipe(
+							Match.when("OrganizationSlugAlreadyExistsError", () => {
+								formApi.setFieldMeta("slug", (meta) => ({
+									...meta,
+									errorMap: {
+										onSubmit: "Organization slug already exists",
+									},
+								}))
+							}),
+						)
+						return
+					}
+
 					toast.error("Failed to create organization")
 				},
 			})
