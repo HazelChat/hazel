@@ -307,15 +307,6 @@ export const userCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(User.Model.json),
 		getKey: (item) => item.id,
-		onInsert: ({ transaction }) =>
-			Effect.gen(function* () {
-				const { modified: newUser } = transaction.mutations[0]
-				const client = yield* HazelRpcClient
-
-				const results = yield* client("user.create", newUser)
-
-				return { txid: results.transactionId }
-			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUser } = transaction.mutations[0]

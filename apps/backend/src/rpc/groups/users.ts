@@ -40,23 +40,6 @@ export class UserRpcs extends RpcGroup.make(
 	}).middleware(AuthMiddleware),
 
 	/**
-	 * UserCreate
-	 *
-	 * Creates a new user.
-	 * User data is validated according to the User.Insert schema.
-	 *
-	 * @param payload - User data (email, firstName, lastName, etc.)
-	 * @returns User data and transaction ID
-	 * @throws UnauthorizedError if user lacks permission
-	 * @throws InternalServerError for unexpected errors
-	 */
-	Rpc.make("user.create", {
-		payload: User.Insert,
-		success: UserResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
-
-	/**
 	 * UserUpdate
 	 *
 	 * Updates an existing user.
