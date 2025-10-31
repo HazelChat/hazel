@@ -17,7 +17,7 @@ import {
 import { effectElectricCollectionOptions } from "@hazel/effect-electric-db-collection"
 import { createCollection } from "@tanstack/react-db"
 import { Effect, Schema } from "effect"
-import { RpcClient } from "~/lib/services/common/rpc-client"
+import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 
 const electricUrl: string = import.meta.env.VITE_ELECTRIC_URL
@@ -37,33 +37,24 @@ export const organizationCollection = createCollection(
 		},
 		schema: Schema.standardSchemaV1(Organization.Model.json),
 		getKey: (item) => item.id,
-		onInsert: ({ transaction }) =>
-			Effect.gen(function* () {
-				const { modified: newOrganization } = transaction.mutations[0]
-				const client = yield* RpcClient
-
-				const results = yield* client.organization.create(newOrganization)
-
-				return { txid: results.transactionId }
-			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newOrganization } = transaction.mutations[0]
 
 				console.log(newOrganization)
 
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.organization.update(newOrganization)
+				const results = yield* client("organization.update", newOrganization)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedOrganization } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.organization.delete({
+				const results = yield* client("organization.delete", {
 					id: deletedOrganization.id,
 				})
 
@@ -90,27 +81,27 @@ export const invitationCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newInvitation } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.invitation.create(newInvitation)
+				const results = yield* client("invitation.create", newInvitation)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newInvitation } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.invitation.update(newInvitation)
+				const results = yield* client("invitation.update", newInvitation)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedInvitation } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.invitation.delete({ id: deletedInvitation.id })
+				const results = yield* client("invitation.delete", { id: deletedInvitation.id })
 
 				return { txid: results.transactionId }
 			}),
@@ -135,27 +126,27 @@ export const messageCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.message.create(newMessage)
+				const results = yield* client("message.create", newMessage)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.message.update(newMessage)
+				const results = yield* client("message.update", newMessage)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.message.delete({ id: deletedMessage.id })
+				const results = yield* client("message.delete", { id: deletedMessage.id })
 
 				return { txid: results.transactionId }
 			}),
@@ -180,27 +171,27 @@ export const messageReactionCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newMessageReaction } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.messageReaction.create(newMessageReaction)
+				const results = yield* client("messageReaction.create", newMessageReaction)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newMessageReaction } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.messageReaction.update(newMessageReaction)
+				const results = yield* client("messageReaction.update", newMessageReaction)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedMessageReaction } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.messageReaction.delete({
+				const results = yield* client("messageReaction.delete", {
 					id: deletedMessageReaction.id,
 				})
 
@@ -227,27 +218,27 @@ export const pinnedMessageCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newPinnedMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.pinnedMessage.create(newPinnedMessage)
+				const results = yield* client("pinnedMessage.create", newPinnedMessage)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newPinnedMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.pinnedMessage.update(newPinnedMessage)
+				const results = yield* client("pinnedMessage.update", newPinnedMessage)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedPinnedMessage } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.pinnedMessage.delete({
+				const results = yield* client("pinnedMessage.delete", {
 					id: deletedPinnedMessage.id,
 				})
 
@@ -274,27 +265,27 @@ export const notificationCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newNotification } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.notification.create(newNotification)
+				const results = yield* client("notification.create", newNotification)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newNotification } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.notification.update(newNotification)
+				const results = yield* client("notification.update", newNotification)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedNotification } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.notification.delete({ id: deletedNotification.id })
+				const results = yield* client("notification.delete", { id: deletedNotification.id })
 
 				return { txid: results.transactionId }
 			}),
@@ -319,27 +310,27 @@ export const userCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUser } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.user.create(newUser)
+				const results = yield* client("user.create", newUser)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUser } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.user.update(newUser)
+				const results = yield* client("user.update", newUser)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedUser } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.user.delete({
+				const results = yield* client("user.delete", {
 					id: deletedUser.id,
 				})
 
@@ -366,27 +357,27 @@ export const organizationMemberCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newOrganizationMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.organizationMember.create(newOrganizationMember)
+				const results = yield* client("organizationMember.create", newOrganizationMember)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newOrganizationMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.organizationMember.update(newOrganizationMember)
+				const results = yield* client("organizationMember.update", newOrganizationMember)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedOrganizationMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.organizationMember.delete({
+				const results = yield* client("organizationMember.delete", {
 					id: deletedOrganizationMember.id,
 				})
 
@@ -413,27 +404,27 @@ export const channelCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newChannel } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channel.create(newChannel)
+				const results = yield* client("channel.create", newChannel)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newChannel } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channel.update(newChannel)
+				const results = yield* client("channel.update", newChannel)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedChannel } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channel.delete({
+				const results = yield* client("channel.delete", {
 					id: deletedChannel.id,
 				})
 
@@ -460,27 +451,27 @@ export const channelMemberCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newChannelMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channelMember.create(newChannelMember)
+				const results = yield* client("channelMember.create", newChannelMember)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newChannelMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channelMember.update(newChannelMember)
+				const results = yield* client("channelMember.update", newChannelMember)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedChannelMember } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.channelMember.delete({
+				const results = yield* client("channelMember.delete", {
 					id: deletedChannelMember.id,
 				})
 
@@ -507,9 +498,9 @@ export const attachmentCollection = createCollection(
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedAttachment } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.attachment.delete({
+				const results = yield* client("attachment.delete", {
 					id: deletedAttachment.id,
 				})
 
@@ -533,27 +524,27 @@ export const directMessageParticipantCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.directMessageParticipant.create(newDirectMessageParticipant)
+				const results = yield* client("directMessageParticipant.create", newDirectMessageParticipant)
 
 				return { txid: results.transactionId }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newDirectMessageParticipant } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.directMessageParticipant.update(newDirectMessageParticipant)
+				const results = yield* client("directMessageParticipant.update", newDirectMessageParticipant)
 
 				return { txid: results.transactionId }
 			}),
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedDirectMessageParticipant } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.directMessageParticipant.delete({
+				const results = yield* client("directMessageParticipant.delete", {
 					id: deletedDirectMessageParticipant.id,
 				})
 
@@ -577,9 +568,9 @@ export const typingIndicatorCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newTypingIndicator } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.typingIndicator.create({
+				const results = yield* client("typingIndicator.create", {
 					channelId: newTypingIndicator.channelId,
 					memberId: newTypingIndicator.memberId,
 					lastTyped: newTypingIndicator.lastTyped,
@@ -590,9 +581,9 @@ export const typingIndicatorCollection = createCollection(
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newTypingIndicator } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.typingIndicator.update({
+				const results = yield* client("typingIndicator.update", {
 					id: newTypingIndicator.id,
 					lastTyped: newTypingIndicator.lastTyped,
 				})
@@ -602,9 +593,9 @@ export const typingIndicatorCollection = createCollection(
 		onDelete: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { original: deletedTypingIndicator } = transaction.mutations[0]
-				const client = yield* RpcClient
+				const client = yield* HazelRpcClient
 
-				const results = yield* client.typingIndicator.delete({
+				const results = yield* client("typingIndicator.delete", {
 					id: deletedTypingIndicator.id,
 				})
 
@@ -631,9 +622,8 @@ export const userPresenceStatusCollection = createCollection(
 		onInsert: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUserPresenceStatus } = transaction.mutations[0]
-				const client = yield* RpcClient
-
-				const results = yield* client.userPresenceStatus.update({
+				const client = yield* HazelRpcClient
+				const results = yield* client("userPresenceStatus.update", {
 					status: newUserPresenceStatus.status,
 					customMessage: newUserPresenceStatus.customMessage,
 				})
@@ -643,9 +633,10 @@ export const userPresenceStatusCollection = createCollection(
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
 				const { modified: newUserPresenceStatus } = transaction.mutations[0]
-				const client = yield* RpcClient
 
-				const results = yield* client.userPresenceStatus.update({
+				const client = yield* HazelRpcClient
+
+				const results = yield* client("userPresenceStatus.update", {
 					status: newUserPresenceStatus.status,
 					customMessage: newUserPresenceStatus.customMessage,
 				})

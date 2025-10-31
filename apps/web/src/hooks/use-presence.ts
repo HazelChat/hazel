@@ -6,14 +6,13 @@ import { DateTime, Duration, Effect, Schedule, Stream } from "effect"
 import { useCallback, useEffect, useRef } from "react"
 import { userPresenceStatusCollection } from "~/db/collections"
 import { userAtom } from "~/lib/auth"
-import { RpcClient } from "~/lib/services/common/rpc-client"
+import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { router } from "~/main"
 
 type PresenceStatus = "online" | "away" | "busy" | "dnd" | "offline"
 
 const AFK_TIMEOUT = Duration.minutes(5)
-
 
 /**
  * Atom that tracks the last user activity timestamp
@@ -184,7 +183,6 @@ const currentUserPresenceAtom = Atom.make((get) => {
 	return get(currentUserPresenceAtomFamily(user.id))
 })
 
-
 /**
  * Hook for managing the current user's presence status
  */
@@ -214,8 +212,8 @@ export function usePresence() {
 		lastSentStatusRef.current = computedStatus
 
 		const program = Effect.gen(function* () {
-			const client = yield* RpcClient
-			yield* client.userPresenceStatus.update({
+			const client = yield* HazelRpcClient
+			yield* client("userPresenceStatus.update", {
 				status: computedStatus,
 			})
 		})
@@ -230,8 +228,8 @@ export function usePresence() {
 		lastSentChannelRef.current = currentChannelId
 
 		const program = Effect.gen(function* () {
-			const client = yield* RpcClient
-			yield* client.userPresenceStatus.update({
+			const client = yield* HazelRpcClient
+			yield* client("userPresenceStatus.update", {
 				activeChannelId: currentChannelId ? (currentChannelId as ChannelId) : null,
 			})
 		})
@@ -258,8 +256,8 @@ export function usePresence() {
 			previousManualStatusRef.current = status
 
 			const program = Effect.gen(function* () {
-				const client = yield* RpcClient
-				yield* client.userPresenceStatus.update({
+				const client = yield* HazelRpcClient
+				yield* client("userPresenceStatus.update", {
 					status,
 					customMessage: customMessage ?? null,
 				})

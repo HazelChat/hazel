@@ -6,7 +6,7 @@ import type {
 	UtilsRecord,
 } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
-import { Effect, type ManagedRuntime } from "effect"
+import { Effect, Exit, type ManagedRuntime } from "effect"
 import { DeleteError, InsertError, MissingTxIdError, UpdateError } from "./errors"
 import type { EffectDeleteHandler, EffectInsertHandler, EffectUpdateHandler } from "./types"
 
@@ -43,11 +43,26 @@ export function convertInsertHandler<
 			),
 		)
 
-		const result = runtime
-			? await runtime.runPromise(effect)
-			: await Effect.runPromise(
+		const exit = runtime
+			? await runtime.runPromiseExit(effect)
+			: await Effect.runPromiseExit(
 					effect as Effect.Effect<{ txid: Txid | Array<Txid> }, InsertError, never>,
 				)
+
+		// Handle the Exit type
+		if (Exit.isFailure(exit)) {
+			const cause = exit.cause
+			if (cause._tag === "Fail") {
+				throw cause.error
+			}
+			throw new InsertError({
+				message: `Insert operation failed unexpectedly`,
+				data: params.transaction.mutations[0]?.modified,
+				cause: cause,
+			})
+		}
+
+		const result = exit.value
 
 		if (!result.txid) {
 			throw new MissingTxIdError({
@@ -81,7 +96,13 @@ export function convertUpdateHandler<
 	if (!handler) return undefined
 
 	return async (params: UpdateMutationFnParams<T, TKey, TUtils>) => {
+		console.log("[handlers.ts] convertUpdateHandler: Starting update handler")
+
 		const effect = handler(params).pipe(
+			Effect.tap(() => Effect.sync(() => console.log("[handlers.ts] Effect executed successfully"))),
+			Effect.tapError((error: E | unknown) =>
+				Effect.sync(() => console.error("[handlers.ts] Effect error before catchAll:", error))
+			),
 			Effect.catchAll((error: E | unknown) =>
 				Effect.fail(
 					new UpdateError({
@@ -93,20 +114,46 @@ export function convertUpdateHandler<
 			),
 		)
 
-		const result = runtime
-			? await runtime.runPromise(effect)
-			: await Effect.runPromise(
-					effect as Effect.Effect<{ txid: Txid | Array<Txid> }, UpdateError, never>,
-				)
+		console.log("[handlers.ts] About to run effect with runtime:", !!runtime)
 
-		if (!result.txid) {
-			throw new MissingTxIdError({
-				message: `Update handler must return a txid`,
-				operation: "update",
-			})
+		try {
+			const exit = runtime
+				? await runtime.runPromiseExit(effect)
+				: await Effect.runPromiseExit(
+						effect as Effect.Effect<{ txid: Txid | Array<Txid> }, UpdateError, never>,
+					)
+
+			console.log("[handlers.ts] Effect exit:", exit)
+
+			// Handle the Exit type
+			if (Exit.isFailure(exit)) {
+				const cause = exit.cause
+				console.error("[handlers.ts] Effect failed with cause:", cause)
+				if (cause._tag === "Fail") {
+					throw cause.error
+				}
+				throw new UpdateError({
+					message: `Update operation failed unexpectedly`,
+					key: params.transaction.mutations[0]?.key,
+					cause: cause,
+				})
+			}
+
+			const result = exit.value
+			console.log("[handlers.ts] Effect completed, result:", result)
+
+			if (!result.txid) {
+				throw new MissingTxIdError({
+					message: `Update handler must return a txid`,
+					operation: "update",
+				})
+			}
+
+			return result
+		} catch (error) {
+			console.error("[handlers.ts] Error running effect:", error)
+			throw error
 		}
-
-		return result
 	}
 }
 
@@ -143,11 +190,26 @@ export function convertDeleteHandler<
 			),
 		)
 
-		const result = runtime
-			? await runtime.runPromise(effect)
-			: await Effect.runPromise(
+		const exit = runtime
+			? await runtime.runPromiseExit(effect)
+			: await Effect.runPromiseExit(
 					effect as Effect.Effect<{ txid: Txid | Array<Txid> }, DeleteError, never>,
 				)
+
+		// Handle the Exit type
+		if (Exit.isFailure(exit)) {
+			const cause = exit.cause
+			if (cause._tag === "Fail") {
+				throw cause.error
+			}
+			throw new DeleteError({
+				message: `Delete operation failed unexpectedly`,
+				key: params.transaction.mutations[0]?.key,
+				cause: cause,
+			})
+		}
+
+		const result = exit.value
 
 		if (!result.txid) {
 			throw new MissingTxIdError({

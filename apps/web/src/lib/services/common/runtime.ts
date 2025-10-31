@@ -2,7 +2,6 @@ import { Atom } from "@effect-atom/atom-react"
 import { Layer, ManagedRuntime } from "effect"
 import { ApiClient } from "./api-client"
 import { HazelRpcClient } from "./rpc-atom-client"
-import { RpcClient } from "./rpc-client"
 
 /**
  * Shared layer containing all services
@@ -14,7 +13,7 @@ import { RpcClient } from "./rpc-client"
  *
  * All RPC clients share the same WebSocket connection via RpcProtocolLive.
  */
-export const runtimeLayer = Layer.mergeAll(ApiClient.Default, RpcClient.Default, HazelRpcClient.layer)
+export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.layer)
 
 /**
  * Managed runtime for imperative Effect execution

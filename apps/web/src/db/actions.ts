@@ -9,7 +9,7 @@ import {
 } from "@hazel/db/schema"
 import { createEffectOptimisticAction } from "@hazel/effect-electric-db-collection"
 import { Effect } from "effect"
-import { RpcClient } from "~/lib/services/common/rpc-client"
+import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import {
 	channelCollection,
@@ -56,11 +56,11 @@ export const sendMessageEffect = createEffectOptimisticAction({
 		_params,
 	) =>
 		Effect.gen(function* () {
-			const client = yield* RpcClient
+			const client = yield* HazelRpcClient
 
 			// Create the message with attachmentIds using RPC
 			// Note: authorId will be overridden by backend AuthMiddleware with the authenticated user
-			const result = yield* client.message.create({
+			const result = yield* client("message.create", {
 				channelId: props.channelId,
 				content: props.content,
 				replyToMessageId: props.replyToMessageId || null,
@@ -69,7 +69,6 @@ export const sendMessageEffect = createEffectOptimisticAction({
 				deletedAt: null,
 				authorId: props.authorId,
 			})
-
 			// Wait for the transaction to sync
 			yield* Effect.promise(() => messageCollection.utils.awaitTxId(result.transactionId))
 
@@ -170,9 +169,9 @@ export const createDmChannel = createEffectOptimisticAction({
 		_params,
 	) =>
 		Effect.gen(function* () {
-			const client = yield* RpcClient
+			const client = yield* HazelRpcClient
 
-			const result = yield* client.channel.createDm({
+			const result = yield* client("channel.createDm", {
 				organizationId: props.organizationId,
 				participantIds: props.participantIds,
 				type: props.type,
@@ -222,10 +221,9 @@ export const createOrganization = createEffectOptimisticAction({
 		_params,
 	) =>
 		Effect.gen(function* () {
-			const client = yield* RpcClient
-
 			// Backend will create org in WorkOS and return real WorkOS ID
-			const result = yield* client.organization.create({
+			const client = yield* HazelRpcClient
+			const result = yield* client("organization.create", {
 				name: props.name,
 				slug: props.slug,
 				logoUrl: props.logoUrl ?? null,

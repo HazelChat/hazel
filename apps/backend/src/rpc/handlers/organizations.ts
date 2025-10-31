@@ -8,7 +8,6 @@ import {
 } from "@hazel/effect-lib"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
-import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
 import { OrganizationPolicy } from "../../policies/organization-policy"
 import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 import { OrganizationRepo } from "../../repositories/organization-repo"
@@ -151,7 +150,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									client.userManagement.createOrganizationMembership({
 										userId: user.externalId,
 										organizationId: workosOrg.id,
-										roleSlug: "admin",
+										roleSlug: "owner",
 									}),
 								)
 								.pipe(
