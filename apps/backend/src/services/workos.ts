@@ -23,7 +23,7 @@ export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
 			Effect.tryPromise({
 				try: (signal) => f(workosClient, signal),
 				catch: (cause) => new WorkOSApiError({ cause }),
-			})
+			}).pipe(Effect.tapError((error) => Effect.logError("WorkOS API error", error)))
 
 		const loadSealedSession = Effect.fn("WorkOS.loadSealedSession")(function* (sessionCookie: string) {
 			const session = yield* call(async (client) =>

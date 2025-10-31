@@ -128,7 +128,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							)
 
 							// Create organization in WorkOS using our DB ID as externalId
-							yield* workos
+							const workosOrg = yield* workos
 								.call((client) =>
 									client.organizations.createOrganization({
 										name: payload.name,
@@ -146,13 +146,12 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									),
 								)
 
-							// Add current user as owner in WorkOS
 							yield* workos
 								.call((client) =>
 									client.userManagement.createOrganizationMembership({
 										userId: user.externalId,
-										organizationId: createdOrganization.id,
-										roleSlug: "owner",
+										organizationId: workosOrg.id,
+										roleSlug: "admin",
 									}),
 								)
 								.pipe(
@@ -166,7 +165,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									),
 								)
 
-							// Create organization membership in local database
 							yield* OrganizationMemberRepo.upsertByOrgAndUser({
 								organizationId: createdOrganization.id,
 								userId: currentUser.id,
