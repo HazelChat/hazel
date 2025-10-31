@@ -2,6 +2,7 @@
 
 ## High Priority Features
 
+- Electric proxy
 
 ## Medium Priority Features
 
