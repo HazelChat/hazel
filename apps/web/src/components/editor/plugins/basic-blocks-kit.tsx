@@ -2,8 +2,8 @@
 
 import { BlockquotePlugin } from "@platejs/basic-nodes/react"
 import { ParagraphPlugin } from "platejs/react"
-import { BlockquoteElement } from "~/components/editor/static-ui/blockquote-node"
-import { ParagraphElement } from "~/components/editor/static-ui/paragraph-node"
+import { BlockquoteElement } from "../static-ui/blockquote-node"
+import { ParagraphElement } from "../static-ui/paragraph-node"
 
 export const BasicBlocksKit = [
 	ParagraphPlugin.withComponent(ParagraphElement),

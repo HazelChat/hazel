@@ -1,33 +1,36 @@
-import type { InvitationId, OrganizationId } from "@hazel/db/schema"
+import { useAtomSet } from "@effect-atom/atom-react"
+import type { InvitationId } from "@hazel/db/schema"
+import { ArrowPathIcon } from "@heroicons/react/20/solid"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
-import { RefreshCcw02 } from "@untitledui/icons"
 import { useState } from "react"
-import type { SortDescriptor } from "react-aria-components"
 import { toast } from "sonner"
-import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
-import { PaginationCardDefault } from "~/components/application/pagination/pagination"
-import { Table, TableCard } from "~/components/application/table/table"
-import { Badge, BadgeWithDot } from "~/components/base/badges/badges"
-import { Button } from "~/components/base/buttons/button"
-import { ButtonUtility } from "~/components/base/buttons/button-utility"
+import { resendInvitationMutation, revokeInvitationMutation } from "~/atoms/invitation-atoms"
 import IconClose from "~/components/icons/icon-close"
 import IconPlus from "~/components/icons/icon-plus"
+import { EmailInviteModal } from "~/components/modals/email-invite-modal"
+import { Button } from "~/components/ui/button"
 import { invitationCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
+import { toastExit } from "~/lib/toast-exit"
+import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/invitations")({
-	component: RouteComponent,
+	component: InvitationsSettings,
 })
 
-function RouteComponent() {
-	const [invitationsSortDescriptor, setInvitationsSortDescriptor] = useState<SortDescriptor>({
-		column: "email",
-		direction: "ascending",
-	})
+function InvitationsSettings() {
 	const [showInviteModal, setShowInviteModal] = useState(false)
 
 	const { organizationId } = useOrganization()
+
+	const resendInvitation = useAtomSet(resendInvitationMutation, {
+		mode: "promiseExit",
+	})
+
+	const revokeInvitation = useAtomSet(revokeInvitationMutation, {
+		mode: "promiseExit",
+	})
 
 	const { data: invitations } = useLiveQuery(
 		(q) =>
@@ -66,142 +69,155 @@ function RouteComponent() {
 		return "Expires soon"
 	}
 
-	const handleResendInvitation = async (_invitationId: InvitationId) => {
-		try {
-			// TODO: Resend mutation
-			// await resendInvitationMutation({
-			// 	invitationId,
-			// })
-			toast.info("Invitation resent", {
-				description: "The invitation has been resent successfully.",
-			})
-		} catch (error) {
-			toast.error("Failed to resend invitation", {
-				description: error instanceof Error ? error.message : "An error occurred",
-			})
-		}
+	const handleResendInvitation = async (invitationId: InvitationId) => {
+		await toastExit(
+			resendInvitation({
+				payload: {
+					invitationId,
+				},
+			}),
+			{
+				loading: "Resending invitation...",
+				success: "Invitation resent successfully",
+				error: "Failed to resend invitation",
+			},
+		)
 	}
 
-	const handleRevokeInvitation = async (_invitationId: InvitationId) => {
-		try {
-			// await revokeInvitationMutation({
-			// 	invitationId,
-			// })
-			toast.info("Invitation revoked", {
-				description: "The invitation has been revoked successfully.",
-			})
-		} catch (error) {
-			toast.error("Failed to revoke invitation", {
-				description: error instanceof Error ? error.message : "An error occurred",
-			})
-		}
+	const handleRevokeInvitation = async (invitationId: InvitationId) => {
+		await toastExit(
+			revokeInvitation({
+				payload: {
+					invitationId,
+				},
+			}),
+			{
+				loading: "Revoking invitation...",
+				success: "Invitation revoked successfully",
+				error: "Failed to revoke invitation",
+			},
+		)
 	}
 
 	return (
-		<div className="flex flex-col gap-6 px-4 lg:px-8">
-			<TableCard.Root className="rounded-none bg-transparent shadow-none ring-0 lg:rounded-xl lg:bg-primary lg:shadow-xs lg:ring">
-				<TableCard.Header
-					title="Pending invitations"
-					description="Manage pending invitations sent to team members."
-					className="pb-5"
-					badge={
-						pendingInvitations.length === 0 ? undefined : (
-							<Badge className="rounded-full" color="gray" type="modern" size="sm">
-								{pendingInvitations.length} pending
-							</Badge>
-						)
-					}
-					contentTrailing={
-						<div className="flex gap-3">
-							<Button
-								color="secondary"
-								size="md"
-								iconLeading={IconPlus}
-								onClick={() => setShowInviteModal(true)}
-							>
-								Invite user
-							</Button>
+		<>
+			<div className="flex flex-col gap-6 px-4 lg:px-8">
+				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+					<div className="border-border border-b bg-bg px-4 py-5 md:px-6">
+						<div className="flex flex-col items-start gap-4 md:flex-row">
+							<div className="flex flex-1 flex-col gap-0.5">
+								<div className="flex items-center gap-2">
+									<h2 className="font-semibold text-fg text-lg">Pending invitations</h2>
+									{pendingInvitations.length > 0 && (
+										<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
+											{pendingInvitations.length} pending
+										</span>
+									)}
+								</div>
+								<p className="text-muted-fg text-sm">
+									Manage pending invitations sent to team members.
+								</p>
+							</div>
+							<div className="flex gap-3">
+								<Button intent="secondary" size="md" onPress={() => setShowInviteModal(true)}>
+									<IconPlus data-slot="icon" />
+									Invite user
+								</Button>
+							</div>
 						</div>
-					}
-				/>
-				{pendingInvitations.length === 0 ? (
-					<div className="flex h-64 items-center justify-center">
-						<p className="text-sm text-tertiary">No pending invitations</p>
 					</div>
-				) : (
-					<Table
-						aria-label="Pending invitations"
-						sortDescriptor={invitationsSortDescriptor}
-						onSortChange={setInvitationsSortDescriptor}
-						className="bg-primary"
-					>
-						<Table.Header className="bg-primary">
-							<Table.Head
-								id="email"
-								isRowHeader
-								label="Email"
-								allowsSorting
-								className="w-full"
-							/>
-							<Table.Head id="invitedBy" label="Invited by" allowsSorting />
-							<Table.Head id="status" label="Status" />
-							<Table.Head id="expiry" label="Expiration" allowsSorting />
-							<Table.Head id="actions" />
-						</Table.Header>
-						<Table.Body items={pendingInvitations}>
-							{(invitation) => (
-								<Table.Row id={invitation.id} className="odd:bg-secondary_subtle">
-									<Table.Cell>
-										<p className="font-medium text-primary text-sm">{invitation.email}</p>
-									</Table.Cell>
 
-									<Table.Cell>
-										<p className="text-sm text-tertiary">
-											{invitation.invitedBy || "System"}
-										</p>
-									</Table.Cell>
-									<Table.Cell>
-										<BadgeWithDot
-											className="rounded-full"
-											color="warning"
-											size="sm"
-											type="modern"
-										>
-											Pending
-										</BadgeWithDot>
-									</Table.Cell>
-									<Table.Cell>
-										<p className="text-sm text-tertiary">
-											{formatTimeRemaining(invitation.expiresAt.getTime() - Date.now())}
-										</p>
-									</Table.Cell>
-									<Table.Cell className="px-4">
-										<div className="flex justify-end gap-0.5">
-											<ButtonUtility
-												size="xs"
-												color="tertiary"
-												tooltip="Resend invitation"
-												icon={RefreshCcw02}
-												onClick={() => handleResendInvitation(invitation.id)}
-											/>
-											<ButtonUtility
-												size="xs"
-												color="tertiary"
-												tooltip="Revoke invitation"
-												icon={IconClose}
-												onClick={() => handleRevokeInvitation(invitation.id)}
-											/>
-										</div>
-									</Table.Cell>
-								</Table.Row>
-							)}
-						</Table.Body>
-					</Table>
-				)}
-				<PaginationCardDefault page={1} total={Math.ceil(pendingInvitations.length / 10)} />
-			</TableCard.Root>
+					{pendingInvitations.length === 0 ? (
+						<div className="flex h-64 items-center justify-center">
+							<p className="text-muted-fg text-sm">No pending invitations</p>
+						</div>
+					) : (
+						<div className="overflow-x-auto">
+							<table className="w-full min-w-full">
+								<thead className="border-border border-b bg-bg">
+									<tr>
+										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+											Email
+										</th>
+										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+											Invited by
+										</th>
+										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+											Status
+										</th>
+										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+											Expiration
+										</th>
+										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+											Actions
+										</th>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-border">
+									{pendingInvitations.map((invitation) => (
+										<tr key={invitation.id} className="hover:bg-secondary/50">
+											<td className="px-4 py-4">
+												<p className="font-medium text-fg text-sm">
+													{invitation.email}
+												</p>
+											</td>
+											<td className="px-4 py-4">
+												<p className="text-muted-fg text-sm">
+													{invitation.invitee
+														? `${invitation.invitee.firstName} ${invitation.invitee.lastName}`
+														: "System"}
+												</p>
+											</td>
+											<td className="px-4 py-4">
+												<span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-2 py-0.5 font-medium text-warning text-xs">
+													<span className="size-1.5 rounded-full bg-current" />
+													Pending
+												</span>
+											</td>
+											<td className="px-4 py-4">
+												<p className="text-muted-fg text-sm">
+													{formatTimeRemaining(
+														invitation.expiresAt.getTime() - Date.now(),
+													)}
+												</p>
+											</td>
+											<td className="px-4 py-4">
+												<div className="flex items-center justify-end gap-1">
+													<Button
+														intent="plain"
+														size="sq-xs"
+														onPress={() => handleResendInvitation(invitation.id)}
+														aria-label="Resend invitation"
+													>
+														<ArrowPathIcon data-slot="icon" />
+													</Button>
+													<Button
+														intent="plain"
+														size="sq-xs"
+														onPress={() => handleRevokeInvitation(invitation.id)}
+														aria-label="Revoke invitation"
+													>
+														<IconClose data-slot="icon" />
+													</Button>
+												</div>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+			</div>
 
-			<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
-		</div>
+			{/* Email Invite Modal */}
+			{organizationId && (
+				<EmailInviteModal
+					isOpen={showInviteModal}
+					onOpenChange={setShowInviteModal}
+					organizationId={organizationId}
+				/>
+			)}
+		</>
 	)
 }

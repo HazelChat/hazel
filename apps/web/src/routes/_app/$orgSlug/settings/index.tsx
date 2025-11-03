@@ -1,18 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
-
 import type { Color } from "react-aria-components"
 import { ColorSwatch, parseColor, Radio, RadioGroup } from "react-aria-components"
-import { Dark, Light, System } from "~/components/application/modals/appearances"
-
-import { SectionHeader } from "~/components/application/section-headers/section-headers"
-import { SectionLabel } from "~/components/application/section-headers/section-label"
-
-import { Form } from "~/components/base/form/form"
-import { RadioButtonBase } from "~/components/base/radio-buttons/radio-buttons"
-import { Select } from "~/components/base/select/select"
+import { Dark, Light, System } from "~/components/modals/appearances"
 import { type Theme, useTheme } from "~/components/theme-provider"
-
-import { cx } from "~/utils/cx"
+import { SectionHeader } from "~/components/ui/section-header"
+import { SectionLabel } from "~/components/ui/section-label"
+import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/")({
 	component: AppearanceSettings,
@@ -60,7 +53,7 @@ function AppearanceSettings() {
 	]
 
 	return (
-		<Form
+		<form
 			className="flex flex-col gap-6 px-4 lg:px-8"
 			onSubmit={(e) => {
 				e.preventDefault()
@@ -109,10 +102,10 @@ function AppearanceSettings() {
 											<ColorSwatch
 												id={`color-${swatch.hex}`}
 												color={swatch.hex}
-												className={cx(
+												className={cn(
 													"-outline-offset-1 size-7 cursor-pointer rounded-full outline-1 outline-black/10",
 													(isSelected || isFocused) &&
-														"ring-2 ring-focus-ring ring-offset-2 ring-offset-bg-primary",
+														"ring-2 ring-ring ring-offset-2 ring-offset-bg",
 												)}
 											/>
 										)}
@@ -123,7 +116,7 @@ function AppearanceSettings() {
 					</div>
 				</div>
 
-				<hr className="h-px w-full border-none bg-border-secondary" />
+				<hr className="h-px w-full border-none bg-border" />
 
 				<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
 					<SectionLabel.Root
@@ -140,36 +133,38 @@ function AppearanceSettings() {
 							value={theme}
 							onChange={(value) => setTheme(value as Theme)}
 						>
-							{themes.map((theme) => (
+							{themes.map((themeOption) => (
 								<Radio
-									key={theme.value}
-									value={theme.value}
-									aria-label={theme.label}
+									key={themeOption.value}
+									value={themeOption.value}
+									aria-label={themeOption.label}
 									className="flex cursor-pointer flex-col gap-3"
 								>
 									{({ isSelected, isFocusVisible }) => (
 										<>
 											<section
-												className={cx(
-													"relative h-33 w-50 rounded-[10px] bg-utility-gray-100",
-													isSelected &&
-														"outline-2 outline-focus-ring outline-offset-2",
+												className={cn(
+													"relative h-33 w-50 rounded-[10px] bg-secondary",
+													isSelected && "outline-2 outline-ring outline-offset-2",
 												)}
 											>
-												<theme.component className="size-full" />
+												<themeOption.component className="size-full" />
 
 												{isSelected && (
-													<RadioButtonBase
-														size="md"
-														isSelected={isSelected}
-														isFocusVisible={isFocusVisible}
-														className="absolute bottom-2 left-2"
-													/>
+													<div
+														className={cn(
+															"absolute bottom-2 left-2 flex size-5 items-center justify-center rounded-full border-2 border-fg bg-primary",
+															isFocusVisible &&
+																"ring-2 ring-ring ring-offset-2",
+														)}
+													>
+														<div className="size-2.5 rounded-full bg-fg" />
+													</div>
 												)}
 											</section>
 											<section className="w-full">
-												<p className="font-semibold text-primary text-sm">
-													{theme.label}
+												<p className="font-semibold text-fg text-sm">
+													{themeOption.label}
 												</p>
 											</section>
 										</>
@@ -179,67 +174,7 @@ function AppearanceSettings() {
 						</RadioGroup>
 					</div>
 				</div>
-
-				<hr className="h-px w-full border-none bg-border-secondary" />
-
-				<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
-					<SectionLabel.Root
-						size="sm"
-						title="Language"
-						description="Default language for public dashboard."
-					/>
-
-					<div className="w-max min-w-50">
-						<Select
-							name="language"
-							aria-label="Language"
-							size="sm"
-							defaultSelectedKey="en-US"
-							items={[
-								{
-									id: "en-US",
-									label: "English (US)",
-									icon: (
-										<img
-											src="https://www.untitledui.com/images/flags/US.svg"
-											alt="United States flag"
-											className="size-5"
-										/>
-									),
-								},
-								{
-									id: "de-DE",
-									label: "German (DE)",
-									icon: (
-										<img
-											src="https://www.untitledui.com/images/flags/DE.svg"
-											alt="German flag"
-											className="size-5"
-										/>
-									),
-								},
-								{
-									id: "es-ES",
-									label: "Spanish (ES)",
-									icon: (
-										<img
-											src="https://www.untitledui.com/images/flags/ES.svg"
-											alt="Spanish flag"
-											className="size-5"
-										/>
-									),
-								},
-							]}
-						>
-							{(item) => (
-								<Select.Item id={item.id} icon={item.icon}>
-									{item.label}
-								</Select.Item>
-							)}
-						</Select>
-					</div>
-				</div>
 			</div>
-		</Form>
+		</form>
 	)
 }

@@ -1,17 +1,11 @@
 import { Flag01 } from "@untitledui/icons"
 import { useEffect, useState } from "react"
-import { Dialog, DialogTrigger, MenuTrigger, Popover, Toolbar } from "react-aria-components"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
+import { EmojiPickerDialog } from "~/components/emoji-picker"
+import { Button } from "~/components/ui/button"
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "~/components/ui/menu"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
-import { Button } from "../base/buttons/button"
-import { Dropdown } from "../base/dropdown/dropdown"
-import {
-	EmojiPicker,
-	EmojiPickerContent,
-	EmojiPickerFooter,
-	EmojiPickerSearch,
-} from "../base/emoji-picker/emoji-picker"
 import IconCopy from "../icons/icon-copy"
 import IconDotsVertical from "../icons/icon-dots-vertical"
 import IconEdit from "../icons/icon-edit"
@@ -33,9 +27,8 @@ interface MessageToolbarProps {
 export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
 	const { addReaction } = useChat()
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
-	const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-	const [dropdownOpen, setDropdownOpen] = useState(false)
+	const [dropdownOpen, _setDropdownOpen] = useState(false)
 
 	// Get message-specific handlers
 	const messageHandlers = useMessageHandlers(message)
@@ -44,9 +37,10 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 	const isOwnMessage = messageHandlers.isOwnMessage
 	const isPinned = message.pinnedMessage?.id !== undefined
 
-	const handleReaction = (emoji: string) => {
-		trackEmojiUsage(emoji)
-		addReaction(message.id, emoji)
+	const handleReaction = (emoji: string | { emoji: string; label: string }) => {
+		const emojiString = typeof emoji === "string" ? emoji : emoji.emoji
+		trackEmojiUsage(emojiString)
+		addReaction(message.id, emojiString)
 	}
 
 	const handleEdit = () => {
@@ -75,97 +69,87 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 
 	// Notify parent when any menu is open
 	useEffect(() => {
-		const isAnyMenuOpen = emojiPickerOpen || deleteModalOpen || dropdownOpen
+		const isAnyMenuOpen = deleteModalOpen || dropdownOpen
 		onMenuOpenChange?.(isAnyMenuOpen)
-	}, [emojiPickerOpen, deleteModalOpen, dropdownOpen, onMenuOpenChange])
+	}, [deleteModalOpen, dropdownOpen, onMenuOpenChange])
 
 	return (
-		<Toolbar
+		<div
+			role="toolbar"
 			aria-label="Message actions"
-			className="flex items-center gap-px rounded-lg border border-primary bg-primary shadow-sm"
+			className="flex items-center gap-px rounded-lg border border-border bg-bg shadow-sm"
 		>
 			{/* Quick Reactions */}
 			{topEmojis.map((emoji) => (
 				<Button
 					key={emoji}
-					size="sm"
-					color="tertiary"
-					onClick={() => handleReaction(emoji)}
+					size="sq-sm"
+					intent="plain"
+					onPress={() => handleReaction(emoji)}
 					aria-label={`React with ${emoji}`}
-					className="!p-1.5 hover:bg-secondary"
+					className="!p-1.5 text-base hover:bg-secondary"
 				>
 					{emoji}
 				</Button>
 			))}
-			<div className="mx-0.5 h-4 w-px bg-border-primary" />
+			<div className="mx-0.5 h-4 w-px bg-border" />
 
-			<DialogTrigger isOpen={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+			{/* More Reactions Button */}
+			<EmojiPickerDialog onEmojiSelect={handleReaction}>
 				<Button
-					size="sm"
-					color="tertiary"
+					size="sq-sm"
+					intent="plain"
 					aria-label="More reactions"
-					className="!p-1.5 hover:bg-secondary"
+					className="p-1.5! hover:bg-secondary"
 				>
-					<IconEmojiAdd className="size-3.5" />
+					<IconEmojiAdd data-slot="icon" className="size-3.5" />
 				</Button>
-				<Popover>
-					<Dialog className="rounded-lg">
-						<EmojiPicker
-							className="h-[342px]"
-							onEmojiSelect={(emoji) => {
-								handleReaction(emoji.emoji)
-								setEmojiPickerOpen(false)
-							}}
-						>
-							<EmojiPickerSearch />
-							<EmojiPickerContent />
-							<EmojiPickerFooter />
-						</EmojiPicker>
-					</Dialog>
-				</Popover>
-			</DialogTrigger>
+			</EmojiPickerDialog>
 
-			{/* Action Buttons */}
+			{/* Copy Button */}
 			<Button
-				size="sm"
-				color="tertiary"
-				onClick={messageHandlers.handleCopy}
+				size="sq-sm"
+				intent="plain"
+				onPress={messageHandlers.handleCopy}
 				aria-label="Copy message"
 				className="!p-1.5 hover:bg-secondary"
 			>
-				<IconCopy className="size-3.5" />
+				<IconCopy data-slot="icon" className="size-3.5" />
 			</Button>
 
+			{/* Reply Button */}
 			<Button
-				size="sm"
-				color="tertiary"
-				onClick={messageHandlers.handleReply}
+				size="sq-sm"
+				intent="plain"
+				onPress={messageHandlers.handleReply}
 				aria-label="Reply to message"
 				className="!p-1.5 hover:bg-secondary"
 			>
-				<IconReply className="size-3.5" />
+				<IconReply data-slot="icon" className="size-3.5" />
 			</Button>
 
+			{/* Edit Button (Own Messages Only) */}
 			{isOwnMessage && (
 				<>
 					<Button
-						size="sm"
-						color="tertiary"
-						onClick={handleEdit}
+						size="sq-sm"
+						intent="plain"
+						onPress={handleEdit}
 						aria-label="Edit message"
 						className="!p-1.5 hover:bg-secondary"
 					>
-						<IconEdit className="size-3.5" />
+						<IconEdit data-slot="icon" className="size-3.5" />
 					</Button>
 
+					{/* Delete Button (Own Messages Only) */}
 					<Button
-						size="sm"
-						color="tertiary-destructive"
-						onClick={() => setDeleteModalOpen(true)}
+						size="sq-sm"
+						intent="plain"
+						onPress={() => setDeleteModalOpen(true)}
 						aria-label="Delete message"
-						className="!p-1.5 hover:bg-error-primary"
+						className="!p-1.5 text-danger hover:bg-danger/10"
 					>
-						<IconTrash className="size-3.5" />
+						<IconTrash data-slot="icon" className="size-3.5" />
 					</Button>
 				</>
 			)}
@@ -173,46 +157,42 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 			{/* Divider before more options */}
 			<div className="mx-0.5 h-4 w-px bg-border" />
 
-			{/* More Options Dropdown */}
-			<Dropdown.Root onOpenChange={setDropdownOpen}>
-				<MenuTrigger>
-					<Button
-						size="sm"
-						color="tertiary"
-						aria-label="More options"
-						className="!p-1.5 hover:bg-secondary"
-					>
-						<IconDotsVertical className="size-3.5" />
-					</Button>
+			{/* More Options Menu */}
+			<Menu>
+				<MenuTrigger aria-label="More options" className="!p-1.5 rounded-md hover:bg-secondary">
+					<IconDotsVertical className="size-3.5" />
 				</MenuTrigger>
-				<Dropdown.Popover placement="bottom end" className="w-44">
-					<Dropdown.Menu>
-						<Dropdown.Item
-							onAction={messageHandlers.handleThread}
-							icon={IconThread}
-							label="Reply in thread"
-						/>
-						<Dropdown.Item onAction={handleForward} icon={IconShare} label="Forward message" />
-						<Dropdown.Item
-							onAction={handleMarkUnread}
-							icon={IconEnvelope}
-							label="Mark as unread"
-						/>
-						<Dropdown.Item
-							onAction={handlePin}
-							icon={IconStar}
-							label={isPinned ? "Unpin message" : "Pin message"}
-						/>
+				<MenuContent placement="bottom end">
+					<MenuItem onAction={messageHandlers.handleThread}>
+						<IconThread data-slot="icon" />
+						<MenuLabel>Reply in thread</MenuLabel>
+					</MenuItem>
+					<MenuItem onAction={handleForward}>
+						<IconShare data-slot="icon" />
+						<MenuLabel>Forward message</MenuLabel>
+					</MenuItem>
+					<MenuItem onAction={handleMarkUnread}>
+						<IconEnvelope data-slot="icon" />
+						<MenuLabel>Mark as unread</MenuLabel>
+					</MenuItem>
+					<MenuItem onAction={handlePin}>
+						<IconStar data-slot="icon" />
+						<MenuLabel>{isPinned ? "Unpin message" : "Pin message"}</MenuLabel>
+					</MenuItem>
 
-						<Dropdown.Separator />
+					<MenuSeparator />
 
-						{!isOwnMessage && (
-							<Dropdown.Item onAction={handleReport} icon={Flag01} label="Report message" />
-						)}
-						<Dropdown.Item onAction={handleViewDetails} label="View details" addon="⌘I" />
-					</Dropdown.Menu>
-				</Dropdown.Popover>
-			</Dropdown.Root>
+					{!isOwnMessage && (
+						<MenuItem intent="danger" onAction={handleReport}>
+							<Flag01 data-slot="icon" />
+							<MenuLabel>Report message</MenuLabel>
+						</MenuItem>
+					)}
+					<MenuItem onAction={handleViewDetails}>
+						<MenuLabel>View details</MenuLabel>
+					</MenuItem>
+				</MenuContent>
+			</Menu>
 
 			{/* Delete Confirmation Modal */}
 			<DeleteMessageModal
@@ -220,6 +200,6 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 				onOpenChange={setDeleteModalOpen}
 				onConfirm={messageHandlers.handleDelete}
 			/>
-		</Toolbar>
+		</div>
 	)
 }

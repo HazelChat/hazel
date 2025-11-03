@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
-import { SectionFooter } from "~/components/application/section-footers/section-footer"
-import { SectionHeader } from "~/components/application/section-headers/section-headers"
-import { TabList, Tabs } from "~/components/application/tabs/tabs"
-import { Button } from "~/components/base/buttons/button"
-import { Toggle } from "~/components/base/toggle/toggle"
 import IconPlus from "~/components/icons/icon-plus"
+import { Button } from "~/components/ui/button"
+import { SectionFooter } from "~/components/ui/section-footer"
+import { SectionHeader } from "~/components/ui/section-header"
+import { Switch } from "~/components/ui/switch"
+import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations")({
 	component: IntegrationsSettings,
@@ -109,7 +109,8 @@ function IntegrationsSettings() {
 						</SectionHeader.Subheading>
 					</div>
 					<SectionHeader.Actions>
-						<Button color="secondary" size="md" iconLeading={IconPlus}>
+						<Button intent="secondary" size="md">
+							<IconPlus data-slot="icon" />
 							Request integration
 						</Button>
 					</SectionHeader.Actions>
@@ -121,36 +122,42 @@ function IntegrationsSettings() {
 				selectedKey={selectedCategory}
 				onSelectionChange={(value) => setSelectedCategory(value as string)}
 			>
-				<TabList type="underline" className="w-full" items={categories} />
+				<TabList className="w-full">
+					{categories.map((category) => (
+						<Tab key={category.id} id={category.id}>
+							{category.label}
+						</Tab>
+					))}
+				</TabList>
 			</Tabs>
 
 			<ul className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:gap-6 xl:grid-cols-3">
 				{integrations.map((integration) => (
 					<li
 						key={integration.name}
-						className="w-full flex-1 rounded-xl bg-primary_alt shadow-xs ring-1 ring-secondary ring-inset"
+						className="w-full flex-1 rounded-xl bg-bg shadow-xs ring-1 ring-border ring-inset"
 					>
 						<div className="flex flex-col gap-6 px-4 py-5 lg:px-5">
 							<div className="flex gap-2">
 								<div className="flex flex-1 items-center gap-3">
-									<div className="w-max shrink-0 rounded-lg bg-white p-0.5 shadow-xs ring-1 ring-secondary ring-inset">
+									<div className="w-max shrink-0 rounded-lg bg-white p-0.5 shadow-xs ring-1 ring-border ring-inset">
 										<img
 											src={integration.logo}
-											alt={"${integration.name} logo"}
+											alt={`${integration.name} logo`}
 											className="size-12 object-contain"
 										/>
 									</div>
-									<p className="font-medium text-md text-primary lg:font-semibold lg:text-md">
+									<p className="font-medium text-fg text-md lg:font-semibold lg:text-md">
 										{integration.name}
 									</p>
 								</div>
-								<Toggle isSelected={integration.active} size="sm" />
+								<Switch isSelected={integration.active} />
 							</div>
-							<p className="text-sm text-tertiary">{integration.description}</p>
+							<p className="text-muted-fg text-sm">{integration.description}</p>
 						</div>
 						<SectionFooter.Root isCard className="px-6 py-4">
 							<SectionFooter.Actions>
-								<Button color="link-color" size="md">
+								<Button intent="plain" size="md">
 									View integration
 								</Button>
 							</SectionFooter.Actions>

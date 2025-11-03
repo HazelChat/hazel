@@ -1,10 +1,8 @@
 import type { MessageId } from "@hazel/db/schema"
-import { eq, useLiveQuery } from "@tanstack/react-db"
-import { messageCollection, userCollection } from "~/db/collections"
 import { useMessage } from "~/db/hooks"
 import { cn } from "~/lib/utils"
-import { Button } from "../base/buttons/button"
 import IconClose from "../icons/icon-close"
+import { Button } from "../ui/button"
 
 interface ReplyIndicatorProps {
 	className?: string
@@ -19,15 +17,15 @@ export function ReplyIndicator({ className, replyToMessageId, onClose }: ReplyIn
 		return (
 			<div
 				className={cn(
-					"flex items-center justify-between gap-2 rounded-t-lg border border-secondary border-b-0 bg-secondary px-3 py-2",
+					"flex items-center justify-between gap-2 rounded-t-lg border border-border border-b-0 bg-secondary px-3 py-2",
 					className,
 				)}
 			>
 				<div className="flex items-center gap-2 text-sm">
 					<div className="flex animate-pulse items-center gap-2">
-						<div className="h-4 w-16 rounded bg-quaternary" />
-						<div className="h-4 w-24 rounded bg-quaternary" />
-						<div className="h-4 w-32 rounded bg-quaternary" />
+						<div className="h-4 w-16 rounded bg-muted" />
+						<div className="h-4 w-24 rounded bg-muted" />
+						<div className="h-4 w-32 rounded bg-muted" />
 					</div>
 				</div>
 				<div className="!p-1">
@@ -44,19 +42,19 @@ export function ReplyIndicator({ className, replyToMessageId, onClose }: ReplyIn
 	return (
 		<div
 			className={cn(
-				"flex items-center justify-between gap-2 rounded-t-lg border border-secondary border-b-0 bg-secondary px-3 py-2",
+				"flex items-center justify-between gap-2 rounded-t-lg border border-border border-b-0 bg-secondary px-3 py-2",
 				className,
 			)}
 		>
 			<div className="flex items-center gap-2 text-sm">
-				<span className="text-secondary">Replying to</span>
-				<span className="font-semibold text-primary">
+				<span className="text-muted-fg">Replying to</span>
+				<span className="font-semibold text-fg">
 					{data.author.firstName} {data.author.lastName}
 				</span>
-				<span className="max-w-xs truncate text-secondary">{data.content.split("\n")[0]}</span>
+				<span className="max-w-xs truncate text-muted-fg">{data.content.split("\n")[0]}</span>
 			</div>
-			<Button size="sm" color="tertiary" onClick={onClose} aria-label="Cancel reply" className="!p-1">
-				<IconClose className="size-3.5" />
+			<Button size="sq-xs" intent="plain" onPress={onClose} aria-label="Cancel reply" className="!p-1">
+				<IconClose data-slot="icon" className="size-3.5" />
 			</Button>
 		</div>
 	)

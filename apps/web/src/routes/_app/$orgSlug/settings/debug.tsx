@@ -1,15 +1,21 @@
 import { useAtomSet } from "@effect-atom/atom-react"
+import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
 import { createFileRoute } from "@tanstack/react-router"
-import { AlertTriangle, Database01 } from "@untitledui/icons"
 import { useState } from "react"
-import { Heading as AriaHeading } from "react-aria-components"
-import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
-import { SectionHeader } from "~/components/application/section-headers/section-headers"
-import { SectionLabel } from "~/components/application/section-headers/section-label"
-import { Button } from "~/components/base/buttons/button"
-import { CloseButton } from "~/components/base/buttons/close-button"
-import { Form } from "~/components/base/form/form"
-import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
+import { IconServers } from "~/components/icons/icon-servers"
+import { Button } from "~/components/ui/button"
+import {
+	Dialog,
+	DialogBody,
+	DialogClose,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog"
+import { Modal, ModalContent } from "~/components/ui/modal"
+import { SectionHeader } from "~/components/ui/section-header"
+import { SectionLabel } from "~/components/ui/section-label"
 import { useOrganization } from "~/hooks/use-organization"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { toastExit } from "~/lib/toast-exit"
@@ -53,7 +59,7 @@ function DebugSettings() {
 
 	return (
 		<>
-			<Form className="flex flex-col gap-6 px-4 lg:px-8">
+			<form className="flex flex-col gap-6 px-4 lg:px-8">
 				<SectionHeader.Root>
 					<SectionHeader.Group>
 						<div className="flex flex-1 flex-col justify-center gap-0.5 self-stretch">
@@ -66,12 +72,12 @@ function DebugSettings() {
 				</SectionHeader.Root>
 
 				{/* Warning Banner */}
-				<div className="rounded-lg border border-warning-500/20 bg-warning-500/10 p-4">
+				<div className="rounded-lg border border-warning/20 bg-warning/10 p-4">
 					<div className="flex gap-3">
-						<AlertTriangle className="mt-0.5 size-5 text-warning" />
+						<ExclamationTriangleIcon className="mt-0.5 size-5 shrink-0 text-warning" />
 						<div className="flex-1">
 							<p className="font-medium text-warning">Development Tools Only</p>
-							<p className="mt-1 text-secondary text-sm">
+							<p className="mt-1 text-fg text-sm">
 								These tools are intended for development and testing purposes only. Use with
 								caution.
 							</p>
@@ -89,21 +95,21 @@ function DebugSettings() {
 						/>
 
 						<div className="flex flex-col gap-4">
-							<div className="rounded-lg border border-primary bg-secondary/50 p-4">
+							<div className="rounded-lg border border-border bg-secondary/50 p-4">
 								<div className="flex items-start gap-3">
-									<FeaturedIcon size="sm" theme="modern" color="brand">
-										<Database01 className="size-5" />
-									</FeaturedIcon>
+									<div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/5">
+										<IconServers className="size-6 text-primary" />
+									</div>
 									<div className="flex-1">
-										<h3 className="font-medium text-primary">Generate Sample Data</h3>
-										<p className="mt-1 text-secondary text-sm">
+										<h3 className="font-medium text-fg">Generate Sample Data</h3>
+										<p className="mt-1 text-muted-fg text-sm">
 											Quickly populate your organization with realistic test data
 											including users, channels, and messages.
 										</p>
 										<Button
 											size="sm"
-											color="secondary"
-											onClick={() => setShowMockDataDialog(true)}
+											intent="secondary"
+											onPress={() => setShowMockDataDialog(true)}
 											className="mt-3"
 										>
 											Generate Mock Data
@@ -112,7 +118,7 @@ function DebugSettings() {
 								</div>
 							</div>
 
-							<div className="text-tertiary text-xs">
+							<div className="text-muted-fg text-xs">
 								<p>Mock data includes:</p>
 								<ul className="mt-1 list-inside list-disc space-y-0.5">
 									<li>8 sample users with realistic profiles</li>
@@ -124,9 +130,9 @@ function DebugSettings() {
 						</div>
 					</div>
 
-					<hr className="h-px w-full border-none bg-border-secondary" />
+					<hr className="h-px w-full border-none bg-border" />
 
-					{/* Additional Debug Tools Section (placeholder for future tools) */}
+					{/* Additional Debug Tools Section */}
 					<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
 						<SectionLabel.Root
 							size="sm"
@@ -134,24 +140,24 @@ function DebugSettings() {
 							description="View system and environment details."
 						/>
 
-						<div className="rounded-lg border border-primary bg-secondary/50 p-4">
-							<div className="space-y-2 font-mono text-secondary text-xs">
+						<div className="rounded-lg border border-border bg-secondary/50 p-4">
+							<div className="space-y-2 font-mono text-fg text-xs">
 								<div>
-									<span className="text-tertiary">Environment:</span>{" "}
+									<span className="text-muted-fg">Environment:</span>{" "}
 									<span>{import.meta.env.MODE || "development"}</span>
 								</div>
 								<div>
-									<span className="text-tertiary">Organization ID:</span>{" "}
+									<span className="text-muted-fg">Organization ID:</span>{" "}
 									<span>{organizationId}</span>
 								</div>
 								<div>
-									<span className="text-tertiary">Backend URL:</span>{" "}
+									<span className="text-muted-fg">Backend URL:</span>{" "}
 									<span className="break-all">
 										{import.meta.env.VITE_BACKEND_URL || "N/A"}
 									</span>
 								</div>
 								<div>
-									<span className="text-tertiary">Electric URL:</span>{" "}
+									<span className="text-muted-fg">Electric URL:</span>{" "}
 									<span className="break-all">
 										{import.meta.env.VITE_ELECTRIC_URL || "N/A"}
 									</span>
@@ -160,65 +166,54 @@ function DebugSettings() {
 						</div>
 					</div>
 				</div>
-			</Form>
+			</form>
 
 			{/* Mock Data Generation Modal */}
-			<ModalOverlay isOpen={showMockDataDialog} onOpenChange={setShowMockDataDialog}>
-				<Modal>
+			<Modal>
+				<ModalContent isOpen={showMockDataDialog} onOpenChange={setShowMockDataDialog} size="lg">
 					<Dialog>
-						<div className="flex flex-col gap-5 rounded-xl border border-primary bg-primary max-sm:rounded-b-none sm:p-6">
-							<div className="flex w-full items-start justify-between gap-4">
-								<div className="flex-1">
-									<AriaHeading className="font-semibold text-lg text-primary">
-										Generate Mock Data
-									</AriaHeading>
-									<p className="mt-1 text-secondary text-sm">
-										Create sample data for development and testing
-									</p>
-								</div>
-								<CloseButton onPress={() => setShowMockDataDialog(false)} />
-							</div>
+						<DialogHeader>
+							<DialogTitle>Generate Mock Data</DialogTitle>
+							<DialogDescription>
+								Create sample data for development and testing
+							</DialogDescription>
+						</DialogHeader>
 
+						<DialogBody>
 							<div className="space-y-4">
-								<p className="text-secondary text-sm">
+								<p className="text-muted-fg text-sm">
 									This will create sample data in your current organization including:
 								</p>
-								<ul className="list-disc space-y-1 pl-5 text-secondary text-sm">
+								<ul className="list-disc space-y-1 pl-5 text-muted-fg text-sm">
 									<li>8 mock users with profiles</li>
 									<li>5 channels (public and private)</li>
 									<li>Direct message conversations</li>
 									<li>Sample messages with reactions</li>
 									<li>Thread replies</li>
 								</ul>
-								<div className="rounded-lg border border-warning-500/20 bg-warning-500/10 p-3">
+								<div className="rounded-lg border border-warning/20 bg-warning/10 p-3">
 									<p className="font-medium text-sm text-warning">
 										⚠️ Warning: This is intended for development purposes only.
 									</p>
 								</div>
 							</div>
+						</DialogBody>
 
-							<div className="flex justify-end gap-3">
-								<Button
-									size="sm"
-									color="secondary"
-									onClick={() => setShowMockDataDialog(false)}
-									isDisabled={isGeneratingMockData}
-								>
-									Cancel
-								</Button>
-								<Button
-									size="sm"
-									color="primary"
-									onClick={handleGenerateMockData}
-									isLoading={isGeneratingMockData}
-								>
-									{isGeneratingMockData ? "Generating..." : "Generate Data"}
-								</Button>
-							</div>
-						</div>
+						<DialogFooter>
+							<DialogClose intent="secondary" isDisabled={isGeneratingMockData}>
+								Cancel
+							</DialogClose>
+							<Button
+								intent="primary"
+								onPress={handleGenerateMockData}
+								isPending={isGeneratingMockData}
+							>
+								{isGeneratingMockData ? "Generating..." : "Generate Data"}
+							</Button>
+						</DialogFooter>
 					</Dialog>
-				</Modal>
-			</ModalOverlay>
+				</ModalContent>
+			</Modal>
 		</>
 	)
 }

@@ -234,7 +234,7 @@ const InlineComboboxContent: typeof ComboboxPopover = ({ className, ...props }) 
 		<Portal>
 			<ComboboxPopover
 				className={cn(
-					"z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-md border border-primary bg-tertiary shadow-md",
+					"z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-md border border-primary bg-muted shadow-md",
 					className,
 				)}
 				{...props}
@@ -252,7 +252,7 @@ const comboboxItemVariants = cva(
 		variants: {
 			interactive: {
 				false: "",
-				true: "cursor-pointer transition-colors hover:bg-secondary hover:text-secondary data-[active-item=true]:bg-tertiary data-[active-item=true]:text-tertiary",
+				true: "cursor-pointer transition-colors hover:bg-secondary hover:text-secondary data-[active-item=true]:bg-muted data-[active-item=true]:text-muted",
 			},
 		},
 	},

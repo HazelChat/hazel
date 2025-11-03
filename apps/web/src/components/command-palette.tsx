@@ -27,22 +27,21 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
-import { Avatar } from "./base/avatar/avatar"
-
 import IconBell from "./icons/icon-bell"
 import IconCircleDottedUser from "./icons/icon-circle-dotted-user"
 import IconDashboard from "./icons/icon-dashboard"
-import IconEnvelope from "./icons/icon-envelope"
 import IconGear from "./icons/icon-gear"
 import IconHashtag from "./icons/icon-hashtag"
 import IconIntegration from "./icons/icon-integratio-"
 import IconMsgs from "./icons/icon-msgs"
-import IconPhone from "./icons/icon-phone"
 import IconUsersPlus from "./icons/icon-users-plus"
+import { Avatar } from "./ui/avatar"
 
 type Page = "home" | "channels" | "members"
 
-export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenChange">) {
+export function CommandPalette(
+	props: Pick<CommandMenuProps, "isOpen" | "onOpenChange"> & { initialPage?: CommandPalettePage },
+) {
 	// Use atoms for state management with hook-based updates
 	const { currentPage, inputValue } = useAtomValue(commandPaletteAtom)
 	const setCommandPaletteState = useAtomSet(commandPaletteAtom)
@@ -87,13 +86,13 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 		props.onOpenChange?.(false)
 	}, [props])
 
-	// Reset navigation to home page when modal opens
+	// Reset navigation to initial page when modal opens
 	// Keep state when closing so it's preserved if reopened quickly
 	useEffect(() => {
 		if (props.isOpen) {
-			// Reset to home page when opening
+			// Reset to initial page (defaults to home) when opening
 			setCommandPaletteState({
-				currentPage: "home",
+				currentPage: props.initialPage || "home",
 				pageHistory: [],
 				inputValue: "",
 			})
@@ -106,7 +105,7 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 				}
 			}, 100)
 		}
-	}, [props.isOpen, setCommandPaletteState])
+	}, [props.isOpen, props.initialPage, setCommandPaletteState])
 
 	// Handle ESC key to go back
 	useEffect(() => {
@@ -184,16 +183,6 @@ function HomeView({
 					<IconBell />
 					<CommandMenuLabel>Notifications</CommandMenuLabel>
 				</CommandMenuItem>
-				<CommandMenuItem
-					onAction={() => {
-						navigate({ to: "/$orgSlug/call", params: { orgSlug: orgSlug! } })
-						onClose()
-					}}
-					textValue="calls"
-				>
-					<IconPhone />
-					<CommandMenuLabel>Calls</CommandMenuLabel>
-				</CommandMenuItem>
 			</CommandMenuSection>
 
 			<CommandMenuSection label="Settings">
@@ -229,26 +218,6 @@ function HomeView({
 				</CommandMenuItem>
 				<CommandMenuItem
 					onAction={() => {
-						navigate({ to: "/$orgSlug/settings/billing", params: { orgSlug: orgSlug! } })
-						onClose()
-					}}
-					textValue="billing"
-				>
-					<IconDashboard />
-					<CommandMenuLabel>Billing</CommandMenuLabel>
-				</CommandMenuItem>
-				<CommandMenuItem
-					onAction={() => {
-						navigate({ to: "/$orgSlug/settings/email", params: { orgSlug: orgSlug! } })
-						onClose()
-					}}
-					textValue="email"
-				>
-					<IconEnvelope />
-					<CommandMenuLabel>Email</CommandMenuLabel>
-				</CommandMenuItem>
-				<CommandMenuItem
-					onAction={() => {
 						navigate({ to: "/$orgSlug/settings/integrations", params: { orgSlug: orgSlug! } })
 						onClose()
 					}}
@@ -266,19 +235,6 @@ function HomeView({
 				>
 					<IconUsersPlus />
 					<CommandMenuLabel>Invitations</CommandMenuLabel>
-				</CommandMenuItem>
-				<CommandMenuItem
-					onAction={() => {
-						navigate({
-							to: "/$orgSlug/settings/notifications",
-							params: { orgSlug: orgSlug! },
-						})
-						onClose()
-					}}
-					textValue="notification settings"
-				>
-					<IconBell />
-					<CommandMenuLabel>Notification Settings</CommandMenuLabel>
 				</CommandMenuItem>
 			</CommandMenuSection>
 		</>
@@ -425,7 +381,7 @@ function MembersView({ onClose }: { onClose: () => void }) {
 						/>
 						<CommandMenuLabel>{fullName}</CommandMenuLabel>
 						{presence?.customMessage && (
-							<span className="ml-auto truncate text-tertiary text-xs">
+							<span className="ml-auto truncate text-muted text-xs">
 								{presence.customMessage}
 							</span>
 						)}

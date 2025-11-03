@@ -14,7 +14,7 @@ export function CodeBlockElement({ className, ...props }: PlateElementProps) {
 		<PlateElement
 			{...props}
 			as="pre"
-			className={cn("my-2 overflow-x-auto rounded-lg bg-tertiary p-4 font-mono text-sm", className)}
+			className={cn("my-2 overflow-x-auto rounded-lg bg-muted p-4 font-mono text-sm", className)}
 		>
 			<code className={cn("block", `language-${language}`)}>{children}</code>
 		</PlateElement>

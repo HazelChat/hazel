@@ -60,14 +60,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 
 		const focusAndInsertTextInternal = useCallback(
 			(text: string) => {
+				console.log("[focusAndInsertText] Called", {
+					text,
+					editorExists: !!editor,
+					editorTfExists: !!editor?.tf,
+					editorTfFocusExists: !!editor?.tf?.focus,
+				})
+
 				requestAnimationFrame(() => {
 					const dialog = document.querySelector('[role="dialog"]')
 					const activeElement = document.activeElement
-					if (dialog && activeElement && dialog.contains(activeElement)) return
+					if (dialog && activeElement && dialog.contains(activeElement)) {
+						console.log("[focusAndInsertText] Skipping - active element in dialog")
+						return
+					}
 
+					console.log("[focusAndInsertText] Calling editor.tf.focus()")
 					editor.tf.focus()
 
 					requestAnimationFrame(() => {
+						console.log("[focusAndInsertText] Inserting text:", text)
 						editor.transforms.insertText(text)
 					})
 				})
@@ -136,25 +148,55 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 		}
 
 		useEffect(() => {
+			console.log("[MarkdownEditor] Attaching global keydown listener", {
+				editor: !!editor,
+				editorTf: !!editor?.tf,
+				focusAndInsertTextInternal: !!focusAndInsertTextInternal,
+			})
+
 			const handleGlobalKeyDown = (event: KeyboardEvent) => {
 				const target = event.target as HTMLElement
+				// Check if there's an actually visible/open dialog, excluding React Aria hidden templates
+				const hasDialog = !!document.querySelector(
+					'[role="dialog"]:not([data-react-aria-hidden="true"] *)',
+				)
+
+				console.log("[MarkdownEditor] Global keydown fired", {
+					key: event.key,
+					targetTag: target.tagName,
+					targetContentEditable: target.contentEditable,
+					hasDialog,
+					isInput: target.tagName === "INPUT",
+					isTextarea: target.tagName === "TEXTAREA",
+					hasModifiers: event.ctrlKey || event.altKey || event.metaKey,
+				})
+
 				if (
 					target.tagName === "INPUT" ||
 					target.tagName === "TEXTAREA" ||
 					target.contentEditable === "true"
 				) {
+					console.log("[MarkdownEditor] Skipping - already in input field")
 					return
 				}
 
-				if (document.querySelector('[role="dialog"]')) return
+				if (hasDialog) {
+					console.log("[MarkdownEditor] Skipping - dialog is open")
+					return
+				}
 
 				if (event.ctrlKey || event.altKey || event.metaKey) {
+					console.log("[MarkdownEditor] Skipping - modifier keys pressed")
 					return
 				}
 
 				const isPrintableChar = event.key.length === 1
 
 				if (isPrintableChar) {
+					console.log(
+						"[MarkdownEditor] Printable char detected, focusing and inserting:",
+						event.key,
+					)
 					event.preventDefault()
 					focusAndInsertTextInternal(event.key)
 				}
@@ -163,9 +205,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>
 			document.addEventListener("keydown", handleGlobalKeyDown)
 
 			return () => {
+				console.log("[MarkdownEditor] Removing global keydown listener")
 				document.removeEventListener("keydown", handleGlobalKeyDown)
 			}
-		}, [focusAndInsertTextInternal])
+		}, [focusAndInsertTextInternal, editor])
 
 		return (
 			<Plate editor={editor} onChange={() => onUpdate?.(Node.string(editor))}>

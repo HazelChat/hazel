@@ -1,35 +1,27 @@
 import { ItalicSquare } from "@untitledui/icons"
-import { forwardRef, useRef, useState } from "react"
-import { Dialog, DialogTrigger, Popover } from "react-aria-components"
+import { forwardRef, useRef } from "react"
+import { Button as AriaButton } from "react-aria-components"
+import { EmojiPickerDialog } from "~/components/emoji-picker"
+import IconEmoji1 from "~/components/icons/icon-emoji-1"
+import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUpload } from "~/hooks/use-file-upload"
 import { useOrganization } from "~/hooks/use-organization"
 import { useChat } from "~/providers/chat-provider"
-import { Button } from "../base/buttons/button"
-import { ButtonUtility } from "../base/buttons/button-utility"
-import {
-	EmojiPicker,
-	EmojiPickerContent,
-	EmojiPickerFooter,
-	EmojiPickerSearch,
-} from "../base/emoji-picker/emoji-picker"
-import IconEmoji1 from "../icons/icon-emoji-1"
-import IconPaperclip2 from "../icons/icon-paperclip2"
 
 export interface MessageComposerActionsRef {
 	cleanup: () => void
 }
 
 interface MessageComposerActionsProps {
-	onSubmit?: () => Promise<void>
 	onEmojiSelect?: (emoji: string) => void
+	onSubmit?: () => void
 }
 
 export const MessageComposerActions = forwardRef<MessageComposerActionsRef, MessageComposerActionsProps>(
 	({ onEmojiSelect }, _ref) => {
 		const { organizationId } = useOrganization()
 		const fileInputRef = useRef<HTMLInputElement>(null)
-		const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
 		const { trackEmojiUsage } = useEmojiStats()
 
 		const {
@@ -81,6 +73,13 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 			}
 		}
 
+		const handleEmojiSelect = (emoji: { emoji: string; label: string }) => {
+			trackEmojiUsage(emoji.emoji)
+			if (onEmojiSelect) {
+				onEmojiSelect(emoji.emoji)
+			}
+		}
+
 		return (
 			<>
 				<input
@@ -90,60 +89,47 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 					className="hidden"
 					onChange={handleFileSelect}
 					accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+					aria-label="File upload"
 				/>
 
 				{/* Bottom action bar */}
 				<div className="flex w-full items-center justify-between gap-3 px-3 py-2">
-					<div className="flex items-center gap-3"></div>
-
 					<div className="flex items-center gap-3">
 						{/* Shortcuts button */}
-						<Button
-							size="sm"
-							color="link-gray"
-							iconLeading={<ItalicSquare data-icon className="size-4!" />}
-							className="font-semibold text-xs"
+						<button
+							type="button"
+							className="inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs transition-colors hover:text-fg"
 						>
+							<ItalicSquare className="size-4 text-muted-fg" />
 							Shortcuts
-						</Button>
+						</button>
 
 						{/* Attach button */}
-						<Button
-							size="sm"
-							color="link-gray"
-							iconLeading={<IconPaperclip2 data-icon className="size-4!" />}
-							className="font-semibold text-xs"
+						<button
+							type="button"
 							onClick={() => fileInputRef.current?.click()}
 							disabled={isUploading}
+							className="inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs transition-colors hover:text-fg disabled:opacity-50"
 						>
+							<IconPaperclip className="size-4 text-muted-fg" />
 							Attach
-						</Button>
+						</button>
 
 						{/* Emoji picker */}
-						<DialogTrigger isOpen={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-							<ButtonUtility icon={IconEmoji1} size="xs" color="tertiary" />
-							<Popover>
-								<Dialog className="rounded-lg">
-									<EmojiPicker
-										className="h-[342px]"
-										onEmojiSelect={(emoji) => {
-											if (onEmojiSelect) {
-												trackEmojiUsage(emoji.emoji)
-												onEmojiSelect(emoji.emoji)
-											}
-											setEmojiPickerOpen(false)
-										}}
-									>
-										<EmojiPickerSearch />
-										<EmojiPickerContent />
-										<EmojiPickerFooter />
-									</EmojiPicker>
-								</Dialog>
-							</Popover>
-						</DialogTrigger>
+						<EmojiPickerDialog onEmojiSelect={handleEmojiSelect}>
+							<AriaButton
+								type="button"
+								className="inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs transition-colors hover:text-fg"
+							>
+								<IconEmoji1 className="size-4 text-muted-fg" />
+								Emoji
+							</AriaButton>
+						</EmojiPickerDialog>
 					</div>
 				</div>
 			</>
 		)
 	},
 )
+
+MessageComposerActions.displayName = "MessageComposerActions"

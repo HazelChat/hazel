@@ -1,23 +1,20 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/db/schema"
 import { useState } from "react"
-import { Button, DialogTrigger, Dialog as PrimitiveDialog } from "react-aria-components"
+import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
-import { Avatar } from "~/components/base/avatar/avatar"
-import { Badge, type BadgeColor } from "~/components/base/badges/badges"
-import { Button as StyledButton } from "~/components/base/buttons/button"
-import { ButtonUtility } from "~/components/base/buttons/button-utility"
-import { Dropdown } from "~/components/base/dropdown/dropdown"
-import { Popover } from "~/components/base/select/popover"
-import { TextArea } from "~/components/base/textarea/textarea"
-import { Tooltip } from "~/components/base/tooltip/tooltip"
-import IconEdit from "~/components/icons/icon-edit"
+import IconDotsVertical from "~/components/icons/icon-dots-vertical"
+import IconPhone from "~/components/icons/icon-phone"
+import IconStar from "~/components/icons/icon-star"
+import { Avatar } from "~/components/ui/avatar"
+import { Button } from "~/components/ui/button"
+import { DropdownLabel, DropdownSeparator } from "~/components/ui/dropdown"
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
+import { Popover, PopoverContent } from "~/components/ui/popover"
+import { Textarea } from "~/components/ui/textarea"
 import { useAuth } from "~/lib/auth"
-import { IconNotification } from "../application/notifications/notifications"
-import IconDots from "../icons/icon-dots"
-import IconPhone from "../icons/icon-phone"
-import IconStar from "../icons/icon-star"
+import { cn } from "~/lib/utils"
 
 interface UserProfilePopoverProps {
 	userId: UserId
@@ -40,206 +37,162 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 	const isOwnProfile = currentUser?.id === userId
 	const fullName = `${user.firstName} ${user.lastName}`
 
-	const statusToBadgeColorMap: Record<string, BadgeColor<"pill-color">> = {
-		online: "success",
-		away: "warning",
-		busy: "orange",
-		dnd: "error",
-		offline: "gray",
-	}
-
-	const formatStatus = (status: string) => {
-		if (status === "dnd") return "Do Not Disturb"
-		return status.charAt(0).toUpperCase() + status.slice(1)
-	}
-
 	const handleCopyUserId = () => {
 		navigator.clipboard.writeText(user.id)
-		toast.custom((t) => (
-			<IconNotification
-				title="User ID copied!"
-				description="User ID has been copied to your clipboard."
-				color="success"
-				onClose={() => toast.dismiss(t)}
-			/>
-		))
+		toast.success("User ID copied!", {
+			description: "User ID has been copied to your clipboard.",
+		})
 	}
 
 	const handleToggleFavorite = () => {
 		setIsFavorite(!isFavorite)
-		toast.custom((t) => (
-			<IconNotification
-				title={isFavorite ? "Removed from favorites" : "Added to favorites"}
-				description={
-					isFavorite
-						? `${fullName} has been removed from your favorites.`
-						: `${fullName} has been added to your favorites.`
-				}
-				color="success"
-				onClose={() => toast.dismiss(t)}
-			/>
-		))
+		toast.success(isFavorite ? "Removed from favorites" : "Added to favorites", {
+			description: isFavorite
+				? `${fullName} has been removed from your favorites.`
+				: `${fullName} has been added to your favorites.`,
+		})
 	}
 
 	const handleToggleMute = () => {
 		setIsMuted(!isMuted)
-		toast.custom((t) => (
-			<IconNotification
-				title={isMuted ? "Unmuted" : "Muted"}
-				description={
-					isMuted
-						? `You will now receive notifications from ${fullName}.`
-						: `You will no longer receive notifications from ${fullName}.`
-				}
-				color="success"
-				onClose={() => toast.dismiss(t)}
-			/>
-		))
+		toast.success(isMuted ? "Unmuted" : "Muted", {
+			description: isMuted
+				? `You will now receive notifications from ${fullName}.`
+				: `You will no longer receive notifications from ${fullName}.`,
+		})
 	}
 
 	const handleCall = () => {
-		toast.custom((t) => (
-			<IconNotification
-				title="Calling..."
-				description={`Starting call with ${fullName}`}
-				color="default"
-				onClose={() => toast.dismiss(t)}
-			/>
-		))
+		toast.info("Calling...", {
+			description: `Starting call with ${fullName}`,
+		})
+	}
+
+	const getStatusColor = (status?: string) => {
+		switch (status) {
+			case "online":
+				return "text-success bg-success/10"
+			case "away":
+			case "busy":
+				return "text-warning bg-warning/10"
+			case "dnd":
+				return "text-danger bg-danger/10"
+			default:
+				return "text-muted-fg bg-muted/10"
+		}
+	}
+
+	const getStatusLabel = (status?: string) => {
+		if (!status) return "Offline"
+		return status.charAt(0).toUpperCase() + status.slice(1)
 	}
 
 	return (
-		<DialogTrigger>
-			<Button className="size-fit outline-hidden">
+		<Popover>
+			<PrimitiveButton className="size-fit outline-hidden">
 				<Avatar size="md" alt={fullName} src={user.avatarUrl} />
-			</Button>
-			<Popover
-				className="max-h-96! w-72 bg-secondary py-0 lg:w-80"
-				size="md"
-				offset={16}
-				crossOffset={10}
-				placement="right top"
-			>
-				<PrimitiveDialog className="outline-hidden">
-					{() => (
-						<>
-							<div className="relative h-32">
-								{!isOwnProfile && (
-									<div className="absolute top-2 right-2 flex items-center gap-2 p-1">
-										<Tooltip
-											arrow
-											title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-											placement="bottom"
-										>
-											<ButtonUtility
-												onClick={handleToggleFavorite}
-												color={isFavorite ? "secondary" : "tertiary"}
-												size="xs"
-												icon={IconStar}
-												aria-label={
-													isFavorite ? "Remove from favorites" : "Add to favorites"
-												}
-											/>
-										</Tooltip>
+			</PrimitiveButton>
+			<PopoverContent placement="right top" className="w-72 p-0 lg:w-80">
+				<div className="relative h-32 rounded-t-xl bg-gradient-to-br from-primary/10 to-accent/10">
+					{!isOwnProfile && (
+						<div className="absolute top-2 right-2 flex items-center gap-2">
+							<Button
+								size="sq-xs"
+								intent={isFavorite ? "secondary" : "outline"}
+								onPress={handleToggleFavorite}
+								aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+								isCircle
+							>
+								<IconStar data-slot="icon" />
+							</Button>
 
-										<Tooltip arrow title="Call user" placement="bottom">
-											<ButtonUtility
-												onClick={handleCall}
-												color="tertiary"
-												size="xs"
-												icon={IconPhone}
-												aria-label="Call user"
-											/>
-										</Tooltip>
+							<Button
+								size="sq-xs"
+								intent="outline"
+								onPress={handleCall}
+								aria-label="Call user"
+								isCircle
+							>
+								<IconPhone data-slot="icon" />
+							</Button>
 
-										<Dropdown.Root>
-											<ButtonUtility
-												className="group"
-												color="tertiary"
-												size="xs"
-												icon={IconDots}
-												aria-label="More"
-											/>
+							<Menu>
+								<MenuTrigger aria-label="More options">
+									<Button size="sq-xs" intent="outline" isCircle>
+										<IconDotsVertical data-slot="icon" />
+									</Button>
+								</MenuTrigger>
 
-											<Dropdown.Popover className="w-40">
-												<Dropdown.Menu>
-													<Dropdown.Section>
-														<Dropdown.Item onAction={handleToggleMute}>
-															{isMuted ? "Unmute" : "Mute"}
-														</Dropdown.Item>
-													</Dropdown.Section>
-													<Dropdown.Separator />
-													<Dropdown.Item onAction={handleCopyUserId}>
-														Copy user ID
-													</Dropdown.Item>
-												</Dropdown.Menu>
-											</Dropdown.Popover>
-										</Dropdown.Root>
-									</div>
-								)}
-							</div>
-
-							<div className="inset-shadow-2xs inset-shadow-gray-500/15 rounded-t-lg bg-tertiary p-4">
-								<div className="-mt-12">
-									<Avatar
-										size="xl"
-										className="inset-ring inset-ring-tertiary ring-6 ring-bg-primary"
-										alt={fullName}
-										src={user.avatarUrl}
-										status={
-											presence?.status === "online" ||
-											presence?.status === "away" ||
-											presence?.status === "busy" ||
-											presence?.status === "dnd"
-												? "online"
-												: "offline"
-										}
-									/>
-									<div className="mt-3 flex flex-col">
-										<span className="font-semibold">{user ? fullName : "Unknown"}</span>
-										<span className="text-secondary text-xs">{user?.email}</span>
-										{presence?.status && (
-											<Badge
-												className="mt-2 w-fit"
-												color={statusToBadgeColorMap[presence.status] ?? "gray"}
-												type="pill-color"
-												size="sm"
-											>
-												{formatStatus(presence.status)}
-											</Badge>
-										)}
-										{presence?.customMessage && (
-											<span className="mt-1 text-tertiary text-xs italic">
-												"{presence.customMessage}"
-											</span>
-										)}
-									</div>
-								</div>
-								<div className="mt-4 flex flex-col gap-y-4">
-									<div className="flex items-center gap-2">
-										{isOwnProfile ? (
-											<StyledButton
-												size="sm"
-												className="w-full"
-												iconLeading={IconEdit}
-												onClick={() => {}}
-											>
-												Edit profile
-											</StyledButton>
-										) : (
-											<TextArea
-												aria-label="Message"
-												placeholder={`Message @${user?.firstName}`}
-												className="resize-none"
-											/>
-										)}
-									</div>
-								</div>
-							</div>
-						</>
+								<MenuContent placement="bottom end">
+									<MenuItem onAction={handleToggleMute}>
+										<DropdownLabel>{isMuted ? "Unmute" : "Mute"}</DropdownLabel>
+									</MenuItem>
+									<DropdownSeparator />
+									<MenuItem onAction={handleCopyUserId}>
+										<DropdownLabel>Copy user ID</DropdownLabel>
+									</MenuItem>
+								</MenuContent>
+							</Menu>
+						</div>
 					)}
-				</PrimitiveDialog>
-			</Popover>
-		</DialogTrigger>
+				</div>
+
+				<div className="rounded-t-xl border border-border bg-bg p-4 shadow-md">
+					<div className="-mt-16">
+						<div className="relative w-fit">
+							<Avatar
+								size="xl"
+								className="ring-4 ring-bg"
+								alt={fullName}
+								src={user.avatarUrl}
+							/>
+							{presence?.status && (
+								<span
+									className={cn(
+										"absolute right-1 bottom-1 size-3 rounded-full border-2 border-bg",
+										getStatusColor(presence.status),
+									)}
+								/>
+							)}
+						</div>
+						<div className="mt-3 flex flex-col gap-1">
+							<span className="font-semibold text-fg">{user ? fullName : "Unknown"}</span>
+							<span className="text-muted-fg text-xs">{user?.email}</span>
+							{presence?.status && (
+								<span
+									className={cn(
+										"mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
+										getStatusColor(presence.status),
+									)}
+								>
+									<span className="size-1.5 rounded-full bg-current" />
+									{getStatusLabel(presence.status)}
+								</span>
+							)}
+							{presence?.customMessage && (
+								<span className="mt-1 text-muted-fg text-xs italic">
+									"{presence.customMessage}"
+								</span>
+							)}
+						</div>
+					</div>
+					<div className="mt-4 flex flex-col gap-y-4">
+						<div className="flex items-center gap-2">
+							{isOwnProfile ? (
+								<Button size="sm" className="w-full">
+									Edit profile
+								</Button>
+							) : (
+								<Textarea
+									aria-label="Message"
+									placeholder={`Message @${user?.firstName}`}
+									className="resize-none"
+								/>
+							)}
+						</div>
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
 	)
 }

@@ -1,31 +1,5 @@
-import { cva, type VariantProps } from "class-variance-authority"
 import { ProgressBar } from "react-aria-components"
 import { twMerge } from "tailwind-merge"
-
-const loaderStyles = cva("", {
-	variants: {
-		intent: {
-			current: "text-current",
-			primary: "text-primary",
-			secondary: "text-muted-fg",
-			success: "text-success",
-			warning: "text-warning",
-			danger: "text-danger",
-		},
-		size: {
-			sm: "size-4",
-			md: "size-6",
-			lg: "size-8",
-			xl: "size-10",
-		},
-	},
-	defaultVariants: {
-		intent: "current",
-		size: "sm",
-	},
-})
-
-export interface LoaderVariantProps extends VariantProps<typeof loaderStyles> {}
 
 const Ring = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 	<svg
@@ -36,7 +10,6 @@ const Ring = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 		height={16}
 		fill="none"
 		viewBox="0 0 24 24"
-		data-slot="icon"
 		aria-hidden="true"
 	>
 		<path
@@ -53,7 +26,7 @@ const Ring = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
 )
 
 const Spin = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
-	<svg className={twMerge("size-4", className)} data-slot="icon" viewBox="0 0 2400 2400" {...props}>
+	<svg className={twMerge("size-4", className)} viewBox="0 0 2400 2400" {...props}>
 		<g strokeWidth="200" strokeLinecap="round" fill="none">
 			<line x1="1200" y1="600" x2="1200" y2="100" />
 			<line opacity="0.5" x1="1200" y1="2300" x2="1200" y2="1800" />
@@ -90,8 +63,7 @@ const LOADERS = {
 const DEFAULT_SPINNER = "spin"
 
 export interface LoaderProps
-	extends Omit<React.ComponentPropsWithoutRef<"svg">, "display" | "opacity" | "intent">,
-		LoaderVariantProps {
+	extends Omit<React.ComponentPropsWithoutRef<"svg">, "display" | "opacity" | "intent"> {
 	variant?: keyof typeof LOADERS
 	percentage?: number
 	isIndeterminate?: boolean
@@ -100,27 +72,24 @@ export interface LoaderProps
 }
 
 export function Loader({ isIndeterminate = true, ref, ...props }: LoaderProps) {
-	const { className, variant = DEFAULT_SPINNER, intent, size, ...spinnerProps } = props
+	const { className, variant = DEFAULT_SPINNER, ...spinnerProps } = props
 	const LoaderPrimitive = LOADERS[variant in LOADERS ? variant : DEFAULT_SPINNER]
 
 	return (
 		<ProgressBar
 			data-slot="loader"
-			aria-label={props["aria-label"] ?? "Loading..."}
+			aria-label={props["aria-label"] ?? "Pending..."}
 			formatOptions={props.formatOptions}
 			isIndeterminate={isIndeterminate}
 		>
 			<LoaderPrimitive
 				role="presentation"
-				className={loaderStyles({
-					intent,
-					size,
-					className: twMerge([
-						["ring"].includes(variant) && "animate-spin",
-						variant === "spin" && "stroke-current",
-						className,
-					]),
-				})}
+				className={twMerge(
+					"size-4",
+					["ring"].includes(variant) && "animate-spin",
+					variant === "spin" && "stroke-current",
+					className,
+				)}
 				ref={ref}
 				{...spinnerProps}
 			/>

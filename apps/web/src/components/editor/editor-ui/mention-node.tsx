@@ -37,9 +37,9 @@ export function MentionElement(
 		<PlateElement
 			{...props}
 			className={cn(
-				"inline-block rounded-md bg-brand-primary/30 px-1.5 py-0.5 align-baseline font-medium",
+				"inline-block rounded-md bg-primary/30 px-1.5 py-0.5 align-baseline font-medium",
 				!readOnly && "cursor-pointer",
-				selected && focused && "ring-2 ring-brand",
+				selected && focused && "ring-2 ring-primary",
 				element.children[0]![KEYS.bold] === true && "font-bold",
 				element.children[0]![KEYS.italic] === true && "italic",
 				element.children[0]![KEYS.underline] === true && "underline",

@@ -2,7 +2,7 @@
 
 import { MentionInputPlugin, MentionPlugin } from "@platejs/mention/react"
 
-import { MentionElement, MentionInputElement } from "~/components/editor/editor-ui/mention-node"
+import { MentionElement, MentionInputElement } from "../editor-ui/mention-node"
 
 export const MentionKit = [
 	MentionPlugin.configure({

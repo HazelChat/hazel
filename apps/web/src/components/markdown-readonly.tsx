@@ -10,7 +10,7 @@ import { MarkdownKit } from "./editor/plugins/markdown-kit"
 
 export const MarkdownReadonly = memo(({ content, className }: { content: string; className?: string }) => {
 	const editor = usePlateViewEditor({
-		plugins: [...BasicBlocksKitStatic, ...BasicMarksKitStatic, ...MarkdownKit],
+		plugins: [...BasicBlocksKitStatic, ...BasicMarksKitStatic, ...MarkdownKit, ...CodeBlockKit],
 	})
 
 	const editorValue = useMemo(() => editor.api.markdown.deserialize(content), [editor, content])
@@ -20,7 +20,7 @@ export const MarkdownReadonly = memo(({ content, className }: { content: string;
 			editor={editor}
 			value={editorValue}
 			className={cn(
-				"w-full cursor-text select-text whitespace-pre-wrap break-words",
+				"w-full cursor-text select-text whitespace-pre-wrap break-words text-sm",
 				"[&_strong]:font-bold",
 				className,
 			)}

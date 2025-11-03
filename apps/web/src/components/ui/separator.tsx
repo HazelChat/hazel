@@ -1,11 +1,11 @@
 import { Separator as Divider, type SeparatorProps } from "react-aria-components"
-import { cx } from "~/utils/cx"
+import { twMerge } from "tailwind-merge"
 
-const Separator = ({ orientation = "horizontal", className, ...props }: SeparatorProps) => {
+export function Separator({ orientation = "horizontal", className, ...props }: SeparatorProps) {
 	return (
 		<Divider
-			className={cx(
-				"shrink-0 border-0 bg-border-secondary forced-colors:bg-[ButtonBorder]",
+			className={twMerge(
+				"shrink-0 border-0 bg-border forced-colors:bg-[ButtonBorder]",
 				orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
 				className,
 			)}
@@ -13,6 +13,3 @@ const Separator = ({ orientation = "horizontal", className, ...props }: Separato
 		/>
 	)
 }
-
-export type { SeparatorProps }
-export { Separator }

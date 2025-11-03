@@ -3,7 +3,6 @@ import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
 import { Exit } from "effect"
 import { useCallback } from "react"
 import { toast } from "sonner"
-import { IconNotification } from "~/components/application/notifications/notifications"
 import { useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 
@@ -27,26 +26,16 @@ export function useFileUpload({
 	const uploadFile = useCallback(
 		async (file: File): Promise<AttachmentId | null> => {
 			if (!user?.id) {
-				toast.custom((t) => (
-					<IconNotification
-						title="Authentication required"
-						description="You must be logged in to upload files"
-						color="error"
-						onClose={() => toast.dismiss(t)}
-					/>
-				))
+				toast.error("Authentication required", {
+					description: "You must be logged in to upload files",
+				})
 				return null
 			}
 
 			if (file.size > maxFileSize) {
-				toast.custom((t) => (
-					<IconNotification
-						title="File too large"
-						description={`File size exceeds ${maxFileSize / 1024 / 1024}MB limit`}
-						color="error"
-						onClose={() => toast.dismiss(t)}
-					/>
-				))
+				toast.error("File too large", {
+					description: `File size exceeds ${maxFileSize / 1024 / 1024}MB limit`,
+				})
 				return null
 			}
 
@@ -64,14 +53,9 @@ export function useFileUpload({
 			}
 
 			// Show error toast if upload failed
-			toast.custom((t) => (
-				<IconNotification
-					title="Upload failed"
-					description="Failed to upload file. Please try again."
-					color="error"
-					onClose={() => toast.dismiss(t)}
-				/>
-			))
+			toast.error("Upload failed", {
+				description: "Failed to upload file. Please try again.",
+			})
 
 			return null
 		},
