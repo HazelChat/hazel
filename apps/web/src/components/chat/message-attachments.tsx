@@ -4,9 +4,9 @@ import { FileIcon } from "@untitledui/file-icons"
 import { Download01 } from "@untitledui/icons"
 import { useState } from "react"
 import { useAttachments } from "~/db/hooks"
-import { cx } from "~/utils/cx"
+import { cn } from "~/lib/utils"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
-import { ButtonUtility } from "../base/buttons/button-utility"
+import { Button } from "../ui/button"
 
 interface MessageAttachmentsProps {
 	messageId: MessageId
@@ -43,7 +43,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 
 		return (
 			<div className="group relative inline-block">
-				<div className="relative overflow-hidden rounded-lg bg-secondary">
+				<div className="relative overflow-hidden rounded-lg border border-border bg-secondary shadow-sm">
 					<img
 						src={imageUrl}
 						alt={attachment.fileName}
@@ -51,17 +51,18 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 						onError={() => setImageError(true)}
 					/>
 					<div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-						<ButtonUtility
-							icon={Download01}
-							size="sm"
-							color="secondary"
-							className="bg-primary"
+						<Button
+							intent="secondary"
+							size="sq-sm"
+							onPress={handleDownload}
 							aria-label="Download file"
-							onClick={handleDownload}
-						/>
+							className="bg-bg"
+						>
+							<Download01 data-slot="icon" />
+						</Button>
 					</div>
 				</div>
-				<div className="mt-1 text-secondary text-xs">{attachment.fileName}</div>
+				<div className="mt-1 text-muted-fg text-xs">{attachment.fileName}</div>
 			</div>
 		)
 	}
@@ -73,43 +74,45 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 
 		return (
 			<div className="group relative inline-block">
-				<div className="relative overflow-hidden rounded-lg bg-secondary">
+				<div className="relative overflow-hidden rounded-lg border border-border bg-secondary shadow-sm">
 					{/** biome-ignore lint/a11y/useMediaCaption: video caption not required for chat attachments */}
 					<video src={videoUrl} className="h-48 w-64 object-cover" controls preload="metadata">
 						Your browser does not support the video tag.
 					</video>
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-						<ButtonUtility
-							icon={Download01}
-							size="sm"
-							color="secondary"
-							className="pointer-events-auto bg-primary"
+						<Button
+							intent="secondary"
+							size="sq-sm"
+							onPress={handleDownload}
 							aria-label="Download file"
-							onClick={handleDownload}
-						/>
+							className="pointer-events-auto bg-bg"
+						>
+							<Download01 data-slot="icon" />
+						</Button>
 					</div>
 				</div>
-				<div className="mt-1 text-secondary text-xs">{attachment.fileName}</div>
+				<div className="mt-1 text-muted-fg text-xs">{attachment.fileName}</div>
 			</div>
 		)
 	}
 
 	// For other files, show a compact file card
 	return (
-		<div className="group flex items-center gap-3 rounded-lg bg-secondary p-3 transition-colors hover:bg-tertiary">
-			<FileIcon type={fileType} className="size-10 text-fg-quaternary" />
+		<div className="group flex items-center gap-3 rounded-lg border border-border bg-secondary p-3 shadow-sm transition-colors hover:bg-muted">
+			<FileIcon type={fileType} className="size-10 text-muted-fg" />
 			<div className="min-w-0 flex-1">
-				<div className="truncate font-medium text-secondary text-sm">{attachment.fileName}</div>
-				<div className="text-quaternary text-xs">{formatFileSize(attachment.fileSize)}</div>
+				<div className="truncate font-medium text-fg text-sm">{attachment.fileName}</div>
+				<div className="text-muted-fg text-xs">{formatFileSize(attachment.fileSize)}</div>
 			</div>
-			<ButtonUtility
-				icon={Download01}
-				size="sm"
-				color="tertiary"
-				className="opacity-0 transition-opacity group-hover:opacity-100"
+			<Button
+				intent="plain"
+				size="sq-sm"
+				onPress={handleDownload}
 				aria-label="Download file"
-				onClick={handleDownload}
-			/>
+				className="opacity-0 transition-opacity group-hover:opacity-100"
+			>
+				<Download01 data-slot="icon" />
+			</Button>
 		</div>
 	)
 }
@@ -129,7 +132,7 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 
 	return (
 		<div
-			className={cx(
+			className={cn(
 				"mt-2",
 				allMedia ? "grid max-w-2xl grid-cols-2 gap-2" : "flex max-w-md flex-col gap-2",
 			)}

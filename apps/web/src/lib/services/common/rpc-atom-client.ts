@@ -43,15 +43,6 @@ const AllRpcs = MessageRpcs.merge(
 	UserPresenceStatusRpcs,
 )
 
-/**
- * Hazel RPC Client for React/Effect-Atom
- *
- * Provides type-safe RPC calls with React integration via Effect-Atom.
- * Uses a dedicated protocol layer that includes authentication middleware.
- *
- * This client is included in the shared runtime (see runtime.ts) and shares
- * the same protocol layer with proper namespacing for RPC method calls.
- */
 export class HazelRpcClient extends AtomRpc.Tag<HazelRpcClient>()("HazelRpcClient", {
 	group: AllRpcs,
 	// @ts-expect-error

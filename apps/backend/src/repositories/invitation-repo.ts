@@ -103,7 +103,7 @@ export class InvitationRepo extends Effect.Service<InvitationRepo>()("Invitation
 		const markExpired = (tx?: TxFn) => {
 			const now = new Date()
 			return db.makeQuery(
-				(execute, _data: {}) =>
+				(execute, _data) =>
 					execute((client) =>
 						client
 							.update(schema.invitationsTable)

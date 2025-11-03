@@ -1,14 +1,14 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useEffect } from "react"
 import { toast } from "sonner"
-import { SectionHeader } from "~/components/application/section-headers/section-headers"
-import { SectionLabel } from "~/components/application/section-headers/section-label"
-import { Button } from "~/components/base/buttons/button"
-import { Form } from "~/components/base/form/form"
-import { InputBase, TextField } from "~/components/base/input/input"
-import { Label } from "~/components/base/input/label"
 import IconEnvelope from "~/components/icons/icon-envelope"
+import { Button } from "~/components/ui/button"
+import { Description, FieldError, Label } from "~/components/ui/field"
+import { Input, InputGroup } from "~/components/ui/input"
+import { SectionHeader } from "~/components/ui/section-header"
+import { SectionLabel } from "~/components/ui/section-label"
+import { TextField } from "~/components/ui/text-field"
 import { userCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/lib/auth"
@@ -59,7 +59,7 @@ function ProfileSettings() {
 	}, [user, form])
 
 	return (
-		<Form
+		<form
 			className="flex flex-col gap-6 px-4 lg:px-8"
 			onSubmit={(e) => {
 				e.preventDefault()
@@ -94,11 +94,11 @@ function ProfileSettings() {
 									isInvalid={!!field.state.meta.errors?.length}
 								>
 									<Label className="lg:hidden">First name</Label>
-									<InputBase size="md" />
+									<Input />
 									{field.state.meta.errors?.length > 0 && (
-										<div className="text-destructive text-sm">
+										<FieldError>
 											{field.state.meta.errors[0]?.message || "First name is required"}
-										</div>
+										</FieldError>
 									)}
 								</field.TextField>
 							)}
@@ -115,11 +115,11 @@ function ProfileSettings() {
 									isInvalid={!!field.state.meta.errors?.length}
 								>
 									<Label className="lg:hidden">Last name</Label>
-									<InputBase size="md" />
+									<Input />
 									{field.state.meta.errors?.length > 0 && (
-										<div className="text-destructive text-sm">
+										<FieldError>
 											{field.state.meta.errors[0]?.message || "Last name is required"}
-										</div>
+										</FieldError>
 									)}
 								</field.TextField>
 							)}
@@ -130,26 +130,25 @@ function ProfileSettings() {
 				<div className="space-y-2">
 					<SectionLabel.Root size="sm" title="Email address" className="max-lg:hidden" />
 
-					<TextField name="email" type="email" isDisabled value={user?.email}>
+					<TextField isDisabled>
 						<Label className="lg:hidden">Email address</Label>
-						<InputBase size="md" icon={IconEnvelope} />
+						<InputGroup>
+							<IconEnvelope data-slot="icon" />
+							<Input type="email" value={user?.email} />
+						</InputGroup>
 					</TextField>
 				</div>
+
 				<div className="flex justify-end">
 					<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
 						{([canSubmit, isSubmitting]) => (
-							<Button
-								type="submit"
-								color="primary"
-								size="md"
-								isDisabled={!canSubmit || isSubmitting}
-							>
+							<Button type="submit" intent="primary" isDisabled={!canSubmit || isSubmitting}>
 								{isSubmitting ? "Saving..." : "Save"}
 							</Button>
 						)}
 					</form.Subscribe>
 				</div>
 			</div>
-		</Form>
+		</form>
 	)
 }

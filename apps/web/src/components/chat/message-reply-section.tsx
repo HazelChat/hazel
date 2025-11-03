@@ -1,7 +1,7 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { MessageId } from "@hazel/db/schema"
 import { messageWithAuthorAtomFamily } from "~/atoms/message-atoms"
-import { Avatar } from "../base/avatar/avatar"
+import { Avatar } from "../ui/avatar"
 
 interface MessageReplySectionProps {
 	replyToMessageId: MessageId
@@ -19,7 +19,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 		<div className="relative">
 			{/* Reply curve SVG */}
 			<svg
-				className="-bottom-1 absolute left-5 rotate-90 text-quaternary"
+				className="-bottom-1 absolute left-5 rotate-90 text-muted-fg"
 				xmlns="http://www.w3.org/2000/svg"
 				width="24"
 				height="20"
@@ -43,25 +43,26 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 			>
 				{isLoading ? (
 					<>
-						<div className="size-4 animate-pulse rounded-full bg-quaternary" />
-						<span className="text-secondary text-sm">Loading...</span>
+						<div className="size-4 animate-pulse rounded-full bg-muted" />
+						<span className="text-muted-fg text-sm">Loading...</span>
 					</>
 				) : data ? (
 					<>
 						<Avatar
-							size="xxs"
-							alt={`${data.author.firstName} ${data.author.lastName}`}
+							size="xs"
 							src={data.author.avatarUrl}
+							initials={`${data.author.firstName[0]}${data.author.lastName[0]}`}
+							alt={`${data.author.firstName} ${data.author.lastName}`}
 						/>
-						<span className="text-secondary text-sm hover:underline">
+						<span className="font-medium text-fg text-sm hover:underline">
 							{data.author.firstName} {data.author.lastName}
 						</span>
-						<span className="max-w-xs truncate text-ellipsis text-foreground text-xs">
+						<span className="max-w-xs truncate text-ellipsis text-muted-fg text-xs">
 							{data.content.split("\n")[0]}
 						</span>
 					</>
 				) : (
-					<span className="text-secondary text-sm">Message not found</span>
+					<span className="text-muted-fg text-sm">Message not found</span>
 				)}
 			</button>
 		</div>

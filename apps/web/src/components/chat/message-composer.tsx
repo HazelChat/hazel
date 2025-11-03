@@ -1,18 +1,16 @@
 import { and, eq, inArray, useLiveQuery } from "@tanstack/react-db"
-import { useParams } from "@tanstack/react-router"
 import { FileIcon } from "@untitledui/file-icons"
-import { RefreshCcw02, XClose } from "@untitledui/icons"
 import { useMemo, useRef } from "react"
+import IconClose from "~/components/icons/icon-close"
+import { MarkdownEditor, type MarkdownEditorRef } from "~/components/markdown-editor"
+import { Button } from "~/components/ui/button"
+import { Loader } from "~/components/ui/loader"
 import { attachmentCollection, channelMemberCollection } from "~/db/collections"
-import { useOrganization } from "~/hooks/use-organization"
 import { useTyping } from "~/hooks/use-typing"
 import { useAuth } from "~/lib/auth"
+import { cn } from "~/lib/utils"
 import { useChat } from "~/providers/chat-provider"
-import { cx } from "~/utils/cx"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
-import { ButtonUtility } from "../base/buttons/button-utility"
-import { MarkdownEditor, type MarkdownEditorRef } from "../markdown-editor"
-import { Loader } from "../ui/loader"
 import { ReplyIndicator } from "./reply-indicator"
 
 interface MessageComposerProps {
@@ -32,7 +30,7 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 		uploadingFiles,
 	} = useChat()
 
-	const editorRef = useRef<MarkdownEditorRef | null>(null)
+	const editorRef = useRef<MarkdownEditorRef>(null)
 
 	const { data: channelMembersData } = useLiveQuery(
 		(q) =>
@@ -65,26 +63,30 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 		[attachmentIds],
 	)
 
-	const handleEditorUpdate = (content: string) => {
+	const handleUpdate = (content: string) => {
 		handleContentChange(content)
 	}
 
 	const handleSubmit = async (content: string) => {
-		sendMessage({
-			content,
-		})
+		if (!content.trim()) return
 
+		sendMessage({
+			content: content.trim(),
+		})
 		stopTyping()
+
+		// Clear editor
+		editorRef.current?.clearContent()
 	}
 
 	return (
-		<div className={"relative flex h-max items-center gap-3"}>
+		<div className="relative flex h-max items-center gap-3">
 			<div className="w-full">
 				{/* Completed Attachments */}
 				{(attachmentIds.length > 0 || uploadingFiles.length > 0) && (
 					<div
-						className={cx(
-							"border border-secondary border-b-0 bg-secondary px-2 py-1",
+						className={cn(
+							"border border-border border-b-0 bg-secondary px-2 py-1",
 							uploadingFiles.length > 0 ? "rounded-t-none border-t-0" : "rounded-t-lg",
 							replyToMessageId && "border-b-0",
 						)}
@@ -99,47 +101,42 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 								return (
 									<div
 										key={attachmentId}
-										className="group flex items-center gap-2 rounded-lg bg-primary p-2 transition-colors hover:bg-tertiary"
+										className="group flex items-center gap-2 rounded-lg bg-bg p-2 transition-colors hover:bg-secondary"
 									>
-										<FileIcon
-											type={fileType}
-											className="size-8 shrink-0 text-fg-quaternary"
-										/>
+										<FileIcon type={fileType} className="size-8 shrink-0 text-muted-fg" />
 										<div className="min-w-0 flex-1">
-											<div className="truncate font-medium text-secondary text-sm">
+											<div className="truncate font-medium text-fg text-sm">
 												{fileName}
 											</div>
-											<div className="text-quaternary text-xs">
+											<div className="text-muted-fg text-xs">
 												{formatFileSize(fileSize)}
 											</div>
 										</div>
-										<ButtonUtility
-											icon={XClose}
-											size="xs"
-											color="tertiary"
-											onClick={() => removeAttachment(attachmentId)}
-										/>
+										<Button
+											intent="plain"
+											size="sq-xs"
+											onPress={() => removeAttachment(attachmentId)}
+										>
+											<IconClose data-slot="icon" />
+										</Button>
 									</div>
 								)
 							})}
 
-							{uploadingFiles.map((file) => {
+							{uploadingFiles.map((file: any) => {
 								const fileType = getFileTypeFromName(file.fileName)
 
 								return (
 									<div
 										key={file.fileId}
-										className="group flex items-center gap-2 rounded-lg bg-primary p-2 transition-colors hover:bg-tertiary"
+										className="group flex items-center gap-2 rounded-lg bg-bg p-2 transition-colors hover:bg-secondary"
 									>
-										<FileIcon
-											type={fileType}
-											className="size-8 shrink-0 text-fg-quaternary"
-										/>
+										<FileIcon type={fileType} className="size-8 shrink-0 text-muted-fg" />
 										<div className="min-w-0 flex-1">
-											<div className="truncate font-medium text-secondary text-sm">
+											<div className="truncate font-medium text-fg text-sm">
 												{file.fileName}
 											</div>
-											<div className="text-quaternary text-xs">
+											<div className="text-muted-fg text-xs">
 												{formatFileSize(file.fileSize)}
 											</div>
 										</div>
@@ -166,13 +163,13 @@ export const MessageComposer = ({ placeholder = "Type a message..." }: MessageCo
 				<MarkdownEditor
 					ref={editorRef}
 					placeholder={placeholder}
-					className={cx(
+					className={cn(
 						"w-full",
 						(replyToMessageId || attachmentIds.length > 0 || uploadingFiles.length > 0) &&
 							"rounded-t-none",
 					)}
 					onSubmit={handleSubmit}
-					onUpdate={handleEditorUpdate}
+					onUpdate={handleUpdate}
 					isUploading={isUploading}
 				/>
 			</div>

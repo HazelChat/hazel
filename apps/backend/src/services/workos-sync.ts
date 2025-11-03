@@ -438,7 +438,11 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				)
 
 				// Mark expired invitations
-				const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.either)
+				const expiredResult = yield* pipe(
+					invitationRepo.markExpired(),
+					withSystemActor,
+					Effect.either,
+				)
 
 				if (expiredResult._tag === "Right") {
 					result.expired = expiredResult.right.length

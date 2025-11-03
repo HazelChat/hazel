@@ -6,19 +6,6 @@ import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
 import { MessageReactionRepo } from "../../repositories/message-reaction-repo"
 import { MessageReactionRpcs } from "../groups/message-reactions"
 
-/**
- * MessageReaction RPC Handlers
- *
- * Implements the business logic for all message reaction-related RPC methods.
- * Each handler receives the payload and has access to CurrentUser via Effect context
- * (provided by AuthMiddleware).
- *
- * All handlers use:
- * - Database transactions for atomicity
- * - Policy checks for authorization
- * - Transaction IDs for optimistic updates
- * - Error remapping for consistent error handling
- */
 export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
@@ -31,12 +18,11 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 							const { messageId, emoji } = payload
 
-							// Check if reaction already exists
 							const existingReaction = yield* MessageReactionRepo.findByMessageUserEmoji(
 								messageId,
 								user.id,
 								emoji,
-							)
+							).pipe(policyUse(MessageReactionPolicy.canList(messageId)))
 
 							const txid = yield* generateTransactionId()
 

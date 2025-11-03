@@ -1,20 +1,19 @@
-import { createRouter, RouterProvider } from "@tanstack/react-router"
+import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 
-import { routeTree } from "./routeTree.gen"
+import { routeTree } from "./routeTree.gen.ts"
 
 import "@fontsource/inter/400.css"
 import "@fontsource/inter/400-italic.css"
 import "./styles/styles.css"
 
 // Initialize app registry and mount runtimes
-import "./lib/registry"
+import "./lib/registry.ts"
 
-import { Toaster } from "./components/application/notifications/toaster.tsx"
-import { ThemeProvider } from "./components/theme-provider.tsx"
 import { Loader } from "./components/loader.tsx"
-
+import { ThemeProvider } from "./components/theme-provider.tsx"
+import { Toast } from "./components/ui/toast.tsx"
 import reportWebVitals from "./reportWebVitals.ts"
 
 export const router = createRouter({
@@ -29,7 +28,7 @@ export const router = createRouter({
 	defaultPendingComponent: Loader,
 	Wrap: ({ children }) => (
 		<ThemeProvider>
-			<Toaster />
+			<Toast />
 
 			{children}
 		</ThemeProvider>
@@ -39,6 +38,13 @@ export const router = createRouter({
 declare module "@tanstack/react-router" {
 	interface Register {
 		router: typeof router
+	}
+}
+
+declare module "react-aria-components" {
+	interface RouterConfig {
+		href: ToOptions["to"]
+		routerOptions: Omit<NavigateOptions, keyof ToOptions>
 	}
 }
 

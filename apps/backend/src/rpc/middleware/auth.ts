@@ -1,9 +1,7 @@
 import { Headers } from "@effect/platform"
-import { CurrentUser, OrganizationId, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { type CurrentUser, UnauthorizedError } from "@hazel/effect-lib"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
-import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
-import { UserRepo } from "../../repositories/user-repo"
-import { WorkOS } from "../../services/workos"
+import { SessionManager } from "../../services/session-manager"
 import { AuthMiddleware } from "./auth-class"
 
 export { AuthMiddleware } from "./auth-class"
@@ -11,9 +9,7 @@ export { AuthMiddleware } from "./auth-class"
 export const AuthMiddlewareLive = Layer.scoped(
 	AuthMiddleware,
 	Effect.gen(function* () {
-		const userRepo = yield* UserRepo
-		const _presenceRepo = yield* UserPresenceStatusRepo
-		const workos = yield* WorkOS
+		const sessionManager = yield* SessionManager
 		const workOsCookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
 
 		// Create a FiberRef to track the current user in each WebSocket connection
@@ -82,75 +78,25 @@ export const AuthMiddlewareLive = Layer.scoped(
 					)
 				}
 
-				// Load and verify the sealed session
-				const res = yield* workos
-					.call(async (client) =>
-						client.userManagement.loadSealedSession({
-							sessionData: sessionCookie,
-							cookiePassword: workOsCookiePassword,
-						}),
-					)
-					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
-							Effect.fail(
-								new UnauthorizedError({
-									message: "Failed to get session from cookie",
-									detail: String(error.cause),
-								}),
-							),
-						),
-					)
-
-				const session = yield* Effect.tryPromise(() => res.authenticate()).pipe(
-					Effect.catchTag("UnknownException", (error) =>
-						Effect.fail(
-							new UnauthorizedError({
-								message: "Failed to call authenticate on sealed session",
-								detail: String(error.cause),
-							}),
-						),
-					),
+				// Use SessionManager to handle authentication and refresh logic
+				// Note: For WebSocket connections, we can't update the cookie, but we can
+				// still allow the connection if the session can be refreshed
+				const result = yield* sessionManager.authenticateAndGetUser(
+					sessionCookie,
+					workOsCookiePassword,
 				)
 
-				if (!session.authenticated) {
-					return yield* Effect.fail(
-						new UnauthorizedError({
-							message: "Session not authenticated",
-							detail: session.reason || "Unknown reason",
-						}),
-					)
-				}
-
-				// Find user by WorkOS external ID
-				const user = yield* userRepo
-					.findByExternalId(session.user.id)
-					.pipe(Effect.orDie, withSystemActor)
-
-				if (Option.isNone(user)) {
-					return yield* Effect.fail(
-						new UnauthorizedError({
-							message: "User not found",
-							detail: `The user ${session.user.id} was not found`,
-						}),
-					)
-				}
-
-				const currentUser = new CurrentUser.Schema({
-					id: user.value.id,
-					role: (session.role as "admin" | "member") || "member",
-					organizationId: session.organizationId
-						? OrganizationId.make(session.organizationId)
-						: undefined,
-					avatarUrl: user.value.avatarUrl,
-					firstName: user.value.firstName,
-					lastName: user.value.lastName,
-					email: user.value.email,
-				})
-
 				// Store the current user in the FiberRef so the finalizer can access it
-				yield* FiberRef.set(currentUserRef, Option.some(currentUser))
+				yield* FiberRef.set(currentUserRef, Option.some(result.currentUser))
 
-				return currentUser
+				// Log if a session was refreshed (client should reconnect with new cookie on next HTTP request)
+				if (result.refreshedSession) {
+					yield* Effect.log(
+						"Session was refreshed for WebSocket connection. Client should update cookie on next HTTP request.",
+					)
+				}
+
+				return result.currentUser
 			}),
 		)
 	}),

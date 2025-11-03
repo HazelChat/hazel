@@ -2,26 +2,25 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/db/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { PhoneCall01 } from "@untitledui/icons"
-
 import { useMemo, useState } from "react"
-import { twJoin } from "tailwind-merge"
+import { toast } from "sonner"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
-import { SectionHeader } from "~/components/application/section-headers/section-headers"
-import { Avatar } from "~/components/base/avatar/avatar"
-import { ButtonUtility } from "~/components/base/buttons/button-utility"
-import { Dropdown } from "~/components/base/dropdown/dropdown"
-import { Input } from "~/components/base/input/input"
 import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
 import IconCopy from "~/components/icons/icon-copy"
 import IconDots from "~/components/icons/icon-dots"
-import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import IconMsgs from "~/components/icons/icon-msgs"
-import { organizationMemberCollection, userCollection } from "~/db/collections"
+import IconPhone from "~/components/icons/icon-phone"
+import { Avatar } from "~/components/ui/avatar"
+import { Button } from "~/components/ui/button"
+import { DropdownLabel } from "~/components/ui/dropdown"
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
+import { SearchField, SearchInput } from "~/components/ui/search-field"
+import { organizationMemberCollection, userCollection, userPresenceStatusCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
+import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/")({
 	component: RouteComponent,
@@ -41,12 +40,16 @@ function RouteComponent() {
 		(q) =>
 			q
 				.from({ member: organizationMemberCollection })
-				.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
 				.where(({ member }) => eq(member.organizationId, organizationId))
-				.select(({ member, user }) => ({
+				.innerJoin({ user: userCollection }, ({ member, user }) => eq(member.userId, user.id))
+				.leftJoin({ presence: userPresenceStatusCollection }, ({ user, presence }) =>
+					eq(user.id, presence.userId),
+				)
+				.select(({ member, user, presence }) => ({
 					...user,
 					role: member.role,
 					joinedAt: member.joinedAt,
+					presence,
 				})),
 		[organizationId],
 	)
@@ -104,29 +107,52 @@ function RouteComponent() {
 		}
 	}
 
+	const getStatusColor = (status?: string) => {
+		switch (status) {
+			case "online":
+				return "text-success"
+			case "away":
+			case "busy":
+				return "text-warning"
+			case "dnd":
+				return "text-danger"
+			default:
+				return "text-muted-fg"
+		}
+	}
+
+	const handleCopyEmail = async (email: string) => {
+		try {
+			await navigator.clipboard.writeText(email)
+			toast.success("Email copied", {
+				description: `${email} copied to clipboard`,
+			})
+		} catch (_error) {
+			toast.error("Failed to copy email", {
+				description: "Please try again",
+			})
+		}
+	}
+
 	return (
 		<div className="flex flex-col gap-6 p-6 lg:p-12">
-			<SectionHeader.Root>
-				<SectionHeader.Group>
-					<div className="space-y-0.5">
-						<SectionHeader.Heading>Members</SectionHeader.Heading>
-						<SectionHeader.Subheading>
-							Explore your organization and connect with fellow members.
-						</SectionHeader.Subheading>
-					</div>
-				</SectionHeader.Group>
-			</SectionHeader.Root>
+			<div>
+				<div className="space-y-0.5">
+					<h1 className="font-semibold text-2xl text-fg">Members</h1>
+					<p className="text-muted-fg text-sm">
+						Explore your organization and connect with fellow members.
+					</p>
+				</div>
+			</div>
 
 			<div className="w-full">
-				<Input
-					autoFocus
-					value={searchQuery}
-					onChange={(value) => setSearchQuery(value)}
-					placeholder="Search members..."
-					className="w-full"
-					icon={IconMagnifier3}
-					iconClassName="size-5 text-secondary"
-				/>
+				<SearchField autoFocus className="w-full">
+					<SearchInput
+						placeholder="Search members..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
+				</SearchField>
 			</div>
 
 			<div className="w-full space-y-2">
@@ -135,7 +161,7 @@ function RouteComponent() {
 						<div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2"></div>
 					</div>
 				) : filteredMembers.length === 0 ? (
-					<div className="py-8 text-center text-secondary">
+					<div className="py-8 text-center text-muted-fg">
 						{searchQuery
 							? "No members found matching your search"
 							: "No members in this organization"}
@@ -144,24 +170,45 @@ function RouteComponent() {
 					filteredMembers.map((member) => {
 						const fullName = `${member.firstName} ${member.lastName}`.trim()
 						const isCurrentUser = user && user.id === member.id
+						const getInitials = (name: string) => {
+							const [firstName, lastName] = name.split(" ")
+							return `${firstName?.charAt(0)}${lastName?.charAt(0)}`
+						}
 						return (
 							<div
 								key={member.id}
-								className={twJoin(
+								className={cn(
 									"flex items-center justify-between gap-4 rounded-lg px-3 py-2",
-
 									!isCurrentUser &&
-										"group inset-ring inset-ring-transparent hover:inset-ring-secondary hover:bg-quaternary/40",
+										"group border border-transparent hover:border-border hover:bg-secondary/40",
 								)}
 							>
 								<div className="flex items-center gap-2 sm:gap-2.5">
-									<Avatar src={member.avatarUrl} alt={fullName || "User"} size="sm" />
+									<div className="relative">
+										<Avatar
+											src={member.avatarUrl}
+											initials={getInitials(fullName || "User")}
+											className="size-9"
+										/>
+										{/* Presence indicator */}
+										{member.presence?.status && (
+											<span
+												className={cn(
+													"absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-bg",
+													getStatusColor(member.presence.status).replace(
+														"text-",
+														"bg-",
+													),
+												)}
+											/>
+										)}
+									</div>
 									<div>
 										<div className="flex items-center font-semibold text-sm/6">
 											{fullName || "Unknown User"}
-											<span className="mx-2 text-tertiary">&middot;</span>
+											<span className="mx-2 text-muted-fg">&middot;</span>
 											{member.role && (
-												<span className="text-tertiary text-xs capitalize">
+												<span className="text-muted-fg text-xs capitalize">
 													{member.role}{" "}
 													{member.role === "admin" && (
 														<span className="ml-1">👑</span>
@@ -169,49 +216,51 @@ function RouteComponent() {
 												</span>
 											)}
 										</div>
-										<p className="text-tertiary text-xs">{member.email}</p>
+										<p className="text-muted-fg text-xs">{member.email}</p>
 									</div>
 								</div>
 
 								{!isCurrentUser && (
 									<div className="flex items-center gap-2">
-										<ButtonUtility
-											onClick={() => handleOpenChat(member.id, fullName)}
-											className="inset-ring-0 hidden pressed:bg-tertiary group-hover:bg-tertiary sm:inline-grid"
+										<Button
+											intent="secondary"
 											size="sm"
-											icon={IconMsgs}
-										/>
-										<Dropdown.Root>
-											<ButtonUtility
-												className="inset-ring-0 pressed:bg-tertiary group-hover:bg-tertiary"
-												size="sm"
-												icon={IconDots}
-											/>
-											<Dropdown.Popover>
-												<Dropdown.Menu
-													onAction={(key) => {
-														if (key === "message") {
-															handleOpenChat(member.id, fullName)
-														}
-													}}
+											onPress={() => handleOpenChat(member.id, fullName)}
+											className="hidden border-transparent pressed:bg-muted group-hover:border-border sm:inline-flex"
+										>
+											<IconMsgs data-slot="icon" />
+										</Button>
+										<Menu>
+											<MenuTrigger
+												aria-label="Member actions"
+												className={cn(
+													"inline-flex size-8 items-center justify-center rounded-lg border border-transparent hover:border-border hover:bg-muted",
+													"pressed:bg-muted group-hover:border-border",
+												)}
+											>
+												<IconDots className="size-5 text-muted-fg" />
+											</MenuTrigger>
+											<MenuContent placement="bottom end">
+												<MenuItem
+													onAction={() => handleOpenChat(member.id, fullName)}
 												>
-													<Dropdown.Section>
-														<Dropdown.Item id="message" icon={IconMsgs}>
-															Message
-														</Dropdown.Item>
-														<Dropdown.Item icon={IconCircleDottedUser}>
-															View profile
-														</Dropdown.Item>
-														<Dropdown.Item icon={PhoneCall01}>
-															Start call
-														</Dropdown.Item>
-														<Dropdown.Item icon={IconCopy}>
-															Copy email
-														</Dropdown.Item>
-													</Dropdown.Section>
-												</Dropdown.Menu>
-											</Dropdown.Popover>
-										</Dropdown.Root>
+													<IconMsgs data-slot="icon" />
+													<DropdownLabel>Message</DropdownLabel>
+												</MenuItem>
+												<MenuItem>
+													<IconCircleDottedUser data-slot="icon" />
+													<DropdownLabel>View profile</DropdownLabel>
+												</MenuItem>
+												<MenuItem>
+													<IconPhone data-slot="icon" />
+													<DropdownLabel>Start call</DropdownLabel>
+												</MenuItem>
+												<MenuItem onAction={() => handleCopyEmail(member.email)}>
+													<IconCopy data-slot="icon" />
+													<DropdownLabel>Copy email</DropdownLabel>
+												</MenuItem>
+											</MenuContent>
+										</Menu>
 									</div>
 								)}
 							</div>

@@ -7,14 +7,14 @@ import { Button } from "react-aria-components"
 import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
+import IconPin from "~/components/icons/icon-pin"
+import { extractUrls, LinkPreview } from "~/components/link-preview"
+import { MarkdownReadonly } from "~/components/markdown-readonly"
 import { messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
+import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
-import { cx } from "~/utils/cx"
-import { IconNotification } from "../application/notifications/notifications"
-import { Badge } from "../base/badges/badges"
-import IconPin from "../icons/icon-pin"
-import { MarkdownReadonly } from "../markdown-readonly"
+import { cn } from "~/lib/utils"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
 import { MessageReplySection } from "./message-reply-section"
@@ -38,6 +38,7 @@ export function MessageItem({
 	onHoverChange,
 }: MessageItemProps) {
 	const { addReaction } = useChat()
+	const { trackEmojiUsage } = useEmojiStats()
 
 	const [isEditing, _setIsEditing] = useState(false)
 	const messageRef = useRef<HTMLDivElement>(null)
@@ -63,6 +64,7 @@ export function MessageItem({
 
 	const handleReaction = (emoji: string) => {
 		if (!message) return
+		trackEmojiUsage(emoji)
 		// addReaction now handles the toggle logic internally
 		addReaction(message.id, emoji)
 	}
@@ -74,15 +76,15 @@ export function MessageItem({
 			{...hoverProps}
 			ref={messageRef}
 			id={`message-${message.id}`}
-			className={cx(
-				`group relative flex flex-col rounded-lg px-0.5 py-1 transition-colors duration-200 hover:bg-secondary`,
+			className={cn(
+				"group relative flex flex-col rounded-lg px-0.5 py-1 transition-colors duration-200 hover:bg-secondary",
 				isGroupStart ? "mt-2" : "",
 				isGroupEnd ? "mb-2" : "",
 				isFirstNewMessage
-					? "rounded-l-none border-emerald-500 border-l-2 bg-emerald-500/20 hover:bg-emerald-500/15"
+					? "rounded-l-none border-success border-l-2 bg-success/10 hover:bg-success/5"
 					: "",
 				isPinned
-					? "rounded-l-none border-amber-500 border-l-4 bg-amber-500/15 pl-2 shadow-sm hover:bg-amber-500/20"
+					? "rounded-l-none border-warning border-l-4 bg-warning/10 pl-2 shadow-sm hover:bg-warning/15"
 					: "",
 			)}
 			data-id={message.id}
@@ -96,9 +98,9 @@ export function MessageItem({
 						if (replyElement) {
 							replyElement.scrollIntoView({ behavior: "smooth", block: "center" })
 							// Add a highlight effect
-							replyElement.classList.add("bg-quaternary/30")
+							replyElement.classList.add("bg-secondary/30")
 							setTimeout(() => {
-								replyElement.classList.remove("bg-quaternary/30")
+								replyElement.classList.remove("bg-secondary/30")
 							}, 2000)
 						}
 					}}
@@ -110,7 +112,7 @@ export function MessageItem({
 				{showAvatar ? (
 					<UserProfilePopover userId={message.authorId} />
 				) : (
-					<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-secondary leading-tight opacity-0 group-hover:opacity-100">
+					<div className="flex w-[40px] items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
 						{format(message.createdAt, "HH:mm")}
 					</div>
 				)}
@@ -123,80 +125,24 @@ export function MessageItem({
 					{/* Message Content */}
 					{isEditing ? (
 						<div className="mt-1">
-							{/* <TextEditor.Root
-								content={message.jsonContent}
-								editable={true}
-								className="gap-0"
-								onCreate={(editor) => {
-									// Store editor reference for save/cancel buttons
-									editorRef.current = editor
-
-									// Add keyboard handler for Escape key
-									const handleKeyDown = (event: Event) => {
-										const keyboardEvent = event as KeyboardEvent
-										if (keyboardEvent.key === "Escape") {
-											setIsEditing(false)
-											keyboardEvent.preventDefault()
-										} else if (keyboardEvent.key === "Enter" && !keyboardEvent.shiftKey) {
-											keyboardEvent.preventDefault()
-											handleEdit(editor)
-										}
-									}
-
-									const editorElement = document.querySelector('[data-slate-editor="true"]')
-									if (editorElement) {
-										editorElement.addEventListener("keydown", handleKeyDown)
-										// Store cleanup function
-										;(editor ).cleanup = () => {
-											editorElement.removeEventListener("keydown", handleKeyDown)
-										}
-									}
-								}}
-								onUpdate={(editor) => {
-									editorRef.current = editor
-								}}
-							>
-								{(_editor) => (
-									<>
-										<div className="rounded border border-secondary p-2">
-											<TextEditor.Content className="min-h-[2rem] text-sm" />
-										</div>
-										<div className="mt-2 flex gap-2">
-											<StyledButton
-												size="sm"
-												color="primary"
-												onClick={async () => {
-													if (editorRef.current) {
-														await handleEdit(editorRef.current)
-													}
-												}}
-											>
-												Save
-											</StyledButton>
-											<StyledButton
-												size="sm"
-												color="secondary"
-												onClick={() => {
-													setIsEditing(false)
-													if (editorRef.current) {
-														// Cleanup event listeners
-														if ((editorRef.current ).cleanup) {
-															;(editorRef.current ).cleanup()
-														}
-														editorRef.current.tf.reset()
-														editorRef.current.children = message.jsonContent
-													}
-												}}
-											>
-												Cancel
-											</StyledButton>
-										</div>
-									</>
-								)}
-							</TextEditor.Root> */}
+							{/* Edit mode - simplified for now */}
+							<div className="rounded-lg border border-border bg-bg p-2">
+								<textarea
+									className="w-full resize-none border-0 bg-transparent text-base text-fg outline-none"
+									defaultValue={message.content}
+								/>
+							</div>
 						</div>
 					) : (
-						<MarkdownReadonly content={message.content}></MarkdownReadonly>
+						<>
+							<MarkdownReadonly content={message.content} />
+							{/* Link Preview */}
+							{(() => {
+								const urls = extractUrls(message.content)
+								const lastUrl = urls[urls.length - 1]
+								return lastUrl ? <LinkPreview url={lastUrl} /> : null
+							})()}
+						</>
 					)}
 
 					{/* Attachments */}
@@ -206,15 +152,19 @@ export function MessageItem({
 					{aggregatedReactions.length > 0 && (
 						<div className="mt-2 flex flex-wrap gap-1">
 							{aggregatedReactions.map(([emoji, data]) => (
-								<Button onPress={() => handleReaction(emoji)} key={emoji}>
-									<Badge
-										type="pill-color"
-										color={data.hasReacted ? "brand" : "gray"}
-										size="md"
-									>
-										{emoji} {data.count}
-									</Badge>
-								</Button>
+								<button
+									type="button"
+									onClick={() => handleReaction(emoji)}
+									key={emoji}
+									className={cn(
+										"inline-flex size-max cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 font-medium text-sm ring ring-inset transition-colors",
+										data.hasReacted
+											? "bg-primary/10 text-primary ring-primary/20 hover:bg-primary/20"
+											: "bg-secondary text-fg ring-border hover:bg-secondary/80",
+									)}
+								>
+									{emoji} {data.count}
+								</button>
 							))}
 						</div>
 					)}
@@ -246,14 +196,9 @@ export function useMessageHandlers(message: MessageWithPinned | null) {
 		if (!message) return
 
 		navigator.clipboard.writeText(message.content)
-		toast.custom((t) => (
-			<IconNotification
-				title="Sucessfully copied!"
-				description="Message content has been copied to your clipboard."
-				color="success"
-				onClose={() => toast.dismiss(t)}
-			/>
-		))
+		toast.success("Copied!", {
+			description: "Message content has been copied to your clipboard.",
+		})
 	}
 
 	const handleReply = () => {
@@ -301,13 +246,15 @@ export const MessageAuthorHeader = ({
 
 	return (
 		<div className="flex items-baseline gap-2">
-			<span className="font-semibold">{user ? `${user.firstName} ${user.lastName}` : "Unknown"}</span>
-			<span className="text-secondary text-xs">
+			<span className="font-semibold text-fg">
+				{user ? `${user.firstName} ${user.lastName}` : "Unknown"}
+			</span>
+			<span className="text-muted-fg text-xs">
 				{format(message.createdAt, "HH:mm")}
 				{isEdited && " (edited)"}
 			</span>
 			{isPinned && (
-				<span className="flex items-center gap-1 text-amber-600 text-xs" title="Pinned message">
+				<span className="flex items-center gap-1 text-warning text-xs" title="Pinned message">
 					<IconPin className="size-3" />
 					<span>Pinned</span>
 				</span>

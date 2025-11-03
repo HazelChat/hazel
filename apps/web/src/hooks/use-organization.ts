@@ -10,7 +10,7 @@ import { organizationCollection } from "~/db/collections"
  */
 export function useOrganization() {
 	const params = useParams({ strict: false })
-	const orgSlug = params.orgSlug as string | undefined
+	const orgSlug = params.orgSlug as string
 
 	const { data, isLoading } = useLiveQuery(
 		(q) =>

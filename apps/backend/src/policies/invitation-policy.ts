@@ -11,13 +11,32 @@ import { Effect, Option, pipe } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
+import { UserRepo } from "../repositories/user-repo"
 
+/**
+ * @effect-leakable-service
+ */
 export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("InvitationPolicy/Policy", {
 	effect: Effect.gen(function* () {
 		const policyEntity = "Invitation" as const
 
 		const invitationRepo = yield* InvitationRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const userRepo = yield* UserRepo
+
+		const canRead = (_invitationId: InvitationId) =>
+			UnauthorizedError.refail(
+				policyEntity,
+				"select",
+			)(
+				policy(
+					policyEntity,
+					"select",
+					Effect.fn(`${policyEntity}.select`)(function* (_actor) {
+						return yield* Effect.succeed(true)
+					}),
+				),
+			)
 
 		const canCreate = (organizationId: OrganizationId) =>
 			UnauthorizedError.refail(
@@ -57,12 +76,12 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 								return yield* Effect.succeed(true)
 							}
 
-							// Organization admins can update any invitation
+							// Organization admins and owners can update any invitation
 							const orgMember = yield* organizationMemberRepo
 								.findByOrgAndUser(invitation.organizationId, actor.id)
 								.pipe(withSystemActor)
 
-							if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
+							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
 							}
 
@@ -87,12 +106,12 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 								return yield* Effect.succeed(true)
 							}
 
-							// Organization admins can delete any invitation
+							// Organization admins and owners can delete any invitation
 							const orgMember = yield* organizationMemberRepo
 								.findByOrgAndUser(invitation.organizationId, actor.id)
 								.pipe(withSystemActor)
 
-							if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
+							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
 							}
 
@@ -107,22 +126,55 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 				policyEntity,
 				"accept",
 			)(
-				invitationRepo.with(id, (_invitation) =>
+				invitationRepo.with(id, (invitation) =>
 					policy(
 						policyEntity,
 						"accept",
-						Effect.fn(`${policyEntity}.accept`)(function* (_actor) {
+						Effect.fn(`${policyEntity}.accept`)(function* (actor) {
 							// Only the invited user can accept the invitation
 							// Check if the actor's email matches the invitation email
-							// Note: This assumes we have access to actor's email, might need adjustment
-							return yield* Effect.succeed(true) // Simplified - would need email comparison
+							const user = yield* userRepo.findById(actor.id).pipe(withSystemActor)
+
+							if (Option.isNone(user)) {
+								return yield* Effect.succeed(false)
+							}
+
+							// Check if user's email matches the invitation email
+							if (user.value.email === invitation.email) {
+								return yield* Effect.succeed(true)
+							}
+
+							return yield* Effect.succeed(false)
 						}),
 					),
 				),
 			)
 
-		return { canCreate, canUpdate, canDelete, canAccept } as const
+		const canList = (organizationId: OrganizationId) =>
+			UnauthorizedError.refail(
+				policyEntity,
+				"list",
+			)(
+				policy(
+					policyEntity,
+					"list",
+					Effect.fn(`${policyEntity}.list`)(function* (actor) {
+						// Organization admins and owners can list invitations
+						const orgMember = yield* organizationMemberRepo
+							.findByOrgAndUser(organizationId, actor.id)
+							.pipe(withSystemActor)
+
+						if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
+							return yield* Effect.succeed(true)
+						}
+
+						return yield* Effect.succeed(false)
+					}),
+				),
+			)
+
+		return { canRead, canCreate, canUpdate, canDelete, canAccept, canList } as const
 	}),
-	dependencies: [InvitationRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [InvitationRepo.Default, OrganizationMemberRepo.Default, UserRepo.Default],
 	accessors: true,
 }) {}

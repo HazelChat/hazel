@@ -1,41 +1,37 @@
 "use client"
 
-import { cva } from "class-variance-authority"
 import { createContext, use, useEffect } from "react"
+import type {
+	AutocompleteProps,
+	CollectionRenderer,
+	MenuProps,
+	MenuTriggerProps,
+	SearchFieldProps,
+} from "react-aria-components"
 import {
 	Autocomplete,
-	type AutocompleteProps,
 	Button,
 	Collection,
-	type CollectionRenderer,
 	CollectionRendererContext,
-	composeRenderProps,
 	DefaultCollectionRenderer,
 	Dialog,
 	Header,
 	Input,
-	MenuItem,
 	Menu as MenuPrimitive,
-	type MenuProps,
 	MenuSection,
-	type MenuSectionProps,
-	type MenuTriggerProps,
 	Modal,
 	ModalContext,
 	ModalOverlay,
 	OverlayTriggerStateContext,
 	SearchField,
-	type SearchFieldProps,
-	Text,
-	type TextProps,
 	useFilter,
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
-import { Keyboard } from "~/components/ui/keyboard"
-import { Separator } from "~/components/ui/separator"
-import { composeTailwindRenderProps } from "~/lib/primitive"
-import IconMagnifier3 from "../icons/icon-magnifier-3"
+import IconMagnifier from "~/components/icons/icon-magnifier-3"
+import { cx } from "~/lib/primitive"
+import { DropdownKeyboard } from "./dropdown"
 import { Loader } from "./loader"
+import { MenuDescription, MenuItem, MenuLabel, type MenuSectionProps, MenuSeparator } from "./menu"
 
 interface CommandMenuProviderProps {
 	isPending?: boolean
@@ -79,7 +75,7 @@ const CommandMenu = ({
 	isDismissable = true,
 	escapeButton = true,
 	isPending,
-	size = "xl",
+	size = "lg",
 	isBlurred,
 	shortcut,
 	...props
@@ -103,41 +99,28 @@ const CommandMenu = ({
 			<ModalContext value={{ isOpen: props.isOpen, onOpenChange: onOpenChange }}>
 				<ModalOverlay
 					isDismissable={isDismissable}
-					className={({ isExiting, isEntering }) =>
-						twJoin(
-							"fixed inset-0 z-[100] h-(--visual-viewport-height,100vh) w-screen overflow-hidden bg-black/15",
-							"grid grid-rows-[1fr_auto] justify-items-center text-center sm:grid-rows-[1fr_auto_3fr]",
-							isEntering && "fade-in animate-in duration-300",
-							isExiting && "fade-out animate-out duration-200",
-							isBlurred && "backdrop-blur-sm",
-						)
-					}
+					className={twJoin(
+						"fixed inset-0 z-50 h-(--visual-viewport-height,100vh) w-screen overflow-hidden bg-black/15",
+						"grid grid-rows-[1fr_auto] justify-items-center text-center sm:grid-rows-[1fr_auto_3fr]",
+						"entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
+						"exiting:fade-out exiting:animate-out exiting:ease-in",
+						isBlurred && "backdrop-blur-sm backdrop-filter",
+					)}
 					{...props}
 				>
 					<Modal
-						isDismissable={isDismissable}
-						className={({ isExiting, isEntering }) =>
-							twMerge(
-								"row-start-2 bg-primary text-left text-primary shadow-lg outline-none ring ring-primary md:row-start-1",
-								"sm:-translate-x-1/2 max-h-[calc(var(--visual-viewport-height)*0.8)] w-full sm:fixed sm:top-[10%] sm:left-1/2",
-								"rounded-t-2xl md:rounded-xl",
-								isEntering && [
-									"slide-in-from-bottom animate-in duration-300 ease-out",
-									"md:fade-in md:zoom-in-95 md:slide-in-from-bottom-0",
-								],
-								isExiting && [
-									"slide-out-to-bottom animate-out",
-									"md:fade-out md:zoom-out-95 md:slide-out-to-bottom-0",
-								],
-								sizes[size],
-								className,
-							)
-						}
+						className={cx(
+							"row-start-2 bg-overlay text-left text-overlay-fg shadow-lg outline-none ring ring-muted-fg/15 md:row-start-1 dark:ring-border",
+							"sm:-translate-x-1/2 max-h-[calc(var(--visual-viewport-height)*0.8)] w-full sm:fixed sm:top-[10%] sm:left-1/2",
+							"rounded-t-2xl md:rounded-xl",
+							sizes[size],
+							"entering:slide-in-from-bottom sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0 entering:animate-in entering:duration-300 entering:ease-out",
+							"exiting:slide-out-to-bottom sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0 exiting:animate-out exiting:ease-in",
+							className,
+						)}
 					>
 						<Dialog
-							role="dialog"
 							aria-label={props["aria-label"] ?? "Command Menu"}
-							aria-modal="true"
 							className="flex max-h-[inherit] flex-col overflow-hidden outline-hidden"
 						>
 							<Autocomplete filter={filter} {...props} />
@@ -161,15 +144,15 @@ const CommandMenuSearch = ({ className, placeholder, ...props }: CommandMenuSear
 		<SearchField
 			aria-label="Quick search"
 			autoFocus
-			className={composeTailwindRenderProps(className, "flex w-full items-center px-2.5 py-1")}
+			className={cx("flex w-full items-center px-2.5 py-1", className)}
 			{...props}
 		>
 			{isPending ? (
 				<Loader className="size-4.5" variant="spin" />
 			) : (
-				<IconMagnifier3
+				<IconMagnifier
 					data-slot="command-menu-search-icon"
-					className="size-5 shrink-0 text-tertiary"
+					className="size-5 shrink-0 text-muted-fg"
 				/>
 			)}
 			<Input
@@ -179,7 +162,7 @@ const CommandMenuSearch = ({ className, placeholder, ...props }: CommandMenuSear
 			{escapeButton && (
 				<Button
 					onPress={() => state?.close()}
-					className="hidden cursor-default rounded border border-primary hover:bg-tertiary lg:inline lg:px-1.5 lg:py-0.5 lg:text-xs"
+					className="hidden cursor-default rounded border text-current/90 hover:bg-muted lg:inline lg:px-1.5 lg:py-0.5 lg:text-xs"
 				>
 					Esc
 				</Button>
@@ -192,9 +175,9 @@ const CommandMenuList = <T extends object>({ className, ...props }: MenuProps<T>
 	return (
 		<CollectionRendererContext.Provider value={renderer}>
 			<MenuPrimitive
-				className={composeTailwindRenderProps(
+				className={cx(
+					"grid max-h-full flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-t p-2 sm:max-h-110 *:[[role=group]]:mb-6 *:[[role=group]]:last:mb-0",
 					className,
-					"grid max-h-full flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-primary border-t p-2 sm:max-h-110 *:[[role=group]]:mb-6 *:[[role=group]]:last:mb-0",
 				)}
 				{...props}
 			/>
@@ -202,12 +185,10 @@ const CommandMenuList = <T extends object>({ className, ...props }: MenuProps<T>
 	)
 }
 
-interface CommandMenuSectionProps<T> extends MenuSectionProps<T> {
-	label?: string
-}
-const CommandMenuSection = <T extends object>({ className, ...props }: CommandMenuSectionProps<T>) => {
+const CommandMenuSection = <T extends object>({ className, ref, ...props }: MenuSectionProps<T>) => {
 	return (
 		<MenuSection
+			ref={ref}
 			className={twMerge(
 				"col-span-full grid grid-cols-[auto_1fr] content-start gap-y-[calc(var(--spacing)*0.25)]",
 				className,
@@ -224,78 +205,15 @@ const CommandMenuSection = <T extends object>({ className, ...props }: CommandMe
 	)
 }
 
-const commandMenuItem = cva(
-	[
-		"[--mr-icon:--spacing(2)] sm:[--mr-icon:--spacing(1.5)]",
-		"col-span-full grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] px-3 py-2 supports-[grid-template-columns:subgrid]:grid-cols-subgrid sm:px-2.5 sm:py-1.5",
-		"not-has-[[slot=description]]:items-center has-[[slot=description]]:**:data-[slot=check-indicator]:mt-[1.5px]",
-		"group relative cursor-default select-none rounded-[calc(var(--radius-lg)-1px)] text-base/6 text-fg outline-0 sm:text-sm/6",
-		"**:data-[slot=avatar]:*:mr-1.5 **:data-[slot=avatar]:*:size-6 **:data-[slot=avatar]:mr-(--mr-icon) **:data-[slot=avatar]:size-6 sm:**:data-[slot=avatar]:*:size-5 sm:**:data-[slot=avatar]:size-5",
-		"*:[svg]:mr-(--mr-icon) **:[svg]:size-5 **:[svg]:shrink-0 **:[svg]:text-tertiary sm:**:[svg]:size-4",
-		"[&>[slot=label]+[svg]]:absolute [&>[slot=label]+[svg]]:right-1",
-		"data-danger:text-danger data-danger:**:[svg]:text-danger/60",
-		"forced-color-adjust-none forced-colors:text-[CanvasText] forced-colors:**:[svg]:text-[CanvasText] forced-colors:group-focus:**:[svg]:text-[CanvasText]",
-	],
-	{
-		variants: {
-			isDisabled: {
-				true: "opacity-50 forced-colors:text-[GrayText]",
-			},
-			isSelected: {
-				true: "**:data-[slot=avatar]:*:hidden **:data-[slot=avatar]:hidden **:[svg]:hidden **:[svg]:text-accent-fg",
-			},
-			isDanger: {
-				true: [
-					"text-danger focus:text-danger **:[svg]:text-danger/70 focus:**:[svg]:text-danger",
-					"focus:*:[[slot=description]]:text-danger/80 focus:*:[[slot=label]]:text-danger",
-					"focus:bg-danger/10 focus:text-danger focus:**:[svg]:text-danger forced-colors:focus:text-[Mark]",
-				],
-			},
-			isFocused: {
-				true: [
-					"**:[svg]:text-primary **:[kbd]:text-accent-fg",
-					"bg-tertiary forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]",
-					"[&_.text-muted-fg]:text-accent-fg/80 *:[[slot=description]]:text-accent-fg *:[[slot=label]]:text-accent-fg",
-				],
-			},
-			isHovered: {
-				true: [
-					"**:[svg]:text-accent-fg **:[kbd]:text-accent-fg",
-					"bg-accent text-accent-fg forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]",
-					"[&_.text-muted-fg]:text-accent-fg/80 *:[[slot=description]]:text-accent-fg *:[[slot=label]]:text-accent-fg",
-				],
-			},
-		},
-	},
-)
-
 const CommandMenuItem = ({ className, ...props }: React.ComponentProps<typeof MenuItem>) => {
 	const textValue = props.textValue || (typeof props.children === "string" ? props.children : undefined)
-	return (
-		<MenuItem
-			{...props}
-			textValue={textValue}
-			className={composeRenderProps(className, (className, { hasSubmenu, ...renderProps }) =>
-				commandMenuItem({
-					...renderProps,
-					className,
-				}),
-			)}
-		/>
-	)
+	return <MenuItem {...props} textValue={textValue} className={cx("items-center gap-y-0.5", className)} />
 }
 
-const CommandMenuDescription = ({ className, ...props }: TextProps) => {
-	return (
-		<Text
-			slot="description"
-			className={twMerge(
-				"col-start-3 row-start-1 ml-auto font-normal text-muted-fg text-sm",
-				className,
-			)}
-			{...props}
-		/>
-	)
+interface CommandMenuDescriptionProps extends React.ComponentProps<typeof MenuDescription> {}
+
+const CommandMenuDescription = ({ className, ...props }: CommandMenuDescriptionProps) => {
+	return <MenuDescription className={twMerge("col-start-3 row-start-1 ml-auto", className)} {...props} />
 }
 
 const renderer: CollectionRenderer = {
@@ -310,12 +228,8 @@ const renderer: CollectionRenderer = {
 	CollectionBranch: DefaultCollectionRenderer.CollectionBranch,
 }
 
-const CommandMenuSeparator = ({ className, ...props }: React.ComponentProps<typeof Separator>) => (
-	<Separator
-		orientation="horizontal"
-		className={twMerge("-mx-2 col-span-full my-1 h-px bg-fg/10", className)}
-		{...props}
-	/>
+const CommandMenuSeparator = ({ className, ...props }: React.ComponentProps<typeof MenuSeparator>) => (
+	<MenuSeparator className={twMerge("-mx-2", className)} {...props} />
 )
 
 const CommandMenuFooter = ({ className, ...props }: React.ComponentProps<"div">) => {
@@ -331,22 +245,18 @@ const CommandMenuFooter = ({ className, ...props }: React.ComponentProps<"div">)
 	)
 }
 
-const CommandMenuLabel = ({ className, ...props }: TextProps) => {
-	return <Text slot="label" className={twMerge("col-start-2", className)} {...props} />
-}
-const CommandMenuShortcut = ({ className, ...props }: React.ComponentProps<typeof Keyboard>) => (
-	<Keyboard
-		classNames={{
-			base: twMerge(
-				"absolute right-2 pl-2 group-hover:text-primary group-focus:text-primary",
-				"gap-0.5 font-sans text-[10.5px] uppercase *:inset-ring *:inset-ring-secondary group-focus:*:inset-ring-primary *:grid *:size-5.5 *:place-content-center *:rounded-xs *:bg-tertiary",
-			),
-		}}
+const CommandMenuLabel = MenuLabel
+const CommandMenuShortcut = ({ className, ...props }: React.ComponentProps<typeof DropdownKeyboard>) => (
+	<DropdownKeyboard
+		className={twMerge(
+			"gap-0.5 font-sans text-[10.5px] uppercase *:inset-ring *:inset-ring-muted-fg/20 *:grid *:size-5.5 *:place-content-center *:rounded-xs *:bg-bg",
+			className,
+		)}
 		{...props}
 	/>
 )
 
-export type { CommandMenuProps, CommandMenuSearchProps }
+export type { CommandMenuProps, CommandMenuSearchProps, CommandMenuDescriptionProps }
 export {
 	CommandMenu,
 	CommandMenuSearch,

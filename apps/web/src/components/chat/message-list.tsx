@@ -42,11 +42,8 @@ const MessageVirtualList = memo(
 				stickyIndices={stickyIndices}
 				renderItem={(props) =>
 					props.item.type === "header" ? (
-						<div
-							className="sticky top-0 z-10 my-4 flex items-center justify-center"
-							style={{ background: "var(--color-background)" }}
-						>
-							<span className="rounded-full bg-muted px-3 py-1 font-mono text-secondary text-xs">
+						<div className="sticky top-0 z-0 my-4 flex items-center justify-center">
+							<span className="rounded-full bg-secondary px-3 py-1 font-mono text-muted-fg text-xs shadow-sm">
 								{props.item.date}
 							</span>
 						</div>
@@ -193,14 +190,14 @@ export function MessageList() {
 	if (messages.length === 0) {
 		return (
 			<div className="flex size-full flex-col items-center justify-center p-4 sm:p-8">
-				<div className="mask-radial-at-center mask-radial-from-black mask-radial-to-transparent relative aspect-square w-full max-w-sm">
+				<div className="relative aspect-square w-full max-w-sm">
 					<img
 						src="/images/squirrle_ocean.png"
 						alt="squirrel"
 						className="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.png)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover"
 					/>
 				</div>
-				<p className="font-bold font-mono text-xl">Quiet as an ocean gazing squirrel...</p>
+				<p className="font-bold font-mono text-fg text-xl">Quiet as an ocean gazing squirrel...</p>
 			</div>
 		)
 	}

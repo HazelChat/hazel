@@ -1,6 +1,6 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import { Invitation } from "@hazel/db/models"
-import { InvitationId } from "@hazel/db/schema"
+import { InvitationId, OrganizationId } from "@hazel/db/schema"
 import { InternalServerError, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
 import { TransactionId } from "../../lib/schema"
@@ -30,18 +30,58 @@ export class InvitationRpcs extends RpcGroup.make(
 	/**
 	 * InvitationCreate
 	 *
-	 * Creates a new invitation to an organization.
+	 * Creates a new invitation to an organization via WorkOS.
 	 * The inviter must have permission to invite users to the organization.
 	 *
-	 * @param payload - Invitation data (organizationId, email, role, etc.)
+	 * @param payload - Invitation data (organizationId, email)
 	 * @returns Invitation data and transaction ID
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("invitation.create", {
-		payload: Invitation.Model.jsonCreate,
+		payload: Schema.Struct({
+			organizationId: OrganizationId,
+			email: Schema.String,
+			role: Schema.Literal("member", "admin"),
+		}),
 		success: InvitationResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * InvitationResend
+	 *
+	 * Resends an existing invitation via WorkOS.
+	 * Only the invitation creator or organization admins can resend.
+	 *
+	 * @param payload - Invitation ID to resend
+	 * @returns Invitation data and transaction ID
+	 * @throws InvitationNotFoundError if invitation doesn't exist
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.make("invitation.resend", {
+		payload: Schema.Struct({ invitationId: InvitationId }),
+		success: InvitationResponse,
+		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * InvitationRevoke
+	 *
+	 * Revokes an existing invitation via WorkOS.
+	 * Only the invitation creator or organization admins can revoke.
+	 *
+	 * @param payload - Invitation ID to revoke
+	 * @returns Transaction ID
+	 * @throws InvitationNotFoundError if invitation doesn't exist
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.make("invitation.revoke", {
+		payload: Schema.Struct({ invitationId: InvitationId }),
+		success: Schema.Struct({ transactionId: TransactionId }),
+		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
 	/**

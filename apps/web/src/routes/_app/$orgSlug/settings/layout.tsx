@@ -1,9 +1,8 @@
 import { createFileRoute, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { TabList, Tabs } from "~/components/application/tabs/tabs"
-import { Input } from "~/components/base/input/input"
-import { NativeSelect } from "~/components/base/select/select-native"
-import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
+import IconMagnifier from "~/components/icons/icon-magnifier-3"
+import { Input, InputGroup } from "~/components/ui/input"
+import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings")({
 	component: RouteComponent,
@@ -40,32 +39,27 @@ function RouteComponent() {
 	}, [currentTab])
 
 	return (
-		<main className="min-w-0 flex-1 bg-primary pt-8 pb-12">
+		<main className="min-w-0 flex-1 bg-bg pt-8 pb-12">
 			<div className="flex flex-col gap-8">
 				<div className="flex flex-col gap-5 px-4 lg:px-8">
 					{/* Page header simple with search */}
 					<div className="relative flex flex-col gap-5">
 						<div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
 							<div className="flex flex-col gap-0.5 lg:gap-1">
-								<h1 className="font-semibold text-primary text-xl lg:text-display-xs">
-									Settings
-								</h1>
+								<h1 className="font-semibold text-fg text-xl lg:text-2xl">Settings</h1>
 							</div>
 							<div className="flex flex-col gap-4 lg:flex-row">
-								<Input
-									className="lg:w-80"
-									size="sm"
-									shortcut
-									aria-label="Search"
-									placeholder="Search"
-									icon={IconMagnifier3}
-								/>
+								<InputGroup className="lg:w-80">
+									<IconMagnifier data-slot="icon" />
+									<Input aria-label="Search" placeholder="Search" />
+								</InputGroup>
 							</div>
 						</div>
 					</div>
 
+					{/* Mobile select dropdown */}
 					<div className="md:hidden">
-						<NativeSelect
+						<select
 							value={selectedTab}
 							onChange={(event) => {
 								const tabId = event.target.value
@@ -77,13 +71,20 @@ function RouteComponent() {
 									params: { orgSlug },
 								})
 							}}
-							options={tabs.map((tab) => ({ label: tab.label, value: tab.id }))}
-						/>
+							className="w-full appearance-none rounded-lg border border-input bg-bg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-base/6 text-fg outline-hidden focus:border-ring/70 focus:ring-3 focus:ring-ring/20 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6"
+						>
+							{tabs.map((tab) => (
+								<option key={tab.id} value={tab.id}>
+									{tab.label}
+								</option>
+							))}
+						</select>
 					</div>
 
+					{/* Desktop tabs */}
 					<div className="-mx-4 -my-1 scrollbar-hide lg:-mx-8 flex overflow-auto px-4 py-1 lg:px-8">
 						<Tabs
-							className="flex w-max items-start max-md:hidden"
+							className="max-md:hidden"
 							selectedKey={selectedTab}
 							onSelectionChange={(value) => {
 								const tabId = value as string
@@ -96,7 +97,13 @@ function RouteComponent() {
 								})
 							}}
 						>
-							<TabList type="button-border" className="w-full" items={tabs} />
+							<TabList className="w-full">
+								{tabs.map((tab) => (
+									<Tab key={tab.id} id={tab.id}>
+										{tab.label}
+									</Tab>
+								))}
+							</TabList>
 						</Tabs>
 					</div>
 				</div>

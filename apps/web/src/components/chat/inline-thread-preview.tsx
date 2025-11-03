@@ -8,8 +8,9 @@ import {
 	userWithPresenceAtomFamily,
 } from "~/atoms/message-atoms"
 import { useChat } from "~/hooks/use-chat"
-import { Avatar } from "../base/avatar/avatar"
 import IconThread from "../icons/icon-thread"
+import { Avatar } from "../ui/avatar"
+import { Button } from "../ui/button"
 
 interface InlineThreadPreviewProps {
 	threadChannelId: ChannelId
@@ -47,7 +48,7 @@ export function InlineThreadPreview({
 			{/* Thread container with visual connection */}
 			<div className="relative">
 				{/* Vertical line connecting to parent message */}
-				<div className="absolute top-0 bottom-0 left-4 w-0.5 bg-quaternary/50" />
+				<div className="absolute top-0 bottom-0 left-4 w-0.5 bg-border" />
 
 				{/* Thread messages */}
 				<div className="space-y-1 pl-8">
@@ -58,18 +59,19 @@ export function InlineThreadPreview({
 			</div>
 
 			{/* View full thread button */}
-			<button
-				type="button"
-				onClick={() => openThread(threadChannelId, messageId)}
-				className="mt-2 ml-8 flex items-center gap-2 text-brand text-sm transition-colors hover:text-brand-hover"
+			<Button
+				intent="plain"
+				size="sm"
+				onPress={() => openThread(threadChannelId, messageId)}
+				className="mt-2 ml-8 flex items-center gap-2 text-primary hover:text-primary/80"
 			>
-				<IconThread className="size-4" />
+				<IconThread data-slot="icon" className="size-4" />
 				<span className="font-medium">
 					{hasMoreMessages
 						? `View all ${totalCount} ${totalCount === 1 ? "reply" : "replies"}`
 						: `${totalCount} ${totalCount === 1 ? "reply" : "replies"}`}
 				</span>
-			</button>
+			</Button>
 		</div>
 	)
 }
@@ -85,16 +87,16 @@ function ThreadMessagePreview({ message }: { message: typeof Message.Model.Type 
 
 	return (
 		<div className="group flex gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50">
-			<Avatar size="xs" alt={`${user.firstName} ${user.lastName}`} src={user.avatarUrl} />
+			<Avatar src={user.avatarUrl} initials={`${user.firstName} ${user.lastName}`} className="size-6" />
 
 			<div className="min-w-0 flex-1">
 				<div className="flex items-baseline gap-2">
 					<span className="font-medium text-sm">
 						{user.firstName} {user.lastName}
 					</span>
-					<span className="text-secondary text-xs">{format(message.createdAt, "HH:mm")}</span>
+					<span className="text-muted-fg text-xs">{format(message.createdAt, "HH:mm")}</span>
 				</div>
-				<p className="text-foreground text-sm leading-snug">{message.content}</p>
+				<p className="text-fg text-sm leading-snug">{message.content}</p>
 			</div>
 		</div>
 	)

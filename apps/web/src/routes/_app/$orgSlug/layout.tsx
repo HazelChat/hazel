@@ -1,10 +1,8 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
-import { ErrorBoundary } from "react-error-boundary"
-import { AppSidebar } from "~/components/app-sidebar/app-sidebar"
-import { SidebarMobile } from "~/components/app-sidebar/sidebar-mobile"
+import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
 import { CommandPalette } from "~/components/command-palette"
-import { NotificationManager } from "~/components/notification-manager"
+import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
 	attachmentCollection,
@@ -14,6 +12,7 @@ import {
 	organizationCollection,
 	organizationMemberCollection,
 } from "~/db/collections"
+import { PresenceProvider } from "~/providers/presence-provider"
 
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
@@ -33,18 +32,28 @@ export const Route = createFileRoute("/_app/$orgSlug")({
 
 function RouteComponent() {
 	const [openCmd, setOpenCmd] = useState(false)
+	const [initialPage, setInitialPage] = useState<CommandPalettePage>("home")
+
+	const openChannelsBrowser = () => {
+		setInitialPage("channels")
+		setOpenCmd(true)
+	}
 
 	return (
-		<SidebarProvider>
-			<NotificationManager />
-			<AppSidebar setOpenCmd={setOpenCmd} />
-			<SidebarInset>
-				<ErrorBoundary fallback={<></>}>
-					<SidebarMobile />
-				</ErrorBoundary>
-				<Outlet />
-				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />
-			</SidebarInset>
+		<SidebarProvider
+			style={
+				{
+					"--sidebar-width": "350px",
+				} as React.CSSProperties
+			}
+		>
+			<PresenceProvider>
+				<AppSidebar openChannelsBrowser={openChannelsBrowser} />
+				<SidebarInset>
+					<Outlet />
+					<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} initialPage={initialPage} />
+				</SidebarInset>
+			</PresenceProvider>
 		</SidebarProvider>
 	)
 }

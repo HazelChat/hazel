@@ -5,9 +5,8 @@ import { useTodoListElement, useTodoListElementState } from "@platejs/list/react
 import type { TListElement } from "platejs"
 import { type PlateElementProps, type RenderNodeWrapper, useReadOnly } from "platejs/react"
 import type React from "react"
-
+import { Checkbox } from "~/components/ui/checkbox"
 import { cn } from "~/lib/utils"
-import { Checkbox } from "../../base/checkbox/checkbox"
 
 const config: Record<
 	string,

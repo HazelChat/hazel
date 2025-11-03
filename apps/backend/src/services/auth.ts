@@ -3,6 +3,7 @@ import { CurrentUser, type OrganizationId, UnauthorizedError, withSystemActor } 
 import { Config, Effect, Layer, Option, Redacted } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserRepo } from "../repositories/user-repo"
+import { SessionManager } from "./session-manager"
 import { WorkOS } from "./workos"
 
 export const AuthorizationLive = Layer.effect(
@@ -12,169 +13,37 @@ export const AuthorizationLive = Layer.effect(
 
 		const userRepo = yield* UserRepo
 		const workos = yield* WorkOS
+		const sessionManager = yield* SessionManager
 
 		const workOsCookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
 		const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
-
-		const clearInvalidCookie = () =>
-			HttpApiBuilder.securitySetCookie(CurrentUser.Cookie, Redacted.make(""), {
-				secure: Bun.env.NODE_ENV === "production",
-				sameSite: "lax",
-				domain: cookieDomain,
-				path: "/",
-				maxAge: 0,
-			})
 
 		return {
 			cookie: (cookie) =>
 				Effect.gen(function* () {
 					yield* Effect.log("checking cookie")
-					const res = yield* workos
-						.call(async (client) =>
-							client.userManagement.loadSealedSession({
-								sessionData: Redacted.value(cookie),
-								cookiePassword: workOsCookiePassword,
-							}),
-						)
-						.pipe(
-							Effect.catchTag("WorkOSApiError", (error) =>
-								Effect.gen(function* () {
-									yield* clearInvalidCookie()
-									return yield* Effect.fail(
-										new UnauthorizedError({
-											message: "Failed to get session from cookie",
-											detail: String(error.cause),
-										}),
-									)
-								}),
-							),
-						)
 
-					const session = yield* Effect.tryPromise(() => res.authenticate()).pipe(
-						Effect.tapError((error) => Effect.log("authenticate error", error)),
-						Effect.catchTag("UnknownException", (error) =>
-							Effect.gen(function* () {
-								yield* clearInvalidCookie()
-								return yield* Effect.fail(
-									new UnauthorizedError({
-										message: "Failed to call authenticate on sealed session",
-										detail: String(error.cause),
-									}),
-								)
-							}),
-						),
+					// Use SessionManager to handle authentication and refresh logic
+					const result = yield* sessionManager.authenticateAndGetUser(
+						Redacted.value(cookie),
+						workOsCookiePassword,
 					)
 
-					if (session.authenticated) {
-						const userOption = yield* userRepo
-							.findByExternalId(session.user.id)
-							.pipe(Effect.orDie, withSystemActor)
-
-						const user = yield* Option.match(userOption, {
-							onNone: () =>
-								userRepo
-									.upsertByExternalId({
-										externalId: session.user.id,
-										email: session.user.email,
-										firstName: session.user.firstName || "",
-										lastName: session.user.lastName || "",
-										avatarUrl: session.user.profilePictureUrl || "",
-										status: "online" as const,
-										lastSeen: new Date(),
-										settings: null,
-										deletedAt: null,
-									})
-									.pipe(Effect.orDie, withSystemActor),
-							onSome: (user) => Effect.succeed(user),
-						})
-
-						return new CurrentUser.Schema({
-							id: user.id,
-							role: (session.role as "admin" | "member") || "member",
-							organizationId: session.organizationId as OrganizationId | undefined,
-							avatarUrl: user.avatarUrl,
-							firstName: user.firstName,
-							lastName: user.lastName,
-							email: user.email,
-						})
-					}
-
-					if (!session.authenticated && session.reason === "no_session_cookie_provided") {
-						yield* clearInvalidCookie()
-						return yield* Effect.fail(
-							new UnauthorizedError({
-								message: "Failed to authenticate session",
-								detail: "The session was not authenticated",
-							}),
+					// If a new session was created via refresh, update the cookie
+					if (result.refreshedSession) {
+						yield* HttpApiBuilder.securitySetCookie(
+							CurrentUser.Cookie,
+							Redacted.make(result.refreshedSession),
+							{
+								secure: Bun.env.NODE_ENV === "production",
+								sameSite: "lax",
+								domain: cookieDomain,
+								path: "/",
+							},
 						)
 					}
 
-					const refreshedSession = yield* Effect.tryPromise(() => res.refresh()).pipe(
-						Effect.tapError((error) => Effect.log("refresh error", error)),
-						Effect.catchTag("UnknownException", (error) =>
-							Effect.gen(function* () {
-								yield* clearInvalidCookie()
-								return yield* Effect.fail(
-									new UnauthorizedError({
-										message: "Failed to call refresh on sealed session",
-										detail: String(error.cause),
-									}),
-								)
-							}),
-						),
-					)
-
-					if (!refreshedSession.authenticated) {
-						return yield* Effect.fail(
-							new UnauthorizedError({
-								message: "Failed to refresh session",
-								detail: "The session was not refreshed",
-							}),
-						)
-					}
-
-					yield* HttpApiBuilder.securitySetCookie(
-						CurrentUser.Cookie,
-						Redacted.make(refreshedSession.sealedSession!),
-						{
-							secure: Bun.env.NODE_ENV === "production",
-							sameSite: "lax",
-							domain: cookieDomain,
-							path: "/",
-						},
-					)
-
-					const userOption = yield* userRepo
-						.findByExternalId(refreshedSession.user.id)
-						.pipe(Effect.orDie, withSystemActor)
-
-					const user = yield* Option.match(userOption, {
-						onNone: () =>
-							userRepo
-								.upsertByExternalId({
-									externalId: refreshedSession.user.id,
-									email: refreshedSession.user.email,
-									firstName: refreshedSession.user.firstName || "",
-									lastName: refreshedSession.user.lastName || "",
-									avatarUrl: refreshedSession.user.profilePictureUrl || "",
-									status: "online" as const,
-									lastSeen: new Date(),
-									settings: null,
-									deletedAt: null,
-								})
-								.pipe(Effect.orDie, withSystemActor),
-						onSome: (user) => Effect.succeed(user),
-					})
-
-					return new CurrentUser.Schema({
-						id: user.id,
-						role: (refreshedSession.role as "admin" | "member") || "member",
-						organizationId: refreshedSession.organizationId as OrganizationId | undefined,
-						avatarUrl: user.avatarUrl,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						email: user.email,
-					})
+					return result.currentUser
 				}),
 			bearer: (bearerToken) =>
 				Effect.gen(function* () {

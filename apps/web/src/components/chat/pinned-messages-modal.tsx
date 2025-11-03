@@ -1,12 +1,13 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
-import { Dialog, DialogTrigger, Popover } from "react-aria-components"
+import { Button as PrimitiveButton } from "react-aria-components"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
-import { ButtonUtility } from "../base/buttons/button-utility"
+import { cn } from "~/lib/utils"
 import IconClose from "../icons/icon-close"
 import IconPin from "../icons/icon-pin"
-import { MessageAuthorHeader } from "./message-item"
+import { Button } from "../ui/button"
+import { Popover, PopoverContent } from "../ui/popover"
 import { UserProfilePopover } from "./user-profile-popover"
 
 export function PinnedMessagesModal() {
@@ -41,9 +42,9 @@ export function PinnedMessagesModal() {
 			element.scrollIntoView({ behavior: "smooth", block: "center" })
 
 			// Add a highlight effect
-			element.classList.add("bg-quaternary/30")
+			element.classList.add("bg-secondary/30")
 			setTimeout(() => {
-				element.classList.remove("bg-quaternary/30")
+				element.classList.remove("bg-secondary/30")
 			}, 2000)
 		}
 	}
@@ -53,37 +54,45 @@ export function PinnedMessagesModal() {
 	)
 
 	return (
-		<DialogTrigger>
-			<ButtonUtility size="sm" color="tertiary" tooltip="View pinned messages" icon={IconPin} />
+		<Popover>
+			<Button size="sm" intent="outline" aria-label="View pinned messages">
+				<IconPin data-slot="icon" />
+			</Button>
 
-			<Popover placement="bottom end" className="w-96">
-				<Dialog className="p-0">
-					<div className="rounded-lg border border-primary bg-primary shadow-lg">
-						{/* Header */}
-						<div className="flex items-center gap-2 border-primary border-b px-4 py-3">
-							<IconPin className="size-4 text-secondary" />
-							<h3 className="font-semibold text-sm">Pinned Messages</h3>
-							<span className="ml-auto text-secondary text-xs">
-								{sortedPins.length} {sortedPins.length === 1 ? "pin" : "pins"}
-							</span>
-						</div>
+			<PopoverContent placement="bottom end" className="w-96 p-0">
+				<div className="rounded-xl border border-border bg-bg shadow-lg">
+					{/* Header */}
+					<div className="flex items-center gap-2 border-border border-b px-4 py-3">
+						<IconPin className="size-4 text-muted-fg" />
+						<h3 className="font-semibold text-fg text-sm">Pinned Messages</h3>
+						<span className="ml-auto rounded-full bg-secondary px-2 py-0.5 font-medium text-muted-fg text-xs">
+							{sortedPins.length} {sortedPins.length === 1 ? "pin" : "pins"}
+						</span>
+					</div>
 
-						{/* Content */}
-						<div className="max-h-[400px] overflow-y-auto">
-							{sortedPins.length === 0 ? (
-								<div className="px-4 py-8 text-center">
-									<p className="text-secondary text-sm">No pinned messages yet</p>
-									<p className="mt-1 text-quaternary text-xs">
-										Pin important messages to keep them easily accessible
-									</p>
-								</div>
-							) : (
-								<div className="flex flex-col">
-									{sortedPins.map((pinnedMessage) => (
+					{/* Content */}
+					<div className="max-h-[400px] overflow-y-auto">
+						{sortedPins.length === 0 ? (
+							<div className="px-4 py-8 text-center">
+								<p className="text-muted-fg text-sm">No pinned messages yet</p>
+								<p className="mt-1 text-muted-fg/60 text-xs">
+									Pin important messages to keep them easily accessible
+								</p>
+							</div>
+						) : (
+							<div className="flex flex-col">
+								{sortedPins.map((pinnedMessage) => {
+									const user = pinnedMessage.message.author
+									const isEdited =
+										pinnedMessage.message.updatedAt &&
+										pinnedMessage.message.updatedAt.getTime() >
+											pinnedMessage.message.createdAt.getTime()
+
+									return (
 										<button
 											key={pinnedMessage.pinned.messageId}
 											onClick={() => scrollToMessage(pinnedMessage.pinned.messageId)}
-											className="group relative w-full cursor-pointer border-primary border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary"
+											className="group relative w-full cursor-pointer border-border border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary"
 											type="button"
 										>
 											{/* Unpin Button */}
@@ -92,37 +101,49 @@ export function PinnedMessagesModal() {
 													e.stopPropagation()
 													unpinMessage(pinnedMessage.pinned.id)
 												}}
-												className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-tertiary group-hover:opacity-100"
+												className="absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity hover:bg-secondary group-hover:opacity-100"
 												aria-label="Unpin message"
 												type="button"
 											>
-												<IconClose className="size-3.5 text-secondary" />
+												<IconClose className="size-3.5 text-muted-fg" />
 											</button>
 
 											{/* Message Content */}
 											<div className="flex gap-3 pr-8">
 												<UserProfilePopover userId={pinnedMessage.message.authorId} />
 												<div className="min-w-0 flex-1">
-													<MessageAuthorHeader message={pinnedMessage.message} />
-													<p className="mt-1 line-clamp-2 text-secondary text-sm">
+													{/* Message Author Header */}
+													<div className="flex items-baseline gap-2">
+														<span className="font-semibold text-fg text-sm">
+															{user
+																? `${user.firstName} ${user.lastName}`
+																: "Unknown"}
+														</span>
+														<span className="text-muted-fg text-xs">
+															{format(pinnedMessage.message.createdAt, "HH:mm")}
+															{isEdited && " (edited)"}
+														</span>
+													</div>
+
+													<p className="mt-1 line-clamp-2 text-muted-fg text-sm">
 														{pinnedMessage.message.content}
 													</p>
 												</div>
 											</div>
 
 											{/* Pinned Date */}
-											<div className="mt-2 text-secondary text-xs">
+											<div className="mt-2 text-muted-fg text-xs">
 												Pinned{" "}
 												{format(pinnedMessage.pinned.pinnedAt, "MMM d 'at' h:mm a")}
 											</div>
 										</button>
-									))}
-								</div>
-							)}
-						</div>
+									)
+								})}
+							</div>
+						)}
 					</div>
-				</Dialog>
-			</Popover>
-		</DialogTrigger>
+				</div>
+			</PopoverContent>
+		</Popover>
 	)
 }

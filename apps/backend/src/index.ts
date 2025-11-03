@@ -46,6 +46,7 @@ import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
 import { MockDataGenerator } from "./services/mock-data-generator"
+import { SessionManager } from "./services/session-manager"
 import { WorkOS } from "./services/workos"
 import { WorkOSSync } from "./services/workos-sync"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
@@ -129,6 +130,7 @@ const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.Default,
+	SessionManager.Default,
 	WorkOS.Default,
 	WorkOSSync.Default,
 	WorkOSWebhookVerifier.Default,
@@ -153,7 +155,13 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 	),
 	Layer.provide(MainLive),
 	Layer.provide(TracerLive),
-	Layer.provide(AuthorizationLive.pipe(Layer.provide(UserRepo.Default), Layer.provide(WorkOS.Default))),
+	Layer.provide(
+		AuthorizationLive.pipe(
+			Layer.provideMerge(SessionManager.Default),
+			Layer.provideMerge(UserRepo.Default),
+			Layer.provideMerge(WorkOS.Default),
+		),
+	),
 	Layer.provide(
 		BunHttpServer.layerConfig(
 			Config.all({

@@ -213,14 +213,8 @@ export function usePresence() {
 
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
 
-	const lastSentStatusRef = useRef<PresenceStatus | null>(null)
-	const lastSentChannelRef = useRef<string | null>(null)
-
 	useEffect(() => {
 		if (!user?.id) return
-		if (lastSentStatusRef.current === computedStatus) return
-
-		lastSentStatusRef.current = computedStatus
 
 		const program = Effect.gen(function* () {
 			const client = yield* HazelRpcClient
@@ -234,9 +228,6 @@ export function usePresence() {
 
 	useEffect(() => {
 		if (!user?.id) return
-		if (lastSentChannelRef.current === currentChannelId) return
-
-		lastSentChannelRef.current = currentChannelId
 
 		const program = Effect.gen(function* () {
 			const client = yield* HazelRpcClient

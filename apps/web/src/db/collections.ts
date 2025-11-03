@@ -83,7 +83,11 @@ export const invitationCollection = createCollection(
 				const { modified: newInvitation } = transaction.mutations[0]
 				const client = yield* HazelRpcClient
 
-				const results = yield* client("invitation.create", newInvitation)
+				const results = yield* client("invitation.create", {
+					organizationId: newInvitation.organizationId,
+					email: newInvitation.email,
+					role: "member" as const,
+				})
 
 				return { txid: results.transactionId }
 			}),

@@ -24,6 +24,20 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 			const channelRepo = yield* ChannelRepo
 			const organizationMemberRepo = yield* OrganizationMemberRepo
 
+			const canList = (_id: MessageId) =>
+				UnauthorizedError.refail(
+					policyEntity,
+					"select",
+				)(
+					policy(
+						policyEntity,
+						"select",
+						Effect.fn(`${policyEntity}.select`)(function* (_actor) {
+							return yield* Effect.succeed(true)
+						}),
+					),
+				)
+
 			const canUpdate = (id: MessageReactionId) =>
 				UnauthorizedError.refail(
 					policyEntity,
@@ -97,7 +111,7 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 					),
 				)
 
-			return { canCreate, canDelete, canUpdate } as const
+			return { canCreate, canDelete, canUpdate, canList } as const
 		}),
 		dependencies: [
 			MessageReactionRepo.Default,

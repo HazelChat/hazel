@@ -1,49 +1,49 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/db/schema"
+import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { AlertTriangle } from "@untitledui/icons"
+import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
-import type { SortDescriptor } from "react-aria-components"
-import { DialogTrigger as AriaDialogTrigger, Heading as AriaHeading } from "react-aria-components"
 import { toast } from "sonner"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { openModal } from "~/atoms/modal-atoms"
-import { ChangeRoleModal } from "~/components/application/modals/change-role-modal"
-import { EmailInviteModal } from "~/components/application/modals/email-invite-modal"
-import { Dialog, Modal, ModalOverlay } from "~/components/application/modals/modal"
-import { PaginationCardDefault } from "~/components/application/pagination/pagination"
-import { Table, TableCard } from "~/components/application/table/table"
-import { Avatar } from "~/components/base/avatar/avatar"
-import { Badge, type BadgeColor, BadgeWithDot } from "~/components/base/badges/badges"
-import { Button } from "~/components/base/buttons/button"
-import { CloseButton } from "~/components/base/buttons/close-button"
-import { Dropdown } from "~/components/base/dropdown/dropdown"
-import { FeaturedIcon } from "~/components/foundations/featured-icon/featured-icons"
 import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
+import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconMessage from "~/components/icons/icon-msgs"
 import IconPlus from "~/components/icons/icon-plus"
 import IconTrash from "~/components/icons/icon-trash"
+import { ChangeRoleModal } from "~/components/modals/change-role-modal"
+import { EmailInviteModal } from "~/components/modals/email-invite-modal"
+import { Avatar } from "~/components/ui/avatar"
+import { Button } from "~/components/ui/button"
+import {
+	Dialog,
+	DialogClose,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog"
+import { DropdownLabel, DropdownSeparator } from "~/components/ui/dropdown"
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
+import { Modal, ModalContent } from "~/components/ui/modal"
 import { organizationMemberCollection, userCollection, userPresenceStatusCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
+import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
-	component: RouteComponent,
+	component: TeamSettings,
 })
 
-function RouteComponent() {
-	const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-		column: "status",
-		direction: "ascending",
-	})
-	const [showInviteModal, setShowInviteModal] = useState(false)
+function TeamSettings() {
 	const [removeUserId, setRemoveUserId] = useState<UserId | null>(null)
+	const [showInviteModal, setShowInviteModal] = useState(false)
 
 	const { organizationId, slug: orgSlug } = useOrganization()
-	const navigate = useNavigate()
+	const { user } = useAuth()
 
 	const createDmChannel = useAtomSet(createDmChannelMutation, {
 		mode: "promiseExit",
@@ -62,12 +62,10 @@ function RouteComponent() {
 		[organizationId],
 	)
 
-	const { user } = useAuth()
-
-	const roleToBadgeColorsMap: Record<string, BadgeColor<"pill-color">> = {
-		owner: "brand",
-		admin: "pink",
-		member: "gray",
+	const roleToBadgeColors = {
+		owner: "bg-primary text-primary-fg",
+		admin: "bg-pink-600 text-white",
+		member: "bg-secondary text-fg",
 	}
 
 	const getInitials = (name: string) => {
@@ -94,18 +92,31 @@ function RouteComponent() {
 		}
 	}
 
-	const canManageUser = (_userRole: string, targetUserRole: string) => {
+	const canManageUser = (targetUserRole: string) => {
 		if (!user) return false
-		const currentUserMember = teamMembers.find((m) => m.userId === user.id)
+		const currentUserMember = teamMembers?.find((m) => m.userId === user.id)
 		if (!currentUserMember) return false
 
 		const currentRole = currentUserMember.role
 
 		if (currentRole === "owner") return true
-
 		if (currentRole === "admin" && targetUserRole === "member") return true
 
 		return false
+	}
+
+	const getStatusColor = (status?: string) => {
+		switch (status) {
+			case "online":
+				return "text-success"
+			case "away":
+			case "busy":
+				return "text-warning"
+			case "dnd":
+				return "text-danger"
+			default:
+				return "text-muted-fg"
+		}
 	}
 
 	const handleMessageUser = async (targetUserId: UserId, targetUserName: string) => {
@@ -114,9 +125,13 @@ function RouteComponent() {
 		const existingChannel = findExistingDmChannel(user.id, targetUserId)
 
 		if (existingChannel) {
-			navigate({
-				to: "/$orgSlug/chat/$id",
-				params: { orgSlug, id: existingChannel.id },
+			// TODO: Navigate to chat when chat route is available
+			// navigate({
+			// 	to: "/$orgSlug/chat/$id",
+			// 	params: { orgSlug, id: existingChannel.id },
+			// })
+			toast.info("Opening chat", {
+				description: `Chat with ${targetUserName}`,
 			})
 		} else {
 			await toastExit(
@@ -129,14 +144,8 @@ function RouteComponent() {
 				}),
 				{
 					loading: `Starting conversation with ${targetUserName}...`,
-					success: (result) => {
-						if (result.data.id) {
-							navigate({
-								to: "/$orgSlug/chat/$id",
-								params: { orgSlug, id: result.data.id },
-							})
-						}
-
+					success: () => {
+						// TODO: Navigate to chat when chat route is available
 						return `Started conversation with ${targetUserName}`
 					},
 				},
@@ -145,236 +154,212 @@ function RouteComponent() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 px-4 lg:px-8">
-			<TableCard.Root className="rounded-none bg-transparent shadow-none ring-0 lg:rounded-xl lg:bg-primary lg:shadow-xs lg:ring">
-				<TableCard.Header
-					title="Team members"
-					description="Manage your team members and their account permissions here."
-					className="pb-5"
-					badge={
-						<Badge color="gray" type="modern" size="sm">
-							{teamMembers.length} users
-						</Badge>
-					}
-					contentTrailing={
-						<div className="flex gap-3">
-							<Button
-								color="secondary"
-								size="md"
-								iconLeading={IconPlus}
-								onClick={() => setShowInviteModal(true)}
-							>
-								Invite user
-							</Button>
+		<>
+			<div className="flex flex-col gap-6 px-4 lg:px-8">
+				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+					<div className="border-border border-b bg-bg px-4 py-5 md:px-6">
+						<div className="flex flex-col items-start gap-4 md:flex-row">
+							<div className="flex flex-1 flex-col gap-0.5">
+								<div className="flex items-center gap-2">
+									<h2 className="font-semibold text-fg text-lg">Team members</h2>
+									<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
+										{teamMembers?.length || 0} users
+									</span>
+								</div>
+								<p className="text-muted-fg text-sm">
+									Manage your team members and their account permissions here.
+								</p>
+							</div>
+							<div className="flex gap-3">
+								<Button intent="secondary" size="md" onPress={() => setShowInviteModal(true)}>
+									<IconPlus data-slot="icon" />
+									Invite user
+								</Button>
+							</div>
 						</div>
-					}
-				/>
+					</div>
 
-				<Table
-					aria-label="Team members"
-					sortDescriptor={sortDescriptor}
-					onSortChange={setSortDescriptor}
-					className="bg-primary"
-				>
-					<Table.Header className="bg-primary">
-						<Table.Head id="name" isRowHeader label="Name" allowsSorting className="w-full" />
-						<Table.Head id="status" label="Status" allowsSorting />
-						<Table.Head id="role" label="Role" allowsSorting />
-						<Table.Head id="actions" />
-					</Table.Header>
-					<Table.Body items={teamMembers}>
-						{(member) => (
-							<Table.Row id={member.id} className="odd:bg-secondary_subtle">
-								<Table.Cell>
-									<div className="flex w-max items-center gap-3">
-										<Avatar
-											src={member.user.avatarUrl}
-											initials={getInitials(
-												`${member.user.firstName} ${member.user.lastName}`,
-											)}
-											alt={`${member.user.firstName} ${member.user.lastName}`}
-											className="size-9 rounded-md *:rounded-md"
-											status={
-												member.presence?.status === "online"
-													? "online"
-													: member.presence?.status === "away" ||
-															member.presence?.status === "busy" ||
-															member.presence?.status === "dnd"
-														? "online"
-														: "offline"
-											}
-										/>
-										<div className="flex flex-col">
-											<span className="font-medium text-primary text-sm/6">
-												{`${member.user.firstName} ${member.user.lastName}`}
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-full">
+							<thead className="border-border border-b bg-bg">
+								<tr>
+									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+										Name
+									</th>
+									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+										Status
+									</th>
+									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+										Role
+									</th>
+									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+										Actions
+									</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{teamMembers?.map((member) => (
+									<tr key={member.id} className="hover:bg-secondary/50">
+										<td className="px-4 py-4">
+											<div className="flex items-center gap-3">
+												<Avatar
+													src={member.user.avatarUrl}
+													initials={getInitials(
+														`${member.user.firstName} ${member.user.lastName}`,
+													)}
+													className="size-9"
+												/>
+												<div className="flex flex-col">
+													<span className="font-medium text-fg text-sm">
+														{`${member.user.firstName} ${member.user.lastName}`}
+													</span>
+													<span className="text-muted-fg text-xs">
+														{member.user.email}
+													</span>
+												</div>
+											</div>
+										</td>
+										<td className="px-4 py-4">
+											<span
+												className={cn(
+													"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs",
+													getStatusColor(member.presence?.status),
+												)}
+											>
+												<span className="size-1.5 rounded-full bg-current" />
+												{member.presence?.status
+													? member.presence.status.charAt(0).toUpperCase() +
+														member.presence.status.slice(1)
+													: "Offline"}
 											</span>
-											<span className="text-tertiary">{member.user.email}</span>
-										</div>
-									</div>
-								</Table.Cell>
-								<Table.Cell>
-									<BadgeWithDot
-										className="rounded-full"
-										color={
-											member.presence?.status === "online"
-												? "success"
-												: member.presence?.status === "away"
-													? "warning"
-													: member.presence?.status === "busy"
-														? "warning"
-														: member.presence?.status === "dnd"
-															? "error"
-															: "gray"
-										}
-										size="sm"
-										type="modern"
-									>
-										{member.presence?.status
-											? member.presence.status.charAt(0).toUpperCase() +
-												member.presence.status.slice(1)
-											: "Offline"}
-									</BadgeWithDot>
-								</Table.Cell>
-								<Table.Cell>
-									<Badge
-										className="rounded-full"
-										color={
-											roleToBadgeColorsMap[
-												member.role as keyof typeof roleToBadgeColorsMap
-											] ?? "gray"
-										}
-										type="pill-color"
-										size="sm"
-									>
-										{member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-									</Badge>
-								</Table.Cell>
+										</td>
+										<td className="px-4 py-4">
+											<span
+												className={cn(
+													"inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
+													roleToBadgeColors[
+														member.role as keyof typeof roleToBadgeColors
+													] || "bg-secondary text-fg",
+												)}
+											>
+												{member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+											</span>
+										</td>
+										<td className="px-4 py-4">
+											{user &&
+												member.userId !== user.id &&
+												canManageUser(member.role) && (
+													<div className="flex justify-end">
+														<Menu>
+															<MenuTrigger
+																aria-label="Actions"
+																className="inline-flex size-8 items-center justify-center rounded-lg hover:bg-secondary"
+															>
+																<IconDotsVertical className="size-5 text-muted-fg" />
+															</MenuTrigger>
+															<MenuContent placement="bottom end">
+																<MenuItem
+																	onAction={() =>
+																		handleMessageUser(
+																			member.userId,
+																			`${member.user.firstName} ${member.user.lastName}`,
+																		)
+																	}
+																>
+																	<IconMessage data-slot="icon" />
+																	<DropdownLabel>
+																		Send message
+																	</DropdownLabel>
+																</MenuItem>
+																<DropdownSeparator />
+																<MenuItem
+																	onAction={() => {
+																		const currentUserMember =
+																			teamMembers?.find(
+																				(m) => m.userId === user?.id,
+																			)
+																		openModal("change-role", {
+																			userId: member.userId,
+																			name: `${member.user.firstName} ${member.user.lastName}`,
+																			memberId: member.id,
+																			role: member.role,
+																			currentUserRole:
+																				currentUserMember?.role ||
+																				"member",
+																		})
+																	}}
+																>
+																	<IconCircleDottedUser data-slot="icon" />
+																	<DropdownLabel>Change role</DropdownLabel>
+																</MenuItem>
+																<DropdownSeparator />
+																<MenuItem
+																	intent="danger"
+																	onAction={() =>
+																		setRemoveUserId(member.userId)
+																	}
+																>
+																	<IconTrash data-slot="icon" />
+																	<DropdownLabel>
+																		Remove from team
+																	</DropdownLabel>
+																</MenuItem>
+															</MenuContent>
+														</Menu>
+													</div>
+												)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
 
-								<Table.Cell className="px-4">
-									{user &&
-										member.userId !== user.id &&
-										canManageUser(member.role, member.role) && (
-											<Dropdown.Root>
-												<Dropdown.DotsButton />
-												<Dropdown.Popover>
-													<Dropdown.Menu
-														onAction={(key) => {
-															const action = key as string
-															if (action === "message") {
-																handleMessageUser(
-																	member.userId,
-																	`${member.user.firstName} ${member.user.lastName}`,
-																)
-															} else if (action === "change-role") {
-																const currentUserMember = teamMembers.find(
-																	(m) => m.userId === user?.id,
-																)
-																openModal("change-role", {
-																	userId: member.userId,
-																	name: `${member.user.firstName} ${member.user.lastName}`,
-																	memberId: member.id,
-																	role: member.role,
-																	currentUserRole:
-																		currentUserMember?.role || "member",
-																})
-															} else if (action === "remove") {
-																setRemoveUserId(member.userId)
-															}
-														}}
-													>
-														<Dropdown.Item
-															id="message"
-															label="Send message"
-															icon={IconMessage}
-														/>
-														<Dropdown.Separator />
-														<Dropdown.Item
-															id="change-role"
-															label="Change role"
-															icon={IconCircleDottedUser}
-														/>
-														<Dropdown.Separator />
-														<Dropdown.Item
-															id="remove"
-															label="Remove from team"
-															icon={IconTrash}
-														/>
-													</Dropdown.Menu>
-												</Dropdown.Popover>
-											</Dropdown.Root>
-										)}
-								</Table.Cell>
-							</Table.Row>
-						)}
-					</Table.Body>
-				</Table>
-
-				<PaginationCardDefault page={1} total={Math.ceil(teamMembers.length / 10)} />
-			</TableCard.Root>
-
-			<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
-
-			<ChangeRoleModal />
-
-			{removeUserId && (
-				<AriaDialogTrigger
+			{/* Remove Member Confirmation Modal */}
+			<Modal>
+				<ModalContent
 					isOpen={!!removeUserId}
 					onOpenChange={(open) => !open && setRemoveUserId(null)}
+					size="md"
 				>
-					<ModalOverlay isDismissable>
-						<Modal>
-							<Dialog>
-								<div className="relative w-full overflow-hidden rounded-2xl bg-primary shadow-xl transition-all sm:max-w-md">
-									<CloseButton
-										onClick={() => setRemoveUserId(null)}
-										theme="light"
-										size="lg"
-										className="absolute top-3 right-3"
-									/>
-									<div className="flex flex-col gap-4 px-4 pt-5 sm:px-6 sm:pt-6">
-										<div className="relative w-max">
-											<FeaturedIcon
-												color="error"
-												size="lg"
-												theme="modern"
-												icon={AlertTriangle}
-											/>
-										</div>
-										<div className="z-10 flex flex-col gap-0.5">
-											<AriaHeading
-												slot="title"
-												className="font-semibold text-md text-primary"
-											>
-												Remove team member
-											</AriaHeading>
-											<p className="text-sm text-tertiary">
-												Are you sure you want to remove this member from your team?
-												They will lose access to all channels and messages.
-											</p>
-										</div>
-									</div>
-									<div className="z-10 flex flex-1 flex-col-reverse gap-3 p-4 pt-6 *:grow sm:grid sm:grid-cols-2 sm:px-6 sm:pt-8 sm:pb-6">
-										<Button
-											color="secondary"
-											size="lg"
-											onClick={() => setRemoveUserId(null)}
-										>
-											Cancel
-										</Button>
-										<Button
-											color="primary-destructive"
-											size="lg"
-											onClick={() => removeUserId && handleRemoveUser(removeUserId)}
-										>
-											Remove member
-										</Button>
-									</div>
-								</div>
-							</Dialog>
-						</Modal>
-					</ModalOverlay>
-				</AriaDialogTrigger>
+					<Dialog>
+						<DialogHeader>
+							<div className="flex size-12 items-center justify-center rounded-lg border border-danger/10 bg-danger/5">
+								<ExclamationTriangleIcon className="size-6 text-danger" />
+							</div>
+							<DialogTitle>Remove team member</DialogTitle>
+							<DialogDescription>
+								Are you sure you want to remove this member from your team? They will lose
+								access to all channels and messages.
+							</DialogDescription>
+						</DialogHeader>
+
+						<DialogFooter>
+							<DialogClose intent="secondary">Cancel</DialogClose>
+							<Button
+								intent="danger"
+								onPress={() => removeUserId && handleRemoveUser(removeUserId)}
+							>
+								Remove member
+							</Button>
+						</DialogFooter>
+					</Dialog>
+				</ModalContent>
+			</Modal>
+
+			{/* Email Invite Modal */}
+			{organizationId && (
+				<EmailInviteModal
+					isOpen={showInviteModal}
+					onOpenChange={setShowInviteModal}
+					organizationId={organizationId}
+				/>
 			)}
-		</div>
+
+			{/* Change Role Modal */}
+			<ChangeRoleModal />
+		</>
 	)
 }

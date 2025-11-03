@@ -1,36 +1,74 @@
 import { Database } from "@hazel/db"
-import { policyUse, withRemapDbErrors } from "@hazel/effect-lib"
-import { Effect } from "effect"
+import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
 import { InvitationRepo } from "../../repositories/invitation-repo"
-import { InvitationRpcs } from "../groups/invitations"
+import { WorkOS } from "../../services/workos"
+import { InvitationNotFoundError, InvitationRpcs } from "../groups/invitations"
 
-/**
- * Invitation RPC Handlers
- *
- * Implements the business logic for all invitation-related RPC methods.
- * Each handler receives the payload and has access to CurrentUser via Effect context
- * (provided by AuthMiddleware).
- *
- * All handlers use:
- * - Database transactions for atomicity
- * - Policy checks for authorization
- * - Transaction IDs for optimistic updates
- * - Error remapping for consistent error handling
- */
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const workos = yield* WorkOS
 
 		return {
 			"invitation.create": (payload) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const createdInvitation = yield* InvitationRepo.insert({
-								...payload,
-							}).pipe(Effect.map((res) => res[0]!))
+							const currentUser = yield* CurrentUser.Context
+
+							const workosOrg = yield* workos
+								.call((client) =>
+									client.organizations.getOrganizationByExternalId(payload.organizationId),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to get organization from WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							const workosInvitation = yield* workos
+								.call((client) =>
+									client.userManagement.sendInvitation({
+										email: payload.email,
+										organizationId: workosOrg.id,
+										roleSlug: payload.role,
+									}),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to create invitation in WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							// Calculate expiration (7 days from now, matching WorkOS default)
+							const expiresAt = new Date()
+							expiresAt.setDate(expiresAt.getDate() + 7)
+
+							// Store invitation in local database
+							const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
+								workosInvitationId: workosInvitation.id,
+								organizationId: payload.organizationId,
+								email: payload.email,
+								invitedBy: currentUser.id,
+								invitedAt: new Date(),
+								expiresAt,
+								status: "pending",
+								acceptedAt: null,
+								acceptedBy: null,
+							}).pipe(policyUse(InvitationPolicy.canCreate(payload.organizationId)))
 
 							const txid = yield* generateTransactionId()
 
@@ -38,14 +76,101 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canCreate(payload.organizationId)),
 						withRemapDbErrors("Invitation", "create"),
-					)
-					.pipe(
 						Effect.map(({ createdInvitation, txid }) => ({
 							data: createdInvitation,
 							transactionId: txid,
 						})),
+					),
+
+			"invitation.resend": ({ invitationId }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
+								policyUse(InvitationPolicy.canRead(invitationId)),
+							)
+							if (Option.isNone(invitationOption)) {
+								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
+							}
+
+							const invitation = invitationOption.value
+
+							// Resend invitation via WorkOS (send new invitation to same email)
+							yield* workos
+								.call((client) =>
+									client.userManagement.sendInvitation({
+										email: invitation.email,
+										organizationId: invitation.organizationId,
+									}),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to resend invitation in WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							const txid = yield* generateTransactionId()
+
+							return { invitation, txid }
+						}),
+					)
+					.pipe(
+						policyUse(InvitationPolicy.canUpdate(invitationId)),
+						withRemapDbErrors("Invitation", "update"),
+						Effect.map(({ invitation, txid }) => ({
+							data: invitation,
+							transactionId: txid,
+						})),
+					),
+
+			"invitation.revoke": ({ invitationId }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
+								policyUse(InvitationPolicy.canRead(invitationId)),
+							)
+
+							if (Option.isNone(invitationOption)) {
+								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
+							}
+
+							const invitation = invitationOption.value
+
+							// Revoke invitation via WorkOS
+							yield* workos
+								.call((client) =>
+									client.userManagement.revokeInvitation(invitation.workosInvitationId),
+								)
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to revoke invitation in WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							yield* InvitationRepo.updateStatus(invitationId, "revoked").pipe(
+								policyUse(InvitationPolicy.canUpdate(invitationId)),
+							)
+
+							const txid = yield* generateTransactionId()
+
+							return { txid }
+						}),
+					)
+					.pipe(
+						withRemapDbErrors("Invitation", "delete"),
+						Effect.map(({ txid }) => ({ transactionId: txid })),
 					),
 
 			"invitation.update": ({ id, ...payload }) =>
@@ -65,8 +190,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					.pipe(
 						policyUse(InvitationPolicy.canUpdate(id)),
 						withRemapDbErrors("Invitation", "update"),
-					)
-					.pipe(
 						Effect.map(({ updatedInvitation, txid }) => ({
 							data: updatedInvitation,
 							transactionId: txid,
@@ -87,8 +210,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					.pipe(
 						policyUse(InvitationPolicy.canDelete(id)),
 						withRemapDbErrors("Invitation", "delete"),
-					)
-					.pipe(Effect.map(({ txid }) => ({ transactionId: txid }))),
+						Effect.map(({ txid }) => ({ transactionId: txid })),
+					),
 		}
 	}),
 )
