@@ -197,6 +197,7 @@ export const Avatar = ({
 	return (
 		<div
 			data-avatar
+			data-slot="avatar"
 			className={cx(
 				"relative inline-flex shrink-0 items-center justify-center bg-muted outline-transparent",
 				isSquare ? "rounded-lg" : "rounded-full",

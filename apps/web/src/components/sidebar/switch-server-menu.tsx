@@ -59,7 +59,11 @@ export const SwitchServerMenu = () => {
 		>
 			{({ org }) => (
 				<MenuItem id={org.id} textValue={org.name}>
-					<Avatar src={org.logoUrl || `https://avatar.vercel.sh/${org.id}`} alt={org.name} />
+					<Avatar
+						size="xs"
+						src={org.logoUrl || `https://avatar.vercel.sh/${org.id}`}
+						alt={org.name}
+					/>
 					<SidebarLabel>{org.name}</SidebarLabel>
 				</MenuItem>
 			)}
