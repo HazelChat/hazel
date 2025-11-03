@@ -44,7 +44,7 @@ export const brandColorAtom = Atom.kvs({
 	runtime: localStorageRuntime,
 	key: "brand-color",
 	schema: Schema.NullOr(HexColorSchema),
-	defaultValue: () => "#7F56D9" as const,
+	defaultValue: () => "#6938EF" as const,
 })
 
 export const resolvedThemeAtom = Atom.transform(themeAtom, (get) => {
@@ -79,7 +79,7 @@ export const applyBrandColorAtom = Atom.make((get) => {
 	const brandColor = get(brandColorAtom)
 	if (typeof document === "undefined") return
 
-	const hexColor = brandColor || "#7F56D9"
+	const hexColor = brandColor || "#6938EF"
 
 	const existingColorSwatch = colorSwatches.find((swatch) => swatch.hex === hexColor)
 

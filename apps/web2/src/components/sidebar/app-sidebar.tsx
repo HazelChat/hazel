@@ -2,7 +2,7 @@ import { ChannelsSidebar } from "~/components/sidebar/channels-sidebar"
 import { NavSidebar } from "~/components/sidebar/nav-sidebar"
 import { Sidebar } from "~/components/ui/sidebar"
 
-export function AppSidebar() {
+export function AppSidebar(props: { openChannelsBrowser: () => void }) {
 	return (
 		<Sidebar
 			closeButton={false}
@@ -11,7 +11,7 @@ export function AppSidebar() {
 		>
 			<NavSidebar />
 
-			<ChannelsSidebar />
+			<ChannelsSidebar openChannelsBrowser={props.openChannelsBrowser} />
 		</Sidebar>
 	)
 }

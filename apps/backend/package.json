@@ -41,6 +41,13 @@
 		"drizzle-orm": "^0.44.7",
 		"effect": "3.18.4",
 		"jose": "^6.1.0",
+		"metascraper": "^5.45.20",
+		"metascraper-description": "^5.45.20",
+		"metascraper-image": "^5.45.20",
+		"metascraper-logo": "^5.45.20",
+		"metascraper-publisher": "^5.45.20",
+		"metascraper-title": "^5.45.20",
+		"metascraper-url": "^5.45.20",
 		"pg": "^8.16.3"
 	}
 }

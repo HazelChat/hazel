@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
+import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
 import { CommandPalette } from "~/components/command-palette"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
@@ -30,6 +31,12 @@ export const Route = createFileRoute("/_app/$orgSlug")({
 
 function RouteComponent() {
 	const [openCmd, setOpenCmd] = useState(false)
+	const [initialPage, setInitialPage] = useState<CommandPalettePage>("home")
+
+	const openChannelsBrowser = () => {
+		setInitialPage("channels")
+		setOpenCmd(true)
+	}
 
 	return (
 		<SidebarProvider
@@ -39,10 +46,10 @@ function RouteComponent() {
 				} as React.CSSProperties
 			}
 		>
-			<AppSidebar />
+			<AppSidebar openChannelsBrowser={openChannelsBrowser} />
 			<SidebarInset>
 				<Outlet />
-				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} />
+				<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} initialPage={initialPage} />
 			</SidebarInset>
 		</SidebarProvider>
 	)

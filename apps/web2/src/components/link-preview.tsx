@@ -5,8 +5,8 @@ import { Atom, Result, useAtomValue } from "@effect-atom/atom-react"
 import { Effect, Schema } from "effect"
 import { useMemo } from "react"
 
-// Schema definitions for type-safe Microlink API response
-const MicrolinkDataSchema = Schema.Struct({
+// Schema definition for link preview data
+const LinkPreviewDataSchema = Schema.Struct({
 	url: Schema.optional(Schema.String),
 	title: Schema.optional(Schema.String),
 	description: Schema.optional(Schema.String),
@@ -15,25 +15,17 @@ const MicrolinkDataSchema = Schema.Struct({
 	publisher: Schema.optional(Schema.String),
 })
 
-const MicrolinkResponseSchema = Schema.Struct({
-	status: Schema.String,
-	data: Schema.optional(MicrolinkDataSchema),
-})
-
-type MicrolinkData = Schema.Schema.Type<typeof MicrolinkDataSchema>
+type LinkPreviewData = Schema.Schema.Type<typeof LinkPreviewDataSchema>
 
 // Atom family for per-URL caching of link preview data
 const linkPreviewAtomFamily = Atom.family((url: string) =>
 	Atom.make(
 		Effect.gen(function* () {
-			const response = yield* HttpClient.get(`https://api.microlink.io/?url=${encodeURIComponent(url)}`)
-			const json = yield* HttpClientResponse.schemaBodyJson(MicrolinkResponseSchema)(response)
+			const backendUrl = `http://localhost:3003/link-preview?url=${encodeURIComponent(url)}`
+			const response = yield* HttpClient.get(backendUrl)
+			const data = yield* HttpClientResponse.schemaBodyJson(LinkPreviewDataSchema)(response)
 
-			if (json.status !== "success" || !json.data) {
-				return yield* Effect.fail(new Error("Failed to fetch link preview"))
-			}
-
-			return json.data
+			return data
 		}).pipe(
 			Effect.provide(FetchHttpClient.layer),
 			Effect.tapError((error) =>
@@ -41,7 +33,7 @@ const linkPreviewAtomFamily = Atom.family((url: string) =>
 					console.error("Link preview fetch error:", error)
 				}),
 			),
-			Effect.catchAll(() => Effect.succeed(null as MicrolinkData | null)),
+			Effect.catchAll(() => Effect.succeed(null as LinkPreviewData | null)),
 		),
 	),
 )

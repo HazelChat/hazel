@@ -1,12 +1,12 @@
 import type { OrganizationId } from "@hazel/db/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
-import IconHashtag from "~/components/icons/icon-hashtag"
-import { SidebarItem, SidebarLabel, SidebarSection } from "~/components/ui/sidebar"
+import { SidebarSection } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
 import { ChannelItem } from "./channel-item"
+import { DmChannelItem } from "./dm-channel-item"
 
 export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 	const { user } = useAuth()
@@ -63,10 +63,7 @@ export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 				<ChannelItem key={channel.id} channel={channel} member={member} />
 			))}
 			{dmChannels.map((channel) => (
-				<SidebarItem key={channel.id} href={"/"} tooltip={channel.name}>
-					<IconHashtag />
-					<SidebarLabel>{channel.name}</SidebarLabel>
-				</SidebarItem>
+				<DmChannelItem key={channel.id} channelId={channel.id} />
 			))}
 		</SidebarSection>
 	)

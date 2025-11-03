@@ -215,7 +215,7 @@ function DmCard({ channel, currentUserId }: { channel: any; currentUserId?: stri
 
 	if (channel.type === "single" && otherMembers.length === 1) {
 		const member = otherMembers[0]
-		const { isOnline, status } = useUserPresence(member.user._id)
+		const { isOnline, status } = useUserPresence(member.user.id)
 
 		return (
 			<Link
@@ -274,7 +274,7 @@ function DmCard({ channel, currentUserId }: { channel: any; currentUserId?: stri
 				<div className="-space-x-4 flex">
 					{otherMembers.slice(0, 3).map((member: any) => (
 						<Avatar
-							key={member.user._id}
+							key={member.user.id}
 							className="size-9 border-1 border-primary"
 							src={member.user.avatarUrl}
 							alt={member.user.firstName[0]}

@@ -3,7 +3,6 @@
 import type { OrganizationId } from "@hazel/db/schema"
 import {
 	AdjustmentsHorizontalIcon,
-	CalendarDaysIcon,
 	ChevronUpDownIcon,
 	Cog6ToothIcon,
 	FaceSmileIcon,
@@ -165,7 +164,7 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 	)
 }
 
-export function ChannelsSidebar() {
+export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
 	const [modalType, setModalType] = useState<"create" | "join" | "dm" | "invite" | null>(null)
@@ -265,7 +264,7 @@ export function ChannelsSidebar() {
 				<SidebarContent>
 					<SidebarSectionGroup>
 						<SidebarSection aria-label="Goto">
-							<SidebarItem>
+							<SidebarItem onPress={props.openChannelsBrowser}>
 								<IconMagnifier />
 								<SidebarLabel>Browse channels</SidebarLabel>
 								<Keyboard className="-translate-y-1/2 absolute top-1/2 right-2 font-mono text-muted-fg text-xs">

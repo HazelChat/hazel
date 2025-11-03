@@ -39,7 +39,9 @@ import { Avatar } from "./ui/avatar"
 
 type Page = "home" | "channels" | "members"
 
-export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenChange">) {
+export function CommandPalette(
+	props: Pick<CommandMenuProps, "isOpen" | "onOpenChange"> & { initialPage?: CommandPalettePage },
+) {
 	// Use atoms for state management with hook-based updates
 	const { currentPage, inputValue } = useAtomValue(commandPaletteAtom)
 	const setCommandPaletteState = useAtomSet(commandPaletteAtom)
@@ -84,13 +86,13 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 		props.onOpenChange?.(false)
 	}, [props])
 
-	// Reset navigation to home page when modal opens
+	// Reset navigation to initial page when modal opens
 	// Keep state when closing so it's preserved if reopened quickly
 	useEffect(() => {
 		if (props.isOpen) {
-			// Reset to home page when opening
+			// Reset to initial page (defaults to home) when opening
 			setCommandPaletteState({
-				currentPage: "home",
+				currentPage: props.initialPage || "home",
 				pageHistory: [],
 				inputValue: "",
 			})
@@ -103,7 +105,7 @@ export function CommandPalette(props: Pick<CommandMenuProps, "isOpen" | "onOpenC
 				}
 			}, 100)
 		}
-	}, [props.isOpen, setCommandPaletteState])
+	}, [props.isOpen, props.initialPage, setCommandPaletteState])
 
 	// Handle ESC key to go back
 	useEffect(() => {
