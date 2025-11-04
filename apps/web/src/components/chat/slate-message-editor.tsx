@@ -475,6 +475,8 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 							"caret-primary",
 							"placeholder:text-muted-fg",
 							"min-h-11",
+							"[&_[data-slate-placeholder]]:!top-2",
+							"[&_[data-slate-placeholder]]:!translate-y-0",
 						)}
 						placeholder={placeholder}
 						renderElement={Element}
