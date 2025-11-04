@@ -287,7 +287,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				}
 			}
 
-			// Handle Shift+Enter in blockquotes
+			// Handle Shift+Enter in code blocks and blockquotes
 			if (event.key === "Enter" && event.shiftKey && selection) {
 				const block = Editor.above(editor, {
 					match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
@@ -296,6 +296,13 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				if (block) {
 					const [node, path] = block
 					const element = node as CustomElement
+
+					// In code blocks, Shift+Enter also inserts a newline (same as Enter)
+					if (element.type === "code-block") {
+						event.preventDefault()
+						Editor.insertText(editor, "\n")
+						return
+					}
 
 					// In blockquotes, Shift+Enter behavior depends on current line
 					if (element.type === "blockquote") {
@@ -353,10 +360,30 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				})
 
 				if (block) {
-					const [node] = block
+					const [node, path] = block
 					const element = node as CustomElement
 
-					// Submit from paragraphs and blockquotes (not code blocks)
+					// In code blocks, check if on empty line (exit) or normal line (insert \n)
+					if (element.type === "code-block") {
+						const blockText = Editor.string(editor, path)
+
+						// If completely empty, exit code block to new paragraph
+						if (blockText.trim() === "") {
+							event.preventDefault()
+							Transforms.setNodes(
+								editor,
+								{ type: "paragraph" } as Partial<CustomElement>,
+								{ at: path },
+							)
+							return
+						}
+
+						// Otherwise, let the autoformat plugin's insertBreak handle it (inserts \n)
+						// Don't preventDefault here - allow the insertBreak to run
+						return
+					}
+
+					// Submit from paragraphs and blockquotes
 					if (element.type === "paragraph" || element.type === "blockquote") {
 						event.preventDefault()
 						if (!isUploading) {
@@ -366,7 +393,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					}
 				}
 
-				// Default: prevent submission (code blocks fall through here)
+				// Default: prevent submission
 				event.preventDefault()
 			}
 		}
