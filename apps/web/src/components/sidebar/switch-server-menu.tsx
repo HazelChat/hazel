@@ -77,7 +77,9 @@ export const SwitchServerMenu = () => {
 			<MenuItem
 				id="create-server"
 				textValue="Create server"
-				onAction={() => openModal("create-organization")}
+				onAction={() => {
+					openModal("create-organization")
+				}}
 			>
 				<IconPlus data-slot="icon" />
 				<SidebarLabel>Create server</SidebarLabel>

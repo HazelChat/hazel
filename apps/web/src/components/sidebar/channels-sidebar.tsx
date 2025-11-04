@@ -9,6 +9,7 @@ import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { CreateChannelModal } from "~/components/modals/create-channel-modal"
 import { CreateDmModal } from "~/components/modals/create-dm-modal"
+import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { ChannelItem } from "~/components/sidebar/channel-item"
@@ -308,6 +309,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 			{modalType === "invite" && (
 				<EmailInviteModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
 			)}
+			<CreateOrganizationModal />
 		</>
 	)
 }

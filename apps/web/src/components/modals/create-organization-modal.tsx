@@ -1,7 +1,9 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { type } from "arktype"
+import { useCallback } from "react"
+import { closeModal, modalAtomFamily } from "~/atoms/modal-atoms"
 import { createOrganizationMutation } from "~/atoms/organization-atoms"
-import IconBuilding from "~/components/icons/icon-building"
+import { IconServers } from "~/components/icons/icon-servers"
 import { Button } from "~/components/ui/button"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input, InputGroup } from "~/components/ui/input"
@@ -17,15 +19,18 @@ const organizationSchema = type({
 
 type OrganizationFormData = typeof organizationSchema.infer
 
-interface CreateOrganizationModalProps {
-	isOpen: boolean
-	onOpenChange: (open: boolean) => void
-}
+export function CreateOrganizationModal() {
+	const modalState = useAtomValue(modalAtomFamily("create-organization"))
 
-export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganizationModalProps) {
+	if (!modalState.isOpen) return null
+
 	const createOrganization = useAtomSet(createOrganizationMutation, {
 		mode: "promiseExit",
 	})
+
+	const handleClose = useCallback(() => {
+		closeModal("create-organization")
+	}, [])
 
 	const form = useAppForm({
 		defaultValues: {
@@ -49,16 +54,16 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 					loading: "Creating server...",
 					success: (result) => {
 						// Close modal and reset form
-						onOpenChange(false)
+						handleClose()
 						form.reset()
 
 						// Redirect to the new organization
 						// WorkOS will handle the organization switch
 						const backendUrl = import.meta.env.VITE_BACKEND_URL
 						const frontendUrl = window.location.origin
-						const returnUrl = `${frontendUrl}/${result.slug || result.id}`
+						const returnUrl = `${frontendUrl}/${result.data.slug || result.data.id}`
 
-						window.location.href = `${backendUrl}/auth/login?organizationId=${result.id}&returnTo=${encodeURIComponent(returnUrl)}`
+						window.location.href = `${backendUrl}/auth/login?organizationId=${result.data.id}&returnTo=${encodeURIComponent(returnUrl)}`
 
 						return "Server created successfully"
 					},
@@ -70,8 +75,12 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 	})
 
 	return (
-		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-			<ModalContent size="lg">
+		<Modal>
+			<ModalContent
+				isOpen={modalState.isOpen}
+				onOpenChange={(open) => !open && handleClose()}
+				size="lg"
+			>
 				<ModalHeader>
 					<ModalTitle>Create a new Server</ModalTitle>
 					<Description>
@@ -92,7 +101,7 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 								<TextField>
 									<Label>Server Name</Label>
 									<InputGroup>
-										<IconBuilding data-slot="icon" className="text-muted-fg" />
+										<IconServers data-slot="icon" className="text-muted-fg" />
 										<Input
 											placeholder="Acme Corp"
 											value={field.state.value}
@@ -134,7 +143,7 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 					</ModalBody>
 
 					<ModalFooter>
-						<Button intent="outline" onPress={() => onOpenChange(false)} type="button">
+						<Button intent="outline" onPress={handleClose} type="button">
 							Cancel
 						</Button>
 						<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
