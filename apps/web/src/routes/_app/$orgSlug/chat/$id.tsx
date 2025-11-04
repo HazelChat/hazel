@@ -2,8 +2,8 @@ import type { ChannelId, OrganizationId } from "@hazel/db/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute } from "@tanstack/react-router"
 import { ChatHeader } from "~/components/chat/chat-header"
-import { MessageComposer } from "~/components/chat/message-composer"
 import { MessageList } from "~/components/chat/message-list"
+import { SlateMessageComposer } from "~/components/chat/slate-message-composer"
 import { ThreadPanel } from "~/components/chat/thread-panel"
 import { TypingIndicator } from "~/components/chat/typing-indicator"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
@@ -60,7 +60,7 @@ function ChatContent() {
 					<MessageList />
 				</div>
 				<div className="flex-shrink-0 px-4 pt-2.5">
-					<MessageComposer />
+					<SlateMessageComposer />
 					<TypingIndicator />
 				</div>
 			</div>

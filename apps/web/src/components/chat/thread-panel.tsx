@@ -6,8 +6,8 @@ import IconClose from "../icons/icon-close"
 import { MarkdownReadonly } from "../markdown-readonly"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
-import { MessageComposer } from "./message-composer"
 import { MessageList } from "./message-list"
+import { SlateMessageComposer } from "./slate-message-composer"
 import { TypingIndicator } from "./typing-indicator"
 
 interface ThreadPanelProps {
@@ -71,7 +71,7 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 
 			{/* Thread Composer */}
 			<div className="border-border border-t bg-bg px-4 py-3">
-				<MessageComposer placeholder="Reply in thread..." />
+				<SlateMessageComposer placeholder="Reply in thread..." />
 				<TypingIndicator />
 			</div>
 		</div>

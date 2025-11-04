@@ -80,6 +80,8 @@
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
 		"slate": "0.118.1",
+		"slate-history": "^0.113.1",
+		"slate-react": "^0.118.2",
 		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.3.1",
 		"tailwind-variants": "^3.1.1",
