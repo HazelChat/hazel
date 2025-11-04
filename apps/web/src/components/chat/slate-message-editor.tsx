@@ -1,8 +1,9 @@
 "use client"
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
-import type { Descendant } from "slate"
-import { createEditor, Editor, Transforms } from "slate"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react"
+import type { BaseEditor, Descendant } from "slate"
+import { createEditor, Editor, Range, Element as SlateElement, Transforms } from "slate"
+import type { HistoryEditor } from "slate-history"
 import { withHistory } from "slate-history"
 import {
 	Editable,
@@ -22,6 +23,9 @@ import {
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
 
+// Extend the editor type with all plugins
+type CustomEditor = BaseEditor & ReactEditor & HistoryEditor
+
 export interface SlateMessageEditorRef {
 	focusAndInsertText: (text: string) => void
 	clearContent: () => void
@@ -35,6 +39,95 @@ interface SlateMessageEditorProps {
 	isUploading?: boolean
 }
 
+// Autoformat plugin to convert markdown shortcuts to block types
+const withAutoformat = (editor: CustomEditor): CustomEditor => {
+	const { insertText, insertBreak } = editor
+
+	editor.insertText = (text) => {
+		const { selection } = editor
+
+		if (text === " " && selection && Range.isCollapsed(selection)) {
+			const { anchor } = selection
+			const block = Editor.above(editor, {
+				match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+			})
+
+			if (block) {
+				const [_node, path] = block
+				const start = Editor.start(editor, path)
+				const range = { anchor, focus: start }
+				const beforeText = Editor.string(editor, range)
+
+				// Check for blockquote patterns
+				if (beforeText === ">") {
+					Transforms.select(editor, range)
+					Transforms.delete(editor)
+					Transforms.setNodes(editor, { type: "blockquote" } as Partial<CustomElement>)
+					return
+				}
+
+				if (beforeText === ">>>") {
+					Transforms.select(editor, range)
+					Transforms.delete(editor)
+					Transforms.setNodes(editor, { type: "blockquote" } as Partial<CustomElement>)
+					return
+				}
+
+				// Check for code block pattern
+				if (beforeText === "```") {
+					Transforms.select(editor, range)
+					Transforms.delete(editor)
+					Transforms.setNodes(editor, {
+						type: "code-block",
+						language: undefined,
+					} as Partial<CustomElement>)
+					return
+				}
+
+				// Check for code block with language (e.g., ```js)
+				const codeBlockMatch = beforeText.match(/^```(\w+)$/)
+				if (codeBlockMatch) {
+					const language = codeBlockMatch[1]
+					Transforms.select(editor, range)
+					Transforms.delete(editor)
+					Transforms.setNodes(editor, {
+						type: "code-block",
+						language,
+					} as Partial<CustomElement>)
+					return
+				}
+			}
+		}
+
+		insertText(text)
+	}
+
+	editor.insertBreak = () => {
+		const { selection } = editor
+
+		if (selection) {
+			const block = Editor.above(editor, {
+				match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+			})
+
+			if (block) {
+				const [node] = block
+				const element = node as CustomElement
+
+				// In code blocks, Enter inserts a newline
+				if (element.type === "code-block") {
+					Editor.insertText(editor, "\n")
+					return
+				}
+			}
+		}
+
+		insertBreak()
+	}
+
+	return editor
+}
+
 // Define custom element renderer
 const Element = ({ attributes, children, element }: RenderElementProps) => {
 	const customElement = element as CustomElement
@@ -42,6 +135,22 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 	switch (customElement.type) {
 		case "paragraph":
 			return <p {...attributes}>{children}</p>
+		case "blockquote":
+			return (
+				<blockquote {...attributes} className="relative my-1 border-primary border-l-4 pl-4 italic">
+					{children}
+				</blockquote>
+			)
+		case "code-block":
+			return (
+				<pre
+					{...attributes}
+					className="my-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 font-mono text-sm"
+					data-language={customElement.language}
+				>
+					<code>{children}</code>
+				</pre>
+			)
 		default:
 			return <p {...attributes}>{children}</p>
 	}
@@ -54,8 +163,11 @@ const Leaf = (props: RenderLeafProps) => {
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
 	({ placeholder = "Type a message...", className, onSubmit, onUpdate, isUploading = false }, ref) => {
-		// Create Slate editor with React and History plugins
-		const editor = useMemo(() => withHistory(withReact(createEditor())), [])
+		// Create Slate editor with React, History, and Autoformat plugins
+		const editor = useMemo(
+			() => withAutoformat(withHistory(withReact(createEditor()))) as CustomEditor,
+			[],
+		)
 
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
 
@@ -131,11 +243,131 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		// Handle key down
 		const handleKeyDown = (event: React.KeyboardEvent) => {
-			if (event.key === "Enter" && !event.shiftKey) {
-				event.preventDefault()
-				if (!isUploading) {
-					handleSubmit()
+			const { selection } = editor
+
+			// Handle Backspace at start of blockquote (convert to paragraph)
+			if (event.key === "Backspace" && selection && Range.isCollapsed(selection)) {
+				const block = Editor.above(editor, {
+					match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+				})
+
+				if (block) {
+					const [node, path] = block
+					const element = node as CustomElement
+
+					// In blockquotes, if cursor is at the very start, convert to paragraph
+					if (element.type === "blockquote") {
+						const isAtStart = Editor.isStart(editor, selection.anchor, path)
+
+						if (isAtStart) {
+							event.preventDefault()
+							Transforms.setNodes(
+								editor,
+								{ type: "paragraph" } as Partial<CustomElement>,
+								{ at: path },
+							)
+							return
+						}
+					}
+
+					// Same for code blocks
+					if (element.type === "code-block") {
+						const isAtStart = Editor.isStart(editor, selection.anchor, path)
+
+						if (isAtStart) {
+							event.preventDefault()
+							Transforms.setNodes(
+								editor,
+								{ type: "paragraph" } as Partial<CustomElement>,
+								{ at: path },
+							)
+							return
+						}
+					}
 				}
+			}
+
+			// Handle Shift+Enter in blockquotes
+			if (event.key === "Enter" && event.shiftKey && selection) {
+				const block = Editor.above(editor, {
+					match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+				})
+
+				if (block) {
+					const [node, path] = block
+					const element = node as CustomElement
+
+					// In blockquotes, Shift+Enter behavior depends on current line
+					if (element.type === "blockquote") {
+						event.preventDefault()
+
+						// Get the text of the current block
+						const blockText = Editor.string(editor, path)
+
+						// Check if current line (at cursor position) is empty
+						const { anchor } = selection
+						const lineStart = { ...anchor, offset: 0 }
+						const lineEnd = anchor
+						const currentLineText = Editor.string(editor, {
+							anchor: lineStart,
+							focus: lineEnd,
+						})
+
+						// If on empty line, exit quote and remove empty line
+						if (currentLineText.trim() === "") {
+							// If the whole blockquote is just empty, convert to paragraph
+							if (blockText.trim() === "") {
+								Transforms.setNodes(
+									editor,
+									{ type: "paragraph" } as Partial<CustomElement>,
+									{ at: path },
+								)
+							} else {
+								// Delete current empty line content and create new paragraph after
+								Transforms.delete(editor, {
+									at: selection,
+									unit: "line",
+									reverse: true,
+								})
+								Transforms.insertNodes(
+									editor,
+									{
+										type: "paragraph",
+										children: [{ text: "" }],
+									} as CustomElement,
+								)
+							}
+						} else {
+							// Not on empty line, continue the quote (insert line break)
+							editor.insertBreak()
+						}
+						return
+					}
+				}
+			}
+
+			// Handle Enter (without Shift) - submit from paragraphs and blockquotes
+			if (event.key === "Enter" && !event.shiftKey) {
+				const block = Editor.above(editor, {
+					match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+				})
+
+				if (block) {
+					const [node] = block
+					const element = node as CustomElement
+
+					// Submit from paragraphs and blockquotes (not code blocks)
+					if (element.type === "paragraph" || element.type === "blockquote") {
+						event.preventDefault()
+						if (!isUploading) {
+							handleSubmit()
+						}
+						return
+					}
+				}
+
+				// Default: prevent submission (code blocks fall through here)
+				event.preventDefault()
 			}
 		}
 
@@ -190,6 +422,21 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			}
 		}, [focusAndInsertTextInternal])
 
+		// Custom decorator that checks parent element type
+		const decorate = useCallback(
+			(entry: [node: any, path: number[]]) => {
+				const [, nodePath] = entry
+
+				// Get parent element
+				const parentPath = nodePath.slice(0, -1)
+				const parentEntry = Editor.node(editor, parentPath)
+				const parentElement = parentEntry ? parentEntry[0] : null
+
+				return decorateMarkdown(entry, parentElement)
+			},
+			[editor],
+		)
+
 		return (
 			<div className={cx("relative w-full", className)}>
 				<Slate editor={editor} initialValue={value} onChange={handleChange}>
@@ -205,7 +452,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						placeholder={placeholder}
 						renderElement={Element}
 						renderLeaf={Leaf}
-						decorate={decorateMarkdown}
+						decorate={decorate}
 						onKeyDown={handleKeyDown}
 					/>
 				</Slate>

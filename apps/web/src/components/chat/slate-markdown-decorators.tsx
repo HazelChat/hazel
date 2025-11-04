@@ -40,12 +40,19 @@ export interface MarkdownRange extends BaseRange {
 /**
  * Decorate text nodes with markdown syntax highlighting
  * This makes the markdown tokens visible but styled (Discord-style)
+ * @param entry - The node and path tuple
+ * @param parentElement - Optional parent element to check type
  */
-export function decorateMarkdown(entry: [node: any, path: number[]]): MarkdownRange[] {
+export function decorateMarkdown(entry: [node: any, path: number[]], parentElement?: any): MarkdownRange[] {
 	const [node, path] = entry
 	const ranges: MarkdownRange[] = []
 
 	if (!node.text) {
+		return ranges
+	}
+
+	// Skip markdown decoration in code blocks
+	if (parentElement?.type === "code-block") {
 		return ranges
 	}
 
