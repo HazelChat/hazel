@@ -219,6 +219,12 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 					<ComboboxPopover
 						getAnchorRect={() => anchorRect}
 						gutter={4}
+						hideOnInteractOutside={(event) => {
+							// Close the menu and reset mention state
+							editor.mentionState = { active: false, search: "", start: null, target: null }
+							combobox.setOpen(false)
+							return true
+						}}
 						className="z-500 max-h-64 w-64 overflow-y-auto rounded-xl border border-fg/10 bg-overlay p-2 shadow-lg"
 					>
 						{filteredOptions.map((option) => (
