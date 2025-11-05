@@ -25,6 +25,39 @@ export type CustomElement = ParagraphElement | BlockquoteElement | CodeBlockElem
 export type CustomDescendant = CustomElement | CustomText
 
 /**
+ * Extract mentions from markdown text
+ * Returns array of { userId, displayName } for each mention found
+ */
+export function extractMentionsFromMarkdown(
+	markdown: string,
+): Array<{ userId: string; displayName: string }> {
+	const mentions: Array<{ userId: string; displayName: string }> = []
+	const pattern = /@\[([^\]]+)\]\(([^)]+)\)/g
+	let match: RegExpExecArray | null
+
+	while ((match = pattern.exec(markdown)) !== null) {
+		const displayName = match[1]
+		const userId = match[2]
+
+		if (displayName && userId) {
+			mentions.push({
+				displayName,
+				userId,
+			})
+		}
+	}
+
+	return mentions
+}
+
+/**
+ * Check if text contains mention pattern
+ */
+export function hasMentionPattern(text: string): boolean {
+	return /@\[([^\]]+)\]\(([^)]+)\)/.test(text)
+}
+
+/**
  * Serialize Slate value to plain markdown string
  * This converts the editor content to markdown that can be sent to the backend
  */

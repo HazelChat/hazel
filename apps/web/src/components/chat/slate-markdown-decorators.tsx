@@ -29,7 +29,10 @@ const MARKDOWN_PATTERNS = [
 	},
 ] as const
 
-export type MarkdownDecorationType = (typeof MARKDOWN_PATTERNS)[number]["type"]
+// Mention pattern: @[Display Name](userId)
+const MENTION_PATTERN = /@\[([^\]]+)\]\(([^)]+)\)/g
+
+export type MarkdownDecorationType = (typeof MARKDOWN_PATTERNS)[number]["type"] | "mention"
 
 export interface MarkdownRange extends BaseRange {
 	[key: string]: unknown
@@ -58,6 +61,23 @@ export function decorateMarkdown(entry: [node: any, path: number[]], parentEleme
 
 	const text = node.text
 
+	// Decorate mentions first (they have higher priority)
+	const mentionMatches = text.matchAll(MENTION_PATTERN)
+	for (const match of mentionMatches) {
+		if (match.index === undefined) continue
+
+		const fullMatch = match[0] // Full match: @[Name](userId)
+
+		// Mark entire mention as a single range
+		ranges.push({
+			anchor: { path, offset: match.index },
+			focus: { path, offset: match.index + fullMatch.length },
+			type: "mention",
+			isMarker: false,
+		})
+	}
+
+	// Decorate other markdown patterns
 	for (const { pattern, type } of MARKDOWN_PATTERNS) {
 		const matches = text.matchAll(pattern)
 
@@ -71,6 +91,16 @@ export function decorateMarkdown(entry: [node: any, path: number[]], parentEleme
 
 			// Skip if the markers are escaped or incomplete
 			if (!openMarker || !content || !closeMarker) continue
+
+			// Skip if this overlaps with a mention
+			const mentionOverlap = ranges.some(
+				(range) =>
+					range.type === "mention" &&
+					match.index !== undefined &&
+					match.index < range.focus.offset &&
+					match.index + fullMatch.length > range.anchor.offset,
+			)
+			if (mentionOverlap) continue
 
 			// Opening marker range
 			ranges.push({
@@ -137,6 +167,11 @@ export function MarkdownLeaf({ attributes, children, leaf }: RenderLeafProps) {
 					break
 				case "spoiler":
 					className = "bg-muted blur-sm hover:blur-none transition-all"
+					break
+				case "mention":
+					// Style mentions with blue background and text
+					className =
+						"bg-primary/10 text-primary rounded px-1 py-0.5 font-medium cursor-pointer hover:bg-primary/20 transition-colors"
 					break
 			}
 		}

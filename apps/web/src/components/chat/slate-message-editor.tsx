@@ -1,6 +1,6 @@
 "use client"
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { BaseEditor, Descendant } from "slate"
 import { createEditor, Editor, Range, Element as SlateElement, Transforms } from "slate"
 import type { HistoryEditor } from "slate-history"
@@ -14,6 +14,7 @@ import {
 	withReact,
 } from "slate-react"
 import { cx } from "~/utils/cx"
+import { MentionAutocomplete } from "./mention-autocomplete"
 import { decorateMarkdown, MarkdownLeaf } from "./slate-markdown-decorators"
 import {
 	type CustomDescendant,
@@ -22,9 +23,10 @@ import {
 	isValueEmpty,
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
+import { insertMention, type MentionEditor, withMentions } from "./slate-mention-plugin"
 
 // Extend the editor type with all plugins
-type CustomEditor = BaseEditor & ReactEditor & HistoryEditor
+type CustomEditor = MentionEditor
 
 export interface SlateMessageEditorRef {
 	focusAndInsertText: (text: string) => void
@@ -142,7 +144,10 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 		case "blockquote":
 			return (
 				<blockquote {...attributes} className="relative my-1 pl-4 italic">
-					<span className="absolute top-0 left-0 h-full w-1 rounded-[2px] bg-primary" aria-hidden="true" />
+					<span
+						className="absolute top-0 left-0 h-full w-1 rounded-[2px] bg-primary"
+						aria-hidden="true"
+					/>
 					{children}
 				</blockquote>
 			)
@@ -168,14 +173,14 @@ const Leaf = (props: RenderLeafProps) => {
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
 	({ placeholder = "Type a message...", className, onSubmit, onUpdate, isUploading = false }, ref) => {
-		// Create Slate editor with React, History, and Autoformat plugins
-		const editor = useMemo(
-			() => withAutoformat(withHistory(withReact(createEditor()))) as CustomEditor,
-			[],
-		)
+		// Create Slate editor with React, History, Autoformat, and Mentions plugins
+		const editor = useMemo(() => {
+			const base = withHistory(withReact(createEditor()))
+			const withMentionsEditor = withMentions(base as any)
+			return withAutoformat(withMentionsEditor)
+		}, [])
 
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
-
 		const focusAndInsertTextInternal = useCallback(
 			(text: string) => {
 				requestAnimationFrame(() => {
@@ -384,7 +389,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					// In blockquotes, Shift+Enter inserts a line break
 					if (element.type === "blockquote") {
 						event.preventDefault()
-						editor.insertBreak()
+						Editor.insertText(editor, "\n")
 						return
 					}
 				}
@@ -520,6 +525,19 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						decorate={decorate}
 						onKeyDown={handleKeyDown}
 					/>
+
+					{/* Render mention autocomplete when active */}
+					{editor.mentionState.active && (
+						<MentionAutocomplete
+							editor={editor}
+							search={editor.mentionState.search}
+							onSelect={(id, displayName, type) => {
+								insertMention(editor, id, displayName, type)
+								// Force re-render after mention selection
+								setValue([...value])
+							}}
+						/>
+					)}
 				</Slate>
 			</div>
 		)

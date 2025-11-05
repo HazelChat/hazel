@@ -28,6 +28,7 @@
 - [ ] **Chat Improvements**
   - Better Chat Input with:
     - Enhanced code highlighting
+    - Embeds (YouTube, Twitter, etc.)
     - User mentions
     - Slash commands
 

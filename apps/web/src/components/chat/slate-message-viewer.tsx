@@ -5,7 +5,8 @@ import { createEditor, Editor } from "slate"
 import { withHistory } from "slate-history"
 import { Editable, type RenderElementProps, type RenderLeafProps, Slate, withReact } from "slate-react"
 import { cx } from "~/utils/cx"
-import { decorateMarkdown, MarkdownLeaf } from "./slate-markdown-decorators"
+import { MentionLeaf } from "./mention-leaf"
+import { decorateMarkdown } from "./slate-markdown-decorators"
 import { type CustomElement, deserializeFromMarkdown } from "./slate-markdown-serializer"
 
 interface SlateMessageViewerProps {
@@ -27,7 +28,10 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 		case "blockquote":
 			return (
 				<blockquote {...attributes} className="relative my-1 pl-4 italic">
-					<span className="absolute top-0 left-0 h-full w-1 rounded-[2px] bg-primary" aria-hidden="true" />
+					<span
+						className="absolute top-0 left-0 h-full w-1 rounded-[2px] bg-primary"
+						aria-hidden="true"
+					/>
 					{children}
 				</blockquote>
 			)
@@ -46,9 +50,9 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 	}
 }
 
-// Define custom leaf renderer with markdown highlighting
+// Define custom leaf renderer with markdown highlighting and interactive mentions
 const Leaf = (props: RenderLeafProps) => {
-	return <MarkdownLeaf {...props} />
+	return <MentionLeaf {...props} interactive={true} />
 }
 
 export const SlateMessageViewer = memo(({ content, className }: SlateMessageViewerProps) => {
