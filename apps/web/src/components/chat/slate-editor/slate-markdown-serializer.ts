@@ -35,6 +35,7 @@ export function extractMentionsFromMarkdown(
 	const pattern = /@\[([^\]]+)\]\(([^)]+)\)/g
 	let match: RegExpExecArray | null
 
+	// biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
 	while ((match = pattern.exec(markdown)) !== null) {
 		const displayName = match[1]
 		const userId = match[2]

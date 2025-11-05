@@ -137,7 +137,7 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 	switch (customElement.type) {
 		case "paragraph":
 			return (
-				<p {...attributes} className="my-0 last:empty:hidden">
+				<p {...attributes} className="my-0">
 					{children}
 				</p>
 			)
@@ -169,6 +169,18 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 // Define custom leaf renderer with markdown highlighting
 const Leaf = (props: RenderLeafProps) => {
 	return <MarkdownLeaf {...props} />
+}
+
+// Check if placeholder should be hidden based on element types
+// Placeholder should hide when there are blockquotes or code blocks (even if empty)
+const shouldHidePlaceholder = (value: CustomDescendant[]): boolean => {
+	return value.some((node) => {
+		if ("type" in node) {
+			const element = node as CustomElement
+			return element.type === "blockquote" || element.type === "code-block"
+		}
+		return false
+	})
 }
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
@@ -565,6 +577,13 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						renderLeaf={Leaf}
 						decorate={decorate}
 						onKeyDown={handleKeyDown}
+						renderPlaceholder={({ attributes, children }) => {
+							// Don't render placeholder if there are blockquotes or code blocks
+							if (shouldHidePlaceholder(value)) {
+								return null
+							}
+							return <div {...attributes}>{children}</div>
+						}}
 					/>
 
 					{/* Render mention autocomplete when active */}
