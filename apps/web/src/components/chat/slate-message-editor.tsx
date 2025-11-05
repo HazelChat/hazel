@@ -141,7 +141,8 @@ const Element = ({ attributes, children, element }: RenderElementProps) => {
 			)
 		case "blockquote":
 			return (
-				<blockquote {...attributes} className="relative my-1 border-primary border-l-4 pl-4 italic">
+				<blockquote {...attributes} className="relative my-1 pl-4 italic">
+					<span className="absolute top-0 left-0 h-full w-1 rounded-[2px] bg-primary" aria-hidden="true" />
 					{children}
 				</blockquote>
 			)

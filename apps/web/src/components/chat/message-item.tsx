@@ -9,7 +9,6 @@ import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
 import { extractUrls, LinkPreview } from "~/components/link-preview"
-import { MarkdownReadonly } from "~/components/markdown-readonly"
 import { messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
@@ -18,6 +17,7 @@ import { cn } from "~/lib/utils"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
 import { MessageReplySection } from "./message-reply-section"
+import { SlateMessageViewer } from "./slate-message-viewer"
 import { UserProfilePopover } from "./user-profile-popover"
 
 interface MessageItemProps {
@@ -135,7 +135,7 @@ export function MessageItem({
 						</div>
 					) : (
 						<>
-							<MarkdownReadonly content={message.content} />
+							<SlateMessageViewer content={message.content} />
 							{/* Link Preview */}
 							{(() => {
 								const urls = extractUrls(message.content)

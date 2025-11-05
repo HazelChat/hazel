@@ -3,11 +3,11 @@ import { format } from "date-fns"
 import { useMessage } from "~/db/hooks"
 import { ChatProvider } from "~/providers/chat-provider"
 import IconClose from "../icons/icon-close"
-import { MarkdownReadonly } from "../markdown-readonly"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
 import { MessageList } from "./message-list"
 import { SlateMessageComposer } from "./slate-message-composer"
+import { SlateMessageViewer } from "./slate-message-viewer"
 import { TypingIndicator } from "./typing-indicator"
 
 interface ThreadPanelProps {
@@ -57,7 +57,7 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 								</span>
 							</div>
 							<div className="mt-1">
-								<MarkdownReadonly content={originalMessage.content} />
+								<SlateMessageViewer content={originalMessage.content} />
 							</div>
 						</div>
 					</div>
