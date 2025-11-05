@@ -580,9 +580,10 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						renderPlaceholder={({ attributes, children }) => {
 							// Don't render placeholder if there are blockquotes or code blocks
 							if (shouldHidePlaceholder(value)) {
-								return null
+								return <></>
 							}
-							return <div {...attributes}>{children}</div>
+
+							return <span {...attributes}>{children}</span>
 						}}
 					/>
 
