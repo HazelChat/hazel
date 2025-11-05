@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo } from "react"
 import { createEditor, Editor } from "slate"
 import { withHistory } from "slate-history"
 import { Editable, type RenderElementProps, type RenderLeafProps, Slate, withReact } from "slate-react"
+import { isEmojiOnly } from "~/lib/emoji-utils"
 import { cx } from "~/utils/cx"
 import { MentionLeaf } from "./mention-leaf"
 import { decorateMarkdown } from "./slate-markdown-decorators"
@@ -62,6 +63,9 @@ export const SlateMessageViewer = memo(({ content, className }: SlateMessageView
 	// Deserialize markdown content to Slate value
 	const value = useMemo(() => deserializeFromMarkdown(content), [content])
 
+	// Check if content contains only emojis
+	const isOnlyEmojis = useMemo(() => isEmojiOnly(content), [content])
+
 	// Custom decorator that checks parent element type
 	const decorate = useCallback(
 		(entry: [node: any, path: number[]]) => {
@@ -82,7 +86,8 @@ export const SlateMessageViewer = memo(({ content, className }: SlateMessageView
 			<Slate editor={editor} initialValue={value}>
 				<Editable
 					className={cx(
-						"w-full cursor-text select-text whitespace-pre-wrap break-words text-sm",
+						"w-full cursor-text select-text whitespace-pre-wrap break-words",
+						isOnlyEmojis ? "text-2xl" : "text-sm",
 						"[&_strong]:font-bold",
 					)}
 					readOnly={true}
