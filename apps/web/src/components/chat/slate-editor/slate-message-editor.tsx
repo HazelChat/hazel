@@ -581,7 +581,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						renderPlaceholder={({ attributes, children }) => {
 							// Don't render placeholder if there are blockquotes or code blocks
 							if (shouldHidePlaceholder(value)) {
-								// biome-ignore lint/complexity/useFragmentSyntax: Slate's type definition requires React.Element
+								// biome-ignore lint: Slate's type definition requires React.Element
 								return <></>
 							}
 

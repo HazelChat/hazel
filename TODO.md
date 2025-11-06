@@ -7,6 +7,8 @@
 - Onboarding
 - Create Organizatio Modal not opening
   - Setup Organization should display better errors 
+- Image Grid in messgae/image dialog 
+- Fix multi upload not working
 - Electric proxy
 
 - Migrate the missing icons to nucleo
