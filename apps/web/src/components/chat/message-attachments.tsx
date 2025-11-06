@@ -20,6 +20,11 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const [imageError, setImageError] = useState(false)
 	const fileType = getFileTypeFromName(attachment.fileName)
 
+	// Extract extension directly from filename as a fallback check
+	const fileExtension = attachment.fileName.split(".").pop()?.toLowerCase() || ""
+	const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
+	const isImageFile = imageExtensions.includes(fileType) || imageExtensions.includes(fileExtension)
+
 	const handleDownload = () => {
 		// Create a temporary anchor element to trigger download
 		const link = document.createElement("a")
@@ -32,11 +37,10 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 		document.body.removeChild(link)
 	}
 
-	// Check if it's an image or video based on extension
-	const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType)
+	// Check if it's a video based on extension
 	const isVideo = ["mp4", "webm"].includes(fileType)
 
-	if (isImage && !imageError) {
+	if (isImageFile && !imageError) {
 		// Display image with preview
 		const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://pub-hazel.r2.dev"
 		const imageUrl = `${publicUrl}/${attachment.id}`
@@ -124,19 +128,26 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 	}
 
 	// Separate attachments by type
+	const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
+	const videoExtensions = ["mp4", "webm"]
+
 	const images = attachments.filter((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
-		return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType)
+		const fileExtension = attachment.fileName.split(".").pop()?.toLowerCase() || ""
+		return imageExtensions.includes(fileType) || imageExtensions.includes(fileExtension)
 	})
 
 	const videos = attachments.filter((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
-		return ["mp4", "webm"].includes(fileType)
+		return videoExtensions.includes(fileType)
 	})
 
 	const otherFiles = attachments.filter((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
-		return !["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm"].includes(fileType)
+		const fileExtension = attachment.fileName.split(".").pop()?.toLowerCase() || ""
+		const isImage = imageExtensions.includes(fileType) || imageExtensions.includes(fileExtension)
+		const isVideo = videoExtensions.includes(fileType)
+		return !isImage && !isVideo
 	})
 
 	// Discord-style grid classes based on image count
