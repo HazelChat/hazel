@@ -33,7 +33,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	}
 
 	// Check if it's an image or video based on extension
-	const isImage = ["jpg", "png", "gif", "webp", "svg"].includes(fileType)
+	const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType)
 	const isVideo = ["mp4", "webm"].includes(fileType)
 
 	if (isImage && !imageError) {
@@ -126,7 +126,7 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 	// Separate attachments by type
 	const images = attachments.filter((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
-		return ["jpg", "png", "gif", "webp", "svg"].includes(fileType)
+		return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType)
 	})
 
 	const videos = attachments.filter((attachment) => {
@@ -136,7 +136,7 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 
 	const otherFiles = attachments.filter((attachment) => {
 		const fileType = getFileTypeFromName(attachment.fileName)
-		return !["jpg", "png", "gif", "webp", "svg", "mp4", "webm"].includes(fileType)
+		return !["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm"].includes(fileType)
 	})
 
 	// Discord-style grid classes based on image count
