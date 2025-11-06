@@ -20,13 +20,6 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const [imageError, setImageError] = useState(false)
 	const fileType = getFileTypeFromName(attachment.fileName)
 
-	// Debug logging
-	console.log("AttachmentItem debug:", {
-		fileName: attachment.fileName,
-		fileType,
-		isImage: ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType),
-	})
-
 	const handleDownload = () => {
 		// Create a temporary anchor element to trigger download
 		const link = document.createElement("a")
