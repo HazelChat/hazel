@@ -28,12 +28,32 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 
 				const bucketName = yield* Config.string("R2_BUCKET_NAME").pipe(Effect.orDie)
 
+				// Determine content type from file extension
+				const getContentType = (fileName: string): string => {
+					const ext = fileName.split(".").pop()?.toLowerCase()
+					const contentTypes: Record<string, string> = {
+						jpg: "image/jpeg",
+						jpeg: "image/jpeg",
+						png: "image/png",
+						gif: "image/gif",
+						webp: "image/webp",
+						svg: "image/svg+xml",
+						pdf: "application/pdf",
+						mp4: "video/mp4",
+						webm: "video/webm",
+						mp3: "audio/mpeg",
+						wav: "audio/wav",
+					}
+					return contentTypes[ext || ""] || "application/octet-stream"
+				}
+
 				yield* mu
 					.uploadObject(
 						{
 							Bucket: bucketName,
 							Key: attachmentId,
 							Body: fs.stream(payload.file.path),
+							ContentType: getContentType(payload.file.name),
 						},
 						{ queueSize: 3 },
 					)
