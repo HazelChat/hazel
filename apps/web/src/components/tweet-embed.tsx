@@ -191,14 +191,14 @@ function TweetMedia({
 							key={photo.url}
 							type="button"
 							onClick={() => onPhotoClick?.(index)}
-							className="shrink-0 snap-center snap-always"
+							className="h-64 w-5/6 shrink-0 snap-center snap-always"
 						>
 							<img
 								src={photo.url}
 								width={photo.width}
 								height={photo.height}
 								alt={tweet.text}
-								className="h-64 w-5/6 rounded-lg border border-fg/15 object-cover shadow-sm transition-opacity hover:opacity-90"
+								className="size-full rounded-lg border border-fg/15 object-cover shadow-sm transition-opacity hover:opacity-90"
 							/>
 						</button>
 					))}
