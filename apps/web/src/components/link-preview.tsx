@@ -1,33 +1,20 @@
 "use client"
 
-import { FetchHttpClient, HttpClient, HttpClientResponse } from "@effect/platform"
 import { Atom, Result, useAtomValue } from "@effect-atom/atom-react"
-import { Effect, Schema } from "effect"
+import type { LinkPreviewData } from "@hazel/backend/api"
+import { Effect } from "effect"
 import { useMemo } from "react"
+import { ApiClient } from "~/lib/services/common/api-client"
 
-// Schema definition for link preview data
-const LinkPreviewDataSchema = Schema.Struct({
-	url: Schema.optional(Schema.String),
-	title: Schema.optional(Schema.String),
-	description: Schema.optional(Schema.String),
-	image: Schema.optional(Schema.Struct({ url: Schema.optional(Schema.String) })),
-	logo: Schema.optional(Schema.Struct({ url: Schema.optional(Schema.String) })),
-	publisher: Schema.optional(Schema.String),
-})
-
-type LinkPreviewData = Schema.Schema.Type<typeof LinkPreviewDataSchema>
-
-// Atom family for per-URL caching of link preview data
+// Atom family for per-URL caching using typesafe API client
 const linkPreviewAtomFamily = Atom.family((url: string) =>
 	Atom.make(
 		Effect.gen(function* () {
-			const backendUrl = `http://localhost:3003/link-preview?url=${encodeURIComponent(url)}`
-			const response = yield* HttpClient.get(backendUrl)
-			const data = yield* HttpClientResponse.schemaBodyJson(LinkPreviewDataSchema)(response)
-
+			const client = yield* ApiClient
+			const data = yield* client.linkPreview.get({ urlParams: { url } })
 			return data
 		}).pipe(
-			Effect.provide(FetchHttpClient.layer),
+			Effect.provide(ApiClient.Default),
 			Effect.tapError((error) =>
 				Effect.sync(() => {
 					console.error("Link preview fetch error:", error)
@@ -103,4 +90,29 @@ export function normalizeUrl(value: string): string {
 	if (/^https?:\/\//i.test(v)) return v
 	if (/^www\./i.test(v)) return `https://${v}`
 	return `https://${v}`
+}
+
+export function isTweetUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		const isTwitterDomain =
+			parsed.hostname === "twitter.com" ||
+			parsed.hostname === "www.twitter.com" ||
+			parsed.hostname === "x.com" ||
+			parsed.hostname === "www.x.com"
+		const hasStatusPath = /\/status\/\d+/.test(parsed.pathname)
+		return isTwitterDomain && hasStatusPath
+	} catch {
+		return false
+	}
+}
+
+export function extractTweetId(url: string): string | null {
+	try {
+		const parsed = new URL(url)
+		const match = parsed.pathname.match(/\/status\/(\d+)/)
+		return match?.[1] ?? null
+	} catch {
+		return null
+	}
 }

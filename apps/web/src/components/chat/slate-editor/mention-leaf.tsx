@@ -14,7 +14,13 @@ interface MentionLeafProps extends RenderLeafProps {
  * Leaf renderer for markdown text (no longer handles mentions - they are elements now)
  * This is now just a simple wrapper around MarkdownLeaf
  */
-export function MentionLeaf({ interactive = false, mode = "composer", leaf, children, ...props }: MentionLeafProps) {
+export function MentionLeaf({
+	interactive = false,
+	mode = "composer",
+	leaf,
+	children,
+	...props
+}: MentionLeafProps) {
 	// Mentions are now handled as void inline elements, not as decorated text
 	// This component now only handles markdown styling
 	return (

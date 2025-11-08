@@ -1,7 +1,7 @@
 "use client"
 
 import type { RenderLeafProps } from "slate-react"
-import { type MarkdownDecorationType, LINK_PATTERN, MarkdownLeaf } from "./slate-markdown-decorators"
+import { LINK_PATTERN, type MarkdownDecorationType, MarkdownLeaf } from "./slate-markdown-decorators"
 
 interface LinkLeafProps extends RenderLeafProps {
 	/** Whether to make links interactive (clickable) */
@@ -14,7 +14,13 @@ interface LinkLeafProps extends RenderLeafProps {
  * Leaf renderer with interactive links support
  * Extends MarkdownLeaf to add click handlers for links
  */
-export function LinkLeaf({ interactive = false, mode = "composer", leaf, children, ...props }: LinkLeafProps) {
+export function LinkLeaf({
+	interactive = false,
+	mode = "composer",
+	leaf,
+	children,
+	...props
+}: LinkLeafProps) {
 	// Check if this leaf is a link - MUST be before any hooks
 	const markdownType = (leaf as any).type as MarkdownDecorationType | undefined
 	const isLink = markdownType === "link"
@@ -67,7 +73,7 @@ export function LinkLeaf({ interactive = false, mode = "composer", leaf, childre
 			href={url}
 			target="_blank"
 			rel="noopener noreferrer"
-			className="text-primary underline cursor-pointer hover:text-primary-hover"
+			className="cursor-pointer text-primary underline hover:text-primary-hover"
 			onClick={(e) => {
 				// Prevent Slate from handling the click
 				e.stopPropagation()

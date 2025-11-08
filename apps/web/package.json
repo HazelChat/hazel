@@ -59,6 +59,7 @@
 		"react-dom": "19.2.0",
 		"react-error-boundary": "^6.0.0",
 		"react-stately": "^3.42.0",
+		"react-tweet": "^3.2.2",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
 		"slate": "0.118.1",

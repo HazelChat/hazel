@@ -38,15 +38,20 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 	const { id: channelId } = useParams({ from: "/_app/$orgSlug/chat/$id" })
 	const anchorRef = useRef<HTMLSpanElement | null>(null)
 	const comboboxInputRef = useRef<HTMLInputElement>(null)
-	const [anchorRect, setAnchorRect] = useState<{ x: number; y: number; width: number; height: number } | null>(
-		null,
-	)
+	const [anchorRect, setAnchorRect] = useState<{
+		x: number
+		y: number
+		width: number
+		height: number
+	} | null>(null)
 
 	// Fetch channel members with user data
 	const { data: members } = useLiveQuery((q) =>
 		q
 			.from({ channelMember: channelMemberCollection })
-			.innerJoin({ user: userCollection }, ({ channelMember, user }) => eq(channelMember.userId, user.id))
+			.innerJoin({ user: userCollection }, ({ channelMember, user }) =>
+				eq(channelMember.userId, user.id),
+			)
 			.where(({ channelMember }) => eq(channelMember.channelId, channelId))
 			.limit(100)
 			.orderBy(({ channelMember }) => channelMember.joinedAt, "desc")
@@ -172,7 +177,7 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 				}
 
 				combobox.setOpen(true)
-			} catch (e) {
+			} catch (_e) {
 				// If the range is invalid, hide the menu
 				setAnchorRect(null)
 				combobox.setOpen(false)
@@ -181,7 +186,7 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 			setAnchorRect(null)
 			combobox.setOpen(false)
 		}
-	}, [editor, filteredOptions.length, search, combobox])
+	}, [editor, filteredOptions.length, combobox])
 
 	if (filteredOptions.length === 0) {
 		return null
@@ -219,7 +224,7 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 					<ComboboxPopover
 						getAnchorRect={() => anchorRect}
 						gutter={4}
-						hideOnInteractOutside={(event) => {
+						hideOnInteractOutside={(_event) => {
 							// Close the menu and reset mention state
 							editor.mentionState = { active: false, search: "", start: null, target: null }
 							combobox.setOpen(false)
@@ -235,7 +240,7 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 									onSelect(option.id, option.displayName, option.type)
 									combobox.setOpen(false)
 								}}
-								className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors data-[active-item=true]:bg-accent data-[active-item=true]:text-accent-fg hover:bg-accent/50"
+								className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent/50 data-[active-item=true]:bg-accent data-[active-item=true]:text-accent-fg"
 							>
 								<div className="flex min-w-0 flex-1 items-center gap-2">
 									{option.type === "user" && option.avatarUrl ? (
@@ -264,7 +269,9 @@ export function MentionAutocomplete({ editor, search, onSelect }: MentionAutocom
 
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-medium">
-											{option.type === "user" ? option.displayName : `@${option.displayName}`}
+											{option.type === "user"
+												? option.displayName
+												: `@${option.displayName}`}
 										</div>
 										{option.type !== "user" && (
 											<div className="truncate text-muted-fg text-xs">

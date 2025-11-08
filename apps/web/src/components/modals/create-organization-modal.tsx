@@ -76,11 +76,7 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 
 	return (
 		<Modal>
-			<ModalContent
-				isOpen={isOpen}
-				onOpenChange={onOpenChange}
-				size="lg"
-			>
+			<ModalContent isOpen={isOpen} onOpenChange={onOpenChange} size="lg">
 				<ModalHeader>
 					<ModalTitle>Create a new Server</ModalTitle>
 					<Description>

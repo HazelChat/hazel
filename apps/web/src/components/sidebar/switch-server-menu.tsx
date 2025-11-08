@@ -77,11 +77,7 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 
 			<MenuSeparator />
 
-			<MenuItem
-				id="create-server"
-				textValue="Create server"
-				onAction={onCreateOrganization}
-			>
+			<MenuItem id="create-server" textValue="Create server" onAction={onCreateOrganization}>
 				<IconPlus data-slot="icon" />
 				<SidebarLabel>Create server</SidebarLabel>
 			</MenuItem>

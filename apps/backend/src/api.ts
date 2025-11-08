@@ -191,6 +191,37 @@ export class LinkPreviewGroup extends HttpApiGroup.make("linkPreview")
 	)
 	.prefix("/link-preview") {}
 
+export class TweetError extends Schema.TaggedError<TweetError>("TweetError")(
+	"TweetError",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 500,
+	}),
+) {}
+
+export class TweetGroup extends HttpApiGroup.make("tweet")
+	.add(
+		HttpApiEndpoint.get("get")`/`
+			.addSuccess(Schema.Any)
+			.addError(TweetError)
+			.addError(InternalServerError)
+			.setUrlParams(
+				Schema.Struct({
+					id: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Tweet",
+					description: "Fetch tweet data from Twitter/X by tweet ID",
+					summary: "Fetch tweet data",
+				}),
+			),
+	)
+	.prefix("/tweet") {}
+
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(AttachmentGroup)
 	.add(PresencePublicGroup)
@@ -199,6 +230,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(WebhookGroup)
 	.add(MockDataGroup)
 	.add(LinkPreviewGroup)
+	.add(TweetGroup)
 	.annotateContext(
 		OpenApi.annotations({
 			title: "Hazel Chat API",

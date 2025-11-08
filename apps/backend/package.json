@@ -49,6 +49,7 @@
 		"metascraper-publisher": "^5.49.5",
 		"metascraper-title": "^5.49.5",
 		"metascraper-url": "^5.49.5",
-		"pg": "^8.16.3"
+		"pg": "^8.16.3",
+		"react-tweet": "^3.2.2"
 	}
 }

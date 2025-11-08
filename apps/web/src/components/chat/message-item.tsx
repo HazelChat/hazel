@@ -8,7 +8,8 @@ import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
-import { extractUrls, LinkPreview } from "~/components/link-preview"
+import { extractTweetId, extractUrls, isTweetUrl, LinkPreview } from "~/components/link-preview"
+import { TweetEmbed } from "~/components/tweet-embed"
 import { messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
@@ -136,11 +137,25 @@ export function MessageItem({
 					) : (
 						<>
 							<SlateMessageViewer content={message.content} />
-							{/* Link Preview */}
+							{/* Tweet Embeds and Link Previews */}
 							{(() => {
 								const urls = extractUrls(message.content)
-								const lastUrl = urls[urls.length - 1]
-								return lastUrl ? <LinkPreview url={lastUrl} /> : null
+								const tweetUrls = urls.filter((url) => isTweetUrl(url))
+								const nonTweetUrls = urls.filter((url) => !isTweetUrl(url))
+
+								return (
+									<>
+										{/* Render all tweet embeds */}
+										{tweetUrls.map((url) => {
+											const tweetId = extractTweetId(url)
+											return tweetId ? <TweetEmbed key={url} id={tweetId} /> : null
+										})}
+										{/* Render last non-tweet URL as link preview */}
+										{nonTweetUrls.length > 0 && nonTweetUrls[nonTweetUrls.length - 1] && (
+											<LinkPreview url={nonTweetUrls[nonTweetUrls.length - 1]!} />
+										)}
+									</>
+								)
 							})()}
 						</>
 					)}

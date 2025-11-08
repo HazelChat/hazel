@@ -164,7 +164,9 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
-	const [modalType, setModalType] = useState<"create" | "join" | "dm" | "invite" | "create-organization" | null>(null)
+	const [modalType, setModalType] = useState<
+		"create" | "join" | "dm" | "invite" | "create-organization" | null
+	>(null)
 
 	return (
 		<>
@@ -189,7 +191,9 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 						</PrimitiveButton>
 						<MenuContent className="min-w-(--trigger-width)">
 							{isMobile ? (
-								<SwitchServerMenu onCreateOrganization={() => setModalType("create-organization")} />
+								<SwitchServerMenu
+									onCreateOrganization={() => setModalType("create-organization")}
+								/>
 							) : (
 								<>
 									<MenuSection>
@@ -209,7 +213,11 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 											<MenuLabel>Switch Server</MenuLabel>
 										</MenuItem>
 										<MenuContent>
-											<SwitchServerMenu onCreateOrganization={() => setModalType("create-organization")} />
+											<SwitchServerMenu
+												onCreateOrganization={() =>
+													setModalType("create-organization")
+												}
+											/>
 										</MenuContent>
 									</MenuSubMenu>
 
@@ -310,7 +318,10 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 				<EmailInviteModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
 			)}
 			{modalType === "create-organization" && (
-				<CreateOrganizationModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
+				<CreateOrganizationModal
+					isOpen={true}
+					onOpenChange={(isOpen) => !isOpen && setModalType(null)}
+				/>
 			)}
 		</>
 	)
