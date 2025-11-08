@@ -5,6 +5,7 @@ import { Effect } from "effect"
 import { type EnrichedTweet, enrichTweet } from "react-tweet"
 import type { Tweet } from "react-tweet/api"
 import { ApiClient } from "~/lib/services/common/api-client"
+import IconHeart from "./icons/icon-heart"
 
 // Atom family for per-tweet-ID caching using typesafe API client
 const tweetAtomFamily = Atom.family((id: string) =>
@@ -219,7 +220,10 @@ function TweetMetrics({ tweet }: { tweet: EnrichedTweet }) {
 			)}
 			{favoriteCount !== undefined && favoriteCount > 0 && (
 				<div className="flex items-center gap-1">
+					<IconHeart className="size-3 text-blue-400" />
+
 					<span className="font-semibold">{favoriteCount.toLocaleString()}</span>
+
 					<span>{favoriteCount > 1 ? "Likes" : "Like"}</span>
 				</div>
 			)}
