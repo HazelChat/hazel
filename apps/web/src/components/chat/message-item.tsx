@@ -150,9 +150,7 @@ export function MessageItem({
 								const urls = extractUrls(message.content)
 								const tweetUrls = urls.filter((url) => isTweetUrl(url))
 								const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
-								const otherUrls = urls.filter(
-									(url) => !isTweetUrl(url) && !isYoutubeUrl(url),
-								)
+								const otherUrls = urls.filter((url) => !isTweetUrl(url) && !isYoutubeUrl(url))
 
 								return (
 									<>
