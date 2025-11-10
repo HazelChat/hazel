@@ -15,7 +15,7 @@ const makeHttpLiveWithKV = (env: Env) =>
 		Layer.provideMerge(
 			HttpApiBuilder.middlewareCors({
 				allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
-				credentials: false,
+				credentials: true,
 			}),
 		),
 		Layer.provideMerge(HttpServer.layerContext),
@@ -32,6 +32,6 @@ export default {
 		const Live = makeHttpLiveWithKV(env)
 		const handler = HttpApiBuilder.toWebHandler(Live, {})
 
-		return handler.handler(request as unknown as Request)
+		return handler.handler(request)
 	},
 } satisfies ExportedHandler<Env>

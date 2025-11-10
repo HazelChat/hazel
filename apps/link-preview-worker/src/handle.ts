@@ -12,5 +12,4 @@ export const HttpAppLive = HttpApiBuilder.group(LinkPreviewApi, "app", (handles)
 	}),
 )
 
-// Export all handlers
 export { HttpLinkPreviewLive, HttpTweetLive }
