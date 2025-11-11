@@ -38,6 +38,12 @@
 		"skipLibCheck": true,
 		"types": [
 			"./worker-configuration.d.ts"
+		],
+		"plugins": [
+			{
+				"name": "@effect/language-service",
+				"reportSuggestionsAsWarningsInTsc": true
+			}
 		]
 	},
 	"exclude": ["test"],

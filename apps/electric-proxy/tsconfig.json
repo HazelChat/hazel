@@ -26,7 +26,13 @@
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
 		"rootDir": "./src",
-		"baseUrl": "."
+		"baseUrl": ".",
+		"plugins": [
+			{
+				"name": "@effect/language-service",
+				"reportSuggestionsAsWarningsInTsc": true
+			}
+		]
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist"]

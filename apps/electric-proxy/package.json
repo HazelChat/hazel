@@ -9,6 +9,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
+		"@effect/language-service": "^0.55.2",
 		"@types/bun": "latest",
 		"typescript": "^5.9.3"
 	},

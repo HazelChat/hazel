@@ -11,6 +11,7 @@
 		"test": "npx vitest --run"
 	},
 	"devDependencies": {
+		"@effect/language-service": "^0.55.2",
 		"@vitest/coverage-istanbul": "^4.0.8",
 		"typescript": "^5.9.3"
 	},
