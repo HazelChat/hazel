@@ -10,7 +10,7 @@ import {
 	uuid,
 	varchar,
 } from "drizzle-orm/pg-core"
-import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "./ids"
+import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 
 // Channel types
 export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "thread", "direct", "single"])

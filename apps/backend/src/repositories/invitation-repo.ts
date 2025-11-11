@@ -1,5 +1,5 @@
 import { and, Database, eq, lte, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { Invitation } from "@hazel/db/models"
+import { Invitation } from "@hazel/domain/models"
 import { type InvitationId, type OrganizationId, policyRequire } from "@hazel/domain"
 import { Effect, Option, type Schema } from "effect"
 import { DatabaseLive } from "../services/database"

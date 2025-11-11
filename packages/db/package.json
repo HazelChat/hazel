@@ -6,7 +6,6 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./models": "./src/models/index.ts",
 		"./schema": "./src/schema/index.ts"
 	},
 	"scripts": {

@@ -260,7 +260,7 @@
   "catalogs": {
     "effect": {
       "@effect-atom/atom": "^0.4.0",
-      "@effect-atom/atom-react": "^0.4.0",
+      "@effect-atom/atom-react": "0.4.0",
       "@effect-aws/client-s3": "1.10.6",
       "@effect-aws/s3": "0.2.4",
       "@effect/cluster": "^0.52.6",

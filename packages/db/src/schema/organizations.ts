@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm"
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
-import type { OrganizationId, OrganizationMemberId, UserId } from "./ids"
+import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 
 // Organization member roles
 export const organizationRoleEnum = pgEnum("organization_role", ["admin", "member", "owner"])
