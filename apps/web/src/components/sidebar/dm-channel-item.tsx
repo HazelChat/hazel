@@ -1,4 +1,4 @@
-import type { ChannelId, UserId } from "@hazel/db/schema"
+import type { ChannelId, UserId } from "@hazel/schema"
 import { useRouter } from "@tanstack/react-router"
 import { useCallback } from "react"
 import IconClose from "~/components/icons/icon-close"

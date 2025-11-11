@@ -1,9 +1,10 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { OrganizationMember } from "@hazel/db/models"
-import { OrganizationMemberId } from "@hazel/db/schema"
-import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { OrganizationMemberId } from "../ids"
+import { OrganizationMember } from "../models"
+import { TransactionId } from "../transaction-id"
+import { AuthMiddleware } from "./middleware"
 import { OrganizationNotFoundError } from "./organizations"
 
 /**

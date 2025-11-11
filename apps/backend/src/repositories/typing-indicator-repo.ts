@@ -1,6 +1,6 @@
 import { and, Database, eq, lt, ModelRepository, schema, sql, type TransactionClient } from "@hazel/db"
 import { TypingIndicator } from "@hazel/db/models"
-import { type ChannelId, type ChannelMemberId, policyRequire, TypingIndicatorId } from "@hazel/db/schema"
+import { type ChannelId, type ChannelMemberId, policyRequire, TypingIndicatorId } from "@hazel/domain"
 import { Effect } from "effect"
 import { DatabaseLive } from "../services/database"
 

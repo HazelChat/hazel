@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type } from "arktype"
 import { toast } from "sonner"

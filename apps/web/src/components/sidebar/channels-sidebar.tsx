@@ -1,6 +1,6 @@
 "use client"
 
-import type { OrganizationId } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useMemo, useState } from "react"

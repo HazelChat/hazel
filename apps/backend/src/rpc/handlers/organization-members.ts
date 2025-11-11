@@ -1,10 +1,10 @@
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { OrganizationMemberRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
 import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
-import { OrganizationMemberRpcs } from "../groups/organization-members"
 
 /**
  * Organization Member RPC Handlers

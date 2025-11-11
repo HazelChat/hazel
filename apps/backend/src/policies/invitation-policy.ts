@@ -6,7 +6,7 @@ import {
 	UnauthorizedError,
 	type UserId,
 	withSystemActor,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
 import { Effect, Option, pipe } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { InvitationRepo } from "../repositories/invitation-repo"

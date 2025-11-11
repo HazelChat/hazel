@@ -5,7 +5,7 @@ import {
 	type TypingIndicatorId,
 	UnauthorizedError,
 	withSystemActor,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
 import { Effect, Option, pipe } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { TypingIndicatorRepo } from "../repositories/typing-indicator-repo"

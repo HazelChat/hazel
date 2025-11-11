@@ -1,6 +1,6 @@
 import { and, Database, eq, ModelRepository, schema } from "@hazel/db"
 import { MessageReaction } from "@hazel/db/models"
-import { type MessageId, policyRequire, type UserId } from "@hazel/db/schema"
+import { type MessageId, policyRequire, type UserId } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { DatabaseLive } from "../services/database"
 

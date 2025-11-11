@@ -1,0 +1,30 @@
+{
+	"name": "@hazel/domain",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./ids": "./src/ids.ts",
+		"./errors": "./src/errors.ts",
+		"./current-user": "./src/current-user.ts",
+		"./transaction-id": "./src/transaction-id.ts",
+		"./rpc": "./src/rpc/index.ts",
+		"./http": "./src/http/index.ts",
+		"./policy": "./src/policy/index.ts",
+		"./models": "./src/models/index.ts"
+	},
+	"dependencies": {
+		"@effect/experimental": "^0.57.0",
+		"@effect/platform": "0.93.0",
+		"@effect/rpc": "0.72.1",
+		"@hazel/schema": "workspace:*",
+		"drizzle-orm": "^0.44.7",
+		"effect": "^3.19.3"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.0",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,4 +1,4 @@
-import type { UserId } from "@hazel/db/schema"
+import type { UserId } from "@hazel/schema"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconPhone from "~/components/icons/icon-phone"
 import { Avatar } from "~/components/ui/avatar"

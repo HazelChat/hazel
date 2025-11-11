@@ -1,7 +1,7 @@
 "use client"
 
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { UserId } from "@hazel/db/schema"
+import type { UserId } from "@hazel/schema"
 import { Button as PrimitiveButton } from "react-aria-components"
 import type { RenderElementProps } from "slate-react"
 import { useFocused, useSelected } from "slate-react"

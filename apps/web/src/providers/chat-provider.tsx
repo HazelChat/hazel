@@ -1,5 +1,5 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { Channel } from "@hazel/db/models"
+import type { Channel } from "@hazel/domain/models"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -8,7 +8,7 @@ import {
 	type OrganizationId,
 	PinnedMessageId,
 	UserId,
-} from "@hazel/db/schema"
+} from "@hazel/schema"
 import { Cause, Exit } from "effect"
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
 import { toast } from "sonner"

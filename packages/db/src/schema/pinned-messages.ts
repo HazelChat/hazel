@@ -1,5 +1,5 @@
-import type { ChannelId, MessageId, PinnedMessageId, UserId } from "@hazel/effect-lib"
 import { index, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
+import type { ChannelId, MessageId, PinnedMessageId, UserId } from "./ids"
 
 // Pinned messages table (normalized from array in Convex)
 export const pinnedMessagesTable = pgTable(

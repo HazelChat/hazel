@@ -1,4 +1,4 @@
-import type { ChannelId, OrganizationId } from "@hazel/db/schema"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useRef } from "react"

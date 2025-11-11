@@ -1,5 +1,5 @@
 import { Cookies, HttpServerRequest } from "@effect/platform"
-import { CurrentUser } from "@hazel/effect-lib"
+import { CurrentUser } from "@hazel/domain"
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
 import { Config, Data, Effect, Redacted } from "effect"
 

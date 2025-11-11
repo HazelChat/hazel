@@ -1,10 +1,10 @@
 import { Database } from "@hazel/db"
-import { policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { policyUse, withRemapDbErrors } from "@hazel/domain"
+import { TypingIndicatorNotFoundError, TypingIndicatorRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { TypingIndicatorPolicy } from "../../policies/typing-indicator-policy"
 import { TypingIndicatorRepo } from "../../repositories/typing-indicator-repo"
-import { TypingIndicatorNotFoundError, TypingIndicatorRpcs } from "../groups/typing-indicators"
 
 /**
  * Typing Indicator RPC Handlers

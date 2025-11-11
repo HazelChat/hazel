@@ -1,6 +1,6 @@
 import { Database, eq, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { UserPresenceStatus } from "@hazel/db/models"
-import { type ChannelId, policyRequire, type UserId } from "@hazel/db/schema"
+import { type ChannelId, policyRequire, type UserId } from "@hazel/domain"
 import { Effect, Option, type Schema } from "effect"
 import { DatabaseLive } from "../services/database"
 

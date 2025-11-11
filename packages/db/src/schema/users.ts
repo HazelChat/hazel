@@ -1,5 +1,5 @@
-import type { UserId } from "@hazel/effect-lib"
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import type { UserId } from "./ids"
 
 export const userStatusEnum = pgEnum("user_status", ["online", "offline", "away"])
 

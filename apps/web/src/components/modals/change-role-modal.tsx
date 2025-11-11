@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect-atom/atom-react"
-import type { OrganizationMemberId, UserId } from "@hazel/db/schema"
+import type { OrganizationMemberId, UserId } from "@hazel/schema"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { closeModal, modalAtomFamily } from "~/atoms/modal-atoms"

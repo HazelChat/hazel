@@ -1,10 +1,11 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { ChannelMember } from "@hazel/db/models"
-import { ChannelMemberId } from "@hazel/db/schema"
-import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { ChannelMemberId } from "../ids"
+import { ChannelMember } from "../models"
+import { TransactionId } from "../transaction-id"
 import { ChannelNotFoundError } from "./channels"
+import { AuthMiddleware } from "./middleware"
 
 /**
  * Response schema for successful channel member operations.

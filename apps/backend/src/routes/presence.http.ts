@@ -1,6 +1,6 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { withRemapDbErrors, withSystemActor } from "@hazel/effect-lib"
+import { withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 import { UserPresenceStatusRepo } from "../repositories/user-presence-status-repo"

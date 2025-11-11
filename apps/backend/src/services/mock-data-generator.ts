@@ -1,5 +1,5 @@
 import type { Database } from "@hazel/db"
-import type { ChannelId, OrganizationId, UserId } from "@hazel/db/schema"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
 import { Effect } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"

@@ -1,5 +1,4 @@
 import { Database } from "@hazel/db"
-import { OrganizationId } from "@hazel/db/schema"
 import {
 	CurrentUser,
 	DmChannelAlreadyExistsError,
@@ -7,7 +6,9 @@ import {
 	policyUse,
 	withRemapDbErrors,
 	withSystemActor,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
+import { OrganizationId } from "@hazel/domain/ids"
+import { ChannelRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
@@ -15,7 +16,6 @@ import { UserPolicy } from "../../policies/user-policy"
 import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
 import { ChannelRepo } from "../../repositories/channel-repo"
 import { UserRepo } from "../../repositories/user-repo"
-import { ChannelRpcs } from "../groups/channels"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
 	Effect.gen(function* () {

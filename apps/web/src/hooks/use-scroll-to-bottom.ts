@@ -1,5 +1,5 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { ChannelId } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
 import { useCallback, useEffect, useRef } from "react"
 import { isAtBottomAtomFamily } from "~/atoms/chat-atoms"
 import { useResizeObserver } from "./use-resize-observer"

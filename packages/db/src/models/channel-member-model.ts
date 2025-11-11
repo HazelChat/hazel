@@ -1,5 +1,5 @@
-import { ChannelId, ChannelMemberId, MessageId, UserId } from "@hazel/effect-lib"
 import { Schema } from "effect"
+import { ChannelId, ChannelMemberId, MessageId, UserId } from "../schema/ids"
 import * as M from "../services/model"
 import { JsonDate } from "./utils"
 

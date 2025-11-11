@@ -26,6 +26,7 @@
         "@effect/sql": "0.48.0",
         "@effect/sql-pg": "0.49.2",
         "@hazel/db": "workspace:*",
+        "@hazel/domain": "workspace:*",
         "@hazel/effect-lib": "workspace:*",
         "@opentelemetry/sdk-logs": "^0.208.0",
         "@opentelemetry/sdk-metrics": "^2.2.0",
@@ -100,8 +101,10 @@
         "@fontsource/inter": "^5.2.8",
         "@hazel/backend": "workspace:*",
         "@hazel/db": "workspace:*",
+        "@hazel/domain": "workspace:*",
         "@hazel/effect-electric-db-collection": "workspace:*",
         "@hazel/link-preview-worker": "workspace:*",
+        "@hazel/schema": "workspace:*",
         "@hazel/tanstack-db-atom": "workspace:*",
         "@heroicons/react": "^2.2.0",
         "@legendapp/list": "2.1.0-beta.8",
@@ -178,7 +181,9 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect/experimental": "^0.57.0",
+        "@hazel/domain": "workspace:*",
         "@hazel/effect-lib": "workspace:*",
+        "@hazel/schema": "workspace:*",
         "drizzle-orm": "^0.44.7",
         "effect": "^3.19.3",
         "postgres": "^3.4.7",
@@ -186,6 +191,22 @@
       "devDependencies": {
         "@types/node": "^24.10.0",
         "drizzle-kit": "^0.31.6",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/domain": {
+      "name": "@hazel/domain",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect/experimental": "^0.57.0",
+        "@effect/platform": "0.93.0",
+        "@effect/rpc": "0.72.1",
+        "@hazel/schema": "workspace:*",
+        "drizzle-orm": "^0.44.7",
+        "effect": "^3.19.3",
+      },
+      "devDependencies": {
+        "@types/node": "^24.10.0",
         "typescript": "^5.9.3",
       },
     },
@@ -215,6 +236,17 @@
         "effect": "^3.19.3",
       },
       "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/schema": {
+      "name": "@hazel/schema",
+      "version": "0.0.0",
+      "dependencies": {
+        "effect": "^3.19.3",
+      },
+      "devDependencies": {
+        "@types/node": "^24.10.0",
         "typescript": "^5.9.3",
       },
     },
@@ -576,6 +608,8 @@
 
     "@hazel/db": ["@hazel/db@workspace:packages/db"],
 
+    "@hazel/domain": ["@hazel/domain@workspace:packages/domain"],
+
     "@hazel/effect-electric-db-collection": ["@hazel/effect-electric-db-collection@workspace:packages/effect-electric-db-collection"],
 
     "@hazel/effect-lib": ["@hazel/effect-lib@workspace:packages/effect-lib"],
@@ -583,6 +617,8 @@
     "@hazel/electric-proxy": ["@hazel/electric-proxy@workspace:apps/electric-proxy"],
 
     "@hazel/link-preview-worker": ["@hazel/link-preview-worker@workspace:apps/link-preview-worker"],
+
+    "@hazel/schema": ["@hazel/schema@workspace:packages/schema"],
 
     "@hazel/tanstack-db-atom": ["@hazel/tanstack-db-atom@workspace:packages/tanstack-db-atom"],
 

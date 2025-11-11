@@ -1,5 +1,5 @@
-import { NotificationId } from "@hazel/effect-lib"
 import { Schema } from "effect"
+import { NotificationId } from "../schema/ids"
 import * as M from "../services/model"
 import { JsonDate } from "./utils"
 

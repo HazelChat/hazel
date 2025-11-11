@@ -1,4 +1,4 @@
-import { type OrganizationId, policy, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { type OrganizationId, policy, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"

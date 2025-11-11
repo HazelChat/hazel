@@ -1,9 +1,11 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { User } from "@hazel/db/models"
-import { UserId } from "@hazel/db/schema"
-import { CurrentUser, InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import * as CurrentUser from "../current-user"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { UserId } from "../ids"
+import { User } from "../models"
+import { TransactionId } from "../transaction-id"
+import { AuthMiddleware } from "./middleware"
 
 /**
  * Response schema for successful user operations.

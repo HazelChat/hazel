@@ -1,9 +1,10 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { Notification } from "@hazel/db/models"
-import { NotificationId } from "@hazel/db/schema"
-import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { NotificationId } from "../ids"
+import { Notification } from "../models"
+import { TransactionId } from "../transaction-id"
+import { AuthMiddleware } from "./middleware"
 
 /**
  * Response schema for successful notification operations.

@@ -1,4 +1,5 @@
-import type { Channel, ChannelId, ChannelMember, OrganizationMember } from "@hazel/db/schema"
+import type { Channel, ChannelMember, OrganizationMember } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
 import { useState } from "react"
 import { toast } from "sonner"
 import IconDots from "~/components/icons/icon-dots"

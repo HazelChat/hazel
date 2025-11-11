@@ -1,4 +1,4 @@
-import type { OrganizationId } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { toast } from "sonner"
 import IconPlus from "~/components/icons/icon-plus"

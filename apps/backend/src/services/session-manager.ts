@@ -1,10 +1,4 @@
-import {
-	CurrentUser,
-	OrganizationId,
-	UnauthorizedError,
-	type UserId,
-	withSystemActor,
-} from "@hazel/effect-lib"
+import { CurrentUser, OrganizationId, UnauthorizedError, type UserId, withSystemActor } from "@hazel/domain"
 import { Effect, Option, Schema } from "effect"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "./workos"

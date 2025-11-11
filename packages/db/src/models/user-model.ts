@@ -1,5 +1,5 @@
-import { UserId } from "@hazel/effect-lib"
 import { Schema } from "effect"
+import { UserId } from "../schema/ids"
 import * as M from "../services/model"
 import { baseFields, JsonDate } from "./utils"
 

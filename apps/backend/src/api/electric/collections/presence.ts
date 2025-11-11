@@ -1,6 +1,6 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
-import { UserId } from "@hazel/db/schema"
-import { InternalServerError } from "@hazel/effect-lib"
+import { InternalServerError } from "@hazel/domain"
+import { UserId } from "@hazel/domain/ids"
 import { Schema } from "effect"
 
 // Payload for marking user offline

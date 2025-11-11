@@ -5,7 +5,7 @@ import {
 	OrganizationId,
 	TransactionId,
 	UnauthorizedError,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
 import { Schema } from "effect"
 import { AttachmentGroup, PresencePublicGroup } from "./api/electric/collections"
 

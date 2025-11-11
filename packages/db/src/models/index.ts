@@ -1,14 +1,5 @@
-export * as Attachment from "./attachment-model"
-export * as Bot from "./bot-model"
-export * as ChannelMember from "./channel-member-model"
-export * as Channel from "./channel-model"
-export * as Invitation from "./invitation-model"
-export * as Message from "./message-model"
-export * as MessageReaction from "./message-reaction-model"
-export * as Notification from "./notification-model"
-export * as OrganizationMember from "./organization-member-model"
-export * as Organization from "./organization-model"
-export * as PinnedMessage from "./pinned-message-model"
-export * as TypingIndicator from "./typing-indicator-model"
-export * as User from "./user-model"
-export * as UserPresenceStatus from "./user-presence-status-model"
+/**
+ * Re-export all models from the domain package.
+ * Models have been moved to domain for proper separation of concerns.
+ */
+export * from "@hazel/domain/models"

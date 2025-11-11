@@ -1,5 +1,5 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, Redacted } from "effect"
 import { HazelApi } from "../api"
 import { AuthState } from "../lib/schema"

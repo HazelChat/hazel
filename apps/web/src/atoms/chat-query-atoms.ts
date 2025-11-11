@@ -1,6 +1,6 @@
 import { Atom } from "@effect-atom/atom-react"
-import type { Message, PinnedMessage, User } from "@hazel/db/models"
-import type { ChannelId } from "@hazel/db/schema"
+import type { Message, PinnedMessage, User } from "@hazel/domain/models"
+import type { ChannelId } from "@hazel/schema"
 import { makeQuery } from "@hazel/tanstack-db-atom"
 import { eq } from "@tanstack/db"
 import { channelCollection } from "~/db/collections"

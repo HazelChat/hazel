@@ -1,9 +1,10 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { Attachment } from "@hazel/db/models"
-import { AttachmentId } from "@hazel/db/schema"
-import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { AttachmentId } from "../ids"
+import { Attachment } from "../models"
+import { TransactionId } from "../transaction-id"
+import { AuthMiddleware } from "./middleware"
 
 /**
  * Error thrown when an attachment is not found.

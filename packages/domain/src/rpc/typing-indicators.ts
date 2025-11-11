@@ -1,9 +1,10 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
-import { TypingIndicator } from "@hazel/db/models"
-import { TypingIndicatorId } from "@hazel/db/schema"
-import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { AuthMiddleware } from "../middleware/auth-class"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { TypingIndicatorId } from "../ids"
+import { TypingIndicator } from "../models"
+import { TransactionId } from "../transaction-id"
+import { AuthMiddleware } from "./middleware"
 
 /**
  * Response schema for successful typing indicator operations.

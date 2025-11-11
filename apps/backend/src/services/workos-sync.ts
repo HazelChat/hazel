@@ -1,4 +1,4 @@
-import { type OrganizationId, type UserId, withSystemActor } from "@hazel/db/schema"
+import { type OrganizationId, type UserId, withSystemActor } from "@hazel/domain"
 import type { Event } from "@workos-inc/node"
 import { Effect, Option, pipe, Schema } from "effect"
 import { InvitationRepo } from "../repositories/invitation-repo"

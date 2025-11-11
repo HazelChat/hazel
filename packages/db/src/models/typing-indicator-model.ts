@@ -1,5 +1,5 @@
-import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/effect-lib"
 import { Schema } from "effect"
+import { ChannelId, ChannelMemberId, TypingIndicatorId } from "../schema/ids"
 import * as M from "../services/model"
 
 export class Model extends M.Class<Model>("TypingIndicator")({

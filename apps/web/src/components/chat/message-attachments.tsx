@@ -1,5 +1,5 @@
-import type { Attachment } from "@hazel/db/models"
-import type { MessageId } from "@hazel/db/schema"
+import type { Attachment } from "@hazel/domain/models"
+import type { MessageId } from "@hazel/schema"
 import { FileIcon } from "@untitledui/file-icons"
 
 import { useState } from "react"

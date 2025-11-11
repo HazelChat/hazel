@@ -1,5 +1,5 @@
-import { OrganizationId } from "@hazel/effect-lib"
 import { Schema } from "effect"
+import { OrganizationId } from "../schema/ids"
 import * as M from "../services/model"
 import { baseFields } from "./utils"
 

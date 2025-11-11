@@ -1,4 +1,4 @@
-import { withSystemActor } from "@hazel/effect-lib"
+import { withSystemActor } from "@hazel/domain"
 import { Effect, Logger } from "effect"
 import { WorkOSSync } from "../services/workos-sync"
 
