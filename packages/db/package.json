@@ -20,7 +20,6 @@
 	"dependencies": {
 		"@effect/experimental": "^0.57.0",
 		"@hazel/domain": "workspace:*",
-		"@hazel/effect-lib": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"drizzle-orm": "^0.44.7",
 		"effect": "^3.19.3",
