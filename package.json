@@ -40,7 +40,7 @@
 		"test:coverage": "vitest run --coverage --coverage.reporter=text"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.4",
+		"@biomejs/biome": "2.3.5",
 		"@vitest/coverage-v8": "^4.0.8",
 		"turbo": "^2.6.0",
 		"typescript": "^5.9.3",
