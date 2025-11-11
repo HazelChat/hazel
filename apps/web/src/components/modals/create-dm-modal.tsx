@@ -1,6 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { User } from "@hazel/db/models"
-import type { UserId } from "@hazel/db/schema"
+import type { User } from "@hazel/domain/models"
+import type { UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"

@@ -1,5 +1,5 @@
 import { Headers } from "@effect/platform"
-import { type CurrentUser, UnauthorizedError } from "@hazel/effect-lib"
+import { type CurrentUser, UnauthorizedError } from "@hazel/domain"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
 import { SessionManager } from "../../services/session-manager"
 import { AuthMiddleware } from "./auth-class"

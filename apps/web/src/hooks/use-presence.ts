@@ -1,5 +1,5 @@
 import { Atom, Result, useAtomMount, useAtomValue } from "@effect-atom/atom-react"
-import type { ChannelId, UserId } from "@hazel/db/schema"
+import type { ChannelId, UserId } from "@hazel/schema"
 import { makeQuery } from "@hazel/tanstack-db-atom"
 import { eq } from "@tanstack/db"
 import { DateTime, Duration, Effect, Schedule, Stream } from "effect"

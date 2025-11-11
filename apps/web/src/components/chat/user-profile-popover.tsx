@@ -1,5 +1,5 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { UserId } from "@hazel/db/schema"
+import type { UserId } from "@hazel/schema"
 import { useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"

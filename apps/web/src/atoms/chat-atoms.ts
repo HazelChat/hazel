@@ -1,5 +1,5 @@
 import { Atom } from "@effect-atom/atom-react"
-import type { AttachmentId, ChannelId, MessageId } from "@hazel/db/schema"
+import type { AttachmentId, ChannelId, MessageId } from "@hazel/schema"
 
 /**
  * Per-channel reply state using Atom.family

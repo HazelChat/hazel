@@ -52,10 +52,7 @@ import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 export { HazelApi }
 
 // Export RPC groups for frontend consumption
-export { InvitationRpcs } from "./rpc/groups/invitations"
-export { MessageRpcs } from "./rpc/groups/messages"
-export { NotificationRpcs } from "./rpc/groups/notifications"
-export { AuthMiddleware } from "./rpc/middleware/auth"
+export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
 const HealthRouter = HttpLayerRouter.use((router) =>
 	router.add("GET", "/health", HttpServerResponse.text("OK")),
@@ -110,7 +107,6 @@ const PolicyLive = Layer.mergeAll(
 	ChannelPolicy.Default,
 	MessagePolicy.Default,
 	InvitationPolicy.Default,
-	AttachmentPolicy.Default,
 	OrganizationMemberPolicy.Default,
 	ChannelMemberPolicy.Default,
 	MessageReactionPolicy.Default,

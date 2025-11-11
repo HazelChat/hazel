@@ -9,7 +9,7 @@
  */
 
 import { RpcMiddleware } from "@effect/rpc"
-import { CurrentUser, UnauthorizedError } from "@hazel/effect-lib"
+import { CurrentUser, UnauthorizedError } from "@hazel/domain"
 
 /**
  * Authentication middleware that provides CurrentUser context to RPC handlers.

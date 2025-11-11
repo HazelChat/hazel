@@ -1,4 +1,4 @@
-import { policy, UnauthorizedError, type UserId } from "@hazel/effect-lib"
+import { policy, UnauthorizedError, type UserId } from "@hazel/domain"
 import { Effect } from "effect"
 
 export class UserPolicy extends Effect.Service<UserPolicy>()("UserPolicy/Policy", {

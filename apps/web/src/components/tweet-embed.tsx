@@ -1,5 +1,5 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { User } from "@hazel/db/models"
+import type { User } from "@hazel/domain/models"
 import { useState } from "react"
 import { type EnrichedTweet, enrichTweet } from "react-tweet"
 import { LinkPreviewClient } from "~/lib/services/common/link-preview-client"

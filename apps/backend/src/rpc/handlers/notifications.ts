@@ -1,10 +1,10 @@
 import { Database } from "@hazel/db"
-import { policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { policyUse, withRemapDbErrors } from "@hazel/domain"
+import { NotificationRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { NotificationPolicy } from "../../policies/notification-policy"
 import { NotificationRepo } from "../../repositories/notification-repo"
-import { NotificationRpcs } from "../groups/notifications"
 
 /**
  * Notification RPC Handlers

@@ -1,4 +1,4 @@
-import type { OrganizationId } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 import { and, eq, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import { SidebarSection } from "~/components/ui/sidebar"

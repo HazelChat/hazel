@@ -1,5 +1,5 @@
-import type { NotificationId, OrganizationMemberId } from "@hazel/effect-lib"
 import { index, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 
 // Notifications table
 export const notificationsTable = pgTable(

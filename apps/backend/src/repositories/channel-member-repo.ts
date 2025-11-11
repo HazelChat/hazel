@@ -9,8 +9,8 @@ import {
 	sql,
 	type TransactionClient,
 } from "@hazel/db"
-import { ChannelMember } from "@hazel/db/models"
-import { type ChannelId, type OrganizationId, policyRequire, type UserId } from "@hazel/db/schema"
+import { ChannelMember } from "@hazel/domain/models"
+import { type ChannelId, type OrganizationId, policyRequire, type UserId } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { DatabaseLive } from "../services/database"
 

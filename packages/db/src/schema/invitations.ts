@@ -1,5 +1,5 @@
-import type { InvitationId, OrganizationId, UserId } from "@hazel/effect-lib"
 import { index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
 
 // Invitation status
 export const invitationStatusEnum = pgEnum("invitation_status", ["pending", "accepted", "expired", "revoked"])

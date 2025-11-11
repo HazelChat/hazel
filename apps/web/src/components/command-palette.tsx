@@ -1,7 +1,7 @@
 "use client"
 
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { UserId } from "@hazel/db/schema"
+import type { UserId } from "@hazel/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo } from "react"

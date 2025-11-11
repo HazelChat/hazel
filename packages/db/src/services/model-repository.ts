@@ -1,4 +1,4 @@
-import { policyRequire } from "@hazel/effect-lib"
+import { policyRequire } from "@hazel/domain"
 import type { InferSelectModel, Table } from "drizzle-orm"
 import { eq } from "drizzle-orm"
 import { pipe } from "effect"

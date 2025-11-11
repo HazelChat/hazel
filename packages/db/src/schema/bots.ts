@@ -1,5 +1,5 @@
-import type { BotId, UserId } from "@hazel/effect-lib"
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import type { BotId, UserId } from "@hazel/schema"
 
 export const botsTable = pgTable(
 	"bots",

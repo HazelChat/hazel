@@ -1,5 +1,5 @@
-import type { Channel, ChannelMember, User } from "@hazel/db/models"
-import type { ChannelId, MessageId } from "@hazel/db/schema"
+import type { Channel, ChannelMember, User } from "@hazel/domain/models"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useAuth } from "~/lib/auth"
 import { attachmentCollection, channelCollection, messageCollection, userCollection } from "./collections"

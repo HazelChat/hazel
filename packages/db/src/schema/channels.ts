@@ -1,4 +1,3 @@
-import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/effect-lib"
 import { sql } from "drizzle-orm"
 import {
 	boolean,
@@ -11,6 +10,7 @@ import {
 	uuid,
 	varchar,
 } from "drizzle-orm/pg-core"
+import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 
 // Channel types
 export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "thread", "direct", "single"])

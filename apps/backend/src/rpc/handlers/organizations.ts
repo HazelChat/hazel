@@ -5,7 +5,8 @@ import {
 	policyUse,
 	withRemapDbErrors,
 	withSystemActor,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
+import { OrganizationRpcs, OrganizationSlugAlreadyExistsError } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
@@ -13,7 +14,6 @@ import { OrganizationMemberRepo } from "../../repositories/organization-member-r
 import { OrganizationRepo } from "../../repositories/organization-repo"
 import { UserRepo } from "../../repositories/user-repo"
 import { WorkOS } from "../../services/workos"
-import { OrganizationRpcs, OrganizationSlugAlreadyExistsError } from "../groups/organizations"
 
 /**
  * Custom error handler for organization database operations that provides

@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/db/schema"
+import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useCallback, useRef } from "react"
 import { deleteTypingIndicatorMutation, upsertTypingIndicatorMutation } from "~/atoms/typing-indicator-atom"

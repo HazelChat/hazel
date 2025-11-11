@@ -1,5 +1,5 @@
 import { HttpApiBuilder } from "@effect/platform"
-import { CurrentUser, type OrganizationId, UnauthorizedError, withSystemActor } from "@hazel/effect-lib"
+import { CurrentUser, type OrganizationId, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, Layer, Option, Redacted } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserRepo } from "../repositories/user-repo"

@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect-atom/atom-react"
-import type { PinnedMessageId } from "@hazel/db/schema"
+import type { PinnedMessageId } from "@hazel/schema"
 import { format } from "date-fns"
 import { useRef, useState } from "react"
 import { useHover } from "react-aria"

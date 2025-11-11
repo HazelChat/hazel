@@ -4,7 +4,7 @@ import {
 	policy,
 	UnauthorizedError,
 	withSystemActor,
-} from "@hazel/effect-lib"
+} from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { NotificationRepo } from "../repositories/notification-repo"

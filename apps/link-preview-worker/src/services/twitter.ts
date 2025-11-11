@@ -17,9 +17,7 @@ export class TwitterApiError extends Schema.TaggedError<TwitterApiError>("Twitte
  * Generate authentication token for Twitter syndication API
  */
 function getToken(id: string): string {
-	return ((Number(id) / 1e15) * Math.PI)
-		.toString(6 ** 2)
-		.replace(/(0+|\.)/g, "")
+	return ((Number(id) / 1e15) * Math.PI).toString(6 ** 2).replace(/(0+|\.)/g, "")
 }
 
 /**
