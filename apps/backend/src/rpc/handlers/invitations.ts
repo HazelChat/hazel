@@ -1,11 +1,11 @@
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { InvitationNotFoundError, InvitationRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
 import { InvitationRepo } from "../../repositories/invitation-repo"
 import { WorkOS } from "../../services/workos"
-import { InvitationNotFoundError, InvitationRpcs } from "../groups/invitations"
 
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {

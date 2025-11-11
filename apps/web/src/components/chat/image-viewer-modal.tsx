@@ -1,4 +1,4 @@
-import type { Attachment, User } from "@hazel/db/models"
+import type { Attachment, User } from "@hazel/domain/models"
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
 import useEmblaCarousel from "embla-carousel-react"
 import { useCallback, useEffect, useState } from "react"

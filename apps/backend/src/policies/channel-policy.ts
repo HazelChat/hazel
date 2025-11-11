@@ -1,10 +1,4 @@
-import {
-	type ChannelId,
-	type OrganizationId,
-	policy,
-	policyCompose,
-	UnauthorizedError,
-} from "@hazel/effect-lib"
+import { type ChannelId, type OrganizationId, policy, policyCompose, UnauthorizedError } from "@hazel/domain"
 import { Effect, pipe } from "effect"
 import { ChannelRepo } from "../repositories/channel-repo"
 import { OrganizationPolicy } from "./organization-policy"

@@ -1,4 +1,4 @@
-import type { MessageId } from "@hazel/db/schema"
+import type { MessageId } from "@hazel/schema"
 import { useMessage } from "~/db/hooks"
 import { cn } from "~/lib/utils"
 import IconClose from "../icons/icon-close"

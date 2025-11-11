@@ -1,3 +1,4 @@
+import { createEffectOptimisticAction } from "@hazel/effect-electric-db-collection"
 import {
 	type AttachmentId,
 	ChannelId,
@@ -6,8 +7,7 @@ import {
 	MessageReactionId,
 	OrganizationId,
 	type UserId,
-} from "@hazel/db/schema"
-import { createEffectOptimisticAction } from "@hazel/effect-electric-db-collection"
+} from "@hazel/schema"
 import { Effect } from "effect"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"

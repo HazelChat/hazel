@@ -1,5 +1,5 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { MessageId } from "@hazel/db/schema"
+import type { MessageId } from "@hazel/schema"
 import { messageWithAuthorAtomFamily } from "~/atoms/message-atoms"
 import { Avatar } from "../ui/avatar"
 

@@ -1,4 +1,5 @@
 import type { Organization } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 
 /**
  * Safely get the navigation route for an organization

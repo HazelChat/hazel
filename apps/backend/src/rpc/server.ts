@@ -1,18 +1,20 @@
 import { RpcServer } from "@effect/rpc"
+import {
+	AttachmentRpcs,
+	ChannelMemberRpcs,
+	ChannelRpcs,
+	InvitationRpcs,
+	MessageReactionRpcs,
+	MessageRpcs,
+	NotificationRpcs,
+	OrganizationMemberRpcs,
+	OrganizationRpcs,
+	PinnedMessageRpcs,
+	TypingIndicatorRpcs,
+	UserPresenceStatusRpcs,
+	UserRpcs,
+} from "@hazel/domain/rpc"
 import { Layer } from "effect"
-import { AttachmentRpcs } from "./groups/attachments"
-import { ChannelMemberRpcs } from "./groups/channel-members"
-import { ChannelRpcs } from "./groups/channels"
-import { InvitationRpcs } from "./groups/invitations"
-import { MessageReactionRpcs } from "./groups/message-reactions"
-import { MessageRpcs } from "./groups/messages"
-import { NotificationRpcs } from "./groups/notifications"
-import { OrganizationMemberRpcs } from "./groups/organization-members"
-import { OrganizationRpcs } from "./groups/organizations"
-import { PinnedMessageRpcs } from "./groups/pinned-messages"
-import { TypingIndicatorRpcs } from "./groups/typing-indicators"
-import { UserPresenceStatusRpcs } from "./groups/user-presence-status"
-import { UserRpcs } from "./groups/users"
 import { AttachmentRpcLive } from "./handlers/attachments"
 import { ChannelMemberRpcLive } from "./handlers/channel-members"
 import { ChannelRpcLive } from "./handlers/channels"

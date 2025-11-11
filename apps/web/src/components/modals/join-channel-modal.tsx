@@ -1,4 +1,4 @@
-import type { ChannelId } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
 import { eq, inArray, not, or, useLiveQuery } from "@tanstack/react-db"
 import { useState } from "react"
 import { toast } from "sonner"

@@ -1,11 +1,11 @@
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/effect-lib"
+import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { MessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { MessagePolicy } from "../../policies/message-policy"
 import { AttachmentRepo } from "../../repositories/attachment-repo"
 import { MessageRepo } from "../../repositories/message-repo"
-import { MessageRpcs } from "../groups/messages"
 
 /**
  * Message RPC Handlers

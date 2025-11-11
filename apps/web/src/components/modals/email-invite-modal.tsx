@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { OrganizationId } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 import { useState } from "react"
 import { toast } from "sonner"
 import { createInvitationMutation } from "~/atoms/invitation-atoms"

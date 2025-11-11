@@ -1,4 +1,4 @@
-import type { Channel } from "@hazel/db/models"
+import type { Channel } from "@hazel/domain/models"
 import { createLiveQueryCollection, eq } from "@tanstack/react-db"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 

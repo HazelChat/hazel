@@ -1,3 +1,4 @@
+import type { AuthorizedActor, PolicyFn } from "@hazel/domain"
 import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -12,7 +13,6 @@ import * as Redacted from "effect/Redacted"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import postgres from "postgres"
-import type { AuthorizedActor, PolicyFn } from "../schema"
 import * as schema from "../schema"
 
 export type TransactionClient = PgTransaction<

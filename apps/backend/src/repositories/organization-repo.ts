@@ -1,6 +1,6 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { Organization } from "@hazel/db/models"
-import { type OrganizationId, policyRequire } from "@hazel/db/schema"
+import { Organization } from "@hazel/domain/models"
+import { type OrganizationId, policyRequire } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { DatabaseLive } from "../services/database"
 

@@ -1,10 +1,10 @@
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { ChannelMemberRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelMemberPolicy } from "../../policies/channel-member-policy"
 import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
-import { ChannelMemberRpcs } from "../groups/channel-members"
 
 export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 	Effect.gen(function* () {

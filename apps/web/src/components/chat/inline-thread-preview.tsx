@@ -1,6 +1,6 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { Message } from "@hazel/db/models"
-import type { ChannelId, MessageId } from "@hazel/db/schema"
+import type { Message } from "@hazel/domain/models"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { format } from "date-fns"
 import {
 	threadMessageCountAtomFamily,

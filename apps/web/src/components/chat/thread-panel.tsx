@@ -1,4 +1,4 @@
-import type { ChannelId, MessageId, OrganizationId } from "@hazel/db/schema"
+import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
 import { format } from "date-fns"
 import { useMessage } from "~/db/hooks"
 import { ChatProvider } from "~/providers/chat-provider"

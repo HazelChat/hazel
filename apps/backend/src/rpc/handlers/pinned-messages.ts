@@ -1,10 +1,10 @@
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/effect-lib"
+import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { PinnedMessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { PinnedMessagePolicy } from "../../policies/pinned-message-policy"
 import { PinnedMessageRepo } from "../../repositories/pinned-message-repo"
-import { PinnedMessageRpcs } from "../groups/pinned-messages"
 
 /**
  * Pinned Message RPC Handlers

@@ -15,7 +15,9 @@ export const HttpTweetLive = HttpApiBuilder.group(LinkPreviewApi, "tweet", (hand
 			const twitterApi = yield* TwitterApi
 
 			// Check cache first
-			const cachedData = yield* cache.get<any>(cacheKey).pipe(Effect.catchAll(() => Effect.succeed(null)))
+			const cachedData = yield* cache
+				.get<any>(cacheKey)
+				.pipe(Effect.catchAll(() => Effect.succeed(null)))
 
 			if (cachedData) {
 				yield* Effect.log(`Cache hit for tweet: ${tweetId}`)

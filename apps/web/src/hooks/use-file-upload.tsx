@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/db/schema"
+import type { AttachmentId, ChannelId, OrganizationId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useCallback } from "react"
 import { toast } from "sonner"

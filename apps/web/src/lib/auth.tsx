@@ -1,5 +1,5 @@
 import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { OrganizationId } from "@hazel/db/schema"
+import type { OrganizationId } from "@hazel/schema"
 import { Effect, Exit } from "effect"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { router } from "~/main"

@@ -1,5 +1,5 @@
 import { ModelRepository, schema } from "@hazel/db"
-import { Attachment } from "@hazel/db/models"
+import { Attachment } from "@hazel/domain/models"
 import { Effect } from "effect"
 import { DatabaseLive } from "../services/database"
 

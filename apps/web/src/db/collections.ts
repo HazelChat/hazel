@@ -12,7 +12,7 @@ import {
 	TypingIndicator,
 	User,
 	UserPresenceStatus,
-} from "@hazel/db/models"
+} from "@hazel/domain/models"
 import { effectElectricCollectionOptions } from "@hazel/effect-electric-db-collection"
 import { createCollection } from "@tanstack/react-db"
 import { Effect, Schema } from "effect"
