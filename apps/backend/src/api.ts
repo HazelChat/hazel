@@ -1,8 +1,13 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
-import { CurrentUser, InternalServerError, OrganizationId, UnauthorizedError } from "@hazel/effect-lib"
+import {
+	CurrentUser,
+	InternalServerError,
+	OrganizationId,
+	TransactionId,
+	UnauthorizedError,
+} from "@hazel/effect-lib"
 import { Schema } from "effect"
 import { AttachmentGroup, PresencePublicGroup } from "./api/electric/collections"
-import { TransactionId } from "./lib/schema"
 
 export class RootGroup extends HttpApiGroup.make("root").add(
 	HttpApiEndpoint.get("root")`/`.addSuccess(Schema.String),

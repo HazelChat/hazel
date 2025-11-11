@@ -1,9 +1,8 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import { Message } from "@hazel/db/models"
 import { MessageId } from "@hazel/db/schema"
-import { InternalServerError, UnauthorizedError } from "@hazel/effect-lib"
+import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { TransactionId } from "../../lib/schema"
 import { AuthMiddleware } from "../middleware/auth-class"
 import { ChannelNotFoundError } from "./channels"
 

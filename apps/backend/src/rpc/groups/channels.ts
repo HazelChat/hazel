@@ -1,9 +1,13 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import { Channel } from "@hazel/db/models"
-import { ChannelId, OrganizationId, UserId } from "@hazel/db/schema"
-import { DmChannelAlreadyExistsError, InternalServerError, UnauthorizedError } from "@hazel/effect-lib"
+import { ChannelId, UserId } from "@hazel/db/schema"
+import {
+	DmChannelAlreadyExistsError,
+	InternalServerError,
+	TransactionId,
+	UnauthorizedError,
+} from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { TransactionId } from "../../lib/schema"
 import { AuthMiddleware } from "../middleware/auth-class"
 
 /**

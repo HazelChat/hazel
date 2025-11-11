@@ -1,9 +1,8 @@
 import { Rpc, RpcGroup } from "@effect/rpc"
 import { Invitation } from "@hazel/db/models"
 import { InvitationId, OrganizationId } from "@hazel/db/schema"
-import { InternalServerError, UnauthorizedError } from "@hazel/effect-lib"
+import { InternalServerError, TransactionId, UnauthorizedError } from "@hazel/effect-lib"
 import { Schema } from "effect"
-import { TransactionId } from "../../lib/schema"
 import { AuthMiddleware } from "../middleware/auth-class"
 
 /**
