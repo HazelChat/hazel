@@ -17,6 +17,7 @@ const tabs = [
 	{ id: "notifications", label: "Notifications", badge: 2 },
 	{ id: "integrations", label: "Integrations" },
 	{ id: "debug", label: "Debug" },
+	{ id: "workflows", label: "Workflows" },
 ]
 
 function RouteComponent() {
