@@ -17,12 +17,7 @@ const tabs = [
 	{ id: "notifications", label: "Notifications", badge: 2 },
 	{ id: "integrations", label: "Integrations" },
 	// Only show debug and workflows tabs in development
-	...(!import.meta.env.PROD
-		? [
-				{ id: "debug", label: "Debug" },
-				{ id: "workflows", label: "Workflows" },
-			]
-		: []),
+	...(!import.meta.env.PROD ? [{ id: "debug", label: "Debug" }] : []),
 ]
 
 function RouteComponent() {
