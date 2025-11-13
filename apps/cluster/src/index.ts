@@ -1,5 +1,5 @@
 import { ClusterWorkflowEngine } from "@effect/cluster"
-import { FetchHttpClient, HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
+import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
 import { BunClusterSocket, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { PgClient } from "@effect/sql-pg"
 import { WorkflowProxyServer } from "@effect/workflow"
@@ -38,8 +38,6 @@ const WorkflowApiLive = HttpApiBuilder.api(Cluster.WorkflowApi).pipe(
 	HttpServer.withLogAddress,
 )
 
-const _port = 3020
-
 // Main server layer with CORS enabled
 const ServerLayer = HttpApiBuilder.serve(
 	HttpMiddleware.cors({
@@ -53,14 +51,13 @@ const ServerLayer = HttpApiBuilder.serve(
 	Layer.provide(
 		BunHttpServer.layerConfig(
 			Config.all({
-				// hostname: Config.succeed("::"),
+				hostname: Config.succeed("::"),
 				port: Config.number("PORT").pipe(Config.withDefault(3020)),
-				// ipv6Only: Config.succeed(false),
+				ipv6Only: Config.succeed(false),
 				idleTimeout: Config.succeed(120),
 			}),
 		),
 	),
-	Layer.provide(FetchHttpClient.layer),
 )
 
 Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer))).pipe(BunRuntime.runMain)

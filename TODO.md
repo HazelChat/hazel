@@ -6,7 +6,7 @@
 - Fix Theme colors not working
 - Onboarding
 - Electric proxy
-
+- Make Cluster work on IPv6 weird bug with port already in use
 
 - Migrate the missing icons to nucleo
 
