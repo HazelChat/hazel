@@ -48,8 +48,8 @@ function RouteComponent() {
 
 	const organization = organizations?.[0]
 
-	// Determine if this is a creator (no org ID) or invited user (has org ID)
-	const isCreator = !orgId
+	// Determine if this is a creator (org has no slug yet) or invited user (org has slug)
+	const isCreator = !organization?.slug
 
 	// Auto-redirect if organization already has a slug (shouldn't happen but just in case)
 	if (organization?.slug) {
@@ -94,13 +94,16 @@ function RouteComponent() {
 		setCurrentStep("role")
 	}
 
-	const handleRoleContinue = (selectedRole: string) => {
+	const handleRoleContinue = async (selectedRole: string) => {
 		setRole(selectedRole)
-		setCurrentStep(isCreator ? "invite-team" : "completing")
 
 		// For invited users, save preferences and redirect immediately
 		if (!isCreator) {
-			handleCompletion(selectedRole, [])
+			setCurrentStep("completing")
+			await handleCompletion(selectedRole, [])
+		} else {
+			// For creators, move to invite team step
+			setCurrentStep("invite-team")
 		}
 	}
 
@@ -143,19 +146,27 @@ function RouteComponent() {
 				console.log("TODO: Send invites to:", inviteEmails)
 			}
 
+			// Determine the slug to use for navigation
+			const slugToUse = orgSlug || organization?.slug
+
 			// Redirect to the organization
-			if (orgSlug || organization?.slug) {
+			if (slugToUse) {
 				navigate({
 					to: "/$orgSlug",
-					params: { orgSlug: orgSlug || organization!.slug! },
+					params: { orgSlug: slugToUse },
 				})
 			} else {
-				// Fallback: go back to onboarding index which will redirect properly
-				navigate({ to: "/onboarding" })
+				// If no slug is available, this is an error state
+				// For invited users, the org should already have a slug
+				// For creators, they should have just set it in the org-setup step
+				console.error("No organization slug available for redirect")
+				throw new Error("Organization slug is missing. Please try again.")
 			}
 		} catch (error) {
 			console.error("Failed to complete onboarding:", error)
 			// TODO: Show error toast
+			// For now, stay on the completing screen to avoid redirect loop
+			setCurrentStep("role")
 		}
 	}
 
@@ -205,8 +216,8 @@ function RouteComponent() {
 			{currentStep === "completing" && (
 				<div className="flex flex-col items-center justify-center space-y-4 py-12 text-center">
 					<div className="size-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-					<p className="text-lg font-medium">Setting up your workspace...</p>
-					<p className="text-sm text-muted-fg">This will just take a moment</p>
+					<p className="font-medium text-lg">Setting up your workspace...</p>
+					<p className="text-muted-fg text-sm">This will just take a moment</p>
 				</div>
 			)}
 		</OnboardingLayout>

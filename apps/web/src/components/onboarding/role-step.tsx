@@ -80,16 +80,16 @@ import { MegaphoneIcon } from "@heroicons/react/24/outline"
 
 interface RoleStepProps {
 	onBack: () => void
-	onContinue: (role: string) => void
+	onContinue: (role: string) => void | Promise<void>
 	defaultSelection?: string
 }
 
 export function RoleStep({ onBack, onContinue, defaultSelection }: RoleStepProps) {
 	const [selected, setSelected] = useState<string | undefined>(defaultSelection)
 
-	const handleContinue = () => {
+	const handleContinue = async () => {
 		if (selected) {
-			onContinue(selected)
+			await onContinue(selected)
 		}
 	}
 

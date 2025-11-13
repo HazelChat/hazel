@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
-import { Input } from "~/components/ui/input"
+import { Input, InputGroup } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
@@ -81,7 +81,8 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 					<Label>Workspace URL</Label>
 					<div className="relative">
 						<div className="flex items-center gap-2">
-							<span className="text-sm text-muted-fg">hazel.app/</span>
+							<span className="text-muted-fg text-sm">hazel.app/</span>
+
 							<Input
 								value={slug}
 								onChange={(e) => handleSlugChange(e.target.value)}
@@ -92,13 +93,15 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 					{slugError ? (
 						<FieldError>{slugError}</FieldError>
 					) : (
-						<Description>Your unique workspace URL (lowercase letters, numbers, and hyphens)</Description>
+						<Description>
+							Your unique workspace URL (lowercase letters, numbers, and hyphens)
+						</Description>
 					)}
 				</TextField>
 
 				{slug && slug.length >= 3 && !slugError && (
 					<div className="rounded-lg border border-border bg-muted/30 p-4">
-						<p className="text-sm text-muted-fg">
+						<p className="text-muted-fg text-sm">
 							Your workspace will be accessible at:{" "}
 							<span className="font-medium text-fg">hazel.app/{slug}</span>
 						</p>

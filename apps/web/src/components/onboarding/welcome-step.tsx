@@ -23,7 +23,7 @@ export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: Wel
 
 			<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
 				<h3 className="font-medium text-fg">What's next:</h3>
-				<ul className="space-y-3 text-sm text-muted-fg">
+				<ul className="space-y-3 text-muted-fg text-sm">
 					{isCreatingOrg ? (
 						<>
 							<li className="flex items-start gap-2">
@@ -58,11 +58,7 @@ export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: Wel
 				</ul>
 			</div>
 
-			<OnboardingNavigation
-				onContinue={onContinue}
-				showBack={false}
-				continueLabel="Get Started"
-			/>
+			<OnboardingNavigation onContinue={onContinue} showBack={false} continueLabel="Get Started" />
 		</div>
 	)
 }

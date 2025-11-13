@@ -1,15 +1,4 @@
-import {
-	AcademicCapIcon,
-	BriefcaseIcon,
-	CodeBracketIcon,
-	CpuChipIcon,
-	GlobeAltIcon,
-	HeartIcon,
-	MegaphoneIcon,
-	ShoppingBagIcon,
-	UserGroupIcon,
-	WrenchScrewdriverIcon,
-} from "@heroicons/react/24/outline"
+import { BuildingOfficeIcon, UserIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline"
 import { useState } from "react"
 import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import {
@@ -20,66 +9,42 @@ import {
 } from "~/components/ui/choice-box"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
-const useCases = [
+const teamSizes = [
 	{
-		id: "software",
-		label: "Software Development",
-		description: "Build, ship, and collaborate on code",
-		icon: CodeBracketIcon,
+		id: "solo",
+		label: "Just me",
+		description: "Solo user or personal workspace",
+		icon: UserIcon,
 	},
 	{
-		id: "business",
-		label: "Business & Startups",
-		description: "Operations, strategy, and growth",
-		icon: BriefcaseIcon,
+		id: "small",
+		label: "2-10 people",
+		description: "Small team or startup",
+		icon: UsersIcon,
 	},
 	{
-		id: "marketing",
-		label: "Marketing & Sales",
-		description: "Campaigns, analytics, and customer engagement",
-		icon: MegaphoneIcon,
-	},
-	{
-		id: "design",
-		label: "Design & Creative",
-		description: "UI/UX, branding, and visual content",
-		icon: WrenchScrewdriverIcon,
-	},
-	{
-		id: "ecommerce",
-		label: "Ecommerce & Retail",
-		description: "Products, inventory, and customer service",
-		icon: ShoppingBagIcon,
-	},
-	{
-		id: "education",
-		label: "Education & Training",
-		description: "Courses, learning, and student collaboration",
-		icon: AcademicCapIcon,
-	},
-	{
-		id: "ai",
-		label: "AI & Data Science",
-		description: "Models, analytics, and research",
-		icon: CpuChipIcon,
-	},
-	{
-		id: "nonprofit",
-		label: "Non-profit & Community",
-		description: "Social impact and volunteer coordination",
-		icon: HeartIcon,
-	},
-	{
-		id: "team",
-		label: "General Team Collaboration",
-		description: "Cross-functional teams and projects",
+		id: "medium",
+		label: "11-50 people",
+		description: "Growing team",
 		icon: UserGroupIcon,
 	},
 	{
-		id: "community",
-		label: "Community & Social",
-		description: "Forums, groups, and networking",
-		icon: GlobeAltIcon,
+		id: "large",
+		label: "51-200 people",
+		description: "Medium-sized company",
+		icon: BuildingOfficeIcon,
+	},
+	{
+		id: "xlarge",
+		label: "201-1000 people",
+		description: "Large organization",
+		icon: BuildingOfficeIcon,
+	},
+	{
+		id: "enterprise",
+		label: "1000+ people",
+		description: "Enterprise",
+		icon: BuildingOfficeIcon,
 	},
 ]
 
@@ -90,31 +55,34 @@ interface UseCaseStepProps {
 }
 
 export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCaseStepProps) {
-	const [selected, setSelected] = useState<Set<string>>(new Set(defaultSelection))
+	const [selected, setSelected] = useState<string | undefined>(defaultSelection[0])
 
 	const handleContinue = () => {
-		onContinue(Array.from(selected))
+		if (selected) {
+			onContinue([selected])
+		}
 	}
 
 	return (
 		<div className="space-y-6">
 			<CardHeader>
-				<CardTitle>What will you use Hazel for?</CardTitle>
-				<CardDescription>
-					Select all that apply. This helps us personalize your experience.
-				</CardDescription>
+				<CardTitle>How big is your team?</CardTitle>
+				<CardDescription>This helps us optimize Hazel for your team size.</CardDescription>
 			</CardHeader>
 
 			<div>
 				<ChoiceBox
 					gap={4}
 					columns={2}
-					selectionMode="multiple"
+					selectionMode="single"
 					layout="grid"
-					aria-label="Use cases"
-					selectedKeys={selected}
-					onSelectionChange={(keys) => setSelected(new Set(keys as Iterable<string>))}
-					items={useCases}
+					aria-label="Team size"
+					selectedKeys={selected ? [selected] : []}
+					onSelectionChange={(keys) => {
+						const values = Array.from(keys)
+						setSelected(values[0] as string)
+					}}
+					items={teamSizes}
 				>
 					{(item) => {
 						const Icon = item.icon
@@ -129,11 +97,7 @@ export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCa
 				</ChoiceBox>
 			</div>
 
-			<OnboardingNavigation
-				onBack={onBack}
-				onContinue={handleContinue}
-				canContinue={selected.size > 0}
-			/>
+			<OnboardingNavigation onBack={onBack} onContinue={handleContinue} canContinue={!!selected} />
 		</div>
 	)
 }
