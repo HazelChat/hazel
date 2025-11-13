@@ -92,90 +92,120 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 		)
 		.handle("sequinWebhook", ({ payload }) =>
 			Effect.gen(function* () {
-				// Log the incoming webhook event
-				yield* Effect.logInfo("Received Sequin webhook event", {
-					action: payload.action,
-					tableName: payload.metadata.table_name,
-					messageId: payload.record.id,
-					channelId: payload.record.channelId,
+				// Log the incoming webhook batch
+				yield* Effect.logInfo("Received Sequin webhook batch", {
+					eventCount: payload.data.length,
 				})
 
-				// Only process 'insert' actions (new messages)
-				if (payload.action !== "insert") {
-					yield* Effect.logInfo("Ignoring non-insert action", {
-						action: payload.action,
-						messageId: payload.record.id,
-					})
-					return
-				}
-
+				// Get cluster URL from config
 				const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
 
+				// Get the Cluster API client once for all events
 				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 					baseUrl: clusterUrl,
 				})
 
-				// Execute the MessageNotificationWorkflow via HTTP
-				// The WorkflowProxy creates an endpoint named after the workflow
-				yield* client.workflows
-					.MessageNotificationWorkflow({
-						payload: {
-							messageId: payload.record.id,
-							channelId: payload.record.channelId,
-							authorId: payload.record.authorId,
-						},
-					})
-					.pipe(
-						Effect.catchTags({
-							HttpApiDecodeError: (error) =>
-								Effect.gen(function* () {
-									yield* Effect.logError("Failed to decode workflow response", {
-										error: error.message,
-									})
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Failed to execute notification workflow",
-										}),
-									)
-								}),
-							ParseError: (error) =>
-								Effect.gen(function* () {
-									yield* Effect.logError("Failed to parse workflow response", {
-										error: error.message,
-									})
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Failed to execute notification workflow",
-										}),
-									)
-								}),
-							RequestError: (error) =>
-								Effect.gen(function* () {
-									yield* Effect.logError("Failed to send workflow request", {
-										error: error.message,
-									})
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Failed to execute notification workflow",
-										}),
-									)
-								}),
-							ResponseError: (error) =>
-								Effect.gen(function* () {
-									yield* Effect.logError("Failed to receive workflow response", {
-										error: error.message,
-									})
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Failed to execute notification workflow",
-										}),
-									)
-								}),
-						}),
-					)
+				// Process each event in the batch
+				yield* Effect.forEach(
+					payload.data,
+					(event) =>
+						Effect.gen(function* () {
+							// Log each event
+							yield* Effect.logInfo("Processing Sequin event", {
+								action: event.action,
+								tableName: event.metadata.table_name,
+								messageId: event.record.id,
+								channelId: event.record.channelId,
+							})
 
-				yield* Effect.logInfo("Sequin webhook processed successfully", {
-					messageId: payload.record.id,
+							// Only process 'insert' actions (new messages)
+							if (event.action !== "insert") {
+								yield* Effect.logInfo("Ignoring non-insert action", {
+									action: event.action,
+									messageId: event.record.id,
+								})
+								return
+							}
+
+							// Execute the MessageNotificationWorkflow via HTTP
+							// The WorkflowProxy creates an endpoint named after the workflow
+							yield* client.workflows
+								.MessageNotificationWorkflow({
+									payload: {
+										messageId: event.record.id,
+										channelId: event.record.channelId,
+										authorId: event.record.authorId,
+									},
+								})
+								.pipe(
+									// Catch and remap HTTP/API errors before forking
+									Effect.catchTags({
+										HttpApiDecodeError: (error) =>
+											Effect.gen(function* () {
+												yield* Effect.logError("Failed to decode workflow response", {
+													error: error.message,
+													messageId: event.record.id,
+												})
+												return yield* Effect.fail(
+													new InternalServerError({
+														message: "Failed to execute notification workflow",
+													}),
+												)
+											}),
+										ParseError: (error) =>
+											Effect.gen(function* () {
+												yield* Effect.logError("Failed to parse workflow response", {
+													error: error.message,
+													messageId: event.record.id,
+												})
+												return yield* Effect.fail(
+													new InternalServerError({
+														message: "Failed to execute notification workflow",
+													}),
+												)
+											}),
+										RequestError: (error) =>
+											Effect.gen(function* () {
+												yield* Effect.logError("Failed to send workflow request", {
+													error: error.message,
+													messageId: event.record.id,
+												})
+												return yield* Effect.fail(
+													new InternalServerError({
+														message: "Failed to execute notification workflow",
+													}),
+												)
+											}),
+										ResponseError: (error) =>
+											Effect.gen(function* () {
+												yield* Effect.logError(
+													"Failed to receive workflow response",
+													{
+														error: error.message,
+														messageId: event.record.id,
+													},
+												)
+												return yield* Effect.fail(
+													new InternalServerError({
+														message: "Failed to execute notification workflow",
+													}),
+												)
+											}),
+									}),
+									// Fork to avoid blocking the webhook response
+									// Errors are already caught and remapped above
+									Effect.fork,
+								)
+
+							yield* Effect.logInfo("Event processed successfully", {
+								messageId: event.record.id,
+							})
+						}),
+					{ concurrency: "unbounded" },
+				)
+
+				yield* Effect.logInfo("Sequin webhook batch processed successfully", {
+					eventCount: payload.data.length,
 				})
 			}).pipe(withSystemActor),
 		),

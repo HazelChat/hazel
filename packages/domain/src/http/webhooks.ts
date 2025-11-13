@@ -72,11 +72,17 @@ export class SequinMetadata extends Schema.Class<SequinMetadata>("SequinMetadata
 
 export const SequinAction = Schema.Literal("insert", "update", "delete")
 
-export class SequinWebhookPayload extends Schema.Class<SequinWebhookPayload>("SequinWebhookPayload")({
+// Individual event in the webhook data array
+export class SequinWebhookEvent extends Schema.Class<SequinWebhookEvent>("SequinWebhookEvent")({
 	record: SequinMessageRecord,
 	metadata: SequinMetadata,
 	action: SequinAction,
 	changes: Schema.NullOr(Schema.Unknown),
+}) {}
+
+// Sequin webhook payload wraps events in a data array
+export class SequinWebhookPayload extends Schema.Class<SequinWebhookPayload>("SequinWebhookPayload")({
+	data: Schema.Array(SequinWebhookEvent),
 }) {}
 
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
