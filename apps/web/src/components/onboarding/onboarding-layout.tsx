@@ -1,5 +1,6 @@
-import type { ReactNode } from "react"
 import { Match } from "effect"
+import { AnimatePresence, motion } from "motion/react"
+import type { ReactNode } from "react"
 import { Logo } from "~/components/logo"
 import { Link } from "~/components/ui/link"
 
@@ -16,15 +17,27 @@ function getOnboardingImage() {
 
 	// Determine season based on month
 	const season = Match.value(month).pipe(
-		Match.when((m) => m >= 2 && m <= 4, () => "spring" as const), // Mar-May
-		Match.when((m) => m >= 5 && m <= 7, () => "summer" as const), // Jun-Aug
-		Match.when((m) => m >= 8 && m <= 10, () => "autumn" as const), // Sep-Nov
+		Match.when(
+			(m) => m >= 2 && m <= 4,
+			() => "spring" as const,
+		), // Mar-May
+		Match.when(
+			(m) => m >= 5 && m <= 7,
+			() => "summer" as const,
+		), // Jun-Aug
+		Match.when(
+			(m) => m >= 8 && m <= 10,
+			() => "autumn" as const,
+		), // Sep-Nov
 		Match.orElse(() => "winter" as const), // Dec-Feb
 	)
 
 	// Determine time of day (day = 6AM-6PM, night = 6PM-6AM)
 	const timeOfDay = Match.value(hour).pipe(
-		Match.when((h) => h >= 6 && h < 18, () => "day" as const),
+		Match.when(
+			(h) => h >= 6 && h < 18,
+			() => "day" as const,
+		),
 		Match.orElse(() => "night" as const),
 	)
 
@@ -53,10 +66,27 @@ export function OnboardingLayout({ children, currentStep, totalSteps }: Onboardi
 						<p className="text-lg text-white">
 							Welcome to your new workspace. Let's get you set up in just a few steps.
 						</p>
-						<div className="text-sm text-white/80">
-							{currentStep && totalSteps
-								? `Step ${currentStep} of ${totalSteps}`
-								: "Getting started"}
+						<div className="font-mono text-sm text-white/80">
+							{currentStep && totalSteps ? (
+								<>
+									Step{" "}
+									<AnimatePresence mode="wait">
+										<motion.span
+											key={currentStep}
+											initial={{ y: -10, opacity: 0.1, filter: "blur(4px)" }}
+											animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+											exit={{ y: 10, opacity: 0.1, filter: "blur(4px)" }}
+											transition={{ duration: 0.2 }}
+											className="inline-block font-mono"
+										>
+											{currentStep}
+										</motion.span>
+									</AnimatePresence>{" "}
+									of {totalSteps}
+								</>
+							) : (
+								"Getting started"
+							)}
 						</div>
 					</blockquote>
 				</div>
