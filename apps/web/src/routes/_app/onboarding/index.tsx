@@ -181,8 +181,22 @@ function RouteComponent() {
 	const getTotalSteps = () => (isCreator ? 7 : 5)
 	const getCurrentStepNumber = () => {
 		const flowType = isCreator ? "creator" : "invited"
-		const meta = (state as any).meta as { stepNumber?: { creator: number; invited: number | null } }
-		return meta?.stepNumber?.[flowType] ?? 1
+		const allMeta = state.getMeta()
+
+		// Find stepNumber from the deepest state in the configuration
+		// getMeta() returns an object where keys are state IDs and values are meta objects
+		let stepNumber = 1
+		for (const meta of Object.values(allMeta)) {
+			if (meta && typeof meta === "object" && "stepNumber" in meta) {
+				const stepNumberMeta = meta.stepNumber as { creator: number; invited: number | null }
+				const num = stepNumberMeta[flowType]
+				if (num !== null && num !== undefined) {
+					stepNumber = num
+				}
+			}
+		}
+
+		return stepNumber
 	}
 
 	return (
