@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"@effect-atom/atom-react": "catalog:effect",
-		"@tanstack/db": "0.4.20",
+		"@tanstack/db": "0.5.0",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

@@ -45,7 +45,7 @@
 		"@vitest/coverage-v8": "^4.0.8",
 		"turbo": "^2.6.0",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.8",
+		"vitest": "^4.0.9",
 		"wrangler": "^4.46.0"
 	},
 	"trustedDependencies": []

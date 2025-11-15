@@ -13,8 +13,8 @@
 	},
 	"devDependencies": {
 		"@effect/language-service": "catalog:effect",
-		"@types/node": "^24.10.0",
-		"drizzle-kit": "^0.31.6",
+		"@types/node": "^24.10.1",
+		"drizzle-kit": "^0.31.7",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
