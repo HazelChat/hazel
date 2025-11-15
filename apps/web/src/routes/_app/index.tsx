@@ -41,7 +41,7 @@ function RouteComponent() {
 		const org = organizations[0]!
 
 		if (!org.slug) {
-			return <Navigate to="/onboarding/setup-organization" search={{ orgId: org.id }} />
+			return <Navigate to="/onboarding" search={{ orgId: org.id }} />
 		}
 
 		return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />

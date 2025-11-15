@@ -127,7 +127,7 @@ export function ThemeSelectionStep({
 				<div className="space-y-3">
 					<p className="block font-medium text-sm">Display preference</p>
 					<p className="text-muted-fg text-sm">Switch between light and dark modes</p>
-					<div className="-mx-4 overflow-auto px-4">
+					<div className="-mx-4 overflow-auto px-4 pt-2">
 						<RadioGroup
 							aria-label="Display preference"
 							className="flex gap-5"
