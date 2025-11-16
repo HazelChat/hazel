@@ -149,34 +149,28 @@ function RouteComponent() {
 					}
 
 					if (input.emails.length > 0) {
-						let successCount = 0
-						let errorCount = 0
-
-						for (const email of input.emails) {
-							try {
-								const result = await createInvitation({
-									payload: {
-										organizationId: input.orgId,
-										email: email,
+						try {
+							const result = await createInvitation({
+								payload: {
+									organizationId: input.orgId,
+									invites: input.emails.map((email) => ({
+										email,
 										role: "member",
-									},
-								})
+									})),
+								},
+							})
 
-								if (Exit.isSuccess(result)) {
-									successCount++
-								} else {
-									errorCount++
-									console.error(`Failed to invite ${email}:`, result.cause)
-								}
-							} catch (error) {
-								errorCount++
-								console.error(`Failed to invite ${email}:`, error)
+							if (Exit.isSuccess(result)) {
+								const { successCount, errorCount } = result.value
+								console.log(
+									`Sent ${successCount} invitation${successCount !== 1 ? "s" : ""}${errorCount > 0 ? `, ${errorCount} failed` : ""}`,
+								)
+							} else {
+								console.error("Failed to send invitations:", result.cause)
 							}
+						} catch (error) {
+							console.error("Failed to send invitations:", error)
 						}
-
-						console.log(
-							`Sent ${successCount} invitation${successCount !== 1 ? "s" : ""}${errorCount > 0 ? `, ${errorCount} failed` : ""}`,
-						)
 					}
 
 					// Determine the slug to use for navigation

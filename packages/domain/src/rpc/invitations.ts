@@ -16,6 +16,28 @@ export class InvitationResponse extends Schema.Class<InvitationResponse>("Invita
 }) {}
 
 /**
+ * Response schema for a single invitation in a batch operation.
+ * Contains success status, optional invitation data, and optional error message.
+ */
+export class InvitationBatchResult extends Schema.Class<InvitationBatchResult>("InvitationBatchResult")({
+	email: Schema.String,
+	success: Schema.Boolean,
+	data: Schema.optional(Invitation.Model.json),
+	error: Schema.optional(Schema.String),
+	transactionId: Schema.optional(TransactionId),
+}) {}
+
+/**
+ * Response schema for batch invitation operations.
+ * Contains results for each invite and aggregate counts.
+ */
+export class InvitationBatchResponse extends Schema.Class<InvitationBatchResponse>("InvitationBatchResponse")({
+	results: Schema.Array(InvitationBatchResult),
+	successCount: Schema.Number,
+	errorCount: Schema.Number,
+}) {}
+
+/**
  * Error thrown when an invitation is not found.
  * Used in update and delete operations.
  */
@@ -30,21 +52,25 @@ export class InvitationRpcs extends RpcGroup.make(
 	/**
 	 * InvitationCreate
 	 *
-	 * Creates a new invitation to an organization via WorkOS.
+	 * Creates one or more invitations to an organization via WorkOS.
 	 * The inviter must have permission to invite users to the organization.
 	 *
-	 * @param payload - Invitation data (organizationId, email)
-	 * @returns Invitation data and transaction ID
+	 * @param payload - Invitation data (organizationId, array of invites)
+	 * @returns Batch results with success/failure status per invite
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("invitation.create", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
-			email: Schema.String,
-			role: Schema.Literal("member", "admin"),
+			invites: Schema.Array(
+				Schema.Struct({
+					email: Schema.String,
+					role: Schema.Literal("member", "admin"),
+				}),
+			),
 		}),
-		success: InvitationResponse,
+		success: InvitationBatchResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 

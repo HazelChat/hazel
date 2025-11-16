@@ -21,7 +21,6 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 import { useOrganization } from "~/hooks/use-organization"
-import { toastExit } from "~/lib/toast-exit"
 
 interface EmailInviteModalProps {
 	isOpen: boolean
@@ -81,41 +80,35 @@ export const EmailInviteModal = ({
 			return
 		}
 
-		let successCount = 0
-		let errorCount = 0
+		const result = await createInvitation({
+			payload: {
+				organizationId: organizationId!,
+				invites: validInvites.map((invite) => ({
+					email: invite.email,
+					role: invite.role,
+				})),
+			},
+		})
 
-		for (const invite of validInvites) {
-			try {
-				await toastExit(
-					createInvitation({
-						payload: {
-							organizationId: organizationId!,
-							email: invite.email,
-							role: invite.role,
-						},
-					}),
-					{
-						loading: `Sending invitation to ${invite.email}...`,
-						success: `Invitation sent to ${invite.email}`,
-						error: `Failed to invite ${invite.email}`,
-					},
+		// Check if the result is a success Exit
+		if (result._tag === "Success") {
+			const { successCount, errorCount } = result.value
+
+			if (successCount > 0 && errorCount === 0) {
+				toast.success(
+					`Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`,
 				)
-				successCount++
-			} catch (error) {
-				errorCount++
-				console.error(`Failed to invite ${invite.email}:`, error)
+				onOpenChange(false)
+				setInvites([{ id: "1", email: "", role: "member" }])
+			} else if (successCount > 0 && errorCount > 0) {
+				toast.warning(
+					`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`,
+				)
+			} else {
+				toast.error("Failed to send invitations")
 			}
-		}
-
-		if (successCount > 0 && errorCount === 0) {
-			toast.success(`Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`)
-			onOpenChange(false)
-			setInvites([{ id: "1", email: "", role: "member" }])
-		} else if (successCount > 0 && errorCount > 0) {
-			toast.warning(
-				`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`,
-			)
 		} else {
+			console.error("Failed to send invitations:", result.cause)
 			toast.error("Failed to send invitations")
 		}
 	}

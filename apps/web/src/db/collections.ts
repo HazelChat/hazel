@@ -84,11 +84,19 @@ export const invitationCollection = createCollection(
 
 				const results = yield* client("invitation.create", {
 					organizationId: newInvitation.organizationId,
-					email: newInvitation.email,
-					role: "member" as const,
+					invites: [
+						{
+							email: newInvitation.email,
+							role: "member" as const,
+						},
+					],
 				})
 
-				return { txid: results.transactionId }
+				// Use the transaction ID from the first result if available
+				const firstResult = results.results[0]
+				const txid = firstResult?.transactionId ?? 0
+
+				return { txid }
 			}),
 		onUpdate: ({ transaction }) =>
 			Effect.gen(function* () {
