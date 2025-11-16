@@ -3,58 +3,9 @@ import { Atom } from "@effect-atom/atom-react"
 import { Schema } from "effect"
 
 /**
- * Schema definitions for notification settings
- */
-const MessagePreferenceSchema = Schema.Literal("all", "mentions", "direct", "none")
-const EmailDigestSchema = Schema.Literal("instant", "daily", "weekly")
-
-export type MessagePreference = typeof MessagePreferenceSchema.Type
-export type EmailDigest = typeof EmailDigestSchema.Type
-
-/**
  * localStorage runtime for notification settings persistence
  */
 const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
-/**
- * Desktop notifications enabled/disabled
- */
-export const desktopNotificationsAtom = Atom.kvs({
-	runtime: localStorageRuntime,
-	key: "notifications-desktop-enabled",
-	schema: Schema.NullOr(Schema.Boolean),
-	defaultValue: () => true,
-})
-
-/**
- * Message notification preference (all/mentions/direct/none)
- */
-export const messagePreferenceAtom = Atom.kvs({
-	runtime: localStorageRuntime,
-	key: "notifications-message-preference",
-	schema: Schema.NullOr(MessagePreferenceSchema),
-	defaultValue: () => "all" as const,
-})
-
-/**
- * Email notifications enabled/disabled
- */
-export const emailNotificationsAtom = Atom.kvs({
-	runtime: localStorageRuntime,
-	key: "notifications-email-enabled",
-	schema: Schema.NullOr(Schema.Boolean),
-	defaultValue: () => true,
-})
-
-/**
- * Email digest frequency (instant/daily/weekly)
- */
-export const emailDigestAtom = Atom.kvs({
-	runtime: localStorageRuntime,
-	key: "notifications-email-digest",
-	schema: Schema.NullOr(EmailDigestSchema),
-	defaultValue: () => "instant" as const,
-})
 
 /**
  * Do not disturb / Quiet hours enabled/disabled
