@@ -1,7 +1,7 @@
 import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Schema } from "effect"
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface NotificationSoundSettings {
 	enabled: boolean
@@ -32,14 +32,12 @@ const notificationSettingsAtom = Atom.kvs({
 })
 
 const audioElementAtom = Atom.make<HTMLAudioElement | null>((get) => {
-	const settings = get(notificationSettingsAtom)
 	if (typeof window === "undefined") return null
 
-	const soundFile = settings?.soundFile || "notification01"
-	const volume = settings?.volume ?? 0.5
-
-	const audio = new Audio(`/sounds/${soundFile}.mp3`)
-	audio.volume = volume
+	// Create a stable audio element without reading settings
+	// Settings will be applied dynamically when playing
+	const audio = new Audio()
+	audio.volume = 0.5 // Default volume
 
 	get.addFinalizer(() => {
 		audio.pause()
@@ -64,6 +62,32 @@ export function useNotificationSound() {
 
 	const lastPlayedRef = useRef<number>(0)
 	const isPlayingRef = useRef<boolean>(false)
+	const [isPrimed, setIsPrimed] = useState(false)
+
+	// Prime audio on first user interaction to satisfy browser autoplay policy
+	useEffect(() => {
+		if (!audioElement || isPrimed) return
+
+		const primeAudio = async () => {
+			try {
+				// Play at 0 volume then pause to satisfy autoplay policy
+				const originalVolume = audioElement.volume
+				audioElement.volume = 0
+				audioElement.src = "/sounds/notification01.mp3"
+				await audioElement.play()
+				audioElement.pause()
+				audioElement.volume = originalVolume
+
+				setIsPrimed(true)
+			} catch (error) {
+				console.warn("Audio not primed yet:", error)
+			}
+		}
+
+		document.addEventListener("click", primeAudio, { once: true })
+
+		return () => document.removeEventListener("click", primeAudio)
+	}, [audioElement, isPrimed])
 
 	const playSound = useCallback(async () => {
 		if (!settings.enabled || !audioElement) return
@@ -79,14 +103,17 @@ export function useNotificationSound() {
 			isPlayingRef.current = true
 			lastPlayedRef.current = now
 
+			// Update audio properties before playing
+			audioElement.src = `/sounds/${settings.soundFile}.mp3`
+			audioElement.volume = settings.volume
 			audioElement.currentTime = 0
 			await audioElement.play()
 		} catch (error) {
-			console.warn("Failed to play notification sound:", error)
+			console.error("Failed to play notification sound:", error)
 		} finally {
 			isPlayingRef.current = false
 		}
-	}, [settings.enabled, settings.cooldownMs, audioElement])
+	}, [settings, audioElement])
 
 	const updateSettings = useCallback(
 		(updates: Partial<NotificationSoundSettings>) => {
@@ -107,17 +134,21 @@ export function useNotificationSound() {
 		if (!audioElement) return
 
 		try {
+			// Update audio properties before playing
+			audioElement.src = `/sounds/${settings.soundFile}.mp3`
+			audioElement.volume = settings.volume
 			audioElement.currentTime = 0
 			await audioElement.play()
 		} catch (error) {
-			console.warn("Failed to play test sound:", error)
+			console.error("Failed to play test sound:", error)
 		}
-	}, [audioElement])
+	}, [audioElement, settings])
 
 	return {
 		settings,
 		updateSettings,
 		playSound,
 		testSound,
+		isPrimed,
 	}
 }

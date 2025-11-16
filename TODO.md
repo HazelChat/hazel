@@ -4,7 +4,6 @@
 # Before release
 - Settings Pages (TEST TES TEST)
 - Fix Theme colors not working
-- Onboarding
 - Electric proxy
 - Notifications 
  - Play sound when new message

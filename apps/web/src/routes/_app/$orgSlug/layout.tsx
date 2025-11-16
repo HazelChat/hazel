@@ -11,6 +11,7 @@ import {
 	organizationCollection,
 	organizationMemberCollection,
 } from "~/db/collections"
+import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
 import { PresenceProvider } from "~/providers/presence-provider"
 
 export const Route = createFileRoute("/_app/$orgSlug")({
@@ -46,11 +47,17 @@ function RouteComponent() {
 			}
 		>
 			<PresenceProvider>
-				<AppSidebar openChannelsBrowser={openChannelsBrowser} />
-				<SidebarInset>
-					<Outlet />
-					<CommandPalette isOpen={openCmd} onOpenChange={setOpenCmd} initialPage={initialPage} />
-				</SidebarInset>
+				<NotificationSoundProvider>
+					<AppSidebar openChannelsBrowser={openChannelsBrowser} />
+					<SidebarInset>
+						<Outlet />
+						<CommandPalette
+							isOpen={openCmd}
+							onOpenChange={setOpenCmd}
+							initialPage={initialPage}
+						/>
+					</SidebarInset>
+				</NotificationSoundProvider>
 			</PresenceProvider>
 		</SidebarProvider>
 	)

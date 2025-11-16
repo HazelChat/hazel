@@ -1,4 +1,3 @@
-- onboarding
 - notifications
 - electric proxy
 - webhook endpoints for channels
