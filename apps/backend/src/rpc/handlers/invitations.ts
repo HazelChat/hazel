@@ -41,77 +41,74 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 								)
 
 							// Process each invite
-							const results: InvitationBatchResult[] = []
-							let successCount = 0
-							let errorCount = 0
+							const results = yield* Effect.forEach(
+								payload.invites,
+								(invite) =>
+									Effect.gen(function* () {
+										// Send invitation via WorkOS
+										const workosInvitation = yield* workos
+											.call((client) =>
+												client.userManagement.sendInvitation({
+													email: invite.email,
+													organizationId: workosOrg.id,
+													roleSlug: invite.role,
+												}),
+											)
+											.pipe(
+												Effect.mapError((error) => ({
+													message: "Failed to create invitation in WorkOS",
+													detail: String(error.cause),
+												})),
+											)
 
-							for (const invite of payload.invites) {
-								const result = yield* Effect.gen(function* () {
-									// Send invitation via WorkOS
-									const workosInvitation = yield* workos
-										.call((client) =>
-											client.userManagement.sendInvitation({
-												email: invite.email,
-												organizationId: workosOrg.id,
-												roleSlug: invite.role,
-											}),
-										)
-										.pipe(
-											Effect.mapError((error) => ({
-												message: "Failed to create invitation in WorkOS",
-												detail: String(error.cause),
-											})),
-										)
+										// Calculate expiration (7 days from now, matching WorkOS default)
+										const expiresAt = new Date()
+										expiresAt.setDate(expiresAt.getDate() + 7)
 
-									// Calculate expiration (7 days from now, matching WorkOS default)
-									const expiresAt = new Date()
-									expiresAt.setDate(expiresAt.getDate() + 7)
+										// Store invitation in local database
+										const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
+											workosInvitationId: workosInvitation.id,
+											organizationId: payload.organizationId,
+											email: invite.email,
+											invitedBy: currentUser.id,
+											invitedAt: new Date(),
+											expiresAt,
+											status: "pending",
+											acceptedAt: null,
+											acceptedBy: null,
+										}).pipe(policyUse(InvitationPolicy.canCreate(payload.organizationId)))
 
-									// Store invitation in local database
-									const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
-										workosInvitationId: workosInvitation.id,
-										organizationId: payload.organizationId,
-										email: invite.email,
-										invitedBy: currentUser.id,
-										invitedAt: new Date(),
-										expiresAt,
-										status: "pending",
-										acceptedAt: null,
-										acceptedBy: null,
-									}).pipe(policyUse(InvitationPolicy.canCreate(payload.organizationId)))
+										const txid = yield* generateTransactionId()
 
-									const txid = yield* generateTransactionId()
-
-									return new InvitationBatchResult({
-										email: invite.email,
-										success: true,
-										data: createdInvitation,
-										transactionId: txid,
-									})
-								}).pipe(
-									Effect.catchAll((error) =>
-										Effect.succeed(
-											new InvitationBatchResult({
-												email: invite.email,
-												success: false,
-												error:
-													typeof error === "object" &&
-													error !== null &&
-													"message" in error
-														? String(error.message)
-														: String(error),
-											}),
+										return new InvitationBatchResult({
+											email: invite.email,
+											success: true,
+											data: createdInvitation,
+											transactionId: txid,
+										})
+									}).pipe(
+										Effect.catchAll((error) =>
+											Effect.succeed(
+												new InvitationBatchResult({
+													email: invite.email,
+													success: false,
+													error:
+														typeof error === "object" &&
+														error !== null &&
+														"message" in error
+															? String(error.message)
+															: String(error),
+												}),
+											),
 										),
 									),
-								)
+								{
+									concurrency: 3,
+								},
+							)
 
-								results.push(result)
-								if (result.success) {
-									successCount++
-								} else {
-									errorCount++
-								}
-							}
+							const successCount = results.filter((r) => r.success).length
+							const errorCount = results.filter((r) => !r.success).length
 
 							return new InvitationBatchResponse({ results, successCount, errorCount })
 						}),
