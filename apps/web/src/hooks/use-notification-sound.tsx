@@ -6,14 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
 interface NotificationSoundSettings {
 	enabled: boolean
 	volume: number
-	soundFile: "notification01" | "notification02" | "notification03"
+	soundFile: "notification01" | "notification02" | "notification03" | "ping" | "chime" | "bell" | "ding" | "pop"
 	cooldownMs: number
 }
 
 const NotificationSoundSettingsSchema = Schema.Struct({
 	enabled: Schema.Boolean,
 	volume: Schema.Number,
-	soundFile: Schema.Literal("notification01", "notification02", "notification03"),
+	soundFile: Schema.Literal("notification01", "notification02", "notification03", "ping", "chime", "bell", "ding", "pop"),
 	cooldownMs: Schema.Number,
 })
 

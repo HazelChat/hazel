@@ -11,8 +11,7 @@ interface MessageReplySectionProps {
 export function MessageReplySection({ replyToMessageId, onClick }: MessageReplySectionProps) {
 	// Use atom for message with author - automatically deduplicated
 	const messageResult = useAtomValue(messageWithAuthorAtomFamily(replyToMessageId))
-	const messages = Result.getOrElse(messageResult, () => [])
-	const data = messages[0]
+	const data = Result.getOrElse(messageResult, () => undefined)
 	const isLoading = Result.isInitial(messageResult)
 
 	return (

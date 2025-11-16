@@ -41,12 +41,12 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 					and(eq(member.channelId, channelId), eq(member.userId, user?.id || "")),
 				)
 				.orderBy(({ member }) => member.createdAt, "desc")
-				.limit(1),
+				.findOne(),
 		[channelId, user?.id],
 	)
 
 	const currentChannelMember = useMemo(() => {
-		return channelMembersData?.[0] || null
+		return channelMembersData || null
 	}, [channelMembersData])
 
 	const { handleContentChange, stopTyping } = useTyping({

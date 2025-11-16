@@ -101,7 +101,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const setUploadingFiles = useAtomSet(uploadingFilesAtomFamily(channelId))
 
 	const channelResult = useAtomValue(channelByIdAtomFamily(channelId))
-	const channel = Result.getOrElse(channelResult, () => undefined)?.[0]
+	const channel = Result.getOrElse(channelResult, () => undefined)
 
 	const addAttachment = useCallback(
 		(attachmentId: AttachmentId) => {

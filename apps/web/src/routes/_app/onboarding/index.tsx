@@ -57,14 +57,14 @@ function RouteComponent() {
 						)
 						.where(({ member }) => eq(member.userId, user.id))
 						.orderBy(({ member }) => member.createdAt, "asc")
-						.limit(1)
+						.findOne()
 				: undefined,
 		[user?.id],
 	)
 
-	const orgId = userOrganizations?.[0]?.org.id
-	const organization = userOrganizations?.[0]?.org
-	const organizationMemberId = userOrganizations?.[0]?.member.id
+	const orgId = userOrganizations?.org.id
+	const organization = userOrganizations?.org
+	const organizationMemberId = userOrganizations?.member.id
 
 	// Provide actor implementations with access to RPC functions
 	const machineWithActors = onboardingMachine.provide({

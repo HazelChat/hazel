@@ -190,7 +190,7 @@ const currentUserPresenceAtomFamily = Atom.family((userId: UserId) =>
 			.from({ presence: userPresenceStatusCollection })
 			.where(({ presence }) => eq(presence.userId, userId))
 			.orderBy(({ presence }) => presence.updatedAt, "desc")
-			.limit(1),
+			.findOne(),
 	),
 )
 
@@ -211,8 +211,7 @@ const currentUserPresenceAtom = Atom.make((get) => {
 export function usePresence() {
 	const user = useAtomValue(userAtom)
 	const presenceResult = useAtomValue(currentUserPresenceAtom)
-	const presenceData = Result.getOrElse(presenceResult, () => [])
-	const currentPresence = presenceData?.[0]
+	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
 	const computedStatusResult = useAtomValue(computedPresenceStatusAtom)
 	const computedStatus = Result.getOrElse(computedStatusResult, () => "online" as PresenceStatus)
 	const afkStateResult = useAtomValue(afkStateAtom)
@@ -295,8 +294,7 @@ export function usePresence() {
  */
 export function useUserPresence(userId: UserId) {
 	const presenceResult = useAtomValue(currentUserPresenceAtomFamily(userId))
-	const presenceData = Result.getOrElse(presenceResult, () => [])
-	const presence = presenceData?.[0]
+	const presence = Result.getOrElse(presenceResult, () => undefined)
 
 	return {
 		status: presence?.status ?? ("offline" as const),

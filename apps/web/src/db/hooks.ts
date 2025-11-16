@@ -14,16 +14,14 @@ export const useMessage = (messageId: MessageId) => {
 					eq(message.authorId, author.id),
 				)
 				.where((q) => eq(q.message.id, messageId))
-				.limit(1)
+				.findOne()
 				.select(({ message, author }) => ({ ...message, author: author }))
 				.orderBy((q) => q.message.createdAt, "desc"),
 		[messageId],
 	)
 
-	const replyMessage = data?.[0]
-
 	return {
-		data: replyMessage,
+		data,
 		...rest,
 	}
 }

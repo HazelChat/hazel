@@ -19,16 +19,14 @@ export function useOrganization() {
 						.from({ org: organizationCollection })
 						.where(({ org }) => eq(org.slug, orgSlug))
 						.orderBy(({ org }) => org.createdAt, "asc")
-						.limit(1)
+						.findOne()
 				: null,
 		[orgSlug],
 	)
 
-	const organization = data?.[0]
-
 	return {
-		organization,
-		organizationId: organization?.id,
+		organization: data,
+		organizationId: data?.id,
 		isLoading,
 		slug: orgSlug,
 	}

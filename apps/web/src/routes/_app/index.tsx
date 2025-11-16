@@ -23,7 +23,7 @@ function RouteComponent() {
 				})
 				.where(({ organizatios }) => eq(organizatios.id, user?.organizationId))
 				.orderBy(({ organizatios }) => organizatios.createdAt, "asc")
-				.limit(1)
+				.findOne()
 		},
 		[user?.id, user?.organizationId],
 	)
@@ -39,13 +39,13 @@ function RouteComponent() {
 
 	// Check if user has completed onboarding
 	if (!user.isOnboarded) {
-		const orgId = organizations?.[0]?.id
+		const orgId = organizations?.id
 		return <Navigate to="/onboarding" search={orgId ? { orgId } : undefined} />
 	}
 
 	// User is onboarded, check their organization
-	if (organizations && organizations.length > 0) {
-		const org = organizations[0]!
+	if (organizations) {
+		const org = organizations
 
 		if (!org.slug) {
 			return <Navigate to="/onboarding" search={{ orgId: org.id }} />

@@ -72,22 +72,53 @@ function NotificationSettings() {
 										soundFile: value as
 											| "notification01"
 											| "notification02"
-											| "notification03",
+											| "notification03"
+											| "ping"
+											| "chime"
+											| "bell"
+											| "ding"
+											| "pop",
 									})
 								}
 								isDisabled={!settings.enabled}
-								className="flex flex-col gap-3"
+								className="grid grid-cols-1 gap-3 sm:grid-cols-2"
 							>
 								{soundOptions.map((option) => (
-									<Radio key={option.value} value={option.value}>
-										<div className="flex items-start gap-3">
-											<div className="flex flex-1 flex-col">
-												<span className="font-medium text-sm">{option.label}</span>
-												<span className="text-muted-fg text-xs">
-													{option.description}
-												</span>
+									<Radio key={option.value} value={option.value} className="cursor-pointer">
+										{({ isSelected, isFocusVisible }) => (
+											<div
+												className={cn(
+													"relative flex items-center gap-3 rounded-lg border-2 border-border bg-secondary p-4 transition-all",
+													isSelected && "border-ring bg-secondary/50",
+													isFocusVisible && "ring-2 ring-ring ring-offset-2",
+													!settings.enabled && "cursor-not-allowed opacity-50",
+												)}
+											>
+												{/* Selection indicator - circular radio dot */}
+												<div
+													className={cn(
+														"relative flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+														isSelected
+															? "border-primary bg-primary"
+															: "border-input bg-bg",
+													)}
+												>
+													{isSelected && (
+														<div className="size-2 rounded-full bg-primary-fg" />
+													)}
+												</div>
+
+												{/* Content */}
+												<div className="flex flex-1 flex-col">
+													<span className="font-medium text-sm">
+														{option.label}
+													</span>
+													<span className="text-muted-fg text-xs">
+														{option.description}
+													</span>
+												</div>
 											</div>
-										</div>
+										)}
 									</Radio>
 								))}
 							</RadioGroup>

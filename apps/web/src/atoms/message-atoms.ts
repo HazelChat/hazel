@@ -81,7 +81,7 @@ export const messageWithAuthorAtomFamily = Atom.family((messageId: MessageId) =>
 			.from({ message: messageCollection })
 			.innerJoin({ author: userCollection }, ({ message, author }) => eq(message.authorId, author.id))
 			.where((q) => eq(q.message.id, messageId))
-			.limit(1)
+			.findOne()
 			.select(({ message, author }) => ({ ...message, author: author }))
 			.orderBy((q) => q.message.createdAt, "desc"),
 	),

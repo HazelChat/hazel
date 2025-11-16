@@ -28,6 +28,6 @@ export const channelByIdAtomFamily = Atom.family((channelId: ChannelId) =>
 			.from({ channel: channelCollection })
 			.where(({ channel }) => eq(channel.id, channelId))
 			.orderBy(({ channel }) => channel.createdAt, "desc")
-			.limit(1),
+			.findOne(),
 	),
 )
