@@ -223,31 +223,96 @@ export function usePresence() {
 
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
 
+	// Track previous values to avoid duplicate updates
+	const previousValuesRef = useRef<{
+		status: PresenceStatus | null
+		channelId: string | null
+		initialUpdateSent: boolean
+	}>({
+		status: null,
+		channelId: null,
+		initialUpdateSent: false,
+	})
+
+	// Debounce timer ref
+	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+	// Combined effect for both status and channel updates with debouncing and deduplication
 	useEffect(() => {
 		if (!user?.id) return
 
-		const program = Effect.gen(function* () {
-			const client = yield* HazelRpcClient
-			yield* client("userPresenceStatus.update", {
-				status: computedStatus,
+		// Send ONE initial update to mark user online (websocket only handles offline)
+		// But debounce it to batch with any rapid initial changes
+		if (!previousValuesRef.current.initialUpdateSent) {
+			previousValuesRef.current.initialUpdateSent = true
+
+			// Debounce the initial update to batch with rapid atom initialization
+			debounceTimerRef.current = setTimeout(() => {
+				previousValuesRef.current.status = computedStatus
+				previousValuesRef.current.channelId = currentChannelId
+
+				const program = Effect.gen(function* () {
+					const client = yield* HazelRpcClient
+					yield* client("userPresenceStatus.update", {
+						status: computedStatus,
+						activeChannelId: currentChannelId ? (currentChannelId as ChannelId) : null,
+					})
+				})
+
+				runtime.runPromise(program).catch(console.error)
+			}, 300) // Debounce to batch with rapid atom updates during mount
+
+			return
+		}
+
+		// Check if values have actually changed
+		const statusChanged = previousValuesRef.current.status !== computedStatus
+		const channelChanged = previousValuesRef.current.channelId !== currentChannelId
+
+		if (!statusChanged && !channelChanged) {
+			return
+		}
+
+		// Clear existing debounce timer
+		if (debounceTimerRef.current) {
+			clearTimeout(debounceTimerRef.current)
+		}
+
+		// Debounce updates to batch rapid changes
+		debounceTimerRef.current = setTimeout(() => {
+			// Update previous values
+			previousValuesRef.current.status = computedStatus
+			previousValuesRef.current.channelId = currentChannelId
+
+			// Send batched update with only changed fields
+			const program = Effect.gen(function* () {
+				const client = yield* HazelRpcClient
+				const updates: {
+					status?: PresenceStatus
+					activeChannelId?: ChannelId | null
+				} = {}
+
+				if (statusChanged) {
+					updates.status = computedStatus
+				}
+
+				if (channelChanged) {
+					updates.activeChannelId = currentChannelId ? (currentChannelId as ChannelId) : null
+				}
+
+				yield* client("userPresenceStatus.update", updates)
 			})
-		})
 
-		runtime.runPromise(program).catch(console.error)
-	}, [computedStatus, user?.id])
+			runtime.runPromise(program).catch(console.error)
+		}, 300) // 300ms debounce
 
-	useEffect(() => {
-		if (!user?.id) return
-
-		const program = Effect.gen(function* () {
-			const client = yield* HazelRpcClient
-			yield* client("userPresenceStatus.update", {
-				activeChannelId: currentChannelId ? (currentChannelId as ChannelId) : null,
-			})
-		})
-
-		runtime.runPromise(program).catch(console.error)
-	}, [currentChannelId, user?.id])
+		// Cleanup debounce timer on unmount
+		return () => {
+			if (debounceTimerRef.current) {
+				clearTimeout(debounceTimerRef.current)
+			}
+		}
+	}, [computedStatus, currentChannelId, user?.id])
 
 	useAtomMount(beforeUnloadAtom)
 
