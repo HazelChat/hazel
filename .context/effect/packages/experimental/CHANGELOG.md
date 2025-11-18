@@ -1,5 +1,26 @@
 # @effect/experimental
 
+## 0.57.3
+
+### Patch Changes
+
+- [#5763](https://github.com/Effect-TS/effect/pull/5763) [`1df657e`](https://github.com/Effect-TS/effect/commit/1df657e4688f602262d854947c15634849f2ba98) Thanks @tim-smart! - fix RateLimiter fixed window alogrithim
+
+## 0.57.2
+
+### Patch Changes
+
+- [#5761](https://github.com/Effect-TS/effect/pull/5761) [`1deeb6a`](https://github.com/Effect-TS/effect/commit/1deeb6a58cde29e99f57c56d9adcdcda7ac610d0) Thanks @tim-smart! - fix partial window calulation for fixed window rate limiter
+
+- Updated dependencies [[`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f)]:
+  - @effect/platform@0.93.3
+
+## 0.57.1
+
+### Patch Changes
+
+- [#5731](https://github.com/Effect-TS/effect/pull/5731) [`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a) Thanks @tim-smart! - add persisted RateLimiter to @effect/experimental
+
 ## 0.57.0
 
 ### Patch Changes

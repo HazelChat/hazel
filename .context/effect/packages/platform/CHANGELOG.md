@@ -1,5 +1,23 @@
 # @effect/platform
 
+## 0.93.3
+
+### Patch Changes
+
+- [#5759](https://github.com/Effect-TS/effect/pull/5759) [`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f) Thanks @rohovskoi! - fix scalar configuration and types
+
+## 0.93.2
+
+### Patch Changes
+
+- [#5737](https://github.com/Effect-TS/effect/pull/5737) [`2bb8242`](https://github.com/Effect-TS/effect/commit/2bb8242cb094e516665116707b798fc8e2bc5837) Thanks @tim-smart! - ensure HttpApiScalar source is tree-shakable
+
+## 0.93.1
+
+### Patch Changes
+
+- [#5728](https://github.com/Effect-TS/effect/pull/5728) [`1961185`](https://github.com/Effect-TS/effect/commit/1961185e502459a188216f319a38c3dfe30fc6f0) Thanks @kitlangton! - Fix UrlParams.setAll overwrite semantics
+
 ## 0.93.0
 
 ### Patch Changes
