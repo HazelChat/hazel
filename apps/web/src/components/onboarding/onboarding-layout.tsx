@@ -8,6 +8,7 @@ interface OnboardingLayoutProps {
 	children: ReactNode
 	currentStep?: number
 	totalSteps?: number
+	direction?: "forward" | "backward"
 }
 
 function getOnboardingImage() {
@@ -44,7 +45,26 @@ function getOnboardingImage() {
 	return `/images/onboarding/${season}-${timeOfDay}.png`
 }
 
-export function OnboardingLayout({ children, currentStep, totalSteps }: OnboardingLayoutProps) {
+export function OnboardingLayout({
+	children,
+	currentStep,
+	totalSteps,
+	direction = "forward",
+}: OnboardingLayoutProps) {
+	const stepVariants = {
+		enter: (direction: "forward" | "backward") => ({
+			y: direction === "forward" ? 10 : -10,
+			opacity: 0.1,
+			filter: "blur(4px)",
+		}),
+		center: { y: 0, opacity: 1, filter: "blur(0px)" },
+		exit: (direction: "forward" | "backward") => ({
+			y: direction === "forward" ? -10 : 10,
+			opacity: 0.1,
+			filter: "blur(4px)",
+		}),
+	}
+
 	return (
 		<main className="relative grid h-dvh grid-cols-1 flex-col items-center justify-center lg:max-w-none lg:grid-cols-2">
 			{/* Left panel - branding and visual */}
@@ -70,12 +90,14 @@ export function OnboardingLayout({ children, currentStep, totalSteps }: Onboardi
 							{currentStep && totalSteps ? (
 								<>
 									Step{" "}
-									<AnimatePresence mode="wait">
+									<AnimatePresence mode="wait" custom={direction}>
 										<motion.span
 											key={currentStep}
-											initial={{ y: -10, opacity: 0.1, filter: "blur(4px)" }}
-											animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-											exit={{ y: 10, opacity: 0.1, filter: "blur(4px)" }}
+											custom={direction}
+											variants={stepVariants}
+											initial="enter"
+											animate="center"
+											exit="exit"
 											transition={{ duration: 0.2 }}
 											className="inline-block font-mono"
 										>

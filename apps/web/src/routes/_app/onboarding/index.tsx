@@ -261,21 +261,21 @@ function RouteComponent() {
 
 	// Animation variants based on direction with blur effect
 	const variants = {
-		enter: {
+		enter: (direction: "forward" | "backward") => ({
 			x: direction === "forward" ? 20 : -20,
 			opacity: 0,
 			filter: "blur(4px)",
-		},
+		}),
 		center: {
 			x: 0,
 			opacity: 1,
 			filter: "blur(0px)",
 		},
-		exit: {
+		exit: (direction: "forward" | "backward") => ({
 			x: direction === "forward" ? -20 : 20,
 			opacity: 0,
 			filter: "blur(4px)",
-		},
+		}),
 	}
 
 	// Helper to send events and track direction
@@ -289,11 +289,16 @@ function RouteComponent() {
 	}
 
 	return (
-		<OnboardingLayout currentStep={getCurrentStepNumber()} totalSteps={getTotalSteps()}>
-			<AnimatePresence mode="wait" initial={false}>
+		<OnboardingLayout
+			currentStep={getCurrentStepNumber()}
+			totalSteps={getTotalSteps()}
+			direction={direction}
+		>
+			<AnimatePresence mode="wait" initial={false} custom={direction}>
 				{state.matches("welcome") && (
 					<motion.div
 						key="welcome"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -311,6 +316,7 @@ function RouteComponent() {
 				{state.matches("profileInfo") && (
 					<motion.div
 						key="profileInfo"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -346,6 +352,7 @@ function RouteComponent() {
 				{state.matches("themeSelection") && (
 					<motion.div
 						key="themeSelection"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -362,6 +369,7 @@ function RouteComponent() {
 				{state.matches({ organizationSetup: "form" }) && (
 					<motion.div
 						key="organizationSetup"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -382,6 +390,7 @@ function RouteComponent() {
 				{state.matches({ profileSetup: "useCases" }) && (
 					<motion.div
 						key="useCases"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -401,6 +410,7 @@ function RouteComponent() {
 				{state.matches({ profileSetup: "role" }) && (
 					<motion.div
 						key="role"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -420,6 +430,7 @@ function RouteComponent() {
 				{state.matches({ teamInvitation: "inviteForm" }) && (
 					<motion.div
 						key="teamInvitation"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
@@ -440,6 +451,7 @@ function RouteComponent() {
 					state.matches({ organizationSetup: "processing" })) && (
 					<motion.div
 						key="processing"
+						custom={direction}
 						variants={variants}
 						initial="enter"
 						animate="center"
