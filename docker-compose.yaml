@@ -1,31 +1,18 @@
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16.2-alpine
-    shm_size: 1g
-    user: postgres
-    restart: always
-    healthcheck:
-      test: "pg_isready -U user --dbname=postgres"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "5432:5432"
+  pg:
+    image: postgres:alpine # Using a lightweight Postgres image
     environment:
-      POSTGRES_USER: user
-      POSTGRES_DB: postgres
-      POSTGRES_PASSWORD: password
-    command: |
-      postgres 
-      -c wal_level=logical
-      -c max_wal_senders=10 
-      -c max_replication_slots=5 
-      -c hot_standby=on 
-      -c hot_standby_feedback=on
-      -c max_connections=200
+      POSTGRES_DB: effect_cluster
+      POSTGRES_USER: cluster
+      POSTGRES_PASSWORD: cluster
+    ports:
+      - "5432:5432" # Map host port 5432 to container port 5432
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data # Persist data in a named volume
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
 volumes:
-  postgres_data:
-    driver: local
+  db_data: # Define the named volume
