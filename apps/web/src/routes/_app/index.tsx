@@ -1,7 +1,7 @@
-import { eq, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { Loader } from "~/components/loader"
-import { organizationCollection } from "~/db/collections"
+import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/")({
@@ -12,17 +12,20 @@ function RouteComponent() {
 	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const {
-		data: organization,
+		data: membership,
 		isLoading,
 		isReady,
 	} = useLiveQuery(
 		(q) => {
+			if (!user?.organizationId) return null
 			return q
-				.from({
-					organizatios: organizationCollection,
-				})
-				.where(({ organizatios }) => eq(organizatios.id, user?.organizationId))
-				.orderBy(({ organizatios }) => organizatios.createdAt, "asc")
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
+					eq(member.organizationId, org.id),
+				)
+				.where(({ member }) =>
+					and(eq(member.userId, user?.id), eq(member.organizationId, user?.organizationId)),
+				)
 				.findOne()
 		},
 		[user?.id, user?.organizationId],
@@ -39,12 +42,12 @@ function RouteComponent() {
 	console.log("user", user)
 
 	if (!user.isOnboarded) {
-		const orgId = organization?.id
+		const orgId = membership?.org.id
 		return <Navigate to="/onboarding" search={orgId ? { orgId } : undefined} />
 	}
 
-	if (organization) {
-		const org = organization
+	if (membership) {
+		const org = membership.org
 
 		if (!org.slug) {
 			return <Navigate to="/onboarding" search={{ orgId: org.id }} />
@@ -53,7 +56,7 @@ function RouteComponent() {
 		return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />
 	}
 
-	if (user.organizationId && !organization) {
+	if (user.organizationId && !membership) {
 		return <Navigate to="/select-organization" />
 	}
 

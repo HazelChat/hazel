@@ -1,7 +1,8 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router"
 import { useState } from "react"
 import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
 import { CommandPalette } from "~/components/command-palette"
+import { Loader } from "~/components/loader"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
@@ -11,6 +12,7 @@ import {
 	organizationCollection,
 	organizationMemberCollection,
 } from "~/db/collections"
+import { useOrganizationMemberGuard } from "~/guards/organization-member-guard"
 import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
 import { PresenceProvider } from "~/providers/presence-provider"
 

@@ -1,3 +1,4 @@
+import { Database, schema } from "@hazel/db"
 import { type OrganizationId, type UserId, withSystemActor } from "@hazel/domain"
 import type { Event } from "@workos-inc/node"
 import { Effect, Option, pipe, Schema } from "effect"
@@ -39,6 +40,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 	accessors: true,
 	effect: Effect.gen(function* () {
 		const workos = yield* WorkOS
+		const db = yield* Database.Database
 		const userRepo = yield* UserRepo
 		const orgRepo = yield* OrganizationRepo
 		const orgMemberRepo = yield* OrganizationMemberRepo
@@ -193,18 +195,19 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								result.updated++
 							} else {
 								// Create new organization (edge case: org exists in WorkOS but not in our DB)
-								yield* orgRepo
-									.insert({
+								// Use direct Drizzle insert to manually set the ID to match WorkOS externalId
+								yield* db.execute((client) =>
+									client.insert(schema.organizationsTable).values({
+										id: orgId,
 										name: workosOrg.name,
-										slug: workosOrg.name
-											.toLowerCase()
-											.replace(/[^a-z0-9]+/g, "-")
-											.replace(/^-|-$/g, ""),
+										slug: null,
 										logoUrl: null,
 										settings: null,
 										deletedAt: null,
-									})
-									.pipe(withSystemActor)
+										createdAt: new Date(),
+										updatedAt: new Date(),
+									}),
+								)
 								result.created++
 							}
 						}),
@@ -241,11 +244,26 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			Effect.gen(function* () {
 				const result: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
 
-				// Fetch memberships from WorkOS using our organization ID
+				// Fetch WorkOS organization by our internal organization ID (stored as externalId in WorkOS)
+				const workosOrgResult = yield* pipe(
+					workos.call((client) => client.organizations.getOrganizationByExternalId(organizationId)),
+					Effect.either,
+				)
+
+				if (workosOrgResult._tag === "Left") {
+					result.errors.push(
+						`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.left}`,
+					)
+					return result
+				}
+
+				const workosOrg = workosOrgResult.right
+
+				// Fetch memberships from WorkOS using WorkOS organization ID
 				const workosMembershipsResult = yield* pipe(
 					workos.call((client) =>
 						client.userManagement.listOrganizationMemberships({
-							organizationId: organizationId,
+							organizationId: workosOrg.id,
 							limit: 100,
 						}),
 					),
@@ -356,11 +374,26 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					errors: [],
 				}
 
-				// Fetch invitations from WorkOS using our organization ID
+				// Fetch WorkOS organization by our internal organization ID (stored as externalId in WorkOS)
+				const workosOrgResult = yield* pipe(
+					workos.call((client) => client.organizations.getOrganizationByExternalId(organizationId)),
+					Effect.either,
+				)
+
+				if (workosOrgResult._tag === "Left") {
+					result.errors.push(
+						`Failed to fetch WorkOS org for ${organizationId}: ${workosOrgResult.left}`,
+					)
+					return result
+				}
+
+				const workosOrg = workosOrgResult.right
+
+				// Fetch invitations from WorkOS using WorkOS organization ID
 				const workosInvitationsResult = yield* pipe(
 					workos.call((client) =>
 						client.userManagement.listInvitations({
-							organizationId: organizationId,
+							organizationId: workosOrg.id,
 							limit: 100,
 						}),
 					),
