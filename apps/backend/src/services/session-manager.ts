@@ -1,175 +1,51 @@
-import { CurrentUser, OrganizationId, UnauthorizedError, type UserId, withSystemActor } from "@hazel/domain"
-import { Effect, Option, Schema } from "effect"
+import {
+	CurrentUser,
+	JwtPayload,
+	type OrganizationId,
+	OrganizationId as OrgId,
+	UnauthorizedError,
+	withSystemActor,
+} from "@hazel/domain"
+import { Config, Effect, Option, Schema } from "effect"
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "./workos"
 
 /**
- * Type for the WorkOS sealed session object returned from loadSealedSession
- */
-type WorkOSSealedSession = {
-	authenticate: () => Promise<any>
-	refresh: () => Promise<any>
-}
-
-/**
- * Represents a successfully authenticated session
- */
-export interface AuthenticatedSession {
-	readonly user: {
-		readonly id: string // WorkOS external ID (not the internal UserId)
-		readonly email: string
-		readonly firstName: string | null
-		readonly lastName: string | null
-		readonly profilePictureUrl: string | null
-	}
-	readonly role: string | null | undefined
-	readonly organizationId: OrganizationId | undefined
-}
-
-/**
- * Represents a refreshed session with a new sealed session token
- */
-export interface RefreshedSession extends AuthenticatedSession {
-	readonly sealedSession: string
-}
-
-/**
- * Shared session management service that handles authentication,
- * session refresh, and user lookup/upsert logic for both HTTP and RPC middlewares.
+ * Session management service that handles authentication via WorkOS.
+ * Supports both cookie-based (sealed session) and bearer token (JWT) authentication.
  */
 export class SessionManager extends Effect.Service<SessionManager>()("SessionManager", {
 	accessors: true,
 	effect: Effect.gen(function* () {
 		const workos = yield* WorkOS
 		const userRepo = yield* UserRepo
+		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 
 		/**
-		 * Load and authenticate a sealed session from WorkOS.
-		 * Returns the authenticated session or attempts to refresh if expired.
+		 * Sync a WorkOS user to the database (find or create).
+		 * Private helper used by both auth flows.
 		 */
-		const authenticateSession = Effect.fn("SessionManager.authenticateSession")(function* (
-			sessionCookie: string,
-			workOsCookiePassword: string,
-		): Generator<any, { res: any; session: any }, any> {
-			// Load sealed session from WorkOS
-			const res = yield* workos
-				.call(async (client) =>
-					client.userManagement.loadSealedSession({
-						sessionData: sessionCookie,
-						cookiePassword: workOsCookiePassword,
-					}),
-				)
-				.pipe(
-					Effect.catchTag("WorkOSApiError", (error) =>
-						Effect.fail(
-							new UnauthorizedError({
-								message: "Failed to get session from cookie",
-								detail: String(error.cause),
-							}),
-						),
-					),
-				)
-
-			// Try to authenticate the session
-			const session = yield* Effect.tryPromise(() => res.authenticate()).pipe(
-				Effect.tapError((error) => Effect.log("authenticate error", error)),
-				Effect.catchTag("UnknownException", (error) =>
-					Effect.fail(
-						new UnauthorizedError({
-							message: "Failed to call authenticate on sealed session",
-							detail: String(error.cause),
-						}),
-					),
-				),
-			)
-
-			return { res, session }
-		})
-
-		/**
-		 * Refresh an expired session and return the new sealed session token.
-		 * This should be called when a session is not authenticated but can be refreshed.
-		 */
-		const refreshSession = Effect.fn("SessionManager.refreshSession")(function* (
-			sealedSession: WorkOSSealedSession,
-		): Generator<any, RefreshedSession, any> {
-			const refreshedSession: any = yield* Effect.tryPromise(() => sealedSession.refresh()).pipe(
-				Effect.tapError((error) => Effect.log("refresh error", error)),
-				Effect.catchTag("UnknownException", (error) =>
-					Effect.fail(
-						new UnauthorizedError({
-							message: "Failed to call refresh on sealed session",
-							detail: String(error.cause),
-						}),
-					),
-				),
-			)
-
-			if (!refreshedSession.authenticated) {
-				return yield* Effect.fail(
-					new UnauthorizedError({
-						message: "Failed to refresh session",
-						detail: "The session could not be refreshed",
-					}),
-				)
-			}
-
-			if (!refreshedSession.sealedSession) {
-				return yield* Effect.fail(
-					new UnauthorizedError({
-						message: "Failed to refresh session",
-						detail: "No sealed session returned from refresh",
-					}),
-				)
-			}
-
-			// Validate and brand WorkOS organization ID at the boundary
-			const organizationId = refreshedSession.organizationId
-				? yield* Schema.decodeUnknown(OrganizationId)(refreshedSession.organizationId).pipe(
-						Effect.mapError(
-							(error) =>
-								new UnauthorizedError({
-									message: "Invalid organization ID from WorkOS",
-									detail: String(error),
-								}),
-						),
-					)
-				: undefined
-
-			return {
-				user: {
-					id: refreshedSession.user.id, // WorkOS external ID (plain string)
-					email: refreshedSession.user.email,
-					firstName: refreshedSession.user.firstName,
-					lastName: refreshedSession.user.lastName,
-					profilePictureUrl: refreshedSession.user.profilePictureUrl,
-				},
-				role: refreshedSession.role,
-				organizationId,
-				sealedSession: refreshedSession.sealedSession,
-			}
-		})
-
-		/**
-		 * Get or create a user from the database based on WorkOS session data.
-		 * This will upsert the user if they don't exist.
-		 */
-		const getOrCreateUser = Effect.fn("SessionManager.getOrCreateUser")(function* (
-			sessionData: AuthenticatedSession,
+		const syncUserFromWorkOS = function* (
+			workOsUserId: string,
+			email: string,
+			firstName: string | null,
+			lastName: string | null,
+			avatarUrl: string | null,
 		) {
 			const userOption = yield* userRepo
-				.findByExternalId(sessionData.user.id)
+				.findByExternalId(workOsUserId)
 				.pipe(Effect.orDie, withSystemActor)
 
 			const user = yield* Option.match(userOption, {
 				onNone: () =>
 					userRepo
 						.upsertByExternalId({
-							externalId: sessionData.user.id,
-							email: sessionData.user.email,
-							firstName: sessionData.user.firstName || "",
-							lastName: sessionData.user.lastName || "",
-							avatarUrl: sessionData.user.profilePictureUrl || "",
+							externalId: workOsUserId,
+							email: email,
+							firstName: firstName || "",
+							lastName: lastName || "",
+							avatarUrl: avatarUrl || "",
 							userType: "user",
 							settings: null,
 							isOnboarded: false,
@@ -180,27 +56,228 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 			})
 
 			return user
+		}
+
+		/**
+		 * Authenticate with a WorkOS sealed session cookie.
+		 * Returns the current user and optionally a new session cookie if refreshed.
+		 */
+		const authenticateWithCookie = Effect.fn("SessionManager.authenticateWithCookie")(function* (
+			sessionCookie: string,
+			workOsCookiePassword: string,
+		): Generator<any, { currentUser: CurrentUser.Schema; refreshedSession: string | undefined }, any> {
+			// Load sealed session from WorkOS
+			const sealedSession = yield* workos
+				.call(async (client) =>
+					client.userManagement.loadSealedSession({
+						sessionData: sessionCookie,
+						cookiePassword: workOsCookiePassword,
+					}),
+				)
+				.pipe(
+					Effect.catchTag("WorkOSApiError", (error) =>
+						Effect.fail(
+							new UnauthorizedError({
+								message: "Failed to load session from cookie",
+								detail: String(error.cause),
+							}),
+						),
+					),
+				)
+
+			// Try to authenticate the session
+			const session: any = yield* Effect.tryPromise(() => sealedSession.authenticate()).pipe(
+				Effect.catchTag("UnknownException", (error) =>
+					Effect.fail(
+						new UnauthorizedError({
+							message: "Failed to authenticate sealed session",
+							detail: String(error.cause),
+						}),
+					),
+				),
+			)
+
+			// If authenticated, sync user and return
+			if (session.authenticated && session.accessToken) {
+				// Decode JWT payload
+				const _jwtPayload = yield* Schema.decodeUnknown(JwtPayload)(
+					decodeJwt(session.accessToken),
+				).pipe(
+					Effect.mapError(
+						(error) =>
+							new UnauthorizedError({
+								message: "Invalid JWT payload from WorkOS",
+								detail: String(error),
+							}),
+					),
+				)
+
+				// Sync user to database
+				const user = yield* syncUserFromWorkOS(
+					session.user.id,
+					session.user.email,
+					session.user.firstName,
+					session.user.lastName,
+					session.user.profilePictureUrl,
+				)
+
+				// Build CurrentUser
+				const currentUser = new CurrentUser.Schema({
+					id: user.id,
+					role: (session.role as "admin" | "member") || "member",
+					organizationId: session.externalOrganizationId
+						? OrgId.make(session.externalOrganizationId)
+						: undefined,
+					avatarUrl: user.avatarUrl,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					email: user.email,
+					isOnboarded: user.isOnboarded,
+				})
+
+				return { currentUser, refreshedSession: undefined }
+			}
+
+			// If not authenticated, check if we should give up
+			if (session.reason === "no_session_cookie_provided") {
+				return yield* Effect.fail(
+					new UnauthorizedError({
+						message: "No session cookie provided",
+						detail: "The session was not authenticated",
+					}),
+				)
+			}
+
+			// Try to refresh the session
+			const refreshedSession: any = yield* Effect.tryPromise(() => sealedSession.refresh()).pipe(
+				Effect.catchTag("UnknownException", (error) =>
+					Effect.fail(
+						new UnauthorizedError({
+							message: "Failed to refresh sealed session",
+							detail: String(error.cause),
+						}),
+					),
+				),
+			)
+
+			if (!refreshedSession.authenticated || !refreshedSession.sealedSession) {
+				return yield* Effect.fail(
+					new UnauthorizedError({
+						message: "Failed to refresh session",
+						detail: "The session could not be refreshed",
+					}),
+				)
+			}
+
+			// Decode JWT payload from refreshed session
+			const jwtPayload = yield* Schema.decodeUnknown(JwtPayload)(
+				decodeJwt(refreshedSession.accessToken),
+			).pipe(
+				Effect.mapError(
+					(error) =>
+						new UnauthorizedError({
+							message: "Invalid JWT payload from WorkOS",
+							detail: String(error),
+						}),
+				),
+			)
+
+			// Sync user to database
+			const user = yield* syncUserFromWorkOS(
+				refreshedSession.user.id,
+				refreshedSession.user.email,
+				refreshedSession.user.firstName,
+				refreshedSession.user.lastName,
+				refreshedSession.user.profilePictureUrl,
+			)
+
+			// Build CurrentUser
+			const currentUser = new CurrentUser.Schema({
+				id: user.id,
+				role: (refreshedSession.role as "admin" | "member") || "member",
+				organizationId: jwtPayload.externalOrganizationId,
+				avatarUrl: user.avatarUrl,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				isOnboarded: user.isOnboarded,
+			})
+
+			return { currentUser, refreshedSession: refreshedSession.sealedSession }
 		})
 
 		/**
-		 * Build a CurrentUser schema from session data and database user.
+		 * Authenticate with a WorkOS bearer token (JWT).
+		 * Verifies the JWT signature and syncs the user to the database.
 		 */
-		const buildCurrentUser = Effect.fn("SessionManager.buildCurrentUser")(function* (
-			sessionData: AuthenticatedSession,
-			user: {
-				id: UserId
-				email: string
-				firstName: string
-				lastName: string
-				avatarUrl: string | null
-				isOnboarded: boolean
-			},
-		) {
+		const authenticateWithBearer = Effect.fn("SessionManager.authenticateWithBearer")(function* (
+			bearerToken: string,
+		): Generator<any, CurrentUser.Schema, any> {
+			// Verify JWT signature using WorkOS JWKS
+			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
+
+			const { payload } = yield* Effect.tryPromise({
+				try: () =>
+					jwtVerify(bearerToken, jwks, {
+						issuer: "https://api.workos.com",
+					}),
+				catch: (error) =>
+					new UnauthorizedError({
+						message: `Invalid token: ${error}`,
+						detail: `The provided token is invalid`,
+					}),
+			})
+
+			const workOsUserId = payload.sub
+			if (!workOsUserId) {
+				return yield* Effect.fail(
+					new UnauthorizedError({
+						message: "Token missing user ID",
+						detail: "The provided token is missing the user ID",
+					}),
+				)
+			}
+
+			// Try to find user in DB, if not found fetch from WorkOS and create
+			const userOption = yield* userRepo
+				.findByExternalId(workOsUserId)
+				.pipe(Effect.orDie, withSystemActor)
+
+			const user = yield* Option.match(userOption, {
+				onNone: () =>
+					Effect.gen(function* () {
+						// Fetch user details from WorkOS
+						const workosUser = yield* workos
+							.call(async (client) => client.userManagement.getUser(workOsUserId))
+							.pipe(
+								Effect.catchTag("WorkOSApiError", (error) =>
+									Effect.fail(
+										new UnauthorizedError({
+											message: "Failed to fetch user from WorkOS",
+											detail: String(error.cause),
+										}),
+									),
+								),
+							)
+
+						// Create user in DB
+						return yield* syncUserFromWorkOS(
+							workosUser.id,
+							workosUser.email,
+							workosUser.firstName,
+							workosUser.lastName,
+							workosUser.profilePictureUrl,
+						)
+					}),
+				onSome: (user) => Effect.succeed(user),
+			})
+
+			// Build CurrentUser from JWT payload and DB user
 			return new CurrentUser.Schema({
 				id: user.id,
-				role: (sessionData.role as "admin" | "member") || "member",
-				organizationId: sessionData.organizationId,
-				avatarUrl: user.avatarUrl ?? "",
+				role: (payload.role as "admin" | "member") || "member",
+				organizationId: payload.externalOrganizationId as OrganizationId | undefined,
+				avatarUrl: user.avatarUrl,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				email: user.email,
@@ -208,69 +285,20 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 			})
 		})
 
-		const authenticateAndGetUser = Effect.fn("SessionManager.authenticateAndGetUser")(function* (
-			sessionCookie: string,
-			workOsCookiePassword: string,
-		): Generator<any, { currentUser: CurrentUser.Schema; refreshedSession: string | undefined }, any> {
-			yield* Effect.log("Authenticating session")
-
-			const { res, session } = yield* authenticateSession(sessionCookie, workOsCookiePassword)
-
-			if (session.authenticated) {
-				const organizationId = session.externalOrganizationId
-					? OrganizationId.make(session.externalOrganizationId)
-					: undefined
-
-				const sessionData: AuthenticatedSession = {
-					user: {
-						id: session.user.id,
-						email: session.user.email,
-						firstName: session.user.firstName,
-						lastName: session.user.lastName,
-						profilePictureUrl: session.user.profilePictureUrl,
-					},
-					role: session.role,
-					organizationId,
-				}
-
-				const user = yield* getOrCreateUser(sessionData)
-				const currentUser = yield* buildCurrentUser(sessionData, user)
-
-				return {
-					currentUser,
-					refreshedSession: undefined,
-				}
-			}
-
-			// If session explicitly has no cookie, fail immediately
-			if (session.reason === "no_session_cookie_provided") {
-				return yield* Effect.fail(
-					new UnauthorizedError({
-						message: "Failed to authenticate session",
-						detail: "The session was not authenticated",
-					}),
-				)
-			}
-
-			// Try to refresh the session
-			yield* Effect.log("Session not authenticated, attempting refresh")
-			const refreshedSession = yield* refreshSession(res)
-
-			const user = yield* getOrCreateUser(refreshedSession)
-			const currentUser = yield* buildCurrentUser(refreshedSession, user)
-
-			return {
-				currentUser,
-				refreshedSession: refreshedSession.sealedSession,
-			}
-		})
-
 		return {
-			authenticateSession,
-			refreshSession,
-			getOrCreateUser,
-			buildCurrentUser,
-			authenticateAndGetUser: authenticateAndGetUser as (
+			authenticateWithCookie: authenticateWithCookie as (
+				sessionCookie: string,
+				workOsCookiePassword: string,
+			) => Effect.Effect<
+				{ currentUser: CurrentUser.Schema; refreshedSession: string | undefined },
+				UnauthorizedError,
+				never
+			>,
+			authenticateWithBearer: authenticateWithBearer as (
+				bearerToken: string,
+			) => Effect.Effect<CurrentUser.Schema, UnauthorizedError, never>,
+			// Keep old method name for backward compatibility during transition
+			authenticateAndGetUser: authenticateWithCookie as (
 				sessionCookie: string,
 				workOsCookiePassword: string,
 			) => Effect.Effect<

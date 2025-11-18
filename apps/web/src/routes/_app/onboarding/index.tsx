@@ -315,7 +315,6 @@ function RouteComponent() {
 											firstName: data.firstName,
 											lastName: data.lastName,
 										},
-										reactivityKeys: ["currentUser"],
 									})
 
 									if (!Exit.isSuccess(result)) {

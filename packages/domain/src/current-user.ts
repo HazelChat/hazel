@@ -6,7 +6,7 @@ import { OrganizationId, UserId } from "./ids"
 export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	id: UserId,
 	organizationId: S.optional(OrganizationId),
-	role: S.Literal("admin", "member"),
+	role: S.Literal("admin", "member", "owner"),
 	avatarUrl: S.optional(S.String),
 	firstName: S.optional(S.String),
 	lastName: S.optional(S.String),

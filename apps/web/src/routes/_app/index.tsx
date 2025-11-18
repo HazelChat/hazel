@@ -36,6 +36,8 @@ function RouteComponent() {
 		return null
 	}
 
+	console.log("user", user)
+
 	if (!user.isOnboarded) {
 		const orgId = organization?.id
 		return <Navigate to="/onboarding" search={orgId ? { orgId } : undefined} />

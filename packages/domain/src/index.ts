@@ -12,4 +12,5 @@ export * from "./ids"
 export * from "./policy"
 // RPC contracts
 export * as Rpc from "./rpc"
+export * from "./session"
 export * from "./transaction-id"
