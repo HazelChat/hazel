@@ -7,7 +7,7 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { ELECTRIC_PROTOCOL_QUERY_PARAMS } from "@electric-sql/client"
-import { Config, Effect, Layer, Redacted } from "effect"
+import { Config, Effect, Layer, Redacted, Stream } from "effect"
 
 const electricUrl = Config.string("ELECTRIC_URL").pipe(Config.withDefault("https://api.electric-sql.cloud"))
 const electricSecret = Config.redacted("ELECTRIC_SECRET")
@@ -38,8 +38,14 @@ const router = HttpRouter.empty.pipe(
 			const originUrl = new URL("/v1/shape", elUrl)
 
 			searchParams.forEach((value, key) => {
-				if (ELECTRIC_PROTOCOL_QUERY_PARAMS.includes(key)) {
+				// Check for exact match OR if key starts with a protocol param (for bracket notation like subset__params[1])
+				const isElectricParam = ELECTRIC_PROTOCOL_QUERY_PARAMS.some(
+					(param) => key === param || key.startsWith(`${param}[`),
+				)
+				if (isElectricParam) {
 					originUrl.searchParams.set(key, value)
+				} else {
+					console.log("paramXD", key, value)
 				}
 			})
 
@@ -61,17 +67,18 @@ const router = HttpRouter.empty.pipe(
 			headers.set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-			const body = yield* Effect.tryPromise({
-				try: () => response.arrayBuffer(),
-				catch: (error) => new Error(`Failed to read response body: ${error}`),
-			})
-
 			const headersObject: Record<string, string> = {}
 			headers.forEach((value, key) => {
 				headersObject[key] = value
 			})
 
-			return HttpServerResponse.raw(new Uint8Array(body), {
+			// Stream the response body directly to preserve Electric's streaming
+			const stream = Stream.fromReadableStream(
+				() => response.body as ReadableStream<Uint8Array>,
+				(error) => new Error(`Stream error: ${error}`),
+			)
+
+			return HttpServerResponse.stream(stream, {
 				status: response.status,
 				statusText: response.statusText,
 				headers: headersObject,
