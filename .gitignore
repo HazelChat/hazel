@@ -7,3 +7,6 @@ dist-ssr
 .idea
 .env
 version.json
+
+# Caddy SSL certificates (mkcert)
+docker/caddy/certs/*.pem

@@ -72,15 +72,31 @@ services:
       # IMPORTANT: Only use insecure mode in development
       # See https://electric-sql.com/docs/guides/security
       ELECTRIC_INSECURE: "true"
-    ports:
-      - "5133:3000"
     depends_on:
       postgres:
         condition: service_healthy
+    restart: always
+
+  # Caddy - Reverse proxy for Electric (enables HTTP/2 with HTTPS)
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "5133:5133"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./docker/caddy/certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - electric
     restart: always
 
 volumes:
   postgres_data:
     driver: local
   sequin_redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local

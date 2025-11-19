@@ -309,7 +309,7 @@ export const notificationCollection = createCollection(
 export const userCollection = createCollection(
 	effectElectricCollectionOptions({
 		id: "users",
-		syncMode: "progressive",
+		// syncMode: "progressive",
 		runtime: runtime,
 		shapeOptions: {
 			url: electricUrl,
@@ -442,7 +442,7 @@ export const channelCollection = createCollection(
 export const channelMemberCollection = createCollection(
 	effectElectricCollectionOptions({
 		id: "channel_members",
-		syncMode: "progressive",
+		// syncMode: "progressive",
 		runtime: runtime,
 		shapeOptions: {
 			url: `${electricUrl}`,

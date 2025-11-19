@@ -1,0 +1,29 @@
+# Caddy reverse proxy for Electric
+# Enables HTTP/2 with HTTPS using mkcert locally-trusted certificates
+
+localhost:5133 {
+	# Configure TLS with mkcert certificates
+	tls /certs/localhost.pem /certs/localhost-key.pem
+
+	# HTTP/2 is automatically enabled with TLS
+
+	# Reverse proxy to Electric
+	reverse_proxy electric:3000 {
+		# Preserve headers
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+
+		# Enable WebSocket support for real-time sync
+		header_up Connection {>Connection}
+		header_up Upgrade {>Upgrade}
+	}
+
+	# Logging
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}

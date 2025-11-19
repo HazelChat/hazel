@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
+		"dev:local": "wrangler dev --port 5471",
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
@@ -13,8 +13,8 @@
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@effect/language-service": "catalog:effect",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.9",
-		"wrangler": "^4.46.0"
+		"vitest": "^4.0.10",
+		"wrangler": "^4.49.0"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
