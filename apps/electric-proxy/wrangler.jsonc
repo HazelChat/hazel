@@ -27,7 +27,7 @@
 	 */
 	"vars": {
 		// Electric URL will be overridden by .dev.vars for local development
-		"ELECTRIC_URL": "http://localhost:5133"
+		"ELECTRIC_URL": "http://localhost:3333"
 	}
 	/**
 	 * Note: Use secrets to store sensitive data.
