@@ -6,8 +6,19 @@
  */
 
 import { RpcMiddleware } from "@effect/rpc"
+import { Schema as S } from "effect"
 import * as CurrentUser from "../current-user"
 import { UnauthorizedError } from "../errors"
+import {
+	InvalidBearerTokenError,
+	InvalidJwtPayloadError,
+	SessionAuthenticationError,
+	SessionExpiredError,
+	SessionLoadError,
+	SessionNotProvidedError,
+	SessionRefreshError,
+	WorkOSUserFetchError,
+} from "../session-errors"
 
 /**
  * Authentication middleware that provides CurrentUser context to RPC handlers.
@@ -31,8 +42,20 @@ import { UnauthorizedError } from "../errors"
  *   })
  * ```
  */
+const AuthFailure = S.Union(
+	UnauthorizedError,
+	SessionLoadError,
+	SessionAuthenticationError,
+	InvalidJwtPayloadError,
+	SessionNotProvidedError,
+	SessionRefreshError,
+	SessionExpiredError,
+	InvalidBearerTokenError,
+	WorkOSUserFetchError,
+)
+
 export class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
 	provides: CurrentUser.Context,
-	failure: UnauthorizedError,
+	failure: AuthFailure,
 	requiredForClient: true,
 }) {}
