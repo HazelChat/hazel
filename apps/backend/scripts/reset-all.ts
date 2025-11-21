@@ -99,7 +99,7 @@ const clearWorkOS = Effect.gen(function* () {
 	log("blue", "\n  → Clearing invitations...")
 	const invitations = yield* workos.call((client) => client.userManagement.listInvitations({ limit: 100 }))
 
-	counts.invitations = invitations.data.length
+	counts.invitations = invitations.data.filter((invitation) => invitation.state === "pending").length
 
 	if (counts.invitations === 0) {
 		log("white", "  ⊘ No invitations to delete")
