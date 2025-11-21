@@ -31,7 +31,7 @@
 	},
 	"vars": {
 		"ELECTRIC_URL": "https://api.electric-sql.cloud",
-		"ELECTRIC_SOURCE_ID": "8a1ee7fd-3ae5-4ef6-9cc1-6fc6b03b89a4",
+		"ELECTRIC_SOURCE_ID": "80422006-0448-4af1-9815-5d29c2dd5fba",
 		"WORKOS_CLIENT_ID": "client_01HGZR2D24QXAZP47AWRENTA8M",
 		"ALLOWED_ORIGIN": "https://app.hazel.sh"
 	}
