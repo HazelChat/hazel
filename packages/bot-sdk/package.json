@@ -6,16 +6,19 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./client": "./src/client.ts",
-		"./messages": "./src/messages.ts",
-		"./webhooks": "./src/webhooks.ts",
-		"./types": "./src/types.ts",
-		"./errors": "./src/errors.ts"
+		"./bot-client": "./src/bot-client.ts",
+		"./config": "./src/config.ts",
+		"./auth": "./src/auth.ts",
+		"./types": "./src/types/index.ts",
+		"./errors": "./src/errors.ts",
+		"./services": "./src/services/index.ts",
+		"./layers": "./src/layers.ts"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/rpc": "catalog:effect",
+		"@electric-sql/client": "^1.1.5",
 		"@hazel/domain": "workspace:*",
 		"effect": "catalog:effect"
 	},
