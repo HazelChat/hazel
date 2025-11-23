@@ -73,39 +73,38 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 			})
 
 		return {
-			offer: (event: ElectricEvent) =>
-				Effect.gen(function* () {
-					const eventType = getEventTypeFromEvent(event)
-					const queue = yield* getQueue(eventType)
+			offer: Effect.fn(function* (event: ElectricEvent) {
+				const eventType = getEventTypeFromEvent(event)
+				const queue = yield* getQueue(eventType)
 
-					// Offer to queue
-					const offered = yield* Queue.offer(queue, event).pipe(
+				// Offer to queue
+				const offered = yield* Queue.offer(queue, event).pipe(
+					Effect.catchAll((error) =>
+						Effect.fail(
+							new QueueError({
+								message: `Failed to offer event to queue: ${eventType}`,
+								cause: error,
+							}),
+						),
+					),
+				)
+
+				// Handle backpressure for bounded queues
+				if (!offered && config.backpressureStrategy === "drop-oldest") {
+					// Take one from queue and try again
+					yield* Queue.take(queue).pipe(Effect.ignore)
+					yield* Queue.offer(queue, event).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
 								new QueueError({
-									message: `Failed to offer event to queue: ${eventType}`,
+									message: `Failed to offer event after dropping oldest: ${eventType}`,
 									cause: error,
 								}),
 							),
 						),
 					)
-
-					// Handle backpressure for bounded queues
-					if (!offered && config.backpressureStrategy === "drop-oldest") {
-						// Take one from queue and try again
-						yield* Queue.take(queue).pipe(Effect.ignore)
-						yield* Queue.offer(queue, event).pipe(
-							Effect.catchAll((error) =>
-								Effect.fail(
-									new QueueError({
-										message: `Failed to offer event after dropping oldest: ${eventType}`,
-										cause: error,
-									}),
-								),
-							),
-						)
-					}
-				}),
+				}
+			}),
 
 			take: (eventType: EventType) =>
 				Effect.gen(function* () {
