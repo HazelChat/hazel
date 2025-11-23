@@ -1,73 +1,16 @@
-import type { Channel, ChannelMember, Message } from "@hazel/domain/models"
-import type { Effect, Schema } from "effect"
+import type { Effect } from "effect"
 import type { HandlerError } from "../errors.ts"
+import type { EventType } from "./events.ts"
 
 /**
- * Handler for new messages
+ * Generic event handler that processes validated data of type A
  */
-export type MessageHandler<R = never> = (
-	message: Schema.Schema.Type<typeof Message.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for message updates
- */
-export type MessageUpdateHandler<R = never> = (
-	message: Schema.Schema.Type<typeof Message.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for message deletes
- */
-export type MessageDeleteHandler<R = never> = (
-	message: Schema.Schema.Type<typeof Message.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for new channel members
- */
-export type ChannelMemberAddedHandler<R = never> = (
-	member: Schema.Schema.Type<typeof ChannelMember.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for removed channel members
- */
-export type ChannelMemberRemovedHandler<R = never> = (
-	member: Schema.Schema.Type<typeof ChannelMember.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for new channels
- */
-export type ChannelCreatedHandler<R = never> = (
-	channel: Schema.Schema.Type<typeof Channel.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for channel updates
- */
-export type ChannelUpdatedHandler<R = never> = (
-	channel: Schema.Schema.Type<typeof Channel.Model.json>,
-) => Effect.Effect<void, HandlerError, R>
-
-/**
- * Handler for channel deletes
- */
-export type ChannelDeletedHandler<R = never> = (
-	channel: Schema.Schema.Type<typeof Channel.Model.json>,
+export type EventHandler<A = any, R = never> = (
+	value: A,
 ) => Effect.Effect<void, HandlerError, R>
 
 /**
  * Registry of all event handlers
+ * Maps event types (e.g., "messages.insert") to sets of handlers
  */
-export interface EventHandlerRegistry {
-	"messages.insert": Set<MessageHandler<any>>
-	"messages.update": Set<MessageUpdateHandler<any>>
-	"messages.delete": Set<MessageDeleteHandler<any>>
-	"channel_members.insert": Set<ChannelMemberAddedHandler<any>>
-	"channel_members.delete": Set<ChannelMemberRemovedHandler<any>>
-	"channels.insert": Set<ChannelCreatedHandler<any>>
-	"channels.update": Set<ChannelUpdatedHandler<any>>
-	"channels.delete": Set<ChannelDeletedHandler<any>>
-}
+export type EventHandlerRegistry = Map<EventType, Set<EventHandler<any, any>>>

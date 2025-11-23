@@ -1,5 +1,6 @@
 import { isChangeMessage, type Message, ShapeStream } from "@electric-sql/client"
-import { Effect, type Scope, Stream } from "effect"
+import { Config, Effect, Layer, Schema, type Scope, Stream } from "effect"
+import type { ConfigError } from "effect"
 import type { ShapeStreamError } from "../errors.ts"
 import type { ElectricEvent } from "../types/events.ts"
 import { ElectricEventQueue } from "./electric-event-queue.ts"
@@ -7,11 +8,16 @@ import { ElectricEventQueue } from "./electric-event-queue.ts"
 /**
  * Configuration for a shape stream subscription
  */
-export interface ShapeSubscriptionConfig {
+export interface ShapeSubscriptionConfig<A = any, I = any, R = never> {
 	/**
 	 * Table name to subscribe to
 	 */
 	readonly table: string
+
+	/**
+	 * Schema for runtime validation and type safety
+	 */
+	readonly schema: Schema.Schema<A, I, R>
 
 	/**
 	 * Optional WHERE clause for filtering
@@ -103,19 +109,39 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 							Stream.filter(isChangeMessage),
 							Stream.mapEffect((message) =>
 								Effect.gen(function* () {
+									// Parse and validate the value using the subscription's schema
+									const parseResult = yield* Schema.decodeUnknown(subscription.schema)(
+										message.value,
+									).pipe(
+										Effect.catchAll((error) =>
+											Effect.gen(function* () {
+												yield* Effect.logError("Schema validation failed", {
+													table: subscription.table,
+													operation: message.headers.operation,
+													error: error.message,
+												})
+												// Return Effect.fail to skip this message
+												return yield* Effect.fail(error)
+											}),
+										),
+									)
+
+									// Create typed event with validated data
 									const event: ElectricEvent = {
 										operation: message.headers.operation as
 											| "insert"
 											| "update"
 											| "delete",
 										table: subscription.table,
-										value: message.value as any,
+										value: parseResult,
 										timestamp: new Date(),
 									}
 
 									yield* queue.offer(event)
 								}),
 							),
+							// Filter out failed validations (continue on error)
+							Stream.catchAll(() => Stream.empty),
 							Stream.runDrain,
 							Effect.forkScoped,
 						),
@@ -126,4 +152,14 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 			}),
 		}
 	}),
-}) {}
+}) {
+	/**
+	 * Create a layer from Effect Config
+	 */
+	static readonly layerConfig = (
+		config: Config.Config.Wrap<ShapeStreamSubscriberConfig>,
+	): Layer.Layer<ShapeStreamSubscriber, ConfigError.ConfigError, ElectricEventQueue> =>
+		Layer.unwrapEffect(
+			Config.unwrap(config).pipe(Effect.map((cfg) => ShapeStreamSubscriber.Default(cfg))),
+		)
+}

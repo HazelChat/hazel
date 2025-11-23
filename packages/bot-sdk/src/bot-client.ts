@@ -3,16 +3,8 @@ import { BotAuth, type BotAuthContext } from "./auth.ts"
 import { BotStartError } from "./errors.ts"
 import { EventDispatcher } from "./services/event-dispatcher.ts"
 import { ShapeStreamSubscriber } from "./services/shape-stream-subscriber.ts"
-import type {
-	ChannelCreatedHandler,
-	ChannelDeletedHandler,
-	ChannelMemberAddedHandler,
-	ChannelMemberRemovedHandler,
-	ChannelUpdatedHandler,
-	MessageDeleteHandler,
-	MessageHandler,
-	MessageUpdateHandler,
-} from "./types/handlers.ts"
+import type { EventHandler } from "./types/handlers.ts"
+import type { EventType } from "./types/events.ts"
 
 /**
  * Bot client for interacting with the application
@@ -26,46 +18,12 @@ export class BotClient extends Effect.Service<BotClient>()("BotClient", {
 
 		return {
 			/**
-			 * Register a handler for new messages
+			 * Register a generic event handler for a specific event type
+			 * @param eventType - The event type (e.g., "messages.insert", "channels.update")
+			 * @param handler - The handler function to process events of this type
 			 */
-			onMessage: <R>(handler: MessageHandler<R>) => dispatcher.onMessage(handler),
-
-			/**
-			 * Register a handler for message updates
-			 */
-			onMessageUpdate: <R>(handler: MessageUpdateHandler<R>) => dispatcher.onMessageUpdate(handler),
-
-			/**
-			 * Register a handler for message deletes
-			 */
-			onMessageDelete: <R>(handler: MessageDeleteHandler<R>) => dispatcher.onMessageDelete(handler),
-
-			/**
-			 * Register a handler for new channel members
-			 */
-			onChannelMemberAdded: <R>(handler: ChannelMemberAddedHandler<R>) =>
-				dispatcher.onChannelMemberAdded(handler),
-
-			/**
-			 * Register a handler for removed channel members
-			 */
-			onChannelMemberRemoved: <R>(handler: ChannelMemberRemovedHandler<R>) =>
-				dispatcher.onChannelMemberRemoved(handler),
-
-			/**
-			 * Register a handler for new channels
-			 */
-			onChannelCreated: <R>(handler: ChannelCreatedHandler<R>) => dispatcher.onChannelCreated(handler),
-
-			/**
-			 * Register a handler for channel updates
-			 */
-			onChannelUpdated: <R>(handler: ChannelUpdatedHandler<R>) => dispatcher.onChannelUpdated(handler),
-
-			/**
-			 * Register a handler for channel deletes
-			 */
-			onChannelDeleted: <R>(handler: ChannelDeletedHandler<R>) => dispatcher.onChannelDeleted(handler),
+			on: <A, R>(eventType: EventType, handler: EventHandler<A, R>) =>
+				dispatcher.on(eventType, handler),
 
 			/**
 			 * Start the bot client

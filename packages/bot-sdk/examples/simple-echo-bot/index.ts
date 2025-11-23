@@ -14,8 +14,9 @@
  * - Graceful shutdown
  */
 
-import { Effect } from "effect"
-import { BotClient, createBotRuntime } from "../../src"
+import { Message } from "@hazel/domain/models"
+import { Effect, type Schema } from "effect"
+import { BotClient, makeBotRuntime } from "../../src"
 
 /**
  * Load configuration from environment variables
@@ -35,11 +36,24 @@ if (!config.botToken) {
 }
 
 /**
- * Create the bot runtime with configuration
+ * Define subscriptions with schemas
+ * This is where you specify what tables to subscribe to and their schemas
  */
-const runtime = createBotRuntime({
+const subscriptions = [
+	{
+		table: "messages",
+		schema: Message.Model.json,
+		startFromNow: true,
+	},
+]
+
+/**
+ * Create the bot runtime with configuration and subscriptions
+ */
+const runtime = makeBotRuntime({
 	electricUrl: config.electricUrl,
 	botToken: config.botToken,
+	subscriptions,
 })
 
 /**
@@ -61,9 +75,14 @@ const program = Effect.gen(function* () {
 
 	// Register a handler for new messages
 	// The handler will be called for every new message in the organization
-	yield* bot.onMessage((message) =>
+	// Type safety is provided by the schema specified in subscriptions
+	// The message type is inferred from Message.Model.json schema
+	type MessageType = Schema.Schema.Type<typeof Message.Model.json>
+
+	yield* bot.on<MessageType>("messages.insert", (message) =>
 		Effect.gen(function* () {
 			// Log the message details
+			// The message is fully typed based on Message.Model.json schema
 			yield* Effect.log("📨 New message received:")
 			yield* Effect.log(`  Author ID: ${message.authorId}`)
 			yield* Effect.log(`  Channel ID: ${message.channelId}`)

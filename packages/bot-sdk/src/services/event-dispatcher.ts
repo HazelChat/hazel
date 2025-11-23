@@ -1,17 +1,8 @@
-import { Effect, Fiber, Schedule, type Scope } from "effect"
+import { Config, Effect, Fiber, Layer, Schedule, type Scope } from "effect"
+import type { ConfigError } from "effect"
 import { HandlerError } from "../errors.ts"
 import type { EventType } from "../types/events.ts"
-import type {
-	ChannelCreatedHandler,
-	ChannelDeletedHandler,
-	ChannelMemberAddedHandler,
-	ChannelMemberRemovedHandler,
-	ChannelUpdatedHandler,
-	EventHandlerRegistry,
-	MessageDeleteHandler,
-	MessageHandler,
-	MessageUpdateHandler,
-} from "../types/handlers.ts"
+import type { EventHandler, EventHandlerRegistry } from "../types/handlers.ts"
 import { ElectricEventQueue } from "./electric-event-queue.ts"
 
 /**
@@ -44,30 +35,32 @@ export const defaultEventDispatcherConfig: EventDispatcherConfig = {
  */
 export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDispatcher", {
 	accessors: true,
-	effect: Effect.fn(function* (config: EventDispatcherConfig = defaultEventDispatcherConfig) {
+	effect: Effect.fn(function* (config: EventDispatcherConfig) {
 		const queue = yield* ElectricEventQueue
 
-		// Registry of event handlers
-		const registry: EventHandlerRegistry = {
-			"messages.insert": new Set(),
-			"messages.update": new Set(),
-			"messages.delete": new Set(),
-			"channel_members.insert": new Set(),
-			"channel_members.delete": new Set(),
-			"channels.insert": new Set(),
-			"channels.update": new Set(),
-			"channels.delete": new Set(),
-		}
+		// Registry of event handlers (Map-based for dynamic event types)
+		const registry: EventHandlerRegistry = new Map()
 
 		// Retry policy with exponential backoff
 		const retryPolicy = Schedule.exponential(config.retryBaseDelay).pipe(
 			Schedule.intersect(Schedule.recurs(config.maxRetries)),
 		)
 
+		// Helper to get or create handler set for an event type
+		const getHandlers = (eventType: EventType): Set<EventHandler<any, any>> => {
+			let handlers = registry.get(eventType)
+			if (!handlers) {
+				handlers = new Set()
+				registry.set(eventType, handlers)
+			}
+			return handlers
+		}
+
 		// Helper to dispatch event to handlers
-		const dispatchToHandlers = (handlers: Set<any>, value: any, eventType: EventType) =>
+		const dispatchToHandlers = (eventType: EventType, value: any) =>
 			Effect.gen(function* () {
-				if (handlers.size === 0) {
+				const handlers = registry.get(eventType)
+				if (!handlers || handlers.size === 0) {
 					return
 				}
 
@@ -118,7 +111,7 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 							}
 
 							// Dispatch to handlers based on event type
-							yield* dispatchToHandlers(registry[eventType], event.value, eventType)
+							yield* dispatchToHandlers(eventType, event.value)
 						}),
 					),
 				)
@@ -133,67 +126,44 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 			})
 
 		return {
-			onMessage: <R>(handler: MessageHandler<R>) =>
+			/**
+			 * Register a generic event handler for a specific event type
+			 */
+			on: <A, R>(eventType: EventType, handler: EventHandler<A, R>) =>
 				Effect.sync(() => {
-					registry["messages.insert"].add(handler)
+					getHandlers(eventType).add(handler as EventHandler<any, any>)
 				}),
 
-			onMessageUpdate: <R>(handler: MessageUpdateHandler<R>) =>
-				Effect.sync(() => {
-					registry["messages.update"].add(handler)
-				}),
-
-			onMessageDelete: <R>(handler: MessageDeleteHandler<R>) =>
-				Effect.sync(() => {
-					registry["messages.delete"].add(handler)
-				}),
-
-			onChannelMemberAdded: <R>(handler: ChannelMemberAddedHandler<R>) =>
-				Effect.sync(() => {
-					registry["channel_members.insert"].add(handler)
-				}),
-
-			onChannelMemberRemoved: <R>(handler: ChannelMemberRemovedHandler<R>) =>
-				Effect.sync(() => {
-					registry["channel_members.delete"].add(handler)
-				}),
-
-			onChannelCreated: <R>(handler: ChannelCreatedHandler<R>) =>
-				Effect.sync(() => {
-					registry["channels.insert"].add(handler)
-				}),
-
-			onChannelUpdated: <R>(handler: ChannelUpdatedHandler<R>) =>
-				Effect.sync(() => {
-					registry["channels.update"].add(handler)
-				}),
-
-			onChannelDeleted: <R>(handler: ChannelDeletedHandler<R>) =>
-				Effect.sync(() => {
-					registry["channels.delete"].add(handler)
-				}),
-
+			/**
+			 * Start the event dispatcher - begins consuming events for all registered handlers
+			 */
 			start: Effect.gen(function* () {
 				yield* Effect.log("Starting event dispatcher")
 
-				// Start consumers for all event types
-				const eventTypes: EventType[] = [
-					"messages.insert",
-					"messages.update",
-					"messages.delete",
-					"channel_members.insert",
-					"channel_members.delete",
-					"channels.insert",
-					"channels.update",
-					"channels.delete",
-				]
+				// Start consumers for all registered event types
+				const eventTypes = Array.from(registry.keys())
+
+				if (eventTypes.length === 0) {
+					yield* Effect.logWarning("No handlers registered, dispatcher has nothing to do")
+					return
+				}
 
 				yield* Effect.forEach(eventTypes, consumeEvents, {
 					concurrency: "unbounded",
 				})
 
-				yield* Effect.log("Event dispatcher started")
+				yield* Effect.log(`Event dispatcher started for ${eventTypes.length} event types`)
 			}),
 		}
 	}),
-}) {}
+}) {
+	/**
+	 * Create a layer from Effect Config
+	 */
+	static readonly layerConfig = (
+		config: Config.Config.Wrap<EventDispatcherConfig>,
+	): Layer.Layer<EventDispatcher, ConfigError.ConfigError, ElectricEventQueue> =>
+		Layer.unwrapEffect(
+			Config.unwrap(config).pipe(Effect.map((cfg) => EventDispatcher.Default(cfg))),
+		)
+}

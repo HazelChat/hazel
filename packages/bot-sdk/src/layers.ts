@@ -1,32 +1,38 @@
-import { Effect, Layer, ManagedRuntime, Schema } from "effect"
+import { Config, Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { BotClient } from "./bot-client.ts"
-import { BotConfig } from "./config.ts"
+import type { BotConfig } from "./config.ts"
 import { ElectricEventQueue, EventDispatcher, ShapeStreamSubscriber } from "./services/index.ts"
 
 /**
  * Create the full bot runtime from configuration
  */
 export const makeBotRuntime = (config: BotConfig) => {
-	// Create layers with configuration
-	const EventQueueLayer = ElectricEventQueue.Default(
-		config.queueConfig ?? {
-			capacity: 1000,
-			backpressureStrategy: "sliding",
-		},
+	// Create layers using layerConfig pattern
+	const EventQueueLayer = ElectricEventQueue.layerConfig(
+		Config.succeed(
+			config.queueConfig ?? {
+				capacity: 1000,
+				backpressureStrategy: "sliding" as const,
+			},
+		),
 	)
 
-	const ShapeSubscriberLayer = ShapeStreamSubscriber.Default({
-		electricUrl: config.electricUrl,
-		botToken: config.botToken,
-		subscriptions: config.subscriptions ?? [],
-	})
+	const ShapeSubscriberLayer = ShapeStreamSubscriber.layerConfig(
+		Config.succeed({
+			electricUrl: config.electricUrl,
+			botToken: config.botToken,
+			subscriptions: config.subscriptions ?? [],
+		}),
+	)
 
-	const EventDispatcherLayer = EventDispatcher.Default(
-		config.dispatcherConfig ?? {
-			maxRetries: 3,
-			retryBaseDelay: 100,
-		},
+	const EventDispatcherLayer = EventDispatcher.layerConfig(
+		Config.succeed(
+			config.dispatcherConfig ?? {
+				maxRetries: 3,
+				retryBaseDelay: 100,
+			},
+		),
 	)
 
 	const AuthLayer = Layer.unwrapEffect(
@@ -53,34 +59,9 @@ export const makeBotRuntime = (config: BotConfig) => {
 
 /**
  * Helper to create bot runtime with minimal config
+ * Note: You must provide subscriptions with schemas separately
+ * @deprecated Use makeBotRuntime with full BotConfig including subscriptions
  */
-export const createBotRuntime = (options: { electricUrl: string; botToken: string }) => {
-	const config = new BotConfig({
-		electricUrl: options.electricUrl,
-		botToken: options.botToken,
-		subscriptions: [
-			{
-				table: "messages",
-				startFromNow: true,
-			},
-			{
-				table: "channels",
-				startFromNow: true,
-			},
-			{
-				table: "channel_members",
-				startFromNow: true,
-			},
-		],
-		queueConfig: {
-			capacity: 1000,
-			backpressureStrategy: "sliding",
-		},
-		dispatcherConfig: {
-			maxRetries: 3,
-			retryBaseDelay: 100,
-		},
-	})
-
+export const createBotRuntime = (config: BotConfig) => {
 	return makeBotRuntime(config)
 }

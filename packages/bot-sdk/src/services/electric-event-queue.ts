@@ -1,4 +1,5 @@
-import { Effect, Queue } from "effect"
+import { Config, Effect, Layer, Queue } from "effect"
+import type { ConfigError } from "effect"
 import { QueueError } from "../errors.ts"
 import type { ElectricEvent, EventType } from "../types/events.ts"
 
@@ -35,7 +36,7 @@ export const defaultEventQueueConfig: EventQueueConfig = {
  */
 export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("ElectricEventQueue", {
 	accessors: true,
-	effect: Effect.fn(function* (config: EventQueueConfig = defaultEventQueueConfig) {
+	effect: Effect.fn(function* (config: EventQueueConfig) {
 		// Create a queue for each event type
 		const queues = new Map<EventType, Queue.Queue<ElectricEvent>>()
 
@@ -173,4 +174,14 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 			}),
 		}
 	}),
-}) {}
+}) {
+	/**
+	 * Create a layer from Effect Config
+	 */
+	static readonly layerConfig = (
+		config: Config.Config.Wrap<EventQueueConfig>,
+	): Layer.Layer<ElectricEventQueue, ConfigError.ConfigError> =>
+		Layer.unwrapEffect(
+			Config.unwrap(config).pipe(Effect.map((cfg) => ElectricEventQueue.Default(cfg))),
+		)
+}
