@@ -18,17 +18,10 @@ import { Effect } from "effect"
 import { createHazelBot, HazelBotClient } from "../../src/hazel-bot-sdk.ts"
 
 /**
- * Load configuration from environment variables
- */
-const config = {
-	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
-	botToken: process.env.BOT_TOKEN,
-}
-
-/**
  * Validate that required environment variables are present
  */
-if (!config.botToken) {
+const botToken = process.env.BOT_TOKEN
+if (!botToken) {
 	console.error("Error: BOT_TOKEN environment variable is required")
 	console.error("Please copy .env.example to .env and fill in your bot token")
 	process.exit(1)
@@ -38,10 +31,15 @@ if (!config.botToken) {
  * Create a Hazel bot runtime
  * All Hazel domain schemas are pre-configured automatically!
  * No need to define subscriptions - they're baked into HazelBotSDK
+ *
+ * electricUrl is optional and defaults to https://electric.hazel.sh/v1/shape
+ * For local development, you can override it:
+ *   electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape"
  */
 const runtime = createHazelBot({
-	electricUrl: config.electricUrl,
-	botToken: config.botToken,
+	botToken,
+	// electricUrl is optional - uncomment for local development:
+	// electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 })
 
 /**

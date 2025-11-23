@@ -124,13 +124,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 export interface HazelBotConfig {
 	/**
 	 * Electric proxy URL
-	 * @example "http://localhost:8787/v1/shape"
-	 * @example "https://electric-proxy.example.workers.dev/v1/shape"
+	 * @default "https://electric.hazel.sh/v1/shape"
+	 * @example "http://localhost:8787/v1/shape" // For local development
 	 */
-	readonly electricUrl: string
+	readonly electricUrl?: string
 
 	/**
-	 * Bot authentication token
+	 * Bot authentication token (required)
 	 */
 	readonly botToken: string
 
@@ -155,7 +155,13 @@ export interface HazelBotConfig {
  * ```typescript
  * import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
  *
+ * // Minimal config - just botToken! electricUrl defaults to https://electric.hazel.sh/v1/shape
  * const runtime = createHazelBot({
+ *   botToken: process.env.BOT_TOKEN!,
+ * })
+ *
+ * // Or override electricUrl for local development
+ * const devRuntime = createHazelBot({
  *   electricUrl: "http://localhost:8787/v1/shape",
  *   botToken: process.env.BOT_TOKEN!,
  * })
@@ -176,6 +182,9 @@ export interface HazelBotConfig {
 export const createHazelBot = (
 	config: HazelBotConfig,
 ): ManagedRuntime.ManagedRuntime<HazelBotClient, unknown> => {
+	// Apply default electricUrl if not provided
+	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
+
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(
 		Config.succeed(
@@ -188,7 +197,7 @@ export const createHazelBot = (
 
 	const ShapeSubscriberLayer = ShapeStreamSubscriber.layerConfig(
 		Config.succeed({
-			electricUrl: config.electricUrl,
+			electricUrl,
 			botToken: config.botToken,
 			subscriptions: HAZEL_SUBSCRIPTIONS,
 		}),
