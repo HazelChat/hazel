@@ -30,17 +30,17 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 
 		/**
 		 * Parse the WorkOS-Signature header
-		 * Format: "t=<timestamp>, sig=<signature>"
+		 * Format: "t=<timestamp>,v1=<signature>"
 		 */
 		const parseSignatureHeader = (
 			header: string,
 		): Effect.Effect<WorkOSWebhookSignature, WebhookVerificationError> =>
 			Effect.gen(function* () {
-				const parts = header.split(", ")
+				const parts = header.split(",").map((p) => p.trim())
 				if (parts.length !== 2) {
-					yield* Effect.fail(
+					return yield* Effect.fail(
 						new WebhookVerificationError({
-							message: "Invalid signature header format",
+							message: `Invalid signature header format: expected 2 parts (t=...,v1=...), got ${parts.length}. Header: '${header.slice(0, 50)}${header.length > 50 ? "..." : ""}'`,
 						}),
 					)
 				}
@@ -48,21 +48,21 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 				const timestampPart = parts[0]
 				const signaturePart = parts[1]
 
-				if (!timestampPart.startsWith("t=") || !signaturePart.startsWith("sig=")) {
-					yield* Effect.fail(
+				if (!timestampPart.startsWith("t=") || !signaturePart.startsWith("v1=")) {
+					return yield* Effect.fail(
 						new WebhookVerificationError({
-							message: "Invalid signature header format",
+							message: `Invalid signature header format: expected 't=<timestamp>,v1=<signature>', got '${timestampPart.slice(0, 15)}...,${signaturePart.slice(0, 15)}...'`,
 						}),
 					)
 				}
 
 				const timestamp = parseInt(timestampPart.slice(2), 10)
-				const signature = signaturePart.slice(4)
+				const signature = signaturePart.slice(3)
 
 				if (Number.isNaN(timestamp)) {
-					yield* Effect.fail(
+					return yield* Effect.fail(
 						new WebhookVerificationError({
-							message: "Invalid timestamp in signature header",
+							message: `Invalid timestamp in signature header: '${timestampPart}' is not a valid number`,
 						}),
 					)
 				}
@@ -83,7 +83,7 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 				const difference = Math.abs(currentTime - timestamp)
 
 				if (difference > toleranceSeconds) {
-					yield* Effect.fail(
+					return yield* Effect.fail(
 						new WebhookTimestampError({
 							message: `Webhook timestamp is too old. Difference: ${difference}s, Tolerance: ${toleranceSeconds}s`,
 							timestamp,
@@ -130,7 +130,7 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 				if (signatureBuffer.length !== expectedBuffer.length) {
 					return yield* Effect.fail(
 						new WebhookVerificationError({
-							message: "Invalid signature length",
+							message: `Signature length mismatch: received ${signatureBuffer.length} bytes, expected ${expectedBuffer.length} bytes`,
 						}),
 					)
 				}
@@ -140,7 +140,8 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 				) {
 					return yield* Effect.fail(
 						new WebhookVerificationError({
-							message: "Invalid webhook signature",
+							message:
+								"Webhook signature does not match. This could indicate the webhook secret is incorrect or the payload was modified.",
 						}),
 					)
 				}
