@@ -592,7 +592,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					isOnboarded: false,
 					deletedAt: null,
 				})
-				.pipe(Effect.asVoid)
+				.pipe(
+					Effect.tap(() => Effect.logInfo("User upserted", { email: data.email })),
+					Effect.asVoid,
+				)
 
 		const handleUserDeleted = (data: { id: string }) =>
 			userRepo.softDeleteByExternalId(data.id).pipe(Effect.asVoid)
@@ -606,6 +609,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 				const orgId = data.externalId as OrganizationId
 				const existingOrg = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+
+				const action = Option.isSome(existingOrg) ? "updated" : "created"
 
 				yield* Option.match(existingOrg, {
 					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }).pipe(withSystemActor),
@@ -623,6 +628,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 							})
 							.pipe(withSystemActor),
 				})
+
+				yield* Effect.logInfo(`Organization ${action}`, { orgId, name: data.name })
 			})
 
 		const handleOrgDeleted = (data: { id: string; externalId: string | null }) =>
@@ -656,6 +663,11 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						invitedBy: null,
 						deletedAt: null,
 					})
+					yield* Effect.logInfo("Membership upserted", {
+						orgId: org.value.id,
+						userId: user.value.id,
+						role: data.role.slug,
+					})
 				}
 			})
 
@@ -674,7 +686,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const processWebhookEvent = (event: Event) =>
 			pipe(
-				Effect.logDebug(`Processing WorkOS webhook: ${event.event}`),
+				Effect.logDebug("Processing WorkOS webhook"),
 				Effect.flatMap(() =>
 					Match.value(event.event).pipe(
 						Match.whenOr("user.created", "user.updated", () =>
@@ -704,13 +716,16 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						),
 					),
 				),
-				Effect.tap(() => Effect.logDebug(`Successfully processed: ${event.event}`)),
 				Effect.as({ success: true }),
 				Effect.catchAll((error) =>
-					Effect.logError(`Failed to process ${event.event}`, { error }).pipe(
+					Effect.logError("Webhook processing failed", { error: String(error) }).pipe(
 						Effect.as({ success: false, error: String(error) }),
 					),
 				),
+				Effect.annotateLogs({ eventType: event.event, eventId: event.id }),
+				Effect.withSpan("WorkOS.processWebhookEvent", {
+					attributes: { eventType: event.event, eventId: event.id },
+				}),
 			)
 
 		return {
