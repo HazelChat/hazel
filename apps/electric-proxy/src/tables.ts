@@ -8,7 +8,9 @@ import type { AuthenticatedUserWithContext } from "./auth"
  */
 function toSqlInClause(ids: readonly string[]): string {
 	if (ids.length === 0) return "(NULL)"
-	return `('${ids.join("','")}')`
+	// Sort IDs to ensure deterministic WHERE clause for Electric shape stability
+	const sortedIds = [...ids].sort()
+	return `('${sortedIds.join("','")}')`
 }
 
 /**

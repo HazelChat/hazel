@@ -27,6 +27,7 @@ export const organizationCollection = createCollection(
 		runtime: runtime,
 		shapeOptions: {
 			url: electricUrl,
+
 			params: {
 				table: "organizations",
 			},
@@ -125,13 +126,14 @@ export const invitationCollection = createCollection(
 export const messageCollection = createCollection(
 	effectElectricCollectionOptions({
 		id: "messages",
-		syncMode: "on-demand",
+		// syncMode: "on-demand",
 		runtime: runtime,
 		shapeOptions: {
 			url: electricUrl,
 			params: {
 				table: "messages",
 			},
+			liveSse: true,
 			parser: {
 				timestamptz: (date) => new Date(date),
 			},
