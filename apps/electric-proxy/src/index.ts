@@ -228,17 +228,6 @@ export default {
 			}),
 		)
 
-		// Determine if this is a bot request (for CORS headers in error responses)
-		const isBotRequest = new URL(request.url).pathname === "/bot/v1/shape"
-		const getErrorCorsHeaders = () =>
-			isBotRequest
-				? {
-						"Access-Control-Allow-Origin": "*",
-						"Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
-						"Access-Control-Allow-Headers": "Content-Type, Authorization",
-					}
-				: getCorsHeaders(request, allowedOrigin)
-
 		// Run Effect pipeline
 		const program = handleRequest(request, env).pipe(
 			Effect.provide(DatabaseLive),
@@ -254,7 +243,7 @@ export default {
 							status: 401,
 							headers: {
 								"Content-Type": "application/json",
-								...getErrorCorsHeaders(),
+								...getCorsHeaders(request, allowedOrigin),
 							},
 						},
 					),
@@ -272,7 +261,7 @@ export default {
 							status: 401,
 							headers: {
 								"Content-Type": "application/json",
-								...getErrorCorsHeaders(),
+								...getCorsHeaders(request, allowedOrigin),
 							},
 						},
 					),
@@ -291,7 +280,7 @@ export default {
 							status: 500,
 							headers: {
 								"Content-Type": "application/json",
-								...getErrorCorsHeaders(),
+								...getCorsHeaders(request, allowedOrigin),
 							},
 						},
 					),
@@ -310,7 +299,7 @@ export default {
 							status: 500,
 							headers: {
 								"Content-Type": "application/json",
-								...getErrorCorsHeaders(),
+								...getCorsHeaders(request, allowedOrigin),
 							},
 						},
 					),
@@ -327,7 +316,7 @@ export default {
 							status: 500,
 							headers: {
 								"Content-Type": "application/json",
-								...getErrorCorsHeaders(),
+								...getCorsHeaders(request, allowedOrigin),
 							},
 						},
 					),
