@@ -99,8 +99,8 @@ function Option<T>({ item, index, isActive, onSelect, onHover, renderItem }: Opt
 			className={cx(
 				"flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm",
 				"outline-none transition-colors",
-				isActive && "bg-accent text-accent-fg",
-				!isActive && "hover:bg-accent/50",
+				isActive && "bg-primary/10 text-primary",
+				!isActive && "hover:bg-muted",
 			)}
 		>
 			{renderItem ? renderItem({ option: item, isFocused: isActive }) : <DefaultItemContent option={item} />}

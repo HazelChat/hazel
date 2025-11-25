@@ -200,7 +200,7 @@ export function withAutocomplete<T extends CustomEditor>(
 					updateState({
 						...autocompleteState,
 						search: newSearch,
-						activeIndex: 0,
+						// Don't reset activeIndex here - let the hook manage it
 						targetRange: {
 							anchor: autocompleteState.startPoint,
 							focus: newSelection.anchor,

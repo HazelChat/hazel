@@ -54,17 +54,14 @@ function RouteComponent() {
 			return <Navigate to="/onboarding" search={{ orgId: org.id }} />
 		}
 
-		// If user has a specific org context from JWT, go directly to that org
-		if (user.organizationId) {
-			return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />
-		}
-
-		// User is onboarded with memberships but no org context in JWT
-		// Send to select-organization (which will auto-redirect if they only have one org)
-		return <Navigate to="/select-organization" />
+		// User has a membership with a valid org - go directly to that org
+		// This works for both:
+		// - Users with JWT org context (membership filtered by that org)
+		// - Users without JWT org context (membership is their first/any org)
+		return <Navigate to="/$orgSlug" params={{ orgSlug: org.slug }} />
 	}
 
-	// User is onboarded but has no memberships - send to select-organization
-	// (which will redirect to onboarding if they have 0 orgs)
+	// User is onboarded but has no memberships found
+	// Send to select-organization to handle the edge cases
 	return <Navigate to="/select-organization" />
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import type { AutocompleteOption } from "./types"
 
 export interface UseSlateAutocompleteProps {
@@ -53,39 +53,37 @@ export function useSlateAutocomplete({
 		}
 	}, [activeIndex, itemCount])
 
-	const handleKeyDown = useCallback(
-		(event: React.KeyboardEvent): boolean => {
-			if (!isOpen || itemCount === 0) {
-				return false
-			}
-
-			switch (event.key) {
-				case "ArrowDown":
-					event.preventDefault()
-					setActiveIndex((prev) => (prev >= itemCount - 1 ? 0 : prev + 1))
-					return true
-
-				case "ArrowUp":
-					event.preventDefault()
-					setActiveIndex((prev) => (prev <= 0 ? itemCount - 1 : prev - 1))
-					return true
-
-				case "Enter":
-				case "Tab":
-					event.preventDefault()
-					onSelect(activeIndex)
-					return true
-
-				case "Escape":
-					event.preventDefault()
-					onClose()
-					return true
-			}
-
+	// Not using useCallback - avoids stale closure issues with activeIndex
+	const handleKeyDown = (event: React.KeyboardEvent): boolean => {
+		if (!isOpen || itemCount === 0) {
 			return false
-		},
-		[isOpen, itemCount, activeIndex, onSelect, onClose],
-	)
+		}
+
+		switch (event.key) {
+			case "ArrowDown":
+				event.preventDefault()
+				setActiveIndex((prev) => (prev >= itemCount - 1 ? 0 : prev + 1))
+				return true
+
+			case "ArrowUp":
+				event.preventDefault()
+				setActiveIndex((prev) => (prev <= 0 ? itemCount - 1 : prev - 1))
+				return true
+
+			case "Enter":
+			case "Tab":
+				event.preventDefault()
+				onSelect(activeIndex)
+				return true
+
+			case "Escape":
+				event.preventDefault()
+				onClose()
+				return true
+		}
+
+		return false
+	}
 
 	return {
 		activeIndex,
