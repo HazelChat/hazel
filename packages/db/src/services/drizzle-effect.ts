@@ -15,7 +15,9 @@ type ColumnSchema<TColumn extends Drizzle.Column> = TColumn["dataType"] extends 
 				? Schema.Schema<string>
 				: Schema.Schema<TColumn["enumValues"][number]>
 			: TColumn["dataType"] extends "bigint"
-				? Schema.Schema<bigint, bigint>
+				? TColumn extends { mode: "number" }
+					? Schema.Schema<number, number>
+					: Schema.Schema<bigint, bigint>
 				: TColumn["dataType"] extends "number"
 					? TColumn["columnType"] extends `PgBigInt${number}`
 						? Schema.Schema<bigint, number>
@@ -268,7 +270,8 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 		} else if (column.dataType === "number") {
 			type = Schema.Number
 		} else if (column.dataType === "bigint") {
-			type = Schema.BigIntFromSelf
+			// Check if column has mode: "number" - Drizzle converts to JS number at runtime
+			type = hasMode(column) && column.mode === "number" ? Schema.Number : Schema.BigIntFromSelf
 		} else if (column.dataType === "boolean") {
 			type = Schema.Boolean
 		} else if (column.dataType === "date") {
