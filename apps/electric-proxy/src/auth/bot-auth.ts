@@ -29,7 +29,7 @@ export class BotAuthenticationError extends Schema.TaggedError<BotAuthentication
 }) {}
 
 /**
- * Hash a token using SHA-256 (Web Crypto API - available in Cloudflare Workers)
+ * Hash a token using SHA-256 (Web Crypto API - available in Bun)
  */
 async function hashToken(token: string): Promise<string> {
 	const encoder = new TextEncoder()

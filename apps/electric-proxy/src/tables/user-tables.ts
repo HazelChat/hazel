@@ -1,5 +1,5 @@
 import { Effect, Match, Schema } from "effect"
-import type { AuthenticatedUserWithContext } from "./auth"
+import type { AuthenticatedUserWithContext } from "../auth/user-auth"
 
 /**
  * Convert an array of IDs to a SQL IN clause string

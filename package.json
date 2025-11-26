@@ -49,9 +49,5 @@
 		"vitest": "^4.0.13",
 		"wrangler": "^4.50.0"
 	},
-	"trustedDependencies": [],
-	"dependencies": {
-		"@react-aria/autocomplete": "^3.0.0-rc.3",
-		"@react-stately/autocomplete": "^3.0.0-beta.3"
-	}
+	"trustedDependencies": []
 }

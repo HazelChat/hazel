@@ -1,5 +1,5 @@
 import { Effect, Match, Schema } from "effect"
-import type { AuthenticatedBot } from "./bot-auth"
+import type { AuthenticatedBot } from "../auth/bot-auth"
 
 /**
  * Convert an array of IDs to a SQL IN clause string
