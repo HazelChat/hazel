@@ -1,5 +1,5 @@
 import { Database } from "@hazel/db"
-import { Effect, Layer, Runtime } from "effect"
+import { Effect, Layer, Logger, Runtime } from "effect"
 import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
 import { type AuthenticationError, validateSession } from "./auth/user-auth"
 import { ProxyConfigLive, ProxyConfigService } from "./config"
@@ -99,19 +99,29 @@ const handleUserRequest = (request: Request) =>
 		Effect.catchTag("AuthenticationError", (error: AuthenticationError) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
-				yield* Effect.logWarning("Authentication failed", { error: error.message })
-				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
-					status: 401,
-					headers: {
-						"Content-Type": "application/json",
-						...getUserCorsHeaders(config.allowedOrigin, null),
+				const requestOrigin = request.headers.get("Origin")
+				yield* Effect.logInfo("Authentication failed", { error: error.message, detail: error.detail })
+				return new Response(
+					JSON.stringify({
+						error: error.message,
+						detail: error.detail,
+						timestamp: new Date().toISOString(),
+						hint: "Check if session cookie is present and valid",
+					}),
+					{
+						status: 401,
+						headers: {
+							"Content-Type": "application/json",
+							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
+						},
 					},
-				})
+				)
 			}),
 		),
 		Effect.catchTag("TableAccessError", (error: TableAccessError) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
+				const requestOrigin = request.headers.get("Origin")
 				yield* Effect.logError("Table access error", { error: error.message, table: error.table })
 				return new Response(
 					JSON.stringify({ error: error.message, detail: error.detail, table: error.table }),
@@ -119,7 +129,7 @@ const handleUserRequest = (request: Request) =>
 						status: 500,
 						headers: {
 							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, null),
+							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
 						},
 					},
 				)
@@ -128,12 +138,13 @@ const handleUserRequest = (request: Request) =>
 		Effect.catchTag("ElectricProxyError", (error: ElectricProxyError) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
+				const requestOrigin = request.headers.get("Origin")
 				yield* Effect.logError("Electric proxy error", { error: error.message })
 				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
 					status: 502,
 					headers: {
 						"Content-Type": "application/json",
-						...getUserCorsHeaders(config.allowedOrigin, null),
+						...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
 					},
 				})
 			}),
@@ -141,6 +152,7 @@ const handleUserRequest = (request: Request) =>
 		Effect.catchAll((error) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
+				const requestOrigin = request.headers.get("Origin")
 				yield* Effect.logError("Unexpected error in user flow", { error: String(error) })
 				return new Response(
 					JSON.stringify({ error: "Internal server error", detail: String(error) }),
@@ -148,7 +160,7 @@ const handleUserRequest = (request: Request) =>
 						status: 500,
 						headers: {
 							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, null),
+							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
 						},
 					},
 				)
@@ -217,11 +229,22 @@ const handleBotRequest = (request: Request) =>
 		// Error handling
 		Effect.catchTag("BotAuthenticationError", (error: BotAuthenticationError) =>
 			Effect.gen(function* () {
-				yield* Effect.logWarning("Bot authentication failed", { error: error.message })
-				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
-					status: 401,
-					headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+				yield* Effect.logInfo("Bot authentication failed", {
+					error: error.message,
+					detail: error.detail,
 				})
+				return new Response(
+					JSON.stringify({
+						error: error.message,
+						detail: error.detail,
+						timestamp: new Date().toISOString(),
+						hint: "Check if Authorization header contains valid Bearer token",
+					}),
+					{
+						status: 401,
+						headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
+					},
+				)
 			}),
 		),
 		Effect.catchTag("BotTableAccessError", (error: BotTableAccessError) =>
@@ -271,7 +294,14 @@ const DatabaseLive = Layer.unwrapEffect(
 	}),
 )
 
-const MainLive = DatabaseLive.pipe(Layer.provideMerge(ProxyConfigLive))
+const LoggerLive = Layer.unwrapEffect(
+	Effect.gen(function* () {
+		const config = yield* ProxyConfigService
+		return config.isDev ? Logger.pretty : Logger.structured
+	}),
+).pipe(Layer.provide(ProxyConfigLive))
+
+const MainLive = DatabaseLive.pipe(Layer.provideMerge(ProxyConfigLive), Layer.provideMerge(LoggerLive))
 
 // =============================================================================
 // MAIN

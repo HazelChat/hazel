@@ -198,9 +198,10 @@ const getCachedAccessContext = (internalUserId: UserId) =>
 export const validateSession = Effect.fn("ElectricProxy.validateSession")(function* (request: Request) {
 	const config = yield* ProxyConfigService
 
-	// Extract cookie from request
+	// Step 1: Extract cookie from request
 	const cookieHeader = request.headers.get("Cookie")
 	if (!cookieHeader) {
+		yield* Effect.logDebug("Auth failed: No cookie header")
 		return yield* Effect.fail(
 			new AuthenticationError({
 				message: "No cookie header found",
@@ -211,6 +212,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 
 	const sessionCookie = parseCookie(cookieHeader, "workos-session")
 	if (!sessionCookie) {
+		yield* Effect.logDebug("Auth failed: No workos-session cookie")
 		return yield* Effect.fail(
 			new AuthenticationError({
 				message: "No workos-session cookie found",
@@ -219,47 +221,85 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		)
 	}
 
-	// Initialize WorkOS client
+	// Step 2: Initialize WorkOS client and load sealed session
 	const workos = new WorkOS(config.workosApiKey, {
 		clientId: config.workosClientId,
 	})
 
-	// Load sealed session
 	const sealedSession = yield* Effect.tryPromise({
 		try: async () =>
 			workos.userManagement.loadSealedSession({
 				sessionData: sessionCookie,
 				cookiePassword: Redacted.value(config.workosPasswordCookie),
 			}),
-		catch: (error) =>
-			new AuthenticationError({
+		catch: (error) => {
+			console.error("loadSealedSession failed:", error)
+			return new AuthenticationError({
 				message: "Failed to load sealed session",
 				detail: String(error),
-			}),
+			})
+		},
 	})
 
-	// Authenticate the session
+	// Step 3: Authenticate the session
 	const session: any = yield* Effect.tryPromise({
 		try: async () => sealedSession.authenticate(),
-		catch: (error) =>
-			new AuthenticationError({
+		catch: (error) => {
+			console.error("authenticate() threw:", error)
+			return new AuthenticationError({
 				message: "Failed to authenticate session",
 				detail: String(error),
-			}),
+			})
+		},
 	})
 
-	// Check if authenticated
-	if (!session.authenticated || !session.accessToken) {
-		return yield* Effect.fail(
-			new AuthenticationError({
-				message: "Session not authenticated",
-				detail: "Please log in again",
-			}),
-		)
+	yield* Effect.logInfo("Session authenticate result", {
+		authenticated: session.authenticated,
+		hasAccessToken: !!session.accessToken,
+		reason: session.reason,
+	})
+
+	// Step 4: Handle not authenticated - try refresh
+	let accessToken = session.accessToken
+	if (!session.authenticated || !accessToken) {
+		// If no session cookie was provided, fail immediately
+		if (session.reason === "no_session_cookie_provided") {
+			return yield* Effect.fail(
+				new AuthenticationError({
+					message: "No session cookie provided",
+					detail: "Please log in",
+				}),
+			)
+		}
+
+		// Attempt to refresh the session
+		yield* Effect.logInfo("Session not authenticated, attempting refresh", { reason: session.reason })
+
+		const refreshedSession: any = yield* Effect.tryPromise({
+			try: async () => sealedSession.refresh(),
+			catch: (error) => {
+				console.error("refresh() failed:", error)
+				return new AuthenticationError({
+					message: "Failed to refresh session",
+					detail: String(error),
+				})
+			},
+		})
+
+		if (!refreshedSession.authenticated || !refreshedSession.accessToken) {
+			return yield* Effect.fail(
+				new AuthenticationError({
+					message: "Session expired",
+					detail: "Please log in again",
+				}),
+			)
+		}
+
+		accessToken = refreshedSession.accessToken
 	}
 
-	// Decode JWT payload
-	const rawPayload = decodeJwt(session.accessToken)
+	// Step 5: Decode JWT payload
+	const rawPayload = decodeJwt(accessToken)
 	const jwtPayload = yield* Schema.decodeUnknown(JwtPayload)(rawPayload).pipe(
 		Effect.mapError(
 			(error) =>
