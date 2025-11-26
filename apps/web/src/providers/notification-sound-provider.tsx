@@ -89,6 +89,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 				table: "notifications",
 				where: `"memberId" = '${organizationMemberId}'`,
 			},
+			fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
 			offset: "now",
 			log: "changes_only",
 			liveSse: true,
