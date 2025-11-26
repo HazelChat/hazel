@@ -1,8 +1,15 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
-import { Config, Effect, Redacted } from "effect"
+import {
+	CurrentUser,
+	InternalServerError,
+	type OrganizationId,
+	UnauthorizedError,
+	withSystemActor,
+} from "@hazel/domain"
+import { Config, Effect, Option, Redacted } from "effect"
 import { HazelApi } from "../api"
 import { AuthState } from "../lib/schema"
+import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "../services/workos"
 
@@ -122,7 +129,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				const { user: workosUser } = authResponse
 
-				// TODO: If user has organizatioNid also create a new organization membership
+				// Upsert the user
 				yield* userRepo
 					.upsertByExternalId({
 						externalId: workosUser.id,
@@ -136,6 +143,56 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						deletedAt: null,
 					})
 					.pipe(Effect.orDie, withSystemActor)
+
+				// If auth response includes an organization context, ensure membership exists
+				// This handles cases where webhooks are slow to create the membership
+				if (authResponse.organizationId) {
+					const orgMemberRepo = yield* OrganizationMemberRepo
+
+					// Fetch the internal user (just upserted above)
+					const user = yield* userRepo
+						.findByExternalId(workosUser.id)
+						.pipe(Effect.orDie, withSystemActor)
+
+					// Fetch org by WorkOS org ID to get our internal org ID
+					const workosOrg = yield* workos
+						.call((client) =>
+							client.organizations.getOrganization(authResponse.organizationId!),
+						)
+						.pipe(Effect.catchAll(() => Effect.succeed(null)))
+
+					if (workosOrg?.externalId && Option.isSome(user)) {
+						const orgId = workosOrg.externalId as OrganizationId
+
+						// Fetch the user's membership role from WorkOS
+						const workosMembership = yield* workos
+							.call((client) =>
+								client.userManagement.listOrganizationMemberships({
+									organizationId: authResponse.organizationId!,
+									userId: workosUser.id,
+								}),
+							)
+							.pipe(Effect.catchAll(() => Effect.succeed(null)))
+
+						const role = (workosMembership?.data?.[0]?.role?.slug || "member") as
+							| "admin"
+							| "member"
+							| "owner"
+
+						// Upsert membership - idempotent, safe if webhook already created it
+						yield* orgMemberRepo
+							.upsertByOrgAndUser({
+								organizationId: orgId,
+								userId: user.value.id,
+								role,
+								nickname: null,
+								joinedAt: new Date(),
+								invitedBy: null,
+								deletedAt: null,
+							})
+							.pipe(Effect.orDie, withSystemActor)
+					}
+				}
 
 				const isSecure = true // Always use secure cookies with HTTPS proxy
 
