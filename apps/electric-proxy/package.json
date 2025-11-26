@@ -4,10 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "bun run --hot src/index-old.ts",
-		"start": "bun run src/index-old.ts",
-		"dev:new": "bun run --hot src/index.ts",
-		"start:new": "bun run src/index.ts",
+		"dev": "bun run --hot src/index.ts",
+		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {

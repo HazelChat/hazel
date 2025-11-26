@@ -396,8 +396,7 @@ const SidebarItem = ({ isCurrent, tooltip, children, badge, className, ref, ...p
 						isCurrent &&
 							"font-medium text-(--sidebar-current-fg) hover:bg-(--sidebar-current-bg) hover:text-(--sidebar-current-fg) **:data-[slot=icon]:text-(--sidebar-current-fg) hover:**:data-[slot=icon]:text-(--sidebar-current-fg) [&_.text-muted-fg]:text-fg/80",
 						isFocusVisible && "inset-ring inset-ring-sidebar-ring outline-hidden",
-						(isPressed || isHovered) &&
-							"bg-sidebar-accent text-sidebar-accent-fg **:data-[slot=icon]:text-text-sidebar-accent-fg",
+						"hover:bg-sidebar-accent hover:text-sidebar-accent-fg hover:**:data-[slot=icon]:text-sidebar-accent-fg",
 						isDisabled && "opacity-50",
 						className,
 					]),
@@ -544,8 +543,7 @@ const SidebarDisclosureTrigger = ({ className, ref, ...props }: SidebarDisclosur
 							"col-span-full gap-3 p-2 **:data-[slot=chevron]:text-muted-fg **:last:data-[slot=icon]:ml-auto sm:gap-2 sm:text-sm/5",
 
 							isFocusVisible && "inset-ring inset-ring-ring/70",
-							(isPressed || isHovered) &&
-								"bg-sidebar-accent text-sidebar-accent-fg **:data-[slot=chevron]:text-sidebar-accent-fg **:data-[slot=icon]:text-sidebar-accent-fg **:last:data-[slot=icon]:text-sidebar-accent-fg",
+							"hover:bg-sidebar-accent hover:text-sidebar-accent-fg hover:**:data-[slot=chevron]:text-sidebar-accent-fg hover:**:data-[slot=icon]:text-sidebar-accent-fg hover:**:last:data-[slot=icon]:text-sidebar-accent-fg",
 							isDisabled && "opacity-50",
 							className,
 						),
