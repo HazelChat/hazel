@@ -69,16 +69,19 @@ export function buildEqClause<T>(column: PgColumn, value: T, paramIndex = 1): Wh
 
 /**
  * Apply WHERE clause result to Electric URL with params.
- * Sets the "where" parameter and individual "params[N]" parameters.
+ * Sets the "subset__where" parameter and "subset__params" as a JSON object.
  *
  * @param url - The URL to modify
  * @param result - The WhereClauseResult
  */
 export function applyWhereToElectricUrl(url: URL, result: WhereClauseResult): void {
-	url.searchParams.set("where", result.whereClause)
+	url.searchParams.set("subset__where", result.whereClause)
 
-	// Electric uses params[1], params[2], etc. (1-indexed)
-	result.params.forEach((value, index) => {
-		url.searchParams.set(`params[${index + 1}]`, String(value))
-	})
+	if (result.params.length > 0) {
+		const paramsObject: Record<string, string> = {}
+		result.params.forEach((value, index) => {
+			paramsObject[String(index + 1)] = String(value)
+		})
+		url.searchParams.set("subset__params", JSON.stringify(paramsObject))
+	}
 }
