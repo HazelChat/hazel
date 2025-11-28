@@ -1,10 +1,14 @@
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
+import { Exit } from "effect"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 import {
 	type ConfigOption,
 	getBrandfetchIcon,
@@ -12,6 +16,8 @@ import {
 	type Integration,
 	validIntegrationIds,
 } from "./_data"
+
+type IntegrationProvider = IntegrationConnection.IntegrationProvider
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/$integrationId")({
 	component: IntegrationConfigPage,
@@ -26,24 +32,68 @@ function IntegrationConfigPage() {
 	const { orgSlug, integrationId } = Route.useParams()
 	const navigate = useNavigate()
 	const integration = getIntegrationById(integrationId)
-	const [isConnected, setIsConnected] = useState(integrationId === "github")
 	const [isConnecting, setIsConnecting] = useState(false)
+	const [isDisconnecting, setIsDisconnecting] = useState(false)
+
+	// Fetch connection status from API
+	const statusResult = useAtomValue(
+		HazelApiClient.query("integrations", "getConnectionStatus", {
+			path: { provider: integrationId as IntegrationProvider },
+		}),
+	)
+
+	// Mutations for OAuth flow and disconnect
+	const getOAuthUrl = useAtomSet(HazelApiClient.mutation("integrations", "getOAuthUrl"), {
+		mode: "promiseExit",
+	})
+	const disconnectMutation = useAtomSet(HazelApiClient.mutation("integrations", "disconnect"), {
+		mode: "promiseExit",
+	})
 
 	if (!integration) {
 		return null
 	}
 
-	const handleConnect = () => {
+	// Get connection status from API result
+	const status = Result.getOrElse(statusResult, () => null)
+	const isConnected = status?.connected ?? false
+	const externalAccountName = status?.externalAccountName ?? null
+
+	const handleConnect = async () => {
 		setIsConnecting(true)
-		// Simulate OAuth flow
-		setTimeout(() => {
-			setIsConnected(true)
-			setIsConnecting(false)
-		}, 1500)
+		console.log("xd", integrationId)
+		const exit = await getOAuthUrl({
+			path: { provider: integrationId as IntegrationProvider },
+		})
+
+		Exit.match(exit, {
+			onSuccess: (data) => {
+				// Redirect to OAuth authorization URL
+				window.location.href = data.authorizationUrl
+			},
+			onFailure: (cause) => {
+				console.error("Failed to get OAuth URL:", cause)
+				setIsConnecting(false)
+			},
+		})
 	}
 
-	const handleDisconnect = () => {
-		setIsConnected(false)
+	const handleDisconnect = async () => {
+		setIsDisconnecting(true)
+		const exit = await disconnectMutation({
+			path: { provider: integrationId as IntegrationProvider },
+		})
+
+		Exit.match(exit, {
+			onSuccess: () => {
+				// Status will be refetched automatically
+				setIsDisconnecting(false)
+			},
+			onFailure: (cause) => {
+				console.error("Failed to disconnect:", cause)
+				setIsDisconnecting(false)
+			},
+		})
 	}
 
 	const handleBack = () => {
@@ -73,7 +123,10 @@ function IntegrationConfigPage() {
 							style={{ backgroundColor: `${integration.brandColor}10` }}
 						>
 							<img
-								src={getBrandfetchIcon(integration.logoDomain, { theme: "light", type: integration.logoType })}
+								src={getBrandfetchIcon(integration.logoDomain, {
+									theme: "light",
+									type: integration.logoType,
+								})}
 								alt={`${integration.name} logo`}
 								className="size-12 object-contain"
 							/>
@@ -100,7 +153,12 @@ function IntegrationConfigPage() {
 						</div>
 						<div className="p-5">
 							{isConnected ? (
-								<ConnectedState integration={integration} onDisconnect={handleDisconnect} />
+								<ConnectedState
+									integration={integration}
+									externalAccountName={externalAccountName}
+									isDisconnecting={isDisconnecting}
+									onDisconnect={handleDisconnect}
+								/>
 							) : (
 								<DisconnectedState
 									integration={integration}
@@ -243,7 +301,10 @@ function DisconnectedState({
 				) : (
 					<>
 						<img
-							src={getBrandfetchIcon(integration.logoDomain, { theme: "light", type: integration.logoType })}
+							src={getBrandfetchIcon(integration.logoDomain, {
+								theme: "light",
+								type: integration.logoType,
+							})}
 							alt=""
 							className="size-4 rounded object-contain"
 						/>
@@ -257,9 +318,13 @@ function DisconnectedState({
 
 function ConnectedState({
 	integration,
+	externalAccountName,
+	isDisconnecting,
 	onDisconnect,
 }: {
 	integration: Integration
+	externalAccountName: string | null
+	isDisconnecting: boolean
 	onDisconnect: () => void
 }) {
 	return (
@@ -278,11 +343,11 @@ function ConnectedState({
 				</div>
 				<div className="flex flex-col gap-0.5">
 					<p className="font-medium text-fg text-sm">Connected to {integration.name}</p>
-					<p className="text-muted-fg text-xs">user@example.com</p>
+					{externalAccountName && <p className="text-muted-fg text-xs">{externalAccountName}</p>}
 				</div>
 			</div>
-			<Button intent="danger" size="sm" onPress={onDisconnect}>
-				Disconnect
+			<Button intent="danger" size="sm" onPress={onDisconnect} isDisabled={isDisconnecting}>
+				{isDisconnecting ? "Disconnecting..." : "Disconnect"}
 			</Button>
 		</div>
 	)
