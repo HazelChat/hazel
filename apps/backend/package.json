@@ -47,14 +47,6 @@
 		"drizzle-orm": "^0.44.7",
 		"effect": "catalog:effect",
 		"jose": "^6.1.2",
-		"metascraper": "^5.49.5",
-		"metascraper-description": "^5.49.5",
-		"metascraper-image": "^5.49.5",
-		"metascraper-logo": "^5.49.5",
-		"metascraper-publisher": "^5.49.5",
-		"metascraper-title": "^5.49.5",
-		"metascraper-url": "^5.49.5",
-		"pg": "^8.16.3",
-		"react-tweet": "^3.2.2"
+		"pg": "^8.16.3"
 	}
 }

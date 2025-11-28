@@ -13,7 +13,7 @@
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@effect/language-service": "catalog:effect",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.13",
+		"vitest": "^4.0.14",
 		"wrangler": "^4.50.0"
 	},
 	"dependencies": {
