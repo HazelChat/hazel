@@ -13,6 +13,7 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
+		"@effect/experimental": "catalog:effect",
 		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",

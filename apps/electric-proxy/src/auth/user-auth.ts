@@ -1,8 +1,9 @@
-import { and, Database, eq, inArray, isNull, schema } from "@hazel/db"
-import type { ChannelId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
+import { Database, eq, schema } from "@hazel/db"
+import type { UserId } from "@hazel/schema"
 import { WorkOS } from "@workos-inc/node"
 import { Effect, Option, Redacted, Schema } from "effect"
 import { decodeJwt } from "jose"
+import { AccessContextCacheService, type UserAccessContext } from "../cache"
 import { ProxyConfigService } from "../config"
 
 /**
@@ -16,15 +17,8 @@ const JwtPayload = Schema.Struct({
 	role: Schema.optional(Schema.String),
 })
 
-/**
- * Pre-queried access context for efficient WHERE clause generation
- */
-export interface UserAccessContext {
-	organizationIds: readonly OrganizationId[]
-	channelIds: readonly ChannelId[]
-	memberIds: readonly OrganizationMemberId[]
-	coOrgUserIds: readonly UserId[]
-}
+// Re-export UserAccessContext from cache module
+export type { UserAccessContext } from "../cache"
 
 /**
  * Authenticated user context extracted from session
@@ -68,126 +62,6 @@ function parseCookie(cookieHeader: string, cookieName: string): string | null {
 	}
 	return null
 }
-
-/**
- * Internal implementation to get user access context from database
- */
-const getAccessContextImpl = (internalUserId: UserId) =>
-	Effect.gen(function* () {
-		const db = yield* Database.Database
-
-		// Pre-query user's access context
-		const orgMembers = yield* db
-			.execute((client) =>
-				client
-					.select({
-						organizationId: schema.organizationMembersTable.organizationId,
-						id: schema.organizationMembersTable.id,
-					})
-					.from(schema.organizationMembersTable)
-					.where(
-						and(
-							eq(schema.organizationMembersTable.userId, internalUserId),
-							isNull(schema.organizationMembersTable.deletedAt),
-						),
-					),
-			)
-			.pipe(
-				Effect.mapError(
-					(error) =>
-						new AuthenticationError({
-							message: "Failed to query user's organizations",
-							detail: String(error),
-						}),
-				),
-			)
-
-		const organizationIds = orgMembers.map((m) => m.organizationId)
-		const memberIds = orgMembers.map((m) => m.id)
-
-		const channelMembers = yield* db
-			.execute((client) =>
-				client
-					.select({ channelId: schema.channelMembersTable.channelId })
-					.from(schema.channelMembersTable)
-					.where(
-						and(
-							eq(schema.channelMembersTable.userId, internalUserId),
-							isNull(schema.channelMembersTable.deletedAt),
-						),
-					),
-			)
-			.pipe(
-				Effect.mapError(
-					(error) =>
-						new AuthenticationError({
-							message: "Failed to query user's channels",
-							detail: String(error),
-						}),
-				),
-			)
-
-		const channelIds = channelMembers.map((m) => m.channelId)
-
-		const coOrgUsers =
-			organizationIds.length > 0
-				? yield* db
-						.execute((client) =>
-							client
-								.selectDistinct({ userId: schema.organizationMembersTable.userId })
-								.from(schema.organizationMembersTable)
-								.where(
-									and(
-										inArray(
-											schema.organizationMembersTable.organizationId,
-											organizationIds,
-										),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								),
-						)
-						.pipe(
-							Effect.mapError(
-								(error) =>
-									new AuthenticationError({
-										message: "Failed to query co-organization users",
-										detail: String(error),
-									}),
-							),
-						)
-				: []
-
-		const coOrgUserIds = coOrgUsers.map((u) => u.userId)
-
-		return {
-			organizationIds,
-			channelIds,
-			memberIds,
-			coOrgUserIds,
-		} satisfies UserAccessContext
-	})
-
-/**
- * Cached version of getAccessContext (TTL: 60 seconds)
- * This reduces database load for repeated requests from the same user
- */
-const cachedAccessContextMap = new Map<string, { context: UserAccessContext; timestamp: number }>()
-const CACHE_TTL_MS = 60 * 1000 // 60 seconds
-
-const getCachedAccessContext = (internalUserId: UserId) =>
-	Effect.gen(function* () {
-		const now = Date.now()
-		const cached = cachedAccessContextMap.get(internalUserId)
-
-		if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-			return cached.context
-		}
-
-		const context = yield* getAccessContextImpl(internalUserId)
-		cachedAccessContextMap.set(internalUserId, { context, timestamp: now })
-
-		return context
-	})
 
 /**
  * Validate a WorkOS sealed session cookie and return authenticated user
@@ -332,8 +206,17 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 
 	const internalUserId = userOption.value.id
 
-	// Get cached access context
-	const accessContext = yield* getCachedAccessContext(internalUserId)
+	// Get cached access context from Redis-backed cache
+	const cache = yield* AccessContextCacheService
+	const accessContext = yield* cache.getUserContext(internalUserId).pipe(
+		Effect.mapError(
+			(error) =>
+				new AuthenticationError({
+					message: "Failed to get user access context",
+					detail: String(error),
+				}),
+		),
+	)
 
 	return {
 		userId: jwtPayload.sub,

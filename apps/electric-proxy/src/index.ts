@@ -2,6 +2,7 @@ import { Database } from "@hazel/db"
 import { Effect, Layer, Logger, Runtime } from "effect"
 import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
 import { type AuthenticationError, validateSession } from "./auth/user-auth"
+import { AccessContextCacheLive, type AccessContextCacheService, RedisPersistenceLive } from "./cache"
 import { ProxyConfigLive, ProxyConfigService } from "./config"
 import { type ElectricProxyError, prepareElectricUrl, proxyElectricRequest } from "./proxy/electric-client"
 import { type BotTableAccessError, getBotWhereClauseForTable, validateBotTable } from "./tables/bot-tables"
@@ -302,7 +303,18 @@ const LoggerLive = Layer.unwrapEffect(
 	}),
 ).pipe(Layer.provide(ProxyConfigLive))
 
-const MainLive = DatabaseLive.pipe(Layer.provideMerge(ProxyConfigLive), Layer.provideMerge(LoggerLive))
+// Cache layer: AccessContextCacheLive requires ResultPersistence and Database
+const CacheLive = AccessContextCacheLive.pipe(
+	Layer.provide(RedisPersistenceLive),
+	Layer.provide(DatabaseLive),
+	Layer.provide(ProxyConfigLive),
+)
+
+const MainLive = DatabaseLive.pipe(
+	Layer.provideMerge(ProxyConfigLive),
+	Layer.provideMerge(LoggerLive),
+	Layer.provideMerge(CacheLive),
+)
 
 // =============================================================================
 // MAIN
@@ -318,7 +330,9 @@ const main = Effect.gen(function* () {
 	})
 
 	// Create Effect runtime for request handlers
-	const runtime = yield* Effect.runtime<ProxyConfigService | Database.Database>()
+	const runtime = yield* Effect.runtime<
+		ProxyConfigService | Database.Database | AccessContextCacheService
+	>()
 
 	// Start Bun server with declarative routes
 	const server = Bun.serve({

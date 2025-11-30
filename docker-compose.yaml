@@ -80,8 +80,20 @@ services:
         condition: service_healthy
     restart: always
 
+  # Redis for electric-proxy caching
+  cache_redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - cache_redis_data:/data
+    restart: always
+
 volumes:
   postgres_data:
     driver: local
   sequin_redis_data:
+    driver: local
+  cache_redis_data:
     driver: local

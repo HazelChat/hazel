@@ -15,6 +15,7 @@ export interface ProxyConfig {
 	readonly isDev: boolean
 	readonly port: number
 	readonly otlpEndpoint: string | undefined
+	readonly redisUrl: string
 }
 
 export class ProxyConfigService extends Context.Tag("ProxyConfigService")<
@@ -47,6 +48,7 @@ export const ProxyConfigLive = Layer.effect(
 			Config.option,
 			Effect.map(Option.getOrUndefined),
 		)
+		const redisUrl = yield* Config.string("REDIS_URL").pipe(Config.withDefault("redis://localhost:6380"))
 
 		return {
 			electricUrl,
@@ -60,6 +62,7 @@ export const ProxyConfigLive = Layer.effect(
 			isDev,
 			port,
 			otlpEndpoint,
+			redisUrl,
 		}
 	}),
 )

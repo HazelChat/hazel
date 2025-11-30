@@ -1,13 +1,10 @@
 import { and, Database, eq, isNull, schema } from "@hazel/db"
-import type { BotId, ChannelId, UserId } from "@hazel/schema"
+import type { BotId, UserId } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
+import { AccessContextCacheService, type BotAccessContext } from "../cache"
 
-/**
- * Pre-queried access context for bot WHERE clause generation
- */
-export interface BotAccessContext {
-	channelIds: readonly ChannelId[]
-}
+// Re-export BotAccessContext from cache module
+export type { BotAccessContext } from "../cache"
 
 /**
  * Authenticated bot context
@@ -101,36 +98,21 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 
 	const bot = botOption.value
 
-	// Query channel memberships for the bot's userId
-	const channelMembers = yield* db
-		.execute((client) =>
-			client
-				.select({ channelId: schema.channelMembersTable.channelId })
-				.from(schema.channelMembersTable)
-				.where(
-					and(
-						eq(schema.channelMembersTable.userId, bot.userId),
-						isNull(schema.channelMembersTable.deletedAt),
-					),
-				),
-		)
-		.pipe(
-			Effect.mapError(
-				(error) =>
-					new BotAuthenticationError({
-						message: "Failed to query bot's channels",
-						detail: String(error),
-					}),
-			),
-		)
-
-	const channelIds = channelMembers.map((m) => m.channelId)
+	// Get cached access context from Redis-backed cache
+	const cache = yield* AccessContextCacheService
+	const accessContext = yield* cache.getBotContext(bot.id, bot.userId).pipe(
+		Effect.mapError(
+			(error) =>
+				new BotAuthenticationError({
+					message: "Failed to get bot access context",
+					detail: String(error),
+				}),
+		),
+	)
 
 	return {
 		botId: bot.id,
 		userId: bot.userId,
-		accessContext: {
-			channelIds,
-		},
+		accessContext,
 	} satisfies AuthenticatedBot
 })
