@@ -53,6 +53,7 @@ import { SessionManager } from "./services/session-manager"
 import { WorkOS } from "./services/workos"
 import { WorkOSSync } from "./services/workos-sync"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
+import { CommandRegistry } from "./services/integrations/command-registry"
 
 export { HazelApi }
 
@@ -138,6 +139,7 @@ const MainLive = Layer.mergeAll(
 	MultipartUpload.layerWithoutS3Service,
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
+	CommandRegistry.Default,
 ).pipe(
 	Layer.provide(
 		S3.layer({

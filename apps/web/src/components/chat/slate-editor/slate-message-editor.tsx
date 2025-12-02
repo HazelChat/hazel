@@ -1,6 +1,7 @@
 "use client"
 
-import { pipe } from "effect"
+import { useAtomSet } from "@effect-atom/atom-react"
+import { Exit, pipe } from "effect"
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { Descendant } from "slate"
 import { createEditor, Editor, Range, Element as SlateElement, Transforms } from "slate"
@@ -15,6 +16,7 @@ import {
 } from "slate-react"
 import { toast } from "sonner"
 import { useGlobalKeyboardFocus } from "~/hooks/use-global-keyboard-focus"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { cx } from "~/utils/cx"
 import {
 	type AutocompleteEditor,
@@ -302,9 +304,14 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
 
-		// Get bot commands for this channel (mock data for now)
+		// Get bot commands for this channel
 		// TODO: Get actual channelId from context
 		const botCommands = useBotCommands("mock-channel-id")
+
+		// Mutation for executing integration commands
+		const executeCommand = useAtomSet(HazelApiClient.mutation("integration-commands", "executeCommand"), {
+			mode: "promiseExit",
+		})
 
 		// Get options for each trigger type
 		const mentionOptions = useMentionOptions(autocompleteState)
@@ -361,7 +368,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			}))
 		}, [])
 
-		const handleCommandExecute = useCallback(() => {
+		const handleCommandExecute = useCallback(async () => {
 			if (!commandInputState.command) return
 
 			// Validate required fields
@@ -374,19 +381,72 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				return
 			}
 
-			// Mock execution - just log for now
-			console.log("Executing command:", {
-				command: commandInputState.command.name,
-				bot: commandInputState.command.bot.name,
-				arguments: commandInputState.values,
+			// Extract provider from command ID (e.g., "linear-issue" -> "linear")
+			const provider = commandInputState.command.id.split("-")[0] as
+				| "linear"
+				| "github"
+				| "figma"
+				| "notion"
+
+			// Build arguments array
+			const args = Object.entries(commandInputState.values)
+				.filter(([_, value]) => value.trim() !== "")
+				.map(([name, value]) => ({ name, value }))
+
+			const toastId = toast.loading(`Creating ${commandInputState.command.name}...`)
+
+			const exit = await executeCommand({
+				path: { provider, commandId: commandInputState.command.id },
+				payload: { arguments: args },
 			})
 
-			toast.success(`Executed /${commandInputState.command.name}`)
+			Exit.match(exit, {
+				onSuccess: (result) => {
+					toast.dismiss(toastId)
 
-			// Exit input mode and focus editor
-			setCommandInputState(initialCommandInputState)
-			ReactEditor.focus(editor)
-		}, [commandInputState, editor])
+					// Handle Linear issue result
+					if ("identifier" in result && "url" in result) {
+						toast.success(`Created ${result.identifier}`, {
+							action: {
+								label: "View",
+								onClick: () => window.open(result.url, "_blank"),
+							},
+						})
+					} else {
+						toast.success(`Executed /${commandInputState.command?.name}`)
+					}
+
+					// Exit input mode and focus editor
+					setCommandInputState(initialCommandInputState)
+					ReactEditor.focus(editor)
+				},
+				onFailure: (cause) => {
+					toast.dismiss(toastId)
+
+					// Extract error message from cause
+					const error = cause._tag === "Fail" ? cause.error : null
+					let message = "Command failed"
+
+					if (error && typeof error === "object" && "_tag" in error) {
+						switch (error._tag) {
+							case "IntegrationNotConnectedForCommandError":
+								message = `${provider.charAt(0).toUpperCase() + provider.slice(1)} is not connected`
+								break
+							case "CommandExecutionError":
+								message = (error as { message: string }).message
+								break
+							case "MissingRequiredArgumentError":
+								message = `Missing required: ${(error as { argumentName: string }).argumentName}`
+								break
+							default:
+								message = "Command execution failed"
+						}
+					}
+
+					toast.error(message)
+				},
+			})
+		}, [commandInputState, executeCommand, editor])
 
 		const handleCommandCancel = useCallback(() => {
 			setCommandInputState(initialCommandInputState)

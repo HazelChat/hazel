@@ -1,100 +1,54 @@
+import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { useMemo } from "react"
+import { HazelApiClient } from "~/lib/services/common/atom-client"
 import type { BotCommandData } from "../types"
 
 /**
- * Mock bot commands for UI development
- * TODO: Replace with actual query to bot_commands table
- */
-const MOCK_BOT_COMMANDS: BotCommandData[] = [
-	{
-		id: "summarize",
-		name: "summarize",
-		description: "Summarize recent messages in this channel",
-		bot: {
-			id: "bot-summary",
-			name: "SummaryBot",
-			avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=summary",
-		},
-		arguments: [{ name: "count", required: false, type: "number", placeholder: "10" }],
-		usageExample: "/summarize 20",
-	},
-	{
-		id: "issue",
-		name: "issue",
-		description: "Create a new Linear issue from this message",
-		bot: {
-			id: "bot-linear",
-			name: "Linear",
-			avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
-		},
-		arguments: [
-			{ name: "title", required: true, type: "string" },
-			{ name: "description", required: false, type: "string" },
-		],
-		usageExample: '/issue "Fix login bug"',
-	},
-	{
-		id: "translate",
-		name: "translate",
-		description: "Translate a message to another language",
-		bot: {
-			id: "bot-translate",
-			name: "TranslateBot",
-			avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=translate",
-		},
-		arguments: [{ name: "language", required: true, type: "string", placeholder: "es" }],
-		usageExample: "/translate es",
-	},
-	{
-		id: "remind",
-		name: "remind",
-		description: "Set a reminder for yourself or the channel",
-		bot: {
-			id: "bot-remind",
-			name: "RemindBot",
-			avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=remind",
-		},
-		arguments: [
-			{ name: "time", required: true, type: "string", placeholder: "10m" },
-			{ name: "message", required: false, type: "string" },
-		],
-		usageExample: '/remind 10m "Check the build"',
-	},
-	{
-		id: "poll",
-		name: "poll",
-		description: "Create a quick poll for the channel",
-		bot: {
-			id: "bot-poll",
-			name: "PollBot",
-			avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=poll",
-		},
-		arguments: [
-			{ name: "question", required: true, type: "string" },
-			{ name: "options", required: false, type: "string", placeholder: "opt1,opt2,opt3" },
-		],
-		usageExample: '/poll "Lunch today?" "Pizza,Sushi,Tacos"',
-	},
-]
-
-/**
  * Hook to get available bot commands for a channel
- * Currently returns mock data for UI development
+ * Fetches commands from connected integrations via the API
  *
- * @param channelId - The channel ID to get commands for
- * @returns Array of bot commands available in this channel
+ * @param _channelId - The channel ID (reserved for future per-channel filtering)
+ * @returns Array of bot commands available for the organization's connected integrations
  */
 export function useBotCommands(_channelId: string): BotCommandData[] {
-	// TODO: Replace with actual query like:
-	// const { data: installedBots } = useLiveQuery((q) =>
-	//   q.from({ bot: botCollection })
-	//     .innerJoin({ channelBot: channelBotCollection }, ...)
-	//     .where(({ channelBot }) => eq(channelBot.channelId, channelId))
-	//     .select(...)
-	// )
+	// Fetch available commands from the API
+	// The backend will return empty array if user is not in an org context
+	const commandsResult = useAtomValue(
+		HazelApiClient.query("integration-commands", "getAvailableCommands", {}),
+	)
 
 	return useMemo(() => {
-		// Return mock data for now
-		return MOCK_BOT_COMMANDS
-	}, [])
+		// Handle loading/error states - return empty while loading
+		if (Result.isInitial(commandsResult) || Result.isFailure(commandsResult)) {
+			return []
+		}
+
+		// Get the response
+		const response = Result.getOrElse(commandsResult, () => null)
+		if (!response) {
+			return []
+		}
+
+		// Map API response to BotCommandData format
+		return response.commands.map(
+			(cmd): BotCommandData => ({
+				id: cmd.id,
+				name: cmd.name,
+				description: cmd.description,
+				bot: {
+					id: cmd.bot.id,
+					name: cmd.bot.name,
+					avatarUrl: cmd.bot.avatarUrl ?? undefined,
+				},
+				arguments: cmd.arguments.map((arg) => ({
+					name: arg.name,
+					description: arg.description ?? undefined,
+					required: arg.required,
+					placeholder: arg.placeholder ?? undefined,
+					type: arg.type,
+				})),
+				usageExample: cmd.usageExample ?? undefined,
+			}),
+		)
+	}, [commandsResult])
 }
