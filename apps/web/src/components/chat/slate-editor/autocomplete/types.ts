@@ -132,3 +132,22 @@ export interface EmojiData {
 	name: string
 	keywords?: string[]
 }
+
+// Command input state (Discord-style argument entry)
+export interface CommandInputState {
+	/** Whether command input mode is active */
+	isActive: boolean
+	/** The selected command */
+	command: BotCommandData | null
+	/** Current argument values */
+	values: Record<string, string>
+	/** Which field is focused (index) */
+	focusedFieldIndex: number
+}
+
+export const initialCommandInputState: CommandInputState = {
+	isActive: false,
+	command: null,
+	values: {},
+	focusedFieldIndex: 0,
+}
