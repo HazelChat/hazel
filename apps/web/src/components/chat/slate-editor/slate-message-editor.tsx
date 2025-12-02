@@ -18,17 +18,17 @@ import { cx } from "~/utils/cx"
 import {
 	type AutocompleteEditor,
 	type AutocompleteState,
-	type CommandData,
+	type BotCommandData,
 	CommandTrigger,
 	DEFAULT_TRIGGERS,
 	EditorAutocomplete,
 	type EmojiData,
 	EmojiTrigger,
-	getCommandById,
 	insertAutocompleteResult,
 	type MentionData,
 	MentionTrigger,
-	useCommandOptions,
+	useBotCommandOptions,
+	useBotCommands,
 	useEmojiOptions,
 	useMentionOptions,
 	withAutocomplete,
@@ -294,9 +294,13 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
 
+		// Get bot commands for this channel (mock data for now)
+		// TODO: Get actual channelId from context
+		const botCommands = useBotCommands("mock-channel-id")
+
 		// Get options for each trigger type
 		const mentionOptions = useMentionOptions(autocompleteState)
-		const commandOptions = useCommandOptions(autocompleteState)
+		const commandOptions = useBotCommandOptions(autocompleteState, botCommands)
 		const emojiOptions = useEmojiOptions(autocompleteState)
 
 		// Get current options based on active trigger
@@ -359,23 +363,10 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						const option = getOptionByIndex(commandOptions, index)
 						if (!option) return
 
-						const command = getCommandById(option.data.id)
-						if (!command) return
-
-						// Delete the /command text
-						const { startPoint, targetRange } = editor.autocompleteState
-						if (startPoint && targetRange) {
-							Transforms.select(editor, { anchor: startPoint, focus: targetRange.focus })
-							Transforms.delete(editor)
-						}
-
-						// Apply the block type
-						Transforms.setNodes(editor, {
-							type: command.blockType,
-							...command.blockProps,
-						} as Partial<CustomElement>)
-
-						closeAutocomplete()
+						// Insert the bot command text (e.g., "/summarize ")
+						// User can then type arguments after it
+						const commandText = `/${option.data.name} `
+						insertAutocompleteResult(editor, commandText, setAutocompleteState)
 						ReactEditor.focus(editor)
 						break
 					}
@@ -389,15 +380,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					}
 				}
 			},
-			[
-				autocompleteState.trigger,
-				editor,
-				value,
-				mentionOptions,
-				commandOptions,
-				emojiOptions,
-				closeAutocomplete,
-			],
+			[autocompleteState.trigger, editor, value, mentionOptions, commandOptions, emojiOptions],
 		)
 
 		// Use the new simplified autocomplete hook

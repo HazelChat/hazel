@@ -180,8 +180,7 @@ export const fetchLinearIssue = (
 			},
 			catch: (error) =>
 				new LinearApiError({
-					message:
-						error instanceof Error ? error.message : "Could not connect to Linear",
+					message: error instanceof Error ? error.message : "Could not connect to Linear",
 					cause: error,
 				}),
 		})

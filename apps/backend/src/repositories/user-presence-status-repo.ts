@@ -1,4 +1,14 @@
-import { and, Database, eq, inArray, lt, ModelRepository, ne, schema, type TransactionClient } from "@hazel/db"
+import {
+	and,
+	Database,
+	eq,
+	inArray,
+	lt,
+	ModelRepository,
+	ne,
+	schema,
+	type TransactionClient,
+} from "@hazel/db"
 import { type ChannelId, policyRequire, type UserId } from "@hazel/domain"
 import { UserPresenceStatus } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"

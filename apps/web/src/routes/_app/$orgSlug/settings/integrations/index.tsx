@@ -99,8 +99,7 @@ function IntegrationCard({
 	const comingSoon = integration.comingSoon
 
 	const logoSrc =
-		integration.logoSrc ??
-		getBrandfetchIcon(integration.logoDomain, { type: integration.logoType })
+		integration.logoSrc ?? getBrandfetchIcon(integration.logoDomain, { type: integration.logoType })
 
 	if (comingSoon) {
 		return (
@@ -180,10 +179,7 @@ function IntegrationCard({
 	)
 }
 
-function ConnectionStatus({
-	connected,
-	comingSoon,
-}: { connected: boolean; comingSoon?: boolean }) {
+function ConnectionStatus({ connected, comingSoon }: { connected: boolean; comingSoon?: boolean }) {
 	if (comingSoon) {
 		return (
 			<div className="flex items-center gap-1.5">

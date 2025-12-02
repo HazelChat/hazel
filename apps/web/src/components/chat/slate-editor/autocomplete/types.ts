@@ -91,12 +91,38 @@ export interface MentionData {
 	status?: "online" | "offline" | "away" | "busy" | "dnd"
 }
 
-// Command trigger data
-export interface CommandData {
-	id: string
+// Bot command argument definition
+export interface BotCommandArgument {
+	/** Argument name for display */
 	name: string
+	/** Description shown in hint */
+	description?: string
+	/** Whether this argument is required */
+	required: boolean
+	/** Placeholder text */
+	placeholder?: string
+	/** Argument type for validation */
+	type: "string" | "number" | "user" | "channel"
+}
+
+// Bot command trigger data
+export interface BotCommandData {
+	/** Command ID (unique per bot) */
+	id: string
+	/** Command name without leading slash (e.g., "summarize") */
+	name: string
+	/** Human-readable description */
 	description: string
-	execute: () => void
+	/** Bot that owns this command */
+	bot: {
+		id: string
+		name: string
+		avatarUrl?: string
+	}
+	/** Command arguments */
+	arguments: BotCommandArgument[]
+	/** Usage example shown in dropdown */
+	usageExample?: string
 }
 
 // Emoji trigger data

@@ -3,9 +3,9 @@ import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { UserPresenceStatusId } from "../ids"
 import { UserPresenceStatus } from "../models"
+import { JsonDate } from "../models/utils"
 import { TransactionId } from "../transaction-id"
 import { AuthMiddleware } from "./middleware"
-import { JsonDate } from "../models/utils"
 
 /**
  * Response schema for successful user presence status operations.
