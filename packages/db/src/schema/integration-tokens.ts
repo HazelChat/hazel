@@ -10,7 +10,8 @@ export const integrationTokensTable = pgTable(
 		// Encrypted token data (AES-256-GCM)
 		encryptedAccessToken: text().notNull(),
 		encryptedRefreshToken: text(),
-		iv: varchar({ length: 32 }).notNull(), // Base64 encoded initialization vector
+		iv: varchar({ length: 32 }).notNull(), // Base64 encoded initialization vector for access token
+		refreshTokenIv: varchar({ length: 32 }), // Base64 encoded initialization vector for refresh token
 		encryptionKeyVersion: integer().notNull().default(1),
 
 		// Token metadata (not encrypted, needed for refresh logic)

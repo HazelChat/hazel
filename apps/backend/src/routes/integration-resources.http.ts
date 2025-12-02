@@ -115,20 +115,11 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 								detail: String(error),
 							}),
 						),
-					IntegrationEncryptionError: (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Failed to decrypt integration token",
-								detail: String(error),
-							}),
-						),
-					KeyVersionNotFoundError: (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Encryption key version not found",
-								detail: String(error),
-							}),
-						),
+					// When token decryption fails, prompt user to reconnect instead of showing 500 error
+					IntegrationEncryptionError: () =>
+						Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "linear" })),
+					KeyVersionNotFoundError: () =>
+						Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "linear" })),
 					TokenRefreshError: () =>
 						Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "linear" })),
 					ConnectionNotFoundError: () =>

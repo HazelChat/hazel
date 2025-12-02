@@ -9,6 +9,7 @@ export class Model extends M.Class<Model>("IntegrationToken")({
 	encryptedAccessToken: Schema.String,
 	encryptedRefreshToken: Schema.NullOr(Schema.String),
 	iv: Schema.String,
+	refreshTokenIv: Schema.NullOr(Schema.String),
 	encryptionKeyVersion: Schema.Number,
 	tokenType: Schema.NullOr(Schema.String),
 	scope: Schema.NullOr(Schema.String),

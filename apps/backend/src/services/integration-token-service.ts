@@ -118,6 +118,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					encryptedAccessToken: string
 					encryptedRefreshToken: string | null
 					iv: string
+					refreshTokenIv: string | null
 					encryptionKeyVersion: number
 				},
 			) {
@@ -128,7 +129,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					onSome: Effect.succeed,
 				})
 
-				if (!token.encryptedRefreshToken) {
+				if (!token.encryptedRefreshToken || !token.refreshTokenIv) {
 					return yield* Effect.fail(
 						new TokenRefreshError({
 							provider: connection.provider,
@@ -137,10 +138,10 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					)
 				}
 
-				// Decrypt refresh token
+				// Decrypt refresh token using its dedicated IV
 				const _decryptedRefreshToken = yield* encryption.decrypt({
 					ciphertext: token.encryptedRefreshToken,
-					iv: token.iv,
+					iv: token.refreshTokenIv,
 					keyVersion: token.encryptionKeyVersion,
 				})
 
@@ -195,6 +196,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							encryptedAccessToken: encryptedAccess.ciphertext,
 							encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
 							iv: encryptedAccess.iv,
+							refreshTokenIv: encryptedRefresh?.iv ?? null,
 							encryptionKeyVersion: encryptedAccess.keyVersion,
 							expiresAt: tokens.expiresAt ?? null,
 							scope: tokens.scope ?? null,
@@ -208,6 +210,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							encryptedAccessToken: encryptedAccess.ciphertext,
 							encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
 							iv: encryptedAccess.iv,
+							refreshTokenIv: encryptedRefresh?.iv ?? null,
 							encryptionKeyVersion: encryptedAccess.keyVersion,
 							tokenType: "Bearer",
 							expiresAt: tokens.expiresAt ?? null,

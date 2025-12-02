@@ -42,6 +42,7 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 				encryptedAccessToken: string
 				encryptedRefreshToken?: string | null
 				iv: string
+				refreshTokenIv?: string | null
 				encryptionKeyVersion: number
 				expiresAt?: Date | null
 				scope?: string | null
@@ -56,6 +57,7 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 						encryptedAccessToken: string
 						encryptedRefreshToken?: string | null
 						iv: string
+						refreshTokenIv?: string | null
 						encryptionKeyVersion: number
 						expiresAt?: Date | null
 						scope?: string | null
@@ -68,6 +70,7 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 								encryptedAccessToken: params.encryptedAccessToken,
 								encryptedRefreshToken: params.encryptedRefreshToken,
 								iv: params.iv,
+								refreshTokenIv: params.refreshTokenIv,
 								encryptionKeyVersion: params.encryptionKeyVersion,
 								expiresAt: params.expiresAt,
 								scope: params.scope,
