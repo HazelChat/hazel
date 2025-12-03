@@ -144,8 +144,10 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 
 				// Route to appropriate executor based on provider and command
 				if (provider === "linear" && commandId === "linear-issue") {
+					// Title is guaranteed by the required arguments validation above
+					const title = argsMap.get("title") ?? ""
 					const result = yield* createIssue(accessToken, {
-						title: argsMap.get("title")!,
+						title,
 						description: argsMap.get("description"),
 					})
 

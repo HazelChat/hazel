@@ -35,6 +35,7 @@ export function useBotCommands(_channelId: string): BotCommandData[] {
 				id: cmd.id,
 				name: cmd.name,
 				description: cmd.description,
+				provider: cmd.provider,
 				bot: {
 					id: cmd.bot.id,
 					name: cmd.bot.name,

@@ -273,7 +273,10 @@ const shouldHidePlaceholder = (value: CustomDescendant[]): boolean => {
 }
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
-	({ placeholder = "Type a message...", className, channelId, onSubmit, onUpdate, isUploading = false }, ref) => {
+	(
+		{ placeholder = "Type a message...", className, channelId, onSubmit, onUpdate, isUploading = false },
+		ref,
+	) => {
 		const containerRef = useRef<HTMLDivElement>(null)
 
 		// Autocomplete state from Slate plugin
@@ -307,8 +310,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
 
 		// Get bot commands for this channel
-		// TODO: Get actual channelId from context
-		const botCommands = useBotCommands("mock-channel-id")
+		const botCommands = useBotCommands(channelId ?? "")
 
 		// Mutation for executing integration commands
 		const executeCommand = useAtomSet(HazelApiClient.mutation("integration-commands", "executeCommand"), {
@@ -387,12 +389,8 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				return
 			}
 
-			// Extract provider from command ID (e.g., "linear-issue" -> "linear")
-			const provider = commandInputState.command.id.split("-")[0] as
-				| "linear"
-				| "github"
-				| "figma"
-				| "notion"
+			// Get provider from the command data
+			const provider = commandInputState.command.provider
 
 			// Build arguments array
 			const args = Object.entries(commandInputState.values)
@@ -452,7 +450,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					toast.error(message)
 				},
 			})
-		}, [commandInputState, executeCommand, editor])
+		}, [commandInputState, channelId, executeCommand, editor])
 
 		const handleCommandCancel = useCallback(() => {
 			setCommandInputState(initialCommandInputState)
@@ -518,7 +516,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				value,
 				mentionOptions,
 				commandOptions,
-				emojiOptions, // Close autocomplete and enter command input mode
+				emojiOptions,
 				closeAutocomplete,
 			],
 		)
@@ -938,7 +936,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						<EditorAutocomplete containerRef={containerRef} state={autocompleteState}>
 							{autocompleteState.trigger?.id === "mention" && (
 								<MentionTrigger
-									items={currentOptions as any}
+									items={mentionOptions}
 									activeIndex={autocomplete.activeIndex}
 									onSelect={handleSelectByIndex}
 									onHover={autocomplete.setActiveIndex}
@@ -946,7 +944,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 							)}
 							{autocompleteState.trigger?.id === "command" && (
 								<CommandTrigger
-									items={currentOptions as any}
+									items={commandOptions}
 									activeIndex={autocomplete.activeIndex}
 									onSelect={handleSelectByIndex}
 									onHover={autocomplete.setActiveIndex}
@@ -954,7 +952,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 							)}
 							{autocompleteState.trigger?.id === "emoji" && (
 								<EmojiTrigger
-									items={currentOptions as any}
+									items={emojiOptions}
 									activeIndex={autocomplete.activeIndex}
 									onSelect={handleSelectByIndex}
 									onHover={autocomplete.setActiveIndex}

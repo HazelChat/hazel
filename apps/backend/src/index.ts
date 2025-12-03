@@ -47,14 +47,14 @@ import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
+import { CommandRegistry } from "./services/integrations/command-registry"
+import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { SessionManager } from "./services/session-manager"
 import { WorkOS } from "./services/workos"
 import { WorkOSSync } from "./services/workos-sync"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
-import { CommandRegistry } from "./services/integrations/command-registry"
-import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 
 export { HazelApi }
 
