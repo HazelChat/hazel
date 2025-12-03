@@ -2,6 +2,9 @@
 - fix channel creation not actually appearing in the channel list (due to reverse proxy querieng per channelId)
 - test and actually build stuff for githib integration
 
+- intgerations sometimes showing error "token already used" when connecting
+- linear throwing 500's on issue in prod
+
 
 # Later 
 - rpc client for bot

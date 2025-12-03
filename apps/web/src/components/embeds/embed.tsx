@@ -12,7 +12,7 @@ import { cn } from "~/lib/utils"
  * Container styles for embed components (Embed, EmbedError, EmbedSkeleton)
  */
 export const embedContainerStyles = tv({
-	base: ["mt-2 flex max-w-md overflow-hidden", "border border-border/60 bg-secondary"],
+	base: ["mt-2 flex max-w-md overflow-hidden", "border border-border/60 bg-muted"],
 	variants: {
 		variant: {
 			default: "flex-col rounded-r-lg border-l-2! transition-all duration-200",

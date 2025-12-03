@@ -49,7 +49,7 @@ function PriorityIcon({ priority, className }: { priority: number; className?: s
 function StatusBadge({ name, color }: { name: string; color: string }) {
 	return (
 		<span
-			className="rounded-full px-2 py-0.5 font-medium text-[11px] transition-transform group-hover:scale-105"
+			className="rounded-full px-2 py-0.5 font-medium text-[11px]"
 			style={{
 				backgroundColor: `${color}18`,
 				color: color,
