@@ -152,12 +152,15 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 					// Get or create the Linear bot user (with org membership for Electric sync)
 					const botUser = yield* botService.getOrCreateBotUser("linear", currentUser.organizationId)
 
+					// Build message content with @mention attribution
+					const messageContent = `@[userId:${currentUser.id}] created an issue:\n${result.url}`
+
 					// Create message from bot with the issue URL
 					yield* messageRepo
 						.insert({
 							channelId,
 							authorId: botUser.id,
-							content: result.url,
+							content: messageContent,
 							replyToMessageId: null,
 							threadChannelId: null,
 							deletedAt: null,
