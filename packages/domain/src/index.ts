@@ -8,6 +8,8 @@ export * from "./errors"
 // HTTP API contracts
 export * as Http from "./http"
 export * from "./ids"
+// Integration utilities
+export * as Integrations from "./integrations"
 // Policy utilities
 export * from "./policy"
 // RPC contracts

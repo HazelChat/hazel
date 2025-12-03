@@ -1,3 +1,4 @@
+import { Integrations } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 
@@ -58,9 +59,9 @@ const LINEAR_COMMANDS: IntegrationCommandDef[] = [
 		],
 		usageExample: '/issue "Fix login bug" "Users cannot log in with SSO"',
 		bot: {
-			id: "bot-linear",
-			name: "Linear",
-			avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
+			id: Integrations.INTEGRATION_BOT_CONFIGS.linear.botId,
+			name: Integrations.INTEGRATION_BOT_CONFIGS.linear.name,
+			avatarUrl: Integrations.INTEGRATION_BOT_CONFIGS.linear.avatarUrl,
 		},
 	},
 ]
