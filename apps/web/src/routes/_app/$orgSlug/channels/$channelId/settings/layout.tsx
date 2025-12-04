@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/setting
 
 const tabs = [
 	{ id: "overview", label: "Overview" },
-	{ id: "webhooks", label: "Webhooks" },
+	{ id: "integrations", label: "Integrations" },
 ] as const
 
 function RouteComponent() {

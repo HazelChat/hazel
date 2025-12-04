@@ -31,8 +31,8 @@ import { Route as AppOrgSlugSettingsIntegrationsIndexRouteImport } from './route
 import { Route as AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport } from './routes/_app/$orgSlug/settings/integrations/$integrationId'
 import { Route as AppOrgSlugChannelsChannelIdSettingsLayoutRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/layout'
 import { Route as AppOrgSlugChannelsChannelIdSettingsIndexRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/index'
-import { Route as AppOrgSlugChannelsChannelIdSettingsWebhooksRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/webhooks'
 import { Route as AppOrgSlugChannelsChannelIdSettingsOverviewRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/overview'
+import { Route as AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/integrations'
 
 const AppLayoutRoute = AppLayoutRouteImport.update({
   id: '/_app',
@@ -152,16 +152,16 @@ const AppOrgSlugChannelsChannelIdSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
   } as any)
-const AppOrgSlugChannelsChannelIdSettingsWebhooksRoute =
-  AppOrgSlugChannelsChannelIdSettingsWebhooksRouteImport.update({
-    id: '/webhooks',
-    path: '/webhooks',
-    getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
-  } as any)
 const AppOrgSlugChannelsChannelIdSettingsOverviewRoute =
   AppOrgSlugChannelsChannelIdSettingsOverviewRouteImport.update({
     id: '/overview',
     path: '/overview',
+    getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
+  } as any)
+const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
+  AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
     getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
   } as any)
 
@@ -186,8 +186,8 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
-  '/$orgSlug/channels/$channelId/settings/webhooks': typeof AppOrgSlugChannelsChannelIdSettingsWebhooksRoute
   '/$orgSlug/channels/$channelId/settings/': typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -208,8 +208,8 @@ export interface FileRoutesByTo {
   '/$orgSlug/settings': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
-  '/$orgSlug/channels/$channelId/settings/webhooks': typeof AppOrgSlugChannelsChannelIdSettingsWebhooksRoute
   '/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -235,8 +235,8 @@ export interface FileRoutesById {
   '/_app/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
   '/_app/$orgSlug/settings/integrations/': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/_app/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/_app/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
-  '/_app/$orgSlug/channels/$channelId/settings/webhooks': typeof AppOrgSlugChannelsChannelIdSettingsWebhooksRoute
   '/_app/$orgSlug/channels/$channelId/settings/': typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -262,8 +262,8 @@ export interface FileRouteTypes {
     | '/$orgSlug/channels/$channelId/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
     | '/$orgSlug/settings/integrations'
+    | '/$orgSlug/channels/$channelId/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/overview'
-    | '/$orgSlug/channels/$channelId/settings/webhooks'
     | '/$orgSlug/channels/$channelId/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -284,8 +284,8 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
     | '/$orgSlug/settings/integrations'
+    | '/$orgSlug/channels/$channelId/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/overview'
-    | '/$orgSlug/channels/$channelId/settings/webhooks'
     | '/$orgSlug/channels/$channelId/settings'
   id:
     | '__root__'
@@ -310,8 +310,8 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/channels/$channelId/settings'
     | '/_app/$orgSlug/settings/integrations/$integrationId'
     | '/_app/$orgSlug/settings/integrations/'
+    | '/_app/$orgSlug/channels/$channelId/settings/integrations'
     | '/_app/$orgSlug/channels/$channelId/settings/overview'
-    | '/_app/$orgSlug/channels/$channelId/settings/webhooks'
     | '/_app/$orgSlug/channels/$channelId/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -476,18 +476,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsIndexRouteImport
       parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
     }
-    '/_app/$orgSlug/channels/$channelId/settings/webhooks': {
-      id: '/_app/$orgSlug/channels/$channelId/settings/webhooks'
-      path: '/webhooks'
-      fullPath: '/$orgSlug/channels/$channelId/settings/webhooks'
-      preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsWebhooksRouteImport
-      parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
-    }
     '/_app/$orgSlug/channels/$channelId/settings/overview': {
       id: '/_app/$orgSlug/channels/$channelId/settings/overview'
       path: '/overview'
       fullPath: '/$orgSlug/channels/$channelId/settings/overview'
       preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsOverviewRouteImport
+      parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
+    }
+    '/_app/$orgSlug/channels/$channelId/settings/integrations': {
+      id: '/_app/$orgSlug/channels/$channelId/settings/integrations'
+      path: '/integrations'
+      fullPath: '/$orgSlug/channels/$channelId/settings/integrations'
+      preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport
       parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
     }
   }
@@ -524,17 +524,17 @@ const AppOrgSlugSettingsLayoutRouteWithChildren =
   )
 
 interface AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren {
+  AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute: typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   AppOrgSlugChannelsChannelIdSettingsOverviewRoute: typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
-  AppOrgSlugChannelsChannelIdSettingsWebhooksRoute: typeof AppOrgSlugChannelsChannelIdSettingsWebhooksRoute
   AppOrgSlugChannelsChannelIdSettingsIndexRoute: typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
 }
 
 const AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren: AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren =
   {
+    AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute:
+      AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute,
     AppOrgSlugChannelsChannelIdSettingsOverviewRoute:
       AppOrgSlugChannelsChannelIdSettingsOverviewRoute,
-    AppOrgSlugChannelsChannelIdSettingsWebhooksRoute:
-      AppOrgSlugChannelsChannelIdSettingsWebhooksRoute,
     AppOrgSlugChannelsChannelIdSettingsIndexRoute:
       AppOrgSlugChannelsChannelIdSettingsIndexRoute,
   }
