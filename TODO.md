@@ -4,6 +4,7 @@
 
 - intgerations sometimes showing error "token already used" when connecting
 - linear throwing 500's on issue in prod
+- setup axiom or any other logging/monitoring solution
 
 
 # Later 

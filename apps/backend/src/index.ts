@@ -27,6 +27,7 @@ import { PinnedMessagePolicy } from "./policies/pinned-message-policy"
 import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy"
+import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
@@ -42,6 +43,7 @@ import { PinnedMessageRepo } from "./repositories/pinned-message-repo"
 import { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
 import { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
 import { UserRepo } from "./repositories/user-repo"
+import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
 
 import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
@@ -50,6 +52,7 @@ import { IntegrationTokenService } from "./services/integration-token-service"
 import { CommandRegistry } from "./services/integrations/command-registry"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
+import { WebhookBotService } from "./services/webhook-bot-service"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { SessionManager } from "./services/session-manager"
 import { WorkOS } from "./services/workos"
@@ -109,6 +112,7 @@ const RepoLive = Layer.mergeAll(
 	UserPresenceStatusRepo.Default,
 	IntegrationConnectionRepo.Default,
 	IntegrationTokenRepo.Default,
+	ChannelWebhookRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -126,6 +130,7 @@ const PolicyLive = Layer.mergeAll(
 	NotificationPolicy.Default,
 	UserPresenceStatusPolicy.Default,
 	IntegrationConnectionPolicy.Default,
+	ChannelWebhookPolicy.Default,
 )
 
 const MainLive = Layer.mergeAll(
@@ -142,6 +147,7 @@ const MainLive = Layer.mergeAll(
 	OAuthProviderRegistry.Default,
 	CommandRegistry.Default,
 	IntegrationBotService.Default,
+	WebhookBotService.Default,
 ).pipe(
 	Layer.provide(
 		S3.layer({
