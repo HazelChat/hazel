@@ -9,7 +9,10 @@ export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/setting
 	component: RouteComponent,
 })
 
-const tabs = [{ id: "webhooks", label: "Webhooks" }] as const
+const tabs = [
+	{ id: "overview", label: "Overview" },
+	{ id: "webhooks", label: "Webhooks" },
+] as const
 
 function RouteComponent() {
 	const { orgSlug, channelId } = Route.useParams()
@@ -31,7 +34,7 @@ function RouteComponent() {
 	// Extract the current tab from the pathname
 	const pathSegments = location.pathname.split("/")
 	const lastSegment = pathSegments[pathSegments.length - 1]
-	const selectedTab = lastSegment === "settings" ? "webhooks" : lastSegment
+	const selectedTab = lastSegment === "settings" ? "overview" : lastSegment
 
 	return (
 		<main className="h-full w-full min-w-0 bg-bg">
