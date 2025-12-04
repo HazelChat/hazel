@@ -6,7 +6,6 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { deleteChannelMemberMutation, updateChannelMemberMutation } from "~/atoms/channel-member-atoms"
 import IconDots from "~/components/icons/icon-dots"
-import IconEdit from "~/components/icons/icon-edit"
 import IconGear from "~/components/icons/icon-gear"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconLeave from "~/components/icons/icon-leave"
@@ -15,7 +14,6 @@ import IconTrash from "~/components/icons/icon-trash"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
-import { RenameChannelModal } from "~/components/modals/rename-channel-modal"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
@@ -28,7 +26,6 @@ interface ChannelItemProps {
 }
 
 export function ChannelItem({ channel, member }: ChannelItemProps) {
-	const [renameModalOpen, setRenameModalOpen] = useState(false)
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
 	const { slug } = useOrganization()
@@ -151,10 +148,6 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
-						<MenuItem onAction={() => setRenameModalOpen(true)}>
-							<IconEdit />
-							<MenuLabel>Rename</MenuLabel>
-						</MenuItem>
 						<MenuItem
 							onAction={() =>
 								navigate({
@@ -178,14 +171,6 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 					</MenuContent>
 				</Menu>
 			</SidebarItem>
-
-			{renameModalOpen && (
-				<RenameChannelModal
-					channelId={channel.id}
-					isOpen={true}
-					onOpenChange={(isOpen) => !isOpen && setRenameModalOpen(false)}
-				/>
-			)}
 
 			{deleteModalOpen && (
 				<DeleteChannelModal
