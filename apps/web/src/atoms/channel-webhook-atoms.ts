@@ -1,26 +1,12 @@
-import type { ChannelId, ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
+import type { ChannelWebhook } from "@hazel/domain/models"
+import type { Schema } from "effect"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 
 /**
  * Type for webhook data returned from RPC (without sensitive tokenHash field).
- * Use this type for frontend components that display webhook information.
+ * Inferred from the domain model's JSON schema to stay in sync automatically.
  */
-export interface WebhookData {
-	id: ChannelWebhookId
-	channelId: ChannelId
-	organizationId: OrganizationId
-	botUserId: UserId
-	name: string
-	description: string | null
-	avatarUrl: string | null
-	tokenSuffix: string
-	isEnabled: boolean
-	createdBy: UserId
-	lastUsedAt: Date | null
-	createdAt: Date
-	updatedAt: Date | null
-	deletedAt: Date | null
-}
+export type WebhookData = Schema.Schema.Type<typeof ChannelWebhook.Model.json>
 
 /**
  * Mutation atom for creating a channel webhook.
