@@ -3,13 +3,13 @@
 - add cache layer for integration data (linear issues etc.)
 - test and actually build stuff for githib integration
 
-- intgerations sometimes showing error "token already used" when connecting
 - linear throwing 500's on issue in prod
 - setup axiom or any other logging/monitoring solution
 
 
 # FE stuff
 - allow using Icons/Emojis for channel icon
+- replace webhook icon with actual webhook icons
 
 
 # Later 

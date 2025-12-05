@@ -78,7 +78,7 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 			organizationId: OrganizationId,
 		) =>
 			Effect.gen(function* () {
-				const externalId = `webhook-bot-${provider}`
+				const externalId = `integration-bot-${provider}`
 
 				// Try to find existing bot user
 				const existing = yield* userRepo.findByExternalId(externalId).pipe(withSystemActor)
