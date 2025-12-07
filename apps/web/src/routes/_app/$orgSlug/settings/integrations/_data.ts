@@ -189,6 +189,24 @@ export const integrations: Integration[] = [
 		],
 		configOptions: [],
 	},
+	{
+		id: "railway",
+		name: "Railway",
+		description: "Deployment notifications and alerts for your Railway projects.",
+		fullDescription:
+			"Connect Railway to receive deployment notifications directly in your channels. Get instant alerts when deployments succeed, fail, or crash, keeping your team informed about your infrastructure status.",
+		logoDomain: "railway.com",
+		logoType: "icon",
+		brandColor: "#0B0D0E",
+		category: "developer-tools",
+		features: [
+			"Deployment status alerts",
+			"Build notifications",
+			"Crash alerts",
+			"Rich deployment embeds",
+		],
+		configOptions: [],
+	},
 ]
 
 export const categories = [

@@ -1,6 +1,6 @@
 # Today
-- add cache layer for integration data (linear issues etc.)
-- test and actually build stuff for githib integration
+- add server side cache layer for integration data (linear issues etc.)
+- test and actually build stuff for github integration
 - setup signoz or any other logging/monitoring solution
 - setup sequin locally with config as code
 - railway webhook integration
@@ -14,7 +14,6 @@
 
 # FE stuff
 - allow using Icons/Emojis for channel icon
-- polish openstatus integration page
 
 # Important but big
 

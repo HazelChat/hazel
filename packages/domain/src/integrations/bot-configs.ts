@@ -46,7 +46,7 @@ export const INTEGRATION_BOT_CONFIGS: Record<
 /**
  * Webhook provider types (non-OAuth integrations)
  */
-export type WebhookProvider = "openstatus"
+export type WebhookProvider = "openstatus" | "railway"
 
 /**
  * Bot configurations for webhook-based integrations.
@@ -57,6 +57,11 @@ export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> 
 		name: "OpenStatus",
 		avatarUrl: "https://cdn.brandfetch.io/openstatus.dev/w/64/h/64/theme/dark/icon",
 		botId: "bot-openstatus",
+	},
+	railway: {
+		name: "Railway",
+		avatarUrl: "https://cdn.brandfetch.io/railway.com/w/64/h/64/theme/dark/icon",
+		botId: "bot-railway",
 	},
 }
 

@@ -4,6 +4,7 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
 import { Exit } from "effect"
 import { useState } from "react"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
+import { RailwayIntegrationContent } from "~/components/integrations/railway-integration-content"
 import { Button } from "~/components/ui/button"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
@@ -100,8 +101,8 @@ function IntegrationConfigPage() {
 		navigate({ to: "/$orgSlug/settings/integrations", params: { orgSlug } })
 	}
 
-	// OpenStatus uses webhook-based integration (per-channel), not OAuth
-	const isOpenStatus = integrationId === "openstatus"
+	// OpenStatus and Railway use webhook-based integration (per-channel), not OAuth
+	const isWebhookIntegration = integrationId === "openstatus" || integrationId === "railway"
 
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">
@@ -137,7 +138,7 @@ function IntegrationConfigPage() {
 						<div className="flex flex-col gap-1">
 							<div className="flex items-center gap-3">
 								<SectionHeader.Heading>{integration.name}</SectionHeader.Heading>
-								{!isOpenStatus && <ConnectionBadge connected={isConnected} />}
+								{!isWebhookIntegration && <ConnectionBadge connected={isConnected} />}
 							</div>
 							<SectionHeader.Subheading>{integration.description}</SectionHeader.Subheading>
 						</div>
@@ -147,12 +148,16 @@ function IntegrationConfigPage() {
 
 			{/* Main content */}
 			<div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-				{/* Left column - Connection & Config (or OpenStatus content) */}
+				{/* Left column - Connection & Config (or webhook-based integration content) */}
 				<div className="flex flex-col gap-8">
-					{isOpenStatus ? (
-						// OpenStatus: Show channel-based webhook configuration
+					{isWebhookIntegration ? (
+						// Webhook-based integrations: Show channel-based webhook configuration
 						user?.organizationId && (
-							<OpenStatusIntegrationContent organizationId={user.organizationId} />
+							integrationId === "openstatus" ? (
+								<OpenStatusIntegrationContent organizationId={user.organizationId} />
+							) : integrationId === "railway" ? (
+								<RailwayIntegrationContent organizationId={user.organizationId} />
+							) : null
 						)
 					) : (
 						<>

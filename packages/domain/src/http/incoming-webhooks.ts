@@ -32,6 +32,66 @@ export class OpenStatusPayload extends Schema.Class<OpenStatusPayload>("OpenStat
 	errorMessage: Schema.optional(Schema.String),
 }) {}
 
+// Railway resource schemas
+export const RailwayWorkspace = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+})
+export type RailwayWorkspace = Schema.Schema.Type<typeof RailwayWorkspace>
+
+export const RailwayProject = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+})
+export type RailwayProject = Schema.Schema.Type<typeof RailwayProject>
+
+export const RailwayEnvironment = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	isEphemeral: Schema.optional(Schema.Boolean),
+})
+export type RailwayEnvironment = Schema.Schema.Type<typeof RailwayEnvironment>
+
+export const RailwayService = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+})
+export type RailwayService = Schema.Schema.Type<typeof RailwayService>
+
+export const RailwayDeployment = Schema.Struct({
+	id: Schema.String,
+})
+export type RailwayDeployment = Schema.Schema.Type<typeof RailwayDeployment>
+
+export const RailwayResource = Schema.Struct({
+	workspace: RailwayWorkspace,
+	project: RailwayProject,
+	environment: Schema.optional(RailwayEnvironment),
+	service: Schema.optional(RailwayService),
+	deployment: Schema.optional(RailwayDeployment),
+})
+export type RailwayResource = Schema.Schema.Type<typeof RailwayResource>
+
+export const RailwayDetails = Schema.Struct({
+	id: Schema.optional(Schema.String),
+	source: Schema.optional(Schema.String),
+	status: Schema.optional(Schema.String),
+	branch: Schema.optional(Schema.String),
+	commitHash: Schema.optional(Schema.String),
+	commitAuthor: Schema.optional(Schema.String),
+	commitMessage: Schema.optional(Schema.String),
+})
+export type RailwayDetails = Schema.Schema.Type<typeof RailwayDetails>
+
+// Railway webhook payload
+export class RailwayPayload extends Schema.Class<RailwayPayload>("RailwayPayload")({
+	type: Schema.String, // e.g., "Deployment.failed", "Alert.triggered"
+	details: RailwayDetails,
+	resource: RailwayResource,
+	severity: Schema.optional(Schema.String), // "WARNING", "ERROR", etc.
+	timestamp: Schema.String, // ISO 8601 timestamp
+}) {}
+
 // Response after successful webhook execution
 export class WebhookMessageResponse extends Schema.Class<WebhookMessageResponse>("WebhookMessageResponse")({
 	messageId: Schema.String,
@@ -110,6 +170,29 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 					description:
 						"Receive status alerts from OpenStatus and post them as rich embeds to a channel.",
 					summary: "Process OpenStatus alert",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.post("executeRailway", `/:webhookId/:token/railway`)
+			.setPayload(RailwayPayload)
+			.addSuccess(WebhookMessageResponse)
+			.addError(WebhookNotFoundError)
+			.addError(WebhookDisabledError)
+			.addError(InvalidWebhookTokenError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					webhookId: ChannelWebhookId,
+					token: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Execute Railway Webhook",
+					description:
+						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",
+					summary: "Process Railway event",
 				}),
 			),
 	)
