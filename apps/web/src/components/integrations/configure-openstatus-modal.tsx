@@ -79,7 +79,11 @@ export function ConfigureOpenStatusModal({
 				<ModalHeader>
 					<div className="flex items-center gap-3">
 						<div className="flex size-10 items-center justify-center rounded-lg bg-secondary/50">
-							<img src={getProviderIconUrl("openstatus")} alt="OpenStatus" className="size-6 rounded" />
+							<img
+								src={getProviderIconUrl("openstatus")}
+								alt="OpenStatus"
+								className="size-6 rounded"
+							/>
 						</div>
 						<div>
 							<ModalTitle>

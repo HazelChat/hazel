@@ -265,7 +265,14 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				})
 			}
 		},
-		[channelId, organizationId, user?.id, createThreadMutation, setActiveThreadChannelId, setActiveThreadMessageId],
+		[
+			channelId,
+			organizationId,
+			user?.id,
+			createThreadMutation,
+			setActiveThreadChannelId,
+			setActiveThreadMessageId,
+		],
 	)
 
 	const openThread = useCallback(

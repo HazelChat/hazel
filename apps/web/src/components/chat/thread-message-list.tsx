@@ -12,7 +12,9 @@ interface ThreadMessageListProps {
 
 export function ThreadMessageList({ threadChannelId }: ThreadMessageListProps) {
 	// Query thread messages using the atom (queries by channelId = threadChannelId)
-	const messagesResult = useAtomValue(threadMessagesAtomFamily({ threadChannelId, maxPreviewMessages: 100 }))
+	const messagesResult = useAtomValue(
+		threadMessagesAtomFamily({ threadChannelId, maxPreviewMessages: 100 }),
+	)
 	const messages = Result.getOrElse(messagesResult, () => [])
 
 	if (messages.length === 0) {

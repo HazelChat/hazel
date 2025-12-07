@@ -234,12 +234,13 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 									<div className="flex-1 space-y-3">
 										<div>
 											<p className="font-medium text-amber-700 text-sm dark:text-amber-300">
-												Copy the webhook URL and add it to your OpenStatus notification
-												settings
+												Copy the webhook URL and add it to your OpenStatus
+												notification settings
 											</p>
 											<p className="mt-1 text-amber-600/80 text-xs dark:text-amber-400/80">
-												#{channels.find((c) => c.id === newlyCreatedWebhook.channelId)?.name ??
-													"channel"}{" "}
+												#
+												{channels.find((c) => c.id === newlyCreatedWebhook.channelId)
+													?.name ?? "channel"}{" "}
 												• The full URL includes your secret token. Keep it safe!
 											</p>
 										</div>
@@ -257,7 +258,11 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 												)}
 											</Button>
 										</div>
-										<Button intent="secondary" size="sm" onPress={handleDismissNewWebhook}>
+										<Button
+											intent="secondary"
+											size="sm"
+											onPress={handleDismissNewWebhook}
+										>
 											Done
 										</Button>
 									</div>

@@ -78,7 +78,10 @@ export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolic
 									}
 
 									if (parent.type === "private") {
-										if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
+										if (
+											Option.isSome(orgMember) &&
+											isAdminOrOwner(orgMember.value.role)
+										) {
 											return true
 										}
 
