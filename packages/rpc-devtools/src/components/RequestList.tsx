@@ -1,6 +1,6 @@
-import { formatDistanceToNow } from "date-fns"
 import { getRpcType } from "../rpc-type-resolver"
 import type { CapturedRequest } from "../types"
+import { formatRelativeTime } from "../utils/format-relative-time"
 import { styles } from "./styles"
 
 interface RequestListProps {
@@ -51,7 +51,7 @@ export function RequestList({ requests, selectedId, onSelect }: RequestListProps
 									: "..."}
 							</td>
 							<td style={{ ...styles.tableCell, ...styles.whenCell }}>
-								{formatDistanceToNow(request.timestamp, { addSuffix: true })}
+								{formatRelativeTime(request.timestamp)}
 							</td>
 						</tr>
 					))}
