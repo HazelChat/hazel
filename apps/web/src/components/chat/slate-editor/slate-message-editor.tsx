@@ -44,6 +44,7 @@ import { getOptionByIndex, useSlateAutocomplete } from "./autocomplete/use-slate
 import { CodeBlockElement } from "./code-block-element"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
+import { withCodeBlockPaste } from "./slate-code-block-paste-plugin"
 import { decorateCodeBlock } from "./slate-code-decorator"
 import { decorateMarkdown } from "./slate-markdown-decorators"
 import {
@@ -303,6 +304,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					(e) => withAutocomplete(e, DEFAULT_TRIGGERS, setAutocompleteState),
 					withMentionElements,
 					withAutoformat,
+					withCodeBlockPaste,
 				) as CustomEditor,
 			[],
 		)
