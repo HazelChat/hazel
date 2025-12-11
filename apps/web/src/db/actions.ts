@@ -401,6 +401,7 @@ export const updateUserAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: { userId: UserId; firstName?: string; lastName?: string; avatarUrl?: string }) => {
+		console.log("user", userCollection.state.get(props.userId))
 		userCollection.update(props.userId, (draft) => {
 			if (props.firstName !== undefined) draft.firstName = props.firstName
 			if (props.lastName !== undefined) draft.lastName = props.lastName
