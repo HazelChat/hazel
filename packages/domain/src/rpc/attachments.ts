@@ -52,4 +52,22 @@ export class AttachmentRpcs extends RpcGroup.make(
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * AttachmentComplete
+	 *
+	 * Marks an attachment as complete after direct upload to R2.
+	 * Only the original uploader can mark as complete.
+	 *
+	 * @param payload - Attachment ID to mark complete
+	 * @returns The completed attachment model
+	 * @throws AttachmentNotFoundError if attachment doesn't exist
+	 * @throws UnauthorizedError if user is not the uploader
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("attachment.complete", {
+		payload: Schema.Struct({ id: AttachmentId }),
+		success: Attachment.Model,
+		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

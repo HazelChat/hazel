@@ -58,7 +58,8 @@ interface ChatContextValue {
 	isUploading: boolean
 	setIsUploading: (value: boolean) => void
 	uploadingFiles: UploadingFile[]
-	addUploadingFile: (file: UploadingFile) => void
+	addUploadingFile: (file: Omit<UploadingFile, "progress">) => void
+	updateUploadingFileProgress: (fileId: string, progress: number) => void
 	removeUploadingFile: (fileId: string) => void
 }
 
@@ -129,8 +130,15 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	}, [setAttachmentIds])
 
 	const addUploadingFile = useCallback(
-		(file: UploadingFile) => {
-			setUploadingFiles((prev) => [...prev, file])
+		(file: Omit<UploadingFile, "progress">) => {
+			setUploadingFiles((prev) => [...prev, { ...file, progress: 0 }])
+		},
+		[setUploadingFiles],
+	)
+
+	const updateUploadingFileProgress = useCallback(
+		(fileId: string, progress: number) => {
+			setUploadingFiles((prev) => prev.map((f) => (f.fileId === fileId ? { ...f, progress } : f)))
 		},
 		[setUploadingFiles],
 	)
@@ -372,6 +380,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			setIsUploading,
 			uploadingFiles,
 			addUploadingFile,
+			updateUploadingFileProgress,
 			removeUploadingFile,
 		}),
 		[
@@ -400,6 +409,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			setIsUploading,
 			uploadingFiles,
 			addUploadingFile,
+			updateUploadingFileProgress,
 			removeUploadingFile,
 		],
 	)
