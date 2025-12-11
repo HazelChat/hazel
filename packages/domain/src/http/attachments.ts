@@ -3,12 +3,18 @@ import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
 import { AttachmentId, ChannelId, OrganizationId } from "../ids"
 
+export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
+
 // Presigned URL upload schemas
 export class GetAttachmentUploadUrlRequest extends Schema.Class<GetAttachmentUploadUrlRequest>(
 	"GetAttachmentUploadUrlRequest",
 )({
 	fileName: Schema.String,
-	fileSize: Schema.Number,
+	fileSize: Schema.Number.pipe(
+		Schema.between(1, MAX_ATTACHMENT_SIZE, {
+			message: () => "File size must be between 1 byte and 10MB",
+		}),
+	),
 	contentType: Schema.String,
 	organizationId: OrganizationId,
 	channelId: ChannelId,

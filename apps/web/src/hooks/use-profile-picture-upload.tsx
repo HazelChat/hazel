@@ -21,11 +21,14 @@ export function useProfilePictureUpload() {
 	})
 	const updateUserMutation = useAtomSet(updateUserAction, { mode: "promiseExit" })
 
-	// Upload file with progress tracking using XHR
 	const uploadToR2 = useCallback(
-		(url: string, file: File): Promise<boolean> => {
+		(
+			url: string,
+			file: File,
+		): Promise<{ success: boolean; errorType?: "network" | "timeout" | "server" }> => {
 			return new Promise((resolve) => {
 				const xhr = new XMLHttpRequest()
+				xhr.timeout = 60000 // 60 second timeout
 
 				xhr.upload.onprogress = (event) => {
 					if (event.lengthComputable) {
@@ -34,8 +37,15 @@ export function useProfilePictureUpload() {
 					}
 				}
 
-				xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-				xhr.onerror = () => resolve(false)
+				xhr.onload = () => {
+					if (xhr.status >= 200 && xhr.status < 300) {
+						resolve({ success: true })
+					} else {
+						resolve({ success: false, errorType: "server" })
+					}
+				}
+				xhr.onerror = () => resolve({ success: false, errorType: "network" })
+				xhr.ontimeout = () => resolve({ success: false, errorType: "timeout" })
 
 				xhr.open("PUT", url)
 				xhr.setRequestHeader("Content-Type", file.type)
@@ -77,6 +87,7 @@ export function useProfilePictureUpload() {
 				const urlRes = await getUploadUrlMutation({
 					payload: {
 						contentType: file.type,
+						fileSize: file.size,
 					},
 				})
 
@@ -90,17 +101,29 @@ export function useProfilePictureUpload() {
 				const { uploadUrl, key } = urlRes.value
 
 				// Step 2: Upload file directly to R2 using XHR (for progress tracking)
-				const uploadSuccess = await uploadToR2(uploadUrl, file)
+				const uploadResult = await uploadToR2(uploadUrl, file)
 
-				if (!uploadSuccess) {
+				if (!uploadResult.success) {
+					const errorMessages = {
+						network: "Network error. Check your connection and try again.",
+						timeout: "Upload timed out. Try a smaller image or check your connection.",
+						server: "Server error during upload. Please try again later.",
+					}
 					toast.error("Upload failed", {
-						description: "Failed to upload image. Please try again.",
+						description: errorMessages[uploadResult.errorType ?? "server"],
 					})
 					return null
 				}
 
 				// Step 3: Construct public URL and update user's avatarUrl
-				const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
+				const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
+				if (!r2PublicUrl) {
+					console.error("VITE_R2_PUBLIC_URL environment variable is not set")
+					toast.error("Configuration error", {
+						description: "Image upload is not configured. Please contact support.",
+					})
+					return null
+				}
 				const publicUrl = `${r2PublicUrl}/${key}`
 
 				const result = await updateUserMutation({

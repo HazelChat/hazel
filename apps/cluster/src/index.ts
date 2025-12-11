@@ -16,7 +16,7 @@ import { Cluster } from "@hazel/domain"
 import { Config, Effect, Layer, Logger, Redacted } from "effect"
 import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
-import { MessageNotificationWorkflowLayer } from "./workflows/index.ts"
+import { CleanupUploadsWorkflowLayer, MessageNotificationWorkflowLayer } from "./workflows/index.ts"
 
 // PostgreSQL configuration (uses existing database)
 const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
@@ -39,7 +39,9 @@ const HealthLive = HttpApiBuilder.group(Cluster.WorkflowApi, "health", (handlers
 	handlers.handle("ok", () => Effect.succeed("ok")),
 )
 
-const AllWorkflows = MessageNotificationWorkflowLayer.pipe(Layer.provide(DatabaseLayer))
+const AllWorkflows = Layer.mergeAll(MessageNotificationWorkflowLayer, CleanupUploadsWorkflowLayer).pipe(
+	Layer.provide(DatabaseLayer),
+)
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps

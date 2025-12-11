@@ -70,4 +70,25 @@ export class AttachmentRpcs extends RpcGroup.make(
 		success: Attachment.Model,
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * AttachmentFail
+	 *
+	 * Marks an attachment as failed after an upload error.
+	 * Only the original uploader can mark as failed.
+	 *
+	 * @param payload - Attachment ID and optional failure reason
+	 * @returns void
+	 * @throws AttachmentNotFoundError if attachment doesn't exist
+	 * @throws UnauthorizedError if user is not the uploader
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("attachment.fail", {
+		payload: Schema.Struct({
+			id: AttachmentId,
+			reason: Schema.optional(Schema.String),
+		}),
+		success: Schema.Void,
+		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

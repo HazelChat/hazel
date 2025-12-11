@@ -32,13 +32,23 @@ export function useFileUpload({
 		mode: "promiseExit",
 	})
 
+	const failUploadMutation = useAtomSet(HazelRpcClient.mutation("attachment.fail"), {
+		mode: "promiseExit",
+	})
+
 	// Upload file directly to R2 using XHR (for progress tracking)
+	// Returns { success: boolean, errorType?: 'network' | 'timeout' | 'server' | 'aborted' }
 	const uploadToR2 = useCallback(
-		(url: string, file: File, fileId: string): Promise<boolean> => {
+		(
+			url: string,
+			file: File,
+			fileId: string,
+		): Promise<{ success: boolean; errorType?: "network" | "timeout" | "server" | "aborted" }> => {
 			return new Promise((resolve) => {
 				const xhr = new XMLHttpRequest()
 				const abortController = new AbortController()
 				abortControllersRef.current.set(fileId, abortController)
+				xhr.timeout = 120000 // 2 minute timeout for larger files
 
 				xhr.upload.onprogress = (event) => {
 					if (event.lengthComputable) {
@@ -50,17 +60,26 @@ export function useFileUpload({
 
 				xhr.onload = () => {
 					abortControllersRef.current.delete(fileId)
-					resolve(xhr.status >= 200 && xhr.status < 300)
+					if (xhr.status >= 200 && xhr.status < 300) {
+						resolve({ success: true })
+					} else {
+						resolve({ success: false, errorType: "server" })
+					}
 				}
 
 				xhr.onerror = () => {
 					abortControllersRef.current.delete(fileId)
-					resolve(false)
+					resolve({ success: false, errorType: "network" })
+				}
+
+				xhr.ontimeout = () => {
+					abortControllersRef.current.delete(fileId)
+					resolve({ success: false, errorType: "timeout" })
 				}
 
 				xhr.onabort = () => {
 					abortControllersRef.current.delete(fileId)
-					resolve(false)
+					resolve({ success: false, errorType: "aborted" })
 				}
 
 				xhr.open("PUT", url)
@@ -111,12 +130,27 @@ export function useFileUpload({
 				const { uploadUrl, attachmentId } = urlRes.value
 
 				// Step 2: Upload file directly to R2 using XHR (for progress tracking)
-				const uploadSuccess = await uploadToR2(uploadUrl, file, trackingId)
+				const uploadResult = await uploadToR2(uploadUrl, file, trackingId)
 
-				if (!uploadSuccess) {
-					toast.error("Upload failed", {
-						description: "Failed to upload file. Please try again.",
-					})
+				if (!uploadResult.success) {
+					// Don't show error for aborted uploads (user cancelled)
+					if (uploadResult.errorType !== "aborted") {
+						// Mark attachment as failed in the database
+						await failUploadMutation({
+							payload: { id: attachmentId, reason: `R2 upload failed: ${uploadResult.errorType}` },
+						})
+						const errorMessages = {
+							network: "Network error. Check your connection and try again.",
+							timeout: "Upload timed out. Try a smaller file or check your connection.",
+							server: "Server error during upload. Please try again later.",
+						}
+						toast.error("Upload failed", {
+							description: errorMessages[uploadResult.errorType ?? "server"],
+						})
+					} else {
+						// Still mark as failed for aborted uploads
+						await failUploadMutation({ payload: { id: attachmentId, reason: "Upload cancelled" } })
+					}
 					return null
 				}
 
@@ -124,6 +158,8 @@ export function useFileUpload({
 				const completeRes = await completeUploadMutation({ payload: { id: attachmentId } })
 
 				if (!Exit.isSuccess(completeRes)) {
+					// Mark attachment as failed in the database
+					await failUploadMutation({ payload: { id: attachmentId, reason: "Failed to finalize upload" } })
 					toast.error("Upload failed", {
 						description: "Failed to finalize upload. Please try again.",
 					})
@@ -146,7 +182,16 @@ export function useFileUpload({
 				return null
 			}
 		},
-		[maxFileSize, organizationId, channelId, user?.id, getUploadUrlMutation, completeUploadMutation, uploadToR2],
+		[
+			maxFileSize,
+			organizationId,
+			channelId,
+			user?.id,
+			getUploadUrlMutation,
+			completeUploadMutation,
+			failUploadMutation,
+			uploadToR2,
+		],
 	)
 
 	const cancelUpload = useCallback((fileId: string) => {

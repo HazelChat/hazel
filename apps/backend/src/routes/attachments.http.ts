@@ -22,7 +22,9 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 
 				const attachmentId = AttachmentId.make(randomUUIDv7())
 
-				yield* Effect.log(`Generating presigned URL for attachment upload: ${attachmentId}`)
+				yield* Effect.log(
+					`Generating presigned URL for attachment upload: ${attachmentId} (size: ${payload.fileSize} bytes, type: ${payload.contentType})`,
+				)
 
 				// Create attachment record with "uploading" status
 				yield* db
@@ -55,6 +57,16 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 						expiresIn: 300, // 5 minutes
 					},
 				).pipe(
+					Effect.tapError((error) =>
+						Effect.logError("Failed to generate attachment presigned URL", {
+							userId: user.id,
+							attachmentId,
+							fileName: payload.fileName,
+							fileSize: payload.fileSize,
+							contentType: payload.contentType,
+							error: String(error),
+						}),
+					),
 					Effect.mapError(
 						(error) =>
 							new AttachmentUploadError({

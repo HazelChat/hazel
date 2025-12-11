@@ -17,7 +17,9 @@ export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handler
 
 				const key = `avatars/${user.id}/${randomUUIDv7()}`
 
-				yield* Effect.log(`Generating presigned URL for avatar upload: ${key}`)
+				yield* Effect.log(
+					`Generating presigned URL for avatar upload: ${key} (size: ${payload.fileSize} bytes, type: ${payload.contentType})`,
+				)
 
 				const uploadUrl = yield* S3.putObject(
 					{
@@ -30,6 +32,15 @@ export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handler
 						expiresIn: 300, // 5 minutes
 					},
 				).pipe(
+					Effect.tapError((error) =>
+						Effect.logError("Failed to generate avatar presigned URL", {
+							userId: user.id,
+							key,
+							fileSize: payload.fileSize,
+							contentType: payload.contentType,
+							error: String(error),
+						}),
+					),
 					Effect.mapError(
 						(error) =>
 							new AvatarUploadError({

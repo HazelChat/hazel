@@ -39,6 +39,19 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("Attachment", "update")),
+
+			"attachment.fail": ({ id, reason }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							yield* Effect.log(`Marking attachment ${id} as failed${reason ? `: ${reason}` : ""}`)
+
+							yield* AttachmentRepo.update({ id, status: "failed" }).pipe(
+								policyUse(AttachmentPolicy.canUpdate(id)),
+							)
+						}),
+					)
+					.pipe(withRemapDbErrors("Attachment", "update")),
 		}
 	}),
 )
