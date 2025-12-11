@@ -1,10 +1,10 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
 import { updateUserAction } from "~/db/actions"
-import { useAuth } from "~/lib/auth"
+import { currentUserQueryAtom, useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -13,6 +13,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 export function useProfilePictureUpload() {
 	const { user } = useAuth()
 	const [isUploading, setIsUploading] = useState(false)
+	const refreshCurrentUser = useAtomRefresh(currentUserQueryAtom)
 
 	const getUploadUrlMutation = useAtomSet(HazelApiClient.mutation("avatars", "getUploadUrl"), {
 		mode: "promiseExit",
@@ -95,6 +96,9 @@ export function useProfilePictureUpload() {
 					return null
 				}
 
+				// Refresh the current user query to update UI immediately
+				refreshCurrentUser()
+
 				toast.success("Profile picture updated")
 				return publicUrl
 			} catch (error) {
@@ -107,7 +111,7 @@ export function useProfilePictureUpload() {
 				setIsUploading(false)
 			}
 		},
-		[user?.id, getUploadUrlMutation, updateUserMutation],
+		[user?.id, getUploadUrlMutation, updateUserMutation, refreshCurrentUser],
 	)
 
 	return {
