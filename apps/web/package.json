@@ -60,7 +60,7 @@
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
 		"effect": "catalog:effect",
-		"effect-rpc-tanstack-devtools": "^0.1.0",
+		"effect-rpc-tanstack-devtools": "0.1.1",
 		"embla-carousel-react": "^8.6.0",
 		"frimousse": "^0.3.0",
 		"input-otp": "^1.4.2",
