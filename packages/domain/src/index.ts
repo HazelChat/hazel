@@ -13,6 +13,7 @@ export * from "./ids"
 export * as Integrations from "./integrations"
 // Policy utilities
 export * from "./policy"
+export * from "./rate-limit-errors"
 // RPC contracts
 export * as Rpc from "./rpc"
 export * from "./session"

@@ -6,6 +6,7 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
+		"./Redis": "./src/Redis.ts",
 		"./S3": "./src/S3.ts"
 	},
 	"scripts": {

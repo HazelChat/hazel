@@ -8,11 +8,8 @@
 - Upload Improvements
   - Add server side rate limtiing
   - Add cropping and max size limits for avatars
-- add rate litimting to messages/avatar 
 
 # Bugs 
-- linear throwing 500's on issue in prod
-- sometimes user has no orgId in session 
 
 # FE stuff
 

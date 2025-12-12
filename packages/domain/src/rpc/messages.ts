@@ -4,6 +4,7 @@ import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { MessageId } from "../ids"
 import { Message } from "../models"
+import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "../transaction-id"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
@@ -34,6 +35,7 @@ export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundErro
  * - MessageDelete: Delete a message
  *
  * All methods require authentication via AuthMiddleware.
+ * Rate limiting (60 req/min per user) is applied in the handlers.
  *
  * Example usage from frontend:
  * ```typescript
@@ -68,12 +70,13 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @returns Message data and transaction ID
 	 * @throws ChannelNotFoundError if channel doesn't exist
 	 * @throws UnauthorizedError if user lacks permission
+	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.mutation("message.create", {
 		payload: Message.Insert,
 		success: MessageResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -86,6 +89,7 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @returns Updated message data and transaction ID
 	 * @throws MessageNotFoundError if message doesn't exist
 	 * @throws UnauthorizedError if user lacks permission
+	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.mutation("message.update", {
@@ -93,7 +97,7 @@ export class MessageRpcs extends RpcGroup.make(
 			id: MessageId,
 		}).pipe(Schema.extend(Schema.partial(Message.Model.jsonUpdate))),
 		success: MessageResponse,
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -106,11 +110,12 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @returns Transaction ID
 	 * @throws MessageNotFoundError if message doesn't exist
 	 * @throws UnauthorizedError if user lacks permission
+	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.mutation("message.delete", {
 		payload: Schema.Struct({ id: MessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 ) {}

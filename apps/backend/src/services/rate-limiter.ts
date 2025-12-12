@@ -1,0 +1,161 @@
+import { Redis, type RedisErrors } from "@hazel/effect-bun"
+import { Context, Effect, Layer } from "effect"
+
+/**
+ * Result of a rate limit check
+ */
+export interface RateLimitResult {
+	/** Whether the request is allowed */
+	readonly allowed: boolean
+	/** Number of requests remaining in the current window */
+	readonly remaining: number
+	/** Milliseconds until the rate limit resets */
+	readonly resetAfterMs: number
+	/** Maximum requests allowed per window */
+	readonly limit: number
+}
+
+/**
+ * Rate limiter service interface
+ */
+export interface RateLimiterService {
+	/**
+	 * Check and consume from a rate limit bucket using fixed-window algorithm.
+	 *
+	 * @param key - Unique key for this rate limit (e.g., "messages:user-123")
+	 * @param limit - Maximum requests allowed per window
+	 * @param windowMs - Window duration in milliseconds
+	 * @returns RateLimitResult with allowed status and metadata
+	 */
+	readonly consume: (
+		key: string,
+		limit: number,
+		windowMs: number,
+	) => Effect.Effect<RateLimitResult, RateLimiterError>
+}
+
+export class RateLimiterError extends Error {
+	readonly _tag = "RateLimiterError"
+	constructor(
+		readonly cause: unknown,
+		message?: string,
+	) {
+		super(message ?? "Rate limiter error")
+	}
+}
+
+export class RateLimiter extends Context.Tag("RateLimiter")<RateLimiter, RateLimiterService>() {}
+
+/**
+ * Fixed-window rate limiting Lua script.
+ *
+ * This script atomically:
+ * 1. Gets the current count for the key
+ * 2. If no key exists, creates it with count=1 and TTL=windowMs
+ * 3. If key exists and count < limit, increments and returns allowed
+ * 4. If key exists and count >= limit, returns denied with TTL info
+ *
+ * Returns: [allowed (0/1), remaining, resetAfterMs]
+ */
+const FIXED_WINDOW_SCRIPT = `
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local windowMs = tonumber(ARGV[2])
+
+local current = tonumber(redis.call("GET", key) or "0")
+local ttl = tonumber(redis.call("PTTL", key))
+
+if ttl < 0 then
+  ttl = windowMs
+end
+
+if current < limit then
+  if current == 0 then
+    redis.call("SET", key, 1, "PX", windowMs)
+  else
+    redis.call("INCR", key)
+  end
+  return {1, limit - current - 1, ttl}
+else
+  return {0, 0, ttl}
+end
+`
+
+/**
+ * Rate limiter layer backed by Redis via @hazel/effect-bun
+ */
+export const RateLimiterLive = Layer.effect(
+	RateLimiter,
+	Effect.gen(function* () {
+		const redis = yield* Redis
+
+		const service: RateLimiterService = {
+			consume: (key, limit, windowMs) =>
+				redis
+					.send<[number, number, number]>("EVAL", [
+						FIXED_WINDOW_SCRIPT,
+						"1",
+						`ratelimit:${key}`,
+						String(limit),
+						String(windowMs),
+					])
+					.pipe(
+						Effect.map(([allowed, remaining, resetAfterMs]) => ({
+							allowed: allowed === 1,
+							remaining,
+							resetAfterMs,
+							limit,
+						})),
+						Effect.mapError((e: RedisErrors) => new RateLimiterError(e, "Failed to execute rate limit check")),
+					),
+		}
+
+		return service
+	}),
+)
+
+/**
+ * In-memory rate limiter for testing (no Redis required)
+ */
+const memoryStore = new Map<string, number>()
+
+const memoryService: RateLimiterService = {
+	consume: (key, limit, windowMs) =>
+		Effect.sync(() => {
+			// Simple in-memory implementation using a Map
+			const now = Date.now()
+			const windowKey = `${key}:${Math.floor(now / windowMs)}`
+
+			if (!memoryStore.has(windowKey)) {
+				memoryStore.set(windowKey, 1)
+				// Clean up old keys periodically
+				setTimeout(() => memoryStore.delete(windowKey), windowMs)
+				return {
+					allowed: true,
+					remaining: limit - 1,
+					resetAfterMs: windowMs - (now % windowMs),
+					limit,
+				}
+			}
+
+			const current = memoryStore.get(windowKey)!
+			if (current < limit) {
+				memoryStore.set(windowKey, current + 1)
+				return {
+					allowed: true,
+					remaining: limit - current - 1,
+					resetAfterMs: windowMs - (now % windowMs),
+					limit,
+				}
+			}
+
+			return {
+				allowed: false,
+				remaining: 0,
+				resetAfterMs: windowMs - (now % windowMs),
+				limit,
+			}
+		}),
+}
+
+export const RateLimiterMemoryLive = Layer.succeed(RateLimiter, memoryService)

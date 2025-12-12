@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
+import { RateLimitExceededError } from "../rate-limit-errors"
 
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -36,6 +37,12 @@ export class AvatarUploadError extends Schema.TaggedError<AvatarUploadError>("Av
 	}),
 ) {}
 
+/**
+ * Avatar API Group
+ *
+ * Provides endpoints for avatar management.
+ * Rate limiting (5 req/hour per user) is applied in the handler.
+ */
 export class AvatarGroup extends HttpApiGroup.make("avatars")
 	.add(
 		HttpApiEndpoint.post("getUploadUrl", "/upload-url")
@@ -43,7 +50,8 @@ export class AvatarGroup extends HttpApiGroup.make("avatars")
 			.addSuccess(GetAvatarUploadUrlResponse)
 			.addError(AvatarUploadError)
 			.addError(UnauthorizedError)
-			.addError(InternalServerError),
+			.addError(InternalServerError)
+			.addError(RateLimitExceededError),
 	)
 	.prefix("/users/avatar")
 	.middleware(CurrentUser.Authorization) {}

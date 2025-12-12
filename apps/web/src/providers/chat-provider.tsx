@@ -166,8 +166,12 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			})
 
 			toastExitOnError(tx, {
-				error: "Failed to send message",
 				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before sending another message.`,
+						isRetryable: false,
+					}),
 					ChannelNotFoundError: () => ({
 						title: "Channel not found",
 						description: "This channel may have been deleted.",
@@ -197,8 +201,12 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		async (messageId: MessageId, content: string) => {
 			const exit = await editMessageMutation({ messageId, content })
 			toastExitOnError(exit, {
-				error: "Failed to edit message",
 				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before trying again.`,
+						isRetryable: false,
+					}),
 					MessageNotFoundError: () => ({
 						title: "Message not found",
 						description: "This message may have been deleted.",
@@ -214,8 +222,12 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		async (messageId: MessageId) => {
 			const exit = await deleteMessageMutation({ messageId })
 			toastExitOnError(exit, {
-				error: "Failed to delete message",
 				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before trying again.`,
+						isRetryable: false,
+					}),
 					MessageNotFoundError: () => ({
 						title: "Message not found",
 						description: "This message may have already been deleted.",

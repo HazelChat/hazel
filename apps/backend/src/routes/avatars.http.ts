@@ -4,6 +4,7 @@ import { S3 } from "@hazel/effect-bun"
 import { randomUUIDv7 } from "bun"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
+import { checkAvatarRateLimit } from "../services/rate-limit-helpers"
 
 export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handlers) =>
 	Effect.gen(function* () {
@@ -13,6 +14,9 @@ export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handler
 			"getUploadUrl",
 			Effect.fn(function* ({ payload }) {
 				const user = yield* CurrentUser.Context
+
+				// Check rate limit before processing (5 per hour)
+				yield* checkAvatarRateLimit(user.id)
 
 				const key = `avatars/${user.id}/${randomUUIDv7()}`
 
