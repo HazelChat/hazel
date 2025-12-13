@@ -641,7 +641,25 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			role: { slug: string }
 		}) =>
 			Effect.gen(function* () {
-				const orgId = data.organizationId as OrganizationId
+				// Fetch WorkOS org to get externalId (our internal org ID)
+				const workosOrgResult = yield* pipe(
+					workos.call((client) => client.organizations.getOrganization(data.organizationId)),
+					Effect.either,
+				)
+
+				if (workosOrgResult._tag === "Left") {
+					yield* Effect.logError(`Failed to fetch WorkOS org ${data.organizationId}`)
+					return
+				}
+
+				const workosOrg = workosOrgResult.right
+
+				if (!workosOrg.externalId) {
+					yield* Effect.logWarning(`WorkOS org ${data.organizationId} has no externalId`)
+					return
+				}
+
+				const orgId = workosOrg.externalId as OrganizationId
 				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
@@ -660,7 +678,25 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const handleMembershipRemoved = (data: { organizationId: string; userId: string }) =>
 			Effect.gen(function* () {
-				const orgId = data.organizationId as OrganizationId
+				// Fetch WorkOS org to get externalId (our internal org ID)
+				const workosOrgResult = yield* pipe(
+					workos.call((client) => client.organizations.getOrganization(data.organizationId)),
+					Effect.either,
+				)
+
+				if (workosOrgResult._tag === "Left") {
+					yield* Effect.logError(`Failed to fetch WorkOS org ${data.organizationId}`)
+					return
+				}
+
+				const workosOrg = workosOrgResult.right
+
+				if (!workosOrg.externalId) {
+					yield* Effect.logWarning(`WorkOS org ${data.organizationId} has no externalId`)
+					return
+				}
+
+				const orgId = workosOrg.externalId as OrganizationId
 				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
