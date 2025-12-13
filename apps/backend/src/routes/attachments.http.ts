@@ -48,13 +48,22 @@ export const HttpAttachmentLive = HttpApiBuilder.group(HazelApi, "attachments", 
 						policyUse(AttachmentPolicy.canCreate()),
 					)
 
-				// Generate presigned URL (synchronous - no network call needed)
-				const uploadUrl = s3.presign(attachmentId, {
-					acl: "public-read",
-					method: "PUT",
-					type: payload.contentType,
-					expiresIn: 300, // 5 minutes
-				})
+				// Generate presigned URL
+				const uploadUrl = yield* s3
+					.presign(attachmentId, {
+						acl: "public-read",
+						method: "PUT",
+						type: payload.contentType,
+						expiresIn: 300, // 5 minutes
+					})
+					.pipe(
+						Effect.mapError(
+							(error) =>
+								new AttachmentUploadError({
+									message: `Failed to generate presigned URL: ${error.message}`,
+								}),
+						),
+					)
 
 				yield* Effect.log(`Generated presigned URL for attachment: ${attachmentId}`)
 

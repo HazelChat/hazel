@@ -1,5 +1,6 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { CurrentUser } from "@hazel/domain"
+import { AvatarUploadError } from "@hazel/domain/http"
 import { S3 } from "@hazel/effect-bun"
 import { randomUUIDv7 } from "bun"
 import { Effect } from "effect"
@@ -24,12 +25,21 @@ export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handler
 					`Generating presigned URL for avatar upload: ${key} (size: ${payload.fileSize} bytes, type: ${payload.contentType})`,
 				)
 
-				// Generate presigned URL (synchronous - no network call needed)
-				const uploadUrl = s3.presign(key, {
-					method: "PUT",
-					type: payload.contentType,
-					expiresIn: 300, // 5 minutes
-				})
+				// Generate presigned URL
+				const uploadUrl = yield* s3
+					.presign(key, {
+						method: "PUT",
+						type: payload.contentType,
+						expiresIn: 300, // 5 minutes
+					})
+					.pipe(
+						Effect.mapError(
+							(error) =>
+								new AvatarUploadError({
+									message: `Failed to generate presigned URL: ${error.message}`,
+								}),
+						),
+					)
 
 				yield* Effect.log(`Generated presigned URL for avatar: ${key}`)
 

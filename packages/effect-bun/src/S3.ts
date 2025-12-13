@@ -139,7 +139,7 @@ export type S3WriteData = string | ArrayBuffer | Uint8Array | Blob | Response | 
  *
  * const program = Effect.gen(function* () {
  *   const s3 = yield* S3
- *   const url = s3.presign("my-file.txt", { method: "PUT", expiresIn: 300 })
+ *   const url = yield* s3.presign("my-file.txt", { method: "PUT", expiresIn: 300 })
  *   return url
  * })
  * ```
@@ -148,13 +148,13 @@ export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
 	S3,
 	{
 		/**
-		 * Generate a presigned URL for S3 operations (synchronous - no network call)
+		 * Generate a presigned URL for S3 operations
 		 */
-		readonly presign: (key: string, options?: S3FilePresignOptions) => string
+		readonly presign: (key: string, options?: S3FilePresignOptions) => Effect.Effect<string, S3Errors>
 		/**
 		 * Get a lazy reference to an S3 file
 		 */
-		readonly file: (key: string) => S3File
+		readonly file: (key: string) => Effect.Effect<S3File, S3Errors>
 		/**
 		 * Write data to S3
 		 */
@@ -170,22 +170,30 @@ export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
 	}
 >() {
 	static readonly Default = Layer.sync(S3, () => ({
-		file: (key) => bunS3.file(key),
-		presign: (key, options) => bunS3.presign(key, options),
+		file: (key) =>
+			Effect.try({
+				try: () => bunS3.file(key),
+				catch: mapS3Error,
+			}).pipe(Effect.withSpan("S3.file", { attributes: { key } })),
+		presign: (key, options) =>
+			Effect.try({
+				try: () => bunS3.presign(key, options),
+				catch: mapS3Error,
+			}).pipe(Effect.withSpan("S3.presign", { attributes: { key, method: options?.method } })),
 		write: (key, data) =>
 			Effect.tryPromise({
 				try: () => bunS3.write(key, data),
 				catch: mapS3Error,
-			}),
+			}).pipe(Effect.withSpan("S3.write", { attributes: { key } })),
 		delete: (key) =>
 			Effect.tryPromise({
 				try: () => bunS3.delete(key),
 				catch: mapS3Error,
-			}),
+			}).pipe(Effect.withSpan("S3.delete", { attributes: { key } })),
 		exists: (key) =>
 			Effect.tryPromise({
 				try: () => bunS3.exists(key),
 				catch: mapS3Error,
-			}),
+			}).pipe(Effect.withSpan("S3.exists", { attributes: { key } })),
 	}))
 }
