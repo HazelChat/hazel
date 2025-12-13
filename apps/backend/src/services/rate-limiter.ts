@@ -1,5 +1,5 @@
 import { Redis, type RedisErrors } from "@hazel/effect-bun"
-import { Context, Effect, Layer } from "effect"
+import { Effect, Layer } from "effect"
 
 /**
  * Result of a rate limit check
@@ -15,25 +15,6 @@ export interface RateLimitResult {
 	readonly limit: number
 }
 
-/**
- * Rate limiter service interface
- */
-export interface RateLimiterService {
-	/**
-	 * Check and consume from a rate limit bucket using fixed-window algorithm.
-	 *
-	 * @param key - Unique key for this rate limit (e.g., "messages:user-123")
-	 * @param limit - Maximum requests allowed per window
-	 * @param windowMs - Window duration in milliseconds
-	 * @returns RateLimitResult with allowed status and metadata
-	 */
-	readonly consume: (
-		key: string,
-		limit: number,
-		windowMs: number,
-	) => Effect.Effect<RateLimitResult, RateLimiterError>
-}
-
 export class RateLimiterError extends Error {
 	readonly _tag = "RateLimiterError"
 	constructor(
@@ -43,8 +24,6 @@ export class RateLimiterError extends Error {
 		super(message ?? "Rate limiter error")
 	}
 }
-
-export class RateLimiter extends Context.Tag("RateLimiter")<RateLimiter, RateLimiterService>() {}
 
 /**
  * Fixed-window rate limiting Lua script.
@@ -82,15 +61,23 @@ end
 `
 
 /**
- * Rate limiter layer backed by Redis via @hazel/effect-bun
+ * Rate limiter service backed by Redis via @hazel/effect-bun
  */
-export const RateLimiterLive = Layer.effect(
-	RateLimiter,
-	Effect.gen(function* () {
+export class RateLimiter extends Effect.Service<RateLimiter>()("RateLimiter", {
+	dependencies: [Redis.Default],
+	effect: Effect.gen(function* () {
 		const redis = yield* Redis
 
-		const service: RateLimiterService = {
-			consume: (key, limit, windowMs) =>
+		return {
+			/**
+			 * Check and consume from a rate limit bucket using fixed-window algorithm.
+			 *
+			 * @param key - Unique key for this rate limit (e.g., "messages:user-123")
+			 * @param limit - Maximum requests allowed per window
+			 * @param windowMs - Window duration in milliseconds
+			 * @returns RateLimitResult with allowed status and metadata
+			 */
+			consume: (key: string, limit: number, windowMs: number) =>
 				redis
 					.send<[number, number, number]>("EVAL", [
 						FIXED_WINDOW_SCRIPT,
@@ -109,53 +96,52 @@ export const RateLimiterLive = Layer.effect(
 						Effect.mapError((e: RedisErrors) => new RateLimiterError(e, "Failed to execute rate limit check")),
 					),
 		}
-
-		return service
 	}),
-)
+}) {}
 
 /**
  * In-memory rate limiter for testing (no Redis required)
  */
 const memoryStore = new Map<string, number>()
 
-const memoryService: RateLimiterService = {
-	consume: (key, limit, windowMs) =>
-		Effect.sync(() => {
-			// Simple in-memory implementation using a Map
-			const now = Date.now()
-			const windowKey = `${key}:${Math.floor(now / windowMs)}`
+export const RateLimiterMemoryLive = Layer.succeed(
+	RateLimiter,
+	RateLimiter.make({
+		consume: (key: string, limit: number, windowMs: number) =>
+			Effect.sync(() => {
+				// Simple in-memory implementation using a Map
+				const now = Date.now()
+				const windowKey = `${key}:${Math.floor(now / windowMs)}`
 
-			if (!memoryStore.has(windowKey)) {
-				memoryStore.set(windowKey, 1)
-				// Clean up old keys periodically
-				setTimeout(() => memoryStore.delete(windowKey), windowMs)
+				if (!memoryStore.has(windowKey)) {
+					memoryStore.set(windowKey, 1)
+					// Clean up old keys periodically
+					setTimeout(() => memoryStore.delete(windowKey), windowMs)
+					return {
+						allowed: true,
+						remaining: limit - 1,
+						resetAfterMs: windowMs - (now % windowMs),
+						limit,
+					}
+				}
+
+				const current = memoryStore.get(windowKey)!
+				if (current < limit) {
+					memoryStore.set(windowKey, current + 1)
+					return {
+						allowed: true,
+						remaining: limit - current - 1,
+						resetAfterMs: windowMs - (now % windowMs),
+						limit,
+					}
+				}
+
 				return {
-					allowed: true,
-					remaining: limit - 1,
+					allowed: false,
+					remaining: 0,
 					resetAfterMs: windowMs - (now % windowMs),
 					limit,
 				}
-			}
-
-			const current = memoryStore.get(windowKey)!
-			if (current < limit) {
-				memoryStore.set(windowKey, current + 1)
-				return {
-					allowed: true,
-					remaining: limit - current - 1,
-					resetAfterMs: windowMs - (now % windowMs),
-					limit,
-				}
-			}
-
-			return {
-				allowed: false,
-				remaining: 0,
-				resetAfterMs: windowMs - (now % windowMs),
-				limit,
-			}
-		}),
-}
-
-export const RateLimiterMemoryLive = Layer.succeed(RateLimiter, memoryService)
+			}),
+	}),
+)

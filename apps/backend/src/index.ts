@@ -52,7 +52,7 @@ import { CommandRegistry } from "./services/integrations/command-registry"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
-import { RateLimiterLive } from "./services/rate-limiter"
+import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { WorkOS } from "./services/workos"
@@ -148,7 +148,7 @@ const MainLive = Layer.mergeAll(
 	CommandRegistry.Default,
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
-	RateLimiterLive.pipe(Layer.provide(Redis.Default)),
+	RateLimiter.Default,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
 HttpLayerRouter.serve(AllRoutes).pipe(
