@@ -49,7 +49,10 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 								.from(schema.githubSubscriptionsTable)
 								.where(
 									and(
-										eq(schema.githubSubscriptionsTable.organizationId, data.organizationId),
+										eq(
+											schema.githubSubscriptionsTable.organizationId,
+											data.organizationId,
+										),
 										isNull(schema.githubSubscriptionsTable.deletedAt),
 									),
 								),
@@ -69,7 +72,10 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 									.where(
 										and(
 											eq(schema.githubSubscriptionsTable.channelId, data.channelId),
-											eq(schema.githubSubscriptionsTable.repositoryId, data.repositoryId),
+											eq(
+												schema.githubSubscriptionsTable.repositoryId,
+												data.repositoryId,
+											),
 											isNull(schema.githubSubscriptionsTable.deletedAt),
 										),
 									)
@@ -103,8 +109,12 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 							client
 								.update(schema.githubSubscriptionsTable)
 								.set({
-									...(data.enabledEvents !== undefined && { enabledEvents: data.enabledEvents }),
-									...(data.branchFilter !== undefined && { branchFilter: data.branchFilter }),
+									...(data.enabledEvents !== undefined && {
+										enabledEvents: data.enabledEvents,
+									}),
+									...(data.branchFilter !== undefined && {
+										branchFilter: data.branchFilter,
+									}),
 									...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
 									updatedAt: new Date(),
 								})

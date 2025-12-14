@@ -114,15 +114,21 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 							const subscriptionRepo = yield* GitHubSubscriptionRepo
 
 							// Get current subscription
-							const subscriptionOption = yield* subscriptionRepo.findById(id).pipe(withSystemActor)
+							const subscriptionOption = yield* subscriptionRepo
+								.findById(id)
+								.pipe(withSystemActor)
 							if (Option.isNone(subscriptionOption)) {
-								return yield* Effect.fail(new GitHubSubscriptionNotFoundError({ subscriptionId: id }))
+								return yield* Effect.fail(
+									new GitHubSubscriptionNotFoundError({ subscriptionId: id }),
+								)
 							}
 
 							// Update subscription
 							const [updatedSubscription] = yield* subscriptionRepo
 								.updateSettings(id, {
-									enabledEvents: payload.enabledEvents ? [...payload.enabledEvents] : undefined,
+									enabledEvents: payload.enabledEvents
+										? [...payload.enabledEvents]
+										: undefined,
 									branchFilter: payload.branchFilter,
 									isEnabled: payload.isEnabled,
 								})
@@ -145,9 +151,13 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 							const subscriptionRepo = yield* GitHubSubscriptionRepo
 
 							// Check subscription exists
-							const subscriptionOption = yield* subscriptionRepo.findById(id).pipe(withSystemActor)
+							const subscriptionOption = yield* subscriptionRepo
+								.findById(id)
+								.pipe(withSystemActor)
 							if (Option.isNone(subscriptionOption)) {
-								return yield* Effect.fail(new GitHubSubscriptionNotFoundError({ subscriptionId: id }))
+								return yield* Effect.fail(
+									new GitHubSubscriptionNotFoundError({ subscriptionId: id }),
+								)
 							}
 
 							// Soft delete subscription

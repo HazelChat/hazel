@@ -1,7 +1,10 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { type GitHubSubscriptionData, listGitHubSubscriptionsMutation } from "~/atoms/github-subscription-atoms"
+import {
+	type GitHubSubscriptionData,
+	listGitHubSubscriptionsMutation,
+} from "~/atoms/github-subscription-atoms"
 import IconPlus from "~/components/icons/icon-plus"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"

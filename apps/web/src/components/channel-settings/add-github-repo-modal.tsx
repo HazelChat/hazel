@@ -8,7 +8,15 @@ import { createGitHubSubscriptionMutation } from "~/atoms/github-subscription-at
 import { Button } from "~/components/ui/button"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Input, InputGroup } from "~/components/ui/input"
-import { Modal, ModalBody, ModalClose, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
+import {
+	Modal,
+	ModalBody,
+	ModalClose,
+	ModalContent,
+	ModalFooter,
+	ModalHeader,
+	ModalTitle,
+} from "~/components/ui/modal"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { matchExitWithToast } from "~/lib/toast-exit"
 
@@ -128,9 +136,7 @@ export function AddGitHubRepoModal({
 
 	// Filter repositories by search query
 	const filteredRepos = searchQuery
-		? repositories.filter((repo) =>
-				repo.fullName.toLowerCase().includes(searchQuery.toLowerCase()),
-			)
+		? repositories.filter((repo) => repo.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
 		: repositories
 
 	return (
@@ -160,11 +166,17 @@ export function AddGitHubRepoModal({
 								<div className="flex items-center justify-between rounded-lg border border-border p-3">
 									<div className="flex items-center gap-3">
 										<div className="flex size-8 items-center justify-center rounded bg-bg-muted">
-											<svg className="size-4 text-muted-fg" fill="currentColor" viewBox="0 0 16 16">
+											<svg
+												className="size-4 text-muted-fg"
+												fill="currentColor"
+												viewBox="0 0 16 16"
+											>
 												<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
 											</svg>
 										</div>
-										<span className="font-medium text-fg text-sm">{selectedRepo.fullName}</span>
+										<span className="font-medium text-fg text-sm">
+											{selectedRepo.fullName}
+										</span>
 									</div>
 									<Button intent="plain" size="sm" onPress={() => setSelectedRepo(null)}>
 										Change
@@ -182,7 +194,9 @@ export function AddGitHubRepoModal({
 									<div className="max-h-48 overflow-y-auto rounded-lg border border-border">
 										{filteredRepos.length === 0 ? (
 											<div className="flex items-center justify-center py-6 text-muted-fg text-sm">
-												{searchQuery ? "No repositories found" : "No repositories available"}
+												{searchQuery
+													? "No repositories found"
+													: "No repositories available"}
 											</div>
 										) : (
 											<div className="divide-y divide-border">
@@ -201,11 +215,17 @@ export function AddGitHubRepoModal({
 														className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-muted"
 													>
 														<div className="flex size-6 shrink-0 items-center justify-center rounded bg-bg-muted">
-															<svg className="size-3.5 text-muted-fg" fill="currentColor" viewBox="0 0 16 16">
+															<svg
+																className="size-3.5 text-muted-fg"
+																fill="currentColor"
+																viewBox="0 0 16 16"
+															>
 																<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
 															</svg>
 														</div>
-														<span className="truncate font-medium text-fg text-sm">{repo.fullName}</span>
+														<span className="truncate font-medium text-fg text-sm">
+															{repo.fullName}
+														</span>
 														{repo.private && (
 															<span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-amber-600 text-xs dark:text-amber-400">
 																Private
@@ -225,7 +245,9 @@ export function AddGitHubRepoModal({
 							<>
 								<div className="flex flex-col gap-2">
 									<label className="font-medium text-fg text-sm">Event Types</label>
-									<p className="text-muted-fg text-xs">Select which events to receive notifications for.</p>
+									<p className="text-muted-fg text-xs">
+										Select which events to receive notifications for.
+									</p>
 									<div className="grid grid-cols-2 gap-2">
 										{EVENT_OPTIONS.map((event) => (
 											<label
@@ -238,8 +260,12 @@ export function AddGitHubRepoModal({
 													className="mt-0.5"
 												/>
 												<div className="flex flex-col gap-0.5">
-													<span className="font-medium text-fg text-sm">{event.label}</span>
-													<span className="text-muted-fg text-xs">{event.description}</span>
+													<span className="font-medium text-fg text-sm">
+														{event.label}
+													</span>
+													<span className="text-muted-fg text-xs">
+														{event.description}
+													</span>
 												</div>
 											</label>
 										))}
@@ -249,7 +275,9 @@ export function AddGitHubRepoModal({
 								{/* Branch filter (only for push events) */}
 								{enabledEvents.includes("push") && (
 									<div className="flex flex-col gap-2">
-										<label className="font-medium text-fg text-sm">Branch Filter (Optional)</label>
+										<label className="font-medium text-fg text-sm">
+											Branch Filter (Optional)
+										</label>
 										<p className="text-muted-fg text-xs">
 											Only receive push events for branches matching this pattern.
 										</p>

@@ -1,7 +1,11 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
 import { WorkflowProxy } from "@effect/workflow"
 import { Schema } from "effect"
-import { CleanupUploadsWorkflow, GitHubWebhookWorkflow, MessageNotificationWorkflow } from "./workflows/index.ts"
+import {
+	CleanupUploadsWorkflow,
+	GitHubWebhookWorkflow,
+	MessageNotificationWorkflow,
+} from "./workflows/index.ts"
 
 // All workflows available in the cluster
 export const workflows = [MessageNotificationWorkflow, CleanupUploadsWorkflow, GitHubWebhookWorkflow] as const
