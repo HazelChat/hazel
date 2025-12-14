@@ -9,7 +9,6 @@ import {
 } from "@hazel/domain"
 import {
 	ConnectionStatusResponse,
-	GitHubRepositoriesResponse,
 	IntegrationNotConnectedError,
 	InvalidOAuthStateError,
 } from "@hazel/domain/http"
@@ -340,91 +339,6 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (path: {
 	yield* connectionRepo.softDelete(connection.id).pipe(withSystemActor)
 })
 
-/**
- * Get GitHub repositories accessible to the GitHub App installation.
- */
-const handleGetGitHubRepositories = Effect.fn("integrations.getGitHubRepositories")(function* (
-	path: { orgId: OrganizationId },
-	urlParams: { page: number; perPage: number },
-) {
-	const { orgId } = path
-	const { page, perPage } = urlParams
-
-	const connectionRepo = yield* IntegrationConnectionRepo
-	const tokenService = yield* IntegrationTokenService
-
-	// Check if organization has GitHub connected
-	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "github").pipe(withSystemActor)
-
-	if (Option.isNone(connectionOption)) {
-		return yield* Effect.fail(new IntegrationNotConnectedError({ provider: "github" }))
-	}
-
-	const connection = connectionOption.value
-
-	// Check if connection is active
-	if (connection.status !== "active") {
-		return yield* Effect.fail(new IntegrationNotConnectedError({ provider: "github" }))
-	}
-
-	// Get valid access token
-	const accessToken = yield* tokenService.getValidAccessToken(connection.id)
-
-	// Fetch repositories from GitHub API
-	const response = yield* Effect.tryPromise({
-		try: async () => {
-			const res = await fetch(
-				`https://api.github.com/installation/repositories?per_page=${perPage}&page=${page}`,
-				{
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						Accept: "application/vnd.github+json",
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				},
-			)
-
-			if (!res.ok) {
-				const errorText = await res.text()
-				throw new Error(`GitHub API error: ${res.status} ${errorText}`)
-			}
-
-			return res.json()
-		},
-		catch: (error) =>
-			new InternalServerError({
-				message: "Failed to fetch GitHub repositories",
-				detail: String(error),
-			}),
-	})
-
-	// Transform to response format
-	const repositories = (response.repositories ?? []).map((repo: any) => ({
-		id: repo.id,
-		name: repo.name,
-		fullName: repo.full_name,
-		private: repo.private,
-		htmlUrl: repo.html_url,
-		description: repo.description ?? null,
-		owner: {
-			login: repo.owner.login,
-			avatarUrl: repo.owner.avatar_url ?? null,
-		},
-	}))
-
-	const totalCount = response.total_count ?? 0
-	const hasNextPage = page * perPage < totalCount
-
-	return new GitHubRepositoriesResponse({
-		totalCount,
-		repositories,
-		hasNextPage,
-		page,
-		perPage,
-	})
-})
-
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>
 	handlers
 		.handle("getOAuthUrl", ({ path }) => handleGetOAuthUrl(path))
@@ -476,29 +390,6 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						}),
 					),
 				),
-			),
-		)
-		.handle("getGitHubRepositories", ({ path, urlParams }) =>
-			handleGetGitHubRepositories(path, urlParams).pipe(
-				Effect.catchTags({
-					DatabaseError: (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Failed to fetch GitHub repositories",
-								detail: String(error),
-							}),
-						),
-					TokenNotFoundError: () =>
-						Effect.fail(new IntegrationNotConnectedError({ provider: "github" })),
-					IntegrationEncryptionError: () =>
-						Effect.fail(new IntegrationNotConnectedError({ provider: "github" })),
-					KeyVersionNotFoundError: () =>
-						Effect.fail(new IntegrationNotConnectedError({ provider: "github" })),
-					TokenRefreshError: () =>
-						Effect.fail(new IntegrationNotConnectedError({ provider: "github" })),
-					ConnectionNotFoundError: () =>
-						Effect.fail(new IntegrationNotConnectedError({ provider: "github" })),
-				}),
 			),
 		),
 )

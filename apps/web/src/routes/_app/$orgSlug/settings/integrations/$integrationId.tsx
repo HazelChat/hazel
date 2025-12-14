@@ -451,7 +451,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 	const perPage = 30
 
 	const repositoriesResult = useAtomValue(
-		HazelApiClient.query("integrations", "getGitHubRepositories", {
+		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
 			path: { orgId: organizationId },
 			urlParams: { page, perPage },
 		}),

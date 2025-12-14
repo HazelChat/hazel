@@ -78,6 +78,32 @@ export class GitHubPRResourceResponse extends Schema.Class<GitHubPRResourceRespo
 	labels: Schema.Array(GitHubPRLabelResponse),
 }) {}
 
+// GitHub Repository schemas (for listing repos the app has access to)
+const GitHubRepositoryOwner = Schema.Struct({
+	login: Schema.String,
+	avatarUrl: Schema.NullOr(Schema.String),
+})
+
+const GitHubRepository = Schema.Struct({
+	id: Schema.Number,
+	name: Schema.String,
+	fullName: Schema.String,
+	private: Schema.Boolean,
+	htmlUrl: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	owner: GitHubRepositoryOwner,
+})
+
+export class GitHubRepositoriesResponse extends Schema.Class<GitHubRepositoriesResponse>(
+	"GitHubRepositoriesResponse",
+)({
+	totalCount: Schema.Number,
+	repositories: Schema.Array(GitHubRepository),
+	hasNextPage: Schema.Boolean,
+	page: Schema.Number,
+	perPage: Schema.Number,
+}) {}
+
 // Error when organization doesn't have the integration connected
 export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<IntegrationNotConnectedForPreviewError>()(
 	"IntegrationNotConnectedForPreviewError",
@@ -156,6 +182,31 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					title: "Fetch GitHub PR",
 					description: "Fetch GitHub pull request details for embedding in chat messages",
 					summary: "Get GitHub PR preview data",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
+			.addSuccess(GitHubRepositoriesResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
+					perPage: Schema.optionalWith(Schema.NumberFromString, { default: () => 30 }),
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get GitHub Repositories",
+					description: "List repositories accessible to the GitHub App installation",
+					summary: "List GitHub repositories",
 				}),
 			),
 	)
