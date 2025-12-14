@@ -1,6 +1,11 @@
 import { createPrivateKey } from "node:crypto"
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Config, Effect, Redacted, Schema } from "effect"
 import { SignJWT } from "jose"
+
+// ============================================================================
+// Error Types
+// ============================================================================
 
 /**
  * Error when JWT generation fails.
@@ -18,9 +23,14 @@ export class GitHubInstallationTokenError extends Schema.TaggedError<GitHubInsta
 	{
 		installationId: Schema.String,
 		message: Schema.String,
+		status: Schema.optional(Schema.Number),
 		cause: Schema.optional(Schema.Unknown),
 	},
 ) {}
+
+// ============================================================================
+// Types
+// ============================================================================
 
 /**
  * GitHub App configuration loaded from environment.
@@ -38,6 +48,25 @@ export interface InstallationToken {
 	readonly token: string
 	readonly expiresAt: Date
 }
+
+// ============================================================================
+// API Response Schemas
+// ============================================================================
+
+// GitHub API installation token response schema
+const InstallationTokenApiResponse = Schema.Struct({
+	token: Schema.String,
+	expires_at: Schema.String,
+})
+
+// GitHub API error response schema
+const GitHubErrorApiResponse = Schema.Struct({
+	message: Schema.optionalWith(Schema.String, { default: () => "Unknown error" }),
+})
+
+// ============================================================================
+// Configuration
+// ============================================================================
 
 /**
  * Load GitHub App configuration from environment variables.
@@ -63,6 +92,10 @@ export const loadGitHubAppConfig = Effect.withSpan("GitHubAppJWTService.loadConf
 		} satisfies GitHubAppConfig
 	}),
 )
+
+// ============================================================================
+// JWT Generation
+// ============================================================================
 
 /**
  * Generate a JWT for authenticating as the GitHub App.
@@ -102,51 +135,11 @@ export const generateAppJWT = (
 			}),
 	})
 
-/**
- * Generate an installation access token using the App JWT.
- *
- * This token is used to make API calls on behalf of a specific installation.
- * Tokens expire after 1 hour.
- *
- * @see https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app
- */
-export const generateInstallationToken = (
-	installationId: string,
-	appJwt: string,
-): Effect.Effect<InstallationToken, GitHubInstallationTokenError> =>
-	Effect.tryPromise({
-		try: async () => {
-			const response = await fetch(
-				`https://api.github.com/app/installations/${installationId}/access_tokens`,
-				{
-					method: "POST",
-					headers: {
-						Accept: "application/vnd.github+json",
-						Authorization: `Bearer ${appJwt}`,
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				},
-			)
+// ============================================================================
+// GitHub App JWT Service
+// ============================================================================
 
-			if (!response.ok) {
-				const errorText = await response.text()
-				throw new Error(`GitHub API error: ${response.status} ${errorText}`)
-			}
-
-			const data = (await response.json()) as { token: string; expires_at: string }
-
-			return {
-				token: data.token,
-				expiresAt: new Date(data.expires_at),
-			} satisfies InstallationToken
-		},
-		catch: (error) =>
-			new GitHubInstallationTokenError({
-				installationId,
-				message: `Failed to generate installation token: ${String(error)}`,
-				cause: error,
-			}),
-	})
+const GITHUB_API_BASE_URL = "https://api.github.com"
 
 /**
  * GitHub App JWT Service.
@@ -170,6 +163,7 @@ export class GitHubAppJWTService extends Effect.Service<GitHubAppJWTService>()("
 		// Load config once at service initialization
 		// Use orDie since missing config is a fatal startup error
 		const config = yield* loadGitHubAppConfig.pipe(Effect.orDie)
+		const httpClient = yield* HttpClient.HttpClient
 
 		/**
 		 * Get the app slug for building installation URLs.
@@ -185,6 +179,89 @@ export class GitHubAppJWTService extends Effect.Service<GitHubAppJWTService>()("
 			url.searchParams.set("state", state)
 			return url
 		}
+
+		/**
+		 * Generate an installation access token using the App JWT.
+		 *
+		 * This token is used to make API calls on behalf of a specific installation.
+		 * Tokens expire after 1 hour.
+		 */
+		const generateInstallationToken = (
+			installationId: string,
+			appJwt: string,
+		): Effect.Effect<InstallationToken, GitHubInstallationTokenError> =>
+			Effect.gen(function* () {
+				const url = `${GITHUB_API_BASE_URL}/app/installations/${installationId}/access_tokens`
+
+				// Create client with GitHub headers
+				const client = httpClient.pipe(
+					HttpClient.mapRequest(
+						HttpClientRequest.setHeaders({
+							Accept: "application/vnd.github+json",
+							Authorization: `Bearer ${appJwt}`,
+							"X-GitHub-Api-Version": "2022-11-28",
+						}),
+					),
+				)
+
+				const response = yield* client.post(url).pipe(Effect.scoped)
+
+				// Handle error status codes
+				if (response.status >= 400) {
+					const errorBody = yield* response.json.pipe(
+						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+						Effect.catchAll(() => Effect.succeed({ message: "Unknown error" })),
+					)
+					return yield* Effect.fail(
+						new GitHubInstallationTokenError({
+							installationId,
+							message: `GitHub API error: ${response.status} ${errorBody.message}`,
+							status: response.status,
+						}),
+					)
+				}
+
+				// Parse successful response
+				const data = yield* response.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(InstallationTokenApiResponse)),
+					Effect.mapError(
+						(error) =>
+							new GitHubInstallationTokenError({
+								installationId,
+								message: `Failed to parse installation token response: ${String(error)}`,
+								cause: error,
+							}),
+					),
+				)
+
+				return {
+					token: data.token,
+					expiresAt: new Date(data.expires_at),
+				} satisfies InstallationToken
+			}).pipe(
+				Effect.catchTag("RequestError", (error) =>
+					Effect.fail(
+						new GitHubInstallationTokenError({
+							installationId,
+							message: `Network error: ${String(error)}`,
+							cause: error,
+						}),
+					),
+				),
+				Effect.catchTag("ResponseError", (error) =>
+					Effect.fail(
+						new GitHubInstallationTokenError({
+							installationId,
+							message: `Response error: ${String(error)}`,
+							status: error.response.status,
+							cause: error,
+						}),
+					),
+				),
+				Effect.withSpan("GitHubAppJWTService.generateInstallationToken", {
+					attributes: { installationId },
+				}),
+			)
 
 		/**
 		 * Generate a fresh installation access token.
@@ -207,4 +284,5 @@ export class GitHubAppJWTService extends Effect.Service<GitHubAppJWTService>()("
 			getInstallationToken,
 		}
 	}),
+	dependencies: [FetchHttpClient.layer],
 }) {}

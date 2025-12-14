@@ -1,4 +1,4 @@
-import { GitHubSubscription } from "@hazel/domain"
+import type { GitHubSubscription } from "@hazel/domain/models"
 import type { ChannelId, GitHubSubscriptionId, OrganizationId, UserId } from "@hazel/schema"
 import { sql } from "drizzle-orm"
 import {

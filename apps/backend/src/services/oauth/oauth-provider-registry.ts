@@ -68,8 +68,9 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 		// Cache for loaded providers
 		const providerCache = new Map<IntegrationProvider, OAuthProvider>()
 
-		// Get the GitHub App JWT service for creating GitHub provider
+		// Get the GitHub services for creating GitHub provider
 		const gitHubJwtService = yield* GitHub.GitHubAppJWTService
+		const gitHubApiClient = yield* GitHub.GitHubApiClient
 
 		/**
 		 * Get an OAuth provider instance.
@@ -96,7 +97,7 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 
 				// Handle GitHub App separately (uses JWT service, not standard OAuth)
 				if (provider === "github") {
-					// Create provider with JWT service - uses empty config since it manages its own config
+					// Create provider with JWT service and API client - uses empty config since it manages its own config
 					const oauthProvider = createGitHubAppProvider(
 						{
 							provider: "github",
@@ -109,6 +110,7 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 							scopeDelimiter: "",
 						},
 						gitHubJwtService,
+						gitHubApiClient,
 					)
 					providerCache.set(provider, oauthProvider)
 					return oauthProvider
@@ -159,5 +161,5 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 			isProviderSupported,
 		}
 	}),
-	dependencies: [GitHub.GitHubAppJWTService.Default],
+	dependencies: [GitHub.GitHubAppJWTService.Default, GitHub.GitHubApiClient.Default],
 }) {}

@@ -1,13 +1,13 @@
 import { type IntegrationConnectionId, type IntegrationTokenId, withSystemActor } from "@hazel/domain"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
+import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
 import { Effect, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "../repositories/integration-token-repo"
 import { DatabaseLive } from "./database"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { loadProviderConfig } from "./oauth/provider-config"
-import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
 
 export class TokenNotFoundError extends Schema.TaggedError<TokenNotFoundError>()("TokenNotFoundError", {
 	connectionId: IntegrationConnectionIdSchema,

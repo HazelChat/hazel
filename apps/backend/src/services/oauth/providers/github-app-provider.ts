@@ -1,4 +1,4 @@
-import { GitHub } from "@hazel/integrations"
+import type { GitHub } from "@hazel/integrations"
 import { Effect } from "effect"
 import { AccountInfoError, type OAuthProvider, TokenExchangeError } from "../oauth-provider"
 import type { OAuthProviderConfig, OAuthTokens } from "../provider-config"
@@ -16,6 +16,16 @@ interface GitHubAppJWTServiceInterface {
 		GitHub.InstallationToken,
 		GitHub.GitHubAppJWTError | GitHub.GitHubInstallationTokenError
 	>
+}
+
+/**
+ * Service interface for GitHub API Client operations.
+ * This type matches the service returned by GitHubApiClient.
+ */
+interface GitHubApiClientInterface {
+	readonly getAccountInfo: (
+		accessToken: string,
+	) => Effect.Effect<GitHub.GitHubAccountInfo, GitHub.GitHubApiError>
 }
 
 /**
@@ -37,6 +47,7 @@ interface GitHubAppJWTServiceInterface {
 export const createGitHubAppProvider = (
 	config: OAuthProviderConfig,
 	jwtService: GitHubAppJWTServiceInterface,
+	apiClient: GitHubApiClientInterface,
 ): OAuthProvider => ({
 	provider: "github",
 	config,
@@ -82,65 +93,16 @@ export const createGitHubAppProvider = (
 	 * The installation_id is stored in the connection settings.
 	 */
 	getAccountInfo: (accessToken: string) =>
-		Effect.tryPromise({
-			try: async () => {
-				// First, get the authenticated installation info
-				const response = await fetch("https://api.github.com/installation/repositories", {
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						Accept: "application/vnd.github+json",
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				})
-
-				if (!response.ok) {
-					const errorText = await response.text()
-					throw new Error(`GitHub API request failed: ${response.status} ${errorText}`)
-				}
-
-				const data = await response.json()
-
-				// Get the owner from the first repository (all repos in an installation belong to same owner)
-				const firstRepo = data.repositories?.[0]
-				if (firstRepo?.owner) {
-					return {
-						externalAccountId: String(firstRepo.owner.id),
-						externalAccountName: firstRepo.owner.login,
-					}
-				}
-
-				// Fallback: try to get authenticated app info
-				const appResponse = await fetch("https://api.github.com/app", {
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						Accept: "application/vnd.github+json",
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				})
-
-				if (appResponse.ok) {
-					const appData = await appResponse.json()
-					return {
-						externalAccountId: String(appData.id),
-						externalAccountName: appData.name || "GitHub App",
-					}
-				}
-
-				// If we can't get account info, use placeholder
-				return {
-					externalAccountId: "unknown",
-					externalAccountName: "GitHub",
-				}
-			},
-			catch: (error) =>
-				new AccountInfoError({
-					provider: "github",
-					message: `Failed to get GitHub account info: ${String(error)}`,
-					cause: error,
-				}),
-		}),
+		apiClient.getAccountInfo(accessToken).pipe(
+			Effect.mapError(
+				(error) =>
+					new AccountInfoError({
+						provider: "github",
+						message: `Failed to get GitHub account info: ${error.message}`,
+						cause: error,
+					}),
+			),
+		),
 
 	// GitHub Apps use JWT-based token regeneration, not refresh tokens
 	// The token service handles regeneration via GitHubAppJWTService

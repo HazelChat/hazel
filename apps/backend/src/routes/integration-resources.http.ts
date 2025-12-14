@@ -168,7 +168,13 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					const accessToken = yield* tokenService.getValidAccessToken(connection.id)
 
 					// Fetch PR from GitHub API
-					const pr = yield* GitHub.fetchGitHubPR(parsed.owner, parsed.repo, parsed.number, accessToken)
+					const gitHubApiClient = yield* GitHub.GitHubApiClient
+					const pr = yield* gitHubApiClient.fetchPR(
+						parsed.owner,
+						parsed.repo,
+						parsed.number,
+						accessToken,
+					)
 
 					// Transform to response
 					return new GitHubPRResourceResponse({
@@ -285,57 +291,35 @@ const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRe
 	// Get valid access token
 	const accessToken = yield* tokenService.getValidAccessToken(connection.id)
 
-	// Fetch repositories from GitHub API
-	const response = yield* Effect.tryPromise({
-		try: async () => {
-			const res = await fetch(
-				`https://api.github.com/installation/repositories?per_page=${perPage}&page=${page}`,
-				{
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						Accept: "application/vnd.github+json",
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				},
-			)
-
-			if (!res.ok) {
-				const errorText = await res.text()
-				throw new Error(`GitHub API error: ${res.status} ${errorText}`)
-			}
-
-			return res.json()
-		},
-		catch: (error) =>
-			new InternalServerError({
-				message: "Failed to fetch GitHub repositories",
-				detail: String(error),
-			}),
-	})
+	// Fetch repositories from GitHub API using GitHubApiClient
+	const gitHubApiClient = yield* GitHub.GitHubApiClient
+	const result = yield* gitHubApiClient.fetchRepositories(accessToken, page, perPage).pipe(
+		Effect.mapError(
+			(error) =>
+				new InternalServerError({
+					message: "Failed to fetch GitHub repositories",
+					detail: error.message,
+				}),
+		),
+	)
 
 	// Transform to response format
-	const repositories = (response.repositories ?? []).map((repo: any) => ({
-		id: repo.id,
-		name: repo.name,
-		fullName: repo.full_name,
-		private: repo.private,
-		htmlUrl: repo.html_url,
-		description: repo.description ?? null,
-		owner: {
-			login: repo.owner.login,
-			avatarUrl: repo.owner.avatar_url ?? null,
-		},
-	}))
-
-	const totalCount = response.total_count ?? 0
-	const hasNextPage = page * perPage < totalCount
-
 	return new GitHubRepositoriesResponse({
-		totalCount,
-		repositories,
-		hasNextPage,
-		page,
-		perPage,
+		totalCount: result.totalCount,
+		repositories: result.repositories.map((repo) => ({
+			id: repo.id,
+			name: repo.name,
+			fullName: repo.fullName,
+			private: repo.private,
+			htmlUrl: repo.htmlUrl,
+			description: repo.description,
+			owner: {
+				login: repo.owner.login,
+				avatarUrl: repo.owner.avatarUrl,
+			},
+		})),
+		hasNextPage: result.hasNextPage,
+		page: result.page,
+		perPage: result.perPage,
 	})
 })

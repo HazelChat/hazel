@@ -1,21 +1,11 @@
+import { GitHubEventType, GitHubEventTypes } from "@hazel/integrations/github/schema"
 import { ChannelId, GitHubSubscriptionId, OrganizationId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-// GitHub event types that can be subscribed to
-export const GitHubEventType = Schema.Literal(
-	"push",
-	"pull_request",
-	"issues",
-	"release",
-	"deployment_status",
-	"workflow_run",
-)
-export type GitHubEventType = Schema.Schema.Type<typeof GitHubEventType>
-
-export const GitHubEventTypes = Schema.Array(GitHubEventType)
-export type GitHubEventTypes = Schema.Schema.Type<typeof GitHubEventTypes>
+// Re-export from integrations for backwards compatibility
+export { GitHubEventType, GitHubEventTypes }
 
 export class Model extends M.Class<Model>("GitHubSubscription")({
 	id: M.Generated(GitHubSubscriptionId),
