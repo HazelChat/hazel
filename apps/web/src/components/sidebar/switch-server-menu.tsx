@@ -43,10 +43,9 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 		// Show loading toast
 		toast.loading(`Switching to ${selectedOrg.org.name}...`)
 
-		// Build the return URL (full frontend URL)
+		// Build the return URL (relative path only)
 		const route = getOrganizationRoute(selectedOrg.org)
-		const frontendUrl = window.location.origin
-		const returnUrl = `${frontendUrl}${route.to}`
+		const returnUrl = route.to
 
 		// Redirect to backend login endpoint with the organization ID
 		// WorkOS will handle the organization switch and redirect back

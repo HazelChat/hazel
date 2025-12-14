@@ -223,10 +223,12 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					},
 				)
 
+				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+
 				return HttpServerResponse.empty({
 					status: 302,
 					headers: {
-						Location: state.returnTo,
+						Location: `${frontendUrl}${state.returnTo}`,
 					},
 				})
 			}),

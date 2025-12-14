@@ -97,7 +97,7 @@ function RouteComponent() {
 			Match.orElse(() => {
 				const currentUrl = new URL(window.location.href)
 				currentUrl.searchParams.set("loginRetry", String(loginRetry + 1))
-				const returnTo = encodeURIComponent(currentUrl.toString())
+				const returnTo = encodeURIComponent(currentUrl.pathname + currentUrl.search + currentUrl.hash)
 				const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"
 				window.location.href = `${backendUrl}/auth/login?returnTo=${returnTo}`
 
@@ -110,7 +110,7 @@ function RouteComponent() {
 	if (!user) {
 		const currentUrl = new URL(window.location.href)
 		currentUrl.searchParams.set("loginRetry", String(loginRetry + 1))
-		const returnTo = encodeURIComponent(currentUrl.toString())
+		const returnTo = encodeURIComponent(currentUrl.pathname + currentUrl.search + currentUrl.hash)
 		const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"
 		window.location.href = `${backendUrl}/auth/login?returnTo=${returnTo}`
 		return <Loader />
