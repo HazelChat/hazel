@@ -6,6 +6,12 @@ export const ChannelId = Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelId")).
 })
 export type ChannelId = Schema.Schema.Type<typeof ChannelId>
 
+export const ChannelCategoryId = Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelCategoryId")).annotations({
+	description: "The ID of a channel category",
+	title: "Channel Category ID",
+})
+export type ChannelCategoryId = Schema.Schema.Type<typeof ChannelCategoryId>
+
 export const UserId = Schema.UUID.pipe(Schema.brand("@HazelChat/UserId")).annotations({
 	description: "The ID of a user",
 	title: "UserId ID",

@@ -3,6 +3,7 @@
 export * from "@hazel/schema"
 export * from "./attachments"
 export * from "./bots"
+export * from "./channel-categories"
 export * from "./channel-webhooks"
 export * from "./channels"
 export * from "./integration-connections"

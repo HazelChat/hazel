@@ -157,6 +157,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								type: payload.type,
 								organizationId: OrganizationId.make(payload.organizationId),
 								parentChannelId: null,
+								categoryId: null,
+								sortOrder: null,
 								deletedAt: null,
 							}).pipe(
 								Effect.map((res) => res[0]!),

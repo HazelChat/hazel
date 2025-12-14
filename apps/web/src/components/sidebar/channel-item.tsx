@@ -1,10 +1,13 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
+import type { ChannelCategoryId, OrganizationId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useState } from "react"
 import { deleteChannelMemberMutation } from "~/atoms/channel-member-atoms"
 import { ChannelIcon } from "~/components/channel-icon"
 import IconDots from "~/components/icons/icon-dots"
+import IconFolder from "~/components/icons/icon-folder"
 import IconGear from "~/components/icons/icon-gear"
 import IconLeave from "~/components/icons/icon-leave"
 import IconStar from "~/components/icons/icon-star"
@@ -13,27 +16,48 @@ import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
 import { Button } from "~/components/ui/button"
-import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
+import {
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuLabel,
+	MenuSeparator,
+	MenuSubMenu,
+} from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
-import { deleteChannelAction, updateChannelMemberAction } from "~/db/actions"
+import { deleteChannelAction, moveChannelToCategoryAction, updateChannelMemberAction } from "~/db/actions"
+import { channelCategoryCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { matchExitWithToast } from "~/lib/toast-exit"
 
 interface ChannelItemProps {
 	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
 	member: ChannelMember
+	organizationId: OrganizationId
 }
 
-export function ChannelItem({ channel, member }: ChannelItemProps) {
+export function ChannelItem({ channel, member, organizationId }: ChannelItemProps) {
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
 	const { slug } = useOrganization()
 	const navigate = useNavigate()
 
+	// Query available categories
+	const { data: categories } = useLiveQuery(
+		(q) =>
+			q
+				.from({ category: channelCategoryCollection })
+				.where(({ category }) => eq(category.organizationId, organizationId))
+				.orderBy(({ category }) => category.sortOrder, "asc")
+				.select(({ category }) => category),
+		[organizationId],
+	)
+
 	// Use optimistic actions for channel member operations
 	const updateMember = useAtomSet(updateChannelMemberAction, { mode: "promiseExit" })
 	const deleteChannel = useAtomSet(deleteChannelAction, { mode: "promiseExit" })
 	const deleteMember = useAtomSet(deleteChannelMemberMutation, { mode: "promiseExit" })
+	const moveChannel = useAtomSet(moveChannelToCategoryAction, { mode: "promiseExit" })
 
 	const handleToggleMute = async () => {
 		const exit = await updateMember({
@@ -107,6 +131,25 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 		})
 	}
 
+	const handleMoveToCategory = async (categoryId: ChannelCategoryId | null) => {
+		const exit = await moveChannel({
+			channelId: channel.id,
+			categoryId,
+		})
+
+		matchExitWithToast(exit, {
+			onSuccess: () => {},
+			successMessage: categoryId ? "Moved to category" : "Removed from category",
+			customErrors: {
+				ChannelNotFoundError: () => ({
+					title: "Channel not found",
+					description: "This channel may have been deleted.",
+					isRetryable: false,
+				}),
+			},
+		})
+	}
+
 	return (
 		<>
 			<SidebarItem
@@ -146,6 +189,38 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
+						{/* Move to category submenu */}
+						{categories && categories.length > 0 && (
+							<>
+								<MenuSubMenu>
+									<MenuItem>
+										<IconFolder className="size-4" />
+										<MenuLabel>Move to category</MenuLabel>
+									</MenuItem>
+									<MenuContent className="w-40">
+										<MenuItem
+											onAction={() => handleMoveToCategory(null)}
+											className={!channel.categoryId ? "bg-accent/50" : ""}
+										>
+											<MenuLabel>None</MenuLabel>
+										</MenuItem>
+										<MenuSeparator />
+										{categories.map((category) => (
+											<MenuItem
+												key={category.id}
+												onAction={() =>
+													handleMoveToCategory(category.id as ChannelCategoryId)
+												}
+												className={channel.categoryId === category.id ? "bg-accent/50" : ""}
+											>
+												<MenuLabel>{category.name}</MenuLabel>
+											</MenuItem>
+										))}
+									</MenuContent>
+								</MenuSubMenu>
+								<MenuSeparator />
+							</>
+						)}
 						<MenuItem
 							onAction={() =>
 								navigate({
