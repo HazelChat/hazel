@@ -46,6 +46,32 @@ export class UnsupportedProviderError extends Schema.TaggedError<UnsupportedProv
 	},
 ) {}
 
+// GitHub Repository schemas
+const GitHubRepositoryOwner = Schema.Struct({
+	login: Schema.String,
+	avatarUrl: Schema.NullOr(Schema.String),
+})
+
+const GitHubRepository = Schema.Struct({
+	id: Schema.Number,
+	name: Schema.String,
+	fullName: Schema.String,
+	private: Schema.Boolean,
+	htmlUrl: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	owner: GitHubRepositoryOwner,
+})
+
+export class GitHubRepositoriesResponse extends Schema.Class<GitHubRepositoriesResponse>(
+	"GitHubRepositoriesResponse",
+)({
+	totalCount: Schema.Number,
+	repositories: Schema.Array(GitHubRepository),
+	hasNextPage: Schema.Boolean,
+	page: Schema.Number,
+	perPage: Schema.Number,
+}) {}
+
 export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	// Get OAuth authorization URL
 	.add(
@@ -140,6 +166,32 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					title: "Disconnect Integration",
 					description: "Disconnect an integration and revoke tokens",
 					summary: "Disconnect provider",
+				}),
+			),
+	)
+	// Get GitHub repositories
+	.add(
+		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
+			.addSuccess(GitHubRepositoriesResponse)
+			.addError(IntegrationNotConnectedError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
+					perPage: Schema.optionalWith(Schema.NumberFromString, { default: () => 30 }),
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get GitHub Repositories",
+					description: "List repositories accessible to the GitHub App installation",
+					summary: "List GitHub repositories",
 				}),
 			),
 	)

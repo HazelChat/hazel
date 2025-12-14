@@ -56,9 +56,7 @@ export class GitHubPRNotFoundError extends Data.TaggedError("GitHubPRNotFoundErr
 /**
  * Parse a GitHub PR URL to extract owner, repo, and PR number
  */
-export const parseGitHubPRUrl = (
-	url: string,
-): { owner: string; repo: string; number: number } | null => {
+export const parseGitHubPRUrl = (url: string): { owner: string; repo: string; number: number } | null => {
 	const match = url.match(GITHUB_PR_URL_REGEX)
 	if (!match) return null
 	return {
@@ -106,78 +104,77 @@ const parseGitHubErrorMessage = (status: number, message: string): string => {
 /**
  * Fetch a GitHub PR by owner, repo, and number using the provided access token
  */
-export const fetchGitHubPR = (
+export const fetchGitHubPR = Effect.fn("GitHubResourceProvider.fetchGitHubPR")(function* (
 	owner: string,
 	repo: string,
 	prNumber: number,
 	accessToken: string,
-): Effect.Effect<GitHubPR, GitHubApiError | GitHubPRNotFoundError> =>
-	Effect.gen(function* () {
-		const response = yield* Effect.tryPromise({
-			try: async () => {
-				const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						Accept: "application/vnd.github+json",
-						"X-GitHub-Api-Version": "2022-11-28",
-					},
-				})
+) {
+	const response = yield* Effect.tryPromise({
+		try: async () => {
+			const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					Accept: "application/vnd.github+json",
+					"X-GitHub-Api-Version": "2022-11-28",
+				},
+			})
 
-				if (!res.ok) {
-					const errorBody = await res.json().catch(() => ({ message: "Unknown error" }))
-					const message = parseGitHubErrorMessage(res.status, errorBody.message || "Unknown error")
+			if (!res.ok) {
+				const errorBody = await res.json().catch(() => ({ message: "Unknown error" }))
+				const message = parseGitHubErrorMessage(res.status, errorBody.message || "Unknown error")
 
-					if (res.status === 404) {
-						return { notFound: true, owner, repo, number: prNumber }
-					}
-
-					throw new Error(message)
+				if (res.status === 404) {
+					return { notFound: true, owner, repo, number: prNumber }
 				}
 
-				return res.json()
-			},
-			catch: (error) =>
-				new GitHubApiError({
-					message: error instanceof Error ? error.message : "Could not connect to GitHub",
-					cause: error,
-				}),
-		})
+				throw new Error(message)
+			}
 
-		// Check for not found
-		if (response.notFound) {
-			return yield* Effect.fail(
-				new GitHubPRNotFoundError({
-					owner: response.owner,
-					repo: response.repo,
-					number: response.number,
-				}),
-			)
-		}
-
-		// Transform the response
-		return {
-			owner,
-			repo,
-			number: response.number,
-			title: response.title,
-			body: response.body ?? null,
-			state: response.state as "open" | "closed",
-			draft: response.draft ?? false,
-			merged: response.merged ?? false,
-			author: response.user
-				? {
-						login: response.user.login,
-						avatarUrl: response.user.avatar_url ?? null,
-					}
-				: null,
-			additions: response.additions ?? 0,
-			deletions: response.deletions ?? 0,
-			headRefName: response.head?.ref ?? "",
-			updatedAt: response.updated_at ?? new Date().toISOString(),
-			labels: (response.labels ?? []).map((label: { name: string; color: string }) => ({
-				name: label.name,
-				color: label.color,
-			})),
-		}
+			return res.json()
+		},
+		catch: (error) =>
+			new GitHubApiError({
+				message: error instanceof Error ? error.message : "Could not connect to GitHub",
+				cause: error,
+			}),
 	})
+
+	// Check for not found
+	if (response.notFound) {
+		return yield* Effect.fail(
+			new GitHubPRNotFoundError({
+				owner: response.owner,
+				repo: response.repo,
+				number: response.number,
+			}),
+		)
+	}
+
+	// Transform the response
+	return {
+		owner,
+		repo,
+		number: response.number,
+		title: response.title,
+		body: response.body ?? null,
+		state: response.state as "open" | "closed",
+		draft: response.draft ?? false,
+		merged: response.merged ?? false,
+		author: response.user
+			? {
+					login: response.user.login,
+					avatarUrl: response.user.avatar_url ?? null,
+				}
+			: null,
+		additions: response.additions ?? 0,
+		deletions: response.deletions ?? 0,
+		headRefName: response.head?.ref ?? "",
+		updatedAt: response.updated_at ?? new Date().toISOString(),
+		labels: (response.labels ?? []).map((label: { name: string; color: string }) => ({
+			name: label.name,
+			color: label.color,
+		})),
+	}
+})

@@ -44,20 +44,22 @@ export interface InstallationToken {
  * - GITHUB_APP_SLUG: The app slug (from URL)
  * - GITHUB_APP_PRIVATE_KEY: Base64-encoded PEM private key
  */
-export const loadGitHubAppConfig = Effect.gen(function* () {
-	const appId = yield* Config.string("GITHUB_APP_ID")
-	const appSlug = yield* Config.string("GITHUB_APP_SLUG")
-	const privateKeyBase64 = yield* Config.redacted("GITHUB_APP_PRIVATE_KEY")
+export const loadGitHubAppConfig = Effect.withSpan("GitHubAppJWTService.loadConfig")(
+	Effect.gen(function* () {
+		const appId = yield* Config.string("GITHUB_APP_ID")
+		const appSlug = yield* Config.string("GITHUB_APP_SLUG")
+		const privateKeyBase64 = yield* Config.redacted("GITHUB_APP_PRIVATE_KEY")
 
-	// Decode the base64 private key
-	const privateKey = Buffer.from(Redacted.value(privateKeyBase64), "base64").toString("utf-8")
+		// Decode the base64 private key
+		const privateKey = Buffer.from(Redacted.value(privateKeyBase64), "base64").toString("utf-8")
 
-	return {
-		appId,
-		appSlug,
-		privateKey,
-	} satisfies GitHubAppConfig
-})
+		return {
+			appId,
+			appSlug,
+			privateKey,
+		} satisfies GitHubAppConfig
+	}),
+)
 
 /**
  * Generate a JWT for authenticating as the GitHub App.
@@ -184,18 +186,17 @@ export class GitHubAppJWTService extends Effect.Service<GitHubAppJWTService>()("
 		/**
 		 * Generate a fresh installation access token.
 		 */
-		const getInstallationToken = (
+		const getInstallationToken = Effect.fn("GitHubAppJWTService.getInstallationToken")(function* (
 			installationId: string,
-		): Effect.Effect<InstallationToken, GitHubAppJWTError | GitHubInstallationTokenError> =>
-			Effect.gen(function* () {
-				// Generate a fresh JWT for this request
-				const jwt = yield* generateAppJWT(config.appId, config.privateKey)
+		) {
+			// Generate a fresh JWT for this request
+			const jwt = yield* generateAppJWT(config.appId, config.privateKey)
 
-				// Exchange JWT for installation token
-				const token = yield* generateInstallationToken(installationId, jwt)
+			// Exchange JWT for installation token
+			const token = yield* generateInstallationToken(installationId, jwt)
 
-				return token
-			})
+			return token
+		})
 
 		return {
 			getAppSlug,
