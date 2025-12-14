@@ -105,17 +105,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 								<TextField>
 									<Label>Channel Name</Label>
 									<InputGroup>
-										<EmojiPickerDialog onEmojiSelect={(emoji) => setIcon(emoji.emoji)}>
-											<Button
-												intent="plain"
-												size="sq-sm"
-												data-slot="icon"
-												className="text-muted-fg hover:text-fg"
-												type="button"
-											>
-												<ChannelIcon icon={icon} />
-											</Button>
-										</EmojiPickerDialog>
+										<ChannelIcon icon={icon} data-slot="icon" />
 										<Input
 											placeholder="general"
 											value={field.state.value}

@@ -32,7 +32,9 @@ const PopoverHeader = DialogHeader
 const PopoverBody = DialogBody
 const PopoverFooter = DialogFooter
 
-interface PopoverContentProps extends Omit<PopoverPrimitiveProps, "children">, Pick<DialogProps, "children"> {
+interface PopoverContentProps
+	extends Omit<PopoverPrimitiveProps, "children">,
+		Pick<DialogProps, "children" | "aria-label" | "aria-labelledby"> {
 	arrow?: boolean
 	ref?: React.Ref<HTMLDivElement>
 }
@@ -66,7 +68,9 @@ const PopoverContent = ({ children, arrow = false, className, ref, ...props }: P
 					</svg>
 				</OverlayArrow>
 			)}
-			<Dialog>{(values) => <>{typeof children === "function" ? children(values) : children}</>}</Dialog>
+			<Dialog aria-label={props["aria-label"]} aria-labelledby={props["aria-labelledby"]}>
+				{(values) => <>{typeof children === "function" ? children(values) : children}</>}
+			</Dialog>
 		</PopoverPrimitive>
 	)
 }
