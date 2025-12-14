@@ -85,6 +85,24 @@ export class SequinWebhookPayload extends Schema.Class<SequinWebhookPayload>("Se
 	data: Schema.Array(SequinWebhookEvent),
 }) {}
 
+// GitHub Webhook Types
+export class GitHubWebhookResponse extends Schema.Class<GitHubWebhookResponse>("GitHubWebhookResponse")({
+	processed: Schema.Boolean,
+	messagesCreated: Schema.optional(Schema.Number),
+}) {}
+
+export class InvalidGitHubWebhookSignature extends Schema.TaggedError<InvalidGitHubWebhookSignature>(
+	"InvalidGitHubWebhookSignature",
+)(
+	"InvalidGitHubWebhookSignature",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 401,
+	}),
+) {}
+
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
 	.add(
 		HttpApiEndpoint.post("workos")`/workos`
@@ -111,6 +129,20 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 					description:
 						"Receive message insert events from Sequin Stream to trigger notification workflows",
 					summary: "Process Sequin message insert events",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.post("github")`/github`
+			.setPayload(Schema.Unknown)
+			.addSuccess(GitHubWebhookResponse)
+			.addError(InvalidGitHubWebhookSignature)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "GitHub App Webhook",
+					description: "Receive and process GitHub App webhook events",
+					summary: "Process GitHub App webhook events",
 				}),
 			),
 	)

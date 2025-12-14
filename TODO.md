@@ -1,5 +1,6 @@
 # Today
 - test and actually build stuff for github integration
+- actual notification window + notification display
 - setup signoz or any other logging/monitoring solution
 - setup sequin locally with config as code
 - fix threads

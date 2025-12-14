@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
+import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -11,6 +11,7 @@ import {
 	type WebhookData,
 } from "~/atoms/channel-webhook-atoms"
 import { CreateWebhookForm } from "~/components/channel-settings/create-webhook-form"
+import { GitHubIntegrationCard } from "~/components/channel-settings/github-integration-card"
 import { IntegrationCard } from "~/components/channel-settings/integration-card"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
@@ -22,6 +23,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SectionHeader } from "~/components/ui/section-header"
+import { useOrganization } from "~/hooks/use-organization"
 import { matchExitWithToast } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/settings/integrations")({
@@ -29,7 +31,8 @@ export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/setting
 })
 
 function IntegrationsPage() {
-	const { channelId } = Route.useParams()
+	const { channelId, orgSlug } = Route.useParams()
+	const { organizationId } = useOrganization()
 
 	const [webhooks, setWebhooks] = useState<WebhookData[]>([])
 	const [isLoading, setIsLoading] = useState(true)
@@ -89,6 +92,13 @@ function IntegrationsPage() {
 			</SectionHeader.Root>
 
 			<div className="flex flex-col gap-4">
+				{/* GitHub Integration */}
+				<GitHubIntegrationCard
+					channelId={channelId as ChannelId}
+					organizationId={organizationId as OrganizationId | null}
+					orgSlug={orgSlug}
+				/>
+
 				<IntegrationCard
 					provider="openstatus"
 					channelId={channelId as ChannelId}
@@ -156,7 +166,7 @@ function IntegrationsPage() {
 					</div>
 					<div className="flex flex-col gap-0.5">
 						<span className="font-medium text-muted-fg">More integrations coming soon</span>
-						<span className="text-muted-fg/70 text-sm">Slack, GitHub, Linear, and more</span>
+						<span className="text-muted-fg/70 text-sm">Slack, Linear, and more</span>
 					</div>
 				</div>
 			</div>

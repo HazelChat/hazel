@@ -16,6 +16,7 @@ import { AttachmentPolicy } from "./policies/attachment-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
+import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
 import { InvitationPolicy } from "./policies/invitation-policy"
 import { MessagePolicy } from "./policies/message-policy"
@@ -31,6 +32,7 @@ import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
+import { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
 import { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "./repositories/integration-token-repo"
 import { InvitationRepo } from "./repositories/invitation-repo"
@@ -114,6 +116,7 @@ const RepoLive = Layer.mergeAll(
 	IntegrationConnectionRepo.Default,
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
+	GitHubSubscriptionRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -132,6 +135,7 @@ const PolicyLive = Layer.mergeAll(
 	UserPresenceStatusPolicy.Default,
 	IntegrationConnectionPolicy.Default,
 	ChannelWebhookPolicy.Default,
+	GitHubSubscriptionPolicy.Default,
 )
 
 const MainLive = Layer.mergeAll(

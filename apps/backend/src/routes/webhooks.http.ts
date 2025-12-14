@@ -1,7 +1,9 @@
+import { createHmac, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder, HttpApiClient, type HttpApiError, HttpServerRequest } from "@effect/platform"
 import { Cluster, InternalServerError, withSystemActor } from "@hazel/domain"
+import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
-import { Config, Effect, pipe } from "effect"
+import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { WorkOSSync } from "../services/workos-sync"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
@@ -184,6 +186,144 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				yield* Effect.logInfo("Sequin webhook batch processed successfully", {
 					eventCount: payload.data.length,
 				})
+			}),
+		)
+		.handle("github", (_args) =>
+			Effect.gen(function* () {
+				// Get the raw request to access headers and body
+				const request = yield* HttpServerRequest.HttpServerRequest
+
+				// Get GitHub webhook headers
+				const eventType = request.headers["x-github-event"] as string | undefined
+				const signature = request.headers["x-hub-signature-256"] as string | undefined
+				const deliveryId = request.headers["x-github-delivery"] as string | undefined
+
+				if (!eventType || !deliveryId) {
+					return yield* Effect.fail(
+						new InvalidGitHubWebhookSignature({
+							message: "Missing required GitHub webhook headers",
+						}),
+					)
+				}
+
+				// Get the raw body as string for signature verification
+				const rawBody = yield* pipe(
+					request.text,
+					Effect.orElseFail(
+						() =>
+							new InvalidGitHubWebhookSignature({
+								message: "Invalid request body",
+							}),
+					),
+				)
+
+				// Verify the webhook signature
+				const webhookSecret = yield* Config.redacted("GITHUB_WEBHOOK_SECRET").pipe(
+					Effect.orElseSucceed(() => Redacted.make("")),
+				)
+
+				if (signature && Redacted.value(webhookSecret)) {
+					const expected = `sha256=${createHmac("sha256", Redacted.value(webhookSecret))
+						.update(rawBody)
+						.digest("hex")}`
+					const sig = Buffer.from(signature)
+					const exp = Buffer.from(expected)
+
+					if (sig.length !== exp.length || !timingSafeEqual(sig, exp)) {
+						yield* Effect.logWarning("Invalid GitHub webhook signature")
+						return yield* Effect.fail(
+							new InvalidGitHubWebhookSignature({
+								message: "Invalid webhook signature",
+							}),
+						)
+					}
+				}
+
+				// Parse the webhook payload
+				const payload = JSON.parse(rawBody)
+
+				// Log the incoming webhook event
+				yield* Effect.logInfo("Received GitHub webhook", {
+					eventType,
+					deliveryId,
+					repository: payload.repository?.full_name,
+				})
+
+				// Extract required info from payload
+				const installationId = payload.installation?.id as number | undefined
+				const repositoryId = payload.repository?.id as number | undefined
+				const repositoryFullName = payload.repository?.full_name as string | undefined
+
+				// Skip if missing required fields
+				if (!installationId || !repositoryId || !repositoryFullName) {
+					yield* Effect.logDebug("Skipping GitHub webhook - missing required fields", {
+						hasInstallation: !!installationId,
+						hasRepository: !!repositoryId,
+					})
+					return new GitHubWebhookResponse({ processed: false })
+				}
+
+				// Get cluster URL and trigger the workflow
+				const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
+				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
+					baseUrl: clusterUrl,
+				})
+
+				yield* client.workflows
+					.GitHubWebhookWorkflow({
+						payload: {
+							deliveryId,
+							eventType,
+							installationId,
+							repositoryId,
+							repositoryFullName,
+							eventPayload: payload,
+						},
+					})
+					.pipe(
+						Effect.tapError((err) =>
+							Effect.logError("Failed to execute GitHub webhook workflow", {
+								error: err.message,
+								deliveryId,
+								eventType,
+								repository: repositoryFullName,
+							}),
+						),
+						Effect.catchTags({
+							HttpApiDecodeError: (_error) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to execute GitHub webhook workflow",
+									}),
+								),
+							ParseError: (_error) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to execute GitHub webhook workflow",
+									}),
+								),
+							RequestError: (_error) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to execute GitHub webhook workflow",
+									}),
+								),
+							ResponseError: (_error) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to execute GitHub webhook workflow",
+									}),
+								),
+						}),
+					)
+
+				yield* Effect.logInfo("GitHub webhook processed successfully", {
+					deliveryId,
+					eventType,
+					repository: repositoryFullName,
+				})
+
+				return new GitHubWebhookResponse({ processed: true })
 			}),
 		),
 )
