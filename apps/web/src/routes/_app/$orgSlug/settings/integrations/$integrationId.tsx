@@ -5,7 +5,7 @@ import { Exit } from "effect"
 import { useState } from "react"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
 import { RailwayIntegrationContent } from "~/components/integrations/railway-integration-content"
-import { Button } from "~/components/ui/button"
+import { Button, buttonStyles } from "~/components/ui/button"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
@@ -184,6 +184,7 @@ function IntegrationConfigPage() {
 									{isConnected ? (
 										<ConnectedState
 											integration={integration}
+											connection={connection}
 											externalAccountName={externalAccountName}
 											isDisconnecting={isDisconnecting}
 											onDisconnect={handleDisconnect}
@@ -349,15 +350,23 @@ function DisconnectedState({
 
 function ConnectedState({
 	integration,
+	connection,
 	externalAccountName,
 	isDisconnecting,
 	onDisconnect,
 }: {
 	integration: Integration
+	connection: typeof IntegrationConnection.Model.Type | null
 	externalAccountName: string | null
 	isDisconnecting: boolean
 	onDisconnect: () => void
 }) {
+	// GitHub App installation settings URL - allows users to manage permissions or uninstall
+	const gitHubConfigureUrl =
+		integration.id === "github" && connection?.settings?.installationId
+			? "https://github.com/apps/hazelchat/installations/select_target"
+			: null
+
 	return (
 		<div className="flex items-center justify-between gap-4">
 			<div className="flex items-center gap-3">
@@ -377,9 +386,33 @@ function ConnectedState({
 					{externalAccountName && <p className="text-muted-fg text-xs">{externalAccountName}</p>}
 				</div>
 			</div>
-			<Button intent="danger" size="sm" onPress={onDisconnect} isDisabled={isDisconnecting}>
-				{isDisconnecting ? "Disconnecting..." : "Disconnect"}
-			</Button>
+			{gitHubConfigureUrl ? (
+				<a
+					href={gitHubConfigureUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={buttonStyles({ intent: "secondary", size: "sm" })}
+				>
+					<svg
+						className="size-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						strokeWidth={2}
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+						/>
+					</svg>
+					Configure on GitHub
+				</a>
+			) : (
+				<Button intent="danger" size="sm" onPress={onDisconnect} isDisabled={isDisconnecting}>
+					{isDisconnecting ? "Disconnecting..." : "Disconnect"}
+				</Button>
+			)}
 		</div>
 	)
 }

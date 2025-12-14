@@ -119,10 +119,44 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 
 				// Handle update callbacks that don't have state (GitHub sends these when permissions change)
 				if (!encodedState && installation_id && setup_action === "update") {
-					// Just redirect to frontend - the installation is already set up
-					// Token will be refreshed on next API call via IntegrationTokenService
+					const connectionRepo = yield* IntegrationConnectionRepo
+					const orgRepo = yield* OrganizationRepo
 					const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
-					return HttpServerResponse.redirect(frontendUrl)
+
+					// Look up the connection by installation ID
+					const connectionOption = yield* connectionRepo
+						.findByGitHubInstallationId(installation_id)
+						.pipe(withSystemActor)
+
+					if (Option.isNone(connectionOption)) {
+						// No connection found - redirect to root
+						yield* Effect.logWarning("GitHub update callback for unknown installation", {
+							installationId: installation_id,
+						})
+						return HttpServerResponse.redirect(frontendUrl)
+					}
+
+					const connection = connectionOption.value
+
+					// Get the organization to find its slug
+					const orgOption = yield* orgRepo.findById(connection.organizationId).pipe(
+						withSystemActor,
+						Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())),
+					)
+
+					if (Option.isNone(orgOption)) {
+						yield* Effect.logWarning("GitHub update callback: organization not found", {
+							organizationId: connection.organizationId,
+						})
+						return HttpServerResponse.redirect(frontendUrl)
+					}
+
+					const org = orgOption.value
+
+					// Redirect to the organization's GitHub integration settings
+					return HttpServerResponse.redirect(
+						`${frontendUrl}/${org.slug}/settings/integrations/github`,
+					)
 				}
 
 				// For fresh installs and other callbacks, state is required

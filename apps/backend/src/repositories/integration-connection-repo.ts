@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, sql, type TransactionClient } from "@hazel/db"
 import { type IntegrationConnectionId, type OrganizationId, policyRequire, type UserId } from "@hazel/domain"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -166,6 +166,28 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					policyRequire("IntegrationConnection", "delete"),
 				)({ connectionId }, tx)
 
+			// Find connection by GitHub installation ID (stored in settings JSONB)
+			const findByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
+				db
+					.makeQuery(
+						(execute, data: { installationId: string }) =>
+							execute((client) =>
+								client
+									.select()
+									.from(schema.integrationConnectionsTable)
+									.where(
+										and(
+											eq(schema.integrationConnectionsTable.provider, "github"),
+											sql`${schema.integrationConnectionsTable.settings}->>'installationId' = ${data.installationId}`,
+											isNull(schema.integrationConnectionsTable.deletedAt),
+										),
+									)
+									.limit(1),
+							),
+						policyRequire("IntegrationConnection", "select"),
+					)({ installationId }, tx)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 			// Upsert org-level connection for a provider
 			const upsertByOrgAndProvider = (
 				insertData: typeof IntegrationConnection.Insert.Type,
@@ -214,6 +236,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 				findByOrgAndProvider: findOrgConnection, // Alias for consistency
 				findUserConnection,
 				findAllForOrg,
+				findByGitHubInstallationId,
 				updateStatus,
 				softDelete,
 				upsertByOrgAndProvider,
