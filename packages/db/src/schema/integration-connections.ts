@@ -34,8 +34,11 @@ export const integrationConnectionsTable = pgTable(
 		// Who connected it
 		connectedBy: uuid().notNull().$type<UserId>(),
 
-		// Integration-specific settings (e.g., defaultTeamId for Linear)
+		// Integration-specific settings (e.g., defaultTeamId for Linear) - user configurable
 		settings: jsonb().$type<Record<string, any>>(),
+
+		// System-managed metadata (e.g., installationId for GitHub)
+		metadata: jsonb().$type<Record<string, any>>(),
 
 		// Error details when status is 'error'
 		errorMessage: text(),

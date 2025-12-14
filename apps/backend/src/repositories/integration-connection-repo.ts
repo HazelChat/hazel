@@ -166,7 +166,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					policyRequire("IntegrationConnection", "delete"),
 				)({ connectionId }, tx)
 
-			// Find connection by GitHub installation ID (stored in settings JSONB)
+			// Find connection by GitHub installation ID (stored in metadata JSONB)
 			const findByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
 				db
 					.makeQuery(
@@ -178,7 +178,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									.where(
 										and(
 											eq(schema.integrationConnectionsTable.provider, "github"),
-											sql`${schema.integrationConnectionsTable.settings}->>'installationId' = ${data.installationId}`,
+											sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
 											isNull(schema.integrationConnectionsTable.deletedAt),
 										),
 									)

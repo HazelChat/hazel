@@ -23,6 +23,7 @@ export class Model extends M.Class<Model>("IntegrationConnection")({
 	externalAccountName: Schema.NullOr(Schema.String),
 	connectedBy: UserId,
 	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	metadata: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
 	errorMessage: Schema.NullOr(Schema.String),
 	lastUsedAt: Schema.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),

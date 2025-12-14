@@ -240,9 +240,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		),
 	)
 
-	// Prepare connection settings
+	// Prepare connection metadata
 	// For GitHub App, store the installation ID for token regeneration
-	const settings = isGitHubAppCallback ? { installationId: installation_id } : null
+	const metadata = isGitHubAppCallback ? { installationId: installation_id } : null
 
 	// Create or update connection
 	const connection = yield* connectionRepo
@@ -255,7 +255,8 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			externalAccountId: accountInfo.externalAccountId,
 			externalAccountName: accountInfo.externalAccountName,
 			connectedBy: parsedState.userId as UserId,
-			settings,
+			settings: null,
+			metadata,
 			errorMessage: null,
 			lastUsedAt: null,
 			deletedAt: null,

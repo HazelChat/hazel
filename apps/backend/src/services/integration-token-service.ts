@@ -293,19 +293,19 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			 */
 			const regenerateAppToken = Effect.fn("IntegrationTokenService.regenerateAppToken")(function* (
 				connectionId: IntegrationConnectionId,
-				connection: { provider: IntegrationConnection.IntegrationProvider; settings: unknown },
+				connection: { provider: IntegrationConnection.IntegrationProvider; metadata: unknown },
 				tokenId: IntegrationTokenId,
 			) {
 				if (connection.provider === "github") {
-					// Get installation ID from connection settings
-					const settings = connection.settings as { installationId?: string } | null
-					const installationId = settings?.installationId
+					// Get installation ID from connection metadata
+					const metadata = connection.metadata as { installationId?: string } | null
+					const installationId = metadata?.installationId
 
 					if (!installationId) {
 						return yield* Effect.fail(
 							new TokenRefreshError({
 								provider: connection.provider,
-								cause: "No installation ID found in connection settings",
+								cause: "No installation ID found in connection metadata",
 							}),
 						)
 					}
