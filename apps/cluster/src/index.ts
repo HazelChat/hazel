@@ -17,6 +17,7 @@ import { Config, Effect, Layer, Logger, Redacted } from "effect"
 import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
 import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
+import { BotUserServiceLive } from "./services/bot-user-service.ts"
 import {
 	CleanupUploadsWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
@@ -48,7 +49,7 @@ const AllWorkflows = Layer.mergeAll(
 	MessageNotificationWorkflowLayer,
 	CleanupUploadsWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
-).pipe(Layer.provide(DatabaseLayer))
+).pipe(Layer.provide(BotUserServiceLive), Layer.provide(DatabaseLayer))
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps

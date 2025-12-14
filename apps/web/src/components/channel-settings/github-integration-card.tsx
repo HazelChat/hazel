@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
@@ -6,6 +6,7 @@ import {
 	listGitHubSubscriptionsMutation,
 } from "~/atoms/github-subscription-atoms"
 import IconPlus from "~/components/icons/icon-plus"
+import { resolvedThemeAtom } from "~/components/theme-provider"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useIntegrationConnection } from "~/db/hooks"
@@ -59,7 +60,9 @@ export function GitHubIntegrationCard({ channelId, organizationId, orgSlug }: Gi
 		}
 	}, [fetchSubscriptions, isGitHubConnected])
 
-	const logoUrl = getProviderIconUrl("github")
+	// Use theme-aware GitHub logo (invert: dark UI needs light logo, light UI needs dark logo)
+	const resolvedTheme = useAtomValue(resolvedThemeAtom)
+	const logoUrl = getProviderIconUrl("github", { theme: resolvedTheme === "dark" ? "light" : "dark" })
 
 	// Not connected state
 	if (!isGitHubConnected) {

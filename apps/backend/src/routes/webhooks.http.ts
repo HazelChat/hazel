@@ -5,6 +5,7 @@ import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/dom
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
+import { remapHttpClientErrors } from "../lib/http-client-errors"
 import { WorkOSSync } from "../services/workos-sync"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
 
@@ -148,32 +149,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											authorId: event.record.authorId,
 										}),
 									),
-									Effect.catchTags({
-										HttpApiDecodeError: (_error) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to execute notification workflow",
-												}),
-											),
-										ParseError: (_error) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to execute notification workflow",
-												}),
-											),
-										RequestError: (_error) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to execute notification workflow",
-												}),
-											),
-										ResponseError: (_error) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to execute notification workflow",
-												}),
-											),
-									}),
+									remapHttpClientErrors("Failed to execute notification workflow"),
 								)
 
 							yield* Effect.logInfo("Event processed successfully", {
@@ -218,14 +194,37 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				)
 
 				// Verify the webhook signature
-				const webhookSecret = yield* Config.redacted("GITHUB_WEBHOOK_SECRET").pipe(
-					Effect.orElseSucceed(() => Redacted.make("")),
+				// SECURITY: Require GITHUB_WEBHOOK_SECRET in production
+				const skipSignatureVerification = yield* Config.boolean("GITHUB_WEBHOOK_SKIP_SIGNATURE").pipe(
+					Effect.orElseSucceed(() => false),
 				)
 
-				if (signature && Redacted.value(webhookSecret)) {
-					const expected = `sha256=${createHmac("sha256", Redacted.value(webhookSecret))
-						.update(rawBody)
-						.digest("hex")}`
+				const webhookSecret = yield* Config.redacted("GITHUB_WEBHOOK_SECRET").pipe(
+					Effect.catchAll(() =>
+						skipSignatureVerification
+							? Effect.succeed(Redacted.make(""))
+							: Effect.fail(
+									new InvalidGitHubWebhookSignature({
+										message:
+											"GITHUB_WEBHOOK_SECRET not configured. Set GITHUB_WEBHOOK_SKIP_SIGNATURE=true to disable in development.",
+									}),
+								),
+					),
+				)
+
+				const secretValue = Redacted.value(webhookSecret)
+				if (secretValue) {
+					// Secret is configured, verify signature
+					if (!signature) {
+						yield* Effect.logWarning("Missing GitHub webhook signature header")
+						return yield* Effect.fail(
+							new InvalidGitHubWebhookSignature({
+								message: "Missing x-hub-signature-256 header",
+							}),
+						)
+					}
+
+					const expected = `sha256=${createHmac("sha256", secretValue).update(rawBody).digest("hex")}`
 					const sig = Buffer.from(signature)
 					const exp = Buffer.from(expected)
 
@@ -237,6 +236,11 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							}),
 						)
 					}
+				} else {
+					// No secret configured and skip is enabled (dev mode)
+					yield* Effect.logWarning(
+						"GitHub webhook signature verification skipped (GITHUB_WEBHOOK_SKIP_SIGNATURE=true)",
+					)
 				}
 
 				// Parse the webhook payload
@@ -289,32 +293,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 								repository: repositoryFullName,
 							}),
 						),
-						Effect.catchTags({
-							HttpApiDecodeError: (_error) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to execute GitHub webhook workflow",
-									}),
-								),
-							ParseError: (_error) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to execute GitHub webhook workflow",
-									}),
-								),
-							RequestError: (_error) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to execute GitHub webhook workflow",
-									}),
-								),
-							ResponseError: (_error) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to execute GitHub webhook workflow",
-									}),
-								),
-						}),
+						remapHttpClientErrors("Failed to execute GitHub webhook workflow"),
 					)
 
 				yield* Effect.logInfo("GitHub webhook processed successfully", {

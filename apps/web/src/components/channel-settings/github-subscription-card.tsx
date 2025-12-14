@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { GitHubSubscriptionId } from "@hazel/schema"
 import { useState } from "react"
 import {
@@ -8,6 +8,7 @@ import {
 } from "~/atoms/github-subscription-atoms"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconTrash from "~/components/icons/icon-trash"
+import { resolvedThemeAtom } from "~/components/theme-provider"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
@@ -32,6 +33,9 @@ export function GitHubSubscriptionItem({ subscription, onUpdate }: GitHubSubscri
 	const [confirmDelete, setConfirmDelete] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
+
+	// Use theme-aware GitHub logo (invert: dark UI needs light logo, light UI needs dark logo)
+	const resolvedTheme = useAtomValue(resolvedThemeAtom)
 
 	const deleteSubscription = useAtomSet(deleteGitHubSubscriptionMutation, { mode: "promiseExit" })
 	const updateSubscription = useAtomSet(updateGitHubSubscriptionMutation, { mode: "promiseExit" })
@@ -92,9 +96,9 @@ export function GitHubSubscriptionItem({ subscription, onUpdate }: GitHubSubscri
 	const remainingCount = subscription.enabledEvents.length - 3
 
 	return (
-		<div className="flex items-center gap-3 rounded-lg border border-border bg-bg p-3 transition-colors hover:border-border-hover">
+		<div className="group flex items-center gap-3 rounded-lg border border-border bg-bg p-3 transition-all hover:border-border-hover hover:bg-bg-muted/50 hover:shadow-sm">
 			<img
-				src={getProviderIconUrl("github")}
+				src={getProviderIconUrl("github", { theme: resolvedTheme === "dark" ? "light" : "dark" })}
 				alt="GitHub"
 				className="size-8 rounded-full object-cover"
 			/>

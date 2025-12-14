@@ -163,11 +163,11 @@ export function AddGitHubRepoModal({
 									<p className="text-muted-fg text-sm">Failed to load repositories</p>
 								</div>
 							) : selectedRepo ? (
-								<div className="flex items-center justify-between rounded-lg border border-border p-3">
+								<div className="flex items-center justify-between rounded-lg border border-accent bg-accent/5 p-3">
 									<div className="flex items-center gap-3">
-										<div className="flex size-8 items-center justify-center rounded bg-bg-muted">
+										<div className="flex size-8 items-center justify-center rounded bg-accent/10">
 											<svg
-												className="size-4 text-muted-fg"
+												className="size-4 text-accent-fg"
 												fill="currentColor"
 												viewBox="0 0 16 16"
 											>
@@ -212,22 +212,22 @@ export function AddGitHubRepoModal({
 																name: repo.name,
 															})
 														}
-														className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-bg-muted"
+														className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent hover:text-accent-fg focus:bg-accent focus:text-accent-fg focus:outline-none"
 													>
-														<div className="flex size-6 shrink-0 items-center justify-center rounded bg-bg-muted">
+														<div className="flex size-6 shrink-0 items-center justify-center rounded bg-bg-muted group-hover:bg-accent-fg/10 group-focus:bg-accent-fg/10">
 															<svg
-																className="size-3.5 text-muted-fg"
+																className="size-3.5 text-muted-fg group-hover:text-accent-fg group-focus:text-accent-fg"
 																fill="currentColor"
 																viewBox="0 0 16 16"
 															>
 																<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
 															</svg>
 														</div>
-														<span className="truncate font-medium text-fg text-sm">
+														<span className="truncate font-medium text-sm">
 															{repo.fullName}
 														</span>
 														{repo.private && (
-															<span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-amber-600 text-xs dark:text-amber-400">
+															<span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-amber-600 text-xs group-hover:bg-accent-fg/10 group-hover:text-accent-fg dark:text-amber-400 dark:group-hover:text-accent-fg">
 																Private
 															</span>
 														)}
@@ -249,26 +249,33 @@ export function AddGitHubRepoModal({
 										Select which events to receive notifications for.
 									</p>
 									<div className="grid grid-cols-2 gap-2">
-										{EVENT_OPTIONS.map((event) => (
-											<label
-												key={event.id}
-												className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-bg-muted"
-											>
-												<Checkbox
-													isSelected={enabledEvents.includes(event.id)}
-													onChange={() => handleToggleEvent(event.id)}
-													className="mt-0.5"
-												/>
-												<div className="flex flex-col gap-0.5">
-													<span className="font-medium text-fg text-sm">
-														{event.label}
-													</span>
-													<span className="text-muted-fg text-xs">
-														{event.description}
-													</span>
-												</div>
-											</label>
-										))}
+										{EVENT_OPTIONS.map((event) => {
+											const isSelected = enabledEvents.includes(event.id)
+											return (
+												<label
+													key={event.id}
+													className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all ${
+														isSelected
+															? "border-accent bg-accent/5"
+															: "border-border hover:border-border-hover hover:bg-bg-muted"
+													}`}
+												>
+													<Checkbox
+														isSelected={isSelected}
+														onChange={() => handleToggleEvent(event.id)}
+														className="mt-0.5"
+													/>
+													<div className="flex flex-col gap-0.5">
+														<span className="font-medium text-fg text-sm">
+															{event.label}
+														</span>
+														<span className="text-muted-fg text-xs">
+															{event.description}
+														</span>
+													</div>
+												</label>
+											)
+										})}
 									</div>
 								</div>
 

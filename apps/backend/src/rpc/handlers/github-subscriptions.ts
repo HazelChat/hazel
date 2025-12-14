@@ -24,7 +24,11 @@ import { IntegrationConnectionRepo } from "../../repositories/integration-connec
  */
 export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 	Effect.gen(function* () {
+		// Yield services once at initialization
 		const db = yield* Database.Database
+		const channelRepo = yield* ChannelRepo
+		const subscriptionRepo = yield* GitHubSubscriptionRepo
+		const integrationRepo = yield* IntegrationConnectionRepo
 
 		return {
 			"githubSubscription.create": (payload) =>
@@ -32,9 +36,6 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
-							const channelRepo = yield* ChannelRepo
-							const subscriptionRepo = yield* GitHubSubscriptionRepo
-							const integrationRepo = yield* IntegrationConnectionRepo
 
 							// Get channel to get organization ID
 							const channelOption = yield* channelRepo
@@ -97,8 +98,6 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 
 			"githubSubscription.list": ({ channelId }) =>
 				Effect.gen(function* () {
-					const subscriptionRepo = yield* GitHubSubscriptionRepo
-
 					const subscriptions = yield* subscriptionRepo.findByChannel(channelId)
 
 					return new GitHubSubscriptionListResponse({ data: subscriptions })
@@ -111,8 +110,6 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const subscriptionRepo = yield* GitHubSubscriptionRepo
-
 							// Get current subscription
 							const subscriptionOption = yield* subscriptionRepo
 								.findById(id)
@@ -148,8 +145,6 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const subscriptionRepo = yield* GitHubSubscriptionRepo
-
 							// Check subscription exists
 							const subscriptionOption = yield* subscriptionRepo
 								.findById(id)
