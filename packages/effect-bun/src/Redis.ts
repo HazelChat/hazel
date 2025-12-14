@@ -149,11 +149,19 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 		/**
 		 * Increment the integer value of a hash field by the given number
 		 */
-		readonly hincrby: (key: string, field: string, increment: number) => Effect.Effect<number, RedisErrors>
+		readonly hincrby: (
+			key: string,
+			field: string,
+			increment: number,
+		) => Effect.Effect<number, RedisErrors>
 		/**
 		 * Increment the float value of a hash field by the given amount
 		 */
-		readonly hincrbyfloat: (key: string, field: string, increment: number) => Effect.Effect<number, RedisErrors>
+		readonly hincrbyfloat: (
+			key: string,
+			field: string,
+			increment: number,
+		) => Effect.Effect<number, RedisErrors>
 
 		// Set operations
 		/**

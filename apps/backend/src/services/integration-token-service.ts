@@ -112,7 +112,9 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 
 				if (needsRefresh) {
 					// Get connection to determine provider
-					const connectionOption = yield* connectionRepo.findById(connectionId).pipe(withSystemActor)
+					const connectionOption = yield* connectionRepo
+						.findById(connectionId)
+						.pipe(withSystemActor)
 					const connection = yield* Option.match(connectionOption, {
 						onNone: () => Effect.fail(new ConnectionNotFoundError({ connectionId })),
 						onSome: Effect.succeed,
@@ -292,7 +294,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			 * Uses JWT to request a new installation access token.
 			 */
 			const regenerateAppToken = Effect.fn("IntegrationTokenService.regenerateAppToken")(function* (
-				connectionId: IntegrationConnectionId,
+				_connectionId: IntegrationConnectionId,
 				connection: { provider: IntegrationConnection.IntegrationProvider; metadata: unknown },
 				tokenId: IntegrationTokenId,
 			) {

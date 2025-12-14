@@ -31,7 +31,7 @@ export function detectLanguage(code: string): string | undefined {
 	}
 
 	// JSON - starts with { or [ and has key-value structure
-	if (/^[\[\{]/.test(trimmed)) {
+	if (/^[[{]/.test(trimmed)) {
 		// Check for JSON-like structure (quoted keys with colons)
 		if (/"[^"]+"\s*:/.test(trimmed)) {
 			return "json"
@@ -39,12 +39,16 @@ export function detectLanguage(code: string): string | undefined {
 	}
 
 	// HTML - common HTML tags
-	if (/<(!DOCTYPE|html|head|body|div|span|p|a|script|style|link|meta|img|form|input|button|table|ul|ol|li)\b/i.test(trimmed)) {
+	if (
+		/<(!DOCTYPE|html|head|body|div|span|p|a|script|style|link|meta|img|form|input|button|table|ul|ol|li)\b/i.test(
+			trimmed,
+		)
+	) {
 		return "html"
 	}
 
 	// CSS - selector pattern followed by property declarations
-	if (/^[.#@\w\[\]:,\-\s]+\{/m.test(trimmed) && /[a-z-]+\s*:\s*[^;]+;/i.test(trimmed)) {
+	if (/^[.#@\w[\]:,\-\s]+\{/m.test(trimmed) && /[a-z-]+\s*:\s*[^;]+;/i.test(trimmed)) {
 		return "css"
 	}
 
@@ -88,7 +92,7 @@ export function detectLanguage(code: string): string | undefined {
 	// JavaScript - common patterns (check after TypeScript)
 	if (
 		/^(const|let|var|function|async\s+function|export|import)\s/m.test(trimmed) ||
-		/=>\s*[\{\(]/.test(trimmed) ||
+		/=>\s*[{(]/.test(trimmed) ||
 		/console\.(log|error|warn|info)\(/.test(trimmed) ||
 		/document\.(getElementById|querySelector|createElement)/.test(trimmed)
 	) {
@@ -98,7 +102,7 @@ export function detectLanguage(code: string): string | undefined {
 	// YAML - key: value pattern without JS/JSON braces, multiple lines
 	if (
 		/^\s*[\w-]+:\s*\S/m.test(trimmed) &&
-		!/[{}\[\]();]/.test(trimmed) &&
+		!/[{}[\]();]/.test(trimmed) &&
 		(trimmed.includes("\n") || /^\s*[\w-]+:\s*(true|false|null|\d+|".*"|'.*')$/i.test(trimmed))
 	) {
 		return "yaml"

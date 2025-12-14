@@ -34,10 +34,18 @@ function RouteComponent() {
 	const { user } = useAuth()
 	const navigate = useNavigate()
 
-	const createOrganization = useAtomSet(createOrganizationMutation, { mode: "promiseExit" })
-	const setOrganizationSlugAction = useAtomSet(setOrganizationSlugMutation, { mode: "promiseExit" })
-	const finalizeOnboarding = useAtomSet(finalizeOnboardingMutation, { mode: "promiseExit" })
-	const createInvitation = useAtomSet(createInvitationMutation, { mode: "promiseExit" })
+	const createOrganization = useAtomSet(createOrganizationMutation, {
+		mode: "promiseExit",
+	})
+	const setOrganizationSlugAction = useAtomSet(setOrganizationSlugMutation, {
+		mode: "promiseExit",
+	})
+	const finalizeOnboarding = useAtomSet(finalizeOnboardingMutation, {
+		mode: "promiseExit",
+	})
+	const createInvitation = useAtomSet(createInvitationMutation, {
+		mode: "promiseExit",
+	})
 	const updateOrganizationMemberMetadata = useAtomSet(updateOrganizationMemberMetadataMutation, {
 		mode: "promiseExit",
 	})
@@ -250,7 +258,10 @@ function RouteComponent() {
 		let stepNumber = 1
 		for (const meta of Object.values(allMeta)) {
 			if (meta && typeof meta === "object" && "stepNumber" in meta) {
-				const stepNumberMeta = meta.stepNumber as { creator: number; invited: number | null }
+				const stepNumberMeta = meta.stepNumber as {
+					creator: number
+					invited: number | null
+				}
 				const num = stepNumberMeta[flowType]
 				if (num !== null && num !== undefined) {
 					stepNumber = num
@@ -387,7 +398,10 @@ function RouteComponent() {
 						<UseCaseStep
 							onBack={() => sendWithDirection({ type: "BACK" })}
 							onContinue={(useCases) =>
-								sendWithDirection({ type: "USE_CASE_CONTINUE", data: { useCases } })
+								sendWithDirection({
+									type: "USE_CASE_CONTINUE",
+									data: { useCases },
+								})
 							}
 							defaultSelection={state.context.useCases}
 						/>
@@ -427,7 +441,10 @@ function RouteComponent() {
 						<InviteTeamStep
 							onBack={() => sendWithDirection({ type: "BACK" })}
 							onContinue={(emails) => {
-								sendWithDirection({ type: "INVITE_TEAM_CONTINUE", data: { emails } })
+								sendWithDirection({
+									type: "INVITE_TEAM_CONTINUE",
+									data: { emails },
+								})
 							}}
 							onSkip={() => sendWithDirection({ type: "INVITE_TEAM_SKIP" })}
 							organizationId={orgId}

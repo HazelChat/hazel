@@ -363,7 +363,10 @@ export function GitHubPREmbed({ url, orgId }: GitHubPREmbedProps) {
 			<Embed.Body title={`#${pr.number} ${pr.title}`} description={pr.body} />
 			{fields.length > 0 && <Embed.Fields fields={fields} />}
 			{pr.headRefName && (
-				<Embed.Footer text={pr.headRefName} timestamp={pr.updatedAt ? new Date(pr.updatedAt) : undefined} />
+				<Embed.Footer
+					text={pr.headRefName}
+					timestamp={pr.updatedAt ? new Date(pr.updatedAt) : undefined}
+				/>
 			)}
 		</Embed>
 	)

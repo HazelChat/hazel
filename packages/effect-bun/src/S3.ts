@@ -28,23 +28,17 @@ export class S3MissingCredentialsError extends Schema.TaggedError<S3MissingCrede
  * Invalid HTTP method for S3 operation
  * Bun error code: ERR_S3_INVALID_METHOD
  */
-export class S3InvalidMethodError extends Schema.TaggedError<S3InvalidMethodError>()(
-	"S3InvalidMethodError",
-	{
-		message: Schema.String,
-	},
-) {}
+export class S3InvalidMethodError extends Schema.TaggedError<S3InvalidMethodError>()("S3InvalidMethodError", {
+	message: Schema.String,
+}) {}
 
 /**
  * Invalid S3 path/key
  * Bun error code: ERR_S3_INVALID_PATH
  */
-export class S3InvalidPathError extends Schema.TaggedError<S3InvalidPathError>()(
-	"S3InvalidPathError",
-	{
-		message: Schema.String,
-	},
-) {}
+export class S3InvalidPathError extends Schema.TaggedError<S3InvalidPathError>()("S3InvalidPathError", {
+	message: Schema.String,
+}) {}
 
 /**
  * Invalid S3 endpoint URL

@@ -58,7 +58,7 @@ export function makeRepository<
 						Effect.flatMap((result) =>
 							result.length > 0
 								? Effect.succeed(result[0] as RecordType)
-								: Effect.die(new EntityNotFound({ type: options.name, id: input[idColumn] }))
+								: Effect.die(new EntityNotFound({ type: options.name, id: input[idColumn] })),
 						),
 					),
 				policyRequire(options.name, "update"),

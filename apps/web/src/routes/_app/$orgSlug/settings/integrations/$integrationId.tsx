@@ -367,9 +367,10 @@ function ConnectedState({
 	isDisconnecting: boolean
 	onDisconnect: () => void
 }) {
+	console.log(connection)
 	// GitHub App installation settings URL - allows users to manage permissions or uninstall
 	const gitHubConfigureUrl =
-		integration.id === "github" && connection?.settings?.installationId
+		integration.id === "github" && connection?.metadata?.installationId
 			? "https://github.com/apps/hazelchat/installations/select_target"
 			: null
 
@@ -562,10 +563,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 				<>
 					<div className="divide-y divide-border">
 						{repositories.map((repo) => (
-							<div
-								key={repo.id}
-								className="flex items-center justify-between gap-4 px-5 py-3"
-							>
+							<div key={repo.id} className="flex items-center justify-between gap-4 px-5 py-3">
 								<div className="flex min-w-0 items-center gap-3">
 									<div className="flex size-8 shrink-0 items-center justify-center rounded bg-bg-muted">
 										<svg

@@ -60,11 +60,7 @@ import type { CodeBlockElement as CodeBlockElementType } from "./types"
 import { isCodeBlockElement } from "./types"
 
 // Helper to auto-detect and set language on a code block if not already set
-function maybeDetectLanguage(
-	editor: CustomEditor,
-	element: CodeBlockElementType,
-	path: number[],
-): void {
+function maybeDetectLanguage(editor: CustomEditor, element: CodeBlockElementType, path: number[]): void {
 	// Skip if language is already set
 	if (element.language) return
 

@@ -4,7 +4,7 @@ import type {
 	GitHubInstallationTokenError,
 	InstallationToken,
 } from "../../github-app-jwt-service"
-import { AccountInfoError, TokenExchangeError, type OAuthProvider } from "../oauth-provider"
+import { AccountInfoError, type OAuthProvider, TokenExchangeError } from "../oauth-provider"
 import type { OAuthProviderConfig, OAuthTokens } from "../provider-config"
 
 /**

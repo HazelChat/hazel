@@ -17,7 +17,7 @@ type ProviderFactory = (config: OAuthProviderConfig) => OAuthProvider
  * Providers that use GitHub App flow (not standard OAuth).
  * These providers get their config from dedicated services, not loadProviderConfig.
  */
-const APP_BASED_PROVIDERS: readonly IntegrationProvider[] = ["github"] as const
+const _APP_BASED_PROVIDERS: readonly IntegrationProvider[] = ["github"] as const
 
 /**
  * Registry of provider factory functions for standard OAuth providers.
