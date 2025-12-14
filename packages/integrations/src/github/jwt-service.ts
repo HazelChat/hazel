@@ -1,23 +1,26 @@
 import { createPrivateKey } from "node:crypto"
-import { Config, Data, Effect, Redacted } from "effect"
+import { Config, Effect, Redacted, Schema } from "effect"
 import { SignJWT } from "jose"
 
 /**
  * Error when JWT generation fails.
  */
-export class GitHubAppJWTError extends Data.TaggedError("GitHubAppJWTError")<{
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class GitHubAppJWTError extends Schema.TaggedError<GitHubAppJWTError>()("GitHubAppJWTError", {
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 /**
  * Error when installation token generation fails.
  */
-export class GitHubInstallationTokenError extends Data.TaggedError("GitHubInstallationTokenError")<{
-	readonly installationId: string
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class GitHubInstallationTokenError extends Schema.TaggedError<GitHubInstallationTokenError>()(
+	"GitHubInstallationTokenError",
+	{
+		installationId: Schema.String,
+		message: Schema.String,
+		cause: Schema.optional(Schema.Unknown),
+	},
+) {}
 
 /**
  * GitHub App configuration loaded from environment.

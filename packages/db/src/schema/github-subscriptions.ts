@@ -1,3 +1,4 @@
+import { GitHubSubscription } from "@hazel/domain"
 import type { ChannelId, GitHubSubscriptionId, OrganizationId, UserId } from "@hazel/schema"
 import { sql } from "drizzle-orm"
 import {
@@ -12,16 +13,7 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core"
 
-// Supported GitHub event types for subscriptions
-export const githubEventTypes = [
-	"push",
-	"pull_request",
-	"issues",
-	"release",
-	"deployment_status",
-	"workflow_run",
-] as const
-export type GitHubEventType = (typeof githubEventTypes)[number]
+type GitHubEventType = GitHubSubscription.GitHubEventType
 
 export const githubSubscriptionsTable = pgTable(
 	"github_subscriptions",

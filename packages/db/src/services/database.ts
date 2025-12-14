@@ -3,7 +3,6 @@ import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
 import { Schema } from "effect"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -38,16 +37,18 @@ export class TransactionContext extends Effect.Tag("TransactionContext")<
 	TransactionService
 >() {}
 
-export class DatabaseError extends Data.TaggedError("DatabaseError")<{
-	readonly type: "unique_violation" | "foreign_key_violation" | "connection_error"
-	readonly cause: postgres.PostgresError
-}> {
+const DatabaseErrorType = Schema.Literal("unique_violation", "foreign_key_violation", "connection_error")
+
+export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
+	type: DatabaseErrorType,
+	cause: Schema.Unknown,
+}) {
 	public override toString() {
-		return `DatabaseError: ${this.cause.message}`
+		return `DatabaseError: ${(this.cause as postgres.PostgresError).message}`
 	}
 
 	public override get message() {
-		return this.cause.message
+		return (this.cause as postgres.PostgresError).message
 	}
 }
 
@@ -65,10 +66,13 @@ const matchPgError = (error: unknown) => {
 	return null
 }
 
-export class DatabaseConnectionLostError extends Data.TaggedError("DatabaseConnectionLostError")<{
-	cause: unknown
-	message: string
-}> {}
+export class DatabaseConnectionLostError extends Schema.TaggedError<DatabaseConnectionLostError>()(
+	"DatabaseConnectionLostError",
+	{
+		cause: Schema.Unknown,
+		message: Schema.String,
+	},
+) {}
 
 /** Sentinel error used to trigger Drizzle transaction rollback when an Effect fails */
 class EffectTransactionRollback extends Error {

@@ -1,12 +1,12 @@
-import { Data, Effect, Option, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 
 /**
  * Error for when Linear command execution fails
  */
-export class LinearCommandError extends Data.TaggedError("LinearCommandError")<{
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class LinearCommandError extends Schema.TaggedError<LinearCommandError>()("LinearCommandError", {
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 /**
  * Result of creating a Linear issue

@@ -1,4 +1,4 @@
-import { Data, Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 
 /**
  * GitHub PR URL patterns:
@@ -41,17 +41,20 @@ export const GitHubPR = Schema.Struct({
 export type GitHubPR = typeof GitHubPR.Type
 
 // Error for when GitHub API request fails
-export class GitHubApiError extends Data.TaggedError("GitHubApiError")<{
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class GitHubApiError extends Schema.TaggedError<GitHubApiError>()("GitHubApiError", {
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 // Error for when PR is not found
-export class GitHubPRNotFoundError extends Data.TaggedError("GitHubPRNotFoundError")<{
-	readonly owner: string
-	readonly repo: string
-	readonly number: number
-}> {}
+export class GitHubPRNotFoundError extends Schema.TaggedError<GitHubPRNotFoundError>()(
+	"GitHubPRNotFoundError",
+	{
+		owner: Schema.String,
+		repo: Schema.String,
+		number: Schema.Number,
+	},
+) {}
 
 /**
  * Parse a GitHub PR URL to extract owner, repo, and PR number

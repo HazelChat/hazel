@@ -1,25 +1,29 @@
 import { type IntegrationConnectionId, type IntegrationTokenId, withSystemActor } from "@hazel/domain"
-import type { IntegrationConnection } from "@hazel/domain/models"
+import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
-import { Data, Effect, Option, PartitionedSemaphore, Redacted } from "effect"
+import { Effect, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "../repositories/integration-token-repo"
 import { DatabaseLive } from "./database"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { loadProviderConfig } from "./oauth/provider-config"
+import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
 
-export class TokenNotFoundError extends Data.TaggedError("TokenNotFoundError")<{
-	readonly connectionId: IntegrationConnectionId
-}> {}
+export class TokenNotFoundError extends Schema.TaggedError<TokenNotFoundError>()("TokenNotFoundError", {
+	connectionId: IntegrationConnectionIdSchema,
+}) {}
 
-export class TokenRefreshError extends Data.TaggedError("TokenRefreshError")<{
-	readonly provider: IntegrationConnection.IntegrationProvider
-	readonly cause: unknown
-}> {}
+export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()("TokenRefreshError", {
+	provider: IntegrationConnection.IntegrationProvider,
+	cause: Schema.Unknown,
+}) {}
 
-export class ConnectionNotFoundError extends Data.TaggedError("ConnectionNotFoundError")<{
-	readonly connectionId: IntegrationConnectionId
-}> {}
+export class ConnectionNotFoundError extends Schema.TaggedError<ConnectionNotFoundError>()(
+	"ConnectionNotFoundError",
+	{
+		connectionId: IntegrationConnectionIdSchema,
+	},
+) {}
 
 /**
  * Providers that use app-based token regeneration (JWT) instead of OAuth refresh tokens.

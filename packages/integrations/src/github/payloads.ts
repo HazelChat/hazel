@@ -168,10 +168,15 @@ export type GitHubWebhookPayload =
 /**
  * GitHub event types supported by the integration.
  */
-export type GitHubEventType =
-	| "push"
-	| "pull_request"
-	| "issues"
-	| "release"
-	| "deployment_status"
-	| "workflow_run"
+export const GitHubEventType = Schema.Literal(
+	"push",
+	"pull_request",
+	"issues",
+	"release",
+	"deployment_status",
+	"workflow_run",
+)
+export type GitHubEventType = Schema.Schema.Type<typeof GitHubEventType>
+
+export const GitHubEventTypes = Schema.Array(GitHubEventType)
+export type GitHubEventTypes = Schema.Schema.Type<typeof GitHubEventTypes>

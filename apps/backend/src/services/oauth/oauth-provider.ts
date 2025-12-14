@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { Effect, Schema } from "effect"
 import type {
 	IntegrationProvider,
 	OAuthAccountInfo,
@@ -6,40 +6,45 @@ import type {
 	OAuthTokens,
 } from "./provider-config"
 
+const IntegrationProviderSchema = Schema.Literal("linear", "github", "figma", "notion")
+
 /**
  * Error when exchanging authorization code for tokens fails.
  */
-export class TokenExchangeError extends Data.TaggedError("TokenExchangeError")<{
-	readonly provider: IntegrationProvider
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class TokenExchangeError extends Schema.TaggedError<TokenExchangeError>()("TokenExchangeError", {
+	provider: IntegrationProviderSchema,
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 /**
  * Error when fetching account info from provider fails.
  */
-export class AccountInfoError extends Data.TaggedError("AccountInfoError")<{
-	readonly provider: IntegrationProvider
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class AccountInfoError extends Schema.TaggedError<AccountInfoError>()("AccountInfoError", {
+	provider: IntegrationProviderSchema,
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 /**
  * Error when refreshing access token fails.
  */
-export class TokenRefreshError extends Data.TaggedError("TokenRefreshError")<{
-	readonly provider: IntegrationProvider
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()("TokenRefreshError", {
+	provider: IntegrationProviderSchema,
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 /**
  * Error when provider is not supported or not configured.
  */
-export class ProviderNotConfiguredError extends Data.TaggedError("ProviderNotConfiguredError")<{
-	readonly provider: IntegrationProvider
-	readonly message: string
-}> {}
+export class ProviderNotConfiguredError extends Schema.TaggedError<ProviderNotConfiguredError>()(
+	"ProviderNotConfiguredError",
+	{
+		provider: IntegrationProviderSchema,
+		message: Schema.String,
+	},
+) {}
 
 /**
  * Interface for OAuth providers.

@@ -1,17 +1,19 @@
+import { GitHubSubscription } from "@hazel/domain"
+import type { Schema } from "effect"
 import { INTEGRATION_BOT_CONFIGS } from "../common/bot-configs.ts"
 import type { MessageEmbed } from "../common/embed-types.ts"
 import { GITHUB_COLORS } from "./colors.ts"
 import {
 	GitHubLabel,
 	type GitHubDeploymentStatusPayload,
-	type GitHubEventType,
 	type GitHubIssuesPayload,
 	type GitHubPullRequestPayload,
 	type GitHubPushPayload,
 	type GitHubReleasePayload,
 	type GitHubWorkflowRunPayload,
 } from "./payloads.ts"
-import type { Schema } from "effect"
+
+type GitHubEventType = GitHubSubscription.GitHubEventType
 
 // Infer the GitHubLabel type from the schema
 type GitHubLabelType = Schema.Schema.Type<typeof GitHubLabel>
