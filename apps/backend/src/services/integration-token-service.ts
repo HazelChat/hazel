@@ -4,6 +4,7 @@ import { Data, Effect, Option, PartitionedSemaphore, Redacted } from "effect"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "../repositories/integration-token-repo"
 import { DatabaseLive } from "./database"
+import { GitHubAppJWTService } from "./github-app-jwt-service"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { loadProviderConfig } from "./oauth/provider-config"
 
@@ -19,6 +20,12 @@ export class TokenRefreshError extends Data.TaggedError("TokenRefreshError")<{
 export class ConnectionNotFoundError extends Data.TaggedError("ConnectionNotFoundError")<{
 	readonly connectionId: IntegrationConnectionId
 }> {}
+
+/**
+ * Providers that use app-based token regeneration (JWT) instead of OAuth refresh tokens.
+ * These providers regenerate tokens on-demand rather than using refresh tokens.
+ */
+const APP_BASED_PROVIDERS: readonly IntegrationConnection.IntegrationProvider[] = ["github"] as const
 
 interface OAuthTokenResponse {
 	accessToken: string
@@ -103,41 +110,90 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 				const expiryBuffer = 10 * 60 * 1000 // 10 minutes
 				const needsRefresh = token.expiresAt && token.expiresAt.getTime() - now < expiryBuffer
 
-				if (needsRefresh && token.encryptedRefreshToken) {
-					// Use partitioned semaphore to prevent concurrent refreshes for the same connection
-					// Re-read token inside semaphore to check if another request already refreshed it
-					return yield* refreshSemaphore.withPermits(
-						connectionId,
-						1,
-					)(
-						Effect.gen(function* () {
-							// Re-fetch token to check if it was already refreshed while waiting
-							const freshTokenOption = yield* tokenRepo
-								.findByConnectionId(connectionId)
-								.pipe(withSystemActor)
-							const freshToken = yield* Option.match(freshTokenOption, {
-								onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
-								onSome: Effect.succeed,
-							})
+				if (needsRefresh) {
+					// Get connection to determine provider
+					const connectionOption = yield* connectionRepo.findById(connectionId).pipe(withSystemActor)
+					const connection = yield* Option.match(connectionOption, {
+						onNone: () => Effect.fail(new ConnectionNotFoundError({ connectionId })),
+						onSome: Effect.succeed,
+					})
 
-							const freshNow = Date.now()
-							const stillNeedsRefresh =
-								freshToken.expiresAt &&
-								freshToken.expiresAt.getTime() - freshNow < expiryBuffer
+					// Check if this is an app-based provider (uses JWT regeneration)
+					const isAppBased = APP_BASED_PROVIDERS.includes(connection.provider)
 
-							if (stillNeedsRefresh && freshToken.encryptedRefreshToken) {
-								// Still needs refresh - do the actual refresh
-								return yield* refreshAndGetToken(connectionId, freshToken)
-							}
+					if (isAppBased) {
+						// App-based providers (like GitHub App) regenerate tokens via JWT
+						return yield* refreshSemaphore.withPermits(
+							connectionId,
+							1,
+						)(
+							Effect.gen(function* () {
+								// Re-fetch token to check if it was already refreshed while waiting
+								const freshTokenOption = yield* tokenRepo
+									.findByConnectionId(connectionId)
+									.pipe(withSystemActor)
+								const freshToken = yield* Option.match(freshTokenOption, {
+									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
+									onSome: Effect.succeed,
+								})
 
-							// Token was already refreshed by another request - just decrypt and return
-							return yield* encryption.decrypt({
-								ciphertext: freshToken.encryptedAccessToken,
-								iv: freshToken.iv,
-								keyVersion: freshToken.encryptionKeyVersion,
-							})
-						}),
-					)
+								const freshNow = Date.now()
+								const stillNeedsRefresh =
+									freshToken.expiresAt &&
+									freshToken.expiresAt.getTime() - freshNow < expiryBuffer
+
+								if (stillNeedsRefresh) {
+									// Still needs refresh - regenerate via JWT
+									return yield* regenerateAppToken(connectionId, connection, freshToken.id)
+								}
+
+								// Token was already refreshed by another request - just decrypt and return
+								return yield* encryption.decrypt({
+									ciphertext: freshToken.encryptedAccessToken,
+									iv: freshToken.iv,
+									keyVersion: freshToken.encryptionKeyVersion,
+								})
+							}),
+						)
+					}
+
+					// Standard OAuth refresh flow
+					if (token.encryptedRefreshToken) {
+						// Use partitioned semaphore to prevent concurrent refreshes for the same connection
+						// Re-read token inside semaphore to check if another request already refreshed it
+						return yield* refreshSemaphore.withPermits(
+							connectionId,
+							1,
+						)(
+							Effect.gen(function* () {
+								// Re-fetch token to check if it was already refreshed while waiting
+								const freshTokenOption = yield* tokenRepo
+									.findByConnectionId(connectionId)
+									.pipe(withSystemActor)
+								const freshToken = yield* Option.match(freshTokenOption, {
+									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
+									onSome: Effect.succeed,
+								})
+
+								const freshNow = Date.now()
+								const stillNeedsRefresh =
+									freshToken.expiresAt &&
+									freshToken.expiresAt.getTime() - freshNow < expiryBuffer
+
+								if (stillNeedsRefresh && freshToken.encryptedRefreshToken) {
+									// Still needs refresh - do the actual refresh
+									return yield* refreshAndGetToken(connectionId, freshToken)
+								}
+
+								// Token was already refreshed by another request - just decrypt and return
+								return yield* encryption.decrypt({
+									ciphertext: freshToken.encryptedAccessToken,
+									iv: freshToken.iv,
+									keyVersion: freshToken.encryptionKeyVersion,
+								})
+							}),
+						)
+					}
 				}
 
 				// Decrypt and return current token
@@ -232,6 +288,70 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			})
 
 			/**
+			 * Regenerate token for app-based providers (like GitHub App).
+			 * Uses JWT to request a new installation access token.
+			 */
+			const regenerateAppToken = Effect.fn("IntegrationTokenService.regenerateAppToken")(function* (
+				connectionId: IntegrationConnectionId,
+				connection: { provider: IntegrationConnection.IntegrationProvider; settings: unknown },
+				tokenId: IntegrationTokenId,
+			) {
+				if (connection.provider === "github") {
+					// Get installation ID from connection settings
+					const settings = connection.settings as { installationId?: string } | null
+					const installationId = settings?.installationId
+
+					if (!installationId) {
+						return yield* Effect.fail(
+							new TokenRefreshError({
+								provider: connection.provider,
+								cause: "No installation ID found in connection settings",
+							}),
+						)
+					}
+
+					yield* Effect.logInfo("Regenerating GitHub App token", { installationId })
+
+					// Use GitHub App JWT service to generate a new installation token
+					const jwtService = yield* GitHubAppJWTService
+					const installationToken = yield* jwtService.getInstallationToken(installationId).pipe(
+						Effect.mapError(
+							(cause) =>
+								new TokenRefreshError({
+									provider: connection.provider,
+									cause,
+								}),
+						),
+					)
+
+					// Encrypt and store the new token
+					const encryptedAccess = yield* encryption.encrypt(installationToken.token)
+
+					// Update the token in the database (no refresh token for GitHub App)
+					yield* tokenRepo
+						.updateToken(tokenId, {
+							encryptedAccessToken: encryptedAccess.ciphertext,
+							iv: encryptedAccess.iv,
+							encryptionKeyVersion: encryptedAccess.keyVersion,
+							expiresAt: installationToken.expiresAt,
+						})
+						.pipe(withSystemActor)
+
+					yield* Effect.logInfo("GitHub App token regenerated successfully")
+
+					return installationToken.token
+				}
+
+				// Fallback for other app-based providers (not implemented yet)
+				return yield* Effect.fail(
+					new TokenRefreshError({
+						provider: connection.provider,
+						cause: `App-based token regeneration not implemented for provider: ${connection.provider}`,
+					}),
+				)
+			})
+
+			/**
 			 * Store new tokens after OAuth callback
 			 */
 			const storeTokens = Effect.fn("IntegrationTokenService.storeTokens")(function* (
@@ -305,6 +425,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			IntegrationEncryption.Default,
 			IntegrationTokenRepo.Default,
 			IntegrationConnectionRepo.Default,
+			GitHubAppJWTService.Default,
 		],
 	},
 ) {}

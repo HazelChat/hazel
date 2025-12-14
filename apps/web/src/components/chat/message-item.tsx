@@ -7,12 +7,14 @@ import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
-import { LinearIssueEmbed } from "~/components/integrations"
+import { GitHubPREmbed, LinearIssueEmbed } from "~/components/integrations"
 import {
+	extractGitHubInfo,
 	extractLinearIssueKey,
 	extractTweetId,
 	extractUrls,
 	extractYoutubeVideoId,
+	isGitHubPRUrl,
 	isLinearIssueUrl,
 	isTweetUrl,
 	isYoutubeUrl,
@@ -139,12 +141,17 @@ export const MessageItem = memo(function MessageItem({
 						const tweetUrls = urls.filter((url) => isTweetUrl(url))
 						const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
 						const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
+						const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
 						const otherUrls = urls.filter(
-							(url) => !isTweetUrl(url) && !isYoutubeUrl(url) && !isLinearIssueUrl(url),
+							(url) =>
+								!isTweetUrl(url) &&
+								!isYoutubeUrl(url) &&
+								!isLinearIssueUrl(url) &&
+								!isGitHubPRUrl(url),
 						)
 
 						// Filter out embed URLs from displayed content
-						const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls]
+						const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
 						let displayContent = message.content
 						for (const url of embedUrls) {
 							displayContent = displayContent.replace(url, "")
@@ -179,6 +186,17 @@ export const MessageItem = memo(function MessageItem({
 									const issueKey = extractLinearIssueKey(url)
 									return issueKey && currentUser?.organizationId ? (
 										<LinearIssueEmbed
+											key={url}
+											url={url}
+											orgId={currentUser.organizationId}
+										/>
+									) : null
+								})}
+								{/* Render all GitHub PR embeds */}
+								{githubPRUrls.map((url) => {
+									const info = extractGitHubInfo(url)
+									return info && currentUser?.organizationId ? (
+										<GitHubPREmbed
 											key={url}
 											url={url}
 											orgId={currentUser.organizationId}

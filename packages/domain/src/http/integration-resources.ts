@@ -46,6 +46,38 @@ export class LinearIssueResourceResponse extends Schema.Class<LinearIssueResourc
 	labels: Schema.Array(LinearIssueLabelResponse),
 }) {}
 
+// GitHub PR author schema
+const GitHubPRAuthorResponse = Schema.Struct({
+	login: Schema.String,
+	avatarUrl: Schema.NullOr(Schema.String),
+})
+
+// GitHub PR label schema
+const GitHubPRLabelResponse = Schema.Struct({
+	name: Schema.String,
+	color: Schema.String,
+})
+
+// Full GitHub PR response
+export class GitHubPRResourceResponse extends Schema.Class<GitHubPRResourceResponse>(
+	"GitHubPRResourceResponse",
+)({
+	owner: Schema.String,
+	repo: Schema.String,
+	number: Schema.Number,
+	title: Schema.String,
+	body: Schema.NullOr(Schema.String),
+	state: Schema.Literal("open", "closed"),
+	draft: Schema.Boolean,
+	merged: Schema.Boolean,
+	author: Schema.NullOr(GitHubPRAuthorResponse),
+	additions: Schema.Number,
+	deletions: Schema.Number,
+	headRefName: Schema.String,
+	updatedAt: Schema.String,
+	labels: Schema.Array(GitHubPRLabelResponse),
+}) {}
+
 // Error when organization doesn't have the integration connected
 export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<IntegrationNotConnectedForPreviewError>()(
 	"IntegrationNotConnectedForPreviewError",
@@ -98,6 +130,32 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					title: "Fetch Linear Issue",
 					description: "Fetch Linear issue details for embedding in chat messages",
 					summary: "Get Linear issue preview data",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`)
+			.addSuccess(GitHubPRResourceResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(ResourceNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					url: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Fetch GitHub PR",
+					description: "Fetch GitHub pull request details for embedding in chat messages",
+					summary: "Get GitHub PR preview data",
 				}),
 			),
 	)

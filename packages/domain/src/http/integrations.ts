@@ -82,8 +82,14 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			)
 			.setUrlParams(
 				Schema.Struct({
-					code: Schema.String,
-					state: Schema.String,
+					// Standard OAuth uses `code`
+					code: Schema.optional(Schema.String),
+					// State is optional because GitHub doesn't send it for update callbacks
+					state: Schema.optional(Schema.String),
+					// GitHub App uses `installation_id` instead of code
+					installation_id: Schema.optional(Schema.String),
+					// GitHub also sends setup_action (e.g., "install", "update")
+					setup_action: Schema.optional(Schema.String),
 				}),
 			)
 			.annotateContext(

@@ -14,7 +14,6 @@ import {
 } from "@hazel/domain/http"
 import { Config, Effect, Option, Schema } from "effect"
 import { HazelApi } from "../api"
-import { RelativeUrl } from "../lib/schema"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
 import { IntegrationTokenService } from "../services/integration-token-service"
@@ -27,7 +26,10 @@ import { OAuthProviderRegistry } from "../services/oauth"
 const OAuthState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
-	returnTo: RelativeUrl,
+	/** Full URL to redirect after OAuth completes (e.g., http://localhost:3000/org/settings/integrations) */
+	returnTo: Schema.String,
+	/** Environment that initiated the OAuth flow. Used to redirect back to localhost for local dev. */
+	environment: Schema.optional(Schema.Literal("local", "production")),
 })
 
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>
@@ -78,12 +80,21 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					onSome: Effect.succeed,
 				})
 
-				// Encode state with return URL and context
+				// Determine environment from NODE_ENV config
+				// Local dev uses "local" so production can redirect callbacks back to localhost
+				const nodeEnv = yield* Config.string("NODE_ENV").pipe(
+					Config.withDefault("production"),
+					Effect.orDie,
+				)
+				const environment = nodeEnv === "development" ? "local" : "production"
+
+				// Encode state with return URL, context, and environment
 				const state = encodeURIComponent(
 					JSON.stringify({
 						organizationId: orgId,
 						userId: currentUser.id,
 						returnTo: `${frontendUrl}/${org.slug}/settings/integrations`,
+						environment,
 					}),
 				)
 
@@ -97,11 +108,29 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 		/**
 		 * Handle OAuth callback from provider.
 		 * Exchanges authorization code for tokens and stores the connection.
+		 *
+		 * For GitHub App: Receives `installation_id` instead of `code`.
+		 * For standard OAuth: Receives `code` authorization code.
 		 */
 		.handle("oauthCallback", ({ path, urlParams }) =>
 			Effect.gen(function* () {
 				const { provider } = path
-				const { code, state: encodedState } = urlParams
+				const { code, state: encodedState, installation_id, setup_action } = urlParams
+
+				// Handle update callbacks that don't have state (GitHub sends these when permissions change)
+				if (!encodedState && installation_id && setup_action === "update") {
+					// Just redirect to frontend - the installation is already set up
+					// Token will be refreshed on next API call via IntegrationTokenService
+					const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+					return HttpServerResponse.redirect(frontendUrl)
+				}
+
+				// For fresh installs and other callbacks, state is required
+				if (!encodedState) {
+					return yield* Effect.fail(
+						new InvalidOAuthStateError({ message: "Missing OAuth state" }),
+					)
+				}
 
 				// Parse and validate state
 				const parsedState = yield* Effect.try({
@@ -109,6 +138,27 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						Schema.decodeUnknownSync(OAuthState)(JSON.parse(decodeURIComponent(encodedState))),
 					catch: () => new InvalidOAuthStateError({ message: "Invalid OAuth state" }),
 				})
+
+				// Check if we need to redirect to local environment
+				// This happens when production receives a callback for a local dev flow
+				const nodeEnv = yield* Config.string("NODE_ENV").pipe(
+					Config.withDefault("production"),
+					Effect.orDie,
+				)
+				const isProduction = nodeEnv !== "development"
+
+				if (isProduction && parsedState.environment === "local") {
+					// Redirect to localhost with all params preserved
+					const localUrl = new URL(`http://localhost:3003/integrations/${provider}/callback`)
+					if (installation_id) localUrl.searchParams.set("installation_id", installation_id)
+					if (code) localUrl.searchParams.set("code", code)
+					localUrl.searchParams.set("state", encodedState)
+
+					return HttpServerResponse.empty({
+						status: 302,
+						headers: { Location: localUrl.toString() },
+					})
+				}
 
 				// Get the OAuth provider from registry
 				const registry = yield* OAuthProviderRegistry
@@ -124,8 +174,24 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				const connectionRepo = yield* IntegrationConnectionRepo
 				const tokenService = yield* IntegrationTokenService
 
+				// Determine if this is a GitHub App installation callback
+				// GitHub App callbacks have `installation_id` instead of `code`
+				const isGitHubAppCallback = provider === "github" && installation_id
+
+				// Use installation_id as "code" for GitHub App (the provider handles this)
+				const authCode = isGitHubAppCallback ? installation_id : code
+
+				if (!authCode) {
+					return yield* Effect.fail(
+						new InvalidOAuthStateError({
+							message: "Missing authorization code or installation ID",
+						}),
+					)
+				}
+
 				// Exchange code for tokens using the provider
-				const tokens = yield* oauthProvider.exchangeCodeForTokens(code).pipe(
+				// For GitHub App, this generates an installation token using JWT
+				const tokens = yield* oauthProvider.exchangeCodeForTokens(authCode).pipe(
 					Effect.mapError(
 						(error) =>
 							new InvalidOAuthStateError({
@@ -144,6 +210,10 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					),
 				)
 
+				// Prepare connection settings
+				// For GitHub App, store the installation ID for token regeneration
+				const settings = isGitHubAppCallback ? { installationId: installation_id } : null
+
 				// Create or update connection
 				const connection = yield* connectionRepo
 					.upsertByOrgAndProvider({
@@ -155,7 +225,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						externalAccountId: accountInfo.externalAccountId,
 						externalAccountName: accountInfo.externalAccountName,
 						connectedBy: parsedState.userId as UserId,
-						settings: null,
+						settings,
 						errorMessage: null,
 						lastUsedAt: null,
 						deletedAt: null,

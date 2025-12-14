@@ -47,6 +47,7 @@ import { UserRepo } from "./repositories/user-repo"
 import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
+import { GitHubAppJWTService } from "./services/github-app-jwt-service"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { CommandRegistry } from "./services/integrations/command-registry"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
@@ -143,6 +144,7 @@ const MainLive = Layer.mergeAll(
 	WorkOSWebhookVerifier.Default,
 	DatabaseLive,
 	S3.Default,
+	GitHubAppJWTService.Default,
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
 	CommandRegistry.Default,
