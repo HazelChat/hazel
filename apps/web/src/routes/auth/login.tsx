@@ -31,7 +31,7 @@ function LoginPage() {
 	if (!user && !isLoading && !hasInitiatedLogin.current) {
 		hasInitiatedLogin.current = true
 		login({
-			returnTo: search.returnTo ? `${location.origin}${search.returnTo}` : `${location.origin}/`,
+			returnTo: search.returnTo || "/",
 			organizationId: search.organizationId as OrganizationId | undefined,
 			invitationToken: search.invitationToken,
 		})

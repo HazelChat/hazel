@@ -80,7 +80,7 @@ export function useAuth() {
 	const login = (options?: LoginOptions) => {
 		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
 
-		const returnTo = options?.returnTo || location.href
+		const returnTo = options?.returnTo || location.pathname + location.search + location.hash
 		loginUrl.searchParams.set("returnTo", returnTo)
 
 		if (options?.organizationId) {
