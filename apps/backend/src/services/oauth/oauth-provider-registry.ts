@@ -1,6 +1,6 @@
 import { UnsupportedProviderError } from "@hazel/domain/http"
+import { GitHub } from "@hazel/integrations"
 import { Effect } from "effect"
-import { GitHubAppJWTService } from "../github-app-jwt-service"
 import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthProviderConfig } from "./provider-config"
@@ -69,7 +69,7 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 		const providerCache = new Map<IntegrationProvider, OAuthProvider>()
 
 		// Get the GitHub App JWT service for creating GitHub provider
-		const gitHubJwtService = yield* GitHubAppJWTService
+		const gitHubJwtService = yield* GitHub.GitHubAppJWTService
 
 		/**
 		 * Get an OAuth provider instance.
@@ -159,5 +159,5 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 			isProviderSupported,
 		}
 	}),
-	dependencies: [GitHubAppJWTService.Default],
+	dependencies: [GitHub.GitHubAppJWTService.Default],
 }) {}

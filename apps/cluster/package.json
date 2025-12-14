@@ -23,6 +23,7 @@
     "@hazel/backend-core": "workspace:*",
     "@hazel/db": "workspace:*",
     "@hazel/domain": "workspace:*",
+    "@hazel/integrations": "workspace:*",
     "drizzle-orm": "^0.45.0",
     "effect": "catalog:effect"
   }

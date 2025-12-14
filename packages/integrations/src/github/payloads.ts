@@ -164,3 +164,14 @@ export type GitHubWebhookPayload =
 	| GitHubReleasePayload
 	| GitHubDeploymentStatusPayload
 	| GitHubWorkflowRunPayload
+
+/**
+ * GitHub event types supported by the integration.
+ */
+export type GitHubEventType =
+	| "push"
+	| "pull_request"
+	| "issues"
+	| "release"
+	| "deployment_status"
+	| "workflow_run"

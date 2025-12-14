@@ -1,4 +1,7 @@
-import type { IntegrationConnection } from "../models"
+/**
+ * Integration provider types for OAuth-based integrations.
+ */
+export type IntegrationProvider = "linear" | "github" | "figma" | "notion"
 
 /**
  * Bot configuration for integration providers.
@@ -17,10 +20,7 @@ export interface IntegrationBotConfig {
  * Shared bot configurations for OAuth integration providers.
  * Single source of truth for bot display info.
  */
-export const INTEGRATION_BOT_CONFIGS: Record<
-	IntegrationConnection.IntegrationProvider,
-	IntegrationBotConfig
-> = {
+export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBotConfig> = {
 	linear: {
 		name: "Linear",
 		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
@@ -68,7 +68,7 @@ export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> 
 /**
  * Get bot config for a specific OAuth provider
  */
-export const getBotConfig = (provider: IntegrationConnection.IntegrationProvider): IntegrationBotConfig =>
+export const getBotConfig = (provider: IntegrationProvider): IntegrationBotConfig =>
 	INTEGRATION_BOT_CONFIGS[provider]
 
 /**

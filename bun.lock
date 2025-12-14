@@ -28,6 +28,7 @@
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/effect-bun": "workspace:*",
+        "@hazel/integrations": "workspace:*",
         "@opentelemetry/sdk-logs": "^0.208.0",
         "@opentelemetry/sdk-metrics": "^2.2.0",
         "@opentelemetry/sdk-trace-node": "^2.2.0",
@@ -56,6 +57,7 @@
         "@hazel/backend-core": "workspace:*",
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
+        "@hazel/integrations": "workspace:*",
         "drizzle-orm": "^0.45.0",
         "effect": "catalog:effect",
       },
@@ -284,6 +286,7 @@
         "@effect/platform": "catalog:effect",
         "@effect/rpc": "catalog:effect",
         "@effect/workflow": "catalog:effect",
+        "@hazel/integrations": "workspace:*",
         "@hazel/schema": "workspace:*",
         "drizzle-orm": "^0.45.0",
         "effect": "catalog:effect",
@@ -327,6 +330,20 @@
       "devDependencies": {
         "@effect/language-service": "catalog:effect",
         "@vitest/coverage-istanbul": "^4.0.8",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/integrations": {
+      "name": "@hazel/integrations",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect/platform": "catalog:effect",
+        "effect": "catalog:effect",
+        "jose": "^6.0.0",
+      },
+      "devDependencies": {
+        "@effect/language-service": "catalog:effect",
+        "@types/node": "^24.10.1",
         "typescript": "^5.9.3",
       },
     },
@@ -643,6 +660,8 @@
     "@hazel/effect-electric-db-collection": ["@hazel/effect-electric-db-collection@workspace:packages/effect-electric-db-collection"],
 
     "@hazel/electric-proxy": ["@hazel/electric-proxy@workspace:apps/electric-proxy"],
+
+    "@hazel/integrations": ["@hazel/integrations@workspace:packages/integrations"],
 
     "@hazel/link-preview-worker": ["@hazel/link-preview-worker@workspace:apps/link-preview-worker"],
 

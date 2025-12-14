@@ -1,29 +1,33 @@
-import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
-import { type Cluster, Integrations } from "@hazel/domain"
+import { INTEGRATION_BOT_CONFIGS } from "../common/bot-configs.ts"
+import type { MessageEmbed } from "../common/embed-types.ts"
+import { GITHUB_COLORS } from "./colors.ts"
+import {
+	GitHubLabel,
+	type GitHubDeploymentStatusPayload,
+	type GitHubEventType,
+	type GitHubIssuesPayload,
+	type GitHubPullRequestPayload,
+	type GitHubPushPayload,
+	type GitHubReleasePayload,
+	type GitHubWorkflowRunPayload,
+} from "./payloads.ts"
 import type { Schema } from "effect"
 
-// Import types from the Cluster namespace
-type GitHubPushPayload = Schema.Schema.Type<typeof Cluster.GitHubPushPayload>
-type GitHubPullRequestPayload = Schema.Schema.Type<typeof Cluster.GitHubPullRequestPayload>
-type GitHubIssuesPayload = Schema.Schema.Type<typeof Cluster.GitHubIssuesPayload>
-type GitHubReleasePayload = Schema.Schema.Type<typeof Cluster.GitHubReleasePayload>
-type GitHubDeploymentStatusPayload = Schema.Schema.Type<typeof Cluster.GitHubDeploymentStatusPayload>
-type GitHubWorkflowRunPayload = Schema.Schema.Type<typeof Cluster.GitHubWorkflowRunPayload>
-type GitHubLabel = Schema.Schema.Type<typeof Cluster.GitHubLabel>
+// Infer the GitHubLabel type from the schema
+type GitHubLabelType = Schema.Schema.Type<typeof GitHubLabel>
 
-const { GITHUB_COLORS } = Integrations
+const githubConfig = INTEGRATION_BOT_CONFIGS.github
 
 /**
  * Build embed for push event.
  */
-export function buildPushEmbed(payload: GitHubPushPayload): DbMessageEmbed {
+export function buildPushEmbed(payload: GitHubPushPayload): MessageEmbed {
 	const commits = payload.commits ?? []
 	const ref = payload.ref ?? ""
 	const branch = ref.replace("refs/heads/", "")
 	const repository = payload.repository
 	const sender = payload.sender
 	const commitCount = commits.length
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	// Build commit list for fields (max 5 commits)
 	const commitFields = commits.slice(0, 5).map((commit) => {
@@ -61,12 +65,11 @@ export function buildPushEmbed(payload: GitHubPushPayload): DbMessageEmbed {
 /**
  * Build embed for pull request event.
  */
-export function buildPullRequestEmbed(payload: GitHubPullRequestPayload): DbMessageEmbed {
+export function buildPullRequestEmbed(payload: GitHubPullRequestPayload): MessageEmbed {
 	const pr = payload.pull_request
 	const action = payload.action
 	const repository = payload.repository
 	const sender = payload.sender
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	// Determine color and badge based on action
 	let color: number
@@ -100,7 +103,7 @@ export function buildPullRequestEmbed(payload: GitHubPullRequestPayload): DbMess
 	if (pr.labels && pr.labels.length > 0) {
 		const labelText = pr.labels
 			.slice(0, 3)
-			.map((l: GitHubLabel) => l.name)
+			.map((l: GitHubLabelType) => l.name)
 			.join(", ")
 		fields.push({
 			name: "Labels",
@@ -134,12 +137,11 @@ export function buildPullRequestEmbed(payload: GitHubPullRequestPayload): DbMess
 /**
  * Build embed for issues event.
  */
-export function buildIssueEmbed(payload: GitHubIssuesPayload): DbMessageEmbed {
+export function buildIssueEmbed(payload: GitHubIssuesPayload): MessageEmbed {
 	const issue = payload.issue
 	const action = payload.action
 	const repository = payload.repository
 	const sender = payload.sender
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	// Determine color and badge
 	let color: number
@@ -160,7 +162,7 @@ export function buildIssueEmbed(payload: GitHubIssuesPayload): DbMessageEmbed {
 	if (issue.labels && issue.labels.length > 0) {
 		const labelText = issue.labels
 			.slice(0, 3)
-			.map((l: GitHubLabel) => l.name)
+			.map((l: GitHubLabelType) => l.name)
 			.join(", ")
 		fields.push({
 			name: "Labels",
@@ -196,11 +198,10 @@ export function buildIssueEmbed(payload: GitHubIssuesPayload): DbMessageEmbed {
 /**
  * Build embed for release event.
  */
-export function buildReleaseEmbed(payload: GitHubReleasePayload): DbMessageEmbed {
+export function buildReleaseEmbed(payload: GitHubReleasePayload): MessageEmbed {
 	const release = payload.release
 	const repository = payload.repository
 	const sender = payload.sender
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	return {
 		title: `${release.name || release.tag_name}`,
@@ -244,12 +245,11 @@ export function buildReleaseEmbed(payload: GitHubReleasePayload): DbMessageEmbed
 /**
  * Build embed for deployment status event.
  */
-export function buildDeploymentEmbed(payload: GitHubDeploymentStatusPayload): DbMessageEmbed {
+export function buildDeploymentEmbed(payload: GitHubDeploymentStatusPayload): MessageEmbed {
 	const deploymentStatus = payload.deployment_status
 	const deployment = payload.deployment
 	const repository = payload.repository
 	const sender = payload.sender
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	const state = deploymentStatus.state
 	let color: number
@@ -292,11 +292,10 @@ export function buildDeploymentEmbed(payload: GitHubDeploymentStatusPayload): Db
 /**
  * Build embed for workflow run event.
  */
-export function buildWorkflowRunEmbed(payload: GitHubWorkflowRunPayload): DbMessageEmbed {
+export function buildWorkflowRunEmbed(payload: GitHubWorkflowRunPayload): MessageEmbed {
 	const workflowRun = payload.workflow_run
 	const repository = payload.repository
 	const sender = payload.sender
-	const githubConfig = Integrations.INTEGRATION_BOT_CONFIGS.github
 
 	const conclusion = workflowRun.conclusion
 	let color: number
@@ -365,7 +364,7 @@ export function buildWorkflowRunEmbed(payload: GitHubWorkflowRunPayload): DbMess
 /**
  * Map GitHub event type to our internal event type.
  */
-export function mapEventType(githubEventType: string): Cluster.GitHubEventType | null {
+export function mapEventType(githubEventType: string): GitHubEventType | null {
 	switch (githubEventType) {
 		case "push":
 			return "push"
@@ -399,7 +398,7 @@ export function matchesBranchFilter(branchFilter: string | null, ref: string | u
  * Build embed for the GitHub event based on event type.
  * Returns null if the event type is not supported.
  */
-export function buildGitHubEmbed(eventType: string, payload: unknown): DbMessageEmbed | null {
+export function buildGitHubEmbed(eventType: string, payload: unknown): MessageEmbed | null {
 	switch (eventType) {
 		case "push":
 			return buildPushEmbed(payload as GitHubPushPayload)

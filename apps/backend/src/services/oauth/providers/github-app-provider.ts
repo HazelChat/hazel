@@ -1,9 +1,5 @@
+import { GitHub } from "@hazel/integrations"
 import { Effect } from "effect"
-import type {
-	GitHubAppJWTError,
-	GitHubInstallationTokenError,
-	InstallationToken,
-} from "../../github-app-jwt-service"
 import { AccountInfoError, type OAuthProvider, TokenExchangeError } from "../oauth-provider"
 import type { OAuthProviderConfig, OAuthTokens } from "../provider-config"
 
@@ -16,7 +12,10 @@ interface GitHubAppJWTServiceInterface {
 	readonly buildInstallationUrl: (state: string) => URL
 	readonly getInstallationToken: (
 		installationId: string,
-	) => Effect.Effect<InstallationToken, GitHubAppJWTError | GitHubInstallationTokenError>
+	) => Effect.Effect<
+		GitHub.InstallationToken,
+		GitHub.GitHubAppJWTError | GitHub.GitHubInstallationTokenError
+	>
 }
 
 /**

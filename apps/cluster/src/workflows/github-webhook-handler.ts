@@ -1,8 +1,8 @@
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster, type MessageId } from "@hazel/domain"
+import { GitHub } from "@hazel/integrations"
 import { Effect, Option, Schema } from "effect"
-import { buildGitHubEmbed, mapEventType, matchesBranchFilter } from "../lib/github-embed-builder.ts"
 import { BotUserService } from "../services/bot-user-service.ts"
 
 export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
@@ -12,7 +12,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 		)
 
 		// Map GitHub event type to our internal event type
-		const internalEventType = mapEventType(payload.eventType)
+		const internalEventType = GitHub.mapEventType(payload.eventType)
 		if (!internalEventType) {
 			yield* Effect.log(`Ignoring unsupported event type: ${payload.eventType}`)
 			return
@@ -81,7 +81,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 			}
 
 			// For push events, check branch filter
-			if (payload.eventType === "push" && !matchesBranchFilter(sub.branchFilter, ref)) {
+			if (payload.eventType === "push" && !GitHub.matchesBranchFilter(sub.branchFilter, ref)) {
 				return false
 			}
 
@@ -96,7 +96,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 		yield* Effect.log(`${eligibleSubscriptions.length} subscriptions are eligible for this event`)
 
 		// Build the embed for this event
-		const embed = buildGitHubEmbed(payload.eventType, payload.eventPayload)
+		const embed = GitHub.buildGitHubEmbed(payload.eventType, payload.eventPayload)
 		if (!embed) {
 			yield* Effect.log(`Could not build embed for event type: ${payload.eventType}`)
 			return

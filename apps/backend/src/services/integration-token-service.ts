@@ -1,10 +1,10 @@
 import { type IntegrationConnectionId, type IntegrationTokenId, withSystemActor } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
+import { GitHub } from "@hazel/integrations"
 import { Data, Effect, Option, PartitionedSemaphore, Redacted } from "effect"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "../repositories/integration-token-repo"
 import { DatabaseLive } from "./database"
-import { GitHubAppJWTService } from "./github-app-jwt-service"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { loadProviderConfig } from "./oauth/provider-config"
 
@@ -315,7 +315,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					yield* Effect.logInfo("Regenerating GitHub App token", { installationId })
 
 					// Use GitHub App JWT service to generate a new installation token
-					const jwtService = yield* GitHubAppJWTService
+					const jwtService = yield* GitHub.GitHubAppJWTService
 					const installationToken = yield* jwtService.getInstallationToken(installationId).pipe(
 						Effect.mapError(
 							(cause) =>
@@ -427,7 +427,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			IntegrationEncryption.Default,
 			IntegrationTokenRepo.Default,
 			IntegrationConnectionRepo.Default,
-			GitHubAppJWTService.Default,
+			GitHub.GitHubAppJWTService.Default,
 		],
 	},
 ) {}

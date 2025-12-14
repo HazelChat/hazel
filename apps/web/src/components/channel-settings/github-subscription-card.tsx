@@ -6,6 +6,7 @@ import {
 	type GitHubSubscriptionData,
 	updateGitHubSubscriptionMutation,
 } from "~/atoms/github-subscription-atoms"
+import { IconCirclePause } from "~/components/icons/icon-circle-pause"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconTrash from "~/components/icons/icon-trash"
 import { resolvedThemeAtom } from "~/components/theme-provider"
@@ -14,6 +15,7 @@ import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { matchExitWithToast } from "~/lib/toast-exit"
 import { getProviderIconUrl } from "../embeds/use-embed-theme"
+import { IconPlay } from "../icons/icon-play"
 
 const EVENT_LABELS: Record<string, string> = {
 	push: "Push",
@@ -133,6 +135,11 @@ export function GitHubSubscriptionItem({ subscription, onUpdate }: GitHubSubscri
 					</Button>
 					<MenuContent placement="bottom end">
 						<MenuItem onAction={handleToggle} isDisabled={isToggling}>
+							{subscription.isEnabled ? (
+								<IconCirclePause className="size-4" />
+							) : (
+								<IconPlay className="size-4" />
+							)}
 							<MenuLabel>{subscription.isEnabled ? "Disable" : "Enable"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />

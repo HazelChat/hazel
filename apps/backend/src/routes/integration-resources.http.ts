@@ -8,16 +8,11 @@ import {
 	LinearIssueResourceResponse,
 	ResourceNotFoundError,
 } from "@hazel/domain/http"
+import { GitHub } from "@hazel/integrations"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenService, TokenNotFoundError } from "../services/integration-token-service"
-import {
-	fetchGitHubPR,
-	type GitHubApiError,
-	type GitHubPRNotFoundError,
-	parseGitHubPRUrl,
-} from "../services/integrations/github-resource-provider"
 import {
 	fetchLinearIssue,
 	type LinearApiError,
@@ -137,7 +132,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					const { url } = urlParams
 
 					// Parse the GitHub PR URL
-					const parsed = parseGitHubPRUrl(url)
+					const parsed = GitHub.parseGitHubPRUrl(url)
 					if (!parsed) {
 						return yield* Effect.fail(
 							new ResourceNotFoundError({
@@ -173,7 +168,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					const accessToken = yield* tokenService.getValidAccessToken(connection.id)
 
 					// Fetch PR from GitHub API
-					const pr = yield* fetchGitHubPR(parsed.owner, parsed.repo, parsed.number, accessToken)
+					const pr = yield* GitHub.fetchGitHubPR(parsed.owner, parsed.repo, parsed.number, accessToken)
 
 					// Transform to response
 					return new GitHubPRResourceResponse({
@@ -201,7 +196,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					Effect.catchTags({
 						TokenNotFoundError: () =>
 							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-						GitHubApiError: (error: GitHubApiError) =>
+						GitHubApiError: (error: GitHub.GitHubApiError) =>
 							Effect.fail(
 								new IntegrationResourceError({
 									url: urlParams.url,
@@ -209,7 +204,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 									provider: "github",
 								}),
 							),
-						GitHubPRNotFoundError: (error: GitHubPRNotFoundError) =>
+						GitHubPRNotFoundError: (error: GitHub.GitHubPRNotFoundError) =>
 							Effect.fail(
 								new ResourceNotFoundError({
 									url: urlParams.url,
