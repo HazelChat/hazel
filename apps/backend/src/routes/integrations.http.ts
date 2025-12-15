@@ -271,6 +271,17 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		scope: tokens.scope,
 	})
 
+	yield* Effect.logInfo("AUDIT: Integration connected", {
+		event: "integration_connected",
+		provider,
+		organizationId: parsedState.organizationId,
+		userId: parsedState.userId,
+		level: "organization",
+		externalAccountId: accountInfo.externalAccountId,
+		externalAccountName: accountInfo.externalAccountName,
+		isGitHubApp: isGitHubAppCallback,
+	})
+
 	// Redirect back to the settings page
 	return HttpServerResponse.empty({
 		status: 302,
@@ -338,6 +349,15 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (path: {
 
 	// Soft delete the connection
 	yield* connectionRepo.softDelete(connection.id).pipe(withSystemActor)
+
+	yield* Effect.logInfo("AUDIT: Integration disconnected", {
+		event: "integration_disconnected",
+		provider,
+		organizationId: orgId,
+		connectionId: connection.id,
+		externalAccountId: connection.externalAccountId,
+		externalAccountName: connection.externalAccountName,
+	})
 })
 
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>

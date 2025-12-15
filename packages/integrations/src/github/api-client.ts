@@ -9,6 +9,12 @@ import { Effect, Schema } from "effect"
  */
 const GITHUB_PR_URL_REGEX = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/i
 
+/**
+ * GitHub username/org and repo name validation pattern.
+ * Allows alphanumeric, hyphens, underscores, dots (standard GitHub naming).
+ */
+const GITHUB_NAME_REGEX = /^[\w.-]+$/
+
 // ============================================================================
 // Domain Schemas (exported for consumers)
 // ============================================================================
@@ -180,16 +186,29 @@ const GitHubAppApiResponse = Schema.Struct({
 // ============================================================================
 
 /**
- * Parse a GitHub PR URL to extract owner, repo, and PR number
+ * Parse a GitHub PR URL to extract owner, repo, and PR number.
+ * Includes validation of extracted values to prevent injection attacks.
  */
 export const parseGitHubPRUrl = (url: string): { owner: string; repo: string; number: number } | null => {
 	const match = url.match(GITHUB_PR_URL_REGEX)
 	if (!match || !match[1] || !match[2] || !match[3]) return null
-	return {
-		owner: match[1],
-		repo: match[2],
-		number: Number.parseInt(match[3], 10),
+
+	const owner = match[1]
+	const repo = match[2]
+	const numberStr = match[3]
+
+	// Validate owner and repo names match GitHub naming conventions
+	if (!GITHUB_NAME_REGEX.test(owner) || !GITHUB_NAME_REGEX.test(repo)) {
+		return null
 	}
+
+	// Validate PR number is a positive integer
+	const number = Number.parseInt(numberStr, 10)
+	if (!Number.isFinite(number) || number <= 0) {
+		return null
+	}
+
+	return { owner, repo, number }
 }
 
 /**
@@ -300,7 +319,11 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 				if (response.status >= 400) {
 					const errorBody = yield* response.json.pipe(
 						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-						Effect.catchAll(() => Effect.succeed({ message: "Unknown error" })),
+						Effect.catchAll((error) =>
+							Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
+								Effect.as({ message: "Unknown error" }),
+							),
+						),
 					)
 					const message = parseGitHubErrorMessage(response.status, errorBody.message)
 					return yield* Effect.fail(new GitHubApiError({ message, status: response.status }))

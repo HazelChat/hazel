@@ -1,7 +1,7 @@
 import type { GitHub } from "@hazel/integrations"
 import { Effect } from "effect"
 import { AccountInfoError, type OAuthProvider, TokenExchangeError } from "../oauth-provider"
-import type { OAuthProviderConfig, OAuthTokens } from "../provider-config"
+import type { AppProviderConfig, OAuthTokens } from "../provider-config"
 
 /**
  * Service interface for GitHub App JWT operations.
@@ -45,7 +45,7 @@ interface GitHubApiClientInterface {
  * @see https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
  */
 export const createGitHubAppProvider = (
-	config: OAuthProviderConfig,
+	config: AppProviderConfig,
 	jwtService: GitHubAppJWTServiceInterface,
 	apiClient: GitHubApiClientInterface,
 ): OAuthProvider => ({

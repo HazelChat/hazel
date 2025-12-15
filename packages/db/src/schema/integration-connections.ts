@@ -1,4 +1,5 @@
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
+import { sql } from "drizzle-orm"
 import {
 	index,
 	jsonb,
@@ -57,6 +58,11 @@ export const integrationConnectionsTable = pgTable(
 			table.organizationId,
 			table.userId,
 			table.provider,
+		),
+		// Index for faster GitHub installation ID lookups (used in token refresh and callbacks)
+		index("int_conn_github_installation_idx").using(
+			"btree",
+			sql`(${table.metadata}->>'installationId')`,
 		),
 	],
 )

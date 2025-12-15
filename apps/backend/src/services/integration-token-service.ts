@@ -287,7 +287,12 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					})
 					.pipe(withSystemActor)
 
-				yield* Effect.logInfo("OAuth token refreshed successfully", { provider: connection.provider })
+				yield* Effect.logInfo("AUDIT: OAuth token refreshed", {
+					event: "token_refresh",
+					provider: connection.provider,
+					connectionId,
+					success: true,
+				})
 
 				// Return the new access token
 				return newTokens.accessToken
@@ -298,7 +303,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			 * Uses JWT to request a new installation access token.
 			 */
 			const regenerateAppToken = Effect.fn("IntegrationTokenService.regenerateAppToken")(function* (
-				_connectionId: IntegrationConnectionId,
+				connectionId: IntegrationConnectionId,
 				connection: { provider: IntegrationConnection.IntegrationProvider; metadata: unknown },
 				tokenId: IntegrationTokenId,
 			) {
@@ -308,6 +313,12 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					const installationId = metadata?.installationId
 
 					if (!installationId) {
+						yield* Effect.logWarning("AUDIT: Token refresh failed - missing installation ID", {
+							event: "app_token_regenerate_failed",
+							provider: connection.provider,
+							connectionId,
+							errorType: "MissingInstallationId",
+						})
 						return yield* Effect.fail(
 							new TokenRefreshError({
 								provider: connection.provider,
@@ -316,18 +327,36 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 						)
 					}
 
-					yield* Effect.logInfo("Regenerating GitHub App token", { installationId })
+					yield* Effect.logInfo("Regenerating GitHub App token", { installationId, connectionId })
 
 					// Use GitHub App JWT service to generate a new installation token
 					const jwtService = yield* GitHub.GitHubAppJWTService
 					const installationToken = yield* jwtService.getInstallationToken(installationId).pipe(
-						Effect.mapError(
-							(cause) =>
-								new TokenRefreshError({
-									provider: connection.provider,
-									cause,
-								}),
+						Effect.tapError((originalError) =>
+							Effect.logWarning("AUDIT: GitHub App token regeneration failed", {
+								event: "app_token_regenerate_failed",
+								provider: connection.provider,
+								connectionId,
+								installationId,
+								errorType: "_tag" in originalError ? originalError._tag : "UnknownError",
+								errorMessage:
+									"message" in originalError ? originalError.message : String(originalError),
+							}),
 						),
+						Effect.mapError((originalError) => {
+							// Preserve specific error details for better debugging
+							const errorDetails = {
+								type: "_tag" in originalError ? originalError._tag : "UnknownError",
+								message:
+									"message" in originalError ? originalError.message : String(originalError),
+								status: "status" in originalError ? originalError.status : undefined,
+							}
+
+							return new TokenRefreshError({
+								provider: connection.provider,
+								cause: errorDetails,
+							})
+						}),
 					)
 
 					// Encrypt and store the new token
@@ -343,7 +372,13 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 						})
 						.pipe(withSystemActor)
 
-					yield* Effect.logInfo("GitHub App token regenerated successfully")
+					yield* Effect.logInfo("AUDIT: GitHub App token regenerated", {
+						event: "app_token_regenerate",
+						provider: "github",
+						connectionId,
+						installationId,
+						success: true,
+					})
 
 					return installationToken.token
 				}

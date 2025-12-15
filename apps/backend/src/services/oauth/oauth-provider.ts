@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect"
 import type {
+	AppProviderConfig,
 	IntegrationProvider,
 	OAuthAccountInfo,
 	OAuthProviderConfig,
@@ -75,9 +76,11 @@ export interface OAuthProvider {
 	readonly provider: IntegrationProvider
 
 	/**
-	 * The provider's configuration including OAuth endpoints.
+	 * The provider's configuration.
+	 * Standard OAuth providers have full config; app-based providers (e.g., GitHub App)
+	 * have minimal config as they manage their own authentication.
 	 */
-	readonly config: OAuthProviderConfig
+	readonly config: OAuthProviderConfig | AppProviderConfig
 
 	/**
 	 * Build the OAuth authorization URL for redirecting the user.

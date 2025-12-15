@@ -97,18 +97,10 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 
 				// Handle GitHub App separately (uses JWT service, not standard OAuth)
 				if (provider === "github") {
-					// Create provider with JWT service and API client - uses empty config since it manages its own config
+					// Create provider with JWT service and API client
+					// Uses minimal AppProviderConfig since GitHub Apps manage their own auth via JWT
 					const oauthProvider = createGitHubAppProvider(
-						{
-							provider: "github",
-							clientId: "",
-							clientSecret: { _tag: "Redacted" } as any,
-							redirectUri: "",
-							authorizationUrl: "",
-							tokenUrl: "",
-							scopes: [],
-							scopeDelimiter: "",
-						},
+						{ provider: "github" },
 						gitHubJwtService,
 						gitHubApiClient,
 					)

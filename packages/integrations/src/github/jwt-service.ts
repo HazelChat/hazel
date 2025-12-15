@@ -121,7 +121,7 @@ export const generateAppJWT = (
 			// Create and sign the JWT
 			const jwt = await new SignJWT({})
 				.setProtectedHeader({ alg: "RS256" })
-				.setIssuedAt(now - 60) // 60 seconds in the past to allow for clock drift
+				.setIssuedAt(now - 30) // 30 seconds in the past for clock drift (security hardened)
 				.setExpirationTime(now + 600) // 10 minutes from now (max allowed by GitHub)
 				.setIssuer(appId)
 				.sign(privateKey)

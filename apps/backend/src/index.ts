@@ -8,7 +8,7 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
-import { Redis, S3 } from "@hazel/effect-bun"
+import { S3 } from "@hazel/effect-bun"
 import { GitHub } from "@hazel/integrations"
 import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
@@ -148,6 +148,7 @@ const MainLive = Layer.mergeAll(
 	DatabaseLive,
 	S3.Default,
 	GitHub.GitHubAppJWTService.Default,
+	GitHub.GitHubApiClient.Default,
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
 	CommandRegistry.Default,
