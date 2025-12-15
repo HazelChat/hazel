@@ -1,3 +1,5 @@
+import type { ChannelId } from "@hazel/schema"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import type { Key } from "react-aria-components"
 import { IconFolders } from "~/components/icons/icon-folder"
 import IconMsgs from "~/components/icons/icon-msgs"
@@ -6,13 +8,33 @@ import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 export type ChatTab = "messages" | "files"
 
 interface ChatTabBarProps {
-	activeTab: ChatTab
-	onTabChange: (tab: ChatTab) => void
+	orgSlug: string
+	channelId: ChannelId
 }
 
-export function ChatTabBar({ activeTab, onTabChange }: ChatTabBarProps) {
-	const handleSelectionChange = (key: Key) => {
-		onTabChange(key as ChatTab)
+export function ChatTabBar({ orgSlug, channelId }: ChatTabBarProps) {
+	const location = useLocation()
+	const navigate = useNavigate()
+
+	// Determine active tab from pathname
+	const isFilesRoute = location.pathname.endsWith("/files")
+	const activeTab: ChatTab = isFilesRoute ? "files" : "messages"
+
+	const handleSelectionChange = (key: Key | null) => {
+		if (!key) return
+
+		const tabId = key as ChatTab
+		if (tabId === "files") {
+			navigate({
+				to: "/$orgSlug/chat/$id/files",
+				params: { orgSlug, id: channelId },
+			})
+		} else {
+			navigate({
+				to: "/$orgSlug/chat/$id",
+				params: { orgSlug, id: channelId },
+			})
+		}
 	}
 
 	return (

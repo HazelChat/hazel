@@ -1,16 +1,13 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId, OrganizationId } from "@hazel/schema"
+import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
-import { createFileRoute } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { useCallback, useEffect, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
-import { ChannelFilesView } from "~/components/chat/channel-files"
 import { ChatHeader } from "~/components/chat/chat-header"
-import { type ChatTab, ChatTabBar } from "~/components/chat/chat-tab-bar"
-import { MessageList, type MessageListRef } from "~/components/chat/message-list"
-import { SlateMessageComposer } from "~/components/chat/slate-editor/slate-message-composer"
+import { ChatTabBar } from "~/components/chat/chat-tab-bar"
+import type { MessageListRef } from "~/components/chat/message-list"
 import { ThreadPanel } from "~/components/chat/thread-panel"
-import { TypingIndicator } from "~/components/chat/typing-indicator"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
@@ -53,30 +50,17 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	},
 })
 
-function ChatContent({ messageListRef }: { messageListRef: React.RefObject<MessageListRef | null> }) {
+function ChatLayout() {
 	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId } = useChat()
-	const [activeTab, setActiveTab] = useState<ChatTab>("messages")
+	const { orgSlug } = Route.useParams()
 
 	return (
 		<div className="flex h-[calc(100dvh-4rem)] overflow-hidden md:h-dvh">
 			{/* Main Chat Area */}
 			<div className="flex min-h-0 flex-1 flex-col">
 				<ChatHeader />
-				<ChatTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-
-				{activeTab === "messages" ? (
-					<>
-						<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-							<MessageList ref={messageListRef} />
-						</div>
-						<div className="shrink-0 px-4 pt-2.5">
-							<SlateMessageComposer />
-							<TypingIndicator />
-						</div>
-					</>
-				) : (
-					<ChannelFilesView channelId={channelId} />
-				)}
+				<ChatTabBar orgSlug={orgSlug} channelId={channelId} />
+				<Outlet />
 			</div>
 
 			{/* Thread Panel - Slide in from right */}
@@ -95,7 +79,7 @@ function ChatContent({ messageListRef }: { messageListRef: React.RefObject<Messa
 }
 
 function RouteComponent() {
-	const { id } = Route.useParams()
+	const { id, orgSlug } = Route.useParams()
 	const { organizationId } = useOrganization()
 	const messageListRef = useRef<MessageListRef>(null)
 
@@ -118,7 +102,7 @@ function RouteComponent() {
 			organizationId={organizationId!}
 			onMessageSent={handleMessageSent}
 		>
-			<ChatContent messageListRef={messageListRef} />
+			<ChatLayout />
 		</ChatProvider>
 	)
 }
