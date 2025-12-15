@@ -25,7 +25,7 @@ interface GitHubAppJWTServiceInterface {
 interface GitHubApiClientInterface {
 	readonly getAccountInfo: (
 		accessToken: string,
-	) => Effect.Effect<GitHub.GitHubAccountInfo, GitHub.GitHubApiError>
+	) => Effect.Effect<GitHub.GitHubAccountInfo, GitHub.GitHubApiError | GitHub.GitHubRateLimitError>
 }
 
 /**

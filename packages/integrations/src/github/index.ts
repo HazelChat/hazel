@@ -10,6 +10,7 @@ export {
 	GitHubPRAuthor,
 	GitHubPRLabel,
 	GitHubPRNotFoundError,
+	GitHubRateLimitError,
 	GitHubRepositoriesResult,
 	GitHubRepository as GitHubApiRepository,
 	GitHubRepositoryOwner,

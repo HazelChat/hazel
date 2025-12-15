@@ -36,11 +36,7 @@ function colorToHex(color: number): string {
 export function EmbedAuthor({ iconUrl, name, url, trailing, badge, className }: EmbedAuthorProps) {
 	const { accentColor } = useEmbedContext()
 
-	const nameElement = (
-		<span className="font-medium font-mono text-xs" style={{ color: accentColor || "var(--color-fg)" }}>
-			{name}
-		</span>
-	)
+	const nameElement = <span className="font-medium font-mono text-fg text-xs">{name}</span>
 
 	// Render badge if provided and no custom trailing
 	const badgeElement = badge && (

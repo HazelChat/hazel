@@ -60,10 +60,7 @@ export const integrationConnectionsTable = pgTable(
 			table.provider,
 		),
 		// Index for faster GitHub installation ID lookups (used in token refresh and callbacks)
-		index("int_conn_github_installation_idx").using(
-			"btree",
-			sql`(${table.metadata}->>'installationId')`,
-		),
+		index("int_conn_github_installation_idx").using("btree", sql`(${table.metadata}->>'installationId')`),
 	],
 )
 

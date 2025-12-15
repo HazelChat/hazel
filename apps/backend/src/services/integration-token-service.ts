@@ -340,7 +340,9 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 								installationId,
 								errorType: "_tag" in originalError ? originalError._tag : "UnknownError",
 								errorMessage:
-									"message" in originalError ? originalError.message : String(originalError),
+									"message" in originalError
+										? originalError.message
+										: String(originalError),
 							}),
 						),
 						Effect.mapError((originalError) => {
@@ -348,7 +350,9 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							const errorDetails = {
 								type: "_tag" in originalError ? originalError._tag : "UnknownError",
 								message:
-									"message" in originalError ? originalError.message : String(originalError),
+									"message" in originalError
+										? originalError.message
+										: String(originalError),
 								status: "status" in originalError ? originalError.status : undefined,
 							}
 

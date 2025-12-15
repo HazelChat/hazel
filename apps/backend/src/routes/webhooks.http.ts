@@ -1,11 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { HttpApiBuilder, HttpApiClient, type HttpApiError, HttpServerRequest } from "@effect/platform"
-import { Cluster, InternalServerError, withSystemActor } from "@hazel/domain"
+import { HttpApiBuilder, HttpApiClient, HttpServerRequest } from "@effect/platform"
+import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
-import { remapHttpClientErrors } from "../lib/http-client-errors"
 import { WorkOSSync } from "../services/workos-sync"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
 
@@ -149,7 +148,36 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											authorId: event.record.authorId,
 										}),
 									),
-									remapHttpClientErrors("Failed to execute notification workflow"),
+									Effect.catchTags({
+										HttpApiDecodeError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Failed to execute notification workflow",
+													cause: err.message,
+												}),
+											),
+										ParseError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Failed to execute notification workflow",
+													cause: String(err),
+												}),
+											),
+										RequestError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Failed to execute notification workflow",
+													cause: err.message,
+												}),
+											),
+										ResponseError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Failed to execute notification workflow",
+													cause: err.message,
+												}),
+											),
+									}),
 								)
 
 							yield* Effect.logInfo("Event processed successfully", {
@@ -293,7 +321,36 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 								repository: repositoryFullName,
 							}),
 						),
-						remapHttpClientErrors("Failed to execute GitHub webhook workflow"),
+						Effect.catchTags({
+							HttpApiDecodeError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "Failed to execute GitHub webhook workflow",
+										cause: err.message,
+									}),
+								),
+							ParseError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "Failed to execute GitHub webhook workflow",
+										cause: String(err),
+									}),
+								),
+							RequestError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "Failed to execute GitHub webhook workflow",
+										cause: err.message,
+									}),
+								),
+							ResponseError: (err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "Failed to execute GitHub webhook workflow",
+										cause: err.message,
+									}),
+								),
+						}),
 					)
 
 				yield* Effect.logInfo("GitHub webhook processed successfully", {

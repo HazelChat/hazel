@@ -1,4 +1,6 @@
+import { useAtomValue } from "@effect-atom/atom-react"
 import { getBrandfetchIcon } from "~/routes/_app/$orgSlug/settings/integrations/__data"
+import { resolvedThemeAtom } from "../theme-provider"
 
 export type EmbedProvider = "linear" | "github" | "figma" | "notion" | "openstatus" | "railway"
 
@@ -79,10 +81,15 @@ export function getProviderIconUrl(
 
 /**
  * Hook to get embed theming for a provider.
+ * Automatically switches logo variant based on app theme for visibility.
  */
 export function useEmbedTheme(provider: EmbedProvider) {
 	const theme = EMBED_THEMES[provider]
-	const iconUrl = getProviderIconUrl(provider)
+	const resolvedTheme = useAtomValue(resolvedThemeAtom)
+
+	// In dark mode, use light logo (for visibility). In light mode, use dark logo.
+	const iconTheme = resolvedTheme === "dark" ? "light" : "dark"
+	const iconUrl = getProviderIconUrl(provider, { theme: iconTheme })
 
 	return {
 		...theme,

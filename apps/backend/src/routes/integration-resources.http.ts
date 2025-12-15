@@ -210,6 +210,16 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 									provider: "github",
 								}),
 							),
+						GitHubRateLimitError: (error: GitHub.GitHubRateLimitError) =>
+							Effect.fail(
+								new IntegrationResourceError({
+									url: urlParams.url,
+									message: error.retryAfter
+										? `Rate limit exceeded. Try again in ${error.retryAfter} seconds.`
+										: error.message,
+									provider: "github",
+								}),
+							),
 						GitHubPRNotFoundError: (error: GitHub.GitHubPRNotFoundError) =>
 							Effect.fail(
 								new ResourceNotFoundError({

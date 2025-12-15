@@ -28,6 +28,19 @@ export class InternalServerError extends Schema.TaggedError<InternalServerError>
 	}),
 ) {}
 
+export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInitializationError>(
+	"WorkflowInitializationError",
+)(
+	"WorkflowInitializationError",
+	{
+		message: Schema.String,
+		cause: Schema.optional(Schema.Any),
+	},
+	HttpApiSchema.annotations({
+		status: 500,
+	}),
+) {}
+
 export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(

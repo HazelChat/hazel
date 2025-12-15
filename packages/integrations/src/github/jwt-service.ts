@@ -210,7 +210,11 @@ export class GitHubAppJWTService extends Effect.Service<GitHubAppJWTService>()("
 				if (response.status >= 400) {
 					const errorBody = yield* response.json.pipe(
 						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-						Effect.catchAll(() => Effect.succeed({ message: "Unknown error" })),
+						Effect.catchAll((error) =>
+							Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
+								Effect.as({ message: "Unknown error" }),
+							),
+						),
 					)
 					return yield* Effect.fail(
 						new GitHubInstallationTokenError({

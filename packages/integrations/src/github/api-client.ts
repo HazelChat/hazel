@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Effect, Schema } from "effect"
+import { Duration, Effect, Schedule, Schema } from "effect"
 
 /**
  * GitHub PR URL patterns:
@@ -112,6 +112,12 @@ export class GitHubPRNotFoundError extends Schema.TaggedError<GitHubPRNotFoundEr
 		number: Schema.Number,
 	},
 ) {}
+
+// Error for when rate limit is exceeded
+export class GitHubRateLimitError extends Schema.TaggedError<GitHubRateLimitError>()("GitHubRateLimitError", {
+	message: Schema.String,
+	retryAfter: Schema.optional(Schema.Number), // seconds until rate limit resets
+}) {}
 
 // ============================================================================
 // GitHub API Response Schemas (internal, for validation)
@@ -238,11 +244,8 @@ const parseGitHubErrorMessage = (status: number, message: string): string => {
 		return "GitHub authentication failed"
 	}
 
-	// Rate limiting
+	// Rate limiting (403 with rate limit message)
 	if (status === 403 && lowerMessage.includes("rate limit")) {
-		return "Rate limit exceeded, try again later"
-	}
-	if (status === 429) {
 		return "Rate limit exceeded, try again later"
 	}
 
@@ -251,33 +254,65 @@ const parseGitHubErrorMessage = (status: number, message: string): string => {
 }
 
 // ============================================================================
-// GitHubApiClient Service
+// Configuration
 // ============================================================================
 
 const GITHUB_API_BASE_URL = "https://api.github.com"
+const DEFAULT_TIMEOUT = Duration.seconds(30)
+
+// ============================================================================
+// Retry Strategy
+// ============================================================================
+
+/**
+ * Retry schedule for transient GitHub API errors.
+ * Retries up to 3 times with exponential backoff (100ms, 200ms, 400ms)
+ * only for rate limits (429) and server errors (5xx).
+ */
+const makeRetrySchedule = Schedule.exponential("100 millis").pipe(Schedule.intersect(Schedule.recurs(3)))
+
+/**
+ * Check if an error is retryable (rate limit or server error)
+ */
+const isRetryableError = (error: GitHubApiError | GitHubRateLimitError | GitHubPRNotFoundError): boolean => {
+	if (error._tag === "GitHubRateLimitError") {
+		return true
+	}
+	if (error._tag === "GitHubApiError" && error.status !== undefined) {
+		return error.status === 429 || error.status >= 500
+	}
+	return false
+}
+
+// ============================================================================
+// GitHubApiClient Service
+// ============================================================================
 
 /**
  * GitHub API Client Service.
  *
  * Provides methods for interacting with the GitHub API using Effect HttpClient
- * with proper schema validation.
+ * with proper schema validation, retries, and timeouts.
  *
  * ## Usage
  *
  * ```typescript
+ * // Using accessors (preferred)
+ * const pr = yield* GitHubApiClient.fetchPR("owner", "repo", 123, accessToken)
+ *
+ * // Or via service instance
  * const client = yield* GitHubApiClient
- *
- * // Fetch a PR
  * const pr = yield* client.fetchPR("owner", "repo", 123, accessToken)
- *
- * // Fetch repositories
- * const repos = yield* client.fetchRepositories(accessToken, 1, 30)
- *
- * // Get account info
- * const account = yield* client.getAccountInfo(accessToken)
  * ```
+ *
+ * ## Features
+ * - Automatic retry with exponential backoff for transient errors (429, 5xx)
+ * - 30 second timeout on all requests
+ * - Rate limit handling with retry-after header support
+ * - Distributed tracing via Effect spans
  */
 export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubApiClient", {
+	accessors: true,
 	effect: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
@@ -298,230 +333,258 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 		/**
 		 * Fetch a GitHub PR by owner, repo, and number
 		 */
-		const fetchPR = (
+		const fetchPR = Effect.fn("GitHubApiClient.fetchPR")(function* (
 			owner: string,
 			repo: string,
 			prNumber: number,
 			accessToken: string,
-		): Effect.Effect<GitHubPR, GitHubApiError | GitHubPRNotFoundError> =>
-			Effect.gen(function* () {
-				const client = makeAuthenticatedClient(accessToken)
-				const url = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/pulls/${prNumber}`
+		) {
+			const client = makeAuthenticatedClient(accessToken)
+			const url = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/pulls/${prNumber}`
 
-				const response = yield* client.get(url).pipe(Effect.scoped)
+			const response = yield* client.get(url).pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
 
-				// Handle 404 as not found error
-				if (response.status === 404) {
-					return yield* Effect.fail(new GitHubPRNotFoundError({ owner, repo, number: prNumber }))
-				}
+			// Handle 404 as not found error
+			if (response.status === 404) {
+				return yield* Effect.fail(new GitHubPRNotFoundError({ owner, repo, number: prNumber }))
+			}
 
-				// Handle other error status codes
-				if (response.status >= 400) {
-					const errorBody = yield* response.json.pipe(
-						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-						Effect.catchAll((error) =>
-							Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
-								Effect.as({ message: "Unknown error" }),
-							),
+			// Handle 429 rate limit with retry-after header
+			if (response.status === 429) {
+				const retryAfterHeader = response.headers["retry-after"]
+				const retryAfter = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined
+				return yield* Effect.fail(
+					new GitHubRateLimitError({
+						message: "Rate limit exceeded",
+						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+					}),
+				)
+			}
+
+			// Handle other error status codes
+			if (response.status >= 400) {
+				const errorBody = yield* response.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+					Effect.catchAll((error) =>
+						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
+							Effect.as({ message: "Unknown error" }),
 						),
-					)
-					const message = parseGitHubErrorMessage(response.status, errorBody.message)
-					return yield* Effect.fail(new GitHubApiError({ message, status: response.status }))
-				}
-
-				// Parse successful response
-				const prData = yield* response.json.pipe(
-					Effect.flatMap(Schema.decodeUnknown(GitHubPRApiResponse)),
-					Effect.mapError(
-						(error) =>
-							new GitHubApiError({
-								message: `Failed to parse GitHub PR response: ${String(error)}`,
-								cause: error,
-							}),
 					),
 				)
+				const message = parseGitHubErrorMessage(response.status, errorBody.message)
+				return yield* Effect.fail(new GitHubApiError({ message, status: response.status }))
+			}
 
-				// Transform API response to domain model
-				return {
-					owner,
-					repo,
-					number: prData.number,
-					title: prData.title,
-					body: prData.body ?? null,
-					state: prData.state as "open" | "closed",
-					draft: prData.draft,
-					merged: prData.merged,
-					author: prData.user
-						? {
-								login: prData.user.login,
-								avatarUrl: prData.user.avatar_url ?? null,
-							}
-						: null,
-					additions: prData.additions,
-					deletions: prData.deletions,
-					headRefName: prData.head?.ref ?? "",
-					updatedAt: prData.updated_at ?? new Date().toISOString(),
-					labels: prData.labels.map((label) => ({
-						name: label.name,
-						color: label.color,
-					})),
-				} satisfies GitHubPR
-			}).pipe(
-				Effect.catchTag("RequestError", (error) =>
-					Effect.fail(
+			// Parse successful response
+			const prData = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(GitHubPRApiResponse)),
+				Effect.mapError(
+					(error) =>
 						new GitHubApiError({
-							message: `Network error: ${String(error)}`,
+							message: `Failed to parse GitHub PR response: ${String(error)}`,
 							cause: error,
 						}),
-					),
 				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new GitHubApiError({
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
-							cause: error,
-						}),
-					),
-				),
-				Effect.withSpan("GitHubApiClient.fetchPR", { attributes: { owner, repo, prNumber } }),
 			)
+
+			// Transform API response to domain model
+			return {
+				owner,
+				repo,
+				number: prData.number,
+				title: prData.title,
+				body: prData.body ?? null,
+				state: prData.state as "open" | "closed",
+				draft: prData.draft,
+				merged: prData.merged,
+				author: prData.user
+					? {
+							login: prData.user.login,
+							avatarUrl: prData.user.avatar_url ?? null,
+						}
+					: null,
+				additions: prData.additions,
+				deletions: prData.deletions,
+				headRefName: prData.head?.ref ?? "",
+				updatedAt: prData.updated_at ?? new Date().toISOString(),
+				labels: prData.labels.map((label) => ({
+					name: label.name,
+					color: label.color,
+				})),
+			} satisfies GitHubPR
+		})
 
 		/**
 		 * Fetch repositories accessible to the GitHub App installation
 		 */
-		const fetchRepositories = (
+		const fetchRepositories = Effect.fn("GitHubApiClient.fetchRepositories")(function* (
 			accessToken: string,
 			page: number,
 			perPage: number,
-		): Effect.Effect<GitHubRepositoriesResult, GitHubApiError> =>
-			Effect.gen(function* () {
-				const client = makeAuthenticatedClient(accessToken)
-				const url = `${GITHUB_API_BASE_URL}/installation/repositories?per_page=${perPage}&page=${page}`
+		) {
+			const client = makeAuthenticatedClient(accessToken)
+			const url = `${GITHUB_API_BASE_URL}/installation/repositories?per_page=${perPage}&page=${page}`
 
-				const response = yield* client.get(url).pipe(Effect.scoped)
+			const response = yield* client.get(url).pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
 
-				// Handle error status codes
-				if (response.status >= 400) {
-					const errorBody = yield* response.json.pipe(
-						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-						Effect.catchAll(() => Effect.succeed({ message: "Unknown error" })),
-					)
-					return yield* Effect.fail(
-						new GitHubApiError({
-							message: `GitHub API error: ${errorBody.message}`,
-							status: response.status,
-						}),
-					)
-				}
+			// Handle 429 rate limit with retry-after header
+			if (response.status === 429) {
+				const retryAfterHeader = response.headers["retry-after"]
+				const retryAfter = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined
+				return yield* Effect.fail(
+					new GitHubRateLimitError({
+						message: "Rate limit exceeded",
+						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+					}),
+				)
+			}
 
-				// Parse successful response
-				const data = yield* response.json.pipe(
-					Effect.flatMap(Schema.decodeUnknown(GitHubRepositoriesApiResponse)),
-					Effect.mapError(
-						(error) =>
-							new GitHubApiError({
-								message: `Failed to parse GitHub repositories response: ${String(error)}`,
-								cause: error,
-							}),
+			// Handle error status codes
+			if (response.status >= 400) {
+				const errorBody = yield* response.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+					Effect.catchAll((error) =>
+						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
+							Effect.as({ message: "Unknown error" }),
+						),
 					),
 				)
+				return yield* Effect.fail(
+					new GitHubApiError({
+						message: `GitHub API error: ${errorBody.message}`,
+						status: response.status,
+					}),
+				)
+			}
 
-				// Transform API response to domain model
-				const repositories: GitHubRepository[] = data.repositories.map((repo) => ({
-					id: repo.id,
-					name: repo.name,
-					fullName: repo.full_name,
-					private: repo.private,
-					htmlUrl: repo.html_url,
-					description: repo.description ?? null,
-					owner: {
-						id: repo.owner.id,
-						login: repo.owner.login,
-						avatarUrl: repo.owner.avatar_url ?? null,
-					},
-				}))
-
-				const totalCount = data.total_count
-				const hasNextPage = page * perPage < totalCount
-
-				return {
-					totalCount,
-					repositories,
-					hasNextPage,
-					page,
-					perPage,
-				} satisfies GitHubRepositoriesResult
-			}).pipe(
-				Effect.catchTag("RequestError", (error) =>
-					Effect.fail(
+			// Parse successful response
+			const data = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(GitHubRepositoriesApiResponse)),
+				Effect.mapError(
+					(error) =>
 						new GitHubApiError({
-							message: `Network error: ${String(error)}`,
+							message: `Failed to parse GitHub repositories response: ${String(error)}`,
 							cause: error,
 						}),
-					),
 				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new GitHubApiError({
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
-							cause: error,
-						}),
-					),
-				),
-				Effect.withSpan("GitHubApiClient.fetchRepositories", { attributes: { page, perPage } }),
 			)
+
+			// Transform API response to domain model
+			const repositories: GitHubRepository[] = data.repositories.map((repo) => ({
+				id: repo.id,
+				name: repo.name,
+				fullName: repo.full_name,
+				private: repo.private,
+				htmlUrl: repo.html_url,
+				description: repo.description ?? null,
+				owner: {
+					id: repo.owner.id,
+					login: repo.owner.login,
+					avatarUrl: repo.owner.avatar_url ?? null,
+				},
+			}))
+
+			const totalCount = data.total_count
+			const hasNextPage = page * perPage < totalCount
+
+			return {
+				totalCount,
+				repositories,
+				hasNextPage,
+				page,
+				perPage,
+			} satisfies GitHubRepositoriesResult
+		})
 
 		/**
 		 * Get account info from the GitHub installation
 		 */
-		const getAccountInfo = (accessToken: string): Effect.Effect<GitHubAccountInfo, GitHubApiError> =>
-			Effect.gen(function* () {
-				const client = makeAuthenticatedClient(accessToken)
+		const getAccountInfo = Effect.fn("GitHubApiClient.getAccountInfo")(function* (accessToken: string) {
+			const client = makeAuthenticatedClient(accessToken)
 
-				// First, try to get account info from repositories endpoint
-				const reposUrl = `${GITHUB_API_BASE_URL}/installation/repositories`
-				const reposResponse = yield* client.get(reposUrl).pipe(Effect.scoped)
+			// First, try to get account info from repositories endpoint
+			const reposUrl = `${GITHUB_API_BASE_URL}/installation/repositories`
+			const reposResponse = yield* client
+				.get(reposUrl)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
 
-				if (reposResponse.status >= 200 && reposResponse.status < 300) {
-					const data = yield* reposResponse.json.pipe(
-						Effect.flatMap(Schema.decodeUnknown(GitHubRepositoriesApiResponse)),
-						Effect.catchAll(() => Effect.succeed({ total_count: 0, repositories: [] })),
-					)
+			// Handle 429 rate limit
+			if (reposResponse.status === 429) {
+				const retryAfterHeader = reposResponse.headers["retry-after"]
+				const retryAfter = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined
+				return yield* Effect.fail(
+					new GitHubRateLimitError({
+						message: "Rate limit exceeded",
+						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+					}),
+				)
+			}
 
-					// Get the owner from the first repository
-					const firstRepo = data.repositories[0]
-					if (firstRepo?.owner) {
-						return {
-							externalAccountId: String(firstRepo.owner.id),
-							externalAccountName: firstRepo.owner.login,
-						} satisfies GitHubAccountInfo
-					}
-				}
+			if (reposResponse.status >= 200 && reposResponse.status < 300) {
+				const data = yield* reposResponse.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubRepositoriesApiResponse)),
+					Effect.catchAll((error) =>
+						Effect.logDebug(
+							`Failed to parse GitHub repositories response: ${String(error)}`,
+						).pipe(Effect.as({ total_count: 0, repositories: [] })),
+					),
+				)
 
-				// Fallback: try to get authenticated app info
-				const appUrl = `${GITHUB_API_BASE_URL}/app`
-				const appResponse = yield* client.get(appUrl).pipe(Effect.scoped)
-
-				if (appResponse.status >= 200 && appResponse.status < 300) {
-					const appData = yield* appResponse.json.pipe(
-						Effect.flatMap(Schema.decodeUnknown(GitHubAppApiResponse)),
-						Effect.catchAll(() => Effect.succeed({ id: 0, name: "GitHub App" })),
-					)
-
+				// Get the owner from the first repository
+				const firstRepo = data.repositories[0]
+				if (firstRepo?.owner) {
 					return {
-						externalAccountId: String(appData.id),
-						externalAccountName: appData.name,
+						externalAccountId: String(firstRepo.owner.id),
+						externalAccountName: firstRepo.owner.login,
 					} satisfies GitHubAccountInfo
 				}
+			}
 
-				// If we can't get account info, use placeholder
+			// Fallback: try to get authenticated app info
+			const appUrl = `${GITHUB_API_BASE_URL}/app`
+			const appResponse = yield* client.get(appUrl).pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			// Handle 429 rate limit on fallback
+			if (appResponse.status === 429) {
+				const retryAfterHeader = appResponse.headers["retry-after"]
+				const retryAfter = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined
+				return yield* Effect.fail(
+					new GitHubRateLimitError({
+						message: "Rate limit exceeded",
+						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+					}),
+				)
+			}
+
+			if (appResponse.status >= 200 && appResponse.status < 300) {
+				const appData = yield* appResponse.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubAppApiResponse)),
+					Effect.catchAll((error) =>
+						Effect.logDebug(`Failed to parse GitHub App response: ${String(error)}`).pipe(
+							Effect.as({ id: 0, name: "GitHub App" }),
+						),
+					),
+				)
+
 				return {
-					externalAccountId: "unknown",
-					externalAccountName: "GitHub",
+					externalAccountId: String(appData.id),
+					externalAccountName: appData.name,
 				} satisfies GitHubAccountInfo
-			}).pipe(
+			}
+
+			// If we can't get account info, use placeholder
+			return {
+				externalAccountId: "0",
+				externalAccountName: "GitHub",
+			} satisfies GitHubAccountInfo
+		})
+
+		// Apply error handling, retry, and spans to each method
+		const wrappedFetchPR = (owner: string, repo: string, prNumber: number, accessToken: string) =>
+			fetchPR(owner, repo, prNumber, accessToken).pipe(
+				Effect.catchTag("TimeoutException", () =>
+					Effect.fail(new GitHubApiError({ message: "Request timed out" })),
+				),
 				Effect.catchTag("RequestError", (error) =>
 					Effect.fail(
 						new GitHubApiError({
@@ -539,13 +602,81 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 						}),
 					),
 				),
+				Effect.retry({
+					schedule: makeRetrySchedule,
+					while: isRetryableError,
+				}),
+				Effect.withSpan("GitHubApiClient.fetchPR", { attributes: { owner, repo, prNumber } }),
+			)
+
+		const wrappedFetchRepositories = (accessToken: string, page: number, perPage: number) =>
+			fetchRepositories(accessToken, page, perPage).pipe(
+				Effect.catchTag("TimeoutException", () =>
+					Effect.fail(new GitHubApiError({ message: "Request timed out" })),
+				),
+				Effect.catchTag("RequestError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Network error: ${String(error)}`,
+							cause: error,
+						}),
+					),
+				),
+				Effect.catchTag("ResponseError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Response error: ${String(error)}`,
+							status: error.response.status,
+							cause: error,
+						}),
+					),
+				),
+				Effect.retry({
+					schedule: makeRetrySchedule,
+					while: (error): error is GitHubApiError | GitHubRateLimitError =>
+						error._tag === "GitHubApiError" || error._tag === "GitHubRateLimitError"
+							? isRetryableError(error)
+							: false,
+				}),
+				Effect.withSpan("GitHubApiClient.fetchRepositories", { attributes: { page, perPage } }),
+			)
+
+		const wrappedGetAccountInfo = (accessToken: string) =>
+			getAccountInfo(accessToken).pipe(
+				Effect.catchTag("TimeoutException", () =>
+					Effect.fail(new GitHubApiError({ message: "Request timed out" })),
+				),
+				Effect.catchTag("RequestError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Network error: ${String(error)}`,
+							cause: error,
+						}),
+					),
+				),
+				Effect.catchTag("ResponseError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Response error: ${String(error)}`,
+							status: error.response.status,
+							cause: error,
+						}),
+					),
+				),
+				Effect.retry({
+					schedule: makeRetrySchedule,
+					while: (error): error is GitHubApiError | GitHubRateLimitError =>
+						error._tag === "GitHubApiError" || error._tag === "GitHubRateLimitError"
+							? isRetryableError(error)
+							: false,
+				}),
 				Effect.withSpan("GitHubApiClient.getAccountInfo"),
 			)
 
 		return {
-			fetchPR,
-			fetchRepositories,
-			getAccountInfo,
+			fetchPR: wrappedFetchPR,
+			fetchRepositories: wrappedFetchRepositories,
+			getAccountInfo: wrappedGetAccountInfo,
 		}
 	}),
 	dependencies: [FetchHttpClient.layer],
@@ -566,7 +697,7 @@ export const fetchGitHubPR = (
 	repo: string,
 	prNumber: number,
 	accessToken: string,
-): Effect.Effect<GitHubPR, GitHubApiError | GitHubPRNotFoundError> =>
+): Effect.Effect<GitHubPR, GitHubApiError | GitHubPRNotFoundError | GitHubRateLimitError> =>
 	Effect.gen(function* () {
 		const client = yield* GitHubApiClient
 		return yield* client.fetchPR(owner, repo, prNumber, accessToken)

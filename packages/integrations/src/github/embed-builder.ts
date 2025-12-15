@@ -2,15 +2,15 @@ import type { Schema } from "effect"
 import { INTEGRATION_BOT_CONFIGS } from "../common/bot-configs.ts"
 import type { MessageEmbed } from "../common/embed-types.ts"
 import { GITHUB_COLORS } from "./colors.ts"
-import {
+import type {
+	GitHubDeploymentStatusPayload,
+	GitHubEventType,
+	GitHubIssuesPayload,
 	GitHubLabel,
-	type GitHubDeploymentStatusPayload,
-	type GitHubEventType,
-	type GitHubIssuesPayload,
-	type GitHubPullRequestPayload,
-	type GitHubPushPayload,
-	type GitHubReleasePayload,
-	type GitHubWorkflowRunPayload,
+	GitHubPullRequestPayload,
+	GitHubPushPayload,
+	GitHubReleasePayload,
+	GitHubWorkflowRunPayload,
 } from "./payloads.ts"
 
 // Infer the GitHubLabel type from the schema

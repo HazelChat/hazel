@@ -1,7 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
 import { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
-import { InternalServerError } from "../errors"
+import { InternalServerError, WorkflowInitializationError } from "../errors"
 
 // WorkOS Webhook Types
 export class WorkOSWebhookPayload extends Schema.Class<WorkOSWebhookPayload>("WorkOSWebhookPayload")({
@@ -123,6 +123,7 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			.setPayload(SequinWebhookPayload)
 			.addSuccess(Schema.Void, { status: 204 })
 			.addError(InternalServerError)
+			.addError(WorkflowInitializationError)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Sequin Stream Webhook - Message Notifications",
@@ -138,6 +139,7 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			.addSuccess(GitHubWebhookResponse)
 			.addError(InvalidGitHubWebhookSignature)
 			.addError(InternalServerError)
+			.addError(WorkflowInitializationError)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "GitHub App Webhook",
