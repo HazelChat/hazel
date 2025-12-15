@@ -34,12 +34,10 @@ export function ChannelFilesHeader({
 	}
 
 	return (
-		<div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
-			<div className="flex-1">
-				<SearchField value={searchQuery} onChange={onSearchChange} className="w-full max-w-xs">
-					<SearchInput placeholder="Search files..." />
-				</SearchField>
-			</div>
+		<div className="flex shrink-0 items-center gap-3 px-4 py-3">
+			<SearchField value={searchQuery} onChange={onSearchChange} className="w-64">
+				<SearchInput placeholder="Search files..." />
+			</SearchField>
 
 			<Select selectedKey={filterType} onSelectionChange={handleFilterChange}>
 				<SelectTrigger className="w-36" />

@@ -1,5 +1,6 @@
 import type { ChannelId } from "@hazel/schema"
 import { useMemo, useState } from "react"
+import { IconFolders } from "~/components/icons/icon-folder"
 import { useChannelAttachments } from "~/db/hooks"
 import { type FileCategory, getFileCategory } from "~/utils/file-utils"
 import { ChannelFilesDocumentsList } from "./channel-files-documents-list"
@@ -68,7 +69,7 @@ export function ChannelFilesView({ channelId }: ChannelFilesViewProps) {
 				<div className="flex flex-col gap-6 p-4">
 					{isEmpty && (
 						<div className="flex flex-col items-center justify-center py-16 text-center">
-							<div className="mb-2 text-4xl">📁</div>
+							<IconFolders className="mb-3 size-12 text-muted-fg" />
 							<h3 className="font-medium text-fg text-lg">No files found</h3>
 							<p className="text-muted-fg text-sm">
 								{searchQuery || filterType !== "all"
