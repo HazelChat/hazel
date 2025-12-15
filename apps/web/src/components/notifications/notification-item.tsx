@@ -1,5 +1,6 @@
 import type { NotificationId } from "@hazel/schema"
 import { Link, useParams } from "@tanstack/react-router"
+import { formatDistanceToNow } from "date-fns"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMsgs from "~/components/icons/icon-msgs"
 import { Avatar } from "~/components/ui/avatar"
@@ -9,36 +10,6 @@ import { cn } from "~/lib/utils"
 interface NotificationItemProps {
 	notification: NotificationWithDetails
 	onMarkAsRead: (id: NotificationId) => void
-}
-
-/**
- * Format a date as a short relative time string (e.g., "2m", "5h", "3d")
- */
-function formatShortRelativeTime(date: Date): string {
-	const now = new Date()
-	const diffMs = now.getTime() - date.getTime()
-	const diffSeconds = Math.floor(diffMs / 1000)
-	const diffMinutes = Math.floor(diffSeconds / 60)
-	const diffHours = Math.floor(diffMinutes / 60)
-	const diffDays = Math.floor(diffHours / 24)
-
-	if (diffSeconds < 60) {
-		return "now"
-	}
-	if (diffMinutes < 60) {
-		return `${diffMinutes}m`
-	}
-	if (diffHours < 24) {
-		return `${diffHours}h`
-	}
-	if (diffDays < 7) {
-		return `${diffDays}d`
-	}
-	if (diffDays < 30) {
-		const weeks = Math.floor(diffDays / 7)
-		return `${weeks}w`
-	}
-	return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
 /**
@@ -146,7 +117,7 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
 						{getMessagePreview(notification)}
 					</p>
 					<span className="shrink-0 text-muted-fg text-xs">
-						{formatShortRelativeTime(new Date(n.createdAt))}
+						{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
 					</span>
 				</div>
 				<p className="mt-0.5 text-muted-fg text-xs">{getNotificationContext(notification)}</p>
