@@ -93,7 +93,6 @@ function RouteComponent() {
 
 	useEffect(() => {
 		clearNotifications({ payload: { channelId: id as ChannelId } })
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- clearNotifications is stable
 	}, [id, clearNotifications])
 
 	return (
