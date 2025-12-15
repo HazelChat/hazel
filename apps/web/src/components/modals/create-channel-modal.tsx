@@ -1,4 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
+import type { ChannelCategoryId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useState } from "react"
@@ -26,9 +27,10 @@ type ChannelFormData = typeof channelSchema.infer
 interface CreateChannelModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
+	categoryId?: ChannelCategoryId | null
 }
 
-export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalProps) {
+export function CreateChannelModal({ isOpen, onOpenChange, categoryId }: CreateChannelModalProps) {
 	const { user } = useAuth()
 	const { organizationId, slug } = useOrganization()
 	const navigate = useNavigate()
@@ -56,6 +58,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 					type: value.type,
 					organizationId,
 					parentChannelId: null,
+					categoryId: categoryId ?? null,
 					currentUserId: user.id,
 				}),
 				{

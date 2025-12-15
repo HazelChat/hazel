@@ -1,17 +1,19 @@
 "use client"
 
-import type { OrganizationId } from "@hazel/schema"
+import type { ChannelCategoryId, OrganizationId } from "@hazel/schema"
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
-import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, isNull, or, useLiveQuery } from "@tanstack/react-db"
 import { useMemo, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
+import { CreateCategoryModal } from "~/components/modals/create-category-modal"
 import { CreateChannelModal } from "~/components/modals/create-channel-modal"
 import { CreateDmModal } from "~/components/modals/create-dm-modal"
 import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { JoinChannelModal } from "~/components/modals/join-channel-modal"
+import { CategoryGroup } from "~/components/sidebar/category-group"
 import { ChannelItem } from "~/components/sidebar/channel-item"
 import { DmChannelItem } from "~/components/sidebar/dm-channel-item"
 import { FavoriteSection } from "~/components/sidebar/favorite-section"
@@ -33,6 +35,7 @@ import {
 import {
 	Sidebar,
 	SidebarContent,
+	SidebarDisclosureGroup,
 	SidebarFooter,
 	SidebarHeader,
 	SidebarItem,
@@ -43,7 +46,7 @@ import {
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
-import { channelCollection, channelMemberCollection } from "~/db/collections"
+import { channelCategoryCollection, channelCollection, channelMemberCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import IconCirclePlus from "../icons/icon-circle-plus"
@@ -56,6 +59,38 @@ import { IconServers } from "../icons/icon-servers"
 import IconUsers from "../icons/icon-users"
 import IconUsersPlus from "../icons/icon-users-plus"
 
+const CategoriesSection = (props: {
+	organizationId: OrganizationId
+	onCreateChannel: (categoryId: ChannelCategoryId) => void
+}) => {
+	const { data: categories } = useLiveQuery(
+		(q) =>
+			q
+				.from({ category: channelCategoryCollection })
+				.where(({ category }) => eq(category.organizationId, props.organizationId))
+				.orderBy(({ category }) => category.sortOrder, "asc")
+				.select(({ category }) => category),
+		[props.organizationId],
+	)
+
+	if (!categories || categories.length === 0) return null
+
+	return (
+		<SidebarSection>
+			<SidebarDisclosureGroup>
+				{categories.map((category) => (
+					<CategoryGroup
+						key={category.id}
+						category={category}
+						organizationId={props.organizationId}
+						onCreateChannel={props.onCreateChannel}
+					/>
+				))}
+			</SidebarDisclosureGroup>
+		</SidebarSection>
+	)
+}
+
 const ChannelGroup = (props: {
 	organizationId: OrganizationId
 	onCreateChannel: () => void
@@ -64,6 +99,7 @@ const ChannelGroup = (props: {
 	const { user } = useAuth()
 	const { slug } = useOrganization()
 
+	// Only show uncategorized channels (categoryId is null)
 	const { data: userChannels } = useLiveQuery(
 		(q) =>
 			q
@@ -71,13 +107,14 @@ const ChannelGroup = (props: {
 				.innerJoin({ member: channelMemberCollection }, ({ channel, member }) =>
 					eq(member.channelId, channel.id),
 				)
-				.where((q) =>
+				.where((tables) =>
 					and(
-						eq(q.channel.organizationId, props.organizationId),
-						or(eq(q.channel.type, "public"), eq(q.channel.type, "private")),
-						eq(q.member.userId, user?.id || ""),
-						eq(q.member.isHidden, false),
-						eq(q.member.isFavorite, false),
+						eq(tables.channel.organizationId, props.organizationId),
+						isNull(tables.channel.categoryId),
+						or(eq(tables.channel.type, "public"), eq(tables.channel.type, "private")),
+						eq(tables.member.userId, user?.id || ""),
+						eq(tables.member.isHidden, false),
+						eq(tables.member.isFavorite, false),
 					),
 				)
 				.orderBy(({ channel }) => channel.createdAt, "asc"),
@@ -112,7 +149,7 @@ const ChannelGroup = (props: {
 				</Menu>
 			</div>
 			{channels.map(({ channel, member }) => (
-				<ChannelItem key={channel.id} channel={channel} member={member} />
+				<ChannelItem key={channel.id} channel={channel} member={member} organizationId={props.organizationId} />
 			))}
 		</SidebarSection>
 	)
@@ -165,8 +202,14 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
 	const [modalType, setModalType] = useState<
-		"create" | "join" | "dm" | "invite" | "create-organization" | null
+		"create" | "join" | "dm" | "invite" | "create-organization" | "create-category" | null
 	>(null)
+	const [createChannelCategoryId, setCreateChannelCategoryId] = useState<ChannelCategoryId | null>(null)
+
+	const handleCreateChannelInCategory = (categoryId: ChannelCategoryId) => {
+		setCreateChannelCategoryId(categoryId)
+		setModalType("create")
+	}
 
 	return (
 		<>
@@ -228,7 +271,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 											<IconCirclePlus />
 											<MenuLabel>Create channel</MenuLabel>
 										</MenuItem>
-										<MenuItem href="/">
+										<MenuItem onAction={() => setModalType("create-category")}>
 											<IconFolderPlus />
 											<MenuLabel>Create category</MenuLabel>
 										</MenuItem>
@@ -288,6 +331,10 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 						{organizationId && (
 							<>
 								<FavoriteSection organizationId={organizationId} />
+								<CategoriesSection
+									organizationId={organizationId}
+									onCreateChannel={handleCreateChannelInCategory}
+								/>
 								<ChannelGroup
 									organizationId={organizationId}
 									onCreateChannel={() => setModalType("create")}
@@ -306,7 +353,19 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 				</SidebarFooter>
 			</Sidebar>
 			{modalType === "create" && (
-				<CreateChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
+				<CreateChannelModal
+					isOpen={true}
+					onOpenChange={(isOpen) => {
+						if (!isOpen) {
+							setModalType(null)
+							setCreateChannelCategoryId(null)
+						}
+					}}
+					categoryId={createChannelCategoryId}
+				/>
+			)}
+			{modalType === "create-category" && (
+				<CreateCategoryModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
 			)}
 			{modalType === "join" && (
 				<JoinChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />

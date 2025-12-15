@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm"
 import { attachmentsTable } from "./attachments"
 import { botsTable } from "./bots"
+import { channelCategoriesTable } from "./channel-categories"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
 import { integrationConnectionsTable } from "./integration-connections"
@@ -29,6 +30,7 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 export const organizationsRelations = relations(organizationsTable, ({ many }) => ({
 	members: many(organizationMembersTable),
 	channels: many(channelsTable),
+	channelCategories: many(channelCategoriesTable),
 	invitations: many(invitationsTable),
 	attachments: many(attachmentsTable),
 }))
@@ -65,6 +67,10 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	childChannels: many(channelsTable, {
 		relationName: "channelThreads",
 	}),
+	category: one(channelCategoriesTable, {
+		fields: [channelsTable.categoryId],
+		references: [channelCategoriesTable.id],
+	}),
 	members: many(channelMembersTable),
 	messages: many(messagesTable),
 	threadMessages: many(messagesTable),
@@ -72,6 +78,15 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	attachments: many(attachmentsTable),
 	typingIndicators: many(typingIndicatorsTable),
 	webhooks: many(channelWebhooksTable),
+}))
+
+// Channel categories relations
+export const channelCategoriesRelations = relations(channelCategoriesTable, ({ one, many }) => ({
+	organization: one(organizationsTable, {
+		fields: [channelCategoriesTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	channels: many(channelsTable),
 }))
 
 // Channel members relations

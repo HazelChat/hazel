@@ -60,7 +60,7 @@ export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 				<Strong>Favorites</Strong>
 			</div>
 			{publicPrivateChannels.map(({ channel, member }) => (
-				<ChannelItem key={channel.id} channel={channel} member={member} />
+				<ChannelItem key={channel.id} channel={channel} member={member} organizationId={props.organizationId} />
 			))}
 			{dmChannels.map((channel) => (
 				<DmChannelItem key={channel.id} channelId={channel.id} />

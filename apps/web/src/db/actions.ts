@@ -1,6 +1,7 @@
 import { optimisticAction } from "@hazel/effect-electric-db-collection"
 import {
 	type AttachmentId,
+	ChannelCategoryId,
 	type ChannelIcon,
 	ChannelId,
 	ChannelMemberId,
@@ -14,6 +15,7 @@ import { Effect } from "effect"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import {
+	channelCategoryCollection,
 	channelCollection,
 	channelMemberCollection,
 	messageCollection,
@@ -87,6 +89,7 @@ export const createChannelAction = optimisticAction({
 		icon?: string | null
 		type: "public" | "private" | "thread"
 		parentChannelId: ChannelId | null
+		categoryId?: ChannelCategoryId | null
 		currentUserId: UserId
 	}) => {
 		const channelId = ChannelId.make(crypto.randomUUID())
@@ -100,6 +103,8 @@ export const createChannelAction = optimisticAction({
 			type: props.type,
 			organizationId: props.organizationId,
 			parentChannelId: props.parentChannelId,
+			categoryId: props.categoryId || null,
+			sortOrder: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -133,6 +138,8 @@ export const createChannelAction = optimisticAction({
 				type: props.type,
 				organizationId: props.organizationId,
 				parentChannelId: props.parentChannelId,
+				categoryId: props.categoryId || null,
+				sortOrder: null,
 			})
 			return { data: { channelId: result.data.id }, transactionId: result.transactionId }
 		}),
@@ -168,6 +175,8 @@ export const createDmChannelAction = optimisticAction({
 			type: props.type === "direct" ? "single" : "direct",
 			organizationId: props.organizationId,
 			parentChannelId: null,
+			categoryId: null,
+			sortOrder: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -345,6 +354,8 @@ export const createThreadAction = optimisticAction({
 			type: "thread",
 			organizationId: props.organizationId,
 			parentChannelId: props.parentChannelId,
+			categoryId: null,
+			sortOrder: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -385,6 +396,8 @@ export const createThreadAction = optimisticAction({
 				type: "thread",
 				organizationId: props.organizationId,
 				parentChannelId: props.parentChannelId,
+				categoryId: null,
+				sortOrder: null,
 			})
 
 			// Note: The message update (setting threadChannelId) is handled by
@@ -610,6 +623,111 @@ export const updateChannelMemberAction = optimisticAction({
 				...(props.isMuted !== undefined && { isMuted: props.isMuted }),
 				...(props.isFavorite !== undefined && { isFavorite: props.isFavorite }),
 				...(props.isHidden !== undefined && { isHidden: props.isHidden }),
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+// ==========================================
+// Channel Category Actions
+// ==========================================
+
+export const createChannelCategoryAction = optimisticAction({
+	collections: [channelCategoryCollection],
+	runtime: runtime,
+
+	onMutate: (props: { organizationId: OrganizationId; name: string; sortOrder?: string }) => {
+		const categoryId = ChannelCategoryId.make(crypto.randomUUID())
+		const now = new Date()
+		// Auto-generate sortOrder using timestamp for simple ordering
+		const sortOrder = props.sortOrder ?? String(now.getTime())
+
+		channelCategoryCollection.insert({
+			id: categoryId,
+			name: props.name,
+			organizationId: props.organizationId,
+			sortOrder,
+			createdAt: now,
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		return { categoryId, sortOrder }
+	},
+
+	mutate: (props, ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelCategory.create", {
+				id: ctx.mutateResult.categoryId,
+				name: props.name,
+				organizationId: props.organizationId,
+				sortOrder: ctx.mutateResult.sortOrder,
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const updateChannelCategoryAction = optimisticAction({
+	collections: [channelCategoryCollection],
+	runtime: runtime,
+
+	onMutate: (props: { categoryId: ChannelCategoryId; name?: string; sortOrder?: string }) => {
+		channelCategoryCollection.update(props.categoryId, (category) => {
+			if (props.name !== undefined) category.name = props.name
+			if (props.sortOrder !== undefined) category.sortOrder = props.sortOrder
+		})
+		return { categoryId: props.categoryId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelCategory.update", {
+				id: props.categoryId,
+				...(props.name !== undefined && { name: props.name }),
+				...(props.sortOrder !== undefined && { sortOrder: props.sortOrder }),
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const deleteChannelCategoryAction = optimisticAction({
+	collections: [channelCategoryCollection],
+	runtime: runtime,
+
+	onMutate: (props: { categoryId: ChannelCategoryId }) => {
+		channelCategoryCollection.delete(props.categoryId)
+		return { categoryId: props.categoryId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelCategory.delete", { id: props.categoryId })
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const moveChannelToCategoryAction = optimisticAction({
+	collections: [channelCollection],
+	runtime: runtime,
+
+	onMutate: (props: { channelId: ChannelId; categoryId: ChannelCategoryId | null; sortOrder?: string }) => {
+		channelCollection.update(props.channelId, (channel) => {
+			channel.categoryId = props.categoryId
+			if (props.sortOrder !== undefined) channel.sortOrder = props.sortOrder
+		})
+		return { channelId: props.channelId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channel.update", {
+				id: props.channelId,
+				categoryId: props.categoryId,
+				...(props.sortOrder !== undefined && { sortOrder: props.sortOrder }),
 			})
 			return { data: result, transactionId: result.transactionId }
 		}),

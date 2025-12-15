@@ -5,6 +5,8 @@ export { Rpc, RpcType } from "effect-rpc-tanstack-devtools"
 export * from "./attachments"
 // Also export as namespaces for convenience
 export * as Attachments from "./attachments"
+export * from "./channel-categories"
+export * as ChannelCategories from "./channel-categories"
 export * from "./channel-members"
 export * as ChannelMembers from "./channel-members"
 export * from "./channel-webhooks"

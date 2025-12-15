@@ -1,6 +1,7 @@
 import {
 	Attachment,
 	Channel,
+	ChannelCategory,
 	ChannelMember,
 	IntegrationConnection,
 	Invitation,
@@ -186,6 +187,24 @@ export const channelCollection = createEffectCollection({
 		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
 	},
 	schema: Channel.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const channelCategoryCollection = createEffectCollection({
+	id: "channel_categories",
+	runtime: runtime,
+	shapeOptions: {
+		url: electricUrl,
+		liveSse: true,
+		params: {
+			table: "channel_categories",
+		},
+		parser: {
+			timestamptz: (date) => new Date(date),
+		},
+		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+	},
+	schema: ChannelCategory.Model.json,
 	getKey: (item) => item.id,
 })
 

@@ -5,6 +5,7 @@ import { AtomRpc } from "@effect-atom/atom-react"
 import { AuthMiddlewareClientLive } from "@hazel/backend/rpc/middleware/client"
 import {
 	AttachmentRpcs,
+	ChannelCategoryRpcs,
 	ChannelMemberRpcs,
 	ChannelRpcs,
 	ChannelWebhookRpcs,
@@ -50,6 +51,7 @@ const AllRpcs = MessageRpcs.merge(
 	NotificationRpcs,
 	InvitationRpcs,
 	ChannelRpcs,
+	ChannelCategoryRpcs,
 	ChannelMemberRpcs,
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,

@@ -14,6 +14,7 @@ import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
+import { ChannelCategoryPolicy } from "./policies/channel-category-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
@@ -30,6 +31,7 @@ import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy"
 import { AttachmentRepo } from "./repositories/attachment-repo"
+import { ChannelCategoryRepo } from "./repositories/channel-category-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
@@ -101,6 +103,7 @@ const TracerLive = OtlpTracer.layer({
 const RepoLive = Layer.mergeAll(
 	MessageRepo.Default,
 	ChannelRepo.Default,
+	ChannelCategoryRepo.Default,
 	ChannelMemberRepo.Default,
 	UserRepo.Default,
 	OrganizationRepo.Default,
@@ -121,6 +124,7 @@ const RepoLive = Layer.mergeAll(
 const PolicyLive = Layer.mergeAll(
 	OrganizationPolicy.Default,
 	ChannelPolicy.Default,
+	ChannelCategoryPolicy.Default,
 	MessagePolicy.Default,
 	InvitationPolicy.Default,
 	OrganizationMemberPolicy.Default,
