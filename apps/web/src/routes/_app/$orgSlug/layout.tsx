@@ -55,7 +55,10 @@ function RouteComponent() {
 		// If user's session org doesn't match the route's org, re-login with correct org context
 		if (user.organizationId !== organizationId) {
 			isRedirecting.current = true
-			login({ organizationId, returnTo: window.location.href })
+			login({
+				organizationId,
+				returnTo: window.location.pathname + window.location.search + window.location.hash,
+			})
 		}
 	}, [user, organizationId, isOrgLoading, login])
 

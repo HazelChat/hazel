@@ -80,7 +80,19 @@ export function useAuth() {
 	const login = (options?: LoginOptions) => {
 		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
 
-		const returnTo = options?.returnTo || location.pathname + location.search + location.hash
+		let returnTo = options?.returnTo || location.pathname + location.search + location.hash
+
+		// Ensure returnTo is a relative path (defense in depth)
+		// If a full URL was passed, extract just the path portion
+		if (returnTo.startsWith("http://") || returnTo.startsWith("https://")) {
+			try {
+				const url = new URL(returnTo)
+				returnTo = url.pathname + url.search + url.hash
+			} catch {
+				returnTo = "/"
+			}
+		}
+
 		loginUrl.searchParams.set("returnTo", returnTo)
 
 		if (options?.organizationId) {

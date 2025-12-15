@@ -6,9 +6,9 @@ import {
 	UnauthorizedError,
 	withSystemActor,
 } from "@hazel/domain"
-import { Config, Effect, Option, Redacted } from "effect"
+import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
-import { AuthState } from "../lib/schema"
+import { AuthState, RelativeUrl } from "../lib/schema"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "../services/workos"
@@ -22,7 +22,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 				const redirectUri = yield* Config.string("WORKOS_REDIRECT_URI").pipe(Effect.orDie)
 
-				const state = JSON.stringify(AuthState.make({ returnTo: urlParams.returnTo }))
+				// Validate returnTo is a relative URL (defense in depth)
+				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(urlParams.returnTo)
+				const state = JSON.stringify(AuthState.make({ returnTo: validatedReturnTo }))
 
 				let workosOrgId: string
 
