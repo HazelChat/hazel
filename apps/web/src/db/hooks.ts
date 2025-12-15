@@ -124,6 +124,31 @@ export const useAttachments = (messageId: MessageId) => {
 	}
 }
 
+export const useChannelAttachments = (channelId: ChannelId) => {
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ attachments: attachmentCollection })
+				.leftJoin({ user: userCollection }, ({ attachments, user }) =>
+					eq(attachments.uploadedBy, user.id),
+				)
+				.where(({ attachments }) =>
+					and(
+						eq(attachments.channelId, channelId),
+						eq(attachments.status, "complete"),
+						isNull(attachments.deletedAt),
+					),
+				)
+				.orderBy(({ attachments }) => attachments.uploadedAt, "desc"),
+		[channelId],
+	)
+
+	return {
+		attachments: data || [],
+		...rest,
+	}
+}
+
 /**
  * Query all integration connections for an organization.
  * Returns a map of provider -> connection for easy lookup.
