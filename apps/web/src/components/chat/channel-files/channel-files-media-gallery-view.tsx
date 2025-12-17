@@ -1,24 +1,22 @@
 import type { Attachment, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { PlayIcon } from "@heroicons/react/24/solid"
-import { Link, useParams } from "@tanstack/react-router"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
-import { useBreakpoint } from "~/hooks/use-breakpoint"
-import { getFileTypeFromName } from "~/utils/file-utils"
+import { useChannelAttachments } from "~/db/hooks"
+import { getFileCategory, getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
 
 type AttachmentWithUser = typeof Attachment.Model.Type & {
 	user: typeof User.Model.Type | null
 }
 
-interface ChannelFilesMediaGridProps {
-	attachments: AttachmentWithUser[]
+interface MediaGalleryViewProps {
 	channelId: ChannelId
 }
 
-function MediaItem({
+function MasonryItem({
 	attachment,
 	isVideo,
 	onClick,
@@ -47,25 +45,17 @@ function MediaItem({
 	}
 
 	return (
-		// biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handler added
-		<div
-			role="button"
-			tabIndex={0}
-			className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-border bg-secondary/30 transition-colors hover:border-muted-fg/50"
+		<button
+			type="button"
+			className="group relative mb-2 w-full cursor-pointer break-inside-avoid overflow-hidden rounded-lg"
 			onClick={onClick}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault()
-					onClick()
-				}
-			}}
 		>
 			{isVideo ? (
 				<>
 					{/* biome-ignore lint/a11y/useMediaCaption: decorative thumbnail */}
 					<video
 						src={mediaUrl}
-						className="size-full object-cover"
+						className="w-full object-cover"
 						preload="metadata"
 						onError={() => setImageError(true)}
 					/>
@@ -79,7 +69,8 @@ function MediaItem({
 				<img
 					src={mediaUrl}
 					alt={attachment.fileName}
-					className="size-full object-cover"
+					className="w-full object-cover"
+					loading="lazy"
 					onError={() => setImageError(true)}
 				/>
 			)}
@@ -96,37 +87,25 @@ function MediaItem({
 					<IconDownload />
 				</Button>
 			</div>
-		</div>
+		</button>
 	)
 }
 
-export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMediaGridProps) {
+export function MediaGalleryView({ channelId }: MediaGalleryViewProps) {
 	const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
-	const [selectedIndex, setSelectedIndex] = useState(0)
-	const { orgSlug } = useParams({ strict: false })
+	const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
-	// Calculate visible count based on breakpoint
-	const isXl = useBreakpoint("xl")
-	const isLg = useBreakpoint("lg")
-	const isSm = useBreakpoint("sm")
+	const { attachments: allAttachments } = useChannelAttachments(channelId)
 
-	const visibleCount = useMemo(() => {
-		if (isXl) return 5
-		if (isLg) return 4
-		if (isSm) return 3
-		return 2
-	}, [isXl, isLg, isSm])
+	// Filter to only media (images + videos)
+	const attachments = allAttachments
+		.filter((a) => {
+			const category = getFileCategory(a.attachments.fileName)
+			return category === "image" || category === "video"
+		})
+		.map((a) => ({ ...a.attachments, user: a.user ?? null }))
 
-	if (attachments.length === 0) {
-		return null
-	}
-
-	// Slice to show only one row
-	const visibleAttachments = attachments.slice(0, visibleCount)
-	const remainingCount = attachments.length - visibleCount
-	const hasMore = remainingCount > 0
-
-	// Separate images from videos for the image viewer
+	// Filter images for the ImageViewerModal (exclude videos)
 	const images = attachments.filter((a) => {
 		const fileType = getFileTypeFromName(a.fileName)
 		return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(fileType)
@@ -137,78 +116,62 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 		const isVideo = ["mp4", "webm"].includes(fileType)
 
 		if (isVideo) {
-			// For videos, open in new tab or use video player
+			// For videos, open in new tab
 			const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
 			window.open(`${publicUrl}/${attachment.id}`, "_blank")
 		} else {
-			// For images, open in modal
+			// For images, find index in images array and open viewer
 			const imageIndex = images.findIndex((img) => img.id === attachment.id)
 			if (imageIndex !== -1) {
-				setSelectedIndex(imageIndex)
+				setSelectedImageIndex(imageIndex)
 				setIsImageViewerOpen(true)
 			}
 		}
 	}
 
-	// Convert images to ViewerImage format
+	// Convert images to ViewerImage format for ImageViewerModal
 	const viewerImages: ViewerImage[] = images.map((attachment) => ({
 		type: "attachment" as const,
 		attachment,
 	}))
 
-	const selectedImage = images[selectedIndex]
+	const selectedImage = images[selectedImageIndex]
+	const imageCount = images.length
+	const videoCount = attachments.length - imageCount
+
+	if (attachments.length === 0) {
+		return (
+			<div className="flex flex-1 items-center justify-center p-8 text-muted-fg">
+				No media found in this channel
+			</div>
+		)
+	}
 
 	return (
 		<>
-			<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-				{visibleAttachments.map((attachment, index) => {
-					const fileType = getFileTypeFromName(attachment.fileName)
-					const isVideo = ["mp4", "webm"].includes(fileType)
-					const isLastItem = index === visibleAttachments.length - 1
+			<div className="flex-1 overflow-y-auto p-4">
+				{/* Stats */}
+				<p className="mb-4 text-muted-fg text-sm">
+					{imageCount} {imageCount === 1 ? "photo" : "photos"}
+					{videoCount > 0 && `, ${videoCount} ${videoCount === 1 ? "video" : "videos"}`}
+				</p>
 
-					// Show "See all" link on the last item when there are more
-					if (isLastItem && hasMore) {
-						const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-						const mediaUrl = `${publicUrl}/${attachment.id}`
+				{/* Masonry grid */}
+				<div className="columns-1 gap-3 sm:columns-2 lg:columns-3 xl:columns-4">
+					{attachments.map((attachment) => {
+						const fileType = getFileTypeFromName(attachment.fileName)
+						const isVideo = ["mp4", "webm"].includes(fileType)
 
 						return (
-							<Link
+							<MasonryItem
 								key={attachment.id}
-								to="/$orgSlug/chat/$id/files/media"
-								params={{ orgSlug: orgSlug!, id: channelId }}
-								className="relative aspect-square overflow-hidden rounded-lg border border-border bg-secondary/30"
-							>
-								{isVideo ? (
-									// biome-ignore lint/a11y/useMediaCaption: decorative thumbnail
-									<video
-										src={mediaUrl}
-										className="size-full object-cover"
-										preload="metadata"
-									/>
-								) : (
-									<img
-										src={mediaUrl}
-										alt={attachment.fileName}
-										className="size-full object-cover"
-									/>
-								)}
-								<div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white">
-									<span className="font-semibold text-2xl">+{remainingCount}</span>
-									<span className="text-sm text-white/80">See all</span>
-								</div>
-							</Link>
+								attachment={attachment}
+								isVideo={isVideo}
+								onClick={() => handleMediaClick(attachment)}
+							/>
 						)
-					}
-
-					return (
-						<MediaItem
-							key={attachment.id}
-							attachment={attachment}
-							isVideo={isVideo}
-							onClick={() => handleMediaClick(attachment)}
-						/>
-					)
-				})}
+					})}
+				</div>
 			</div>
 
 			{/* Single image viewer modal */}
@@ -217,7 +180,7 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 					isOpen={isImageViewerOpen}
 					onOpenChange={setIsImageViewerOpen}
 					images={viewerImages}
-					initialIndex={selectedIndex}
+					initialIndex={selectedImageIndex}
 					author={selectedImage?.user ?? undefined}
 					createdAt={selectedImage?.uploadedAt.getTime() ?? Date.now()}
 				/>

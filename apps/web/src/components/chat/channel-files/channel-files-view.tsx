@@ -84,7 +84,7 @@ export function ChannelFilesView({ channelId }: ChannelFilesViewProps) {
 							<h2 className="mb-3 font-medium text-muted-fg text-xs uppercase tracking-wide">
 								Media
 							</h2>
-							<ChannelFilesMediaGrid attachments={mediaAttachments} />
+							<ChannelFilesMediaGrid attachments={mediaAttachments} channelId={channelId} />
 						</section>
 					)}
 

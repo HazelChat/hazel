@@ -1,7 +1,6 @@
 # Today
 - test github subscribe to channel stuff
 - actual notification badge on channels etc.
-- setup signoz or any other logging/monitoring solution
 - setup sequin locally with config as code
 - fix threads
 - add timezones to profile and display from users in chat somehow
