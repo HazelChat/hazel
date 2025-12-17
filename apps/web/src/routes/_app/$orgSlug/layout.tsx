@@ -62,8 +62,8 @@ function RouteComponent() {
 		}
 	}, [user, organizationId, isOrgLoading, login])
 
-	// Show loader while org is loading or while redirecting for org context sync
-	if (isOrgLoading || (user && organizationId && user.organizationId !== organizationId)) {
+	// Show loader while redirecting for org context sync
+	if (user && organizationId && user.organizationId !== organizationId) {
 		return <Loader />
 	}
 
