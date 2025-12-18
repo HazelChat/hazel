@@ -45,7 +45,7 @@ export function ChatHeader() {
 					<button
 						type="button"
 						onClick={() => setIsOpenOnMobile(true)}
-						className="-ml-1 mr-3 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+						className="mr-3 -ml-1 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
 					>
 						<IconMenu className="size-5" />
 					</button>

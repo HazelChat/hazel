@@ -104,7 +104,7 @@ export function NavSidebar() {
 								<div className="relative">
 									<IconBell className="size-5" />
 									{unreadCount > 0 && (
-										<span className="-top-1.5 -right-1.5 absolute flex size-4 items-center justify-center rounded-full bg-danger font-medium text-[10px] text-danger-fg">
+										<span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-danger font-medium text-[10px] text-danger-fg">
 											{unreadCount > 9 ? "9+" : unreadCount}
 										</span>
 									)}

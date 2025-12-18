@@ -51,10 +51,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 	}
 
 	return (
-		<Toolbar
-			aria-label="Message actions"
-			className="rounded-lg border border-border bg-bg shadow-sm"
-		>
+		<Toolbar aria-label="Message actions" className="rounded-lg border border-border bg-bg shadow-sm">
 			{/* Quick Reactions */}
 			{topEmojis.map((emoji) => (
 				<Tooltip key={emoji}>

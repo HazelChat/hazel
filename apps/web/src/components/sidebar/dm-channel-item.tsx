@@ -168,7 +168,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 							</>
 						) : (
 							<>
-								<div data-slot="avatar" className="-space-x-2 flex">
+								<div data-slot="avatar" className="flex -space-x-2">
 									{filteredMembers.slice(0, 2).map((member) => (
 										<Avatar
 											key={member.user.id}

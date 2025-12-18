@@ -133,9 +133,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				// Find existing user or create if first login
 				// Using find-or-create pattern to avoid overwriting data set by webhooks
-				const userOption = yield* userRepo
-					.findByExternalId(workosUser.id)
-					.pipe(Effect.orDie, withSystemActor)
+				const userOption = yield* userRepo.findByExternalId(workosUser.id).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to query user",
+									detail: String(err),
+								}),
+							),
+					}),
+					withSystemActor,
+				)
 
 				yield* Option.match(userOption, {
 					onNone: () =>
@@ -153,7 +162,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 								isOnboarded: false,
 								deletedAt: null,
 							})
-							.pipe(Effect.orDie, withSystemActor),
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new InternalServerError({
+												message: "Failed to create user",
+												detail: String(err),
+											}),
+										),
+								}),
+								withSystemActor,
+							),
 					onSome: (user) => Effect.succeed(user),
 				})
 
@@ -163,9 +183,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					const orgMemberRepo = yield* OrganizationMemberRepo
 
 					// Fetch the internal user (just upserted above)
-					const user = yield* userRepo
-						.findByExternalId(workosUser.id)
-						.pipe(Effect.orDie, withSystemActor)
+					const user = yield* userRepo.findByExternalId(workosUser.id).pipe(
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to query user",
+										detail: String(err),
+									}),
+								),
+						}),
+						withSystemActor,
+					)
 
 					// Fetch org by WorkOS org ID to get our internal org ID
 					const workosOrg = yield* workos
@@ -178,7 +207,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						// Check if membership already exists - if so, skip creation
 						const existingMembership = yield* orgMemberRepo
 							.findByOrgAndUser(orgId, user.value.id)
-							.pipe(Effect.orDie, withSystemActor)
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new InternalServerError({
+												message: "Failed to query organization membership",
+												detail: String(err),
+											}),
+										),
+								}),
+								withSystemActor,
+							)
 
 						if (Option.isNone(existingMembership)) {
 							// Membership doesn't exist - fetch role from WorkOS and create it
@@ -207,7 +247,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 									invitedBy: null,
 									deletedAt: null,
 								})
-								.pipe(Effect.orDie, withSystemActor)
+								.pipe(
+									Effect.catchTags({
+										DatabaseError: (err) =>
+											Effect.fail(
+												new InternalServerError({
+													message: "Failed to create organization membership",
+													detail: String(err),
+												}),
+											),
+									}),
+									withSystemActor,
+								)
 						}
 					}
 				}
@@ -240,7 +291,17 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const workos = yield* WorkOS
 				const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
 
-				const logoutUrl = yield* workos.getLogoutUrl().pipe(Effect.orDie)
+				const logoutUrl = yield* workos.getLogoutUrl().pipe(
+					Effect.catchTags({
+						WorkOSApiError: (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to get logout URL",
+									detail: String(err.cause),
+								}),
+							),
+					}),
+				)
 
 				yield* HttpApiBuilder.securitySetCookie(CurrentUser.Cookie, Redacted.make(""), {
 					secure: true, // Always use secure cookies with HTTPS proxy

@@ -100,7 +100,15 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							// Get the user's external ID (WorkOS user ID)
 							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
-								Effect.orDie,
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new InternalServerError({
+												message: "Failed to query user",
+												detail: String(err),
+											}),
+										),
+								}),
 								withSystemActor,
 							)
 							if (userOption._tag === "None") {

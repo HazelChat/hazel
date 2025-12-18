@@ -77,7 +77,7 @@ function RouteComponent() {
 					</div>
 
 					{/* Tabs */}
-					<div className="-mx-4 -my-1 lg:-mx-8 flex w-full max-w-full overflow-scroll px-4 py-1 lg:px-8">
+					<div className="-mx-4 -my-1 flex w-full max-w-full overflow-scroll px-4 py-1 lg:-mx-8 lg:px-8">
 						<Tabs
 							selectedKey={selectedTab}
 							onSelectionChange={(value) => {

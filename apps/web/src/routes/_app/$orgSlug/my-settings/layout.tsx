@@ -32,9 +32,7 @@ function RouteComponent() {
 						<div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
 							<div className="flex flex-col gap-0.5 lg:gap-1">
 								<h1 className="font-semibold text-fg text-xl lg:text-2xl">My Settings</h1>
-								<p className="text-muted-fg text-sm">
-									Customize your personal experience
-								</p>
+								<p className="text-muted-fg text-sm">Customize your personal experience</p>
 							</div>
 						</div>
 					</div>
@@ -64,7 +62,7 @@ function RouteComponent() {
 					</div>
 
 					{/* Desktop tabs */}
-					<div className="-mx-4 -my-1 lg:-mx-8 scrollbar-hide flex w-full max-w-full overflow-x-auto px-4 py-1 lg:px-8">
+					<div className="scrollbar-hide -mx-4 -my-1 flex w-full max-w-full overflow-x-auto px-4 py-1 lg:-mx-8 lg:px-8">
 						<Tabs
 							className="max-md:hidden"
 							selectedKey={selectedTab}

@@ -202,7 +202,10 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 											<MenuLabel>Invite people</MenuLabel>
 										</MenuItem>
 										<MenuItem
-											href={{ to: "/$orgSlug/settings/team", params: { orgSlug: slug } }}
+											href={{
+												to: "/$orgSlug/settings/team",
+												params: { orgSlug: slug },
+											}}
 										>
 											<IconUsers />
 											<MenuLabel>Manage members</MenuLabel>
@@ -266,7 +269,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 							<SidebarItem onPress={props.openChannelsBrowser}>
 								<IconMagnifier />
 								<SidebarLabel>Browse channels</SidebarLabel>
-								<Keyboard className="-translate-y-1/2 absolute top-1/2 right-2 font-mono text-muted-fg text-xs">
+								<Keyboard className="absolute top-1/2 right-2 -translate-y-1/2 font-mono text-muted-fg text-xs">
 									⌘K
 								</Keyboard>
 							</SidebarItem>

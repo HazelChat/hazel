@@ -200,7 +200,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 						{selectedUsers.length > 0 && (
 							<div className="flex items-center gap-2">
 								<span className="text-muted-fg text-sm">{selectedUsers.length} selected</span>
-								<div className="-space-x-2 flex">
+								<div className="flex -space-x-2">
 									{selectedUsers.slice(0, 3).map((user) => (
 										<Avatar
 											key={user.id}

@@ -279,7 +279,7 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 												</div>
 												<Loader className="size-4" />
 												{/* Progress bar */}
-												<div className="-bottom-px absolute inset-x-0 h-1 bg-muted">
+												<div className="absolute inset-x-0 -bottom-px h-1 bg-muted">
 													<div
 														className="h-full bg-primary transition-all duration-200"
 														style={{ width: `${progress}%` }}

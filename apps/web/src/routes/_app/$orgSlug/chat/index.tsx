@@ -275,7 +275,7 @@ function DmCard({ channel, currentUserId }: { channel: any; currentUserId?: stri
 			className="group flex items-center justify-between gap-4 px-4 py-3 transition-all duration-200 hover:bg-secondary/50"
 		>
 			<div className="flex min-w-0 items-center gap-3">
-				<div className="-space-x-3 flex shrink-0">
+				<div className="flex shrink-0 -space-x-3">
 					{otherMembers.slice(0, 3).map((member: any) => (
 						<Avatar
 							key={member.user.id}

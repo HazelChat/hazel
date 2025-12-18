@@ -47,13 +47,16 @@ type CustomErrorHandlers<E> = {
  * If all errors in E are CommonAppError, customErrors is optional but can still
  * be provided for context-specific overrides.
  */
-type RequireCustomErrorsIfNeeded<E> = NonCommonErrorTags<E> extends never
-	? {
-			customErrors?: Partial<{
-				[K in AllErrorTags<E> & CommonErrorTag]: (error: Extract<E, { _tag: K }>) => UserErrorMessage
-			}>
-		}
-	: { customErrors: CustomErrorHandlers<E> }
+type RequireCustomErrorsIfNeeded<E> =
+	NonCommonErrorTags<E> extends never
+		? {
+				customErrors?: Partial<{
+					[K in AllErrorTags<E> & CommonErrorTag]: (
+						error: Extract<E, { _tag: K }>,
+					) => UserErrorMessage
+				}>
+			}
+		: { customErrors: CustomErrorHandlers<E> }
 
 export type ToastExitOptions<A, E> = {
 	loading: string

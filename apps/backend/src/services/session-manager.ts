@@ -41,9 +41,18 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 			lastName: string | null,
 			avatarUrl: string | null,
 		) {
-			const userOption = yield* userRepo
-				.findByExternalId(workOsUserId)
-				.pipe(Effect.orDie, withSystemActor)
+			const userOption = yield* userRepo.findByExternalId(workOsUserId).pipe(
+				Effect.catchTags({
+					DatabaseError: (err) =>
+						Effect.fail(
+							new SessionLoadError({
+								message: "Failed to query user by external ID",
+								detail: String(err),
+							}),
+						),
+				}),
+				withSystemActor,
+			)
 
 			const user = yield* Option.match(userOption, {
 				onNone: () =>
@@ -59,7 +68,18 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 							isOnboarded: false,
 							deletedAt: null,
 						})
-						.pipe(Effect.orDie, withSystemActor),
+						.pipe(
+							Effect.catchTags({
+								DatabaseError: (err) =>
+									Effect.fail(
+										new SessionLoadError({
+											message: "Failed to create user",
+											detail: String(err),
+										}),
+									),
+							}),
+							withSystemActor,
+						),
 				onSome: (user) => Effect.succeed(user),
 			})
 
@@ -257,9 +277,18 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 			}
 
 			// Try to find user in DB, if not found fetch from WorkOS and create
-			const userOption = yield* userRepo
-				.findByExternalId(workOsUserId)
-				.pipe(Effect.orDie, withSystemActor)
+			const userOption = yield* userRepo.findByExternalId(workOsUserId).pipe(
+				Effect.catchTags({
+					DatabaseError: (err) =>
+						Effect.fail(
+							new InvalidBearerTokenError({
+								message: "Failed to query user",
+								detail: String(err),
+							}),
+						),
+				}),
+				withSystemActor,
+			)
 
 			const user = yield* Option.match(userOption, {
 				onNone: () =>

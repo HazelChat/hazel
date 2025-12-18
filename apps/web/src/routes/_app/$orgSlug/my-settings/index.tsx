@@ -101,7 +101,7 @@ function AppearanceSettings() {
 												id={"color-${swatch.hex}"}
 												color={swatch.hex}
 												className={cn(
-													"-outline-offset-1 size-7 cursor-pointer rounded-full outline-1 outline-black/10",
+													"size-7 cursor-pointer rounded-full outline-1 outline-black/10 -outline-offset-1",
 													(isSelected || isFocused) &&
 														"ring-2 ring-ring ring-offset-2 ring-offset-bg",
 												)}

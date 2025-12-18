@@ -142,7 +142,17 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 										.where(eq(schema.channelsTable.id, event.record.channelId))
 										.limit(1),
 								)
-								.pipe(Effect.orDie)
+								.pipe(
+									Effect.catchTags({
+										DatabaseError: (err) =>
+											Effect.fail(
+												new WorkflowInitializationError({
+													message: "Failed to query channel type",
+													cause: String(err),
+												}),
+											),
+									}),
+								)
 
 							const channelType = channelResult[0]?.type ?? "public"
 

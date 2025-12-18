@@ -76,7 +76,11 @@ export function OnboardingLayout({
 					style={{ imageRendering: "pixelated" }}
 				/>
 
-				<Link href={{ to: "/" }} aria-label="Go to homepage" className="relative z-20 flex items-center gap-2">
+				<Link
+					href={{ to: "/" }}
+					aria-label="Go to homepage"
+					className="relative z-20 flex items-center gap-2"
+				>
 					<Logo className="size-8 text-white" />
 					<strong className="font-semibold">Hazel</strong>
 				</Link>

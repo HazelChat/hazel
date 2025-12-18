@@ -28,7 +28,10 @@ export const generateTransactionId = Effect.fn("generateTransactionId")(function
 	).pipe(
 		Effect.map((rows) => rows[0]?.txid as string),
 		Effect.flatMap((txid) => Schema.decode(TransactionIdFromString)(txid)),
-		Effect.orDie,
+		Effect.catchTags({
+			DatabaseError: (err) => Effect.die(`Database error generating transaction ID: ${err}`),
+			ParseError: (err) => Effect.die(`Failed to parse transaction ID: ${err}`),
+		}),
 	)
 
 	return result
