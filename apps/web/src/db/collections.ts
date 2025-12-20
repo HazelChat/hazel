@@ -26,7 +26,7 @@ export const organizationCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 
 		params: {
 			table: "organizations",
@@ -49,7 +49,7 @@ export const invitationCollection = createEffectCollection({
 		params: {
 			table: "invitations",
 		},
-		liveSse: true,
+		//liveSse: true,
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
@@ -68,7 +68,7 @@ export const messageCollection = createEffectCollection({
 		params: {
 			table: "messages",
 		},
-		// liveSse: true,
+		//// liveSse: true,
 		parser: {
 			timestamptz: (date: string) => new Date(date),
 		} as any,
@@ -104,7 +104,7 @@ export const pinnedMessageCollection = createEffectCollection({
 		params: {
 			table: "pinned_messages",
 		},
-		liveSse: true,
+		//liveSse: true,
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
@@ -120,7 +120,7 @@ export const notificationCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "notifications",
 		},
@@ -139,7 +139,7 @@ export const userCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		// liveSse: true,
+		//// liveSse: true,
 		params: {
 			table: "users",
 		},
@@ -157,7 +157,7 @@ export const organizationMemberCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "organization_members",
 		},
@@ -175,7 +175,7 @@ export const channelCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "channels",
 		},
@@ -194,7 +194,7 @@ export const channelMemberCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: `${electricUrl}`,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "channel_members",
 		},
@@ -212,7 +212,7 @@ export const attachmentCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "attachments",
 		},
@@ -231,7 +231,7 @@ export const typingIndicatorCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "typing_indicators",
 		},
@@ -246,7 +246,7 @@ export const userPresenceStatusCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "user_presence_status",
 		},
@@ -265,7 +265,7 @@ export const integrationConnectionCollection = createEffectCollection({
 	runtime: runtime,
 	shapeOptions: {
 		url: electricUrl,
-		liveSse: true,
+		//liveSse: true,
 		params: {
 			table: "integration_connections",
 		},

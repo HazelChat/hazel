@@ -329,12 +329,13 @@ export const createThreadAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: {
+		threadChannelId?: ChannelId
 		messageId: MessageId
 		parentChannelId: ChannelId
 		organizationId: OrganizationId
 		currentUserId: UserId
 	}) => {
-		const threadChannelId = ChannelId.make(crypto.randomUUID())
+		const threadChannelId = props.threadChannelId ?? ChannelId.make(crypto.randomUUID())
 		const now = new Date()
 
 		// Create thread channel
@@ -377,23 +378,19 @@ export const createThreadAction = optimisticAction({
 		Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 
-			// Create thread channel
-			const channelResult = yield* client("channel.create", {
+			// Call dedicated thread creation endpoint that atomically:
+			// 1. Creates the thread channel
+			// 2. Adds creator as member
+			// 3. Links the message to the thread
+			const result = yield* client("channel.createThread", {
 				id: ctx.mutateResult.threadChannelId,
-				name: "Thread",
-				icon: null,
-				type: "thread",
+				messageId: props.messageId,
 				organizationId: props.organizationId,
-				parentChannelId: props.parentChannelId,
 			})
 
-			// Note: The message update (setting threadChannelId) is handled by
-			// messageCollection.update() in onMutate, which triggers the collection's
-			// onUpdate callback to sync with the backend automatically.
-
 			return {
-				data: { threadChannelId: channelResult.data.id },
-				transactionId: channelResult.transactionId,
+				data: { threadChannelId: result.data.id },
+				transactionId: result.transactionId,
 			}
 		}),
 })

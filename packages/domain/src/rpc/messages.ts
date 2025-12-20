@@ -1,13 +1,16 @@
 import { RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
-import { InternalServerError, UnauthorizedError } from "../errors"
+import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../errors"
 import { MessageId } from "../ids"
 import { Message } from "../models"
 import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "../transaction-id"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
+
+// Re-export for backwards compatibility
+export { MessageNotFoundError } from "../errors"
 
 /**
  * Response schema for successful message operations.
@@ -16,14 +19,6 @@ import { AuthMiddleware } from "./middleware"
 export class MessageResponse extends Schema.Class<MessageResponse>("MessageResponse")({
 	data: Message.Model.json,
 	transactionId: TransactionId,
-}) {}
-
-/**
- * Error thrown when a message is not found.
- * Used in update and delete operations.
- */
-export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundError>()("MessageNotFoundError", {
-	messageId: MessageId,
 }) {}
 
 /**

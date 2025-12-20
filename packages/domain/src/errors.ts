@@ -1,5 +1,6 @@
 import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
+import { MessageId } from "./ids"
 
 export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",
@@ -51,6 +52,20 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlr
 	},
 	HttpApiSchema.annotations({
 		status: 409,
+	}),
+) {}
+
+/**
+ * Error thrown when a message is not found.
+ * Used in update, delete, and thread creation operations.
+ */
+export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundError>("MessageNotFoundError")(
+	"MessageNotFoundError",
+	{
+		messageId: MessageId,
+	},
+	HttpApiSchema.annotations({
+		status: 404,
 	}),
 ) {}
 

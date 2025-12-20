@@ -2,7 +2,7 @@ import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import {
 	type AttachmentId,
-	type ChannelId,
+	ChannelId,
 	type MessageId,
 	type MessageReactionId,
 	type OrganizationId,
@@ -323,8 +323,16 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			} else {
 				if (!user?.id) return
 
-				// Create new thread via action
+				// Generate thread channel ID upfront for optimistic UI
+				const threadChannelId = ChannelId.make(crypto.randomUUID())
+
+				// Open panel IMMEDIATELY with optimistic ID
+				setActiveThreadChannelId(threadChannelId)
+				setActiveThreadMessageId(messageId)
+
+				// Create thread in background
 				const exit = await createThreadMutation({
+					threadChannelId,
 					messageId,
 					parentChannelId: channelId,
 					organizationId,
@@ -333,11 +341,19 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 				toastExitOnError(exit, {
 					error: "Failed to create thread",
-					customErrors: {},
+					customErrors: {
+						MessageNotFoundError: () => ({
+							title: "Message not found",
+							description: "The message no longer exists",
+							isRetryable: false,
+						}),
+					},
 				})
-				if (Exit.isSuccess(exit)) {
-					setActiveThreadChannelId(exit.value.mutateResult.threadChannelId)
-					setActiveThreadMessageId(messageId)
+
+				// Close panel on failure
+				if (!Exit.isSuccess(exit)) {
+					setActiveThreadChannelId(null)
+					setActiveThreadMessageId(null)
 				}
 			}
 		},
