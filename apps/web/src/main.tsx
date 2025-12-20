@@ -13,6 +13,7 @@ import "./styles/styles.css"
 // Note: RPC devtools are now integrated via Effect layers in rpc-atom-client.ts
 import "./lib/registry.ts"
 
+import { PostHogProvider } from "posthog-js/react"
 import { Loader } from "./components/loader.tsx"
 import { ThemeProvider } from "./components/theme-provider.tsx"
 import { Toast } from "./components/ui/toast.tsx"
@@ -27,6 +28,11 @@ if (reactScanEnabled === "true") {
 	document.head.appendChild(script)
 }
 
+const _posthogOptions = {
+	api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+	defaults: "2025-11-30",
+} as const
+
 export const router = createRouter({
 	routeTree,
 	context: {},
@@ -37,13 +43,16 @@ export const router = createRouter({
 	defaultPendingMs: 300,
 	defaultPendingMinMs: 300,
 	defaultPendingComponent: Loader,
-	Wrap: ({ children }) => (
-		<ThemeProvider>
-			<Toast />
-
-			{children}
-		</ThemeProvider>
-	),
+	Wrap: ({ children }) => {
+		return (
+			<PostHogProvider apiKey={import.meta.env.VITE_POSTHOG_KEY} options={_posthogOptions}>
+				<ThemeProvider>
+					<Toast />
+					{children}
+				</ThemeProvider>
+			</PostHogProvider>
+		)
+	},
 })
 
 declare module "@tanstack/react-router" {
