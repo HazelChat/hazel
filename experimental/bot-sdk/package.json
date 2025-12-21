@@ -4,9 +4,6 @@
 	"private": true,
 	"type": "module",
 	"main": "src/index.ts",
-	"scripts": {
-		"typecheck": "tsc --noEmit"
-	},
 	"exports": {
 		".": "./src/index.ts",
 		"./bot-client": "./src/bot-client.ts",
@@ -16,6 +13,9 @@
 		"./errors": "./src/errors.ts",
 		"./services": "./src/services/index.ts",
 		"./layers": "./src/layers.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",

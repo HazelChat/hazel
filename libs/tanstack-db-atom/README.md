@@ -175,6 +175,7 @@ function makeQuery<TContext extends Context>(
 ```
 
 **Options:**
+
 - `gcTime`: Garbage collection time in milliseconds (default: 0)
 - `startSync`: Whether to start sync immediately (default: true)
 - `suspendOnWaiting`: Suspend on waiting state with `Atom.result()` (default: false)
@@ -229,15 +230,16 @@ function makeSingleCollectionAtom<T extends object, TKey extends string | number
 
 1. **Initial Load**: Collection sync starts immediately (unless `startSync: false`)
 2. **Status Mapping**:
-   - `idle`/`loading` → `Result.waiting`
-   - `error` → `Result.failure`
-   - `ready` → `Result.success(data)`
+    - `idle`/`loading` → `Result.waiting`
+    - `error` → `Result.failure`
+    - `ready` → `Result.success(data)`
 3. **Reactive Updates**: Subscribes to `collection.subscribeChanges()`
 4. **Cleanup**: Unsubscribes automatically via `get.addFinalizer()`
 
 ### Incremental View Maintenance
 
 TanStack DB uses **D2 (Differential Datalog)** for efficient incremental updates:
+
 - Changes are computed incrementally, not by re-running full queries
 - Only affected rows trigger updates
 - Joins and complex transformations are automatically optimized
@@ -289,14 +291,14 @@ const dashboardDataAtom = Atom.all({
 
 ## Comparison with useLiveQuery
 
-| Feature | useLiveQuery (React) | makeQuery (Effect Atom) |
-|---------|---------------------|------------------------|
-| Framework | React | Framework-agnostic |
-| Subscription | useSyncExternalStore | Atom finalizers |
-| Error Handling | Status flags | Result types |
-| Composability | Limited | High (Atom combinators) |
-| TypeScript | Full inference | Full inference |
-| Performance | Optimized | Optimized |
+| Feature        | useLiveQuery (React) | makeQuery (Effect Atom) |
+| -------------- | -------------------- | ----------------------- |
+| Framework      | React                | Framework-agnostic      |
+| Subscription   | useSyncExternalStore | Atom finalizers         |
+| Error Handling | Status flags         | Result types            |
+| Composability  | Limited              | High (Atom combinators) |
+| TypeScript     | Full inference       | Full inference          |
+| Performance    | Optimized            | Optimized               |
 
 ## License
 

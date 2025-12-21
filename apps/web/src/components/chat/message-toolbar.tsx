@@ -115,7 +115,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 					intent="plain"
 					onPress={handleCopy}
 					aria-label="Copy message"
-					className="!p-1.5 hover:bg-secondary"
+					className="p-1.5! hover:bg-secondary"
 				>
 					<IconCopy data-slot="icon" className="size-3.5" />
 				</Button>

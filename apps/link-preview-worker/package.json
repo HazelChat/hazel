@@ -2,19 +2,14 @@
 	"name": "@hazel/link-preview-worker",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
+	"main": "src/api.ts",
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev:local": "wrangler dev --port 5471",
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
-	},
-	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"@effect/language-service": "catalog:effect",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.16",
-		"wrangler": "^4.55.0"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
@@ -28,6 +23,11 @@
 		"metascraper-url": "^5.49.5",
 		"react-tweet": "^3.3.0"
 	},
-	"type": "module",
-	"main": "src/api.ts"
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@effect/language-service": "catalog:effect",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.16",
+		"wrangler": "^4.55.0"
+	}
 }

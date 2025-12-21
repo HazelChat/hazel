@@ -22,11 +22,7 @@ export {
 	UpdateError,
 } from "./errors"
 // Effect handlers
-export {
-	convertDeleteHandler,
-	convertInsertHandler,
-	convertUpdateHandler,
-} from "./handlers"
+export { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
 // Optimistic Actions
 export {
 	type CollectionInput,
@@ -43,11 +39,7 @@ export {
 	optimisticAction,
 } from "./optimistic-action"
 // Service and Layer APIs
-export {
-	ElectricCollection,
-	type ElectricCollectionService,
-	makeElectricCollectionLayer,
-} from "./service"
+export { ElectricCollection, type ElectricCollectionService, makeElectricCollectionLayer } from "./service"
 // Types
 export type {
 	BackoffConfig,

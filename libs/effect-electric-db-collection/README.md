@@ -188,6 +188,7 @@ const program = Effect.gen(function* () {
 Creates electric collection options with Effect-based handlers.
 
 **Config:**
+
 - `shapeOptions` - ElectricSQL shape stream options
 - `getKey` - Function to extract key from items
 - `schema` - Optional validation schema

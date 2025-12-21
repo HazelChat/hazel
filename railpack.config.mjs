@@ -1,3 +1,3 @@
 export default {
-  buildAptPackages: ["python3", "g++", "make"],
-};
+	buildAptPackages: ["python3", "g++", "make"],
+}

@@ -1,8 +1,8 @@
 {
 	"name": "@hazel/backend",
-	"module": "src/index.ts",
-	"type": "module",
 	"private": true,
+	"type": "module",
+	"module": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
 		"./api": "./src/api.ts",
@@ -18,12 +18,6 @@
 		"reset": "bun run scripts/reset-all.ts",
 		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
 		"reset:force": "bun run scripts/reset-all.ts --force"
-	},
-	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
-		"@types/bun": "1.3.4",
-		"drizzle-kit": "^0.31.8",
-		"typescript": "^5.9.3"
 	},
 	"dependencies": {
 		"@effect/cluster": "catalog:effect",
@@ -45,5 +39,11 @@
 		"effect": "catalog:effect",
 		"jose": "^6.1.3",
 		"pg": "^8.16.3"
+	},
+	"devDependencies": {
+		"@effect/language-service": "catalog:effect",
+		"@types/bun": "1.3.4",
+		"drizzle-kit": "^0.31.8",
+		"typescript": "^5.9.3"
 	}
 }

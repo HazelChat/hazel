@@ -67,7 +67,8 @@ const Sheet = (props: SheetProps) => {
 }
 
 interface SheetContentProps
-	extends Omit<ModalOverlayProps, "children">,
+	extends
+		Omit<ModalOverlayProps, "children">,
 		Pick<DialogProps, "aria-label" | "role" | "aria-labelledby" | "children"> {
 	closeButton?: boolean
 	isBlurred?: boolean

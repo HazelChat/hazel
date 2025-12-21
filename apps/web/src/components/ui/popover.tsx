@@ -33,7 +33,8 @@ const PopoverBody = DialogBody
 const PopoverFooter = DialogFooter
 
 interface PopoverContentProps
-	extends Omit<PopoverPrimitiveProps, "children">,
+	extends
+		Omit<PopoverPrimitiveProps, "children">,
 		Pick<DialogProps, "children" | "aria-label" | "aria-labelledby"> {
 	arrow?: boolean
 	ref?: React.Ref<HTMLDivElement>

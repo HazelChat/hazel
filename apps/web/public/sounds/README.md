@@ -23,20 +23,20 @@ You need to add the following sound files to complete the notification sound sel
 ### Recommended Sources (Royalty-Free):
 
 1. **Pixabay** - https://pixabay.com/sound-effects/search/notification%20chime/
-   - 1,134+ royalty-free notification chime sound effects
-   - Free to download and use
+    - 1,134+ royalty-free notification chime sound effects
+    - Free to download and use
 
 2. **Mixkit** - https://mixkit.co/free-sound-effects/bell/
-   - 36+ free bell sound effects
-   - All sounds are royalty-free
+    - 36+ free bell sound effects
+    - All sounds are royalty-free
 
 3. **ZapSplat** - https://www.zapsplat.com/music/ui-alert-notification-bell-chime-ping-6/
-   - Free UI alert and notification sounds
-   - Requires free account
+    - Free UI alert and notification sounds
+    - Requires free account
 
 4. **Uppbeat** - https://uppbeat.io/sfx/category/notifications/ping
-   - Free ping sound effects
-   - No copyright issues
+    - Free ping sound effects
+    - No copyright issues
 
 ## File Requirements
 

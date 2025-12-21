@@ -10,15 +10,12 @@ export type ExtractSchemaType<S> = S extends ShapeSubscriptionConfig<infer A, an
 /**
  * Generate event types for a subscription (table.operation)
  */
-export type GenerateEventTypes<S extends ShapeSubscriptionConfig> = S extends ShapeSubscriptionConfig<
-	infer A,
-	any,
-	any
->
-	? S["table"] extends string
-		? `${S["table"]}.${"insert" | "update" | "delete"}`
+export type GenerateEventTypes<S extends ShapeSubscriptionConfig> =
+	S extends ShapeSubscriptionConfig<infer A, any, any>
+		? S["table"] extends string
+			? `${S["table"]}.${"insert" | "update" | "delete"}`
+			: never
 		: never
-	: never
 
 /**
  * Map all subscriptions to their event types

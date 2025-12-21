@@ -43,8 +43,7 @@ type TooltipProps = React.ComponentProps<typeof TooltipTriggerPrimitive>
 const Tooltip = (props: TooltipProps) => <TooltipTriggerPrimitive {...props} />
 
 interface TooltipContentProps
-	extends Omit<TooltipPrimitiveProps, "children">,
-		VariantProps<typeof tooltipStyles> {
+	extends Omit<TooltipPrimitiveProps, "children">, VariantProps<typeof tooltipStyles> {
 	arrow?: boolean
 	children?: React.ReactNode
 }

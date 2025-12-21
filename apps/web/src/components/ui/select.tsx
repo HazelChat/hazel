@@ -13,8 +13,10 @@ import {
 import { fieldStyles } from "./field"
 import { PopoverContent } from "./popover"
 
-interface SelectProps<T extends object, M extends "single" | "multiple" = "single">
-	extends SelectPrimitiveProps<T, M> {
+interface SelectProps<
+	T extends object,
+	M extends "single" | "multiple" = "single",
+> extends SelectPrimitiveProps<T, M> {
 	items?: Iterable<T, M>
 }
 

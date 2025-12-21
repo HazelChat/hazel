@@ -11,6 +11,7 @@ This directory contains example bots demonstrating how to use the `@hazel/bot-sd
 A basic bot that listens for new messages and logs them to the console. This is the perfect starting point for learning the bot SDK.
 
 **Features:**
+
 - Bot authentication
 - Connecting to Electric SQL
 - Listening for message events
@@ -18,6 +19,7 @@ A basic bot that listens for new messages and logs them to the console. This is 
 - Graceful shutdown
 
 **What you'll learn:**
+
 - How to set up a bot runtime
 - How to register event handlers
 - How to handle bot lifecycle
@@ -36,35 +38,41 @@ Before running any example, you need:
 ### Running an Example
 
 1. **Navigate to the example directory:**
-   ```bash
-   cd packages/bot-sdk/examples/simple-echo-bot
-   ```
+
+    ```bash
+    cd packages/bot-sdk/examples/simple-echo-bot
+    ```
 
 2. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   ```
+
+    ```bash
+    cp .env.example .env
+    ```
 
 3. **Edit `.env` and fill in your credentials:**
-   ```
-   BOT_TOKEN=your_bot_token_here
-   ELECTRIC_URL=http://localhost:8787/v1/shape
-   ```
+
+    ```
+    BOT_TOKEN=your_bot_token_here
+    ELECTRIC_URL=http://localhost:8787/v1/shape
+    ```
 
 4. **Install dependencies** (if not already installed from the workspace root):
-   ```bash
-   bun install
-   ```
+
+    ```bash
+    bun install
+    ```
 
 5. **Run the bot:**
-   ```bash
-   bun run start
-   ```
 
-   Or, for development with auto-reload:
-   ```bash
-   bun run dev
-   ```
+    ```bash
+    bun run start
+    ```
+
+    Or, for development with auto-reload:
+
+    ```bash
+    bun run dev
+    ```
 
 6. **Stop the bot:**
    Press `Ctrl+C` to gracefully shut down the bot.
@@ -84,6 +92,7 @@ To create a bot and get a bot token:
 ### Finding Your Organization ID
 
 You can find your organization ID:
+
 1. In your organization settings URL
 2. Via the API
 3. In your application's state/context
@@ -105,12 +114,14 @@ example-name/
 ### Environment Variables
 
 All examples use these environment variables:
+
 - `BOT_TOKEN` - Required. Your bot's authentication token
 - `ELECTRIC_URL` - Optional. Electric SQL endpoint (defaults to localhost)
 
 ### Error Handling
 
 Examples demonstrate:
+
 - Validating required configuration
 - Handling bot startup errors
 - Graceful shutdown on SIGINT/SIGTERM
@@ -119,6 +130,7 @@ Examples demonstrate:
 ### Bot Lifecycle
 
 A typical bot lifecycle:
+
 1. Load and validate configuration
 2. Create bot runtime with config
 3. Define program with event handlers
@@ -140,6 +152,7 @@ After exploring the examples:
 ### "BOT_TOKEN environment variable is required"
 
 Make sure you've:
+
 1. Copied `.env.example` to `.env`
 2. Filled in your bot token in the `.env` file
 3. Created a bot in your organization to get a token
@@ -147,6 +160,7 @@ Make sure you've:
 ### "Cannot connect to Electric SQL"
 
 Check that:
+
 1. Your Electric SQL service is running
 2. The `ELECTRIC_URL` is correct
 3. Your bot token is valid
@@ -155,6 +169,7 @@ Check that:
 ### "No events are being received"
 
 Verify that:
+
 1. Your bot has access to the organization
 2. There are actually messages being created in channels
 3. The Electric SQL subscriptions are set up correctly
