@@ -21,7 +21,7 @@ interface InlineThreadPreviewProps {
 export function InlineThreadPreview({
 	threadChannelId,
 	messageId,
-	maxPreviewMessages = 3,
+	maxPreviewMessages = 1,
 }: InlineThreadPreviewProps) {
 	const { openThread } = useChat()
 
