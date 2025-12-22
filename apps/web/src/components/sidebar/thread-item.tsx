@@ -77,10 +77,9 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 			<Menu>
 				<Button
 					intent="plain"
-					size="sq-xs"
 					className="absolute right-2 top-1/2 size-5 -translate-y-1/2 text-muted-fg opacity-0 group-hover/thread-item:opacity-100"
 				>
-					<IconDots className="size-4" />
+					<IconDots className="size-5 sm:size-4" />
 				</Button>
 				<MenuContent placement="right top" className="w-42">
 					<MenuItem onAction={handleToggleMute}>
