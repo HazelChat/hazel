@@ -1,9 +1,9 @@
 "use client"
 
-import type { OrganizationId } from "@hazel/schema"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
@@ -15,6 +15,7 @@ import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { ChannelItem } from "~/components/sidebar/channel-item"
 import { DmChannelItem } from "~/components/sidebar/dm-channel-item"
 import { FavoriteSection } from "~/components/sidebar/favorite-section"
+import { ThreadItem } from "~/components/sidebar/thread-item"
 import { SwitchServerMenu } from "~/components/sidebar/switch-server-menu"
 import { UserMenu } from "~/components/sidebar/user-menu"
 import { Avatar } from "~/components/ui/avatar"
@@ -44,6 +45,7 @@ import {
 } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
+import { useActiveThreads } from "~/db/hooks"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import IconCirclePlus from "../icons/icon-circle-plus"
@@ -58,6 +60,7 @@ import IconUsersPlus from "../icons/icon-users-plus"
 
 const ChannelGroup = (props: {
 	organizationId: OrganizationId
+	threadsByParent: ReturnType<typeof useActiveThreads>["threadsByParent"]
 	onCreateChannel: () => void
 	onJoinChannel: () => void
 }) => {
@@ -112,7 +115,12 @@ const ChannelGroup = (props: {
 				</Menu>
 			</div>
 			{channels.map(({ channel, member }) => (
-				<ChannelItem key={channel.id} channel={channel} member={member} />
+				<Fragment key={channel.id}>
+					<ChannelItem channel={channel} member={member} />
+					{props.threadsByParent.get(channel.id)?.map(({ channel: thread, member: threadMember }) => (
+						<ThreadItem key={thread.id} thread={thread} member={threadMember} />
+					))}
+				</Fragment>
 			))}
 		</SidebarSection>
 	)
@@ -164,9 +172,11 @@ const DmChannelGroup = (props: { organizationId: OrganizationId; onCreateDm: () 
 export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
+	const { user } = useAuth()
 	const [modalType, setModalType] = useState<
 		"create" | "join" | "dm" | "invite" | "create-organization" | null
 	>(null)
+	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
 
 	return (
 		<>
@@ -295,6 +305,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								<FavoriteSection organizationId={organizationId} />
 								<ChannelGroup
 									organizationId={organizationId}
+									threadsByParent={threadsByParent}
 									onCreateChannel={() => setModalType("create")}
 									onJoinChannel={() => setModalType("join")}
 								/>

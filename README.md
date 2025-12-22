@@ -147,7 +147,7 @@ Hazel Chat is a full-stack chat application featuring:
 | `bun run dev`           | Start all apps in development mode          |
 | `bun run build`         | Build all apps and packages                 |
 | `bun run typecheck`     | Run TypeScript checking across all packages |
-| `bun run format`    | Format and lint code with OXC             |
+| `bun run format`        | Format and lint code with OXC               |
 | `bun run test`          | Run tests in watch mode                     |
 | `bun run test:once`     | Run all tests once                          |
 | `bun run test:coverage` | Run tests with coverage report              |
