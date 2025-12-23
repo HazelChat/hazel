@@ -1,6 +1,6 @@
 import type { Channel, ChannelMember, IntegrationConnection, User } from "@hazel/domain/models"
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { and, eq, gte, isNull, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, gte, inArray, isNull, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import { useAuth } from "~/lib/auth"
 import {

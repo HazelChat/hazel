@@ -1,11 +1,14 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import { Link } from "@tanstack/react-router"
+import { useState } from "react"
 import IconBranch from "~/components/icons/icon-branch"
 import IconDots from "~/components/icons/icon-dots"
+import IconEdit from "~/components/icons/icon-edit"
 import IconLeave from "~/components/icons/icon-leave"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
+import { RenameThreadModal } from "~/components/modals/rename-thread-modal"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel } from "~/components/ui/menu"
 import { updateChannelMemberAction } from "~/db/actions"
@@ -20,6 +23,7 @@ interface ThreadItemProps {
 
 export function ThreadItem({ thread, member }: ThreadItemProps) {
 	const { slug } = useOrganization()
+	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
 
 	const updateMember = useAtomSet(updateChannelMemberAction, { mode: "promiseExit" })
 	const deleteMember = useAtomSet(deleteChannelMemberMutation, { mode: "promiseExit" })
@@ -90,12 +94,21 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 						)}
 						<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
 					</MenuItem>
+					<MenuItem onAction={() => setIsRenameModalOpen(true)}>
+						<IconEdit className="size-4" />
+						<MenuLabel>Rename thread</MenuLabel>
+					</MenuItem>
 					<MenuItem intent="danger" onAction={handleLeaveThread}>
 						<IconLeave />
 						<MenuLabel className="text-destructive">Leave thread</MenuLabel>
 					</MenuItem>
 				</MenuContent>
 			</Menu>
+			<RenameThreadModal
+				threadId={thread.id}
+				isOpen={isRenameModalOpen}
+				onOpenChange={setIsRenameModalOpen}
+			/>
 		</div>
 	)
 }

@@ -117,9 +117,11 @@ const ChannelGroup = (props: {
 			{channels.map(({ channel, member }) => (
 				<Fragment key={channel.id}>
 					<ChannelItem channel={channel} member={member} />
-					{props.threadsByParent.get(channel.id)?.map(({ channel: thread, member: threadMember }) => (
-						<ThreadItem key={thread.id} thread={thread} member={threadMember} />
-					))}
+					{props.threadsByParent
+						.get(channel.id)
+						?.map(({ channel: thread, member: threadMember }) => (
+							<ThreadItem key={thread.id} thread={thread} member={threadMember} />
+						))}
 				</Fragment>
 			))}
 		</SidebarSection>

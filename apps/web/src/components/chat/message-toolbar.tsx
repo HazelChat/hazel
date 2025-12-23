@@ -26,8 +26,15 @@ interface MessageToolbarProps {
 }
 
 export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
-	const { addReaction, setReplyToMessageId, deleteMessage, pinMessage, unpinMessage, createThread, channel } =
-		useChat()
+	const {
+		addReaction,
+		setReplyToMessageId,
+		deleteMessage,
+		pinMessage,
+		unpinMessage,
+		createThread,
+		channel,
+	} = useChat()
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
 	const { user: currentUser } = useAuth()
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)

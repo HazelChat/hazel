@@ -221,12 +221,13 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							const parentChannelId = message.value.channelId
 
 							// Check if parent channel is a thread - nested threads are not allowed
-							const parentChannel = yield* ChannelRepo.findById(parentChannelId).pipe(
-								withSystemActor,
-							)
+							const parentChannel =
+								yield* ChannelRepo.findById(parentChannelId).pipe(withSystemActor)
 
 							if (Option.isSome(parentChannel) && parentChannel.value.type === "thread") {
-								return yield* Effect.fail(new NestedThreadError({ channelId: parentChannelId }))
+								return yield* Effect.fail(
+									new NestedThreadError({ channelId: parentChannelId }),
+								)
 							}
 
 							// 2. Create thread channel - use same pattern as channel.create
