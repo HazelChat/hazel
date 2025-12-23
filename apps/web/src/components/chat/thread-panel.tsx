@@ -42,6 +42,7 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 	)
 
 	const thread = threadData?.[0]
+	const threadName = thread?.name || "Thread"
 
 	const handleGenerateName = async () => {
 		setIsGenerating(true)
@@ -58,7 +59,7 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 			{/* Thread Header */}
 			<div className="flex items-center justify-between border-border border-b bg-bg px-4 py-3">
 				<div className="flex items-center gap-2">
-					<h2 className="font-semibold text-fg">{thread?.name || "Thread"}</h2>
+					<h2 className="font-semibold text-fg">{threadName}</h2>
 				</div>
 				<div className="flex items-center gap-1">
 					<Tooltip>

@@ -1,80 +1,53 @@
-import { useAtomSet } from "@effect-atom/atom-react"
-import type { Channel, ChannelMember } from "@hazel/db/schema"
-import { useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
-import { deleteChannelMemberMutation } from "~/atoms/channel-member-atoms"
-import { ChannelIcon } from "~/components/channel-icon"
-import IconDots from "~/components/icons/icon-dots"
-import IconGear from "~/components/icons/icon-gear"
-import IconLeave from "~/components/icons/icon-leave"
-import IconStar from "~/components/icons/icon-star"
-import IconTrash from "~/components/icons/icon-trash"
-import IconVolume from "~/components/icons/icon-volume"
-import IconVolumeMute from "~/components/icons/icon-volume-mute"
-import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
-import { Button } from "~/components/ui/button"
-import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
-import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
-import { deleteChannelAction, updateChannelMemberAction } from "~/db/actions"
-import { useOrganization } from "~/hooks/use-organization"
-import { matchExitWithToast } from "~/lib/toast-exit"
+import { useAtomSet } from "@effect-atom/atom-react";
+import type { Channel, ChannelMember } from "@hazel/db/schema";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { ChannelIcon } from "~/components/channel-icon";
+import IconDots from "~/components/icons/icon-dots";
+import IconGear from "~/components/icons/icon-gear";
+import IconLeave from "~/components/icons/icon-leave";
+import IconStar from "~/components/icons/icon-star";
+import IconTrash from "~/components/icons/icon-trash";
+import IconVolume from "~/components/icons/icon-volume";
+import IconVolumeMute from "~/components/icons/icon-volume-mute";
+import { DeleteChannelModal } from "~/components/modals/delete-channel-modal";
+import { Button } from "~/components/ui/button";
+import {
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuLabel,
+	MenuSeparator,
+} from "~/components/ui/menu";
+import {
+	SidebarItem,
+	SidebarLabel,
+	SidebarLink,
+} from "~/components/ui/sidebar";
+import { deleteChannelAction } from "~/db/actions";
+import { useChannelMemberActions } from "~/hooks/use-channel-member-actions";
+import { useOrganization } from "~/hooks/use-organization";
+import { matchExitWithToast } from "~/lib/toast-exit";
 
 interface ChannelItemProps {
-	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-	member: ChannelMember
+	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null };
+	member: ChannelMember;
 }
 
 export function ChannelItem({ channel, member }: ChannelItemProps) {
-	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+	const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-	const { slug } = useOrganization()
-	const navigate = useNavigate()
+	const { slug } = useOrganization();
+	const navigate = useNavigate();
 
-	// Use optimistic actions for channel member operations
-	const updateMember = useAtomSet(updateChannelMemberAction, { mode: "promiseExit" })
-	const deleteChannel = useAtomSet(deleteChannelAction, { mode: "promiseExit" })
-	const deleteMember = useAtomSet(deleteChannelMemberMutation, { mode: "promiseExit" })
-
-	const handleToggleMute = async () => {
-		const exit = await updateMember({
-			memberId: member.id,
-			isMuted: !member.isMuted,
-		})
-
-		matchExitWithToast(exit, {
-			onSuccess: () => {},
-			successMessage: member.isMuted ? "Channel unmuted" : "Channel muted",
-			customErrors: {
-				ChannelMemberNotFoundError: () => ({
-					title: "Membership not found",
-					description: "You may no longer be a member of this channel.",
-					isRetryable: false,
-				}),
-			},
-		})
-	}
-
-	const handleToggleFavorite = async () => {
-		const exit = await updateMember({
-			memberId: member.id,
-			isFavorite: !member.isFavorite,
-		})
-
-		matchExitWithToast(exit, {
-			onSuccess: () => {},
-			successMessage: member.isFavorite ? "Removed from favorites" : "Added to favorites",
-			customErrors: {
-				ChannelMemberNotFoundError: () => ({
-					title: "Membership not found",
-					description: "You may no longer be a member of this channel.",
-					isRetryable: false,
-				}),
-			},
-		})
-	}
+	const { handleToggleMute, handleToggleFavorite, handleLeave } =
+		useChannelMemberActions(member, "channel");
+	const deleteChannel = useAtomSet(deleteChannelAction, {
+		mode: "promiseExit",
+	});
 
 	const handleDeleteChannel = async () => {
-		const exit = await deleteChannel({ channelId: channel.id })
+		const exit = await deleteChannel({ channelId: channel.id });
 
 		matchExitWithToast(exit, {
 			onSuccess: () => {},
@@ -86,32 +59,16 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 					isRetryable: false,
 				}),
 			},
-		})
-	}
-
-	const handleLeaveChannel = async () => {
-		const exit = await deleteMember({
-			payload: { id: member.id },
-		})
-
-		matchExitWithToast(exit, {
-			onSuccess: () => {},
-			successMessage: "Left channel successfully",
-			customErrors: {
-				ChannelMemberNotFoundError: () => ({
-					title: "Membership not found",
-					description: "You may have already left this channel.",
-					isRetryable: false,
-				}),
-			},
-		})
-	}
+		});
+	};
 
 	return (
 		<>
 			<SidebarItem
 				tooltip={channel.name}
-				badge={member.notificationCount > 0 ? member.notificationCount : undefined}
+				badge={
+					member.notificationCount > 0 ? member.notificationCount : undefined
+				}
 			>
 				<SidebarLink
 					to="/$orgSlug/chat/$id"
@@ -142,8 +99,14 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
 						</MenuItem>
 						<MenuItem onAction={handleToggleFavorite}>
-							<IconStar className={member.isFavorite ? "size-4 text-favorite" : "size-4"} />
-							<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
+							<IconStar
+								className={
+									member.isFavorite ? "size-4 text-favorite" : "size-4"
+								}
+							/>
+							<MenuLabel>
+								{member.isFavorite ? "Unfavorite" : "Favorite"}
+							</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
 						<MenuItem
@@ -162,7 +125,7 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>Delete</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
-						<MenuItem intent="danger" onAction={handleLeaveChannel}>
+						<MenuItem intent="danger" onAction={handleLeave}>
 							<IconLeave />
 							<MenuLabel className="text-destructive">Leave</MenuLabel>
 						</MenuItem>
@@ -179,5 +142,5 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 				/>
 			)}
 		</>
-	)
+	);
 }
