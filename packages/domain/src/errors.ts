@@ -1,6 +1,6 @@
 import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
-import { MessageId } from "./ids"
+import { ChannelId, MessageId } from "./ids"
 
 export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",
@@ -66,6 +66,20 @@ export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundErro
 	},
 	HttpApiSchema.annotations({
 		status: 404,
+	}),
+) {}
+
+/**
+ * Error thrown when attempting to create a thread within a thread.
+ * Nested threads are not supported.
+ */
+export class NestedThreadError extends Schema.TaggedError<NestedThreadError>("NestedThreadError")(
+	"NestedThreadError",
+	{
+		channelId: ChannelId,
+	},
+	HttpApiSchema.annotations({
+		status: 400,
 	}),
 ) {}
 

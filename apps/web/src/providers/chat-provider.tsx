@@ -10,6 +10,7 @@ import {
 	UserId,
 } from "@hazel/schema"
 import { Exit } from "effect"
+import { toast } from "sonner"
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
 import {
 	activeThreadChannelIdAtom,
@@ -316,6 +317,12 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 	const createThread = useCallback(
 		async (messageId: MessageId, existingThreadChannelId: ChannelId | null) => {
+			// Prevent nested threads
+			if (channel?.type === "thread") {
+				toast.error("Cannot create threads within threads")
+				return
+			}
+
 			if (existingThreadChannelId) {
 				// Thread already exists - just open it
 				setActiveThreadChannelId(existingThreadChannelId)
@@ -347,6 +354,11 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 							description: "The message no longer exists",
 							isRetryable: false,
 						}),
+						NestedThreadError: () => ({
+							title: "Cannot create thread",
+							description: "Threads cannot be created within threads",
+							isRetryable: false,
+						}),
 					},
 				})
 
@@ -358,6 +370,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			}
 		},
 		[
+			channel?.type,
 			channelId,
 			organizationId,
 			user?.id,

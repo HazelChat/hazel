@@ -5,8 +5,11 @@ import {
 	DmChannelAlreadyExistsError,
 	InternalServerError,
 	MessageNotFoundError,
+	NestedThreadError,
 	UnauthorizedError,
 } from "../errors"
+
+export { NestedThreadError } from "../errors"
 import { ChannelId, MessageId, OrganizationId, UserId } from "../ids"
 import { Channel } from "../models"
 import { TransactionId } from "../transaction-id"
@@ -151,6 +154,6 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.mutation("channel.createThread", {
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 ) {}
