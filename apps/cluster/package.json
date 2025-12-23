@@ -9,7 +9,10 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect/ai": "catalog:effect",
+		"@effect/ai-openrouter": "catalog:effect",
 		"@effect/cluster": "catalog:effect",
+		"@effect/experimental": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/sql-pg": "catalog:effect",

@@ -74,7 +74,7 @@ services:
             # IMPORTANT: Only use insecure mode in development
             # See https://electric-sql.com/docs/guides/security
             ELECTRIC_INSECURE: "true"
-            ELECTRIC_FEATURE_FLAGS: "allow_subqueries,enable_subqueries,tagged_subqueries"
+            ELECTRIC_FEATURE_FLAGS: "allow_subqueries,tagged_subqueries"
         depends_on:
             postgres:
                 condition: service_healthy

@@ -24,7 +24,9 @@
 				"@effect/opentelemetry": "0.59.3",
 				"@effect/workflow": "0.15.2",
 				"@effect-atom/atom": "0.4.11",
-				"@effect-atom/atom-react": "0.4.4"
+				"@effect-atom/atom-react": "0.4.4",
+				"@effect/ai": "^0.32.1",
+				"@effect/ai-openrouter": "^0.6.0"
 			}
 		}
 	},

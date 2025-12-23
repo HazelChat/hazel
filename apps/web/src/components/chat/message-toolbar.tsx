@@ -26,8 +26,15 @@ interface MessageToolbarProps {
 }
 
 export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
-	const { addReaction, setReplyToMessageId, deleteMessage, pinMessage, unpinMessage, createThread } =
-		useChat()
+	const {
+		addReaction,
+		setReplyToMessageId,
+		deleteMessage,
+		pinMessage,
+		unpinMessage,
+		createThread,
+		channel,
+	} = useChat()
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
 	const { user: currentUser } = useAuth()
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -162,10 +169,12 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 						<IconDotsVertical className="size-3.5" />
 					</MenuTrigger>
 					<MenuContent placement="bottom end">
-						<MenuItem onAction={handleThread}>
-							<IconThread data-slot="icon" />
-							<MenuLabel>Reply in thread</MenuLabel>
-						</MenuItem>
+						{channel?.type !== "thread" && (
+							<MenuItem onAction={handleThread}>
+								<IconThread data-slot="icon" />
+								<MenuLabel>Reply in thread</MenuLabel>
+							</MenuItem>
+						)}
 						<MenuItem onAction={handlePin}>
 							<IconStar data-slot="icon" />
 							<MenuLabel>{isPinned ? "Unpin message" : "Pin message"}</MenuLabel>

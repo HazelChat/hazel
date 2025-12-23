@@ -8,7 +8,7 @@ import {
 	withSystemActor,
 } from "@hazel/domain"
 import { ChannelId, OrganizationId } from "@hazel/domain/ids"
-import { ChannelRpcs, MessageNotFoundError } from "@hazel/domain/rpc"
+import { ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
 import { eq } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -219,6 +219,16 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 
 							const parentChannelId = message.value.channelId
+
+							// Check if parent channel is a thread - nested threads are not allowed
+							const parentChannel =
+								yield* ChannelRepo.findById(parentChannelId).pipe(withSystemActor)
+
+							if (Option.isSome(parentChannel) && parentChannel.value.type === "thread") {
+								return yield* Effect.fail(
+									new NestedThreadError({ channelId: parentChannelId }),
+								)
+							}
 
 							// 2. Create thread channel - use same pattern as channel.create
 							const insertData = id

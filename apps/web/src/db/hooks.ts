@@ -1,6 +1,7 @@
 import type { Channel, ChannelMember, IntegrationConnection, User } from "@hazel/domain/models"
-import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
-import { and, eq, isNull, useLiveQuery } from "@tanstack/react-db"
+import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
+import { and, eq, gte, inArray, isNull, useLiveQuery } from "@tanstack/react-db"
+import { useMemo } from "react"
 import { useAuth } from "~/lib/auth"
 import {
 	attachmentCollection,
@@ -9,7 +10,7 @@ import {
 	messageCollection,
 	userCollection,
 } from "./collections"
-import { channelMemberWithUserCollection } from "./materialized-collections"
+import { channelMemberWithUserCollection, threadWithMemberCollection } from "./materialized-collections"
 
 export const useMessage = (messageId: MessageId) => {
 	const { data, ...rest } = useLiveQuery(
@@ -228,4 +229,93 @@ export const useIntegrationConnection = (
 		isConnected: connection?.status === "active",
 		...rest,
 	}
+}
+
+/**
+ * Query active threads for the sidebar.
+ * Returns threads where the user is a member, has sent a message in the last 3 days,
+ * AND has at least 3 messages in the thread.
+ * Threads are grouped by their parent channel ID for easy rendering.
+ */
+export const useActiveThreads = (organizationId: OrganizationId | null, userId: UserId | undefined) => {
+	// Calculate 3 days ago (memoized to prevent re-renders)
+	const threeDaysAgo = useMemo(() => {
+		const date = new Date()
+		date.setDate(date.getDate() - 3)
+		return date
+	}, [])
+
+	// Get threads where user is a member
+	const { data: threads } = useLiveQuery(
+		(q) =>
+			q
+				.from({ thread: threadWithMemberCollection })
+				.where(({ thread }) =>
+					and(
+						eq(thread.channel.organizationId, organizationId ?? ("" as OrganizationId)),
+						eq(thread.member.userId, userId ?? ("" as UserId)),
+						eq(thread.member.isHidden, false),
+					),
+				),
+		[organizationId, userId],
+	)
+
+	// Get thread IDs for message count query
+	const threadIds = useMemo(() => threads?.map((t) => t.channel.id) ?? [], [threads])
+
+	// Get all messages in threads to count them
+	const { data: threadMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.where(({ message }) =>
+					inArray(message.channelId, threadIds.length > 0 ? threadIds : ([""] as ChannelId[])),
+				)
+				.select(({ message }) => ({ channelId: message.channelId })),
+		[threadIds],
+	)
+
+	// Get user's recent messages to filter by activity
+	const { data: recentMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.where(({ message }) =>
+					and(eq(message.authorId, userId ?? ("" as UserId)), gte(message.createdAt, threeDaysAgo)),
+				)
+				.select(({ message }) => ({ channelId: message.channelId })),
+		[userId, threeDaysAgo],
+	)
+
+	// Filter threads to only those with recent activity, 3+ messages, and group by parent
+	const threadsByParent = useMemo(() => {
+		if (!threads || !recentMessages || !organizationId) return new Map<ChannelId, typeof threads>()
+
+		const recentChannelIds = new Set(recentMessages.map((m) => m.channelId))
+
+		// Count messages per thread
+		const messageCountMap = new Map<ChannelId, number>()
+		threadMessages?.forEach((m) => {
+			messageCountMap.set(m.channelId, (messageCountMap.get(m.channelId) ?? 0) + 1)
+		})
+
+		const map = new Map<ChannelId, typeof threads>()
+
+		threads
+			.filter(
+				(t) =>
+					recentChannelIds.has(t.channel.id) &&
+					t.channel.parentChannelId &&
+					(messageCountMap.get(t.channel.id) ?? 0) >= 3,
+			)
+			.forEach((t) => {
+				const parentId = t.channel.parentChannelId!
+				const existing = map.get(parentId) || []
+				map.set(parentId, [...existing, t])
+			})
+
+		return map
+	}, [threads, recentMessages, threadMessages, organizationId])
+
+	return { threadsByParent }
 }

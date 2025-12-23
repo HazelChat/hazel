@@ -1,8 +1,13 @@
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
+import { useState } from "react"
+import { channelCollection } from "~/db/collections"
 import { useMessage } from "~/db/hooks"
 import { ChatProvider } from "~/providers/chat-provider"
 import IconClose from "../icons/icon-close"
+import IconEdit from "../icons/icon-edit"
+import { RenameThreadModal } from "../modals/rename-thread-modal"
 import { Avatar } from "../ui/avatar"
 import { Button } from "../ui/button"
 import { SlateMessageComposer } from "./slate-editor/slate-message-composer"
@@ -19,23 +24,42 @@ interface ThreadPanelProps {
 
 function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPanelProps) {
 	const { data: originalMessage } = useMessage(originalMessageId)
+	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+
+	const { data: threadData } = useLiveQuery(
+		(q) => q.from({ channel: channelCollection }).where((q) => eq(q.channel.id, threadChannelId)),
+		[threadChannelId],
+	)
+
+	const thread = threadData?.[0]
 
 	return (
 		<div className="flex h-full flex-col border-border border-l bg-bg">
 			{/* Thread Header */}
 			<div className="flex items-center justify-between border-border border-b bg-bg px-4 py-3">
 				<div className="flex items-center gap-2">
-					<h2 className="font-semibold text-fg">Thread</h2>
+					<h2 className="font-semibold text-fg">{thread?.name || "Thread"}</h2>
 				</div>
-				<Button
-					intent="plain"
-					size="sq-sm"
-					onPress={onClose}
-					aria-label="Close thread"
-					className="rounded p-1 hover:bg-secondary"
-				>
-					<IconClose data-slot="icon" className="size-4" />
-				</Button>
+				<div className="flex items-center gap-1">
+					<Button
+						intent="plain"
+						size="sq-sm"
+						onPress={() => setIsRenameModalOpen(true)}
+						aria-label="Rename thread"
+						className="rounded p-1 hover:bg-secondary"
+					>
+						<IconEdit data-slot="icon" className="size-4" />
+					</Button>
+					<Button
+						intent="plain"
+						size="sq-sm"
+						onPress={onClose}
+						aria-label="Close thread"
+						className="rounded p-1 hover:bg-secondary"
+					>
+						<IconClose data-slot="icon" className="size-4" />
+					</Button>
+				</div>
 			</div>
 
 			{/* Original Message */}
@@ -74,6 +98,12 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose }: ThreadPa
 				<SlateMessageComposer placeholder="Reply in thread..." />
 				<TypingIndicator />
 			</div>
+
+			<RenameThreadModal
+				threadId={threadChannelId}
+				isOpen={isRenameModalOpen}
+				onOpenChange={setIsRenameModalOpen}
+			/>
 		</div>
 	)
 }
