@@ -15,9 +15,9 @@
 		"@effect-atom/atom": "catalog:effect",
 		"@electric-sql/client": "^1.3.0",
 		"@standard-schema/spec": "^1.0.0",
-		"@tanstack/db": "0.5.12",
-		"@tanstack/electric-db-collection": "0.2.14",
-		"@tanstack/react-db": "0.1.56",
+		"@tanstack/db": "0.5.15",
+		"@tanstack/electric-db-collection": "0.2.18",
+		"@tanstack/react-db": "0.1.59",
 		"@tanstack/store": "^0.8.0",
 		"effect": "catalog:effect"
 	},
