@@ -34,19 +34,26 @@
 		"GITHUB_WEBHOOK_SECRET",
 		"OTEL_ENVIRONMENT",
 		"SIGNOZ_INGESTION_KEY",
-		"RAILWAY_COMMIT_SHA"
+		"RAILWAY_COMMIT_SHA",
+		"OPENROUTER_API_KEY"
 	],
 	"ui": "tui",
 	"tasks": {
 		"build": {
-			"outputs": ["dist/**"]
+			"outputs": [
+				"dist/**"
+			]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck"]
+			"dependsOn": [
+				"^typecheck"
+			]
 		},
 		"setup": {
 			"cache": false,
-			"dependsOn": ["^setup"]
+			"dependsOn": [
+				"^setup"
+			]
 		},
 		"db:push": {
 			"cache": false
