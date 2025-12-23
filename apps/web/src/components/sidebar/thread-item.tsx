@@ -1,11 +1,17 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
+import type { ChannelId } from "@hazel/schema"
 import { Link } from "@tanstack/react-router"
+import { Exit } from "effect"
 import { useState } from "react"
+import { toast } from "sonner"
+import { generateThreadNameMutation } from "~/atoms/channel-atoms"
+import { deleteChannelMemberMutation } from "~/atoms/channel-member-atoms"
 import IconBranch from "~/components/icons/icon-branch"
 import IconDots from "~/components/icons/icon-dots"
 import IconEdit from "~/components/icons/icon-edit"
 import IconLeave from "~/components/icons/icon-leave"
+import IconPenSparkle from "~/components/icons/icon-pen-sparkle"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { RenameThreadModal } from "~/components/modals/rename-thread-modal"
@@ -14,7 +20,6 @@ import { Menu, MenuContent, MenuItem, MenuLabel } from "~/components/ui/menu"
 import { updateChannelMemberAction } from "~/db/actions"
 import { useOrganization } from "~/hooks/use-organization"
 import { matchExitWithToast } from "~/lib/toast-exit"
-import { deleteChannelMemberMutation } from "~/atoms/channel-member-atoms"
 
 interface ThreadItemProps {
 	thread: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
@@ -24,9 +29,11 @@ interface ThreadItemProps {
 export function ThreadItem({ thread, member }: ThreadItemProps) {
 	const { slug } = useOrganization()
 	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+	const [isGenerating, setIsGenerating] = useState(false)
 
 	const updateMember = useAtomSet(updateChannelMemberAction, { mode: "promiseExit" })
 	const deleteMember = useAtomSet(deleteChannelMemberMutation, { mode: "promiseExit" })
+	const generateName = useAtomSet(generateThreadNameMutation, { mode: "promiseExit" })
 
 	const handleToggleMute = async () => {
 		const exit = await updateMember({
@@ -65,6 +72,16 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 		})
 	}
 
+	const handleGenerateName = async () => {
+		setIsGenerating(true)
+		const exit = await generateName({ payload: { channelId: thread.id as ChannelId } })
+		setIsGenerating(false)
+
+		if (Exit.isFailure(exit)) {
+			toast.error("Failed to generate thread name")
+		}
+	}
+
 	return (
 		<div className="group/thread-item relative col-span-full grid grid-cols-[auto_1fr] items-center gap-2 pl-2">
 			<IconBranch className="size-4 text-muted-fg" />
@@ -93,6 +110,10 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 							<IconVolumeMute className="size-4" />
 						)}
 						<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
+					</MenuItem>
+					<MenuItem onAction={handleGenerateName} isDisabled={isGenerating}>
+						<IconPenSparkle className="size-4" />
+						<MenuLabel>{isGenerating ? "Generating..." : "Generate name"}</MenuLabel>
 					</MenuItem>
 					<MenuItem onAction={() => setIsRenameModalOpen(true)}>
 						<IconEdit className="size-4" />

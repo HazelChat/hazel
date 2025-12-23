@@ -1,7 +1,7 @@
 import { LanguageModel } from "@effect/ai"
 import { Activity } from "@effect/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
-import { Cluster, type UserId } from "@hazel/domain"
+import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"
 
 const NAMING_PROMPT = `You are a helpful assistant that generates concise, descriptive thread names.
@@ -65,23 +65,6 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 				}
 
 				const thread = threadChannel[0]!
-
-				// If already named (not "Thread"), skip
-				if (thread.name !== "Thread") {
-					yield* Effect.log(`Thread already named: ${thread.name}, skipping`)
-					return {
-						threadChannelId: payload.threadChannelId,
-						currentName: thread.name,
-						originalMessage: {
-							id: payload.originalMessageId,
-							content: "",
-							authorId: "" as UserId,
-							authorName: "",
-							createdAt: new Date().toISOString(),
-						},
-						threadMessages: [],
-					}
-				}
 
 				// Get original message (the one with threadChannelId pointing to this thread)
 				const originalMessage = yield* db
@@ -187,12 +170,6 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 			}),
 		}).pipe(Effect.orDie)
 
-		// If already named, stop here
-		if (contextResult.currentName !== "Thread") {
-			yield* Effect.log("Thread already named, workflow complete")
-			return
-		}
-
 		const nameResult = yield* Activity.make({
 			name: "GenerateThreadName",
 			success: Cluster.GenerateThreadNameResult,
@@ -260,12 +237,7 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 								name: nameResult.threadName,
 								updatedAt: new Date(),
 							})
-							.where(
-								and(
-									eq(schema.channelsTable.id, payload.threadChannelId),
-									eq(schema.channelsTable.name, "Thread"), // Only update if still "Thread"
-								),
-							),
+							.where(eq(schema.channelsTable.id, payload.threadChannelId)),
 					)
 					.pipe(
 						Effect.catchTags({
@@ -281,12 +253,12 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					)
 
 				yield* Effect.log(
-					`Updated thread ${payload.threadChannelId} name from "Thread" to "${nameResult.threadName}"`,
+					`Updated thread ${payload.threadChannelId} name from "${contextResult.currentName}" to "${nameResult.threadName}"`,
 				)
 
 				return {
 					success: true,
-					previousName: "Thread",
+					previousName: contextResult.currentName,
 					newName: nameResult.threadName,
 				}
 			}),

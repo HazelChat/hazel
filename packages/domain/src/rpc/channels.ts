@@ -156,4 +156,24 @@ export class ChannelRpcs extends RpcGroup.make(
 		success: ChannelResponse,
 		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * ChannelGenerateName
+	 *
+	 * Generates an AI-powered name for a thread channel.
+	 * Uses the ThreadNamingWorkflow to analyze the thread conversation and generate
+	 * a descriptive 3-6 word name.
+	 *
+	 * @param payload - Thread channel ID
+	 * @returns Transaction ID
+	 * @throws ChannelNotFoundError if channel doesn't exist or is not a thread
+	 * @throws MessageNotFoundError if original message is not found
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("channel.generateName", {
+		payload: Schema.Struct({ channelId: ChannelId }),
+		success: Schema.Struct({ success: Schema.Boolean }),
+		error: Schema.Union(ChannelNotFoundError, MessageNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

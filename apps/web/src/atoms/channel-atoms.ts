@@ -14,3 +14,9 @@ export const updateChannelMutation = HazelRpcClient.mutation("channel.update")
  * Mutation atom for deleting channels
  */
 export const deleteChannelMutation = HazelRpcClient.mutation("channel.delete")
+
+/**
+ * Mutation atom for generating AI thread names
+ * Triggers the ThreadNamingWorkflow to generate a descriptive name
+ */
+export const generateThreadNameMutation = HazelRpcClient.mutation("channel.generateName")

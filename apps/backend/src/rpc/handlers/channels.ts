@@ -1,5 +1,7 @@
+import { HttpApiClient } from "@effect/platform"
 import { Database, schema } from "@hazel/db"
 import {
+	Cluster,
 	CurrentUser,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
@@ -7,13 +9,12 @@ import {
 	withRemapDbErrors,
 	withSystemActor,
 } from "@hazel/domain"
-import { ChannelId, OrganizationId } from "@hazel/domain/ids"
-import { ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
+import { OrganizationId } from "@hazel/domain/ids"
+import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
 import { eq } from "drizzle-orm"
-import { Effect, Option } from "effect"
+import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
-import { MessagePolicy } from "../../policies/message-policy"
 import { UserPolicy } from "../../policies/user-policy"
 import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
 import { ChannelRepo } from "../../repositories/channel-repo"
@@ -294,6 +295,98 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("Channel", "create")),
+
+			"channel.generateName": ({ channelId }) =>
+				Effect.gen(function* () {
+					const channel = yield* ChannelRepo.findById(channelId).pipe(
+						withSystemActor,
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to query channel",
+										cause: String(err),
+									}),
+								),
+						}),
+					)
+
+					if (Option.isNone(channel)) {
+						return yield* Effect.fail(new ChannelNotFoundError({ channelId }))
+					}
+
+					if (channel.value.type !== "thread") {
+						return yield* Effect.fail(
+							new InternalServerError({
+								message: "Channel is not a thread",
+								cause: `Channel type: ${channel.value.type}`,
+							}),
+						)
+					}
+
+					const originalMessageResult = yield* db
+						.execute((client) =>
+							client
+								.select({ id: schema.messagesTable.id })
+								.from(schema.messagesTable)
+								.where(eq(schema.messagesTable.threadChannelId, channelId))
+								.limit(1),
+						)
+						.pipe(
+							Effect.catchTags({
+								DatabaseError: () => Effect.succeed([]),
+							}),
+						)
+
+					if (originalMessageResult.length === 0) {
+						return yield* Effect.fail(
+							new MessageNotFoundError({
+								messageId:
+									channelId as unknown as typeof schema.messagesTable.$inferSelect.id,
+							}),
+						)
+					}
+
+					const originalMessageId = originalMessageResult[0]!.id
+
+					const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
+					const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
+						baseUrl: clusterUrl,
+					})
+
+					yield* client.workflows
+						.ThreadNamingWorkflow({
+							payload: {
+								threadChannelId: channelId,
+								originalMessageId,
+							},
+						})
+						.pipe(
+							Effect.tapError((err) =>
+								Effect.logError("Failed to execute thread naming workflow", {
+									error: err.message,
+									threadChannelId: channelId,
+								}),
+							),
+							Effect.catchAll((err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to trigger thread naming workflow",
+										cause: err.message,
+									}),
+								),
+							),
+						)
+
+					yield* Effect.logInfo("Triggered thread naming workflow", {
+						threadChannelId: channelId,
+						originalMessageId,
+					})
+
+					return {
+						success: true,
+					}
+				}),
 		}
 	}),
 )
