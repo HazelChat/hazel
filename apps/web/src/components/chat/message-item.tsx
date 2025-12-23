@@ -123,7 +123,7 @@ export const MessageItem = memo(function MessageItem({
 				{showAvatar ? (
 					<UserProfilePopover userId={message.authorId} />
 				) : (
-					<div className="flex w-[40px] items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
+					<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
 						{format(message.createdAt, "HH:mm")}
 					</div>
 				)}

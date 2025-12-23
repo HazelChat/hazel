@@ -91,7 +91,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 						intent="plain"
 						onPress={() => handleReaction(emoji)}
 						aria-label={`React with ${emoji}`}
-						className="!p-1.5 text-base hover:bg-secondary"
+						className="p-1.5! text-base hover:bg-secondary"
 					>
 						{emoji}
 					</Button>
@@ -136,7 +136,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 					intent="plain"
 					onPress={handleReply}
 					aria-label="Reply"
-					className="!p-1.5 hover:bg-secondary"
+					className="p-1.5! hover:bg-secondary"
 				>
 					<IconReply data-slot="icon" className="size-3.5" />
 				</Button>
@@ -151,7 +151,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 						intent="plain"
 						onPress={() => handleDeleteModalChange(true)}
 						aria-label="Delete message"
-						className="!p-1.5 text-danger hover:bg-danger/10"
+						className="p-1.5! text-danger hover:bg-danger/10"
 					>
 						<IconTrash data-slot="icon" className="size-3.5" />
 					</Button>
@@ -165,7 +165,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 			{/* More Options Menu */}
 			<Tooltip>
 				<Menu>
-					<MenuTrigger aria-label="More actions" className="!p-1.5 rounded-md hover:bg-secondary">
+					<MenuTrigger aria-label="More actions" className="p-1.5! rounded-md hover:bg-secondary">
 						<IconDotsVertical className="size-3.5" />
 					</MenuTrigger>
 					<MenuContent placement="bottom end">
