@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder, HttpApiClient, HttpServerRequest } from "@effect/platform"
-import { Database, eq, schema } from "@hazel/db"
+import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
@@ -209,6 +209,74 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											),
 									}),
 								)
+
+							// Check if this message is in a thread and should trigger auto-naming
+							if (channelType === "thread") {
+								// Count messages in thread
+								const messageCountResult = yield* db
+									.execute((client) =>
+										client
+											.select({ count: sql<number>`count(*)::int` })
+											.from(schema.messagesTable)
+											.where(
+												and(
+													eq(schema.messagesTable.channelId, event.record.channelId),
+													isNull(schema.messagesTable.deletedAt),
+												),
+											),
+									)
+									.pipe(
+										Effect.catchTags({
+											DatabaseError: () => Effect.succeed([{ count: 0 }]),
+										}),
+									)
+
+								const count = messageCountResult[0]?.count ?? 0
+
+								// Trigger naming workflow on exactly the 3rd message
+								if (count === 3) {
+									// Find the original message that started this thread
+									const originalMessageResult = yield* db
+										.execute((client) =>
+											client
+												.select({ id: schema.messagesTable.id })
+												.from(schema.messagesTable)
+												.where(
+													eq(schema.messagesTable.threadChannelId, event.record.channelId),
+												)
+												.limit(1),
+										)
+										.pipe(
+											Effect.catchTags({
+												DatabaseError: () => Effect.succeed([]),
+											}),
+										)
+
+									if (originalMessageResult.length > 0) {
+										yield* client.workflows
+											.ThreadNamingWorkflow({
+												payload: {
+													threadChannelId: event.record.channelId,
+													originalMessageId: originalMessageResult[0]!.id,
+												},
+											})
+											.pipe(
+												Effect.tapError((err) =>
+													Effect.logError("Failed to execute thread naming workflow", {
+														error: err.message,
+														threadChannelId: event.record.channelId,
+													}),
+												),
+												Effect.catchAll(() => Effect.void), // Don't fail the main flow
+											)
+
+										yield* Effect.logInfo("Triggered thread naming workflow", {
+											threadChannelId: event.record.channelId,
+											originalMessageId: originalMessageResult[0]!.id,
+										})
+									}
+								}
+							}
 
 							yield* Effect.logInfo("Event processed successfully", {
 								messageId: event.record.id,

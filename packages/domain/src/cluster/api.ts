@@ -5,10 +5,16 @@ import {
 	CleanupUploadsWorkflow,
 	GitHubWebhookWorkflow,
 	MessageNotificationWorkflow,
+	ThreadNamingWorkflow,
 } from "./workflows/index.ts"
 
 // All workflows available in the cluster
-export const workflows = [MessageNotificationWorkflow, CleanupUploadsWorkflow, GitHubWebhookWorkflow] as const
+export const workflows = [
+	MessageNotificationWorkflow,
+	CleanupUploadsWorkflow,
+	GitHubWebhookWorkflow,
+	ThreadNamingWorkflow,
+] as const
 
 // HTTP API definition for the cluster service
 export class WorkflowApi extends HttpApi.make("api")

@@ -47,7 +47,10 @@
     "apps/cluster": {
       "name": "cluster",
       "dependencies": {
+        "@effect/ai": "catalog:effect",
+        "@effect/ai-openrouter": "catalog:effect",
         "@effect/cluster": "catalog:effect",
+        "@effect/experimental": "catalog:effect",
         "@effect/platform": "catalog:effect",
         "@effect/platform-bun": "catalog:effect",
         "@effect/sql-pg": "catalog:effect",
@@ -374,6 +377,8 @@
     "effect": {
       "@effect-atom/atom": "0.4.11",
       "@effect-atom/atom-react": "0.4.4",
+      "@effect/ai": "^0.32.1",
+      "@effect/ai-openrouter": "^0.6.0",
       "@effect/cluster": "^0.55.0",
       "@effect/experimental": "^0.57.11",
       "@effect/language-service": "^0.62.4",
@@ -513,6 +518,10 @@
     "@effect-atom/atom": ["@effect-atom/atom@0.4.11", "", { "peerDependencies": { "@effect/experimental": "^0.57.0", "@effect/platform": "^0.93.0", "@effect/rpc": "^0.72.1", "effect": "^3.19.0" } }, "sha512-bahWNw2xQ349HXkqshpls/t4wUu5fbMfjT6/7FhDj1uPjP9BArUAwL1Js5b7EG0ZPonS+G1O9LftpxVWAxr86g=="],
 
     "@effect-atom/atom-react": ["@effect-atom/atom-react@0.4.4", "", { "dependencies": { "@effect-atom/atom": "^0.4.10" }, "peerDependencies": { "effect": "^3.19", "react": ">=18 <20", "scheduler": "*" } }, "sha512-EWT9WpB67GNCecxQXJdAZNVMhuk3VxpdDfojxg1wOgWmR5TPaGiXA74Jqa2Y9AEjSB0hMMAk7RNve2CoIikg2w=="],
+
+    "@effect/ai": ["@effect/ai@0.32.1", "", { "dependencies": { "find-my-way-ts": "^0.1.6" }, "peerDependencies": { "@effect/experimental": "^0.57.0", "@effect/platform": "^0.93.0", "@effect/rpc": "^0.72.1", "effect": "^3.19.3" } }, "sha512-6qedQhnHigkRjNsUGaXKqvsbwhvQH3Ez3aePeROBRJi0c8q9tnR1E8qhQrTSjVPWcrv9AFtP0NRTr6iAHujGWQ=="],
+
+    "@effect/ai-openrouter": ["@effect/ai-openrouter@0.6.0", "", { "peerDependencies": { "@effect/ai": "^0.32.0", "@effect/experimental": "^0.57.0", "@effect/platform": "^0.93.0", "effect": "^3.19.0" } }, "sha512-jcDp/aPWdLNmpLiVijCohTV0ZD/i7OZZzq+Pl0zHk/KlaUf4+zKGNqQyRQORrTDTJyXUMs/aaPc//gJ4SwJmEQ=="],
 
     "@effect/cluster": ["@effect/cluster@0.55.0", "", { "dependencies": { "kubernetes-types": "^1.30.0" }, "peerDependencies": { "@effect/platform": "^0.93.6", "@effect/rpc": "^0.72.2", "@effect/sql": "^0.48.6", "@effect/workflow": "^0.15.0", "effect": "^3.19.8" } }, "sha512-WeLrGpdtWhr4ap3kcW+G+qYyDqzEa65ypPWsU+sNU2gordENsAkxUQqo8taKr114AOk6WE74q0I7iWABcfGlhQ=="],
 

@@ -19,10 +19,12 @@ import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
 import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
 import { BotUserServiceLive } from "./services/bot-user-service.ts"
+import { OpenRouterLanguageModelLayer } from "./services/openrouter-service.ts"
 import {
 	CleanupUploadsWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
 	MessageNotificationWorkflowLayer,
+	ThreadNamingWorkflowLayer,
 } from "./workflows/index.ts"
 
 // PostgreSQL configuration (uses existing database)
@@ -53,6 +55,7 @@ const AllWorkflows = Layer.mergeAll(
 	MessageNotificationWorkflowLayer,
 	CleanupUploadsWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
+	ThreadNamingWorkflowLayer.pipe(Layer.provide(OpenRouterLanguageModelLayer)),
 ).pipe(Layer.provide(BotUserServiceLive), Layer.provide(DatabaseLayer))
 
 // WorkOSSync dependencies layer for cron job

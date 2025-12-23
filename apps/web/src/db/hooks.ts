@@ -233,7 +233,8 @@ export const useIntegrationConnection = (
 
 /**
  * Query active threads for the sidebar.
- * Returns threads where the user is a member AND has sent a message in the last 3 days.
+ * Returns threads where the user is a member, has sent a message in the last 3 days,
+ * AND has at least 3 messages in the thread.
  * Threads are grouped by their parent channel ID for easy rendering.
  */
 export const useActiveThreads = (organizationId: OrganizationId | null, userId: UserId | undefined) => {
@@ -259,6 +260,21 @@ export const useActiveThreads = (organizationId: OrganizationId | null, userId: 
 		[organizationId, userId],
 	)
 
+	// Get thread IDs for message count query
+	const threadIds = useMemo(() => threads?.map((t) => t.channel.id) ?? [], [threads])
+
+	// Get all messages in threads to count them
+	const { data: threadMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.where(({ message }) =>
+					inArray(message.channelId, threadIds.length > 0 ? threadIds : ([""] as ChannelId[])),
+				)
+				.select(({ message }) => ({ channelId: message.channelId })),
+		[threadIds],
+	)
+
 	// Get user's recent messages to filter by activity
 	const { data: recentMessages } = useLiveQuery(
 		(q) =>
@@ -271,15 +287,27 @@ export const useActiveThreads = (organizationId: OrganizationId | null, userId: 
 		[userId, threeDaysAgo],
 	)
 
-	// Filter threads to only those with recent activity and group by parent
+	// Filter threads to only those with recent activity, 3+ messages, and group by parent
 	const threadsByParent = useMemo(() => {
 		if (!threads || !recentMessages || !organizationId) return new Map<ChannelId, typeof threads>()
 
 		const recentChannelIds = new Set(recentMessages.map((m) => m.channelId))
+
+		// Count messages per thread
+		const messageCountMap = new Map<ChannelId, number>()
+		threadMessages?.forEach((m) => {
+			messageCountMap.set(m.channelId, (messageCountMap.get(m.channelId) ?? 0) + 1)
+		})
+
 		const map = new Map<ChannelId, typeof threads>()
 
 		threads
-			.filter((t) => recentChannelIds.has(t.channel.id) && t.channel.parentChannelId)
+			.filter(
+				(t) =>
+					recentChannelIds.has(t.channel.id) &&
+					t.channel.parentChannelId &&
+					(messageCountMap.get(t.channel.id) ?? 0) >= 3,
+			)
 			.forEach((t) => {
 				const parentId = t.channel.parentChannelId!
 				const existing = map.get(parentId) || []
@@ -287,7 +315,7 @@ export const useActiveThreads = (organizationId: OrganizationId | null, userId: 
 			})
 
 		return map
-	}, [threads, recentMessages, organizationId])
+	}, [threads, recentMessages, threadMessages, organizationId])
 
 	return { threadsByParent }
 }
