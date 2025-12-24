@@ -76,7 +76,10 @@ export function InlineThreadPreview({
 				onPress={() => openThread(threadChannelId, messageId)}
 				className="mt-2 flex items-center gap-2 text-primary hover:text-primary/80"
 			>
-				<IconThread data-slot="icon" className="size-4" />
+				{/* Only show icon if no title header is displayed */}
+				{!(threadName && threadName !== "Thread") && (
+					<IconThread data-slot="icon" className="size-4" />
+				)}
 				<span className="font-medium">
 					{hasMoreMessages
 						? `View all ${totalCount} ${totalCount === 1 ? "reply" : "replies"}`
