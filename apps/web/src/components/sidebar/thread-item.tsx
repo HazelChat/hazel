@@ -55,7 +55,7 @@ export function ThreadItem({ thread, member }: ThreadItemProps) {
 			<Link
 				to="/$orgSlug/chat/$id"
 				params={{ orgSlug: slug, id: thread.id }}
-				className="truncate rounded-md px-2 py-1.5 text-sm text-sidebar-fg hover:bg-sidebar-accent hover:text-sidebar-accent-fg"
+				className="truncate rounded-md px-2 pr-8 py-1.5 text-sm text-sidebar-fg hover:bg-sidebar-accent hover:text-sidebar-accent-fg"
 				activeProps={{
 					className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
 				}}
