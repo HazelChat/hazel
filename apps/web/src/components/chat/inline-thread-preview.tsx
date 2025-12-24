@@ -1,12 +1,14 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { Message } from "@hazel/domain/models"
 import type { ChannelId, MessageId } from "@hazel/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import {
 	threadMessageCountAtomFamily,
 	threadMessagesAtomFamily,
 	userWithPresenceAtomFamily,
 } from "~/atoms/message-atoms"
+import { channelCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import IconThread from "../icons/icon-thread"
 import { Avatar } from "../ui/avatar"
@@ -24,6 +26,13 @@ export function InlineThreadPreview({
 	maxPreviewMessages = 1,
 }: InlineThreadPreviewProps) {
 	const { openThread } = useChat()
+
+	// Fetch thread name
+	const { data: threadData } = useLiveQuery(
+		(q) => q.from({ channel: channelCollection }).where((q) => eq(q.channel.id, threadChannelId)),
+		[threadChannelId],
+	)
+	const threadName = threadData?.[0]?.name
 
 	// Use atoms for thread messages - automatically deduplicated across all thread previews
 	const threadMessagesResult = useAtomValue(
@@ -44,18 +53,20 @@ export function InlineThreadPreview({
 	}
 
 	return (
-		<div className="mt-2">
-			{/* Thread container with visual connection */}
-			<div className="relative">
-				{/* Vertical line connecting to parent message */}
-				<div className="absolute top-0 bottom-0 left-4 w-0.5 bg-border" />
-
-				{/* Thread messages */}
-				<div className="space-y-1 pl-8">
-					{previewMessages.map((message) => (
-						<ThreadMessagePreview key={message.id} message={message} />
-					))}
+		<div className="mt-2 rounded-lg border border-border bg-bg p-3">
+			{/* Thread title header */}
+			{threadName && threadName !== "Thread" && (
+				<div className="mb-2 flex items-center gap-2 font-medium text-fg text-sm">
+					<IconThread className="size-4 text-primary" />
+					<span>{threadName}</span>
 				</div>
+			)}
+
+			{/* Thread messages */}
+			<div className="space-y-1">
+				{previewMessages.map((message) => (
+					<ThreadMessagePreview key={message.id} message={message} />
+				))}
 			</div>
 
 			{/* View full thread button */}
@@ -63,7 +74,7 @@ export function InlineThreadPreview({
 				intent="plain"
 				size="sm"
 				onPress={() => openThread(threadChannelId, messageId)}
-				className="mt-2 ml-8 flex items-center gap-2 text-primary hover:text-primary/80"
+				className="mt-2 flex items-center gap-2 text-primary hover:text-primary/80"
 			>
 				<IconThread data-slot="icon" className="size-4" />
 				<span className="font-medium">
