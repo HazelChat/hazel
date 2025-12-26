@@ -37,7 +37,8 @@ const sizes = {
 }
 
 interface ModalContentProps
-	extends Omit<ModalOverlayProps, "className" | "children">,
+	extends
+		Omit<ModalOverlayProps, "className" | "children">,
 		Pick<DialogProps, "aria-label" | "aria-labelledby" | "role" | "children"> {
 	size?: keyof typeof sizes
 	closeButton?: boolean

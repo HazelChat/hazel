@@ -24,7 +24,7 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 		<DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
 			{children}
 			<Popover>
-				<Dialog className="rounded-lg">
+				<Dialog aria-label="Emoji picker" className="rounded-lg">
 					<EmojiPicker className="h-[420px]" onEmojiSelect={handleEmojiSelect}>
 						<EmojiPickerSearch />
 						<EmojiPickerContent />

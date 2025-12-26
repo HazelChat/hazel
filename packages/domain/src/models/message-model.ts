@@ -22,3 +22,10 @@ export const Insert = Schema.Struct({
 })
 
 export const Update = Model.update
+
+/**
+ * Custom update schema for JSON API - only allows mutable fields.
+ * Excludes immutable relationship fields (channelId, replyToMessageId, threadChannelId)
+ * to prevent users from moving messages between channels or fabricating conversation context.
+ */
+export const JsonUpdate = Model.jsonUpdate.pipe(Schema.pick("content", "embeds"), Schema.partial)

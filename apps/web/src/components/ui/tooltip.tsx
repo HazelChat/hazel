@@ -43,8 +43,7 @@ type TooltipProps = React.ComponentProps<typeof TooltipTriggerPrimitive>
 const Tooltip = (props: TooltipProps) => <TooltipTriggerPrimitive {...props} />
 
 interface TooltipContentProps
-	extends Omit<TooltipPrimitiveProps, "children">,
-		VariantProps<typeof tooltipStyles> {
+	extends Omit<TooltipPrimitiveProps, "children">, VariantProps<typeof tooltipStyles> {
 	arrow?: boolean
 	children?: React.ReactNode
 }
@@ -70,7 +69,7 @@ const TooltipContent = ({ offset = 10, arrow = true, inverse, children, ...props
 						viewBox="0 0 12 12"
 						// inverse
 						className={twJoin(
-							"group-placement-left:-rotate-90 block group-placement-bottom:rotate-180 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]",
+							"block group-placement-bottom:rotate-180 group-placement-left:-rotate-90 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]",
 							inverse ? "fill-fg stroke-transparent" : "fill-overlay stroke-(--tooltip-border)",
 						)}
 					>

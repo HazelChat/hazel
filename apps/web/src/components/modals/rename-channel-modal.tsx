@@ -2,14 +2,15 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type } from "arktype"
-import { toast } from "sonner"
 import { Button } from "~/components/ui/button"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
+import { updateChannelAction } from "~/db/actions"
 import { channelCollection } from "~/db/collections"
 import { useAppForm } from "~/hooks/use-app-form"
+import { matchExitWithToast } from "~/lib/toast-exit"
 
 const channelNameSchema = type({
 	name: "string.trim",
@@ -31,6 +32,8 @@ export function RenameChannelModal({ channelId, isOpen, onOpenChange }: RenameCh
 
 	const channel = channelData?.[0]
 
+	const updateChannel = useAtomSet(updateChannelAction, { mode: "promiseExit" })
+
 	const form = useAppForm({
 		defaultValues: {
 			name: channel?.name || "",
@@ -48,17 +51,22 @@ export function RenameChannelModal({ channelId, isOpen, onOpenChange }: RenameCh
 				return
 			}
 
-			try {
-				await channelCollection.update(channel.id, (item) => {
-					item.name = trimmedName
-				})
-				toast.success("Channel renamed successfully")
-				onOpenChange(false)
-				form.reset()
-			} catch (error) {
-				console.error("Failed to rename channel:", error)
-				toast.error("Failed to rename channel")
-			}
+			const exit = await updateChannel({ channelId: channel.id, name: trimmedName })
+
+			matchExitWithToast(exit, {
+				onSuccess: () => {
+					onOpenChange(false)
+					form.reset()
+				},
+				successMessage: "Channel renamed successfully",
+				customErrors: {
+					ChannelNotFoundError: () => ({
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+						isRetryable: false,
+					}),
+				},
+			})
 		},
 	})
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Link, useLocation, useParams } from "@tanstack/react-router"
+import { Link, useMatchRoute, useParams } from "@tanstack/react-router"
 import { twMerge } from "tailwind-merge"
 import IconBell from "~/components/icons/icon-bell"
 import IconDashboard from "~/components/icons/icon-dashboard"
@@ -20,17 +20,10 @@ interface NavItem {
 export function MobileNav() {
 	const { isMobile, setIsOpenOnMobile } = useSidebar()
 	const params = useParams({ strict: false }) as { orgSlug?: string }
-	const location = useLocation()
+	const matchRoute = useMatchRoute()
 	const orgSlug = params.orgSlug || ""
 
 	if (!isMobile || !orgSlug) return null
-
-	const isActive = (path: string) => {
-		if (path === `/${orgSlug}`) {
-			return location.pathname === `/${orgSlug}`
-		}
-		return location.pathname.startsWith(path)
-	}
 
 	const navItems: NavItem[] = [
 		{
@@ -65,11 +58,27 @@ export function MobileNav() {
 		},
 	]
 
+	const isActive = (itemId: string) => {
+		switch (itemId) {
+			case "home":
+				// Exact match for home
+				return !!matchRoute({ to: "/$orgSlug", params: { orgSlug }, fuzzy: false })
+			case "chat":
+				return !!matchRoute({ to: "/$orgSlug/chat/$id", params: { orgSlug }, fuzzy: true })
+			case "notifications":
+				return !!matchRoute({ to: "/$orgSlug/notifications", params: { orgSlug }, fuzzy: true })
+			case "settings":
+				return !!matchRoute({ to: "/$orgSlug/settings", params: { orgSlug }, fuzzy: true })
+			default:
+				return false
+		}
+	}
+
 	return (
 		<nav className="fixed inset-x-0 bottom-0 z-50 border-sidebar-border border-t bg-sidebar/95 backdrop-blur-lg md:hidden">
 			<div className="flex h-16 items-center justify-around px-2">
 				{navItems.map((item) => {
-					const active = item.href ? isActive(item.href) : false
+					const active = item.href ? isActive(item.id) : false
 
 					if (item.action) {
 						return (

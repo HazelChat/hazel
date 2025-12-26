@@ -4,6 +4,7 @@ import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
 import { type AuthenticationError, validateSession } from "./auth/user-auth"
 import { AccessContextCacheLive, type AccessContextCacheService, RedisPersistenceLive } from "./cache"
 import { ProxyConfigLive, ProxyConfigService } from "./config"
+import { TracerLive } from "./observability/tracer"
 import { type ElectricProxyError, prepareElectricUrl, proxyElectricRequest } from "./proxy/electric-client"
 import { type BotTableAccessError, getBotWhereClauseForTable, validateBotTable } from "./tables/bot-tables"
 import { getWhereClauseForTable, type TableAccessError, validateTable } from "./tables/user-tables"
@@ -314,6 +315,7 @@ const MainLive = DatabaseLive.pipe(
 	Layer.provideMerge(ProxyConfigLive),
 	Layer.provideMerge(LoggerLive),
 	Layer.provideMerge(CacheLive),
+	Layer.provideMerge(TracerLive),
 )
 
 // =============================================================================

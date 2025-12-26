@@ -35,8 +35,6 @@ function DebugSettings() {
 
 	const { user } = useAuth()
 
-	console.log(user)
-
 	const reactScanEnabled = useAtomValue(reactScanEnabledAtom)
 	const setReactScanEnabled = useAtomSet(reactScanEnabledAtom)
 

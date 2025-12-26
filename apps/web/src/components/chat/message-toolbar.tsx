@@ -1,10 +1,16 @@
+import type { PinnedMessageId } from "@hazel/schema"
 import { useState } from "react"
+import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { EmojiPickerDialog } from "~/components/emoji-picker"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "~/components/ui/menu"
+import { Separator } from "~/components/ui/separator"
+import { Toolbar } from "~/components/ui/toolbar"
+import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
+import { useAuth } from "~/lib/auth"
 import IconCopy from "../icons/icon-copy"
 import IconDotsVertical from "../icons/icon-dots-vertical"
 import IconEmojiAdd from "../icons/icon-emoji-add"
@@ -13,7 +19,6 @@ import IconStar from "../icons/icon-star"
 import IconThread from "../icons/icon-thread"
 import IconTrash from "../icons/icon-trash"
 import { DeleteMessageModal } from "./delete-message-modal"
-import { useMessageHandlers } from "./message-item"
 
 interface MessageToolbarProps {
 	message: MessageWithPinned
@@ -21,15 +26,21 @@ interface MessageToolbarProps {
 }
 
 export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
-	const { addReaction } = useChat()
+	const {
+		addReaction,
+		setReplyToMessageId,
+		deleteMessage,
+		pinMessage,
+		unpinMessage,
+		createThread,
+		channel,
+	} = useChat()
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
+	const { user: currentUser } = useAuth()
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
-	// Get message-specific handlers
-	const messageHandlers = useMessageHandlers(message)
-
 	// Derived state
-	const isOwnMessage = messageHandlers.isOwnMessage
+	const isOwnMessage = currentUser?.id === message.authorId
 	const isPinned = message.pinnedMessage?.id !== undefined
 
 	const handleReaction = (emoji: string | { emoji: string; label: string }) => {
@@ -38,8 +49,31 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 		addReaction(message.id, message.channelId, emojiString)
 	}
 
+	const handleCopy = () => {
+		navigator.clipboard.writeText(message.content)
+		toast.success("Copied!", {
+			description: "Message content has been copied to your clipboard.",
+		})
+	}
+
+	const handleReply = () => {
+		setReplyToMessageId(message.id)
+	}
+
+	const handleThread = () => {
+		createThread(message.id, message.threadChannelId)
+	}
+
 	const handlePin = () => {
-		messageHandlers.handlePin(isPinned, message.pinnedMessage?.id)
+		if (isPinned && message.pinnedMessage?.id) {
+			unpinMessage(message.pinnedMessage.id as PinnedMessageId)
+		} else {
+			pinMessage(message.id)
+		}
+	}
+
+	const handleDelete = () => {
+		deleteMessage(message.id)
 	}
 
 	const handleDeleteModalChange = (open: boolean) => {
@@ -48,99 +82,114 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 	}
 
 	return (
-		<div
-			role="toolbar"
-			aria-label="Message actions"
-			className="flex items-center gap-px rounded-lg border border-border bg-bg shadow-sm"
-		>
+		<Toolbar aria-label="Message actions" className="rounded-lg border border-border bg-bg shadow-sm">
 			{/* Quick Reactions */}
 			{topEmojis.map((emoji) => (
-				<Button
-					key={emoji}
-					size="sq-sm"
-					intent="plain"
-					onPress={() => handleReaction(emoji)}
-					aria-label={`React with ${emoji}`}
-					className="!p-1.5 text-base hover:bg-secondary"
-				>
-					{emoji}
-				</Button>
+				<Tooltip key={emoji}>
+					<Button
+						size="sq-sm"
+						intent="plain"
+						onPress={() => handleReaction(emoji)}
+						aria-label={`React with ${emoji}`}
+						className="p-1.5! text-base hover:bg-secondary"
+					>
+						{emoji}
+					</Button>
+					<TooltipContent>React with {emoji}</TooltipContent>
+				</Tooltip>
 			))}
-			<div className="mx-0.5 h-4 w-px bg-border" />
+			<Separator orientation="vertical" className="mx-0.5 h-4" />
 
 			{/* More Reactions Button */}
 			<EmojiPickerDialog onEmojiSelect={handleReaction}>
-				<Button
-					size="sq-sm"
-					intent="plain"
-					aria-label="More reactions"
-					className="p-1.5! hover:bg-secondary"
-				>
-					<IconEmojiAdd data-slot="icon" className="size-3.5" />
-				</Button>
+				<Tooltip>
+					<Button
+						size="sq-sm"
+						intent="plain"
+						aria-label="Add reaction"
+						className="p-1.5! hover:bg-secondary"
+					>
+						<IconEmojiAdd data-slot="icon" className="size-3.5" />
+					</Button>
+					<TooltipContent>Add reaction</TooltipContent>
+				</Tooltip>
 			</EmojiPickerDialog>
 
 			{/* Copy Button */}
-			<Button
-				size="sq-sm"
-				intent="plain"
-				onPress={messageHandlers.handleCopy}
-				aria-label="Copy message"
-				className="!p-1.5 hover:bg-secondary"
-			>
-				<IconCopy data-slot="icon" className="size-3.5" />
-			</Button>
-
-			{/* Reply Button */}
-			<Button
-				size="sq-sm"
-				intent="plain"
-				onPress={messageHandlers.handleReply}
-				aria-label="Reply to message"
-				className="!p-1.5 hover:bg-secondary"
-			>
-				<IconReply data-slot="icon" className="size-3.5" />
-			</Button>
-
-			{/* Delete Button (Own Messages Only) */}
-			{isOwnMessage && (
+			<Tooltip>
 				<Button
 					size="sq-sm"
 					intent="plain"
-					onPress={() => handleDeleteModalChange(true)}
-					aria-label="Delete message"
-					className="!p-1.5 text-danger hover:bg-danger/10"
+					onPress={handleCopy}
+					aria-label="Copy message"
+					className="p-1.5! hover:bg-secondary"
 				>
-					<IconTrash data-slot="icon" className="size-3.5" />
+					<IconCopy data-slot="icon" className="size-3.5" />
 				</Button>
+				<TooltipContent>Copy message</TooltipContent>
+			</Tooltip>
+
+			{/* Reply Button */}
+			<Tooltip>
+				<Button
+					size="sq-sm"
+					intent="plain"
+					onPress={handleReply}
+					aria-label="Reply"
+					className="p-1.5! hover:bg-secondary"
+				>
+					<IconReply data-slot="icon" className="size-3.5" />
+				</Button>
+				<TooltipContent>Reply</TooltipContent>
+			</Tooltip>
+
+			{/* Delete Button (Own Messages Only) */}
+			{isOwnMessage && (
+				<Tooltip>
+					<Button
+						size="sq-sm"
+						intent="plain"
+						onPress={() => handleDeleteModalChange(true)}
+						aria-label="Delete message"
+						className="p-1.5! text-danger hover:bg-danger/10"
+					>
+						<IconTrash data-slot="icon" className="size-3.5" />
+					</Button>
+					<TooltipContent>Delete message</TooltipContent>
+				</Tooltip>
 			)}
 
 			{/* Divider before more options */}
-			<div className="mx-0.5 h-4 w-px bg-border" />
+			<Separator orientation="vertical" className="mx-0.5 h-4" />
 
 			{/* More Options Menu */}
-			<Menu>
-				<MenuTrigger aria-label="More options" className="!p-1.5 rounded-md hover:bg-secondary">
-					<IconDotsVertical className="size-3.5" />
-				</MenuTrigger>
-				<MenuContent placement="bottom end">
-					<MenuItem onAction={messageHandlers.handleThread}>
-						<IconThread data-slot="icon" />
-						<MenuLabel>Reply in thread</MenuLabel>
-					</MenuItem>
-					<MenuItem onAction={handlePin}>
-						<IconStar data-slot="icon" />
-						<MenuLabel>{isPinned ? "Unpin message" : "Pin message"}</MenuLabel>
-					</MenuItem>
-				</MenuContent>
-			</Menu>
+			<Tooltip>
+				<Menu>
+					<MenuTrigger aria-label="More actions" className="p-1.5! rounded-md hover:bg-secondary">
+						<IconDotsVertical className="size-3.5" />
+					</MenuTrigger>
+					<MenuContent placement="bottom end">
+						{channel?.type !== "thread" && (
+							<MenuItem onAction={handleThread}>
+								<IconThread data-slot="icon" />
+								<MenuLabel>Reply in thread</MenuLabel>
+							</MenuItem>
+						)}
+						<MenuItem onAction={handlePin}>
+							<IconStar data-slot="icon" />
+							<MenuLabel>{isPinned ? "Unpin message" : "Pin message"}</MenuLabel>
+						</MenuItem>
+					</MenuContent>
+				</Menu>
+				<TooltipContent>More actions</TooltipContent>
+			</Tooltip>
 
 			{/* Delete Confirmation Modal */}
 			<DeleteMessageModal
 				isOpen={deleteModalOpen}
 				onOpenChange={handleDeleteModalChange}
-				onConfirm={messageHandlers.handleDelete}
+				onConfirm={handleDelete}
 			/>
-		</div>
+		</Toolbar>
 	)
 }

@@ -1,9 +1,9 @@
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
-import { Config, Data, Effect, Redacted } from "effect"
+import { Config, Effect, Redacted, Schema } from "effect"
 
-export class WorkOSApiError extends Data.TaggedError("WorkOSApiError")<{
-	readonly cause: unknown
-}> {}
+export class WorkOSApiError extends Schema.TaggedError<WorkOSApiError>()("WorkOSApiError", {
+	cause: Schema.Unknown,
+}) {}
 
 export class WorkOS extends Effect.Service<WorkOS>()("WorkOS", {
 	accessors: true,

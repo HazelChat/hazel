@@ -42,7 +42,7 @@ export const sidebarStateAtom = Atom.make((get) => {
  */
 export const toggleSidebar = () => {
 	Atom.batch(() => {
-		Atom.update(sidebarOpenAtom, (open) => !open)
+		return Atom.update(sidebarOpenAtom, (open) => !open)
 	})
 }
 
@@ -51,7 +51,7 @@ export const toggleSidebar = () => {
  */
 export const toggleMobileSidebar = () => {
 	Atom.batch(() => {
-		Atom.update(sidebarOpenMobileAtom, (open) => !open)
+		return Atom.update(sidebarOpenMobileAtom, (open) => !open)
 	})
 }
 
@@ -60,7 +60,7 @@ export const toggleMobileSidebar = () => {
  */
 export const setSidebarOpen = (open: boolean) => {
 	Atom.batch(() => {
-		Atom.set(sidebarOpenAtom, open)
+		return Atom.set(sidebarOpenAtom, open)
 	})
 }
 
@@ -69,7 +69,7 @@ export const setSidebarOpen = (open: boolean) => {
  */
 export const setMobileSidebarOpen = (open: boolean) => {
 	Atom.batch(() => {
-		Atom.set(sidebarOpenMobileAtom, open)
+		return Atom.set(sidebarOpenMobileAtom, open)
 	})
 }
 

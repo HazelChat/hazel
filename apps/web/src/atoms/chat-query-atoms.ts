@@ -1,9 +1,9 @@
 import { Atom } from "@effect-atom/atom-react"
 import type { Message, PinnedMessage, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
-import { makeQuery } from "@hazel/tanstack-db-atom"
 import { eq } from "@tanstack/db"
 import { channelCollection } from "~/db/collections"
+import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
 export type MessageWithPinned = typeof Message.Model.Type & {
 	pinnedMessage: typeof PinnedMessage.Model.Type | null | undefined

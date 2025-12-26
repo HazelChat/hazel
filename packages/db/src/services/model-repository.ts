@@ -54,7 +54,13 @@ export function makeRepository<
 							// @ts-expect-error
 							.where(eq(table[idColumn], input[idColumn]))
 							.returning(),
-					).pipe(Effect.map((result) => result[0] as RecordType)),
+					).pipe(
+						Effect.flatMap((result) =>
+							result.length > 0
+								? Effect.succeed(result[0] as RecordType)
+								: Effect.die(new EntityNotFound({ type: options.name, id: input[idColumn] })),
+						),
+					),
 				policyRequire(options.name, "update"),
 			)(data, tx) as Effect.Effect<RecordType, DatabaseError | ParseError>
 

@@ -58,7 +58,8 @@ export class CreateNotificationError extends Schema.TaggedError<CreateNotificati
 	"CreateNotificationError",
 	{
 		messageId: MessageId,
-		memberId: OrganizationMemberId,
+		memberId: OrganizationMemberId.pipe(Schema.optional),
+		userId: UserId.pipe(Schema.optional),
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},

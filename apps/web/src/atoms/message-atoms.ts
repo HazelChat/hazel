@@ -1,6 +1,5 @@
 import { Atom, Result } from "@effect-atom/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
-import { makeQuery } from "@hazel/tanstack-db-atom"
 import { count, eq } from "@tanstack/db"
 import {
 	messageCollection,
@@ -8,6 +7,7 @@ import {
 	userCollection,
 	userPresenceStatusCollection,
 } from "~/db/collections"
+import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
 /**
  * Atom family for fetching reactions for a specific message

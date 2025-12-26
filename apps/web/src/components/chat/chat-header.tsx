@@ -45,7 +45,7 @@ export function ChatHeader() {
 					<button
 						type="button"
 						onClick={() => setIsOpenOnMobile(true)}
-						className="-ml-1 mr-3 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+						className="mr-3 -ml-1 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
 					>
 						<IconMenu className="size-5" />
 					</button>
@@ -59,7 +59,7 @@ export function ChatHeader() {
 	const otherMembers = channel.members.filter((member) => member.userId !== user?.id)
 
 	return (
-		<div className="flex h-14 flex-shrink-0 items-center justify-between border-border border-b bg-bg px-4">
+		<div className="flex h-14 shrink-0 items-center justify-between border-border border-b bg-bg px-4">
 			<div className="flex items-center gap-3">
 				{isMobile && (
 					<button

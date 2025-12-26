@@ -1,6 +1,5 @@
 import { Atom, Result, useAtomMount, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
-import { makeQuery } from "@hazel/tanstack-db-atom"
 import { eq } from "@tanstack/db"
 import { DateTime, Duration, Effect, Schedule, Stream } from "effect"
 import { useCallback, useEffect, useRef } from "react"
@@ -9,6 +8,7 @@ import { useAuth, userAtom } from "~/lib/auth"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { router } from "~/main"
+import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
 type PresenceStatus = "online" | "away" | "busy" | "dnd" | "offline"
 

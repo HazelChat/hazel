@@ -1,7 +1,7 @@
 "use client"
 
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId } from "@hazel/schema"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Exit, pipe } from "effect"
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { Descendant } from "slate"
@@ -42,8 +42,10 @@ import {
 import { CommandInputPanel } from "./autocomplete/command-input-panel"
 import { getOptionByIndex, useSlateAutocomplete } from "./autocomplete/use-slate-combobox"
 import { CodeBlockElement } from "./code-block-element"
+import { detectLanguage } from "./detect-language"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
+import { withCodeBlockPaste } from "./slate-code-block-paste-plugin"
 import { decorateCodeBlock } from "./slate-code-decorator"
 import { decorateMarkdown } from "./slate-markdown-decorators"
 import {
@@ -54,7 +56,26 @@ import {
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
 import type { MentionElement as MentionElementType } from "./slate-mention-plugin"
+import type { CodeBlockElement as CodeBlockElementType } from "./types"
 import { isCodeBlockElement } from "./types"
+
+// Helper to auto-detect and set language on a code block if not already set
+function maybeDetectLanguage(editor: CustomEditor, element: CodeBlockElementType, path: number[]): void {
+	// Skip if language is already set
+	if (element.language) return
+
+	// Get the text content from the code block
+	const blockText = Editor.string(editor, path)
+	if (!blockText.trim()) return
+
+	// Try to detect the language
+	const detectedLanguage = detectLanguage(blockText)
+	if (detectedLanguage) {
+		Transforms.setNodes(editor, { language: detectedLanguage } as Partial<CustomElement>, {
+			at: path,
+		})
+	}
+}
 
 // Extend the editor type with autocomplete plugin
 type CustomEditor = AutocompleteEditor
@@ -67,10 +88,12 @@ export interface SlateMessageEditorRef {
 interface SlateMessageEditorProps {
 	placeholder?: string
 	className?: string
+	orgId?: OrganizationId
 	channelId?: ChannelId
 	onSubmit?: (content: string) => void | Promise<void>
 	onUpdate?: (content: string) => void
 	isUploading?: boolean
+	hasAttachments?: boolean
 }
 
 // Autoformat plugin to convert markdown shortcuts to block types
@@ -274,7 +297,16 @@ const shouldHidePlaceholder = (value: CustomDescendant[]): boolean => {
 
 export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessageEditorProps>(
 	(
-		{ placeholder = "Type a message...", className, channelId, onSubmit, onUpdate, isUploading = false },
+		{
+			placeholder = "Type a message...",
+			className,
+			orgId,
+			channelId,
+			onSubmit,
+			onUpdate,
+			isUploading = false,
+			hasAttachments = false,
+		},
 		ref,
 	) => {
 		const containerRef = useRef<HTMLDivElement>(null)
@@ -303,6 +335,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					(e) => withAutocomplete(e, DEFAULT_TRIGGERS, setAutocompleteState),
 					withMentionElements,
 					withAutoformat,
+					withCodeBlockPaste,
 				) as CustomEditor,
 			[],
 		)
@@ -310,7 +343,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		const [value, setValue] = useState<CustomDescendant[]>(createEmptyValue())
 
 		// Get bot commands for this channel
-		const botCommands = useBotCommands(channelId ?? "")
+		const botCommands = useBotCommands(orgId!, channelId ?? "")
 
 		// Mutation for executing integration commands
 		const executeCommand = useAtomSet(HazelApiClient.mutation("integration-commands", "executeCommand"), {
@@ -378,6 +411,10 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				toast.error("Cannot execute command without a channel")
 				return
 			}
+			if (!orgId) {
+				toast.error("Cannot execute command without an organization")
+				return
+			}
 
 			// Validate required fields
 			const missingRequired = commandInputState.command.arguments
@@ -400,7 +437,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			const toastId = toast.loading(`Creating ${commandInputState.command.name}...`)
 
 			const exit = await executeCommand({
-				path: { provider, commandId: commandInputState.command.id },
+				path: { orgId, provider, commandId: commandInputState.command.id },
 				payload: { channelId, arguments: args },
 			})
 
@@ -450,7 +487,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					toast.error(message)
 				},
 			})
-		}, [commandInputState, channelId, executeCommand, editor])
+		}, [commandInputState, orgId, channelId, executeCommand, editor])
 
 		const handleCommandCancel = useCallback(() => {
 			setCommandInputState(initialCommandInputState)
@@ -586,7 +623,19 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 			const textContent = serializeToMarkdown(value).trim()
 
-			if (!textContent || textContent.length === 0 || isValueEmpty(value)) return
+			// Allow empty content if there are attachments
+			if ((!textContent || textContent.length === 0 || isValueEmpty(value)) && !hasAttachments) return
+
+			// Auto-detect language for any code blocks without explicit language before submit
+			for (const [node, path] of Editor.nodes(editor, {
+				at: [],
+				match: (n) => SlateElement.isElement(n) && isCodeBlockElement(n),
+			})) {
+				const element = node as CodeBlockElementType
+				if (!element.language) {
+					maybeDetectLanguage(editor, element, path as number[])
+				}
+			}
 
 			await onSubmit(textContent)
 
@@ -705,6 +754,11 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						if (isAtEnd && typeof path[0] === "number") {
 							event.preventDefault()
 
+							// Auto-detect language when exiting code block
+							if (element.type === "code-block") {
+								maybeDetectLanguage(editor, element as CodeBlockElementType, path)
+							}
+
 							const nextPath = path[0] + 1
 
 							// Insert new paragraph after the block
@@ -743,6 +797,11 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 						if (isAtStart && typeof path[0] === "number") {
 							event.preventDefault()
+
+							// Auto-detect language when exiting code block
+							if (element.type === "code-block") {
+								maybeDetectLanguage(editor, element as CodeBlockElementType, path)
+							}
 
 							// Insert new paragraph before the block
 							Transforms.insertNodes(

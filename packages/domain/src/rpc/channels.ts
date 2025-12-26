@@ -1,8 +1,16 @@
 import { RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
-import { DmChannelAlreadyExistsError, InternalServerError, UnauthorizedError } from "../errors"
-import { ChannelId, UserId } from "../ids"
+import {
+	DmChannelAlreadyExistsError,
+	InternalServerError,
+	MessageNotFoundError,
+	NestedThreadError,
+	UnauthorizedError,
+} from "../errors"
+
+export { NestedThreadError } from "../errors"
+import { ChannelId, MessageId, OrganizationId, UserId } from "../ids"
 import { Channel } from "../models"
 import { TransactionId } from "../transaction-id"
 import { AuthMiddleware } from "./middleware"
@@ -33,6 +41,16 @@ export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>
 	type: Schema.Literal("direct", "single"),
 	name: Schema.optional(Schema.String),
 	organizationId: Schema.UUID,
+}) {}
+
+/**
+ * Request schema for creating a thread channel from a message.
+ * Creates the thread, adds creator as member, and links the message to the thread.
+ */
+export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("CreateThreadRequest")({
+	id: Schema.optional(ChannelId),
+	messageId: MessageId,
+	organizationId: OrganizationId,
 }) {}
 
 /**
@@ -118,5 +136,44 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * ChannelCreateThread
+	 *
+	 * Creates a thread channel from a message.
+	 * Atomically creates the thread channel, adds the creator as a member,
+	 * and links the original message to the thread.
+	 *
+	 * @param payload - Message ID, organization ID, and optional channel ID for optimistic updates
+	 * @returns Channel data and transaction ID
+	 * @throws MessageNotFoundError if the message doesn't exist
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("channel.createThread", {
+		payload: CreateThreadRequest,
+		success: ChannelResponse,
+		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * ChannelGenerateName
+	 *
+	 * Generates an AI-powered name for a thread channel.
+	 * Uses the ThreadNamingWorkflow to analyze the thread conversation and generate
+	 * a descriptive 3-6 word name.
+	 *
+	 * @param payload - Thread channel ID
+	 * @returns Transaction ID
+	 * @throws ChannelNotFoundError if channel doesn't exist or is not a thread
+	 * @throws MessageNotFoundError if original message is not found
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("channel.generateName", {
+		payload: Schema.Struct({ channelId: ChannelId }),
+		success: Schema.Struct({ success: Schema.Boolean }),
+		error: Schema.Union(ChannelNotFoundError, MessageNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 ) {}

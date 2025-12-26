@@ -2,8 +2,14 @@ import { useState } from "react"
 import type { Text } from "slate"
 import type { RenderElementProps } from "slate-react"
 import IconCheck from "~/components/icons/icon-check"
+import { IconChevronDown } from "~/components/icons/icon-chevron-down"
+import { IconChevronUp } from "~/components/icons/icon-chevron-up"
 import IconCopy from "~/components/icons/icon-copy"
+import { cx } from "~/utils/cx"
 import type { CodeBlockElement as CodeBlockElementType } from "./types"
+
+/** Maximum number of lines to show before collapsing */
+const COLLAPSE_THRESHOLD = 15
 
 export interface CodeBlockElementProps extends RenderElementProps {
 	element: CodeBlockElementType
@@ -18,10 +24,15 @@ export function CodeBlockElement({
 	showControls = true,
 }: CodeBlockElementProps) {
 	const [copied, setCopied] = useState(false)
+	const [expanded, setExpanded] = useState(false)
 
 	// Extract the text content from the code block
 	const codeText = element.children.map((child) => (child as Text).text || "").join("")
 	const language = element.language || "plaintext"
+
+	// Count lines to determine if we should show collapse controls
+	const lineCount = codeText.split("\n").length
+	const isCollapsible = showControls && lineCount > COLLAPSE_THRESHOLD
 
 	const handleCopy = async () => {
 		try {
@@ -57,9 +68,42 @@ export function CodeBlockElement({
 					</button>
 				</div>
 			)}
-			<pre className="overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 pr-24 font-mono text-sm">
+			<pre
+				className={cx(
+					"overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 pr-24 font-mono text-sm",
+					isCollapsible && !expanded && "max-h-80 overflow-hidden",
+				)}
+			>
 				<code>{children}</code>
 			</pre>
+			{/* Gradient fade and show more/less button */}
+			{isCollapsible && (
+				<div
+					className={cx(
+						"absolute right-0 bottom-0 left-0 flex items-end justify-center pb-2",
+						!expanded && "bg-gradient-to-t from-muted via-muted/80 to-transparent pt-12",
+					)}
+					contentEditable={false}
+				>
+					<button
+						type="button"
+						onClick={() => setExpanded(!expanded)}
+						className="flex items-center gap-1 rounded-md bg-accent-9/20 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent-9/30"
+					>
+						{expanded ? (
+							<>
+								<IconChevronUp data-slot="icon" className="size-3.5" />
+								Show less
+							</>
+						) : (
+							<>
+								<IconChevronDown data-slot="icon" className="size-3.5" />
+								Show more ({lineCount} lines)
+							</>
+						)}
+					</button>
+				</div>
+			)}
 		</div>
 	)
 }

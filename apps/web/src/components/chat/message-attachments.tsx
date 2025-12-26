@@ -78,7 +78,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 
 		return (
 			<div className="group relative inline-block">
-				<div className="relative overflow-hidden rounded-lg border border-border bg-secondary shadow-sm">
+				<div className="relative overflow-hidden rounded-lg border border-border bg-bg shadow-sm">
 					{/** biome-ignore lint/a11y/useMediaCaption: video caption not required for chat attachments */}
 					<video src={videoUrl} className="h-48 w-64 object-cover" controls preload="metadata">
 						Your browser does not support the video tag.
@@ -102,7 +102,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 
 	// For other files, show a compact file card
 	return (
-		<div className="group flex items-center gap-3 rounded-lg border border-border bg-secondary p-3 shadow-sm transition-colors hover:bg-muted">
+		<div className="group flex items-center gap-3 rounded-lg border border-border bg-bg p-3 shadow-sm transition-colors hover:bg-muted">
 			<FileIcon type={fileType} className="size-10 text-muted-fg" />
 			<div className="min-w-0 flex-1">
 				<div className="truncate font-medium text-fg text-sm">{attachment.fileName}</div>

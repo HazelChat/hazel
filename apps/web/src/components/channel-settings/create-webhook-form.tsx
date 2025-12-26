@@ -1,9 +1,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { type } from "arktype"
-import { Exit } from "effect"
 import { useState } from "react"
-import { toast } from "sonner"
 import { createChannelWebhookMutation } from "~/atoms/channel-webhook-atoms"
 import IconPlus from "~/components/icons/icon-plus"
 import { Button } from "~/components/ui/button"
@@ -12,6 +10,7 @@ import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
 import { Textarea } from "~/components/ui/textarea"
 import { useAppForm } from "~/hooks/use-app-form"
+import { matchExitWithToast } from "~/lib/toast-exit"
 import { TokenDisplay } from "./token-display"
 
 const webhookSchema = type({
@@ -57,18 +56,21 @@ export function CreateWebhookForm({ channelId, onSuccess }: CreateWebhookFormPro
 				},
 			})
 
-			Exit.match(exit, {
+			matchExitWithToast(exit, {
 				onSuccess: (result) => {
 					setCreatedWebhook({
 						token: result.token,
 						webhookUrl: result.webhookUrl,
 					})
-					toast.success("Webhook created successfully")
 					onSuccess?.()
 				},
-				onFailure: (cause) => {
-					console.error("Failed to create webhook:", cause)
-					toast.error("Failed to create webhook")
+				successMessage: "Webhook created successfully",
+				customErrors: {
+					ChannelNotFoundError: () => ({
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+						isRetryable: false,
+					}),
 				},
 			})
 		},

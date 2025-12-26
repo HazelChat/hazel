@@ -1,4 +1,5 @@
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
+import { sql } from "drizzle-orm"
 import {
 	index,
 	jsonb,
@@ -34,8 +35,11 @@ export const integrationConnectionsTable = pgTable(
 		// Who connected it
 		connectedBy: uuid().notNull().$type<UserId>(),
 
-		// Integration-specific settings (e.g., defaultTeamId for Linear)
+		// Integration-specific settings (e.g., defaultTeamId for Linear) - user configurable
 		settings: jsonb().$type<Record<string, any>>(),
+
+		// System-managed metadata (e.g., installationId for GitHub)
+		metadata: jsonb().$type<Record<string, any>>(),
 
 		// Error details when status is 'error'
 		errorMessage: text(),
@@ -55,6 +59,8 @@ export const integrationConnectionsTable = pgTable(
 			table.userId,
 			table.provider,
 		),
+		// Index for faster GitHub installation ID lookups (used in token refresh and callbacks)
+		index("int_conn_github_installation_idx").using("btree", sql`(${table.metadata}->>'installationId')`),
 	],
 )
 

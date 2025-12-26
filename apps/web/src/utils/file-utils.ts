@@ -37,3 +37,20 @@ export function getFileTypeFromName(fileName: string): string {
 
 	return typeMap[extension] || "file"
 }
+
+export type FileCategory = "image" | "video" | "document"
+
+/**
+ * Categorizes a file based on its extension
+ */
+export function getFileCategory(fileName: string): FileCategory {
+	const fileType = getFileTypeFromName(fileName)
+
+	if (["jpg", "png", "gif", "webp", "svg"].includes(fileType)) {
+		return "image"
+	}
+	if (["mp4", "webm"].includes(fileType)) {
+		return "video"
+	}
+	return "document"
+}

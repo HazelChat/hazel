@@ -1,5 +1,5 @@
 import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
-import { index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import { index, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
 
 // Invitation status
 export const invitationStatusEnum = pgEnum("invitation_status", ["pending", "accepted", "expired", "revoked"])
@@ -9,7 +9,7 @@ export const invitationsTable = pgTable(
 	"invitations",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<InvitationId>(),
-		invitationUrl: varchar({ length: 255 }).notNull(),
+		invitationUrl: text().notNull(),
 		workosInvitationId: varchar({ length: 255 }).notNull().unique(),
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		email: varchar({ length: 255 }).notNull(),

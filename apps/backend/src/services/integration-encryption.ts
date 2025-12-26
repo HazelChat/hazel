@@ -1,4 +1,4 @@
-import { Config, Data, Effect, Option, Redacted } from "effect"
+import { Config, Effect, Option, Redacted, Schema } from "effect"
 
 export interface EncryptedToken {
 	ciphertext: string // Base64 encoded
@@ -6,14 +6,22 @@ export interface EncryptedToken {
 	keyVersion: number
 }
 
-export class IntegrationEncryptionError extends Data.TaggedError("IntegrationEncryptionError")<{
-	readonly cause: unknown
-	readonly operation: "encrypt" | "decrypt" | "importKey"
-}> {}
+const EncryptionOperation = Schema.Literal("encrypt", "decrypt", "importKey")
 
-export class KeyVersionNotFoundError extends Data.TaggedError("KeyVersionNotFoundError")<{
-	readonly keyVersion: number
-}> {}
+export class IntegrationEncryptionError extends Schema.TaggedError<IntegrationEncryptionError>()(
+	"IntegrationEncryptionError",
+	{
+		cause: Schema.Unknown,
+		operation: EncryptionOperation,
+	},
+) {}
+
+export class KeyVersionNotFoundError extends Schema.TaggedError<KeyVersionNotFoundError>()(
+	"KeyVersionNotFoundError",
+	{
+		keyVersion: Schema.Number,
+	},
+) {}
 
 export class IntegrationEncryption extends Effect.Service<IntegrationEncryption>()("IntegrationEncryption", {
 	accessors: true,

@@ -1,20 +1,19 @@
 # Today
-- add server side cache layer for integration data (linear issues etc.)
-- test and actually build stuff for github integration
-- setup signoz or any other logging/monitoring solution
+
+- make it more clear you are in a thread and not channel when clicking from sdiebar
+- test github subscribe to channel stuff
 - setup sequin locally with config as code
-- fix threads
+- add timezones to profile and display from users in chat somehow
+- enhance cmdk and make it more useful 
+- fix cmdk not trigger from hotkey
 
-
-# Bugs 
-- linear throwing 500's on issue in prod
-
+# Bugs
 
 # FE stuff
 
-
 # Important but big
 
+# Later
 
-# Later 
 - Migrate the missing icons to nucleo
+- add server side cache layer for integration data (linear issues etc.)

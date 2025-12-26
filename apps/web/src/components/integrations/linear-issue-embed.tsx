@@ -1,6 +1,7 @@
 "use client"
 
 import { Result, useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/domain"
 import { Option } from "effect"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { cn } from "~/lib/utils"
@@ -9,6 +10,7 @@ import { extractLinearIssueKey } from "../link-preview"
 
 interface LinearIssueEmbedProps {
 	url: string
+	orgId: OrganizationId
 }
 
 // Linear's priority colors - matches their design system
@@ -122,11 +124,12 @@ function LabelBadge({ name, color }: { name: string; color: string }) {
 	)
 }
 
-export function LinearIssueEmbed({ url }: LinearIssueEmbedProps) {
+export function LinearIssueEmbed({ url, orgId }: LinearIssueEmbedProps) {
 	const theme = useEmbedTheme("linear")
 
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchLinearIssue", {
+			path: { orgId },
 			urlParams: { url },
 			timeToLive: "3 minutes",
 		}),

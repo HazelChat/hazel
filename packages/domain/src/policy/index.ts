@@ -22,18 +22,16 @@ export const policy = <Entity extends string, Action extends string, E, R>(
 	f: (actor: typeof CurrentUser.Schema.Type) => Effect.Effect<boolean, E, R>,
 ): Effect.Effect<AuthorizedActor<Entity, Action>, E | UnauthorizedError, R | CurrentUser.Context> =>
 	Effect.flatMap(CurrentUser.Context, (actor) =>
-		actor.role === "admin"
-			? Effect.succeed(authorizedActor(actor))
-			: Effect.flatMap(f(actor), (can) =>
-					can
-						? Effect.succeed(authorizedActor(actor))
-						: Effect.fail(
-								new UnauthorizedError({
-									message: `You can't ${action} this ${entity}`,
-									detail: `You are not authorized to perform ${action} on ${entity} for ${actor.id}`,
-								}),
-							),
-				),
+		Effect.flatMap(f(actor), (can) =>
+			can
+				? Effect.succeed(authorizedActor(actor))
+				: Effect.fail(
+						new UnauthorizedError({
+							message: `You can't ${action} this ${entity}`,
+							detail: `You are not authorized to perform ${action} on ${entity} for ${actor.id}`,
+						}),
+					),
+		),
 	)
 
 export const policyCompose =

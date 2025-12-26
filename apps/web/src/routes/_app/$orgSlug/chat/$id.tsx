@@ -1,14 +1,15 @@
-import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId, OrganizationId } from "@hazel/schema"
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
+import { DEFAULT_PANEL_WIDTHS, panelWidthAtomFamily, setPanelWidth } from "~/atoms/panel-atoms"
 import { ChatHeader } from "~/components/chat/chat-header"
-import { MessageList, type MessageListRef } from "~/components/chat/message-list"
-import { SlateMessageComposer } from "~/components/chat/slate-editor/slate-message-composer"
+import { ChatTabBar } from "~/components/chat/chat-tab-bar"
+import type { MessageListRef } from "~/components/chat/message-list"
 import { ThreadPanel } from "~/components/chat/thread-panel"
-import { TypingIndicator } from "~/components/chat/typing-indicator"
+import { SplitPanel, SplitPanelContent, SplitPanelRoot } from "~/components/ui/split-panel"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
@@ -51,40 +52,52 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	},
 })
 
-function ChatContent({ messageListRef }: { messageListRef: React.RefObject<MessageListRef | null> }) {
-	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId } = useChat()
+function ChatLayout() {
+	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId } = useChat()
+	const { orgSlug } = Route.useParams()
+
+	// Get persisted panel width
+	const threadPanelWidth = useAtomValue(panelWidthAtomFamily("thread")) ?? DEFAULT_PANEL_WIDTHS.thread
+
+	const handleWidthChangeEnd = useCallback((width: number) => {
+		setPanelWidth("thread", width)
+	}, [])
 
 	return (
-		<div className="flex h-[calc(100dvh-4rem)] overflow-hidden md:h-dvh">
+		<SplitPanelRoot className="h-[calc(100dvh-4rem)] md:h-dvh">
 			{/* Main Chat Area */}
-			<div className="flex min-h-0 flex-1 flex-col">
+			<SplitPanelContent>
 				<ChatHeader />
-				<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-					<MessageList ref={messageListRef} />
-				</div>
-				<div className="shrink-0 px-4 pt-2.5">
-					<SlateMessageComposer />
-					<TypingIndicator />
-				</div>
-			</div>
+				<ChatTabBar orgSlug={orgSlug} channelId={channelId} />
+				<Outlet />
+			</SplitPanelContent>
 
-			{/* Thread Panel - Slide in from right */}
-			{activeThreadChannelId && activeThreadMessageId && (
-				<div className="slide-in-from-right w-[480px] animate-in duration-200">
+			{/* Thread Panel - Resizable */}
+			<SplitPanel
+				isOpen={!!(activeThreadChannelId && activeThreadMessageId)}
+				onClose={closeThread}
+				defaultWidth={threadPanelWidth}
+				onWidthChangeEnd={handleWidthChangeEnd}
+				minWidth={320}
+				maxWidth={600}
+				position="right"
+				resizeHandleLabel="Resize thread panel"
+			>
+				{activeThreadChannelId && activeThreadMessageId && (
 					<ThreadPanel
 						organizationId={organizationId}
 						threadChannelId={activeThreadChannelId}
 						originalMessageId={activeThreadMessageId}
 						onClose={closeThread}
 					/>
-				</div>
-			)}
-		</div>
+				)}
+			</SplitPanel>
+		</SplitPanelRoot>
 	)
 }
 
 function RouteComponent() {
-	const { id } = Route.useParams()
+	const { id, orgSlug } = Route.useParams()
 	const { organizationId } = useOrganization()
 	const messageListRef = useRef<MessageListRef>(null)
 
@@ -98,7 +111,6 @@ function RouteComponent() {
 
 	useEffect(() => {
 		clearNotifications({ payload: { channelId: id as ChannelId } })
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- clearNotifications is stable
 	}, [id, clearNotifications])
 
 	return (
@@ -107,7 +119,7 @@ function RouteComponent() {
 			organizationId={organizationId!}
 			onMessageSent={handleMessageSent}
 		>
-			<ChatContent messageListRef={messageListRef} />
+			<ChatLayout />
 		</ChatProvider>
 	)
 }

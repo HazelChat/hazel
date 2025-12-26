@@ -2,6 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
+import { OrganizationId } from "../ids"
 import { IntegrationConnection } from "../models"
 
 // Provider type from the model
@@ -48,13 +49,14 @@ export class UnsupportedProviderError extends Schema.TaggedError<UnsupportedProv
 export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	// Get OAuth authorization URL
 	.add(
-		HttpApiEndpoint.get("getOAuthUrl", `/:provider/oauth`)
+		HttpApiEndpoint.get("getOAuthUrl", `/:orgId/:provider/oauth`)
 			.addSuccess(OAuthUrlResponse)
 			.addError(UnsupportedProviderError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.setPath(
 				Schema.Struct({
+					orgId: OrganizationId,
 					provider: IntegrationProvider,
 				}),
 			)
@@ -80,8 +82,14 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			)
 			.setUrlParams(
 				Schema.Struct({
-					code: Schema.String,
-					state: Schema.String,
+					// Standard OAuth uses `code`
+					code: Schema.optional(Schema.String),
+					// State is optional because GitHub doesn't send it for update callbacks
+					state: Schema.optional(Schema.String),
+					// GitHub App uses `installation_id` instead of code
+					installation_id: Schema.optional(Schema.String),
+					// GitHub also sends setup_action (e.g., "install", "update")
+					setup_action: Schema.optional(Schema.String),
 				}),
 			)
 			.annotateContext(
@@ -94,13 +102,14 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	)
 	// Get connection status
 	.add(
-		HttpApiEndpoint.get("getConnectionStatus", `/:provider/status`)
+		HttpApiEndpoint.get("getConnectionStatus", `/:orgId/:provider/status`)
 			.addSuccess(ConnectionStatusResponse)
 			.addError(UnsupportedProviderError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.setPath(
 				Schema.Struct({
+					orgId: OrganizationId,
 					provider: IntegrationProvider,
 				}),
 			)
@@ -114,7 +123,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 	)
 	// Disconnect integration
 	.add(
-		HttpApiEndpoint.del("disconnect", `/:provider`)
+		HttpApiEndpoint.del("disconnect", `/:orgId/:provider`)
 			.addSuccess(Schema.Void)
 			.addError(IntegrationNotConnectedError)
 			.addError(UnsupportedProviderError)
@@ -122,6 +131,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			.addError(InternalServerError)
 			.setPath(
 				Schema.Struct({
+					orgId: OrganizationId,
 					provider: IntegrationProvider,
 				}),
 			)

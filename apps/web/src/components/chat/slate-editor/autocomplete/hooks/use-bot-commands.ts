@@ -1,4 +1,5 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/domain"
 import { useMemo } from "react"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import type { BotCommandData } from "../types"
@@ -7,14 +8,16 @@ import type { BotCommandData } from "../types"
  * Hook to get available bot commands for a channel
  * Fetches commands from connected integrations via the API
  *
+ * @param orgId - The organization ID to fetch commands for
  * @param _channelId - The channel ID (reserved for future per-channel filtering)
  * @returns Array of bot commands available for the organization's connected integrations
  */
-export function useBotCommands(_channelId: string): BotCommandData[] {
+export function useBotCommands(orgId: OrganizationId, _channelId: string): BotCommandData[] {
 	// Fetch available commands from the API
-	// The backend will return empty array if user is not in an org context
 	const commandsResult = useAtomValue(
-		HazelApiClient.query("integration-commands", "getAvailableCommands", {}),
+		HazelApiClient.query("integration-commands", "getAvailableCommands", {
+			path: { orgId },
+		}),
 	)
 
 	return useMemo(() => {

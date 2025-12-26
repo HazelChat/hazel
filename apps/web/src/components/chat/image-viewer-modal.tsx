@@ -208,7 +208,7 @@ export function ImageViewerModal({
 						<button
 							type="button"
 							onClick={scrollPrev}
-							className="-translate-y-1/2 absolute top-1/2 left-4 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
+							className="absolute top-1/2 left-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
 							aria-label="Previous image"
 						>
 							<ChevronLeftIcon className="size-6" />
@@ -216,7 +216,7 @@ export function ImageViewerModal({
 						<button
 							type="button"
 							onClick={scrollNext}
-							className="-translate-y-1/2 absolute top-1/2 right-4 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
+							className="absolute top-1/2 right-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
 							aria-label="Next image"
 						>
 							<ChevronRightIcon className="size-6" />
@@ -227,7 +227,7 @@ export function ImageViewerModal({
 
 			{/* Image counter - only show if more than 1 image */}
 			{images.length > 1 && (
-				<div className="-translate-x-1/2 absolute top-5 left-1/2 rounded-md bg-black/50 px-3 py-1.5 text-sm text-white">
+				<div className="absolute top-5 left-1/2 -translate-x-1/2 rounded-md bg-black/50 px-3 py-1.5 text-sm text-white">
 					{selectedIndex + 1} of {images.length}
 				</div>
 			)}
@@ -253,7 +253,7 @@ export function ImageViewerModal({
 
 			{/* Thumbnail strip - only show if more than 1 image */}
 			{images.length > 1 && (
-				<div className="-translate-x-1/2 absolute bottom-5 left-1/2 w-full max-w-2xl px-8">
+				<div className="absolute bottom-5 left-1/2 w-full max-w-2xl -translate-x-1/2 px-8">
 					<div className="overflow-hidden rounded-md" ref={emblaThumbsRef}>
 						<div className="flex gap-2">
 							{images.map((image, index) => {

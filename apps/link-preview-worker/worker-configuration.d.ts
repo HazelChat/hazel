@@ -1949,15 +1949,11 @@ interface RequestInit<Cf = CfProperties> {
 }
 type Service<
 	T extends
-		| (new (
-				...args: any[]
-		  ) => Rpc.WorkerEntrypointBranded)
+		| (new (...args: any[]) => Rpc.WorkerEntrypointBranded)
 		| Rpc.WorkerEntrypointBranded
 		| ExportedHandler<any, any, any>
 		| undefined = undefined,
-> = T extends new (
-	...args: any[]
-) => Rpc.WorkerEntrypointBranded
+> = T extends new (...args: any[]) => Rpc.WorkerEntrypointBranded
 	? Fetcher<InstanceType<T>>
 	: T extends Rpc.WorkerEntrypointBranded
 		? Fetcher<T>
@@ -3524,19 +3520,11 @@ interface MessagePortPostMessageOptions {
 	transfer?: any[]
 }
 type LoopbackForExport<
-	T extends
-		| (new (
-				...args: any[]
-		  ) => Rpc.EntrypointBranded)
-		| ExportedHandler<any, any, any>
-		| undefined = undefined,
-> = T extends new (
-	...args: any[]
-) => Rpc.WorkerEntrypointBranded
+	T extends (new (...args: any[]) => Rpc.EntrypointBranded) | ExportedHandler<any, any, any> | undefined =
+		undefined,
+> = T extends new (...args: any[]) => Rpc.WorkerEntrypointBranded
 	? LoopbackServiceStub<InstanceType<T>>
-	: T extends new (
-				...args: any[]
-			) => Rpc.DurableObjectBranded
+	: T extends new (...args: any[]) => Rpc.DurableObjectBranded
 		? LoopbackDurableObjectClass<InstanceType<T>>
 		: T extends ExportedHandler<any, any, any>
 			? LoopbackServiceStub<undefined>
@@ -7173,7 +7161,7 @@ declare abstract class Ai<AiModelList extends AiModelListType = AiModels> {
 			? Response
 			: InputOptions extends {
 						stream: true
-					}
+				  }
 				? ReadableStream
 				: AiModelList[Name]["postProcessedOutputs"]
 	>
@@ -7859,8 +7847,7 @@ interface IncomingRequestCfPropertiesBotManagement {
 	 */
 	clientTrustScore: number
 }
-interface IncomingRequestCfPropertiesBotManagementEnterprise
-	extends IncomingRequestCfPropertiesBotManagement {
+interface IncomingRequestCfPropertiesBotManagementEnterprise extends IncomingRequestCfPropertiesBotManagement {
 	/**
 	 * Results of Cloudflare's Bot Management analysis
 	 */
@@ -9117,25 +9104,26 @@ declare namespace Rpc {
 	// Note we use `StubBase` instead of `Stub` here to avoid circular dependencies:
 	// `Stub` depends on `Provider`, which depends on `Unstubify`, which would depend on `Stub`.
 	// prettier-ignore
-	type Unstubify<T> = T extends StubBase<infer V>
-		? V
-		: T extends Map<infer K, infer V>
-			? Map<Unstubify<K>, Unstubify<V>>
-			: T extends Set<infer V>
-				? Set<Unstubify<V>>
-				: T extends Array<infer V>
-					? Array<Unstubify<V>>
-					: T extends ReadonlyArray<infer V>
-						? ReadonlyArray<Unstubify<V>>
-						: T extends BaseType
-							? T
-							: T extends {
-										[key: string | number]: unknown
-									}
-								? {
-										[K in keyof T]: Unstubify<T[K]>
-									}
-								: T
+	type Unstubify<T> =
+		T extends StubBase<infer V>
+			? V
+			: T extends Map<infer K, infer V>
+				? Map<Unstubify<K>, Unstubify<V>>
+				: T extends Set<infer V>
+					? Set<Unstubify<V>>
+					: T extends Array<infer V>
+						? Array<Unstubify<V>>
+						: T extends ReadonlyArray<infer V>
+							? ReadonlyArray<Unstubify<V>>
+							: T extends BaseType
+								? T
+								: T extends {
+											[key: string | number]: unknown
+										}
+									? {
+											[K in keyof T]: Unstubify<T[K]>
+										}
+									: T
 	type UnstubifyAll<A extends any[]> = {
 		[I in keyof A]: Unstubify<A[I]>
 	}
@@ -9213,9 +9201,7 @@ declare namespace Cloudflare {
 			// If the export is listed in `durableNamespaces`, then it is also a
 			// DurableObjectNamespace.
 			(K extends GlobalProp<"durableNamespaces", never>
-				? MainModule[K] extends new (
-						...args: any[]
-					) => infer DoInstance
+				? MainModule[K] extends new (...args: any[]) => infer DoInstance
 					? DoInstance extends Rpc.DurableObjectBranded
 						? DurableObjectNamespace<DoInstance>
 						: DurableObjectNamespace<undefined>

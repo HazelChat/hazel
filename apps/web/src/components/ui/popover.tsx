@@ -32,7 +32,10 @@ const PopoverHeader = DialogHeader
 const PopoverBody = DialogBody
 const PopoverFooter = DialogFooter
 
-interface PopoverContentProps extends Omit<PopoverPrimitiveProps, "children">, Pick<DialogProps, "children"> {
+interface PopoverContentProps
+	extends
+		Omit<PopoverPrimitiveProps, "children">,
+		Pick<DialogProps, "children" | "aria-label" | "aria-labelledby"> {
 	arrow?: boolean
 	ref?: React.Ref<HTMLDivElement>
 }
@@ -60,13 +63,15 @@ const PopoverContent = ({ children, arrow = false, className, ref, ...props }: P
 						width={12}
 						height={12}
 						viewBox="0 0 12 12"
-						className="group-placement-left:-rotate-90 block fill-overlay stroke-border group-placement-bottom:rotate-180 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]"
+						className="block fill-overlay stroke-border group-placement-bottom:rotate-180 group-placement-left:-rotate-90 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]"
 					>
 						<path d="M0 0 L6 6 L12 0" />
 					</svg>
 				</OverlayArrow>
 			)}
-			<Dialog>{(values) => <>{typeof children === "function" ? children(values) : children}</>}</Dialog>
+			<Dialog aria-label={props["aria-label"]} aria-labelledby={props["aria-labelledby"]}>
+				{(values) => <>{typeof children === "function" ? children(values) : children}</>}
+			</Dialog>
 		</PopoverPrimitive>
 	)
 }

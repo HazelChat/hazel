@@ -1,10 +1,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import { useNavigate } from "@tanstack/react-router"
-import { Exit } from "effect"
 import { useState } from "react"
-import { toast } from "sonner"
-import { deleteChannelMemberMutation, updateChannelMemberMutation } from "~/atoms/channel-member-atoms"
 import { ChannelIcon } from "~/components/channel-icon"
 import IconDots from "~/components/icons/icon-dots"
 import IconGear from "~/components/icons/icon-gear"
@@ -17,8 +14,10 @@ import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
-import { channelCollection } from "~/db/collections"
+import { deleteChannelAction } from "~/db/actions"
+import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useOrganization } from "~/hooks/use-organization"
+import { matchExitWithToast } from "~/lib/toast-exit"
 
 interface ChannelItemProps {
 	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
@@ -31,80 +30,23 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 	const { slug } = useOrganization()
 	const navigate = useNavigate()
 
-	// Use Effect Atom mutations for channel member operations
-	const updateMember = useAtomSet(updateChannelMemberMutation, { mode: "promiseExit" })
-	const deleteMember = useAtomSet(deleteChannelMemberMutation, { mode: "promiseExit" })
-
-	const handleToggleMute = async () => {
-		const exit = await updateMember({
-			payload: {
-				id: member.id,
-				channelId: member.channelId,
-				isHidden: member.isHidden,
-				isMuted: !member.isMuted,
-				isFavorite: member.isFavorite,
-				lastSeenMessageId: member.lastSeenMessageId,
-				notificationCount: member.notificationCount,
-			},
-		})
-
-		Exit.match(exit, {
-			onSuccess: () => {
-				toast.success(member.isMuted ? "Channel unmuted" : "Channel muted")
-			},
-			onFailure: (cause) => {
-				console.error("Failed to toggle mute:", cause)
-				toast.error("Failed to update channel")
-			},
-		})
-	}
-
-	const handleToggleFavorite = async () => {
-		const exit = await updateMember({
-			payload: {
-				id: member.id,
-				channelId: member.channelId,
-				isHidden: member.isHidden,
-				isMuted: member.isMuted,
-				isFavorite: !member.isFavorite,
-				lastSeenMessageId: member.lastSeenMessageId,
-				notificationCount: member.notificationCount,
-			},
-		})
-
-		Exit.match(exit, {
-			onSuccess: () => {
-				toast.success(member.isFavorite ? "Removed from favorites" : "Added to favorites")
-			},
-			onFailure: (cause) => {
-				console.error("Failed to toggle favorite:", cause)
-				toast.error("Failed to update channel")
-			},
-		})
-	}
+	const { handleToggleMute, handleToggleFavorite, handleLeave } = useChannelMemberActions(member, "channel")
+	const deleteChannel = useAtomSet(deleteChannelAction, {
+		mode: "promiseExit",
+	})
 
 	const handleDeleteChannel = async () => {
-		try {
-			channelCollection.delete(channel.id)
-			toast.success("Channel deleted successfully")
-		} catch (error) {
-			console.error("Failed to delete channel:", error)
-			toast.error("Failed to delete channel")
-		}
-	}
+		const exit = await deleteChannel({ channelId: channel.id })
 
-	const handleLeaveChannel = async () => {
-		const exit = await deleteMember({
-			payload: { id: member.id },
-		})
-
-		Exit.match(exit, {
-			onSuccess: () => {
-				toast.success("Left channel successfully")
-			},
-			onFailure: (cause) => {
-				console.error("Failed to leave channel:", cause)
-				toast.error("Failed to leave channel")
+		matchExitWithToast(exit, {
+			onSuccess: () => {},
+			successMessage: "Channel deleted successfully",
+			customErrors: {
+				ChannelNotFoundError: () => ({
+					title: "Channel not found",
+					description: "This channel may have already been deleted.",
+					isRetryable: false,
+				}),
 			},
 		})
 	}
@@ -164,7 +106,7 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 							<MenuLabel>Delete</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
-						<MenuItem intent="danger" onAction={handleLeaveChannel}>
+						<MenuItem intent="danger" onAction={handleLeave}>
 							<IconLeave />
 							<MenuLabel className="text-destructive">Leave</MenuLabel>
 						</MenuItem>

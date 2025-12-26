@@ -1,5 +1,6 @@
 import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
+import { ChannelId, MessageId } from "./ids"
 
 export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",
@@ -28,6 +29,19 @@ export class InternalServerError extends Schema.TaggedError<InternalServerError>
 	}),
 ) {}
 
+export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInitializationError>(
+	"WorkflowInitializationError",
+)(
+	"WorkflowInitializationError",
+	{
+		message: Schema.String,
+		cause: Schema.optional(Schema.Any),
+	},
+	HttpApiSchema.annotations({
+		status: 500,
+	}),
+) {}
+
 export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(
@@ -38,6 +52,34 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlr
 	},
 	HttpApiSchema.annotations({
 		status: 409,
+	}),
+) {}
+
+/**
+ * Error thrown when a message is not found.
+ * Used in update, delete, and thread creation operations.
+ */
+export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundError>("MessageNotFoundError")(
+	"MessageNotFoundError",
+	{
+		messageId: MessageId,
+	},
+	HttpApiSchema.annotations({
+		status: 404,
+	}),
+) {}
+
+/**
+ * Error thrown when attempting to create a thread within a thread.
+ * Nested threads are not supported.
+ */
+export class NestedThreadError extends Schema.TaggedError<NestedThreadError>("NestedThreadError")(
+	"NestedThreadError",
+	{
+		channelId: ChannelId,
+	},
+	HttpApiSchema.annotations({
+		status: 400,
 	}),
 ) {}
 

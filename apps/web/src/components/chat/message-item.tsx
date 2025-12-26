@@ -1,18 +1,18 @@
 import { useAtomValue } from "@effect-atom/atom-react"
-import type { PinnedMessageId } from "@hazel/schema"
 import { format } from "date-fns"
 import { memo, useRef } from "react"
 import { useHover } from "react-aria"
-import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
-import { LinearIssueEmbed } from "~/components/integrations"
+import { GitHubPREmbed, LinearIssueEmbed } from "~/components/integrations"
 import {
+	extractGitHubInfo,
 	extractLinearIssueKey,
 	extractTweetId,
 	extractUrls,
 	extractYoutubeVideoId,
+	isGitHubPRUrl,
 	isLinearIssueUrl,
 	isTweetUrl,
 	isYoutubeUrl,
@@ -21,7 +21,6 @@ import {
 import { TweetEmbed } from "~/components/tweet-embed"
 import { Badge } from "~/components/ui/badge"
 import { YoutubeEmbed } from "~/components/youtube-embed"
-import { messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
@@ -124,7 +123,7 @@ export const MessageItem = memo(function MessageItem({
 				{showAvatar ? (
 					<UserProfilePopover userId={message.authorId} />
 				) : (
-					<div className="flex w-[40px] items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
+					<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
 						{format(message.createdAt, "HH:mm")}
 					</div>
 				)}
@@ -140,12 +139,17 @@ export const MessageItem = memo(function MessageItem({
 						const tweetUrls = urls.filter((url) => isTweetUrl(url))
 						const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
 						const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
+						const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
 						const otherUrls = urls.filter(
-							(url) => !isTweetUrl(url) && !isYoutubeUrl(url) && !isLinearIssueUrl(url),
+							(url) =>
+								!isTweetUrl(url) &&
+								!isYoutubeUrl(url) &&
+								!isLinearIssueUrl(url) &&
+								!isGitHubPRUrl(url),
 						)
 
 						// Filter out embed URLs from displayed content
-						const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls]
+						const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
 						let displayContent = message.content
 						for (const url of embedUrls) {
 							displayContent = displayContent.replace(url, "")
@@ -178,7 +182,24 @@ export const MessageItem = memo(function MessageItem({
 								{/* Render all Linear issue embeds */}
 								{linearUrls.map((url) => {
 									const issueKey = extractLinearIssueKey(url)
-									return issueKey ? <LinearIssueEmbed key={url} url={url} /> : null
+									return issueKey && currentUser?.organizationId ? (
+										<LinearIssueEmbed
+											key={url}
+											url={url}
+											orgId={currentUser.organizationId}
+										/>
+									) : null
+								})}
+								{/* Render all GitHub PR embeds */}
+								{githubPRUrls.map((url) => {
+									const info = extractGitHubInfo(url)
+									return info && currentUser?.organizationId ? (
+										<GitHubPREmbed
+											key={url}
+											url={url}
+											orgId={currentUser.organizationId}
+										/>
+									) : null
 								})}
 								{/* Render last other URL as link preview */}
 								{otherUrls.length > 0 && otherUrls[otherUrls.length - 1] && (
@@ -226,54 +247,6 @@ export const MessageItem = memo(function MessageItem({
 		</div>
 	)
 })
-
-// Export handlers for use by MessageList's shared toolbar
-export function useMessageHandlers(message: MessageWithPinned | null) {
-	const { setReplyToMessageId, pinMessage, unpinMessage, createThread } = useChat()
-	const { user: currentUser } = useAuth()
-
-	const handleDelete = () => {
-		if (!message) return
-		messageCollection.delete(message.id)
-	}
-
-	const handleCopy = () => {
-		if (!message) return
-
-		navigator.clipboard.writeText(message.content)
-		toast.success("Copied!", {
-			description: "Message content has been copied to your clipboard.",
-		})
-	}
-
-	const handleReply = () => {
-		if (!message) return
-		setReplyToMessageId(message.id)
-	}
-
-	const handleThread = () => {
-		if (!message) return
-		createThread(message.id, message.threadChannelId)
-	}
-
-	const handlePin = (isPinned: boolean, pinnedMessageId?: string) => {
-		if (!message) return
-		if (isPinned && pinnedMessageId) {
-			unpinMessage(pinnedMessageId as PinnedMessageId)
-		} else if (!isPinned) {
-			pinMessage(message.id)
-		}
-	}
-
-	return {
-		isOwnMessage: currentUser?.id === message?.authorId,
-		handleDelete,
-		handleCopy,
-		handleReply,
-		handleThread,
-		handlePin,
-	}
-}
 
 export const MessageAuthorHeader = ({
 	message,

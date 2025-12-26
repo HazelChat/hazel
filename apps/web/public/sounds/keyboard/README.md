@@ -5,7 +5,7 @@ This directory contains mechanical keyboard sound files for the typing experienc
 ## Sound Types
 
 - `cherry-mx-blue.mp3` - Cherry MX Blue switch sound
-- `cherry-mx-brown.mp3` - Cherry MX Brown switch sound  
+- `cherry-mx-brown.mp3` - Cherry MX Brown switch sound
 - `cherry-mx-red.mp3` - Cherry MX Red switch sound
 - `topre.mp3` - Topre switch sound
 - `alps-blue.mp3` - Alps Blue switch sound

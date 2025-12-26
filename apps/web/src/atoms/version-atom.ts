@@ -46,10 +46,6 @@ export const versionCheckAtom = Atom.make(() =>
 				// Check if there's a new version by comparing buildTimes
 				const isUpdateAvailable = latestVersion.buildTime > CURRENT_VERSION.buildTime
 
-				if (isUpdateAvailable) {
-					console.log("[Version Check] 🎉 New version detected!")
-				}
-
 				return {
 					current: CURRENT_VERSION,
 					latest: latestVersion,

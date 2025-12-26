@@ -1,5 +1,7 @@
-import { Database } from "@hazel/db"
+import { HttpApiClient } from "@effect/platform"
+import { Database, schema } from "@hazel/db"
 import {
+	Cluster,
 	CurrentUser,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
@@ -8,13 +10,15 @@ import {
 	withSystemActor,
 } from "@hazel/domain"
 import { OrganizationId } from "@hazel/domain/ids"
-import { ChannelRpcs } from "@hazel/domain/rpc"
-import { Effect, Option } from "effect"
+import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError, NestedThreadError } from "@hazel/domain/rpc"
+import { eq } from "drizzle-orm"
+import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
 import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
 import { ChannelRepo } from "../../repositories/channel-repo"
+import { MessageRepo } from "../../repositories/message-repo"
 import { UserRepo } from "../../repositories/user-repo"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
@@ -40,7 +44,6 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								policyUse(ChannelPolicy.canCreate(payload.organizationId)),
 							)
 
-							// Add creator as channel member
 							yield* ChannelMemberRepo.insert({
 								channelId: createdChannel.id,
 								userId: user.id,
@@ -202,6 +205,188 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("Channel", "create")),
+
+			"channel.createThread": ({ id, messageId, organizationId }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const user = yield* CurrentUser.Context
+
+							// 1. Find the message and get its channelId
+							const message = yield* MessageRepo.findById(messageId).pipe(withSystemActor)
+
+							if (Option.isNone(message)) {
+								return yield* Effect.fail(new MessageNotFoundError({ messageId }))
+							}
+
+							const parentChannelId = message.value.channelId
+
+							// Check if parent channel is a thread - nested threads are not allowed
+							const parentChannel =
+								yield* ChannelRepo.findById(parentChannelId).pipe(withSystemActor)
+
+							if (Option.isSome(parentChannel) && parentChannel.value.type === "thread") {
+								return yield* Effect.fail(
+									new NestedThreadError({ channelId: parentChannelId }),
+								)
+							}
+
+							// 2. Create thread channel - use same pattern as channel.create
+							const insertData = id
+								? {
+										id,
+										name: "Thread",
+										icon: null,
+										type: "thread" as const,
+										organizationId,
+										parentChannelId,
+										deletedAt: null,
+									}
+								: {
+										name: "Thread",
+										icon: null,
+										type: "thread" as const,
+										organizationId,
+										parentChannelId,
+										deletedAt: null,
+									}
+
+							const createdChannel = yield* ChannelRepo.insert(insertData).pipe(
+								Effect.map((res) => res[0]!),
+								policyUse(ChannelPolicy.canCreate(organizationId)),
+							)
+
+							// 3. Add creator as member
+							yield* ChannelMemberRepo.insert({
+								channelId: createdChannel.id,
+								userId: user.id,
+								isHidden: false,
+								isMuted: false,
+								isFavorite: false,
+								lastSeenMessageId: null,
+								notificationCount: 0,
+								joinedAt: new Date(),
+								deletedAt: null,
+							}).pipe(withSystemActor)
+
+							// 4. Link message to thread (direct SQL update to bypass schema restrictions)
+							yield* db
+								.execute((client) =>
+									client
+										.update(schema.messagesTable)
+										.set({ threadChannelId: createdChannel.id })
+										.where(eq(schema.messagesTable.id, messageId)),
+								)
+								.pipe(
+									Effect.mapError(
+										() =>
+											new InternalServerError({
+												message: "Failed to link message to thread",
+											}),
+									),
+								)
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: createdChannel,
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("Channel", "create")),
+
+			"channel.generateName": ({ channelId }) =>
+				Effect.gen(function* () {
+					const channel = yield* ChannelRepo.findById(channelId).pipe(
+						withSystemActor,
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to query channel",
+										cause: String(err),
+									}),
+								),
+						}),
+					)
+
+					if (Option.isNone(channel)) {
+						return yield* Effect.fail(new ChannelNotFoundError({ channelId }))
+					}
+
+					if (channel.value.type !== "thread") {
+						return yield* Effect.fail(
+							new InternalServerError({
+								message: "Channel is not a thread",
+								cause: `Channel type: ${channel.value.type}`,
+							}),
+						)
+					}
+
+					const originalMessageResult = yield* db
+						.execute((client) =>
+							client
+								.select({ id: schema.messagesTable.id })
+								.from(schema.messagesTable)
+								.where(eq(schema.messagesTable.threadChannelId, channelId))
+								.limit(1),
+						)
+						.pipe(
+							Effect.catchTags({
+								DatabaseError: () => Effect.succeed([]),
+							}),
+						)
+
+					if (originalMessageResult.length === 0) {
+						return yield* Effect.fail(
+							new MessageNotFoundError({
+								messageId:
+									channelId as unknown as typeof schema.messagesTable.$inferSelect.id,
+							}),
+						)
+					}
+
+					const originalMessageId = originalMessageResult[0]!.id
+
+					const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
+					const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
+						baseUrl: clusterUrl,
+					})
+
+					yield* client.workflows
+						.ThreadNamingWorkflow({
+							payload: {
+								threadChannelId: channelId,
+								originalMessageId,
+							},
+						})
+						.pipe(
+							Effect.tapError((err) =>
+								Effect.logError("Failed to execute thread naming workflow", {
+									error: err.message,
+									threadChannelId: channelId,
+								}),
+							),
+							Effect.catchAll((err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to trigger thread naming workflow",
+										cause: err.message,
+									}),
+								),
+							),
+						)
+
+					yield* Effect.logInfo("Triggered thread naming workflow", {
+						threadChannelId: channelId,
+						originalMessageId,
+					})
+
+					return {
+						success: true,
+					}
+				}),
 		}
 	}),
 )

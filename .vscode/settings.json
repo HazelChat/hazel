@@ -4,14 +4,11 @@
 	},
 	"search.exclude": {
 		"**/routeTree.gen.ts": true,
-		".context":true
+		".context": true
 	},
 	"files.readonlyInclude": {
 		"**/routeTree.gen.ts": true
 	},
 	"editor.formatOnSave": true,
-	"[*]": {
-		"editor.defaultFormatter": "biomejs.biome"
-	},
 	"typescript.tsdk": "node_modules/typescript/lib"
 }

@@ -222,8 +222,9 @@ export function deserializeFromMarkdown(markdown: string): CustomDescendant[] {
 			i++ // Skip opening ```
 			while (i < lines.length) {
 				const codeLine = lines[i]
-				if (!codeLine || codeLine.startsWith("```")) break
-				codeLines.push(codeLine)
+				// Only break on closing ```, not on empty lines
+				if (codeLine?.startsWith("```")) break
+				codeLines.push(codeLine ?? "")
 				i++
 			}
 			i++ // Skip closing ```

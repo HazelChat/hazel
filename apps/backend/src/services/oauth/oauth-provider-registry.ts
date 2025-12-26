@@ -1,9 +1,11 @@
 import { UnsupportedProviderError } from "@hazel/domain/http"
+import { GitHub } from "@hazel/integrations"
 import { Effect } from "effect"
 import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthProviderConfig } from "./provider-config"
 import { loadProviderConfig } from "./provider-config"
+import { createGitHubAppProvider } from "./providers/github-app-provider"
 import { createLinearOAuthProvider } from "./providers/linear-oauth-provider"
 
 /**
@@ -12,13 +14,18 @@ import { createLinearOAuthProvider } from "./providers/linear-oauth-provider"
 type ProviderFactory = (config: OAuthProviderConfig) => OAuthProvider
 
 /**
- * Registry of provider factory functions.
+ * Providers that use GitHub App flow (not standard OAuth).
+ * These providers get their config from dedicated services, not loadProviderConfig.
+ */
+const _APP_BASED_PROVIDERS: readonly IntegrationProvider[] = ["github"] as const
+
+/**
+ * Registry of provider factory functions for standard OAuth providers.
  * Add new providers here when implementing them.
  */
 const PROVIDER_FACTORIES: Partial<Record<IntegrationProvider, ProviderFactory>> = {
 	linear: createLinearOAuthProvider,
 	// Future providers:
-	// github: createGitHubOAuthProvider,
 	// figma: createFigmaOAuthProvider,
 	// notion: createNotionOAuthProvider,
 }
@@ -26,7 +33,7 @@ const PROVIDER_FACTORIES: Partial<Record<IntegrationProvider, ProviderFactory>> 
 /**
  * Providers that are fully implemented and available for use.
  */
-const SUPPORTED_PROVIDERS: readonly IntegrationProvider[] = ["linear"] as const
+const SUPPORTED_PROVIDERS: readonly IntegrationProvider[] = ["linear", "github"] as const
 
 /**
  * OAuth Provider Registry Service.
@@ -61,6 +68,10 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 		// Cache for loaded providers
 		const providerCache = new Map<IntegrationProvider, OAuthProvider>()
 
+		// Get the GitHub services for creating GitHub provider
+		const gitHubJwtService = yield* GitHub.GitHubAppJWTService
+		const gitHubApiClient = yield* GitHub.GitHubApiClient
+
 		/**
 		 * Get an OAuth provider instance.
 		 * Loads configuration and creates provider on first access, then caches.
@@ -84,7 +95,20 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 					)
 				}
 
-				// Get factory function
+				// Handle GitHub App separately (uses JWT service, not standard OAuth)
+				if (provider === "github") {
+					// Create provider with JWT service and API client
+					// Uses minimal AppProviderConfig since GitHub Apps manage their own auth via JWT
+					const oauthProvider = createGitHubAppProvider(
+						{ provider: "github" },
+						gitHubJwtService,
+						gitHubApiClient,
+					)
+					providerCache.set(provider, oauthProvider)
+					return oauthProvider
+				}
+
+				// Get factory function for standard OAuth providers
 				const factory = PROVIDER_FACTORIES[provider]
 				if (!factory) {
 					return yield* Effect.fail(
@@ -94,7 +118,7 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 					)
 				}
 
-				// Load configuration from environment
+				// Load configuration from environment for standard OAuth providers
 				const config = yield* loadProviderConfig(provider).pipe(
 					Effect.mapError(
 						(error) =>
@@ -129,4 +153,5 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 			isProviderSupported,
 		}
 	}),
+	dependencies: [GitHub.GitHubAppJWTService.Default, GitHub.GitHubApiClient.Default],
 }) {}

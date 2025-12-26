@@ -1,4 +1,3 @@
-import { OtlpTracer } from "@effect/opentelemetry"
 import {
 	FetchHttpClient,
 	HttpApiScalar,
@@ -8,8 +7,9 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
-import { S3 } from "@effect-aws/client-s3"
-import { MultipartUpload } from "@effect-aws/s3"
+import { S3 } from "@hazel/effect-bun"
+import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
+import { GitHub } from "@hazel/integrations"
 import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
@@ -17,6 +17,7 @@ import { AttachmentPolicy } from "./policies/attachment-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
+import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
 import { InvitationPolicy } from "./policies/invitation-policy"
 import { MessagePolicy } from "./policies/message-policy"
@@ -32,6 +33,7 @@ import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
+import { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
 import { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "./repositories/integration-token-repo"
 import { InvitationRepo } from "./repositories/invitation-repo"
@@ -44,7 +46,6 @@ import { PinnedMessageRepo } from "./repositories/pinned-message-repo"
 import { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
 import { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
 import { UserRepo } from "./repositories/user-repo"
-
 import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
@@ -53,6 +54,7 @@ import { CommandRegistry } from "./services/integrations/command-registry"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
+import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { WorkOS } from "./services/workos"
@@ -89,12 +91,7 @@ const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRout
 	),
 )
 
-const TracerLive = OtlpTracer.layer({
-	url: "http://localhost:4318/v1/traces",
-	resource: {
-		serviceName: "hazel-backend",
-	},
-}).pipe(Layer.provide(FetchHttpClient.layer))
+const TracerLive = createTracingLayer("api")
 
 const RepoLive = Layer.mergeAll(
 	MessageRepo.Default,
@@ -113,6 +110,7 @@ const RepoLive = Layer.mergeAll(
 	IntegrationConnectionRepo.Default,
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
+	GitHubSubscriptionRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -131,6 +129,7 @@ const PolicyLive = Layer.mergeAll(
 	UserPresenceStatusPolicy.Default,
 	IntegrationConnectionPolicy.Default,
 	ChannelWebhookPolicy.Default,
+	GitHubSubscriptionPolicy.Default,
 )
 
 const MainLive = Layer.mergeAll(
@@ -142,25 +141,16 @@ const MainLive = Layer.mergeAll(
 	WorkOSSync.Default,
 	WorkOSWebhookVerifier.Default,
 	DatabaseLive,
-	MultipartUpload.layerWithoutS3Service,
+	S3.Default,
+	GitHub.GitHubAppJWTService.Default,
+	GitHub.GitHubApiClient.Default,
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
 	CommandRegistry.Default,
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
-).pipe(
-	Layer.provide(
-		S3.layer({
-			region: "auto",
-			endpoint: process.env.R2_ENDPOINT!,
-			credentials: {
-				accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-				secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-			},
-		}),
-	),
-	Layer.provideMerge(FetchHttpClient.layer),
-)
+	RateLimiter.Default,
+).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
 HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(

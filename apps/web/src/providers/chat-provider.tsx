@@ -2,16 +2,16 @@ import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import {
 	type AttachmentId,
-	type ChannelId,
+	ChannelId,
 	type MessageId,
 	type MessageReactionId,
 	type OrganizationId,
-	PinnedMessageId,
+	type PinnedMessageId,
 	UserId,
 } from "@hazel/schema"
-import { Cause, Exit } from "effect"
-import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
+import { Exit } from "effect"
 import { toast } from "sonner"
+import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react"
 import {
 	activeThreadChannelIdAtom,
 	activeThreadMessageIdAtom,
@@ -22,9 +22,17 @@ import {
 	uploadingFilesAtomFamily,
 } from "~/atoms/chat-atoms"
 import { channelByIdAtomFamily } from "~/atoms/chat-query-atoms"
-import { createThreadAction, sendMessageAction, toggleReactionAction } from "~/db/actions"
-import { messageCollection, messageReactionCollection, pinnedMessageCollection } from "~/db/collections"
+import {
+	createThreadAction,
+	deleteMessageAction,
+	editMessageAction,
+	pinMessageAction,
+	sendMessageAction,
+	toggleReactionAction,
+	unpinMessageAction,
+} from "~/db/actions"
 import { useAuth } from "~/lib/auth"
+import { matchExitWithToast, toastExitOnError } from "~/lib/toast-exit"
 
 interface ChatContextValue {
 	channelId: ChannelId
@@ -51,7 +59,8 @@ interface ChatContextValue {
 	isUploading: boolean
 	setIsUploading: (value: boolean) => void
 	uploadingFiles: UploadingFile[]
-	addUploadingFile: (file: UploadingFile) => void
+	addUploadingFile: (file: Omit<UploadingFile, "progress">) => void
+	updateUploadingFileProgress: (fileId: string, progress: number) => void
 	removeUploadingFile: (fileId: string) => void
 }
 
@@ -78,6 +87,10 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const sendMessageMutation = useAtomSet(sendMessageAction, { mode: "promiseExit" })
 	const toggleReactionMutation = useAtomSet(toggleReactionAction, { mode: "promiseExit" })
 	const createThreadMutation = useAtomSet(createThreadAction, { mode: "promiseExit" })
+	const editMessageMutation = useAtomSet(editMessageAction, { mode: "promiseExit" })
+	const deleteMessageMutation = useAtomSet(deleteMessageAction, { mode: "promiseExit" })
+	const pinMessageMutation = useAtomSet(pinMessageAction, { mode: "promiseExit" })
+	const unpinMessageMutation = useAtomSet(unpinMessageAction, { mode: "promiseExit" })
 
 	const replyToMessageId = useAtomValue(replyToMessageAtomFamily(channelId))
 	const setReplyToMessageId = useAtomSet(replyToMessageAtomFamily(channelId))
@@ -118,8 +131,15 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	}, [setAttachmentIds])
 
 	const addUploadingFile = useCallback(
-		(file: UploadingFile) => {
-			setUploadingFiles((prev) => [...prev, file])
+		(file: Omit<UploadingFile, "progress">) => {
+			setUploadingFiles((prev) => [...prev, { ...file, progress: 0 }])
+		},
+		[setUploadingFiles],
+	)
+
+	const updateUploadingFileProgress = useCallback(
+		(fileId: string, progress: number) => {
+			setUploadingFiles((prev) => prev.map((f) => (f.fileId === fileId ? { ...f, progress } : f)))
 		},
 		[setUploadingFiles],
 	)
@@ -146,18 +166,25 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				attachmentIds: attachmentsToSend as AttachmentId[] | undefined,
 			})
 
-			Exit.match(tx, {
-				onSuccess: () => {
-					setReplyToMessageId(null)
-					clearAttachments()
-					onMessageSent?.()
-				},
-				onFailure: (error) => {
-					toast.error("Failed to send message", {
-						description: Cause.pretty(error),
-					})
+			toastExitOnError(tx, {
+				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before sending another message.`,
+						isRetryable: false,
+					}),
+					ChannelNotFoundError: () => ({
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+						isRetryable: false,
+					}),
 				},
 			})
+			if (Exit.isSuccess(tx)) {
+				setReplyToMessageId(null)
+				clearAttachments()
+				onMessageSent?.()
+			}
 		},
 		[
 			channelId,
@@ -171,16 +198,47 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		],
 	)
 
-	const editMessage = useCallback(async (messageId: MessageId, content: string) => {
-		messageCollection.update(messageId, (message) => {
-			message.content = content
-			message.updatedAt = new Date()
-		})
-	}, [])
+	const editMessage = useCallback(
+		async (messageId: MessageId, content: string) => {
+			const exit = await editMessageMutation({ messageId, content })
+			toastExitOnError(exit, {
+				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before trying again.`,
+						isRetryable: false,
+					}),
+					MessageNotFoundError: () => ({
+						title: "Message not found",
+						description: "This message may have been deleted.",
+						isRetryable: false,
+					}),
+				},
+			})
+		},
+		[editMessageMutation],
+	)
 
-	const deleteMessage = useCallback((messageId: MessageId) => {
-		messageCollection.delete(messageId)
-	}, [])
+	const deleteMessage = useCallback(
+		async (messageId: MessageId) => {
+			const exit = await deleteMessageMutation({ messageId })
+			toastExitOnError(exit, {
+				customErrors: {
+					RateLimitExceededError: (e) => ({
+						title: "Rate limit exceeded",
+						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before trying again.`,
+						isRetryable: false,
+					}),
+					MessageNotFoundError: () => ({
+						title: "Message not found",
+						description: "This message may have already been deleted.",
+						isRetryable: false,
+					}),
+				},
+			})
+		},
+		[deleteMessageMutation],
+	)
 
 	const addReaction = useCallback(
 		async (messageId: MessageId, channelId: ChannelId, emoji: string) => {
@@ -193,50 +251,78 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 				userId: UserId.make(user.id),
 			})
 
-			Exit.match(tx, {
-				onSuccess: () => {
-					// Reaction toggled successfully
-				},
-				onFailure: (error) => {
-					toast.error("Failed to toggle reaction", {
-						description: Cause.pretty(error),
-					})
+			toastExitOnError(tx, {
+				error: "Failed to toggle reaction",
+				customErrors: {
+					MessageNotFoundError: () => ({
+						title: "Message not found",
+						description: "This message may have been deleted.",
+						isRetryable: false,
+					}),
 				},
 			})
 		},
 		[user?.id, toggleReactionMutation],
 	)
 
-	const removeReaction = useCallback(
-		(reactionId: MessageReactionId) => {
-			if (!user?.id) return
-
-			messageReactionCollection.delete(reactionId)
-		},
-		[user?.id],
-	)
+	// Note: removeReaction is deprecated - use addReaction which toggles reactions
+	// Keeping for interface compatibility but this is a no-op since toggleReaction handles removal
+	const removeReaction = useCallback((_reactionId: MessageReactionId) => {
+		console.warn("removeReaction is deprecated - use addReaction to toggle reactions")
+	}, [])
 
 	const pinMessage = useCallback(
-		(messageId: MessageId) => {
+		async (messageId: MessageId) => {
 			if (!user?.id) return
 
-			pinnedMessageCollection.insert({
-				id: PinnedMessageId.make(crypto.randomUUID()),
-				channelId,
+			const exit = await pinMessageMutation({
 				messageId,
-				pinnedBy: UserId.make(user.id),
-				pinnedAt: new Date(),
+				channelId,
+				userId: UserId.make(user.id),
+			})
+
+			matchExitWithToast(exit, {
+				onSuccess: () => {},
+				successMessage: "Message pinned",
+				customErrors: {
+					MessageNotFoundError: () => ({
+						title: "Message not found",
+						description: "This message may have been deleted.",
+						isRetryable: false,
+					}),
+				},
 			})
 		},
-		[channelId, user?.id],
+		[channelId, user?.id, pinMessageMutation],
 	)
 
-	const unpinMessage = useCallback((pinnedMessageId: PinnedMessageId) => {
-		pinnedMessageCollection.delete(pinnedMessageId)
-	}, [])
+	const unpinMessage = useCallback(
+		async (pinnedMessageId: PinnedMessageId) => {
+			const exit = await unpinMessageMutation({ pinnedMessageId })
+
+			matchExitWithToast(exit, {
+				onSuccess: () => {},
+				successMessage: "Message unpinned",
+				customErrors: {
+					PinnedMessageNotFoundError: () => ({
+						title: "Pin not found",
+						description: "This message may have already been unpinned.",
+						isRetryable: false,
+					}),
+				},
+			})
+		},
+		[unpinMessageMutation],
+	)
 
 	const createThread = useCallback(
 		async (messageId: MessageId, existingThreadChannelId: ChannelId | null) => {
+			// Prevent nested threads
+			if (channel?.type === "thread") {
+				toast.error("Cannot create threads within threads")
+				return
+			}
+
 			if (existingThreadChannelId) {
 				// Thread already exists - just open it
 				setActiveThreadChannelId(existingThreadChannelId)
@@ -244,28 +330,47 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			} else {
 				if (!user?.id) return
 
-				// Create new thread via action
+				// Generate thread channel ID upfront for optimistic UI
+				const threadChannelId = ChannelId.make(crypto.randomUUID())
+
+				// Open panel IMMEDIATELY with optimistic ID
+				setActiveThreadChannelId(threadChannelId)
+				setActiveThreadMessageId(messageId)
+
+				// Create thread in background
 				const exit = await createThreadMutation({
+					threadChannelId,
 					messageId,
 					parentChannelId: channelId,
 					organizationId,
 					currentUserId: UserId.make(user.id),
 				})
 
-				Exit.match(exit, {
-					onSuccess: (result) => {
-						setActiveThreadChannelId(result.mutateResult.threadChannelId)
-						setActiveThreadMessageId(messageId)
-					},
-					onFailure: (error) => {
-						toast.error("Failed to create thread", {
-							description: Cause.pretty(error),
-						})
+				toastExitOnError(exit, {
+					error: "Failed to create thread",
+					customErrors: {
+						MessageNotFoundError: () => ({
+							title: "Message not found",
+							description: "The message no longer exists",
+							isRetryable: false,
+						}),
+						NestedThreadError: () => ({
+							title: "Cannot create thread",
+							description: "Threads cannot be created within threads",
+							isRetryable: false,
+						}),
 					},
 				})
+
+				// Close panel on failure
+				if (!Exit.isSuccess(exit)) {
+					setActiveThreadChannelId(null)
+					setActiveThreadMessageId(null)
+				}
 			}
 		},
 		[
+			channel?.type,
 			channelId,
 			organizationId,
 			user?.id,
@@ -315,6 +420,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			setIsUploading,
 			uploadingFiles,
 			addUploadingFile,
+			updateUploadingFileProgress,
 			removeUploadingFile,
 		}),
 		[
@@ -343,6 +449,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			setIsUploading,
 			uploadingFiles,
 			addUploadingFile,
+			updateUploadingFileProgress,
 			removeUploadingFile,
 		],
 	)

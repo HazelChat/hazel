@@ -60,12 +60,18 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 						// Redirect to the new organization
 						// WorkOS will handle the organization switch
 						const backendUrl = import.meta.env.VITE_BACKEND_URL
-						const frontendUrl = window.location.origin
-						const returnUrl = `${frontendUrl}/${result.data.slug}`
+						const returnUrl = `/${result.data.slug}`
 
 						window.location.href = `${backendUrl}/auth/login?organizationId=${result.data.id}&returnTo=${encodeURIComponent(returnUrl)}`
 
 						return "Server created successfully"
+					},
+					customErrors: {
+						OrganizationSlugAlreadyExistsError: (error) => ({
+							title: "Slug already taken",
+							description: `The slug "${error.slug}" is already in use. Please choose a different one.`,
+							isRetryable: false,
+						}),
 					},
 				},
 			)

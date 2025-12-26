@@ -1,15 +1,21 @@
 import { Workflow } from "@effect/workflow"
 import { ChannelId, MessageId, UserId } from "@hazel/schema"
-import type { Schema } from "effect"
+import { Schema } from "effect"
+import { ChannelType } from "../../models/channel-model.ts"
 
 // Message notification workflow - triggered when a new message is created
-// Notifies all channel members who have notifications enabled
+// Notifies channel members based on channel type and mentions:
+// - DM/group chats: notify all members
+// - Regular channels: only notify mentioned users or reply-to authors
 export const MessageNotificationWorkflow = Workflow.make({
 	name: "MessageNotificationWorkflow",
 	payload: {
 		messageId: MessageId,
 		channelId: ChannelId,
 		authorId: UserId,
+		channelType: ChannelType,
+		content: Schema.String,
+		replyToMessageId: Schema.NullOr(MessageId),
 	},
 	// Process each message only once
 	idempotencyKey: (payload) => payload.messageId,

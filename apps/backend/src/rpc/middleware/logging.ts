@@ -23,27 +23,27 @@ export const RpcLoggingMiddlewareLive = Layer.succeed(
 	RpcLoggingMiddleware,
 	RpcLoggingMiddleware.of((options) =>
 		Effect.gen(function* () {
-			const method = options.rpc.key
+			const _method = options.rpc.key
 
 			// Log incoming request
-			yield* Effect.annotateLogs(Effect.logInfo("RPC request received"), {
-				"rpc.method": method,
-			})
+			// yield* Effect.annotateLogs(Effect.logInfo("RPC request received"), {
+			// 	"rpc.method": method,
+			// })
 
 			// Execute the handler and capture result
 			const exit = yield* Effect.exit(options.next)
 
 			if (exit._tag === "Success") {
-				yield* Effect.annotateLogs(Effect.logInfo("RPC request succeeded"), {
-					"rpc.method": method,
-					"rpc.status": "success",
-				})
+				// yield* Effect.annotateLogs(Effect.logInfo("RPC request succeeded"), {
+				// 	"rpc.method": method,
+				// 	"rpc.status": "success",
+				// })
 				return exit.value
 			} else {
-				yield* Effect.annotateLogs(Effect.logWarning("RPC request failed", exit.cause), {
-					"rpc.method": method,
-					"rpc.status": "failure",
-				})
+				// yield* Effect.annotateLogs(Effect.logWarning("RPC request failed", exit.cause), {
+				// 	"rpc.method": method,
+				// 	"rpc.status": "failure",
+				// })
 				return yield* Effect.failCause(exit.cause)
 			}
 		}),

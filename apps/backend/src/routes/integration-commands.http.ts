@@ -1,5 +1,5 @@
 import { HttpApiBuilder } from "@effect/platform"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { CurrentUser, InternalServerError, withSystemActor } from "@hazel/domain"
 import {
 	AvailableCommandsResponse,
 	CommandExecutionError,
@@ -20,22 +20,15 @@ import { createIssue, type LinearCommandError } from "../services/integrations/l
 export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integration-commands", (handlers) =>
 	handlers
 		// Get all available commands for the current organization's connected integrations
-		.handle("getAvailableCommands", () =>
+		.handle("getAvailableCommands", ({ path }) =>
 			Effect.gen(function* () {
-				const currentUser = yield* CurrentUser.Context
-
-				// Must have organization context
-				if (!currentUser.organizationId) {
-					return new AvailableCommandsResponse({ commands: [] })
-				}
+				const { orgId } = path
 
 				const connectionRepo = yield* IntegrationConnectionRepo
 				const registry = yield* CommandRegistry
 
 				// Get all connections for this org
-				const connections = yield* connectionRepo
-					.findAllForOrg(currentUser.organizationId)
-					.pipe(withSystemActor)
+				const connections = yield* connectionRepo.findAllForOrg(orgId).pipe(withSystemActor)
 
 				// Filter to only active connections
 				const activeProviders = connections
@@ -82,18 +75,8 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 		.handle("executeCommand", ({ path, payload }) =>
 			Effect.gen(function* () {
 				const currentUser = yield* CurrentUser.Context
-				const { provider, commandId } = path
+				const { orgId, provider, commandId } = path
 				const { channelId, arguments: args } = payload
-
-				// Must have organization context
-				if (!currentUser.organizationId) {
-					return yield* Effect.fail(
-						new UnauthorizedError({
-							message: "Must be in an organization context to execute commands",
-							detail: "No organizationId found in session",
-						}),
-					)
-				}
 
 				const registry = yield* CommandRegistry
 				const connectionRepo = yield* IntegrationConnectionRepo
@@ -110,7 +93,7 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 
 				// Check if organization has this provider connected
 				const connectionOption = yield* connectionRepo
-					.findByOrgAndProvider(currentUser.organizationId, provider)
+					.findByOrgAndProvider(orgId, provider)
 					.pipe(withSystemActor)
 
 				if (Option.isNone(connectionOption)) {
@@ -152,7 +135,7 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 					})
 
 					// Get or create the Linear bot user (with org membership for Electric sync)
-					const botUser = yield* botService.getOrCreateBotUser("linear", currentUser.organizationId)
+					const botUser = yield* botService.getOrCreateBotUser("linear", orgId)
 
 					// Build message content with @mention attribution
 					const messageContent = `@[userId:${currentUser.id}] created an issue:\n${result.url}`

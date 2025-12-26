@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs"
 import { resolve } from "node:path"
+import localesPlugin from "@react-aria/optimize-locales-plugin"
 import tailwindcss from "@tailwindcss/vite"
 import { devtools } from "@tanstack/devtools-vite"
 import tanstackRouter from "@tanstack/router-plugin/vite"
@@ -34,6 +35,13 @@ export default defineConfig({
 	plugins: [
 		devtools(),
 		tanstackRouter({ target: "react", autoCodeSplitting: false, routeToken: "layout" }),
+
+		{
+			...localesPlugin.vite({
+				locales: ["en-US"],
+			}),
+			enforce: "pre",
+		},
 
 		viteReact({
 			babel: {

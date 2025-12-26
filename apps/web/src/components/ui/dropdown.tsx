@@ -103,9 +103,9 @@ const DropdownItem = ({ className, children, intent, ...props }: DropdownItemPro
 					{isSelected && (
 						<IconCheck
 							className={twJoin(
-								"-ml-0.5 mr-1.5 h-[1lh] w-4 shrink-0",
-								"group-has-data-[slot=icon]:-translate-y-1/2 group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:top-1/2 group-has-data-[slot=icon]:right-0.5",
-								"group-has-data-[slot=avatar]:-translate-y-1/2 group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:top-1/2 group-has-data-[slot=avatar]:right-0.5",
+								"mr-1.5 -ml-0.5 h-[1lh] w-4 shrink-0",
+								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:top-1/2 group-has-data-[slot=icon]:right-0.5 group-has-data-[slot=icon]:-translate-y-1/2",
+								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:top-1/2 group-has-data-[slot=avatar]:right-0.5 group-has-data-[slot=avatar]:-translate-y-1/2",
 							)}
 							data-slot="check-indicator"
 						/>
@@ -141,7 +141,7 @@ const DropdownDescription = ({ className, ref, ...props }: DropdownDescriptionPr
 const DropdownSeparator = ({ className, ...props }: SeparatorProps) => (
 	<Separator
 		orientation="horizontal"
-		className={twMerge("-mx-1 col-span-full my-1 h-px bg-fg/10", className)}
+		className={twMerge("col-span-full -mx-1 my-1 h-px bg-fg/10", className)}
 		{...props}
 	/>
 )

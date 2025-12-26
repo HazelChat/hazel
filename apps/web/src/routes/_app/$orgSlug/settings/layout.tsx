@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useMatchRoute, useNavigate, useParams } from "@tanstack/react-router"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { Input, InputGroup } from "~/components/ui/input"
 import { Tab, TabList, Tabs } from "~/components/ui/tabs"
@@ -8,29 +8,29 @@ export const Route = createFileRoute("/_app/$orgSlug/settings")({
 })
 
 const tabs = [
-	{ id: "profile", label: "Profile" },
-	{ id: "appearance", label: "Appearance" },
-	{ id: "team", label: "Team" },
-	{ id: "invitations", label: "Invitations" },
-	{ id: "billing", label: "Billing" },
-	{ id: "notifications", label: "Notifications", badge: 2 },
-	{ id: "integrations", label: "Integrations" },
-	// Only show debug and workflows tabs in development
-	...(!import.meta.env.PROD ? [{ id: "debug", label: "Debug" }] : []),
+	{ id: "team", label: "Team", to: "/$orgSlug/settings" as const },
+	{ id: "invitations", label: "Invitations", to: "/$orgSlug/settings/invitations" as const },
+	{ id: "integrations", label: "Integrations", to: "/$orgSlug/settings/integrations" as const },
+	// Only show debug tab in development
+	...(!import.meta.env.PROD
+		? [{ id: "debug", label: "Debug", to: "/$orgSlug/settings/debug" as const }]
+		: []),
 ]
 
 function RouteComponent() {
-	const location = useLocation()
+	const matchRoute = useMatchRoute()
 	const navigate = useNavigate()
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 
-	// Extract the current tab from the pathname
-	// No need for state - just derive from the URL directly
-	const pathSegments = location.pathname.split("/")
+	// Determine selected tab using fuzzy route matching
 	const selectedTab =
-		pathSegments[pathSegments.length - 1] === "settings"
-			? "appearance" // Default to appearance when at /_app/settings
-			: pathSegments[pathSegments.length - 1]
+		tabs.find((tab) =>
+			matchRoute({
+				to: tab.to,
+				params: { orgSlug },
+				fuzzy: true,
+			}),
+		)?.id ?? "team"
 
 	return (
 		<main className="h-full w-full min-w-0 bg-bg">
@@ -40,7 +40,8 @@ function RouteComponent() {
 					<div className="relative flex flex-col gap-5">
 						<div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
 							<div className="flex flex-col gap-0.5 lg:gap-1">
-								<h1 className="font-semibold text-fg text-xl lg:text-2xl">Settings</h1>
+								<h1 className="font-semibold text-fg text-xl lg:text-2xl">Server Settings</h1>
+								<p className="text-muted-fg text-sm">Manage your workspace configuration</p>
 							</div>
 							<div className="flex flex-col gap-4 lg:flex-row">
 								<InputGroup className="lg:w-80">
@@ -57,13 +58,10 @@ function RouteComponent() {
 							value={selectedTab}
 							onChange={(event) => {
 								const tabId = event.target.value
-								navigate({
-									to:
-										tabId === "appearance"
-											? "/$orgSlug/settings"
-											: `/$orgSlug/settings/${tabId}`,
-									params: { orgSlug },
-								})
+								const tab = tabs.find((t) => t.id === tabId)
+								if (tab) {
+									navigate({ to: tab.to, params: { orgSlug } })
+								}
 							}}
 							className="w-full appearance-none rounded-lg border border-input bg-bg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-base/6 text-fg outline-hidden focus:border-ring/70 focus:ring-3 focus:ring-ring/20 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6"
 						>
@@ -76,19 +74,16 @@ function RouteComponent() {
 					</div>
 
 					{/* Desktop tabs */}
-					<div className="-mx-4 -my-1 lg:-mx-8 scrollbar-hide flex w-full max-w-full overflow-x-auto px-4 py-1 lg:px-8">
+					<div className="scrollbar-hide -mx-4 -my-1 flex w-full max-w-full overflow-x-auto px-4 py-1 lg:-mx-8 lg:px-8">
 						<Tabs
 							className="max-md:hidden"
 							selectedKey={selectedTab}
 							onSelectionChange={(value) => {
 								const tabId = value as string
-								navigate({
-									to:
-										tabId === "appearance"
-											? "/$orgSlug/settings"
-											: `/$orgSlug/settings/${tabId}`,
-									params: { orgSlug },
-								})
+								const tab = tabs.find((t) => t.id === tabId)
+								if (tab) {
+									navigate({ to: tab.to, params: { orgSlug } })
+								}
 							}}
 						>
 							<TabList className="w-full">

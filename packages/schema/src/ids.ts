@@ -131,3 +131,11 @@ export const ChannelIcon = Schema.String.pipe(Schema.brand("@HazelChat/ChannelIc
 	title: "Channel Icon",
 })
 export type ChannelIcon = Schema.Schema.Type<typeof ChannelIcon>
+
+export const GitHubSubscriptionId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/GitHubSubscriptionId"),
+).annotations({
+	description: "The ID of a GitHub subscription",
+	title: "GitHub Subscription ID",
+})
+export type GitHubSubscriptionId = Schema.Schema.Type<typeof GitHubSubscriptionId>

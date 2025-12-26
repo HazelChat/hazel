@@ -61,6 +61,7 @@ const scrollYAtom = Atom.make((get) => {
 ```
 
 **Key Points:**
+
 - Use `get.setSelf` to update the atom's own value
 - Always add finalizers to clean up side effects
 - Finalizers run when the atom is rebuilt or no longer needed
@@ -327,6 +328,7 @@ export const modalAtomFamily = Atom.family((type: ModalType) =>
 **From:** `apps/web/src/atoms/modal-atoms.ts:29`
 
 **Key Points:**
+
 - Atom families ensure stable references for each key
 - Always use `Atom.keepAlive` if state should persist
 - Great for per-entity state (users, channels, modals, etc.)
@@ -360,6 +362,7 @@ export const themeAtom = Atom.kvs({
 **From:** `apps/web/src/components/theme-provider.tsx:36`
 
 **Best Practices:**
+
 - Define schemas for type safety and validation
 - Use a shared runtime instance for all localStorage atoms
 - Provide sensible defaults with `defaultValue`
@@ -451,6 +454,7 @@ export const messagesByChannelAtomFamily = Atom.family((channelId: ChannelId) =>
 **From:** `apps/web/src/atoms/chat-query-atoms.ts:45`
 
 **Key Points:**
+
 - Queries automatically update when database changes
 - Use atom families for parameterized queries
 - Returns `Result` type for loading/error states
@@ -499,6 +503,7 @@ const persistentCountAtom = Atom.make(0).pipe(Atom.keepAlive)
 ```
 
 **When to use:**
+
 - Global application state
 - Modal state
 - User preferences

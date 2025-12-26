@@ -13,10 +13,19 @@ import {
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
+import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, Effect, Layer, Logger, Redacted } from "effect"
 import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
+import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
-import { MessageNotificationWorkflowLayer } from "./workflows/index.ts"
+import { BotUserServiceLive } from "./services/bot-user-service.ts"
+import { OpenRouterLanguageModelLayer } from "./services/openrouter-service.ts"
+import {
+	CleanupUploadsWorkflowLayer,
+	GitHubWebhookWorkflowLayer,
+	MessageNotificationWorkflowLayer,
+	ThreadNamingWorkflowLayer,
+} from "./workflows/index.ts"
 
 // PostgreSQL configuration (uses existing database)
 const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
@@ -34,12 +43,20 @@ const DatabaseLayer = Database.layer({
 	ssl: !process.env.IS_DEV,
 })
 
+// OpenTelemetry tracing layer
+const TracerLive = createTracingLayer("cluster")
+
 // Health check endpoint
 const HealthLive = HttpApiBuilder.group(Cluster.WorkflowApi, "health", (handlers) =>
 	handlers.handle("ok", () => Effect.succeed("ok")),
 )
 
-const AllWorkflows = MessageNotificationWorkflowLayer.pipe(Layer.provide(DatabaseLayer))
+const AllWorkflows = Layer.mergeAll(
+	MessageNotificationWorkflowLayer,
+	CleanupUploadsWorkflowLayer,
+	GitHubWebhookWorkflowLayer,
+	ThreadNamingWorkflowLayer.pipe(Layer.provide(OpenRouterLanguageModelLayer)),
+).pipe(Layer.provide(BotUserServiceLive), Layer.provide(DatabaseLayer))
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps
@@ -56,6 +73,7 @@ const WorkOSSyncLive = WorkOSSync.Default.pipe(
 const AllCronJobs = Layer.mergeAll(
 	WorkOSSyncCronLayer.pipe(Layer.provide(WorkOSSyncLive)),
 	PresenceCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
+	UploadCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
 ).pipe(Layer.provide(WorkflowEngineLayer))
 
 // Workflow API implementation
@@ -87,4 +105,6 @@ const ServerLayer = HttpApiBuilder.serve(
 	),
 )
 
-Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer))).pipe(BunRuntime.runMain)
+Layer.launch(ServerLayer.pipe(Layer.provide(WorkflowEngineLayer), Layer.provide(TracerLive))).pipe(
+	BunRuntime.runMain,
+)

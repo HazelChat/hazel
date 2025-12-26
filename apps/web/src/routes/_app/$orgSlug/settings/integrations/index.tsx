@@ -8,7 +8,7 @@ import { SectionHeader } from "~/components/ui/section-header"
 import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 import { useIntegrationConnections } from "~/db/hooks"
 import { useAuth } from "~/lib/auth"
-import { categories, getBrandfetchIcon, type Integration, integrations } from "./_data"
+import { categories, getBrandfetchIcon, type Integration, integrations } from "./__data"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/")({
 	component: IntegrationsSettings,

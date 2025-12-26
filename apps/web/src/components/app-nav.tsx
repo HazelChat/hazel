@@ -11,7 +11,7 @@ export function AppNav({ openCmd }: { openCmd: (open: boolean) => void }) {
 	return (
 		<nav className="sticky top-0 flex items-center justify-between border-b bg-bg px-5 py-1.5">
 			<div className="flex items-center gap-2 font-semibold text-sm/6">
-				<SidebarTrigger className="sm:-ml-0.5 -ml-2" />
+				<SidebarTrigger className="-ml-2 sm:-ml-0.5" />
 				<Separator className="mr-1.5 h-4" orientation="vertical" />
 				<ChatBubbleOvalLeftEllipsisIcon className="hidden size-4 sm:inline" /> General
 			</div>

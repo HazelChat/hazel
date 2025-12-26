@@ -1,6 +1,6 @@
 import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link, Outlet, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { ChannelIcon } from "~/components/channel-icon"
 import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 import { channelCollection } from "~/db/collections"
@@ -10,13 +10,17 @@ export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/setting
 })
 
 const tabs = [
-	{ id: "overview", label: "Overview" },
-	{ id: "integrations", label: "Integrations" },
-] as const
+	{ id: "overview", label: "Overview", to: "/$orgSlug/channels/$channelId/settings" as const },
+	{
+		id: "integrations",
+		label: "Integrations",
+		to: "/$orgSlug/channels/$channelId/settings/integrations" as const,
+	},
+]
 
 function RouteComponent() {
 	const { orgSlug, channelId } = Route.useParams()
-	const location = useLocation()
+	const matchRoute = useMatchRoute()
 	const navigate = useNavigate()
 
 	// Get channel info
@@ -31,10 +35,15 @@ function RouteComponent() {
 	)
 	const channel = channelResult?.channel
 
-	// Extract the current tab from the pathname
-	const pathSegments = location.pathname.split("/")
-	const lastSegment = pathSegments[pathSegments.length - 1]
-	const selectedTab = lastSegment === "settings" ? "overview" : lastSegment
+	// Determine selected tab using fuzzy route matching
+	const selectedTab =
+		tabs.find((tab) =>
+			matchRoute({
+				to: tab.to,
+				params: { orgSlug, channelId },
+				fuzzy: true,
+			}),
+		)?.id ?? "overview"
 
 	return (
 		<main className="h-full w-full min-w-0 bg-bg">
@@ -77,15 +86,15 @@ function RouteComponent() {
 					</div>
 
 					{/* Tabs */}
-					<div className="-mx-4 -my-1 lg:-mx-8 flex w-full max-w-full overflow-scroll px-4 py-1 lg:px-8">
+					<div className="-mx-4 -my-1 flex w-full max-w-full overflow-scroll px-4 py-1 lg:-mx-8 lg:px-8">
 						<Tabs
 							selectedKey={selectedTab}
 							onSelectionChange={(value) => {
 								const tabId = value as string
-								navigate({
-									to: `/$orgSlug/channels/$channelId/settings/${tabId}`,
-									params: { orgSlug, channelId },
-								})
+								const tab = tabs.find((t) => t.id === tabId)
+								if (tab) {
+									navigate({ to: tab.to, params: { orgSlug, channelId } })
+								}
 							}}
 						>
 							<TabList>

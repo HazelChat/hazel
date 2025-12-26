@@ -20,6 +20,15 @@ export interface OAuthProviderConfig {
 }
 
 /**
+ * Minimal config for app-based providers (e.g., GitHub Apps).
+ * These providers don't use standard OAuth fields - they manage their own
+ * authentication via JWTs or other mechanisms.
+ */
+export interface AppProviderConfig {
+	readonly provider: IntegrationProvider
+}
+
+/**
  * Standard OAuth token response after exchanging authorization code.
  */
 export interface OAuthTokens {

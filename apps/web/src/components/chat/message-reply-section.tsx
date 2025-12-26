@@ -18,7 +18,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 		<div className="relative">
 			{/* Reply curve SVG */}
 			<svg
-				className="-bottom-1 absolute left-5 rotate-90 text-muted-fg"
+				className="absolute -bottom-1 left-5 rotate-90 text-muted-fg"
 				xmlns="http://www.w3.org/2000/svg"
 				width="24"
 				height="20"

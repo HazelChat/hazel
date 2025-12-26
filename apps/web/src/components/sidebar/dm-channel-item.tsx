@@ -1,3 +1,4 @@
+import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { useRouter } from "@tanstack/react-router"
 import { useCallback } from "react"
@@ -11,11 +12,13 @@ import { Avatar } from "~/components/ui/avatar/avatar"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
-import { channelMemberCollection, messageCollection } from "~/db/collections"
+import { updateChannelMemberAction } from "~/db/actions"
+import { messageCollection } from "~/db/collections"
 import { useChannelWithCurrentUser } from "~/db/hooks"
 import { useOrganization } from "~/hooks/use-organization"
 import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
+import { matchExitWithToast, toastExitOnError } from "~/lib/toast-exit"
 import { cx } from "~/utils/cx"
 
 interface DmAvatarProps {
@@ -54,6 +57,8 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 
 	const { user: me } = useAuth()
 
+	const updateMember = useAtomSet(updateChannelMemberAction, { mode: "promiseExit" })
+
 	const filteredMembers = channel
 		? (channel.members || []).filter((member) => member.userId !== me?.id)
 		: []
@@ -67,26 +72,61 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 		messageCollection.preload()
 	}, [router, orgSlug, channelId])
 
-	const handleToggleMute = useCallback(() => {
+	const handleToggleMute = useCallback(async () => {
 		if (!channel) return
-		channelMemberCollection.update(channel.currentUser.id, (member) => {
-			member.isMuted = !member.isMuted
+		const exit = await updateMember({
+			memberId: channel.currentUser.id,
+			isMuted: !channel.currentUser.isMuted,
 		})
-	}, [channel])
+		matchExitWithToast(exit, {
+			onSuccess: () => {},
+			successMessage: channel.currentUser.isMuted ? "Channel unmuted" : "Channel muted",
+			customErrors: {
+				ChannelMemberNotFoundError: () => ({
+					title: "Membership not found",
+					description: "You may no longer be a member of this conversation.",
+					isRetryable: false,
+				}),
+			},
+		})
+	}, [channel, updateMember])
 
-	const handleToggleFavorite = useCallback(() => {
+	const handleToggleFavorite = useCallback(async () => {
 		if (!channel) return
-		channelMemberCollection.update(channel.currentUser.id, (member) => {
-			member.isFavorite = !member.isFavorite
+		const exit = await updateMember({
+			memberId: channel.currentUser.id,
+			isFavorite: !channel.currentUser.isFavorite,
 		})
-	}, [channel])
+		matchExitWithToast(exit, {
+			onSuccess: () => {},
+			successMessage: channel.currentUser.isFavorite ? "Removed from favorites" : "Added to favorites",
+			customErrors: {
+				ChannelMemberNotFoundError: () => ({
+					title: "Membership not found",
+					description: "You may no longer be a member of this conversation.",
+					isRetryable: false,
+				}),
+			},
+		})
+	}, [channel, updateMember])
 
-	const handleClose = useCallback(() => {
+	const handleClose = useCallback(async () => {
 		if (!channel) return
-		channelMemberCollection.update(channel.currentUser.id, (member) => {
-			member.isHidden = true
+		const exit = await updateMember({
+			memberId: channel.currentUser.id,
+			isHidden: true,
 		})
-	}, [channel])
+		// Silent success, only show error
+		toastExitOnError(exit, {
+			customErrors: {
+				ChannelMemberNotFoundError: () => ({
+					title: "Membership not found",
+					description: "You may no longer be a member of this conversation.",
+					isRetryable: false,
+				}),
+			},
+		})
+	}, [channel, updateMember])
 
 	if (!channel) {
 		return null
@@ -128,7 +168,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 							</>
 						) : (
 							<>
-								<div data-slot="avatar" className="-space-x-2 flex">
+								<div data-slot="avatar" className="flex -space-x-2">
 									{filteredMembers.slice(0, 2).map((member) => (
 										<Avatar
 											key={member.user.id}

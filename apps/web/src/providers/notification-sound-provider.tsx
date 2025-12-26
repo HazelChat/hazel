@@ -99,7 +99,6 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		const unsubscribe = stream.subscribe((messages) => {
 			for (const message of messages) {
 				if (isChangeMessage(message) && message.headers.operation === "insert") {
-					console.log("play sound")
 					playSound()
 					break
 				}

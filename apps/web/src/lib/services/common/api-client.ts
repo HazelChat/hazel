@@ -6,10 +6,10 @@ import { Layer } from "effect"
 import * as Effect from "effect/Effect"
 
 export const CustomFetchLive = FetchHttpClient.layer.pipe(
-	Layer.provide(
-		Layer.succeed(FetchHttpClient.RequestInit, {
-			credentials: "include",
-		}),
+	Layer.provideMerge(
+		Layer.succeed(FetchHttpClient.Fetch, (input, init) =>
+			fetch(input, { ...init, credentials: "include" }),
+		),
 	),
 )
 

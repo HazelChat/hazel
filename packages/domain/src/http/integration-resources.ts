@@ -2,6 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
+import { OrganizationId } from "../ids"
 import { IntegrationConnection } from "../models"
 
 // Provider type from the model
@@ -45,6 +46,64 @@ export class LinearIssueResourceResponse extends Schema.Class<LinearIssueResourc
 	labels: Schema.Array(LinearIssueLabelResponse),
 }) {}
 
+// GitHub PR author schema
+const GitHubPRAuthorResponse = Schema.Struct({
+	login: Schema.String,
+	avatarUrl: Schema.NullOr(Schema.String),
+})
+
+// GitHub PR label schema
+const GitHubPRLabelResponse = Schema.Struct({
+	name: Schema.String,
+	color: Schema.String,
+})
+
+// Full GitHub PR response
+export class GitHubPRResourceResponse extends Schema.Class<GitHubPRResourceResponse>(
+	"GitHubPRResourceResponse",
+)({
+	owner: Schema.String,
+	repo: Schema.String,
+	number: Schema.Number,
+	title: Schema.String,
+	body: Schema.NullOr(Schema.String),
+	state: Schema.Literal("open", "closed"),
+	draft: Schema.Boolean,
+	merged: Schema.Boolean,
+	author: Schema.NullOr(GitHubPRAuthorResponse),
+	additions: Schema.Number,
+	deletions: Schema.Number,
+	headRefName: Schema.String,
+	updatedAt: Schema.String,
+	labels: Schema.Array(GitHubPRLabelResponse),
+}) {}
+
+// GitHub Repository schemas (for listing repos the app has access to)
+const GitHubRepositoryOwner = Schema.Struct({
+	login: Schema.String,
+	avatarUrl: Schema.NullOr(Schema.String),
+})
+
+const GitHubRepository = Schema.Struct({
+	id: Schema.Number,
+	name: Schema.String,
+	fullName: Schema.String,
+	private: Schema.Boolean,
+	htmlUrl: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	owner: GitHubRepositoryOwner,
+})
+
+export class GitHubRepositoriesResponse extends Schema.Class<GitHubRepositoriesResponse>(
+	"GitHubRepositoriesResponse",
+)({
+	totalCount: Schema.Number,
+	repositories: Schema.Array(GitHubRepository),
+	hasNextPage: Schema.Boolean,
+	page: Schema.Number,
+	perPage: Schema.Number,
+}) {}
+
 // Error when organization doesn't have the integration connected
 export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<IntegrationNotConnectedForPreviewError>()(
 	"IntegrationNotConnectedForPreviewError",
@@ -75,13 +134,18 @@ export class IntegrationResourceError extends Schema.TaggedError<IntegrationReso
 // API Group for integration resources
 export class IntegrationResourceGroup extends HttpApiGroup.make("integration-resources")
 	.add(
-		HttpApiEndpoint.get("fetchLinearIssue", `/linear/issue`)
+		HttpApiEndpoint.get("fetchLinearIssue", `/:orgId/linear/issue`)
 			.addSuccess(LinearIssueResourceResponse)
 			.addError(IntegrationNotConnectedForPreviewError)
 			.addError(IntegrationResourceError)
 			.addError(ResourceNotFoundError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
 			.setUrlParams(
 				Schema.Struct({
 					url: Schema.String,
@@ -92,6 +156,57 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					title: "Fetch Linear Issue",
 					description: "Fetch Linear issue details for embedding in chat messages",
 					summary: "Get Linear issue preview data",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`)
+			.addSuccess(GitHubPRResourceResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(ResourceNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					url: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Fetch GitHub PR",
+					description: "Fetch GitHub pull request details for embedding in chat messages",
+					summary: "Get GitHub PR preview data",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
+			.addSuccess(GitHubRepositoriesResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
+					perPage: Schema.optionalWith(Schema.NumberFromString, { default: () => 30 }),
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get GitHub Repositories",
+					description: "List repositories accessible to the GitHub App installation",
+					summary: "List GitHub repositories",
 				}),
 			),
 	)

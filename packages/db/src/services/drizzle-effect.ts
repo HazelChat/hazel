@@ -84,9 +84,9 @@ type NoUnknownKeys<T, U> = T & {
 }
 
 // Simplified refinement types
-type RefineFunction<TTable extends Drizzle.Table> = (
-	schemas: { [K in keyof Columns<TTable>]: Schema.Schema<any> },
-) => Schema.Schema<any>
+type RefineFunction<TTable extends Drizzle.Table> = (schemas: {
+	[K in keyof Columns<TTable>]: Schema.Schema<any>
+}) => Schema.Schema<any>
 
 type RefineArg<TTable extends Drizzle.Table> = Schema.Schema<any> | RefineFunction<TTable>
 

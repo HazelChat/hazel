@@ -2,7 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { ChannelId } from "../ids"
+import { ChannelId, OrganizationId } from "../ids"
 import { IntegrationConnection } from "../models"
 
 // Provider type from the model
@@ -112,10 +112,15 @@ export class MissingRequiredArgumentError extends Schema.TaggedError<MissingRequ
 export class IntegrationCommandGroup extends HttpApiGroup.make("integration-commands")
 	// Get available commands for the current organization
 	.add(
-		HttpApiEndpoint.get("getAvailableCommands", `/commands`)
+		HttpApiEndpoint.get("getAvailableCommands", `/:orgId/commands`)
 			.addSuccess(AvailableCommandsResponse)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Get Available Commands",
@@ -126,7 +131,7 @@ export class IntegrationCommandGroup extends HttpApiGroup.make("integration-comm
 	)
 	// Execute a command
 	.add(
-		HttpApiEndpoint.post("executeCommand", `/:provider/commands/:commandId/execute`)
+		HttpApiEndpoint.post("executeCommand", `/:orgId/:provider/commands/:commandId/execute`)
 			.addSuccess(CommandExecutionResult)
 			.addError(CommandNotFoundError)
 			.addError(CommandExecutionError)
@@ -136,6 +141,7 @@ export class IntegrationCommandGroup extends HttpApiGroup.make("integration-comm
 			.addError(InternalServerError)
 			.setPath(
 				Schema.Struct({
+					orgId: OrganizationId,
 					provider: IntegrationProvider,
 					commandId: Schema.String,
 				}),

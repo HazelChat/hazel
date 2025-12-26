@@ -18,12 +18,19 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							const createdChannelMember = yield* ChannelMemberRepo.insert({
-								...payload,
-								notificationCount: 0,
+								channelId: payload.channelId,
 								userId: user.id,
+								isHidden: false,
+								isMuted: false,
+								isFavorite: false,
+								lastSeenMessageId: null,
+								notificationCount: 0,
 								joinedAt: new Date(),
 								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							}).pipe(
+								Effect.map((res) => res[0]!),
+								policyUse(ChannelMemberPolicy.canCreate(payload.channelId)),
+							)
 
 							const txid = yield* generateTransactionId()
 
@@ -33,10 +40,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(
-						policyUse(ChannelMemberPolicy.canCreate(payload.channelId)),
-						withRemapDbErrors("ChannelMember", "create"),
-					),
+					.pipe(withRemapDbErrors("ChannelMember", "create")),
 
 			"channelMember.update": ({ id, ...payload }) =>
 				db
@@ -45,7 +49,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							const updatedChannelMember = yield* ChannelMemberRepo.update({
 								id,
 								...payload,
-							})
+							}).pipe(policyUse(ChannelMemberPolicy.canUpdate(id)))
 
 							const txid = yield* generateTransactionId()
 
@@ -55,26 +59,22 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(
-						policyUse(ChannelMemberPolicy.canUpdate(id)),
-						withRemapDbErrors("ChannelMember", "update"),
-					),
+					.pipe(withRemapDbErrors("ChannelMember", "update")),
 
 			"channelMember.delete": ({ id }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ChannelMemberRepo.deleteById(id)
+							yield* ChannelMemberRepo.deleteById(id).pipe(
+								policyUse(ChannelMemberPolicy.canDelete(id)),
+							)
 
 							const txid = yield* generateTransactionId()
 
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						policyUse(ChannelMemberPolicy.canDelete(id)),
-						withRemapDbErrors("ChannelMember", "delete"),
-					),
+					.pipe(withRemapDbErrors("ChannelMember", "delete")),
 
 			"channelMember.clearNotifications": ({ channelId }) =>
 				Effect.gen(function* () {

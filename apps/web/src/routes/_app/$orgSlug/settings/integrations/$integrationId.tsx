@@ -1,25 +1,28 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
-import { Exit } from "effect"
+import { Exit, Option } from "effect"
 import { useState } from "react"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
 import { RailwayIntegrationContent } from "~/components/integrations/railway-integration-content"
-import { Button } from "~/components/ui/button"
+import { Button, buttonStyles } from "~/components/ui/button"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { useIntegrationConnection } from "~/db/hooks"
+import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
+import { toastExitOnError } from "~/lib/toast-exit"
 import {
 	type ConfigOption,
 	getBrandfetchIcon,
 	getIntegrationById,
 	type Integration,
 	validIntegrationIds,
-} from "./_data"
+} from "./__data"
 
 type IntegrationProvider = IntegrationConnection.IntegrationProvider
 
@@ -36,6 +39,7 @@ function IntegrationConfigPage() {
 	const { orgSlug, integrationId } = Route.useParams()
 	const navigate = useNavigate()
 	const { user } = useAuth()
+	const { organizationId } = useOrganization()
 	const integration = getIntegrationById(integrationId)
 	const [isConnecting, setIsConnecting] = useState(false)
 	const [isDisconnecting, setIsDisconnecting] = useState(false)
@@ -43,7 +47,7 @@ function IntegrationConfigPage() {
 	// Query connection from TanStack DB collection (real-time sync via Electric)
 	// Only used for OAuth-based integrations (not OpenStatus)
 	const { connection, isConnected } = useIntegrationConnection(
-		user?.organizationId ?? null,
+		organizationId ?? null,
 		integrationId as IntegrationProvider,
 	)
 
@@ -62,39 +66,51 @@ function IntegrationConfigPage() {
 	const externalAccountName = connection?.externalAccountName ?? null
 
 	const handleConnect = async () => {
+		if (!organizationId) return
 		setIsConnecting(true)
 		const exit = await getOAuthUrl({
-			path: { provider: integrationId as IntegrationProvider },
+			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 		})
 
-		Exit.match(exit, {
-			onSuccess: (data) => {
-				// Redirect to OAuth authorization URL
-				window.location.href = data.authorizationUrl
-			},
-			onFailure: (cause) => {
-				console.error("Failed to get OAuth URL:", cause)
-				setIsConnecting(false)
+		toastExitOnError(exit, {
+			onFailure: () => setIsConnecting(false),
+			customErrors: {
+				UnsupportedProviderError: (error) => ({
+					title: "Unsupported provider",
+					description: `The provider "${error.provider}" is not supported.`,
+					isRetryable: false,
+				}),
 			},
 		})
+		if (Exit.isSuccess(exit)) {
+			// Redirect to OAuth authorization URL
+			window.location.href = exit.value.authorizationUrl
+		}
 	}
 
 	const handleDisconnect = async () => {
+		if (!organizationId) return
 		setIsDisconnecting(true)
 		const exit = await disconnectMutation({
-			path: { provider: integrationId as IntegrationProvider },
+			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 		})
 
-		Exit.match(exit, {
-			onSuccess: () => {
-				// Status will be refetched automatically
-				setIsDisconnecting(false)
-			},
-			onFailure: (cause) => {
-				console.error("Failed to disconnect:", cause)
-				setIsDisconnecting(false)
+		toastExitOnError(exit, {
+			customErrors: {
+				IntegrationNotConnectedError: () => ({
+					title: "Integration not connected",
+					description: "This integration is already disconnected.",
+					isRetryable: false,
+				}),
+				UnsupportedProviderError: (error) => ({
+					title: "Unsupported provider",
+					description: `The provider "${error.provider}" is not supported.`,
+					isRetryable: false,
+				}),
 			},
 		})
+		// Status will be refetched automatically
+		setIsDisconnecting(false)
 	}
 
 	const handleBack = () => {
@@ -152,11 +168,11 @@ function IntegrationConfigPage() {
 				<div className="flex flex-col gap-8">
 					{isWebhookIntegration ? (
 						// Webhook-based integrations: Show channel-based webhook configuration
-						user?.organizationId &&
+						organizationId &&
 						(integrationId === "openstatus" ? (
-							<OpenStatusIntegrationContent organizationId={user.organizationId} />
+							<OpenStatusIntegrationContent organizationId={organizationId} />
 						) : integrationId === "railway" ? (
-							<RailwayIntegrationContent organizationId={user.organizationId} />
+							<RailwayIntegrationContent organizationId={organizationId} />
 						) : null)
 					) : (
 						<>
@@ -169,6 +185,7 @@ function IntegrationConfigPage() {
 									{isConnected ? (
 										<ConnectedState
 											integration={integration}
+											connection={connection}
 											externalAccountName={externalAccountName}
 											isDisconnecting={isDisconnecting}
 											onDisconnect={handleDisconnect}
@@ -195,6 +212,11 @@ function IntegrationConfigPage() {
 										))}
 									</div>
 								</div>
+							)}
+
+							{/* GitHub Repository Access */}
+							{isConnected && integrationId === "github" && organizationId && (
+								<GitHubRepositoryAccessSection organizationId={organizationId} />
 							)}
 						</>
 					)}
@@ -334,15 +356,24 @@ function DisconnectedState({
 
 function ConnectedState({
 	integration,
+	connection,
 	externalAccountName,
 	isDisconnecting,
 	onDisconnect,
 }: {
 	integration: Integration
+	connection: typeof IntegrationConnection.Model.Type | null
 	externalAccountName: string | null
 	isDisconnecting: boolean
 	onDisconnect: () => void
 }) {
+	console.log(connection)
+	// GitHub App installation settings URL - allows users to manage permissions or uninstall
+	const gitHubConfigureUrl =
+		integration.id === "github" && connection?.metadata?.installationId
+			? "https://github.com/apps/hazelchat/installations/select_target"
+			: null
+
 	return (
 		<div className="flex items-center justify-between gap-4">
 			<div className="flex items-center gap-3">
@@ -362,9 +393,33 @@ function ConnectedState({
 					{externalAccountName && <p className="text-muted-fg text-xs">{externalAccountName}</p>}
 				</div>
 			</div>
-			<Button intent="danger" size="sm" onPress={onDisconnect} isDisabled={isDisconnecting}>
-				{isDisconnecting ? "Disconnecting..." : "Disconnect"}
-			</Button>
+			{gitHubConfigureUrl ? (
+				<a
+					href={gitHubConfigureUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={buttonStyles({ intent: "secondary", size: "sm" })}
+				>
+					<svg
+						className="size-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						strokeWidth={2}
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+						/>
+					</svg>
+					Configure on GitHub
+				</a>
+			) : (
+				<Button intent="danger" size="sm" onPress={onDisconnect} isDisabled={isDisconnecting}>
+					{isDisconnecting ? "Disconnecting..." : "Disconnect"}
+				</Button>
+			)}
 		</div>
 	)
 }
@@ -383,6 +438,216 @@ function ConfigOptionRow({ option }: { option: ConfigOption }) {
 				<InputGroup className="w-48">
 					<Input placeholder={option.placeholder} className="text-sm" disabled />
 				</InputGroup>
+			)}
+		</div>
+	)
+}
+
+/**
+ * GitHub Repository Access Section
+ * Displays all repositories the GitHub App has access to.
+ */
+function GitHubRepositoryAccessSection({ organizationId }: { organizationId: OrganizationId }) {
+	const [page, setPage] = useState(1)
+	const perPage = 30
+
+	const repositoriesResult = useAtomValue(
+		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
+			path: { orgId: organizationId },
+			urlParams: { page, perPage },
+		}),
+	)
+
+	// Loading state
+	if (Result.isInitial(repositoriesResult)) {
+		return (
+			<div className="overflow-hidden rounded-xl border border-border bg-bg">
+				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
+					<h3 className="font-medium text-fg text-sm">Repository Access</h3>
+				</div>
+				<div className="flex items-center justify-center p-8">
+					<div className="flex items-center gap-3 text-muted-fg">
+						<svg className="size-5 animate-spin" fill="none" viewBox="0 0 24 24">
+							<circle
+								className="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								strokeWidth="4"
+							/>
+							<path
+								className="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							/>
+						</svg>
+						<span className="text-sm">Loading repositories...</span>
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	// Error state
+	if (Result.isFailure(repositoriesResult)) {
+		return (
+			<div className="overflow-hidden rounded-xl border border-border bg-bg">
+				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
+					<h3 className="font-medium text-fg text-sm">Repository Access</h3>
+				</div>
+				<div className="flex flex-col items-center justify-center px-5 py-8 text-center">
+					<p className="text-muted-fg text-sm">Unable to load repositories</p>
+				</div>
+			</div>
+		)
+	}
+
+	const data = Result.value(repositoriesResult)
+	if (Option.isNone(data)) {
+		return null
+	}
+
+	const { totalCount, repositories, hasNextPage } = data.value
+
+	return (
+		<div className="overflow-hidden rounded-xl border border-border bg-bg">
+			<div className="flex items-center justify-between border-border border-b bg-bg-muted/30 px-5 py-3">
+				<div className="flex items-center gap-2">
+					<h3 className="font-medium text-fg text-sm">Repository Access</h3>
+					<span className="rounded-full bg-bg-muted px-2 py-0.5 text-muted-fg text-xs">
+						{totalCount}
+					</span>
+				</div>
+				<a
+					href="https://github.com/apps/hazelchat/installations/select_target"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-muted-fg text-xs transition-colors hover:text-fg"
+				>
+					Manage access
+				</a>
+			</div>
+
+			{repositories.length === 0 ? (
+				<div className="flex flex-col items-center justify-center px-5 py-12 text-center">
+					<div className="mb-4 flex size-12 items-center justify-center rounded-full bg-bg-muted">
+						<svg
+							className="size-6 text-muted-fg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							strokeWidth={1.5}
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
+							/>
+						</svg>
+					</div>
+					<p className="mb-1 font-medium text-fg text-sm">No repositories accessible</p>
+					<p className="mb-4 text-muted-fg text-sm">
+						Configure which repositories the app can access.
+					</p>
+					<a
+						href="https://github.com/apps/hazelchat/installations/select_target"
+						target="_blank"
+						rel="noopener noreferrer"
+						className={buttonStyles({ intent: "secondary", size: "sm" })}
+					>
+						Configure on GitHub
+					</a>
+				</div>
+			) : (
+				<>
+					<div className="divide-y divide-border">
+						{repositories.map((repo) => (
+							<div key={repo.id} className="flex items-center justify-between gap-4 px-5 py-3">
+								<div className="flex min-w-0 items-center gap-3">
+									<div className="flex size-8 shrink-0 items-center justify-center rounded bg-bg-muted">
+										<svg
+											className="size-4 text-muted-fg"
+											fill="currentColor"
+											viewBox="0 0 16 16"
+										>
+											<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
+										</svg>
+									</div>
+									<div className="min-w-0">
+										<p className="truncate font-medium text-fg text-sm">
+											{repo.fullName}
+										</p>
+									</div>
+								</div>
+								<div className="flex shrink-0 items-center gap-3">
+									<span
+										className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
+											repo.private
+												? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+												: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+										}`}
+									>
+										{repo.private ? (
+											<svg className="size-3" fill="currentColor" viewBox="0 0 16 16">
+												<path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25ZM10.5 6V4a2.5 2.5 0 1 0-5 0v2Z" />
+											</svg>
+										) : (
+											<svg className="size-3" fill="currentColor" viewBox="0 0 16 16">
+												<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
+											</svg>
+										)}
+										{repo.private ? "Private" : "Public"}
+									</span>
+									<a
+										href={repo.htmlUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-muted-fg transition-colors hover:text-fg"
+										title="View on GitHub"
+									>
+										<svg
+											className="size-4"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											strokeWidth={1.5}
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+											/>
+										</svg>
+									</a>
+								</div>
+							</div>
+						))}
+					</div>
+
+					{/* Pagination */}
+					{(page > 1 || hasNextPage) && (
+						<div className="flex items-center justify-between border-border border-t px-5 py-3">
+							<Button
+								intent="secondary"
+								size="sm"
+								onPress={() => setPage((p) => Math.max(1, p - 1))}
+								isDisabled={page === 1}
+							>
+								Previous
+							</Button>
+							<span className="text-muted-fg text-xs">Page {page}</span>
+							<Button
+								intent="secondary"
+								size="sm"
+								onPress={() => setPage((p) => p + 1)}
+								isDisabled={!hasNextPage}
+							>
+								Next
+							</Button>
+						</div>
+					)}
+				</>
 			)}
 		</div>
 	)

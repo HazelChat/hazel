@@ -1,4 +1,4 @@
-import { Data, Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 
 /**
  * Linear issue URL pattern: https://linear.app/{workspace}/issue/{ISSUE-ID}
@@ -89,15 +89,18 @@ export const LinearIssue = Schema.Struct({
 export type LinearIssue = typeof LinearIssue.Type
 
 // Error for when Linear API request fails
-export class LinearApiError extends Data.TaggedError("LinearApiError")<{
-	readonly message: string
-	readonly cause?: unknown
-}> {}
+export class LinearApiError extends Schema.TaggedError<LinearApiError>()("LinearApiError", {
+	message: Schema.String,
+	cause: Schema.optional(Schema.Unknown),
+}) {}
 
 // Error for when issue is not found
-export class LinearIssueNotFoundError extends Data.TaggedError("LinearIssueNotFoundError")<{
-	readonly issueId: string
-}> {}
+export class LinearIssueNotFoundError extends Schema.TaggedError<LinearIssueNotFoundError>()(
+	"LinearIssueNotFoundError",
+	{
+		issueId: Schema.String,
+	},
+) {}
 
 /**
  * Parse a Linear issue URL to extract workspace and issue key

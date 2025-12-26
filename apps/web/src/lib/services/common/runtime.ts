@@ -2,6 +2,7 @@ import { Atom } from "@effect-atom/atom-react"
 import { Layer, ManagedRuntime } from "effect"
 import { ApiClient } from "./api-client"
 import { HazelRpcClient } from "./rpc-atom-client"
+import { TracerLive } from "./telemetry"
 
 /**
  * Shared layer containing all services
@@ -10,10 +11,11 @@ import { HazelRpcClient } from "./rpc-atom-client"
  * - ApiClient: HTTP client for REST API calls
  * - RpcClient: RPC client for collection mutations
  * - HazelRpcClient: RPC client for atom mutations
+ * - TracerLive: OpenTelemetry tracing (DevTools in dev, SignOZ in production)
  *
  * All RPC clients share the same WebSocket connection via RpcProtocolLive.
  */
-export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.layer)
+export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.layer, TracerLive)
 
 /**
  * Managed runtime for imperative Effect execution

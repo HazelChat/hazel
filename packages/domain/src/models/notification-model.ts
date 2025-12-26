@@ -10,6 +10,7 @@ export class Model extends M.Class<Model>("Notification")({
 	targetedResourceType: Schema.NullOr(Schema.String),
 	resourceId: Schema.NullOr(Schema.UUID),
 	resourceType: Schema.NullOr(Schema.String),
+	createdAt: M.Generated(JsonDate),
 	readAt: Schema.NullOr(JsonDate),
 }) {}
 

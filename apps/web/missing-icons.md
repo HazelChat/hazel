@@ -47,6 +47,7 @@ The following 33 icons from @untitledui/icons need to be created in `/src/compon
 ## Priority Icons
 
 ### High Priority (frequently used):
+
 1. **AlertCircle** - Error/warning states
 2. **CheckCircle** - Success states
 3. **InfoCircle** - Info states
@@ -56,6 +57,7 @@ The following 33 icons from @untitledui/icons need to be created in `/src/compon
 7. **UploadCloud02** - File uploads
 
 ### Medium Priority (UI components):
+
 8. **Check** - Checkboxes/selections
 9. **XCircle** - Error indicators
 10. **Loading01** - Loading states
@@ -63,6 +65,7 @@ The following 33 icons from @untitledui/icons need to be created in `/src/compon
 12. **ChevronSelectorVertical** - Table sorting
 
 ### Low Priority (specific features):
+
 13. **Building02** - Organization setup
 14. **PhoneCall01** - Call features
 15. **Flag01** - Reporting

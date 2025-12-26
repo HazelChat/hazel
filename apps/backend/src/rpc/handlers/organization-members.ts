@@ -34,7 +34,10 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 								...payload,
 								userId: user.id,
 								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							}).pipe(
+								Effect.map((res) => res[0]!),
+								policyUse(OrganizationMemberPolicy.canCreate(payload.organizationId)),
+							)
 
 							const txid = yield* generateTransactionId()
 
@@ -44,10 +47,7 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(
-						policyUse(OrganizationMemberPolicy.canCreate(payload.organizationId)),
-						withRemapDbErrors("OrganizationMember", "create"),
-					),
+					.pipe(withRemapDbErrors("OrganizationMember", "create")),
 
 			"organizationMember.update": ({ id, ...payload }) =>
 				db
@@ -56,7 +56,7 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							const updatedOrganizationMember = yield* OrganizationMemberRepo.update({
 								id,
 								...payload,
-							})
+							}).pipe(policyUse(OrganizationMemberPolicy.canUpdate(id)))
 
 							const txid = yield* generateTransactionId()
 
@@ -66,17 +66,16 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(
-						policyUse(OrganizationMemberPolicy.canUpdate(id)),
-						withRemapDbErrors("OrganizationMember", "update"),
-					),
+					.pipe(withRemapDbErrors("OrganizationMember", "update")),
 
 			"organizationMember.updateMetadata": ({ id, metadata }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
 							const updatedOrganizationMemberOption =
-								yield* OrganizationMemberRepo.updateMetadata(id, metadata)
+								yield* OrganizationMemberRepo.updateMetadata(id, metadata).pipe(
+									policyUse(OrganizationMemberPolicy.canUpdate(id)),
+								)
 
 							const updatedOrganizationMember = yield* Option.match(
 								updatedOrganizationMemberOption,
@@ -99,10 +98,7 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(
-						policyUse(OrganizationMemberPolicy.canUpdate(id)),
-						withRemapDbErrors("OrganizationMember", "update"),
-					),
+					.pipe(withRemapDbErrors("OrganizationMember", "update")),
 
 			"organizationMember.delete": ({ id }) =>
 				db

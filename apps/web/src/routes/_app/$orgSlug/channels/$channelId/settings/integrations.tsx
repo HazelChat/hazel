@@ -1,8 +1,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
+import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { Exit } from "effect"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
@@ -12,6 +11,7 @@ import {
 	type WebhookData,
 } from "~/atoms/channel-webhook-atoms"
 import { CreateWebhookForm } from "~/components/channel-settings/create-webhook-form"
+import { GitHubIntegrationCard } from "~/components/channel-settings/github-integration-card"
 import { IntegrationCard } from "~/components/channel-settings/integration-card"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
@@ -23,13 +23,16 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SectionHeader } from "~/components/ui/section-header"
+import { useOrganization } from "~/hooks/use-organization"
+import { matchExitWithToast } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/settings/integrations")({
 	component: IntegrationsPage,
 })
 
 function IntegrationsPage() {
-	const { channelId } = Route.useParams()
+	const { channelId, orgSlug } = Route.useParams()
+	const { organizationId } = useOrganization()
 
 	const [webhooks, setWebhooks] = useState<WebhookData[]>([])
 	const [isLoading, setIsLoading] = useState(true)
@@ -58,12 +61,14 @@ function IntegrationsPage() {
 			payload: { channelId: channelId as ChannelId },
 		})
 
-		Exit.match(exit, {
-			onSuccess: (result) => {
-				setWebhooks(result.data as unknown as WebhookData[])
-			},
-			onFailure: (cause) => {
-				console.error("Failed to load webhooks:", cause)
+		matchExitWithToast(exit, {
+			onSuccess: (result) => setWebhooks(result.data as unknown as WebhookData[]),
+			customErrors: {
+				ChannelNotFoundError: () => ({
+					title: "Channel not found",
+					description: "This channel may have been deleted.",
+					isRetryable: false,
+				}),
 			},
 		})
 		setIsLoading(false)
@@ -87,6 +92,13 @@ function IntegrationsPage() {
 			</SectionHeader.Root>
 
 			<div className="flex flex-col gap-4">
+				{/* GitHub Integration */}
+				<GitHubIntegrationCard
+					channelId={channelId as ChannelId}
+					organizationId={organizationId as OrganizationId | null}
+					orgSlug={orgSlug}
+				/>
+
 				<IntegrationCard
 					provider="openstatus"
 					channelId={channelId as ChannelId}
@@ -154,7 +166,7 @@ function IntegrationsPage() {
 					</div>
 					<div className="flex flex-col gap-0.5">
 						<span className="font-medium text-muted-fg">More integrations coming soon</span>
-						<span className="text-muted-fg/70 text-sm">Slack, GitHub, Linear, and more</span>
+						<span className="text-muted-fg/70 text-sm">Slack, Linear, and more</span>
 					</div>
 				</div>
 			</div>
@@ -193,13 +205,15 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 			},
 		})
 
-		Exit.match(exit, {
-			onSuccess: () => {
-				toast.success(webhook.isEnabled ? "Webhook disabled" : "Webhook enabled")
-				onDelete()
-			},
-			onFailure: () => {
-				toast.error("Failed to update webhook")
+		matchExitWithToast(exit, {
+			onSuccess: () => onDelete(),
+			successMessage: webhook.isEnabled ? "Webhook disabled" : "Webhook enabled",
+			customErrors: {
+				ChannelWebhookNotFoundError: () => ({
+					title: "Webhook not found",
+					description: "This webhook may have been deleted.",
+					isRetryable: false,
+				}),
 			},
 		})
 		setIsToggling(false)
@@ -217,13 +231,15 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 			payload: { id: webhook.id as ChannelWebhookId },
 		})
 
-		Exit.match(exit, {
-			onSuccess: () => {
-				toast.success("Webhook deleted")
-				onDelete()
-			},
-			onFailure: () => {
-				toast.error("Failed to delete webhook")
+		matchExitWithToast(exit, {
+			onSuccess: () => onDelete(),
+			successMessage: "Webhook deleted",
+			customErrors: {
+				ChannelWebhookNotFoundError: () => ({
+					title: "Webhook not found",
+					description: "This webhook may have already been deleted.",
+					isRetryable: false,
+				}),
 			},
 		})
 		setIsDeleting(false)
