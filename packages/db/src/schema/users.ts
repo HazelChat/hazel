@@ -15,6 +15,7 @@ export const usersTable = pgTable(
 		userType: userTypeEnum().notNull().default("user"),
 		settings: jsonb().$type<Record<string, any>>(),
 		isOnboarded: boolean().notNull().default(false),
+		timezone: varchar({ length: 100 }), // IANA timezone identifier (e.g., "America/New_York")
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),

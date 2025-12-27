@@ -66,6 +66,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 							userType: "user",
 							settings: null,
 							isOnboarded: false,
+							timezone: null,
 							deletedAt: null,
 						})
 						.pipe(
@@ -159,6 +160,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 					lastName: user.lastName,
 					email: user.email,
 					isOnboarded: user.isOnboarded,
+					timezone: user.timezone,
 				})
 
 				yield* Effect.log("🔍 [Cookie Auth] Final CurrentUser:", {
@@ -233,6 +235,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 				lastName: user.lastName,
 				email: user.email,
 				isOnboarded: user.isOnboarded,
+				timezone: user.timezone,
 			})
 
 			yield* Effect.log("🔍 [Refresh] Final CurrentUser:", {
@@ -329,6 +332,7 @@ export class SessionManager extends Effect.Service<SessionManager>()("SessionMan
 				lastName: user.lastName,
 				email: user.email,
 				isOnboarded: user.isOnboarded,
+				timezone: user.timezone,
 			})
 
 			return currentUser

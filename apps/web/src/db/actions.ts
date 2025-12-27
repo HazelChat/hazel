@@ -399,12 +399,19 @@ export const updateUserAction = optimisticAction({
 	collections: [userCollection],
 	runtime: runtime,
 
-	onMutate: (props: { userId: UserId; firstName?: string; lastName?: string; avatarUrl?: string }) => {
+	onMutate: (props: {
+		userId: UserId
+		firstName?: string
+		lastName?: string
+		avatarUrl?: string
+		timezone?: string | null
+	}) => {
 		console.log("user", userCollection.state.get(props.userId))
 		userCollection.update(props.userId, (draft) => {
 			if (props.firstName !== undefined) draft.firstName = props.firstName
 			if (props.lastName !== undefined) draft.lastName = props.lastName
 			if (props.avatarUrl !== undefined) draft.avatarUrl = props.avatarUrl
+			if (props.timezone !== undefined) draft.timezone = props.timezone
 		})
 
 		return { userId: props.userId }
@@ -419,6 +426,7 @@ export const updateUserAction = optimisticAction({
 				...(props.firstName !== undefined && { firstName: props.firstName }),
 				...(props.lastName !== undefined && { lastName: props.lastName }),
 				...(props.avatarUrl !== undefined && { avatarUrl: props.avatarUrl }),
+				...(props.timezone !== undefined && { timezone: props.timezone }),
 			})
 
 			return result

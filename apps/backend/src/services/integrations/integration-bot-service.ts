@@ -46,6 +46,7 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 									userType: "machine",
 									settings: null,
 									isOnboarded: true,
+									timezone: null,
 									deletedAt: null,
 								})
 								.pipe(withSystemActor)
@@ -98,6 +99,7 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 									userType: "machine",
 									settings: null,
 									isOnboarded: true,
+									timezone: null,
 									deletedAt: null,
 								})
 								.pipe(withSystemActor)

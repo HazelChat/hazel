@@ -12,9 +12,11 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { TextField } from "~/components/ui/text-field"
+import { TimezoneSelect } from "~/components/ui/timezone-select"
 import { updateUserAction } from "~/db/actions"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/lib/auth"
+import { detectBrowserTimezone } from "~/utils/timezone"
 
 export const Route = createFileRoute("/_app/$orgSlug/my-settings/profile")({
 	component: ProfileSettings,
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/_app/$orgSlug/my-settings/profile")({
 const profileSchema = type({
 	firstName: "string > 0",
 	lastName: "string > 0",
+	timezone: "string | null",
 })
 
 type ProfileFormData = typeof profileSchema.infer
@@ -31,10 +34,14 @@ function ProfileSettings() {
 	const { user } = useAuth()
 	const updateUserMutation = useAtomSet(updateUserAction, { mode: "promiseExit" })
 
+	// Use browser timezone as default if user hasn't set one
+	const defaultTimezone = user?.timezone || detectBrowserTimezone()
+
 	const form = useAppForm({
 		defaultValues: {
 			firstName: user?.firstName || "",
 			lastName: user?.lastName || "",
+			timezone: defaultTimezone,
 		} as ProfileFormData,
 		validators: {
 			onChange: profileSchema,
@@ -45,6 +52,7 @@ function ProfileSettings() {
 				userId: user.id as UserId,
 				firstName: value.firstName,
 				lastName: value.lastName,
+				timezone: value.timezone,
 			})
 
 			if (Exit.isSuccess(result)) {
@@ -145,6 +153,20 @@ function ProfileSettings() {
 							<Input type="email" value={user?.email} />
 						</InputGroup>
 					</TextField>
+				</div>
+
+				<div className="space-y-2">
+					<SectionLabel.Root size="sm" title="Timezone" className="max-lg:hidden" />
+					<Label className="lg:hidden">Timezone</Label>
+					<form.AppField
+						name="timezone"
+						children={(field) => (
+							<TimezoneSelect
+								value={field.state.value}
+								onChange={(tz) => field.handleChange(tz)}
+							/>
+						)}
+					/>
 				</div>
 
 				<div className="flex justify-end">

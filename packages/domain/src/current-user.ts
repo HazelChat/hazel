@@ -22,6 +22,7 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	lastName: S.optional(S.String),
 	email: S.String,
 	isOnboarded: S.Boolean,
+	timezone: S.NullOr(S.String),
 }) {}
 
 export class Context extends C.Tag("CurrentUser")<Context, Schema>() {}

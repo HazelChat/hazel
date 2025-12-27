@@ -103,6 +103,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								userType: "user",
 								settings: null,
 								isOnboarded: false,
+								timezone: null,
 								deletedAt: null,
 							})
 							.pipe(withSystemActor),
@@ -590,6 +591,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					userType: "user",
 					settings: null,
 					isOnboarded: false,
+					timezone: null,
 					deletedAt: null,
 				})
 				.pipe(

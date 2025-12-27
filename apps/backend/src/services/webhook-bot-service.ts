@@ -39,6 +39,7 @@ export class WebhookBotService extends Effect.Service<WebhookBotService>()("Webh
 						userType: "machine",
 						settings: null,
 						isOnboarded: true,
+						timezone: null,
 						deletedAt: null,
 					})
 					.pipe(withSystemActor)

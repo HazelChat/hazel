@@ -1,7 +1,8 @@
+import { ClockIcon } from "@heroicons/react/20/solid"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
 import { toast } from "sonner"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
@@ -18,6 +19,7 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 import { getStatusBadgeColor, getStatusDotColor, getStatusLabel } from "~/utils/status"
+import { formatUserLocalTime, getTimezoneAbbreviation } from "~/utils/timezone"
 
 interface UserProfilePopoverProps {
 	userId: UserId
@@ -36,6 +38,25 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 
 	const [isFavorite, setIsFavorite] = useState(false)
 	const [isMuted, setIsMuted] = useState(false)
+
+	// Local time display - updates every minute
+	const [localTime, setLocalTime] = useState(() =>
+		user?.timezone ? formatUserLocalTime(user.timezone) : "",
+	)
+
+	useEffect(() => {
+		if (!user?.timezone) return
+
+		// Update immediately when user changes
+		setLocalTime(formatUserLocalTime(user.timezone))
+
+		// Update every minute
+		const interval = setInterval(() => {
+			setLocalTime(formatUserLocalTime(user.timezone))
+		}, 60000)
+
+		return () => clearInterval(interval)
+	}, [user?.timezone])
 
 	if (!user) return null
 
@@ -159,6 +180,17 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 								<span className="mt-1 text-muted-fg text-xs italic">
 									"{presence.customMessage}"
 								</span>
+							)}
+							{user?.timezone && localTime && (
+								<div className="mt-2 flex items-center gap-1.5 text-muted-fg text-xs">
+									<ClockIcon className="size-3.5" />
+									<span>
+										{localTime} local time
+										<span className="ml-1 opacity-60">
+											({getTimezoneAbbreviation(user.timezone)})
+										</span>
+									</span>
+								</div>
 							)}
 						</div>
 					</div>

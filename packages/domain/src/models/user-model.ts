@@ -21,6 +21,7 @@ export class Model extends M.Class<Model>("User")({
 		}),
 	),
 	isOnboarded: Schema.Boolean,
+	timezone: Schema.NullOr(Schema.String),
 	...baseFields,
 }) {}
 

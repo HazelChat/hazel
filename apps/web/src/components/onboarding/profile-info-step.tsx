@@ -6,23 +6,27 @@ import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
+import { TimezoneSelect } from "~/components/ui/timezone-select"
 import { useAppForm } from "~/hooks/use-app-form"
 import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
+import { detectBrowserTimezone } from "~/utils/timezone"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
 const profileSchema = type({
 	firstName: "string > 0",
 	lastName: "string > 0",
+	timezone: "string",
 })
 
 type ProfileFormData = typeof profileSchema.infer
 
 interface ProfileInfoStepProps {
 	onBack: () => void
-	onContinue: (data: { firstName: string; lastName: string }) => void
+	onContinue: (data: { firstName: string; lastName: string; timezone: string }) => void
 	defaultFirstName?: string
 	defaultLastName?: string
+	defaultTimezone?: string
 }
 
 export function ProfileInfoStep({
@@ -30,14 +34,19 @@ export function ProfileInfoStep({
 	onContinue,
 	defaultFirstName = "",
 	defaultLastName = "",
+	defaultTimezone,
 }: ProfileInfoStepProps) {
 	const { user } = useAuth()
 	const updateUser = useAtomSet(updateUserMutation, { mode: "promiseExit" })
+
+	// Auto-detect browser timezone as default
+	const detectedTimezone = defaultTimezone || detectBrowserTimezone()
 
 	const form = useAppForm({
 		defaultValues: {
 			firstName: defaultFirstName,
 			lastName: defaultLastName,
+			timezone: detectedTimezone,
 		} as ProfileFormData,
 		validators: {
 			onChange: profileSchema,
@@ -51,6 +60,7 @@ export function ProfileInfoStep({
 						id: user.id,
 						firstName: value.firstName.trim(),
 						lastName: value.lastName.trim(),
+						timezone: value.timezone,
 					},
 				}),
 				{
@@ -67,7 +77,11 @@ export function ProfileInfoStep({
 			)
 
 			if (Exit.isSuccess(exit)) {
-				onContinue({ firstName: value.firstName.trim(), lastName: value.lastName.trim() })
+				onContinue({
+					firstName: value.firstName.trim(),
+					lastName: value.lastName.trim(),
+					timezone: value.timezone,
+				})
 			}
 		},
 	})
@@ -123,6 +137,22 @@ export function ProfileInfoStep({
 								{field.state.meta.errors?.[0] && (
 									<FieldError>{field.state.meta.errors[0].message}</FieldError>
 								)}
+							</TextField>
+						)}
+					/>
+
+					<form.AppField
+						name="timezone"
+						children={(field) => (
+							<TextField isRequired>
+								<Label>Timezone</Label>
+								<TimezoneSelect
+									value={field.state.value}
+									onChange={(tz) => field.handleChange(tz)}
+								/>
+								<Description>
+									We detected your timezone automatically. You can change it if needed.
+								</Description>
 							</TextField>
 						)}
 					/>

@@ -160,6 +160,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 								userType: "user",
 								settings: null,
 								isOnboarded: false,
+								timezone: null,
 								deletedAt: null,
 							})
 							.pipe(
