@@ -120,7 +120,7 @@ export function OnboardingLayout({
 
 			{/* Right panel - content */}
 			<div className="flex min-h-dvh items-center justify-center p-4 sm:p-12">
-				<div className="w-full max-w-2xl space-y-6">{children}</div>
+				<div className="w-full max-w-2xl space-y-6 py-6">{children}</div>
 			</div>
 		</main>
 	)

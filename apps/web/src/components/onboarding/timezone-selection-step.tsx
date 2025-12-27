@@ -188,7 +188,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 				</div>
 
 				{/* Search and Detection */}
-				<div className="px-6 py-4 flex flex-col sm:flex-row gap-3">
+				<div className="py-4 flex flex-col sm:flex-row gap-3">
 					<InputGroup className="w-full">
 						<MagnifyingGlassIcon />
 						<Input
@@ -212,7 +212,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 				</div>
 
 				{/* City Cards Grid */}
-				<div className="p-6 @container">
+				<div className="py-6 @container">
 					<div className="grid grid-cols-1 @xs:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-1 -m-1 pr-2">
 						{filteredCities.map((city, index) => (
 							<CityCard
