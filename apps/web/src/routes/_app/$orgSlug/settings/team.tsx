@@ -6,7 +6,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
-import { openModal } from "~/atoms/modal-atoms"
+import { useModal } from "~/atoms/modal-atoms"
 import IconCircleDottedUser from "~/components/icons/icon-circle-dotted-user"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconMessage from "~/components/icons/icon-msgs"
@@ -46,6 +46,9 @@ function TeamSettings() {
 	const navigate = useNavigate()
 	const { organizationId, slug: orgSlug } = useOrganization()
 	const { user } = useAuth()
+
+	// Modal hooks
+	const changeRoleModal = useModal("change-role")
 
 	const createDmChannel = useAtomSet(createDmChannelMutation, {
 		mode: "promiseExit",
@@ -266,7 +269,7 @@ function TeamSettings() {
 																			teamMembers?.find(
 																				(m) => m.userId === user?.id,
 																			)
-																		openModal("change-role", {
+																		changeRoleModal.open({
 																			userId: member.userId,
 																			name: `${member.user.firstName} ${member.user.lastName}`,
 																			memberId: member.id,

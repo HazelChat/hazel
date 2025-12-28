@@ -4,9 +4,11 @@ import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { createDmChannelMutation } from "~/atoms/channel-atoms"
 import { type CommandPalettePage, commandPaletteAtom } from "~/atoms/command-palette-atoms"
+import { useModal } from "~/atoms/modal-atoms"
+import { recentChannelsAtom } from "~/atoms/recent-channels-atom"
 import {
 	CommandMenu,
 	CommandMenuItem,
@@ -15,6 +17,7 @@ import {
 	type CommandMenuProps,
 	CommandMenuSearch,
 	CommandMenuSection,
+	CommandMenuShortcut,
 } from "~/components/ui/command-menu"
 import {
 	channelCollection,
@@ -24,6 +27,7 @@ import {
 	userPresenceStatusCollection,
 } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { toastExit } from "~/lib/toast-exit"
@@ -34,10 +38,12 @@ import IconDashboard from "./icons/icon-dashboard"
 import IconGear from "./icons/icon-gear"
 import IconIntegration from "./icons/icon-integratio-"
 import IconMsgs from "./icons/icon-msgs"
+import IconPlus from "./icons/icon-plus"
+import { IconServers } from "./icons/icon-servers"
 import IconUsersPlus from "./icons/icon-users-plus"
 import { Avatar } from "./ui/avatar"
 
-type Page = "home" | "channels" | "members"
+type Page = "home" | "channels" | "members" | "status"
 
 export function CommandPalette(
 	props: Pick<CommandMenuProps, "isOpen" | "onOpenChange"> & { initialPage?: CommandPalettePage },
@@ -121,6 +127,8 @@ export function CommandPalette(
 				return "Search channels..."
 			case "members":
 				return "Search members..."
+			case "status":
+				return "Set your status..."
 			default:
 				return "Where would you like to go?"
 		}
@@ -142,6 +150,7 @@ export function CommandPalette(
 				)}
 				{currentPage === "channels" && <ChannelsView onClose={closePalette} />}
 				{currentPage === "members" && <MembersView onClose={closePalette} />}
+				{currentPage === "status" && <StatusView onClose={closePalette} />}
 			</CommandMenuList>
 		</CommandMenu>
 	)
@@ -154,13 +163,112 @@ function HomeView({
 	navigateToPage: (page: Page) => void
 	onClose: () => void
 }) {
-	const { slug: orgSlug } = useOrganization()
+	const { slug: orgSlug, organizationId } = useOrganization()
 	const { user } = useAuth()
 	const navigate = useNavigate()
+	const recentChannels = useAtomValue(recentChannelsAtom)
+
+	// Modal hooks for quick actions
+	const newChannelModal = useModal("new-channel")
+	const createDmModal = useModal("create-dm")
+	const joinChannelModal = useModal("join-channel")
+	const emailInviteModal = useModal("email-invite")
+
+	// Get channel data for recent channels
+	const recentChannelIds = recentChannels.map((rc) => rc.channelId)
+	const { data: recentChannelData } = useLiveQuery(
+		(q) =>
+			recentChannelIds.length > 0 && organizationId
+				? q
+						.from({ channel: channelCollection })
+						.where(({ channel }) => eq(channel.organizationId, organizationId))
+						.select(({ channel }) => channel)
+				: null,
+		[recentChannelIds.length, organizationId],
+	)
+
+	// Sort and filter recent channels by visitedAt order
+	const sortedRecentChannels = useMemo(() => {
+		if (!recentChannelData) return []
+		return recentChannels
+			.map((rc) => recentChannelData.find((c) => c.id === rc.channelId))
+			.filter((c): c is NonNullable<typeof c> => c !== undefined)
+			.slice(0, 5)
+	}, [recentChannelData, recentChannels])
 
 	return (
 		<>
-			<CommandMenuSection>
+			{/* Quick Actions */}
+			<CommandMenuSection label="Quick Actions">
+				<CommandMenuItem
+					onAction={() => {
+						newChannelModal.open()
+						onClose()
+					}}
+					textValue="create channel"
+				>
+					<IconPlus />
+					<CommandMenuLabel>Create channel</CommandMenuLabel>
+					<CommandMenuShortcut>⌘⇧N</CommandMenuShortcut>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						createDmModal.open()
+						onClose()
+					}}
+					textValue="start conversation new dm"
+				>
+					<IconMsgs />
+					<CommandMenuLabel>Start conversation</CommandMenuLabel>
+					<CommandMenuShortcut>⌘⇧D</CommandMenuShortcut>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						joinChannelModal.open()
+						onClose()
+					}}
+					textValue="join channel"
+				>
+					<IconPlus />
+					<CommandMenuLabel>Join channel</CommandMenuLabel>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						emailInviteModal.open()
+						onClose()
+					}}
+					textValue="invite members"
+				>
+					<IconUsersPlus />
+					<CommandMenuLabel>Invite members</CommandMenuLabel>
+					<CommandMenuShortcut>⌘⇧I</CommandMenuShortcut>
+				</CommandMenuItem>
+			</CommandMenuSection>
+
+			{/* Recent Channels */}
+			{sortedRecentChannels.length > 0 && (
+				<CommandMenuSection label="Recent">
+					{sortedRecentChannels.map((channel) => (
+						<CommandMenuItem
+							key={channel.id}
+							textValue={channel.name}
+							onAction={() => {
+								navigate({
+									to: "/$orgSlug/chat/$id",
+									params: { orgSlug: orgSlug!, id: channel.id },
+								})
+								onClose()
+							}}
+						>
+							<ChannelIcon icon={channel.icon} />
+							<CommandMenuLabel>{channel.name}</CommandMenuLabel>
+						</CommandMenuItem>
+					))}
+				</CommandMenuSection>
+			)}
+
+			{/* Browse */}
+			<CommandMenuSection label="Browse">
 				<CommandMenuItem onAction={() => navigateToPage("channels")} textValue="browse channels">
 					<IconMsgs />
 					<CommandMenuLabel>Browse channels...</CommandMenuLabel>
@@ -168,6 +276,30 @@ function HomeView({
 				<CommandMenuItem onAction={() => navigateToPage("members")} textValue="browse members">
 					<IconUsersPlus />
 					<CommandMenuLabel>Browse members...</CommandMenuLabel>
+				</CommandMenuItem>
+			</CommandMenuSection>
+
+			{/* Navigation */}
+			<CommandMenuSection label="Navigation">
+				<CommandMenuItem
+					onAction={() => {
+						navigate({ to: "/$orgSlug", params: { orgSlug: orgSlug! } })
+						onClose()
+					}}
+					textValue="dashboard home"
+				>
+					<IconDashboard />
+					<CommandMenuLabel>Dashboard</CommandMenuLabel>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						navigate({ to: "/$orgSlug/chat", params: { orgSlug: orgSlug! } })
+						onClose()
+					}}
+					textValue="chat messages"
+				>
+					<IconMsgs />
+					<CommandMenuLabel>Chat</CommandMenuLabel>
 				</CommandMenuItem>
 				<CommandMenuItem
 					onAction={() => {
@@ -179,8 +311,29 @@ function HomeView({
 					<IconBell />
 					<CommandMenuLabel>Notifications</CommandMenuLabel>
 				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						navigate({ to: "/$orgSlug/my-settings", params: { orgSlug: orgSlug! } })
+						onClose()
+					}}
+					textValue="my settings preferences"
+				>
+					<IconGear />
+					<CommandMenuLabel>My Settings</CommandMenuLabel>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						navigate({ to: "/$orgSlug/my-settings/profile", params: { orgSlug: orgSlug! } })
+						onClose()
+					}}
+					textValue="my profile"
+				>
+					<IconCircleDottedUser />
+					<CommandMenuLabel>My Profile</CommandMenuLabel>
+				</CommandMenuItem>
 			</CommandMenuSection>
 
+			{/* Settings */}
 			<CommandMenuSection label="Settings">
 				<CommandMenuItem
 					onAction={() => {
@@ -194,23 +347,10 @@ function HomeView({
 				</CommandMenuItem>
 				<CommandMenuItem
 					onAction={() => {
-						navigate({
-							to: "/$orgSlug/profile/$userId",
-							params: { orgSlug: orgSlug!, userId: user?.id || "" },
-						})
-						onClose()
-					}}
-					textValue="profile"
-				>
-					<IconCircleDottedUser />
-					<CommandMenuLabel>Profile</CommandMenuLabel>
-				</CommandMenuItem>
-				<CommandMenuItem
-					onAction={() => {
 						navigate({ to: "/$orgSlug/settings/team", params: { orgSlug: orgSlug! } })
 						onClose()
 					}}
-					textValue="team"
+					textValue="team members"
 				>
 					<IconDashboard />
 					<CommandMenuLabel>Team</CommandMenuLabel>
@@ -234,6 +374,24 @@ function HomeView({
 				>
 					<IconUsersPlus />
 					<CommandMenuLabel>Invitations</CommandMenuLabel>
+				</CommandMenuItem>
+				<CommandMenuItem
+					onAction={() => {
+						navigate({ to: "/$orgSlug/settings/debug", params: { orgSlug: orgSlug! } })
+						onClose()
+					}}
+					textValue="debug"
+				>
+					<IconServers />
+					<CommandMenuLabel>Debug</CommandMenuLabel>
+				</CommandMenuItem>
+			</CommandMenuSection>
+
+			{/* Status */}
+			<CommandMenuSection label="Status">
+				<CommandMenuItem onAction={() => navigateToPage("status")} textValue="set status presence">
+					<IconCircleDottedUser />
+					<CommandMenuLabel>Set status...</CommandMenuLabel>
 				</CommandMenuItem>
 			</CommandMenuSection>
 		</>
@@ -388,6 +546,47 @@ function MembersView({ onClose }: { onClose: () => void }) {
 					</CommandMenuItem>
 				)
 			})}
+		</CommandMenuSection>
+	)
+}
+
+type PresenceStatus = "online" | "away" | "busy" | "dnd"
+
+const STATUS_OPTIONS: { value: PresenceStatus; label: string; icon: string; description: string }[] = [
+	{ value: "online", label: "Online", icon: "🟢", description: "Available and active" },
+	{ value: "away", label: "Away", icon: "🟡", description: "Stepped away temporarily" },
+	{ value: "busy", label: "Busy", icon: "🔴", description: "Focused, limit interruptions" },
+	{ value: "dnd", label: "Do Not Disturb", icon: "⛔", description: "No notifications" },
+]
+
+function StatusView({ onClose }: { onClose: () => void }) {
+	const { status, setStatus, customMessage } = usePresence()
+	const [selectedStatus, setSelectedStatus] = useState<PresenceStatus | null>(null)
+	const [message, setMessage] = useState(customMessage || "")
+
+	const handleStatusSelect = async (newStatus: PresenceStatus) => {
+		setSelectedStatus(newStatus)
+		await setStatus(newStatus, message || undefined)
+		onClose()
+	}
+
+	return (
+		<CommandMenuSection label="Set Status">
+			{STATUS_OPTIONS.map((option) => (
+				<CommandMenuItem
+					key={option.value}
+					textValue={`${option.label} ${option.description}`}
+					onAction={() => handleStatusSelect(option.value)}
+				>
+					<span className="text-base">{option.icon}</span>
+					<CommandMenuLabel>
+						{option.label}
+						{status === option.value && (
+							<span className="ml-2 text-muted-fg text-xs">(current)</span>
+						)}
+					</CommandMenuLabel>
+				</CommandMenuItem>
+			))}
 		</CommandMenuSection>
 	)
 }

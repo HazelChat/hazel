@@ -121,6 +121,55 @@ function CounterButton() {
 }
 ```
 
+### Anti-Pattern: Imperative Atom Updates from React
+
+❌ **DON'T** export imperative functions that use `Atom.update()` and call them from React components:
+
+```tsx
+// BAD - This doesn't trigger React re-renders!
+export const openModal = (type: string) => {
+	Atom.batch(() => {
+		Atom.update(modalAtomFamily(type), (s) => ({ ...s, isOpen: true }))
+	})
+}
+
+// In component - React won't re-render when state changes!
+function Component() {
+	return <button onClick={() => openModal("my-modal")}>Open</button>
+}
+```
+
+✅ **DO** create custom hooks that use `useAtomSet`:
+
+```tsx
+// GOOD - Hook-based approach triggers re-renders
+export const useModal = (type: string) => {
+	const state = useAtomValue(modalAtomFamily(type))
+	const setState = useAtomSet(modalAtomFamily(type))
+
+	const open = useCallback(() => {
+		setState((prev) => ({ ...prev, isOpen: true }))
+	}, [setState])
+
+	const close = useCallback(() => {
+		setState((prev) => ({ ...prev, isOpen: false }))
+	}, [setState])
+
+	return { isOpen: state.isOpen, open, close }
+}
+
+// In component - Works correctly!
+function Component() {
+	const { open } = useModal("my-modal")
+	return <button onClick={open}>Open</button>
+}
+```
+
+**When imperative updates ARE acceptable:**
+- Event listeners outside React (keyboard shortcuts via `Atom.keyboardShortcut`)
+- Effects that run on atom changes
+- Non-UI state updates (analytics, logging)
+
 ### Reading and Writing Together
 
 Use `useAtom` when you need both:

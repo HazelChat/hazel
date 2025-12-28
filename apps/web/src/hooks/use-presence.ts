@@ -1,4 +1,4 @@
-import { Atom, Result, useAtomMount, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, Result, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
 import { DateTime, Duration, Effect, Schedule, Stream } from "effect"
@@ -256,6 +256,7 @@ export function usePresence() {
 	}))
 
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
+	const setManualStatus = useAtomSet(manualStatusAtom)
 
 	// Track previous values to avoid duplicate updates
 	const previousValuesRef = useRef<{
@@ -357,12 +358,10 @@ export function usePresence() {
 		async (status: PresenceStatus, customMessage?: string) => {
 			if (!user?.id) return
 
-			Atom.batch(() => {
-				return Atom.set(manualStatusAtom, {
-					status,
-					customMessage: customMessage ?? null,
-					previousStatus: previousManualStatusRef.current,
-				})
+			setManualStatus({
+				status,
+				customMessage: customMessage ?? null,
+				previousStatus: previousManualStatusRef.current,
 			})
 
 			previousManualStatusRef.current = status
@@ -377,7 +376,7 @@ export function usePresence() {
 
 			await runtime.runPromise(program).catch(console.error)
 		},
-		[user?.id],
+		[user?.id, setManualStatus],
 	)
 
 	return {

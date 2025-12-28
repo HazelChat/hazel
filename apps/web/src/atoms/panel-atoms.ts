@@ -1,6 +1,7 @@
 import { BrowserKeyValueStore } from "@effect/platform-browser"
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Schema } from "effect"
+import { useCallback } from "react"
 
 /**
  * Panel types for the split panel system
@@ -45,13 +46,29 @@ export const panelWidthAtomFamily = Atom.family((panelType: PanelType) =>
 )
 
 /**
- * Helper to set panel width
+ * React hook for panel width state and actions
+ * Use this in React components to properly trigger re-renders
+ *
+ * @example
+ * const { width, setWidth } = usePanelWidth("thread")
+ * <ResizablePanel width={width} onWidthChangeEnd={setWidth} />
  */
-export const setPanelWidth = (panelType: PanelType, width: number) => {
-	const clampedWidth = Math.max(PANEL_CONSTRAINTS.minWidth, Math.min(PANEL_CONSTRAINTS.maxWidth, width))
-	Atom.batch(() => {
-		return Atom.set(panelWidthAtomFamily(panelType), clampedWidth)
-	})
+export const usePanelWidth = (panelType: PanelType) => {
+	const width = useAtomValue(panelWidthAtomFamily(panelType))
+	const setWidthAtom = useAtomSet(panelWidthAtomFamily(panelType))
+
+	const setWidth = useCallback(
+		(newWidth: number) => {
+			const clamped = Math.max(PANEL_CONSTRAINTS.minWidth, Math.min(PANEL_CONSTRAINTS.maxWidth, newWidth))
+			setWidthAtom(clamped)
+		},
+		[setWidthAtom],
+	)
+
+	return {
+		width: width ?? DEFAULT_PANEL_WIDTHS[panelType],
+		setWidth,
+	}
 }
 
 /**

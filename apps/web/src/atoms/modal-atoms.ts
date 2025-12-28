@@ -1,4 +1,5 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useCallback } from "react"
 
 /**
  * Supported modal types in the application
@@ -49,42 +50,33 @@ export const openModalsAtom = Atom.make((get) => {
 }).pipe(Atom.keepAlive)
 
 /**
- * Helper function to open a modal imperatively
+ * React hook for modal state and actions
+ * Use this in React components to properly trigger re-renders
+ *
+ * @example
+ * const { isOpen, open, close } = useModal("new-channel")
+ * <Button onPress={open}>Create Channel</Button>
+ * <Modal isOpen={isOpen} onOpenChange={(open) => !open && close()}>...</Modal>
  */
-export const openModal = (type: ModalType, metadata?: Record<string, unknown>) => {
-	Atom.batch(() => {
-		return Atom.update(modalAtomFamily(type), (state) => ({
-			...state,
-			isOpen: true,
-			metadata,
-		}))
-	})
-}
+export const useModal = (type: ModalType) => {
+	const state = useAtomValue(modalAtomFamily(type))
+	const setState = useAtomSet(modalAtomFamily(type))
 
-/**
- * Helper function to close a modal imperatively
- */
-export const closeModal = (type: ModalType) => {
-	Atom.batch(() => {
-		return Atom.update(modalAtomFamily(type), (state) => ({
-			...state,
-			isOpen: false,
-			metadata: undefined,
-		}))
-	})
-}
+	const open = useCallback(
+		(metadata?: Record<string, unknown>) => {
+			setState((prev) => ({ ...prev, isOpen: true, metadata }))
+		},
+		[setState],
+	)
 
-/**
- * Helper function to close all modals
- */
-export const closeAllModals = () => {
-	Atom.batch(() => {
-		for (const type of MODAL_TYPES) {
-			return Atom.update(modalAtomFamily(type), (state) => ({
-				...state,
-				isOpen: false,
-				metadata: undefined,
-			}))
-		}
-	})
+	const close = useCallback(() => {
+		setState((prev) => ({ ...prev, isOpen: false, metadata: undefined }))
+	}, [setState])
+
+	return {
+		isOpen: state.isOpen,
+		metadata: state.metadata,
+		open,
+		close,
+	}
 }

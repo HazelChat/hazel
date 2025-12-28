@@ -1,10 +1,11 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
-import { DEFAULT_PANEL_WIDTHS, panelWidthAtomFamily, setPanelWidth } from "~/atoms/panel-atoms"
+import { trackRecentChannel } from "~/atoms/recent-channels-atom"
+import { usePanelWidth } from "~/atoms/panel-atoms"
 import { ChatHeader } from "~/components/chat/chat-header"
 import { ChatTabBar } from "~/components/chat/chat-tab-bar"
 import type { MessageListRef } from "~/components/chat/message-list"
@@ -56,12 +57,15 @@ function ChatLayout() {
 	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId } = useChat()
 	const { orgSlug } = Route.useParams()
 
-	// Get persisted panel width
-	const threadPanelWidth = useAtomValue(panelWidthAtomFamily("thread")) ?? DEFAULT_PANEL_WIDTHS.thread
+	// Get persisted panel width via hook
+	const { width: threadPanelWidth, setWidth: setThreadPanelWidth } = usePanelWidth("thread")
 
-	const handleWidthChangeEnd = useCallback((width: number) => {
-		setPanelWidth("thread", width)
-	}, [])
+	const handleWidthChangeEnd = useCallback(
+		(width: number) => {
+			setThreadPanelWidth(width)
+		},
+		[setThreadPanelWidth],
+	)
 
 	return (
 		<SplitPanelRoot className="h-[calc(100dvh-4rem)] md:h-dvh">
@@ -111,6 +115,7 @@ function RouteComponent() {
 
 	useEffect(() => {
 		clearNotifications({ payload: { channelId: id as ChannelId } })
+		trackRecentChannel(id)
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [id])
 

@@ -3,15 +3,11 @@
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
-import { Fragment, useMemo, useState } from "react"
+import { Fragment, useMemo } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
+import { useModal } from "~/atoms/modal-atoms"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
-import { CreateChannelModal } from "~/components/modals/create-channel-modal"
-import { CreateDmModal } from "~/components/modals/create-dm-modal"
-import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
-import { EmailInviteModal } from "~/components/modals/email-invite-modal"
-import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { ChannelItem } from "~/components/sidebar/channel-item"
 import { DmChannelItem } from "~/components/sidebar/dm-channel-item"
 import { FavoriteSection } from "~/components/sidebar/favorite-section"
@@ -175,10 +171,14 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
 	const { user } = useAuth()
-	const [modalType, setModalType] = useState<
-		"create" | "join" | "dm" | "invite" | "create-organization" | null
-	>(null)
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
+
+	// Modal hooks
+	const createOrgModal = useModal("create-organization")
+	const emailInviteModal = useModal("email-invite")
+	const newChannelModal = useModal("new-channel")
+	const joinChannelModal = useModal("join-channel")
+	const createDmModal = useModal("create-dm")
 
 	return (
 		<>
@@ -204,12 +204,12 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 						<MenuContent className="min-w-(--trigger-width)">
 							{isMobile ? (
 								<SwitchServerMenu
-									onCreateOrganization={() => setModalType("create-organization")}
+									onCreateOrganization={() => createOrgModal.open()}
 								/>
 							) : (
 								<>
 									<MenuSection>
-										<MenuItem onAction={() => setModalType("invite")}>
+										<MenuItem onAction={() => emailInviteModal.open()}>
 											<IconUsersPlus />
 											<MenuLabel>Invite people</MenuLabel>
 										</MenuItem>
@@ -231,9 +231,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 										</MenuItem>
 										<MenuContent>
 											<SwitchServerMenu
-												onCreateOrganization={() =>
-													setModalType("create-organization")
-												}
+												onCreateOrganization={() => createOrgModal.open()}
 											/>
 										</MenuContent>
 									</MenuSubMenu>
@@ -241,7 +239,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									<MenuSeparator />
 
 									<MenuSection>
-										<MenuItem onAction={() => setModalType("create")}>
+										<MenuItem onAction={() => newChannelModal.open()}>
 											<IconCirclePlus />
 											<MenuLabel>Create channel</MenuLabel>
 										</MenuItem>
@@ -308,12 +306,12 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								<ChannelGroup
 									organizationId={organizationId}
 									threadsByParent={threadsByParent}
-									onCreateChannel={() => setModalType("create")}
-									onJoinChannel={() => setModalType("join")}
+									onCreateChannel={() => newChannelModal.open()}
+									onJoinChannel={() => joinChannelModal.open()}
 								/>
 								<DmChannelGroup
 									organizationId={organizationId}
-									onCreateDm={() => setModalType("dm")}
+									onCreateDm={() => createDmModal.open()}
 								/>
 							</>
 						)}
@@ -323,24 +321,6 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 					<UserMenu />
 				</SidebarFooter>
 			</Sidebar>
-			{modalType === "create" && (
-				<CreateChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-			{modalType === "join" && (
-				<JoinChannelModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-			{modalType === "dm" && (
-				<CreateDmModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-			{modalType === "invite" && (
-				<EmailInviteModal isOpen={true} onOpenChange={(isOpen) => !isOpen && setModalType(null)} />
-			)}
-			{modalType === "create-organization" && (
-				<CreateOrganizationModal
-					isOpen={true}
-					onOpenChange={(isOpen) => !isOpen && setModalType(null)}
-				/>
-			)}
 		</>
 	)
 }

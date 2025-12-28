@@ -1,9 +1,15 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
+import { useModal } from "~/atoms/modal-atoms"
 import { CommandPalette } from "~/components/command-palette"
 import { Loader } from "~/components/loader"
 import { MobileNav } from "~/components/mobile-nav"
+import { CreateChannelModal } from "~/components/modals/create-channel-modal"
+import { CreateDmModal } from "~/components/modals/create-dm-modal"
+import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
+import { EmailInviteModal } from "~/components/modals/email-invite-modal"
+import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import {
@@ -14,6 +20,7 @@ import {
 	organizationMemberCollection,
 	userCollection,
 } from "~/db/collections"
+import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
@@ -42,10 +49,31 @@ function RouteComponent() {
 	const { organizationId, isLoading: isOrgLoading } = useOrganization()
 	const isRedirecting = useRef(false)
 
+	// Modal state and actions from hooks
+	const newChannelModal = useModal("new-channel")
+	const createDmModal = useModal("create-dm")
+	const joinChannelModal = useModal("join-channel")
+	const emailInviteModal = useModal("email-invite")
+	const createOrgModal = useModal("create-organization")
+
 	const openChannelsBrowser = () => {
 		setInitialPage("channels")
 		setOpenCmd(true)
 	}
+
+	// Global keyboard shortcuts
+	useKeyboardShortcut("n", () => newChannelModal.open(), {
+		meta: true,
+		shift: true,
+	})
+	useKeyboardShortcut("d", () => createDmModal.open(), {
+		meta: true,
+		shift: true,
+	})
+	useKeyboardShortcut("i", () => emailInviteModal.open(), {
+		meta: true,
+		shift: true,
+	})
 
 	// Sync organization context to user session
 	// If user's JWT doesn't have org context (or has different org), re-authenticate with correct org
@@ -87,6 +115,28 @@ function RouteComponent() {
 							initialPage={initialPage}
 						/>
 					</SidebarInset>
+
+					{/* Global Modals - controlled by hook state */}
+					<CreateChannelModal
+						isOpen={newChannelModal.isOpen}
+						onOpenChange={(open) => !open && newChannelModal.close()}
+					/>
+					<CreateDmModal
+						isOpen={createDmModal.isOpen}
+						onOpenChange={(open) => !open && createDmModal.close()}
+					/>
+					<JoinChannelModal
+						isOpen={joinChannelModal.isOpen}
+						onOpenChange={(open) => !open && joinChannelModal.close()}
+					/>
+					<EmailInviteModal
+						isOpen={emailInviteModal.isOpen}
+						onOpenChange={(open) => !open && emailInviteModal.close()}
+					/>
+					<CreateOrganizationModal
+						isOpen={createOrgModal.isOpen}
+						onOpenChange={(open) => !open && createOrgModal.close()}
+					/>
 				</NotificationSoundProvider>
 			</PresenceProvider>
 		</SidebarProvider>

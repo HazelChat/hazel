@@ -18,8 +18,22 @@ import {
 	DialogTrigger,
 } from "./dialog"
 
-const Modal = (props: DialogTriggerProps) => {
-	return <DialogTriggerPrimitive {...props} />
+interface ModalProps extends DialogTriggerProps {
+	isOpen?: boolean
+	onOpenChange?: (isOpen: boolean) => void
+}
+
+const Modal = ({ isOpen, onOpenChange, children, ...props }: ModalProps) => {
+	// Controlled mode - when isOpen is explicitly provided
+	if (isOpen !== undefined) {
+		return (
+			<ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange}>
+				{children}
+			</ModalOverlay>
+		)
+	}
+	// Uncontrolled mode - use DialogTrigger (requires trigger button as child)
+	return <DialogTriggerPrimitive {...props}>{children}</DialogTriggerPrimitive>
 }
 
 const sizes = {

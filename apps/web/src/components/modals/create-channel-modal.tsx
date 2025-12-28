@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useState } from "react"
 import { ChannelIcon } from "~/components/channel-icon"
-import { EmojiPickerDialog } from "~/components/emoji-picker/emoji-picker-dialog"
+
 import { Button } from "~/components/ui/button"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input, InputGroup } from "~/components/ui/input"

@@ -55,7 +55,7 @@ export const isLoadingAtomFamily = Atom.family((id: string) =>
 export const startLoadingTop = (id: string): boolean => {
 	let started = false
 	Atom.batch(() => {
-		Atom.update(loadingStateAtomFamily(id), (currentState) => {
+		return Atom.update(loadingStateAtomFamily(id), (currentState) => {
 			if (currentState === "idle") {
 				started = true
 				return "loading-top"
@@ -73,7 +73,7 @@ export const startLoadingTop = (id: string): boolean => {
 export const startLoadingBottom = (id: string): boolean => {
 	let started = false
 	Atom.batch(() => {
-		Atom.update(loadingStateAtomFamily(id), (currentState) => {
+		return Atom.update(loadingStateAtomFamily(id), (currentState) => {
 			if (currentState === "idle") {
 				started = true
 				return "loading-bottom"
@@ -90,13 +90,13 @@ export const startLoadingBottom = (id: string): boolean => {
  */
 export const finishLoading = (id: string): void => {
 	Atom.batch(() => {
-		Atom.set(loadingStateAtomFamily(id), "cooldown")
+		return Atom.set(loadingStateAtomFamily(id), "cooldown")
 	})
 
 	// Set timeout to return to idle after cooldown
 	setTimeout(() => {
 		Atom.batch(() => {
-			Atom.set(loadingStateAtomFamily(id), "idle")
+			return Atom.set(loadingStateAtomFamily(id), "idle")
 		})
 	}, COOLDOWN_MS)
 }
@@ -107,6 +107,6 @@ export const finishLoading = (id: string): void => {
  */
 export const resetLoadingState = (id: string): void => {
 	Atom.batch(() => {
-		Atom.set(loadingStateAtomFamily(id), "idle")
+		return Atom.set(loadingStateAtomFamily(id), "idle")
 	})
 }

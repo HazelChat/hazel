@@ -3,7 +3,7 @@ import { Atom } from "@effect-atom/atom-react"
 /**
  * Available pages in the command palette
  */
-export type CommandPalettePage = "home" | "channels" | "members"
+export type CommandPalettePage = "home" | "channels" | "members" | "status"
 
 /**
  * Command palette navigation state interface
@@ -13,6 +13,10 @@ export interface CommandPaletteState {
 	currentPage: CommandPalettePage
 	pageHistory: CommandPalettePage[]
 	inputValue: string
+	context?: {
+		channelId?: string
+		channelName?: string
+	}
 }
 
 /**
@@ -41,81 +45,3 @@ export const canGoBackAtom = Atom.make((get) => {
 	const state = get(commandPaletteAtom)
 	return state.pageHistory.length > 0
 }).pipe(Atom.keepAlive)
-
-/**
- * @deprecated Use useAtomSet(commandPaletteAtom) in React components instead.
- * Imperative atom updates don't trigger React re-renders properly.
- *
- * For non-React contexts only (e.g., keyboard shortcuts, external event handlers).
- */
-export const resetCommandPaletteNavigation = () => {
-	Atom.batch(() => {
-		Atom.set(commandPaletteAtom, {
-			currentPage: "home",
-			pageHistory: [],
-			inputValue: "",
-		})
-	})
-}
-
-/**
- * @deprecated Use useAtomSet(commandPaletteAtom) in React components instead.
- * Imperative atom updates don't trigger React re-renders properly.
- *
- * @example
- * ```tsx
- * // ❌ Don't do this in React components
- * navigateToPage("channels")
- *
- * // ✅ Do this instead
- * const setState = useAtomSet(commandPaletteAtom)
- * setState((state) => ({
- *   ...state,
- *   currentPage: "channels",
- *   pageHistory: [...state.pageHistory, state.currentPage],
- * }))
- * ```
- */
-export const navigateToPage = (page: CommandPalettePage) => {
-	Atom.batch(() => {
-		Atom.update(commandPaletteAtom, (state) => ({
-			...state,
-			currentPage: page,
-			pageHistory: [...state.pageHistory, state.currentPage],
-			inputValue: "",
-		}))
-	})
-}
-
-/**
- * @deprecated Use useAtomSet(commandPaletteAtom) in React components instead.
- * Imperative atom updates don't trigger React re-renders properly.
- */
-export const goBackInNavigation = () => {
-	Atom.batch(() => {
-		Atom.update(commandPaletteAtom, (state) => {
-			if (state.pageHistory.length === 0) return state
-
-			const previousPage = state.pageHistory[state.pageHistory.length - 1]
-			return {
-				...state,
-				currentPage: previousPage || "home",
-				pageHistory: state.pageHistory.slice(0, -1),
-				inputValue: "",
-			}
-		})
-	})
-}
-
-/**
- * @deprecated Use useAtomSet(commandPaletteAtom) in React components instead.
- * Imperative atom updates don't trigger React re-renders properly.
- */
-export const updateSearchInput = (value: string) => {
-	Atom.batch(() => {
-		Atom.update(commandPaletteAtom, (state) => ({
-			...state,
-			inputValue: value,
-		}))
-	})
-}
