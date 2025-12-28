@@ -108,7 +108,7 @@ export function FeedbackModal({ isOpen, onOpenChange }: FeedbackModalProps) {
 										</SelectContent>
 									</Select>
 									{field.state.meta.errors?.[0] && (
-										<FieldError>{String(field.state.meta.errors[0])}</FieldError>
+										<FieldError>{field.state.meta.errors[0].message}</FieldError>
 									)}
 								</TextField>
 							)}
@@ -127,7 +127,7 @@ export function FeedbackModal({ isOpen, onOpenChange }: FeedbackModalProps) {
 										aria-invalid={!!field.state.meta.errors?.length}
 									/>
 									{field.state.meta.errors?.[0] && (
-										<FieldError>{String(field.state.meta.errors[0])}</FieldError>
+										<FieldError>{field.state.meta.errors[0].message}</FieldError>
 									)}
 								</TextField>
 							)}

@@ -23,6 +23,7 @@ import { ThemeSelectionStep } from "~/components/onboarding/theme-selection-step
 import { TimezoneSelectionStep } from "~/components/onboarding/timezone-selection-step"
 import { UseCaseStep } from "~/components/onboarding/use-case-step"
 import { WelcomeStep } from "~/components/onboarding/welcome-step"
+import { Loader } from "~/components/ui/loader"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
 import { onboardingMachine } from "~/machines/onboarding.machine"
@@ -483,7 +484,7 @@ function RouteComponent() {
 						transition={{ duration: 0.3, ease: "easeInOut" }}
 					>
 						<div className="flex flex-col items-center justify-center space-y-4 py-12 text-center">
-							<div className="size-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+							<Loader className="size-12" />
 							<p className="font-medium text-lg">Setting up your workspace...</p>
 							<p className="text-muted-fg text-sm">This will just take a moment</p>
 							{state.context.error && (

@@ -1,6 +1,7 @@
 import type { OrganizationId } from "@hazel/schema"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { useRef } from "react"
+import { Loader } from "~/components/ui/loader"
 import { useAuth } from "../../lib/auth"
 
 export const Route = createFileRoute("/auth/login")({
@@ -40,7 +41,7 @@ function LoginPage() {
 	if (isLoading) {
 		return (
 			<div className="flex h-screen items-center justify-center">
-				<div className="h-8 w-8 animate-spin rounded-full border-border border-b-2"></div>
+				<Loader className="size-8" />
 			</div>
 		)
 	}
@@ -53,7 +54,7 @@ function LoginPage() {
 		<div className="flex h-screen items-center justify-center">
 			<div className="text-center">
 				<h1 className="mb-4 font-semibold text-2xl">Redirecting to login...</h1>
-				<div className="mx-auto h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2"></div>
+				<Loader className="mx-auto size-8" />
 			</div>
 		</div>
 	)

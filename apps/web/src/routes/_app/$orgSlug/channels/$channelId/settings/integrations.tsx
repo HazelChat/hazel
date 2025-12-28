@@ -18,6 +18,7 @@ import IconCopy from "~/components/icons/icon-copy"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconPlus from "~/components/icons/icon-plus"
 import IconTrash from "~/components/icons/icon-trash"
+import { Loader } from "~/components/ui/loader"
 import { IconWebhook } from "~/components/icons/icon-webhook"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -137,7 +138,7 @@ function IntegrationsPage() {
 					<div className="p-4">
 						{isLoading ? (
 							<div className="flex items-center justify-center py-6">
-								<div className="size-5 animate-spin rounded-full border-2 border-muted-fg/30 border-t-primary" />
+								<Loader className="size-5" />
 							</div>
 						) : regularWebhooks.length === 0 ? (
 							<div className="mb-4 rounded-lg border border-border border-dashed py-6 text-center">

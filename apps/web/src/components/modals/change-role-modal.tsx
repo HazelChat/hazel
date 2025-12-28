@@ -4,16 +4,8 @@ import { useCallback, useState } from "react"
 import { toast } from "sonner"
 import { closeModal, modalAtomFamily } from "~/atoms/modal-atoms"
 import { Button } from "~/components/ui/button"
-import {
-	Dialog,
-	DialogBody,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
 import { Description, Label } from "~/components/ui/field"
-import { Modal, ModalContent } from "~/components/ui/modal"
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { Radio, RadioGroup } from "~/components/ui/radio"
 import { organizationMemberCollection } from "~/db/collections"
 
@@ -85,44 +77,38 @@ export function ChangeRoleModal() {
 				onOpenChange={(open) => !open && handleClose()}
 				size="md"
 			>
-				<Dialog>
-					<DialogHeader>
-						<DialogTitle>Change role for {metadata.name}</DialogTitle>
-						<DialogDescription>Select a new role for this team member</DialogDescription>
-					</DialogHeader>
+				<ModalHeader>
+					<ModalTitle>Change role for {metadata.name}</ModalTitle>
+					<Description>Select a new role for this team member</Description>
+				</ModalHeader>
 
-					<DialogBody>
-						<div className="space-y-2">
-							<Label>Role</Label>
-							<RadioGroup value={selectedRole} onChange={setSelectedRole}>
-								{roleOptions.map((option) => (
-									<Radio
-										key={option.value}
-										value={option.value}
-										isDisabled={option.disabled}
-									>
-										<Label>{option.label}</Label>
-										<Description>{option.description}</Description>
-									</Radio>
-								))}
-							</RadioGroup>
-						</div>
-					</DialogBody>
+				<ModalBody>
+					<div className="flex flex-col gap-2">
+						<Label>Role</Label>
+						<RadioGroup value={selectedRole} onChange={setSelectedRole}>
+							{roleOptions.map((option) => (
+								<Radio key={option.value} value={option.value} isDisabled={option.disabled}>
+									<Label>{option.label}</Label>
+									<Description>{option.description}</Description>
+								</Radio>
+							))}
+						</RadioGroup>
+					</div>
+				</ModalBody>
 
-					<DialogFooter>
-						<Button intent="outline" onPress={handleClose} isDisabled={isSubmitting}>
-							Cancel
-						</Button>
-						<Button
-							intent="primary"
-							onPress={handleSubmit}
-							isDisabled={isSubmitting || selectedRole === metadata.role}
-							isPending={isSubmitting}
-						>
-							{isSubmitting ? "Updating..." : "Update role"}
-						</Button>
-					</DialogFooter>
-				</Dialog>
+				<ModalFooter>
+					<Button intent="outline" onPress={handleClose} isDisabled={isSubmitting}>
+						Cancel
+					</Button>
+					<Button
+						intent="primary"
+						onPress={handleSubmit}
+						isDisabled={isSubmitting || selectedRole === metadata.role}
+						isPending={isSubmitting}
+					>
+						{isSubmitting ? "Updating..." : "Update role"}
+					</Button>
+				</ModalFooter>
 			</ModalContent>
 		</Modal>
 	)

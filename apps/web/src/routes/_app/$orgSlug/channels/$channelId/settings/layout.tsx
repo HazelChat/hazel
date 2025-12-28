@@ -47,7 +47,7 @@ function RouteComponent() {
 
 	return (
 		<main className="h-full w-full min-w-0 bg-bg">
-			<div className="flex h-full min-h-0 w-full flex-col gap-6 overflow-y-auto pt-6 pb-12">
+			<div className="flex h-full min-h-0 w-full flex-col gap-8 overflow-y-auto pt-8 pb-12">
 				<div className="flex flex-col gap-5 px-4 lg:px-8">
 					{/* Back button and header */}
 					<div className="flex flex-col gap-4">
@@ -85,9 +85,31 @@ function RouteComponent() {
 						</div>
 					</div>
 
-					{/* Tabs */}
-					<div className="-mx-4 -my-1 flex w-full max-w-full overflow-scroll px-4 py-1 lg:-mx-8 lg:px-8">
+					{/* Mobile select dropdown */}
+					<div className="md:hidden">
+						<select
+							value={selectedTab}
+							onChange={(event) => {
+								const tabId = event.target.value
+								const tab = tabs.find((t) => t.id === tabId)
+								if (tab) {
+									navigate({ to: tab.to, params: { orgSlug, channelId } })
+								}
+							}}
+							className="w-full appearance-none rounded-lg border border-input bg-bg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-base/6 text-fg outline-hidden focus:border-ring/70 focus:ring-3 focus:ring-ring/20 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6"
+						>
+							{tabs.map((tab) => (
+								<option key={tab.id} value={tab.id}>
+									{tab.label}
+								</option>
+							))}
+						</select>
+					</div>
+
+					{/* Desktop tabs */}
+					<div className="scrollbar-hide -mx-4 -my-1 flex w-full max-w-full overflow-x-auto px-4 py-1 lg:-mx-8 lg:px-8">
 						<Tabs
+							className="max-md:hidden"
 							selectedKey={selectedTab}
 							onSelectionChange={(value) => {
 								const tabId = value as string
