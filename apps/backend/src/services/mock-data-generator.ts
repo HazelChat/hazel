@@ -162,6 +162,9 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 						replyToMessageId: null,
 						threadChannelId: null,
 						deletedAt: null,
+						liveObjectId: null,
+						liveObjectType: null,
+						liveObjectStatus: null,
 					}
 				}).filter((msg): msg is NonNullable<typeof msg> => msg !== null)
 

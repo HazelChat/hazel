@@ -1,0 +1,25 @@
+{
+	"name": "rivet-actors",
+	"private": true,
+	"type": "module",
+	"module": "src/index.ts",
+	"scripts": {
+		"dev": "bun run src/index.ts --hot",
+		"start": "bun run src/index.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"rivetkit": "^2.0.31",
+		"@durable-streams/client": "^0.1.2",
+		"@openrouter/ai-sdk-provider": "npm:@openrouter/ai-sdk-provider@ai-sdk-v4",
+		"ai": "^4.0.0",
+		"@hazel/domain": "workspace:*",
+		"effect": "catalog:effect"
+	},
+	"devDependencies": {
+		"@types/bun": "1.3.5"
+	},
+	"peerDependencies": {
+		"typescript": "5.9.3"
+	}
+}

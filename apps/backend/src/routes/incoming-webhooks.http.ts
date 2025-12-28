@@ -371,6 +371,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						replyToMessageId: null,
 						threadChannelId: null,
 						deletedAt: null,
+						liveObjectId: null,
+						liveObjectType: null,
+						liveObjectStatus: null,
 					})
 					.pipe(withSystemActor)
 
@@ -458,6 +461,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						replyToMessageId: null,
 						threadChannelId: null,
 						deletedAt: null,
+						liveObjectId: null,
+						liveObjectType: null,
+						liveObjectStatus: null,
 					})
 					.pipe(withSystemActor)
 
@@ -542,6 +548,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 						replyToMessageId: null,
 						threadChannelId: null,
 						deletedAt: null,
+						liveObjectId: null,
+						liveObjectType: null,
+						liveObjectStatus: null,
 					})
 					.pipe(withSystemActor)
 

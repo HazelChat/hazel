@@ -26,6 +26,7 @@ import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 import { InlineThreadPreview } from "./inline-thread-preview"
+import { LiveMessage } from "./live-message"
 import { MessageAttachments } from "./message-attachments"
 import { MessageEmbeds } from "./message-embeds"
 import { MessageReplySection } from "./message-reply-section"
@@ -135,6 +136,20 @@ export const MessageItem = memo(function MessageItem({
 
 					{/* Message Content */}
 					{(() => {
+						// Check if this is a live streaming message
+						const isLiveStreaming =
+							message.liveObjectId && message.liveObjectStatus === "streaming"
+
+						// If streaming, render LiveMessage component
+						if (isLiveStreaming) {
+							return (
+								<LiveMessage
+									messageId={message.id}
+									initialContent={message.content}
+								/>
+							)
+						}
+
 						const urls = extractUrls(message.content)
 						const tweetUrls = urls.filter((url) => isTweetUrl(url))
 						const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))

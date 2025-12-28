@@ -45,6 +45,9 @@ export const sendMessageAction = optimisticAction({
 			replyToMessageId: props.replyToMessageId || null,
 			threadChannelId: props.threadChannelId || null,
 			embeds: null,
+			liveObjectId: null,
+			liveObjectType: null,
+			liveObjectStatus: null,
 			createdAt: new Date(),
 			updatedAt: null,
 			deletedAt: null,
@@ -67,11 +70,64 @@ export const sendMessageAction = optimisticAction({
 				attachmentIds: props.attachmentIds || [],
 				embeds: null,
 				deletedAt: null,
+				liveObjectId: null,
+				liveObjectType: null,
+				liveObjectStatus: null,
 				authorId: props.authorId,
 			})
 
 			// No manual sync needed - automatic sync on messageCollection!
 			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+/**
+ * Action to send an AI streaming message
+ * Creates a message with live object reference and triggers the AI actor
+ */
+export const sendAIMessageAction = optimisticAction({
+	collections: [messageCollection],
+	runtime: runtime,
+
+	onMutate: (props: {
+		channelId: ChannelId
+		authorId: UserId
+		prompt: string
+	}) => {
+		const messageId = MessageId.make(crypto.randomUUID())
+		const liveObjectId = `ai-${crypto.randomUUID()}`
+
+		// Optimistically insert the streaming message
+		messageCollection.insert({
+			id: messageId,
+			channelId: props.channelId,
+			authorId: props.authorId,
+			content: "", // Will be filled by AI streaming
+			replyToMessageId: null,
+			threadChannelId: null,
+			embeds: null,
+			liveObjectId: liveObjectId,
+			liveObjectType: "ai_streaming",
+			liveObjectStatus: "streaming",
+			createdAt: new Date(),
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		return { messageId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+
+			// Call the AI message creation RPC
+			const result = yield* client("message.createAI", {
+				channelId: props.channelId,
+				prompt: props.prompt,
+			})
+
+			return { data: { messageId: result.messageId }, transactionId: result.transactionId }
 		}),
 })
 

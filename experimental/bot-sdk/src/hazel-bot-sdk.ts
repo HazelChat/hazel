@@ -152,6 +152,9 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							attachmentIds: options?.attachmentIds ?? [],
 							embeds: null,
 							deletedAt: null,
+							liveObjectId: null,
+							liveObjectType: null,
+							liveObjectStatus: null,
 							// authorId will be overridden by backend AuthMiddleware with the authenticated bot user
 							authorId: "" as UserId,
 						})
@@ -177,6 +180,9 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							attachmentIds: options?.attachmentIds ?? [],
 							embeds: null,
 							deletedAt: null,
+							liveObjectId: null,
+							liveObjectType: null,
+							liveObjectStatus: null,
 							// authorId will be overridden by backend AuthMiddleware with the authenticated bot user
 							authorId: "" as UserId,
 						})

@@ -150,6 +150,9 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 							replyToMessageId: null,
 							threadChannelId: null,
 							deletedAt: null,
+							liveObjectId: null,
+							liveObjectType: null,
+							liveObjectStatus: null,
 						})
 						.pipe(withSystemActor)
 

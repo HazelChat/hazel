@@ -38,6 +38,10 @@ export interface MessageEmbed {
 	badge?: MessageEmbedBadge // Status badge (e.g., "Deployed", "Failed")
 }
 
+// Live object types for streaming content
+export type LiveObjectType = "ai_streaming" | "deployment" | "integration"
+export type LiveObjectStatus = "streaming" | "complete" | "error"
+
 // Messages table
 export const messagesTable = pgTable(
 	"messages",
@@ -52,6 +56,10 @@ export const messagesTable = pgTable(
 		replyToMessageId: uuid().$type<MessageId>(),
 		// Thread channel (if this message started a thread)
 		threadChannelId: uuid().$type<ChannelId>(),
+		// Live object reference for streaming content (AI responses, deployments, etc.)
+		liveObjectId: text(),
+		liveObjectType: text().$type<LiveObjectType>(),
+		liveObjectStatus: text().$type<LiveObjectStatus>(),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),
@@ -63,6 +71,7 @@ export const messagesTable = pgTable(
 		index("messages_thread_channel_idx").on(table.threadChannelId),
 		index("messages_created_at_idx").on(table.createdAt),
 		index("messages_deleted_at_idx").on(table.deletedAt),
+		index("messages_live_object_id_idx").on(table.liveObjectId),
 	],
 )
 

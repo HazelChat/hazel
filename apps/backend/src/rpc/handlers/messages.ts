@@ -1,13 +1,23 @@
+import { HttpBody, HttpClient } from "@effect/platform"
 import { Database } from "@hazel/db"
+import type { MessageId } from "@hazel/domain/ids"
 import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
 import { MessageRpcs } from "@hazel/domain/rpc"
-import { Effect } from "effect"
+import { Config, Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
 import { AttachmentRepo } from "../../repositories/attachment-repo"
 import { MessageRepo } from "../../repositories/message-repo"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
+
+// Service URLs for live streaming (configured via environment)
+const RIVET_ACTORS_URL = Config.string("RIVET_ACTORS_URL").pipe(
+	Config.withDefault("http://localhost:8082"),
+)
+const STREAMS_SERVER_URL = Config.string("STREAMS_SERVER_URL").pipe(
+	Config.withDefault("http://localhost:8081"),
+)
 
 /**
  * Message RPC Handlers
@@ -112,6 +122,107 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "delete"))
+				}),
+
+			"message.createAI": ({ channelId, prompt }) =>
+				Effect.gen(function* () {
+					const user = yield* CurrentUser.Context
+
+					// Check rate limit before processing
+					yield* checkMessageRateLimit(user.id)
+
+					// Get service URLs from config (orDie since these should always be configured)
+					const rivetUrl = yield* RIVET_ACTORS_URL.pipe(Effect.orDie)
+					const streamsUrl = yield* STREAMS_SERVER_URL.pipe(Effect.orDie)
+
+					return yield* db
+						.transaction(
+							Effect.gen(function* () {
+								// Generate a unique actor ID based on the message ID
+								const actorId = `ai-${crypto.randomUUID()}`
+
+								// Create message with live object reference
+								const createdMessage = yield* MessageRepo.insert({
+									channelId,
+									authorId: user.id,
+									content: "", // Empty initially, will be filled by the actor
+									embeds: null,
+									replyToMessageId: null,
+									threadChannelId: null,
+									liveObjectId: actorId,
+									liveObjectType: "ai_streaming",
+									liveObjectStatus: "streaming",
+									deletedAt: null,
+								}).pipe(
+									Effect.map((res) => res[0]!),
+									policyUse(MessagePolicy.canCreate(channelId)),
+								)
+
+								const messageId = createdMessage.id
+
+								// Create the response stream first
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.put(`${streamsUrl}/v1/stream/messages/${messageId}/responses`, {
+											headers: { "Content-Type": "application/json" },
+										}),
+									),
+									Effect.catchAll(() => Effect.void), // Ignore errors, stream may already exist
+								)
+
+								// Create the prompt stream
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.put(`${streamsUrl}/v1/stream/messages/${messageId}/prompts`, {
+											headers: { "Content-Type": "application/json" },
+										}),
+									),
+									Effect.catchAll(() => Effect.void), // Ignore errors, stream may already exist
+								)
+
+								// Spawn Rivet actor
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.post(`${rivetUrl}/actors/aiAgent`, {
+											body: HttpBody.unsafeJson({
+												id: actorId,
+												messageId,
+												channelId,
+											}),
+										}),
+									),
+									Effect.catchAll((err) => {
+										console.error("Failed to spawn Rivet actor:", err)
+										return Effect.void
+									}),
+								)
+
+								// Send initial prompt to stream
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.post(`${streamsUrl}/v1/stream/messages/${messageId}/prompts`, {
+											body: HttpBody.unsafeJson({
+												id: crypto.randomUUID(),
+												content: prompt,
+												timestamp: Date.now(),
+											}),
+										}),
+									),
+									Effect.catchAll((err) => {
+										console.error("Failed to send prompt to stream:", err)
+										return Effect.void
+									}),
+								)
+
+								const txid = yield* generateTransactionId()
+
+								return {
+									messageId: messageId as MessageId,
+									transactionId: txid,
+								}
+							}),
+						)
+						.pipe(withRemapDbErrors("Message", "create"))
 				}),
 		}
 	}),

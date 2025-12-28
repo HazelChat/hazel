@@ -27,6 +27,7 @@ import {
 	deleteMessageAction,
 	editMessageAction,
 	pinMessageAction,
+	sendAIMessageAction,
 	sendMessageAction,
 	toggleReactionAction,
 	unpinMessageAction,
@@ -39,6 +40,7 @@ interface ChatContextValue {
 	organizationId: OrganizationId
 	channel: typeof Channel.Model.Type | undefined
 	sendMessage: (props: { content: string; attachments?: AttachmentId[] }) => void
+	sendAIMessage: (prompt: string) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
 	deleteMessage: (messageId: MessageId) => void
 	addReaction: (messageId: MessageId, channelId: ChannelId, emoji: string) => void
@@ -86,6 +88,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const { user } = useAuth()
 
 	const sendMessageMutation = useAtomSet(sendMessageAction, { mode: "promiseExit" })
+	const sendAIMessageMutation = useAtomSet(sendAIMessageAction, { mode: "promiseExit" })
 	const toggleReactionMutation = useAtomSet(toggleReactionAction, { mode: "promiseExit" })
 	const createThreadMutation = useAtomSet(createThreadAction, { mode: "promiseExit" })
 	const editMessageMutation = useAtomSet(editMessageAction, { mode: "promiseExit" })
@@ -201,6 +204,26 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			clearAttachments,
 			onMessageSent,
 		],
+	)
+
+	const sendAIMessage = useCallback(
+		async (prompt: string) => {
+			if (!user?.id) return
+
+			const tx = await sendAIMessageMutation({
+				channelId,
+				authorId: UserId.make(user.id),
+				prompt,
+			})
+
+			if (Exit.isFailure(tx)) {
+				// Handle errors - the optimistic action will have already shown the error
+				toast.error("Failed to send AI message")
+			} else {
+				onMessageSent?.()
+			}
+		},
+		[channelId, user?.id, sendAIMessageMutation, onMessageSent],
 	)
 
 	const editMessage = useCallback(
@@ -410,6 +433,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			organizationId,
 			channel,
 			sendMessage,
+			sendAIMessage,
 			editMessage,
 			deleteMessage,
 			addReaction,
@@ -440,6 +464,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			organizationId,
 			channel,
 			sendMessage,
+			sendAIMessage,
 			editMessage,
 			deleteMessage,
 			addReaction,

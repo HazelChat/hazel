@@ -39,6 +39,7 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 	const { user } = useAuth()
 	const {
 		sendMessage,
+		sendAIMessage,
 		replyToMessageId,
 		setReplyToMessageId,
 		channelId,
@@ -174,8 +175,21 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 		// Allow empty content if there are attachments
 		if (!content.trim() && attachmentIds.length === 0) return
 
+		const trimmedContent = content.trim()
+
+		// Check for /ai command
+		if (trimmedContent.startsWith("/ai ")) {
+			const prompt = trimmedContent.slice(4).trim()
+			if (prompt) {
+				sendAIMessage(prompt)
+				stopTyping()
+				editorRef.current?.clearContent()
+				return
+			}
+		}
+
 		sendMessage({
-			content: content.trim(),
+			content: trimmedContent,
 		})
 		stopTyping()
 
