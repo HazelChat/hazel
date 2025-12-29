@@ -163,7 +163,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								// Create the response stream first
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.put(`${streamsUrl}/v1/stream/messages/${messageId}/responses`, {
+										client.put(`${streamsUrl}/v1/stream/msg-${messageId}-responses`, {
 											headers: { "Content-Type": "application/json" },
 										}),
 									),
@@ -173,7 +173,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								// Create the prompt stream
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.put(`${streamsUrl}/v1/stream/messages/${messageId}/prompts`, {
+										client.put(`${streamsUrl}/v1/stream/msg-${messageId}-prompts`, {
 											headers: { "Content-Type": "application/json" },
 										}),
 									),
@@ -183,11 +183,13 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								// Spawn Rivet actor
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.post(`${rivetUrl}/actors/aiAgent`, {
+										client.post(`${rivetUrl}/actors`, {
 											body: HttpBody.unsafeJson({
-												id: actorId,
-												messageId,
-												channelId,
+												name: "aiAgent",
+												key: messageId, // Actor reads messageId from its key
+												runner_name_selector: "default",
+												crash_policy: "stop",
+												// Note: input omitted - requires CBOR encoding
 											}),
 										}),
 									),
@@ -200,7 +202,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								// Send initial prompt to stream
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.post(`${streamsUrl}/v1/stream/messages/${messageId}/prompts`, {
+										client.post(`${streamsUrl}/v1/stream/msg-${messageId}-prompts`, {
 											body: HttpBody.unsafeJson({
 												id: crypto.randomUUID(),
 												content: prompt,

@@ -36,7 +36,7 @@ export function useLiveMessage(messageId: string | null): UseLiveMessageResult {
 
 	const subscribe = useCallback(
 		async (id: string, startOffset: string, signal: AbortSignal) => {
-			const url = new URL(`${STREAMS_URL}/v1/stream/messages/${id}/responses`)
+			const url = new URL(`${STREAMS_URL}/v1/stream/msg-${id}-responses`)
 			url.searchParams.set("offset", startOffset)
 			url.searchParams.set("live", "long-poll")
 

@@ -13,9 +13,11 @@ const openrouter = createOpenRouter({
 })
 
 export const aiAgent = actor({
-	createState: (_c, input: { messageId: string; channelId: string }) => ({
-		messageId: input.messageId,
-		channelId: input.channelId,
+	// Note: input may be undefined when key is used to pass messageId
+	createState: (c, input?: { messageId?: string; channelId?: string }) => ({
+		// Read messageId from input if provided, otherwise from key (first element)
+		messageId: input?.messageId ?? c.key[0] ?? "",
+		channelId: input?.channelId ?? "",
 		promptStreamOffset: "-1" as string,
 		isComplete: false,
 	}),
@@ -37,8 +39,8 @@ export const aiAgent = actor({
 })
 
 async function getStreams(messageId: string) {
-	const promptStreamUrl = `${STREAMS_URL}/v1/stream/messages/${messageId}/prompts`
-	const responseStreamUrl = `${STREAMS_URL}/v1/stream/messages/${messageId}/responses`
+	const promptStreamUrl = `${STREAMS_URL}/v1/stream/msg-${messageId}-prompts`
+	const responseStreamUrl = `${STREAMS_URL}/v1/stream/msg-${messageId}-responses`
 
 	let promptStream: DurableStream
 	let responseStream: DurableStream
