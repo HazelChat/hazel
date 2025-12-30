@@ -1,0 +1,28 @@
+[package]
+name = "rivet-cache"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+futures-util.workspace = true
+lazy_static.workspace = true
+moka.workspace = true
+rivet-cache-result.workspace = true
+rivet-config.workspace = true
+rivet-env.workspace = true
+rivet-metrics.workspace = true
+rivet-pools.workspace = true
+rivet-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+universalpubsub.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+rand.workspace = true

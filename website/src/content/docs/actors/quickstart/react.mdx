@@ -1,0 +1,169 @@
+import { Hosting } from "@/components/docs/Hosting";
+
+# React Quickstart
+
+Build real-time React applications with Rivet Actors
+
+<Steps>
+<Step title="Install Dependencies">
+
+```sh
+npm install rivetkit @rivetkit/react
+```
+
+</Step>
+
+<Step title="Create Backend Actor">
+
+Create your actor registry on the backend:
+
+```ts {{"title":"backend/registry.ts"}}
+import { actor, setup } from "rivetkit";
+
+export const counter = actor({
+	state: { count: 0 },
+	actions: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			c.broadcast("newCount", c.state.count);
+			return c.state.count;
+		},
+	},
+});
+
+export const registry = setup({
+	use: { counter },
+});
+```
+
+</Step>
+
+<Step title="Setup Backend Server">
+
+Start a server to run your actors:
+
+```ts {{"title":"backend/server.ts"}}
+import { registry } from "./registry";
+
+// Run server with default configuration
+registry.start();
+```
+
+</Step>
+
+<Step title="Create React Frontend">
+
+Set up your React application:
+
+```tsx {{"title":"frontend/App.tsx"}}
+import { createRivetKit } from "@rivetkit/react";
+import { useState } from "react";
+import type { registry } from "../backend/registry";
+
+const { useActor } = createRivetKit<typeof registry>();
+
+function App() {
+	const [count, setCount] = useState(0);
+	const [counterName, setCounterName] = useState("test-counter");
+
+	const counter = useActor({
+		name: "counter",
+		key: [counterName],
+	});
+
+	counter.useEvent("newCount", (x: number) => setCount(x));
+
+	const increment = async () => {
+		await counter.connection?.increment(1);
+	};
+
+	return (
+		<div style={{ padding: "2rem" }}>
+			<h1>Rivet Counter</h1>
+			<h2>Count: {count}</h2>
+
+			<div style={{ marginBottom: "1rem" }}>
+				<label>
+					Counter Name:
+					<input
+						type="text"
+						value={counterName}
+						onChange={(e) => setCounterName(e.target.value)}
+						style={{ marginLeft: "0.5rem", padding: "0.25rem" }}
+					/>
+				</label>
+			</div>
+
+			<button onClick={increment}>Increment</button>
+
+			<div style={{ marginTop: "1rem", fontSize: "0.9rem", color: "#666" }}>
+				<p>Connection Status: {counter.isConnected ? "Connected" : "Disconnected"}</p>
+				<p>Try opening multiple tabs to see real-time sync.</p>
+			</div>
+		</div>
+	);
+}
+
+export default App;
+```
+
+</Step>
+
+<Step title="Setup Vite Configuration">
+
+Configure Vite for development:
+
+```ts {{"title":"vite.config.ts"}}
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+  },
+})
+```
+
+</Step>
+
+<Step title="Run Your Application">
+
+Start both the backend and frontend:
+
+**Terminal 1**: Start the backend
+
+```sh Backend
+npx tsx --watch backend/server.ts
+```
+
+**Terminal 2**: Start the frontend
+
+```sh Frontend  
+npx vite
+```
+
+Open `http://localhost:5173` in your browser. Try opening multiple tabs to see real-time sync in action.
+
+</Step>
+
+<Step title="Deploy">
+
+<Hosting />
+
+</Step>
+
+</Steps>
+
+## Configuration Options
+
+### Add Your Own Backend Endpoints
+
+Add custom HTTP endpoints alongside your actors to handle additional business logic, authentication, and integrations with external services.
+
+See [backend quickstart](/docs/actors/quickstart/backend) for more information.
+
+## API Reference
+
+For detailed information about the React client API, see the [React Client API Reference](/docs/clients/react).
+

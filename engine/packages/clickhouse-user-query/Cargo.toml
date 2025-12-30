@@ -1,0 +1,16 @@
+[package]
+name = "clickhouse-user-query"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+clickhouse.workspace = true
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+testcontainers.workspace = true
+tokio = { workspace = true, features = ["full"] }

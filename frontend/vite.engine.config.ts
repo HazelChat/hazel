@@ -1,0 +1,109 @@
+import * as crypto from "node:crypto";
+import path from "node:path";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react";
+import favigo from "favigo/vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+import { commonEnvSchema } from "./src/lib/env";
+
+// These are only needed in CI. They'll be undefined in dev.
+const GIT_BRANCH = process.env.CF_PAGES_BRANCH;
+const GIT_SHA = process.env.CF_PAGES_COMMIT_SHA;
+
+const getVariantForMode = (mode: string) => {
+	switch (mode) {
+		case "staging":
+			return {
+				type: "badge",
+				text: "DEV",
+				backgroundColor: "#FF4F00",
+				textColor: "#ffffff",
+				position: "bottom-right",
+				size: "large",
+			} as const;
+		default:
+			return undefined;
+	}
+};
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
+	const env = commonEnvSchema.parse(loadEnv(mode, process.cwd(), ""));
+
+	return {
+		base: "/ui",
+		plugins: [
+			tanstackRouter({ target: "react", autoCodeSplitting: true }),
+			tsconfigPaths(),
+			react(),
+			liveChatPlugin(),
+			env.SENTRY_AUTH_TOKEN
+				? sentryVitePlugin({
+						org: "rivet-gaming",
+						project: env.SENTRY_PROJECT,
+						authToken: env.SENTRY_AUTH_TOKEN,
+						release:
+							GIT_BRANCH === "main"
+								? { name: GIT_SHA }
+								: undefined,
+					})
+				: null,
+			favigo({
+				source: "./public/favicon.svg",
+				variant: getVariantForMode(env.DEPLOYMENT_TYPE || "production"),
+				configuration: {
+					theme_color: "#FF4F00",
+					background: "transparent",
+				},
+			}),
+		],
+		server: {
+			port: 43708,
+			proxy: {
+				"/api": {
+					target: "http://localhost:6420",
+					changeOrigin: true,
+					rewrite: (path) => path.replace(/^\/api/, ""),
+				},
+			},
+		},
+		preview: {
+			port: 43708,
+		},
+		define: {
+			// Provide a unique build ID for cache busting
+			__APP_TYPE__: JSON.stringify(env.APP_TYPE || "engine"),
+			__APP_BUILD_ID__: JSON.stringify(
+				`${new Date().toISOString()}@${crypto.randomUUID()}`,
+			),
+		},
+		resolve: {
+			alias: {
+				"@": path.resolve(__dirname, "./src"),
+			},
+		},
+		build: {
+			sourcemap: true,
+			commonjsOptions: {
+				include: [/@rivet-gg\/components/, /node_modules/],
+			},
+		},
+		optimizeDeps: {
+			include: ["@fortawesome/*", "@rivet-gg/icons", "@rivet-gg/cloud"],
+		},
+		worker: {
+			format: "es",
+		},
+	};
+});
+
+export function liveChatPlugin(source: string = ""): Plugin {
+	return {
+		name: "live-chat-plugin",
+		transformIndexHtml(html) {
+			return html.replace(/{{live_chat}}/, source);
+		},
+	};
+}

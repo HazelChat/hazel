@@ -1,0 +1,356 @@
+import { Hosting } from "@/components/docs/Hosting";
+
+# Cloudflare Workers Quickstart
+
+Get started with Rivet Actors on Cloudflare Workers with Durable Objects
+
+<Steps>
+<Step title="Install Rivet">
+
+```sh
+npm install rivetkit @rivetkit/cloudflare-workers
+```
+
+</Step>
+
+<Step title="Create an Actor">
+
+Create a simple counter actor:
+
+```ts {{"title":"registry.ts"}}
+import { actor, setup } from "rivetkit";
+
+export const counter = actor({
+	state: { count: 0 },
+	actions: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			c.broadcast("newCount", c.state.count);
+			return c.state.count;
+		},
+	},
+});
+
+export const registry = setup({
+	use: { counter },
+});
+```
+
+</Step>
+
+<Step title="Setup Server">
+
+Choose your preferred web framework:
+
+<CodeGroup>
+
+```ts {{"title":"Default"}}
+import { createHandler } from "@rivetkit/cloudflare-workers";
+import { registry } from "./registry";
+
+// The `/rivet` endpoint is automatically exposed here for external clients
+const { handler, ActorHandler } = createHandler(registry);
+export { handler as default, ActorHandler };
+```
+
+```ts {{"title":"Hono"}}
+import { createHandler, type Client } from "@rivetkit/cloudflare-workers";
+import { Hono } from "hono";
+import { registry } from "./registry";
+
+const app = new Hono<{ Bindings: { RIVET: Client<typeof registry> } }>();
+
+app.post("/increment/:name", async (c) => {
+	const client = c.env.RIVET;
+	const name = c.req.param("name");
+
+	// Get or create actor and call action
+	const counter = client.counter.getOrCreate(name);
+	const newCount = await counter.increment(1);
+
+	return c.json({ count: newCount });
+});
+
+// The `/rivet` endpoint is automatically exposed here for external clients
+const { handler, ActorHandler } = createHandler(registry, { fetch: app.fetch });
+export { handler as default, ActorHandler };
+```
+
+```ts {{"title":"No Router"}}
+import { createHandler } from "@rivetkit/cloudflare-workers";
+import { registry } from "./registry";
+
+// The `/rivet` endpoint is automatically mounted on this router for external clients
+const { handler, ActorHandler } = createHandler(registry, {
+	fetch: async (request, env, ctx) => {
+		const url = new URL(request.url);
+
+		if (url.pathname.startsWith("/increment/")) {
+			const name = url.pathname.split("/")[2];
+			const client = env.RIVET;
+
+			const counter = client.counter.getOrCreate(name);
+			const newCount = await counter.increment(1);
+
+			return new Response(JSON.stringify({ count: newCount }), {
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+
+		return new Response("Not Found", { status: 404 });
+	}
+});
+
+export { handler as default, ActorHandler };
+```
+
+```ts {{"title":"Advanced"}}
+import { createInlineClient } from "@rivetkit/cloudflare-workers";
+import { registry } from "./registry";
+
+const {
+	client,
+	fetch: rivetFetch,
+	ActorHandler,
+} = createInlineClient(registry);
+
+// IMPORTANT: Your Durable Object must be exported here
+export { ActorHandler };
+
+export default {
+	fetch: async (request, env, ctx) => {
+		const url = new URL(request.url);
+
+		// Custom request handler
+		if (request.method === "POST" && url.pathname.startsWith("/increment/")) {
+			const name = url.pathname.slice("/increment/".length);
+
+			const counter = client.counter.getOrCreate(name);
+			const newCount = await counter.increment(1);
+
+			return new Response(JSON.stringify({ count: newCount }), {
+				headers: { "Content-Type": "application/json" },
+			});
+		}
+
+		// Optional: Mount /rivet path to access actors from external clients
+		if (url.pathname.startsWith("/rivet")) {
+			const strippedPath = url.pathname.substring("/rivet".length);
+			url.pathname = strippedPath;
+			const modifiedRequest = new Request(url.toString(), request);
+			return rivetFetch(modifiedRequest, env, ctx);
+		}
+
+		return new Response("Not Found", { status: 404 });
+	},
+} satisfies ExportedHandler;
+```
+</CodeGroup>
+
+</Step>
+
+<Step title="Run Server">
+
+Configure your `wrangler.json` for Cloudflare Workers:
+
+```json {{"title":"wrangler.json"}}
+{
+  "name": "my-rivetkit-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ActorHandler"]
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ACTOR_DO",
+        "class_name": "ActorHandler"
+      }
+    ]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "ACTOR_KV",
+      "id": "your_namespace_id"
+    }
+  ]
+}
+```
+
+Start the development server:
+
+```sh
+wrangler dev
+```
+
+Your server is now running at `http://localhost:8787`
+
+</Step>
+
+<Step title="Test Your Actor">
+
+Test your counter actor using HTTP requests:
+
+<CodeGroup>
+
+```ts {{"title":"JavaScript"}}
+// Increment counter
+const response = await fetch("http://localhost:8787/increment/my-counter", {
+	method: "POST"
+});
+
+const result = await response.json();
+console.log("Count:", result.count); // 1
+```
+
+```sh curl
+# Increment counter
+curl -X POST http://localhost:8787/increment/my-counter
+```
+
+</CodeGroup>
+
+</Step>
+
+<Step title="Deploy to Cloudflare Workers">
+
+Deploy to Cloudflare's global edge network:
+
+```bash
+wrangler deploy
+```
+
+Your actors will now run on Cloudflare's edge with persistent state backed by Durable Objects.
+
+See the [Cloudflare Workers deployment guide](/docs/connect/cloudflare-workers) for detailed deployment instructions and configuration options.
+
+</Step>
+
+</Steps>
+
+## Configuration Options
+
+### Connect Frontend To The Rivet Actor
+
+Create a type-safe client to connect from your frontend:
+
+<Tabs>
+
+<Tab title="JavaScript">
+
+```ts {{"title":"client.ts"}}
+import { createClient } from "rivetkit/client";
+import type { registry } from "./registry";
+
+// Create typed client (use your deployed URL)
+const client = createClient<typeof registry>("https://your-app.workers.dev/rivet");
+
+// Use the counter actor directly
+const counter = client.counter.getOrCreate(["my-counter"]);
+
+// Call actions
+const count = await counter.increment(3);
+console.log("New count:", count);
+
+// Get current state
+const currentCount = await counter.getCount();
+console.log("Current count:", currentCount);
+
+// Listen to real-time events
+const connection = counter.connect();
+connection.on("countChanged", (newCount) => {
+	console.log("Count changed:", newCount);
+});
+
+// Increment through connection
+await connection.increment(1);
+```
+
+See the [JavaScript client documentation](/docs/clients/javascript) for more information.
+
+</Tab>
+
+<Tab title="React">
+
+```tsx {{"title":"Counter.tsx"}}
+import { createRivetKit } from "@rivetkit/react";
+import { useState } from "react";
+import type { registry } from "./registry";
+
+const { useActor } = createRivetKit<typeof registry>("https://your-app.workers.dev/rivet");
+
+function Counter() {
+	const [count, setCount] = useState(0);
+
+	const counter = useActor({
+		name: "counter",
+		key: ["my-counter"]
+	});
+
+	counter.useEvent("newCount", (x: number) => setCount(x));
+
+	const increment = async () => {
+		await counter.connection?.increment(1);
+	};
+
+	return (
+		<div>
+			<p>Count: {count}</p>
+			<button onClick={increment}>Increment</button>
+		</div>
+	);
+}
+```
+
+See the [React documentation](/docs/clients/react) for more information.
+
+</Tab>
+
+<Tab title="Rust">
+
+```rust {{"title":"main.rs"}}
+use rivetkit_client::{Client, EncodingKind, GetOrCreateOptions, TransportKind};
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new(
+        "https://your-app.workers.dev/rivet",
+        TransportKind::Sse,
+        EncodingKind::Json
+    );
+
+    // Get or create counter actor
+    let options = GetOrCreateOptions::default();
+    let counter = client.get("counter", ["my-counter"].into(), options)?
+        .connect();
+
+    // Subscribe to events
+    counter.on_event("countChanged", |args| {
+        let count = args[0].as_i64().unwrap();
+        println!("Count updated: {}", count);
+    }).await;
+
+    // Call increment action
+    let result = counter.action("increment", vec![json!(1)]).await?;
+    println!("New count: {}", result);
+
+    Ok(())
+}
+```
+
+See the [Rust client documentation](/docs/clients/rust) for more information.
+
+</Tab>
+
+</Tabs>
+
+<Note>
+	Cloudflare Workers mounts the Rivet endpoint on `/rivet` by default.
+</Note>
+
