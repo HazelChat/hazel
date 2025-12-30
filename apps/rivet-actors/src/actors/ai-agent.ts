@@ -1,124 +1,177 @@
-import { actor } from "rivetkit"
+import { type ActorContextOf, actor } from "rivetkit"
 import { DurableStream } from "@durable-streams/client"
 import { streamText } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import type { ResponseChunk } from "../types.ts"
+import { getStreams } from "../shared/streams.ts"
+import type { PromptMessage, ResponseChunk } from "../types.ts"
 
-const STREAMS_URL = process.env.STREAMS_SERVER_URL ?? "http://localhost:8081"
 const BACKEND_URL = process.env.API_BASE_URL ?? "http://localhost:3003"
 
-// Initialize OpenRouter client
 const openrouter = createOpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY,
 })
 
-// State type for documentation
 interface AiAgentState {
-	messageId: string
-	channelId: string
-	isComplete: boolean
+	conversationId: string
+	promptStreamOffset: string | undefined
 }
 
 export const aiAgent = actor({
-	createState: (c: any, input?: { messageId?: string; channelId?: string }) =>
-		({
-			messageId: input?.messageId ?? c.key[0] ?? "",
-			channelId: input?.channelId ?? "",
-			isComplete: false,
-		}) as AiAgentState,
+	createState: (c, input?: { conversationId: string }) => ({
+		conversationId: input?.conversationId ?? c.key[0] ?? "",
+		promptStreamOffset: undefined as string | undefined,
+	}),
+
+	onWake: (c) => {
+		consumeStream(c)
+	},
 
 	actions: {
-		getMessageId: (c: any) => (c.state as AiAgentState).messageId,
-		isComplete: (c: any) => (c.state as AiAgentState).isComplete,
+		getConversationId: (c) => (c.state as AiAgentState).conversationId,
+		getPromptStreamOffset: (c) => (c.state as AiAgentState).promptStreamOffset,
+	},
 
-		/**
-		 * Process a message with AI and stream response to durable stream
-		 */
-		processMessage: async (c: any, prompt: string) => {
-			const state = c.state as AiAgentState
-			c.log.info({ msg: "processMessage starting", messageId: state.messageId })
-
-			const responseStream = await getOrCreateResponseStream(state.messageId)
-
-			try {
-				const result = streamText({
-					model: openrouter("anthropic/claude-sonnet-4"),
-					prompt,
-				})
-
-				let fullResponse = ""
-				let chunkCount = 0
-
-				for await (const textPart of result.textStream) {
-					chunkCount++
-					fullResponse += textPart
-
-					const responseChunk: ResponseChunk = {
-						type: "chunk",
-						promptId: state.messageId,
-						content: textPart,
-						isComplete: false,
-						timestamp: Date.now(),
-					}
-
-					await responseStream.append(JSON.stringify(responseChunk) + "\n", {
-						contentType: "application/json",
-					})
-				}
-
-				c.log.info({ msg: "finished streaming", chunkCount, responseLength: fullResponse.length })
-
-				// Send completion marker
-				const completeChunk: ResponseChunk = {
-					type: "complete",
-					promptId: state.messageId,
-					content: "",
-					isComplete: true,
-					timestamp: Date.now(),
-				}
-
-				await responseStream.append(JSON.stringify(completeChunk) + "\n", {
-					contentType: "application/json",
-				})
-
-				// Persist final message to database
-				await persistMessage(state.messageId, fullResponse)
-				state.isComplete = true
-
-				return { success: true, response: fullResponse }
-			} catch (error) {
-				c.log.error({ msg: "processMessage error", error })
-
-				const errorChunk: ResponseChunk = {
-					type: "error",
-					promptId: state.messageId,
-					isComplete: true,
-					error: error instanceof Error ? error.message : "Unknown error",
-					timestamp: Date.now(),
-				}
-
-				await responseStream.append(JSON.stringify(errorChunk) + "\n", {
-					contentType: "application/json",
-				})
-
-				return { success: false, error: errorChunk.error }
-			}
-		},
+	options: {
+		noSleep: true,
 	},
 })
 
-async function getOrCreateResponseStream(messageId: string): Promise<DurableStream> {
-	const responseStreamUrl = `${STREAMS_URL}/v1/stream/msg-${messageId}-responses`
+async function consumeStream(c: ActorContextOf<typeof aiAgent>) {
+	const state = c.state as AiAgentState
+
+	c.log.info({
+		msg: "consumeStream started",
+		conversationId: state.conversationId,
+		offset: state.promptStreamOffset,
+	})
+
+	const { promptStream, responseStream } = await getStreams(state.conversationId)
 
 	try {
-		return await DurableStream.create({
-			url: responseStreamUrl,
+		const session = await promptStream.stream({
+			offset: state.promptStreamOffset ?? "-1",
+			live: "long-poll",
+			signal: c.abortSignal,
+		})
+
+		session.subscribeJson<string>(async (batch) => {
+			for (const rawItem of batch.items) {
+				if (typeof rawItem !== "string") continue
+				const trimmed = rawItem.trim()
+				if (!trimmed) continue
+
+				try {
+					const parsed = JSON.parse(trimmed)
+					const prompts: PromptMessage[] = Array.isArray(parsed) ? parsed : [parsed]
+
+					for (const prompt of prompts) {
+						if (!prompt.id) {
+							c.log.warn({ msg: "skipping prompt with no id" })
+							continue
+						}
+
+						c.log.info({ msg: "processing prompt", promptId: prompt.id })
+						await processPrompt(c, prompt, responseStream)
+						c.log.info({ msg: "finished processing prompt", promptId: prompt.id })
+					}
+				} catch (e) {
+					c.log.error({ msg: "failed to parse json", rawItem, error: e })
+				}
+			}
+
+			if (batch.offset) {
+				state.promptStreamOffset = batch.offset
+			}
+		})
+	} catch (error) {
+		c.log.error({
+			msg: "error in consumeStream",
+			error,
+			aborted: c.abortSignal.aborted,
+		})
+
+		if (!c.abortSignal.aborted) {
+			setTimeout(() => consumeStream(c), 5000)
+		}
+	}
+}
+
+async function processPrompt(
+	c: ActorContextOf<typeof aiAgent>,
+	prompt: PromptMessage,
+	responseStream: DurableStream,
+) {
+	c.log.info({ msg: "processPrompt starting", promptId: prompt.id })
+
+	let streamErrorMessage: string | null = null
+
+	const result = streamText({
+		model: openrouter("anthropic/claude-sonnet-4"),
+		prompt: prompt.content,
+		onError: (error) => {
+			c.log.error({ msg: "streamText onError", error: error.error })
+			streamErrorMessage = error.error instanceof Error ? error.error.message : String(error.error)
+		},
+	})
+
+	let fullResponse = ""
+	let chunkCount = 0
+
+	for await (const textPart of result.textStream) {
+		chunkCount++
+		fullResponse += textPart
+
+		const responseChunk: ResponseChunk = {
+			type: "chunk",
+			promptId: prompt.id,
+			content: textPart,
+			isComplete: false,
+			timestamp: Date.now(),
+		}
+
+		await responseStream.append(JSON.stringify(responseChunk) + "\n", {
 			contentType: "application/json",
 		})
-	} catch {
-		// Stream already exists, just return a client for it
-		return new DurableStream({ url: responseStreamUrl })
 	}
+
+	c.log.info({
+		msg: "finished streaming",
+		chunkCount,
+		fullResponseLength: fullResponse.length,
+	})
+
+	if (streamErrorMessage !== null) {
+		const errorChunk: ResponseChunk = {
+			type: "error",
+			promptId: prompt.id,
+			content: `Error: ${streamErrorMessage}`,
+			isComplete: true,
+			timestamp: Date.now(),
+		}
+
+		await responseStream.append(JSON.stringify(errorChunk) + "\n", {
+			contentType: "application/json",
+		})
+
+		c.broadcast("responseError", { promptId: prompt.id, error: errorChunk.content })
+		return
+	}
+
+	const completeChunk: ResponseChunk = {
+		type: "complete",
+		promptId: prompt.id,
+		content: "",
+		isComplete: true,
+		timestamp: Date.now(),
+	}
+
+	await responseStream.append(JSON.stringify(completeChunk) + "\n", {
+		contentType: "application/json",
+	})
+
+	await persistMessage(prompt.id, fullResponse)
+
+	c.broadcast("responseComplete", { promptId: prompt.id, fullResponse })
 }
 
 async function persistMessage(messageId: string, content: string) {
@@ -130,65 +183,5 @@ async function persistMessage(messageId: string, content: string) {
 		})
 	} catch (error) {
 		console.error("Error persisting message:", error)
-	}
-}
-
-/**
- * Standalone function for processing AI messages (useful for testing)
- * This is the same logic as the actor action but without actor context
- */
-export async function processAIMessage(messageId: string, prompt: string): Promise<void> {
-	const responseStream = await getOrCreateResponseStream(messageId)
-
-	try {
-		const result = streamText({
-			model: openrouter("anthropic/claude-sonnet-4"),
-			prompt,
-		})
-
-		let fullResponse = ""
-
-		for await (const textPart of result.textStream) {
-			fullResponse += textPart
-
-			const responseChunk: ResponseChunk = {
-				type: "chunk",
-				promptId: messageId,
-				content: textPart,
-				isComplete: false,
-				timestamp: Date.now(),
-			}
-
-			await responseStream.append(JSON.stringify(responseChunk) + "\n", {
-				contentType: "application/json",
-			})
-		}
-
-		// Send completion marker
-		const completeChunk: ResponseChunk = {
-			type: "complete",
-			promptId: messageId,
-			content: "",
-			isComplete: true,
-			timestamp: Date.now(),
-		}
-
-		await responseStream.append(JSON.stringify(completeChunk) + "\n", {
-			contentType: "application/json",
-		})
-
-		await persistMessage(messageId, fullResponse)
-	} catch (error) {
-		const errorChunk: ResponseChunk = {
-			type: "error",
-			promptId: messageId,
-			isComplete: true,
-			error: error instanceof Error ? error.message : "Unknown error",
-			timestamp: Date.now(),
-		}
-
-		await responseStream.append(JSON.stringify(errorChunk) + "\n", {
-			contentType: "application/json",
-		})
 	}
 }

@@ -135,12 +135,13 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const rivetUrl = yield* RIVET_ACTORS_URL.pipe(Effect.orDie)
 					const streamsUrl = yield* STREAMS_SERVER_URL.pipe(Effect.orDie)
 
+					// Stream URLs for this channel (conversation)
+					const promptStreamUrl = `${streamsUrl}/v1/stream/conversations/${channelId}/prompts`
+					const responseStreamUrl = `${streamsUrl}/v1/stream/conversations/${channelId}/responses`
+
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
-								// Generate a unique actor ID based on the message ID
-								const actorId = `ai-${crypto.randomUUID()}`
-
 								// Create message with live object reference
 								const createdMessage = yield* MessageRepo.insert({
 									channelId,
@@ -149,7 +150,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 									embeds: null,
 									replyToMessageId: null,
 									threadChannelId: null,
-									liveObjectId: actorId,
+									liveObjectId: channelId, // Use channelId as the live object reference
 									liveObjectType: "ai_streaming",
 									liveObjectStatus: "streaming",
 									deletedAt: null,
@@ -160,52 +161,65 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const messageId = createdMessage.id
 
-								// Create the response stream for frontend to subscribe to
+								// Create both streams for this channel if they don't exist
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.put(`${streamsUrl}/v1/stream/msg-${messageId}-responses`, {
+										client.put(promptStreamUrl, {
 											headers: { "Content-Type": "application/json" },
 										}),
 									),
-									Effect.catchAll(() => Effect.void), // Ignore errors, stream may already exist
+									Effect.catchAll(() => Effect.void),
+								)
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.put(responseStreamUrl, {
+											headers: { "Content-Type": "application/json" },
+										}),
+									),
+									Effect.catchAll(() => Effect.void),
 								)
 
-								// Spawn Rivet actor and get the actor_id from response
-								const spawnResponse = yield* HttpClient.HttpClient.pipe(
+								// Spawn actor with channelId as key (reuses existing actor if already running)
+								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
 										client.post(`${rivetUrl}/actors?namespace=default`, {
 											body: HttpBody.unsafeJson({
 												name: "aiAgent",
-												key: messageId, // Actor reads messageId from its key
+												key: channelId,
 												runner_name_selector: "default",
 												crash_policy: "sleep",
+												create_with_input: { conversationId: channelId },
 											}),
 										}),
 									),
-									Effect.flatMap((res) => res.json),
-									Effect.map((json) => json as { actor?: { id?: string } }),
 									Effect.catchAll((err) => {
 										console.error("Failed to spawn Rivet actor:", err)
-										return Effect.succeed({ actor: undefined })
+										return Effect.void
 									}),
 								)
 
-								// Call the actor's processMessage action with the prompt
-								if (spawnResponse.actor?.id) {
-									const spawnedActorId = spawnResponse.actor.id
-									yield* HttpClient.HttpClient.pipe(
-										Effect.flatMap((client) =>
-											client.post(`${rivetUrl}/gateway/${spawnedActorId}/action/processMessage`, {
-												body: HttpBody.unsafeJson({ args: [prompt] }),
-												headers: { "Content-Type": "application/json" },
-											}),
-										),
-										Effect.catchAll((err) => {
-											console.error("Failed to call processMessage:", err)
-											return Effect.void
+								// Write prompt to the prompt stream (actor will consume it via onWake)
+								const promptMessage =
+									JSON.stringify([
+										{
+											id: messageId,
+											content: prompt,
+											timestamp: Date.now(),
+										},
+									]) + "\n"
+
+								yield* HttpClient.HttpClient.pipe(
+									Effect.flatMap((client) =>
+										client.post(promptStreamUrl, {
+											body: HttpBody.text(promptMessage),
+											headers: { "Content-Type": "application/json" },
 										}),
-									)
-								}
+									),
+									Effect.catchAll((err) => {
+										console.error("Failed to write prompt to stream:", err)
+										return Effect.void
+									}),
+								)
 
 								const txid = yield* generateTransactionId()
 

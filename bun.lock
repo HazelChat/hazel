@@ -155,6 +155,7 @@
       "dependencies": {
         "@cloudflare/realtimekit-react": "^1.2.2",
         "@cloudflare/realtimekit-react-ui": "^1.0.8",
+        "@durable-streams/client": "^0.1.2",
         "@effect-atom/atom-react": "catalog:effect",
         "@effect/experimental": "catalog:effect",
         "@effect/opentelemetry": "catalog:effect",
@@ -171,7 +172,7 @@
         "@hazel/schema": "workspace:*",
         "@hazel/tanstack-db-atom": "workspace:*",
         "@heroicons/react": "^2.2.0",
-        "@legendapp/list": "3.0.0-beta.15",
+        "@legendapp/list": "3.0.0-beta.16",
         "@paper-design/shaders-react": "^0.0.68",
         "@posthog/react": "^1.5.2",
         "@react-aria/optimize-locales-plugin": "^1.1.5",
@@ -775,7 +776,7 @@
 
     "@kikobeats/time-span": ["@kikobeats/time-span@1.0.10", "", {}, "sha512-liggEEFIA1VxExuWdJqzepj3hJ3pYLwnRbvuhfl3IYCIUFxdm41p32S8If+3RACdmLB2dZ6vME+CTAtC909q9Q=="],
 
-    "@legendapp/list": ["@legendapp/list@3.0.0-beta.15", "", { "dependencies": { "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "*" } }, "sha512-2a3x8z8cAVbBRZCMWE3nxDTbenl/OWvRRhUBtB8JXe+VokArMO8p7IaC3RTdZFk6dY2dXbJyqovs1DIlOQSM1g=="],
+    "@legendapp/list": ["@legendapp/list@3.0.0-beta.16", "", { "dependencies": { "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "*" } }, "sha512-g9WCl1stjYsgkJveS0/sxlO/qe3xUUqTc2UHBpH8Pk9Wx4SYg3iJaVkHRujV6FWClgnL+syfNgz1nLDMQVkajA=="],
 
     "@lmdb/lmdb-darwin-arm64": ["@lmdb/lmdb-darwin-arm64@3.4.4", "", { "os": "darwin", "cpu": "arm64" }, "sha512-XaKL705gDWd6XVls3ATDj13ZdML/LqSIxwgnYpG8xTzH2ifArx8fMMDdvqGE/Emd+W6R90W2fveZcJ0AyS8Y0w=="],
 

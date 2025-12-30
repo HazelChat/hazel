@@ -21,6 +21,11 @@ The following repositories are included as git subtrees:
   - Branch: main
   - Purpose: TanStack DB query and collection management library documentation and examples
 
+- **Rivet** (`.context/rivet/`)
+  - Repository: https://github.com/rivet-dev/rivet
+  - Branch: main
+  - Purpose: Rivet stateful compute and actor orchestration library documentation and examples
+
 ## Updating Subtrees
 
 To update all subtrees to their latest versions, run:
@@ -34,6 +39,9 @@ git subtree pull --prefix=.context/effect-atom effect-atom-subtree main --squash
 
 # Update TanStack DB
 git subtree pull --prefix=.context/tanstack-db tanstack-db-subtree main --squash
+
+# Update Rivet
+git subtree pull --prefix=.context/rivet rivet-subtree main --squash
 ```
 
 Note: The git remotes should already be configured. If not, add them first:
@@ -42,6 +50,7 @@ Note: The git remotes should already be configured. If not, add them first:
 git remote add effect-subtree https://github.com/Effect-TS/effect
 git remote add effect-atom-subtree https://github.com/tim-smart/effect-atom
 git remote add tanstack-db-subtree https://github.com/TanStack/db
+git remote add rivet-subtree https://github.com/rivet-dev/rivet
 ```
 
 ## Usage

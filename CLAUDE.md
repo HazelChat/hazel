@@ -22,8 +22,9 @@ Available library contexts:
 - `.context/effect/` - Effect-TS functional programming patterns and examples
 - `.context/effect-atom/` - Effect Atom state management documentation
 - `.context/tanstack-db/` - TanStack-DB
+- `.context/rivet/` - Rivet stateful compute, actors, and orchestration
 
-When working with Effect, Effect Atom, or TanStack DB, refer to these directories for best practices, API usage, and implementation patterns.
+When working with Effect, Effect Atom, TanStack DB, or Rivet, refer to these directories for best practices, API usage, and implementation patterns.
 
 ### Best Practices Guides
 

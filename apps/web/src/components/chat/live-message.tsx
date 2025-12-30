@@ -1,10 +1,11 @@
 import { memo } from "react"
-import { useLiveMessage } from "~/hooks/use-live-message"
+import { useConversationStream } from "~/hooks/use-conversation-stream"
 import { cn } from "~/lib/utils"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 
 interface LiveMessageProps {
-	messageId: string
+	conversationId: string
+	promptId: string
 	initialContent?: string
 	className?: string
 }
@@ -12,17 +13,21 @@ interface LiveMessageProps {
 /**
  * LiveMessage component for displaying streaming AI responses
  *
- * Connects to a Durable Stream and displays content as it arrives,
- * with a blinking cursor animation while streaming is in progress.
+ * Connects to a conversation's response stream and displays content
+ * as it arrives, with a blinking cursor animation while streaming.
  */
 export const LiveMessage = memo(function LiveMessage({
-	messageId,
+	conversationId,
+	promptId,
 	initialContent = "",
 	className,
 }: LiveMessageProps) {
-	const { content, isStreaming, error } = useLiveMessage(messageId)
+	const { responses, streamingPromptIds, errors } = useConversationStream(conversationId)
 
-	// Use streamed content if available, otherwise fall back to initial
+	const content = responses.get(promptId) ?? ""
+	const isStreaming = streamingPromptIds.has(promptId)
+	const error = errors.get(promptId)
+
 	const displayContent = content || initialContent
 
 	if (error) {
@@ -41,7 +46,6 @@ export const LiveMessage = memo(function LiveMessage({
 				<span className="text-muted-fg text-sm italic">Thinking...</span>
 			) : null}
 
-			{/* Streaming cursor indicator */}
 			{isStreaming && (
 				<span
 					className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-primary align-middle"

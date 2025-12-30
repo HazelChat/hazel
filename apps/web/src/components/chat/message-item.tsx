@@ -144,7 +144,8 @@ export const MessageItem = memo(function MessageItem({
 						if (isLiveStreaming) {
 							return (
 								<LiveMessage
-									messageId={message.id}
+									conversationId={message.channelId}
+									promptId={message.id}
 									initialContent={message.content}
 								/>
 							)

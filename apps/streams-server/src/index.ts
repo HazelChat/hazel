@@ -13,10 +13,9 @@ const HOST = process.env.HOST ?? "127.0.0.1"
 const server = new DurableStreamTestServer({
 	port: PORT,
 	host: HOST,
-	longPollTimeout: 30_000,
 })
 
 const url = await server.start()
 
 console.log(`Durable Streams server running at ${url}`)
-console.log(`Stream URL pattern: ${url}v1/stream/{name}`)
+console.log(`Stream URL pattern: ${url}/v1/stream/{name}`)
