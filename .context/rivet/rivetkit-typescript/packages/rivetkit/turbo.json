@@ -1,0 +1,49 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"dump-openapi": {
+			"inputs": [
+				"package.json",
+				"packages/rivetkit/src/manager/router.ts"
+			],
+			"dependsOn": ["build:schema"]
+		},
+		"dump-asyncapi": {
+			"inputs": [
+				"package.json",
+				"packages/rivetkit/src/manager/router.ts"
+			],
+			"dependsOn": ["build:schema"]
+		},
+		"build:schema": {
+			"dependsOn": ["^build"],
+			"inputs": ["schemas/**/*.bare", "scripts/compile-bare.ts"],
+			"outputs": ["dist/schemas/**/*.ts"]
+		},
+		"build": {
+			"dependsOn": [
+				"^build",
+				"dump-openapi",
+				"dump-asyncapi",
+				"build:schema"
+			],
+			"inputs": [
+				"src/**",
+				"tsconfig.json",
+				"tsup.config.ts",
+				"package.json"
+			],
+			"outputs": ["dist/**"],
+			"env": ["FAST_BUILD"]
+		},
+		"test": {
+			"dependsOn": ["^test", "build"],
+			"inputs": ["src/**", "tests/**", "fixtures/**"]
+		},
+		"check-types": {
+			"dependsOn": ["^build", "build:schema"],
+			"inputs": ["src/**", "schemas/**/*.bare", "tsconfig.json"]
+		}
+	}
+}

@@ -1,0 +1,118 @@
+import { Hosting } from "@/components/docs/Hosting";
+import { InstallPackage } from "@/components/docs/InstallPackage";
+
+# Next.js Quickstart
+
+Get started with Rivet Actors in Next.js
+
+<Steps>
+<Step title="Create a Next.js App">
+
+```sh
+npx create-next-app@latest my-app
+cd my-app
+```
+
+</Step>
+
+<Step title="Install RivetKit">
+
+<InstallPackage name="rivetkit @rivetkit/next-js" />
+
+</Step>
+
+<Step title="Create an Actor">
+
+Create a file at `src/rivet/registry.ts` with a simple counter actor:
+
+```ts {{"title":"src/rivet/registry.ts"}}
+import { actor, setup } from "rivetkit";
+
+export const counter = actor({
+	state: { count: 0 },
+	actions: {
+		increment: (c, x: number) => {
+			c.state.count += x;
+			c.broadcast("newCount", c.state.count);
+			return c.state.count;
+		},
+	},
+});
+
+export const registry = setup({
+	use: { counter },
+});
+```
+
+</Step>
+
+<Step title="Setup Rivet API route">
+
+Create a file at `src/app/api/rivet/[...all]/route.ts` to setup the API routes:
+
+```ts {{"title":"src/app/api/rivet/[...all]/route.ts"}}
+import { toNextHandler } from "@rivetkit/next-js";
+import { registry } from "@/rivet/registry";
+
+export const maxDuration = 300;
+
+export const { GET, POST, PUT, PATCH, HEAD, OPTIONS } = toNextHandler(registry);
+```
+
+</Step>
+
+<Step title="Use the Actor in a component">
+
+Create a file at `src/components/Counter.tsx` to use the actor in a component:
+
+```tsx {{"title":"src/components/Counter.tsx"}}
+"use client";
+
+import { createRivetKit } from "@rivetkit/next-js/client";
+import type { registry } from "@/rivet/registry";
+import { useState } from "react";
+
+export const { useActor } = createRivetKit<typeof registry>(
+	process.env.NEXT_RIVET_ENDPOINT ?? "http://localhost:3000/api/rivet",
+);
+
+export function Counter() {
+	const [count, setCount] = useState(0);
+
+	const counter = useActor({
+		name: "counter",
+		key: ["test"],
+	});
+
+	counter.useEvent("newCount", (x: number) => setCount(x));
+
+	const increment = async () => {
+		await counter.connection?.increment(1);
+	};
+
+	return (
+		<div>
+			<p>Count: {count}</p>
+			<button onClick={increment}>Increment</button>
+		</div>
+	);
+}
+```
+
+<Note>Import the `Counter` component in your page or layout to use it.</Note>
+
+For more examples on connecting to your actors using React, check the [React documentation for RivetKit](/docs/clients/react).
+
+</Step>
+
+<Step title="Deploy to Vercel">
+
+See the [Vercel deployment guide](/docs/connect/vercel) for detailed instructions on deploying your RivetKit app to Vercel.
+
+</Step>
+
+</Steps>
+
+## API Reference
+
+For detailed information about the Next.js client API, see the [React Client API Reference](/docs/clients/react).

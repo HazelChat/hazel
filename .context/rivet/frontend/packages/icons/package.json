@@ -1,0 +1,51 @@
+{
+	"name": "@rivet-gg/icons",
+	"version": "2.0.32",
+	"sideEffects": false,
+	"files": [
+		"scripts",
+		"manifest.json",
+		"src",
+		"dist"
+	],
+	"scripts": {
+		"postinstall": "node scripts/postinstall.js"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"dependencies": {
+		"dedent": "^1.7.0",
+		"local-pkg": "^0.5.1",
+		"vite": "^5.4.20"
+	},
+	"peerDependencies": {
+		"@fortawesome/fontawesome-svg-core": "^6.5.2",
+		"@fortawesome/free-brands-svg-icons": "^6.5.2",
+		"@fortawesome/free-solid-svg-icons": "^6.5.2",
+		"@fortawesome/react-fontawesome": "^0.2.2",
+		"react": "^19",
+		"react-dom": "^19"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"jsnext:main": "./dist/index.js",
+	"types": "./src/index.gen.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.gen.ts",
+			"import": "./dist/index.js"
+		},
+		"./index": {
+			"types": "./src/index.gen.ts",
+			"import": "./dist/index.js"
+		},
+		"./index.js": {
+			"types": "./src/index.gen.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"devDependencies": {
+		"esbuild": "^0.25.9"
+	}
+}

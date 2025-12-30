@@ -1,0 +1,43 @@
+* text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.tgz filter=lfs diff=lfs merge=lfs -text
+
+**/Cargo.lock linguist-generated=true
+
+# Prevent from counting in the language statistics
+engine/artifacts/** linguist-generated=true
+engine/sdks/** linguist-generated=true
+engine/sdks/typescript/runner/** linguist-generated=false
+engine/sdks/typescript/test-runner/** linguist-generated=false
+engine/sdks/rust/data/** linguist-generated=false
+engine/sdks/rust/*-protocol/** linguist-generated=false
+engine/sdks/schemas/** linguist-generated=false
+engine/docker/dev/** linguist-generated=true
+engine/docker/dev-host/** linguist-generated=true
+engine/docker/dev-multidc/** linguist-generated=true
+engine/docker/dev-multidc-multinode/** linguist-generated=true
+engine/docker/dev-multinode/** linguist-generated=true
+
+website/public/llms.txt linguist-generated=true
+website/public/llms-full.txt linguist-generated=true
+website/public/docs/**/*.md linguist-generated=true
+website/public/typedoc/**/* linguist-generated=true
+**/Cargo.lock linguist-generated=true
+
+# I refuse to admit there's more TypeScript than Rust in the codebase
+website/**/*.ts linguist-generated=true
+website/**/*.tsx linguist-generated=true
+website/**/*.js linguist-generated=true
+website/**/*.jsx linguist-generated=true
+examples/**/* linguist-generated=true
+
+frontend/**/*.ts linguist-generated=true
+frontend/**/*.tsx linguist-generated=true
+frontend/**/*.js linguist-generated=true
+frontend/**/*.jsx linguist-generated=true
+

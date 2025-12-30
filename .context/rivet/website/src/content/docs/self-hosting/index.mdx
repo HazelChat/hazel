@@ -1,0 +1,64 @@
+import imgArch from "./images/architecture.png";
+import imgByocVsSelfHost from "./images/byoc-vs-self-host.png";
+
+# Self-Hosting Overview
+
+Self-hosting Rivet gives you complete control over the actor orchestration platform and infrastructure.
+
+## Self-Host vs BYOC
+
+<Image alt="Rivet BYOC vs self-hosting" src={imgByocVsSelfHost} />
+
+Rivet supports both BYOC (Bring Your Own Cloud) and self-hosting to fit your deployment needs.
+
+| | Self-Hosting | BYOC with Rivet Cloud |
+|---|---|---|
+| **You Manage** | Full stack (your backend, engine, Rivet Engine, database) | Only your backend |
+| **Complexity** | Higher (full stack deployment) | Lower (connect and deploy) |
+| **Cost** | Higher operational overhead | Usually lower usage-based cost |
+| **Supports Serverless** | Requires extra infrastructure | Yes |
+| **Air-Gapped Deployments** | Yes | No |
+| **Best For** | Air-gapped environments, strict compliance, custom security policies | All other production deployments |
+| **Support** | [Contact sales](/sales) or community | Community, Slack, and email (varies by plan) |
+| **Documentation** | Continue below | [See connect guides](/docs/connect) |
+
+## Architecture
+#
+<Image alt="Rivet self-hosting architecture" src={imgArch} />
+
+Rivet has 3 core components:
+
+- **Your Backend**: Your application server that handles user requests and includes a runner component that executes actor code
+- **Rivet Engine**: Main orchestration service that manages actor lifecycle, routes messages, and provides APIs
+- **Storage**: Persistence layer for actor state and messaging infrastructure for real-time communication
+
+
+## Storage Backends
+
+Rivet supports multiple storage backends:
+
+- **File System**: Suitable for single-node deployments
+- **PostgreSQL**: Recommended for production
+- **FoundationDB**: For massive scale ([requires enterprise](/sales))
+
+## Deployment Platforms
+
+Deploy Rivet on your preferred platform:
+
+- [Docker Container](/docs/self-hosting/docker-container)
+- [Docker Compose](/docs/self-hosting/docker-compose)
+- [Railway](/docs/self-hosting/railway)
+- [Kubernetes](/docs/self-hosting/kubernetes)
+- AWS Fargate
+- Google Cloud Run
+- Hetzner
+- VM & Bare Metal
+
+_Self-hosting guides coming soon._
+
+## Next Steps
+
+- [Install Rivet Engine](/docs/self-hosting/install)
+- [Connect your backend](/docs/self-hosting/connect-backend)
+- [Configure your deployment](/docs/self-hosting/configuration)
+- [Multi-region setup](/docs/self-hosting/multi-region)
