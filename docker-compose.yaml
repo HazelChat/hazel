@@ -91,10 +91,10 @@ services:
         restart: always
 
     # Rivet Engine - Actor orchestration engine
+    # NOTE: Uses network_mode: host so it can reach runners on the host machine
     rivet_engine:
         image: rivetkit/engine:latest
-        ports:
-            - "6420:6420"
+        network_mode: host
         environment:
             RIVET__FILE_SYSTEM__PATH: "/data"
         volumes:

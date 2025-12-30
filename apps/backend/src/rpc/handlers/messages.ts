@@ -188,7 +188,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 												key: channelId,
 												runner_name_selector: "default",
 												crash_policy: "sleep",
-												create_with_input: { conversationId: channelId },
+												input: JSON.stringify({ conversationId: channelId }),
 											}),
 										}),
 									),
