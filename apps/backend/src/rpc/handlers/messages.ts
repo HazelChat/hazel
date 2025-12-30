@@ -13,7 +13,7 @@ import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 // Service URLs for live streaming (configured via environment)
 const RIVET_ACTORS_URL = Config.string("RIVET_ACTORS_URL").pipe(
-	Config.withDefault("http://localhost:8082"),
+	Config.withDefault("http://localhost:6420"),
 )
 const STREAMS_SERVER_URL = Config.string("STREAMS_SERVER_URL").pipe(
 	Config.withDefault("http://localhost:8081"),
@@ -160,7 +160,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const messageId = createdMessage.id
 
-								// Create the response stream first
+								// Create the response stream for frontend to subscribe to
 								yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
 										client.put(`${streamsUrl}/v1/stream/msg-${messageId}-responses`, {
@@ -170,51 +170,42 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 									Effect.catchAll(() => Effect.void), // Ignore errors, stream may already exist
 								)
 
-								// Create the prompt stream
-								yield* HttpClient.HttpClient.pipe(
+								// Spawn Rivet actor and get the actor_id from response
+								const spawnResponse = yield* HttpClient.HttpClient.pipe(
 									Effect.flatMap((client) =>
-										client.put(`${streamsUrl}/v1/stream/msg-${messageId}-prompts`, {
-											headers: { "Content-Type": "application/json" },
-										}),
-									),
-									Effect.catchAll(() => Effect.void), // Ignore errors, stream may already exist
-								)
-
-								// Spawn Rivet actor
-								yield* HttpClient.HttpClient.pipe(
-									Effect.flatMap((client) =>
-										client.post(`${rivetUrl}/actors`, {
+										client.post(`${rivetUrl}/actors?namespace=default`, {
 											body: HttpBody.unsafeJson({
 												name: "aiAgent",
 												key: messageId, // Actor reads messageId from its key
 												runner_name_selector: "default",
-												crash_policy: "stop",
-												// Note: input omitted - requires CBOR encoding
+												crash_policy: "sleep",
 											}),
 										}),
 									),
+									Effect.flatMap((res) => res.json),
+									Effect.map((json) => json as { actor?: { id?: string } }),
 									Effect.catchAll((err) => {
 										console.error("Failed to spawn Rivet actor:", err)
-										return Effect.void
+										return Effect.succeed({ actor: undefined })
 									}),
 								)
 
-								// Send initial prompt to stream
-								yield* HttpClient.HttpClient.pipe(
-									Effect.flatMap((client) =>
-										client.post(`${streamsUrl}/v1/stream/msg-${messageId}-prompts`, {
-											body: HttpBody.unsafeJson({
-												id: crypto.randomUUID(),
-												content: prompt,
-												timestamp: Date.now(),
+								// Call the actor's processMessage action with the prompt
+								if (spawnResponse.actor?.id) {
+									const spawnedActorId = spawnResponse.actor.id
+									yield* HttpClient.HttpClient.pipe(
+										Effect.flatMap((client) =>
+											client.post(`${rivetUrl}/gateway/${spawnedActorId}/action/processMessage`, {
+												body: HttpBody.unsafeJson({ args: [prompt] }),
+												headers: { "Content-Type": "application/json" },
 											}),
+										),
+										Effect.catchAll((err) => {
+											console.error("Failed to call processMessage:", err)
+											return Effect.void
 										}),
-									),
-									Effect.catchAll((err) => {
-										console.error("Failed to send prompt to stream:", err)
-										return Effect.void
-									}),
-								)
+									)
+								}
 
 								const txid = yield* generateTransactionId()
 

@@ -1,6 +1,5 @@
 # Today
 
-- test github subscribe to channel stuff
 - fix icons to all be outline or fill
 - setup sequin locally with config as code
 

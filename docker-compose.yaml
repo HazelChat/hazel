@@ -90,10 +90,23 @@ services:
             - cache_redis_data:/data
         restart: always
 
+    # Rivet Engine - Actor orchestration engine
+    rivet_engine:
+        image: rivetkit/engine:latest
+        ports:
+            - "6420:6420"
+        environment:
+            RIVET__FILE_SYSTEM__PATH: "/data"
+        volumes:
+            - rivet_data:/data
+        restart: always
+
 volumes:
     postgres_data:
         driver: local
     sequin_redis_data:
         driver: local
     cache_redis_data:
+        driver: local
+    rivet_data:
         driver: local
