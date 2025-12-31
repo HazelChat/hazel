@@ -26,8 +26,8 @@ import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 import { InlineThreadPreview } from "./inline-thread-preview"
-import { LiveMessage } from "./live-message"
 import { MessageAttachments } from "./message-attachments"
+import { StreamingMessageContent } from "./streaming-message-content"
 import { MessageEmbeds } from "./message-embeds"
 import { MessageReplySection } from "./message-reply-section"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
@@ -136,19 +136,13 @@ export const MessageItem = memo(function MessageItem({
 
 					{/* Message Content */}
 					{(() => {
-						// Check if this is a live streaming message
-						const isLiveStreaming =
-							message.liveObjectId && message.liveObjectStatus === "streaming"
-
-						// If streaming, render LiveMessage component
-						if (isLiveStreaming) {
-							return (
-								<LiveMessage
-									conversationId={message.channelId}
-									promptId={message.id}
-									initialContent={message.content}
-								/>
-							)
+						// Check if this is a streaming message
+						if (
+							message.liveObjectType === "ai_streaming" &&
+							message.liveObjectStatus === "streaming" &&
+							message.liveObjectId
+						) {
+							return <StreamingMessageContent streamId={message.liveObjectId} />
 						}
 
 						const urls = extractUrls(message.content)

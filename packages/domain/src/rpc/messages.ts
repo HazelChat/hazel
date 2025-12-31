@@ -128,35 +128,4 @@ export class MessageRpcs extends RpcGroup.make(
 			RateLimitExceededError,
 		),
 	}).middleware(AuthMiddleware),
-
-	/**
-	 * MessageCreateAI
-	 *
-	 * Creates a new AI streaming message in a channel.
-	 * This creates a message placeholder and spawns a Rivet actor to stream the AI response.
-	 * The message will have liveObjectId set and liveObjectStatus = "streaming".
-	 *
-	 * @param payload - Channel ID and prompt for the AI
-	 * @returns Message ID and stream URLs for the frontend to subscribe
-	 * @throws ChannelNotFoundError if channel doesn't exist
-	 * @throws UnauthorizedError if user lacks permission
-	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
-	 * @throws InternalServerError for unexpected errors
-	 */
-	Rpc.mutation("message.createAI", {
-		payload: Schema.Struct({
-			channelId: ChannelId,
-			prompt: Schema.String,
-		}),
-		success: Schema.Struct({
-			messageId: MessageId,
-			transactionId: TransactionId,
-		}),
-		error: Schema.Union(
-			ChannelNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-			RateLimitExceededError,
-		),
-	}).middleware(AuthMiddleware),
 ) {}

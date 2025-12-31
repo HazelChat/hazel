@@ -1,10 +1,10 @@
 import { setup } from "rivetkit"
-import { echo } from "./actors/echo.ts"
+import { bot } from "./actors/bot.ts"
 
 const PORT = Number(process.env.PORT ?? 8082)
 
 export const registry = setup({
-	use: { echo },
+	use: { bot },
 })
 
 registry.start({

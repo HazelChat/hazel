@@ -51,6 +51,7 @@ import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { CommandRegistry } from "./services/integrations/command-registry"
+import { AssistantBotService } from "./services/assistant-bot-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
@@ -149,6 +150,7 @@ const MainLive = Layer.mergeAll(
 	CommandRegistry.Default,
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
+	AssistantBotService.Default,
 	RateLimiter.Default,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
