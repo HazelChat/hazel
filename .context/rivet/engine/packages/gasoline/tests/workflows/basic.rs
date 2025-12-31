@@ -1,0 +1,13 @@
+use gas::prelude::*;
+use gasoline as gas;
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct BasicWorkflowInput {
+	pub value: String,
+}
+
+#[workflow(BasicWorkflow)]
+pub async fn basic_workflow(ctx: &mut WorkflowCtx, input: &BasicWorkflowInput) -> Result<String> {
+	Ok(input.value.clone())
+}

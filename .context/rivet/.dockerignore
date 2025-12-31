@@ -1,0 +1,53 @@
+# MARK: Docker-specific
+.git/
+.gitignore
+.gitattributes
+.dockerignore
+**/Dockerfile*
+**/docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Documentation
+*.md
+!README.md
+docs/
+LICENSE*
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MARK: Copied from .gitignore
+**/.DS_Store
+
+# Env
+.env*.local
+
+# Rust
+**/target
+
+# JavaScript
+**/*.log*
+**/.cache/
+**/.next/
+**/.turbo
+**/.yarn
+**/dist/
+**/node_modules/
+**/target
+
+# Frontend
+!frontend/dist/
+
+# RivetKit packages (need pre-built dist for screenshot generation)
+!rivetkit-typescript/packages/*/dist/
+!engine/sdks/typescript/*/dist/
+

@@ -1,0 +1,341 @@
+# Connections
+
+Connections represent client connections to your actor. They provide a way to handle client authentication, manage connection-specific data, and control the connection lifecycle.
+
+For documentation on connecting to actors from clients, see the [Clients documentation](/docs/actors/clients).
+
+## Parameters
+
+When clients connect to an actor, they can pass connection parameters that are handled during the connection process.
+
+For example:
+
+<CodeGroup>
+
+```typescript {{"title":"Client"}}
+import { createClient } from "rivetkit/client";
+import type { registry } from "./src/index";
+
+const client = createClient<typeof registry>("http://localhost:8080");
+const gameRoom = client.gameRoom.getOrCreate("room-123", {
+  params: { authToken: "supersekure" }
+});
+```
+
+```typescript {{"title":"Actor"}}
+import { actor } from "rivetkit";
+
+interface ConnParams {
+  authToken: string;
+}
+
+interface ConnState {
+  userId: string;
+  role: string;
+}
+
+const gameRoom = actor({
+  state: {},
+
+  // Handle connection setup
+  createConnState: (c, params: ConnParams): ConnState => {
+    // Validate authentication token
+    const authToken = params.authToken;
+
+    if (!authToken || !validateToken(authToken)) {
+      throw new Error("Invalid auth token");
+    }
+
+    // Create connection state
+    return { userId: getUserIdFromToken(authToken), role: "player" };
+  },
+
+  actions: {
+    // ...
+  }
+});
+```
+
+
+</CodeGroup>
+
+## Connection State
+
+There are two ways to define an actor's connection state:
+
+<Tabs>
+	<Tab title="connState">
+		Define connection state as a constant value:
+
+		```typescript
+		import { actor } from "rivetkit";
+
+		const chatRoom = actor({
+		  state: { messages: [] },
+
+		  // Define default connection state as a constant
+		  connState: {
+		    role: "guest",
+		    joinedAt: 0
+		  },
+
+		  onConnect: (c) => {
+		    // Update join timestamp when a client connects
+		    c.conn.state.joinedAt = Date.now();
+		  },
+
+		  actions: {
+		    // ...
+		  }
+		});
+		```
+
+		This value will be cloned for every new connection using `structuredClone`.
+	</Tab>
+
+	<Tab title="createConnState">
+		Create connection state dynamically with a function called for each connection:
+
+		```typescript
+		import { actor } from "rivetkit";
+
+		interface ConnState {
+		  userId: string;
+		  role: string;
+		  joinedAt: number;
+		}
+
+		const chatRoom = actor({
+		  state: { messages: [] },
+
+		  // Create connection state dynamically
+		  createConnState: (c): ConnState => {
+		    // Validate any connection parameters
+		    // ...
+
+		    // Return the connection state
+		    return {
+		      userId: generateUserId(),
+		      role: "guest",
+		      joinedAt: Date.now()
+		    };
+		  },
+
+		  actions: {
+		    sendMessage: (c, message) => {
+		      const username = c.conn.state.userId;
+		      c.state.messages.push({ username, message });
+		      c.broadcast("newMessage", { username, message });
+		    }
+		  }
+		});
+		```
+	</Tab>
+</Tabs>
+
+## Connection Lifecycle
+
+Each client connection goes through a series of lifecycle hooks that allow you to validate, initialize, and clean up connection-specific resources.
+
+**On Connect** (per client)
+
+- `onBeforeConnect`
+- `createConnState`
+- `onConnect`
+
+**On Disconnect** (per client)
+
+- `onDisconnect`
+
+### `createConnState` and `connState`
+
+[API Reference](/typedoc/interfaces/rivetkit.mod.CreateConnStateContext.html)
+
+There are two ways to define the initial state for connections:
+1. `connState`: Define a constant object that will be used as the initial state for all connections
+2. `createConnState`: A function that dynamically creates initial connection state based on connection parameters. Can be async.
+
+### `onBeforeConnect`
+
+[API Reference](/typedoc/interfaces/rivetkit.mod.OnBeforeConnectContext.html)
+
+The `onBeforeConnect` hook is called whenever a new client connects to the actor. Can be async. Clients can pass parameters when connecting, accessible via `params`. This hook is used for connection validation and can throw errors to reject connections.
+
+The `onBeforeConnect` hook does NOT return connection state - it's used solely for validation.
+
+```typescript
+import { actor } from "rivetkit";
+
+const chatRoom = actor({
+  state: { messages: [] },
+
+  // Method 1: Use a static default connection state
+  connState: {
+    role: "guest",
+    joinTime: 0,
+  },
+
+  // Method 2: Dynamically create connection state
+  createConnState: (c, params: { userId?: string, role?: string }) => {
+    return {
+      userId: params.userId || "anonymous",
+      role: params.role || "guest",
+      joinTime: Date.now()
+    };
+  },
+
+  // Validate connections before accepting them
+  onBeforeConnect: (c, params: { authToken?: string }) => {
+    // Validate authentication
+    const authToken = params.authToken;
+    if (!authToken || !validateToken(authToken)) {
+      throw new Error("Invalid authentication");
+    }
+
+    // Authentication is valid, connection will proceed
+    // The actual connection state will come from connState or createConnState
+  },
+
+  actions: { /* ... */ }
+});
+```
+
+Connections cannot interact with the actor until this method completes successfully. Throwing an error will abort the connection. This can be used for authentication, see [Authentication](/docs/actors/authentication) for details.
+
+### `onConnect`
+
+[API Reference](/typedoc/interfaces/rivetkit.mod.OnConnectContext.html)
+
+Executed after the client has successfully connected. Can be async. Receives the connection object as a second parameter.
+
+```typescript
+import { actor } from "rivetkit";
+
+const chatRoom = actor({
+  state: { users: {}, messages: [] },
+
+  onConnect: (c, conn) => {
+    // Add user to the room's user list using connection state
+    const userId = conn.state.userId;
+    c.state.users[userId] = {
+      online: true,
+      lastSeen: Date.now()
+    };
+
+    // Broadcast that a user joined
+    c.broadcast("userJoined", { userId, timestamp: Date.now() });
+
+    console.log(`User ${userId} connected`);
+  },
+
+  actions: { /* ... */ }
+});
+```
+
+Messages will not be processed for this actor until this hook succeeds. Errors thrown from this hook will cause the client to disconnect.
+
+### `onDisconnect`
+
+[API Reference](/typedoc/interfaces/rivetkit.mod.ActorDefinition.html)
+
+Called when a client disconnects from the actor. Can be async. Receives the connection object as a second parameter. Use this to clean up any connection-specific resources.
+
+```typescript
+import { actor } from "rivetkit";
+
+const chatRoom = actor({
+  state: { users: {}, messages: [] },
+
+  onDisconnect: (c, conn) => {
+    // Update user status when they disconnect
+    const userId = conn.state.userId;
+    if (c.state.users[userId]) {
+      c.state.users[userId].online = false;
+      c.state.users[userId].lastSeen = Date.now();
+    }
+
+    // Broadcast that a user left
+    c.broadcast("userLeft", { userId, timestamp: Date.now() });
+
+    console.log(`User ${userId} disconnected`);
+  },
+
+  actions: { /* ... */ }
+});
+```
+
+## Connection List
+
+All active connections can be accessed through the context object's `conns` property. This is an array of all current connections.
+
+This is frequently used with `conn.send(name, event)` to send messages directly to clients. To send an event to all connections at once, use `c.broadcast()` instead. See [Events](/docs/actors/events) for more details on broadcasting.
+
+For example:
+
+```typescript
+import { actor } from "rivetkit";
+
+const chatRoom = actor({
+  state: { users: {} },
+  
+  actions: {
+    sendDirectMessage: (c, recipientId, message) => {
+      // Find the recipient's connection
+      const recipientConn = c.conns.find(conn => conn.state.userId === recipientId);
+      
+      if (recipientConn) {
+        // Send a private message to just that client
+        recipientConn.send("directMessage", {
+          from: c.conn.state.userId,
+          message: message
+        });
+      }
+    }
+  }
+});
+```
+
+<Note>
+`conn.send()` has no effect on [low-level WebSocket connections](/docs/actors/websocket-handler). For low-level WebSockets, use the WebSocket API directly (e.g., `websocket.send()`).
+</Note>
+
+## Disconnecting clients
+
+Connections can be disconnected from within an action:
+
+```typescript
+import { actor } from "rivetkit";
+
+const secureRoom = actor({
+  state: {},
+  
+  actions: {
+    kickUser: (c, targetUserId, reason) => {
+      // Find the connection to kick
+      const targetConn = c.conns.find(conn => conn.state.userId === targetUserId);
+      
+      if (targetConn) {
+        // Disconnect with a reason
+        targetConn.disconnect(reason || "Kicked by admin");
+      }
+    }
+  }
+});
+```
+
+If you need to wait for the disconnection to complete, you can use `await`:
+
+```typescript
+await c.conn.disconnect("Too many requests");
+```
+
+This ensures the underlying network connections close cleanly before continuing.
+
+## API Reference
+
+- [`Conn`](/typedoc/interfaces/rivetkit.mod.Conn.html) - Connection interface
+- [`ConnInitContext`](/typedoc/interfaces/rivetkit.mod.ConnInitContext.html) - Connection initialization context
+- [`CreateConnStateContext`](/typedoc/interfaces/rivetkit.mod.CreateConnStateContext.html) - Context for creating connection state
+- [`OnBeforeConnectContext`](/typedoc/interfaces/rivetkit.mod.OnBeforeConnectContext.html) - Pre-connection lifecycle hook context
+- [`OnConnectContext`](/typedoc/interfaces/rivetkit.mod.OnConnectContext.html) - Post-connection lifecycle hook context
+- [`ActorConn`](/typedoc/types/rivetkit.client_mod.ActorConn.html) - Typed connection from client side

@@ -1,0 +1,253 @@
+import { InstallPackage } from "@/components/docs/InstallPackage";
+
+# React
+
+Learn how to create real-time, stateful React applications with Rivet's actor model. The React integration provides intuitive hooks for managing actor connections and real-time updates.
+
+## Getting Started
+
+See the [React quickstart guide](/docs/actors/quickstart/react) for getting started.
+
+## API Reference
+
+### `createRivetKit(endpoint?, options?)`
+
+Creates the Rivet hooks for React integration.
+
+```tsx
+import { createRivetKit } from "@rivetkit/react";
+import type { registry } from "./backend/registry";
+
+const { useActor } = createRivetKit<typeof registry>();
+```
+
+#### Parameters
+
+- `endpoint`: Optional endpoint URL (defaults to `http://localhost:6420` or `process.env.RIVET_ENDPOINT`)
+- `options`: Optional configuration object
+
+#### Returns
+
+An object containing:
+- `useActor`: Hook for connecting to actors
+
+### `useActor(options)`
+
+Hook that connects to an actor and manages the connection lifecycle.
+
+```tsx
+const actor = useActor({
+  name: "actorName",
+  key: ["actor-id"],
+  params: { userId: "123" },
+  enabled: true
+});
+```
+
+#### Parameters
+
+- `options`: Object containing:
+  - `name`: The name of the actor type (string)
+  - `key`: Array of strings identifying the specific actor instance
+  - `params`: Optional parameters passed to the actor connection
+  - `createWithInput`: Optional input to pass to the actor on creation
+  - `createInRegion`: Optional region to create the actor in if does not exist
+  - `enabled`: Optional boolean to conditionally enable/disable the connection (default: true)
+
+#### Returns
+
+Actor object with the following properties:
+- `connection`: The actor connection for calling actions, or `null` if not connected
+- `connStatus`: The connection status (`"idle"`, `"connecting"`, `"connected"`, or `"disconnected"`)
+- `error`: Error object if the connection failed, or `null`
+- `useEvent(eventName, handler)`: Method to subscribe to actor events
+
+### `actor.useEvent(eventName, handler)`
+
+Subscribe to events emitted by the actor.
+
+```tsx
+const actor = useActor({ name: "counter", key: ["my-counter"] });
+
+actor.useEvent("newCount", (count: number) => {
+  console.log("Count changed:", count);
+});
+```
+
+#### Parameters
+
+- `eventName`: The name of the event to listen for (string)
+- `handler`: Function called when the event is emitted
+
+#### Lifecycle
+
+The event subscription is automatically managed:
+- Subscribes when the actor connects
+- Cleans up when the component unmounts or actor disconnects
+- Re-subscribes on reconnection
+
+## Advanced Patterns
+
+### Multiple Actors
+
+Connect to multiple actors in a single component:
+
+```tsx
+function Dashboard() {
+  const userProfile = useActor({
+    name: "userProfile", 
+    key: ["user-123"]
+  });
+  
+  const notifications = useActor({
+    name: "notifications",
+    key: ["user-123"]
+  });
+
+  userProfile.useEvent("profileUpdated", (profile) => {
+    console.log("Profile updated:", profile);
+  });
+
+  notifications.useEvent("newNotification", (notification) => {
+    console.log("New notification:", notification);
+  });
+
+  return (
+    <div>
+      <UserProfile actor={userProfile} />
+      <NotificationList actor={notifications} />
+    </div>
+  );
+}
+```
+
+### Conditional Connections
+
+Control when actors connect using the `enabled` option:
+
+```tsx
+function ConditionalActor() {
+  const [enabled, setEnabled] = useState(false);
+
+  const counter = useActor({
+    name: "counter",
+    key: ["conditional"],
+    enabled: enabled // Only connect when enabled
+  });
+
+  return (
+    <div>
+      <button onClick={() => setEnabled(!enabled)}>
+        {enabled ? "Disconnect" : "Connect"}
+      </button>
+      {counter.connStatus === "connected" && (
+        <p>Connected!</p>
+      )}
+    </div>
+  );
+}
+```
+
+### Real-time Collaboration
+
+Build collaborative features with multiple event listeners:
+
+```tsx
+function CollaborativeEditor() {
+  const [content, setContent] = useState("");
+  const [cursors, setCursors] = useState<Record<string, Position>>({});
+  
+  const document = useActor({
+    name: "document",
+    key: ["doc-123"],
+    params: { userId: getCurrentUserId() }
+  });
+
+  // Listen for content changes
+  document.useEvent("contentChanged", (newContent) => {
+    setContent(newContent);
+  });
+
+  // Listen for cursor movements
+  document.useEvent("cursorMoved", ({ userId, position }) => {
+    setCursors(prev => ({ ...prev, [userId]: position }));
+  });
+
+  // Listen for user join/leave
+  document.useEvent("userJoined", ({ userId }) => {
+    console.log(`${userId} joined the document`);
+  });
+
+  document.useEvent("userLeft", ({ userId }) => {
+    setCursors(prev => {
+      const { [userId]: _, ...rest } = prev;
+      return rest;
+    });
+  });
+
+  const updateContent = async (newContent: string) => {
+    await document.connection?.updateContent(newContent);
+  };
+
+  return (
+    <div>
+      <Editor 
+        content={content}
+        cursors={cursors}
+        onChange={updateContent}
+      />
+    </div>
+  );
+}
+```
+
+### Authentication
+
+Connect authenticated actors in React:
+
+```tsx
+function AuthenticatedApp() {
+	const [authToken, setAuthToken] = useState<string | null>(null);
+
+	const counter = useActor({
+		name: "protectedCounter",
+		key: ["user-counter"],
+		params: {
+			authToken: authToken
+		},
+		enabled: !!authToken // Only connect when authenticated
+	});
+
+	const login = async () => {
+		const token = await authenticateUser();
+		setAuthToken(token);
+	};
+
+	if (!authToken) {
+		return <button onClick={login}>Login</button>;
+	}
+
+	return (
+		<div>
+			<h1>Authenticated Counter</h1>
+			{/* ... rest of authenticated UI */}
+		</div>
+	);
+}
+```
+
+Learn more about [authentication](/docs/actors/authentication).
+
+## API Reference
+
+**Package:** [@rivetkit/react](https://www.npmjs.com/package/@rivetkit/react)
+
+See the full React API documentation at [rivetkit.org/docs/actors/clients](https://rivetkit.org/docs/actors/clients).
+
+- [`RivetKitProvider`](https://rivetkit.org/docs/actors/clients/#react-provider) - React context provider
+- [`useActor`](https://rivetkit.org/docs/actors/clients/#useactor) - React hook for actor instances
+- [`createClient`](/typedoc/functions/rivetkit.client_mod.createClient.html) - Create a client
+- [`Client`](/typedoc/types/rivetkit.mod.Client.html) - Client type
+- [`ActorHandle`](/typedoc/types/rivetkit.client_mod.ActorHandle.html) - Handle for interacting with actors
+- [`ActorConn`](/typedoc/types/rivetkit.client_mod.ActorConn.html) - Connection to actors
+

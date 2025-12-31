@@ -1,0 +1,29 @@
+[package]
+name = "rivet-runtime"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+console-subscriber.workspace = true
+lazy_static.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-otlp.workspace = true
+opentelemetry-semantic-conventions.workspace = true
+opentelemetry-stdout.workspace = true
+opentelemetry.workspace = true
+reqwest.workspace = true
+rivet-env.workspace = true
+rivet-metrics.workspace = true
+sentry.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing-core.workspace = true
+tracing-logfmt.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true

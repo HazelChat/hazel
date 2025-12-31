@@ -1,0 +1,19 @@
+[package]
+name = "rivet-service-manager"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+include_dir.workspace = true
+rivet-config.workspace = true
+rivet-metrics.workspace = true
+rivet-pools.workspace = true
+rivet-runtime.workspace = true
+tokio-cron-scheduler.workspace = true
+tokio.workspace = true
+tracing.workspace = true
