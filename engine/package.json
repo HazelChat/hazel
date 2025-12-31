@@ -1,0 +1,8 @@
+{
+	"name": "@rivetkit/engine",
+	"version": "1.0.0",
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.13.1"
+}
