@@ -349,7 +349,15 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		const botCommands = useBotCommands(orgId!, channelId ?? "")
 
 		// Mutation for executing integration commands
-		const executeCommand = useAtomSet(HazelApiClient.mutation("integration-commands", "executeCommand"), {
+		const executeIntegrationCommand = useAtomSet(
+			HazelApiClient.mutation("integration-commands", "executeCommand"),
+			{
+				mode: "promiseExit",
+			},
+		)
+
+		// Mutation for executing bot SDK commands
+		const executeBotCommand = useAtomSet(HazelApiClient.mutation("bots", "executeCommand"), {
 			mode: "promiseExit",
 		})
 
@@ -429,68 +437,132 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 				return
 			}
 
-			// Get provider from the command data
-			const provider = commandInputState.command.provider
-
 			// Build arguments array
 			const args = Object.entries(commandInputState.values)
 				.filter(([_, value]) => value.trim() !== "")
 				.map(([name, value]) => ({ name, value }))
 
-			const toastId = toast.loading(`Creating ${commandInputState.command.name}...`)
+			const toastId = toast.loading(`Executing /${commandInputState.command.name}...`)
 
-			const exit = await executeCommand({
-				path: { orgId, provider, commandId: commandInputState.command.id },
-				payload: { channelId, arguments: args },
-			})
-
-			Exit.match(exit, {
-				onSuccess: (result) => {
+			// Route to appropriate endpoint based on command source
+			if (commandInputState.command.source === "bot-sdk") {
+				// Execute bot SDK command
+				const botId = commandInputState.command.botId
+				if (!botId) {
 					toast.dismiss(toastId)
+					toast.error("Invalid bot command configuration")
+					return
+				}
 
-					// Handle Linear issue result
-					if ("identifier" in result && "url" in result) {
-						toast.success(`Created ${result.identifier}`, {
-							action: {
-								label: "View",
-								onClick: () => window.open(result.url, "_blank"),
-							},
-						})
-					} else {
-						toast.success(`Executed /${commandInputState.command?.name}`)
-					}
+				const exit = await executeBotCommand({
+					path: { orgId, botId, commandName: commandInputState.command.name },
+					payload: { channelId, arguments: args },
+				})
 
-					// Exit input mode and focus editor
-					setCommandInputState(initialCommandInputState)
-					ReactEditor.focus(editor)
-				},
-				onFailure: (cause) => {
-					toast.dismiss(toastId)
+				Exit.match(exit, {
+					onSuccess: (result) => {
+						toast.dismiss(toastId)
 
-					// Extract error message from cause
-					const error = cause._tag === "Fail" ? cause.error : null
-					let message = "Command failed"
-
-					if (error && typeof error === "object" && "_tag" in error) {
-						switch (error._tag) {
-							case "IntegrationNotConnectedForCommandError":
-								message = `${provider.charAt(0).toUpperCase() + provider.slice(1)} is not connected`
-								break
-							case "CommandExecutionError":
-								message = (error as { message: string }).message
-								break
-							case "MissingRequiredArgumentError":
-								message = `Missing required: ${(error as { argumentName: string }).argumentName}`
-								break
-							default:
-								message = "Command execution failed"
+						if (result.error) {
+							toast.error(result.error)
+						} else if (result.responseMessage) {
+							toast.success(result.responseMessage)
+						} else {
+							toast.success(`Executed /${commandInputState.command?.name}`)
 						}
-					}
 
-					toast.error(message)
-				},
-			})
-		}, [commandInputState, orgId, channelId, executeCommand, editor])
+						// Exit input mode and focus editor
+						setCommandInputState(initialCommandInputState)
+						ReactEditor.focus(editor)
+					},
+					onFailure: (cause) => {
+						toast.dismiss(toastId)
+
+						// Extract error message from cause
+						const error = cause._tag === "Fail" ? cause.error : null
+						let message = "Command failed"
+
+						if (error && typeof error === "object" && "_tag" in error) {
+							switch (error._tag) {
+								case "BotNotInstalledError":
+									message = "Bot is not installed"
+									break
+								case "BotCommandNotFoundError":
+									message = "Command not found"
+									break
+								case "BotExecutionError":
+									message = (error as { message: string }).message
+									break
+								default:
+									message = "Command execution failed"
+							}
+						}
+
+						toast.error(message)
+					},
+				})
+			} else {
+				// Execute integration command
+				const provider = commandInputState.command.provider
+				if (!provider) {
+					toast.dismiss(toastId)
+					toast.error("Invalid integration command configuration")
+					return
+				}
+
+				const exit = await executeIntegrationCommand({
+					path: { orgId, provider, commandId: commandInputState.command.id },
+					payload: { channelId, arguments: args },
+				})
+
+				Exit.match(exit, {
+					onSuccess: (result) => {
+						toast.dismiss(toastId)
+
+						// Handle Linear issue result
+						if ("identifier" in result && "url" in result) {
+							toast.success(`Created ${result.identifier}`, {
+								action: {
+									label: "View",
+									onClick: () => window.open(result.url, "_blank"),
+								},
+							})
+						} else {
+							toast.success(`Executed /${commandInputState.command?.name}`)
+						}
+
+						// Exit input mode and focus editor
+						setCommandInputState(initialCommandInputState)
+						ReactEditor.focus(editor)
+					},
+					onFailure: (cause) => {
+						toast.dismiss(toastId)
+
+						// Extract error message from cause
+						const error = cause._tag === "Fail" ? cause.error : null
+						let message = "Command failed"
+
+						if (error && typeof error === "object" && "_tag" in error) {
+							switch (error._tag) {
+								case "IntegrationNotConnectedForCommandError":
+									message = `${provider.charAt(0).toUpperCase() + provider.slice(1)} is not connected`
+									break
+								case "CommandExecutionError":
+									message = (error as { message: string }).message
+									break
+								case "MissingRequiredArgumentError":
+									message = `Missing required: ${(error as { argumentName: string }).argumentName}`
+									break
+								default:
+									message = "Command execution failed"
+							}
+						}
+
+						toast.error(message)
+					},
+				})
+			}
+		}, [commandInputState, orgId, channelId, executeIntegrationCommand, executeBotCommand, editor])
 
 		const handleCommandCancel = useCallback(() => {
 			setCommandInputState(initialCommandInputState)

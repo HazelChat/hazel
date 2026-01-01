@@ -1,0 +1,24 @@
+{
+	"name": "@hazel/bots",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./commands": "./src/commands.ts",
+		"./types": "./src/types.ts",
+		"./actors": "./src/actors/index.ts"
+	},
+	"dependencies": {
+		"@effect/platform": "catalog:effect",
+		"@hazel/domain": "workspace:*",
+		"effect": "catalog:effect",
+		"rivetkit": "^2.0.33"
+	},
+	"devDependencies": {
+		"@effect/language-service": "catalog:effect",
+		"@types/bun": "1.3.5",
+		"typescript": "^5.9.3"
+	}
+}

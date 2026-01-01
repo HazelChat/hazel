@@ -11,6 +11,7 @@ const tabs = [
 	{ id: "team", label: "Team", to: "/$orgSlug/settings" as const },
 	{ id: "invitations", label: "Invitations", to: "/$orgSlug/settings/invitations" as const },
 	{ id: "integrations", label: "Integrations", to: "/$orgSlug/settings/integrations" as const },
+	{ id: "bots", label: "Bots", to: "/$orgSlug/settings/bots" as const },
 	// Only show debug tab in development
 	...(!import.meta.env.PROD
 		? [{ id: "debug", label: "Debug", to: "/$orgSlug/settings/debug" as const }]

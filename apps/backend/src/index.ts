@@ -30,6 +30,7 @@ import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy"
 import { AttachmentRepo } from "./repositories/attachment-repo"
+import { BotInstallationRepo } from "./repositories/bot-installation-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
@@ -111,6 +112,7 @@ const RepoLive = Layer.mergeAll(
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
 	GitHubSubscriptionRepo.Default,
+	BotInstallationRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(

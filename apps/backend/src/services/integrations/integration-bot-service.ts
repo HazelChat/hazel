@@ -1,3 +1,4 @@
+import { getBotById } from "@hazel/bots/commands"
 import { Integrations, type OrganizationId, withSystemActor } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -123,7 +124,62 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				return botUser
 			})
 
-		return { getOrCreateBotUser, getOrCreateWebhookBotUser }
+		/**
+		 * Get or create a bot user for a bot SDK bot.
+		 * Uses the bot definition from @hazel/bots/commands.
+		 */
+		const getOrCreateSdkBotUser = (botId: string, organizationId: OrganizationId) =>
+			Effect.gen(function* () {
+				const externalId = `sdk-bot-${botId}`
+
+				// Try to find existing bot user
+				const existing = yield* userRepo.findByExternalId(externalId).pipe(withSystemActor)
+
+				const botUser = Option.isSome(existing)
+					? existing.value
+					: yield* Effect.gen(function* () {
+							// Get bot definition
+							const botDef = getBotById(botId)
+							// If bot doesn't exist, use a generic fallback
+							const displayName = botDef?.displayName ?? botId
+							const avatar = botDef?.avatar ?? ""
+
+							// Create new machine user for this bot
+							const newUser = yield* userRepo
+								.insert({
+									externalId,
+									email: `${botId}@bots.internal`,
+									firstName: displayName,
+									lastName: "",
+									avatarUrl: avatar,
+									userType: "machine",
+									settings: null,
+									isOnboarded: true,
+									timezone: null,
+									deletedAt: null,
+								})
+								.pipe(withSystemActor)
+
+							return newUser[0]
+						})
+
+				// Ensure bot is a member of this organization (so it shows in Electric sync)
+				yield* orgMemberRepo
+					.upsertByOrgAndUser({
+						organizationId,
+						userId: botUser.id,
+						role: "member",
+						nickname: null,
+						joinedAt: new Date(),
+						invitedBy: null,
+						deletedAt: null,
+					})
+					.pipe(withSystemActor)
+
+				return botUser
+			})
+
+		return { getOrCreateBotUser, getOrCreateWebhookBotUser, getOrCreateSdkBotUser }
 	}),
 	dependencies: [UserRepo.Default, OrganizationMemberRepo.Default],
 }) {}

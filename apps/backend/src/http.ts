@@ -4,6 +4,7 @@ import { HazelApi } from "./api"
 import { HttpAttachmentLive } from "./routes/attachments.http"
 import { HttpAuthLive } from "./routes/auth.http"
 import { HttpAvatarLive } from "./routes/avatars.http"
+import { HttpBotsLive } from "./routes/bots.http"
 import { HttpIncomingWebhookLive } from "./routes/incoming-webhooks.http"
 import { HttpIntegrationCommandLive } from "./routes/integration-commands.http"
 import { HttpIntegrationResourceLive } from "./routes/integration-resources.http"
@@ -17,6 +18,7 @@ export const HttpApiRoutes = HttpLayerRouter.addHttpApi(HazelApi).pipe(
 	Layer.provide(HttpRootLive),
 	Layer.provide(HttpAuthLive),
 	Layer.provide(HttpAvatarLive),
+	Layer.provide(HttpBotsLive),
 	Layer.provide(HttpIntegrationLive),
 	Layer.provide(HttpIntegrationCommandLive),
 	Layer.provide(HttpIntegrationResourceLive),
