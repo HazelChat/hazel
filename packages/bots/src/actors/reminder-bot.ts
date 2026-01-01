@@ -132,7 +132,7 @@ export const reminderBot = actor({
 		 * Create a reminder
 		 * Parses time string and schedules the reminder to fire
 		 */
-		remind: Action.effect(function* (c, args: RemindArgs) {
+		remind: Action.effect(function* (c: ReminderBotContext, args: RemindArgs) {
 			const duration = parseReminderTime(args.time)
 			if (!duration) {
 				return {
@@ -169,7 +169,7 @@ export const reminderBot = actor({
 		/**
 		 * List user's pending reminders
 		 */
-		reminders: Action.effect(function* (c, args: RemindersArgs) {
+		reminders: Action.effect(function* (c: ReminderBotContext, args: RemindersArgs) {
 			const s = yield* Action.state(c)
 			const pending = s.reminders.filter((r) => r.userId === args.userId && r.dueAt > Date.now())
 
@@ -191,7 +191,7 @@ export const reminderBot = actor({
 		/**
 		 * Cancel a reminder
 		 */
-		cancelReminder: Action.effect(function* (c, args: CancelReminderArgs) {
+		cancelReminder: Action.effect(function* (c: ReminderBotContext, args: CancelReminderArgs) {
 			const s = yield* Action.state(c)
 			const idx = s.reminders.findIndex((r) => r.id === args.reminderId && r.userId === args.userId)
 			if (idx === -1) {
@@ -209,7 +209,7 @@ export const reminderBot = actor({
 		 * Scheduled action - fires when reminder is due
 		 * Posts message to channel via backend API
 		 */
-		fireReminder: Action.effect(function* (c, args: FireReminderArgs) {
+		fireReminder: Action.effect(function* (c: ReminderBotContext, args: FireReminderArgs) {
 			const s = yield* Action.state(c)
 			const reminder = s.reminders.find((r) => r.id === args.reminderId)
 			if (!reminder) {
@@ -238,7 +238,7 @@ export const reminderBot = actor({
 		/**
 		 * Get the org ID for this actor
 		 */
-		getOrgId: Action.effect(function* (c, _args: unknown) {
+		getOrgId: Action.effect(function* (c: ReminderBotContext, _args: unknown) {
 			const s = yield* Action.state(c)
 			return s.orgId
 		}),
@@ -246,7 +246,7 @@ export const reminderBot = actor({
 		/**
 		 * Get all reminders (for debugging)
 		 */
-		getAllReminders: Action.effect(function* (c, _args: unknown) {
+		getAllReminders: Action.effect(function* (c: ReminderBotContext, _args: unknown) {
 			const s = yield* Action.state(c)
 			return s.reminders
 		}),
