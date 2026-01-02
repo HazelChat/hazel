@@ -82,6 +82,12 @@ const runtime = createHazelBot({
 					required: true,
 					type: "string" as const,
 				},
+				{
+					name: "description",
+					description: "The description of the issue to create",
+					required: false,
+					type: "string" as const,
+				}
 			],
 			usageExample: "/issue Fix the login bug",
 		},

@@ -1,3 +1,5 @@
+import { FetchHttpClient, HttpApiClient, HttpClient, HttpClientRequest } from "@effect/platform"
+import { HazelApi } from "@hazel/domain/http"
 import { Duration, Effect, Schedule } from "effect"
 import { AuthenticationError } from "./errors.ts"
 
@@ -63,35 +65,28 @@ export const createAuthContextFromToken = (
 	Effect.gen(function* () {
 		yield* Effect.log(`Waiting for backend at ${backendUrl}...`)
 
+		// Create typed HttpApiClient with Bearer token auth
+		const client = yield* HttpApiClient.make(HazelApi, {
+			baseUrl: backendUrl,
+			transformClient: (httpClient) =>
+				httpClient.pipe(HttpClient.mapRequest(HttpClientRequest.bearerToken(token))),
+		})
+
 		// Call /bot-commands/me to validate token and get bot info
 		// Retry with exponential backoff until backend is available
-		const response = yield* Effect.tryPromise({
-			try: async () => {
-				const res = await fetch(`${backendUrl}/bot-commands/me`, {
-					method: "GET",
-					headers: {
-						Authorization: `Bearer ${token}`,
-					},
-				})
-
-				if (!res.ok) {
-					const text = await res.text()
-					throw new Error(`Failed to authenticate bot: ${res.status} ${text}`)
-				}
-
-				return (await res.json()) as { botId: string; userId: string; name: string }
-			},
-			catch: (error) =>
-				new AuthenticationError({
-					message: "Backend not ready",
-					cause: String(error),
-				}),
-		}).pipe(
+		const response = yield* client["bot-commands"].getBotMe().pipe(
 			Effect.retry(
 				Schedule.exponential("1 second", 2).pipe(
 					Schedule.jittered,
 					Schedule.whileOutput((duration) => Duration.lessThanOrEqualTo(duration, Duration.seconds(30))),
 				),
+			),
+			Effect.mapError(
+				(error) =>
+					new AuthenticationError({
+						message: "Failed to authenticate bot",
+						cause: String(error),
+					}),
 			),
 		)
 
@@ -103,4 +98,4 @@ export const createAuthContextFromToken = (
 			channelIds: [],
 			token,
 		}
-	})
+	}).pipe(Effect.provide(FetchHttpClient.layer))

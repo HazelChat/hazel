@@ -1,4 +1,3 @@
-import { Schema } from "effect"
 import type { EventDispatcherConfig, EventQueueConfig, ShapeSubscriptionConfig } from "./services/index.ts"
 
 /**
