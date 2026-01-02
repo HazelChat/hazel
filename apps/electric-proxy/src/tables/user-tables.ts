@@ -207,14 +207,9 @@ export function getWhereClauseForTable(
 		// Bot tables
 		// ===========================================
 
-		Match.when("bots", () => {
-			// Public bots or bots created by user
-			const { isPublic, createdBy, deletedAt } = schema.botsTable
-			return Effect.succeed({
-				whereClause: `("${isPublic.name}" = $1 OR "${createdBy.name}" = $2) AND "${deletedAt.name}" IS NULL`,
-				params: [true, user.internalUserId],
-			} satisfies WhereClauseResult)
-		}),
+		Match.when("bots", () =>
+			Effect.succeed(buildDeletedAtNullClause(schema.botsTable.deletedAt)),
+		),
 
 		Match.when("bot_commands", () =>
 			// All bot commands visible (filtered by bot installation in frontend)
