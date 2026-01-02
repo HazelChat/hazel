@@ -15,7 +15,7 @@ import type {
 	UserId,
 } from "@hazel/domain/ids"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
-import { Config, Context, Effect, Layer, ManagedRuntime, Option, type Schema, type Scope } from "effect"
+import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, type Schema, type Scope } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import type { HandlerError } from "./errors.ts"
@@ -632,6 +632,14 @@ export const createHazelBot = (
 		}),
 	)
 
+	// Use pretty logger in non-production, structured logger in production
+	const LoggerLayer = Layer.unwrapEffect(
+		Effect.gen(function* () {
+			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
+			return nodeEnv === "production" ? Logger.structured : Logger.pretty
+		}),
+	)
+
 	// Compose all layers with proper dependency order
 	const AllLayers = HazelBotClient.Default.pipe(
 		Layer.provide(BotClientLayer),
@@ -645,6 +653,7 @@ export const createHazelBot = (
 				AuthLayer,
 			),
 		),
+		Layer.provide(LoggerLayer),
 	)
 
 	// Create runtime
