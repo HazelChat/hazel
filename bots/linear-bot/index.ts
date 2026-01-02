@@ -11,22 +11,18 @@
  */
 
 import type { OrganizationId } from "@hazel/domain/ids"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
 import {
-	createIssue,
+	LinearApiClient,
 	extractLinearUrls,
-	fetchLinearIssue,
 	parseLinearIssueUrl,
 	type LinearIssue,
-} from "./src/linear-api.ts"
+} from "@hazel/integrations/linear"
 import {
 	getLinearAccessToken,
 	IntegrationLayerLive,
-	IntegrationNotConnectedError,
-	IntegrationEncryptionError,
 } from "./src/db.ts"
-import { LinearCommandError } from "./src/linear-api.ts"
 
 /**
  * Validate that required environment variables are present
@@ -95,10 +91,12 @@ const runtime = createHazelBot({
 })
 
 /**
- * Helper to run database effects with the integration layer
+ * Compose all required layers
  */
-const withDb = <A, E>(effect: Effect.Effect<A, E, any>) =>
-	effect.pipe(Effect.provide(IntegrationLayerLive))
+const BotLayers = Layer.mergeAll(
+	IntegrationLayerLive,
+	LinearApiClient.Default,
+)
 
 /**
  * Main bot program
@@ -130,6 +128,7 @@ const program = Effect.gen(function* () {
 			yield* Effect.log(`Received /issue command from ${ctx.userId}`)
 
 			const title = ctx.args.title
+			const description = ctx.args.description
 			if (!title) {
 				yield* bot.message.send(ctx.channelId, "Please provide a title for the issue. Usage: `/issue Fix the login bug`")
 				return
@@ -138,11 +137,12 @@ const program = Effect.gen(function* () {
 			yield* Effect.log(`Creating Linear issue: ${title}`)
 
 			// Get the org's Linear access token from the database
-			const accessToken = yield* withDb(getLinearAccessToken(ctx.orgId))
+			const accessToken = yield* getLinearAccessToken(ctx.orgId)
 
 			// Create the issue directly via Linear API
-			const issue = yield* createIssue(accessToken, {
+			const issue = yield* LinearApiClient.createIssue(accessToken, {
 				title,
+				description,
 			})
 
 			yield* Effect.log(`Created Linear issue: ${issue.identifier}`)
@@ -153,22 +153,23 @@ const program = Effect.gen(function* () {
 				`Created Linear issue: **${issue.identifier}** - ${issue.title}\n${issue.url}`,
 			)
 		}).pipe(
+			Effect.catchTag("IntegrationNotConnectedError", () =>
+				bot.message.send(
+					ctx.channelId,
+					"Linear is not connected to this organization. Please connect Linear in the settings.",
+				),
+			),
+			
+			Effect.catchTag("LinearApiError", (error) =>
+				bot.message.send(ctx.channelId, `Failed to create issue: ${error.message}`),
+			),
+			Effect.catchTag("LinearTeamNotFoundError", (error) =>
+				bot.message.send(ctx.channelId, `No Linear team found: ${error.message}`),
+			),
 			Effect.catchAll((error) =>
 				Effect.gen(function* () {
-					if (error instanceof IntegrationNotConnectedError) {
-						yield* bot.message.send(
-							ctx.channelId,
-							"Linear is not connected to this organization. Please connect Linear in the settings.",
-						)
-					} else if (error instanceof IntegrationEncryptionError) {
-						yield* Effect.logError(`Token decryption failed: ${(error as IntegrationEncryptionError).cause}`)
-						yield* bot.message.send(ctx.channelId, "Failed to access Linear integration. Please try reconnecting.")
-					} else if (error instanceof LinearCommandError) {
-						yield* bot.message.send(ctx.channelId, `Failed to create issue: ${error.message}`)
-					} else {
-						yield* Effect.logError(`Unexpected error in /issue command: ${error}`)
-						yield* bot.message.send(ctx.channelId, "An unexpected error occurred. Please try again.")
-					}
+					yield* Effect.logError(`Unexpected error in /issue command: ${error}`)
+					yield* bot.message.send(ctx.channelId, "An unexpected error occurred. Please try again.")
 				}),
 			),
 		),
@@ -199,18 +200,9 @@ const program = Effect.gen(function* () {
 			}
 
 			// Get the org's Linear access token
-			const accessToken = yield* withDb(getLinearAccessToken(orgId as OrganizationId)).pipe(
-				Effect.catchAll((error) =>
-					Effect.gen(function* () {
-						if (error instanceof IntegrationNotConnectedError) {
-							yield* Effect.log("Linear not connected, skipping URL unfurling")
-						} else if (error instanceof IntegrationEncryptionError) {
-							yield* Effect.logWarning("Token decryption failed, skipping URL unfurling")
-						} else {
-							yield* Effect.logWarning(`Error getting Linear token: ${error}`)
-						}
-						return null as string | null
-					}),
+			const accessToken = yield* getLinearAccessToken(orgId as OrganizationId).pipe(
+				Effect.catchTag("IntegrationNotConnectedError", () =>
+					Effect.log("Linear not connected, skipping URL unfurling").pipe(Effect.as(null)),
 				),
 			)
 
@@ -227,14 +219,14 @@ const program = Effect.gen(function* () {
 					continue
 				}
 
-				yield* fetchLinearIssue(parsed.issueKey, accessToken).pipe(
+				yield* LinearApiClient.fetchIssue(parsed.issueKey, accessToken).pipe(
 					Effect.flatMap((issue) => bot.message.reply(message, formatIssue(issue))),
-					Effect.catchAll((error) => {
-						if (error instanceof Error && error.message.includes("not found")) {
-							return Effect.log("Linear issue not found")
-						}
-						return Effect.logError(`Error fetching Linear issue: ${error}`)
-					}),
+					Effect.catchTag("LinearIssueNotFoundError", () =>
+						Effect.log("Linear issue not found"),
+					),
+					Effect.catchTag("LinearApiError", (error) =>
+						Effect.logError(`Error fetching Linear issue: ${error.message}`),
+					),
 				)
 			}
 		}),
@@ -268,5 +260,10 @@ process.on("SIGTERM", () => {
 	runtime.runFork(shutdown)
 })
 
-// Run the bot
-runtime.runPromise(program.pipe(Effect.scoped))
+// Run the bot with all layers provided
+runtime.runPromise(
+	program.pipe(
+		Effect.scoped,
+		Effect.provide(BotLayers),
+	),
+)
