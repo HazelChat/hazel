@@ -87,6 +87,7 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 						)
 
 						return wrappedHandler.pipe(
+							Effect.withSpan("bot.event.handle", { attributes: { eventType } }),
 							Effect.retry(retryPolicy),
 							Effect.catchAllCause((cause) =>
 								Effect.logError("Handler failed after retries", {

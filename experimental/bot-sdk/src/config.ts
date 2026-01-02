@@ -11,6 +11,8 @@ export interface BotConfig {
 	readonly subscriptions?: readonly ShapeSubscriptionConfig[]
 	readonly queueConfig?: EventQueueConfig
 	readonly dispatcherConfig?: EventDispatcherConfig
+	/** Service name for tracing (defaults to "bot") */
+	readonly serviceName?: string
 }
 
 /**

@@ -15,6 +15,7 @@ import type {
 	UserId,
 } from "@hazel/domain/ids"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
+import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, type Schema, type Scope } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
@@ -259,7 +260,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							deletedAt: null,
 							authorId: authContext.userId as UserId,
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.message.send", { attributes: { channelId } }),
+						),
 
 				/**
 				 * Reply to a message
@@ -283,7 +287,12 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							deletedAt: null,
 							authorId: authContext.userId as UserId,
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.message.reply", {
+								attributes: { channelId: message.channelId, replyToMessageId: message.id },
+							}),
+						),
 
 				/**
 				 * Update a message
@@ -296,13 +305,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							id: message.id,
 							content,
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.message.update", { attributes: { messageId: message.id } }),
+						),
 
 				/**
 				 * Delete a message
 				 * @param id - Message ID to delete
 				 */
-				delete: (id: MessageId) => rpc.message.delete({ id }),
+				delete: (id: MessageId) =>
+					rpc.message.delete({ id }).pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
 
 				/**
 				 * Toggle a reaction on a message
@@ -310,11 +323,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param emoji - Emoji to toggle
 				 */
 				react: (message: MessageType, emoji: string) =>
-					rpc.messageReaction.toggle({
-						messageId: message.id,
-						channelId: message.channelId,
-						emoji,
-					}),
+					rpc.messageReaction
+						.toggle({
+							messageId: message.id,
+							channelId: message.channelId,
+							emoji,
+						})
+						.pipe(Effect.withSpan("bot.message.react", { attributes: { messageId: message.id, emoji } })),
 			},
 
 			/**
@@ -342,7 +357,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							name: updates.name ?? channel.name,
 							...updates,
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
+						),
 			},
 
 			/**
@@ -361,7 +379,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							memberId,
 							lastTyped: Date.now(),
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.typing.start", { attributes: { channelId, memberId } }),
+						),
 
 				/**
 				 * Stop showing typing indicator
@@ -372,7 +393,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 						.delete({
 							id,
 						})
-						.pipe(Effect.map((r) => r.data)),
+						.pipe(
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.typing.stop", { attributes: { typingIndicatorId: id } }),
+						),
 			},
 
 			/**
@@ -434,6 +458,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								}
 
 								yield* handler(ctx).pipe(
+									Effect.withSpan("bot.command.handle", {
+										attributes: {
+											commandName: event.commandName,
+											channelId: event.channelId,
+											userId: event.userId,
+										},
+									}),
 									Effect.catchAllCause((cause) =>
 										Effect.logError(`Command handler failed for ${event.commandName}`, { cause }),
 									),
@@ -502,6 +533,12 @@ export interface HazelBotConfig {
 	 * Event dispatcher configuration (optional)
 	 */
 	readonly dispatcherConfig?: import("./services/event-dispatcher.ts").EventDispatcherConfig
+
+	/**
+	 * Service name for tracing (optional)
+	 * @default "hazel-bot"
+	 */
+	readonly serviceName?: string
 }
 
 /**
@@ -640,6 +677,9 @@ export const createHazelBot = (
 		}),
 	)
 
+	// Create tracing layer with configurable service name
+	const TracingLayer = createTracingLayer(config.serviceName ?? "hazel-bot")
+
 	// Compose all layers with proper dependency order
 	const AllLayers = HazelBotClient.Default.pipe(
 		Layer.provide(BotClientLayer),
@@ -654,6 +694,7 @@ export const createHazelBot = (
 			),
 		),
 		Layer.provide(LoggerLayer),
+		Layer.provide(TracingLayer),
 	)
 
 	// Create runtime

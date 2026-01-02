@@ -152,7 +152,14 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 									}
 
 									yield* queue.offer(event)
-								}),
+								}).pipe(
+									Effect.withSpan("bot.shapeStream.event", {
+										attributes: {
+											table: subscription.table,
+											operation: message.headers.operation,
+										},
+									}),
+								),
 							),
 							// Filter out failed validations (continue on error)
 							Stream.catchAll(() => Stream.empty),

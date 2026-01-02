@@ -1,3 +1,4 @@
+import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientLayer, createBotClientTag, type TypedBotClient } from "./bot-client.ts"
@@ -44,10 +45,14 @@ export const makeBotRuntime = <const Subs extends readonly ShapeSubscriptionConf
 
 	const BotClientLayer = createBotClientLayer<Subs>()
 
+	// Create tracing layer with configurable service name
+	const TracingLayer = createTracingLayer(config.serviceName ?? "bot")
+
 	// Manually compose all layers with proper dependency order
 	// 1. EventQueue has no dependencies
 	// 2. EventDispatcher and ShapeStreamSubscriber need EventQueue
 	// 3. BotClient needs EventDispatcher, ShapeStreamSubscriber, and BotAuth
+	// 4. Tracing layer is provided to all services
 	const AllLayers = BotClientLayer.pipe(
 		Layer.provide(
 			Layer.mergeAll(
@@ -56,6 +61,7 @@ export const makeBotRuntime = <const Subs extends readonly ShapeSubscriptionConf
 				AuthLayer,
 			),
 		),
+		Layer.provide(TracingLayer),
 	)
 
 	// Create runtime
