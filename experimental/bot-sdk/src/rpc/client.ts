@@ -1,11 +1,11 @@
 /**
  * Bot RPC Client Service
  *
- * Provides WebSocket-based RPC client for bots to interact with the Hazel backend.
- * Uses BunSocket for WebSocket transport and NDJSON serialization.
+ * Provides HTTP-based RPC client for bots to interact with the Hazel backend.
+ * Uses FetchHttpClient for HTTP transport and NDJSON serialization.
  */
 
-import * as BunSocket from "@effect/platform-bun/BunSocket"
+import { FetchHttpClient } from "@effect/platform"
 import { RpcClient, RpcSerialization } from "@effect/rpc"
 import { ChannelRpcs, MessageReactionRpcs, MessageRpcs, TypingIndicatorRpcs } from "@hazel/domain/rpc"
 import { Context, Effect, Layer } from "effect"
@@ -22,7 +22,7 @@ export const BotRpcs = MessageRpcs.merge(ChannelRpcs, MessageReactionRpcs, Typin
  */
 export interface BotRpcClientConfig {
 	/**
-	 * Backend URL for WebSocket connection
+	 * Backend URL for HTTP RPC connection
 	 * @example "https://api.hazel.sh" or "http://localhost:3003"
 	 */
 	readonly backendUrl: string
@@ -68,15 +68,25 @@ export const BotRpcClientLive = Layer.scoped(
  * @param config - Client configuration (backendUrl, botToken)
  * @returns Effect that creates the RPC client
  */
-export const makeBotRpcClient = (config: BotRpcClientConfig) => {
-	const wsUrl = `${config.backendUrl.replace(/^http/, "ws")}/rpc`
+export const makeBotRpcClient = (config: BotRpcClientConfig) =>
+	Effect.gen(function* () {
+		// Use HTTP endpoint for bots (simpler, more reliable than WebSocket)
+		const rpcUrl = `${config.backendUrl}/rpc-http`
+		yield* Effect.log(`Creating RPC client with HTTP URL: ${rpcUrl}`)
 
-	// Create protocol layer with proper layer composition
-	const ProtocolLayer = RpcClient.layerProtocolSocket({
-		retryTransientErrors: true,
-	}).pipe(Layer.provide(Layer.mergeAll(BunSocket.layerWebSocket(wsUrl), RpcSerialization.layerNdjson)))
+		// Create HTTP protocol layer
+		const ProtocolLayer = RpcClient.layerProtocolHttp({
+			url: rpcUrl,
+		}).pipe(Layer.provide(Layer.mergeAll(FetchHttpClient.layer, RpcSerialization.layerNdjson)))
 
-	const AuthMiddlewareLayer = createBotAuthMiddleware(config.botToken)
+		// Auth middleware adds Bearer token to each request
+		const AuthMiddlewareLayer = createBotAuthMiddleware(config.botToken)
 
-	return RpcClient.make(BotRpcs).pipe(Effect.provide(Layer.mergeAll(ProtocolLayer, AuthMiddlewareLayer)))
-}
+		// Provide both protocol and auth middleware to the RPC client
+		const client = yield* RpcClient.make(BotRpcs).pipe(
+			Effect.provide(Layer.mergeAll(ProtocolLayer, AuthMiddlewareLayer)),
+		)
+		yield* Effect.log("RPC client created successfully")
+
+		return client
+	})

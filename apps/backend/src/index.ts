@@ -78,13 +78,21 @@ const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
 	path: "/docs",
 })
 
+// WebSocket RPC for web frontend
 const RpcRoute = RpcServer.layerHttpRouter({
 	group: AllRpcs,
 	path: "/rpc",
 	protocol: "websocket",
 }).pipe(Layer.provide(RpcSerialization.layerNdjson), Layer.provide(RpcServerLive))
 
-const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
+// HTTP RPC for bot SDK (simpler, doesn't require persistent connection)
+const RpcRouteHttp = RpcServer.layerHttpRouter({
+	group: AllRpcs,
+	path: "/rpc-http",
+	protocol: "http",
+}).pipe(Layer.provide(RpcSerialization.layerNdjson), Layer.provide(RpcServerLive))
+
+const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute, RpcRouteHttp).pipe(
 	Layer.provide(
 		HttpLayerRouter.cors({
 			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],

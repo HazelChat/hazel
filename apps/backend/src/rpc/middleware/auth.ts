@@ -1,17 +1,32 @@
 import { Headers } from "@effect/platform"
-import { type CurrentUser, SessionNotProvidedError, withSystemActor } from "@hazel/domain"
+import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
+import { BotRepo } from "../../repositories/bot-repo"
 import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
+import { UserRepo } from "../../repositories/user-repo"
 import { SessionManager } from "../../services/session-manager"
 import { AuthMiddleware } from "./auth-class"
 
 export { AuthMiddleware } from "./auth-class"
+
+/**
+ * Hash a token using SHA-256 (Web Crypto API)
+ */
+async function hashToken(token: string): Promise<string> {
+	const encoder = new TextEncoder()
+	const data = encoder.encode(token)
+	const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+	const hashArray = Array.from(new Uint8Array(hashBuffer))
+	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+}
 
 export const AuthMiddlewareLive = Layer.scoped(
 	AuthMiddleware,
 	Effect.gen(function* () {
 		const sessionManager = yield* SessionManager
 		const presenceRepo = yield* UserPresenceStatusRepo
+		const botRepo = yield* BotRepo
+		const userRepo = yield* UserRepo
 		const workOsCookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
 
 		// Create a FiberRef to track the current user in each WebSocket connection
@@ -42,7 +57,83 @@ export const AuthMiddlewareLive = Layer.scoped(
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
-				// Extract cookies from headers
+				yield* Effect.log("AuthMiddleware: Processing request...")
+
+				// Check for Bearer token first (bot SDK authentication)
+				const authHeader = Headers.get(headers, "authorization")
+				yield* Effect.log(`AuthMiddleware: Authorization header present: ${Option.isSome(authHeader)}`)
+
+				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
+					yield* Effect.log("AuthMiddleware: Bearer token found, validating...")
+					const token = authHeader.value.slice(7)
+					const tokenHash = yield* Effect.promise(() => hashToken(token))
+
+					// Find bot by token hash
+					const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(
+						withSystemActor,
+						Effect.catchTag("DatabaseError", () =>
+							Effect.fail(
+								new InvalidBearerTokenError({
+									message: "Failed to validate bot token",
+									detail: "Database error",
+								}),
+							),
+						),
+					)
+					if (Option.isNone(botOption)) {
+						return yield* Effect.fail(
+							new InvalidBearerTokenError({
+								message: "Invalid bot token",
+								detail: "No bot found with this token",
+							}),
+						)
+					}
+
+					const bot = botOption.value
+
+					// Get the bot's user from users table
+					const userOption = yield* userRepo.findById(bot.userId).pipe(
+						withSystemActor,
+						Effect.catchTag("DatabaseError", () =>
+							Effect.fail(
+								new InvalidBearerTokenError({
+									message: "Failed to validate bot token",
+									detail: "Database error",
+								}),
+							),
+						),
+					)
+					if (Option.isNone(userOption)) {
+						return yield* Effect.fail(
+							new InvalidBearerTokenError({
+								message: "Invalid bot token",
+								detail: "Bot user not found",
+							}),
+						)
+					}
+
+					const user = userOption.value
+
+					// Construct CurrentUser.Schema for the bot
+					const botUser: CurrentUser.Schema = {
+						id: user.id,
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						avatarUrl: user.avatarUrl,
+						role: "member",
+						isOnboarded: true,
+						timezone: user.timezone,
+					}
+
+					// Store in FiberRef for cleanup
+					yield* FiberRef.set(currentUserRef, Option.some(botUser))
+
+					yield* Effect.log(`AuthMiddleware: Bot authenticated successfully as user ${botUser.id}`)
+					return botUser
+				}
+
+				// Fall back to WorkOS session cookie authentication
 				const cookieHeader = Headers.get(headers, "cookie")
 
 				if (Option.isNone(cookieHeader)) {
