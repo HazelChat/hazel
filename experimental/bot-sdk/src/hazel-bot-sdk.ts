@@ -132,6 +132,8 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		const bot = yield* createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
+		// Get auth context (contains botId and userId for message authoring)
+		const authContext = yield* bot.getAuthContext
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		// Try to get the command listener (optional - only available if commands are configured)
@@ -255,8 +257,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							attachmentIds: options?.attachmentIds ?? [],
 							embeds: null,
 							deletedAt: null,
-							// authorId will be overridden by backend AuthMiddleware with the authenticated bot user
-							authorId: "" as UserId,
+							authorId: authContext.userId as UserId,
 						})
 						.pipe(Effect.map((r) => r.data)),
 
@@ -280,8 +281,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							attachmentIds: options?.attachmentIds ?? [],
 							embeds: null,
 							deletedAt: null,
-							// authorId will be overridden by backend AuthMiddleware with the authenticated bot user
-							authorId: "" as UserId,
+							authorId: authContext.userId as UserId,
 						})
 						.pipe(Effect.map((r) => r.data)),
 
