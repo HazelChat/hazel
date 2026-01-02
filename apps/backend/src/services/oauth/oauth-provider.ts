@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect"
+import { OAuthHttpClient } from "./oauth-http-client"
 import type {
 	AppProviderConfig,
 	IntegrationProvider,
@@ -142,48 +143,37 @@ export const createBaseAuthorizationUrl = (config: OAuthProviderConfig, state: s
 
 /**
  * Helper to make a standard OAuth token exchange request.
+ * Uses Effect HttpClient for type-safe HTTP operations.
  */
 export const makeTokenExchangeRequest = (
 	config: OAuthProviderConfig,
 	code: string,
 	clientSecret: string,
 ): Effect.Effect<OAuthTokens, TokenExchangeError> =>
-	Effect.tryPromise({
-		try: async () => {
-			const response = await fetch(config.tokenUrl, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
-					Accept: "application/json",
-				},
-				body: new URLSearchParams({
-					grant_type: "authorization_code",
-					code,
-					redirect_uri: config.redirectUri,
-					client_id: config.clientId,
-					client_secret: clientSecret,
+	Effect.gen(function* () {
+		const oauthClient = yield* OAuthHttpClient
+		const result = yield* oauthClient.exchangeCode(config.tokenUrl, {
+			code,
+			redirectUri: config.redirectUri,
+			clientId: config.clientId,
+			clientSecret,
+		})
+
+		return {
+			accessToken: result.accessToken,
+			refreshToken: result.refreshToken,
+			expiresAt: result.expiresAt,
+			scope: result.scope,
+			tokenType: result.tokenType,
+		} satisfies OAuthTokens
+	}).pipe(
+		Effect.provide(OAuthHttpClient.Default),
+		Effect.mapError(
+			(error) =>
+				new TokenExchangeError({
+					provider: config.provider,
+					message: `Failed to exchange code for tokens: ${"message" in error ? error.message : String(error)}`,
+					cause: error,
 				}),
-			})
-
-			if (!response.ok) {
-				const errorText = await response.text()
-				throw new Error(`Token exchange failed: ${response.status} ${errorText}`)
-			}
-
-			const data = await response.json()
-
-			return {
-				accessToken: data.access_token,
-				refreshToken: data.refresh_token,
-				expiresAt: data.expires_in ? new Date(Date.now() + data.expires_in * 1000) : undefined,
-				scope: data.scope,
-				tokenType: data.token_type || "Bearer",
-			} satisfies OAuthTokens
-		},
-		catch: (error) =>
-			new TokenExchangeError({
-				provider: config.provider,
-				message: `Failed to exchange code for tokens: ${String(error)}`,
-				cause: error,
-			}),
-	})
+		),
+	)

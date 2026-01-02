@@ -17,6 +17,7 @@ import {
 	fetchLinearIssue,
 	type LinearApiError,
 	type LinearIssueNotFoundError,
+	type LinearRateLimitError,
 	parseLinearIssueUrl,
 } from "../services/integrations/linear-resource-provider"
 
@@ -97,6 +98,16 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 								new IntegrationResourceError({
 									url: urlParams.url,
 									message: error.message,
+									provider: "linear",
+								}),
+							),
+						LinearRateLimitError: (error: LinearRateLimitError) =>
+							Effect.fail(
+								new IntegrationResourceError({
+									url: urlParams.url,
+									message: error.retryAfter
+										? `Rate limit exceeded. Try again in ${error.retryAfter} seconds.`
+										: error.message,
 									provider: "linear",
 								}),
 							),

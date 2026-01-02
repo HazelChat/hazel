@@ -7,6 +7,7 @@ import { IntegrationConnectionRepo } from "../repositories/integration-connectio
 import { IntegrationTokenRepo } from "../repositories/integration-token-repo"
 import { DatabaseLive } from "./database"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
+import { OAuthHttpClient } from "./oauth/oauth-http-client"
 import { loadProviderConfig } from "./oauth/provider-config"
 
 export class TokenNotFoundError extends Schema.TaggedError<TokenNotFoundError>()("TokenNotFoundError", {
@@ -38,51 +39,31 @@ interface OAuthTokenResponse {
 	scope?: string
 }
 
-// Helper to refresh OAuth tokens for each provider
+// Helper to refresh OAuth tokens for each provider using Effect HttpClient
 const refreshOAuthToken = (
 	provider: IntegrationConnection.IntegrationProvider,
 	refreshToken: string,
 	clientId: string,
 	clientSecret: string,
-): Effect.Effect<OAuthTokenResponse, TokenRefreshError> => {
-	const tokenUrls: Record<IntegrationConnection.IntegrationProvider, string> = {
-		linear: "https://api.linear.app/oauth/token",
-		github: "https://github.com/login/oauth/access_token",
-		figma: "https://www.figma.com/api/oauth/refresh",
-		notion: "https://api.notion.com/v1/oauth/token",
-	}
+): Effect.Effect<OAuthTokenResponse, TokenRefreshError> =>
+	Effect.gen(function* () {
+		const oauthClient = yield* OAuthHttpClient
+		const result = yield* oauthClient.refreshToken(provider, {
+			refreshToken,
+			clientId,
+			clientSecret,
+		})
 
-	return Effect.tryPromise({
-		try: async () => {
-			const response = await fetch(tokenUrls[provider], {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
-					Accept: "application/json",
-				},
-				body: new URLSearchParams({
-					grant_type: "refresh_token",
-					refresh_token: refreshToken,
-					client_id: clientId,
-					client_secret: clientSecret,
-				}),
-			})
-
-			if (!response.ok) {
-				throw new Error(`Token refresh failed: ${response.status} ${await response.text()}`)
-			}
-
-			const data = await response.json()
-			return {
-				accessToken: data.access_token,
-				refreshToken: data.refresh_token,
-				expiresAt: data.expires_in ? new Date(Date.now() + data.expires_in * 1000) : undefined,
-				scope: data.scope,
-			}
-		},
-		catch: (cause) => new TokenRefreshError({ provider, cause }),
-	})
-}
+		return {
+			accessToken: result.accessToken,
+			refreshToken: result.refreshToken,
+			expiresAt: result.expiresAt,
+			scope: result.scope,
+		}
+	}).pipe(
+		Effect.provide(OAuthHttpClient.Default),
+		Effect.mapError((cause) => new TokenRefreshError({ provider, cause })),
+	)
 
 export class IntegrationTokenService extends Effect.Service<IntegrationTokenService>()(
 	"IntegrationTokenService",

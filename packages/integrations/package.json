@@ -8,7 +8,8 @@
 		".": "./src/index.ts",
 		"./common": "./src/common/index.ts",
 		"./github": "./src/github/index.ts",
-		"./github/schema": "./src/github/schema.ts"
+		"./github/schema": "./src/github/schema.ts",
+		"./linear": "./src/linear/index.ts"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",

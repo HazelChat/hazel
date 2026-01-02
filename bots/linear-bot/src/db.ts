@@ -142,24 +142,22 @@ export const getLinearAccessToken = (orgId: OrganizationId) =>
 		const db = yield* Database.Database
 		const encryption = yield* IntegrationEncryption
 
-		// Find the org's Linear connection
-		const connections = yield* Effect.tryPromise({
-			try: () =>
-				db.client
-					.select()
-					.from(schema.integrationConnectionsTable)
-					.where(
-						and(
-							eq(schema.integrationConnectionsTable.organizationId, orgId),
-							eq(schema.integrationConnectionsTable.provider, "linear"),
-							isNull(schema.integrationConnectionsTable.userId),
-							eq(schema.integrationConnectionsTable.level, "organization"),
-							isNull(schema.integrationConnectionsTable.deletedAt),
-						),
-					)
-					.limit(1),
-			catch: (cause) => new IntegrationNotConnectedError({ provider: "linear" }),
-		})
+		// Find the org's Linear connection using the Effect-based execute API
+		const connections = yield* db.execute((client) =>
+			client
+				.select()
+				.from(schema.integrationConnectionsTable)
+				.where(
+					and(
+						eq(schema.integrationConnectionsTable.organizationId, orgId),
+						eq(schema.integrationConnectionsTable.provider, "linear"),
+						isNull(schema.integrationConnectionsTable.userId),
+						eq(schema.integrationConnectionsTable.level, "organization"),
+						isNull(schema.integrationConnectionsTable.deletedAt),
+					),
+				)
+				.limit(1),
+		)
 
 		const connection = connections[0]
 		if (!connection) {
@@ -171,15 +169,13 @@ export const getLinearAccessToken = (orgId: OrganizationId) =>
 		}
 
 		// Find the token for this connection
-		const tokens = yield* Effect.tryPromise({
-			try: () =>
-				db.client
-					.select()
-					.from(schema.integrationTokensTable)
-					.where(eq(schema.integrationTokensTable.connectionId, connection.id))
-					.limit(1),
-			catch: (cause) => new IntegrationNotConnectedError({ provider: "linear" }),
-		})
+		const tokens = yield* db.execute((client) =>
+			client
+				.select()
+				.from(schema.integrationTokensTable)
+				.where(eq(schema.integrationTokensTable.connectionId, connection.id))
+				.limit(1),
+		)
 
 		const token = tokens[0]
 		if (!token) {

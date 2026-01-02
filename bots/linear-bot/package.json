@@ -9,11 +9,13 @@
 		"dev": "bun run --watch index.ts"
 	},
 	"dependencies": {
+		"@effect/platform": "catalog:effect",
 		"@hazel/bot-sdk": "workspace:*",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
+		"@hazel/integrations": "workspace:*",
 		"drizzle-orm": "^0.45.1",
-		"effect": "^3.19.3"
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@types/bun": "1.3.5"

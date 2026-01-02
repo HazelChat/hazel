@@ -1,3 +1,4 @@
+import { Linear } from "@hazel/integrations"
 import { Effect, Redacted } from "effect"
 import {
 	AccountInfoError,
@@ -29,59 +30,20 @@ export const createLinearOAuthProvider = (config: OAuthProviderConfig): OAuthPro
 		makeTokenExchangeRequest(config, code, Redacted.value(config.clientSecret)),
 
 	getAccountInfo: (accessToken: string) =>
-		Effect.tryPromise({
-			try: async () => {
-				const response = await fetch("https://api.linear.app/graphql", {
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						query: `
-							query {
-								viewer {
-									id
-									name
-									email
-									organization {
-										id
-										name
-									}
-								}
-							}
-						`,
+		Effect.gen(function* () {
+			const client = yield* Linear.LinearApiClient
+			return yield* client.getAccountInfo(accessToken)
+		}).pipe(
+			Effect.provide(Linear.LinearApiClient.Default),
+			Effect.mapError(
+				(error) =>
+					new AccountInfoError({
+						provider: "linear",
+						message: `Failed to get Linear account info: ${"message" in error ? error.message : String(error)}`,
+						cause: error,
 					}),
-				})
-
-				if (!response.ok) {
-					const errorText = await response.text()
-					throw new Error(`Linear API request failed: ${response.status} ${errorText}`)
-				}
-
-				const result = await response.json()
-
-				if (result.errors) {
-					throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`)
-				}
-
-				const viewer = result.data?.viewer
-				if (!viewer?.organization) {
-					throw new Error("No organization found for Linear user")
-				}
-
-				return {
-					externalAccountId: viewer.organization.id,
-					externalAccountName: viewer.organization.name,
-				}
-			},
-			catch: (error) =>
-				new AccountInfoError({
-					provider: "linear",
-					message: `Failed to get Linear account info: ${String(error)}`,
-					cause: error,
-				}),
-		}),
+			),
+		),
 
 	// Linear doesn't use refresh tokens - access tokens are long-lived
 	// refreshAccessToken is intentionally not implemented
