@@ -129,19 +129,6 @@ const program = Effect.gen(function* () {
 				`@[userId:${ctx.userId}] created an issue: ${issue.url}`,
 			)
 		}).pipe(
-			Effect.catchTag("IntegrationNotConnectedError", () =>
-				bot.message.send(
-					ctx.channelId,
-					"Linear is not connected to this organization. Please connect Linear in the settings.",
-				),
-			),
-
-			Effect.catchTag("LinearApiError", (error) =>
-				bot.message.send(ctx.channelId, `Failed to create issue: ${error.message}`),
-			),
-			Effect.catchTag("LinearTeamNotFoundError", (error) =>
-				bot.message.send(ctx.channelId, `No Linear team found: ${error.message}`),
-			),
 			Effect.catchAll((error) =>
 				Effect.gen(function* () {
 					yield* Effect.logError(`Unexpected error in /issue command: ${error}`)

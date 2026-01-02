@@ -1,4 +1,5 @@
 import { HttpApi, OpenApi } from "@effect/platform"
+import { MessagesApiGroup } from "./api-v1/messages"
 import { AttachmentGroup } from "./attachments"
 import { AuthGroup } from "./auth"
 import { AvatarGroup } from "./avatars"
@@ -15,6 +16,7 @@ import { WebhookGroup } from "./webhooks"
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(AttachmentGroup)
 	.add(AvatarGroup)
+	.add(MessagesApiGroup)
 	.add(BotCommandsApiGroup)
 	.add(PresencePublicGroup)
 	.add(RootGroup)

@@ -5,6 +5,7 @@
  * All Hazel domain schemas are pre-configured, making it trivial to build integrations.
  */
 
+import { FetchHttpClient, HttpApiClient } from "@effect/platform"
 import type {
 	AttachmentId,
 	ChannelId,
@@ -14,7 +15,8 @@ import type {
 	TypingIndicatorId,
 	UserId,
 } from "@hazel/domain/ids"
-import { Channel, ChannelMember, Message } from "@hazel/domain/models"
+import { HazelApi } from "@hazel/domain/http"
+import { Channel, ChannelMember, Message, MessageReaction } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, Schema } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
@@ -27,7 +29,7 @@ import {
 	type TypedCommandContext,
 } from "./command.ts"
 import type { HandlerError } from "./errors.ts"
-import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
+import { BotRpcClient, BotRpcClientConfigTag, type BotRpcClientConfig, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
 	ElectricEventQueue,
@@ -122,6 +124,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		const bot = yield* createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
+		// Get the RPC client config (for HTTP API calls)
+		const rpcClientConfig = yield* BotRpcClientConfigTag
+		// Create typed HTTP API client for public API endpoints
+		const httpApiClient = yield* HttpApiClient.make(HazelApi, {
+			baseUrl: rpcClientConfig.backendUrl,
+		}).pipe(
+			Effect.provide(
+				FetchHttpClient.layer.pipe(
+					Layer.provide(
+						Layer.succeed(FetchHttpClient.RequestInit, {
+							headers: { Authorization: `Bearer ${rpcClientConfig.botToken}` },
+						}),
+					),
+				),
+			),
+		)
 		// Get auth context (contains botId and userId for message authoring)
 		const authContext = yield* bot.getAuthContext
 		// Get the runtime config (optional - contains commands to sync)
@@ -158,7 +176,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		}
 
 		/**
-		 * Sync commands with the backend via HTTP
+		 * Sync commands with the backend via HTTP (type-safe HttpApiClient)
 		 */
 		const syncCommands = Effect.gen(function* () {
 			if (Option.isNone(runtimeConfigOption)) {
@@ -173,32 +191,16 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 			yield* Effect.log(`Syncing ${cmds.length} commands with backend...`)
 
-			// Call the sync endpoint
-			const response = yield* Effect.tryPromise({
-				try: async () => {
-					const res = await fetch(`${config.backendUrl}/bot-commands/sync`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${config.botToken}`,
-						},
-						body: JSON.stringify({
-							commands: cmds.map((cmd: CommandDef) => ({
-								name: cmd.name,
-								description: cmd.description,
-								arguments: schemaFieldsToArgs(cmd.args),
-								usageExample: cmd.usageExample ?? null,
-							})),
-						}),
-					})
-
-					if (!res.ok) {
-						throw new Error(`Failed to sync commands: ${res.status} ${res.statusText}`)
-					}
-
-					return (await res.json()) as { syncedCount: number }
+			// Call the sync endpoint using type-safe HttpApiClient
+			const response = yield* httpApiClient["bot-commands"].syncCommands({
+				payload: {
+					commands: cmds.map((cmd: CommandDef) => ({
+						name: cmd.name,
+						description: cmd.description,
+						arguments: schemaFieldsToArgs(cmd.args),
+						usageExample: cmd.usageExample ?? null,
+					})),
 				},
-				catch: (error) => new Error(`Command sync failed: ${error}`),
 			})
 
 			yield* Effect.log(`Synced ${response.syncedCount} commands successfully`)
@@ -255,6 +257,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 			/**
 			 * Message operations - send, reply, update, delete, react
+			 * Uses the public HTTP API at /api/v1/messages with type-safe HttpApiClient
 			 */
 			message: {
 				/**
@@ -264,16 +267,16 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param options - Optional settings (reply, thread, attachments)
 				 */
 				send: (channelId: ChannelId, content: string, options?: SendMessageOptions) =>
-					rpc.message
-						.create({
-							channelId,
-							content,
-							replyToMessageId: options?.replyToMessageId ?? null,
-							threadChannelId: options?.threadChannelId ?? null,
-							attachmentIds: options?.attachmentIds ?? [],
-							embeds: null,
-							deletedAt: null,
-							authorId: authContext.userId as UserId,
+					httpApiClient["api-v1-messages"]
+						.createMessage({
+							payload: {
+								channelId,
+								content,
+								replyToMessageId: options?.replyToMessageId ?? null,
+								threadChannelId: options?.threadChannelId ?? null,
+								attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+								embeds: null,
+							},
 						})
 						.pipe(
 							Effect.map((r) => r.data),
@@ -291,16 +294,16 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					content: string,
 					options?: Omit<SendMessageOptions, "replyToMessageId">,
 				) =>
-					rpc.message
-						.create({
-							channelId: message.channelId,
-							content,
-							replyToMessageId: message.id,
-							threadChannelId: options?.threadChannelId ?? null,
-							attachmentIds: options?.attachmentIds ?? [],
-							embeds: null,
-							deletedAt: null,
-							authorId: authContext.userId as UserId,
+					httpApiClient["api-v1-messages"]
+						.createMessage({
+							payload: {
+								channelId: message.channelId,
+								content,
+								replyToMessageId: message.id,
+								threadChannelId: options?.threadChannelId ?? null,
+								attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+								embeds: null,
+							},
 						})
 						.pipe(
 							Effect.map((r) => r.data),
@@ -315,10 +318,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param content - New content
 				 */
 				update: (message: MessageType, content: string) =>
-					rpc.message
-						.update({
-							id: message.id,
-							content,
+					httpApiClient["api-v1-messages"]
+						.updateMessage({
+							path: { id: message.id },
+							payload: { content },
 						})
 						.pipe(
 							Effect.map((r) => r.data),
@@ -330,7 +333,11 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param id - Message ID to delete
 				 */
 				delete: (id: MessageId) =>
-					rpc.message.delete({ id }).pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
+					httpApiClient["api-v1-messages"]
+						.deleteMessage({
+							path: { id },
+						})
+						.pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
 
 				/**
 				 * Toggle a reaction on a message
@@ -338,11 +345,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param emoji - Emoji to toggle
 				 */
 				react: (message: MessageType, emoji: string) =>
-					rpc.messageReaction
-						.toggle({
-							messageId: message.id,
-							channelId: message.channelId,
-							emoji,
+					httpApiClient["api-v1-messages"]
+						.toggleReaction({
+							path: { id: message.id },
+							payload: {
+								emoji,
+								channelId: message.channelId,
+							},
 						})
 						.pipe(Effect.withSpan("bot.message.react", { attributes: { messageId: message.id, emoji } })),
 			},
@@ -738,6 +747,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	const AllLayers = HazelBotClient.Default.pipe(
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
+		Layer.provide(RpcClientConfigLayer),
 		Layer.provide(RedisCommandListenerLayer),
 		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(

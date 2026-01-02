@@ -2,6 +2,8 @@
 export * from "./api"
 // Also export as namespaces for convenience
 export * as Api from "./api"
+export * from "./api-v1"
+export * as ApiV1 from "./api-v1"
 export * from "./attachments"
 export * as Attachments from "./attachments"
 export * from "./auth"
