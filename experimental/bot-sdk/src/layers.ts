@@ -39,7 +39,7 @@ export const makeBotRuntime = <const Subs extends readonly ShapeSubscriptionConf
 	)
 
 	const AuthLayer = Layer.unwrapEffect(
-		createAuthContextFromToken(config.botToken).pipe(Effect.map((context) => BotAuth.Default(context))),
+		createAuthContextFromToken(config.botToken, config.backendUrl).pipe(Effect.map((context) => BotAuth.Default(context))),
 	)
 
 	const BotClientLayer = createBotClientLayer<Subs>()

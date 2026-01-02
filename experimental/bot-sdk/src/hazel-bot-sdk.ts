@@ -574,7 +574,7 @@ export const createHazelBot = (
 	)
 
 	const AuthLayer = Layer.unwrapEffect(
-		createAuthContextFromToken(config.botToken).pipe(Effect.map((context) => BotAuth.Default(context))),
+		createAuthContextFromToken(config.botToken, backendUrl).pipe(Effect.map((context) => BotAuth.Default(context))),
 	)
 
 	// Create the RPC client config layer

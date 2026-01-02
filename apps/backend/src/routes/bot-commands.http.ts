@@ -4,6 +4,7 @@ import {
 	BotCommandExecutionAccepted,
 	BotCommandExecutionError,
 	BotCommandNotFoundError,
+	BotMeResponse,
 	BotNotFoundError,
 	BotNotInstalledError,
 	SyncBotCommandsResponse,
@@ -41,6 +42,46 @@ const CommandEventSchema = Schema.Struct({
 
 export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands", (handlers) =>
 	handlers
+		// Get bot info from token (for SDK authentication)
+		.handle("getBotMe", () =>
+			Effect.gen(function* () {
+				// Get the Authorization header for bot token auth
+				const request = yield* HttpServerRequest.HttpServerRequest
+				const authHeader = request.headers.authorization
+
+				if (!authHeader || !authHeader.startsWith("Bearer ")) {
+					return yield* Effect.fail(
+						new UnauthorizedError({ message: "Missing or invalid bot token", detail: "Authorization header must be 'Bearer <token>'" }),
+					)
+				}
+
+				const token = authHeader.slice(7)
+				const tokenHash = yield* Effect.promise(() => hashToken(token))
+
+				// Find bot by token hash
+				const botRepo = yield* BotRepo
+				const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(withSystemActor)
+
+				if (Option.isNone(botOption)) {
+					return yield* Effect.fail(
+						new UnauthorizedError({ message: "Invalid bot token", detail: "No bot found with this token" }),
+					)
+				}
+
+				const bot = botOption.value
+				return new BotMeResponse({
+					botId: bot.id,
+					userId: bot.userId,
+					name: bot.name,
+				})
+			}).pipe(
+				Effect.catchTag("DatabaseError", () =>
+					Effect.fail(
+						new UnauthorizedError({ message: "Failed to validate bot token", detail: "Database error" }),
+					),
+				),
+			),
+		)
 		// Sync commands from bot SDK (bot token auth)
 		.handle("syncCommands", ({ payload }) =>
 			Effect.gen(function* () {

@@ -1,5 +1,5 @@
 import type { BotId, BotInstallationId, OrganizationId, UserId } from "@hazel/schema"
-import { index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
+import { index, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 /**
  * Bot installations table - tracks which bots are installed in which organizations
@@ -8,7 +8,7 @@ export const botInstallationsTable = pgTable(
 	"bot_installations",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<BotInstallationId>(),
-		botId: text().notNull().$type<BotId>(),
+		botId: uuid().notNull().$type<BotId>(),
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		installedBy: uuid().notNull().$type<UserId>(),
 		installedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),

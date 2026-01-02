@@ -51,6 +51,12 @@ export class BotCommandExecutionAccepted extends Schema.Class<BotCommandExecutio
 	message: Schema.String,
 }) {}
 
+export class BotMeResponse extends Schema.Class<BotMeResponse>("BotMeResponse")({
+	botId: BotId,
+	userId: UserId,
+	name: Schema.String,
+}) {}
+
 // ============ ERROR TYPES ============
 
 export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("BotNotFoundError", {
@@ -85,6 +91,20 @@ export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecu
 // ============ API GROUP ============
 
 export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
+	// Get current bot info (for bot token validation)
+	// This endpoint uses bot token authentication, not user auth
+	.add(
+		HttpApiEndpoint.get("getBotMe", `/me`)
+			.addSuccess(BotMeResponse)
+			.addError(UnauthorizedError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Bot Info",
+					description: "Get current bot info from token (used by Bot SDK for authentication)",
+					summary: "Get bot info",
+				}),
+			),
+	)
 	// Sync commands from bot (called by Bot SDK on startup)
 	// This endpoint uses bot token authentication, not user auth
 	.add(

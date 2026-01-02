@@ -7,6 +7,7 @@ import type { EventDispatcherConfig, EventQueueConfig, ShapeSubscriptionConfig }
  */
 export interface BotConfig {
 	readonly electricUrl: string
+	readonly backendUrl: string
 	readonly botToken: string
 	readonly subscriptions?: readonly ShapeSubscriptionConfig[]
 	readonly queueConfig?: EventQueueConfig
