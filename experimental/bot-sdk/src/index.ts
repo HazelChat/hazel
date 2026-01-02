@@ -43,6 +43,7 @@
 // Generic bot SDK (for custom schemas and advanced use cases)
 export * from "./auth.ts"
 export * from "./bot-client.ts"
+export * from "./command.ts"
 export * from "./config.ts"
 export * from "./errors.ts"
 // Hazel-specific convenience layer (recommended for Hazel integrations)

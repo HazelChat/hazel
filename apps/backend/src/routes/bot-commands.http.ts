@@ -27,18 +27,7 @@ async function hashToken(token: string): Promise<string> {
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-/**
- * Command event payload published to Redis
- */
-const CommandEventSchema = Schema.Struct({
-	type: Schema.Literal("command"),
-	commandName: Schema.String,
-	channelId: Schema.String,
-	userId: Schema.String,
-	orgId: Schema.String,
-	arguments: Schema.Record({ key: Schema.String, value: Schema.String }),
-	timestamp: Schema.Number,
-})
+
 
 export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands", (handlers) =>
 	handlers

@@ -16,9 +16,16 @@ import type {
 } from "@hazel/domain/ids"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
-import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, type Schema, type Scope } from "effect"
+import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, Schema } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
+import {
+	CommandGroup,
+	EmptyCommandGroup,
+	type CommandDef,
+	type EmptyCommands,
+	type TypedCommandContext,
+} from "./command.ts"
 import type { HandlerError } from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
@@ -28,18 +35,16 @@ import {
 	RedisCommandListener,
 	RedisCommandListenerConfigTag,
 	ShapeStreamSubscriber,
-	type CommandContext,
-	type CommandEvent,
 } from "./services/index.ts"
 
 /**
  * Internal configuration context for HazelBotClient
  * Contains commands to sync and backend URL for HTTP calls
  */
-export interface HazelBotRuntimeConfig {
+export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = CommandGroup<any>> {
 	readonly backendUrl: string
 	readonly botToken: string
-	readonly commands: readonly BotCommandDef[]
+	readonly commands: Commands
 }
 
 export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
@@ -86,30 +91,14 @@ export type ChannelMemberHandler<E = HandlerError, R = never> = (
 ) => Effect.Effect<void, E, R>
 
 /**
- * Command handler type
+ * Typed command handler - receives CommandContext with typed args
  */
-export type CommandHandler<E = HandlerError, R = never> = (ctx: CommandContext) => Effect.Effect<void, E, R>
+export type CommandHandler<Args, E = HandlerError, R = never> = (
+	ctx: TypedCommandContext<Args>,
+) => Effect.Effect<void, E, R>
 
-/**
- * Command definition for bot configuration
- */
-export interface BotCommandDef {
-	readonly name: string
-	readonly description: string
-	readonly arguments?: readonly BotCommandArgument[]
-	readonly usageExample?: string
-}
-
-export interface BotCommandArgument {
-	readonly name: string
-	readonly description?: string
-	readonly required: boolean
-	readonly placeholder?: string
-	readonly type: "string" | "number" | "user" | "channel"
-}
-
-// Re-export CommandContext for convenience
-export type { CommandContext } from "./services/index.ts"
+// Re-export command types for convenience
+export { Command, CommandGroup, type CommandDef, type CommandNames, type TypedCommandContext } from "./command.ts"
 
 /**
  * Options for sending a message
@@ -140,8 +129,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		// Try to get the command listener (optional - only available if commands are configured)
 		const commandListenerOption = yield* Effect.serviceOption(RedisCommandListener)
 
-		// Command handler registry
-		const commandHandlers = new Map<string, CommandHandler<any, any>>()
+		// Command handler registry - stores handlers keyed by command name
+		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
+		const commandHandlers = new Map<string, (ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>>()
+
+		// Get command group from runtime config for schema decoding
+		const commandGroup = Option.map(runtimeConfigOption, (c) => c.commands)
+
+		/**
+		 * Convert Schema.Struct fields to backend argument format
+		 */
+		const schemaFieldsToArgs = (fields: Schema.Struct.Fields) => {
+			return Object.entries(fields).map(([name, fieldSchema]) => {
+				// Check if the field is optional by looking at the schema's AST
+				// PropertySignature with isOptional or Schema with optional wrapper
+				const isOptional =
+					"isOptional" in fieldSchema && typeof fieldSchema.isOptional === "boolean"
+						? fieldSchema.isOptional
+						: false
+				return {
+					name,
+					required: !isOptional,
+					type: "string" as const, // For now, all args are strings from the frontend
+					description: undefined,
+					placeholder: undefined,
+				}
+			})
+		}
 
 		/**
 		 * Sync commands with the backend via HTTP
@@ -152,11 +166,12 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			}
 
 			const config = runtimeConfigOption.value
-			if (config.commands.length === 0) {
+			const cmds = config.commands.commands
+			if (cmds.length === 0) {
 				return
 			}
 
-			yield* Effect.log(`Syncing ${config.commands.length} commands with backend...`)
+			yield* Effect.log(`Syncing ${cmds.length} commands with backend...`)
 
 			// Call the sync endpoint
 			const response = yield* Effect.tryPromise({
@@ -168,10 +183,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							Authorization: `Bearer ${config.botToken}`,
 						},
 						body: JSON.stringify({
-							commands: config.commands.map((cmd) => ({
+							commands: cmds.map((cmd: CommandDef) => ({
 								name: cmd.name,
 								description: cmd.description,
-								arguments: cmd.arguments ?? [],
+								arguments: schemaFieldsToArgs(cmd.args),
 								usageExample: cmd.usageExample ?? null,
 							})),
 						}),
@@ -400,22 +415,30 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 
 			/**
-			 * Register a handler for a slash command
-			 * @param commandName - The name of the command (without the leading /)
-			 * @param handler - Handler function that receives CommandContext
+			 * Register a handler for a slash command (typesafe version)
+			 * @param command - The command definition created with Command.make
+			 * @param handler - Handler function that receives typed CommandContext
 			 *
 			 * @example
 			 * ```typescript
-			 * yield* bot.onCommand("echo", (ctx) =>
+			 * const EchoCommand = Command.make("echo", {
+			 *   description: "Echo text back",
+			 *   args: { text: Schema.String },
+			 * })
+			 *
+			 * yield* bot.onCommand(EchoCommand, (ctx) =>
 			 *   Effect.gen(function* () {
 			 *     yield* bot.message.send(ctx.channelId, `Echo: ${ctx.args.text}`)
 			 *   })
 			 * )
 			 * ```
 			 */
-			onCommand: <E = HandlerError, R = never>(commandName: string, handler: CommandHandler<E, R>) =>
+			onCommand: <Name extends string, Args extends Schema.Struct.Fields, E = HandlerError, R = never>(
+				command: CommandDef<Name, Args>,
+				handler: CommandHandler<Schema.Schema.Type<Schema.Struct<Args>>, E, R>,
+			) =>
 				Effect.sync(() => {
-					commandHandlers.set(commandName, handler as CommandHandler<any, any>)
+					commandHandlers.set(command.name, handler as (ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>)
 				}),
 
 			/**
@@ -448,12 +471,27 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									return
 								}
 
-								const ctx: CommandContext = {
+								// Find the command definition to decode args
+								const cmdDef = Option.flatMap(commandGroup, (group) =>
+									Option.fromNullable(group.commands.find((c: CommandDef) => c.name === event.commandName)),
+								)
+
+								// Decode args using the command's schema if available
+								const decodedArgs = Option.isSome(cmdDef)
+									? yield* Schema.decodeUnknown(cmdDef.value.argsSchema)(event.arguments).pipe(
+											Effect.catchAll((e) => {
+												
+												return Effect.succeed(event.arguments)
+											}),
+										)
+									: event.arguments
+
+								const ctx: TypedCommandContext<unknown> = {
 									commandName: event.commandName,
 									channelId: event.channelId as ChannelId,
 									userId: event.userId as UserId,
 									orgId: event.orgId as OrganizationId,
-									args: event.arguments,
+									args: decodedArgs,
 									timestamp: event.timestamp,
 								}
 
@@ -490,7 +528,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 /**
  * Configuration for creating a Hazel bot
  */
-export interface HazelBotConfig {
+export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyCommands> {
 	/**
 	 * Electric proxy URL
 	 * @default "https://electric.hazel.sh/v1/shape"
@@ -521,8 +559,18 @@ export interface HazelBotConfig {
 	/**
 	 * Slash commands this bot supports (optional)
 	 * Commands are synced to the backend on start and appear in the / autocomplete
+	 *
+	 * @example
+	 * ```typescript
+	 * const EchoCommand = Command.make("echo", {
+	 *   description: "Echo text back",
+	 *   args: { text: Schema.String },
+	 * })
+	 *
+	 * const commands = CommandGroup.make(EchoCommand)
+	 * ```
 	 */
-	readonly commands?: readonly BotCommandDef[]
+	readonly commands?: Commands
 
 	/**
 	 * Event queue configuration (optional)
@@ -549,25 +597,31 @@ export interface HazelBotConfig {
  *
  * @example
  * ```typescript
- * import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
+ * import { createHazelBot, HazelBotClient, Command, CommandGroup } from "@hazel/bot-sdk"
+ * import { Schema } from "effect"
  *
- * // Minimal config - just botToken! electricUrl defaults to https://electric.hazel.sh/v1/shape
- * const runtime = createHazelBot({
- *   botToken: process.env.BOT_TOKEN!,
+ * // Define typesafe commands
+ * const EchoCommand = Command.make("echo", {
+ *   description: "Echo text back",
+ *   args: { text: Schema.String },
  * })
  *
- * // Or override electricUrl for local development
- * const devRuntime = createHazelBot({
- *   electricUrl: "http://localhost:8787/v1/shape",
+ * const commands = CommandGroup.make(EchoCommand)
+ *
+ * const runtime = createHazelBot({
  *   botToken: process.env.BOT_TOKEN!,
+ *   commands,
  * })
  *
  * const program = Effect.gen(function* () {
  *   const bot = yield* HazelBotClient
  *
- *   yield* bot.onMessage((message) => {
- *     console.log("New message:", message.content)
- *   })
+ *   // Typesafe command handler - ctx.args.text is typed as string
+ *   yield* bot.onCommand(EchoCommand, (ctx) =>
+ *     Effect.gen(function* () {
+ *       yield* bot.message.send(ctx.channelId, `Echo: ${ctx.args.text}`)
+ *     })
+ *   )
  *
  *   yield* bot.start
  * })
@@ -575,8 +629,8 @@ export interface HazelBotConfig {
  * runtime.runPromise(program.pipe(Effect.scoped))
  * ```
  */
-export const createHazelBot = (
-	config: HazelBotConfig,
+export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
+	config: HazelBotConfig<Commands>,
 ): ManagedRuntime.ManagedRuntime<HazelBotClient, unknown> => {
 	// Apply defaults for URLs
 	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
@@ -624,7 +678,7 @@ export const createHazelBot = (
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
 	// Create Redis command listener layer if commands are configured
-	const hasCommands = config.commands && config.commands.length > 0
+	const hasCommands = config.commands && config.commands.commands.length > 0
 	const RedisCommandListenerLayer = hasCommands
 		? Layer.provide(
 				RedisCommandListener.Default,
@@ -643,7 +697,7 @@ export const createHazelBot = (
 		? Layer.succeed(HazelBotRuntimeConfigTag, {
 				backendUrl,
 				botToken: config.botToken,
-				commands: config.commands ?? [],
+				commands: config.commands ?? EmptyCommandGroup,
 			})
 		: Layer.empty
 

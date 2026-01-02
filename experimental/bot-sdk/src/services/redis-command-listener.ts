@@ -6,7 +6,7 @@
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Config, Context, Effect, Layer, Queue, Schema, type Scope } from "effect"
+import { Context, Effect, Layer, Queue, Schema } from "effect"
 import { BotAuth } from "../auth.ts"
 
 // ============ Command Event Schema ============

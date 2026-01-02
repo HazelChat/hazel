@@ -11,8 +11,8 @@
  */
 
 import type { OrganizationId } from "@hazel/domain/ids"
-import { Effect, Layer } from "effect"
-import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
+import { Effect, Layer, Schema } from "effect"
+import { Command, CommandGroup, createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
 import {
 	LinearApiClient,
 	extractLinearUrls,
@@ -60,6 +60,20 @@ const formatIssue = (issue: LinearIssue) => {
 }
 
 /**
+ * Define typesafe slash commands
+ */
+const IssueCommand = Command.make("issue", {
+	description: "Create a Linear issue",
+	args: {
+		title: Schema.String,
+		description: Schema.optional(Schema.String),
+	},
+	usageExample: "/issue Fix the login bug",
+})
+
+const commands = CommandGroup.make(IssueCommand)
+
+/**
  * Create the Hazel bot runtime
  */
 const runtime = createHazelBot({
@@ -67,27 +81,7 @@ const runtime = createHazelBot({
 	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 	backendUrl: process.env.BACKEND_URL ?? "http://localhost:3003",
 	redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
-	commands: [
-		{
-			name: "issue",
-			description: "Create a Linear issue",
-			arguments: [
-				{
-					name: "title",
-					description: "The title of the issue to create",
-					required: true,
-					type: "string" as const,
-				},
-				{
-					name: "description",
-					description: "The description of the issue to create",
-					required: false,
-					type: "string" as const,
-				}
-			],
-			usageExample: "/issue Fix the login bug",
-		},
-	],
+	commands,
 })
 
 /**
@@ -122,17 +116,14 @@ const program = Effect.gen(function* () {
 		}),
 	)
 
-	// Handle /issue command
-	yield* bot.onCommand("issue", (ctx) =>
+	// Handle /issue command with typesafe args
+	yield* bot.onCommand(IssueCommand, (ctx) =>
 		Effect.gen(function* () {
 			yield* Effect.log(`Received /issue command from ${ctx.userId}`)
 
-			const title = ctx.args.title
-			const description = ctx.args.description
-			if (!title) {
-				yield* bot.message.send(ctx.channelId, "Please provide a title for the issue. Usage: `/issue Fix the login bug`")
-				return
-			}
+			// ctx.args.title is typed as string (required)
+			// ctx.args.description is typed as string | undefined (optional)
+			const { title, description } = ctx.args
 
 			yield* Effect.log(`Creating Linear issue: ${title}`)
 
@@ -150,7 +141,7 @@ const program = Effect.gen(function* () {
 			// Send success message
 			yield* bot.message.send(
 				ctx.channelId,
-				`Created Linear issue: **${issue.identifier}** - ${issue.title}\n${issue.url}`,
+				`@[userId:${ctx.userId}] created an issue:\n**${issue.identifier}** - ${issue.title}\n${issue.url}`,
 			)
 		}).pipe(
 			Effect.catchTag("IntegrationNotConnectedError", () =>
@@ -159,7 +150,7 @@ const program = Effect.gen(function* () {
 					"Linear is not connected to this organization. Please connect Linear in the settings.",
 				),
 			),
-			
+
 			Effect.catchTag("LinearApiError", (error) =>
 				bot.message.send(ctx.channelId, `Failed to create issue: ${error.message}`),
 			),

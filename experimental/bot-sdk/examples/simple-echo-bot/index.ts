@@ -11,13 +11,13 @@
  * - Connecting to Electric SQL for real-time events
  * - Listening for message events
  * - Sending messages via RPC
- * - Slash commands with /echo
+ * - Typesafe slash commands with /echo
  * - Error handling
  * - Graceful shutdown
  */
 
-import { Effect } from "effect"
-import { createHazelBot, HazelBotClient } from "../../src/hazel-bot-sdk.ts"
+import { Effect, Schema } from "effect"
+import { Command, CommandGroup, createHazelBot, HazelBotClient } from "../../src/hazel-bot-sdk.ts"
 
 /**
  * Validate that required environment variables are present
@@ -30,6 +30,26 @@ if (!botToken) {
 }
 
 /**
+ * Define typesafe slash commands using Command.make
+ * Each command has a name, description, and optional typed arguments
+ */
+const EchoCommand = Command.make("echo", {
+	description: "Echo back a message",
+	args: {
+		text: Schema.String,
+	},
+	usageExample: "/echo Hello world!",
+})
+
+const PingCommand = Command.make("ping", {
+	description: "Check if the bot is alive XD",
+	usageExample: "/ping",
+})
+
+// Group commands together for type inference
+const commands = CommandGroup.make(EchoCommand, PingCommand)
+
+/**
  * Create a Hazel bot runtime
  * All Hazel domain schemas are pre-configured automatically!
  * No need to define subscriptions - they're baked into HazelBotSDK
@@ -39,7 +59,7 @@ if (!botToken) {
  * - backendUrl: Backend API URL for RPC calls (defaults to https://api.hazel.sh)
  * - redisUrl: Redis URL for receiving slash commands (defaults to redis://localhost:6379)
  * - botToken: Your bot's authentication token (required)
- * - commands: Slash commands this bot supports (optional)
+ * - commands: Typesafe CommandGroup for slash commands (optional)
  */
 const runtime = createHazelBot({
 	botToken,
@@ -47,29 +67,8 @@ const runtime = createHazelBot({
 	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 	backendUrl: process.env.BACKEND_URL ?? "http://localhost:3003",
 	redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
-	// Define slash commands - these will be synced to the backend on start
-	// and appear in the / autocomplete menu in the chat UI
-	commands: [
-		{
-			name: "echo",
-			description: "Echo back a message",
-			arguments: [
-				{
-					name: "text",
-					description: "The text to echo back",
-					required: true,
-					type: "string" as const,
-				},
-			],
-			usageExample: "/echo Hello world!",
-		},
-		{
-			name: "ping",
-			description: "Check if the bot is alive XD",
-			arguments: [],
-			usageExample: "/ping",
-		},
-	],
+	// Pass the typesafe command group
+	commands,
 })
 
 /**
@@ -89,22 +88,23 @@ const program = Effect.gen(function* () {
 	// Log startup
 	yield* Effect.log("Starting Simple Echo Bot...")
 
-	// Register slash command handlers
-	// These are triggered when users type /echo or /ping in the chat
-	yield* bot.onCommand("echo", (ctx) =>
+	// Register typesafe slash command handlers
+	// Pass the command definition to get full type inference for ctx.args
+	yield* bot.onCommand(EchoCommand, (ctx) =>
 		Effect.gen(function* () {
 			yield* Effect.log(`📨 Received /echo command from ${ctx.userId}`)
-			const text = ctx.args.text ?? "Nothing to echo!"
-			yield* bot.message.send(ctx.channelId, `Echo: ${text}`).pipe(
+			// ctx.args.text is typed as string!
+			yield* bot.message.send(ctx.channelId, `Echo: ${ctx.args.text}`).pipe(
 				Effect.tap((msg) => Effect.log(`✅ Sent echo response: ${msg.id}`)),
 				Effect.catchAll((error) => Effect.logError(`Failed to send echo: ${error}`)),
 			)
 		}),
 	)
 
-	yield* bot.onCommand("ping", (ctx) =>
+	yield* bot.onCommand(PingCommand, (ctx) =>
 		Effect.gen(function* () {
 			yield* Effect.log(`🏓 Received /ping command from ${ctx.userId}`)
+			// ctx.args is typed as {} (empty object) since PingCommand has no args
 			yield* bot.message.send(ctx.channelId, "Pong! 🏓").pipe(
 				Effect.tap(() => Effect.log("✅ Sent pong response")),
 				Effect.catchAll((error) => Effect.logError(`Failed to send pong: ${error}`)),
