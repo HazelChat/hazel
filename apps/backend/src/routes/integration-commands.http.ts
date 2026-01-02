@@ -10,6 +10,9 @@ import {
 } from "@hazel/domain/http"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
+import { BotCommandRepo } from "../repositories/bot-command-repo"
+import { BotInstallationRepo } from "../repositories/bot-installation-repo"
+import { BotRepo } from "../repositories/bot-repo"
 import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { MessageRepo } from "../repositories/message-repo"
 import { IntegrationTokenService } from "../services/integration-token-service"
@@ -26,6 +29,9 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 
 				const connectionRepo = yield* IntegrationConnectionRepo
 				const registry = yield* CommandRegistry
+				const botInstallationRepo = yield* BotInstallationRepo
+				const botCommandRepo = yield* BotCommandRepo
+				const botRepo = yield* BotRepo
 
 				// Get all connections for this org
 				const connections = yield* connectionRepo.findAllForOrg(orgId).pipe(withSystemActor)
@@ -35,30 +41,68 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 					.filter((c) => c.status === "active")
 					.map((c) => c.provider)
 
-				// Get commands for connected providers
-				const commands = registry.getCommandsForProviders(activeProviders)
+				// Get integration commands for connected providers
+				const integrationCommands = registry.getCommandsForProviders(activeProviders)
 
-				// Map to response format
-				return new AvailableCommandsResponse({
-					commands: commands.map((cmd) => ({
-						id: cmd.id,
-						name: cmd.name,
-						description: cmd.description,
-						provider: cmd.provider,
-						arguments: cmd.arguments.map((arg) => ({
-							name: arg.name,
-							description: arg.description ?? null,
-							required: arg.required,
-							placeholder: arg.placeholder ?? null,
-							type: arg.type,
-						})),
-						usageExample: cmd.usageExample ?? null,
-						bot: {
-							id: cmd.bot.id,
-							name: cmd.bot.name,
-							avatarUrl: cmd.bot.avatarUrl ?? null,
-						},
+				// Get bot commands for installed bots
+				const installedBotIds = yield* botInstallationRepo.getBotIdsForOrg(orgId).pipe(withSystemActor)
+				const botCommands = yield* botCommandRepo.findByBots(installedBotIds).pipe(withSystemActor)
+
+				// Get bot info for each command
+				const botCommandsWithInfo = yield* Effect.all(
+					botCommands.map((cmd) =>
+						Effect.gen(function* () {
+							const botOption = yield* botRepo.findById(cmd.botId).pipe(withSystemActor)
+							if (Option.isNone(botOption)) return null
+							const bot = botOption.value
+							return {
+								id: cmd.id,
+								name: cmd.name,
+								description: cmd.description,
+								provider: "bot" as const,
+								arguments: (cmd.arguments ?? []).map((arg) => ({
+									name: arg.name,
+									description: arg.description ?? null,
+									required: arg.required,
+									placeholder: arg.placeholder ?? null,
+									type: arg.type,
+								})),
+								usageExample: cmd.usageExample ?? null,
+								bot: {
+									id: bot.id,
+									name: bot.name,
+									avatarUrl: null, // TODO: Add avatar URL to bot
+								},
+							}
+						}),
+					),
+					{ concurrency: "unbounded" },
+				).pipe(Effect.map((results) => results.filter((r) => r !== null)))
+
+				// Map integration commands to response format
+				const mappedIntegrationCommands = integrationCommands.map((cmd) => ({
+					id: cmd.id,
+					name: cmd.name,
+					description: cmd.description,
+					provider: cmd.provider,
+					arguments: cmd.arguments.map((arg) => ({
+						name: arg.name,
+						description: arg.description ?? null,
+						required: arg.required,
+						placeholder: arg.placeholder ?? null,
+						type: arg.type,
 					})),
+					usageExample: cmd.usageExample ?? null,
+					bot: {
+						id: cmd.bot.id,
+						name: cmd.bot.name,
+						avatarUrl: cmd.bot.avatarUrl ?? null,
+					},
+				}))
+
+				// Combine integration and bot commands
+				return new AvailableCommandsResponse({
+					commands: [...mappedIntegrationCommands, ...botCommandsWithInfo],
 				})
 			}).pipe(
 				Effect.catchTag("DatabaseError", (error) =>

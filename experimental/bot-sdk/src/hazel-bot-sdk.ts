@@ -10,17 +10,41 @@ import type {
 	ChannelId,
 	ChannelMemberId,
 	MessageId,
+	OrganizationId,
 	TypingIndicatorId,
 	UserId,
 } from "@hazel/domain/ids"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
-import { Config, Context, Effect, Layer, ManagedRuntime, type Schema, type Scope } from "effect"
+import { Config, Context, Effect, Layer, ManagedRuntime, Option, type Schema, type Scope } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import type { HandlerError } from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
-import { ElectricEventQueue, EventDispatcher, ShapeStreamSubscriber } from "./services/index.ts"
+import {
+	ElectricEventQueue,
+	EventDispatcher,
+	RedisCommandListener,
+	RedisCommandListenerConfigTag,
+	ShapeStreamSubscriber,
+	type CommandContext,
+	type CommandEvent,
+} from "./services/index.ts"
+
+/**
+ * Internal configuration context for HazelBotClient
+ * Contains commands to sync and backend URL for HTTP calls
+ */
+export interface HazelBotRuntimeConfig {
+	readonly backendUrl: string
+	readonly botToken: string
+	readonly commands: readonly BotCommandDef[]
+}
+
+export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
+	HazelBotRuntimeConfigTag,
+	HazelBotRuntimeConfig
+>() {}
 
 /**
  * Pre-configured Hazel domain subscriptions
@@ -61,6 +85,32 @@ export type ChannelMemberHandler<E = HandlerError, R = never> = (
 ) => Effect.Effect<void, E, R>
 
 /**
+ * Command handler type
+ */
+export type CommandHandler<E = HandlerError, R = never> = (ctx: CommandContext) => Effect.Effect<void, E, R>
+
+/**
+ * Command definition for bot configuration
+ */
+export interface BotCommandDef {
+	readonly name: string
+	readonly description: string
+	readonly arguments?: readonly BotCommandArgument[]
+	readonly usageExample?: string
+}
+
+export interface BotCommandArgument {
+	readonly name: string
+	readonly description?: string
+	readonly required: boolean
+	readonly placeholder?: string
+	readonly type: "string" | "number" | "user" | "channel"
+}
+
+// Re-export CommandContext for convenience
+export type { CommandContext } from "./services/index.ts"
+
+/**
  * Options for sending a message
  */
 export interface SendMessageOptions {
@@ -82,6 +132,59 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		const bot = yield* createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
+		// Get the runtime config (optional - contains commands to sync)
+		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
+		// Try to get the command listener (optional - only available if commands are configured)
+		const commandListenerOption = yield* Effect.serviceOption(RedisCommandListener)
+
+		// Command handler registry
+		const commandHandlers = new Map<string, CommandHandler<any, any>>()
+
+		/**
+		 * Sync commands with the backend via HTTP
+		 */
+		const syncCommands = Effect.gen(function* () {
+			if (Option.isNone(runtimeConfigOption)) {
+				return
+			}
+
+			const config = runtimeConfigOption.value
+			if (config.commands.length === 0) {
+				return
+			}
+
+			yield* Effect.log(`Syncing ${config.commands.length} commands with backend...`)
+
+			// Call the sync endpoint
+			const response = yield* Effect.tryPromise({
+				try: async () => {
+					const res = await fetch(`${config.backendUrl}/bot-commands/sync`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${config.botToken}`,
+						},
+						body: JSON.stringify({
+							commands: config.commands.map((cmd) => ({
+								name: cmd.name,
+								description: cmd.description,
+								arguments: cmd.arguments ?? [],
+								usageExample: cmd.usageExample ?? null,
+							})),
+						}),
+					})
+
+					if (!res.ok) {
+						throw new Error(`Failed to sync commands: ${res.status} ${res.statusText}`)
+					}
+
+					return (await res.json()) as { syncedCount: number }
+				},
+				catch: (error) => new Error(`Command sync failed: ${error}`),
+			})
+
+			yield* Effect.log(`Synced ${response.syncedCount} commands successfully`)
+		})
 
 		return {
 			/**
@@ -273,10 +376,77 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 
 			/**
-			 * Start the bot client
-			 * Begins listening to events and dispatching to handlers
+			 * Register a handler for a slash command
+			 * @param commandName - The name of the command (without the leading /)
+			 * @param handler - Handler function that receives CommandContext
+			 *
+			 * @example
+			 * ```typescript
+			 * yield* bot.onCommand("echo", (ctx) =>
+			 *   Effect.gen(function* () {
+			 *     yield* bot.message.send(ctx.channelId, `Echo: ${ctx.args.text}`)
+			 *   })
+			 * )
+			 * ```
 			 */
-			start: bot.start,
+			onCommand: <E = HandlerError, R = never>(commandName: string, handler: CommandHandler<E, R>) =>
+				Effect.sync(() => {
+					commandHandlers.set(commandName, handler as CommandHandler<any, any>)
+				}),
+
+			/**
+			 * Start the bot client
+			 * Syncs commands with backend and begins listening to events (Electric + Redis commands)
+			 */
+			start: Effect.gen(function* () {
+				yield* Effect.log("Starting bot client...")
+
+				// Sync commands with backend (if configured)
+				yield* syncCommands
+
+				// Start Electric event listener
+				yield* bot.start
+
+				// Start Redis command listener (if available)
+				if (Option.isSome(commandListenerOption)) {
+					const commandListener = commandListenerOption.value
+					yield* commandListener.start
+
+					// Start command dispatcher fiber
+					yield* Effect.forkScoped(
+						Effect.forever(
+							Effect.gen(function* () {
+								const event = yield* commandListener.take
+
+								const handler = commandHandlers.get(event.commandName)
+								if (!handler) {
+									yield* Effect.logWarning(`No handler for command: ${event.commandName}`)
+									return
+								}
+
+								const ctx: CommandContext = {
+									commandName: event.commandName,
+									channelId: event.channelId as ChannelId,
+									userId: event.userId as UserId,
+									orgId: event.orgId as OrganizationId,
+									args: event.arguments,
+									timestamp: event.timestamp,
+								}
+
+								yield* handler(ctx).pipe(
+									Effect.catchAllCause((cause) =>
+										Effect.logError(`Command handler failed for ${event.commandName}`, { cause }),
+									),
+								)
+							}),
+						),
+					)
+
+					yield* Effect.log("Command listener started")
+				}
+
+				yield* Effect.log("Bot client started successfully")
+			}),
 
 			/**
 			 * Get bot authentication context
@@ -305,9 +475,23 @@ export interface HazelBotConfig {
 	readonly backendUrl?: string
 
 	/**
+	 * Redis URL for command delivery
+	 * Required if commands are defined
+	 * @default "redis://localhost:6379"
+	 * @example "redis://localhost:6379" // For local development
+	 */
+	readonly redisUrl?: string
+
+	/**
 	 * Bot authentication token (required)
 	 */
 	readonly botToken: string
+
+	/**
+	 * Slash commands this bot supports (optional)
+	 * Commands are synced to the backend on start and appear in the / autocomplete
+	 */
+	readonly commands?: readonly BotCommandDef[]
 
 	/**
 	 * Event queue configuration (optional)
@@ -360,6 +544,7 @@ export const createHazelBot = (
 	// Apply defaults for URLs
 	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
+	const redisUrl = config.redisUrl ?? "redis://localhost:6379"
 
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(
@@ -401,6 +586,30 @@ export const createHazelBot = (
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
+	// Create Redis command listener layer if commands are configured
+	const hasCommands = config.commands && config.commands.length > 0
+	const RedisCommandListenerLayer = hasCommands
+		? Layer.provide(
+				RedisCommandListener.Default,
+				Layer.merge(
+					Layer.succeed(RedisCommandListenerConfigTag, {
+						redisUrl,
+						botToken: config.botToken,
+					}),
+					AuthLayer,
+				),
+			)
+		: Layer.empty
+
+	// Create runtime config layer for command syncing
+	const RuntimeConfigLayer = hasCommands
+		? Layer.succeed(HazelBotRuntimeConfigTag, {
+				backendUrl,
+				botToken: config.botToken,
+				commands: config.commands ?? [],
+			})
+		: Layer.empty
+
 	// Create the typed BotClient layer for Hazel subscriptions
 	const BotClientTag = createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 	const BotClientLayer = Layer.effect(
@@ -427,6 +636,8 @@ export const createHazelBot = (
 	const AllLayers = HazelBotClient.Default.pipe(
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
+		Layer.provide(RedisCommandListenerLayer),
+		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(
 			Layer.mergeAll(
 				Layer.provide(EventDispatcherLayer, EventQueueLayer),

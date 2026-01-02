@@ -113,8 +113,8 @@ export interface BotCommandData {
 	name: string
 	/** Human-readable description */
 	description: string
-	/** Integration provider that owns this command */
-	provider: "linear" | "github" | "figma" | "notion"
+	/** Integration provider that owns this command, or "bot" for SDK bots */
+	provider: "linear" | "github" | "figma" | "notion" | "bot"
 	/** Bot that owns this command */
 	bot: {
 		id: string

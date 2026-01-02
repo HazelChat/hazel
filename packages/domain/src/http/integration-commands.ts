@@ -5,8 +5,12 @@ import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, OrganizationId } from "../ids"
 import { IntegrationConnection } from "../models"
 
-// Provider type from the model
+// Provider type from the model (for integration commands)
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
+
+// Extended provider type that includes "bot" for command responses
+export const CommandProvider = Schema.Union(IntegrationProvider, Schema.Literal("bot"))
+export type CommandProvider = typeof CommandProvider.Type
 
 // ============ REQUEST SCHEMAS ============
 
@@ -58,12 +62,12 @@ export const CommandBotSchema = Schema.Struct({
 })
 export type CommandBotSchema = typeof CommandBotSchema.Type
 
-// Full command definition
+// Full command definition (supports both integration and bot commands)
 export const IntegrationCommandSchema = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	description: Schema.String,
-	provider: IntegrationProvider,
+	provider: CommandProvider, // "linear", "github", "figma", "notion", or "bot"
 	arguments: Schema.Array(CommandArgumentSchema),
 	usageExample: Schema.NullishOr(Schema.String),
 	bot: CommandBotSchema,

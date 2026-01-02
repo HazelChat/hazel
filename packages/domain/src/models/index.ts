@@ -3,6 +3,8 @@
 // Model definitions
 export * as Attachment from "./attachment-model"
 export * as Bot from "./bot-model"
+export * as BotCommand from "./bot-command-model"
+export * as BotInstallation from "./bot-installation-model"
 export * as ChannelMember from "./channel-member-model"
 export * as Channel from "./channel-model"
 export * as ChannelWebhook from "./channel-webhook-model"

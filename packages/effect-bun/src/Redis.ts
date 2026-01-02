@@ -186,6 +186,28 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 		 * Publish a message to a channel
 		 */
 		readonly publish: (channel: string, message: string) => Effect.Effect<number, RedisErrors>
+		/**
+		 * Subscribe to a channel and receive messages.
+		 * Creates a dedicated connection for subscriptions.
+		 * Returns an unsubscribe function to clean up.
+		 *
+		 * @param channel - The channel to subscribe to
+		 * @param handler - Callback invoked for each message (receives message and channel)
+		 * @returns Effect that resolves to an object with unsubscribe method
+		 *
+		 * @example
+		 * ```typescript
+		 * const { unsubscribe } = yield* redis.subscribe("my-channel", (message, channel) => {
+		 *   console.log(`Received: ${message} on ${channel}`)
+		 * })
+		 * // Later, to clean up:
+		 * yield* unsubscribe
+		 * ```
+		 */
+		readonly subscribe: (
+			channel: string,
+			handler: (message: string, channel: string) => void,
+		) => Effect.Effect<{ unsubscribe: Effect.Effect<void, RedisErrors> }, RedisErrors>
 
 		// Raw command
 		/**
@@ -222,7 +244,7 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 					}),
 				)
 
-				return makeService(client)
+				return makeService(client, url)
 			}),
 		)
 
@@ -248,7 +270,7 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 				}),
 			)
 
-			return makeService(client)
+			return makeService(client, url)
 		}),
 	)
 }
@@ -256,7 +278,7 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 /**
  * Create the Redis service implementation from a connected client
  */
-const makeService = (client: RedisClient): Context.Tag.Service<Redis> => ({
+const makeService = (client: RedisClient, url: string): Context.Tag.Service<Redis> => ({
 	// String operations
 	get: (key) =>
 		Effect.tryPromise({
@@ -360,6 +382,36 @@ const makeService = (client: RedisClient): Context.Tag.Service<Redis> => ({
 		Effect.tryPromise({
 			try: () => client.publish(channel, message),
 			catch: mapRedisError,
+		}),
+
+	subscribe: (channel, handler) =>
+		Effect.gen(function* () {
+			// Create a dedicated client for subscriptions
+			// (Redis requires separate connections for pub/sub mode)
+			const subscriberClient = new RedisClient(url)
+
+			yield* Effect.tryPromise({
+				try: () => subscriberClient.connect(),
+				catch: mapRedisError,
+			})
+
+			yield* Effect.tryPromise({
+				try: () =>
+					subscriberClient.subscribe(channel, (message, chan) => {
+						handler(message, chan)
+					}),
+				catch: mapRedisError,
+			})
+
+			return {
+				unsubscribe: Effect.tryPromise({
+					try: async () => {
+						await subscriberClient.unsubscribe(channel)
+						subscriberClient.close()
+					},
+					catch: mapRedisError,
+				}).pipe(Effect.asVoid),
+			}
 		}),
 
 	// Raw command

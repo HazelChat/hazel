@@ -11,6 +11,7 @@
  * - Connecting to Electric SQL for real-time events
  * - Listening for message events
  * - Sending messages via RPC
+ * - Slash commands with /echo
  * - Error handling
  * - Graceful shutdown
  */
@@ -36,13 +37,40 @@ if (!botToken) {
  * Configuration options:
  * - electricUrl: Electric SQL proxy URL (defaults to https://electric.hazel.sh/v1/shape)
  * - backendUrl: Backend API URL for RPC calls (defaults to https://api.hazel.sh)
+ * - redisUrl: Redis URL for receiving slash commands (defaults to redis://localhost:6379)
  * - botToken: Your bot's authentication token (required)
+ * - commands: Slash commands this bot supports (optional)
  */
+console.log(botToken)
 const runtime = createHazelBot({
 	botToken,
 	// For local development, override the URLs:
 	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 	backendUrl: process.env.BACKEND_URL ?? "http://localhost:3003",
+	redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
+	// Define slash commands - these will be synced to the backend on start
+	// and appear in the / autocomplete menu in the chat UI
+	commands: [
+		{
+			name: "echo",
+			description: "Echo back a message",
+			arguments: [
+				{
+					name: "text",
+					description: "The text to echo back",
+					required: true,
+					type: "string" as const,
+				},
+			],
+			usageExample: "/echo Hello world!",
+		},
+		{
+			name: "ping",
+			description: "Check if the bot is alive",
+			arguments: [],
+			usageExample: "/ping",
+		},
+	],
 })
 
 /**
@@ -62,6 +90,29 @@ const program = Effect.gen(function* () {
 	// Log startup
 	yield* Effect.log("Starting Simple Echo Bot...")
 
+	// Register slash command handlers
+	// These are triggered when users type /echo or /ping in the chat
+	yield* bot.onCommand("echo", (ctx) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`📨 Received /echo command from ${ctx.userId}`)
+			const text = ctx.args.text ?? "Nothing to echo!"
+			yield* bot.message.send(ctx.channelId, `Echo: ${text}`).pipe(
+				Effect.tap((msg) => Effect.log(`✅ Sent echo response: ${msg.id}`)),
+				Effect.catchAll((error) => Effect.logError(`Failed to send echo: ${error}`)),
+			)
+		}),
+	)
+
+	yield* bot.onCommand("ping", (ctx) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`🏓 Received /ping command from ${ctx.userId}`)
+			yield* bot.message.send(ctx.channelId, "Pong! 🏓").pipe(
+				Effect.tap(() => Effect.log("✅ Sent pong response")),
+				Effect.catchAll((error) => Effect.logError(`Failed to send pong: ${error}`)),
+			)
+		}),
+	)
+
 	// Register a handler for new messages using the convenient onMessage method
 	// ✨ Type safety is AUTOMATIC - message parameter is typed as MessageType!
 	yield* bot.onMessage((message) =>
@@ -75,7 +126,7 @@ const program = Effect.gen(function* () {
 
 			// Don't respond to our own messages (prevent infinite loops)
 			// You might want to check against your bot's user ID here
-			if (message.content.startsWith("Echo:")) {
+			if (message.content.startsWith("Echo:") || message.content.startsWith("Pong!")) {
 				return
 			}
 
@@ -103,11 +154,12 @@ const program = Effect.gen(function* () {
 	// yield* bot.onChannelCreated((channel) => { ... })
 	// yield* bot.onChannelMemberAdded((member) => { ... })
 
-	// Start the bot (begins listening for events)
+	// Start the bot (syncs commands to backend, begins listening for events)
 	// This must be called after registering all handlers
 	yield* bot.start
 
 	yield* Effect.log("✅ Bot is now running and listening for messages!")
+	yield* Effect.log("📝 Slash commands synced: /echo, /ping")
 	yield* Effect.log("Press Ctrl+C to stop")
 
 	// Keep the bot running

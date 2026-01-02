@@ -1,0 +1,132 @@
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { Schema } from "effect"
+import * as CurrentUser from "../current-user"
+import { InternalServerError, UnauthorizedError } from "../errors"
+import { BotId, ChannelId, OrganizationId, UserId } from "../ids"
+import { CommandArgumentValue } from "./integration-commands"
+
+// ============ SHARED SCHEMAS ============
+
+export const BotCommandArgumentSchema = Schema.Struct({
+	name: Schema.String,
+	description: Schema.NullishOr(Schema.String),
+	required: Schema.Boolean,
+	placeholder: Schema.NullishOr(Schema.String),
+	type: Schema.Literal("string", "number", "user", "channel"),
+})
+export type BotCommandArgumentSchema = typeof BotCommandArgumentSchema.Type
+
+export const BotCommandSchema = Schema.Struct({
+	name: Schema.String,
+	description: Schema.String,
+	arguments: Schema.Array(BotCommandArgumentSchema),
+	usageExample: Schema.NullishOr(Schema.String),
+})
+export type BotCommandSchema = typeof BotCommandSchema.Type
+
+// ============ REQUEST SCHEMAS ============
+
+export class SyncBotCommandsRequest extends Schema.Class<SyncBotCommandsRequest>("SyncBotCommandsRequest")({
+	commands: Schema.Array(BotCommandSchema),
+}) {}
+
+export class ExecuteBotCommandRequest extends Schema.Class<ExecuteBotCommandRequest>(
+	"ExecuteBotCommandRequest",
+)({
+	channelId: ChannelId,
+	arguments: Schema.Array(CommandArgumentValue),
+}) {}
+
+// ============ RESPONSE SCHEMAS ============
+
+export class SyncBotCommandsResponse extends Schema.Class<SyncBotCommandsResponse>(
+	"SyncBotCommandsResponse",
+)({
+	syncedCount: Schema.Number,
+}) {}
+
+export class BotCommandExecutionAccepted extends Schema.Class<BotCommandExecutionAccepted>(
+	"BotCommandExecutionAccepted",
+)({
+	message: Schema.String,
+}) {}
+
+// ============ ERROR TYPES ============
+
+export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("BotNotFoundError", {
+	botId: BotId,
+}) {}
+
+export class BotNotInstalledError extends Schema.TaggedError<BotNotInstalledError>()(
+	"BotNotInstalledError",
+	{
+		botId: BotId,
+		orgId: OrganizationId,
+	},
+) {}
+
+export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFoundError>()(
+	"BotCommandNotFoundError",
+	{
+		botId: BotId,
+		commandName: Schema.String,
+	},
+) {}
+
+export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecutionError>()(
+	"BotCommandExecutionError",
+	{
+		commandName: Schema.String,
+		message: Schema.String,
+		details: Schema.NullishOr(Schema.String),
+	},
+) {}
+
+// ============ API GROUP ============
+
+export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
+	// Sync commands from bot (called by Bot SDK on startup)
+	// This endpoint uses bot token authentication, not user auth
+	.add(
+		HttpApiEndpoint.post("syncCommands", `/sync`)
+			.addSuccess(SyncBotCommandsResponse)
+			.addError(BotNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPayload(SyncBotCommandsRequest)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Sync Bot Commands",
+					description: "Sync slash commands from a bot (called by Bot SDK on startup)",
+					summary: "Register bot commands",
+				}),
+			),
+	)
+	// Execute a bot command (frontend calls this - requires user auth)
+	.add(
+		HttpApiEndpoint.post("executeBotCommand", `/:orgId/bots/:botId/commands/:commandName/execute`)
+			.addSuccess(BotCommandExecutionAccepted)
+			.addError(BotNotFoundError)
+			.addError(BotNotInstalledError)
+			.addError(BotCommandNotFoundError)
+			.addError(BotCommandExecutionError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+					botId: BotId,
+					commandName: Schema.String,
+				}),
+			)
+			.setPayload(ExecuteBotCommandRequest)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Execute Bot Command",
+					description: "Execute a slash command for a bot",
+					summary: "Execute bot command",
+				}),
+			)
+			.middleware(CurrentUser.Authorization),
+	)
+	.prefix("/bot-commands") {}

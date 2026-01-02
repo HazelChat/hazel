@@ -2,6 +2,8 @@
 
 export * from "@hazel/schema"
 export * from "./attachments"
+export * from "./bot-commands"
+export * from "./bot-installations"
 export * from "./bots"
 export * from "./channel-webhooks"
 export * from "./channels"

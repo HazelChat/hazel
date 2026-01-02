@@ -139,3 +139,17 @@ export const GitHubSubscriptionId = Schema.UUID.pipe(
 	title: "GitHub Subscription ID",
 })
 export type GitHubSubscriptionId = Schema.Schema.Type<typeof GitHubSubscriptionId>
+
+export const BotCommandId = Schema.UUID.pipe(Schema.brand("@HazelChat/BotCommandId")).annotations({
+	description: "The ID of a bot command",
+	title: "Bot Command ID",
+})
+export type BotCommandId = Schema.Schema.Type<typeof BotCommandId>
+
+export const BotInstallationId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/BotInstallationId"),
+).annotations({
+	description: "The ID of a bot installation",
+	title: "Bot Installation ID",
+})
+export type BotInstallationId = Schema.Schema.Type<typeof BotInstallationId>

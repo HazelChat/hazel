@@ -1,5 +1,7 @@
 import { relations } from "drizzle-orm"
 import { attachmentsTable } from "./attachments"
+import { botCommandsTable } from "./bot-commands"
+import { botInstallationsTable } from "./bot-installations"
 import { botsTable } from "./bots"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
@@ -232,13 +234,39 @@ export const integrationTokensRelations = relations(integrationTokensTable, ({ o
 }))
 
 // Bots relations
-export const botsRelations = relations(botsTable, ({ one }) => ({
+export const botsRelations = relations(botsTable, ({ one, many }) => ({
 	user: one(usersTable, {
 		fields: [botsTable.userId],
 		references: [usersTable.id],
 	}),
 	createdByUser: one(usersTable, {
 		fields: [botsTable.createdBy],
+		references: [usersTable.id],
+	}),
+	commands: many(botCommandsTable),
+	installations: many(botInstallationsTable),
+}))
+
+// Bot commands relations
+export const botCommandsRelations = relations(botCommandsTable, ({ one }) => ({
+	bot: one(botsTable, {
+		fields: [botCommandsTable.botId],
+		references: [botsTable.id],
+	}),
+}))
+
+// Bot installations relations
+export const botInstallationsRelations = relations(botInstallationsTable, ({ one }) => ({
+	bot: one(botsTable, {
+		fields: [botInstallationsTable.botId],
+		references: [botsTable.id],
+	}),
+	organization: one(organizationsTable, {
+		fields: [botInstallationsTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	installedByUser: one(usersTable, {
+		fields: [botInstallationsTable.installedBy],
 		references: [usersTable.id],
 	}),
 }))

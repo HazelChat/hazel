@@ -7,7 +7,7 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
-import { S3 } from "@hazel/effect-bun"
+import { Redis, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
 import { Config, Layer } from "effect"
@@ -33,6 +33,9 @@ import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
+import { BotCommandRepo } from "./repositories/bot-command-repo"
+import { BotInstallationRepo } from "./repositories/bot-installation-repo"
+import { BotRepo } from "./repositories/bot-repo"
 import { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
 import { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "./repositories/integration-token-repo"
@@ -111,6 +114,9 @@ const RepoLive = Layer.mergeAll(
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
 	GitHubSubscriptionRepo.Default,
+	BotRepo.Default,
+	BotCommandRepo.Default,
+	BotInstallationRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -142,6 +148,7 @@ const MainLive = Layer.mergeAll(
 	WorkOSWebhookVerifier.Default,
 	DatabaseLive,
 	S3.Default,
+	Redis.Default,
 	GitHub.GitHubAppJWTService.Default,
 	GitHub.GitHubApiClient.Default,
 	IntegrationTokenService.Default,
