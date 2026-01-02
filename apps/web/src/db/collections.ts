@@ -1,5 +1,8 @@
 import {
 	Attachment,
+	Bot,
+	BotCommand,
+	BotInstallation,
 	Channel,
 	ChannelMember,
 	IntegrationConnection,
@@ -275,5 +278,56 @@ export const integrationConnectionCollection = createEffectCollection({
 		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
 	},
 	schema: IntegrationConnection.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const botCollection = createEffectCollection({
+	id: "bots",
+	runtime: runtime,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "bots",
+		},
+		parser: {
+			timestamptz: (date: string) => new Date(date),
+		} as any,
+		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+	},
+	schema: Bot.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const botCommandCollection = createEffectCollection({
+	id: "bot_commands",
+	runtime: runtime,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "bot_commands",
+		},
+		parser: {
+			timestamptz: (date: string) => new Date(date),
+		} as any,
+		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+	},
+	schema: BotCommand.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const botInstallationCollection = createEffectCollection({
+	id: "bot_installations",
+	runtime: runtime,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "bot_installations",
+		},
+		parser: {
+			timestamptz: (date: string) => new Date(date),
+		} as any,
+		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+	},
+	schema: BotInstallation.Model.json,
 	getKey: (item) => item.id,
 })

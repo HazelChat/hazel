@@ -6,9 +6,6 @@
 
 
 # Bot SDK
-- Add seeded bots (linear for now)
-- Make onCommand Typesafe
-- add tracing
 - use http public api endpoints for messgae creation etc.
 
 # Bugs

@@ -1,6 +1,6 @@
 import { Database, eq, schema } from "@hazel/db"
 import type { UserId } from "@hazel/schema"
-import { WorkOS } from "@workos-inc/node"
+import { AuthenticateWithSessionCookieFailureReason, WorkOS } from "@workos-inc/node"
 import { Effect, Option, Redacted, Schema } from "effect"
 import { decodeJwt } from "jose"
 import { AccessContextCacheService, type UserAccessContext } from "../cache"
@@ -114,7 +114,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	})
 
 	// Step 3: Authenticate the session
-	const session: any = yield* Effect.tryPromise({
+	const session = yield* Effect.tryPromise({
 		try: async () => sealedSession.authenticate(),
 		catch: (error) => {
 			console.error("authenticate() threw:", error)
@@ -125,10 +125,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		},
 	})
 
-	// Step 4: Handle not authenticated - try refresh
-	let accessToken = session.accessToken
-	if (!session.authenticated || !accessToken) {
-		// If no session cookie was provided, fail immediately
+	if(!session.authenticated) {
 		if (session.reason === "no_session_cookie_provided") {
 			return yield* Effect.fail(
 				new AuthenticationError({
@@ -137,6 +134,38 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 				}),
 			)
 		}
+
+		if(session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_JWT) {
+			return yield* Effect.fail(
+				new AuthenticationError({
+					message: "Invalid JWT payload",
+					detail: "Please log in again",
+				}),
+			)
+		}
+
+
+		if(session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_SESSION_COOKIE) {
+			return yield* Effect.fail(
+				new AuthenticationError({
+					message: "Session expired",
+					detail: "Please log in again",
+				}),
+			)
+		}
+
+		return yield* Effect.fail(
+			new AuthenticationError({
+				message: "Session expired",
+				detail: "Please log in again",
+			}),
+		)
+	}
+
+	// Step 4: Handle not authenticated - try refresh
+	let accessToken = session.accessToken
+	if (!session.authenticated || !accessToken) {
+		
 
 		// Attempt to refresh the session
 		const refreshedSession: any = yield* Effect.tryPromise({

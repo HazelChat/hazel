@@ -49,6 +49,8 @@ export const ALLOWED_TABLES = [
 
 	// Bot tables
 	"bots",
+	"bot_commands",
+	"bot_installations",
 
 	// Integration tables
 	"integration_connections",
@@ -213,6 +215,16 @@ export function getWhereClauseForTable(
 				params: [true, user.internalUserId],
 			} satisfies WhereClauseResult)
 		}),
+
+		Match.when("bot_commands", () =>
+			// All bot commands visible (filtered by bot installation in frontend)
+			Effect.succeed(buildNoFilterClause()),
+		),
+
+		Match.when("bot_installations", () =>
+			// All bot installations visible (filtered by organization in frontend)
+			Effect.succeed(buildNoFilterClause()),
+		),
 
 		// ===========================================
 		// Integration tables

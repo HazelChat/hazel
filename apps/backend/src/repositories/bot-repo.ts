@@ -1,15 +1,24 @@
-import { and, Database, eq, isNull, schema, type TransactionClient } from "@hazel/db"
-import { type BotId, policyRequire } from "@hazel/domain"
-import { Bot } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
+import {
+	and,
+	Database,
+	eq,
+	isNull,
+	schema,
+	type TransactionClient,
+} from "@hazel/db";
+import { type BotId, policyRequire } from "@hazel/domain";
+import { Bot } from "@hazel/domain/models";
+import { Effect, Option } from "effect";
+import { DatabaseLive } from "../services/database";
 
-type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
+type TxFn = <T>(
+	fn: (client: TransactionClient) => Promise<T>,
+) => Effect.Effect<T, any, never>;
 
 export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const db = yield* Database.Database
+		const db = yield* Database.Database;
 
 		// Find bot by ID
 		const findById = (id: BotId, tx?: TxFn) =>
@@ -20,12 +29,17 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 							client
 								.select()
 								.from(schema.botsTable)
-								.where(and(eq(schema.botsTable.id, data.id), isNull(schema.botsTable.deletedAt)))
+								.where(
+									and(
+										eq(schema.botsTable.id, data.id),
+										isNull(schema.botsTable.deletedAt),
+									),
+								)
 								.limit(1),
 						),
 					policyRequire("Bot", "select"),
 				)({ id }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])));
 
 		// Find bot by token hash
 		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
@@ -46,12 +60,34 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 						),
 					policyRequire("Bot", "select"),
 				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])));
+
+		// Find bot by user ID
+		const findByUserId = (userId: import("@hazel/domain").UserId, tx?: TxFn) =>
+			db
+				.makeQuery(
+					(execute, data: { userId: import("@hazel/domain").UserId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.botsTable)
+								.where(
+									and(
+										eq(schema.botsTable.userId, data.userId),
+										isNull(schema.botsTable.deletedAt),
+									),
+								)
+								.limit(1),
+						),
+					policyRequire("Bot", "select"),
+				)({ userId }, tx)
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])));
 
 		return {
 			findById,
 			findByTokenHash,
-		}
+			findByUserId,
+		};
 	}),
 	dependencies: [DatabaseLive],
 }) {}

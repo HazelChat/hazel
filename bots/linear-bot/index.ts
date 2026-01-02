@@ -10,14 +10,10 @@
  * - URL unfurling - Detect Linear URLs in messages and show issue details
  */
 
-import type { OrganizationId } from "@hazel/domain/ids"
 import { Effect, Layer, Schema } from "effect"
 import { Command, CommandGroup, createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
 import {
 	LinearApiClient,
-	extractLinearUrls,
-	parseLinearIssueUrl,
-	type LinearIssue,
 } from "@hazel/integrations/linear"
 import {
 	getLinearAccessToken,
@@ -46,17 +42,6 @@ if (!encryptionKey) {
 	console.error("Error: INTEGRATION_ENCRYPTION_KEY environment variable is required")
 	console.error("Please copy .env.example to .env and configure the encryption key")
 	process.exit(1)
-}
-
-/**
- * Format a Linear issue for display in chat
- */
-const formatIssue = (issue: LinearIssue) => {
-	const status = issue.state ? `[${issue.state.name}]` : ""
-	const assignee = issue.assignee ? `→ ${issue.assignee.name}` : ""
-	const priority = issue.priorityLabel !== "No priority" ? `(${issue.priorityLabel})` : ""
-
-	return `**${issue.teamName} ${issue.identifier}**: ${issue.title}\n${status} ${priority} ${assignee}\n${issue.url}`
 }
 
 /**
@@ -141,7 +126,7 @@ const program = Effect.gen(function* () {
 			// Send success message
 			yield* bot.message.send(
 				ctx.channelId,
-				`@[userId:${ctx.userId}] created an issue:\n**${issue.identifier}** - ${issue.title}\n${issue.url}`,
+				`@[userId:${ctx.userId}] created an issue: ${issue.url}`,
 			)
 		}).pipe(
 			Effect.catchTag("IntegrationNotConnectedError", () =>
@@ -165,64 +150,6 @@ const program = Effect.gen(function* () {
 			),
 		),
 	)
-
-	// Handle URL unfurling for Linear links
-	yield* bot.onMessage((message) =>
-		Effect.gen(function* () {
-			// Don't process our own messages
-			const auth = yield* bot.getAuthContext
-			if (message.authorId === auth.userId) {
-				return
-			}
-
-			// Extract Linear URLs from the message
-			const linearUrls = extractLinearUrls(message.content)
-			if (linearUrls.length === 0) {
-				return
-			}
-
-			yield* Effect.log(`Found ${linearUrls.length} Linear URL(s) in message`)
-
-			// Get org ID from cache or skip
-			const orgId = channelOrgMap.get(message.channelId)
-			if (!orgId) {
-				yield* Effect.log("Channel not in cache, skipping URL unfurling")
-				return
-			}
-
-			// Get the org's Linear access token
-			const accessToken = yield* getLinearAccessToken(orgId as OrganizationId).pipe(
-				Effect.catchTag("IntegrationNotConnectedError", () =>
-					Effect.log("Linear not connected, skipping URL unfurling").pipe(Effect.as(null)),
-				),
-			)
-
-			if (!accessToken) {
-				return
-			}
-
-			// Fetch and display each issue (limit to first 3 to avoid spam)
-			const urlsToProcess = linearUrls.slice(0, 3)
-
-			for (const url of urlsToProcess) {
-				const parsed = parseLinearIssueUrl(url)
-				if (!parsed) {
-					continue
-				}
-
-				yield* LinearApiClient.fetchIssue(parsed.issueKey, accessToken).pipe(
-					Effect.flatMap((issue) => bot.message.reply(message, formatIssue(issue))),
-					Effect.catchTag("LinearIssueNotFoundError", () =>
-						Effect.log("Linear issue not found"),
-					),
-					Effect.catchTag("LinearApiError", (error) =>
-						Effect.logError(`Error fetching Linear issue: ${error.message}`),
-					),
-				)
-			}
-		}),
-	)
-
 	// Start the bot
 	yield* bot.start
 
