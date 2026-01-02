@@ -1,4 +1,4 @@
-import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, inArray, lt, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { type BotCommandId, type BotId, policyRequire } from "@hazel/domain"
 import { BotCommand } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -147,32 +147,22 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 				policyRequire("BotCommand", "insert"),
 			)(data, tx).pipe(Effect.map((results) => results[0]))
 
-		// Disable commands not in the list (for bot sync cleanup)
-		const disableCommandsNotIn = (botId: BotId, commandNames: string[], tx?: TxFn) =>
+		// Delete commands not updated since the given timestamp (for bot sync cleanup)
+		const deleteStaleCommands = (botId: BotId, syncStartTime: Date, tx?: TxFn) =>
 			db.makeQuery(
-				(execute, data: { botId: BotId; commandNames: string[] }) =>
-					execute(async (client) => {
-						// Get all commands for this bot
-						const allCommands = await client
-							.select()
-							.from(schema.botCommandsTable)
-							.where(eq(schema.botCommandsTable.botId, data.botId))
-
-						// Find commands to disable
-						const toDisable = allCommands.filter((cmd) => !data.commandNames.includes(cmd.name))
-
-						// Disable them
-						for (const cmd of toDisable) {
-							await client
-								.update(schema.botCommandsTable)
-								.set({ isEnabled: false, updatedAt: new Date() })
-								.where(eq(schema.botCommandsTable.id, cmd.id))
-						}
-
-						return toDisable.length
-					}),
-				policyRequire("BotCommand", "update"),
-			)({ botId, commandNames }, tx)
+				(execute, data: { botId: BotId; syncStartTime: Date }) =>
+					execute((client) =>
+						client
+							.delete(schema.botCommandsTable)
+							.where(
+								and(
+									eq(schema.botCommandsTable.botId, data.botId),
+									lt(schema.botCommandsTable.updatedAt, data.syncStartTime),
+								),
+							),
+					),
+				policyRequire("BotCommand", "delete"),
+			)({ botId, syncStartTime }, tx)
 
 		return {
 			...baseRepo,
@@ -181,7 +171,7 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			findByBots,
 			findByBotAndName,
 			upsert,
-			disableCommandsNotIn,
+			deleteStaleCommands,
 		}
 	}),
 	dependencies: [DatabaseLive],

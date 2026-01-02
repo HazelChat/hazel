@@ -111,7 +111,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				const bot = botOption.value
 				const commandRepo = yield* BotCommandRepo
 
-				// Upsert each command
+				// Record sync start time for stale command detection
+				const syncStartTime = new Date()
+
+				// Upsert each command (updates updatedAt to now)
 				let syncedCount = 0
 				for (const cmd of payload.commands) {
 					yield* commandRepo
@@ -132,9 +135,8 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					syncedCount++
 				}
 
-				// Disable commands that are no longer in the list
-				const commandNames = payload.commands.map((c) => c.name)
-				yield* commandRepo.disableCommandsNotIn(bot.id, commandNames).pipe(withSystemActor)
+				// Delete commands not touched by this sync (stale commands)
+				yield* commandRepo.deleteStaleCommands(bot.id, syncStartTime).pipe(withSystemActor)
 
 				return new SyncBotCommandsResponse({ syncedCount })
 			}).pipe(
