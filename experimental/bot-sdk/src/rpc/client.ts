@@ -72,7 +72,6 @@ export const makeBotRpcClient = (config: BotRpcClientConfig) =>
 	Effect.gen(function* () {
 		// Use HTTP endpoint for bots (simpler, more reliable than WebSocket)
 		const rpcUrl = `${config.backendUrl}/rpc-http`
-		yield* Effect.log(`Creating RPC client with HTTP URL: ${rpcUrl}`)
 
 		// Create HTTP protocol layer
 		const ProtocolLayer = RpcClient.layerProtocolHttp({
@@ -83,10 +82,7 @@ export const makeBotRpcClient = (config: BotRpcClientConfig) =>
 		const AuthMiddlewareLayer = createBotAuthMiddleware(config.botToken)
 
 		// Provide both protocol and auth middleware to the RPC client
-		const client = yield* RpcClient.make(BotRpcs).pipe(
+		return yield* RpcClient.make(BotRpcs).pipe(
 			Effect.provide(Layer.mergeAll(ProtocolLayer, AuthMiddlewareLayer)),
 		)
-		yield* Effect.log("RPC client created successfully")
-
-		return client
 	})

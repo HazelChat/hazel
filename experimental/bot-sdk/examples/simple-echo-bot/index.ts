@@ -41,7 +41,6 @@ if (!botToken) {
  * - botToken: Your bot's authentication token (required)
  * - commands: Slash commands this bot supports (optional)
  */
-console.log(botToken)
 const runtime = createHazelBot({
 	botToken,
 	// For local development, override the URLs:
@@ -66,7 +65,7 @@ const runtime = createHazelBot({
 		},
 		{
 			name: "ping",
-			description: "Check if the bot is alive",
+			description: "Check if the bot is alive XD",
 			arguments: [],
 			usageExample: "/ping",
 		},

@@ -57,14 +57,10 @@ export const AuthMiddlewareLive = Layer.scoped(
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
-				yield* Effect.log("AuthMiddleware: Processing request...")
-
 				// Check for Bearer token first (bot SDK authentication)
 				const authHeader = Headers.get(headers, "authorization")
-				yield* Effect.log(`AuthMiddleware: Authorization header present: ${Option.isSome(authHeader)}`)
 
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
-					yield* Effect.log("AuthMiddleware: Bearer token found, validating...")
 					const token = authHeader.value.slice(7)
 					const tokenHash = yield* Effect.promise(() => hashToken(token))
 
@@ -129,7 +125,6 @@ export const AuthMiddlewareLive = Layer.scoped(
 					// Store in FiberRef for cleanup
 					yield* FiberRef.set(currentUserRef, Option.some(botUser))
 
-					yield* Effect.log(`AuthMiddleware: Bot authenticated successfully as user ${botUser.id}`)
 					return botUser
 				}
 
