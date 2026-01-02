@@ -1,0 +1,21 @@
+{
+	"name": "linear-bot",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Linear integration bot using @hazel/bot-sdk",
+	"type": "module",
+	"scripts": {
+		"start": "bun run index.ts",
+		"dev": "bun run --watch index.ts"
+	},
+	"dependencies": {
+		"@hazel/bot-sdk": "workspace:*",
+		"@hazel/db": "workspace:*",
+		"@hazel/domain": "workspace:*",
+		"drizzle-orm": "^0.45.1",
+		"effect": "^3.19.3"
+	},
+	"devDependencies": {
+		"@types/bun": "1.3.5"
+	}
+}

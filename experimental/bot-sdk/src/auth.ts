@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Duration, Effect, Schedule } from "effect"
 import { AuthenticationError } from "./errors.ts"
 
 /**
@@ -53,14 +53,18 @@ export class BotAuth extends Effect.Service<BotAuth>()("BotAuth", {
 
 /**
  * Helper to create auth context from bot token by calling the backend API
- * This validates the token and retrieves the real bot ID
+ * This validates the token and retrieves the real bot ID.
+ * Retries with exponential backoff if the backend is not yet available.
  */
 export const createAuthContextFromToken = (
 	token: string,
 	backendUrl: string,
 ): Effect.Effect<BotAuthContext, AuthenticationError> =>
 	Effect.gen(function* () {
+		yield* Effect.log(`Waiting for backend at ${backendUrl}...`)
+
 		// Call /bot-commands/me to validate token and get bot info
+		// Retry with exponential backoff until backend is available
 		const response = yield* Effect.tryPromise({
 			try: async () => {
 				const res = await fetch(`${backendUrl}/bot-commands/me`, {
@@ -79,10 +83,17 @@ export const createAuthContextFromToken = (
 			},
 			catch: (error) =>
 				new AuthenticationError({
-					message: "Failed to authenticate with backend",
+					message: "Backend not ready",
 					cause: String(error),
 				}),
-		})
+		}).pipe(
+			Effect.retry(
+				Schedule.exponential("1 second", 2).pipe(
+					Schedule.jittered,
+					Schedule.whileOutput((duration) => Duration.lessThanOrEqualTo(duration, Duration.seconds(30))),
+				),
+			),
+		)
 
 		yield* Effect.log(`Bot authenticated: ${response.name} (${response.botId})`)
 

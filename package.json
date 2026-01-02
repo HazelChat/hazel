@@ -6,7 +6,8 @@
 			"apps/*",
 			"packages/*",
 			"experimental/*",
-			"libs/*"
+			"libs/*",
+			"bots/*"
 		],
 		"catalogs": {
 			"effect": {
