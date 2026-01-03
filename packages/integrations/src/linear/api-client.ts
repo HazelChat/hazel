@@ -6,7 +6,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Option, Schedule, Schema } from "effect"
+import { Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration

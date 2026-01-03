@@ -1,6 +1,8 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
-import { CurrentUser, InternalServerError, TransactionId, UnauthorizedError } from "../"
+import * as CurrentUser from "../current-user.ts"
+import { InternalServerError, UnauthorizedError } from "../errors.ts"
+import { TransactionId } from "@hazel/schema"
 
 export class GenerateMockDataRequest extends Schema.Class<GenerateMockDataRequest>("GenerateMockDataRequest")(
 	{

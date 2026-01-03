@@ -1,4 +1,4 @@
-import { Config, Effect, Redacted } from "effect"
+import { Config, Effect, Layer, Redacted } from "effect"
 
 /**
  * Configuration for auth services.
@@ -30,4 +30,11 @@ export class AuthConfig extends Effect.Service<AuthConfig>()("@hazel/auth/AuthCo
 			workosPasswordCookie,
 		} satisfies AuthConfigShape
 	}),
-}) {}
+}) {
+	static Test = Layer.mock(this, {
+		_tag: "@hazel/auth/AuthConfig",
+		workosApiKey: "sk_test_123",
+		workosClientId: "client_test_123",
+		workosPasswordCookie: Redacted.make("test-cookie-password-32chars-min"),
+	})
+}

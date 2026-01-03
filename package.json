@@ -45,6 +45,7 @@
 		"test:coverage": "vitest run --coverage --coverage.reporter=text"
 	},
 	"devDependencies": {
+		"@effect/vitest": "^0.27.0",
 		"@vitest/coverage-v8": "^4.0.16",
 		"oxfmt": "^0.20.0",
 		"oxlint": "^1.35.0",

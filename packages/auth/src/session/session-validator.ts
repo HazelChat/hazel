@@ -390,4 +390,54 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 			invalidate,
 		}
 	}),
-}) {}
+}) {
+	/** Default mock validated session for tests */
+	static mockSession = () =>
+		new ValidatedSession({
+			workosUserId: "user_01ABC123",
+			email: "test@example.com",
+			sessionId: "sess_abc123",
+			organizationId: null,
+			internalOrganizationId: null,
+			role: "member",
+			accessToken: "mock-access-token-jwt",
+			firstName: "Test",
+			lastName: "User",
+			profilePictureUrl: null,
+			expiresAt: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+		})
+
+	/** Test layer with successful validation */
+	static Test = Layer.mock(this, {
+		_tag: "@hazel/auth/SessionValidator",
+		validateSession: (_sessionCookie: string) => Effect.succeed(SessionValidator.mockSession()),
+		validateAndRefresh: (_sessionCookie: string) =>
+			Effect.succeed({
+				session: SessionValidator.mockSession(),
+				newSealedSession: undefined as string | undefined,
+			}),
+		invalidate: (_sessionCookie: string) => Effect.void,
+	})
+
+	/** Test layer factory for configurable validation behavior */
+	static TestWith = (options: {
+		session?: ValidatedSession
+		newSealedSession?: string
+		shouldFail?: {
+			validateSession?: Effect.Effect<never, any>
+			validateAndRefresh?: Effect.Effect<never, any>
+		}
+	}) =>
+		Layer.mock(SessionValidator, {
+			_tag: "@hazel/auth/SessionValidator",
+			validateSession: (_sessionCookie: string) =>
+				options.shouldFail?.validateSession ?? Effect.succeed(options.session ?? SessionValidator.mockSession()),
+			validateAndRefresh: (_sessionCookie: string) =>
+				options.shouldFail?.validateAndRefresh ??
+				Effect.succeed({
+					session: options.session ?? SessionValidator.mockSession(),
+					newSealedSession: options.newSealedSession,
+				}),
+			invalidate: (_sessionCookie: string) => Effect.void,
+		})
+}

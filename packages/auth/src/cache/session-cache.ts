@@ -1,5 +1,5 @@
 import { Persistence } from "@effect/experimental"
-import { Duration, Effect, Exit, Metric, Option } from "effect"
+import { Duration, Effect, Exit, Layer, Metric, Option } from "effect"
 import { SessionCacheError } from "../errors.ts"
 import { cacheOperationLatency, sessionCacheHits, sessionCacheMisses } from "../metrics.ts"
 import { ValidatedSession } from "../types.ts"
@@ -133,4 +133,22 @@ export class SessionCache extends Effect.Service<SessionCache>()("@hazel/auth/Se
 			invalidate,
 		}
 	}),
-}) {}
+}) {
+	/** Test layer that always returns cache miss */
+	static Test = Layer.mock(this, {
+		_tag: "@hazel/auth/SessionCache",
+		get: (_sessionCookie: string) => Effect.succeed(Option.none<ValidatedSession>()),
+		set: (_sessionCookie: string, _session: ValidatedSession) => Effect.void,
+		invalidate: (_sessionCookie: string) => Effect.void,
+	})
+
+	/** Test layer factory for configurable cache behavior */
+	static TestWith = (options: { cachedSession?: ValidatedSession }) =>
+		Layer.mock(SessionCache, {
+			_tag: "@hazel/auth/SessionCache",
+			get: (_sessionCookie: string) =>
+				Effect.succeed(options.cachedSession ? Option.some(options.cachedSession) : Option.none()),
+			set: (_sessionCookie: string, _session: ValidatedSession) => Effect.void,
+			invalidate: (_sessionCookie: string) => Effect.void,
+		})
+}

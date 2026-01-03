@@ -259,7 +259,69 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			authenticateWithBearer,
 		}
 	}),
-}) {}
+}) {
+	/** Mock user ID - a valid UUID */
+	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
+
+	/** Default mock user for tests */
+	static mockUser = () => ({
+		id: BackendAuth.mockUserId,
+		email: "test@example.com",
+		firstName: "Test",
+		lastName: "User",
+		avatarUrl: "https://avatar.vercel.sh/test.svg",
+		isOnboarded: true,
+		timezone: "UTC" as string | null,
+	})
+
+	/** Default mock CurrentUser for tests */
+	static mockCurrentUser = () =>
+		new CurrentUser.Schema({
+			id: BackendAuth.mockUserId,
+			role: "member",
+			organizationId: undefined,
+			avatarUrl: "https://avatar.vercel.sh/test.svg",
+			firstName: "Test",
+			lastName: "User",
+			email: "test@example.com",
+			isOnboarded: true,
+			timezone: "UTC",
+		})
+
+	/** Test layer with successful authentication */
+	static Test = Layer.mock(this, {
+		_tag: "@hazel/auth/BackendAuth",
+		authenticateWithCookie: (_sessionCookie: string, _userRepo: UserRepoLike) =>
+			Effect.succeed({
+				currentUser: BackendAuth.mockCurrentUser(),
+				refreshedSession: undefined as string | undefined,
+			}),
+		authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
+			Effect.succeed(BackendAuth.mockCurrentUser()),
+	})
+
+	/** Test layer factory for configurable authentication behavior */
+	static TestWith = (options: {
+		currentUser?: CurrentUser.Schema
+		refreshedSession?: string
+		shouldFail?: {
+			authenticateWithCookie?: Effect.Effect<never, any>
+			authenticateWithBearer?: Effect.Effect<never, any>
+		}
+	}) =>
+		Layer.mock(BackendAuth, {
+			_tag: "@hazel/auth/BackendAuth",
+			authenticateWithCookie: (_sessionCookie: string, _userRepo: UserRepoLike) =>
+				options.shouldFail?.authenticateWithCookie ??
+				Effect.succeed({
+					currentUser: options.currentUser ?? BackendAuth.mockCurrentUser(),
+					refreshedSession: options.refreshedSession,
+				}),
+			authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
+				options.shouldFail?.authenticateWithBearer ??
+				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
+		})
+}
 
 /**
  * Layer that provides BackendAuth with all its dependencies EXCEPT ResultPersistence.
