@@ -9,7 +9,7 @@
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Layer, Queue, Ref, Schema } from "effect"
+import { Context, Effect, Layer, Option, Queue, Ref, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
 import { RedisSubscriptionError } from "../errors.ts"
 import { RetryStrategy } from "../retry.ts"
@@ -63,6 +63,7 @@ export const RedisCommandListenerConfigTag = Context.GenericTag<RedisCommandList
  * for processing by the command dispatcher.
  *
  * Auto-starts on construction - no need to call start() manually.
+ * Uses Stream.async pattern for proper Effect integration.
  */
 export class RedisCommandListener extends Effect.Service<RedisCommandListener>()("RedisCommandListener", {
 	accessors: true,
@@ -85,8 +86,8 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 			}),
 		)
 
-		// Acquire Redis client and subscription with proper cleanup
-		yield* Effect.acquireRelease(
+		// Acquire Redis client with proper cleanup
+		const { client } = yield* Effect.acquireRelease(
 			Effect.gen(function* () {
 				yield* Effect.logInfo(`Starting Redis command listener`, { channel }).pipe(
 					Effect.annotateLogs("service", "RedisCommandListener"),
@@ -94,10 +95,10 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 
 				// Dynamic import of Bun's Redis client
 				const { RedisClient } = yield* Effect.promise(() => import("bun"))
-				const client = new RedisClient(config.redisUrl)
+				const redisClient = new RedisClient(config.redisUrl)
 
 				yield* Effect.tryPromise({
-					try: () => client.connect(),
+					try: () => redisClient.connect(),
 					catch: (error) =>
 						new RedisSubscriptionError({
 							message: "Failed to connect to Redis for command subscription",
@@ -105,32 +106,9 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 						}),
 				}).pipe(Effect.retry(RetryStrategy.connectionErrors))
 
-				yield* Effect.tryPromise({
-					try: () =>
-						client.subscribe(channel, (message, _chan) => {
-							try {
-								const parsed = JSON.parse(message)
-								const decoded = Schema.decodeUnknownSync(CommandEventSchema)(parsed)
-								Effect.runSync(Queue.offer(commandQueue, decoded))
-							} catch (e) {
-								console.error(`Invalid command message:`, e)
-							}
-						}),
-					catch: (error) =>
-						new RedisSubscriptionError({
-							message: "Failed to subscribe to Redis channel",
-							cause: error,
-						}),
-				})
-
-				yield* Ref.set(isRunningRef, true)
-				yield* Effect.logInfo(`Listening for commands`, { channel }).pipe(
-					Effect.annotateLogs("service", "RedisCommandListener"),
-				)
-
-				return { client, channel }
+				return { client: redisClient }
 			}),
-			({ client, channel }) =>
+			({ client }) =>
 				Effect.gen(function* () {
 					yield* Effect.logInfo(`Stopping Redis command listener`, { channel }).pipe(
 						Effect.annotateLogs("service", "RedisCommandListener"),
@@ -141,6 +119,59 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 						client.close()
 					})
 				}),
+		)
+
+		// Convert Redis subscription to Effect Stream using Stream.async
+		// This avoids using Effect.runSync inside callbacks
+		const redisMessageStream = Stream.async<string>((emit) => {
+			const unsubscribePromise = client.subscribe(channel, (message: string) => {
+				emit.single(message)
+			})
+			// Return cleanup effect
+			return Effect.promise(() => unsubscribePromise).pipe(
+				Effect.flatMap(() => Effect.sync(() => client.unsubscribe(channel))),
+				Effect.ignore,
+			)
+		})
+
+		// Process the stream with proper Effect patterns
+		yield* redisMessageStream.pipe(
+			Stream.mapEffect((message) =>
+				Effect.gen(function* () {
+					// Parse JSON with Effect error handling
+					const parsed = yield* Effect.try({
+						try: () => JSON.parse(message),
+						catch: (error) =>
+							new RedisSubscriptionError({
+								message: "Invalid JSON in Redis message",
+								cause: error,
+							}),
+					})
+
+					// Decode with Schema (effectful version)
+					return yield* Schema.decodeUnknown(CommandEventSchema)(parsed)
+				}).pipe(
+					// Wrap success in Some first
+					Effect.map(Option.some),
+					// Handle errors gracefully - log and skip invalid messages
+					Effect.catchAll((error) =>
+						Effect.logWarning("Invalid command message, skipping", { error }).pipe(
+							Effect.annotateLogs("service", "RedisCommandListener"),
+							Effect.as(Option.none<CommandEvent>()),
+						),
+					),
+				),
+			),
+			// Filter out None values (invalid messages)
+			Stream.filterMap((opt) => opt),
+			// Offer valid events to the queue
+			Stream.runForEach((event) => Queue.offer(commandQueue, event)),
+			Effect.forkScoped,
+		)
+
+		yield* Ref.set(isRunningRef, true)
+		yield* Effect.logInfo(`Listening for commands`, { channel }).pipe(
+			Effect.annotateLogs("service", "RedisCommandListener"),
 		)
 
 		return {
