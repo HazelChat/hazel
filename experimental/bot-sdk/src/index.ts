@@ -49,6 +49,9 @@ export * from "./errors.ts"
 export * from "./retry.ts"
 // Hazel-specific convenience layer (recommended for Hazel integrations)
 export * from "./hazel-bot-sdk.ts"
+// Bot runner helper (simplified entry point)
+export * from "./bot-config.ts"
+export * from "./run-bot.ts"
 export * from "./layers.ts"
 // RPC client for API calls
 export * from "./rpc/index.ts"

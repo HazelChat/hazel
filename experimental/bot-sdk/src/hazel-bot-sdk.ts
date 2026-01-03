@@ -507,6 +507,46 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				}),
 
 			/**
+			 * Create an error handler wrapper for command handlers.
+			 * Logs errors and sends a user-friendly message to the channel.
+			 *
+			 * @param ctx - The command context (for channelId and commandName)
+			 * @returns A function that wraps an effect with error handling
+			 *
+			 * @example
+			 * ```typescript
+			 * yield* bot.onCommand(MyCommand, (ctx) =>
+			 *   Effect.gen(function* () {
+			 *     // ... command logic
+			 *   }).pipe(bot.withErrorHandler(ctx))
+			 * )
+			 * ```
+			 */
+			withErrorHandler:
+				<Args>(ctx: TypedCommandContext<Args>) =>
+				<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | void, never, R> =>
+					effect.pipe(
+						Effect.catchAll((error) =>
+							Effect.gen(function* () {
+								yield* Effect.logError(`Error in /${ctx.commandName} command`, { error })
+								yield* messageLimiter(
+									httpApiClient["api-v1-messages"]
+										.createMessage({
+											payload: {
+												channelId: ctx.channelId,
+												content: "An unexpected error occurred. Please try again.",
+												replyToMessageId: null,
+												threadChannelId: null,
+												embeds: null,
+											},
+										})
+										.pipe(Effect.ignore),
+								)
+							}),
+						),
+					),
+
+			/**
 			 * Start the bot client
 			 * Syncs commands with backend and begins listening to events (Electric + Redis commands)
 			 */
