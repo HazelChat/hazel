@@ -7,6 +7,7 @@ import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-
 import { BotRepo } from "../../repositories/bot-repo.ts"
 import { UserRepo } from "../../repositories/user-repo.ts"
 import type { CurrentUser } from "@hazel/domain"
+import { SessionExpiredError, InvalidJwtPayloadError, InvalidBearerTokenError, SessionNotProvidedError } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
 
 // ===== Mock CurrentUser Factory =====
@@ -23,17 +24,26 @@ const createMockCurrentUser = (overrides?: Partial<CurrentUser.Schema>): Current
 	...overrides,
 })
 
+// ===== Mock RPC Context =====
+// Helper to create the full middleware context
+const createMiddlewareContext = (headers: Headers.Headers) => ({
+	clientId: 1,
+	rpc: {} as any, // Mock RPC definition
+	payload: {},
+	headers,
+})
+
 // ===== Mock SessionManager Factory =====
 
 const createMockSessionManagerLive = (options?: {
 	currentUser?: CurrentUser.Schema
 	refreshedSession?: string
-	shouldFail?: { _tag: string; message: string; detail: string }
+	shouldFail?: Effect.Effect<never, any>
 }) =>
 	Layer.succeed(SessionManager, {
 		authenticateWithCookie: (_cookie: string, _password?: string) => {
 			if (options?.shouldFail) {
-				return Effect.fail(options.shouldFail as any)
+				return options.shouldFail
 			}
 			return Effect.succeed({
 				currentUser: options?.currentUser ?? createMockCurrentUser(),
@@ -41,17 +51,17 @@ const createMockSessionManagerLive = (options?: {
 			})
 		},
 		authenticateWithBearer: (_token: string) =>
-			Effect.fail({ _tag: "InvalidBearerTokenError", message: "Not mocked", detail: "" }),
+			Effect.fail(new InvalidJwtPayloadError({ message: "Not mocked", detail: "" })),
 		authenticateAndGetUser: (_cookie: string, _password?: string) => {
 			if (options?.shouldFail) {
-				return Effect.fail(options.shouldFail as any)
+				return options.shouldFail
 			}
 			return Effect.succeed({
 				currentUser: options?.currentUser ?? createMockCurrentUser(),
 				refreshedSession: options?.refreshedSession,
 			})
 		},
-	} as any)
+	} as unknown as SessionManager)
 
 // ===== Mock UserPresenceStatusRepo =====
 
@@ -62,26 +72,26 @@ const createMockPresenceRepoLive = (options?: { onUpdateStatus?: (params: any) =
 			return Effect.void
 		},
 		findByUserId: (_userId: string) => Effect.succeed(Option.none()),
-	} as any)
+	} as unknown as UserPresenceStatusRepo)
 
 // ===== Mock BotRepo =====
 
 const MockBotRepoLive = Layer.succeed(BotRepo, {
 	findByTokenHash: (_hash: string) => Effect.succeed(Option.none()),
-} as any)
+} as unknown as BotRepo)
 
 // ===== Mock UserRepo =====
 
 const MockUserRepoLive = Layer.succeed(UserRepo, {
 	findById: (_id: string) => Effect.succeed(Option.none()),
-} as any)
+} as unknown as UserRepo)
 
 // ===== Auth Middleware Layer Factory =====
 
 const makeAuthMiddlewareLayer = (options?: {
 	sessionManagerLayer?: Layer.Layer<SessionManager>
 	presenceRepoLayer?: Layer.Layer<UserPresenceStatusRepo>
-}) => {
+}): Layer.Layer<AuthMiddleware> => {
 	const sessionManagerLayer = options?.sessionManagerLayer ?? createMockSessionManagerLive()
 	const presenceRepoLayer = options?.presenceRepoLayer ?? createMockPresenceRepoLive()
 
@@ -99,12 +109,12 @@ const makeAuthMiddlewareLayer = (options?: {
 				Effect.gen(function* () {
 					const userOption = yield* FiberRef.get(currentUserRef)
 					if (Option.isSome(userOption)) {
-						yield* presenceRepo
+						yield* (presenceRepo
 							.updateStatus({
 								userId: userOption.value.id,
 								status: "offline",
 								customMessage: null,
-							})
+							}) as unknown as Effect.Effect<void>)
 							.pipe(Effect.catchAll(() => Effect.void))
 					}
 				}),
@@ -115,22 +125,24 @@ const makeAuthMiddlewareLayer = (options?: {
 					// Check for Bearer token first (skip for user auth tests)
 					const authHeader = Headers.get(headers, "authorization")
 					if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
-						return yield* Effect.fail({
-							_tag: "InvalidBearerTokenError",
-							message: "Bearer auth not tested here",
-							detail: "",
-						})
+						return yield* Effect.fail(
+							new InvalidBearerTokenError({
+								message: "Bearer auth not tested here",
+								detail: "",
+							}),
+						)
 					}
 
 					// Parse cookie header
 					const cookieHeader = Headers.get(headers, "cookie")
 
 					if (Option.isNone(cookieHeader)) {
-						return yield* Effect.fail({
-							_tag: "SessionNotProvidedError",
-							message: "No session cookie provided",
-							detail: "Authentication required",
-						})
+						return yield* Effect.fail(
+							new SessionNotProvidedError({
+								message: "No session cookie provided",
+								detail: "Authentication required",
+							}),
+						)
 					}
 
 					// Parse cookies
@@ -151,11 +163,12 @@ const makeAuthMiddlewareLayer = (options?: {
 					const sessionCookie = cookies["workos-session"]
 
 					if (!sessionCookie) {
-						return yield* Effect.fail({
-							_tag: "SessionNotProvidedError",
-							message: "No WorkOS session cookie provided",
-							detail: "Authentication required",
-						})
+						return yield* Effect.fail(
+							new SessionNotProvidedError({
+								message: "No WorkOS session cookie provided",
+								detail: "Authentication required",
+							}),
+						)
 					}
 
 					// Authenticate via SessionManager
@@ -173,7 +186,7 @@ const makeAuthMiddlewareLayer = (options?: {
 		Layer.provide(presenceRepoLayer),
 		Layer.provide(MockBotRepoLive),
 		Layer.provide(MockUserRepoLive),
-	)
+	) as Layer.Layer<AuthMiddleware>
 }
 
 // Default test layer
@@ -191,7 +204,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=valid-session-cookie; other-cookie=value",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result.id).toBe("usr_test123")
 					expect(result.email).toBe("test@example.com")
@@ -205,7 +218,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=session%3Dwith%3Dequals; foo=bar",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result).toBeDefined()
 				}),
@@ -218,7 +231,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=only-cookie",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result.id).toBe("usr_test123")
 				}),
@@ -231,7 +244,7 @@ describe("AuthMiddleware", () => {
 					const middleware = yield* AuthMiddleware
 					const headers = Headers.fromInput({})
 
-					const exit = yield* middleware({ headers }).pipe(Effect.exit)
+					const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 					expect(Exit.isFailure(exit)).toBe(true)
 				}),
@@ -244,7 +257,7 @@ describe("AuthMiddleware", () => {
 						cookie: "other-cookie=value; another=test",
 					})
 
-					const exit = yield* middleware({ headers }).pipe(Effect.exit)
+					const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 					expect(Exit.isFailure(exit)).toBe(true)
 				}),
@@ -257,7 +270,7 @@ describe("AuthMiddleware", () => {
 						cookie: "",
 					})
 
-					const exit = yield* middleware({ headers }).pipe(Effect.exit)
+					const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 					expect(Exit.isFailure(exit)).toBe(true)
 				}),
@@ -274,7 +287,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=valid-cookie",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result.id).toBe("usr_test123")
 					expect(result.email).toBe("test@example.com")
@@ -287,11 +300,12 @@ describe("AuthMiddleware", () => {
 		describe("error propagation", () => {
 			const expiredSessionLayer = makeAuthMiddlewareLayer({
 				sessionManagerLayer: createMockSessionManagerLive({
-					shouldFail: {
-						_tag: "SessionExpiredError",
-						message: "Session expired",
-						detail: "Could not refresh",
-					},
+					shouldFail: Effect.fail(
+						new SessionExpiredError({
+							message: "Session expired",
+							detail: "Could not refresh",
+						}),
+					),
 				}),
 			})
 
@@ -303,7 +317,7 @@ describe("AuthMiddleware", () => {
 							cookie: "workos-session=expired-cookie",
 						})
 
-						const exit = yield* middleware({ headers }).pipe(Effect.exit)
+						const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 						expect(Exit.isFailure(exit)).toBe(true)
 					}),
@@ -312,11 +326,12 @@ describe("AuthMiddleware", () => {
 
 			const invalidJwtLayer = makeAuthMiddlewareLayer({
 				sessionManagerLayer: createMockSessionManagerLive({
-					shouldFail: {
-						_tag: "InvalidJwtPayloadError",
-						message: "Invalid JWT",
-						detail: "Malformed token",
-					},
+					shouldFail: Effect.fail(
+						new InvalidJwtPayloadError({
+							message: "Invalid JWT",
+							detail: "Malformed token",
+						}),
+					),
 				}),
 			})
 
@@ -328,7 +343,7 @@ describe("AuthMiddleware", () => {
 							cookie: "workos-session=invalid-jwt",
 						})
 
-						const exit = yield* middleware({ headers }).pipe(Effect.exit)
+						const exit = yield* middleware(createMiddlewareContext(headers)).pipe(Effect.exit)
 
 						expect(Exit.isFailure(exit)).toBe(true)
 					}),
@@ -351,7 +366,7 @@ describe("AuthMiddleware", () => {
 							cookie: "workos-session=needs-refresh",
 						})
 
-						const result = yield* middleware({ headers })
+						const result = yield* middleware(createMiddlewareContext(headers))
 
 						// Should still get user even though session was refreshed
 						expect(result.id).toBe("usr_test123")
@@ -383,7 +398,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=org-session",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result.organizationId).toBe("org_123")
 					expect(result.role).toBe("admin")
@@ -397,7 +412,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=full-data",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					expect(result.id).toBe("usr_custom_user")
 					expect(result.email).toBe("custom@example.com")
@@ -422,7 +437,7 @@ describe("AuthMiddleware", () => {
 						cookie: "workos-session=tracked-user",
 					})
 
-					const result = yield* middleware({ headers })
+					const result = yield* middleware(createMiddlewareContext(headers))
 
 					// Verify user is returned correctly
 					expect(result.id).toBe("usr_test123")

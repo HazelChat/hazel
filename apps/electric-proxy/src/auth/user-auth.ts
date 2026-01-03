@@ -54,7 +54,6 @@ function parseCookie(cookieHeader: string, cookieName: string): string | null {
  * Uses @hazel/auth for session validation with Redis caching.
  */
 export const validateSession = Effect.fn("ElectricProxy.validateSession")(function* (request: Request) {
-	// Step 1: Extract cookie from request
 	const cookieHeader = request.headers.get("Cookie")
 	if (!cookieHeader) {
 		yield* Effect.logDebug("Auth failed: No cookie header")
