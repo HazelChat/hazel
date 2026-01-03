@@ -38,6 +38,7 @@ const EVENT_LABELS: Record<string, string> = {
 	release: "Releases",
 	deployment_status: "Deploy",
 	workflow_run: "Actions",
+	star: "Stars",
 }
 
 export function GitHubSubscriptionsSection({ organizationId }: GitHubSubscriptionsSectionProps) {

@@ -32,6 +32,7 @@ const EVENT_OPTIONS: { id: GitHubEventType; label: string; description: string }
 	{ id: "release", label: "Releases", description: "New releases published" },
 	{ id: "deployment_status", label: "Deployments", description: "Deployment status changes" },
 	{ id: "workflow_run", label: "Workflows", description: "GitHub Actions workflow runs" },
+	{ id: "star", label: "Stars", description: "Repository starred or unstarred" },
 ]
 
 interface EditGitHubSubscriptionModalProps {
