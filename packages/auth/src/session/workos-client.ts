@@ -60,6 +60,8 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 						cookiePassword: Redacted.value(config.workosPasswordCookie),
 					}) as SealedSession
 				} catch (error) {
+					yield* Effect.annotateCurrentSpan("session.loaded", false)
+					yield* Effect.annotateCurrentSpan("error.type", "SessionLoadError")
 					return yield* Effect.fail(
 						new SessionLoadError({
 							message: "Failed to load sealed session from WorkOS",
@@ -68,9 +70,10 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 					)
 				}
 
+				yield* Effect.annotateCurrentSpan("session.loaded", true)
 				yield* Effect.logDebug("Loaded sealed session from WorkOS")
 				return session
-			})
+			}).pipe(Effect.withSpan("WorkOSClient.loadSealedSession"))
 
 		const getUser = (userId: string): Effect.Effect<WorkOSUser, WorkOSUserFetchError> =>
 			Effect.tryPromise({
@@ -80,7 +83,11 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 						message: "Failed to fetch user from WorkOS",
 						detail: String(error),
 					}),
-			})
+			}).pipe(
+				Effect.tap(() => Effect.annotateCurrentSpan("user.found", true)),
+				Effect.tapError(() => Effect.annotateCurrentSpan("user.found", false)),
+				Effect.withSpan("WorkOSClient.getUser", { attributes: { "user.id": userId } }),
+			)
 
 		const getOrganization = (orgId: string): Effect.Effect<Organization, OrganizationFetchError> =>
 			Effect.tryPromise({
@@ -90,7 +97,11 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 						message: "Failed to fetch organization from WorkOS",
 						detail: String(error),
 					}),
-			})
+			}).pipe(
+				Effect.tap(() => Effect.annotateCurrentSpan("org.found", true)),
+				Effect.tapError(() => Effect.annotateCurrentSpan("org.found", false)),
+				Effect.withSpan("WorkOSClient.getOrganization", { attributes: { "org.id": orgId } }),
+			)
 
 		return {
 			loadSealedSession,

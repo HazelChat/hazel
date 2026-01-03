@@ -1,6 +1,7 @@
 import { Persistence } from "@effect/experimental"
-import { Duration, Effect, Exit, Option } from "effect"
+import { Duration, Effect, Exit, Metric, Option } from "effect"
 import { SessionCacheError } from "../errors.ts"
+import { cacheOperationLatency, sessionCacheHits, sessionCacheMisses } from "../metrics.ts"
 import { ValidatedSession } from "../types.ts"
 import { calculateCacheTtl, DEFAULT_CACHE_TTL, SESSION_CACHE_PREFIX } from "./cache-keys.ts"
 import { SessionCacheRequest } from "./session-request.ts"
@@ -15,7 +16,7 @@ const hashSessionCookie = (sessionCookie: string): Effect.Effect<string> =>
 		const hashBuffer = await crypto.subtle.digest("SHA-256", data)
 		const hashArray = Array.from(new Uint8Array(hashBuffer))
 		return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-	})
+	}).pipe(Effect.withSpan("SessionCache.hash"))
 
 /**
  * Session cache service using @effect/experimental Persistence.
@@ -37,6 +38,8 @@ export class SessionCache extends Effect.Service<SessionCache>()("@hazel/auth/Se
 
 		const get = (sessionCookie: string): Effect.Effect<Option.Option<ValidatedSession>, SessionCacheError> =>
 			Effect.gen(function* () {
+				const startTime = Date.now()
+
 				const hash = yield* hashSessionCookie(sessionCookie)
 				const request = new SessionCacheRequest({ sessionHash: hash })
 
@@ -50,26 +53,39 @@ export class SessionCache extends Effect.Service<SessionCache>()("@hazel/auth/Se
 					),
 				)
 
+				// Record latency
+				yield* Metric.update(cacheOperationLatency, Date.now() - startTime)
+
 				if (Option.isNone(cached)) {
+					yield* Metric.increment(sessionCacheMisses)
+					yield* Effect.annotateCurrentSpan("cache.hit", false)
 					return Option.none<ValidatedSession>()
 				}
 
 				// Exit contains Success or Failure
 				if (cached.value._tag === "Success") {
+					yield* Metric.increment(sessionCacheHits)
+					yield* Effect.annotateCurrentSpan("cache.hit", true)
 					return Option.some(cached.value.value)
 				}
 
 				// Cached a failure - treat as cache miss
+				yield* Metric.increment(sessionCacheMisses)
+				yield* Effect.annotateCurrentSpan("cache.hit", false)
+				yield* Effect.annotateCurrentSpan("cache.failure_cached", true)
 				return Option.none<ValidatedSession>()
-			})
+			}).pipe(Effect.withSpan("SessionCache.get"))
 
 		const set = (sessionCookie: string, session: ValidatedSession): Effect.Effect<void, SessionCacheError> =>
 			Effect.gen(function* () {
-				const ttl = calculateCacheTtl(session.expiresAt)
+				const startTime = Date.now()
+				const ttlMs = Duration.toMillis(calculateCacheTtl(session.expiresAt))
 
 				// Don't cache if TTL is zero
-				if (Duration.toMillis(ttl) <= 0) {
+				if (ttlMs <= 0) {
 					yield* Effect.logDebug("Skipping cache - session expires too soon")
+					yield* Effect.annotateCurrentSpan("cache.skipped", true)
+					yield* Effect.annotateCurrentSpan("cache.skip_reason", "expires_too_soon")
 					return
 				}
 
@@ -86,8 +102,12 @@ export class SessionCache extends Effect.Service<SessionCache>()("@hazel/auth/Se
 					),
 				)
 
-				yield* Effect.logDebug(`Cached session with TTL ${Duration.toMillis(ttl)}ms`)
-			})
+				// Record latency and attributes
+				yield* Metric.update(cacheOperationLatency, Date.now() - startTime)
+				yield* Effect.annotateCurrentSpan("cache.ttl_ms", ttlMs)
+
+				yield* Effect.logDebug(`Cached session with TTL ${ttlMs}ms`)
+			}).pipe(Effect.withSpan("SessionCache.set"))
 
 		const invalidate = (sessionCookie: string): Effect.Effect<void, SessionCacheError> =>
 			Effect.gen(function* () {
@@ -105,7 +125,7 @@ export class SessionCache extends Effect.Service<SessionCache>()("@hazel/auth/Se
 				)
 
 				yield* Effect.logDebug("Invalidated cached session")
-			})
+			}).pipe(Effect.withSpan("SessionCache.invalidate"))
 
 		return {
 			get,

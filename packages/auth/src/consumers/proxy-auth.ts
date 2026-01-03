@@ -67,9 +67,13 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 									String(error),
 								),
 						),
+						Effect.withSpan("ProxyAuth.lookupUser", {
+							attributes: { "workos.user_id": session.workosUserId },
+						}),
 					)
 
 				if (Option.isNone(userOption)) {
+					yield* Effect.annotateCurrentSpan("user.found", false)
 					return yield* Effect.fail(
 						new ProxyAuthenticationError(
 							"User not found in database",
@@ -77,6 +81,9 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 						),
 					)
 				}
+
+				yield* Effect.annotateCurrentSpan("user.found", true)
+				yield* Effect.annotateCurrentSpan("user.id", userOption.value.id)
 
 				return {
 					workosUserId: session.workosUserId,

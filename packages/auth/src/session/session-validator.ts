@@ -7,9 +7,20 @@ import {
 	SessionRefreshError,
 } from "@hazel/domain"
 import { AuthenticateWithSessionCookieFailureReason } from "@workos-inc/node"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Layer, Metric, Option } from "effect"
 import { SessionCache } from "../cache/session-cache.ts"
 import type { SessionCacheError } from "../errors.ts"
+import {
+	orgLookupLatency,
+	sessionAuthFailure,
+	sessionAuthSuccess,
+	sessionRefreshAttempts,
+	sessionRefreshFailure,
+	sessionRefreshSuccess,
+	sessionValidationLatency,
+	workosAuthLatency,
+	workosRefreshLatency,
+} from "../metrics.ts"
 import { ValidatedSession } from "../types.ts"
 import { getJwtExpiry } from "./jwt-decoder.ts"
 import { type SealedSession, WorkOSClient } from "./workos-client.ts"
@@ -32,18 +43,30 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 		const resolveInternalOrgId = (workosOrgId: string | null | undefined) =>
 			Effect.gen(function* () {
 				if (!workosOrgId) {
+					yield* Effect.annotateCurrentSpan("org.skipped", true)
 					return null
 				}
 
+				const startTime = Date.now()
+				yield* Effect.annotateCurrentSpan("org.workos_id", workosOrgId)
+
 				const org = yield* workos.getOrganization(workosOrgId).pipe(
+					Effect.tap(() => Effect.annotateCurrentSpan("org.resolved", true)),
 					Effect.catchAll((error) => {
 						// Log warning but don't fail - org lookup is best-effort
-						return Effect.logWarning("Failed to resolve internal org ID", {
-							workosOrgId,
-							error: String(error),
-						}).pipe(Effect.as(null))
+						return Effect.all([
+							Effect.logWarning("Failed to resolve internal org ID", {
+								workosOrgId,
+								error: String(error),
+							}),
+							Effect.annotateCurrentSpan("org.resolved", false),
+							Effect.annotateCurrentSpan("org.error", String(error)),
+						]).pipe(Effect.as(null))
 					}),
 				)
+
+				// Record latency
+				yield* Metric.update(orgLookupLatency, Date.now() - startTime)
 
 				if (!org) {
 					return null
@@ -51,7 +74,7 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 
 				// externalId is our internal organization UUID
 				return org.externalId ?? null
-			})
+			}).pipe(Effect.withSpan("SessionValidator.resolveInternalOrgId"))
 
 		/**
 		 * Build a ValidatedSession from a successful WorkOS authentication response.
@@ -101,6 +124,8 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 		 * Does NOT attempt refresh - use validateAndRefresh for that.
 		 */
 		const authenticateWithWorkOS = Effect.fn("SessionValidator.authenticateWithWorkOS")(function* (sealedSession: SealedSession) {
+				const startTime = Date.now()
+
 				const result = yield* Effect.tryPromise({
 					try: () => sealedSession.authenticate(),
 					catch: (error) =>
@@ -108,9 +133,16 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 							message: "Failed to authenticate sealed session",
 							detail: String(error),
 						}),
-				})
+				}).pipe(Effect.withSpan("WorkOS.authenticate"))
+
+				// Record WorkOS API latency
+				yield* Metric.update(workosAuthLatency, Date.now() - startTime)
 
 				if (!result.authenticated) {
+					yield* Metric.increment(sessionAuthFailure)
+					yield* Effect.annotateCurrentSpan("auth.success", false)
+					yield* Effect.annotateCurrentSpan("auth.failure_reason", result.reason)
+
 					// Map failure reasons to specific errors
 					if (
 						result.reason ===
@@ -142,6 +174,10 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 					)
 				}
 
+				// Success
+				yield* Metric.increment(sessionAuthSuccess)
+				yield* Effect.annotateCurrentSpan("auth.success", true)
+
 				// Build and return validated session
 				return buildValidatedSession(result)
 			})
@@ -152,6 +188,8 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 		 * Does NOT attempt refresh - will fail if session is expired.
 		 */
 		const validateSession = Effect.fn("SessionValidator.validateSession")(function* (sessionCookie: string) {
+				const startTime = Date.now()
+
 				// Try cache first
 				const cached = yield* cache
 					.get(sessionCookie)
@@ -162,9 +200,14 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 					const now = Math.floor(Date.now() / 1000)
 					if (cached.value.expiresAt > now) {
 						yield* Effect.logDebug("Session cache hit")
+						yield* Metric.update(sessionValidationLatency, Date.now() - startTime)
+						yield* Effect.annotateCurrentSpan("validation.path", "cache_hit")
 						return cached.value
 					}
 					yield* Effect.logDebug("Cached session expired, re-validating")
+					yield* Effect.annotateCurrentSpan("validation.path", "cache_expired")
+				} else {
+					yield* Effect.annotateCurrentSpan("validation.path", "cache_miss")
 				}
 
 				// Cache miss or expired - validate with WorkOS
@@ -181,6 +224,9 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 					.set(sessionCookie, enriched)
 					.pipe(Effect.catchAll((error) => Effect.logWarning("Failed to cache session", error)))
 
+				// Record total validation latency
+				yield* Metric.update(sessionValidationLatency, Date.now() - startTime)
+
 				return enriched
 			})
 
@@ -192,6 +238,8 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 		 * Returns both the validated session and optionally a new sealed session cookie.
 		 */
 		const validateAndRefresh = Effect.fn("SessionValidator.validateAndRefresh")(function* (sessionCookie: string) {
+				const startTime = Date.now()
+
 				// Try cache first
 				const cached = yield* cache
 					.get(sessionCookie)
@@ -201,6 +249,9 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 					const now = Math.floor(Date.now() / 1000)
 					if (cached.value.expiresAt > now) {
 						yield* Effect.logDebug("Session cache hit (with refresh check)")
+						yield* Metric.update(sessionValidationLatency, Date.now() - startTime)
+						yield* Effect.annotateCurrentSpan("validation.path", "cache_hit")
+						yield* Effect.annotateCurrentSpan("refresh.attempted", false)
 						return { session: cached.value, newSealedSession: undefined as string | undefined }
 					}
 				}
@@ -227,6 +278,10 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 						.set(sessionCookie, enriched)
 						.pipe(Effect.catchAll((error) => Effect.logWarning("Failed to cache session", error)))
 
+					yield* Metric.update(sessionValidationLatency, Date.now() - startTime)
+					yield* Effect.annotateCurrentSpan("validation.path", "workos_auth")
+					yield* Effect.annotateCurrentSpan("refresh.attempted", false)
+
 					return { session: enriched, newSealedSession: undefined as string | undefined }
 				}
 
@@ -245,7 +300,10 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 
 				// Try to refresh the session
 				yield* Effect.logDebug("Session authentication failed, attempting refresh")
+				yield* Metric.increment(sessionRefreshAttempts)
+				yield* Effect.annotateCurrentSpan("refresh.attempted", true)
 
+				const refreshStartTime = Date.now()
 				const refreshResult = yield* Effect.tryPromise({
 					try: () => sealedSession.refresh(),
 					catch: (error) =>
@@ -253,9 +311,14 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 							message: "Failed to refresh sealed session",
 							detail: String(error),
 						}),
-				})
+				}).pipe(
+					Effect.tap(() => Metric.update(workosRefreshLatency, Date.now() - refreshStartTime)),
+					Effect.withSpan("WorkOS.refresh"),
+				)
 
 				if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+					yield* Metric.increment(sessionRefreshFailure)
+					yield* Effect.annotateCurrentSpan("refresh.success", false)
 					return yield* Effect.fail(
 						new SessionExpiredError({
 							message: "Failed to refresh session",
@@ -263,6 +326,10 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 						}),
 					)
 				}
+
+				// Refresh succeeded
+				yield* Metric.increment(sessionRefreshSuccess)
+				yield* Effect.annotateCurrentSpan("refresh.success", true)
 
 				// Build validated session from refresh result
 				// RefreshSessionResponse has the same shape as AuthenticateWithSessionCookieSuccessResponse
@@ -296,6 +363,8 @@ export class SessionValidator extends Effect.Service<SessionValidator>()("@hazel
 					)
 
 				yield* Effect.logDebug("Session refreshed successfully")
+				yield* Metric.update(sessionValidationLatency, Date.now() - startTime)
+				yield* Effect.annotateCurrentSpan("validation.path", "refreshed")
 
 				return {
 					session: enriched,
