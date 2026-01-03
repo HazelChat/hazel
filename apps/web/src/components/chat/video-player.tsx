@@ -1,191 +1,189 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { IconDownload } from "../icons/icon-download";
-import { IconPlay } from "../icons/icon-play";
-import IconVolume from "../icons/icon-volume";
-import IconVolumeMute from "../icons/icon-volume-mute";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { IconDownload } from "../icons/icon-download"
+import { IconPlay } from "../icons/icon-play"
+import IconVolume from "../icons/icon-volume"
+import IconVolumeMute from "../icons/icon-volume-mute"
 
 interface VideoPlayerProps {
-	src: string;
-	fileName: string;
-	onDownload: () => void;
+	src: string
+	fileName: string
+	onDownload: () => void
 }
 
 function formatTime(seconds: number): string {
-	if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-	const mins = Math.floor(seconds / 60);
-	const secs = Math.floor(seconds % 60);
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
+	if (!Number.isFinite(seconds) || seconds < 0) return "0:00"
+	const mins = Math.floor(seconds / 60)
+	const secs = Math.floor(seconds % 60)
+	return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
 export function VideoPlayer({ src, fileName, onDownload }: VideoPlayerProps) {
-	const videoRef = useRef<HTMLVideoElement>(null);
-	const progressRef = useRef<HTMLDivElement>(null);
-	const hideControlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-		null,
-	);
+	const videoRef = useRef<HTMLVideoElement>(null)
+	const progressRef = useRef<HTMLDivElement>(null)
+	const hideControlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	const [isPlaying, setIsPlaying] = useState(false);
-	const [currentTime, setCurrentTime] = useState(0);
-	const [duration, setDuration] = useState(0);
-	const [isMuted, setIsMuted] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isBuffering, setIsBuffering] = useState(false);
-	const [showControls, setShowControls] = useState(true);
-	const [isDragging, setIsDragging] = useState(false);
+	const [isPlaying, setIsPlaying] = useState(false)
+	const [currentTime, setCurrentTime] = useState(0)
+	const [duration, setDuration] = useState(0)
+	const [isMuted, setIsMuted] = useState(false)
+	const [isLoading, setIsLoading] = useState(true)
+	const [isBuffering, setIsBuffering] = useState(false)
+	const [showControls, setShowControls] = useState(true)
+	const [isDragging, setIsDragging] = useState(false)
 
-	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+	const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
 	// Hide controls after inactivity while playing
 	const resetHideControlsTimer = useCallback(() => {
 		if (hideControlsTimeoutRef.current) {
-			clearTimeout(hideControlsTimeoutRef.current);
+			clearTimeout(hideControlsTimeoutRef.current)
 		}
-		setShowControls(true);
+		setShowControls(true)
 
 		if (isPlaying && !isDragging) {
 			hideControlsTimeoutRef.current = setTimeout(() => {
-				setShowControls(false);
-			}, 3000);
+				setShowControls(false)
+			}, 3000)
 		}
-	}, [isPlaying, isDragging]);
+	}, [isPlaying, isDragging])
 
 	useEffect(() => {
-		resetHideControlsTimer();
+		resetHideControlsTimer()
 		return () => {
 			if (hideControlsTimeoutRef.current) {
-				clearTimeout(hideControlsTimeoutRef.current);
+				clearTimeout(hideControlsTimeoutRef.current)
 			}
-		};
-	}, [resetHideControlsTimer]);
+		}
+	}, [resetHideControlsTimer])
 
 	// Video event handlers
 	const handleLoadedMetadata = () => {
-		const video = videoRef.current;
+		const video = videoRef.current
 		if (video) {
-			setDuration(video.duration);
-			setIsLoading(false);
+			setDuration(video.duration)
+			setIsLoading(false)
 		}
-	};
+	}
 
 	const handleTimeUpdate = () => {
-		const video = videoRef.current;
+		const video = videoRef.current
 		if (video && !isDragging) {
-			setCurrentTime(video.currentTime);
+			setCurrentTime(video.currentTime)
 		}
-	};
+	}
 
 	const handleEnded = () => {
-		setIsPlaying(false);
-		setShowControls(true);
-	};
+		setIsPlaying(false)
+		setShowControls(true)
+	}
 
-	const handleWaiting = () => setIsBuffering(true);
-	const handleCanPlay = () => setIsBuffering(false);
+	const handleWaiting = () => setIsBuffering(true)
+	const handleCanPlay = () => setIsBuffering(false)
 
 	// Controls
 	const togglePlay = useCallback(() => {
-		const video = videoRef.current;
-		if (!video) return;
+		const video = videoRef.current
+		if (!video) return
 
 		if (isPlaying) {
-			video.pause();
-			setIsPlaying(false);
+			video.pause()
+			setIsPlaying(false)
 		} else {
-			video.play();
-			setIsPlaying(true);
+			video.play()
+			setIsPlaying(true)
 		}
-	}, [isPlaying]);
+	}, [isPlaying])
 
 	const toggleMute = useCallback(() => {
-		const video = videoRef.current;
-		if (!video) return;
+		const video = videoRef.current
+		if (!video) return
 
-		video.muted = !video.muted;
-		setIsMuted(video.muted);
-	}, []);
+		video.muted = !video.muted
+		setIsMuted(video.muted)
+	}, [])
 
 	const handleProgressClick = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
-			const video = videoRef.current;
-			const progressBar = progressRef.current;
-			if (!video || !progressBar) return;
+			const video = videoRef.current
+			const progressBar = progressRef.current
+			if (!video || !progressBar) return
 
-			const rect = progressBar.getBoundingClientRect();
-			const clickX = e.clientX - rect.left;
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-			const newTime = percentage * duration;
+			const rect = progressBar.getBoundingClientRect()
+			const clickX = e.clientX - rect.left
+			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
+			const newTime = percentage * duration
 
-			video.currentTime = newTime;
-			setCurrentTime(newTime);
+			video.currentTime = newTime
+			setCurrentTime(newTime)
 		},
 		[duration],
-	);
+	)
 
 	// Drag handling for progress bar
 	const handleProgressDragStart = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
-			e.preventDefault();
-			setIsDragging(true);
-			handleProgressClick(e);
+			e.preventDefault()
+			setIsDragging(true)
+			handleProgressClick(e)
 		},
 		[handleProgressClick],
-	);
+	)
 
 	useEffect(() => {
-		if (!isDragging) return;
+		if (!isDragging) return
 
 		const handleMouseMove = (e: MouseEvent) => {
-			const video = videoRef.current;
-			const progressBar = progressRef.current;
-			if (!video || !progressBar) return;
+			const video = videoRef.current
+			const progressBar = progressRef.current
+			if (!video || !progressBar) return
 
-			const rect = progressBar.getBoundingClientRect();
-			const clickX = e.clientX - rect.left;
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-			const newTime = percentage * duration;
+			const rect = progressBar.getBoundingClientRect()
+			const clickX = e.clientX - rect.left
+			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
+			const newTime = percentage * duration
 
-			setCurrentTime(newTime);
-		};
+			setCurrentTime(newTime)
+		}
 
 		const handleMouseUp = (e: MouseEvent) => {
-			const video = videoRef.current;
-			const progressBar = progressRef.current;
-			if (!video || !progressBar) return;
+			const video = videoRef.current
+			const progressBar = progressRef.current
+			if (!video || !progressBar) return
 
-			const rect = progressBar.getBoundingClientRect();
-			const clickX = e.clientX - rect.left;
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-			video.currentTime = percentage * duration;
+			const rect = progressBar.getBoundingClientRect()
+			const clickX = e.clientX - rect.left
+			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
+			video.currentTime = percentage * duration
 
-			setIsDragging(false);
-		};
+			setIsDragging(false)
+		}
 
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
+		document.addEventListener("mousemove", handleMouseMove)
+		document.addEventListener("mouseup", handleMouseUp)
 
 		return () => {
-			document.removeEventListener("mousemove", handleMouseMove);
-			document.removeEventListener("mouseup", handleMouseUp);
-		};
-	}, [isDragging, duration]);
+			document.removeEventListener("mousemove", handleMouseMove)
+			document.removeEventListener("mouseup", handleMouseUp)
+		}
+	}, [isDragging, duration])
 
 	// Keyboard handler for progress bar
 	const handleProgressKeyDown = useCallback(
 		(e: React.KeyboardEvent<HTMLDivElement>) => {
-			const video = videoRef.current;
-			if (!video) return;
+			const video = videoRef.current
+			if (!video) return
 
-			const step = duration * 0.05; // 5% of duration
+			const step = duration * 0.05 // 5% of duration
 			if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-				e.preventDefault();
-				video.currentTime = Math.min(duration, video.currentTime + step);
+				e.preventDefault()
+				video.currentTime = Math.min(duration, video.currentTime + step)
 			} else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-				e.preventDefault();
-				video.currentTime = Math.max(0, video.currentTime - step);
+				e.preventDefault()
+				video.currentTime = Math.max(0, video.currentTime - step)
 			}
 		},
 		[duration],
-	);
+	)
 
 	return (
 		<div className="group relative inline-block max-w-md">
@@ -242,9 +240,7 @@ export function VideoPlayer({ src, fileName, onDownload }: VideoPlayerProps) {
 				{/* Control bar */}
 				<div
 					className={`absolute right-0 bottom-0 left-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pt-8 pb-2 transition-opacity duration-200 ${
-						showControls || !isPlaying
-							? "opacity-100"
-							: "pointer-events-none opacity-0"
+						showControls || !isPlaying ? "opacity-100" : "pointer-events-none opacity-0"
 					}`}
 				>
 					{/* Progress bar */}
@@ -279,11 +275,7 @@ export function VideoPlayer({ src, fileName, onDownload }: VideoPlayerProps) {
 							className="flex size-7 items-center justify-center rounded text-white transition-colors hover:bg-white/20"
 							aria-label={isPlaying ? "Pause" : "Play"}
 						>
-							{isPlaying ? (
-								<PauseIcon className="size-4" />
-							) : (
-								<IconPlay className="size-4" />
-							)}
+							{isPlaying ? <PauseIcon className="size-4" /> : <IconPlay className="size-4" />}
 						</button>
 
 						{/* Time */}
@@ -323,21 +315,16 @@ export function VideoPlayer({ src, fileName, onDownload }: VideoPlayerProps) {
 			{/* Filename */}
 			<div className="mt-1 truncate text-muted-fg text-xs">{fileName}</div>
 		</div>
-	);
+	)
 }
 
 // Simple pause icon (inline since we don't have one)
 function PauseIcon({ className }: { className?: string }) {
 	return (
-		<svg
-			viewBox="0 0 18 18"
-			fill="currentColor"
-			className={className}
-			aria-hidden="true"
-		>
+		<svg viewBox="0 0 18 18" fill="currentColor" className={className} aria-hidden="true">
 			<title>Pause</title>
 			<rect x="4" y="3" width="3.5" height="12" rx="1" />
 			<rect x="10.5" y="3" width="3.5" height="12" rx="1" />
 		</svg>
-	);
+	)
 }

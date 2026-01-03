@@ -39,11 +39,11 @@ export class ExecuteBotCommandRequest extends Schema.Class<ExecuteBotCommandRequ
 
 // ============ RESPONSE SCHEMAS ============
 
-export class SyncBotCommandsResponse extends Schema.Class<SyncBotCommandsResponse>(
-	"SyncBotCommandsResponse",
-)({
-	syncedCount: Schema.Number,
-}) {}
+export class SyncBotCommandsResponse extends Schema.Class<SyncBotCommandsResponse>("SyncBotCommandsResponse")(
+	{
+		syncedCount: Schema.Number,
+	},
+) {}
 
 export class BotCommandExecutionAccepted extends Schema.Class<BotCommandExecutionAccepted>(
 	"BotCommandExecutionAccepted",
@@ -63,13 +63,10 @@ export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("Bo
 	botId: BotId,
 }) {}
 
-export class BotNotInstalledError extends Schema.TaggedError<BotNotInstalledError>()(
-	"BotNotInstalledError",
-	{
-		botId: BotId,
-		orgId: OrganizationId,
-	},
-) {}
+export class BotNotInstalledError extends Schema.TaggedError<BotNotInstalledError>()("BotNotInstalledError", {
+	botId: BotId,
+	orgId: OrganizationId,
+}) {}
 
 export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFoundError>()(
 	"BotCommandNotFoundError",

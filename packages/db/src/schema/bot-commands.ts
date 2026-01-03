@@ -1,5 +1,15 @@
 import type { BotCommandId, BotId } from "@hazel/schema"
-import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core"
+import {
+	boolean,
+	index,
+	jsonb,
+	pgTable,
+	text,
+	timestamp,
+	uniqueIndex,
+	uuid,
+	varchar,
+} from "drizzle-orm/pg-core"
 
 /**
  * Argument definition for a bot command

@@ -207,9 +207,7 @@ export function getWhereClauseForTable(
 		// Bot tables
 		// ===========================================
 
-		Match.when("bots", () =>
-			Effect.succeed(buildDeletedAtNullClause(schema.botsTable.deletedAt)),
-		),
+		Match.when("bots", () => Effect.succeed(buildDeletedAtNullClause(schema.botsTable.deletedAt))),
 
 		Match.when("bot_commands", () =>
 			// All bot commands visible (filtered by bot installation in frontend)

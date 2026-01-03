@@ -54,11 +54,7 @@ export function AddGitHubSubscriptionModal({
 		owner: string
 		name: string
 	} | null>(null)
-	const [enabledEvents, setEnabledEvents] = useState<GitHubEventType[]>([
-		"push",
-		"pull_request",
-		"issues",
-	])
+	const [enabledEvents, setEnabledEvents] = useState<GitHubEventType[]>(["push", "pull_request", "issues"])
 	const [branchFilter, setBranchFilter] = useState("")
 	const [isCreating, setIsCreating] = useState(false)
 	const [channelSearch, setChannelSearch] = useState("")
@@ -204,7 +200,9 @@ export function AddGitHubSubscriptionModal({
 									<div className="max-h-40 overflow-y-auto rounded-lg border border-border">
 										{filteredChannels.length === 0 ? (
 											<div className="flex items-center justify-center py-6 text-muted-fg text-sm">
-												{channelSearch ? "No channels found" : "No channels available"}
+												{channelSearch
+													? "No channels found"
+													: "No channels available"}
 											</div>
 										) : (
 											<div className="divide-y divide-border">
@@ -261,7 +259,11 @@ export function AddGitHubSubscriptionModal({
 												{selectedRepo.fullName}
 											</span>
 										</div>
-										<Button intent="plain" size="sm" onPress={() => setSelectedRepo(null)}>
+										<Button
+											intent="plain"
+											size="sm"
+											onPress={() => setSelectedRepo(null)}
+										>
 											Change
 										</Button>
 									</div>

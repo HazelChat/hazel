@@ -78,7 +78,9 @@ export const createAuthContextFromToken = (
 			Effect.retry(
 				Schedule.exponential("1 second", 2).pipe(
 					Schedule.jittered,
-					Schedule.whileOutput((duration) => Duration.lessThanOrEqualTo(duration, Duration.seconds(30))),
+					Schedule.whileOutput((duration) =>
+						Duration.lessThanOrEqualTo(duration, Duration.seconds(30)),
+					),
 				),
 			),
 			Effect.mapError(

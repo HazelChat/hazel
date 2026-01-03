@@ -183,20 +183,19 @@ export const getLinearAccessToken = (orgId: OrganizationId) =>
 		}
 
 		// Decrypt and return the access token
-		const accessToken = yield* encryption.decrypt({
-			ciphertext: token.encryptedAccessToken,
-			iv: token.iv,
-			keyVersion: token.encryptionKeyVersion,
-		}).pipe(
-			Effect.catchAll(() => Effect.fail(new IntegrationNotConnectedError({ provider: "linear" }))),
-		)
+		const accessToken = yield* encryption
+			.decrypt({
+				ciphertext: token.encryptedAccessToken,
+				iv: token.iv,
+				keyVersion: token.encryptionKeyVersion,
+			})
+			.pipe(
+				Effect.catchAll(() => Effect.fail(new IntegrationNotConnectedError({ provider: "linear" }))),
+			)
 
 		return accessToken
 	})
 
 // ============ Layer Composition ============
 
-export const IntegrationLayerLive = Layer.mergeAll(
-	DatabaseLive,
-	IntegrationEncryption.Default,
-)
+export const IntegrationLayerLive = Layer.mergeAll(DatabaseLive, IntegrationEncryption.Default)

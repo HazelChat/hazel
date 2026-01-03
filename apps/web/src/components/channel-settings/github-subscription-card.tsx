@@ -33,11 +33,7 @@ interface GitHubSubscriptionItemProps {
 	onEdit?: (subscription: GitHubSubscriptionData) => void
 }
 
-export function GitHubSubscriptionItem({
-	subscription,
-	onUpdate,
-	onEdit,
-}: GitHubSubscriptionItemProps) {
+export function GitHubSubscriptionItem({ subscription, onUpdate, onEdit }: GitHubSubscriptionItemProps) {
 	const [confirmDelete, setConfirmDelete] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)

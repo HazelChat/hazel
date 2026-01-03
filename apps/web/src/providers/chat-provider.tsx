@@ -115,7 +115,8 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 
 	// Track pending thread creation to disable composer until thread is created
 	const [pendingThreadChannelId, setPendingThreadChannelId] = useState<ChannelId | null>(null)
-	const isThreadCreating = pendingThreadChannelId === activeThreadChannelId && pendingThreadChannelId !== null
+	const isThreadCreating =
+		pendingThreadChannelId === activeThreadChannelId && pendingThreadChannelId !== null
 
 	const addAttachment = useCallback(
 		(attachmentId: AttachmentId) => {

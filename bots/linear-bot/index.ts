@@ -12,13 +12,8 @@
 
 import { Effect, Layer, Schema } from "effect"
 import { Command, CommandGroup, createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
-import {
-	LinearApiClient,
-} from "@hazel/integrations/linear"
-import {
-	getLinearAccessToken,
-	IntegrationLayerLive,
-} from "./src/db.ts"
+import { LinearApiClient } from "@hazel/integrations/linear"
+import { getLinearAccessToken, IntegrationLayerLive } from "./src/db.ts"
 
 /**
  * Validate that required environment variables are present
@@ -72,10 +67,7 @@ const runtime = createHazelBot({
 /**
  * Compose all required layers
  */
-const BotLayers = Layer.mergeAll(
-	IntegrationLayerLive,
-	LinearApiClient.Default,
-)
+const BotLayers = Layer.mergeAll(IntegrationLayerLive, LinearApiClient.Default)
 
 /**
  * Main bot program
@@ -89,7 +81,6 @@ const program = Effect.gen(function* () {
 		Effect.gen(function* () {
 			yield* Effect.log(`Received /issue command from ${ctx.userId}`)
 
-			
 			const { title, description } = ctx.args
 
 			yield* Effect.log(`Creating Linear issue: ${title}`)
@@ -104,10 +95,7 @@ const program = Effect.gen(function* () {
 			yield* Effect.log(`Created Linear issue: ${issue.identifier}`)
 
 			// Send success message
-			yield* bot.message.send(
-				ctx.channelId,
-				`@[userId:${ctx.userId}] created an issue: ${issue.url}`,
-			)
+			yield* bot.message.send(ctx.channelId, `@[userId:${ctx.userId}] created an issue: ${issue.url}`)
 		}).pipe(
 			Effect.catchAll((error) =>
 				Effect.gen(function* () {
@@ -146,9 +134,4 @@ process.on("SIGTERM", () => {
 })
 
 // Run the bot with all layers provided
-runtime.runPromise(
-	program.pipe(
-		Effect.scoped,
-		Effect.provide(BotLayers),
-	),
-)
+runtime.runPromise(program.pipe(Effect.scoped, Effect.provide(BotLayers)))

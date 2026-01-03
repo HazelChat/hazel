@@ -411,11 +411,14 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 						!action ||
 						!["created", "deleted", "suspend", "unsuspend"].includes(action)
 					) {
-						yield* Effect.logDebug("Skipping installation webhook - missing fields or unsupported action", {
-							hasInstallation: !!installation?.id,
-							hasAccount: !!installation?.account,
-							action,
-						})
+						yield* Effect.logDebug(
+							"Skipping installation webhook - missing fields or unsupported action",
+							{
+								hasInstallation: !!installation?.id,
+								hasAccount: !!installation?.account,
+								action,
+							},
+						)
 						return new GitHubWebhookResponse({ processed: false })
 					}
 

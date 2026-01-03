@@ -125,7 +125,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		},
 	})
 
-	if(!session.authenticated) {
+	if (!session.authenticated) {
 		if (session.reason === "no_session_cookie_provided") {
 			return yield* Effect.fail(
 				new AuthenticationError({
@@ -135,7 +135,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 			)
 		}
 
-		if(session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_JWT) {
+		if (session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_JWT) {
 			return yield* Effect.fail(
 				new AuthenticationError({
 					message: "Invalid JWT payload",
@@ -144,8 +144,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 			)
 		}
 
-
-		if(session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_SESSION_COOKIE) {
+		if (session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_SESSION_COOKIE) {
 			return yield* Effect.fail(
 				new AuthenticationError({
 					message: "Session expired",
@@ -165,8 +164,6 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	// Step 4: Handle not authenticated - try refresh
 	let accessToken = session.accessToken
 	if (!session.authenticated || !accessToken) {
-		
-
 		// Attempt to refresh the session
 		const refreshedSession: any = yield* Effect.tryPromise({
 			try: async () => sealedSession.refresh(),

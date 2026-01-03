@@ -123,7 +123,10 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 		/**
 		 * Convert a ShapeStream to an Effect Stream
 		 */
-		const shapeStreamToEffectStream = (shapeStream: ShapeStream, table: string): Stream.Stream<Message, never> =>
+		const shapeStreamToEffectStream = (
+			shapeStream: ShapeStream,
+			table: string,
+		): Stream.Stream<Message, never> =>
 			Stream.async<Message>((emit) => {
 				const unsubscribe = shapeStream.subscribe((messages) => {
 					for (const message of messages) {
@@ -245,5 +248,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 	static readonly layerConfig = (
 		config: Config.Config.Wrap<ShapeStreamSubscriberConfig>,
 	): Layer.Layer<ShapeStreamSubscriber, ConfigError.ConfigError, ElectricEventQueue> =>
-		Layer.unwrapEffect(Config.unwrap(config).pipe(Effect.map((cfg) => ShapeStreamSubscriber.Default(cfg))))
+		Layer.unwrapEffect(
+			Config.unwrap(config).pipe(Effect.map((cfg) => ShapeStreamSubscriber.Default(cfg))),
+		)
 }

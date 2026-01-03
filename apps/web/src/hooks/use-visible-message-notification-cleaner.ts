@@ -21,9 +21,7 @@ interface UseVisibleMessageNotificationCleanerOptions {
  * 2. Debounce multiple visibility changes
  * 3. Batch delete notifications via RPC
  */
-export function useVisibleMessageNotificationCleaner(
-	options: UseVisibleMessageNotificationCleanerOptions,
-) {
+export function useVisibleMessageNotificationCleaner(options: UseVisibleMessageNotificationCleanerOptions) {
 	const { channelId, debounceMs = 500 } = options
 	const { user } = useAuth()
 	const { organizationId } = useOrganization()

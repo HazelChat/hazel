@@ -9,14 +9,10 @@ type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<
 export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommandRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
-			schema.botCommandsTable,
-			BotCommand.Model,
-			{
-				idColumn: "id",
-				name: "BotCommand",
-			},
-		)
+		const baseRepo = yield* ModelRepository.makeRepository(schema.botCommandsTable, BotCommand.Model, {
+			idColumn: "id",
+			name: "BotCommand",
+		})
 		const db = yield* Database.Database
 
 		// Find all commands for a bot
@@ -104,48 +100,50 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			},
 			tx?: TxFn,
 		) =>
-			db.makeQuery(
-				(
-					execute,
-					d: {
-						botId: BotId
-						name: string
-						description: string
-						arguments: BotCommand.BotCommandArgument[] | null
-						usageExample: string | null
-					},
-				) =>
-					execute((client) => {
-						// Convert null values to undefined for DB schema compatibility
-						const args = (d.arguments ?? []).map((arg) => ({
-							...arg,
-							description: arg.description ?? undefined,
-							placeholder: arg.placeholder ?? undefined,
-						}))
-						return client
-							.insert(schema.botCommandsTable)
-							.values({
-								botId: d.botId,
-								name: d.name,
-								description: d.description,
-								arguments: args,
-								usageExample: d.usageExample,
-								isEnabled: true,
-							})
-							.onConflictDoUpdate({
-								target: [schema.botCommandsTable.botId, schema.botCommandsTable.name],
-								set: {
+			db
+				.makeQuery(
+					(
+						execute,
+						d: {
+							botId: BotId
+							name: string
+							description: string
+							arguments: BotCommand.BotCommandArgument[] | null
+							usageExample: string | null
+						},
+					) =>
+						execute((client) => {
+							// Convert null values to undefined for DB schema compatibility
+							const args = (d.arguments ?? []).map((arg) => ({
+								...arg,
+								description: arg.description ?? undefined,
+								placeholder: arg.placeholder ?? undefined,
+							}))
+							return client
+								.insert(schema.botCommandsTable)
+								.values({
+									botId: d.botId,
+									name: d.name,
 									description: d.description,
 									arguments: args,
 									usageExample: d.usageExample,
 									isEnabled: true,
-									updatedAt: new Date(),
-								},
-							})
-							.returning()
-					}),
-				policyRequire("BotCommand", "insert"),
-			)(data, tx).pipe(Effect.map((results) => results[0]))
+								})
+								.onConflictDoUpdate({
+									target: [schema.botCommandsTable.botId, schema.botCommandsTable.name],
+									set: {
+										description: d.description,
+										arguments: args,
+										usageExample: d.usageExample,
+										isEnabled: true,
+										updatedAt: new Date(),
+									},
+								})
+								.returning()
+						}),
+					policyRequire("BotCommand", "insert"),
+				)(data, tx)
+				.pipe(Effect.map((results) => results[0]))
 
 		// Delete commands not updated since the given timestamp (for bot sync cleanup)
 		const deleteStaleCommands = (botId: BotId, syncStartTime: Date, tx?: TxFn) =>

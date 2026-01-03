@@ -93,13 +93,10 @@ export class LinearApiError extends Schema.TaggedError<LinearApiError>()("Linear
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
-export class LinearRateLimitError extends Schema.TaggedError<LinearRateLimitError>()(
-	"LinearRateLimitError",
-	{
-		message: Schema.String,
-		retryAfter: Schema.optional(Schema.Number),
-	},
-) {}
+export class LinearRateLimitError extends Schema.TaggedError<LinearRateLimitError>()("LinearRateLimitError", {
+	message: Schema.String,
+	retryAfter: Schema.optional(Schema.Number),
+}) {}
 
 export class LinearIssueNotFoundError extends Schema.TaggedError<LinearIssueNotFoundError>()(
 	"LinearIssueNotFoundError",
@@ -596,8 +593,7 @@ export class LinearApiClient extends Effect.Service<LinearApiClient>()("LinearAp
 				}
 
 				const issueCreate = Option.isSome(response.data) ? response.data.value.issueCreate : null
-				const issue =
-					issueCreate && Option.isSome(issueCreate.issue) ? issueCreate.issue.value : null
+				const issue = issueCreate && Option.isSome(issueCreate.issue) ? issueCreate.issue.value : null
 
 				if (!issueCreate?.success || !issue) {
 					return yield* Effect.fail(

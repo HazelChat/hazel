@@ -149,7 +149,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 						eventType,
 					}).pipe(Effect.annotateLogs("service", "ElectricEventQueue"))
 
-					yield* Metric.increment(droppedEventsCounter).pipe(Effect.tagMetrics("event_type", eventType))
+					yield* Metric.increment(droppedEventsCounter).pipe(
+						Effect.tagMetrics("event_type", eventType),
+					)
 
 					// Take one from queue and try again
 					yield* Queue.take(queue).pipe(Effect.ignore)
@@ -166,7 +168,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 				}
 
 				// Track enqueued events
-				yield* Metric.increment(enqueuedEventsCounter).pipe(Effect.tagMetrics("event_type", eventType))
+				yield* Metric.increment(enqueuedEventsCounter).pipe(
+					Effect.tagMetrics("event_type", eventType),
+				)
 
 				// Update queue size gauge
 				yield* updateQueueSizeMetric(queue, eventType)
@@ -190,7 +194,9 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 					)
 
 					// Track dequeued events
-					yield* Metric.increment(dequeuedEventsCounter).pipe(Effect.tagMetrics("event_type", eventType))
+					yield* Metric.increment(dequeuedEventsCounter).pipe(
+						Effect.tagMetrics("event_type", eventType),
+					)
 
 					// Update queue size gauge
 					yield* updateQueueSizeMetric(queue, eventType)

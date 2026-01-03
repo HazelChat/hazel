@@ -146,9 +146,7 @@ export const BotCommandId = Schema.UUID.pipe(Schema.brand("@HazelChat/BotCommand
 })
 export type BotCommandId = Schema.Schema.Type<typeof BotCommandId>
 
-export const BotInstallationId = Schema.UUID.pipe(
-	Schema.brand("@HazelChat/BotInstallationId"),
-).annotations({
+export const BotInstallationId = Schema.UUID.pipe(Schema.brand("@HazelChat/BotInstallationId")).annotations({
 	description: "The ID of a bot installation",
 	title: "Bot Installation ID",
 })

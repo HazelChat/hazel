@@ -247,8 +247,8 @@ export function GitHubSubscriptionsSection({ organizationId }: GitHubSubscriptio
 						</div>
 						<h4 className="mb-1 font-medium text-fg">No subscriptions configured</h4>
 						<p className="mb-6 max-w-sm text-muted-fg text-sm">
-							Subscribe channels to GitHub repositories to receive notifications for pushes, pull
-							requests, issues, and more.
+							Subscribe channels to GitHub repositories to receive notifications for pushes,
+							pull requests, issues, and more.
 						</p>
 						<Button intent="primary" onPress={() => setIsAddModalOpen(true)}>
 							<svg
@@ -270,11 +270,17 @@ export function GitHubSubscriptionsSection({ organizationId }: GitHubSubscriptio
 								{/* Repository header */}
 								<div className="flex items-center gap-3 bg-bg-muted/20 px-5 py-2.5">
 									<div className="flex size-6 items-center justify-center rounded bg-bg-muted">
-										<svg className="size-3.5 text-muted-fg" fill="currentColor" viewBox="0 0 16 16">
+										<svg
+											className="size-3.5 text-muted-fg"
+											fill="currentColor"
+											viewBox="0 0 16 16"
+										>
 											<path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25v3.25a.25.25 0 0 0 .4.2l1.45-1.087a.25.25 0 0 1 .3 0L8.6 15.7a.25.25 0 0 0 .4-.2v-3.25a.25.25 0 0 0-.25-.25h-3.5a.25.25 0 0 0-.25.25Z" />
 										</svg>
 									</div>
-									<span className="font-medium text-fg text-sm">{group.repositoryFullName}</span>
+									<span className="font-medium text-fg text-sm">
+										{group.repositoryFullName}
+									</span>
 									<span className="text-muted-fg text-xs">
 										{group.subscriptions.length} channel
 										{group.subscriptions.length === 1 ? "" : "s"}
@@ -328,13 +334,7 @@ interface SubscriptionRowProps {
 	onEdit: () => void
 }
 
-function SubscriptionRow({
-	subscription,
-	channelName,
-	onToggle,
-	onDelete,
-	onEdit,
-}: SubscriptionRowProps) {
+function SubscriptionRow({ subscription, channelName, onToggle, onDelete, onEdit }: SubscriptionRowProps) {
 	const [confirmDelete, setConfirmDelete] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)

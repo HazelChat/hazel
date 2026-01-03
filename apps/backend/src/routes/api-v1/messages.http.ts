@@ -1,6 +1,13 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import {
+	CurrentUser,
+	InternalServerError,
+	policyUse,
+	UnauthorizedError,
+	withRemapDbErrors,
+	withSystemActor,
+} from "@hazel/domain"
 import {
 	ChannelNotFoundError,
 	DeleteMessageResponse,
@@ -81,208 +88,215 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 
-		return handlers
-			// Create Message
-			.handle("createMessage", ({ payload }) =>
-				Effect.gen(function* () {
-					const bot = yield* authenticateBotFromToken
-					const currentUser = createBotUserContext(bot)
+		return (
+			handlers
+				// Create Message
+				.handle("createMessage", ({ payload }) =>
+					Effect.gen(function* () {
+						const bot = yield* authenticateBotFromToken
+						const currentUser = createBotUserContext(bot)
 
-					yield* checkMessageRateLimit(bot.userId)
+						yield* checkMessageRateLimit(bot.userId)
 
-					const { attachmentIds, embeds, replyToMessageId, threadChannelId, ...rest } = payload
+						const { attachmentIds, embeds, replyToMessageId, threadChannelId, ...rest } = payload
 
-					return yield* db
-						.transaction(
-							Effect.gen(function* () {
-								const createdMessage = yield* MessageRepo.insert({
-									...rest,
-									embeds: embeds ?? null,
-									replyToMessageId: replyToMessageId ?? null,
-									threadChannelId: threadChannelId ?? null,
-									authorId: bot.userId,
-									deletedAt: null,
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(MessagePolicy.canCreate(rest.channelId)),
-								)
-
-								// Link attachments if provided
-								if (attachmentIds && attachmentIds.length > 0) {
-									yield* Effect.forEach(attachmentIds, (attachmentId) =>
-										AttachmentRepo.update({
-											id: attachmentId,
-											messageId: createdMessage.id,
-										}).pipe(policyUse(AttachmentPolicy.canUpdate(attachmentId))),
+						return yield* db
+							.transaction(
+								Effect.gen(function* () {
+									const createdMessage = yield* MessageRepo.insert({
+										...rest,
+										embeds: embeds ?? null,
+										replyToMessageId: replyToMessageId ?? null,
+										threadChannelId: threadChannelId ?? null,
+										authorId: bot.userId,
+										deletedAt: null,
+									}).pipe(
+										Effect.map((res) => res[0]!),
+										policyUse(MessagePolicy.canCreate(rest.channelId)),
 									)
-								}
 
-								const txid = yield* generateTransactionId()
+									// Link attachments if provided
+									if (attachmentIds && attachmentIds.length > 0) {
+										yield* Effect.forEach(attachmentIds, (attachmentId) =>
+											AttachmentRepo.update({
+												id: attachmentId,
+												messageId: createdMessage.id,
+											}).pipe(policyUse(AttachmentPolicy.canUpdate(attachmentId))),
+										)
+									}
 
-								return new MessageResponse({
-									data: createdMessage,
-									transactionId: txid,
-								})
-							}),
-						)
-						.pipe(
-							withRemapDbErrors("Message", "create"),
-							Effect.provideService(CurrentUser.Context, currentUser),
-						)
-				}).pipe(
-					Effect.catchTag("DatabaseError", (err) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while creating message",
-								detail: String(err),
-							}),
+									const txid = yield* generateTransactionId()
+
+									return new MessageResponse({
+										data: createdMessage,
+										transactionId: txid,
+									})
+								}),
+							)
+							.pipe(
+								withRemapDbErrors("Message", "create"),
+								Effect.provideService(CurrentUser.Context, currentUser),
+							)
+					}).pipe(
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while creating message",
+									detail: String(err),
+								}),
+							),
 						),
 					),
-				),
-			)
+				)
 
-			// Update Message
-			.handle("updateMessage", ({ path, payload }) =>
-				Effect.gen(function* () {
-					const bot = yield* authenticateBotFromToken
-					const currentUser = createBotUserContext(bot)
+				// Update Message
+				.handle("updateMessage", ({ path, payload }) =>
+					Effect.gen(function* () {
+						const bot = yield* authenticateBotFromToken
+						const currentUser = createBotUserContext(bot)
 
-					yield* checkMessageRateLimit(bot.userId)
+						yield* checkMessageRateLimit(bot.userId)
 
-					const { embeds, ...rest } = payload
+						const { embeds, ...rest } = payload
 
-					return yield* db
-						.transaction(
-							Effect.gen(function* () {
-								const updatedMessage = yield* MessageRepo.update({
-									id: path.id,
-									...rest,
-									...(embeds !== undefined ? { embeds } : {}),
-								}).pipe(policyUse(MessagePolicy.canUpdate(path.id)))
+						return yield* db
+							.transaction(
+								Effect.gen(function* () {
+									const updatedMessage = yield* MessageRepo.update({
+										id: path.id,
+										...rest,
+										...(embeds !== undefined ? { embeds } : {}),
+									}).pipe(policyUse(MessagePolicy.canUpdate(path.id)))
 
-								const txid = yield* generateTransactionId()
+									const txid = yield* generateTransactionId()
 
-								return new MessageResponse({
-									data: updatedMessage,
-									transactionId: txid,
-								})
-							}),
-						)
-						.pipe(
-							withRemapDbErrors("Message", "update"),
-							Effect.provideService(CurrentUser.Context, currentUser),
-						)
-				}).pipe(
-					Effect.catchTag("DatabaseError", (err) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while updating message",
-								detail: String(err),
-							}),
+									return new MessageResponse({
+										data: updatedMessage,
+										transactionId: txid,
+									})
+								}),
+							)
+							.pipe(
+								withRemapDbErrors("Message", "update"),
+								Effect.provideService(CurrentUser.Context, currentUser),
+							)
+					}).pipe(
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while updating message",
+									detail: String(err),
+								}),
+							),
 						),
 					),
-				),
-			)
+				)
 
-			// Delete Message
-			.handle("deleteMessage", ({ path }) =>
-				Effect.gen(function* () {
-					const bot = yield* authenticateBotFromToken
-					const currentUser = createBotUserContext(bot)
+				// Delete Message
+				.handle("deleteMessage", ({ path }) =>
+					Effect.gen(function* () {
+						const bot = yield* authenticateBotFromToken
+						const currentUser = createBotUserContext(bot)
 
-					yield* checkMessageRateLimit(bot.userId)
+						yield* checkMessageRateLimit(bot.userId)
 
-					return yield* db
-						.transaction(
-							Effect.gen(function* () {
-								yield* MessageRepo.deleteById(path.id).pipe(policyUse(MessagePolicy.canDelete(path.id)))
+						return yield* db
+							.transaction(
+								Effect.gen(function* () {
+									yield* MessageRepo.deleteById(path.id).pipe(
+										policyUse(MessagePolicy.canDelete(path.id)),
+									)
 
-								const txid = yield* generateTransactionId()
+									const txid = yield* generateTransactionId()
 
-								return new DeleteMessageResponse({ transactionId: txid })
-							}),
-						)
-						.pipe(
-							withRemapDbErrors("Message", "delete"),
-							Effect.provideService(CurrentUser.Context, currentUser),
-						)
-				}).pipe(
-					Effect.catchTag("DatabaseError", (err) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while deleting message",
-								detail: String(err),
-							}),
+									return new DeleteMessageResponse({ transactionId: txid })
+								}),
+							)
+							.pipe(
+								withRemapDbErrors("Message", "delete"),
+								Effect.provideService(CurrentUser.Context, currentUser),
+							)
+					}).pipe(
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while deleting message",
+									detail: String(err),
+								}),
+							),
 						),
 					),
-				),
-			)
+				)
 
-			// Toggle Reaction
-			.handle("toggleReaction", ({ path, payload }) =>
-				Effect.gen(function* () {
-					const bot = yield* authenticateBotFromToken
-					const currentUser = createBotUserContext(bot)
+				// Toggle Reaction
+				.handle("toggleReaction", ({ path, payload }) =>
+					Effect.gen(function* () {
+						const bot = yield* authenticateBotFromToken
+						const currentUser = createBotUserContext(bot)
 
-					return yield* db
-						.transaction(
-							Effect.gen(function* () {
-								const { emoji, channelId } = payload
-								const messageId = path.id
+						return yield* db
+							.transaction(
+								Effect.gen(function* () {
+									const { emoji, channelId } = payload
+									const messageId = path.id
 
-								const existingReaction = yield* MessageReactionRepo.findByMessageUserEmoji(
-									messageId,
-									bot.userId,
-									emoji,
-								).pipe(policyUse(MessageReactionPolicy.canList(messageId)))
+									const existingReaction =
+										yield* MessageReactionRepo.findByMessageUserEmoji(
+											messageId,
+											bot.userId,
+											emoji,
+										).pipe(policyUse(MessageReactionPolicy.canList(messageId)))
 
-								const txid = yield* generateTransactionId()
+									const txid = yield* generateTransactionId()
 
-								// If reaction exists, delete it
-								if (Option.isSome(existingReaction)) {
-									yield* MessageReactionRepo.deleteById(existingReaction.value.id).pipe(
-										policyUse(MessageReactionPolicy.canDelete(existingReaction.value.id)),
+									// If reaction exists, delete it
+									if (Option.isSome(existingReaction)) {
+										yield* MessageReactionRepo.deleteById(existingReaction.value.id).pipe(
+											policyUse(
+												MessageReactionPolicy.canDelete(existingReaction.value.id),
+											),
+										)
+
+										return new ToggleReactionResponse({
+											wasCreated: false,
+											data: undefined,
+											transactionId: txid,
+										})
+									}
+
+									// Otherwise, create a new reaction
+									const createdReaction = yield* MessageReactionRepo.insert({
+										messageId,
+										channelId,
+										emoji,
+										userId: bot.userId,
+									}).pipe(
+										Effect.map((res) => res[0]!),
+										policyUse(MessageReactionPolicy.canCreate(messageId)),
 									)
 
 									return new ToggleReactionResponse({
-										wasCreated: false,
-										data: undefined,
+										wasCreated: true,
+										data: createdReaction,
 										transactionId: txid,
 									})
-								}
-
-								// Otherwise, create a new reaction
-								const createdReaction = yield* MessageReactionRepo.insert({
-									messageId,
-									channelId,
-									emoji,
-									userId: bot.userId,
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(MessageReactionPolicy.canCreate(messageId)),
-								)
-
-								return new ToggleReactionResponse({
-									wasCreated: true,
-									data: createdReaction,
-									transactionId: txid,
-								})
-							}),
-						)
-						.pipe(
-							withRemapDbErrors("MessageReaction", "create"),
-							Effect.provideService(CurrentUser.Context, currentUser),
-						)
-				}).pipe(
-					Effect.catchTag("DatabaseError", (err) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while toggling reaction",
-								detail: String(err),
-							}),
+								}),
+							)
+							.pipe(
+								withRemapDbErrors("MessageReaction", "create"),
+								Effect.provideService(CurrentUser.Context, currentUser),
+							)
+					}).pipe(
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while toggling reaction",
+									detail: String(err),
+								}),
+							),
 						),
 					),
-				),
-			)
+				)
+		)
 	}),
 )

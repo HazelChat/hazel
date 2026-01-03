@@ -11,7 +11,9 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 
 		// For "created" events, just log - OAuth callback handles the actual connection setup
 		if (payload.action === "created") {
-			yield* Effect.log(`GitHub App installed on ${payload.accountLogin} by ${payload.senderLogin} - no action needed (OAuth handles setup)`)
+			yield* Effect.log(
+				`GitHub App installed on ${payload.accountLogin} by ${payload.senderLogin} - no action needed (OAuth handles setup)`,
+			)
 			return
 		}
 
@@ -64,7 +66,9 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 				}
 
 				const connection = connections[0]!
-				yield* Effect.log(`Found connection ${connection.id} for installation ${payload.installationId}`)
+				yield* Effect.log(
+					`Found connection ${connection.id} for installation ${payload.installationId}`,
+				)
 
 				return {
 					found: true,
@@ -95,11 +99,7 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 
 		// Determine the new status based on action
 		const newStatus: "active" | "revoked" | "suspended" =
-			payload.action === "deleted"
-				? "revoked"
-				: payload.action === "suspend"
-					? "suspended"
-					: "active" // unsuspend
+			payload.action === "deleted" ? "revoked" : payload.action === "suspend" ? "suspended" : "active" // unsuspend
 
 		// Activity 2: Update the connection status
 		const updateResult = yield* Activity.make({

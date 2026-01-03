@@ -27,8 +27,6 @@ async function hashToken(token: string): Promise<string> {
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
-
-
 export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands", (handlers) =>
 	handlers
 		// Get bot info from token (for SDK authentication)
@@ -40,7 +38,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				if (!authHeader || !authHeader.startsWith("Bearer ")) {
 					return yield* Effect.fail(
-						new UnauthorizedError({ message: "Missing or invalid bot token", detail: "Authorization header must be 'Bearer <token>'" }),
+						new UnauthorizedError({
+							message: "Missing or invalid bot token",
+							detail: "Authorization header must be 'Bearer <token>'",
+						}),
 					)
 				}
 
@@ -53,7 +54,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				if (Option.isNone(botOption)) {
 					return yield* Effect.fail(
-						new UnauthorizedError({ message: "Invalid bot token", detail: "No bot found with this token" }),
+						new UnauthorizedError({
+							message: "Invalid bot token",
+							detail: "No bot found with this token",
+						}),
 					)
 				}
 
@@ -66,7 +70,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 			}).pipe(
 				Effect.catchTag("DatabaseError", () =>
 					Effect.fail(
-						new UnauthorizedError({ message: "Failed to validate bot token", detail: "Database error" }),
+						new UnauthorizedError({
+							message: "Failed to validate bot token",
+							detail: "Database error",
+						}),
 					),
 				),
 			),
@@ -80,7 +87,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				if (!authHeader || !authHeader.startsWith("Bearer ")) {
 					return yield* Effect.fail(
-						new UnauthorizedError({ message: "Missing or invalid bot token", detail: "Authorization header must be 'Bearer <token>'" }),
+						new UnauthorizedError({
+							message: "Missing or invalid bot token",
+							detail: "Authorization header must be 'Bearer <token>'",
+						}),
 					)
 				}
 
@@ -93,7 +103,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				if (Option.isNone(botOption)) {
 					return yield* Effect.fail(
-						new UnauthorizedError({ message: "Invalid bot token", detail: "No bot found with this token" }),
+						new UnauthorizedError({
+							message: "Invalid bot token",
+							detail: "No bot found with this token",
+						}),
 					)
 				}
 
@@ -166,7 +179,9 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				}
 
 				// Find the command
-				const commandOption = yield* commandRepo.findByBotAndName(botId, commandName).pipe(withSystemActor)
+				const commandOption = yield* commandRepo
+					.findByBotAndName(botId, commandName)
+					.pipe(withSystemActor)
 				if (Option.isNone(commandOption)) {
 					return yield* Effect.fail(new BotCommandNotFoundError({ botId, commandName }))
 				}

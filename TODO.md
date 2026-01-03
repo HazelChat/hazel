@@ -4,9 +4,6 @@
 - fix icons to all be outline or fill
 - setup sequin locally with config as code
 
-
-
-
 # Bugs
 
 # FE stuff

@@ -18,7 +18,18 @@ import type {
 import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
-import { Config, Context, Duration, Effect, Layer, Logger, ManagedRuntime, Option, RateLimiter, Schema } from "effect"
+import {
+	Config,
+	Context,
+	Duration,
+	Effect,
+	Layer,
+	Logger,
+	ManagedRuntime,
+	Option,
+	RateLimiter,
+	Schema,
+} from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import {
@@ -100,7 +111,13 @@ export type CommandHandler<Args, E = HandlerError, R = never> = (
 ) => Effect.Effect<void, E, R>
 
 // Re-export command types for convenience
-export { Command, CommandGroup, type CommandDef, type CommandNames, type TypedCommandContext } from "./command.ts"
+export {
+	Command,
+	CommandGroup,
+	type CommandDef,
+	type CommandNames,
+	type TypedCommandContext,
+} from "./command.ts"
 
 /**
  * Options for sending a message
@@ -158,7 +175,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 		// Command handler registry - stores handlers keyed by command name
 		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
-		const commandHandlers = new Map<string, (ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>>()
+		const commandHandlers = new Map<
+			string,
+			(ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>
+		>()
 
 		// Get command group from runtime config for schema decoding
 		const commandGroup = Option.map(runtimeConfigOption, (c) => c.commands)
@@ -285,7 +305,9 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									content,
 									replyToMessageId: options?.replyToMessageId ?? null,
 									threadChannelId: options?.threadChannelId ?? null,
-									attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+									attachmentIds: options?.attachmentIds
+										? [...options.attachmentIds]
+										: undefined,
 									embeds: null,
 								},
 							})
@@ -314,14 +336,19 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									content,
 									replyToMessageId: message.id,
 									threadChannelId: options?.threadChannelId ?? null,
-									attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+									attachmentIds: options?.attachmentIds
+										? [...options.attachmentIds]
+										: undefined,
 									embeds: null,
 								},
 							})
 							.pipe(
 								Effect.map((r) => r.data),
 								Effect.withSpan("bot.message.reply", {
-									attributes: { channelId: message.channelId, replyToMessageId: message.id },
+									attributes: {
+										channelId: message.channelId,
+										replyToMessageId: message.id,
+									},
 								}),
 							),
 					),
@@ -340,7 +367,9 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							})
 							.pipe(
 								Effect.map((r) => r.data),
-								Effect.withSpan("bot.message.update", { attributes: { messageId: message.id } }),
+								Effect.withSpan("bot.message.update", {
+									attributes: { messageId: message.id },
+								}),
 							),
 					),
 
@@ -372,7 +401,11 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									channelId: message.channelId,
 								},
 							})
-							.pipe(Effect.withSpan("bot.message.react", { attributes: { messageId: message.id, emoji } })),
+							.pipe(
+								Effect.withSpan("bot.message.react", {
+									attributes: { messageId: message.id, emoji },
+								}),
+							),
 					),
 			},
 
@@ -467,7 +500,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				handler: CommandHandler<Schema.Schema.Type<Schema.Struct<Args>>, E, R>,
 			) =>
 				Effect.sync(() => {
-					commandHandlers.set(command.name, handler as (ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>)
+					commandHandlers.set(
+						command.name,
+						handler as (ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>,
+					)
 				}),
 
 			/**
@@ -497,13 +533,19 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 										const handler = commandHandlers.get(event.commandName)
 										if (!handler) {
-											yield* Effect.logWarning(`No handler for command: ${event.commandName}`)
+											yield* Effect.logWarning(
+												`No handler for command: ${event.commandName}`,
+											)
 											return
 										}
 
 										// Find the command definition to decode args
 										const cmdDef = Option.flatMap(commandGroup, (group) =>
-											Option.fromNullable(group.commands.find((c: CommandDef) => c.name === event.commandName)),
+											Option.fromNullable(
+												group.commands.find(
+													(c: CommandDef) => c.name === event.commandName,
+												),
+											),
 										)
 
 										// Decode args using the command's schema if available
@@ -534,7 +576,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 												},
 											}),
 											Effect.catchAllCause((cause) =>
-												Effect.logError(`Command handler failed for ${event.commandName}`, { cause }),
+												Effect.logError(
+													`Command handler failed for ${event.commandName}`,
+													{ cause },
+												),
 											),
 										)
 									}),
@@ -696,7 +741,9 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	)
 
 	const AuthLayer = Layer.unwrapEffect(
-		createAuthContextFromToken(config.botToken, backendUrl).pipe(Effect.map((context) => BotAuth.Default(context))),
+		createAuthContextFromToken(config.botToken, backendUrl).pipe(
+			Effect.map((context) => BotAuth.Default(context)),
+		),
 	)
 
 	// Create the RPC client config layer

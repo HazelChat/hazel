@@ -29,4 +29,6 @@ export const GitHubInstallationWorkflow = Workflow.make({
 	idempotencyKey: (payload) => payload.deliveryId,
 })
 
-export type GitHubInstallationWorkflowPayload = Schema.Schema.Type<typeof GitHubInstallationWorkflow.payloadSchema>
+export type GitHubInstallationWorkflowPayload = Schema.Schema.Type<
+	typeof GitHubInstallationWorkflow.payloadSchema
+>

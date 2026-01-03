@@ -54,8 +54,14 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 })
 
 function ChatLayout() {
-	const { activeThreadChannelId, activeThreadMessageId, closeThread, organizationId, channelId, isThreadCreating } =
-		useChat()
+	const {
+		activeThreadChannelId,
+		activeThreadMessageId,
+		closeThread,
+		organizationId,
+		channelId,
+		isThreadCreating,
+	} = useChat()
 	const { orgSlug } = Route.useParams()
 
 	// Get persisted panel width via hook

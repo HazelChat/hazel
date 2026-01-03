@@ -166,6 +166,7 @@ function Component() {
 ```
 
 **When imperative updates ARE acceptable:**
+
 - Event listeners outside React (keyboard shortcuts via `Atom.keyboardShortcut`)
 - Effects that run on atom changes
 - Non-UI state updates (analytics, logging)

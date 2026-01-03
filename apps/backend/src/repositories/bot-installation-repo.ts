@@ -72,7 +72,9 @@ export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("
 
 		// Get bot IDs installed in an organization
 		const getBotIdsForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-			findByOrg(organizationId, tx).pipe(Effect.map((installations) => installations.map((i) => i.botId)))
+			findByOrg(organizationId, tx).pipe(
+				Effect.map((installations) => installations.map((i) => i.botId)),
+			)
 
 		return {
 			...baseRepo,

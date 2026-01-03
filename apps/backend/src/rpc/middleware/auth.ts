@@ -1,5 +1,10 @@
 import { Headers } from "@effect/platform"
-import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError, withSystemActor } from "@hazel/domain"
+import {
+	InvalidBearerTokenError,
+	type CurrentUser,
+	SessionNotProvidedError,
+	withSystemActor,
+} from "@hazel/domain"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
 import { BotRepo } from "../../repositories/bot-repo"
 import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"

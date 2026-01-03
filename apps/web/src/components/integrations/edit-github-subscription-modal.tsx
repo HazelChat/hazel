@@ -176,8 +176,12 @@ export function EditGitHubSubscriptionModal({
 												className="mt-0.5"
 											/>
 											<div className="flex flex-col gap-0.5">
-												<span className="font-medium text-fg text-sm">{event.label}</span>
-												<span className="text-muted-fg text-xs">{event.description}</span>
+												<span className="font-medium text-fg text-sm">
+													{event.label}
+												</span>
+												<span className="text-muted-fg text-xs">
+													{event.description}
+												</span>
 											</div>
 										</label>
 									)
@@ -188,7 +192,9 @@ export function EditGitHubSubscriptionModal({
 						{/* Branch filter (only for push events) */}
 						{enabledEvents.includes("push") && (
 							<div className="flex flex-col gap-2">
-								<label className="font-medium text-fg text-sm">Branch Filter (Optional)</label>
+								<label className="font-medium text-fg text-sm">
+									Branch Filter (Optional)
+								</label>
 								<p className="text-muted-fg text-xs">
 									Only receive push events for branches matching this pattern.
 								</p>

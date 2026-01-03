@@ -19,7 +19,9 @@ export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integr
 				const botRepo = yield* BotRepo
 
 				// Get bot commands for installed bots
-				const installedBotIds = yield* botInstallationRepo.getBotIdsForOrg(orgId).pipe(withSystemActor)
+				const installedBotIds = yield* botInstallationRepo
+					.getBotIdsForOrg(orgId)
+					.pipe(withSystemActor)
 				const botCommands = yield* botCommandRepo.findByBots(installedBotIds).pipe(withSystemActor)
 
 				// Get bot info for each command

@@ -14,12 +14,7 @@ import { cx } from "~/lib/primitive"
 
 function ChevronLeftIcon({ className }: { className?: string }) {
 	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 16 16"
-			fill="currentColor"
-			className={className}
-		>
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className={className}>
 			<path
 				fillRule="evenodd"
 				d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z"
@@ -39,9 +34,7 @@ export function CommandMenuFormContainer({
 	children: React.ReactNode
 	className?: string
 }) {
-	return (
-		<div className={twMerge("flex h-full flex-col overflow-hidden", className)}>{children}</div>
-	)
+	return <div className={twMerge("flex h-full flex-col overflow-hidden", className)}>{children}</div>
 }
 
 /**
@@ -62,12 +55,7 @@ export function CommandMenuFormHeader({
 	const state = use(OverlayTriggerStateContext)!
 
 	return (
-		<div
-			className={twMerge(
-				"flex items-center gap-2 border-b px-3 py-2.5 sm:px-2.5 sm:py-2",
-				className,
-			)}
-		>
+		<div className={twMerge("flex items-center gap-2 border-b px-3 py-2.5 sm:px-2.5 sm:py-2", className)}>
 			{onBack && (
 				<Button
 					onPress={onBack}
@@ -100,9 +88,7 @@ export function CommandMenuFormBody({
 	children: React.ReactNode
 	className?: string
 }) {
-	return (
-		<div className={twMerge("flex-1 overflow-y-auto p-3 sm:p-2.5", className)}>{children}</div>
-	)
+	return <div className={twMerge("flex-1 overflow-y-auto p-3 sm:p-2.5", className)}>{children}</div>
 }
 
 /**

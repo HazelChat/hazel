@@ -67,7 +67,9 @@ export class CommandGroup<Commands extends readonly CommandDef<string, any>[]> {
 	 * Get a command by name (for runtime lookups)
 	 */
 	get<N extends CommandNames<this>>(name: N): Extract<Commands[number], { name: N }> | undefined {
-		return this.commands.find((cmd) => cmd.name === name) as Extract<Commands[number], { name: N }> | undefined
+		return this.commands.find((cmd) => cmd.name === name) as
+			| Extract<Commands[number], { name: N }>
+			| undefined
 	}
 }
 
@@ -83,18 +85,18 @@ export type CommandNames<G> = G extends CommandGroup<infer C> ? C[number]["name"
 /**
  * Extract the args Schema fields for a specific command name
  */
-export type CommandArgsFields<G, N extends string> = G extends CommandGroup<infer C>
-	? Extract<C[number], { name: N }>["args"]
-	: never
+export type CommandArgsFields<G, N extends string> =
+	G extends CommandGroup<infer C> ? Extract<C[number], { name: N }>["args"] : never
 
 /**
  * Extract the decoded args type for a specific command name
  */
-export type CommandArgs<G, N extends string> = G extends CommandGroup<infer C>
-	? Extract<C[number], { name: N }> extends { argsSchema: Schema.Schema<infer A, any, any> }
-		? A
-		: {}
-	: never
+export type CommandArgs<G, N extends string> =
+	G extends CommandGroup<infer C>
+		? Extract<C[number], { name: N }> extends { argsSchema: Schema.Schema<infer A, any, any> }
+			? A
+			: {}
+		: never
 
 /**
  * Typed command context with inferred args

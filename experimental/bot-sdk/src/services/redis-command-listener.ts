@@ -76,15 +76,13 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 		const isRunningRef = yield* Ref.make(false)
 
 		// Create command queue with proper scoped acquisition
-		const commandQueue = yield* Effect.acquireRelease(
-			Queue.unbounded<CommandEvent>(),
-			(queue) =>
-				Effect.gen(function* () {
-					yield* Effect.logInfo("Shutting down command queue").pipe(
-						Effect.annotateLogs("service", "RedisCommandListener"),
-					)
-					yield* Queue.shutdown(queue)
-				}),
+		const commandQueue = yield* Effect.acquireRelease(Queue.unbounded<CommandEvent>(), (queue) =>
+			Effect.gen(function* () {
+				yield* Effect.logInfo("Shutting down command queue").pipe(
+					Effect.annotateLogs("service", "RedisCommandListener"),
+				)
+				yield* Queue.shutdown(queue)
+			}),
 		)
 
 		// Acquire Redis client and subscription with proper cleanup

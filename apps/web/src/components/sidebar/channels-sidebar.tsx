@@ -203,9 +203,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 						</PrimitiveButton>
 						<MenuContent className="min-w-(--trigger-width)">
 							{isMobile ? (
-								<SwitchServerMenu
-									onCreateOrganization={() => createOrgModal.open()}
-								/>
+								<SwitchServerMenu onCreateOrganization={() => createOrgModal.open()} />
 							) : (
 								<>
 									<MenuSection>

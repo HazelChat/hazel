@@ -11,15 +11,15 @@
  * If a bot already exists, it will be skipped and no new token will be generated.
  */
 
-import { Database, schema } from "@hazel/db";
-import type { BotId, UserId } from "@hazel/schema";
-import { createHash, randomUUID } from "crypto";
-import { eq } from "drizzle-orm";
-import { Effect, Logger, LogLevel } from "effect";
-import { DatabaseLive } from "../src/services/database";
+import { Database, schema } from "@hazel/db"
+import type { BotId, UserId } from "@hazel/schema"
+import { createHash, randomUUID } from "crypto"
+import { eq } from "drizzle-orm"
+import { Effect, Logger, LogLevel } from "effect"
+import { DatabaseLive } from "../src/services/database"
 
 // Fixed namespace for deterministic UUID generation (DNS namespace UUID)
-const NAMESPACE_UUID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+const NAMESPACE_UUID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 
 /**
  * Internal bot configurations.
@@ -28,8 +28,7 @@ const NAMESPACE_UUID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 const INTERNAL_BOTS = {
 	linear: {
 		name: "Linear",
-		description:
-			"Linear integration bot for creating issues and unfurling URLs",
+		description: "Linear integration bot for creating issues and unfurling URLs",
 		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
 		allowedIntegrations: ["linear"] as const,
 	},
@@ -40,9 +39,9 @@ const INTERNAL_BOTS = {
 	//   avatarUrl: "https://cdn.brandfetch.io/github.com/w/64/h/64/theme/dark/icon",
 	//   allowedIntegrations: ["github"] as const,
 	// },
-} as const;
+} as const
 
-type InternalBotProvider = keyof typeof INTERNAL_BOTS;
+type InternalBotProvider = keyof typeof INTERNAL_BOTS
 
 /**
  * Generate a deterministic UUID v5-like hash from namespace + name
@@ -50,7 +49,7 @@ type InternalBotProvider = keyof typeof INTERNAL_BOTS;
 function deterministicUUID(namespace: string, name: string): string {
 	const hash = createHash("sha256")
 		.update(namespace + name)
-		.digest("hex");
+		.digest("hex")
 
 	// Format as UUID (8-4-4-4-12)
 	return [
@@ -59,25 +58,25 @@ function deterministicUUID(namespace: string, name: string): string {
 		hash.slice(12, 16),
 		hash.slice(16, 20),
 		hash.slice(20, 32),
-	].join("-");
+	].join("-")
 }
 
 /**
  * Generate a secure random token
  */
 function generateToken(): string {
-	return `hzl_bot_${randomUUID().replace(/-/g, "")}${randomUUID().replace(/-/g, "")}`;
+	return `hzl_bot_${randomUUID().replace(/-/g, "")}${randomUUID().replace(/-/g, "")}`
 }
 
 /**
  * Hash a token using SHA-256
  */
 async function hashToken(token: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+	const encoder = new TextEncoder()
+	const data = encoder.encode(token)
+	const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+	const hashArray = Array.from(new Uint8Array(hashBuffer))
+	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
 /**
@@ -85,23 +84,17 @@ async function hashToken(token: string): Promise<string> {
  */
 const seedBot = (provider: InternalBotProvider) =>
 	Effect.gen(function* () {
-		const config = INTERNAL_BOTS[provider];
-		const db = yield* Database.Database;
+		const config = INTERNAL_BOTS[provider]
+		const db = yield* Database.Database
 
 		// Generate deterministic IDs
-		const botUserId = deterministicUUID(
-			NAMESPACE_UUID,
-			`internal-bot-user-${provider}`,
-		) as UserId;
-		const botId = deterministicUUID(
-			NAMESPACE_UUID,
-			`internal-bot-${provider}`,
-		) as BotId;
-		const externalId = `internal-bot-${provider}`;
-		const botEmail = `${provider}-bot@internal.hazel.sh`;
+		const botUserId = deterministicUUID(NAMESPACE_UUID, `internal-bot-user-${provider}`) as UserId
+		const botId = deterministicUUID(NAMESPACE_UUID, `internal-bot-${provider}`) as BotId
+		const externalId = `internal-bot-${provider}`
+		const botEmail = `${provider}-bot@internal.hazel.sh`
 
-		console.log(`\n[${config.name} Bot]`);
-		console.log("  -> Checking if bot exists...");
+		console.log(`\n[${config.name} Bot]`)
+		console.log("  -> Checking if bot exists...")
 
 		// Check if bot user already exists
 		const existingUser = yield* db.execute((client) =>
@@ -110,11 +103,11 @@ const seedBot = (provider: InternalBotProvider) =>
 				.from(schema.usersTable)
 				.where(eq(schema.usersTable.externalId, externalId))
 				.limit(1),
-		);
+		)
 
 		if (existingUser.length > 0) {
-			console.log("  -> Bot already exists, skipping...");
-			console.log(`     Bot User ID: ${existingUser[0].id}`);
+			console.log("  -> Bot already exists, skipping...")
+			console.log(`     Bot User ID: ${existingUser[0].id}`)
 
 			// Get the bot record to show bot ID
 			const existingBot = yield* db.execute((client) =>
@@ -123,23 +116,23 @@ const seedBot = (provider: InternalBotProvider) =>
 					.from(schema.botsTable)
 					.where(eq(schema.botsTable.userId, existingUser[0].id as UserId))
 					.limit(1),
-			);
+			)
 
 			if (existingBot.length > 0) {
-				console.log(`     Bot ID: ${existingBot[0].id}`);
+				console.log(`     Bot ID: ${existingBot[0].id}`)
 			}
 
-			return { created: false, provider };
+			return { created: false, provider }
 		}
 
-		console.log("  -> Bot not found, creating...");
+		console.log("  -> Bot not found, creating...")
 
 		// Generate token
-		const token = generateToken();
-		const tokenHash = yield* Effect.promise(() => hashToken(token));
+		const token = generateToken()
+		const tokenHash = yield* Effect.promise(() => hashToken(token))
 
 		// Create bot user
-		console.log("  -> Creating bot user...");
+		console.log("  -> Creating bot user...")
 		yield* db.execute((client) =>
 			client.insert(schema.usersTable).values({
 				id: botUserId,
@@ -150,11 +143,11 @@ const seedBot = (provider: InternalBotProvider) =>
 				avatarUrl: config.avatarUrl,
 				userType: "machine",
 			}),
-		);
-		console.log("  -> Bot user created");
+		)
+		console.log("  -> Bot user created")
 
 		// Create bot record
-		console.log("  -> Creating bot record...");
+		console.log("  -> Creating bot record...")
 		yield* db.execute((client) =>
 			client.insert(schema.botsTable).values({
 				id: botId,
@@ -166,82 +159,73 @@ const seedBot = (provider: InternalBotProvider) =>
 				isPublic: false,
 				allowedIntegrations: [...config.allowedIntegrations],
 			}),
-		);
-		console.log("  -> Bot record created");
+		)
+		console.log("  -> Bot record created")
 
 		// Print token
-		console.log("\n" + "=".repeat(60));
-		console.log(
-			`BOT TOKEN for ${config.name.toUpperCase()} (save this - you can't retrieve it later!):`,
-		);
-		console.log("=".repeat(60));
-		console.log(`\n${token}\n`);
-		console.log("=".repeat(60));
+		console.log("\n" + "=".repeat(60))
+		console.log(`BOT TOKEN for ${config.name.toUpperCase()} (save this - you can't retrieve it later!):`)
+		console.log("=".repeat(60))
+		console.log(`\n${token}\n`)
+		console.log("=".repeat(60))
 
-		console.log(`\nAdd this to your bots/${provider}-bot/.env file:`);
-		console.log(`BOT_TOKEN=${token}`);
+		console.log(`\nAdd this to your bots/${provider}-bot/.env file:`)
+		console.log(`BOT_TOKEN=${token}`)
 
-		console.log(`\nBot Details:`);
-		console.log(`   Bot ID: ${botId}`);
-		console.log(`   Bot User ID: ${botUserId}`);
-		console.log(`   Name: ${config.name}`);
+		console.log(`\nBot Details:`)
+		console.log(`   Bot ID: ${botId}`)
+		console.log(`   Bot User ID: ${botUserId}`)
+		console.log(`   Name: ${config.name}`)
 
-		return { created: true, provider, token, botId, botUserId };
-	});
+		return { created: true, provider, token, botId, botUserId }
+	})
 
 // Parse command line arguments
-const args = process.argv.slice(2);
-const providerIndex = args.indexOf("--provider");
-const specificProvider =
-	providerIndex !== -1
-		? (args[providerIndex + 1] as InternalBotProvider)
-		: null;
+const args = process.argv.slice(2)
+const providerIndex = args.indexOf("--provider")
+const specificProvider = providerIndex !== -1 ? (args[providerIndex + 1] as InternalBotProvider) : null
 
 // Validate provider if specified
 if (specificProvider && !(specificProvider in INTERNAL_BOTS)) {
-	console.error(`Error: Unknown provider "${specificProvider}"`);
-	console.error(
-		`Available providers: ${Object.keys(INTERNAL_BOTS).join(", ")}`,
-	);
-	process.exit(1);
+	console.error(`Error: Unknown provider "${specificProvider}"`)
+	console.error(`Available providers: ${Object.keys(INTERNAL_BOTS).join(", ")}`)
+	process.exit(1)
 }
 
 const seedInternalBots = Effect.gen(function* () {
-	console.log("\n=== Seeding Internal Bots ===");
+	console.log("\n=== Seeding Internal Bots ===")
 
 	const providersToSeed = specificProvider
 		? [specificProvider]
-		: (Object.keys(INTERNAL_BOTS) as InternalBotProvider[]);
+		: (Object.keys(INTERNAL_BOTS) as InternalBotProvider[])
 
-	const results: Array<{ created: boolean; provider: string }> = [];
+	const results: Array<{ created: boolean; provider: string }> = []
 
 	for (const provider of providersToSeed) {
-		const result = yield* seedBot(provider);
-		results.push(result);
+		const result = yield* seedBot(provider)
+		results.push(result)
 	}
 
-	console.log("\n=== Seeding Complete ===");
+	console.log("\n=== Seeding Complete ===")
 
-	const created = results.filter((r) => r.created);
-	const skipped = results.filter((r) => !r.created);
+	const created = results.filter((r) => r.created)
+	const skipped = results.filter((r) => !r.created)
 
 	if (created.length > 0) {
-		console.log(`\nCreated: ${created.map((r) => r.provider).join(", ")}`);
+		console.log(`\nCreated: ${created.map((r) => r.provider).join(", ")}`)
 	}
 	if (skipped.length > 0) {
-		console.log(
-			`Skipped (already exist): ${skipped.map((r) => r.provider).join(", ")}`,
-		);
+		console.log(`Skipped (already exist): ${skipped.map((r) => r.provider).join(", ")}`)
 	}
-});
+})
 
 // Run the script
 const runnable = seedInternalBots.pipe(
 	Effect.provide(DatabaseLive),
 	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
-);
+)
 
 Effect.runPromise(runnable).catch((error) => {
-	console.error(`\nScript failed: ${error}`);
-	process.exit(1);
-});
+	console.error(`\nScript failed: ${error}`)
+	process.exit(1)
+})

@@ -57,5 +57,4 @@ export const getEventType = (table: string, operation: EventOperation): EventTyp
 /**
  * Type guard to check if value is an ElectricEvent
  */
-export const isElectricEvent = (value: unknown): value is ElectricEvent =>
-	value instanceof ElectricEvent
+export const isElectricEvent = (value: unknown): value is ElectricEvent => value instanceof ElectricEvent

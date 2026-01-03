@@ -70,10 +70,7 @@ export function ChangeRoleModal() {
 
 	return (
 		<Modal isOpen={isOpen} onOpenChange={(open) => !open && handleClose()}>
-			<ModalContent
-				key={metadata.userId}
-				size="md"
-			>
+			<ModalContent key={metadata.userId} size="md">
 				<ModalHeader>
 					<ModalTitle>Change role for {metadata.name}</ModalTitle>
 					<Description>Select a new role for this team member</Description>

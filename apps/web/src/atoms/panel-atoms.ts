@@ -59,7 +59,10 @@ export const usePanelWidth = (panelType: PanelType) => {
 
 	const setWidth = useCallback(
 		(newWidth: number) => {
-			const clamped = Math.max(PANEL_CONSTRAINTS.minWidth, Math.min(PANEL_CONSTRAINTS.maxWidth, newWidth))
+			const clamped = Math.max(
+				PANEL_CONSTRAINTS.minWidth,
+				Math.min(PANEL_CONSTRAINTS.maxWidth, newWidth),
+			)
 			setWidthAtom(clamped)
 		},
 		[setWidthAtom],
