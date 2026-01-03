@@ -42,7 +42,6 @@ export const DatabaseLive = Layer.unwrapEffect(
 // ============ Encryption Service ============
 
 export class IntegrationEncryption extends Effect.Service<IntegrationEncryption>()("IntegrationEncryption", {
-	accessors: true,
 	effect: Effect.gen(function* () {
 		const currentKey = yield* Config.redacted("INTEGRATION_ENCRYPTION_KEY")
 		const currentKeyVersion = yield* Config.number("INTEGRATION_ENCRYPTION_KEY_VERSION").pipe(
