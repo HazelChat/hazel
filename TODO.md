@@ -5,8 +5,7 @@
 - setup sequin locally with config as code
 
 
-# Bot SDK
-- use http public api endpoints for messgae creation etc.
+
 
 # Bugs
 

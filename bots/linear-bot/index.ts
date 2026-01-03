@@ -83,39 +83,19 @@ const BotLayers = Layer.mergeAll(
 const program = Effect.gen(function* () {
 	const bot = yield* HazelBotClient
 
-	// Channel cache for URL unfurling (maps channelId -> organizationId)
-	const channelOrgMap = new Map<string, string>()
-
 	yield* Effect.log("Starting Linear Bot...")
 
-	// Cache channel org IDs from channel events
-	yield* bot.onChannelCreated((channel) =>
-		Effect.sync(() => {
-			channelOrgMap.set(channel.id, channel.organizationId)
-		}),
-	)
-
-	yield* bot.onChannelUpdated((channel) =>
-		Effect.sync(() => {
-			channelOrgMap.set(channel.id, channel.organizationId)
-		}),
-	)
-
-	// Handle /issue command with typesafe args
 	yield* bot.onCommand(IssueCommand, (ctx) =>
 		Effect.gen(function* () {
 			yield* Effect.log(`Received /issue command from ${ctx.userId}`)
 
-			// ctx.args.title is typed as string (required)
-			// ctx.args.description is typed as string | undefined (optional)
+			
 			const { title, description } = ctx.args
 
 			yield* Effect.log(`Creating Linear issue: ${title}`)
 
-			// Get the org's Linear access token from the database
 			const accessToken = yield* getLinearAccessToken(ctx.orgId)
 
-			// Create the issue directly via Linear API
 			const issue = yield* LinearApiClient.createIssue(accessToken, {
 				title,
 				description,
