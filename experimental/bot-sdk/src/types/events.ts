@@ -1,12 +1,8 @@
 /**
- * Generic event structure from Electric SQL shape stream
+ * Event types for Electric SQL shape stream events
  */
-export interface ElectricEvent<A = any> {
-	readonly operation: "insert" | "update" | "delete"
-	readonly table: string
-	readonly value: A
-	readonly timestamp: Date
-}
+
+import { Data } from "effect"
 
 /**
  * Event type discriminator (table.operation format)
@@ -14,8 +10,52 @@ export interface ElectricEvent<A = any> {
 export type EventType = `${string}.${"insert" | "update" | "delete"}`
 
 /**
+ * Operation types for Electric events
+ */
+export type EventOperation = "insert" | "update" | "delete"
+
+/**
+ * Immutable Electric event using Effect Data.Class
+ * Provides structural equality and hash for efficient comparisons
+ */
+export class ElectricEvent<A = unknown> extends Data.Class<{
+	readonly operation: EventOperation
+	readonly table: string
+	readonly value: A
+	readonly timestamp: Date
+}> {
+	/**
+	 * Get the event type discriminator (table.operation)
+	 */
+	get eventType(): EventType {
+		return `${this.table}.${this.operation}` as EventType
+	}
+}
+
+/**
+ * Factory function for creating ElectricEvent instances
+ */
+export const createElectricEvent = <A>(params: {
+	readonly operation: EventOperation
+	readonly table: string
+	readonly value: A
+	readonly timestamp?: Date
+}): ElectricEvent<A> =>
+	new ElectricEvent({
+		operation: params.operation,
+		table: params.table,
+		value: params.value,
+		timestamp: params.timestamp ?? new Date(),
+	})
+
+/**
  * Helper to create event type from table and operation
  */
-export function getEventType(table: string, operation: string): EventType {
-	return `${table}.${operation}` as EventType
-}
+export const getEventType = (table: string, operation: EventOperation): EventType =>
+	`${table}.${operation}` as EventType
+
+/**
+ * Type guard to check if value is an ElectricEvent
+ */
+export const isElectricEvent = (value: unknown): value is ElectricEvent =>
+	value instanceof ElectricEvent

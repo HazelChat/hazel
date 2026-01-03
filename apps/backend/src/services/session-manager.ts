@@ -4,7 +4,6 @@ import {
 	InvalidJwtPayloadError,
 	JwtPayload,
 	type OrganizationId,
-	OrganizationId as OrgId,
 	SessionAuthenticationError,
 	SessionExpiredError,
 	SessionLoadError,

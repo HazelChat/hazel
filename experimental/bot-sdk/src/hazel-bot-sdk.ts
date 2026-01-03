@@ -16,9 +16,9 @@ import type {
 	UserId,
 } from "@hazel/domain/ids"
 import { HazelApi } from "@hazel/domain/http"
-import { Channel, ChannelMember, Message, MessageReaction } from "@hazel/domain/models"
+import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
-import { Config, Context, Effect, Layer, Logger, ManagedRuntime, Option, Schema } from "effect"
+import { Config, Context, Duration, Effect, Layer, Logger, ManagedRuntime, Option, RateLimiter, Schema } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import {
@@ -29,7 +29,7 @@ import {
 	type TypedCommandContext,
 } from "./command.ts"
 import type { HandlerError } from "./errors.ts"
-import { BotRpcClient, BotRpcClientConfigTag, type BotRpcClientConfig, BotRpcClientLive } from "./rpc/client.ts"
+import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
 	ElectricEventQueue,
@@ -116,10 +116,11 @@ export interface SendMessageOptions {
 
 /**
  * Hazel Bot Client - Effect Service with typed convenience methods
+ * Uses scoped: since it manages scoped resources (RateLimiter)
  */
 export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotClient", {
 	accessors: true,
-	effect: Effect.gen(function* () {
+	scoped: Effect.gen(function* () {
 		// Get the typed BotClient for Hazel subscriptions
 		const bot = yield* createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 		// Get the RPC client from context
@@ -141,7 +142,15 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			),
 		)
 		// Get auth context (contains botId and userId for message authoring)
-		const authContext = yield* bot.getAuthContext
+		const _authContext = yield* bot.getAuthContext
+
+		// Create rate limiter for outbound message operations
+		// Default: 10 messages per second to prevent API rate limiting
+		const messageLimiter = yield* RateLimiter.make({
+			limit: 10,
+			interval: Duration.seconds(1),
+		})
+
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		// Try to get the command listener (optional - only available if commands are configured)
@@ -177,33 +186,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 		/**
 		 * Sync commands with the backend via HTTP (type-safe HttpApiClient)
+		 * Uses Option.match for cleaner handling
 		 */
-		const syncCommands = Effect.gen(function* () {
-			if (Option.isNone(runtimeConfigOption)) {
-				return
-			}
+		const syncCommands = Option.match(runtimeConfigOption, {
+			onNone: () => Effect.void,
+			onSome: (config) =>
+				Effect.gen(function* () {
+					const cmds = config.commands.commands
+					if (cmds.length === 0) {
+						return
+					}
 
-			const config = runtimeConfigOption.value
-			const cmds = config.commands.commands
-			if (cmds.length === 0) {
-				return
-			}
+					yield* Effect.log(`Syncing ${cmds.length} commands with backend...`)
 
-			yield* Effect.log(`Syncing ${cmds.length} commands with backend...`)
+					// Call the sync endpoint using type-safe HttpApiClient
+					const response = yield* httpApiClient["bot-commands"].syncCommands({
+						payload: {
+							commands: cmds.map((cmd: CommandDef) => ({
+								name: cmd.name,
+								description: cmd.description,
+								arguments: schemaFieldsToArgs(cmd.args),
+								usageExample: cmd.usageExample ?? null,
+							})),
+						},
+					})
 
-			// Call the sync endpoint using type-safe HttpApiClient
-			const response = yield* httpApiClient["bot-commands"].syncCommands({
-				payload: {
-					commands: cmds.map((cmd: CommandDef) => ({
-						name: cmd.name,
-						description: cmd.description,
-						arguments: schemaFieldsToArgs(cmd.args),
-						usageExample: cmd.usageExample ?? null,
-					})),
-				},
-			})
-
-			yield* Effect.log(`Synced ${response.syncedCount} commands successfully`)
+					yield* Effect.log(`Synced ${response.syncedCount} commands successfully`)
+				}),
 		})
 
 		return {
@@ -258,6 +267,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			/**
 			 * Message operations - send, reply, update, delete, react
 			 * Uses the public HTTP API at /api/v1/messages with type-safe HttpApiClient
+			 * All operations are rate-limited to prevent API throttling
 			 */
 			message: {
 				/**
@@ -267,21 +277,23 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param options - Optional settings (reply, thread, attachments)
 				 */
 				send: (channelId: ChannelId, content: string, options?: SendMessageOptions) =>
-					httpApiClient["api-v1-messages"]
-						.createMessage({
-							payload: {
-								channelId,
-								content,
-								replyToMessageId: options?.replyToMessageId ?? null,
-								threadChannelId: options?.threadChannelId ?? null,
-								attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
-								embeds: null,
-							},
-						})
-						.pipe(
-							Effect.map((r) => r.data),
-							Effect.withSpan("bot.message.send", { attributes: { channelId } }),
-						),
+					messageLimiter(
+						httpApiClient["api-v1-messages"]
+							.createMessage({
+								payload: {
+									channelId,
+									content,
+									replyToMessageId: options?.replyToMessageId ?? null,
+									threadChannelId: options?.threadChannelId ?? null,
+									attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+									embeds: null,
+								},
+							})
+							.pipe(
+								Effect.map((r) => r.data),
+								Effect.withSpan("bot.message.send", { attributes: { channelId } }),
+							),
+					),
 
 				/**
 				 * Reply to a message
@@ -294,23 +306,25 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					content: string,
 					options?: Omit<SendMessageOptions, "replyToMessageId">,
 				) =>
-					httpApiClient["api-v1-messages"]
-						.createMessage({
-							payload: {
-								channelId: message.channelId,
-								content,
-								replyToMessageId: message.id,
-								threadChannelId: options?.threadChannelId ?? null,
-								attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
-								embeds: null,
-							},
-						})
-						.pipe(
-							Effect.map((r) => r.data),
-							Effect.withSpan("bot.message.reply", {
-								attributes: { channelId: message.channelId, replyToMessageId: message.id },
-							}),
-						),
+					messageLimiter(
+						httpApiClient["api-v1-messages"]
+							.createMessage({
+								payload: {
+									channelId: message.channelId,
+									content,
+									replyToMessageId: message.id,
+									threadChannelId: options?.threadChannelId ?? null,
+									attachmentIds: options?.attachmentIds ? [...options.attachmentIds] : undefined,
+									embeds: null,
+								},
+							})
+							.pipe(
+								Effect.map((r) => r.data),
+								Effect.withSpan("bot.message.reply", {
+									attributes: { channelId: message.channelId, replyToMessageId: message.id },
+								}),
+							),
+					),
 
 				/**
 				 * Update a message
@@ -318,26 +332,30 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param content - New content
 				 */
 				update: (message: MessageType, content: string) =>
-					httpApiClient["api-v1-messages"]
-						.updateMessage({
-							path: { id: message.id },
-							payload: { content },
-						})
-						.pipe(
-							Effect.map((r) => r.data),
-							Effect.withSpan("bot.message.update", { attributes: { messageId: message.id } }),
-						),
+					messageLimiter(
+						httpApiClient["api-v1-messages"]
+							.updateMessage({
+								path: { id: message.id },
+								payload: { content },
+							})
+							.pipe(
+								Effect.map((r) => r.data),
+								Effect.withSpan("bot.message.update", { attributes: { messageId: message.id } }),
+							),
+					),
 
 				/**
 				 * Delete a message
 				 * @param id - Message ID to delete
 				 */
 				delete: (id: MessageId) =>
-					httpApiClient["api-v1-messages"]
-						.deleteMessage({
-							path: { id },
-						})
-						.pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
+					messageLimiter(
+						httpApiClient["api-v1-messages"]
+							.deleteMessage({
+								path: { id },
+							})
+							.pipe(Effect.withSpan("bot.message.delete", { attributes: { messageId: id } })),
+					),
 
 				/**
 				 * Toggle a reaction on a message
@@ -345,15 +363,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param emoji - Emoji to toggle
 				 */
 				react: (message: MessageType, emoji: string) =>
-					httpApiClient["api-v1-messages"]
-						.toggleReaction({
-							path: { id: message.id },
-							payload: {
-								emoji,
-								channelId: message.channelId,
-							},
-						})
-						.pipe(Effect.withSpan("bot.message.react", { attributes: { messageId: message.id, emoji } })),
+					messageLimiter(
+						httpApiClient["api-v1-messages"]
+							.toggleReaction({
+								path: { id: message.id },
+								payload: {
+									emoji,
+									channelId: message.channelId,
+								},
+							})
+							.pipe(Effect.withSpan("bot.message.react", { attributes: { messageId: message.id, emoji } })),
+					),
 			},
 
 			/**
@@ -463,65 +483,67 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				// Start Electric event listener
 				yield* bot.start
 
-				// Start Redis command listener (if available)
-				if (Option.isSome(commandListenerOption)) {
-					const commandListener = commandListenerOption.value
-					yield* commandListener.start
+				// Start Redis command dispatcher (if listener is available)
+				// Note: RedisCommandListener now auto-starts on construction
+				yield* Option.match(commandListenerOption, {
+					onNone: () => Effect.void,
+					onSome: (commandListener) =>
+						Effect.gen(function* () {
+							// Start command dispatcher fiber
+							yield* Effect.forkScoped(
+								Effect.forever(
+									Effect.gen(function* () {
+										const event = yield* commandListener.take
 
-					// Start command dispatcher fiber
-					yield* Effect.forkScoped(
-						Effect.forever(
-							Effect.gen(function* () {
-								const event = yield* commandListener.take
+										const handler = commandHandlers.get(event.commandName)
+										if (!handler) {
+											yield* Effect.logWarning(`No handler for command: ${event.commandName}`)
+											return
+										}
 
-								const handler = commandHandlers.get(event.commandName)
-								if (!handler) {
-									yield* Effect.logWarning(`No handler for command: ${event.commandName}`)
-									return
-								}
-
-								// Find the command definition to decode args
-								const cmdDef = Option.flatMap(commandGroup, (group) =>
-									Option.fromNullable(group.commands.find((c: CommandDef) => c.name === event.commandName)),
-								)
-
-								// Decode args using the command's schema if available
-								const decodedArgs = Option.isSome(cmdDef)
-									? yield* Schema.decodeUnknown(cmdDef.value.argsSchema)(event.arguments).pipe(
-											Effect.catchAll((e) => {
-												
-												return Effect.succeed(event.arguments)
-											}),
+										// Find the command definition to decode args
+										const cmdDef = Option.flatMap(commandGroup, (group) =>
+											Option.fromNullable(group.commands.find((c: CommandDef) => c.name === event.commandName)),
 										)
-									: event.arguments
 
-								const ctx: TypedCommandContext<unknown> = {
-									commandName: event.commandName,
-									channelId: event.channelId as ChannelId,
-									userId: event.userId as UserId,
-									orgId: event.orgId as OrganizationId,
-									args: decodedArgs,
-									timestamp: event.timestamp,
-								}
+										// Decode args using the command's schema if available
+										// Uses Option.match for cleaner handling
+										const decodedArgs = yield* Option.match(cmdDef, {
+											onNone: () => Effect.succeed(event.arguments),
+											onSome: (def) =>
+												Schema.decodeUnknown(def.argsSchema)(event.arguments).pipe(
+													Effect.catchAll(() => Effect.succeed(event.arguments)),
+												),
+										})
 
-								yield* handler(ctx).pipe(
-									Effect.withSpan("bot.command.handle", {
-										attributes: {
+										const ctx: TypedCommandContext<unknown> = {
 											commandName: event.commandName,
-											channelId: event.channelId,
-											userId: event.userId,
-										},
-									}),
-									Effect.catchAllCause((cause) =>
-										Effect.logError(`Command handler failed for ${event.commandName}`, { cause }),
-									),
-								)
-							}),
-						),
-					)
+											channelId: event.channelId as ChannelId,
+											userId: event.userId as UserId,
+											orgId: event.orgId as OrganizationId,
+											args: decodedArgs,
+											timestamp: event.timestamp,
+										}
 
-					yield* Effect.log("Command listener started")
-				}
+										yield* handler(ctx).pipe(
+											Effect.withSpan("bot.command.handle", {
+												attributes: {
+													commandName: event.commandName,
+													channelId: event.channelId,
+													userId: event.userId,
+												},
+											}),
+											Effect.catchAllCause((cause) =>
+												Effect.logError(`Command handler failed for ${event.commandName}`, { cause }),
+											),
+										)
+									}),
+								),
+							)
+
+							yield* Effect.log("Command dispatcher started")
+						}),
+				})
 
 				yield* Effect.log("Bot client started successfully")
 			}),

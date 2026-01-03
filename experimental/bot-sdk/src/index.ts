@@ -46,6 +46,7 @@ export * from "./bot-client.ts"
 export * from "./command.ts"
 export * from "./config.ts"
 export * from "./errors.ts"
+export * from "./retry.ts"
 // Hazel-specific convenience layer (recommended for Hazel integrations)
 export * from "./hazel-bot-sdk.ts"
 export * from "./layers.ts"

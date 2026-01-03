@@ -62,3 +62,58 @@ export class DispatchError extends Schema.TaggedError<DispatchError>()("Dispatch
 	eventType: Schema.String,
 	cause: Schema.Unknown,
 }) {}
+
+/**
+ * Error thrown for transient failures that can be retried
+ */
+export class TransientError extends Schema.TaggedError<TransientError>()("TransientError", {
+	message: Schema.String,
+	cause: Schema.Unknown,
+}) {
+	readonly retryable = true
+}
+
+/**
+ * Error thrown when connection to external service fails
+ */
+export class ConnectionError extends Schema.TaggedError<ConnectionError>()("ConnectionError", {
+	message: Schema.String,
+	service: Schema.Literal("redis", "electric", "backend"),
+	cause: Schema.Unknown,
+}) {
+	readonly retryable = true
+}
+
+/**
+ * Error thrown when Redis subscription fails
+ */
+export class RedisSubscriptionError extends Schema.TaggedError<RedisSubscriptionError>()(
+	"RedisSubscriptionError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {
+	readonly retryable = true
+}
+
+/**
+ * Error thrown when schema validation fails
+ */
+export class ValidationError extends Schema.TaggedError<ValidationError>()("ValidationError", {
+	message: Schema.String,
+	table: Schema.String,
+	cause: Schema.Unknown,
+}) {
+	readonly retryable = false
+}
+
+/**
+ * Check if an error is retryable
+ */
+export const isRetryable = (error: unknown): boolean => {
+	if (typeof error === "object" && error !== null && "retryable" in error) {
+		return Boolean(error.retryable)
+	}
+	return false
+}

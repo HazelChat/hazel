@@ -1,6 +1,5 @@
 import type { ConfigError } from "effect"
-import { Config, Effect, Fiber, Layer, Schedule, type Scope } from "effect"
-import { HandlerError } from "../errors.ts"
+import { Config, Effect, Fiber, Layer, Metric, Schedule, type Scope } from "effect"
 import { composeMiddleware, type Middleware } from "../middleware.ts"
 import type { EventType } from "../types/events.ts"
 import type { EventHandler, EventHandlerRegistry } from "../types/handlers.ts"
@@ -27,6 +26,13 @@ export interface EventDispatcherConfig {
 	 * @default []
 	 */
 	readonly middleware?: readonly Middleware[]
+
+	/**
+	 * Maximum concurrent handler executions per event type
+	 * Use "unbounded" for unlimited concurrency (not recommended for production)
+	 * @default 10
+	 */
+	readonly maxConcurrentHandlers?: number | "unbounded"
 }
 
 /**
@@ -35,7 +41,15 @@ export interface EventDispatcherConfig {
 export const defaultEventDispatcherConfig: EventDispatcherConfig = {
 	maxRetries: 3,
 	retryBaseDelay: 100,
+	maxConcurrentHandlers: 10,
 }
+
+/**
+ * Metrics for event dispatcher
+ */
+const handlerExecutionsCounter = Metric.counter("bot_handler_executions")
+const handlerFailuresCounter = Metric.counter("bot_handler_failures")
+const handlerRetriesCounter = Metric.counter("bot_handler_retries")
 
 /**
  * Service that dispatches events to registered handlers
@@ -48,10 +62,20 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 		// Registry of event handlers (Map-based for dynamic event types)
 		const registry: EventHandlerRegistry = new Map()
 
-		// Retry policy with exponential backoff
+		// Retry policy with exponential backoff and metrics
 		const retryPolicy = Schedule.exponential(config.retryBaseDelay).pipe(
 			Schedule.intersect(Schedule.recurs(config.maxRetries)),
+			Schedule.tapOutput((attempt) =>
+				Effect.gen(function* () {
+					if (typeof attempt === "number" && attempt > 0) {
+						yield* Metric.increment(handlerRetriesCounter)
+					}
+				}),
+			),
 		)
+
+		// Resolve concurrency setting
+		const concurrency = config.maxConcurrentHandlers ?? 10
 
 		// Helper to get or create handler set for an event type
 		const getHandlers = (eventType: EventType): Set<EventHandler<any, any, any>> => {
@@ -74,8 +98,7 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 					return
 				}
 
-				// Execute all handlers in parallel
-				// Note: Type cast is safe because handler requirements (R) are satisfied by runtime layers
+				// Execute all handlers with bounded concurrency
 				yield* Effect.forEach(
 					Array.from(handlers),
 					(handler) => {
@@ -87,17 +110,23 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 						)
 
 						return wrappedHandler.pipe(
+							Effect.tap(() => Metric.increment(handlerExecutionsCounter)),
 							Effect.withSpan("bot.event.handle", { attributes: { eventType } }),
 							Effect.retry(retryPolicy),
 							Effect.catchAllCause((cause) =>
-								Effect.logError("Handler failed after retries", {
-									cause,
-									eventType,
-								}).pipe(Effect.annotateLogs("service", "EventDispatcher")),
+								Effect.gen(function* () {
+									yield* Metric.increment(handlerFailuresCounter).pipe(
+										Effect.tagMetrics("event_type", eventType),
+									)
+									yield* Effect.logError("Handler failed after retries", {
+										cause,
+										eventType,
+									}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
+								}),
 							),
 						)
 					},
-					{ concurrency: "unbounded" },
+					{ concurrency },
 				)
 			}) as Effect.Effect<void, never>
 
@@ -159,12 +188,23 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 				}),
 
 			/**
+			 * Unregister a handler for a specific event type
+			 */
+			off: <A, E, R>(eventType: EventType, handler: EventHandler<A, E, R>) =>
+				Effect.sync(() => {
+					const handlers = registry.get(eventType)
+					if (handlers) {
+						handlers.delete(handler as EventHandler<any, any, any>)
+					}
+				}),
+
+			/**
 			 * Start the event dispatcher - begins consuming events for all registered handlers
 			 */
 			start: Effect.gen(function* () {
-				yield* Effect.logInfo("Starting event dispatcher").pipe(
-					Effect.annotateLogs("service", "EventDispatcher"),
-				)
+				yield* Effect.logInfo("Starting event dispatcher", {
+					concurrency: concurrency === "unbounded" ? "unbounded" : concurrency,
+				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
 
 				// Start consumers for all registered event types
 				const eventTypes = Array.from(registry.keys())
@@ -185,6 +225,20 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 					eventTypes: eventTypes.join(", "),
 				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
 			}),
+
+			/**
+			 * Get registered event types
+			 */
+			registeredEventTypes: Effect.sync(() => Array.from(registry.keys())),
+
+			/**
+			 * Get handler count for an event type
+			 */
+			handlerCount: (eventType: EventType) =>
+				Effect.sync(() => {
+					const handlers = registry.get(eventType)
+					return handlers ? handlers.size : 0
+				}),
 		}
 	}),
 }) {

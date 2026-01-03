@@ -3,11 +3,16 @@
  *
  * Subscribes to a Redis channel to receive command events from the backend.
  * Commands are published when users execute slash commands in the chat UI.
+ *
+ * The service auto-starts on construction and properly cleans up resources
+ * when the scope is closed.
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Layer, Queue, Schema } from "effect"
+import { Context, Effect, Layer, Queue, Ref, Schema } from "effect"
 import { BotAuth } from "../auth.ts"
+import { RedisSubscriptionError } from "../errors.ts"
+import { RetryStrategy } from "../retry.ts"
 
 // ============ Command Event Schema ============
 
@@ -38,16 +43,6 @@ export interface CommandContext {
 	readonly timestamp: number
 }
 
-// ============ Errors ============
-
-export class RedisSubscriptionError extends Schema.TaggedError<RedisSubscriptionError>()(
-	"RedisSubscriptionError",
-	{
-		message: Schema.String,
-		cause: Schema.optional(Schema.Unknown),
-	},
-) {}
-
 // ============ Config ============
 
 export interface RedisCommandListenerConfig {
@@ -66,35 +61,38 @@ export const RedisCommandListenerConfigTag = Context.GenericTag<RedisCommandList
  *
  * Subscribes to the bot's command channel and queues incoming command events
  * for processing by the command dispatcher.
+ *
+ * Auto-starts on construction - no need to call start() manually.
  */
 export class RedisCommandListener extends Effect.Service<RedisCommandListener>()("RedisCommandListener", {
 	accessors: true,
-	effect: Effect.gen(function* () {
+	scoped: Effect.gen(function* () {
 		const auth = yield* BotAuth
 		const context = yield* auth.getContext.pipe(Effect.orDie)
-		// Capture config during service construction (not in start)
 		const config = yield* RedisCommandListenerConfigTag
+		const channel = `bot:${context.botId}:commands`
 
-		// Create an unbounded queue for command events
-		const commandQueue = yield* Queue.unbounded<CommandEvent>()
+		// Track running state with Ref (immutable)
+		const isRunningRef = yield* Ref.make(false)
 
-		// Track subscription state
-		let isStarted = false
-		let unsubscribeFn: (() => void) | null = null
+		// Create command queue with proper scoped acquisition
+		const commandQueue = yield* Effect.acquireRelease(
+			Queue.unbounded<CommandEvent>(),
+			(queue) =>
+				Effect.gen(function* () {
+					yield* Effect.logInfo("Shutting down command queue").pipe(
+						Effect.annotateLogs("service", "RedisCommandListener"),
+					)
+					yield* Queue.shutdown(queue)
+				}),
+		)
 
-		return {
-			/**
-			 * Start listening for command events on the bot's Redis channel.
-			 * Must be called before take/takeAll.
-			 */
-			start: Effect.gen(function* () {
-				if (isStarted) {
-					yield* Effect.log("Redis command listener already started")
-					return
-				}
-
-				const channel = `bot:${context.botId}:commands`
-				yield* Effect.log(`Starting Redis command listener on channel: ${channel}`)
+		// Acquire Redis client and subscription with proper cleanup
+		yield* Effect.acquireRelease(
+			Effect.gen(function* () {
+				yield* Effect.logInfo(`Starting Redis command listener`, { channel }).pipe(
+					Effect.annotateLogs("service", "RedisCommandListener"),
+				)
 
 				// Dynamic import of Bun's Redis client
 				const { RedisClient } = yield* Effect.promise(() => import("bun"))
@@ -107,18 +105,17 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 							message: "Failed to connect to Redis for command subscription",
 							cause: error,
 						}),
-				})
+				}).pipe(Effect.retry(RetryStrategy.connectionErrors))
 
 				yield* Effect.tryPromise({
 					try: () =>
-						client.subscribe(channel, (message, chan) => {
+						client.subscribe(channel, (message, _chan) => {
 							try {
 								const parsed = JSON.parse(message)
 								const decoded = Schema.decodeUnknownSync(CommandEventSchema)(parsed)
-								// Queue the event (fire-and-forget from callback)
 								Effect.runSync(Queue.offer(commandQueue, decoded))
 							} catch (e) {
-								console.error(`Invalid command message on ${chan}:`, e)
+								console.error(`Invalid command message:`, e)
 							}
 						}),
 					catch: (error) =>
@@ -128,27 +125,27 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 						}),
 				})
 
-				// Store unsubscribe function for cleanup
-				unsubscribeFn = () => {
-					client.unsubscribe(channel)
-					client.close()
-				}
-
-				isStarted = true
-				yield* Effect.log(`Listening for commands on ${channel}`)
-
-				// Register cleanup on scope finalization
-				yield* Effect.addFinalizer(() =>
-					Effect.sync(() => {
-						if (unsubscribeFn) {
-							unsubscribeFn()
-							unsubscribeFn = null
-						}
-						isStarted = false
-					}),
+				yield* Ref.set(isRunningRef, true)
+				yield* Effect.logInfo(`Listening for commands`, { channel }).pipe(
+					Effect.annotateLogs("service", "RedisCommandListener"),
 				)
-			}),
 
+				return { client, channel }
+			}),
+			({ client, channel }) =>
+				Effect.gen(function* () {
+					yield* Effect.logInfo(`Stopping Redis command listener`, { channel }).pipe(
+						Effect.annotateLogs("service", "RedisCommandListener"),
+					)
+					yield* Ref.set(isRunningRef, false)
+					yield* Effect.sync(() => {
+						client.unsubscribe(channel)
+						client.close()
+					})
+				}),
+		)
+
+		return {
 			/**
 			 * Take the next command event from the queue (blocks until available)
 			 */
@@ -162,7 +159,12 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
 			/**
 			 * Check if the listener is currently running
 			 */
-			isRunning: Effect.succeed(isStarted),
+			isRunning: Ref.get(isRunningRef),
+
+			/**
+			 * Get the channel this listener is subscribed to
+			 */
+			channel: Effect.succeed(channel),
 		}
 	}),
 }) {}
@@ -171,7 +173,4 @@ export class RedisCommandListener extends Effect.Service<RedisCommandListener>()
  * Create a RedisCommandListener layer with the provided config
  */
 export const RedisCommandListenerLive = (config: RedisCommandListenerConfig) =>
-	Layer.provide(
-		RedisCommandListener.Default,
-		Layer.succeed(RedisCommandListenerConfigTag, config),
-	)
+	Layer.provide(RedisCommandListener.Default, Layer.succeed(RedisCommandListenerConfigTag, config))

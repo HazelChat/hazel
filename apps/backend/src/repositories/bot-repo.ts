@@ -7,7 +7,6 @@ import {
 	type TransactionClient,
 } from "@hazel/db";
 import { type BotId, policyRequire } from "@hazel/domain";
-import { Bot } from "@hazel/domain/models";
 import { Effect, Option } from "effect";
 import { DatabaseLive } from "../services/database";
 
