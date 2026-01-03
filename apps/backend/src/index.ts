@@ -7,7 +7,7 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
-import { Redis, S3 } from "@hazel/effect-bun"
+import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
 import { Config, Layer } from "effect"
@@ -145,17 +145,20 @@ const PolicyLive = Layer.mergeAll(
 	GitHubSubscriptionPolicy.Default,
 )
 
+// ResultPersistence layer for session caching (uses Redis backing)
+const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.Default))
+
 const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.Default,
-	SessionManager.Default,
 	WorkOS.Default,
 	WorkOSSync.Default,
 	WorkOSWebhookVerifier.Default,
 	DatabaseLive,
 	S3.Default,
 	Redis.Default,
+	PersistenceLive,
 	GitHub.GitHubAppJWTService.Default,
 	GitHub.GitHubApiClient.Default,
 	IntegrationTokenService.Default,
@@ -163,6 +166,8 @@ const MainLive = Layer.mergeAll(
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
 	RateLimiter.Default,
+	// SessionManager.Default includes BackendAuth.Default via dependencies
+	SessionManager.Default,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
 HttpLayerRouter.serve(AllRoutes).pipe(
@@ -173,9 +178,12 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 	Layer.provide(TracerLive),
 	Layer.provide(
 		AuthorizationLive.pipe(
+			// SessionManager.Default includes BackendAuth and UserRepo via dependencies
 			Layer.provideMerge(SessionManager.Default),
-			Layer.provideMerge(UserRepo.Default),
 			Layer.provideMerge(WorkOS.Default),
+			Layer.provideMerge(PersistenceLive),
+			Layer.provideMerge(Redis.Default),
+			Layer.provideMerge(DatabaseLive),
 		),
 	),
 	Layer.provide(

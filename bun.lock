@@ -25,6 +25,7 @@
         "@effect/rpc": "catalog:effect",
         "@effect/sql": "catalog:effect",
         "@effect/sql-pg": "catalog:effect",
+        "@hazel/auth": "workspace:*",
         "@hazel/backend-core": "workspace:*",
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
@@ -78,13 +79,12 @@
         "@effect/platform": "catalog:effect",
         "@effect/platform-bun": "catalog:effect",
         "@electric-sql/client": "1.3.1",
+        "@hazel/auth": "workspace:*",
         "@hazel/db": "workspace:*",
         "@hazel/effect-bun": "workspace:*",
         "@hazel/schema": "workspace:*",
-        "@workos-inc/node": "^7.77.0",
         "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
-        "jose": "^6.1.3",
       },
       "devDependencies": {
         "@types/bun": "1.3.5",
@@ -285,6 +285,26 @@
       },
       "devDependencies": {
         "@effect/language-service": "catalog:effect",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/auth": {
+      "name": "@hazel/auth",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect/experimental": "catalog:effect",
+        "@effect/platform": "catalog:effect",
+        "@hazel/db": "workspace:*",
+        "@hazel/domain": "workspace:*",
+        "@hazel/effect-bun": "workspace:*",
+        "@hazel/schema": "workspace:*",
+        "@workos-inc/node": "^7.77.0",
+        "effect": "catalog:effect",
+        "jose": "^6.1.3",
+      },
+      "devDependencies": {
+        "@effect/language-service": "catalog:effect",
+        "@types/bun": "1.3.5",
         "typescript": "^5.9.3",
       },
     },
@@ -637,6 +657,8 @@
     "@grpc/grpc-js": ["@grpc/grpc-js@1.14.3", "", { "dependencies": { "@grpc/proto-loader": "^0.8.0", "@js-sdsl/ordered-map": "^4.4.2" } }, "sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA=="],
 
     "@grpc/proto-loader": ["@grpc/proto-loader@0.7.15", "", { "dependencies": { "lodash.camelcase": "^4.3.0", "long": "^5.0.0", "protobufjs": "^7.2.5", "yargs": "^17.7.2" }, "bin": { "proto-loader-gen-types": "build/bin/proto-loader-gen-types.js" } }, "sha512-tMXdRCfYVixjuFK+Hk0Q1s38gV9zDiDJfWL3h1rv4Qc39oILCu1TRTDt7+fGUI8K4G1Fj125Hx/ru3azECWTyQ=="],
+
+    "@hazel/auth": ["@hazel/auth@workspace:packages/auth"],
 
     "@hazel/backend": ["@hazel/backend@workspace:apps/backend"],
 

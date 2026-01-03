@@ -1,21 +1,7 @@
-import { Database, eq, schema } from "@hazel/db"
+import { ProxyAuth, ProxyAuthenticationError } from "@hazel/auth/proxy"
 import type { UserId } from "@hazel/schema"
-import { AuthenticateWithSessionCookieFailureReason, WorkOS } from "@workos-inc/node"
-import { Effect, Option, Redacted, Schema } from "effect"
-import { decodeJwt } from "jose"
+import { Effect, Schema } from "effect"
 import { AccessContextCacheService, type UserAccessContext } from "../cache"
-import { ProxyConfigService } from "../config"
-
-/**
- * JWT Payload schema from WorkOS
- */
-const JwtPayload = Schema.Struct({
-	sub: Schema.String,
-	email: Schema.String,
-	sid: Schema.String,
-	org_id: Schema.optional(Schema.String),
-	role: Schema.optional(Schema.String),
-})
 
 // Re-export UserAccessContext from cache module
 export type { UserAccessContext } from "../cache"
@@ -65,11 +51,9 @@ function parseCookie(cookieHeader: string, cookieName: string): string | null {
 
 /**
  * Validate a WorkOS sealed session cookie and return authenticated user
- * Uses Effect Config to read environment variables
+ * Uses @hazel/auth for session validation with Redis caching.
  */
 export const validateSession = Effect.fn("ElectricProxy.validateSession")(function* (request: Request) {
-	const config = yield* ProxyConfigService
-
 	// Step 1: Extract cookie from request
 	const cookieHeader = request.headers.get("Cookie")
 	if (!cookieHeader) {
@@ -93,148 +77,27 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		)
 	}
 
-	// Step 2: Initialize WorkOS client and load sealed session
-	const workos = new WorkOS(config.workosApiKey, {
-		clientId: config.workosClientId,
-	})
-
-	const sealedSession = yield* Effect.tryPromise({
-		try: async () =>
-			workos.userManagement.loadSealedSession({
-				sessionData: sessionCookie,
-				cookiePassword: Redacted.value(config.workosPasswordCookie),
-			}),
-		catch: (error) => {
-			console.error("loadSealedSession failed:", error)
-			return new AuthenticationError({
-				message: "Failed to load sealed session",
-				detail: String(error),
-			})
-		},
-	})
-
-	// Step 3: Authenticate the session
-	const session = yield* Effect.tryPromise({
-		try: async () => sealedSession.authenticate(),
-		catch: (error) => {
-			console.error("authenticate() threw:", error)
-			return new AuthenticationError({
-				message: "Failed to authenticate session",
-				detail: String(error),
-			})
-		},
-	})
-
-	if (!session.authenticated) {
-		if (session.reason === "no_session_cookie_provided") {
-			return yield* Effect.fail(
-				new AuthenticationError({
-					message: "No session cookie provided",
-					detail: "Please log in",
-				}),
-			)
-		}
-
-		if (session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_JWT) {
-			return yield* Effect.fail(
-				new AuthenticationError({
-					message: "Invalid JWT payload",
-					detail: "Please log in again",
-				}),
-			)
-		}
-
-		if (session.reason === AuthenticateWithSessionCookieFailureReason.INVALID_SESSION_COOKIE) {
-			return yield* Effect.fail(
-				new AuthenticationError({
-					message: "Session expired",
-					detail: "Please log in again",
-				}),
-			)
-		}
-
-		return yield* Effect.fail(
-			new AuthenticationError({
-				message: "Session expired",
-				detail: "Please log in again",
-			}),
-		)
-	}
-
-	// Step 4: Handle not authenticated - try refresh
-	let accessToken = session.accessToken
-	if (!session.authenticated || !accessToken) {
-		// Attempt to refresh the session
-		const refreshedSession: any = yield* Effect.tryPromise({
-			try: async () => sealedSession.refresh(),
-			catch: (error) => {
-				console.error("refresh() failed:", error)
+	// Step 2: Validate session using @hazel/auth (uses Redis caching)
+	const proxyAuth = yield* ProxyAuth
+	const authContext = yield* proxyAuth.validateSession(sessionCookie).pipe(
+		Effect.mapError((error) => {
+			if (error instanceof ProxyAuthenticationError) {
 				return new AuthenticationError({
-					message: "Failed to refresh session",
-					detail: String(error),
+					message: error.message,
+					detail: error.detail,
 				})
-			},
-		})
-
-		if (!refreshedSession.authenticated || !refreshedSession.accessToken) {
-			return yield* Effect.fail(
-				new AuthenticationError({
-					message: "Session expired",
-					detail: "Please log in again",
-				}),
-			)
-		}
-
-		accessToken = refreshedSession.accessToken
-	}
-
-	// Step 5: Decode JWT payload
-	const rawPayload = decodeJwt(accessToken)
-	const jwtPayload = yield* Schema.decodeUnknown(JwtPayload)(rawPayload).pipe(
-		Effect.mapError(
-			(error) =>
-				new AuthenticationError({
-					message: "Invalid JWT payload",
-					detail: String(error),
-				}),
-		),
+			}
+			// Handle other error types from the auth package
+			return new AuthenticationError({
+				message: "Authentication failed",
+				detail: String(error),
+			})
+		}),
 	)
 
-	// Lookup internal user ID from database
-	const db = yield* Database.Database
-	const userOption = yield* db
-		.execute((client) =>
-			client
-				.select({ id: schema.usersTable.id })
-				.from(schema.usersTable)
-				.where(eq(schema.usersTable.externalId, jwtPayload.sub))
-				.limit(1),
-		)
-		.pipe(
-			Effect.map((results) => Option.fromNullable(results[0])),
-			Effect.mapError(
-				(error) =>
-					new AuthenticationError({
-						message: "Failed to lookup user in database",
-						detail: String(error),
-					}),
-			),
-		)
-
-	if (Option.isNone(userOption)) {
-		return yield* Effect.fail(
-			new AuthenticationError({
-				message: "User not found in database",
-				detail: `No user found with externalId: ${jwtPayload.sub}`,
-			}),
-		)
-	}
-
-	const internalUserId = userOption.value.id
-
-	// Get cached access context from Redis-backed cache
+	// Step 3: Get cached access context from Redis-backed cache
 	const cache = yield* AccessContextCacheService
-	const accessContext = yield* cache.getUserContext(internalUserId).pipe(
+	const accessContext = yield* cache.getUserContext(authContext.internalUserId).pipe(
 		Effect.mapError(
 			(error) =>
 				new AuthenticationError({
@@ -245,11 +108,11 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	)
 
 	return {
-		userId: jwtPayload.sub,
-		internalUserId,
-		email: jwtPayload.email,
-		organizationId: jwtPayload.org_id,
-		role: jwtPayload.role,
+		userId: authContext.workosUserId,
+		internalUserId: authContext.internalUserId,
+		email: authContext.email,
+		organizationId: authContext.organizationId,
+		role: authContext.role,
 		accessContext,
 	} satisfies AuthenticatedUserWithContext
 })

@@ -1,9 +1,10 @@
+import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
 import { Effect, Layer, Logger, Runtime } from "effect"
 import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
 import { type AuthenticationError, validateSession } from "./auth/user-auth"
-import { AccessContextCacheLive, type AccessContextCacheService, RedisPersistenceLive } from "./cache"
-import { ProxyConfigLive, ProxyConfigService } from "./config"
+import { type AccessContextCacheService, AccessContextCacheService as AccessContextCache, RedisPersistenceLive } from "./cache"
+import { ProxyConfigService } from "./config"
 import { TracerLive } from "./observability/tracer"
 import { type ElectricProxyError, prepareElectricUrl, proxyElectricRequest } from "./proxy/electric-client"
 import { type BotTableAccessError, getBotWhereClauseForTable, validateBotTable } from "./tables/bot-tables"
@@ -302,20 +303,29 @@ const LoggerLive = Layer.unwrapEffect(
 		const config = yield* ProxyConfigService
 		return config.isDev ? Logger.pretty : Logger.structured
 	}),
-).pipe(Layer.provide(ProxyConfigLive))
+).pipe(Layer.provide(ProxyConfigService.Default))
 
-// Cache layer: AccessContextCacheLive requires ResultPersistence and Database
-const CacheLive = AccessContextCacheLive.pipe(
+// Cache layer: AccessContextCache requires ResultPersistence and Database
+const CacheLive = AccessContextCache.Default.pipe(
 	Layer.provide(RedisPersistenceLive),
 	Layer.provide(DatabaseLive),
-	Layer.provide(ProxyConfigLive),
+	Layer.provide(ProxyConfigService.Default),
+)
+
+// ProxyAuth layer requires ResultPersistence for session caching and Database for user lookup
+// ProxyAuth.Default includes SessionValidator.Default via dependencies
+const ProxyAuthLive = ProxyAuth.Default.pipe(
+	Layer.provide(RedisPersistenceLive),
+	Layer.provide(DatabaseLive),
+	Layer.provide(ProxyConfigService.Default),
 )
 
 const MainLive = DatabaseLive.pipe(
-	Layer.provideMerge(ProxyConfigLive),
+	Layer.provideMerge(ProxyConfigService.Default),
 	Layer.provideMerge(LoggerLive),
 	Layer.provideMerge(CacheLive),
 	Layer.provideMerge(TracerLive),
+	Layer.provideMerge(ProxyAuthLive),
 )
 
 // =============================================================================
@@ -333,7 +343,7 @@ const main = Effect.gen(function* () {
 
 	// Create Effect runtime for request handlers
 	const runtime = yield* Effect.runtime<
-		ProxyConfigService | Database.Database | AccessContextCacheService
+		ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth
 	>()
 
 	// Start Bun server with declarative routes

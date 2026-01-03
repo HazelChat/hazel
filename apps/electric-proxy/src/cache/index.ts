@@ -10,10 +10,6 @@ export {
 	UserAccessContextRequest,
 } from "./access-context-cache"
 
-export {
-	type AccessContextCache,
-	AccessContextCacheLive,
-	AccessContextCacheService,
-} from "./access-context-service"
+export { type AccessContextCache, AccessContextCacheService } from "./access-context-service"
 
 export { MemoryPersistenceLive, RedisPersistenceLive } from "./redis-persistence"

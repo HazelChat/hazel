@@ -1,7 +1,7 @@
-import { Config, Context, Effect, Layer, Option, Redacted } from "effect"
+import { Config, Effect, Option, Redacted } from "effect"
 
 /**
- * Proxy configuration service
+ * Proxy configuration interface
  */
 export interface ProxyConfig {
 	readonly electricUrl: string
@@ -18,14 +18,13 @@ export interface ProxyConfig {
 	readonly redisUrl: Redacted.Redacted<string>
 }
 
-export class ProxyConfigService extends Context.Tag("ProxyConfigService")<
-	ProxyConfigService,
-	ProxyConfig
->() {}
-
-export const ProxyConfigLive = Layer.effect(
-	ProxyConfigService,
-	Effect.gen(function* () {
+/**
+ * Proxy configuration service.
+ * Reads configuration from environment variables.
+ */
+export class ProxyConfigService extends Effect.Service<ProxyConfigService>()("ProxyConfigService", {
+	accessors: true,
+	effect: Effect.gen(function* () {
 		const electricUrl = yield* Config.string("ELECTRIC_URL")
 		const electricSourceId = yield* Config.string("ELECTRIC_SOURCE_ID").pipe(
 			Config.option,
@@ -38,9 +37,7 @@ export const ProxyConfigLive = Layer.effect(
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
 		const workosPasswordCookie = yield* Config.redacted("WORKOS_COOKIE_PASSWORD")
-		const allowedOrigin = yield* Config.string("ALLOWED_ORIGIN").pipe(
-			Config.withDefault("http://localhost:3000"),
-		)
+		const allowedOrigin = yield* Config.string("ALLOWED_ORIGIN").pipe(Config.withDefault("http://localhost:3000"))
 		const databaseUrl = yield* Config.redacted("DATABASE_URL")
 		const isDev = yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false))
 		const port = yield* Config.number("PORT").pipe(Config.withDefault(8184))
@@ -65,6 +62,7 @@ export const ProxyConfigLive = Layer.effect(
 			port,
 			otlpEndpoint,
 			redisUrl,
-		}
+		} satisfies ProxyConfig
 	}),
-)
+}) {}
+

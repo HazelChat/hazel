@@ -8,7 +8,8 @@
 		".": "./src/index.ts",
 		"./Redis": "./src/Redis.ts",
 		"./S3": "./src/S3.ts",
-		"./Telemetry": "./src/Telemetry.ts"
+		"./Telemetry": "./src/Telemetry.ts",
+		"./persistence": "./src/persistence/index.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"

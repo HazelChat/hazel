@@ -28,6 +28,7 @@
 		"@effect/rpc": "catalog:effect",
 		"@effect/sql": "catalog:effect",
 		"@effect/sql-pg": "catalog:effect",
+		"@hazel/auth": "workspace:*",
 		"@hazel/backend-core": "workspace:*",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
