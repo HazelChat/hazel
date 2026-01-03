@@ -154,6 +154,16 @@ export const GitHubWorkflowRunPayload = Schema.Struct({
 
 export type GitHubWorkflowRunPayload = Schema.Schema.Type<typeof GitHubWorkflowRunPayload>
 
+// Star event
+export const GitHubStarPayload = Schema.Struct({
+	action: Schema.String, // "created" or "deleted"
+	starred_at: Schema.NullOr(Schema.String),
+	repository: GitHubRepository,
+	sender: Schema.optional(GitHubUser),
+})
+
+export type GitHubStarPayload = Schema.Schema.Type<typeof GitHubStarPayload>
+
 /**
  * Union of all GitHub webhook payload types.
  */
@@ -164,6 +174,7 @@ export type GitHubWebhookPayload =
 	| GitHubReleasePayload
 	| GitHubDeploymentStatusPayload
 	| GitHubWorkflowRunPayload
+	| GitHubStarPayload
 
 /**
  * GitHub event types supported by the integration.
@@ -175,6 +186,7 @@ export const GitHubEventType = Schema.Literal(
 	"release",
 	"deployment_status",
 	"workflow_run",
+	"star",
 )
 export type GitHubEventType = Schema.Schema.Type<typeof GitHubEventType>
 
