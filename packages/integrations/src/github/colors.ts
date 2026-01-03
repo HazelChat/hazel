@@ -31,6 +31,9 @@ export const GITHUB_COLORS = {
 	workflow_failure: 0xda3633, // Red
 	workflow_cancelled: 0x6e7681, // Gray
 	workflow_pending: 0xdbab09, // Yellow
+
+	// Star events
+	star: 0xf1e05a, // GitHub yellow/gold star color
 } as const
 
 export type GitHubColorKey = keyof typeof GITHUB_COLORS

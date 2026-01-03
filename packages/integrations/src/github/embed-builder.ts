@@ -10,6 +10,7 @@ import type {
 	GitHubPullRequestPayload,
 	GitHubPushPayload,
 	GitHubReleasePayload,
+	GitHubStarPayload,
 	GitHubWorkflowRunPayload,
 } from "./payloads.ts"
 
@@ -362,6 +363,40 @@ export function buildWorkflowRunEmbed(payload: GitHubWorkflowRunPayload): Messag
 }
 
 /**
+ * Build embed for star event.
+ */
+export function buildStarEmbed(payload: GitHubStarPayload): MessageEmbed {
+	const repository = payload.repository
+	const sender = payload.sender
+	const action = payload.action
+
+	// Only show "created" (starred) events, not "deleted" (unstarred)
+	const isStarred = action === "created"
+
+	return {
+		title: repository.full_name,
+		description: isStarred
+			? `Repository starred by **${sender?.login ?? "someone"}**`
+			: `Repository unstarred by **${sender?.login ?? "someone"}**`,
+		url: repository.html_url,
+		color: GITHUB_COLORS.star,
+		author: sender
+			? {
+					name: sender.login,
+					url: sender.html_url,
+					iconUrl: sender.avatar_url,
+				}
+			: undefined,
+		footer: {
+			text: "GitHub",
+			iconUrl: githubConfig.avatarUrl,
+		},
+		timestamp: new Date().toISOString(),
+		badge: { text: isStarred ? "Starred" : "Unstarred", color: GITHUB_COLORS.star },
+	}
+}
+
+/**
  * Map GitHub event type to our internal event type.
  */
 export function mapEventType(githubEventType: string): GitHubEventType | null {
@@ -378,6 +413,8 @@ export function mapEventType(githubEventType: string): GitHubEventType | null {
 			return "deployment_status"
 		case "workflow_run":
 			return "workflow_run"
+		case "star":
+			return "star"
 		default:
 			return null
 	}
@@ -412,6 +449,8 @@ export function buildGitHubEmbed(eventType: string, payload: unknown): MessageEm
 			return buildDeploymentEmbed(payload as GitHubDeploymentStatusPayload)
 		case "workflow_run":
 			return buildWorkflowRunEmbed(payload as GitHubWorkflowRunPayload)
+		case "star":
+			return buildStarEmbed(payload as GitHubStarPayload)
 		default:
 			return null
 	}
