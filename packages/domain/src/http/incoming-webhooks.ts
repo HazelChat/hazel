@@ -12,7 +12,7 @@ export class IncomingWebhookPayload extends Schema.Class<IncomingWebhookPayload>
 
 // OpenStatus Monitor schema
 export const OpenStatusMonitor = Schema.Struct({
-	id: Schema.Number,
+	id: Schema.String,
 	name: Schema.String,
 	url: Schema.String,
 })
