@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared"
 import { HazelLogoOrange } from "@hazel/ui/logo"
+import { GithubInfo } from "fumadocs-ui/components/github-info"
 
 export function baseOptions(): BaseLayoutProps {
 	return {
@@ -12,8 +13,14 @@ export function baseOptions(): BaseLayoutProps {
 			),
 		},
 		links: [
-			{ text: "App", url: "https://app.hazel.com", external: true },
-			{ text: "GitHub", url: "https://github.com/hazelapp/hazel", external: true },
+			// { text: "App", url: "https://app.hazel.com", external: true },
+			// {
+			// 	type: "custom",
+			// 	children: <GithubInfo owner="hazelchat" repo="hazel" />,
+			// },
 		],
+		themeSwitch: {
+			enabled: true,
+		},
 	}
 }

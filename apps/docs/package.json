@@ -4,7 +4,7 @@
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --port 3012",
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"types:check": "fumadocs-mdx && tsc --noEmit",

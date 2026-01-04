@@ -7,6 +7,12 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layo
 import defaultMdxComponents from "fumadocs-ui/mdx"
 import { baseOptions } from "@/lib/layout.shared"
 import { useFumadocsLoader } from "fumadocs-core/source/client"
+import { Tabs, Tab } from "fumadocs-ui/components/tabs"
+import { Step, Steps } from "fumadocs-ui/components/steps"
+import { File, Folder, Files } from "fumadocs-ui/components/files"
+import { TypeTable } from "fumadocs-ui/components/type-table"
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion"
+import { ImageZoom } from "fumadocs-ui/components/image-zoom"
 
 export const Route = createFileRoute("/$")({
 	component: Page,
@@ -42,6 +48,17 @@ const clientLoader = browserCollections.docs.createClientLoader({
 					<MDX
 						components={{
 							...defaultMdxComponents,
+							Tabs,
+							Tab,
+							Step,
+							Steps,
+							File,
+							Folder,
+							Files,
+							TypeTable,
+							Accordion,
+							Accordions,
+							img: (props) => <ImageZoom {...props} />,
 						}}
 					/>
 				</DocsBody>
@@ -56,7 +73,7 @@ function Page() {
 	const Content = clientLoader.getComponent(data.path)
 
 	return (
-		<DocsLayout {...baseOptions()} tree={pageTree}>
+		<DocsLayout {...baseOptions()} tree={pageTree} githubUrl="https://github.com/hazelchat/hazel">
 			<Content />
 		</DocsLayout>
 	)
