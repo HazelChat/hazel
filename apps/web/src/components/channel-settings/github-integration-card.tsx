@@ -6,6 +6,7 @@ import {
 	listGitHubSubscriptionsMutation,
 } from "~/atoms/github-subscription-atoms"
 import IconPlus from "~/components/icons/icon-plus"
+import { EditGitHubSubscriptionModal } from "~/components/integrations/edit-github-subscription-modal"
 import { resolvedThemeAtom } from "~/components/theme-provider"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -17,14 +18,16 @@ import { GitHubSubscriptionItem } from "./github-subscription-card"
 
 interface GitHubIntegrationCardProps {
 	channelId: ChannelId
+	channelName: string
 	organizationId: OrganizationId | null
 	orgSlug: string
 }
 
-export function GitHubIntegrationCard({ channelId, organizationId, orgSlug }: GitHubIntegrationCardProps) {
+export function GitHubIntegrationCard({ channelId, channelName, organizationId, orgSlug }: GitHubIntegrationCardProps) {
 	const [subscriptions, setSubscriptions] = useState<GitHubSubscriptionData[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [isModalOpen, setIsModalOpen] = useState(false)
+	const [editingSubscription, setEditingSubscription] = useState<GitHubSubscriptionData | null>(null)
 
 	// Check if GitHub is connected for the organization
 	const { isConnected: isGitHubConnected } = useIntegrationConnection(organizationId, "github")
@@ -133,6 +136,7 @@ export function GitHubIntegrationCard({ channelId, organizationId, orgSlug }: Gi
 									key={subscription.id}
 									subscription={subscription}
 									onUpdate={fetchSubscriptions}
+									onEdit={(sub) => setEditingSubscription(sub)}
 								/>
 							))}
 						</div>
@@ -146,6 +150,16 @@ export function GitHubIntegrationCard({ channelId, organizationId, orgSlug }: Gi
 					organizationId={organizationId}
 					isOpen={isModalOpen}
 					onClose={() => setIsModalOpen(false)}
+					onSuccess={fetchSubscriptions}
+				/>
+			)}
+
+			{editingSubscription && (
+				<EditGitHubSubscriptionModal
+					subscription={editingSubscription}
+					channelName={channelName}
+					isOpen={true}
+					onClose={() => setEditingSubscription(null)}
 					onSuccess={fetchSubscriptions}
 				/>
 			)}

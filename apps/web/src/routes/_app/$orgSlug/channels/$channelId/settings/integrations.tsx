@@ -1,5 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -24,6 +25,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SectionHeader } from "~/components/ui/section-header"
+import { channelCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { matchExitWithToast } from "~/lib/toast-exit"
 
@@ -34,6 +36,13 @@ export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/setting
 function IntegrationsPage() {
 	const { channelId, orgSlug } = Route.useParams()
 	const { organizationId } = useOrganization()
+
+	// Fetch channel name for edit modal
+	const { data: channelData } = useLiveQuery(
+		(q) => q.from({ channel: channelCollection }).where((q) => eq(q.channel.id, channelId)),
+		[channelId],
+	)
+	const channelName = channelData?.[0]?.name ?? ""
 
 	const [webhooks, setWebhooks] = useState<WebhookData[]>([])
 	const [isLoading, setIsLoading] = useState(true)
@@ -96,6 +105,7 @@ function IntegrationsPage() {
 				{/* GitHub Integration */}
 				<GitHubIntegrationCard
 					channelId={channelId as ChannelId}
+					channelName={channelName}
 					organizationId={organizationId as OrganizationId | null}
 					orgSlug={orgSlug}
 				/>

@@ -25,6 +25,7 @@ const EVENT_LABELS: Record<string, string> = {
 	release: "Releases",
 	deployment_status: "Deployments",
 	workflow_run: "Workflows",
+	star: "Stars",
 }
 
 interface GitHubSubscriptionItemProps {
