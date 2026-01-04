@@ -6,6 +6,7 @@ dist-ssr
 .turbo
 .idea
 .env
+.source
 version.json
 
 # Caddy SSL certificates (mkcert)

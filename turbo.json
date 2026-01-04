@@ -40,20 +40,14 @@
 	"ui": "tui",
 	"tasks": {
 		"build": {
-			"outputs": [
-				"dist/**"
-			]
+			"outputs": ["dist/**"]
 		},
 		"typecheck": {
-			"dependsOn": [
-				"^typecheck"
-			]
+			"dependsOn": ["^typecheck"]
 		},
 		"setup": {
 			"cache": false,
-			"dependsOn": [
-				"^setup"
-			]
+			"dependsOn": ["^setup"]
 		},
 		"db:push": {
 			"cache": false

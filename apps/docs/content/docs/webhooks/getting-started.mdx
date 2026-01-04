@@ -1,0 +1,166 @@
+---
+title: Getting Started
+description: Create a webhook and send your first message
+icon: Rocket
+---
+
+This guide walks you through creating a webhook and sending messages to a Hazel channel.
+
+## Create a Webhook
+
+<Steps>
+  <Step>
+    ### Open Channel Settings
+
+    Navigate to the channel where you want to receive webhook messages. Click the channel name to open settings, then select the **Webhooks** tab.
+  </Step>
+
+  <Step>
+    ### Create New Webhook
+
+    Click **Create Webhook** and fill in the details:
+
+    - **Name** (required) - A display name for the webhook (e.g., "GitHub Actions", "Uptime Monitor")
+    - **Description** (optional) - A note about what this webhook is for
+    - **Avatar URL** (optional) - Custom avatar image for webhook messages
+  </Step>
+
+  <Step>
+    ### Copy the Webhook URL
+
+    After creating the webhook, you'll see the full webhook URL with the token. **Copy this immediately** - the token is only shown once for security reasons.
+
+    The URL format is:
+    ```
+    https://api.hazel.app/webhooks/incoming/{webhookId}/{token}
+    ```
+
+    If you lose the token, you can regenerate it from the webhook settings, but this will invalidate the old URL.
+  </Step>
+</Steps>
+
+## Send Your First Message
+
+### Plain Text Message
+
+Send a simple text message using curl:
+
+```bash
+curl -X POST "YOUR_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hello from my webhook!"}'
+```
+
+### Message with Embed
+
+Send a formatted message with an embed:
+
+```bash
+curl -X POST "YOUR_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "embeds": [{
+      "title": "Build Successful",
+      "description": "All tests passed",
+      "color": 5025616,
+      "fields": [
+        {"name": "Branch", "value": "main", "inline": true},
+        {"name": "Commit", "value": "abc1234", "inline": true}
+      ]
+    }]
+  }'
+```
+
+### Using JavaScript/TypeScript
+
+```typescript
+const webhookUrl = "YOUR_WEBHOOK_URL"
+
+await fetch(webhookUrl, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    content: "Deployment complete!",
+    embeds: [{
+      title: "Production Deploy",
+      description: "v1.2.3 is now live",
+      color: 5025616,
+      timestamp: new Date().toISOString()
+    }]
+  })
+})
+```
+
+## Request Format
+
+### Endpoint
+
+```
+POST /webhooks/incoming/{webhookId}/{token}
+```
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Content-Type` | `application/json` | Yes |
+
+### Body
+
+```typescript
+{
+  content?: string      // Plain text message
+  embeds?: Embed[]      // Array of embeds (max 10)
+}
+```
+
+At least one of `content` or `embeds` must be provided.
+
+### Response
+
+**Success (200)**:
+```json
+{
+  "messageId": "msg_abc123",
+  "channelId": "ch_xyz789"
+}
+```
+
+**Error (4xx/5xx)**:
+```json
+{
+  "error": "Error message describing what went wrong"
+}
+```
+
+## Security Best Practices
+
+<Accordions>
+  <Accordion title="Keep Your Token Secret">
+    The webhook token acts as a password. Never commit it to version control or share it publicly. Use environment variables or secret management tools to store it.
+
+    ```bash
+    # Good - use environment variable
+    curl -X POST "$WEBHOOK_URL" -d '...'
+
+    # Bad - hardcoded token
+    curl -X POST "https://api.hazel.app/webhooks/incoming/abc/secret123" -d '...'
+    ```
+  </Accordion>
+
+  <Accordion title="Regenerate Compromised Tokens">
+    If your webhook token is accidentally exposed, regenerate it immediately from the channel settings. This invalidates the old URL and creates a new one.
+  </Accordion>
+
+  <Accordion title="Use HTTPS">
+    Always use HTTPS URLs when configuring webhooks in external services. This ensures the token is encrypted in transit.
+  </Accordion>
+</Accordions>
+
+## Next Steps
+
+<Cards>
+  <Card title="Embeds Reference" href="/docs/webhooks/embeds">
+    Create rich, formatted messages with embeds
+  </Card>
+</Cards>

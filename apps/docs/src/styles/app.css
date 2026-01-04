@@ -1,3 +1,19 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+
+@theme {
+	--font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, monospace;
+
+	/* Orange primary accent */
+	--color-fd-primary: oklch(0.74 0.16 34.71);
+	--color-fd-primary-foreground: oklch(0.985 0 0);
+	--color-fd-ring: oklch(0.74 0.16 34.71);
+}
+
+.dark {
+	--color-fd-primary: oklch(0.74 0.16 34.71);
+	--color-fd-primary-foreground: oklch(0.205 0 0);
+	--color-fd-ring: oklch(0.74 0.16 34.71);
+}

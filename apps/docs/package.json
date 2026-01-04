@@ -4,16 +4,19 @@
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --port 3012",
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"types:check": "fumadocs-mdx && tsc --noEmit",
 		"postinstall": "fumadocs-mdx"
 	},
 	"dependencies": {
+		"@hazel/ui": "workspace:*",
+		"@takumi-rs/image-response": "^0.62.5",
 		"@tanstack/react-router": "1.144.0",
 		"@tanstack/react-router-devtools": "1.144.0",
 		"@tanstack/react-start": "1.145.3",
+		"class-variance-authority": "^0.7.1",
 		"fumadocs-core": "16.4.3",
 		"fumadocs-mdx": "14.2.4",
 		"fumadocs-ui": "16.4.3",

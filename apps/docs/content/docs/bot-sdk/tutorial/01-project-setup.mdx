@@ -1,0 +1,109 @@
+---
+title: "1. Project Setup"
+description: Initialize a new bot project with the Hazel Bot SDK
+icon: FolderOpen
+---
+
+Let's set up a new bot project from scratch.
+
+## Create the Project
+
+Create a new directory and initialize it:
+
+```bash
+mkdir task-bot
+cd task-bot
+bun init -y
+```
+
+## Install Dependencies
+
+Install the Bot SDK and Effect:
+
+```bash
+bun add @hazel/bot-sdk effect
+```
+
+## Configure TypeScript
+
+Update your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["bun-types"]
+  }
+}
+```
+
+## Set Up Environment Variables
+
+Create a `.env` file:
+
+```bash
+BOT_TOKEN=your-bot-token-here
+```
+
+Add `.env` to `.gitignore`:
+
+```bash
+echo ".env" >> .gitignore
+```
+
+## Create the Entry Point
+
+Create `index.ts`:
+
+```typescript
+import { Effect } from "effect"
+import { runHazelBot } from "@hazel/bot-sdk"
+
+runHazelBot({
+  setup: (bot) => Effect.gen(function* () {
+    yield* Effect.log("Task Bot is starting...")
+  }),
+})
+```
+
+## Run the Bot
+
+```bash
+bun run index.ts
+```
+
+You should see:
+
+```
+Task Bot is starting...
+```
+
+The bot is now running and connected to Hazel! Press `Ctrl+C` to stop it.
+
+## Project Structure
+
+Your project should look like this:
+
+```
+task-bot/
+├── index.ts          # Bot entry point
+├── package.json
+├── tsconfig.json
+├── .env              # Bot token (not in git)
+└── .gitignore
+```
+
+## What's Next?
+
+Now that the project is set up, let's make the bot respond to messages.
+
+<Cards>
+  <Card title="Next: Handling Messages" href="/docs/bot-sdk/tutorial/02-handling-messages">
+    Learn to react to new messages
+  </Card>
+</Cards>

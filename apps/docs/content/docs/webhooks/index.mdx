@@ -1,0 +1,49 @@
+---
+title: Webhooks
+description: Send messages to Hazel channels from external services
+icon: Webhook
+---
+
+Webhooks allow external services to send messages to your Hazel channels via HTTP requests. Use them to integrate CI/CD pipelines, monitoring services, or any application that can make HTTP requests.
+
+## Use Cases
+
+- **CI/CD Notifications** - Post build status, deployment alerts, and test results
+- **Monitoring Alerts** - Send alerts from uptime monitors, error trackers, or APM tools
+- **Custom Integrations** - Connect any service that supports outgoing webhooks
+- **Automation** - Trigger notifications from scripts, cron jobs, or serverless functions
+
+## Quick Example
+
+Send a simple message to a channel:
+
+```bash
+curl -X POST "https://api.hazel.app/webhooks/incoming/{webhookId}/{token}" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hello from webhook!"}'
+```
+
+Or send a rich embed:
+
+```bash
+curl -X POST "https://api.hazel.app/webhooks/incoming/{webhookId}/{token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "embeds": [{
+      "title": "Deployment Complete",
+      "description": "Successfully deployed to production",
+      "color": 5025616
+    }]
+  }'
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="Getting Started" href="/webhooks/getting-started">
+    Create your first webhook and send a message
+  </Card>
+  <Card title="Embeds Reference" href="/webhooks/embeds">
+    Learn how to create rich, formatted messages
+  </Card>
+</Cards>
