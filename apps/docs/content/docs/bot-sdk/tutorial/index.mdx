@@ -1,0 +1,111 @@
+---
+title: Tutorial
+description: Build a Task Bot from scratch with the Hazel Bot SDK
+icon: GraduationCap
+---
+
+In this tutorial, you'll build a **Task Bot** that helps teams manage tasks directly in Hazel. By the end, your bot will be able to:
+
+- Respond to messages mentioning "task"
+- Handle `/task add` and `/task list` slash commands
+- Send confirmation messages and react with checkmarks
+- Handle errors gracefully with user-friendly messages
+
+## What You'll Learn
+
+1. **Project Setup** - Initialize a bot project with proper configuration
+2. **Message Handling** - Listen for and respond to messages
+3. **Slash Commands** - Create type-safe commands with arguments
+4. **Message Operations** - Send, reply, and react to messages
+5. **Error Handling** - Catch errors and provide feedback
+
+## Prerequisites
+
+Before starting, make sure you have:
+
+- [Bun](https://bun.sh) installed (or Node.js 20+)
+- A Hazel bot token
+- Basic TypeScript knowledge
+
+## Tutorial Structure
+
+Each step builds on the previous one. We recommend following them in order:
+
+<Cards>
+  <Card title="1. Project Setup" href="/docs/bot-sdk/tutorial/01-project-setup">
+    Initialize your bot project
+  </Card>
+  <Card title="2. Handling Messages" href="/docs/bot-sdk/tutorial/02-handling-messages">
+    React to new messages
+  </Card>
+  <Card title="3. Slash Commands" href="/docs/bot-sdk/tutorial/03-slash-commands">
+    Add typed slash commands
+  </Card>
+  <Card title="4. Message Operations" href="/docs/bot-sdk/tutorial/04-message-operations">
+    Send, reply, and react
+  </Card>
+  <Card title="5. Error Handling" href="/docs/bot-sdk/tutorial/05-error-handling">
+    Handle errors gracefully
+  </Card>
+</Cards>
+
+## Final Code Preview
+
+Here's what the completed Task Bot looks like:
+
+```typescript
+import { Effect, Schema } from "effect"
+import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
+
+// In-memory task storage (use a database in production!)
+const tasks: string[] = []
+
+// Define commands
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: { title: Schema.String },
+  usageExample: "/task-add Buy groceries",
+})
+
+const ListTasksCommand = Command.make("task-list", {
+  description: "List all tasks",
+})
+
+const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
+
+runHazelBot({
+  commands,
+  setup: (bot) => Effect.gen(function* () {
+    // Handle /task-add command
+    yield* bot.onCommand(AddTaskCommand, (ctx) =>
+      Effect.gen(function* () {
+        tasks.push(ctx.args.title)
+        yield* bot.message.send(ctx.channelId, `Added task: ${ctx.args.title}`)
+      }).pipe(bot.withErrorHandler(ctx))
+    )
+
+    // Handle /task-list command
+    yield* bot.onCommand(ListTasksCommand, (ctx) =>
+      Effect.gen(function* () {
+        if (tasks.length === 0) {
+          yield* bot.message.send(ctx.channelId, "No tasks yet!")
+          return
+        }
+        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+      }).pipe(bot.withErrorHandler(ctx))
+    )
+
+    // React to messages mentioning "task"
+    yield* bot.onMessage((message) =>
+      Effect.gen(function* () {
+        if (message.content.toLowerCase().includes("task")) {
+          yield* bot.message.react(message, "📝")
+        }
+      })
+    )
+  }),
+})
+```
+
+Ready to start? Let's begin with [Project Setup](/docs/bot-sdk/tutorial/01-project-setup)!

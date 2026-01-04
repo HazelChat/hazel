@@ -1,3 +1,32 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+
+@theme inline {
+	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+:root {
+	/* Orange primary - matches Hazel logo */
+	--fd-primary: 224 79 22;
+	--fd-primary-foreground: 255 255 255;
+	--fd-accent-foreground: 185 56 21;
+	--fd-muted: 254 246 238;
+	--fd-muted-foreground: 113 118 128;
+	--fd-background: 255 255 255;
+	--fd-foreground: 24 29 39;
+	--fd-border: 249 219 175;
+	--fd-ring: 224 79 22;
+}
+
+.dark {
+	/* Dark mode - warm orange tones */
+	--fd-background: 81 28 16;
+	--fd-foreground: 254 246 238;
+	--fd-card: 119 41 23;
+	--fd-muted: 119 41 23;
+	--fd-muted-foreground: 247 178 122;
+	--fd-border: 147 47 25;
+	--fd-accent-foreground: 249 219 175;
+}

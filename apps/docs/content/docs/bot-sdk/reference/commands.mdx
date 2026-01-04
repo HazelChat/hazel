@@ -1,0 +1,230 @@
+---
+title: Commands
+description: Type-safe slash commands with Command.make and CommandGroup
+icon: Terminal
+---
+
+The Bot SDK provides a type-safe command system using Effect Schema for argument validation.
+
+## `Command.make`
+
+Create a command definition.
+
+```typescript
+import { Schema } from "effect"
+import { Command } from "@hazel/bot-sdk"
+
+const GreetCommand = Command.make("greet", {
+  description: "Greet someone",
+  args: {
+    name: Schema.String,
+  },
+  usageExample: "/greet Alice",
+})
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | Yes | Command name (used in `/name`) |
+| `description` | `string` | Yes | Shown in autocomplete |
+| `args` | `Schema.Struct.Fields` | No | Typed arguments |
+| `usageExample` | `string` | No | Example shown to users |
+
+### Argument Types
+
+Use Effect Schema for type-safe arguments:
+
+```typescript
+import { Schema } from "effect"
+
+const MyCommand = Command.make("example", {
+  description: "Example command",
+  args: {
+    // Required string
+    name: Schema.String,
+
+    // Optional string
+    description: Schema.optional(Schema.String),
+
+    // Number
+    count: Schema.Number,
+
+    // Boolean
+    enabled: Schema.Boolean,
+  },
+})
+```
+
+## `CommandGroup.make`
+
+Group multiple commands together.
+
+```typescript
+import { Command, CommandGroup } from "@hazel/bot-sdk"
+
+const AddCommand = Command.make("task-add", {
+  description: "Add a task",
+  args: { title: Schema.String },
+})
+
+const ListCommand = Command.make("task-list", {
+  description: "List tasks",
+})
+
+const commands = CommandGroup.make(AddCommand, ListCommand)
+```
+
+Pass the group to `runHazelBot`:
+
+```typescript
+runHazelBot({
+  commands,
+  setup: (bot) => Effect.gen(function* () {
+    // ...
+  }),
+})
+```
+
+## Handling Commands
+
+Use `bot.onCommand` to register a handler. The context is fully typed based on your command definition.
+
+```typescript
+yield* bot.onCommand(GreetCommand, (ctx) =>
+  Effect.gen(function* () {
+    // ctx.args.name is typed as string!
+    yield* bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`)
+  })
+)
+```
+
+### Command Context
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `commandName` | `string` | The command that was invoked |
+| `channelId` | `ChannelId` | Channel where command was run |
+| `userId` | `UserId` | User who ran the command |
+| `orgId` | `OrganizationId` | Organization ID |
+| `args` | `T` | Typed arguments based on Schema |
+| `timestamp` | `number` | When command was invoked |
+
+## Optional Arguments
+
+Use `Schema.optional` for optional arguments:
+
+```typescript
+const CreateCommand = Command.make("create", {
+  description: "Create something",
+  args: {
+    name: Schema.String,                    // Required
+    description: Schema.optional(Schema.String),  // Optional
+  },
+})
+
+yield* bot.onCommand(CreateCommand, (ctx) =>
+  Effect.gen(function* () {
+    // ctx.args.name is string
+    // ctx.args.description is string | undefined
+    const desc = ctx.args.description ?? "No description"
+  })
+)
+```
+
+## Commands Without Arguments
+
+For commands with no arguments, omit the `args` field:
+
+```typescript
+const PingCommand = Command.make("ping", {
+  description: "Check if bot is alive",
+})
+
+yield* bot.onCommand(PingCommand, (ctx) =>
+  Effect.gen(function* () {
+    // ctx.args is {} (empty object)
+    yield* bot.message.send(ctx.channelId, "Pong!")
+  })
+)
+```
+
+## Command Sync
+
+When the bot starts, commands are automatically synced to Hazel. They appear in the `/` autocomplete menu in the chat.
+
+## Type Utilities
+
+### `CommandNames<G>`
+
+Extract a union of command names from a group:
+
+```typescript
+type Names = CommandNames<typeof commands>
+// "task-add" | "task-list"
+```
+
+### `CommandArgs<G, N>`
+
+Extract the args type for a specific command:
+
+```typescript
+type AddArgs = CommandArgs<typeof commands, "task-add">
+// { title: string }
+```
+
+## Example
+
+Complete example with multiple commands:
+
+```typescript
+import { Effect, Schema } from "effect"
+import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
+
+const EchoCommand = Command.make("echo", {
+  description: "Echo text back",
+  args: { text: Schema.String },
+  usageExample: "/echo Hello world",
+})
+
+const RollCommand = Command.make("roll", {
+  description: "Roll dice",
+  args: {
+    sides: Schema.optional(Schema.Number),
+  },
+  usageExample: "/roll 20",
+})
+
+const HelpCommand = Command.make("help", {
+  description: "Show available commands",
+})
+
+const commands = CommandGroup.make(EchoCommand, RollCommand, HelpCommand)
+
+runHazelBot({
+  commands,
+  setup: (bot) => Effect.gen(function* () {
+    yield* bot.onCommand(EchoCommand, (ctx) =>
+      bot.message.send(ctx.channelId, ctx.args.text)
+    )
+
+    yield* bot.onCommand(RollCommand, (ctx) =>
+      Effect.gen(function* () {
+        const sides = ctx.args.sides ?? 6
+        const result = Math.floor(Math.random() * sides) + 1
+        yield* bot.message.send(ctx.channelId, `🎲 Rolled a ${result}!`)
+      })
+    )
+
+    yield* bot.onCommand(HelpCommand, (ctx) =>
+      bot.message.send(ctx.channelId, `
+**Available Commands:**
+- /echo <text> - Echo text back
+- /roll [sides] - Roll dice (default: 6 sides)
+- /help - Show this message
+      `.trim())
+    )
+  }),
+})
+```

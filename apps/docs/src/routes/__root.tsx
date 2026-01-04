@@ -14,10 +14,18 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Fumadocs on TanStack Start",
+				title: "Hazel Documentation",
+			},
+			{
+				name: "description",
+				content: "Documentation for the Hazel platform",
 			},
 		],
-		links: [{ rel: "stylesheet", href: appCss }],
+		links: [
+			{ rel: "stylesheet", href: appCss },
+			{ rel: "preconnect", href: "https://rsms.me/" },
+			{ rel: "stylesheet", href: "https://rsms.me/inter/inter.css" },
+		],
 	}),
 	component: RootComponent,
 })

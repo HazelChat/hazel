@@ -1,0 +1,261 @@
+---
+title: HazelBotClient
+description: The main bot service for event handling and message operations
+icon: Bot
+---
+
+`HazelBotClient` is the main service for building Hazel bots. It provides event handlers, message operations, and slash command support.
+
+## Getting the Client
+
+```typescript
+import { Effect } from "effect"
+import { HazelBotClient } from "@hazel/bot-sdk"
+
+const program = Effect.gen(function* () {
+  const bot = yield* HazelBotClient
+  // Use bot here
+})
+```
+
+## Event Handlers
+
+### `onMessage`
+
+Register a handler for new messages.
+
+```typescript
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`New message: ${message.content}`)
+  })
+)
+```
+
+**Message properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `MessageId` | Unique message ID |
+| `content` | `string` | Message text content |
+| `channelId` | `ChannelId` | Channel where sent |
+| `authorId` | `UserId` | User who sent it |
+| `createdAt` | `string` | ISO timestamp |
+| `updatedAt` | `string \| null` | Last edit time |
+| `replyToMessageId` | `MessageId \| null` | Parent message if reply |
+| `threadChannelId` | `ChannelId \| null` | Thread channel if in thread |
+
+### `onMessageUpdate`
+
+Register a handler for message edits.
+
+```typescript
+yield* bot.onMessageUpdate((message) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Message edited: ${message.content}`)
+  })
+)
+```
+
+### `onMessageDelete`
+
+Register a handler for message deletions.
+
+```typescript
+yield* bot.onMessageDelete((message) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Message deleted: ${message.id}`)
+  })
+)
+```
+
+### `onChannelCreated`
+
+Register a handler for new channels.
+
+```typescript
+yield* bot.onChannelCreated((channel) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`New channel: ${channel.name}`)
+  })
+)
+```
+
+### `onChannelUpdated`
+
+Register a handler for channel updates.
+
+```typescript
+yield* bot.onChannelUpdated((channel) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Channel updated: ${channel.name}`)
+  })
+)
+```
+
+### `onChannelDeleted`
+
+Register a handler for channel deletions.
+
+```typescript
+yield* bot.onChannelDeleted((channel) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Channel deleted: ${channel.id}`)
+  })
+)
+```
+
+### `onChannelMemberAdded`
+
+Register a handler for members joining a channel.
+
+```typescript
+yield* bot.onChannelMemberAdded((member) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Member joined: ${member.userId}`)
+  })
+)
+```
+
+### `onChannelMemberRemoved`
+
+Register a handler for members leaving a channel.
+
+```typescript
+yield* bot.onChannelMemberRemoved((member) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`Member left: ${member.userId}`)
+  })
+)
+```
+
+### `onCommand`
+
+Register a handler for a slash command. See [Commands](/docs/bot-sdk/reference/commands) for details.
+
+```typescript
+yield* bot.onCommand(MyCommand, (ctx) =>
+  Effect.gen(function* () {
+    yield* bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`)
+  })
+)
+```
+
+## Message Operations
+
+### `bot.message.send`
+
+Send a message to a channel.
+
+```typescript
+const message = yield* bot.message.send(channelId, "Hello!")
+```
+
+**With options:**
+
+```typescript
+const message = yield* bot.message.send(channelId, "Reply!", {
+  replyToMessageId: parentMessageId,  // Optional: reply to message
+  threadChannelId: threadId,          // Optional: send in thread
+  attachmentIds: [attachmentId],      // Optional: attachments
+})
+```
+
+### `bot.message.reply`
+
+Reply to a message.
+
+```typescript
+yield* bot.message.reply(message, "Got it!")
+```
+
+### `bot.message.update`
+
+Edit a message.
+
+```typescript
+yield* bot.message.update(message, "Updated content")
+```
+
+### `bot.message.delete`
+
+Delete a message by ID.
+
+```typescript
+yield* bot.message.delete(messageId)
+```
+
+### `bot.message.react`
+
+React to a message with an emoji.
+
+```typescript
+yield* bot.message.react(message, "👍")
+```
+
+## Typing Indicators
+
+### `bot.typing.start`
+
+Show a typing indicator.
+
+```typescript
+const indicator = yield* bot.typing.start(channelId, channelMemberId)
+```
+
+### `bot.typing.stop`
+
+Hide a typing indicator.
+
+```typescript
+yield* bot.typing.stop(typingIndicatorId)
+```
+
+## Channel Operations
+
+### `bot.channel.update`
+
+Update a channel's name or description.
+
+```typescript
+yield* bot.channel.update(channel, {
+  name: "new-name",
+  description: "New description",
+})
+```
+
+## Utilities
+
+### `bot.withErrorHandler`
+
+Wrap a command handler with error handling. Catches errors, logs them, and sends a user-friendly message.
+
+```typescript
+yield* bot.onCommand(MyCommand, (ctx) =>
+  Effect.gen(function* () {
+    // Handler logic
+  }).pipe(bot.withErrorHandler(ctx))
+)
+```
+
+### `bot.start`
+
+Start the bot. Must be called after registering all handlers.
+
+```typescript
+yield* bot.start
+```
+
+### `bot.getAuthContext`
+
+Get the bot's authentication context.
+
+```typescript
+const auth = yield* bot.getAuthContext
+yield* Effect.log(`Bot ID: ${auth.botId}`)
+yield* Effect.log(`Bot User ID: ${auth.userId}`)
+```
+
+## Rate Limiting
+
+All message operations are automatically rate-limited to 10 per second. This prevents hitting API limits and ensures reliable delivery.

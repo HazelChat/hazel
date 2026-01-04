@@ -1,0 +1,145 @@
+---
+title: "2. Handling Messages"
+description: Listen for and respond to messages with your bot
+icon: MessageSquare
+---
+
+Now let's make the bot respond to messages.
+
+## Register a Message Handler
+
+Update `index.ts` to add a message handler:
+
+```typescript
+import { Effect } from "effect"
+import { runHazelBot } from "@hazel/bot-sdk"
+
+runHazelBot({
+  setup: (bot) => Effect.gen(function* () {
+    yield* Effect.log("Task Bot is starting...")
+
+    // Register a handler for new messages
+    yield* bot.onMessage((message) =>
+      Effect.gen(function* () {
+        yield* Effect.log(`New message: ${message.content}`)
+      })
+    )
+  }),
+})
+```
+
+Run the bot and send a message - you'll see it logged in the console!
+
+## Access Message Properties
+
+The `message` object contains useful information:
+
+```typescript
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    // Message content
+    yield* Effect.log(`Content: ${message.content}`)
+
+    // Who sent it
+    yield* Effect.log(`Author ID: ${message.authorId}`)
+
+    // Where it was sent
+    yield* Effect.log(`Channel ID: ${message.channelId}`)
+
+    // When it was sent
+    yield* Effect.log(`Created at: ${message.createdAt}`)
+  })
+)
+```
+
+## Reply to Messages
+
+Use `bot.message.reply` to respond:
+
+```typescript
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    // Reply to messages containing "hello"
+    if (message.content.toLowerCase().includes("hello")) {
+      yield* bot.message.reply(message, "Hello! How can I help?")
+    }
+  })
+)
+```
+
+## Prevent Infinite Loops
+
+When your bot sends a message, it will trigger the `onMessage` handler again. Always check to avoid responding to your own messages:
+
+```typescript
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    // Skip messages that start with our response prefix
+    if (message.content.startsWith("Task Bot:")) {
+      return
+    }
+
+    if (message.content.toLowerCase().includes("help")) {
+      yield* bot.message.reply(message, "Task Bot: Use /task-add and /task-list!")
+    }
+  })
+)
+```
+
+## React to Task Mentions
+
+For our Task Bot, let's react to any message mentioning "task":
+
+```typescript
+import { Effect } from "effect"
+import { runHazelBot } from "@hazel/bot-sdk"
+
+runHazelBot({
+  setup: (bot) => Effect.gen(function* () {
+    yield* Effect.log("Task Bot is starting...")
+
+    yield* bot.onMessage((message) =>
+      Effect.gen(function* () {
+        // React to messages mentioning "task"
+        if (message.content.toLowerCase().includes("task")) {
+          yield* bot.message.react(message, "📝")
+        }
+      })
+    )
+  }),
+})
+```
+
+## Multiple Handlers
+
+You can register multiple handlers for the same event:
+
+```typescript
+// Handler 1: React to task mentions
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    if (message.content.toLowerCase().includes("task")) {
+      yield* bot.message.react(message, "📝")
+    }
+  })
+)
+
+// Handler 2: Log all messages
+yield* bot.onMessage((message) =>
+  Effect.gen(function* () {
+    yield* Effect.log(`[${message.channelId}] ${message.content}`)
+  })
+)
+```
+
+All handlers run in parallel when a message arrives.
+
+## What's Next?
+
+Message handlers are great for reactions, but for structured input, slash commands are better.
+
+<Cards>
+  <Card title="Next: Slash Commands" href="/docs/bot-sdk/tutorial/03-slash-commands">
+    Add type-safe slash commands
+  </Card>
+</Cards>

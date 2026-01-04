@@ -1,0 +1,213 @@
+---
+title: "3. Slash Commands"
+description: Create type-safe slash commands with the Bot SDK
+icon: Terminal
+---
+
+Slash commands provide a structured way for users to interact with your bot. The Bot SDK makes them fully type-safe.
+
+## Define a Command
+
+Use `Command.make` to define a command:
+
+```typescript
+import { Schema } from "effect"
+import { Command } from "@hazel/bot-sdk"
+
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: {
+    title: Schema.String,
+  },
+  usageExample: "/task-add Buy groceries",
+})
+```
+
+The `args` field uses Effect Schema to define typed arguments. The SDK validates user input automatically.
+
+## Group Commands Together
+
+Group related commands with `CommandGroup.make`:
+
+```typescript
+import { Command, CommandGroup } from "@hazel/bot-sdk"
+import { Schema } from "effect"
+
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: { title: Schema.String },
+})
+
+const ListTasksCommand = Command.make("task-list", {
+  description: "List all tasks",
+})
+
+const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
+```
+
+## Register the Commands
+
+Pass the command group to `runHazelBot`:
+
+```typescript
+runHazelBot({
+  commands,  // <-- Register commands here
+  setup: (bot) => Effect.gen(function* () {
+    // ...
+  }),
+})
+```
+
+The SDK automatically syncs your commands to Hazel. They'll appear in the `/` autocomplete!
+
+## Handle Commands
+
+Use `bot.onCommand` to handle commands. The context (`ctx`) is fully typed:
+
+```typescript
+import { Effect, Schema } from "effect"
+import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
+
+// In-memory task storage
+const tasks: string[] = []
+
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: { title: Schema.String },
+})
+
+const ListTasksCommand = Command.make("task-list", {
+  description: "List all tasks",
+})
+
+const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
+
+runHazelBot({
+  commands,
+  setup: (bot) => Effect.gen(function* () {
+    // Handle /task-add
+    yield* bot.onCommand(AddTaskCommand, (ctx) =>
+      Effect.gen(function* () {
+        // ctx.args.title is typed as string!
+        tasks.push(ctx.args.title)
+        yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+      })
+    )
+
+    // Handle /task-list
+    yield* bot.onCommand(ListTasksCommand, (ctx) =>
+      Effect.gen(function* () {
+        if (tasks.length === 0) {
+          yield* bot.message.send(ctx.channelId, "No tasks yet!")
+          return
+        }
+        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+      })
+    )
+  }),
+})
+```
+
+## Command Context
+
+The `ctx` object contains:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `commandName` | `string` | The command that was invoked |
+| `channelId` | `ChannelId` | Channel where the command was run |
+| `userId` | `UserId` | User who ran the command |
+| `orgId` | `OrganizationId` | Organization ID |
+| `args` | `T` | Typed arguments (based on your Schema) |
+| `timestamp` | `number` | When the command was invoked |
+
+## Optional Arguments
+
+Use `Schema.optional` for optional arguments:
+
+```typescript
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: {
+    title: Schema.String,
+    priority: Schema.optional(Schema.String),
+  },
+})
+
+// In handler:
+yield* bot.onCommand(AddTaskCommand, (ctx) =>
+  Effect.gen(function* () {
+    // ctx.args.title is string
+    // ctx.args.priority is string | undefined
+    const priority = ctx.args.priority ?? "normal"
+    yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title} (${priority})`)
+  })
+)
+```
+
+## Current Code
+
+Here's what our Task Bot looks like so far:
+
+```typescript
+import { Effect, Schema } from "effect"
+import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
+
+const tasks: string[] = []
+
+const AddTaskCommand = Command.make("task-add", {
+  description: "Add a new task",
+  args: { title: Schema.String },
+  usageExample: "/task-add Buy groceries",
+})
+
+const ListTasksCommand = Command.make("task-list", {
+  description: "List all tasks",
+})
+
+const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
+
+runHazelBot({
+  commands,
+  setup: (bot) => Effect.gen(function* () {
+    yield* Effect.log("Task Bot is starting...")
+
+    yield* bot.onCommand(AddTaskCommand, (ctx) =>
+      Effect.gen(function* () {
+        tasks.push(ctx.args.title)
+        yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+      })
+    )
+
+    yield* bot.onCommand(ListTasksCommand, (ctx) =>
+      Effect.gen(function* () {
+        if (tasks.length === 0) {
+          yield* bot.message.send(ctx.channelId, "No tasks yet!")
+          return
+        }
+        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+      })
+    )
+
+    yield* bot.onMessage((message) =>
+      Effect.gen(function* () {
+        if (message.content.toLowerCase().includes("task")) {
+          yield* bot.message.react(message, "📝")
+        }
+      })
+    )
+  }),
+})
+```
+
+## What's Next?
+
+Let's explore more message operations like reactions and updates.
+
+<Cards>
+  <Card title="Next: Message Operations" href="/docs/bot-sdk/tutorial/04-message-operations">
+    Send, reply, react, and more
+  </Card>
+</Cards>

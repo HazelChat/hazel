@@ -1,0 +1,123 @@
+---
+title: Getting Started
+description: Install the Bot SDK and create your first Hazel bot
+icon: Rocket
+---
+
+This guide walks you through installing the Bot SDK and creating a simple bot that responds to messages.
+
+## Prerequisites
+
+- [Bun](https://bun.sh) v1.0 or later (or Node.js 20+)
+- A Hazel bot token (get one from your organization settings)
+- Basic familiarity with TypeScript and async/await
+
+## Installation
+
+```bash
+bun add @hazel/bot-sdk effect
+```
+
+Or with npm:
+
+```bash
+npm install @hazel/bot-sdk effect
+```
+
+## Environment Setup
+
+Create a `.env` file with your bot token:
+
+```bash
+BOT_TOKEN=your-bot-token-here
+```
+
+For local development, you may also need:
+
+```bash
+# Optional: Override for local development
+ELECTRIC_URL=http://localhost:8787/v1/shape
+BACKEND_URL=http://localhost:3003
+REDIS_URL=redis://localhost:6379
+```
+
+## Your First Bot
+
+Create an `index.ts` file:
+
+```typescript
+import { Effect } from "effect"
+import { runHazelBot } from "@hazel/bot-sdk"
+
+runHazelBot({
+  setup: (bot) => Effect.gen(function* () {
+    // Log when the bot starts
+    yield* Effect.log("Bot is starting...")
+
+    // Respond to every message
+    yield* bot.onMessage((message) =>
+      Effect.gen(function* () {
+        // Don't respond to our own messages
+        if (message.content.startsWith("Echo:")) {
+          return
+        }
+
+        yield* bot.message.reply(message, `Echo: ${message.content}`)
+      })
+    )
+  }),
+})
+```
+
+## Run the Bot
+
+```bash
+bun run index.ts
+```
+
+You should see:
+
+```
+Bot is starting...
+```
+
+Send a message in any channel the bot has access to, and it will echo it back!
+
+## Understanding the Code
+
+### `runHazelBot`
+
+The main entry point for creating bots. It handles:
+- Loading configuration from environment variables
+- Connecting to the Hazel real-time event stream
+- Graceful shutdown on SIGINT/SIGTERM
+- Error logging and recovery
+
+### `bot.onMessage`
+
+Registers a handler for new messages. The handler receives the full message object with:
+- `message.id` - Unique message ID
+- `message.content` - Message text content
+- `message.channelId` - Channel where the message was sent
+- `message.authorId` - User who sent the message
+- `message.createdAt` - When the message was created
+
+### `bot.message.reply`
+
+Sends a reply to a message. The SDK provides several message operations:
+- `bot.message.send(channelId, content)` - Send a new message
+- `bot.message.reply(message, content)` - Reply to a message
+- `bot.message.update(message, newContent)` - Edit a message
+- `bot.message.delete(messageId)` - Delete a message
+- `bot.message.react(message, emoji)` - React with an emoji
+
+## Next Steps
+
+<Cards>
+  <Card title="Tutorial" href="/docs/bot-sdk/tutorial">
+    Build a complete Task Bot with slash commands
+  </Card>
+  <Card title="API Reference" href="/docs/bot-sdk/reference">
+    Explore all available APIs
+  </Card>
+</Cards>
