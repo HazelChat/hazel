@@ -15,6 +15,7 @@
 		"@tanstack/react-router": "1.144.0",
 		"@tanstack/react-router-devtools": "1.144.0",
 		"@tanstack/react-start": "1.145.3",
+		"class-variance-authority": "^0.7.1",
 		"fumadocs-core": "16.4.3",
 		"fumadocs-mdx": "14.2.4",
 		"fumadocs-ui": "16.4.3",

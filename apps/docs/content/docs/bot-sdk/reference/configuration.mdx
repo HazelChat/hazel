@@ -8,12 +8,12 @@ Configure your bot using environment variables or explicit options.
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BOT_TOKEN` | Yes | - | Bot authentication token |
-| `ELECTRIC_URL` | No | `https://electric.hazel.sh/v1/shape` | Electric SQL proxy URL |
-| `BACKEND_URL` | No | `https://api.hazel.sh` | Backend API URL |
-| `REDIS_URL` | No | `redis://localhost:6379` | Redis URL for commands |
+| Variable       | Required | Default                              | Description              |
+| -------------- | -------- | ------------------------------------ | ------------------------ |
+| `BOT_TOKEN`    | Yes      | -                                    | Bot authentication token |
+| `ELECTRIC_URL` | No       | `https://electric.hazel.sh/v1/shape` | Electric SQL proxy URL   |
+| `BACKEND_URL`  | No       | `https://api.hazel.sh`               | Backend API URL          |
+| `REDIS_URL`    | No       | `redis://localhost:6379`             | Redis URL for commands   |
 
 ### Example `.env`
 
@@ -120,10 +120,10 @@ interface EventQueueConfig {
 }
 ```
 
-| Strategy | Behavior |
-|----------|----------|
-| `sliding` | Drops oldest events when full |
-| `dropping` | Drops new events when full |
+| Strategy   | Behavior                      |
+| ---------- | ----------------------------- |
+| `sliding`  | Drops oldest events when full |
+| `dropping` | Drops new events when full    |
 
 ### Example
 

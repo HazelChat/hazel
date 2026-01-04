@@ -10,11 +10,11 @@
 		"./icons": "./src/icons/index.ts",
 		"./theme": "./src/theme/colors.ts"
 	},
-	"peerDependencies": {
-		"react": "^19.0.0"
-	},
 	"devDependencies": {
 		"@types/react": "^19.0.0",
 		"typescript": "^5.9.3"
+	},
+	"peerDependencies": {
+		"react": "^19.0.0"
 	}
 }

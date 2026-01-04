@@ -25,12 +25,12 @@ const GreetCommand = Command.make("greet", {
 
 ### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | `string` | Yes | Command name (used in `/name`) |
-| `description` | `string` | Yes | Shown in autocomplete |
-| `args` | `Schema.Struct.Fields` | No | Typed arguments |
-| `usageExample` | `string` | No | Example shown to users |
+| Parameter      | Type                   | Required | Description                    |
+| -------------- | ---------------------- | -------- | ------------------------------ |
+| `name`         | `string`               | Yes      | Command name (used in `/name`) |
+| `description`  | `string`               | Yes      | Shown in autocomplete          |
+| `args`         | `Schema.Struct.Fields` | No       | Typed arguments                |
+| `usageExample` | `string`               | No       | Example shown to users         |
 
 ### Argument Types
 
@@ -102,14 +102,14 @@ yield* bot.onCommand(GreetCommand, (ctx) =>
 
 ### Command Context
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `commandName` | `string` | The command that was invoked |
-| `channelId` | `ChannelId` | Channel where command was run |
-| `userId` | `UserId` | User who ran the command |
-| `orgId` | `OrganizationId` | Organization ID |
-| `args` | `T` | Typed arguments based on Schema |
-| `timestamp` | `number` | When command was invoked |
+| Property      | Type             | Description                     |
+| ------------- | ---------------- | ------------------------------- |
+| `commandName` | `string`         | The command that was invoked    |
+| `channelId`   | `ChannelId`      | Channel where command was run   |
+| `userId`      | `UserId`         | User who ran the command        |
+| `orgId`       | `OrganizationId` | Organization ID                 |
+| `args`        | `T`              | Typed arguments based on Schema |
+| `timestamp`   | `number`         | When command was invoked        |
 
 ## Optional Arguments
 

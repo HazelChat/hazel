@@ -21,6 +21,7 @@ class AuthenticationError {
 ```
 
 **Common causes:**
+
 - Invalid or expired bot token
 - Network issues connecting to auth server
 
@@ -37,6 +38,7 @@ class BotStartError {
 ```
 
 **Common causes:**
+
 - Missing configuration
 - Failed to connect to services
 
@@ -173,6 +175,7 @@ yield* bot.onCommand(MyCommand, (ctx) =>
 ```
 
 This:
+
 1. Catches any error
 2. Logs the error with context
 3. Sends "An unexpected error occurred. Please try again." to the channel

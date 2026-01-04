@@ -34,16 +34,16 @@ yield* bot.onMessage((message) =>
 
 **Message properties:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | `MessageId` | Unique message ID |
-| `content` | `string` | Message text content |
-| `channelId` | `ChannelId` | Channel where sent |
-| `authorId` | `UserId` | User who sent it |
-| `createdAt` | `string` | ISO timestamp |
-| `updatedAt` | `string \| null` | Last edit time |
-| `replyToMessageId` | `MessageId \| null` | Parent message if reply |
-| `threadChannelId` | `ChannelId \| null` | Thread channel if in thread |
+| Property           | Type                | Description                 |
+| ------------------ | ------------------- | --------------------------- |
+| `id`               | `MessageId`         | Unique message ID           |
+| `content`          | `string`            | Message text content        |
+| `channelId`        | `ChannelId`         | Channel where sent          |
+| `authorId`         | `UserId`            | User who sent it            |
+| `createdAt`        | `string`            | ISO timestamp               |
+| `updatedAt`        | `string \| null`    | Last edit time              |
+| `replyToMessageId` | `MessageId \| null` | Parent message if reply     |
+| `threadChannelId`  | `ChannelId \| null` | Thread channel if in thread |
 
 ### `onMessageUpdate`
 

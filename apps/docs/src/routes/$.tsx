@@ -13,6 +13,7 @@ import { File, Folder, Files } from "fumadocs-ui/components/files"
 import { TypeTable } from "fumadocs-ui/components/type-table"
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion"
 import { ImageZoom } from "fumadocs-ui/components/image-zoom"
+import { LLMCopyButton, ViewOptions } from "@/components/page-actions"
 
 export const Route = createFileRoute("/$")({
 	component: Page,
@@ -34,16 +35,26 @@ const serverLoader = createServerFn({
 
 		return {
 			path: page.path,
+			url: page.url,
 			pageTree: await source.serializePageTree(source.getPageTree()),
 		}
 	})
 
 const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }) {
+		const data = Route.useLoaderData()
+
 		return (
 			<DocsPage toc={toc}>
 				<DocsTitle>{frontmatter.title}</DocsTitle>
 				<DocsDescription>{frontmatter.description}</DocsDescription>
+				<div className="flex flex-row gap-2 items-center border-b pt-2 pb-6">
+					<LLMCopyButton markdownUrl={`${data.url}.mdx`} />
+					<ViewOptions
+						markdownUrl={`${data.url}.mdx`}
+						githubUrl={`https://github.com/hazelchat/hazel/blob/dev/apps/docs/content/docs/${data.path}`}
+					/>
+				</div>
 				<DocsBody>
 					<MDX
 						components={{

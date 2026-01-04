@@ -88,6 +88,7 @@ Send a message in any channel the bot has access to, and it will echo it back!
 ### `runHazelBot`
 
 The main entry point for creating bots. It handles:
+
 - Loading configuration from environment variables
 - Connecting to the Hazel real-time event stream
 - Graceful shutdown on SIGINT/SIGTERM
@@ -96,6 +97,7 @@ The main entry point for creating bots. It handles:
 ### `bot.onMessage`
 
 Registers a handler for new messages. The handler receives the full message object with:
+
 - `message.id` - Unique message ID
 - `message.content` - Message text content
 - `message.channelId` - Channel where the message was sent
@@ -105,6 +107,7 @@ Registers a handler for new messages. The handler receives the full message obje
 ### `bot.message.reply`
 
 Sends a reply to a message. The SDK provides several message operations:
+
 - `bot.message.send(channelId, content)` - Send a new message
 - `bot.message.reply(message, content)` - Reply to a message
 - `bot.message.update(message, newContent)` - Edit a message
