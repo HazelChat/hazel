@@ -1,0 +1,6 @@
+{
+	"title": "Webhooks",
+	"description": "Send messages to channels via HTTP",
+	"root": true,
+	"pages": ["index", "getting-started", "embeds"]
+}

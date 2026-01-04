@@ -1,5 +1,6 @@
 {
-	"title": "Home",
-	"description": "Framework to building apps ontop of Hazel",
-	"root": true
+	"title": "Overview",
+	"description": "Hazel developer documentation",
+	"root": true,
+	"pages": ["index"]
 }

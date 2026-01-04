@@ -1,0 +1,310 @@
+---
+title: Embeds Reference
+description: Create rich, formatted messages with embeds
+icon: LayoutTemplate
+---
+
+Embeds let you send rich, formatted messages with titles, descriptions, colors, fields, images, and more. A single webhook message can contain up to 10 embeds.
+
+## Basic Structure
+
+```typescript
+{
+  embeds: [{
+    title: "My Embed",
+    description: "This is the main content",
+    color: 5025616
+  }]
+}
+```
+
+## All Fields
+
+### Core Fields
+
+| Field | Type | Max Length | Description |
+|-------|------|------------|-------------|
+| `title` | string | 256 | The embed title, displayed prominently at the top |
+| `description` | string | 4096 | The main content of the embed, supports markdown |
+| `url` | string | 2048 | Makes the title a clickable link |
+| `color` | number | 0-16777215 | Sidebar accent color as decimal (see [Color Values](#color-values)) |
+| `timestamp` | string | ISO 8601 | Displays a timestamp at the bottom (e.g., `"2024-01-15T10:30:00Z"`) |
+
+### Author
+
+Display author information at the top of the embed.
+
+```typescript
+{
+  author: {
+    name: "GitHub Actions",           // Required, max 256 chars
+    url: "https://github.com",        // Optional, max 2048 chars
+    iconUrl: "https://github.com/icon.png"  // Optional, max 2048 chars
+  }
+}
+```
+
+### Footer
+
+Display footer text at the bottom of the embed.
+
+```typescript
+{
+  footer: {
+    text: "Sent via CI/CD Pipeline",  // Required, max 2048 chars
+    iconUrl: "https://example.com/icon.png"  // Optional, max 2048 chars
+  }
+}
+```
+
+### Images
+
+Add visual content to your embed.
+
+```typescript
+{
+  image: {
+    url: "https://example.com/screenshot.png"  // Large image, max 2048 chars
+  },
+  thumbnail: {
+    url: "https://example.com/logo.png"  // Small image in corner, max 2048 chars
+  }
+}
+```
+
+### Badge
+
+Display a status indicator badge.
+
+```typescript
+{
+  badge: {
+    text: "Deployed",     // Required, max 64 chars
+    color: 5025616        // Optional, decimal color value
+  }
+}
+```
+
+### Fields
+
+Display key-value pairs in a structured layout. Maximum 25 fields per embed.
+
+```typescript
+{
+  fields: [
+    {
+      name: "Environment",    // Required, 1-256 chars
+      value: "Production",    // Required, 1-1024 chars
+      inline: true            // Optional, display side-by-side
+    },
+    {
+      name: "Status",
+      value: "Success",
+      inline: true,
+      type: "badge",          // Optional: "text" (default) or "badge"
+      options: {
+        intent: "success"     // Badge styling (see below)
+      }
+    }
+  ]
+}
+```
+
+#### Field Types
+
+| Type | Description |
+|------|-------------|
+| `text` | Default. Renders the value as plain text |
+| `badge` | Renders the value as a colored badge |
+
+#### Badge Intent Options
+
+When using `type: "badge"`, you can specify an `intent` to control the badge color:
+
+| Intent | Use Case |
+|--------|----------|
+| `primary` | Default/neutral information |
+| `secondary` | Less prominent information |
+| `success` | Successful operations, passing tests |
+| `info` | Informational status |
+| `warning` | Warnings, attention needed |
+| `danger` | Errors, failures |
+| `outline` | Subtle, outlined style |
+
+## Color Values
+
+Colors are specified as decimal numbers from 0 to 16777215 (0x000000 to 0xFFFFFF).
+
+### Common Colors
+
+| Color | Decimal | Hex | Use Case |
+|-------|---------|-----|----------|
+| Green | `5025616` | `#4CB050` | Success, deployed |
+| Red | `15158332` | `#E74C3C` | Error, failed |
+| Blue | `3447003` | `#3498DB` | Info, in progress |
+| Yellow | `16776960` | `#FFFF00` | Warning |
+| Orange | `15105570` | `#E67E22` | Alert |
+| Purple | `10181046` | `#9B59B6` | Special events |
+| Gray | `9807270` | `#95A5A6` | Neutral |
+
+### Converting Hex to Decimal
+
+```javascript
+// Hex to decimal
+const decimal = parseInt("4CB050", 16)  // 5025616
+
+// In your webhook payload
+{ "color": 5025616 }
+```
+
+## Examples
+
+### Simple Notification
+
+```json
+{
+  "embeds": [{
+    "title": "New User Signup",
+    "description": "john@example.com just created an account",
+    "color": 3447003,
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+### Deployment Status
+
+```json
+{
+  "embeds": [{
+    "title": "Deployment Complete",
+    "description": "Successfully deployed to production",
+    "color": 5025616,
+    "author": {
+      "name": "GitHub Actions",
+      "iconUrl": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+    },
+    "badge": {
+      "text": "Deployed",
+      "color": 5025616
+    },
+    "fields": [
+      {"name": "Environment", "value": "Production", "inline": true},
+      {"name": "Version", "value": "v2.1.0", "inline": true},
+      {"name": "Commit", "value": "`abc1234`", "inline": true},
+      {"name": "Duration", "value": "2m 34s", "inline": true}
+    ],
+    "footer": {
+      "text": "Triggered by merge to main"
+    },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+### Error Alert
+
+```json
+{
+  "embeds": [{
+    "title": "Build Failed",
+    "description": "The build failed due to test failures",
+    "color": 15158332,
+    "badge": {
+      "text": "Failed",
+      "color": 15158332
+    },
+    "fields": [
+      {
+        "name": "Status",
+        "value": "Failed",
+        "type": "badge",
+        "options": {"intent": "danger"}
+      },
+      {"name": "Branch", "value": "feature/new-api", "inline": true},
+      {"name": "Failed Tests", "value": "3", "inline": true}
+    ],
+    "footer": {
+      "text": "View logs for details"
+    }
+  }]
+}
+```
+
+### Uptime Monitor Alert
+
+```json
+{
+  "embeds": [{
+    "title": "Service Degraded",
+    "description": "API response time has increased significantly",
+    "url": "https://status.example.com",
+    "color": 15105570,
+    "thumbnail": {
+      "url": "https://example.com/warning-icon.png"
+    },
+    "fields": [
+      {
+        "name": "Status",
+        "value": "Degraded",
+        "type": "badge",
+        "options": {"intent": "warning"}
+      },
+      {"name": "Latency", "value": "2340ms", "inline": true},
+      {"name": "Region", "value": "US-East", "inline": true}
+    ],
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+### Rich Embed with All Sections
+
+```json
+{
+  "embeds": [{
+    "title": "Pull Request Merged",
+    "description": "**feat: Add user authentication**\n\nThis PR adds OAuth2 authentication with support for Google and GitHub providers.",
+    "url": "https://github.com/org/repo/pull/123",
+    "color": 10181046,
+    "author": {
+      "name": "Jane Developer",
+      "url": "https://github.com/janedev",
+      "iconUrl": "https://github.com/janedev.png"
+    },
+    "thumbnail": {
+      "url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+    },
+    "fields": [
+      {"name": "Repository", "value": "org/repo", "inline": true},
+      {"name": "Branch", "value": "main", "inline": true},
+      {"name": "Additions", "value": "+1,234", "inline": true},
+      {"name": "Deletions", "value": "-567", "inline": true},
+      {"name": "Reviewers", "value": "@alice, @bob"}
+    ],
+    "image": {
+      "url": "https://example.com/pr-screenshot.png"
+    },
+    "footer": {
+      "text": "Merged by janedev",
+      "iconUrl": "https://github.com/janedev.png"
+    },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }]
+}
+```
+
+## Limits Reference
+
+| Item | Limit |
+|------|-------|
+| Embeds per message | 10 |
+| Title length | 256 characters |
+| Description length | 4096 characters |
+| Fields per embed | 25 |
+| Field name length | 256 characters |
+| Field value length | 1024 characters |
+| Footer text length | 2048 characters |
+| Author name length | 256 characters |
+| URL lengths | 2048 characters |
+| Badge text length | 64 characters |

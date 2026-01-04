@@ -1,5 +1,6 @@
 {
 	"title": "Bot SDK",
 	"description": "Framework to building apps ontop of Hazel",
-	"root": true
+	"root": true,
+	"pages": ["index", "getting-started", "tutorial", "reference"]
 }
