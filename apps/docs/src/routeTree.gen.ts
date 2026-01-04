@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as OgSplatRouteImport } from './routes/og/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OgSplatRoute = OgSplatRouteImport.update({
+  id: '/og/$',
+  path: '/og/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
@@ -26,27 +32,31 @@ const ApiSearchRoute = ApiSearchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/og/$': typeof OgSplatRoute
 }
 export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/og/$': typeof OgSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/$': typeof SplatRoute
   '/api/search': typeof ApiSearchRoute
+  '/og/$': typeof OgSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$' | '/api/search'
+  fullPaths: '/$' | '/api/search' | '/og/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$' | '/api/search'
-  id: '__root__' | '/$' | '/api/search'
+  to: '/$' | '/api/search' | '/og/$'
+  id: '__root__' | '/$' | '/api/search' | '/og/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  OgSplatRoute: typeof OgSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/og/$': {
+      id: '/og/$'
+      path: '/og/$'
+      fullPath: '/og/$'
+      preLoaderRoute: typeof OgSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/search': {
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   ApiSearchRoute: ApiSearchRoute,
+  OgSplatRoute: OgSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

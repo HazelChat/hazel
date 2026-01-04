@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
 import { DocsLayout } from "fumadocs-ui/layouts/docs"
 import { createServerFn } from "@tanstack/react-start"
-import { source } from "@/lib/source"
+import { source, getPageImage } from "@/lib/source"
 import browserCollections from "fumadocs-mdx:collections/browser"
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page"
 import defaultMdxComponents from "fumadocs-ui/mdx"
@@ -15,9 +15,36 @@ import { Accordion, Accordions } from "fumadocs-ui/components/accordion"
 import { ImageZoom } from "fumadocs-ui/components/image-zoom"
 import { LLMCopyButton, ViewOptions } from "@/components/page-actions"
 
+type LoaderData = {
+	path: string
+	url: string
+	title: string | undefined
+	description: string | undefined
+	ogImage: string
+	pageTree: object
+}
+
 export const Route = createFileRoute("/$")({
 	component: Page,
-	loader: async ({ params }) => {
+	head: ({ loaderData }) => {
+		const data = loaderData as LoaderData | undefined
+		return {
+			meta: [
+				{ title: data?.title ? `${data.title} | Hazel Docs` : "Hazel Docs" },
+				{ name: "description", content: data?.description ?? "" },
+				{ property: "og:title", content: data?.title ?? "Hazel Docs" },
+				{ property: "og:description", content: data?.description ?? "" },
+				{ property: "og:image", content: data?.ogImage ?? "" },
+				{ property: "og:type", content: "article" },
+				{ name: "twitter:card", content: "summary_large_image" },
+				{ name: "twitter:title", content: data?.title ?? "Hazel Docs" },
+				{ name: "twitter:description", content: data?.description ?? "" },
+				{ name: "twitter:image", content: data?.ogImage ?? "" },
+			],
+		}
+	},
+	// @ts-expect-error TanStack Router type inference issue with head + loader
+	loader: async ({ params }): Promise<LoaderData> => {
 		const slugs = params._splat?.split("/") ?? []
 		const data = await serverLoader({ data: slugs })
 		await clientLoader.preload(data.path)
@@ -36,13 +63,16 @@ const serverLoader = createServerFn({
 		return {
 			path: page.path,
 			url: page.url,
+			title: page.data.title,
+			description: page.data.description,
+			ogImage: getPageImage(page).url,
 			pageTree: await source.serializePageTree(source.getPageTree()),
 		}
 	})
 
 const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }) {
-		const data = Route.useLoaderData()
+		const data = Route.useLoaderData() as LoaderData
 
 		return (
 			<DocsPage toc={toc}>
@@ -79,7 +109,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 })
 
 function Page() {
-	const data = Route.useLoaderData()
+	const data = Route.useLoaderData() as LoaderData
 	const { pageTree } = useFumadocsLoader(data)
 	const Content = clientLoader.getComponent(data.path)
 
