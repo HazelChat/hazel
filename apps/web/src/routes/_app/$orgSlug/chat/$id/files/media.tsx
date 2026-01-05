@@ -1,5 +1,5 @@
 import type { ChannelId } from "@hazel/schema"
-import { ArrowLeftIcon } from "@heroicons/react/24/outline"
+import { IconArrowLeft } from "~/components/icons/icon-arrow-left"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { MediaGalleryView } from "~/components/chat/channel-files/channel-files-media-gallery-view"
 import { Button } from "~/components/ui/button"
@@ -17,7 +17,7 @@ function MediaGalleryRoute() {
 			<header className="flex shrink-0 items-center gap-3 border-border border-b px-4 py-3">
 				<Link to="/$orgSlug/chat/$id/files" params={{ orgSlug, id }}>
 					<Button intent="plain" size="sq-sm" aria-label="Go back">
-						<ArrowLeftIcon className="size-5" />
+						<IconArrowLeft className="size-5" />
 					</Button>
 				</Link>
 				<h1 className="font-semibold text-lg">All Media</h1>

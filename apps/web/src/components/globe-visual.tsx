@@ -1,4 +1,5 @@
-import { MoonIcon, SunIcon } from "@heroicons/react/24/outline"
+import { IconMoon } from "~/components/icons/icon-moon"
+import { IconSun } from "~/components/icons/icon-sun"
 import { motion } from "motion/react"
 import { useEffect, useState } from "react"
 
@@ -102,9 +103,9 @@ export function GlobeVisual({ selectedOffset, hoveredOffset }: GlobeVisualProps)
 						transition={{ duration: 0.5 }}
 					>
 						{isDaytime ? (
-							<SunIcon className="size-5 text-amber-800" />
+							<IconSun className="size-5 text-amber-800" />
 						) : (
-							<MoonIcon className="size-5 text-slate-600" />
+							<IconMoon className="size-5 text-slate-600" />
 						)}
 					</motion.div>
 				</motion.div>
@@ -117,7 +118,7 @@ export function GlobeVisual({ selectedOffset, hoveredOffset }: GlobeVisualProps)
 						color: isDaytime ? "hsl(45 80% 25%)" : "hsl(230 20% 90%)",
 					}}
 				>
-					{isDaytime ? <SunIcon className="size-3" /> : <MoonIcon className="size-3" />}
+					{isDaytime ? <IconSun className="size-3" /> : <IconMoon className="size-3" />}
 					{isDaytime ? "Daytime" : "Nighttime"} • {localHour.toString().padStart(2, "0")}:00
 				</motion.div>
 			</div>

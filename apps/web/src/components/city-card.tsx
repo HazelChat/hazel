@@ -1,4 +1,6 @@
-import { CheckIcon, MapPinIcon, SparklesIcon } from "@heroicons/react/24/outline"
+import IconCheck from "~/components/icons/icon-check"
+import { IconMapPin } from "~/components/icons/icon-map-pin"
+import { IconSparkles } from "~/components/icons/icon-sparkles"
 import { motion } from "motion/react"
 import { useEffect, useState } from "react"
 
@@ -62,7 +64,7 @@ export function CityCard({ city, isSelected, isDetected, onClick, onHover, index
 					animate={{ scale: 1 }}
 					className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-primary text-primary-fg rounded-full flex items-center gap-0.5 text-[10px] font-medium"
 				>
-					<SparklesIcon className="size-2.5" />
+					<IconSparkles className="size-2.5" />
 					Detected
 				</motion.div>
 			)}
@@ -73,13 +75,13 @@ export function CityCard({ city, isSelected, isDetected, onClick, onHover, index
 					animate={{ scale: 1 }}
 					className="absolute -top-1.5 -right-1.5 size-6 bg-bg text-primary rounded-full flex items-center justify-center shadow-md"
 				>
-					<CheckIcon className="size-3.5" strokeWidth={3} />
+					<IconCheck className="size-3.5" />
 				</motion.div>
 			)}
 
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex items-center gap-1.5">
-					<MapPinIcon
+					<IconMapPin
 						className={`size-3.5 ${isSelected ? "text-primary-fg/70" : "text-muted-fg"}`}
 					/>
 					<span className={`text-xs ${isSelected ? "text-primary-fg/70" : "text-muted-fg"}`}>

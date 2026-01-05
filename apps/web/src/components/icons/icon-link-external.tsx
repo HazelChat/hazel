@@ -2,60 +2,33 @@ import type { SVGProps } from "react"
 
 type IconProps = SVGProps<SVGSVGElement> & {
 	secondaryfill?: string
-	strokewidth?: number
 	title?: string
 }
 
 export function IconExternalLink({
 	fill = "currentColor",
 	secondaryfill,
-	title = "badge 13",
+	title = "external-link",
 	...props
 }: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (
-		<svg
-			height="18"
-			width="18"
-			data-slot="icon"
-			viewBox="0 0 18 18"
-			xmlns="http://www.w3.org/2000/svg"
-			{...props}
-		>
+		<svg height="18" width="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" {...props}>
 			<title>{title}</title>
 			<g fill={fill}>
 				<path
-					d="M4 3.75C4 2.64543 4.89543 1.75 6 1.75H12.25C13.3546 1.75 14.25 2.64543 14.25 3.75V13C14.25 14.1046 13.3546 15 12.25 15H6C4.89543 15 4 14.1046 4 13V3.75Z"
+					d="M12.25 1H6.25C4.73122 1 3.5 2.23122 3.5 3.75V13.25C3.5 14.7688 4.73122 16 6.25 16H12.25C13.7688 16 15 14.7688 15 13.25V3.75C15 2.23122 13.7688 1 12.25 1Z"
 					fill={secondaryfill}
-					fillOpacity="0.3"
-					stroke="none"
+					opacity="0.4"
 				/>
 				<path
-					d="M4.25 9.25V3.75C4.25 2.645 5.145 1.75 6.25 1.75H12.25C13.355 1.75 14.25 2.645 14.25 3.75V13.25C14.25 14.355 13.355 15.25 12.25 15.25H7.25"
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
-				/>
-				<path
-					d="M7.23999 6.75H11.25V10.76"
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
-				/>
-				<path
-					d="M11.25 6.75L1.75 16.25"
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
+					d="M11.25 6H7.2402C6.8261 6 6.4902 6.3359 6.4902 6.75C6.4902 7.1641 6.8261 7.5 7.2402 7.5H9.4394L1.21969 15.7197C0.926689 16.0127 0.926689 16.4873 1.21969 16.7802C1.36619 16.9267 1.55809 16.9999 1.74999 16.9999C1.94189 16.9999 2.1338 16.9267 2.2803 16.7802L10.5 8.56049V10.7597C10.5 11.1738 10.8359 11.5097 11.25 11.5097C11.6641 11.5097 12 11.1738 12 10.7597V6.74988C12 6.33578 11.6641 6 11.25 6Z"
+					fill={fill}
 				/>
 			</g>
 		</svg>
 	)
 }
+
+export default IconExternalLink

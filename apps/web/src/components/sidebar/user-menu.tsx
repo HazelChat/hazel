@@ -1,4 +1,4 @@
-import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
+import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import { useState } from "react"
 import { twJoin } from "tailwind-merge"
 import { FeedbackModal } from "~/components/modals/feedback-modal"
@@ -58,7 +58,7 @@ export function UserMenu() {
 							)}
 						</div>
 					</div>
-					<ChevronUpDownIcon data-slot="chevron" className="size-4" />
+					<IconChevronUpDown data-slot="chevron" className="size-4" />
 				</MenuTrigger>
 				<MenuContent
 					className="in-data-[collapsible=collapsed]:min-w-56 min-w-(--trigger-width)"

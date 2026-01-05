@@ -1,6 +1,6 @@
 import type { Attachment, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
-import { PlayIcon } from "@heroicons/react/24/solid"
+import IconPlay from "~/components/icons/icon-play"
 import { useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
@@ -61,7 +61,7 @@ function MasonryItem({
 					/>
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 						<div className="flex size-12 items-center justify-center rounded-full bg-black/60">
-							<PlayIcon className="ml-0.5 size-6 text-white" />
+							<IconPlay className="ml-0.5 size-6 text-white" />
 						</div>
 					</div>
 				</>

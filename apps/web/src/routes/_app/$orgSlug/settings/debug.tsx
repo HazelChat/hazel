@@ -1,5 +1,5 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
+import { IconWarning } from "~/components/icons/icon-warning"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import { reactScanEnabledAtom } from "~/atoms/react-scan-atoms"
@@ -82,7 +82,7 @@ function DebugSettings() {
 				{/* Warning Banner */}
 				<div className="rounded-lg border border-warning/20 bg-warning/10 p-4">
 					<div className="flex gap-3">
-						<ExclamationTriangleIcon className="mt-0.5 size-5 shrink-0 text-warning" />
+						<IconWarning className="mt-0.5 size-5 shrink-0 text-warning" />
 						<div className="flex-1">
 							<p className="font-medium text-warning">Development Tools Only</p>
 							<p className="mt-1 text-fg text-sm">

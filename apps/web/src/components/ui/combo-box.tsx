@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
+import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import type {
 	ComboBoxProps as ComboboxPrimitiveProps,
 	InputProps,
@@ -75,7 +75,7 @@ const ComboBoxInput = (props: InputProps) => {
 			<Input {...props} placeholder={props?.placeholder} />
 			<Button className="absolute top-0 right-0 grid h-full w-11 cursor-default place-content-center sm:w-9">
 				{!context?.inputValue && (
-					<ChevronUpDownIcon data-slot="chevron" className="-mr-1 size-5 text-muted-fg sm:size-4" />
+					<IconChevronUpDown data-slot="chevron" className="-mr-1 size-5 text-muted-fg sm:size-4" />
 				)}
 			</Button>
 		</span>

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDownIcon } from "@heroicons/react/24/solid"
+import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { createLink } from "@tanstack/react-router"
 import { createContext, use, useCallback, useMemo, useState } from "react"
 import type {
@@ -554,7 +554,7 @@ const SidebarDisclosureTrigger = ({ className, ref, ...props }: SidebarDisclosur
 					<>
 						{typeof props.children === "function" ? props.children(values) : props.children}
 						{state !== "collapsed" && (
-							<ChevronDownIcon
+							<IconChevronDown
 								data-slot="chevron"
 								className="z-10 ml-auto size-3.5 transition-transform duration-200 group-aria-expanded/sidebar-disclosure-trigger:rotate-180"
 							/>

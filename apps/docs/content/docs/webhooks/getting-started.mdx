@@ -13,6 +13,7 @@ This guide walks you through creating a webhook and sending messages to a Hazel 
     ### Open Channel Settings
 
     Navigate to the channel where you want to receive webhook messages. Click the channel name to open settings, then select the **Webhooks** tab.
+
   </Step>
 
   <Step>
@@ -23,6 +24,7 @@ This guide walks you through creating a webhook and sending messages to a Hazel 
     - **Name** (required) - A display name for the webhook (e.g., "GitHub Actions", "Uptime Monitor")
     - **Description** (optional) - A note about what this webhook is for
     - **Avatar URL** (optional) - Custom avatar image for webhook messages
+
   </Step>
 
   <Step>
@@ -36,6 +38,7 @@ This guide walks you through creating a webhook and sending messages to a Hazel 
     ```
 
     If you lose the token, you can regenerate it from the webhook settings, but this will invalidate the old URL.
+
   </Step>
 </Steps>
 
@@ -101,9 +104,9 @@ POST /webhooks/incoming/{webhookId}/{token}
 
 ### Headers
 
-| Header | Value | Required |
-|--------|-------|----------|
-| `Content-Type` | `application/json` | Yes |
+| Header         | Value              | Required |
+| -------------- | ------------------ | -------- |
+| `Content-Type` | `application/json` | Yes      |
 
 ### Body
 
@@ -119,6 +122,7 @@ At least one of `content` or `embeds` must be provided.
 ### Response
 
 **Success (200)**:
+
 ```json
 {
   "messageId": "msg_abc123",
@@ -127,6 +131,7 @@ At least one of `content` or `embeds` must be provided.
 ```
 
 **Error (4xx/5xx)**:
+
 ```json
 {
   "error": "Error message describing what went wrong"
@@ -146,6 +151,7 @@ At least one of `content` or `embeds` must be provided.
     # Bad - hardcoded token
     curl -X POST "https://api.hazel.app/webhooks/incoming/abc/secret123" -d '...'
     ```
+
   </Accordion>
 
   <Accordion title="Regenerate Compromised Tokens">

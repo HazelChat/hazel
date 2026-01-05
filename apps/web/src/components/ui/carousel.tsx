@@ -1,4 +1,5 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
+import { IconChevronLeft } from "~/components/icons/icon-chevron-left"
+import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react"
 import { createContext, use, useCallback, useEffect, useLayoutEffect, useState } from "react"
 import { twMerge } from "tailwind-merge"
@@ -204,7 +205,7 @@ const CarouselButton = ({
 	const isNext = segment === "next"
 	const canScroll = isNext ? canScrollNext : canScrollPrev
 	const scroll = isNext ? scrollNext : scrollPrev
-	const Icon = isNext ? ChevronRightIcon : ChevronLeftIcon
+	const Icon = isNext ? IconChevronRight : IconChevronLeft
 
 	return (
 		<Button

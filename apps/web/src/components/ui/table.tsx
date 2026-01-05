@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronDownIcon } from "@heroicons/react/20/solid"
+import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { createContext, use } from "react"
 import type {
 	CellProps,
@@ -140,7 +140,7 @@ const TableColumn = ({ isResizable = false, className, ...props }: TableColumnPr
 								values.isHovered ? "bg-secondary-fg/10" : "",
 							)}
 						>
-							<ChevronDownIcon
+							<IconChevronDown
 								className={values.sortDirection === "ascending" ? "rotate-180" : ""}
 							/>
 						</span>

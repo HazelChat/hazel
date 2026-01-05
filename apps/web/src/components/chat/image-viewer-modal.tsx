@@ -1,5 +1,6 @@
 import type { Attachment, User } from "@hazel/domain/models"
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid"
+import { IconChevronLeft } from "~/components/icons/icon-chevron-left"
+import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import useEmblaCarousel from "embla-carousel-react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -211,7 +212,7 @@ export function ImageViewerModal({
 							className="absolute top-1/2 left-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
 							aria-label="Previous image"
 						>
-							<ChevronLeftIcon className="size-6" />
+							<IconChevronLeft className="size-6" />
 						</button>
 						<button
 							type="button"
@@ -219,7 +220,7 @@ export function ImageViewerModal({
 							className="absolute top-1/2 right-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
 							aria-label="Next image"
 						>
-							<ChevronRightIcon className="size-6" />
+							<IconChevronRight className="size-6" />
 						</button>
 					</>
 				)}

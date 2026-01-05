@@ -1,4 +1,4 @@
-import { ClockIcon } from "@heroicons/react/20/solid"
+import { IconClock } from "~/components/icons/icon-clock"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
@@ -183,7 +183,7 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 							)}
 							{user?.timezone && localTime && (
 								<div className="mt-2 flex items-center gap-1.5 text-muted-fg text-xs">
-									<ClockIcon className="size-3.5" />
+									<IconClock className="size-3.5" />
 									<span>
 										{localTime} local time
 										<span className="ml-1 opacity-60">

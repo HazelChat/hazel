@@ -1,4 +1,4 @@
-import { MinusIcon } from "@heroicons/react/20/solid"
+import { IconMinus } from "~/components/icons/icon-minus"
 import type { CheckboxGroupProps, CheckboxProps } from "react-aria-components"
 import {
 	CheckboxGroup as CheckboxGroupPrimitive,
@@ -38,7 +38,7 @@ export function Checkbox({ className, children, ...props }: CheckboxProps) {
 				(children, { isSelected, isIndeterminate, isFocusVisible, isInvalid }) => {
 					const isStringChild = typeof children === "string"
 					const indicator = isIndeterminate ? (
-						<MinusIcon data-slot="check-indicator" />
+						<IconMinus data-slot="check-indicator" />
 					) : isSelected ? (
 						<IconCheck data-slot="check-indicator" />
 					) : null

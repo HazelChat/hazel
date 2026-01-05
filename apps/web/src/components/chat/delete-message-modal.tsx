@@ -1,4 +1,4 @@
-import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
+import { IconWarning } from "~/components/icons/icon-warning"
 import { Button } from "~/components/ui/button"
 import { Description } from "~/components/ui/field"
 import { Modal, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
@@ -20,7 +20,7 @@ export function DeleteMessageModal({ isOpen, onOpenChange, onConfirm }: DeleteMe
 			<ModalContent size="md">
 				<ModalHeader>
 					<div className="flex size-12 items-center justify-center rounded-lg border border-danger/10 bg-danger/5">
-						<ExclamationTriangleIcon className="size-6 text-danger" />
+						<IconWarning className="size-6 text-danger" />
 					</div>
 					<ModalTitle>Delete message</ModalTitle>
 					<Description>

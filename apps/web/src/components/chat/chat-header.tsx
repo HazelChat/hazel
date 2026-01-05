@@ -1,5 +1,5 @@
 import type { UserId } from "@hazel/schema"
-import { ChevronRightIcon } from "@heroicons/react/20/solid"
+import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import { Link } from "@tanstack/react-router"
 import { ChannelIcon } from "~/components/channel-icon"
 import { Avatar } from "~/components/ui/avatar"
@@ -94,7 +94,7 @@ export function ChatHeader() {
 						)}
 
 						{/* Breadcrumb separator */}
-						<ChevronRightIcon className="size-4 shrink-0 text-muted-fg" />
+						<IconChevronRight className="size-4 shrink-0 text-muted-fg" />
 
 						{/* Thread indicator with name */}
 						<div className="flex items-center gap-1.5">

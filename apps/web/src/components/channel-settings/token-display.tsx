@@ -1,4 +1,5 @@
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid"
+import { IconEye } from "~/components/icons/icon-eye"
+import { IconEyeSlash } from "~/components/icons/icon-eye-slash"
 import { useState } from "react"
 import { toast } from "sonner"
 import IconCheck from "~/components/icons/icon-check"
@@ -70,9 +71,9 @@ export function TokenDisplay({ token, webhookUrl, onDismiss }: TokenDisplayProps
 										aria-label={isTokenVisible ? "Hide token" : "Show token"}
 									>
 										{isTokenVisible ? (
-											<EyeSlashIcon className="size-4" />
+											<IconEyeSlash className="size-4" />
 										) : (
-											<EyeIcon className="size-4" />
+											<IconEye className="size-4" />
 										)}
 									</Button>
 								</InputGroup>

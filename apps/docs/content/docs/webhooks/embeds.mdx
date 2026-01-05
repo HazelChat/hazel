@@ -22,13 +22,13 @@ Embeds let you send rich, formatted messages with titles, descriptions, colors, 
 
 ### Core Fields
 
-| Field | Type | Max Length | Description |
-|-------|------|------------|-------------|
-| `title` | string | 256 | The embed title, displayed prominently at the top |
-| `description` | string | 4096 | The main content of the embed, supports markdown |
-| `url` | string | 2048 | Makes the title a clickable link |
-| `color` | number | 0-16777215 | Sidebar accent color as decimal (see [Color Values](#color-values)) |
-| `timestamp` | string | ISO 8601 | Displays a timestamp at the bottom (e.g., `"2024-01-15T10:30:00Z"`) |
+| Field         | Type   | Max Length | Description                                                         |
+| ------------- | ------ | ---------- | ------------------------------------------------------------------- |
+| `title`       | string | 256        | The embed title, displayed prominently at the top                   |
+| `description` | string | 4096       | The main content of the embed, supports markdown                    |
+| `url`         | string | 2048       | Makes the title a clickable link                                    |
+| `color`       | number | 0-16777215 | Sidebar accent color as decimal (see [Color Values](#color-values)) |
+| `timestamp`   | string | ISO 8601   | Displays a timestamp at the bottom (e.g., `"2024-01-15T10:30:00Z"`) |
 
 ### Author
 
@@ -112,24 +112,24 @@ Display key-value pairs in a structured layout. Maximum 25 fields per embed.
 
 #### Field Types
 
-| Type | Description |
-|------|-------------|
-| `text` | Default. Renders the value as plain text |
-| `badge` | Renders the value as a colored badge |
+| Type    | Description                              |
+| ------- | ---------------------------------------- |
+| `text`  | Default. Renders the value as plain text |
+| `badge` | Renders the value as a colored badge     |
 
 #### Badge Intent Options
 
 When using `type: "badge"`, you can specify an `intent` to control the badge color:
 
-| Intent | Use Case |
-|--------|----------|
-| `primary` | Default/neutral information |
-| `secondary` | Less prominent information |
-| `success` | Successful operations, passing tests |
-| `info` | Informational status |
-| `warning` | Warnings, attention needed |
-| `danger` | Errors, failures |
-| `outline` | Subtle, outlined style |
+| Intent      | Use Case                             |
+| ----------- | ------------------------------------ |
+| `primary`   | Default/neutral information          |
+| `secondary` | Less prominent information           |
+| `success`   | Successful operations, passing tests |
+| `info`      | Informational status                 |
+| `warning`   | Warnings, attention needed           |
+| `danger`    | Errors, failures                     |
+| `outline`   | Subtle, outlined style               |
 
 ## Color Values
 
@@ -137,15 +137,15 @@ Colors are specified as decimal numbers from 0 to 16777215 (0x000000 to 0xFFFFFF
 
 ### Common Colors
 
-| Color | Decimal | Hex | Use Case |
-|-------|---------|-----|----------|
-| Green | `5025616` | `#4CB050` | Success, deployed |
-| Red | `15158332` | `#E74C3C` | Error, failed |
-| Blue | `3447003` | `#3498DB` | Info, in progress |
-| Yellow | `16776960` | `#FFFF00` | Warning |
-| Orange | `15105570` | `#E67E22` | Alert |
-| Purple | `10181046` | `#9B59B6` | Special events |
-| Gray | `9807270` | `#95A5A6` | Neutral |
+| Color  | Decimal    | Hex       | Use Case          |
+| ------ | ---------- | --------- | ----------------- |
+| Green  | `5025616`  | `#4CB050` | Success, deployed |
+| Red    | `15158332` | `#E74C3C` | Error, failed     |
+| Blue   | `3447003`  | `#3498DB` | Info, in progress |
+| Yellow | `16776960` | `#FFFF00` | Warning           |
+| Orange | `15105570` | `#E67E22` | Alert             |
+| Purple | `10181046` | `#9B59B6` | Special events    |
+| Gray   | `9807270`  | `#95A5A6` | Neutral           |
 
 ### Converting Hex to Decimal
 
@@ -296,15 +296,15 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ## Limits Reference
 
-| Item | Limit |
-|------|-------|
-| Embeds per message | 10 |
-| Title length | 256 characters |
+| Item               | Limit           |
+| ------------------ | --------------- |
+| Embeds per message | 10              |
+| Title length       | 256 characters  |
 | Description length | 4096 characters |
-| Fields per embed | 25 |
-| Field name length | 256 characters |
+| Fields per embed   | 25              |
+| Field name length  | 256 characters  |
 | Field value length | 1024 characters |
 | Footer text length | 2048 characters |
-| Author name length | 256 characters |
-| URL lengths | 2048 characters |
-| Badge text length | 64 characters |
+| Author name length | 256 characters  |
+| URL lengths        | 2048 characters |
+| Badge text length  | 64 characters   |

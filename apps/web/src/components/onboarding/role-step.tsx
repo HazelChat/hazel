@@ -1,13 +1,12 @@
-import {
-	ChartBarIcon,
-	CommandLineIcon,
-	CubeIcon,
-	LightBulbIcon,
-	PaintBrushIcon,
-	PresentationChartLineIcon,
-	RocketLaunchIcon,
-	UserIcon,
-} from "@heroicons/react/24/outline"
+import { IconChartBar } from "~/components/icons/icon-chart-bar"
+import { IconCode } from "~/components/icons/icon-code"
+import { IconCube } from "~/components/icons/icon-cube"
+import { IconLightbulb } from "~/components/icons/icon-lightbulb"
+import { IconMegaphone } from "~/components/icons/icon-megaphone"
+import { IconPaintbrush } from "~/components/icons/icon-paintbrush"
+import { IconPresentationChart } from "~/components/icons/icon-presentation-chart"
+import { IconRocket } from "~/components/icons/icon-rocket"
+import { IconUser } from "~/components/icons/icon-user"
 import { useState } from "react"
 import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { ChoiceBox, ChoiceBoxDescription, ChoiceBoxItem, ChoiceBoxLabel } from "~/components/ui/choice-box"
@@ -18,60 +17,57 @@ const roles = [
 		id: "developer",
 		label: "Developer / Engineer",
 		description: "Write code and build features",
-		icon: CommandLineIcon,
+		icon: IconCode,
 	},
 	{
 		id: "designer",
 		label: "Designer",
 		description: "Create interfaces and experiences",
-		icon: PaintBrushIcon,
+		icon: IconPaintbrush,
 	},
 	{
 		id: "pm",
 		label: "Product Manager",
 		description: "Define roadmap and requirements",
-		icon: CubeIcon,
+		icon: IconCube,
 	},
 	{
 		id: "marketing",
 		label: "Marketing",
 		description: "Growth, campaigns, and content",
-		icon: MegaphoneIcon,
+		icon: IconMegaphone,
 	},
 	{
 		id: "sales",
 		label: "Sales / Business Development",
 		description: "Revenue and customer relationships",
-		icon: PresentationChartLineIcon,
+		icon: IconPresentationChart,
 	},
 	{
 		id: "data",
 		label: "Data / Analytics",
 		description: "Insights, metrics, and analysis",
-		icon: ChartBarIcon,
+		icon: IconChartBar,
 	},
 	{
 		id: "leadership",
 		label: "Leadership / Executive",
 		description: "Strategy and decision making",
-		icon: RocketLaunchIcon,
+		icon: IconRocket,
 	},
 	{
 		id: "founder",
 		label: "Founder / Entrepreneur",
 		description: "Building and growing a business",
-		icon: LightBulbIcon,
+		icon: IconLightbulb,
 	},
 	{
 		id: "other",
 		label: "Other",
 		description: "A different role or multiple roles",
-		icon: UserIcon,
+		icon: IconUser,
 	},
 ]
-
-// Import missing icon
-import { MegaphoneIcon } from "@heroicons/react/24/outline"
 
 interface RoleStepProps {
 	onBack: () => void

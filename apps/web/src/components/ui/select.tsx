@@ -1,4 +1,4 @@
-import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
+import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import type { ListBoxProps, PopoverProps, SelectProps as SelectPrimitiveProps } from "react-aria-components"
 import { Button, ListBox, Select as SelectPrimitive, SelectValue } from "react-aria-components"
 import { twJoin } from "tailwind-merge"
@@ -103,7 +103,7 @@ const SelectTrigger = ({ children, className, ...props }: SelectTriggerProps) =>
 										"*:data-[slot=avatar]:[--avatar-size:--spacing(5)] sm:*:data-[slot=avatar]:[--avatar-size:--spacing(4.5)]",
 									])}
 								/>
-								<ChevronUpDownIcon
+								<IconChevronUpDown
 									data-slot="chevron"
 									className="-mr-1 ml-auto size-5 text-muted-fg sm:size-4"
 								/>

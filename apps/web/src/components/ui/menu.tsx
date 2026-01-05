@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRightIcon } from "@heroicons/react/20/solid"
+import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import { createLink } from "@tanstack/react-router"
 import type {
 	ButtonProps,
@@ -134,7 +134,7 @@ const MenuItem = ({ className, intent, children, ...props }: MenuItemProps) => {
 					{typeof children === "function" ? children(values) : children}
 
 					{values.hasSubmenu && (
-						<ChevronRightIcon data-slot="chevron" className="absolute right-2 size-3.5" />
+						<IconChevronRight data-slot="chevron" className="absolute right-2 size-3.5" />
 					)}
 				</>
 			)}

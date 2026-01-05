@@ -1,6 +1,7 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline"
+import IconClose from "~/components/icons/icon-close"
+import IconPlus from "~/components/icons/icon-plus"
 import { Exit } from "effect"
 import { useState } from "react"
 import { createInvitationMutation } from "~/atoms/invitation-atoms"
@@ -145,7 +146,7 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 									onPress={() => removeEmailField(index)}
 									aria-label="Remove email"
 								>
-									<XMarkIcon className="size-4" />
+									<IconClose className="size-4" />
 								</Button>
 							)}
 						</div>
@@ -159,7 +160,7 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 					className="w-full"
 					isDisabled={emails.length >= 10}
 				>
-					<PlusIcon className="size-4" />
+					<IconPlus className="size-4" />
 					Add another email
 				</Button>
 

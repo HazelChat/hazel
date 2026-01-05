@@ -1,4 +1,6 @@
-import { CheckIcon, MagnifyingGlassIcon, MapPinIcon } from "@heroicons/react/24/outline"
+import IconCheck from "~/components/icons/icon-check"
+import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
+import { IconMapPin } from "~/components/icons/icon-map-pin"
 import { useAtomSet } from "@effect-atom/atom-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useEffect, useState } from "react"
@@ -190,7 +192,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 				{/* Search and Detection */}
 				<div className="py-4 flex flex-col sm:flex-row gap-3">
 					<InputGroup className="w-full">
-						<MagnifyingGlassIcon />
+						<IconMagnifier3 />
 						<Input
 							placeholder="Search cities..."
 							value={searchQuery}
@@ -204,7 +206,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 						onPress={handleDetect}
 						className="gap-2 shrink-0"
 					>
-						<MapPinIcon className="size-4" />
+						<IconMapPin className="size-4" />
 						{detectionAttempted && matchedTimezone === selectedTimezone
 							? `Detected: ${detectedCity?.name || closestCityToDetected?.name}`
 							: "Detect My Timezone"}

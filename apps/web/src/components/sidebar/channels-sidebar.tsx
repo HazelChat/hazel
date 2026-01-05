@@ -1,7 +1,7 @@
 "use client"
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { ChevronUpDownIcon } from "@heroicons/react/20/solid"
+import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import { and, eq, or, useLiveQuery } from "@tanstack/react-db"
 import { Fragment, useMemo } from "react"
 import { Button as PrimitiveButton } from "react-aria-components"
@@ -198,7 +198,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									/>
 									{organization?.name}
 								</span>
-								<ChevronUpDownIcon className="ml-auto size-4 text-muted-fg" />
+								<IconChevronUpDown className="ml-auto size-4 text-muted-fg" />
 							</div>
 						</PrimitiveButton>
 						<MenuContent className="min-w-(--trigger-width)">

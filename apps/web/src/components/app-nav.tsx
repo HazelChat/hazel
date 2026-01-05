@@ -1,7 +1,8 @@
 "use client"
 
-import { ChatBubbleOvalLeftEllipsisIcon, UsersIcon } from "@heroicons/react/20/solid"
-import { BellSlashIcon } from "@heroicons/react/24/outline"
+import { IconBellSlash } from "~/components/icons/icon-bell-slash"
+import { IconChatBubble } from "~/components/icons/icon-chat-bubble"
+import IconUsers from "~/components/icons/icon-users"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { Button as PrimitiveButton } from "~/components/ui/button"
 import { Separator } from "~/components/ui/separator"
@@ -13,20 +14,20 @@ export function AppNav({ openCmd }: { openCmd: (open: boolean) => void }) {
 			<div className="flex items-center gap-2 font-semibold text-sm/6">
 				<SidebarTrigger className="-ml-2 sm:-ml-0.5" />
 				<Separator className="mr-1.5 h-4" orientation="vertical" />
-				<ChatBubbleOvalLeftEllipsisIcon className="hidden size-4 sm:inline" /> General
+				<IconChatBubble className="hidden size-4 sm:inline" /> General
 			</div>
 			<div className="flex items-center gap-x-1.5">
 				<Button onPress={() => openCmd(true)} aria-label="Search...">
 					<IconMagnifier />
 				</Button>
 				<Button aria-label="Threads">
-					<ChatBubbleOvalLeftEllipsisIcon />
+					<IconChatBubble />
 				</Button>
 				<Button aria-label="Turn off notifications">
-					<BellSlashIcon />
+					<IconBellSlash />
 				</Button>
 				<Button aria-label="Members">
-					<UsersIcon />
+					<IconUsers />
 				</Button>
 			</div>
 		</nav>

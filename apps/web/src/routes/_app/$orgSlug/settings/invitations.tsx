@@ -1,6 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { InvitationId } from "@hazel/schema"
-import { ArrowPathIcon } from "@heroicons/react/20/solid"
+import { IconArrowPath } from "~/components/icons/icon-arrow-path"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
@@ -261,7 +261,7 @@ function InvitationsSettings() {
 																revokingId === invitation.id
 															}
 														>
-															<ArrowPathIcon className="mr-2 size-4" />
+															<IconArrowPath className="mr-2 size-4" />
 															{resendingId === invitation.id
 																? "Resending..."
 																: "Resend Invitation"}

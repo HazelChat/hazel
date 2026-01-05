@@ -1,6 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
-import { ExclamationTriangleIcon } from "@heroicons/react/20/solid"
+import { IconWarning } from "~/components/icons/icon-warning"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
@@ -318,7 +318,7 @@ function TeamSettings() {
 					<Dialog>
 						<DialogHeader>
 							<div className="flex size-12 items-center justify-center rounded-lg border border-danger/10 bg-danger/5">
-								<ExclamationTriangleIcon className="size-6 text-danger" />
+								<IconWarning className="size-6 text-danger" />
 							</div>
 							<DialogTitle>Remove team member</DialogTitle>
 							<DialogDescription>

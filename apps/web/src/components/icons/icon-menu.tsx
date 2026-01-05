@@ -2,49 +2,29 @@ import type { SVGProps } from "react"
 
 type IconProps = SVGProps<SVGSVGElement> & {
 	secondaryfill?: string
-	strokewidth?: number
+	title?: string
 }
 
-export function IconMenu({ fill = "currentColor", secondaryfill, ...props }: IconProps) {
-	secondaryfill = secondaryfill || fill
-
+export function IconMenu({ fill = "currentColor", title = "menu", ...props }: IconProps) {
 	return (
 		<svg height="18" width="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" {...props}>
+			<title>{title}</title>
 			<g fill={fill}>
-				<line
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
-					x1="2.25"
-					x2="15.75"
-					y1="9"
-					y2="9"
+				<path
+					d="M15.75,9.75H2.25c-.414,0-.75-.336-.75-.75s.336-.75,.75-.75H15.75c.414,0,.75,.336,.75,.75s-.336,.75-.75,.75Z"
+					fill={fill}
 				/>
-				<line
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
-					x1="2.25"
-					x2="15.75"
-					y1="4.75"
-					y2="4.75"
+				<path
+					d="M15.75,4.5H2.25c-.414,0-.75-.336-.75-.75s.336-.75,.75-.75H15.75c.414,0,.75,.336,.75,.75s-.336,.75-.75,.75Z"
+					fill={fill}
 				/>
-				<line
-					fill="none"
-					stroke={fill}
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.5"
-					x1="2.25"
-					x2="15.75"
-					y1="13.25"
-					y2="13.25"
+				<path
+					d="M15.75,15H2.25c-.414,0-.75-.336-.75-.75s.336-.75,.75-.75H15.75c.414,0,.75,.336,.75,.75s-.336,.75-.75,.75Z"
+					fill={fill}
 				/>
 			</g>
 		</svg>
 	)
 }
+
+export default IconMenu
