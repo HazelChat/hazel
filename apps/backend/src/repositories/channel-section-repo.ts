@@ -6,10 +6,14 @@ import { DatabaseLive } from "../services/database"
 export class ChannelSectionRepo extends Effect.Service<ChannelSectionRepo>()("ChannelSectionRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.channelSectionsTable, ChannelSection.Model, {
-			idColumn: "id",
-			name: "ChannelSection",
-		})
+		const baseRepo = yield* ModelRepository.makeRepository(
+			schema.channelSectionsTable,
+			ChannelSection.Model,
+			{
+				idColumn: "id",
+				name: "ChannelSection",
+			},
+		)
 
 		return baseRepo
 	}),

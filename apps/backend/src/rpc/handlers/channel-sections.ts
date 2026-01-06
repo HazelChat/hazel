@@ -88,7 +88,10 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(policyUse(ChannelSectionPolicy.canDelete(id)), withRemapDbErrors("ChannelSection", "delete")),
+					.pipe(
+						policyUse(ChannelSectionPolicy.canDelete(id)),
+						withRemapDbErrors("ChannelSection", "delete"),
+					),
 
 			"channelSection.reorder": ({ organizationId, sectionIds }) =>
 				db

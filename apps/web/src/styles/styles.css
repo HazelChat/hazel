@@ -402,7 +402,3 @@ If you want to use the typography plugin, uncomment the line below.
 	display: none;
 }
 
-.react-aria-DropIndicator[data-drop-target] {
-	outline: 1px solid var(--primary);
-	transform: translateZ(0);
-}

@@ -100,7 +100,11 @@ export function CreateSectionModal({ isOpen, onOpenChange }: CreateSectionModalP
 						</Button>
 						<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
 							{([canSubmit, isSubmitting]) => (
-								<Button intent="primary" type="submit" isDisabled={!canSubmit || isSubmitting}>
+								<Button
+									intent="primary"
+									type="submit"
+									isDisabled={!canSubmit || isSubmitting}
+								>
 									{isSubmitting ? "Creating..." : "Create section"}
 								</Button>
 							)}

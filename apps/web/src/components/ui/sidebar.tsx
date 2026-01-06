@@ -1,6 +1,5 @@
 "use client"
 
-import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { createLink } from "@tanstack/react-router"
 import { createContext, use, useCallback, useMemo, useState } from "react"
 import type {
@@ -8,6 +7,7 @@ import type {
 	DisclosureGroupProps,
 	DisclosurePanelProps,
 	DisclosureProps,
+	DragAndDropHooks,
 	LinkProps,
 	LinkRenderProps,
 	SeparatorProps as SidebarSeparatorProps,
@@ -19,11 +19,14 @@ import {
 	DisclosurePanel,
 	Header,
 	Heading,
+	ListBox,
+	ListBoxItem,
 	Separator,
 	Text,
 	Button as Trigger,
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
+import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { SheetContent } from "~/components/ui/sheet"
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
 import { useMediaQuery } from "~/hooks/use-media-query"
@@ -331,10 +334,46 @@ const SidebarSectionGroup = ({ className, ...props }: React.ComponentProps<"sect
 
 interface SidebarSectionProps extends React.ComponentProps<"div"> {
 	label?: string
+	/** Enable ListBox mode for drag-and-drop support */
+	listBox?: {
+		"aria-label": string
+		dragAndDropHooks?: DragAndDropHooks
+	}
+	/** Custom header content (rendered outside ListBox in listBox mode) */
+	header?: React.ReactNode
 }
 
-const SidebarSection = ({ className, ...props }: SidebarSectionProps) => {
+const SidebarSection = ({ className, listBox, header, ...props }: SidebarSectionProps) => {
 	const { state } = useSidebar()
+
+	const innerClassName = "grid grid-cols-[auto_1fr] gap-y-0.5 in-data-[state=collapsed]:gap-y-1.5"
+
+	const content = listBox ? (
+		<ListBox
+			aria-label={listBox["aria-label"]}
+			dragAndDropHooks={listBox.dragAndDropHooks}
+			data-slot="sidebar-section-inner"
+			className={({ isDropTarget }) =>
+				twMerge(
+					innerClassName,
+					"has-[[data-drop-target]]:bg-sidebar-accent/50 has-[[data-drop-target]]:rounded-lg",
+					isDropTarget && "bg-sidebar-accent/50 rounded-lg",
+				)
+			}
+			renderEmptyState={() => (
+				<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
+					Drop channels here
+				</div>
+			)}
+		>
+			{props.children}
+		</ListBox>
+	) : (
+		<div data-slot="sidebar-section-inner" className={innerClassName}>
+			{props.children}
+		</div>
+	)
+
 	return (
 		<div
 			data-slot="sidebar-section"
@@ -350,13 +389,39 @@ const SidebarSection = ({ className, ...props }: SidebarSectionProps) => {
 					{props.label}
 				</Header>
 			)}
-			<div
-				data-slot="sidebar-section-inner"
-				className="grid grid-cols-[auto_1fr] gap-y-0.5 in-data-[state=collapsed]:gap-y-1.5"
-			>
-				{props.children}
-			</div>
+			{header}
+			{content}
 		</div>
+	)
+}
+
+interface SidebarListBoxItemProps {
+	id: string
+	textValue: string
+	children: React.ReactNode
+	className?: string
+}
+
+/**
+ * A ListBoxItem wrapper for use inside SidebarSection with listBox mode.
+ * Provides consistent styling for drag states (isDragging, isDropTarget).
+ */
+const SidebarListBoxItem = ({ id, textValue, children, className }: SidebarListBoxItemProps) => {
+	return (
+		<ListBoxItem
+			id={id}
+			textValue={textValue}
+			className={({ isDragging }) =>
+				twMerge(
+					"col-span-full outline-none",
+					"grid grid-cols-subgrid", // Inherit parent's grid columns for proper subgrid chain
+					isDragging && "opacity-50",
+					className,
+				)
+			}
+		>
+			{children}
+		</ListBoxItem>
 	)
 }
 
@@ -365,7 +430,10 @@ interface SidebarItemProps extends Omit<React.ComponentProps<typeof Link>, "chil
 	children?:
 		| React.ReactNode
 		| ((
-				values: LinkRenderProps & { defaultChildren: React.ReactNode; isCollapsed: boolean },
+				values: LinkRenderProps & {
+					defaultChildren: React.ReactNode
+					isCollapsed: boolean
+				},
 		  ) => React.ReactNode)
 	badge?: string | number | undefined
 	tooltip?: string | React.ComponentProps<typeof TooltipContent>
@@ -703,6 +771,7 @@ export type {
 	SidebarProviderProps,
 	SidebarProps,
 	SidebarSectionProps,
+	SidebarListBoxItemProps,
 	SidebarItemProps,
 	SidebarNavProps,
 	SidebarDisclosureGroupProps,
@@ -719,6 +788,7 @@ export {
 	SidebarContent,
 	SidebarSectionGroup,
 	SidebarSection,
+	SidebarListBoxItem,
 	SidebarItem,
 	SidebarLink,
 	SidebarFooter,
