@@ -66,6 +66,8 @@ interface ChannelSectionProps {
 			member: import("@hazel/db/schema").ChannelMember
 		}>
 	>
+	/** Available sections for "move to section" menu */
+	sections?: Array<{ id: ChannelSectionId; name: string }>
 }
 
 const ChannelSection = ({
@@ -77,6 +79,7 @@ const ChannelSection = ({
 	onJoinChannel,
 	isEditable = false,
 	threadsByParent,
+	sections,
 }: ChannelSectionProps) => {
 	const { user } = useAuth()
 
@@ -161,6 +164,7 @@ const ChannelSection = ({
 					channel={channel}
 					member={member}
 					threads={threadsByParent?.get(channel.id)}
+					sections={sections}
 				/>
 			))}
 		</SectionGroup>
@@ -230,10 +234,6 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 		[organizationId],
 	)
 
-	const sortedSections = useMemo(() => {
-		if (!sections) return []
-		return sections
-	}, [sections])
 
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
@@ -364,10 +364,11 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								onCreateChannel={() => newChannelModal.open()}
 								onJoinChannel={() => joinChannelModal.open()}
 								threadsByParent={threadsByParent}
+								sections={sections ?? []}
 							/>
 
 							{/* Custom sections */}
-							{sortedSections.map((section) => (
+							{(sections ?? []).map((section) => (
 								<ChannelSection
 									key={section.id}
 									organizationId={organizationId}
@@ -378,6 +379,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									onJoinChannel={() => joinChannelModal.open()}
 									isEditable
 									threadsByParent={threadsByParent}
+									sections={sections ?? []}
 								/>
 							))}
 

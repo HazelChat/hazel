@@ -371,9 +371,7 @@ const SidebarSection = ({ className, listBox, tree, header, ...props }: SidebarS
 				data-slot="sidebar-section-inner"
 				className={twMerge(innerClassName, dropTargetClassName)}
 				renderEmptyState={() => (
-					<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
-						Drop channels here
-					</div>
+					<div className={twMerge("col-span-full rounded-lg transition-all")} />
 				)}
 			>
 				{props.children}
@@ -386,12 +384,21 @@ const SidebarSection = ({ className, listBox, tree, header, ...props }: SidebarS
 				dragAndDropHooks={listBox.dragAndDropHooks}
 				data-slot="sidebar-section-inner"
 				className={({ isDropTarget }) =>
-					twMerge(innerClassName, dropTargetClassName, isDropTarget && "bg-sidebar-accent/50 rounded-lg")
+					twMerge(
+						innerClassName,
+						dropTargetClassName,
+						isDropTarget && "bg-sidebar-accent/50 rounded-lg",
+					)
 				}
-				renderEmptyState={() => (
-					<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
-						Drop channels here
-					</div>
+				renderEmptyState={({ isDropTarget }) => (
+					<div
+						className={twMerge(
+							"col-span-full rounded-lg transition-all",
+							isDropTarget
+								? "py-2 px-2.5 bg-sidebar-accent/50 ring-2 ring-primary/30 ring-inset"
+								: "h-0",
+						)}
+					/>
 				)}
 			>
 				{props.children}
@@ -511,7 +518,10 @@ const SidebarTreeItem = ({
 								className="flex size-5 items-center justify-center rounded text-muted-fg hover:bg-sidebar-accent hover:text-fg"
 							>
 								<IconChevronDown
-									className={twMerge("size-3 transition-transform", !isExpanded && "-rotate-90")}
+									className={twMerge(
+										"size-3 transition-transform",
+										!isExpanded && "-rotate-90",
+									)}
 								/>
 							</Trigger>
 						)}

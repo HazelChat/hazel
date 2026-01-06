@@ -35,29 +35,5 @@ export const sectionCollapsedAtomFamily = Atom.family((sectionId: ChannelSection
 	Atom.make((get) => {
 		const collapsedSections = get(collapsedSectionsAtom)
 		return collapsedSections[sectionId] ?? false
-	}).pipe(Atom.keepAlive),
+	}),
 )
-
-/**
- * Toggle collapse state for a specific section
- */
-export const toggleSectionCollapsed = (sectionId: ChannelSectionId | "default" | "dms") => {
-	Atom.batch(() => {
-		return Atom.update(collapsedSectionsAtom, (state) => ({
-			...state,
-			[sectionId]: !state[sectionId],
-		}))
-	})
-}
-
-/**
- * Set collapse state for a specific section
- */
-export const setSectionCollapsed = (sectionId: ChannelSectionId | "default" | "dms", collapsed: boolean) => {
-	Atom.batch(() => {
-		return Atom.update(collapsedSectionsAtom, (state) => ({
-			...state,
-			[sectionId]: collapsed,
-		}))
-	})
-}

@@ -60,6 +60,28 @@ export function SectionGroup({
 		mode: "promiseExit",
 	})
 
+	const handleChannelDrop = async (items: import("react-aria-components").DropItem[]) => {
+		if (sectionId === "dms") return
+		for (const item of items) {
+			if (item.kind === "text") {
+				const data: ChannelDragData = JSON.parse(await item.getText(CHANNEL_DRAG_TYPE))
+				const targetSectionId = sectionId === "default" ? null : sectionId
+				if (data.currentSectionId === targetSectionId) continue
+				await toastExit(
+					moveChannelToSection({
+						channelId: data.channelId as ChannelId,
+						sectionId: targetSectionId,
+					}),
+					{
+						loading: "Moving channel...",
+						success: `Moved "${data.channelName}" to ${name}`,
+						customErrors: {},
+					},
+				)
+			}
+		}
+	}
+
 	const { dragAndDropHooks } = useDragAndDrop({
 		getItems(keys) {
 			return [...keys].map((key) => {
@@ -74,61 +96,9 @@ export function SectionGroup({
 				}
 			})
 		},
-
-		// Accept drops from other sections (not DMs)
 		acceptedDragTypes: sectionId === "dms" ? [] : [CHANNEL_DRAG_TYPE],
-
-		// Handle drops between items
-		async onInsert(e) {
-			if (sectionId === "dms") return
-
-			for (const item of e.items) {
-				if (item.kind === "text") {
-					const data: ChannelDragData = JSON.parse(await item.getText(CHANNEL_DRAG_TYPE))
-					const targetSectionId = sectionId === "default" ? null : sectionId
-
-					// Don't move if already in this section
-					if (data.currentSectionId === targetSectionId) continue
-
-					await toastExit(
-						moveChannelToSection({
-							channelId: data.channelId as ChannelId,
-							sectionId: targetSectionId,
-						}),
-						{
-							loading: "Moving channel...",
-							success: `Moved "${data.channelName}" to ${name}`,
-							customErrors: {},
-						},
-					)
-				}
-			}
-		},
-
-		async onRootDrop(e) {
-			if (sectionId === "dms") return
-
-			for (const item of e.items) {
-				if (item.kind === "text") {
-					const data: ChannelDragData = JSON.parse(await item.getText(CHANNEL_DRAG_TYPE))
-					const targetSectionId = sectionId === "default" ? null : sectionId
-
-					if (data.currentSectionId === targetSectionId) continue
-
-					await toastExit(
-						moveChannelToSection({
-							channelId: data.channelId as ChannelId,
-							sectionId: targetSectionId,
-						}),
-						{
-							loading: "Moving channel...",
-							success: `Moved "${data.channelName}" to ${name}`,
-							customErrors: {},
-						},
-					)
-				}
-			}
-		},
+		onInsert: (e) => handleChannelDrop(e.items),
+		onRootDrop: (e) => handleChannelDrop(e.items),
 	})
 
 	const handleToggle = () => {

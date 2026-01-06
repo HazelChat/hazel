@@ -1,9 +1,8 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import type { ChannelSectionId } from "@hazel/schema"
-import { and, eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { ChannelIcon } from "~/components/channel-icon"
 import IconDots from "~/components/icons/icon-dots"
 import { IconFolderPlus } from "~/components/icons/icon-folder-plus"
@@ -19,7 +18,6 @@ import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuSubMenu } from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink, SidebarTreeItem } from "~/components/ui/sidebar"
 import { deleteChannelAction, moveChannelToSectionAction } from "~/db/actions"
-import { channelSectionCollection } from "~/db/collections"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useOrganization } from "~/hooks/use-organization"
 import { matchExitWithToast, toastExit } from "~/lib/toast-exit"
@@ -31,14 +29,16 @@ interface ChannelItemProps {
 		channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
 		member: ChannelMember
 	}>
+	/** Available sections for "move to section" menu */
+	sections?: Array<{ id: ChannelSectionId; name: string }>
 }
 
 export const CHANNEL_DRAG_TYPE = "application/x-hazel-channel"
 
-export function ChannelItem({ channel, member, threads }: ChannelItemProps) {
+export function ChannelItem({ channel, member, threads, sections = [] }: ChannelItemProps) {
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
-	const { slug, organizationId } = useOrganization()
+	const { slug } = useOrganization()
 	const navigate = useNavigate()
 
 	const { handleToggleMute, handleToggleFavorite, handleLeave } = useChannelMemberActions(member, "channel")
@@ -48,23 +48,6 @@ export function ChannelItem({ channel, member, threads }: ChannelItemProps) {
 	const moveChannelToSection = useAtomSet(moveChannelToSectionAction, {
 		mode: "promiseExit",
 	})
-
-	// Query available sections for the organization
-	const { data: sectionsData } = useLiveQuery(
-		(q) =>
-			q
-				.from({ section: channelSectionCollection })
-				.where((qb) =>
-					and(eq(qb.section.organizationId, organizationId || ""), isNull(qb.section.deletedAt)),
-				)
-				.orderBy(({ section }) => section.order, "asc"),
-		[organizationId],
-	)
-
-	const sections = useMemo(() => {
-		if (!sectionsData) return []
-		return sectionsData
-	}, [sectionsData])
 
 	const handleDeleteChannel = async () => {
 		const exit = await deleteChannel({ channelId: channel.id })
