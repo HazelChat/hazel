@@ -1,7 +1,7 @@
 import { Database, schema } from "@hazel/db"
 import { policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import { ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
-import { eq } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
@@ -97,18 +97,17 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							// Update order for each section
-							for (let i = 0; i < sectionIds.length; i++) {
-								const sectionId = sectionIds[i]!
-								yield* db
-									.execute((client) =>
-										client
-											.update(schema.channelSectionsTable)
-											.set({ order: i })
-											.where(eq(schema.channelSectionsTable.id, sectionId)),
-									)
-									.pipe(withSystemActor)
-							}
+							yield* db.execute((client) =>
+								client
+									.update(schema.channelSectionsTable)
+									.set({
+										order: sql`CASE id ${sql.join(
+											sectionIds.map((id, index) => sql`WHEN ${id} THEN ${index}`),
+											sql` `,
+										)} END`,
+									})
+									.where(inArray(schema.channelSectionsTable.id, sectionIds)),
+							)
 
 							const txid = yield* generateTransactionId()
 
