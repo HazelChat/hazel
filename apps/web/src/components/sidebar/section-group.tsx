@@ -97,6 +97,11 @@ export function SectionGroup({
 			})
 		},
 		acceptedDragTypes: sectionId === "dms" ? [] : [CHANNEL_DRAG_TYPE],
+		getDropOperation: (_target, types) => {
+			if (sectionId === "dms") return "cancel"
+			if (!types.has(CHANNEL_DRAG_TYPE)) return "cancel"
+			return "move"
+		},
 		onInsert: (e) => handleChannelDrop(e.items),
 		onRootDrop: (e) => handleChannelDrop(e.items),
 	})
