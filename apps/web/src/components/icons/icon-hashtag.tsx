@@ -3,10 +3,9 @@ import React, { type SVGProps } from "react"
 type IconProps = SVGProps<SVGSVGElement> & {
 	secondaryfill?: string
 	strokewidth?: number
-	title?: string
 }
 
-function IconHashtag({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
+function IconHashtag({ fill = "currentColor", secondaryfill, ...props }: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (
@@ -18,7 +17,6 @@ function IconHashtag({ fill = "currentColor", secondaryfill, title = "badge 13",
 			viewBox="0 0 18 18"
 			xmlns="http://www.w3.org/2000/svg"
 		>
-			<title>{title}</title>
 			<g fill={fill}>
 				<path
 					d="M12.0411 6.26082H6.98894L5.94986 11.7608H11.0199L12.0411 6.26082Z"

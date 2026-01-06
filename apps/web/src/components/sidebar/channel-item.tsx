@@ -14,9 +14,10 @@ import IconTrash from "~/components/icons/icon-trash"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
+import { ThreadItem } from "~/components/sidebar/thread-item"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuSubMenu } from "~/components/ui/menu"
-import { SidebarItem, SidebarLabel, SidebarLink, SidebarListBoxItem } from "~/components/ui/sidebar"
+import { SidebarItem, SidebarLabel, SidebarLink, SidebarTreeItem } from "~/components/ui/sidebar"
 import { deleteChannelAction, moveChannelToSectionAction } from "~/db/actions"
 import { channelSectionCollection } from "~/db/collections"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
@@ -26,11 +27,15 @@ import { matchExitWithToast, toastExit } from "~/lib/toast-exit"
 interface ChannelItemProps {
 	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
 	member: ChannelMember
+	threads?: Array<{
+		channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
+		member: ChannelMember
+	}>
 }
 
 export const CHANNEL_DRAG_TYPE = "application/x-hazel-channel"
 
-export function ChannelItem({ channel, member }: ChannelItemProps) {
+export function ChannelItem({ channel, member, threads }: ChannelItemProps) {
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
 	const { slug, organizationId } = useOrganization()
@@ -94,101 +99,118 @@ export function ChannelItem({ channel, member }: ChannelItemProps) {
 		)
 	}
 
+	const hasThreads = threads && threads.length > 0
+
 	return (
 		<>
-			<SidebarListBoxItem id={channel.id} textValue={channel.name}>
-				<SidebarItem
-					tooltip={channel.name}
-					badge={member.notificationCount > 0 ? member.notificationCount : undefined}
-				>
-					<SidebarLink
-						to="/$orgSlug/chat/$id"
-						params={{ orgSlug: slug, id: channel.id }}
-						activeProps={{
-							className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
-						}}
+			<SidebarTreeItem
+				id={channel.id}
+				textValue={channel.name}
+				content={
+					<SidebarItem
+						tooltip={channel.name}
+						badge={member.notificationCount > 0 ? member.notificationCount : undefined}
 					>
-						<ChannelIcon icon={channel.icon} />
-						<SidebarLabel>{channel.name}</SidebarLabel>
-					</SidebarLink>
-					<Menu>
-						<Button
-							intent="plain"
-							size="sq-xs"
-							data-slot="menu-trigger"
-							className="size-5 text-muted-fg"
+						<SidebarLink
+							to="/$orgSlug/chat/$id"
+							params={{ orgSlug: slug, id: channel.id }}
+							activeProps={{
+								className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+							}}
 						>
-							<IconDots className="size-4" />
-						</Button>
-						<MenuContent placement="right top" className="w-42">
-							<MenuItem onAction={handleToggleMute}>
-								{member.isMuted ? (
-									<IconVolume className="size-4" />
-								) : (
-									<IconVolumeMute className="size-4" />
-								)}
-								<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
-							</MenuItem>
-							<MenuItem onAction={handleToggleFavorite}>
-								<IconStar
-									className={
-										member.isFavorite ? "size-4 text-favorite" : "size-4 text-muted-fg"
-									}
-								/>
-								<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
-							</MenuItem>
-							{sections.length > 0 && (
-								<MenuSubMenu>
-									<MenuItem>
-										<IconFolderPlus className="size-4" />
-										<MenuLabel>Move to section</MenuLabel>
-									</MenuItem>
-									<MenuContent>
-										<MenuItem
-											onAction={() => handleMoveToSection(null)}
-											className={channel.sectionId === null ? "bg-accent" : ""}
-										>
-											<MenuLabel>Channels (Default)</MenuLabel>
-										</MenuItem>
-										{sections.map((section) => (
-											<MenuItem
-												key={section.id}
-												onAction={() => handleMoveToSection(section.id)}
-												className={
-													channel.sectionId === section.id ? "bg-accent" : ""
-												}
-											>
-												<MenuLabel>{section.name}</MenuLabel>
-											</MenuItem>
-										))}
-									</MenuContent>
-								</MenuSubMenu>
-							)}
-							<MenuSeparator />
-							<MenuItem
-								onAction={() =>
-									navigate({
-										to: "/$orgSlug/channels/$channelId/settings",
-										params: { orgSlug: slug, channelId: channel.id },
-									})
-								}
+							<ChannelIcon icon={channel.icon} />
+							<SidebarLabel>{channel.name}</SidebarLabel>
+						</SidebarLink>
+						<Menu>
+							<Button
+								intent="plain"
+								size="sq-xs"
+								data-slot="menu-trigger"
+								className="size-5 text-muted-fg"
 							>
-								<IconGear />
-								<MenuLabel>Settings</MenuLabel>
-							</MenuItem>
-							<MenuItem intent="danger" onAction={() => setDeleteModalOpen(true)}>
-								<IconTrash />
-								<MenuLabel>Delete</MenuLabel>
-							</MenuItem>
-							<MenuSeparator />
-							<MenuItem intent="danger" onAction={handleLeave}>
-								<IconLeave />
-								<MenuLabel className="text-destructive">Leave</MenuLabel>
-							</MenuItem>
-						</MenuContent>
-					</Menu>
-				</SidebarItem>
-			</SidebarListBoxItem>
+								<IconDots className="size-4" />
+							</Button>
+							<MenuContent placement="right top" className="w-42">
+								<MenuItem onAction={handleToggleMute}>
+									{member.isMuted ? (
+										<IconVolume className="size-4" />
+									) : (
+										<IconVolumeMute className="size-4" />
+									)}
+									<MenuLabel>{member.isMuted ? "Unmute" : "Mute"}</MenuLabel>
+								</MenuItem>
+								<MenuItem onAction={handleToggleFavorite}>
+									<IconStar
+										className={
+											member.isFavorite ? "size-4 text-favorite" : "size-4 text-muted-fg"
+										}
+									/>
+									<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>
+								</MenuItem>
+								{sections.length > 0 && (
+									<MenuSubMenu>
+										<MenuItem>
+											<IconFolderPlus className="size-4" />
+											<MenuLabel>Move to section</MenuLabel>
+										</MenuItem>
+										<MenuContent>
+											<MenuItem
+												onAction={() => handleMoveToSection(null)}
+												className={channel.sectionId === null ? "bg-accent" : ""}
+											>
+												<MenuLabel>Channels (Default)</MenuLabel>
+											</MenuItem>
+											{sections.map((section) => (
+												<MenuItem
+													key={section.id}
+													onAction={() => handleMoveToSection(section.id)}
+													className={
+														channel.sectionId === section.id ? "bg-accent" : ""
+													}
+												>
+													<MenuLabel>{section.name}</MenuLabel>
+												</MenuItem>
+											))}
+										</MenuContent>
+									</MenuSubMenu>
+								)}
+								<MenuSeparator />
+								<MenuItem
+									onAction={() =>
+										navigate({
+											to: "/$orgSlug/channels/$channelId/settings",
+											params: { orgSlug: slug, channelId: channel.id },
+										})
+									}
+								>
+									<IconGear />
+									<MenuLabel>Settings</MenuLabel>
+								</MenuItem>
+								<MenuItem intent="danger" onAction={() => setDeleteModalOpen(true)}>
+									<IconTrash />
+									<MenuLabel>Delete</MenuLabel>
+								</MenuItem>
+								<MenuSeparator />
+								<MenuItem intent="danger" onAction={handleLeave}>
+									<IconLeave />
+									<MenuLabel className="text-destructive">Leave</MenuLabel>
+								</MenuItem>
+							</MenuContent>
+						</Menu>
+					</SidebarItem>
+				}
+			>
+				{/* Nested threads - passed as children, outside TreeItemContent */}
+				{hasThreads &&
+					threads.map((thread) => (
+						<SidebarTreeItem
+							key={thread.channel.id}
+							id={thread.channel.id}
+							textValue={thread.channel.name}
+							content={<ThreadItem thread={thread.channel} member={thread.member} />}
+						/>
+					))}
+			</SidebarTreeItem>
 
 			{deleteModalOpen && (
 				<DeleteChannelModal

@@ -23,6 +23,9 @@ import {
 	ListBoxItem,
 	Separator,
 	Text,
+	Tree,
+	TreeItem,
+	TreeItemContent,
 	Button as Trigger,
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
@@ -339,40 +342,68 @@ interface SidebarSectionProps extends React.ComponentProps<"div"> {
 		"aria-label": string
 		dragAndDropHooks?: DragAndDropHooks
 	}
-	/** Custom header content (rendered outside ListBox in listBox mode) */
+	/** Enable Tree mode for hierarchical items with drag-and-drop support */
+	tree?: {
+		"aria-label": string
+		dragAndDropHooks?: DragAndDropHooks
+		/** Keys of items that should be expanded by default (to show nested children) */
+		defaultExpandedKeys?: Iterable<string>
+	}
+	/** Custom header content (rendered outside ListBox/Tree in collection mode) */
 	header?: React.ReactNode
 }
 
-const SidebarSection = ({ className, listBox, header, ...props }: SidebarSectionProps) => {
+const SidebarSection = ({ className, listBox, tree, header, ...props }: SidebarSectionProps) => {
 	const { state } = useSidebar()
 
 	const innerClassName = "grid grid-cols-[auto_1fr] gap-y-0.5 in-data-[state=collapsed]:gap-y-1.5"
+	const dropTargetClassName =
+		"has-[[data-drop-target]]:bg-sidebar-accent/50 has-[[data-drop-target]]:rounded-lg"
 
-	const content = listBox ? (
-		<ListBox
-			aria-label={listBox["aria-label"]}
-			dragAndDropHooks={listBox.dragAndDropHooks}
-			data-slot="sidebar-section-inner"
-			className={({ isDropTarget }) =>
-				twMerge(
-					innerClassName,
-					"has-[[data-drop-target]]:bg-sidebar-accent/50 has-[[data-drop-target]]:rounded-lg",
-					isDropTarget && "bg-sidebar-accent/50 rounded-lg",
-				)
-			}
-			renderEmptyState={() => (
-				<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
-					Drop channels here
-				</div>
-			)}
-		>
-			{props.children}
-		</ListBox>
-	) : (
-		<div data-slot="sidebar-section-inner" className={innerClassName}>
-			{props.children}
-		</div>
-	)
+	let content: React.ReactNode
+
+	if (tree) {
+		content = (
+			<Tree
+				aria-label={tree["aria-label"]}
+				dragAndDropHooks={tree.dragAndDropHooks}
+				defaultExpandedKeys={tree.defaultExpandedKeys}
+				data-slot="sidebar-section-inner"
+				className={twMerge(innerClassName, dropTargetClassName)}
+				renderEmptyState={() => (
+					<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
+						Drop channels here
+					</div>
+				)}
+			>
+				{props.children}
+			</Tree>
+		)
+	} else if (listBox) {
+		content = (
+			<ListBox
+				aria-label={listBox["aria-label"]}
+				dragAndDropHooks={listBox.dragAndDropHooks}
+				data-slot="sidebar-section-inner"
+				className={({ isDropTarget }) =>
+					twMerge(innerClassName, dropTargetClassName, isDropTarget && "bg-sidebar-accent/50 rounded-lg")
+				}
+				renderEmptyState={() => (
+					<div className="col-span-full py-2 px-2.5 text-muted-fg text-xs italic">
+						Drop channels here
+					</div>
+				)}
+			>
+				{props.children}
+			</ListBox>
+		)
+	} else {
+		content = (
+			<div data-slot="sidebar-section-inner" className={innerClassName}>
+				{props.children}
+			</div>
+		)
+	}
 
 	return (
 		<div
@@ -422,6 +453,52 @@ const SidebarListBoxItem = ({ id, textValue, children, className }: SidebarListB
 		>
 			{children}
 		</ListBoxItem>
+	)
+}
+
+interface SidebarTreeItemProps {
+	id: string
+	textValue: string
+	/** Content to render in TreeItemContent (SidebarItem, etc.) */
+	content: React.ReactNode
+	/** Nested TreeItem children (threads under channels) - rendered outside TreeItemContent */
+	children?: React.ReactNode
+	className?: string
+}
+
+/**
+ * A TreeItem wrapper for use inside SidebarSection with tree mode.
+ * Supports nested children (threads under channels) and drag states.
+ * Uses TreeItemContent to wrap content in a div, which is required
+ * for proper SVG namespace handling inside TreeItem.
+ *
+ * IMPORTANT: Nested TreeItems must be passed via `children`, NOT `content`.
+ * React Aria requires nested TreeItems to be direct children of the parent TreeItem,
+ * outside of TreeItemContent.
+ */
+const SidebarTreeItem = ({ id, textValue, content, children, className }: SidebarTreeItemProps) => {
+	return (
+		<TreeItem
+			id={id}
+			textValue={textValue}
+			className={({ isDragging }) =>
+				twMerge(
+					"col-span-full outline-none",
+					"grid grid-cols-subgrid",
+					isDragging && "opacity-50",
+					className,
+				)
+			}
+		>
+			<TreeItemContent>
+				{() => (
+					<div className="col-span-full grid grid-cols-subgrid">
+						{content}
+					</div>
+				)}
+			</TreeItemContent>
+			{children}
+		</TreeItem>
 	)
 }
 
@@ -772,6 +849,7 @@ export type {
 	SidebarProps,
 	SidebarSectionProps,
 	SidebarListBoxItemProps,
+	SidebarTreeItemProps,
 	SidebarItemProps,
 	SidebarNavProps,
 	SidebarDisclosureGroupProps,
@@ -789,6 +867,7 @@ export {
 	SidebarSectionGroup,
 	SidebarSection,
 	SidebarListBoxItem,
+	SidebarTreeItem,
 	SidebarItem,
 	SidebarLink,
 	SidebarFooter,

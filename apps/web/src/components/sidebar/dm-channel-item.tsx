@@ -11,7 +11,7 @@ import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
-import { SidebarItem, SidebarLabel, SidebarLink, SidebarListBoxItem } from "~/components/ui/sidebar"
+import { SidebarItem, SidebarLabel, SidebarLink, SidebarTreeItem } from "~/components/ui/sidebar"
 import { updateChannelMemberAction } from "~/db/actions"
 import { messageCollection } from "~/db/collections"
 import { useChannelWithCurrentUser } from "~/db/hooks"
@@ -140,128 +140,132 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 			: filteredMembers.map((member) => member.user.firstName).join(", ")
 
 	return (
-		<SidebarListBoxItem id={channelId} textValue={tooltipName}>
-			<SidebarItem
-				badge={
-					channel.currentUser.notificationCount > 0
-						? channel.currentUser.notificationCount
-						: undefined
-				}
-				tooltip={tooltipName}
-			>
-				{({ isCollapsed, isFocused }) => (
-					<>
-						<SidebarLink
-							to="/$orgSlug/chat/$id"
-							params={{ orgSlug: orgSlug || "", id: channelId }}
-							onMouseEnter={handleMouseEnter}
-							activeProps={{
-								className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
-							}}
-						>
-							{channel.type === "single" &&
-							filteredMembers.length === 1 &&
-							filteredMembers[0] ? (
-								<>
-									<DmAvatar member={filteredMembers[0]} />
-									<SidebarLabel
-										className={cx(
-											"max-w-40 truncate",
-											channel.currentUser.isMuted && "opacity-60",
-										)}
-									>
-										{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}
-									</SidebarLabel>
-								</>
-							) : (
-								<>
-									<div data-slot="avatar" className="flex -space-x-2">
-										{filteredMembers.slice(0, 2).map((member) => (
-											<Avatar
-												key={member.user.id}
-												size="xs"
-												src={member.user.avatarUrl}
-												alt={member.user.firstName[0]}
-												className="ring-[1.5px] ring-sidebar"
-											/>
-										))}
+		<SidebarTreeItem
+			id={channelId}
+			textValue={tooltipName}
+			content={
+				<SidebarItem
+					badge={
+						channel.currentUser.notificationCount > 0
+							? channel.currentUser.notificationCount
+							: undefined
+					}
+					tooltip={tooltipName}
+				>
+					{({ isCollapsed, isFocused }) => (
+						<>
+							<SidebarLink
+								to="/$orgSlug/chat/$id"
+								params={{ orgSlug: orgSlug || "", id: channelId }}
+								onMouseEnter={handleMouseEnter}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+								}}
+							>
+								{channel.type === "single" &&
+								filteredMembers.length === 1 &&
+								filteredMembers[0] ? (
+									<>
+										<DmAvatar member={filteredMembers[0]} />
+										<SidebarLabel
+											className={cx(
+												"max-w-40 truncate",
+												channel.currentUser.isMuted && "opacity-60",
+											)}
+										>
+											{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}
+										</SidebarLabel>
+									</>
+								) : (
+									<>
+										<div data-slot="avatar" className="flex -space-x-2">
+											{filteredMembers.slice(0, 2).map((member) => (
+												<Avatar
+													key={member.user.id}
+													size="xs"
+													src={member.user.avatarUrl}
+													alt={member.user.firstName[0]}
+													className="ring-[1.5px] ring-sidebar"
+												/>
+											))}
 
-										{filteredMembers.length > 2 && (
-											<Avatar
-												size="xs"
-												className="ring-[1.5px] ring-sidebar"
-												placeholder={
-													<span className="flex items-center justify-center font-semibold text-quaternary text-sm">
-														+{filteredMembers.length - 2}
-													</span>
+											{filteredMembers.length > 2 && (
+												<Avatar
+													size="xs"
+													className="ring-[1.5px] ring-sidebar"
+													placeholder={
+														<span className="flex items-center justify-center font-semibold text-quaternary text-sm">
+															+{filteredMembers.length - 2}
+														</span>
+													}
+												/>
+											)}
+										</div>
+										<SidebarLabel
+											className={cx(
+												"max-w-40 truncate",
+												channel.currentUser.isMuted && "opacity-60",
+											)}
+										>
+											{filteredMembers.map((member) => member.user.firstName).join(", ")}
+										</SidebarLabel>
+									</>
+								)}
+							</SidebarLink>
+
+							{(!isCollapsed || isFocused) && (
+								<Menu>
+									<Button
+										intent="plain"
+										size="sq-xs"
+										data-slot="menu-trigger"
+										className="size-5 text-muted-fg"
+									>
+										<IconDots className="size-4" />
+									</Button>
+									<MenuContent placement="right top" className="w-42">
+										<MenuItem
+											onAction={() => {
+												// Call feature not yet implemented
+											}}
+										>
+											<IconPhone className="size-4" />
+											<MenuLabel>Call</MenuLabel>
+										</MenuItem>
+										<MenuSeparator />
+										<MenuItem onAction={handleToggleMute}>
+											{channel.currentUser.isMuted ? (
+												<IconVolume className="size-4" />
+											) : (
+												<IconVolumeMute className="size-4" />
+											)}
+											<MenuLabel>
+												{channel.currentUser.isMuted ? "Unmute" : "Mute"}
+											</MenuLabel>
+										</MenuItem>
+										<MenuItem onAction={handleToggleFavorite}>
+											<IconStar
+												className={
+													channel.currentUser.isFavorite
+														? "size-4 text-favorite"
+														: "size-4"
 												}
 											/>
-										)}
-									</div>
-									<SidebarLabel
-										className={cx(
-											"max-w-40 truncate",
-											channel.currentUser.isMuted && "opacity-60",
-										)}
-									>
-										{filteredMembers.map((member) => member.user.firstName).join(", ")}
-									</SidebarLabel>
-								</>
+											<MenuLabel>
+												{channel.currentUser.isFavorite ? "Unfavorite" : "Favorite"}
+											</MenuLabel>
+										</MenuItem>
+										<MenuItem intent="danger" onAction={handleClose}>
+											<IconClose className="size-4" />
+											<MenuLabel>Close</MenuLabel>
+										</MenuItem>
+									</MenuContent>
+								</Menu>
 							)}
-						</SidebarLink>
-
-						{(!isCollapsed || isFocused) && (
-							<Menu>
-								<Button
-									intent="plain"
-									size="sq-xs"
-									data-slot="menu-trigger"
-									className="size-5 text-muted-fg"
-								>
-									<IconDots className="size-4" />
-								</Button>
-								<MenuContent placement="right top" className="w-42">
-									<MenuItem
-										onAction={() => {
-											// Call feature not yet implemented
-										}}
-									>
-										<IconPhone className="size-4" />
-										<MenuLabel>Call</MenuLabel>
-									</MenuItem>
-									<MenuSeparator />
-									<MenuItem onAction={handleToggleMute}>
-										{channel.currentUser.isMuted ? (
-											<IconVolume className="size-4" />
-										) : (
-											<IconVolumeMute className="size-4" />
-										)}
-										<MenuLabel>
-											{channel.currentUser.isMuted ? "Unmute" : "Mute"}
-										</MenuLabel>
-									</MenuItem>
-									<MenuItem onAction={handleToggleFavorite}>
-										<IconStar
-											className={
-												channel.currentUser.isFavorite
-													? "size-4 text-favorite"
-													: "size-4"
-											}
-										/>
-										<MenuLabel>
-											{channel.currentUser.isFavorite ? "Unfavorite" : "Favorite"}
-										</MenuLabel>
-									</MenuItem>
-									<MenuItem intent="danger" onAction={handleClose}>
-										<IconClose className="size-4" />
-										<MenuLabel>Close</MenuLabel>
-									</MenuItem>
-								</MenuContent>
-							</Menu>
-						)}
-					</>
-				)}
-			</SidebarItem>
-		</SidebarListBoxItem>
+						</>
+					)}
+				</SidebarItem>
+			}
+		/>
 	)
 }

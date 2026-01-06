@@ -56,7 +56,7 @@ export const FavoriteSection = (props: { organizationId: OrganizationId }) => {
 
 	return (
 		<SidebarSection
-			listBox={{ "aria-label": "Favorite channels" }}
+			tree={{ "aria-label": "Favorite channels" }}
 			header={
 				<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
 					<Strong>Favorites</Strong>

@@ -12,7 +12,6 @@ import { DmChannelItem } from "~/components/sidebar/dm-channel-item"
 import { FavoriteSection } from "~/components/sidebar/favorite-section"
 import { SectionGroup } from "~/components/sidebar/section-group"
 import { SwitchServerMenu } from "~/components/sidebar/switch-server-menu"
-import { ThreadsSection } from "~/components/sidebar/threads-section"
 import { UserMenu } from "~/components/sidebar/user-menu"
 import { Avatar } from "~/components/ui/avatar"
 import { Keyboard } from "~/components/ui/keyboard"
@@ -59,6 +58,14 @@ interface ChannelSectionProps {
 	onCreateChannel: () => void
 	onJoinChannel: () => void
 	isEditable?: boolean
+	/** Map of parent channel IDs to their threads */
+	threadsByParent?: Map<
+		string,
+		Array<{
+			channel: Omit<import("@hazel/db/schema").Channel, "updatedAt"> & { updatedAt: Date | null }
+			member: import("@hazel/db/schema").ChannelMember
+		}>
+	>
 }
 
 const ChannelSection = ({
@@ -69,6 +76,7 @@ const ChannelSection = ({
 	onCreateChannel,
 	onJoinChannel,
 	isEditable = false,
+	threadsByParent,
 }: ChannelSectionProps) => {
 	const { user } = useAuth()
 
@@ -126,6 +134,17 @@ const ChannelSection = ({
 		return map
 	}, [channels])
 
+	// Compute channel IDs that have threads (to expand them by default in the tree)
+	const expandedChannelIds = useMemo(() => {
+		if (!threadsByParent) return []
+		return channels
+			.filter(({ channel }) => {
+				const threads = threadsByParent.get(channel.id)
+				return threads && threads.length > 0
+			})
+			.map(({ channel }) => channel.id)
+	}, [channels, threadsByParent])
+
 	return (
 		<SectionGroup
 			sectionId={sectionDisplayId}
@@ -134,9 +153,15 @@ const ChannelSection = ({
 			onJoinChannel={onJoinChannel}
 			channelDataMap={channelDataMap}
 			isEditable={isEditable}
+			expandedChannelIds={expandedChannelIds}
 		>
 			{channels.map(({ channel, member }) => (
-				<ChannelItem key={channel.id} channel={channel} member={member} />
+				<ChannelItem
+					key={channel.id}
+					channel={channel}
+					member={member}
+					threads={threadsByParent?.get(channel.id)}
+				/>
 			))}
 		</SectionGroup>
 	)
@@ -338,6 +363,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								sectionName="Channels"
 								onCreateChannel={() => newChannelModal.open()}
 								onJoinChannel={() => joinChannelModal.open()}
+								threadsByParent={threadsByParent}
 							/>
 
 							{/* Custom sections */}
@@ -351,11 +377,9 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									onCreateChannel={() => newChannelModal.open()}
 									onJoinChannel={() => joinChannelModal.open()}
 									isEditable
+									threadsByParent={threadsByParent}
 								/>
 							))}
-
-							{/* Active threads section */}
-							<ThreadsSection threadsByParent={threadsByParent} />
 
 							<DmChannelGroup
 								organizationId={organizationId}

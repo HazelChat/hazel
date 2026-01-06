@@ -45,7 +45,7 @@ export default defineConfig({
 
 		viteReact({
 			babel: {
-				// plugins: ["babel-plugin-react-compiler"],
+				plugins: ["babel-plugin-react-compiler"],
 			},
 		}),
 		tailwindcss(),

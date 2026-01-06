@@ -35,6 +35,8 @@ interface SectionGroupProps {
 	channelDataMap?: Map<string, ChannelDragData>
 	/** Whether this section can be edited/deleted (custom sections only) */
 	isEditable?: boolean
+	/** Channel IDs that have nested children (threads) - these will be expanded by default */
+	expandedChannelIds?: string[]
 }
 
 export function SectionGroup({
@@ -46,6 +48,7 @@ export function SectionGroup({
 	children,
 	channelDataMap,
 	isEditable = false,
+	expandedChannelIds,
 }: SectionGroupProps) {
 	const isCollapsed = useAtomValue(sectionCollapsedAtomFamily(sectionId))
 	const [, setCollapsedSections] = useAtom(collapsedSectionsAtom)
@@ -200,17 +203,16 @@ export function SectionGroup({
 		</div>
 	)
 
-	// Use listBox mode for sections that support drag-and-drop (not DMs)
-	const listBoxConfig =
-		sectionId !== "dms"
-			? {
-					"aria-label": `${name} channels`,
-					dragAndDropHooks,
-				}
-			: undefined
+	// Use tree mode for all sections
+	// Tree enables nested items (channels with threads) and works with SidebarTreeItem
+	const treeConfig = {
+		"aria-label": `${name} channels`,
+		dragAndDropHooks: sectionId !== "dms" ? dragAndDropHooks : undefined,
+		defaultExpandedKeys: expandedChannelIds,
+	}
 
 	return (
-		<SidebarSection header={headerContent} listBox={listBoxConfig}>
+		<SidebarSection header={headerContent} tree={treeConfig}>
 			{!isCollapsed && children}
 		</SidebarSection>
 	)
