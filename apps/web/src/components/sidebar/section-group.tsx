@@ -11,6 +11,8 @@ import { Strong } from "~/components/ui/text"
 import { deleteChannelSectionAction, updateChannelSectionAction } from "~/db/actions"
 import { toastExit } from "~/lib/toast-exit"
 import IconChevronDown from "../icons/icon-chevron-down"
+import IconCirclePlus from "../icons/icon-circle-plus"
+import IconHashtag from "../icons/icon-hashtag"
 import IconPlus from "../icons/icon-plus"
 import IconTrash from "../icons/icon-trash"
 
@@ -84,13 +86,13 @@ export function SectionGroup({
 					<MenuContent>
 						{onCreateChannel && (
 							<MenuItem onAction={onCreateChannel}>
-								<IconPlus />
+								<IconCirclePlus />
 								<MenuLabel>Create new channel</MenuLabel>
 							</MenuItem>
 						)}
 						{onJoinChannel && (
 							<MenuItem onAction={onJoinChannel}>
-								<IconPlus />
+								<IconHashtag />
 								<MenuLabel>Join existing channel</MenuLabel>
 							</MenuItem>
 						)}
