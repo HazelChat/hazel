@@ -1,9 +1,9 @@
 "use client"
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelSectionId } from "@hazel/schema"
 import type { ReactNode } from "react"
-import { sectionCollapsedAtomFamily, toggleSectionCollapsed } from "~/atoms/section-collapse-atoms"
+import { collapsedSectionsAtom, sectionCollapsedAtomFamily } from "~/atoms/section-collapse-atoms"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
 import { SidebarSection } from "~/components/ui/sidebar"
@@ -35,13 +35,17 @@ export function SectionGroup({
 	isEditable = false,
 }: SectionGroupProps) {
 	const isCollapsed = useAtomValue(sectionCollapsedAtomFamily(sectionId))
+	const [, setCollapsedSections] = useAtom(collapsedSectionsAtom)
 
 	const deleteSection = useAtomSet(deleteChannelSectionAction, {
 		mode: "promiseExit",
 	})
 
 	const handleToggle = () => {
-		toggleSectionCollapsed(sectionId)
+		setCollapsedSections((prev) => ({
+			...prev,
+			[sectionId]: !prev[sectionId],
+		}))
 	}
 
 	const handleDelete = async () => {

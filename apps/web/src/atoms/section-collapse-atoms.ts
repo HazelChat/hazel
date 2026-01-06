@@ -35,7 +35,7 @@ export const sectionCollapsedAtomFamily = Atom.family((sectionId: ChannelSection
 	Atom.make((get) => {
 		const collapsedSections = get(collapsedSectionsAtom)
 		return collapsedSections[sectionId] ?? false
-	}),
+	}).pipe(Atom.keepAlive),
 )
 
 /**
