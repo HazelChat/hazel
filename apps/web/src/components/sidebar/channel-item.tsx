@@ -77,7 +77,18 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 			{
 				loading: "Moving channel...",
 				success: sectionId ? "Channel moved to section" : "Channel moved to default",
-				customErrors: {},
+				customErrors: {
+					ChannelNotFoundError: () => ({
+						title: "Channel not found",
+						description: "This channel may have been deleted.",
+						isRetryable: false,
+					}),
+					ChannelSectionNotFoundError: () => ({
+						title: "Section not found",
+						description: "This section may have been deleted.",
+						isRetryable: false,
+					}),
+				},
 			},
 		)
 	}

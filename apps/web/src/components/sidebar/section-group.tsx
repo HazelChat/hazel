@@ -75,7 +75,18 @@ export function SectionGroup({
 					{
 						loading: "Moving channel...",
 						success: `Moved "${data.channelName}" to ${name}`,
-						customErrors: {},
+						customErrors: {
+							ChannelNotFoundError: () => ({
+								title: "Channel not found",
+								description: "This channel may have been deleted.",
+								isRetryable: false,
+							}),
+							ChannelSectionNotFoundError: () => ({
+								title: "Section not found",
+								description: "This section may have been deleted.",
+								isRetryable: false,
+							}),
+						},
 					},
 				)
 			}

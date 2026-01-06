@@ -5,6 +5,7 @@ import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, ChannelSectionId, OrganizationId } from "../ids"
 import { ChannelSection } from "../models"
 import { TransactionId } from "../transaction-id"
+import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
 
 /**
@@ -121,6 +122,8 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 *
 	 * @param payload - Channel ID and target section ID (or null for default)
 	 * @returns Transaction ID
+	 * @throws ChannelNotFoundError if channel doesn't exist
+	 * @throws ChannelSectionNotFoundError if section doesn't exist or belongs to different org
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
@@ -130,6 +133,11 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			sectionId: Schema.NullOr(ChannelSectionId),
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union(
+			ChannelNotFoundError,
+			ChannelSectionNotFoundError,
+			UnauthorizedError,
+			InternalServerError,
+		),
 	}).middleware(AuthMiddleware),
 ) {}

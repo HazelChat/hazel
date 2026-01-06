@@ -1,7 +1,7 @@
 import { Database, schema } from "@hazel/db"
 import { policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
-import { ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
-import { eq, inArray, sql } from "drizzle-orm"
+import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
@@ -18,13 +18,35 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							// Calculate next order value if not provided or is 0
+							let order = payload.order
+							if (order === 0) {
+								const maxOrderResult = yield* db
+									.execute((client) =>
+										client
+											.select({
+												maxOrder: sql<number>`COALESCE(MAX(${schema.channelSectionsTable.order}), -1)`,
+											})
+											.from(schema.channelSectionsTable)
+											.where(
+												eq(
+													schema.channelSectionsTable.organizationId,
+													payload.organizationId,
+												),
+											),
+									)
+									.pipe(withSystemActor)
+
+								order = (maxOrderResult[0]?.maxOrder ?? -1) + 1
+							}
+
 							// Use client-provided id for optimistic updates, or let DB generate one
 							const insertData = id
-								? { id, ...payload, deletedAt: null }
-								: { ...payload, deletedAt: null }
+								? { id, ...payload, order, deletedAt: null }
+								: { ...payload, order, deletedAt: null }
 
 							const createdSection = yield* ChannelSectionRepo.insert(
-								insertData as typeof payload & { deletedAt: null },
+								insertData as typeof payload & { order: number; deletedAt: null },
 							).pipe(
 								Effect.map((res) => res[0]!),
 								policyUse(ChannelSectionPolicy.canCreate(payload.organizationId)),
@@ -106,7 +128,12 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 											sql` `,
 										)} END`,
 									})
-									.where(inArray(schema.channelSectionsTable.id, sectionIds)),
+									.where(
+										and(
+											inArray(schema.channelSectionsTable.id, sectionIds),
+											eq(schema.channelSectionsTable.organizationId, organizationId),
+										),
+									),
 							)
 
 							const txid = yield* generateTransactionId()
@@ -115,7 +142,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(ChannelSectionPolicy.canCreate(organizationId)),
+						policyUse(ChannelSectionPolicy.canReorder(organizationId)),
 						withRemapDbErrors("ChannelSection", "update"),
 					),
 
@@ -123,6 +150,29 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							// Get channel first to know its organization
+							const channel = yield* ChannelRepo.findById(channelId).pipe(withSystemActor)
+							if (Option.isNone(channel)) {
+								return yield* Effect.fail(new ChannelNotFoundError({ channelId }))
+							}
+
+							// Validate target section exists and belongs to same org
+							if (sectionId !== null) {
+								const section = yield* ChannelSectionRepo.findById(sectionId).pipe(
+									withSystemActor,
+								)
+								if (Option.isNone(section)) {
+									return yield* Effect.fail(
+										new ChannelSectionNotFoundError({ sectionId }),
+									)
+								}
+								if (section.value.organizationId !== channel.value.organizationId) {
+									return yield* Effect.fail(
+										new ChannelSectionNotFoundError({ sectionId }),
+									)
+								}
+							}
+
 							// Update the channel's sectionId
 							yield* ChannelRepo.update({
 								id: channelId,

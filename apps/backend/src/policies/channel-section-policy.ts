@@ -52,7 +52,19 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 					),
 				)
 
-			return { canCreate, canUpdate, canDelete } as const
+			// Only org admins/owners can reorder sections
+			const canReorder = (organizationId: OrganizationId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"reorder",
+				)(
+					pipe(
+						organizationPolicy.canUpdate(organizationId),
+						policyCompose(policy(policyEntity, "reorder", (_actor) => Effect.succeed(true))),
+					),
+				)
+
+			return { canCreate, canUpdate, canDelete, canReorder } as const
 		}),
 		dependencies: [ChannelSectionRepo.Default, OrganizationPolicy.Default],
 		accessors: true,
