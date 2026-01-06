@@ -493,6 +493,9 @@ const SidebarTreeItem = ({ id, textValue, content, children, className }: Sideba
 			<TreeItemContent>
 				{() => (
 					<div className="col-span-full grid grid-cols-subgrid">
+						<Trigger slot="drag" className="sr-only">
+							Drag
+						</Trigger>
 						{content}
 					</div>
 				)}
