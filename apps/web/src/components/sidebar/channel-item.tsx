@@ -106,6 +106,7 @@ export function ChannelItem({ channel, member, threads }: ChannelItemProps) {
 			<SidebarTreeItem
 				id={channel.id}
 				textValue={channel.name}
+				// hasChildItems={hasThreads}
 				content={
 					<SidebarItem
 						tooltip={channel.name}
@@ -142,7 +143,9 @@ export function ChannelItem({ channel, member, threads }: ChannelItemProps) {
 								<MenuItem onAction={handleToggleFavorite}>
 									<IconStar
 										className={
-											member.isFavorite ? "size-4 text-favorite" : "size-4 text-muted-fg"
+											member.isFavorite
+												? "size-4 text-favorite"
+												: "size-4 text-muted-fg"
 										}
 									/>
 									<MenuLabel>{member.isFavorite ? "Unfavorite" : "Favorite"}</MenuLabel>

@@ -463,6 +463,8 @@ interface SidebarTreeItemProps {
 	content: React.ReactNode
 	/** Nested TreeItem children (threads under channels) - rendered outside TreeItemContent */
 	children?: React.ReactNode
+	/** Whether this item has child items (for expand/collapse button) */
+	hasChildItems?: boolean
 	className?: string
 }
 
@@ -476,7 +478,14 @@ interface SidebarTreeItemProps {
  * React Aria requires nested TreeItems to be direct children of the parent TreeItem,
  * outside of TreeItemContent.
  */
-const SidebarTreeItem = ({ id, textValue, content, children, className }: SidebarTreeItemProps) => {
+const SidebarTreeItem = ({
+	id,
+	textValue,
+	content,
+	children,
+	hasChildItems,
+	className,
+}: SidebarTreeItemProps) => {
 	return (
 		<TreeItem
 			id={id}
@@ -491,11 +500,21 @@ const SidebarTreeItem = ({ id, textValue, content, children, className }: Sideba
 			}
 		>
 			<TreeItemContent>
-				{() => (
+				{({ isExpanded }) => (
 					<div className="col-span-full grid grid-cols-subgrid">
 						<Trigger slot="drag" className="sr-only">
 							Drag
 						</Trigger>
+						{hasChildItems && (
+							<Trigger
+								slot="chevron"
+								className="flex size-5 items-center justify-center rounded text-muted-fg hover:bg-sidebar-accent hover:text-fg"
+							>
+								<IconChevronDown
+									className={twMerge("size-3 transition-transform", !isExpanded && "-rotate-90")}
+								/>
+							</Trigger>
+						)}
 						{content}
 					</div>
 				)}
