@@ -5,6 +5,7 @@ import {
 	BotInstallation,
 	Channel,
 	ChannelMember,
+	ChannelSection,
 	IntegrationConnection,
 	Invitation,
 	Message,
@@ -207,6 +208,23 @@ export const channelMemberCollection = createEffectCollection({
 		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
 	},
 	schema: ChannelMember.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const channelSectionCollection = createEffectCollection({
+	id: "channel_sections",
+	runtime: runtime,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "channel_sections",
+		},
+		parser: {
+			timestamptz: (date) => new Date(date),
+		},
+		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+	},
+	schema: ChannelSection.Model.json,
 	getKey: (item) => item.id,
 })
 

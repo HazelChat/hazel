@@ -160,6 +160,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								type: payload.type,
 								organizationId: OrganizationId.make(payload.organizationId),
 								parentChannelId: null,
+								sectionId: null,
 								deletedAt: null,
 							}).pipe(
 								Effect.map((res) => res[0]!),
@@ -240,6 +241,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 										type: "thread" as const,
 										organizationId,
 										parentChannelId,
+										sectionId: null,
 										deletedAt: null,
 									}
 								: {
@@ -248,6 +250,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 										type: "thread" as const,
 										organizationId,
 										parentChannelId,
+										sectionId: null,
 										deletedAt: null,
 									}
 

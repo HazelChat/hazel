@@ -16,6 +16,7 @@ import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
+import { ChannelSectionPolicy } from "./policies/channel-section-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
@@ -32,6 +33,7 @@ import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy
 import { AttachmentRepo } from "./repositories/attachment-repo"
 import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
+import { ChannelSectionRepo } from "./repositories/channel-section-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
 import { BotCommandRepo } from "./repositories/bot-command-repo"
 import { BotInstallationRepo } from "./repositories/bot-installation-repo"
@@ -107,6 +109,7 @@ const RepoLive = Layer.mergeAll(
 	MessageRepo.Default,
 	ChannelRepo.Default,
 	ChannelMemberRepo.Default,
+	ChannelSectionRepo.Default,
 	UserRepo.Default,
 	OrganizationRepo.Default,
 	OrganizationMemberRepo.Default,
@@ -129,6 +132,7 @@ const RepoLive = Layer.mergeAll(
 const PolicyLive = Layer.mergeAll(
 	OrganizationPolicy.Default,
 	ChannelPolicy.Default,
+	ChannelSectionPolicy.Default,
 	MessagePolicy.Default,
 	InvitationPolicy.Default,
 	OrganizationMemberPolicy.Default,

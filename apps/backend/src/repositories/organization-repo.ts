@@ -77,6 +77,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 						type: "public",
 						organizationId,
 						parentChannelId: null,
+						sectionId: null,
 						deletedAt: null,
 					})
 					.pipe(

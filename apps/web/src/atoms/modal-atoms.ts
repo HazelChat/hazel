@@ -13,6 +13,7 @@ const MODAL_TYPES = [
 	"change-role",
 	"email-invite",
 	"create-organization",
+	"create-section",
 	"command-palette",
 ] as const
 

@@ -3,6 +3,7 @@ import {
 	type ChannelIcon,
 	ChannelId,
 	ChannelMemberId,
+	ChannelSectionId,
 	MessageId,
 	MessageReactionId,
 	OrganizationId,
@@ -16,6 +17,7 @@ import { optimisticAction } from "../../../../libs/effect-electric-db-collection
 import {
 	channelCollection,
 	channelMemberCollection,
+	channelSectionCollection,
 	messageCollection,
 	messageReactionCollection,
 	organizationCollection,
@@ -100,6 +102,7 @@ export const createChannelAction = optimisticAction({
 			type: props.type,
 			organizationId: props.organizationId,
 			parentChannelId: props.parentChannelId,
+			sectionId: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -133,6 +136,7 @@ export const createChannelAction = optimisticAction({
 				type: props.type,
 				organizationId: props.organizationId,
 				parentChannelId: props.parentChannelId,
+				sectionId: null,
 			})
 			return { data: { channelId: result.data.id }, transactionId: result.transactionId }
 		}),
@@ -168,6 +172,7 @@ export const createDmChannelAction = optimisticAction({
 			type: props.type === "direct" ? "single" : "direct",
 			organizationId: props.organizationId,
 			parentChannelId: null,
+			sectionId: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -347,6 +352,7 @@ export const createThreadAction = optimisticAction({
 			type: "thread",
 			organizationId: props.organizationId,
 			parentChannelId: props.parentChannelId,
+			sectionId: null,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -615,6 +621,145 @@ export const updateChannelMemberAction = optimisticAction({
 				...(props.isMuted !== undefined && { isMuted: props.isMuted }),
 				...(props.isFavorite !== undefined && { isFavorite: props.isFavorite }),
 				...(props.isHidden !== undefined && { isHidden: props.isHidden }),
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+// Channel Section Actions
+
+export const createChannelSectionAction = optimisticAction({
+	collections: [channelSectionCollection],
+	runtime: runtime,
+
+	onMutate: (props: { organizationId: OrganizationId; name: string; order?: number }) => {
+		const sectionId = ChannelSectionId.make(crypto.randomUUID())
+		const now = new Date()
+
+		channelSectionCollection.insert({
+			id: sectionId,
+			organizationId: props.organizationId,
+			name: props.name,
+			order: props.order ?? 0,
+			createdAt: now,
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		return { sectionId }
+	},
+
+	mutate: (props, ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelSection.create", {
+				id: ctx.mutateResult.sectionId,
+				organizationId: props.organizationId,
+				name: props.name,
+				order: props.order ?? 0,
+			})
+			return { data: { sectionId: result.data.id }, transactionId: result.transactionId }
+		}),
+})
+
+export const updateChannelSectionAction = optimisticAction({
+	collections: [channelSectionCollection],
+	runtime: runtime,
+
+	onMutate: (props: { sectionId: ChannelSectionId; name?: string; order?: number }) => {
+		channelSectionCollection.update(props.sectionId, (section) => {
+			if (props.name !== undefined) section.name = props.name
+			if (props.order !== undefined) section.order = props.order
+		})
+		return { sectionId: props.sectionId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelSection.update", {
+				id: props.sectionId,
+				...(props.name !== undefined && { name: props.name }),
+				...(props.order !== undefined && { order: props.order }),
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const deleteChannelSectionAction = optimisticAction({
+	collections: {
+		section: channelSectionCollection,
+		channel: channelCollection,
+	},
+	runtime: runtime,
+
+	onMutate: (props: { sectionId: ChannelSectionId }) => {
+		// Move all channels in this section back to default (sectionId = null)
+		const channels = Array.from(channelCollection.state.values())
+		for (const channel of channels) {
+			if (channel.sectionId === props.sectionId) {
+				channelCollection.update(channel.id, (c) => {
+					c.sectionId = null
+				})
+			}
+		}
+
+		// Delete the section
+		channelSectionCollection.delete(props.sectionId)
+		return { sectionId: props.sectionId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelSection.delete", { id: props.sectionId })
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const moveChannelToSectionAction = optimisticAction({
+	collections: [channelCollection],
+	runtime: runtime,
+
+	onMutate: (props: { channelId: ChannelId; sectionId: ChannelSectionId | null }) => {
+		channelCollection.update(props.channelId, (channel) => {
+			channel.sectionId = props.sectionId
+		})
+		return { channelId: props.channelId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelSection.moveChannel", {
+				channelId: props.channelId,
+				sectionId: props.sectionId,
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const reorderSectionsAction = optimisticAction({
+	collections: [channelSectionCollection],
+	runtime: runtime,
+
+	onMutate: (props: { organizationId: OrganizationId; sectionIds: ChannelSectionId[] }) => {
+		// Update order for each section
+		for (let i = 0; i < props.sectionIds.length; i++) {
+			const sectionId = props.sectionIds[i]!
+			channelSectionCollection.update(sectionId, (section) => {
+				section.order = i
+			})
+		}
+		return { sectionIds: props.sectionIds }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("channelSection.reorder", {
+				organizationId: props.organizationId,
+				sectionIds: props.sectionIds,
 			})
 			return { data: result, transactionId: result.transactionId }
 		}),

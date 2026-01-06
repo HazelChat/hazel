@@ -8,6 +8,7 @@ import { MobileNav } from "~/components/mobile-nav"
 import { CreateChannelModal } from "~/components/modals/create-channel-modal"
 import { CreateDmModal } from "~/components/modals/create-dm-modal"
 import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
+import { CreateSectionModal } from "~/components/modals/create-section-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
@@ -16,6 +17,7 @@ import {
 	attachmentCollection,
 	channelCollection,
 	channelMemberCollection,
+	channelSectionCollection,
 	organizationCollection,
 	organizationMemberCollection,
 	userCollection,
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/_app/$orgSlug")({
 		// TODO: Should be scoped to the organization
 		await channelCollection.preload()
 		await channelMemberCollection.preload()
+		await channelSectionCollection.preload()
 		await attachmentCollection.preload()
 
 		await organizationCollection.preload()
@@ -55,6 +58,7 @@ function RouteComponent() {
 	const joinChannelModal = useModal("join-channel")
 	const emailInviteModal = useModal("email-invite")
 	const createOrgModal = useModal("create-organization")
+	const createSectionModal = useModal("create-section")
 
 	const openChannelsBrowser = () => {
 		setInitialPage("channels")
@@ -136,6 +140,10 @@ function RouteComponent() {
 					<CreateOrganizationModal
 						isOpen={createOrgModal.isOpen}
 						onOpenChange={(open) => !open && createOrgModal.close()}
+					/>
+					<CreateSectionModal
+						isOpen={createSectionModal.isOpen}
+						onOpenChange={(open) => !open && createSectionModal.close()}
 					/>
 				</NotificationSoundProvider>
 			</PresenceProvider>

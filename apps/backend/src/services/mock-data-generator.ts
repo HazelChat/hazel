@@ -85,6 +85,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 							| "direct"
 							| "single",
 						parentChannelId: null,
+						sectionId: null,
 						deletedAt: null,
 					}),
 				)

@@ -33,6 +33,7 @@ export const ALLOWED_TABLES = [
 	// Channel tables
 	"channels",
 	"channel_members",
+	"channel_sections",
 
 	// Message tables
 	"messages",
@@ -153,6 +154,11 @@ export function getWhereClauseForTable(
 		Match.when("channel_members", () =>
 			// All non-deleted channel members visible
 			Effect.succeed(buildDeletedAtNullClause(schema.channelMembersTable.deletedAt)),
+		),
+
+		Match.when("channel_sections", () =>
+			// All non-deleted channel sections visible
+			Effect.succeed(buildDeletedAtNullClause(schema.channelSectionsTable.deletedAt)),
 		),
 
 		// ===========================================

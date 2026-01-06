@@ -2,6 +2,7 @@ import type {
 	ChannelIcon,
 	ChannelId,
 	ChannelMemberId,
+	ChannelSectionId,
 	MessageId,
 	OrganizationId,
 	UserId,
@@ -33,6 +34,7 @@ export const channelsTable = pgTable(
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 
 		parentChannelId: uuid().$type<ChannelId>(),
+		sectionId: uuid().$type<ChannelSectionId>(),
 
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -41,6 +43,7 @@ export const channelsTable = pgTable(
 	(table) => [
 		index("channels_organization_id_idx").on(table.organizationId),
 		index("channels_parent_channel_id_idx").on(table.parentChannelId),
+		index("channels_section_id_idx").on(table.sectionId),
 		index("channels_type_idx").on(table.type),
 		index("channels_deleted_at_idx").on(table.deletedAt),
 	],

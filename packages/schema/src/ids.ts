@@ -151,3 +151,9 @@ export const BotInstallationId = Schema.UUID.pipe(Schema.brand("@HazelChat/BotIn
 	title: "Bot Installation ID",
 })
 export type BotInstallationId = Schema.Schema.Type<typeof BotInstallationId>
+
+export const ChannelSectionId = Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelSectionId")).annotations({
+	description: "The ID of a channel section",
+	title: "Channel Section ID",
+})
+export type ChannelSectionId = Schema.Schema.Type<typeof ChannelSectionId>
