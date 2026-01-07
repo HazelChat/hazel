@@ -7,7 +7,7 @@ interface ChannelIconProps {
 
 export function ChannelIcon({ icon, className }: ChannelIconProps) {
 	if (icon) {
-		return <span className={className}>{icon}</span>
+		return <span data-slot="icon" className={className}>{icon}</span>
 	}
 
 	return <IconHashtag className={className} />
