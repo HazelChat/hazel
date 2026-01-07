@@ -2,9 +2,13 @@ import { schema } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
 import type { AuthenticatedUserWithContext } from "../auth/user-auth"
 import {
+	buildChannelAccessClause,
+	buildChannelVisibilityClause,
 	buildDeletedAtNullClause,
 	buildInClause,
+	buildIntegrationConnectionClause,
 	buildNoFilterClause,
+	buildOrgMembershipClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
 
@@ -133,13 +137,25 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("organizations", () =>
-			// All non-deleted organizations visible
-			Effect.succeed(buildDeletedAtNullClause(schema.organizationsTable.deletedAt)),
+			// Organizations: only those the user is a member of
+			Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.organizationsTable.id,
+					schema.organizationsTable.deletedAt,
+				),
+			),
 		),
 
 		Match.when("organization_members", () =>
-			// All non-deleted organization members visible
-			Effect.succeed(buildDeletedAtNullClause(schema.organizationMembersTable.deletedAt)),
+			// Organization members: only in orgs the user is a member of
+			Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.organizationMembersTable.organizationId,
+					schema.organizationMembersTable.deletedAt,
+				),
+			),
 		),
 
 		// ===========================================
@@ -147,18 +163,37 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("channels", () =>
-			// All non-deleted channels visible
-			Effect.succeed(buildDeletedAtNullClause(schema.channelsTable.deletedAt)),
+			// Channel visibility: public channels in user's orgs + member channels (via subquery)
+			Effect.succeed(
+				buildChannelVisibilityClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.channelsTable.deletedAt,
+				),
+			),
 		),
 
 		Match.when("channel_members", () =>
-			// All non-deleted channel members visible
-			Effect.succeed(buildDeletedAtNullClause(schema.channelMembersTable.deletedAt)),
+			// Channel members: only in channels user has access to
+			Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.channelMembersTable.channelId,
+					schema.channelMembersTable.deletedAt,
+				),
+			),
 		),
 
 		Match.when("channel_sections", () =>
-			// All non-deleted channel sections visible
-			Effect.succeed(buildDeletedAtNullClause(schema.channelSectionsTable.deletedAt)),
+			// Channel sections: only in orgs the user is a member of
+			Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.channelSectionsTable.organizationId,
+					schema.channelSectionsTable.deletedAt,
+				),
+			),
 		),
 
 		// ===========================================
@@ -166,18 +201,37 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("messages", () =>
-			// All non-deleted messages visible
-			Effect.succeed(buildDeletedAtNullClause(schema.messagesTable.deletedAt)),
+			// Messages: only in channels user has access to
+			Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.messagesTable.channelId,
+					schema.messagesTable.deletedAt,
+				),
+			),
 		),
 
 		Match.when("message_reactions", () =>
-			// All message reactions visible
-			Effect.succeed(buildNoFilterClause()),
+			// Message reactions: only in channels user has access to
+			Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.messageReactionsTable.channelId,
+				),
+			),
 		),
 
 		Match.when("attachments", () =>
-			// All non-deleted attachments visible
-			Effect.succeed(buildDeletedAtNullClause(schema.attachmentsTable.deletedAt)),
+			// Attachments: only in orgs the user is a member of
+			Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.attachmentsTable.organizationId,
+					schema.attachmentsTable.deletedAt,
+				),
+			),
 		),
 
 		// ===========================================
@@ -191,8 +245,14 @@ export function getWhereClauseForTable(
 		),
 
 		Match.when("pinned_messages", () =>
-			// All pinned messages visible
-			Effect.succeed(buildNoFilterClause()),
+			// Pinned messages: only in channels user has access to
+			Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.pinnedMessagesTable.channelId,
+				),
+			),
 		),
 
 		// ===========================================
@@ -200,13 +260,21 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("typing_indicators", () =>
-			// All typing indicators visible
-			Effect.succeed(buildNoFilterClause()),
+			// Typing indicators: only in channels user has access to
+			Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					user.accessContext.organizationIds,
+					schema.typingIndicatorsTable.channelId,
+				),
+			),
 		),
 
 		Match.when("invitations", () =>
-			// All invitations visible
-			Effect.succeed(buildNoFilterClause()),
+			// Invitations: only in orgs the user is a member of (no deletedAt column)
+			Effect.succeed(
+				buildOrgMembershipClause(user.internalUserId, schema.invitationsTable.organizationId),
+			),
 		),
 
 		// ===========================================
@@ -221,8 +289,10 @@ export function getWhereClauseForTable(
 		),
 
 		Match.when("bot_installations", () =>
-			// All bot installations visible (filtered by organization in frontend)
-			Effect.succeed(buildNoFilterClause()),
+			// Bot installations: only in orgs the user is a member of (no deletedAt column)
+			Effect.succeed(
+				buildOrgMembershipClause(user.internalUserId, schema.botInstallationsTable.organizationId),
+			),
 		),
 
 		// ===========================================
@@ -230,8 +300,13 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("integration_connections", () =>
-			// All non-deleted integration connections visible
-			Effect.succeed(buildDeletedAtNullClause(schema.integrationConnectionsTable.deletedAt)),
+			// Integration connections: org-level in user's orgs OR user's own connections
+			Effect.succeed(
+				buildIntegrationConnectionClause(
+					user.internalUserId,
+					schema.integrationConnectionsTable.deletedAt,
+				),
+			),
 		),
 
 		// ===========================================
