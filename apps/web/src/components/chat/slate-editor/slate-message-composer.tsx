@@ -318,7 +318,7 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 							<SlateMessageEditor
 								ref={editorRef}
 								placeholder={placeholder}
-								orgId={user?.organizationId}
+								orgId={user?.organizationId ?? undefined}
 								channelId={channelId}
 								className="w-full"
 								onSubmit={handleSubmit}
