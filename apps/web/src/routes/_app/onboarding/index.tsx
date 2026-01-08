@@ -240,9 +240,7 @@ function RouteComponent() {
 							<Loader className="size-12" />
 							<p className="font-medium text-lg">Setting up your workspace...</p>
 							<p className="text-muted-fg text-sm">This will just take a moment</p>
-							{onboarding.error && (
-								<p className="text-danger text-sm">{onboarding.error}</p>
-							)}
+							{onboarding.error && <p className="text-danger text-sm">{onboarding.error}</p>}
 						</div>
 					</motion.div>
 				)}

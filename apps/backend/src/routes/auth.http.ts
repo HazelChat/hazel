@@ -319,5 +319,119 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					},
 				})
 			}),
+		)
+		.handle("desktopToken", ({ payload }) =>
+			Effect.gen(function* () {
+				const workos = yield* WorkOS
+				const userRepo = yield* UserRepo
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+
+				// Exchange code for tokens using PKCE flow
+				const authResponse = yield* workos
+					.call(async (client) => {
+						return await client.userManagement.authenticateWithCode({
+							clientId,
+							code: payload.code,
+							codeVerifier: payload.code_verifier,
+						})
+					})
+					.pipe(
+						Effect.catchTag("WorkOSApiError", (error) =>
+							Effect.fail(
+								new UnauthorizedError({
+									message: "Failed to exchange code for tokens",
+									detail: String(error.cause),
+								}),
+							),
+						),
+					)
+
+				const { user: workosUser, accessToken, refreshToken } = authResponse
+
+				// Sync user to database (find-or-create)
+				const userOption = yield* userRepo.findByExternalId(workosUser.id).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to query user",
+									detail: String(err),
+								}),
+							),
+					}),
+					withSystemActor,
+				)
+
+				yield* Option.match(userOption, {
+					onNone: () =>
+						userRepo
+							.upsertByExternalId({
+								externalId: workosUser.id,
+								email: workosUser.email,
+								firstName: workosUser.firstName || "",
+								lastName: workosUser.lastName || "",
+								avatarUrl:
+									workosUser.profilePictureUrl ||
+									`https://avatar.vercel.sh/${workosUser.id}.svg`,
+								userType: "user",
+								settings: null,
+								isOnboarded: false,
+								timezone: null,
+								deletedAt: null,
+							})
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new InternalServerError({
+												message: "Failed to create user",
+												detail: String(err),
+											}),
+										),
+								}),
+								withSystemActor,
+							),
+					onSome: (user) => Effect.succeed(user),
+				})
+
+				return {
+					access_token: accessToken,
+					refresh_token: refreshToken,
+					token_type: "Bearer",
+					expires_in: 3600, // WorkOS access tokens are typically valid for 1 hour
+				}
+			}),
+		)
+		.handle("desktopRefresh", ({ payload }) =>
+			Effect.gen(function* () {
+				const workos = yield* WorkOS
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+
+				// Refresh the access token
+				const refreshResponse = yield* workos
+					.call(async (client) => {
+						return await client.userManagement.authenticateWithRefreshToken({
+							clientId,
+							refreshToken: payload.refresh_token,
+						})
+					})
+					.pipe(
+						Effect.catchTag("WorkOSApiError", (error) =>
+							Effect.fail(
+								new UnauthorizedError({
+									message: "Failed to refresh token",
+									detail: String(error.cause),
+								}),
+							),
+						),
+					)
+
+				return {
+					access_token: refreshResponse.accessToken,
+					refresh_token: refreshResponse.refreshToken,
+					token_type: "Bearer",
+					expires_in: 3600,
+				}
+			}),
 		),
 )

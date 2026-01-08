@@ -89,20 +89,14 @@ function getFlow(userType: UserType): OnboardingStep[] {
 	return userType === "creator" ? CREATOR_FLOW : INVITED_FLOW
 }
 
-export function getNextStep(
-	currentStep: OnboardingStep,
-	userType: UserType,
-): OnboardingStep | undefined {
+export function getNextStep(currentStep: OnboardingStep, userType: UserType): OnboardingStep | undefined {
 	const flow = getFlow(userType)
 	const currentIndex = flow.indexOf(currentStep)
 	if (currentIndex === -1 || currentIndex >= flow.length - 1) return undefined
 	return flow[currentIndex + 1]
 }
 
-export function getPreviousStep(
-	currentStep: OnboardingStep,
-	userType: UserType,
-): OnboardingStep | undefined {
+export function getPreviousStep(currentStep: OnboardingStep, userType: UserType): OnboardingStep | undefined {
 	const flow = getFlow(userType)
 	const currentIndex = flow.indexOf(currentStep)
 	if (currentIndex <= 0) return undefined
@@ -141,8 +135,8 @@ export function createInitialState(input: {
 }
 
 // Atom family keyed by a stable identifier for the onboarding session
-export const onboardingAtomFamily = Atom.family(
-	(_key: string) => Atom.make<OnboardingState>(createInitialState({})),
+export const onboardingAtomFamily = Atom.family((_key: string) =>
+	Atom.make<OnboardingState>(createInitialState({})),
 )
 
 // Derived atom helpers (use with the state directly in the hook)

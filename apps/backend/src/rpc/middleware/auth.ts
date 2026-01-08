@@ -25,6 +25,14 @@ async function hashToken(token: string): Promise<string> {
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
+/**
+ * Check if a token looks like a JWT (has 3 base64-encoded parts)
+ */
+function isJwtToken(token: string): boolean {
+	const parts = token.split(".")
+	return parts.length === 3 && parts.every((part) => part.length > 0)
+}
+
 export const AuthMiddlewareLive = Layer.scoped(
 	AuthMiddleware,
 	Effect.gen(function* () {
@@ -62,11 +70,24 @@ export const AuthMiddlewareLive = Layer.scoped(
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
-				// Check for Bearer token first (bot SDK authentication)
+				// Check for Bearer token first (JWT for desktop app or bot SDK token)
 				const authHeader = Headers.get(headers, "authorization")
 
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
+
+					// Check if it's a JWT (desktop app auth) or a bot token
+					if (isJwtToken(token)) {
+						// WorkOS JWT authentication for desktop apps
+						const currentUser = yield* sessionManager.authenticateWithBearer(token)
+
+						// Store in FiberRef for cleanup
+						yield* FiberRef.set(currentUserRef, Option.some(currentUser))
+
+						return currentUser
+					}
+
+					// Otherwise treat as bot token (hashed in DB)
 					const tokenHash = yield* Effect.promise(() => hashToken(token))
 
 					// Find bot by token hash

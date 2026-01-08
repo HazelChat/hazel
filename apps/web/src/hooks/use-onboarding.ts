@@ -157,9 +157,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 
 			try {
 				let effectiveOrgId: OrganizationId | undefined =
-					state.initialOrgId ||
-					state.data.createdOrgId ||
-					(data.organizationId as OrganizationId)
+					state.initialOrgId || state.data.createdOrgId || (data.organizationId as OrganizationId)
 
 				if (!effectiveOrgId) {
 					// Create new organization
@@ -349,11 +347,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 	// Auto-trigger finalization when reaching that step
 	const finalizationTriggered = useRef(false)
 	useEffect(() => {
-		if (
-			state.currentStep === "finalization" &&
-			!state.isProcessing &&
-			!finalizationTriggered.current
-		) {
+		if (state.currentStep === "finalization" && !state.isProcessing && !finalizationTriggered.current) {
 			finalizationTriggered.current = true
 			handleFinalization()
 		}
