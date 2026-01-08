@@ -26,6 +26,7 @@ const createMockCurrentUser = (overrides?: Partial<CurrentUser.Schema>): Current
 	role: "member" as const,
 	isOnboarded: true,
 	timezone: "UTC",
+	organizationId: null,
 	...overrides,
 })
 
