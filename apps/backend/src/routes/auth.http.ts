@@ -10,6 +10,7 @@ import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, RelativeUrl } from "../lib/schema"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
+import { OrganizationRepo } from "../repositories/organization-repo"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "../services/workos"
 
@@ -180,6 +181,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				// If auth response includes an organization context, ensure membership exists
 				// This handles cases where webhooks are slow to create the membership
+				yield* Effect.logInfo(`Auth response organizationId: ${authResponse.organizationId || "none"}`)
 				if (authResponse.organizationId) {
 					const orgMemberRepo = yield* OrganizationMemberRepo
 
@@ -202,64 +204,98 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						.call((client) => client.organizations.getOrganization(authResponse.organizationId!))
 						.pipe(Effect.catchAll(() => Effect.succeed(null)))
 
+					yield* Effect.logInfo(
+						`WorkOS org: id=${workosOrg?.id || "null"}, externalId=${workosOrg?.externalId || "null"}`,
+					)
+
 					if (workosOrg?.externalId && Option.isSome(user)) {
 						const orgId = workosOrg.externalId as OrganizationId
+						const orgRepo = yield* OrganizationRepo
 
-						// Check if membership already exists - if so, skip creation
-						const existingMembership = yield* orgMemberRepo
-							.findByOrgAndUser(orgId, user.value.id)
-							.pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.fail(
-											new InternalServerError({
-												message: "Failed to query organization membership",
-												detail: String(err),
-											}),
-										),
-								}),
-								withSystemActor,
+						// Check if organization exists in our database first
+						const existingOrg = yield* orgRepo.findById(orgId).pipe(
+							Effect.catchTags({
+								DatabaseError: (err) =>
+									Effect.fail(
+										new InternalServerError({
+											message: "Failed to query organization",
+											detail: String(err),
+										}),
+									),
+							}),
+							withSystemActor,
+						)
+
+						// Skip membership creation if org doesn't exist (fresh test DB or slow webhook)
+						yield* Effect.logInfo(`Organization ${orgId} exists in DB: ${Option.isSome(existingOrg)}`)
+						if (Option.isNone(existingOrg)) {
+							yield* Effect.logWarning(
+								`Organization ${orgId} not found in database, skipping membership creation`,
 							)
-
-						if (Option.isNone(existingMembership)) {
-							// Membership doesn't exist - fetch role from WorkOS and create it
-							const workosMembership = yield* workos
-								.call((client) =>
-									client.userManagement.listOrganizationMemberships({
-										organizationId: authResponse.organizationId!,
-										userId: workosUser.id,
-									}),
-								)
-								.pipe(Effect.catchAll(() => Effect.succeed(null)))
-
-							const role = (workosMembership?.data?.[0]?.role?.slug || "member") as
-								| "admin"
-								| "member"
-								| "owner"
-
-							// Create the membership (only runs if it doesn't exist)
-							yield* orgMemberRepo
-								.upsertByOrgAndUser({
-									organizationId: orgId,
-									userId: user.value.id,
-									role,
-									nickname: null,
-									joinedAt: new Date(),
-									invitedBy: null,
-									deletedAt: null,
-								})
+						} else {
+							// Check if membership already exists - if so, skip creation
+							const existingMembership = yield* orgMemberRepo
+								.findByOrgAndUser(orgId, user.value.id)
 								.pipe(
 									Effect.catchTags({
 										DatabaseError: (err) =>
 											Effect.fail(
 												new InternalServerError({
-													message: "Failed to create organization membership",
+													message: "Failed to query organization membership",
 													detail: String(err),
 												}),
 											),
 									}),
 									withSystemActor,
 								)
+
+							yield* Effect.logInfo(`Membership exists: ${Option.isSome(existingMembership)}`)
+							if (Option.isNone(existingMembership)) {
+								// Membership doesn't exist - fetch role from WorkOS and create it
+								yield* Effect.logInfo(
+									`Creating new org membership for userId=${user.value.id}, orgId=${orgId}`,
+								)
+								const workosMembership = yield* workos
+									.call((client) =>
+										client.userManagement.listOrganizationMemberships({
+											organizationId: authResponse.organizationId!,
+											userId: workosUser.id,
+										}),
+									)
+									.pipe(Effect.catchAll(() => Effect.succeed(null)))
+
+								const role = (workosMembership?.data?.[0]?.role?.slug || "member") as
+									| "admin"
+									| "member"
+									| "owner"
+
+								// Create the membership (only runs if it doesn't exist)
+								yield* orgMemberRepo
+									.upsertByOrgAndUser({
+										organizationId: orgId,
+										userId: user.value.id,
+										role,
+										nickname: null,
+										joinedAt: new Date(),
+										invitedBy: null,
+										deletedAt: null,
+									})
+									.pipe(
+										Effect.catchTags({
+											DatabaseError: (err) =>
+												Effect.fail(
+													new InternalServerError({
+														message: "Failed to create organization membership",
+														detail: String(err),
+													}),
+												),
+										}),
+										withSystemActor,
+									)
+								yield* Effect.logInfo(
+									`Membership created successfully for userId=${user.value.id}, orgId=${orgId}`,
+								)
+							}
 						}
 					}
 				}

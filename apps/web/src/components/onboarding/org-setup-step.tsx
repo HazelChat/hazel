@@ -82,6 +82,9 @@ export function OrgSetupStep({ onBack, onContinue, defaultName = "", defaultSlug
 			if (Exit.isSuccess(exit)) {
 				const organizationId = exit.value.data.id
 				onContinue({ name: value.name, slug: value.slug, organizationId })
+			} else {
+				// Throw error so form resets isSubmitting and allows retry
+				throw new Error("Failed to create organization")
 			}
 		},
 	})

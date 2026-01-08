@@ -8,3 +8,14 @@ count.txt
 .env
 .nitro
 .tanstack
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+e2e/.auth/
+e2e/.test-state.json
+
+# Test credentials
+.env.test
