@@ -2,7 +2,7 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { type } from "arktype"
 import { AnimatePresence, motion } from "motion/react"
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import type { OnboardingStep } from "~/atoms/onboarding-atoms"
 import { InviteTeamStep } from "~/components/onboarding/invite-team-step"
 import { OnboardingLayout } from "~/components/onboarding/onboarding-layout"
@@ -74,6 +74,18 @@ function RouteComponent() {
 		initialStep: urlStep,
 		onStepChange: handleStepChange,
 	})
+
+	// Auto-redirect when onboarding is completed (handles race conditions and direct URL access)
+	useEffect(() => {
+		if (onboarding.currentStep === "completed") {
+			const slug = onboarding.data.orgSlug || organization?.slug
+			if (slug) {
+				navigate({ to: "/$orgSlug", params: { orgSlug: slug } })
+			} else {
+				navigate({ to: "/" })
+			}
+		}
+	}, [onboarding.currentStep, onboarding.data.orgSlug, organization?.slug, navigate])
 
 	// Animation variants based on direction with blur effect
 	const variants = {
