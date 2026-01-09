@@ -33,4 +33,4 @@ export const recentChannelsAtom = Atom.kvs({
 	key: "recentChannels",
 	schema: RecentChannelsSchema,
 	defaultValue: () => [] as RecentChannel[],
-})
+}).pipe(Atom.keepAlive)

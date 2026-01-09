@@ -210,17 +210,23 @@ function HomeView({
 	const createDmModal = useModal("create-dm")
 	const emailInviteModal = useModal("email-invite")
 
-	// Get channel data for recent channels
-	const recentChannelIds = recentChannels.map((rc) => rc.channelId)
+	// Get channel data for recent channels (memoized to prevent infinite re-renders)
+	const recentChannelIds = useMemo(() => recentChannels.map((rc) => rc.channelId), [recentChannels])
+
 	const { data: recentChannelData } = useLiveQuery(
 		(q) =>
 			recentChannelIds.length > 0 && organizationId
 				? q
 						.from({ channel: channelCollection })
-						.where(({ channel }) => eq(channel.organizationId, organizationId))
-						.select(({ channel }) => channel)
+						.where(({ channel }) =>
+							and(
+								eq(channel.organizationId, organizationId),
+								inArray(channel.id, recentChannelIds),
+							),
+						)
+						.select(({ channel }) => ({ ...channel }))
 				: null,
-		[recentChannelIds.length, organizationId],
+		[recentChannelIds, organizationId],
 	)
 
 	// Sort and filter recent channels by visitedAt order
@@ -303,6 +309,91 @@ function HomeView({
 
 	return (
 		<>
+			{/* Recent Channels */}
+			{sortedRecentChannels.length > 0 && (
+				<CommandMenuSection label="Recent">
+					{sortedRecentChannels.map((channel) => {
+						const isDm = channel.type === "direct" || channel.type === "single"
+						const dmData = isDm ? dmChannels.find((dm) => dm.id === channel.id) : null
+
+						if (isDm && dmData) {
+							const firstMember = dmData.otherMembers[0]
+							const displayName =
+								dmData.type === "single" && dmData.otherMembers.length === 1 && firstMember
+									? `${firstMember.user.firstName} ${firstMember.user.lastName}`
+									: dmData.otherMembers.map((m) => m.user.firstName).join(", ")
+
+							return (
+								<CommandMenuItem
+									key={`recent-${channel.id}`}
+									textValue={displayName}
+									onAction={() => {
+										navigate({
+											to: "/$orgSlug/chat/$id",
+											params: { orgSlug: orgSlug!, id: channel.id },
+										})
+										onClose()
+									}}
+								>
+									{dmData.type === "single" &&
+									dmData.otherMembers.length === 1 &&
+									firstMember ? (
+										<Avatar
+											size="xs"
+											className="mr-1"
+											data-slot="icon"
+											src={firstMember.user.avatarUrl}
+											alt={displayName}
+										/>
+									) : (
+										<div data-slot="icon" className="flex -space-x-2 mr-1">
+											{dmData.otherMembers.slice(0, 2).map((member) => (
+												<Avatar
+													key={member.userId}
+													size="xs"
+													src={member.user.avatarUrl}
+													alt={member.user.firstName}
+													className="ring-[1.5px] ring-overlay"
+												/>
+											))}
+											{dmData.otherMembers.length > 2 && (
+												<Avatar
+													size="xs"
+													className="ring-[1.5px] ring-overlay"
+													placeholder={
+														<span className="flex items-center justify-center font-semibold text-quaternary text-xs">
+															+{dmData.otherMembers.length - 2}
+														</span>
+													}
+												/>
+											)}
+										</div>
+									)}
+									<CommandMenuLabel>{displayName}</CommandMenuLabel>
+								</CommandMenuItem>
+							)
+						}
+
+						return (
+							<CommandMenuItem
+								key={`recent-${channel.id}`}
+								textValue={channel.name}
+								onAction={() => {
+									navigate({
+										to: "/$orgSlug/chat/$id",
+										params: { orgSlug: orgSlug!, id: channel.id },
+									})
+									onClose()
+								}}
+							>
+								<ChannelIcon icon={channel.icon} />
+								<CommandMenuLabel>{channel.name}</CommandMenuLabel>
+							</CommandMenuItem>
+						)
+					})}
+				</CommandMenuSection>
+			)}
+
 			{/* Quick Actions */}
 			<CommandMenuSection label="Quick Actions">
 				<CommandMenuItem onAction={() => navigateToPage("create-channel")} textValue="create channel">
