@@ -6,6 +6,7 @@ import {
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
+	IntegrationRequestRpcs,
 	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
@@ -24,6 +25,7 @@ import { ChannelSectionRpcLive } from "./handlers/channel-sections"
 import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
+import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
 import { InvitationRpcLive } from "./handlers/invitations"
 import { MessageReactionRpcLive } from "./handlers/message-reactions"
 import { MessageRpcLive } from "./handlers/messages"
@@ -55,6 +57,7 @@ export const AllRpcs = MessageRpcs.merge(
 	MessageReactionRpcs,
 	NotificationRpcs,
 	InvitationRpcs,
+	IntegrationRequestRpcs,
 	TypingIndicatorRpcs,
 	PinnedMessageRpcs,
 	OrganizationRpcs,
@@ -74,6 +77,7 @@ export const RpcServerLive = Layer.empty.pipe(
 	Layer.provideMerge(MessageReactionRpcLive),
 	Layer.provideMerge(NotificationRpcLive),
 	Layer.provideMerge(InvitationRpcLive),
+	Layer.provideMerge(IntegrationRequestRpcLive),
 	Layer.provideMerge(TypingIndicatorRpcLive),
 	Layer.provideMerge(PinnedMessageRpcLive),
 	Layer.provideMerge(OrganizationRpcLive),

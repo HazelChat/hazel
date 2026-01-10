@@ -10,6 +10,7 @@ import {
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
+	IntegrationRequestRpcs,
 	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
@@ -50,6 +51,7 @@ const AtomRpcProtocolLive = RpcProtocolLive.pipe(
 const AllRpcs = MessageRpcs.merge(
 	NotificationRpcs,
 	InvitationRpcs,
+	IntegrationRequestRpcs,
 	ChannelRpcs,
 	ChannelMemberRpcs,
 	ChannelSectionRpcs,
