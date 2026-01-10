@@ -17,15 +17,21 @@ import { TimeRibbon } from "../time-ribbon"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
 const CITIES = [
-	// Americas
-	{ name: "New York", timezone: "America/New_York", offset: -5, country: "USA" },
+	// Americas & Pacific
+	{ name: "Pago Pago", timezone: "Pacific/Pago_Pago", offset: -11, country: "American Samoa" },
+	{ name: "Honolulu", timezone: "Pacific/Honolulu", offset: -10, country: "USA" },
+	{ name: "Anchorage", timezone: "America/Anchorage", offset: -9, country: "USA" },
 	{ name: "Los Angeles", timezone: "America/Los_Angeles", offset: -8, country: "USA" },
+	{ name: "Denver", timezone: "America/Denver", offset: -7, country: "USA" },
 	{ name: "Chicago", timezone: "America/Chicago", offset: -6, country: "USA" },
-	{ name: "Toronto", timezone: "America/Toronto", offset: -5, country: "Canada" },
-	{ name: "Mexico City", timezone: "America/Mexico_City", offset: -6, country: "Mexico" },
+	{ name: "New York", timezone: "America/New_York", offset: -5, country: "USA" },
+	{ name: "Santiago", timezone: "America/Santiago", offset: -4, country: "Chile" },
 	{ name: "São Paulo", timezone: "America/Sao_Paulo", offset: -3, country: "Brazil" },
 	{ name: "Buenos Aires", timezone: "America/Argentina/Buenos_Aires", offset: -3, country: "Argentina" },
-	// Europe
+	{ name: "Toronto", timezone: "America/Toronto", offset: -5, country: "Canada" },
+	{ name: "Mexico City", timezone: "America/Mexico_City", offset: -6, country: "Mexico" },
+	// Europe & Atlantic
+	{ name: "Azores", timezone: "Atlantic/Azores", offset: -1, country: "Portugal" },
 	{ name: "London", timezone: "Europe/London", offset: 0, country: "UK" },
 	{ name: "Paris", timezone: "Europe/Paris", offset: 1, country: "France" },
 	{ name: "Berlin", timezone: "Europe/Berlin", offset: 1, country: "Germany" },
@@ -38,15 +44,19 @@ const CITIES = [
 	{ name: "Lagos", timezone: "Africa/Lagos", offset: 1, country: "Nigeria" },
 	{ name: "Johannesburg", timezone: "Africa/Johannesburg", offset: 2, country: "South Africa" },
 	// Asia
+	{ name: "Karachi", timezone: "Asia/Karachi", offset: 5, country: "Pakistan" },
 	{ name: "Mumbai", timezone: "Asia/Kolkata", offset: 5.5, country: "India" },
+	{ name: "Dhaka", timezone: "Asia/Dhaka", offset: 6, country: "Bangladesh" },
 	{ name: "Bangkok", timezone: "Asia/Bangkok", offset: 7, country: "Thailand" },
 	{ name: "Singapore", timezone: "Asia/Singapore", offset: 8, country: "Singapore" },
 	{ name: "Hong Kong", timezone: "Asia/Hong_Kong", offset: 8, country: "China" },
 	{ name: "Tokyo", timezone: "Asia/Tokyo", offset: 9, country: "Japan" },
 	{ name: "Seoul", timezone: "Asia/Seoul", offset: 9, country: "South Korea" },
-	// Oceania
+	// Oceania & Pacific
+	{ name: "Brisbane", timezone: "Australia/Brisbane", offset: 10, country: "Australia" },
 	{ name: "Sydney", timezone: "Australia/Sydney", offset: 11, country: "Australia" },
-	{ name: "Auckland", timezone: "Pacific/Auckland", offset: 13, country: "New Zealand" },
+	{ name: "Fiji", timezone: "Pacific/Fiji", offset: 12, country: "Fiji" },
+	{ name: "Auckland", timezone: "Pacific/Auckland", offset: 12, country: "New Zealand" },
 ]
 
 interface TimezoneSelectionStepProps {
