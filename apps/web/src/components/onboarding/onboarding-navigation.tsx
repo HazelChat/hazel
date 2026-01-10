@@ -18,7 +18,7 @@ export function OnboardingNavigation({
 	showBack = true,
 }: OnboardingNavigationProps) {
 	return (
-		<div className="flex flex-wrap justify-between gap-2 pt-4">
+		<div className="sticky bottom-0 flex flex-wrap justify-between gap-2 pt-4 pb-2 bg-bg sm:static sm:pb-0">
 			{showBack ? (
 				<Button
 					data-testid="onboarding-back-btn"
