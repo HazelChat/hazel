@@ -127,7 +127,6 @@ function RouteComponent() {
 		return Match.value(errorTag).pipe(
 			// 503 errors - infrastructure/service issues - show error screen with retry
 			Match.when("SessionLoadError", () => serviceErrorScreen),
-			Match.when("SessionRefreshError", () => serviceErrorScreen),
 			Match.when("WorkOSUserFetchError", () => serviceErrorScreen),
 			// 401 errors - user needs to re-authenticate - redirect to login
 			Match.orElse(() => {
