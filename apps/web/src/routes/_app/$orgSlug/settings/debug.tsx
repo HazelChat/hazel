@@ -222,7 +222,9 @@ function DebugSettings() {
 									This will create sample data in your current organization including:
 								</p>
 								<ul className="list-disc space-y-1 pl-5 text-muted-fg text-sm">
-									<li>7 team members (Sarah, Marcus, Emily, Alex, Jordan, Taylor, Casey)</li>
+									<li>
+										7 team members (Sarah, Marcus, Emily, Alex, Jordan, Taylor, Casey)
+									</li>
 									<li>12 channels with emoji icons in 4 sections</li>
 									<li>Messages with replies and a discussion thread</li>
 								</ul>
