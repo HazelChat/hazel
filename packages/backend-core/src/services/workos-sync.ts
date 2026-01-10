@@ -79,6 +79,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			),
 			Stream.runCollect,
 			Effect.map((chunks) => [...chunks].flat()),
+			Effect.withSpan("WorkOSSync.fetchAllUsers"),
 		)
 
 		const fetchAllOrganizations = pipe(
@@ -92,6 +93,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			),
 			Stream.runCollect,
 			Effect.map((chunks) => [...chunks].flat()),
+			Effect.withSpan("WorkOSSync.fetchAllOrganizations"),
 		)
 
 		const fetchAllMemberships = (workosOrgId: string) =>
@@ -114,6 +116,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				Stream.runCollect,
 				Effect.map((chunks) => [...chunks].flat()),
+				Effect.withSpan("WorkOSSync.fetchAllMemberships", {
+					attributes: { "workos.org.id": workosOrgId },
+				}),
 			)
 
 		const fetchAllInvitations = (workosOrgId: string) =>
@@ -136,6 +141,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				Stream.runCollect,
 				Effect.map((chunks) => [...chunks].flat()),
+				Effect.withSpan("WorkOSSync.fetchAllInvitations", {
+					attributes: { "workos.org.id": workosOrgId },
+				}),
 			)
 
 		// Sync all users from WorkOS
@@ -143,6 +151,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const result: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
 
 			// Fetch all users from WorkOS (with pagination)
+			yield* Effect.logInfo("Fetching users from WorkOS...")
+			const fetchStart = Date.now()
 			const workosUsersResult = yield* pipe(fetchAllUsers, Effect.either)
 
 			if (workosUsersResult._tag === "Left") {
@@ -151,6 +161,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			const workosUsers = workosUsersResult.right
+			yield* Effect.logInfo(`Fetched ${workosUsers.length} users from WorkOS in ${Date.now() - fetchStart}ms`)
 
 			// Get all existing users
 			const existingUsers = yield* userRepo.findAllActive()
@@ -158,6 +169,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const workosUserIds = new Set(workosUsers.map((u) => u.id))
 
 			// Upsert users from WorkOS
+			yield* Effect.logInfo(`Upserting ${workosUsers.length} users...`)
+			const upsertStart = Date.now()
 			yield* Effect.all(
 				workosUsers.map((workosUser) =>
 					collectResult(
@@ -191,6 +204,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				{ concurrency: "unbounded" },
 			)
+			yield* Effect.logInfo(
+				`Upserted users in ${Date.now() - upsertStart}ms: created=${result.created}, updated=${result.updated}, errors=${result.errors.length}`,
+			)
 
 			// DISABLED: Soft delete users that no longer exist in WorkOS
 			// Skip mock users and machine/bot users (they're not managed by WorkOS)
@@ -207,13 +223,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			return result
-		})
+		}).pipe(Effect.withSpan("WorkOSSync.syncUsers"))
 
 		// Sync all organizations from WorkOS
 		const syncOrganizations = Effect.gen(function* () {
 			const result: SyncResult = { created: 0, updated: 0, deleted: 0, errors: [] }
 
 			// Fetch all organizations from WorkOS (with pagination)
+			yield* Effect.logInfo("Fetching organizations from WorkOS...")
+			const fetchStart = Date.now()
 			const workosOrgsResult = yield* pipe(fetchAllOrganizations, Effect.either)
 
 			if (workosOrgsResult._tag === "Left") {
@@ -222,6 +240,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			const workosOrgs = workosOrgsResult.right
+			yield* Effect.logInfo(
+				`Fetched ${workosOrgs.length} organizations from WorkOS in ${Date.now() - fetchStart}ms`,
+			)
 
 			// Get all existing organizations
 			const existingOrgs = yield* orgRepo.findAllActive()
@@ -231,6 +252,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 			// Upsert organizations from WorkOS
+			yield* Effect.logInfo(`Upserting ${workosOrgs.length} organizations...`)
+			const upsertStart = Date.now()
 			yield* Effect.all(
 				workosOrgs.map((workosOrg) =>
 					collectResult(
@@ -279,6 +302,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				{ concurrency: "unbounded" },
 			)
+			yield* Effect.logInfo(
+				`Upserted organizations in ${Date.now() - upsertStart}ms: created=${result.created}, updated=${result.updated}, errors=${result.errors.length}`,
+			)
 
 			// DISABLED: Soft delete organizations that no longer exist in WorkOS
 			const orgsToDelete = existingOrgs.filter((org) => !workosOrgExternalIds.has(org.id))
@@ -289,7 +315,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			return result
-		})
+		}).pipe(Effect.withSpan("WorkOSSync.syncOrganizations"))
 
 		// Sync organization memberships
 		const syncOrganizationMemberships = Effect.fn("WorkOSSync.syncOrganizationMemberships")(function* (
@@ -538,39 +564,43 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			yield* Effect.logInfo("Starting WorkOS sync...")
 
 			// Step 1: Sync all users
-			yield* Effect.logInfo("Syncing users...")
 			result.users = yield* syncUsers
-			yield* Effect.logInfo(
-				`Users sync complete: created=${result.users.created}, updated=${result.users.updated}, deleted=${result.users.deleted}`,
-			)
 
 			// Step 2: Sync all organizations
-			yield* Effect.logInfo("Syncing organizations...")
 			result.organizations = yield* syncOrganizations
-			yield* Effect.logInfo(
-				`Organizations sync complete: created=${result.organizations.created}, updated=${result.organizations.updated}, deleted=${result.organizations.deleted}`,
-			)
 
 			// Step 3: Sync memberships and invitations for each organization
 			const organizations = yield* orgRepo.findAllActive()
+			yield* Effect.logInfo(`Syncing memberships and invitations for ${organizations.length} organizations...`)
 
 			yield* Effect.all(
-				organizations.map((org) =>
+				organizations.map((org, index) =>
 					Effect.gen(function* () {
-						yield* Effect.logInfo(`Syncing memberships for org ${org.id}...`)
+						const orgStart = Date.now()
+						yield* Effect.logInfo(
+							`[${index + 1}/${organizations.length}] Syncing org ${org.name} (${org.id})...`,
+						)
+
 						const membershipResult = yield* syncOrganizationMemberships(org.id)
 						result.memberships.created += membershipResult.created
 						result.memberships.updated += membershipResult.updated
 						result.memberships.deleted += membershipResult.deleted
 						result.memberships.errors.push(...membershipResult.errors)
 
-						yield* Effect.logInfo(`Syncing invitations for org ${org.id}...`)
 						const invitationResult = yield* syncInvitations(org.id as OrganizationId)
 						result.invitations.created += invitationResult.created
 						result.invitations.updated += invitationResult.updated
 						result.invitations.deleted += invitationResult.deleted
 						result.invitations.errors.push(...invitationResult.errors)
-					}),
+
+						yield* Effect.logInfo(
+							`[${index + 1}/${organizations.length}] Completed org ${org.name} in ${Date.now() - orgStart}ms (memberships: +${membershipResult.created}/~${membershipResult.updated}, invitations: +${invitationResult.created}/~${invitationResult.updated})`,
+						)
+					}).pipe(
+						Effect.withSpan("WorkOSSync.syncOrganization", {
+							attributes: { "org.id": org.id, "org.name": org.name },
+						}),
+					),
 				),
 				{ concurrency: 5 },
 			)
@@ -597,7 +627,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			return result
-		})
+		}).pipe(
+			Effect.annotateLogs({ "sync.type": "workos", "sync.job": "full" }),
+			Effect.withSpan("WorkOSSync.syncAll"),
+		)
 
 		// --- Webhook Event Handlers ---
 
