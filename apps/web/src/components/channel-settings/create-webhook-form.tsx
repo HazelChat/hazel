@@ -16,8 +16,22 @@ import { TokenDisplay } from "./token-display"
 const webhookSchema = type({
 	name: "1<string<101",
 	"description?": "string",
-	"avatarUrl?": "string",
+	"avatarUrl?": "string.url",
 })
+
+async function validateImageUrl(url: string): Promise<string | undefined> {
+	if (!url) return undefined
+	try {
+		const response = await fetch(url, { method: "HEAD" })
+		const contentType = response.headers.get("Content-Type")
+		if (!contentType?.startsWith("image/")) {
+			return "URL must point to an image"
+		}
+	} catch {
+		// CORS or network error - allow through and let backend validate
+	}
+	return undefined
+}
 
 type WebhookFormData = typeof webhookSchema.infer
 
@@ -149,6 +163,10 @@ export function CreateWebhookForm({ channelId, onSuccess }: CreateWebhookFormPro
 
 				<form.AppField
 					name="avatarUrl"
+					validators={{
+						onChangeAsyncDebounceMs: 500,
+						onChangeAsync: ({ value }) => validateImageUrl(value ?? ""),
+					}}
 					children={(field) => (
 						<TextField>
 							<Label>Avatar URL</Label>
@@ -158,7 +176,11 @@ export function CreateWebhookForm({ channelId, onSuccess }: CreateWebhookFormPro
 								value={field.state.value ?? ""}
 								onChange={(e) => field.handleChange(e.target.value)}
 								onBlur={field.handleBlur}
+								aria-invalid={!!field.state.meta.errors?.length}
 							/>
+							{field.state.meta.errors?.[0] && (
+								<FieldError>{field.state.meta.errors[0].toString()}</FieldError>
+							)}
 						</TextField>
 					)}
 				/>
