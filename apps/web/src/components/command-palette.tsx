@@ -52,9 +52,11 @@ import IconMsgs from "./icons/icon-msgs"
 import IconPlus from "./icons/icon-plus"
 import { IconServers } from "./icons/icon-servers"
 import IconUsersPlus from "./icons/icon-users-plus"
+import IconMagnifier from "./icons/icon-magnifier-3"
 import { Avatar } from "./ui/avatar"
+import { SearchView } from "./command-palette/search-view"
 
-type Page = "home" | "status" | "appearance" | "create-channel" | "join-channel"
+type Page = "home" | "search" | "status" | "appearance" | "create-channel" | "join-channel"
 
 export function CommandPalette(
 	props: Pick<CommandMenuProps, "isOpen" | "onOpenChange"> & { initialPage?: CommandPalettePage },
@@ -163,6 +165,7 @@ export function CommandPalette(
 			{isCurrentPageForm ? (
 				// Form pages render their own header/content outside CommandMenuList
 				<>
+					{currentPage === "search" && <SearchView onClose={closePalette} />}
 					{currentPage === "create-channel" && (
 						<CreateChannelView onClose={closePalette} onBack={goBack} />
 					)}
@@ -401,6 +404,11 @@ function HomeView({
 
 			{/* Quick Actions */}
 			<CommandMenuSection label="Quick Actions">
+				<CommandMenuItem onAction={() => navigateToPage("search")} textValue="search messages find">
+					<IconMagnifier />
+					<CommandMenuLabel>Search messages</CommandMenuLabel>
+					<CommandMenuShortcut>⌘⇧F</CommandMenuShortcut>
+				</CommandMenuItem>
 				<CommandMenuItem onAction={() => navigateToPage("create-channel")} textValue="create channel">
 					<IconPlus />
 					<CommandMenuLabel>Create channel</CommandMenuLabel>

@@ -5,6 +5,7 @@ import { Atom } from "@effect-atom/atom-react"
  */
 export type CommandPalettePage =
 	| "home"
+	| "search"
 	| "channels"
 	| "members"
 	| "status"
@@ -15,9 +16,10 @@ export type CommandPalettePage =
 /**
  * Check if a page is a form page (vs a list page)
  * Form pages don't use the Autocomplete search input and render outside CommandMenuList
+ * Note: "search" page has its own custom search input, so it's also treated as a form page
  */
 export const isFormPage = (page: CommandPalettePage): boolean => {
-	return page === "create-channel" || page === "join-channel"
+	return page === "create-channel" || page === "join-channel" || page === "search"
 }
 
 /**

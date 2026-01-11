@@ -6,8 +6,8 @@ Q1
 - dekstop app
 - custom integrations
 - mobile app
+- search
 
 Q2
 
 - Call Features
-- channel categories

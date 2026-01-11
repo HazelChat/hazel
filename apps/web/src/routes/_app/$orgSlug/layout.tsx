@@ -68,6 +68,11 @@ function RouteComponent() {
 		setOpenCmd(true)
 	}
 
+	const openSearch = () => {
+		setInitialPage("search")
+		setOpenCmd(true)
+	}
+
 	// Global keyboard shortcuts
 	useKeyboardShortcut("n", () => newChannelModal.open(), {
 		meta: true,
@@ -80,6 +85,10 @@ function RouteComponent() {
 	useKeyboardShortcut("i", () => emailInviteModal.open(), {
 		meta: true,
 		alt: true,
+	})
+	useKeyboardShortcut("f", openSearch, {
+		meta: true,
+		shift: true,
 	})
 
 	// Sync organization context to user session
