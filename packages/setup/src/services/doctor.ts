@@ -113,6 +113,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 		checkRedis: (): Effect.Effect<CheckResult> => checkContainer("app-cache_redis-1", "Redis"),
 		checkElectric: (): Effect.Effect<CheckResult> => checkContainer("app-electric-1", "Electric"),
 		checkSequin: (): Effect.Effect<CheckResult> => checkContainer("app-sequin-1", "Sequin"),
+		checkCaddy: (): Effect.Effect<CheckResult> => checkContainer("app-caddy-1", "Caddy"),
 
 		runAllChecks: (): Effect.Effect<
 			{ environment: CheckResult[]; services: CheckResult[] },
@@ -128,6 +129,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 						doctor.checkRedis(),
 						doctor.checkElectric(),
 						doctor.checkSequin(),
+						doctor.checkCaddy(),
 					]),
 				])
 				return { environment, services }

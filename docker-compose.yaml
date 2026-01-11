@@ -123,6 +123,20 @@ services:
             exit 0;
             "
 
+    # Caddy - Reverse proxy for local development
+    caddy:
+        image: caddy:2-alpine
+        ports:
+            - "5133:5133" # SSE proxy (electric-proxy)
+            - "3004:3004" # WebSocket proxy (backend)
+        volumes:
+            - ./Caddyfile.docker:/etc/caddy/Caddyfile
+            - caddy_data:/data
+            - caddy_config:/config
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        restart: always
+
 volumes:
     postgres_data:
         driver: local
@@ -131,4 +145,8 @@ volumes:
     cache_redis_data:
         driver: local
     minio_data:
+        driver: local
+    caddy_data:
+        driver: local
+    caddy_config:
         driver: local
