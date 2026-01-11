@@ -38,6 +38,8 @@ export interface SearchSlateEditorProps {
 	onChange: (value: string) => void
 	onSubmit?: () => void
 	onFilterSelect?: (filter: SearchFilter) => void
+	onArrowUp?: () => void
+	onArrowDown?: () => void
 	placeholder?: string
 	className?: string
 }
@@ -51,7 +53,7 @@ export interface SearchSlateEditorRef {
  * Single-line Slate editor for search with filter syntax highlighting and autocomplete
  */
 export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEditorProps>(
-	({ value, onChange, onSubmit, onFilterSelect, placeholder, className }, ref) => {
+	({ value, onChange, onSubmit, onFilterSelect, onArrowUp, onArrowDown, placeholder, className }, ref) => {
 		const { organizationId } = useOrganization()
 		const { user } = useAuth()
 		const editorRef = useRef<ReturnType<typeof createEditor> | null>(null)
@@ -249,13 +251,27 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 					}
 				}
 
+				// Forward arrow keys to parent for result navigation (when autocomplete is closed)
+				if (!autocomplete.isOpen) {
+					if (event.key === "ArrowDown") {
+						event.preventDefault()
+						onArrowDown?.()
+						return
+					}
+					if (event.key === "ArrowUp") {
+						event.preventDefault()
+						onArrowUp?.()
+						return
+					}
+				}
+
 				// Submit on Enter (when autocomplete is closed)
 				if (event.key === "Enter" && !autocomplete.isOpen) {
 					event.preventDefault()
 					onSubmit?.()
 				}
 			},
-			[autocomplete, currentSuggestions, selectOption, onSubmit],
+			[autocomplete, currentSuggestions, selectOption, onSubmit, onArrowUp, onArrowDown],
 		)
 
 		// Decorate function for syntax highlighting

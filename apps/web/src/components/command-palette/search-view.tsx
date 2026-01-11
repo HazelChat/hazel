@@ -104,6 +104,21 @@ export function SearchView({ onClose }: SearchViewProps) {
 		[setSearchState],
 	)
 
+	// Handle arrow key navigation for search results
+	const handleArrowDown = useCallback(() => {
+		setSearchState((prev) => ({
+			...prev,
+			selectedIndex: Math.min(prev.selectedIndex + 1, results.length - 1),
+		}))
+	}, [results.length, setSearchState])
+
+	const handleArrowUp = useCallback(() => {
+		setSearchState((prev) => ({
+			...prev,
+			selectedIndex: Math.max(prev.selectedIndex - 1, 0),
+		}))
+	}, [setSearchState])
+
 	// Handle result navigation and selection
 	const handleSubmit = useCallback(() => {
 		const selectedResult = results[searchState.selectedIndex]
@@ -111,26 +126,6 @@ export function SearchView({ onClose }: SearchViewProps) {
 			navigateToResult(selectedResult)
 		}
 	}, [results, searchState.selectedIndex])
-
-	// Keyboard navigation for results (when not in autocomplete mode)
-	const handleResultsKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			if (e.key === "ArrowDown") {
-				e.preventDefault()
-				setSearchState((prev) => ({
-					...prev,
-					selectedIndex: Math.min(prev.selectedIndex + 1, results.length - 1),
-				}))
-			} else if (e.key === "ArrowUp") {
-				e.preventDefault()
-				setSearchState((prev) => ({
-					...prev,
-					selectedIndex: Math.max(prev.selectedIndex - 1, 0),
-				}))
-			}
-		},
-		[results.length, setSearchState],
-	)
 
 	// Navigate to a search result
 	const navigateToResult = useCallback(
@@ -220,6 +215,8 @@ export function SearchView({ onClose }: SearchViewProps) {
 					onChange={handleInputChange}
 					onSubmit={handleSubmit}
 					onFilterSelect={handleFilterSelect}
+					onArrowUp={handleArrowUp}
+					onArrowDown={handleArrowDown}
 					placeholder={
 						searchState.filters.length > 0
 							? "Add more filters or search..."
@@ -244,7 +241,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 			</div>
 
 			{/* Content Area */}
-			<div className="flex-1 overflow-y-auto p-2" onKeyDown={handleResultsKeyDown}>
+			<div className="flex-1 overflow-y-auto p-2">
 				{/* Search Results */}
 				{hasQuery && (
 					<>
