@@ -164,13 +164,14 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 									<MenuLabel>Settings</MenuLabel>
 								</MenuItem>
 								<MenuItem
-								intent="danger"
-								onAction={() =>
-									deleteChannelModal.open({
-										channelId: channel.id,
-										channelName: channel.name,
-									})
-								}>
+									intent="danger"
+									onAction={() =>
+										deleteChannelModal.open({
+											channelId: channel.id,
+											channelName: channel.name,
+										})
+									}
+								>
 									<IconTrash />
 									<MenuLabel>Delete</MenuLabel>
 								</MenuItem>
@@ -195,7 +196,6 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 						/>
 					))}
 			</SidebarTreeItem>
-
 		</>
 	)
 }

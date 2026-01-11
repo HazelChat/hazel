@@ -7,16 +7,13 @@ export interface CheckResult {
 }
 
 // Helper to check if a docker container is running
-const checkContainer = (
-	containerName: string,
-	displayName: string
-): Effect.Effect<CheckResult> =>
+const checkContainer = (containerName: string, displayName: string): Effect.Effect<CheckResult> =>
 	Effect.tryPromise({
 		try: async () => {
-			const proc = Bun.spawn(
-				["docker", "inspect", "--format", "{{.State.Status}}", containerName],
-				{ stdout: "pipe", stderr: "ignore" }
-			)
+			const proc = Bun.spawn(["docker", "inspect", "--format", "{{.State.Status}}", containerName], {
+				stdout: "pipe",
+				stderr: "ignore",
+			})
 			const output = await new Response(proc.stdout).text()
 			const code = await proc.exited
 
@@ -33,8 +30,8 @@ const checkContainer = (
 		catch: () => new Error("Check failed"),
 	}).pipe(
 		Effect.catchAll(() =>
-			Effect.succeed({ name: displayName, status: "fail" as const, message: "Not running" })
-		)
+			Effect.succeed({ name: displayName, status: "fail" as const, message: "Not running" }),
+		),
 	)
 
 export class Doctor extends Effect.Service<Doctor>()("Doctor", {
@@ -55,8 +52,8 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 						name: "Bun",
 						status: "fail" as const,
 						message: "Not found. Install from https://bun.sh",
-					})
-				)
+					}),
+				),
 			),
 
 		checkDocker: (): Effect.Effect<CheckResult> =>
@@ -74,8 +71,8 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 						name: "Docker",
 						status: "fail" as const,
 						message: "Not running. Start Docker Desktop",
-					})
-				)
+					}),
+				),
 			),
 
 		checkDockerCompose: (): Effect.Effect<CheckResult> =>
@@ -105,8 +102,8 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 						name: "Docker Compose",
 						status: "warn" as const,
 						message: "Could not check containers",
-					})
-				)
+					}),
+				),
 			),
 
 		checkPostgres: (): Effect.Effect<CheckResult> => checkContainer("app-postgres-1", "PostgreSQL"),

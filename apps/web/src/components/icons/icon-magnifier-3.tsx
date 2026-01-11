@@ -6,7 +6,12 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-export function IconMagnifier3({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
+export function IconMagnifier3({
+	fill = "currentColor",
+	secondaryfill,
+	title = "badge 13",
+	...props
+}: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (

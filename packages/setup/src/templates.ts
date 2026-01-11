@@ -34,10 +34,7 @@ export interface ExistingConfig {
 }
 
 /** Get a single value from env result (picks first if multiple) */
-const getEnvValue = (
-	result: EnvReadResult,
-	key: string
-): EnvValue | undefined => {
+const getEnvValue = (result: EnvReadResult, key: string): EnvValue | undefined => {
 	const values = result.values[key]
 	if (!values || values.length === 0) return undefined
 	const value = values[0]
@@ -96,10 +93,7 @@ export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => 
 }
 
 /** Get all unique values for a key with their sources */
-export const getEnvValues = (
-	result: EnvReadResult,
-	key: string
-): EnvValue[] => {
+export const getEnvValues = (result: EnvReadResult, key: string): EnvValue[] => {
 	const values = result.values[key]
 	if (!values || values.length === 0) return []
 	return values.map((value) => ({

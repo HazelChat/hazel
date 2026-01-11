@@ -92,10 +92,7 @@ export const promptWithExisting = (options: {
 /**
  * Get existing value or undefined (for auto-reuse scenarios like secrets)
  */
-export const getExistingValue = (
-	envResult: EnvReadResult,
-	key: string
-): EnvValue | undefined => {
+export const getExistingValue = (envResult: EnvReadResult, key: string): EnvValue | undefined => {
 	const values = getEnvValues(envResult, key)
 	return values.length > 0 ? values[0] : undefined
 }

@@ -9,7 +9,14 @@ export function IconHeart({ fill = "currentColor", secondaryfill, title = "heart
 	secondaryfill = secondaryfill || fill
 
 	return (
-		<svg height="18" width="18" data-slot="icon" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" {...props}>
+		<svg
+			height="18"
+			width="18"
+			data-slot="icon"
+			viewBox="0 0 18 18"
+			xmlns="http://www.w3.org/2000/svg"
+			{...props}
+		>
 			<title>{title}</title>
 			<g fill={fill}>
 				<path

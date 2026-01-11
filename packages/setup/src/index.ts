@@ -22,7 +22,7 @@ const ServicesLive = Layer.mergeAll(
 	SecretGenerator.Default,
 	CredentialValidator.Default,
 	EnvWriter.Default,
-	Doctor.Default
+	Doctor.Default,
 )
 
 cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

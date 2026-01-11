@@ -59,5 +59,5 @@ export const certsCommand = Command.make("certs", {}, () =>
 		yield* Console.log(pc.dim(`  ${certs.certPath}`))
 		yield* Console.log(pc.dim(`  ${certs.keyPath}`))
 		yield* Console.log(pc.dim("\nRestart dev servers to use HTTPS."))
-	})
+	}),
 )

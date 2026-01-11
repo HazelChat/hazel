@@ -10,19 +10,19 @@ import { promptWithExisting, getExistingValue } from "../prompts.ts"
 // CLI Options
 export const skipValidation = Options.boolean("skip-validation").pipe(
 	Options.withDescription("Skip credential validation (API calls)"),
-	Options.withDefault(false)
+	Options.withDefault(false),
 )
 
 export const force = Options.boolean("force").pipe(
 	Options.withAlias("f"),
 	Options.withDescription("Overwrite existing .env files without prompting"),
-	Options.withDefault(false)
+	Options.withDefault(false),
 )
 
 export const dryRun = Options.boolean("dry-run").pipe(
 	Options.withAlias("n"),
 	Options.withDescription("Show what would be done without writing files"),
-	Options.withDefault(false)
+	Options.withDefault(false),
 )
 
 export const envCommand = Command.make(
@@ -59,7 +59,9 @@ export const envCommand = Command.make(
 			}
 
 			// Step 1: Local services info
-			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 1: Database & Local Services \u2500\u2500\u2500"))
+			yield* Console.log(
+				pc.cyan("\u2500\u2500\u2500 Step 1: Database & Local Services \u2500\u2500\u2500"),
+			)
 			yield* Console.log("Using Docker Compose defaults:")
 			yield* Console.log(pc.dim("  \u2022 PostgreSQL: postgresql://user:password@localhost:5432/app"))
 			yield* Console.log(pc.dim("  \u2022 Redis: redis://localhost:6380"))
@@ -75,7 +77,7 @@ export const envCommand = Command.make(
 				if (dbResult._tag === "Left") {
 					yield* Console.log(
 						pc.yellow("\u26A0\uFE0F  Database not reachable.") +
-							` Run ${pc.cyan("`docker compose up -d`")} first.`
+							` Run ${pc.cyan("`docker compose up -d`")} first.`,
 					)
 					const continueAnyway = yield* Prompt.confirm({
 						message: "Continue anyway?",
@@ -97,7 +99,9 @@ export const envCommand = Command.make(
 				yield* Console.log(pc.dim("3. Go to Configuration \u2192 copy Client ID (client_...)"))
 				yield* Console.log(pc.dim("4. Add redirect URI: http://localhost:3003/auth/callback\n"))
 			} else {
-				yield* Console.log(pc.dim("(Using existing credentials - press Enter to keep or type new value)\n"))
+				yield* Console.log(
+					pc.dim("(Using existing credentials - press Enter to keep or type new value)\n"),
+				)
 			}
 
 			const workosApiKey = yield* promptWithExisting({
@@ -121,7 +125,9 @@ export const envCommand = Command.make(
 			if (!skipValidation) {
 				yield* Console.log(pc.dim("\nValidating WorkOS credentials..."))
 				const validator = yield* CredentialValidator
-				const result = yield* validator.validateWorkOS(workosApiKey, workosClientId).pipe(Effect.either)
+				const result = yield* validator
+					.validateWorkOS(workosApiKey, workosClientId)
+					.pipe(Effect.either)
 
 				if (result._tag === "Left") {
 					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.left.message}`))
@@ -144,7 +150,8 @@ export const envCommand = Command.make(
 
 			if (existingCookiePassword) {
 				yield* Console.log(
-					pc.green("\u2713") + ` Reusing WORKOS_COOKIE_PASSWORD (from ${existingCookiePassword.source})`
+					pc.green("\u2713") +
+						` Reusing WORKOS_COOKIE_PASSWORD (from ${existingCookiePassword.source})`,
 				)
 			} else {
 				yield* Console.log(pc.green("\u2713") + " Generated WORKOS_COOKIE_PASSWORD")
@@ -153,7 +160,7 @@ export const envCommand = Command.make(
 			if (existingEncryptionKey) {
 				yield* Console.log(
 					pc.green("\u2713") +
-						` Reusing INTEGRATION_ENCRYPTION_KEY (from ${existingEncryptionKey.source})`
+						` Reusing INTEGRATION_ENCRYPTION_KEY (from ${existingEncryptionKey.source})`,
 				)
 			} else {
 				yield* Console.log(pc.green("\u2713") + " Generated INTEGRATION_ENCRYPTION_KEY")
@@ -229,16 +236,16 @@ export const envCommand = Command.make(
 			}
 
 			// Optional: Linear OAuth
-			yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Optional: Linear Integration \u2500\u2500\u2500"))
+			yield* Console.log(
+				pc.cyan("\n\u2500\u2500\u2500 Optional: Linear Integration \u2500\u2500\u2500"),
+			)
 
 			let linearConfig: { clientId: string; clientSecret: string } | undefined
 
 			// Check if Linear is already configured
 			if (existingConfig.linear) {
 				yield* Console.log(pc.green("\u2713") + " Found existing Linear configuration")
-				yield* Console.log(
-					pc.dim(`  CLIENT_ID: ${maskSecret(existingConfig.linear.clientId.value)}`)
-				)
+				yield* Console.log(pc.dim(`  CLIENT_ID: ${maskSecret(existingConfig.linear.clientId.value)}`))
 				const keepLinear = yield* Prompt.confirm({
 					message: "Keep existing Linear configuration?",
 					initial: true,
@@ -259,10 +266,10 @@ export const envCommand = Command.make(
 
 				if (setupLinear) {
 					yield* Console.log(
-						`Create a Linear OAuth app at ${pc.cyan("https://linear.app/settings/api")}`
+						`Create a Linear OAuth app at ${pc.cyan("https://linear.app/settings/api")}`,
 					)
 					yield* Console.log(
-						pc.dim("Set redirect URI: http://localhost:3003/integrations/linear/callback\n")
+						pc.dim("Set redirect URI: http://localhost:3003/integrations/linear/callback\n"),
 					)
 
 					const clientId = yield* promptWithExisting({
@@ -281,7 +288,9 @@ export const envCommand = Command.make(
 			}
 
 			// Optional: GitHub Webhook
-			yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Optional: GitHub Integration \u2500\u2500\u2500"))
+			yield* Console.log(
+				pc.cyan("\n\u2500\u2500\u2500 Optional: GitHub Integration \u2500\u2500\u2500"),
+			)
 
 			let githubWebhookSecret: string | undefined
 
@@ -357,9 +366,13 @@ export const envCommand = Command.make(
 
 			// Step 5: Write .env files
 			if (dryRun) {
-				yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Step 5: Preview .env files (dry-run) \u2500\u2500\u2500"))
+				yield* Console.log(
+					pc.cyan("\n\u2500\u2500\u2500 Step 5: Preview .env files (dry-run) \u2500\u2500\u2500"),
+				)
 			} else {
-				yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Step 5: Writing .env files \u2500\u2500\u2500"))
+				yield* Console.log(
+					pc.cyan("\n\u2500\u2500\u2500 Step 5: Writing .env files \u2500\u2500\u2500"),
+				)
 			}
 
 			const config: Config = {
@@ -376,7 +389,11 @@ export const envCommand = Command.make(
 			yield* envWriter.writeEnvFile("apps/web/.env", ENV_TEMPLATES.web(config), dryRun)
 			yield* envWriter.writeEnvFile("apps/backend/.env", ENV_TEMPLATES.backend(config), dryRun)
 			yield* envWriter.writeEnvFile("apps/cluster/.env", ENV_TEMPLATES.cluster(config), dryRun)
-			yield* envWriter.writeEnvFile("apps/electric-proxy/.env", ENV_TEMPLATES.electricProxy(config), dryRun)
+			yield* envWriter.writeEnvFile(
+				"apps/electric-proxy/.env",
+				ENV_TEMPLATES.electricProxy(config),
+				dryRun,
+			)
 			yield* envWriter.writeEnvFile("packages/db/.env", ENV_TEMPLATES.db(), dryRun)
 
 			if (dryRun) {
@@ -389,5 +406,5 @@ export const envCommand = Command.make(
 				yield* Console.log(`  2. Run ${pc.cyan("`bun run db:push`")} to initialize the database`)
 				yield* Console.log(`  3. Run ${pc.cyan("`bun run dev`")} to start developing\n`)
 			}
-		})
+		}),
 )

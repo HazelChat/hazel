@@ -70,12 +70,14 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const fetchAllUsers = pipe(
 			Stream.paginateEffect(undefined as string | undefined, (after) =>
-				workos.call((client) => client.userManagement.listUsers({ limit: 100, after })).pipe(
-					Effect.map(
-						(response) =>
-							[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+				workos
+					.call((client) => client.userManagement.listUsers({ limit: 100, after }))
+					.pipe(
+						Effect.map(
+							(response) =>
+								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+						),
 					),
-				),
 			),
 			Stream.runCollect,
 			Effect.map((chunks) => [...chunks].flat()),
@@ -84,12 +86,14 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 		const fetchAllOrganizations = pipe(
 			Stream.paginateEffect(undefined as string | undefined, (after) =>
-				workos.call((client) => client.organizations.listOrganizations({ limit: 100, after })).pipe(
-					Effect.map(
-						(response) =>
-							[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+				workos
+					.call((client) => client.organizations.listOrganizations({ limit: 100, after }))
+					.pipe(
+						Effect.map(
+							(response) =>
+								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+						),
 					),
-				),
 			),
 			Stream.runCollect,
 			Effect.map((chunks) => [...chunks].flat()),
@@ -110,7 +114,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						.pipe(
 							Effect.map(
 								(response) =>
-									[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+									[
+										response.data,
+										Option.fromNullable(response.listMetadata?.after),
+									] as const,
 							),
 						),
 				),
@@ -135,7 +142,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						.pipe(
 							Effect.map(
 								(response) =>
-									[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+									[
+										response.data,
+										Option.fromNullable(response.listMetadata?.after),
+									] as const,
 							),
 						),
 				),
@@ -161,7 +171,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			}
 
 			const workosUsers = workosUsersResult.right
-			yield* Effect.logInfo(`Fetched ${workosUsers.length} users from WorkOS in ${Date.now() - fetchStart}ms`)
+			yield* Effect.logInfo(
+				`Fetched ${workosUsers.length} users from WorkOS in ${Date.now() - fetchStart}ms`,
+			)
 
 			// Get all existing users
 			const existingUsers = yield* userRepo.findAllActive()
@@ -339,10 +351,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const workosOrg = workosOrgResult.right
 
 			// Fetch memberships from WorkOS using WorkOS organization ID (with pagination)
-			const workosMembershipsResult = yield* pipe(
-				fetchAllMemberships(workosOrg.id),
-				Effect.either,
-			)
+			const workosMembershipsResult = yield* pipe(fetchAllMemberships(workosOrg.id), Effect.either)
 
 			if (workosMembershipsResult._tag === "Left") {
 				result.errors.push(
@@ -455,10 +464,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			const workosOrg = workosOrgResult.right
 
 			// Fetch invitations from WorkOS using WorkOS organization ID (with pagination)
-			const workosInvitationsResult = yield* pipe(
-				fetchAllInvitations(workosOrg.id),
-				Effect.either,
-			)
+			const workosInvitationsResult = yield* pipe(fetchAllInvitations(workosOrg.id), Effect.either)
 
 			if (workosInvitationsResult._tag === "Left") {
 				result.errors.push(
@@ -571,7 +577,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 			// Step 3: Sync memberships and invitations for each organization
 			const organizations = yield* orgRepo.findAllActive()
-			yield* Effect.logInfo(`Syncing memberships and invitations for ${organizations.length} organizations...`)
+			yield* Effect.logInfo(
+				`Syncing memberships and invitations for ${organizations.length} organizations...`,
+			)
 
 			yield* Effect.all(
 				organizations.map((org, index) =>

@@ -161,7 +161,11 @@ export function RequestIntegrationModal({ isOpen, onOpenChange }: RequestIntegra
 						</Button>
 						<form.Subscribe selector={(state) => state.canSubmit}>
 							{(canSubmit) => (
-								<Button intent="primary" type="submit" isDisabled={!canSubmit || isSubmitting}>
+								<Button
+									intent="primary"
+									type="submit"
+									isDisabled={!canSubmit || isSubmitting}
+								>
 									{isSubmitting ? "Submitting..." : "Submit Request"}
 								</Button>
 							)}

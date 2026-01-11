@@ -52,5 +52,5 @@ export const doctorCommand = Command.make("doctor", {}, () =>
 		}
 
 		return !hasFailure
-	})
+	}),
 )

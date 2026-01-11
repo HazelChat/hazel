@@ -6,11 +6,23 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-export function IconEmojiAdd({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
+export function IconEmojiAdd({
+	fill = "currentColor",
+	secondaryfill,
+	title = "badge 13",
+	...props
+}: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (
-		<svg height="18" width="18" data-slot="icon" {...props} viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+		<svg
+			height="18"
+			width="18"
+			data-slot="icon"
+			{...props}
+			viewBox="0 0 18 18"
+			xmlns="http://www.w3.org/2000/svg"
+		>
 			<title>{title}</title>
 			<g fill={fill}>
 				<path

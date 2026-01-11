@@ -2,10 +2,10 @@
 	"name": "@hazel/setup",
 	"version": "0.0.1",
 	"private": true,
-	"type": "module",
 	"bin": {
 		"hazel-setup": "./src/index.ts"
 	},
+	"type": "module",
 	"scripts": {
 		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit"

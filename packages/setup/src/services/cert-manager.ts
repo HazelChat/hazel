@@ -97,7 +97,7 @@ export class CertManager extends Effect.Service<CertManager>()("CertManager", {
 							"127.0.0.1",
 							"::1",
 						],
-						{ stdout: "inherit", stderr: "inherit" }
+						{ stdout: "inherit", stderr: "inherit" },
 					)
 					if ((await proc.exited) !== 0) {
 						throw new Error("Failed to generate certificates")

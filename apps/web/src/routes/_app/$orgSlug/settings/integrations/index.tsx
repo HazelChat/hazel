@@ -127,10 +127,7 @@ function IntegrationsSettings() {
 				/>
 			)}
 
-			<RequestIntegrationModal
-				isOpen={isRequestModalOpen}
-				onOpenChange={setIsRequestModalOpen}
-			/>
+			<RequestIntegrationModal isOpen={isRequestModalOpen} onOpenChange={setIsRequestModalOpen} />
 		</div>
 	)
 }

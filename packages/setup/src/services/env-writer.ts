@@ -33,7 +33,10 @@ const parseEnvContent = (content: string): Record<string, string> => {
 		const key = trimmed.slice(0, eqIndex)
 		let value = trimmed.slice(eqIndex + 1)
 		// Handle quoted values
-		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+		if (
+			(value.startsWith('"') && value.endsWith('"')) ||
+			(value.startsWith("'") && value.endsWith("'"))
+		) {
 			value = value.slice(1, -1)
 		}
 		result[key] = value
