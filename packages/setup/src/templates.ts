@@ -24,6 +24,11 @@ export interface ExistingConfig {
 		clientId: EnvValue
 		clientSecret: EnvValue
 	}
+	githubApp?: {
+		appId: EnvValue
+		appSlug: EnvValue
+		privateKey: EnvValue
+	}
 	githubWebhookSecret?: EnvValue
 	openrouterApiKey?: EnvValue
 }
@@ -67,7 +72,19 @@ export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => 
 		}
 	}
 
-	// GitHub
+	// GitHub App
+	const githubAppId = getEnvValue(result, "GITHUB_APP_ID")
+	const githubAppSlug = getEnvValue(result, "GITHUB_APP_SLUG")
+	const githubAppPrivateKey = getEnvValue(result, "GITHUB_APP_PRIVATE_KEY")
+	if (githubAppId && githubAppSlug && githubAppPrivateKey) {
+		config.githubApp = {
+			appId: githubAppId,
+			appSlug: githubAppSlug,
+			privateKey: githubAppPrivateKey,
+		}
+	}
+
+	// GitHub webhook
 	const githubWebhookSecret = getEnvValue(result, "GITHUB_WEBHOOK_SECRET")
 	if (githubWebhookSecret) config.githubWebhookSecret = githubWebhookSecret
 
@@ -117,6 +134,11 @@ export interface Config {
 	linear?: {
 		clientId: string
 		clientSecret: string
+	}
+	githubApp?: {
+		appId: string
+		appSlug: string
+		privateKey: string
 	}
 	githubWebhookSecret?: string
 	openrouterApiKey?: string
@@ -178,7 +200,10 @@ export const ENV_TEMPLATES = {
 		base.LINEAR_CLIENT_SECRET = config.linear?.clientSecret ?? ""
 		base.LINEAR_REDIRECT_URI = "http://localhost:3003/integrations/linear/callback"
 
-		// GitHub webhook secret (always present, empty if not configured)
+		// GitHub App config (always present, empty if not configured)
+		base.GITHUB_APP_ID = config.githubApp?.appId ?? ""
+		base.GITHUB_APP_SLUG = config.githubApp?.appSlug ?? ""
+		base.GITHUB_APP_PRIVATE_KEY = config.githubApp?.privateKey ?? ""
 		base.GITHUB_WEBHOOK_SECRET = config.githubWebhookSecret ?? ""
 
 		return base
@@ -189,6 +214,9 @@ export const ENV_TEMPLATES = {
 		EFFECT_DATABASE_URL: "postgresql://user:password@localhost:5432/cluster",
 		IS_DEV: "true",
 		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
+		// WorkOS - required for WorkOS sync cron
+		WORKOS_API_KEY: config.workosApiKey,
+		WORKOS_CLIENT_ID: config.workosClientId,
 	}),
 
 	electricProxy: (config: Config) => ({

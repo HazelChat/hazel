@@ -298,12 +298,66 @@ export const setupCommand = Command.make(
 				}
 			}
 
-			// Optional: GitHub Webhook
+			// Optional: GitHub Integration
 			yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Optional: GitHub Integration \u2500\u2500\u2500"))
 
+			let githubAppConfig: { appId: string; appSlug: string; privateKey: string } | undefined
 			let githubWebhookSecret: string | undefined
 
-			// Check if GitHub is already configured
+			// Check if GitHub App is already configured
+			if (existingConfig.githubApp) {
+				yield* Console.log(pc.green("\u2713") + " Found existing GitHub App configuration")
+				yield* Console.log(pc.dim(`  App ID: ${existingConfig.githubApp.appId.value}`))
+				const keepGithubApp = yield* Prompt.confirm({
+					message: "Keep existing GitHub App configuration?",
+					initial: true,
+				})
+				if (keepGithubApp) {
+					githubAppConfig = {
+						appId: existingConfig.githubApp.appId.value,
+						appSlug: existingConfig.githubApp.appSlug.value,
+						privateKey: existingConfig.githubApp.privateKey.value,
+					}
+				}
+			}
+
+			if (!githubAppConfig) {
+				const setupGithubApp = yield* Prompt.confirm({
+					message: "Set up GitHub App? (for GitHub integration)",
+					initial: false,
+				})
+
+				if (setupGithubApp) {
+					yield* Console.log(
+						`Create a GitHub App at ${pc.cyan("https://github.com/settings/apps/new")}`
+					)
+					yield* Console.log(pc.dim("1. Note the App ID from the app settings page"))
+					yield* Console.log(pc.dim("2. Note the app slug from the URL"))
+					yield* Console.log(pc.dim("3. Generate and download a private key"))
+					yield* Console.log(pc.dim("4. Base64-encode the private key: base64 -i private-key.pem\n"))
+
+					const appId = yield* promptWithExisting({
+						key: "GITHUB_APP_ID",
+						message: "GitHub App ID",
+						envResult,
+					})
+					const appSlug = yield* promptWithExisting({
+						key: "GITHUB_APP_SLUG",
+						message: "GitHub App Slug",
+						envResult,
+					})
+					const privateKey = yield* promptWithExisting({
+						key: "GITHUB_APP_PRIVATE_KEY",
+						message: "GitHub App Private Key (base64-encoded)",
+						envResult,
+						isSecret: true,
+					})
+
+					githubAppConfig = { appId, appSlug, privateKey }
+				}
+			}
+
+			// Check if GitHub webhook secret is already configured
 			if (existingConfig.githubWebhookSecret) {
 				yield* Console.log(pc.green("\u2713") + " Found existing GitHub webhook secret")
 				const keepGithub = yield* Prompt.confirm({
@@ -387,6 +441,7 @@ export const setupCommand = Command.make(
 				s3: s3Config,
 				s3PublicUrl: s3Config.publicUrl,
 				linear: linearConfig,
+				githubApp: githubAppConfig,
 				githubWebhookSecret,
 				openrouterApiKey,
 			}
