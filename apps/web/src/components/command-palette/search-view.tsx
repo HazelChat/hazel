@@ -92,6 +92,18 @@ export function SearchView({ onClose }: SearchViewProps) {
 		[setSearchState],
 	)
 
+	// Handle filter selection from autocomplete
+	const handleFilterSelect = useCallback(
+		(filter: SearchFilter) => {
+			setSearchState((prev) => ({
+				...prev,
+				filters: [...prev.filters, filter],
+				selectedIndex: 0,
+			}))
+		},
+		[setSearchState],
+	)
+
 	// Handle result navigation and selection
 	const handleSubmit = useCallback(() => {
 		const selectedResult = results[searchState.selectedIndex]
@@ -207,6 +219,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 					value={inputValue}
 					onChange={handleInputChange}
 					onSubmit={handleSubmit}
+					onFilterSelect={handleFilterSelect}
 					placeholder={
 						searchState.filters.length > 0
 							? "Add more filters or search..."

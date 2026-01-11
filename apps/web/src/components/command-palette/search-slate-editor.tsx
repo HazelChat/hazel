@@ -12,7 +12,7 @@ import { useChannelSuggestions, useUserSuggestions } from "~/hooks/use-search-qu
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import { HAS_FILTER_VALUES, VALID_FILTER_TYPES, type FilterType } from "~/lib/search-filter-parser"
+import { HAS_FILTER_VALUES, VALID_FILTER_TYPES, type FilterType, type SearchFilter } from "~/lib/search-filter-parser"
 import { decorateSearchFilters, SearchFilterLeaf } from "./search-filter-decorator"
 
 // Filter autocomplete state
@@ -37,6 +37,7 @@ export interface SearchSlateEditorProps {
 	value: string
 	onChange: (value: string) => void
 	onSubmit?: () => void
+	onFilterSelect?: (filter: SearchFilter) => void
 	placeholder?: string
 	className?: string
 }
@@ -50,7 +51,7 @@ export interface SearchSlateEditorRef {
  * Single-line Slate editor for search with filter syntax highlighting and autocomplete
  */
 export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEditorProps>(
-	({ value, onChange, onSubmit, placeholder, className }, ref) => {
+	({ value, onChange, onSubmit, onFilterSelect, placeholder, className }, ref) => {
 		const { organizationId } = useOrganization()
 		const { user } = useAuth()
 		const editorRef = useRef<ReturnType<typeof createEditor> | null>(null)
@@ -168,7 +169,7 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 		// Handle selecting an autocomplete option
 		const selectOption = useCallback(
 			(option: (typeof currentSuggestions)[0]) => {
-				if (autocomplete.filterStartOffset === null) return
+				if (autocomplete.filterStartOffset === null || !autocomplete.filterType) return
 
 				const { selection } = editor
 				if (!selection) return
@@ -180,22 +181,26 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 					focus: start,
 				})
 
-				// Calculate range to replace (filter keyword + search)
-				const filterKeyword = `${autocomplete.filterType}:`
+				// Calculate range to delete (filter keyword + search term)
 				const replaceStart = autocomplete.filterStartOffset
 				const replaceEnd = textNode.length
 
-				// Build replacement text
-				const value = option.label.includes(" ") ? `"${option.label}"` : option.label
-				const replacement = `${filterKeyword}${value} `
-
-				// Replace the filter + search with the completed value
+				// Delete the filter text from the editor (e.g., "from:dav")
 				Transforms.select(editor, {
 					anchor: { path: start.path, offset: replaceStart },
 					focus: { path: start.path, offset: replaceEnd },
 				})
 				Transforms.delete(editor)
-				Transforms.insertText(editor, replacement)
+
+				// Notify parent about the selected filter with entity ID
+				if (onFilterSelect) {
+					onFilterSelect({
+						type: autocomplete.filterType,
+						value: option.label,
+						displayValue: option.label,
+						id: option.id,
+					})
+				}
 
 				// Close autocomplete
 				setAutocomplete(initialAutocompleteState)
@@ -203,7 +208,7 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 				// Refocus editor
 				ReactEditor.focus(editor)
 			},
-			[editor, autocomplete],
+			[editor, autocomplete, onFilterSelect],
 		)
 
 		// Handle keyboard navigation
