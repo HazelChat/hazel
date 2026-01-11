@@ -5,7 +5,7 @@ import { SecretGenerator } from "../services/secrets.ts"
 import { CredentialValidator } from "../services/validators.ts"
 import { EnvWriter } from "../services/env-writer.ts"
 import { Doctor } from "../services/doctor.ts"
-import { ENV_TEMPLATES, type Config, type S3Config } from "../templates.ts"
+import { ENV_TEMPLATES, getLocalMinioConfig, type Config } from "../templates.ts"
 
 // CLI Options
 const skipValidation = Options.boolean("skip-validation").pipe(
@@ -174,26 +174,15 @@ export const setupCommand = Command.make(
 			yield* Console.log(pc.green("\u2713") + " Generated WORKOS_COOKIE_PASSWORD")
 			yield* Console.log(pc.green("\u2713") + " Generated INTEGRATION_ENCRYPTION_KEY\n")
 
-			// Step 4: Optional S3 setup
-			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 4: Optional Services \u2500\u2500\u2500"))
-			const setupS3 = yield* Prompt.confirm({
-				message: "Set up Cloudflare R2/S3 storage? (file uploads)",
-				initial: false,
-			})
+			// Step 4: S3 Storage (local MinIO)
+			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 4: S3 Storage \u2500\u2500\u2500"))
+			yield* Console.log(pc.green("\u2713") + " Using local MinIO (Docker Compose)")
+			yield* Console.log(pc.dim("  Console: http://localhost:9001 (minioadmin/minioadmin)\n"))
 
-			let s3Config: S3Config | undefined
-			if (setupS3) {
-				const bucket = yield* Prompt.text({ message: "S3 Bucket name" })
-				const endpoint = yield* Prompt.text({ message: "S3 Endpoint URL" })
-				const accessKeyId = yield* Prompt.text({ message: "S3 Access Key ID" })
-				const secretAccessKeyRedacted = yield* Prompt.password({ message: "S3 Secret Access Key" })
-				const secretAccessKey = Redacted.value(secretAccessKeyRedacted)
-				const publicUrl = yield* Prompt.text({ message: "Public CDN URL (for images)" })
-				s3Config = { bucket, endpoint, accessKeyId, secretAccessKey, publicUrl }
-			}
+			const s3Config = getLocalMinioConfig()
 
 			// Optional: Linear OAuth
-			yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Optional: Linear Integration \u2500\u2500\u2500"))
+			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Optional: Linear Integration \u2500\u2500\u2500"))
 			const setupLinear = yield* Prompt.confirm({
 				message: "Set up Linear OAuth? (for Linear integration)",
 				initial: false,
@@ -262,7 +251,7 @@ export const setupCommand = Command.make(
 				workosClientId,
 				secrets: generatedSecrets,
 				s3: s3Config,
-				s3PublicUrl: s3Config?.publicUrl,
+				s3PublicUrl: s3Config.publicUrl,
 				linear: linearConfig,
 				githubWebhookSecret,
 				openrouterApiKey,

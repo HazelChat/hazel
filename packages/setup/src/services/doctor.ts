@@ -114,7 +114,11 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 		checkElectric: (): Effect.Effect<CheckResult> => checkContainer("app-electric-1", "Electric"),
 		checkSequin: (): Effect.Effect<CheckResult> => checkContainer("app-sequin-1", "Sequin"),
 
-		runAllChecks: (): Effect.Effect<{ environment: CheckResult[]; services: CheckResult[] }, never, Doctor> =>
+		runAllChecks: (): Effect.Effect<
+			{ environment: CheckResult[]; services: CheckResult[] },
+			never,
+			Doctor
+		> =>
 			Effect.gen(function* () {
 				const doctor = yield* Doctor
 				const [environment, services] = yield* Effect.all([

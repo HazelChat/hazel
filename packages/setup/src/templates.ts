@@ -6,6 +6,14 @@ export interface S3Config {
 	publicUrl: string
 }
 
+export const getLocalMinioConfig = (): S3Config => ({
+	bucket: "hazel",
+	endpoint: "http://localhost:9000",
+	accessKeyId: "minioadmin",
+	secretAccessKey: "minioadmin",
+	publicUrl: "http://localhost:9000/hazel",
+})
+
 export interface Config {
 	workosApiKey: string
 	workosClientId: string
