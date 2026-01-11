@@ -4,23 +4,16 @@ import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Button, Input, SearchField } from "react-aria-components"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Button } from "react-aria-components"
 import IconClose from "~/components/icons/icon-close"
-import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
-import { Avatar } from "~/components/ui/avatar"
 import { Loader } from "~/components/ui/loader"
 import { useOrganization } from "~/hooks/use-organization"
-import { useChannelSuggestions, useSearchQuery, useUserSuggestions } from "~/hooks/use-search-query"
+import { useSearchQuery } from "~/hooks/use-search-query"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import {
-	HAS_FILTER_VALUES,
-	parseSearchInput,
-	type FilterType,
-	type SearchFilter,
-} from "~/lib/search-filter-parser"
+import { parseSearchInput, type SearchFilter } from "~/lib/search-filter-parser"
 import {
 	initialSearchState,
 	MAX_RECENT_SEARCHES,
@@ -28,6 +21,7 @@ import {
 	searchStateAtom,
 	type RecentSearch,
 } from "~/atoms/search-atoms"
+import { SearchSlateEditor, type SearchSlateEditorRef } from "./search-slate-editor"
 import { SearchFilterChipGroup } from "./search-filter-chip"
 import { SearchResultItem } from "./search-result-item"
 
@@ -53,11 +47,11 @@ export function SearchView({ onClose }: SearchViewProps) {
 
 	// Local input state for controlled input
 	const [inputValue, setInputValue] = useState("")
-	const inputRef = useRef<HTMLInputElement>(null)
+	const editorRef = useRef<SearchSlateEditorRef>(null)
 
-	// Focus input on mount
+	// Focus editor on mount
 	useEffect(() => {
-		inputRef.current?.focus()
+		editorRef.current?.focus()
 	}, [])
 
 	// Search results
@@ -68,18 +62,6 @@ export function SearchView({ onClose }: SearchViewProps) {
 		userId: user?.id as UserId | undefined,
 	})
 
-	// Autocomplete suggestions
-	const userSuggestions = useUserSuggestions(
-		searchState.activeFilterType === "from" ? searchState.activeFilterPartial : "",
-		organizationId ?? null,
-	)
-
-	const channelSuggestions = useChannelSuggestions(
-		searchState.activeFilterType === "in" ? searchState.activeFilterPartial : "",
-		organizationId ?? null,
-		user?.id as UserId | undefined,
-	)
-
 	// Parse input and update search state
 	const handleInputChange = useCallback(
 		(value: string) => {
@@ -87,55 +69,12 @@ export function SearchView({ onClose }: SearchViewProps) {
 
 			const parsed = parseSearchInput(value)
 
-			// Resolve any completed filters to actual IDs
-			const resolvedFilters: SearchFilter[] = []
-			for (const rawFilter of parsed.filters) {
-				// Try to match against existing resolved filters first
-				const existingFilter = searchState.filters.find(
-					(f) => f.type === rawFilter.type && f.value === rawFilter.value,
-				)
-				if (existingFilter) {
-					resolvedFilters.push(existingFilter)
-				}
-				// Note: New filters will need to be resolved through the autocomplete flow
-			}
-
 			setSearchState((prev) => ({
 				...prev,
 				rawInput: value,
 				query: parsed.textQuery,
-				activeFilterType: parsed.partialFilter?.type ?? null,
-				activeFilterPartial: parsed.partialFilter?.partial ?? "",
 				selectedIndex: 0,
 			}))
-		},
-		[setSearchState, searchState.filters],
-	)
-
-	// Add a resolved filter
-	const addFilter = useCallback(
-		(filter: SearchFilter) => {
-			setSearchState((prev) => {
-				const newFilters = [...prev.filters, filter]
-				// Remove the filter syntax from input
-				const newInput = prev.rawInput
-					.replace(new RegExp(`${filter.type}:${prev.activeFilterPartial}\\s*`, "i"), "")
-					.trim()
-
-				setInputValue(newInput)
-
-				return {
-					...prev,
-					filters: newFilters,
-					rawInput: newInput,
-					activeFilterType: null,
-					activeFilterPartial: "",
-					selectedIndex: 0,
-				}
-			})
-
-			// Refocus input
-			inputRef.current?.focus()
 		},
 		[setSearchState],
 	)
@@ -148,21 +87,27 @@ export function SearchView({ onClose }: SearchViewProps) {
 				filters: prev.filters.filter((_, i) => i !== index),
 				selectedIndex: 0,
 			}))
-			inputRef.current?.focus()
+			editorRef.current?.focus()
 		},
 		[setSearchState],
 	)
 
-	// Handle keyboard navigation
-	const handleKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			const totalItems = searchState.activeFilterType ? getSuggestionCount() : results.length
+	// Handle result navigation and selection
+	const handleSubmit = useCallback(() => {
+		const selectedResult = results[searchState.selectedIndex]
+		if (selectedResult) {
+			navigateToResult(selectedResult)
+		}
+	}, [results, searchState.selectedIndex])
 
+	// Keyboard navigation for results (when not in autocomplete mode)
+	const handleResultsKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
 			if (e.key === "ArrowDown") {
 				e.preventDefault()
 				setSearchState((prev) => ({
 					...prev,
-					selectedIndex: Math.min(prev.selectedIndex + 1, totalItems - 1),
+					selectedIndex: Math.min(prev.selectedIndex + 1, results.length - 1),
 				}))
 			} else if (e.key === "ArrowUp") {
 				e.preventDefault()
@@ -170,79 +115,9 @@ export function SearchView({ onClose }: SearchViewProps) {
 					...prev,
 					selectedIndex: Math.max(prev.selectedIndex - 1, 0),
 				}))
-			} else if (e.key === "Enter") {
-				e.preventDefault()
-				if (searchState.activeFilterType) {
-					selectSuggestion(searchState.selectedIndex)
-				} else {
-					const selectedResult = results[searchState.selectedIndex]
-					if (selectedResult) {
-						navigateToResult(selectedResult)
-					}
-				}
-			} else if (e.key === "Backspace" && inputValue === "" && searchState.filters.length > 0) {
-				// Remove last filter when backspace on empty input
-				removeFilter(searchState.filters.length - 1)
-			} else if (e.key === "Escape" && searchState.activeFilterType) {
-				// Close suggestions first
-				e.preventDefault()
-				e.stopPropagation()
-				setSearchState((prev) => ({
-					...prev,
-					activeFilterType: null,
-					activeFilterPartial: "",
-				}))
 			}
 		},
-		[
-			searchState.activeFilterType,
-			searchState.selectedIndex,
-			searchState.filters,
-			results,
-			inputValue,
-			removeFilter,
-			setSearchState,
-		],
-	)
-
-	// Get suggestion count based on active filter type
-	const getSuggestionCount = useCallback(() => {
-		if (searchState.activeFilterType === "from") return userSuggestions.length
-		if (searchState.activeFilterType === "in") return channelSuggestions.length
-		if (searchState.activeFilterType === "has") return HAS_FILTER_VALUES.length
-		return 0
-	}, [searchState.activeFilterType, userSuggestions.length, channelSuggestions.length])
-
-	// Select a suggestion
-	const selectSuggestion = useCallback(
-		(index: number) => {
-			if (searchState.activeFilterType === "from" && userSuggestions[index]) {
-				const user = userSuggestions[index]
-				addFilter({
-					type: "from",
-					value: `${user.firstName} ${user.lastName}`.trim(),
-					displayValue: `${user.firstName} ${user.lastName}`.trim(),
-					id: user.id,
-				})
-			} else if (searchState.activeFilterType === "in" && channelSuggestions[index]) {
-				const channel = channelSuggestions[index]
-				addFilter({
-					type: "in",
-					value: channel.name,
-					displayValue: channel.name,
-					id: channel.id,
-				})
-			} else if (searchState.activeFilterType === "has" && HAS_FILTER_VALUES[index]) {
-				const value = HAS_FILTER_VALUES[index]
-				addFilter({
-					type: "has",
-					value,
-					displayValue: value,
-					id: value,
-				})
-			}
-		},
-		[searchState.activeFilterType, userSuggestions, channelSuggestions, addFilter],
+		[results.length, setSearchState],
 	)
 
 	// Navigate to a search result
@@ -305,7 +180,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 				selectedIndex: 0,
 			})
 
-			inputRef.current?.focus()
+			editorRef.current?.focus()
 		},
 		[setSearchState],
 	)
@@ -314,11 +189,8 @@ export function SearchView({ onClose }: SearchViewProps) {
 	const clearSearch = useCallback(() => {
 		setInputValue("")
 		setSearchState(initialSearchState)
-		inputRef.current?.focus()
+		editorRef.current?.focus()
 	}, [setSearchState])
-
-	// Show suggestions based on active filter type
-	const showSuggestions = searchState.activeFilterType !== null
 
 	return (
 		<div className="flex max-h-[inherit] flex-col overflow-hidden">
@@ -329,25 +201,18 @@ export function SearchView({ onClose }: SearchViewProps) {
 				{/* Filter Chips */}
 				<SearchFilterChipGroup filters={searchState.filters} onRemove={removeFilter} />
 
-				{/* Input */}
-				<SearchField
-					aria-label="Search messages"
-					className="flex-1"
+				{/* Slate editor with syntax highlighting and autocomplete */}
+				<SearchSlateEditor
+					ref={editorRef}
 					value={inputValue}
-					onChange={setInputValue}
-				>
-					<Input
-						ref={inputRef}
-						placeholder={
-							searchState.filters.length > 0
-								? "Add more filters or search..."
-								: "Search messages... (from:user in:channel has:image)"
-						}
-						className="w-full min-w-0 bg-transparent py-2 text-base text-fg placeholder-muted-fg outline-none focus:outline-none sm:py-1.5 sm:text-sm"
-						onKeyDown={handleKeyDown}
-						onChange={(e) => handleInputChange(e.target.value)}
-					/>
-				</SearchField>
+					onChange={handleInputChange}
+					onSubmit={handleSubmit}
+					placeholder={
+						searchState.filters.length > 0
+							? "Add more filters or search..."
+							: "Search messages... (from:user in:channel has:image)"
+					}
+				/>
 
 				{/* Clear / Loading */}
 				{isLoading ? (
@@ -366,21 +231,9 @@ export function SearchView({ onClose }: SearchViewProps) {
 			</div>
 
 			{/* Content Area */}
-			<div className="flex-1 overflow-y-auto p-2">
-				{/* Filter Suggestions */}
-				{showSuggestions && (
-					<FilterSuggestions
-						type={searchState.activeFilterType!}
-						partial={searchState.activeFilterPartial}
-						selectedIndex={searchState.selectedIndex}
-						userSuggestions={userSuggestions}
-						channelSuggestions={channelSuggestions}
-						onSelect={selectSuggestion}
-					/>
-				)}
-
+			<div className="flex-1 overflow-y-auto p-2" onKeyDown={handleResultsKeyDown}>
 				{/* Search Results */}
-				{!showSuggestions && hasQuery && (
+				{hasQuery && (
 					<>
 						{results.length > 0 ? (
 							<div className="space-y-1">
@@ -404,7 +257,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 				)}
 
 				{/* Recent Searches (when no query) */}
-				{!showSuggestions && !hasQuery && recentSearches.length > 0 && (
+				{!hasQuery && recentSearches.length > 0 && (
 					<RecentSearchesList
 						searches={recentSearches}
 						onSelect={loadRecentSearch}
@@ -413,7 +266,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 				)}
 
 				{/* Initial State */}
-				{!showSuggestions && !hasQuery && recentSearches.length === 0 && (
+				{!hasQuery && recentSearches.length === 0 && (
 					<EmptyState message="Start typing to search messages across all channels" />
 				)}
 			</div>
@@ -442,118 +295,6 @@ export function SearchView({ onClose }: SearchViewProps) {
 					to close
 				</span>
 			</div>
-		</div>
-	)
-}
-
-/**
- * Filter suggestions dropdown
- */
-function FilterSuggestions({
-	type,
-	partial,
-	selectedIndex,
-	userSuggestions,
-	channelSuggestions,
-	onSelect,
-}: {
-	type: FilterType
-	partial: string
-	selectedIndex: number
-	userSuggestions: ReturnType<typeof useUserSuggestions>
-	channelSuggestions: ReturnType<typeof useChannelSuggestions>
-	onSelect: (index: number) => void
-}) {
-	if (type === "from") {
-		if (userSuggestions.length === 0) {
-			return <EmptyState message={partial ? "No users found" : "Type to search users"} />
-		}
-
-		return (
-			<div className="space-y-1">
-				<div className="px-2 py-1 text-muted-fg text-xs">Select a user</div>
-				{userSuggestions.map((user, index) => (
-					<button
-						key={user.id}
-						type="button"
-						onClick={() => onSelect(index)}
-						className={cn(
-							"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-							"hover:bg-secondary focus:outline-none",
-							index === selectedIndex && "bg-secondary",
-						)}
-					>
-						<Avatar size="xs" src={user.avatarUrl ?? undefined} alt={user.firstName ?? ""} />
-						<span className="font-medium">
-							{user.firstName} {user.lastName}
-						</span>
-					</button>
-				))}
-			</div>
-		)
-	}
-
-	if (type === "in") {
-		if (channelSuggestions.length === 0) {
-			return <EmptyState message={partial ? "No channels found" : "Type to search channels"} />
-		}
-
-		return (
-			<div className="space-y-1">
-				<div className="px-2 py-1 text-muted-fg text-xs">Select a channel</div>
-				{channelSuggestions.map((channel, index) => (
-					<button
-						key={channel.id}
-						type="button"
-						onClick={() => onSelect(index)}
-						className={cn(
-							"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-							"hover:bg-secondary focus:outline-none",
-							index === selectedIndex && "bg-secondary",
-						)}
-					>
-						<IconHashtag className="size-4 text-muted-fg" />
-						<span className="font-medium">{channel.name}</span>
-					</button>
-				))}
-			</div>
-		)
-	}
-
-	if (type === "has") {
-		const options = [
-			{ value: "image", label: "Image", description: "Messages with images" },
-			{ value: "file", label: "File", description: "Messages with file attachments" },
-			{ value: "link", label: "Link", description: "Messages containing URLs" },
-			{ value: "embed", label: "Embed", description: "Messages with rich embeds" },
-		]
-
-		return (
-			<div className="space-y-1">
-				<div className="px-2 py-1 text-muted-fg text-xs">Select attachment type</div>
-				{options.map((option, index) => (
-					<button
-						key={option.value}
-						type="button"
-						onClick={() => onSelect(index)}
-						className={cn(
-							"flex w-full flex-col rounded-md px-2 py-1.5 text-left transition-colors",
-							"hover:bg-secondary focus:outline-none",
-							index === selectedIndex && "bg-secondary",
-						)}
-					>
-						<span className="font-medium text-sm">{option.label}</span>
-						<span className="text-muted-fg text-xs">{option.description}</span>
-					</button>
-				))}
-			</div>
-		)
-	}
-
-	// Date filters don't have suggestions
-	return (
-		<div className="px-2 py-4 text-center text-muted-fg text-sm">
-			Enter a date (e.g., 2024-01-15, yesterday, lastweek)
 		</div>
 	)
 }

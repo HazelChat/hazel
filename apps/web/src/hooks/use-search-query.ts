@@ -229,28 +229,56 @@ export function useSearchQuery({
  * Hook to get user suggestions for "from:" filter autocomplete
  */
 export function useUserSuggestions(partial: string, organizationId: OrganizationId | null) {
+	// Query all organization users when partial is empty, or filter by partial match
 	const { data: users } = useLiveQuery(
-		(q) =>
-			organizationId && partial.length > 0
-				? q
-						.from({ user: userCollection })
-						.orderBy(({ user }) => user.firstName, "asc")
-						.limit(10)
-				: null,
+		(q) => {
+			if (!organizationId) return null
+
+			let query = q.from({ user: userCollection })
+
+			// If there's a partial search term, filter in the query
+			// Note: ilike is case-insensitive, so we search firstName and lastName
+			if (partial.length > 0) {
+				// Search by firstName or lastName containing the partial
+				query = query.where(({ user }) =>
+					// Use ilike for case-insensitive partial match on firstName
+					ilike(user.firstName, `%${partial}%`),
+				)
+			}
+
+			return query.orderBy(({ user }) => user.firstName, "asc").limit(20)
+		},
 		[organizationId, partial],
 	)
 
-	// Filter users by partial match
+	// Also query by lastName if partial is provided
+	const { data: usersByLastName } = useLiveQuery(
+		(q) => {
+			if (!organizationId || partial.length === 0) return null
+
+			return q
+				.from({ user: userCollection })
+				.where(({ user }) => ilike(user.lastName, `%${partial}%`))
+				.orderBy(({ user }) => user.lastName, "asc")
+				.limit(20)
+		},
+		[organizationId, partial],
+	)
+
+	// Merge and deduplicate results
 	const filteredUsers = useMemo(() => {
-		if (!users || !partial) return []
-		const lowered = partial.toLowerCase()
-		return users.filter(
-			(u) =>
-				u.firstName?.toLowerCase().includes(lowered) ||
-				u.lastName?.toLowerCase().includes(lowered) ||
-				`${u.firstName} ${u.lastName}`.toLowerCase().includes(lowered),
-		)
-	}, [users, partial])
+		if (!users) return []
+
+		const userMap = new Map<string, NonNullable<typeof users>[0]>()
+
+		// Add users from firstName query
+		users.forEach((u) => userMap.set(u.id, u))
+
+		// Add users from lastName query
+		usersByLastName?.forEach((u) => userMap.set(u.id, u))
+
+		return Array.from(userMap.values()).slice(0, 10)
+	}, [users, usersByLastName])
 
 	return filteredUsers
 }
