@@ -28,6 +28,7 @@ export const HttpAvatarLive = HttpApiBuilder.group(HazelApi, "avatars", (handler
 				// Generate presigned URL
 				const uploadUrl = yield* s3
 					.presign(key, {
+						acl: "public-read",
 						method: "PUT",
 						type: payload.contentType,
 						expiresIn: 300, // 5 minutes
