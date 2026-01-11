@@ -329,28 +329,32 @@ function RecentSearchesList({
 					Clear all
 				</Button>
 			</div>
-			{searches.map((search, index) => {
-				const displayText = [
-					...search.filters.map((f) => `${f.type}:${f.displayValue}`),
-					search.query,
-				]
-					.filter(Boolean)
-					.join(" ")
-
-				return (
-					<button
-						key={index}
-						type="button"
-						onClick={() => onSelect(search)}
-						className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary"
-					>
-						<span className="truncate text-fg">{displayText}</span>
-						<span className="shrink-0 text-muted-fg text-xs">
-							{formatDistanceToNow(new Date(search.timestamp), { addSuffix: true })}
-						</span>
-					</button>
-				)
-			})}
+			{searches.map((search, index) => (
+				<button
+					key={index}
+					type="button"
+					onClick={() => onSelect(search)}
+					className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary"
+				>
+					<span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+						{/* Render filters as badges */}
+						{search.filters.map((f, i) => (
+							<span
+								key={i}
+								className="inline-flex items-center gap-0.5 rounded-md bg-secondary px-1.5 py-0.5 text-xs ring-1 ring-inset ring-border"
+							>
+								<span className="text-muted-fg">{f.type}:</span>
+								<span className="font-medium text-fg">{f.displayValue}</span>
+							</span>
+						))}
+						{/* Render text query */}
+						{search.query && <span className="truncate text-fg">{search.query}</span>}
+					</span>
+					<span className="shrink-0 text-muted-fg text-xs">
+						{formatDistanceToNow(new Date(search.timestamp), { addSuffix: true })}
+					</span>
+				</button>
+			))}
 		</div>
 	)
 }
