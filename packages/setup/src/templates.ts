@@ -1,9 +1,100 @@
+import type { EnvReadResult } from "./services/env-writer.ts"
+
 export interface S3Config {
 	bucket: string
 	endpoint: string
 	accessKeyId: string
 	secretAccessKey: string
 	publicUrl: string
+}
+
+/** Represents an env value with its source file(s) */
+export interface EnvValue {
+	value: string
+	source: string
+}
+
+/** Existing configuration extracted from .env files */
+export interface ExistingConfig {
+	workosApiKey?: EnvValue
+	workosClientId?: EnvValue
+	cookiePassword?: EnvValue
+	encryptionKey?: EnvValue
+	linear?: {
+		clientId: EnvValue
+		clientSecret: EnvValue
+	}
+	githubWebhookSecret?: EnvValue
+	openrouterApiKey?: EnvValue
+}
+
+/** Get a single value from env result (picks first if multiple) */
+const getEnvValue = (
+	result: EnvReadResult,
+	key: string
+): EnvValue | undefined => {
+	const values = result.values[key]
+	if (!values || values.length === 0) return undefined
+	const value = values[0]
+	const source = result.valueSources[`${key}:${value}`] ?? "unknown"
+	return { value, source }
+}
+
+/** Extract existing configuration from env read result */
+export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => {
+	const config: ExistingConfig = {}
+
+	// WorkOS
+	const workosApiKey = getEnvValue(result, "WORKOS_API_KEY")
+	if (workosApiKey) config.workosApiKey = workosApiKey
+
+	const workosClientId = getEnvValue(result, "WORKOS_CLIENT_ID")
+	if (workosClientId) config.workosClientId = workosClientId
+
+	const cookiePassword = getEnvValue(result, "WORKOS_COOKIE_PASSWORD")
+	if (cookiePassword) config.cookiePassword = cookiePassword
+
+	const encryptionKey = getEnvValue(result, "INTEGRATION_ENCRYPTION_KEY")
+	if (encryptionKey) config.encryptionKey = encryptionKey
+
+	// Linear
+	const linearClientId = getEnvValue(result, "LINEAR_CLIENT_ID")
+	const linearClientSecret = getEnvValue(result, "LINEAR_CLIENT_SECRET")
+	if (linearClientId && linearClientSecret) {
+		config.linear = {
+			clientId: linearClientId,
+			clientSecret: linearClientSecret,
+		}
+	}
+
+	// GitHub
+	const githubWebhookSecret = getEnvValue(result, "GITHUB_WEBHOOK_SECRET")
+	if (githubWebhookSecret) config.githubWebhookSecret = githubWebhookSecret
+
+	// OpenRouter
+	const openrouterApiKey = getEnvValue(result, "OPENROUTER_API_KEY")
+	if (openrouterApiKey) config.openrouterApiKey = openrouterApiKey
+
+	return config
+}
+
+/** Get all unique values for a key with their sources */
+export const getEnvValues = (
+	result: EnvReadResult,
+	key: string
+): EnvValue[] => {
+	const values = result.values[key]
+	if (!values || values.length === 0) return []
+	return values.map((value) => ({
+		value,
+		source: result.valueSources[`${key}:${value}`] ?? "unknown",
+	}))
+}
+
+/** Mask a secret value for display (show first/last 4 chars) */
+export const maskSecret = (value: string): string => {
+	if (value.length <= 8) return "****"
+	return `${value.slice(0, 4)}...${value.slice(-4)}`
 }
 
 export const getLocalMinioConfig = (): S3Config => ({

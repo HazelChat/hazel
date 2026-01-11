@@ -2,6 +2,45 @@ import { Console, Effect } from "effect"
 import { dirname } from "node:path"
 import { mkdir } from "node:fs/promises"
 
+/** Result of reading all env files - maps key to unique values with their sources */
+export interface EnvReadResult {
+	/** Map of key -> array of unique values found */
+	values: Record<string, string[]>
+	/** Map of key -> array of source files containing that key */
+	sources: Record<string, string[]>
+	/** Map of key+value -> source file (for display purposes) */
+	valueSources: Record<string, string>
+}
+
+/** Files to scan for existing env values */
+const ENV_FILE_PATHS = [
+	"apps/backend/.env",
+	"apps/web/.env",
+	"apps/cluster/.env",
+	"apps/electric-proxy/.env",
+	"packages/db/.env",
+] as const
+
+/** Parse a .env file content into key-value pairs */
+const parseEnvContent = (content: string): Record<string, string> => {
+	const result: Record<string, string> = {}
+	for (const line of content.split("\n")) {
+		const trimmed = line.trim()
+		// Skip empty lines and comments
+		if (!trimmed || trimmed.startsWith("#")) continue
+		const eqIndex = trimmed.indexOf("=")
+		if (eqIndex === -1) continue
+		const key = trimmed.slice(0, eqIndex)
+		let value = trimmed.slice(eqIndex + 1)
+		// Handle quoted values
+		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+			value = value.slice(1, -1)
+		}
+		result[key] = value
+	}
+	return result
+}
+
 export class EnvWriter extends Effect.Service<EnvWriter>()("EnvWriter", {
 	accessors: true,
 	effect: Effect.succeed({
@@ -40,6 +79,55 @@ export class EnvWriter extends Effect.Service<EnvWriter>()("EnvWriter", {
 					yield* Effect.promise(() => Bun.write(backup, file))
 					yield* Console.log(`  Backed up ${filePath} to ${backup}`)
 				}
+			}),
+
+		/** Read a single .env file and return parsed key-value pairs */
+		readEnvFile: (filePath: string) =>
+			Effect.gen(function* () {
+				const file = Bun.file(filePath)
+				const exists = yield* Effect.promise(() => file.exists())
+				if (!exists) return {}
+				const content = yield* Effect.promise(() => file.text())
+				return parseEnvContent(content)
+			}),
+
+		/** Read all known .env files and aggregate values with their sources */
+		readAllEnvFiles: () =>
+			Effect.gen(function* () {
+				const result: EnvReadResult = { values: {}, sources: {}, valueSources: {} }
+
+				for (const filePath of ENV_FILE_PATHS) {
+					const file = Bun.file(filePath)
+					const exists = yield* Effect.promise(() => file.exists())
+					if (!exists) continue
+
+					const content = yield* Effect.promise(() => file.text())
+					const parsed = parseEnvContent(content)
+
+					for (const [key, value] of Object.entries(parsed)) {
+						// Skip empty values
+						if (!value) continue
+
+						// Initialize arrays if needed
+						if (!result.values[key]) {
+							result.values[key] = []
+							result.sources[key] = []
+						}
+
+						// Only add unique values
+						if (!result.values[key].includes(value)) {
+							result.values[key].push(value)
+							result.valueSources[`${key}:${value}`] = filePath
+						}
+
+						// Track all sources for this key
+						if (!result.sources[key].includes(filePath)) {
+							result.sources[key].push(filePath)
+						}
+					}
+				}
+
+				return result
 			}),
 	}),
 }) {}
