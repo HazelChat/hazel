@@ -6,7 +6,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-function IconVolumeMute({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
+export function IconVolumeMute({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (

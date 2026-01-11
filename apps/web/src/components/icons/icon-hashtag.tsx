@@ -5,7 +5,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	strokewidth?: number
 }
 
-function IconHashtag({ fill = "currentColor", secondaryfill, ...props }: IconProps) {
+export function IconHashtag({ fill = "currentColor", secondaryfill, ...props }: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (

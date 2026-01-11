@@ -7,7 +7,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 
 export function IconChevronUp({ fill = "currentColor", title = "chevron-up", ...props }: IconProps) {
 	return (
-		<svg height="12" width="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" {...props}>
+		<svg height="12" width="12" data-slot="icon" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" {...props}>
 			<title>{title}</title>
 			<g fill={fill}>
 				<path

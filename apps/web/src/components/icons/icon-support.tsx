@@ -6,7 +6,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-function IconSupport({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
+export function IconSupport({ fill = "currentColor", secondaryfill, title = "badge 13", ...props }: IconProps) {
 	secondaryfill = secondaryfill || fill
 
 	return (

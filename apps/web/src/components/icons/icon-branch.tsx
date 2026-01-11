@@ -4,9 +4,9 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-function IconBranch({ fill = "currentColor", title = "branch", ...props }: IconProps) {
+export function IconBranch({ fill = "currentColor", title = "branch", ...props }: IconProps) {
 	return (
-		<svg height="18" width="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" {...props}>
+		<svg height="18" width="18" data-slot="icon" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" {...props}>
 			<title>{title}</title>
 			<path
 				d="M5 3 V12 H13"

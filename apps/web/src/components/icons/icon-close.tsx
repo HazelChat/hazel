@@ -5,9 +5,9 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-function IconClose({ fill = "currentColor", title = "close", ...props }: IconProps) {
+export function IconClose({ fill = "currentColor", title = "close", ...props }: IconProps) {
 	return (
-		<svg height="12" width="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" {...props}>
+		<svg height="12" width="12" data-slot="icon" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" {...props}>
 			<title>{title}</title>
 			<g fill={fill}>
 				<path

@@ -6,7 +6,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-function IconProfiles2({ title = "badge 13", ...props }: IconProps) {
+export function IconProfiles2({ title = "badge 13", ...props }: IconProps) {
 	return (
 		<svg
 			height="18"
