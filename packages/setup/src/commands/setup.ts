@@ -39,31 +39,37 @@ export const setupCommand = Command.make(
 
 			// Run doctor first (unless skipped)
 			if (!skipDoctor) {
-				yield* Console.log(pc.cyan("\u2500\u2500\u2500 Environment Check \u2500\u2500\u2500"))
-
 				const doctor = yield* Doctor
-				const results = yield* doctor.runAllChecks()
+				const { environment, services } = yield* doctor.runAllChecks()
+				const allResults = [...environment, ...services]
 
-				let hasFailure = false
-				for (const result of results) {
+				const formatResult = (result: { name: string; status: string; message: string }) => {
 					const icon =
 						result.status === "ok"
 							? pc.green("\u2713")
 							: result.status === "warn"
 								? pc.yellow("\u26A0")
 								: pc.red("\u2717")
-
 					const msg =
 						result.status === "fail"
 							? pc.red(result.message)
 							: result.status === "warn"
 								? pc.yellow(result.message)
 								: result.message
-
-					yield* Console.log(`  ${icon} ${pc.bold(result.name)}: ${msg}`)
-					if (result.status === "fail") hasFailure = true
+					return `  ${icon} ${pc.bold(result.name)}: ${msg}`
 				}
 
+				yield* Console.log(pc.cyan("\u2500\u2500\u2500 Environment \u2500\u2500\u2500"))
+				for (const result of environment) {
+					yield* Console.log(formatResult(result))
+				}
+
+				yield* Console.log(pc.cyan("\n\u2500\u2500\u2500 Services \u2500\u2500\u2500"))
+				for (const result of services) {
+					yield* Console.log(formatResult(result))
+				}
+
+				const hasFailure = allResults.some((r) => r.status === "fail")
 				if (hasFailure) {
 					yield* Console.log(
 						`\n${pc.yellow("\u26A0 Some checks failed.")} Run ${pc.cyan("`hazel-setup doctor`")} for details.`

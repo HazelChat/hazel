@@ -6,6 +6,37 @@ export interface CheckResult {
 	message: string
 }
 
+// Helper to check if a docker container is running
+const checkContainer = (
+	containerName: string,
+	displayName: string
+): Effect.Effect<CheckResult> =>
+	Effect.tryPromise({
+		try: async () => {
+			const proc = Bun.spawn(
+				["docker", "inspect", "--format", "{{.State.Status}}", containerName],
+				{ stdout: "pipe", stderr: "ignore" }
+			)
+			const output = await new Response(proc.stdout).text()
+			const code = await proc.exited
+
+			if (code !== 0) {
+				return { name: displayName, status: "fail" as const, message: "Not running" }
+			}
+
+			const status = output.trim()
+			if (status !== "running") {
+				return { name: displayName, status: "fail" as const, message: `Status: ${status}` }
+			}
+			return { name: displayName, status: "ok" as const, message: "Running" }
+		},
+		catch: () => new Error("Check failed"),
+	}).pipe(
+		Effect.catchAll(() =>
+			Effect.succeed({ name: displayName, status: "fail" as const, message: "Not running" })
+		)
+	)
+
 export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 	accessors: true,
 	effect: Effect.succeed({
@@ -42,7 +73,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 					Effect.succeed({
 						name: "Docker",
 						status: "fail" as const,
-						message: "Not running. Start Docker Desktop or run `docker` daemon",
+						message: "Not running. Start Docker Desktop",
 					})
 				)
 			),
@@ -78,50 +109,24 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				)
 			),
 
-		checkDatabase: (): Effect.Effect<CheckResult> =>
-			Effect.tryPromise({
-				try: async () => {
-					// Check database via docker exec (doesn't require psql locally)
-					const proc = Bun.spawn(
-						[
-							"docker",
-							"exec",
-							"app-postgres-1",
-							"psql",
-							"-U",
-							"user",
-							"-d",
-							"app",
-							"-c",
-							"SELECT 1",
-						],
-						{ stdout: "ignore", stderr: "ignore" }
-					)
-					const code = await proc.exited
-					if (code !== 0) throw new Error("Database not reachable")
-					return { name: "Database", status: "ok" as const, message: "Connected" }
-				},
-				catch: () => new Error("Database not reachable"),
-			}).pipe(
-				Effect.catchAll(() =>
-					Effect.succeed({
-						name: "Database",
-						status: "fail" as const,
-						message: "Not reachable. Run `docker compose up -d`",
-					})
-				)
-			),
+		checkPostgres: (): Effect.Effect<CheckResult> => checkContainer("app-postgres-1", "PostgreSQL"),
+		checkRedis: (): Effect.Effect<CheckResult> => checkContainer("app-cache_redis-1", "Redis"),
+		checkElectric: (): Effect.Effect<CheckResult> => checkContainer("app-electric-1", "Electric"),
+		checkSequin: (): Effect.Effect<CheckResult> => checkContainer("app-sequin-1", "Sequin"),
 
-		runAllChecks: (): Effect.Effect<CheckResult[], never, Doctor> =>
+		runAllChecks: (): Effect.Effect<{ environment: CheckResult[]; services: CheckResult[] }, never, Doctor> =>
 			Effect.gen(function* () {
 				const doctor = yield* Doctor
-				const results = yield* Effect.all([
-					doctor.checkBun(),
-					doctor.checkDocker(),
-					doctor.checkDockerCompose(),
-					doctor.checkDatabase(),
+				const [environment, services] = yield* Effect.all([
+					Effect.all([doctor.checkBun(), doctor.checkDocker(), doctor.checkDockerCompose()]),
+					Effect.all([
+						doctor.checkPostgres(),
+						doctor.checkRedis(),
+						doctor.checkElectric(),
+						doctor.checkSequin(),
+					]),
 				])
-				return results
+				return { environment, services }
 			}),
 	}),
 }) {}
