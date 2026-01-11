@@ -2,7 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import type { ChannelSectionId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useModal } from "~/atoms/modal-atoms"
 import { ChannelIcon } from "~/components/channel-icon"
 import IconDots from "~/components/icons/icon-dots"
 import { IconFolderPlus } from "~/components/icons/icon-folder-plus"
@@ -12,15 +12,14 @@ import { IconStar } from "~/components/icons/icon-star"
 import IconTrash from "~/components/icons/icon-trash"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
-import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
 import { ThreadItem } from "~/components/sidebar/thread-item"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuSubMenu } from "~/components/ui/menu"
 import { SidebarItem, SidebarLabel, SidebarLink, SidebarTreeItem } from "~/components/ui/sidebar"
-import { deleteChannelAction, moveChannelToSectionAction } from "~/db/actions"
+import { moveChannelToSectionAction } from "~/db/actions"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useOrganization } from "~/hooks/use-organization"
-import { matchExitWithToast, toastExit } from "~/lib/toast-exit"
+import { toastExit } from "~/lib/toast-exit"
 
 interface ChannelItemProps {
 	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
@@ -36,34 +35,15 @@ interface ChannelItemProps {
 export const CHANNEL_DRAG_TYPE = "application/x-hazel-channel"
 
 export function ChannelItem({ channel, member, threads, sections = [] }: ChannelItemProps) {
-	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+	const deleteChannelModal = useModal("delete-channel")
 
 	const { slug } = useOrganization()
 	const navigate = useNavigate()
 
 	const { handleToggleMute, handleToggleFavorite, handleLeave } = useChannelMemberActions(member, "channel")
-	const deleteChannel = useAtomSet(deleteChannelAction, {
-		mode: "promiseExit",
-	})
 	const moveChannelToSection = useAtomSet(moveChannelToSectionAction, {
 		mode: "promiseExit",
 	})
-
-	const handleDeleteChannel = async () => {
-		const exit = await deleteChannel({ channelId: channel.id })
-
-		matchExitWithToast(exit, {
-			onSuccess: () => {},
-			successMessage: "Channel deleted successfully",
-			customErrors: {
-				ChannelNotFoundError: () => ({
-					title: "Channel not found",
-					description: "This channel may have already been deleted.",
-					isRetryable: false,
-				}),
-			},
-		})
-	}
 
 	const handleMoveToSection = async (sectionId: ChannelSectionId | null) => {
 		// Don't do anything if already in the target section
@@ -183,7 +163,14 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 									<IconGear />
 									<MenuLabel>Settings</MenuLabel>
 								</MenuItem>
-								<MenuItem intent="danger" onAction={() => setDeleteModalOpen(true)}>
+								<MenuItem
+								intent="danger"
+								onAction={() =>
+									deleteChannelModal.open({
+										channelId: channel.id,
+										channelName: channel.name,
+									})
+								}>
 									<IconTrash />
 									<MenuLabel>Delete</MenuLabel>
 								</MenuItem>
@@ -209,14 +196,6 @@ export function ChannelItem({ channel, member, threads, sections = [] }: Channel
 					))}
 			</SidebarTreeItem>
 
-			{deleteModalOpen && (
-				<DeleteChannelModal
-					channelName={channel.name}
-					isOpen={true}
-					onOpenChange={(isOpen) => !isOpen && setDeleteModalOpen(false)}
-					onConfirm={handleDeleteChannel}
-				/>
-			)}
 		</>
 	)
 }

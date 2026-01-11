@@ -15,6 +15,7 @@ const MODAL_TYPES = [
 	"create-organization",
 	"create-section",
 	"command-palette",
+	"delete-channel",
 ] as const
 
 export type ModalType = (typeof MODAL_TYPES)[number]

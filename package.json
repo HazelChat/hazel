@@ -27,7 +27,10 @@
 				"@effect-atom/atom": "0.4.11",
 				"@effect-atom/atom-react": "0.4.4",
 				"@effect/ai": "^0.33.2",
-				"@effect/ai-openrouter": "^0.8.1"
+				"@effect/ai-openrouter": "^0.8.1",
+				"@effect/cli": "^0.73.0",
+				"@effect/printer": "^0.47.0",
+				"@effect/printer-ansi": "^0.47.0"
 			}
 		}
 	},
@@ -35,7 +38,8 @@
 		"dev": "turbo dev",
 		"build": "turbo build typecheck",
 		"start": "turbo start",
-		"setup": "turbo setup",
+		"setup": "bun run packages/setup/src/index.ts",
+		"setup:turbo": "turbo setup",
 		"typecheck": "turbo build typecheck",
 		"format": "oxfmt",
 		"lint": "oxlint",

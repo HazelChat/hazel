@@ -1,3 +1,4 @@
+import type { ChannelId } from "@hazel/schema"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import type { CommandPalettePage } from "~/atoms/command-palette-atoms"
@@ -9,6 +10,7 @@ import { CreateChannelModal } from "~/components/modals/create-channel-modal"
 import { CreateDmModal } from "~/components/modals/create-dm-modal"
 import { CreateOrganizationModal } from "~/components/modals/create-organization-modal"
 import { CreateSectionModal } from "~/components/modals/create-section-modal"
+import { DeleteChannelModal } from "~/components/modals/delete-channel-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { JoinChannelModal } from "~/components/modals/join-channel-modal"
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
@@ -59,6 +61,7 @@ function RouteComponent() {
 	const emailInviteModal = useModal("email-invite")
 	const createOrgModal = useModal("create-organization")
 	const createSectionModal = useModal("create-section")
+	const deleteChannelModal = useModal("delete-channel")
 
 	const openChannelsBrowser = () => {
 		setInitialPage("channels")
@@ -145,6 +148,14 @@ function RouteComponent() {
 						isOpen={createSectionModal.isOpen}
 						onOpenChange={(open) => !open && createSectionModal.close()}
 					/>
+					{deleteChannelModal.metadata?.channelId ? (
+						<DeleteChannelModal
+							channelId={deleteChannelModal.metadata.channelId as ChannelId}
+							channelName={(deleteChannelModal.metadata.channelName as string) ?? ""}
+							isOpen={deleteChannelModal.isOpen}
+							onOpenChange={(open) => !open && deleteChannelModal.close()}
+						/>
+					) : null}
 				</NotificationSoundProvider>
 			</PresenceProvider>
 		</SidebarProvider>

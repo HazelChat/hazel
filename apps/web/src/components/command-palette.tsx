@@ -101,6 +101,11 @@ export function CommandPalette(
 
 	const closePalette = useCallback(() => {
 		props.onOpenChange?.(false)
+		setCommandPaletteState((state) => ({
+			...state,
+			currentPage: "home",
+			inputValue: "",
+		}))
 	}, [props])
 
 	const handleOpenChange = useCallback(

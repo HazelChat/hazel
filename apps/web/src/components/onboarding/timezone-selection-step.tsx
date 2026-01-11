@@ -170,7 +170,7 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 	}
 
 	return (
-		<div data-testid="onboarding-step-timezone" className="space-y-4 sm:space-y-6">
+		<div data-testid="onboarding-step-timezone" className="space-y-4 sm:space-y-6 pb-16 sm:pb-0">
 			<CardHeader>
 				<CardTitle>Where are you located?</CardTitle>
 				<CardDescription>

@@ -78,10 +78,9 @@ export const sendMessageAction = optimisticAction({
 })
 
 export const createChannelAction = optimisticAction({
-	collections: {
-		channel: channelCollection,
-		members: channelMemberCollection,
-	},
+	// Skip sync wait - TanStack awaitTxId hangs during Electric shape conflicts (409 errors)
+	// Optimistic inserts + RPC still work correctly
+	collections: [],
 	runtime: runtime,
 	onMutate: (props: {
 		organizationId: OrganizationId

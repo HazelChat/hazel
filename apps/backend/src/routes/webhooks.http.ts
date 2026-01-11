@@ -6,7 +6,7 @@ import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/dom
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
-import { WorkOSSync } from "../services/workos-sync"
+import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>

@@ -4,11 +4,11 @@ import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
-const everyMinute = Cron.unsafeParse("0 * * * *")
+const workOsCron = Cron.unsafeParse("0 */12 * * *")
 
 export const WorkOSSyncCronLayer = ClusterCron.make({
 	name: "WorkOSSync",
-	cron: everyMinute,
+	cron: workOsCron,
 	execute: Effect.gen(function* () {
 		yield* Effect.logDebug("Starting scheduled WorkOS sync...")
 		const result = yield* WorkOSSync.syncAll

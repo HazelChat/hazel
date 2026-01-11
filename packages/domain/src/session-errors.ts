@@ -84,7 +84,7 @@ export class SessionRefreshError extends Schema.TaggedError<SessionRefreshError>
 		detail: Schema.String,
 	},
 	HttpApiSchema.annotations({
-		status: 503,
+		status: 401,
 	}),
 ) {}
 

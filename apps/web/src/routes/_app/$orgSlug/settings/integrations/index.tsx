@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { listOrganizationWebhooksMutation, type WebhookData } from "~/atoms/channel-webhook-atoms"
 import IconPlus from "~/components/icons/icon-plus"
+import { RequestIntegrationModal } from "~/components/modals/request-integration-modal"
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { SectionHeader } from "~/components/ui/section-header"
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/")({
 
 function IntegrationsSettings() {
 	const [selectedCategory, setSelectedCategory] = useState<string>("all")
+	const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
 	const { orgSlug } = Route.useParams()
 	const navigate = useNavigate()
 	const { user } = useAuth()
@@ -85,7 +87,7 @@ function IntegrationsSettings() {
 						</SectionHeader.Subheading>
 					</div>
 					<SectionHeader.Actions>
-						<Button intent="secondary" size="md">
+						<Button intent="secondary" size="md" onPress={() => setIsRequestModalOpen(true)}>
 							<IconPlus data-slot="icon" />
 							Request integration
 						</Button>
@@ -124,6 +126,11 @@ function IntegrationsSettings() {
 					description="No integrations found in this category."
 				/>
 			)}
+
+			<RequestIntegrationModal
+				isOpen={isRequestModalOpen}
+				onOpenChange={setIsRequestModalOpen}
+			/>
 		</div>
 	)
 }

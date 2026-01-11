@@ -1,6 +1,6 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { IconWarning } from "~/components/icons/icon-warning"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useState } from "react"
 import { reactScanEnabledAtom } from "~/atoms/react-scan-atoms"
 import { IconServers } from "~/components/icons/icon-servers"
@@ -24,6 +24,14 @@ import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { toastExit } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
+	beforeLoad: ({ params }) => {
+		if (import.meta.env.PROD) {
+			throw redirect({
+				to: "/$orgSlug/settings",
+				params: { orgSlug: params.orgSlug },
+			})
+		}
+	},
 	component: DebugSettings,
 })
 
@@ -222,7 +230,9 @@ function DebugSettings() {
 									This will create sample data in your current organization including:
 								</p>
 								<ul className="list-disc space-y-1 pl-5 text-muted-fg text-sm">
-									<li>7 team members (Sarah, Marcus, Emily, Alex, Jordan, Taylor, Casey)</li>
+									<li>
+										7 team members (Sarah, Marcus, Emily, Alex, Jordan, Taylor, Casey)
+									</li>
 									<li>12 channels with emoji icons in 4 sections</li>
 									<li>Messages with replies and a discussion thread</li>
 								</ul>

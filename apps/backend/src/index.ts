@@ -62,7 +62,7 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { WorkOS } from "./services/workos"
-import { WorkOSSync } from "./services/workos-sync"
+import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
 export { HazelApi }

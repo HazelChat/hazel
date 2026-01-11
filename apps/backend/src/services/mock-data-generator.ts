@@ -1,4 +1,11 @@
-import type { ChannelIcon, ChannelId, ChannelSectionId, MessageId, OrganizationId, UserId } from "@hazel/domain/ids"
+import type {
+	ChannelIcon,
+	ChannelId,
+	ChannelSectionId,
+	MessageId,
+	OrganizationId,
+	UserId,
+} from "@hazel/domain/ids"
 import { Effect } from "effect"
 import { ChannelMemberRepo } from "../repositories/channel-member-repo"
 import { ChannelRepo } from "../repositories/channel-repo"
@@ -331,7 +338,11 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 					const channelMessageIds: MessageId[] = []
 					for (const msgResult of messages) {
 						const msg = msgResult[0]!
-						allMessages.push({ id: msg.id as MessageId, channelId: channel.id, content: msg.content })
+						allMessages.push({
+							id: msg.id as MessageId,
+							channelId: channel.id,
+							content: msg.content,
+						})
 						channelMessageIds.push(msg.id as MessageId)
 					}
 					messagesByChannel.set(channel.name, channelMessageIds)
@@ -339,12 +350,32 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 
 				// 8. Add reply messages to some channels
 				const replyMessages = [
-					{ channel: "engineering", replyTo: 0, content: "Awesome, I'll review the PR now!", authorIndex: 2 },
-					{ channel: "engineering", replyTo: 1, content: "Thanks for the heads up!", authorIndex: 3 },
+					{
+						channel: "engineering",
+						replyTo: 0,
+						content: "Awesome, I'll review the PR now!",
+						authorIndex: 2,
+					},
+					{
+						channel: "engineering",
+						replyTo: 1,
+						content: "Thanks for the heads up!",
+						authorIndex: 3,
+					},
 					{ channel: "general", replyTo: 2, content: "Count me in for lunch!", authorIndex: 4 },
 					{ channel: "general", replyTo: 0, content: "See you all there!", authorIndex: 5 },
-					{ channel: "design", replyTo: 0, content: "Love the new direction! Great work", authorIndex: 1 },
-					{ channel: "product", replyTo: 0, content: "This looks great, excited for Q1!", authorIndex: 0 },
+					{
+						channel: "design",
+						replyTo: 0,
+						content: "Love the new direction! Great work",
+						authorIndex: 1,
+					},
+					{
+						channel: "product",
+						replyTo: 0,
+						content: "This looks great, excited for Q1!",
+						authorIndex: 0,
+					},
 				]
 
 				for (const reply of replyMessages) {

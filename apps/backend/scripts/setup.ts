@@ -1,11 +1,17 @@
 #!/usr/bin/env bun
 
 import { Database } from "@hazel/db"
+import {
+	InvitationRepo,
+	OrganizationMemberRepo,
+	OrganizationRepo,
+	UserRepo,
+	WorkOSSync,
+} from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
-import { Effect, Logger, LogLevel } from "effect"
+import { Effect, Layer, Logger, LogLevel } from "effect"
 import { DatabaseLive } from "../src/services/database"
 import { WorkOS } from "../src/services/workos"
-import { WorkOSSync } from "../src/services/workos-sync"
 
 // ANSI color codes
 const colors = {
@@ -103,10 +109,21 @@ const setupScript = Effect.gen(function* () {
 })
 
 // Run the script
+// Build layers with proper dependency wiring
+const RepoLive = Layer.mergeAll(
+	UserRepo.Default,
+	OrganizationRepo.Default,
+	OrganizationMemberRepo.Default,
+	InvitationRepo.Default,
+).pipe(Layer.provideMerge(DatabaseLive))
+
+const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOS.Default).pipe(
+	Layer.provideMerge(RepoLive),
+	Layer.provideMerge(DatabaseLive),
+)
+
 const runnable = setupScript.pipe(
-	Effect.provide(DatabaseLive),
-	Effect.provide(WorkOSSync.Default),
-	Effect.provide(WorkOS.Default),
+	Effect.provide(MainLive),
 	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
 )
 
