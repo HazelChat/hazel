@@ -1,15 +1,25 @@
-# backendv2
+# Hazel Backend
 
-To install dependencies:
+Effect-TS backend API server for Hazel Chat using Bun runtime.
+
+## Setup
+
+See the [root README](../../README.md) for development setup instructions.
+
+## Tech Stack
+
+- **Bun** runtime
+- **Effect-TS** for functional programming and dependency injection
+- **Effect RPC** for type-safe APIs
+- **Drizzle ORM** with PostgreSQL
+- **WorkOS** for authentication
+
+## Development
+
+Once setup is complete, start all services from the monorepo root:
 
 ```bash
-bun install
+bun run dev
 ```
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.20. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+The backend runs at http://localhost:3003.

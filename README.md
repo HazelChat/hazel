@@ -76,7 +76,7 @@ Hazel Chat is a full-stack chat application featuring:
 ## Prerequisites
 
 - [Bun](https://bun.sh/) (latest version)
-- [Node.js](https://nodejs.org/) 22+
+- [Docker](https://docker.com/) (for local services)
 - [WorkOS](https://workos.com/) account (for authentication)
 
 ## Getting Started
@@ -94,42 +94,21 @@ Hazel Chat is a full-stack chat application featuring:
     bun install
     ```
 
-3. **Set up environment variables**
-
-    Create `.env` files in the relevant apps. Key variables include:
-
-    **apps/web/.env**
-
-    ```
-    VITE_BACKEND_URL=http://localhost:3003
-    VITE_CLUSTER_URL=http://localhost:3020
-    VITE_WORKOS_CLIENT_ID=<your-workos-client-id>
-    VITE_WORKOS_REDIRECT_URI=http://localhost:3000/callback
-    VITE_ELECTRIC_URL=<electric-sql-url>
-    ```
-
-    **apps/backend/.env**
-
-    ```
-    DATABASE_URL=postgresql://user:password@localhost:5432/maki_chat
-    WORKOS_API_KEY=<your-workos-api-key>
-    WORKOS_COOKIE_PASSWORD=<32-character-secret>
-    ```
-
-    **apps/cluster/.env**
-
-    ```
-    DATABASE_URL=postgresql://user:password@localhost:5432/maki_chat
-    ```
-
-4. **Run database migrations**
+3. **Run the setup wizard**
 
     ```bash
-    cd packages/db
-    bun run db push
+    bun run setup
     ```
 
-5. **Start development**
+    This interactive CLI will:
+    - Start Docker services (PostgreSQL, Redis, Electric, MinIO)
+    - Validate your environment
+    - Configure WorkOS authentication
+    - Generate secrets
+    - Create all necessary `.env` files
+    - Initialize the database
+
+4. **Start development**
 
     ```bash
     bun run dev
@@ -195,25 +174,7 @@ Effect Cluster handles background jobs:
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run formatting (`bun run format:fix`)
-5. Run tests (`bun run test:once`)
-6. Commit your changes
-7. Push to your branch
-8. Open a Pull Request
-
-### Code Style
-
-This project uses [OXC](https://oxc.rs/) for formatting and linting:
-
-- Tab indentation
-- Double quotes
-- Trailing commas
-- 110 character line width
-
-Run `bun run format` before committing.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
 ## License
 
