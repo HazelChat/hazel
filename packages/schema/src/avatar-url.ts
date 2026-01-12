@@ -12,9 +12,7 @@ export class InvalidAvatarUrlError extends Schema.TaggedError<InvalidAvatarUrlEr
 /**
  * Validates that a URL points to an accessible image via HTTP HEAD request.
  */
-export const validateImageUrl = (
-	url: string,
-): Effect.Effect<void, InvalidAvatarUrlError, HttpClient.HttpClient> =>
+export const validateImageUrl = Effect.fn("validateImageUrl")((url: string) =>
 	Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 		const response = yield* httpClient.head(url).pipe(Effect.scoped, Effect.timeout(Duration.seconds(5)))
@@ -63,7 +61,8 @@ export const validateImageUrl = (
 					url,
 				}),
 		),
-	)
+	),
+)
 
 export const AvatarUrl = Schema.String.pipe(
 	Schema.pattern(/^https?:\/\/.+/i, {
