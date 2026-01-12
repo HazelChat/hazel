@@ -296,14 +296,14 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 		}, [currentSuggestions.length, autocomplete.activeIndex])
 
 		return (
-			<div className={cn("relative flex-1", className)}>
+			<div className={cn("relative min-w-0 flex-1", className)}>
 				<Slate editor={editor} initialValue={slateValue} onChange={handleChange}>
 					<Editable
 						decorate={decorate}
 						renderLeaf={renderLeaf}
 						onKeyDown={handleKeyDown}
 						placeholder={placeholder}
-						className="w-full bg-transparent py-2 text-base text-fg outline-none placeholder:text-muted-fg sm:py-1.5 sm:text-sm"
+						className="w-full truncate bg-transparent py-2 text-base text-fg outline-none sm:py-1.5 sm:text-sm [&_[data-slate-placeholder]]:truncate [&_[data-slate-placeholder]]:!opacity-100 [&_[data-slate-placeholder]]:text-muted-fg [&_[data-slate-placeholder]]:text-xs [&_[data-slate-placeholder]]:!top-1/2 [&_[data-slate-placeholder]]:!-translate-y-1/2"
 					/>
 				</Slate>
 
