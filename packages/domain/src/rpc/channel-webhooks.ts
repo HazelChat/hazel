@@ -1,5 +1,5 @@
 import { RpcGroup } from "@effect/rpc"
-import { ChannelId, ChannelWebhookId } from "@hazel/schema"
+import { AvatarUrl, ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -79,7 +79,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 			channelId: ChannelId,
 			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
 			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
-			avatarUrl: Schema.optional(Schema.String.pipe(Schema.maxLength(2048))),
+			avatarUrl: Schema.optional(AvatarUrl),
 			/** When set, uses a global integration bot user instead of creating a unique webhook bot */
 			integrationProvider: Schema.optional(Schema.Literal("openstatus", "railway")),
 		}),
@@ -118,7 +118,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 			id: ChannelWebhookId,
 			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
 			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
-			avatarUrl: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(2048)))),
+			avatarUrl: Schema.optional(Schema.NullOr(AvatarUrl)),
 			isEnabled: Schema.optional(Schema.Boolean),
 		}),
 		success: ChannelWebhookResponse,
