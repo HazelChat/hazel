@@ -48,6 +48,7 @@
 		"@tanstack/react-router": "1.147.1",
 		"@tanstack/react-router-devtools": "1.147.1",
 		"@tanstack/router-plugin": "^1.147.1",
+		"@tauri-apps/plugin-deep-link": "~2",
 		"@untitledui/file-icons": "^0.0.9",
 		"@workos-inc/authkit-js": "^0.18.0",
 		"@workos-inc/widgets": "^1.7.2",
