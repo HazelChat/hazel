@@ -1,5 +1,6 @@
 import type { Channel, Message, User } from "@hazel/domain/models"
 import { formatDistanceToNow } from "date-fns"
+import { useEffect, useRef } from "react"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { Avatar } from "~/components/ui/avatar"
@@ -79,12 +80,21 @@ export function SearchResultItem({
 	isSelected = false,
 	onSelect,
 }: SearchResultItemProps) {
+	const ref = useRef<HTMLButtonElement>(null)
 	const authorName = author ? `${author.firstName} ${author.lastName}`.trim() : "Unknown"
 	const truncatedContent = truncateContent(message.content)
 	const highlightedContent = highlightMatches(truncatedContent, searchQuery)
 
+	// Scroll into view when selected via keyboard navigation
+	useEffect(() => {
+		if (isSelected && ref.current) {
+			ref.current.scrollIntoView({ block: "nearest" })
+		}
+	}, [isSelected])
+
 	return (
 		<button
+			ref={ref}
 			type="button"
 			onClick={onSelect}
 			className={cn(
