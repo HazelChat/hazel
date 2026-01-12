@@ -9,6 +9,7 @@ import {
 	buildIntegrationConnectionClause,
 	buildNoFilterClause,
 	buildOrgMembershipClause,
+	buildUserOrgMembershipClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
 
@@ -123,8 +124,14 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("users", () =>
-			// All non-deleted users visible
-			Effect.succeed(buildDeletedAtNullClause(schema.usersTable.deletedAt)),
+			// Only users in same organizations as the current user
+			Effect.succeed(
+				buildUserOrgMembershipClause(
+					user.internalUserId,
+					schema.usersTable.id,
+					schema.usersTable.deletedAt,
+				),
+			),
 		),
 
 		Match.when("user_presence_status", () =>

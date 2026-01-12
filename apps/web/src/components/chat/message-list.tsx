@@ -127,7 +127,9 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	// We need messageRows for scrollToMessage, but it's defined later
 	// Use a ref to hold the latest messageRows value
 	const messageRowsRef = useRef<MessageRow[]>([])
-	const collectionRef = useRef<{ utils?: { setWindow?: (params: { offset: number; limit: number }) => true | Promise<void> } }>({})
+	const collectionRef = useRef<{
+		utils?: { setWindow?: (params: { offset: number; limit: number }) => true | Promise<void> }
+	}>({})
 
 	useImperativeHandle(ref, () => ({
 		scrollToBottom: () => {

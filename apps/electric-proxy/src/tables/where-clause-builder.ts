@@ -151,6 +151,27 @@ export function buildOrgMembershipClause(
 }
 
 /**
+ * Build user organization membership clause using subquery.
+ * Filters users to only those who are members of the same organizations as the current user.
+ *
+ * Uses Electric's subquery feature (requires ELECTRIC_FEATURE_FLAGS=allow_subqueries).
+ *
+ * @param userId - The user's internal database UUID
+ * @param userIdColumn - The user id column to filter on (users.id)
+ * @param deletedAtColumn - The deletedAt column to check for NULL
+ * @returns WhereClauseResult with parameterized WHERE clause and subquery
+ */
+export function buildUserOrgMembershipClause(
+	userId: string,
+	userIdColumn: PgColumn,
+	deletedAtColumn: PgColumn,
+): WhereClauseResult {
+	// Filter users to those in same orgs as the current user
+	const whereClause = `"${deletedAtColumn.name}" IS NULL AND "${userIdColumn.name}" IN (SELECT "userId" FROM organization_members WHERE "organizationId" IN (SELECT "organizationId" FROM organization_members WHERE "userId" = $1 AND "deletedAt" IS NULL) AND "deletedAt" IS NULL)`
+	return { whereClause, params: [userId] }
+}
+
+/**
  * Build channel access clause using subquery.
  * Filters rows to only those in channels the user has access to (public or member).
  *

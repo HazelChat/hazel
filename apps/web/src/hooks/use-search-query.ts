@@ -229,7 +229,8 @@ export function useSearchQuery({
  * Hook to get user suggestions for "from:" filter autocomplete
  */
 export function useUserSuggestions(partial: string, organizationId: OrganizationId | null) {
-	// Query all organization users when partial is empty, or filter by partial match
+	// Query users, filter by partial match on firstName
+	// Note: Electric proxy already filters users to only those in same organizations
 	const { data: users } = useLiveQuery(
 		(q) => {
 			if (!organizationId) return null
@@ -237,13 +238,8 @@ export function useUserSuggestions(partial: string, organizationId: Organization
 			let query = q.from({ user: userCollection })
 
 			// If there's a partial search term, filter in the query
-			// Note: ilike is case-insensitive, so we search firstName and lastName
 			if (partial.length > 0) {
-				// Search by firstName or lastName containing the partial
-				query = query.where(({ user }) =>
-					// Use ilike for case-insensitive partial match on firstName
-					ilike(user.firstName, `%${partial}%`),
-				)
+				query = query.where(({ user }) => ilike(user.firstName, `%${partial}%`))
 			}
 
 			return query.orderBy(({ user }) => user.firstName, "asc").limit(20)
