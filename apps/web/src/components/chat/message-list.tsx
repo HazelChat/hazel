@@ -1,10 +1,11 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
-import type { ChannelId } from "@hazel/schema"
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
+import { messageCollection } from "~/db/collections"
 import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-message-notification-cleaner"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
@@ -133,6 +134,8 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			legendListRef.current?.scrollToEnd({ animated: true })
 		},
 		scrollToMessage: async (messageId: string) => {
+			const PAGE_SIZE = 30
+
 			// Helper to find and scroll to message
 			const tryScroll = () => {
 				const index = messageRowsRef.current.findIndex(
@@ -151,18 +154,48 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 				return false
 			}
 
-			// Try to scroll immediately
+			// Try to scroll immediately if message is already in loaded data
 			if (tryScroll()) return
 
-			// Message not in current data - fetch more pages until found
-			while (hasNextPageRef.current) {
-				await new Promise<void>((resolve) => {
-					fetchNextPageRef.current()
-					// Give time for data to update
-					setTimeout(resolve, 100)
-				})
-				if (tryScroll()) return
+			// Message not in current window - query local collection directly to find its position
+			// This works because Electric SQL syncs all messages locally
+			const allMessages = messageCollection.toArray
+				.filter((m) => m.channelId === (channelId as ChannelId))
+				.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+			const messageIndex = allMessages.findIndex((m) => m.id === (messageId as MessageId))
+
+			if (messageIndex === -1) {
+				console.warn(`Message ${messageId} not found in local collection`)
+				return
 			}
+
+			// Calculate window needed to include this message (with buffer for date headers)
+			const windowLimit = messageIndex + PAGE_SIZE + 10
+
+			// Use setWindow to jump directly to the right position
+			const utils = collectionRef.current?.utils
+			if (utils && "setWindow" in utils) {
+				const result = (
+					utils as {
+						setWindow: (params: { offset: number; limit: number }) => true | Promise<void>
+					}
+				).setWindow({
+					offset: 0,
+					limit: windowLimit,
+				})
+
+				// Wait for window expansion if it returns a promise
+				if (result !== true) {
+					await result
+				}
+			}
+
+			// Now the message should be in messageRows - scroll to it
+			// Use requestAnimationFrame to ensure React has re-rendered with new data
+			requestAnimationFrame(() => {
+				tryScroll()
+			})
 		},
 	}))
 
@@ -172,6 +205,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		fetchNextPage,
 		hasNextPage,
 		isLoading,
+		collection,
 	} = useLiveInfiniteQuery(messagesInfiniteQuery, {
 		pageSize: 30,
 		getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
@@ -180,6 +214,8 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	// Keep refs updated for scrollToMessage
 	hasNextPageRef.current = hasNextPage
 	fetchNextPageRef.current = fetchNextPage
+	const collectionRef = useRef(collection)
+	collectionRef.current = collection
 
 	const messages = (data || []) as MessageWithPinned[]
 	const isLoadingMessages = isLoading
