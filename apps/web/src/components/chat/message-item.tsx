@@ -38,6 +38,7 @@ interface MessageItemProps {
 	isGroupEnd?: boolean
 	isFirstNewMessage?: boolean
 	isPinned?: boolean
+	isHighlighted?: boolean
 	onHoverChange?: (messageId: string | null, ref: HTMLDivElement | null) => void
 }
 
@@ -47,6 +48,7 @@ export const MessageItem = memo(function MessageItem({
 	isGroupEnd = false,
 	isFirstNewMessage = false,
 	isPinned = false,
+	isHighlighted = false,
 	onHoverChange,
 }: MessageItemProps) {
 	const { addReaction } = useChat()
@@ -97,6 +99,7 @@ export const MessageItem = memo(function MessageItem({
 				isPinned
 					? "rounded-l-none border-warning border-l-4 bg-warning/10 pl-2 shadow-sm hover:bg-warning/15"
 					: "",
+				isHighlighted && "bg-accent/20 transition-colors duration-300",
 			)}
 			data-id={message.id}
 		>

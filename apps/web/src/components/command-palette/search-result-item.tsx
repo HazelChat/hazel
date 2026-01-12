@@ -5,6 +5,7 @@ import IconHashtag from "~/components/icons/icon-hashtag"
 import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { Avatar } from "~/components/ui/avatar"
 import { cn } from "~/lib/utils"
+import { MarkdownText } from "./markdown-text"
 
 interface SearchResultItemProps {
 	message: typeof Message.Model.Type
@@ -14,43 +15,6 @@ interface SearchResultItemProps {
 	searchQuery?: string
 	isSelected?: boolean
 	onSelect: () => void
-}
-
-/**
- * Highlight search query matches in text
- */
-function highlightMatches(text: string, query: string): React.ReactNode {
-	if (!query.trim()) return text
-
-	const parts: React.ReactNode[] = []
-	const loweredText = text.toLowerCase()
-	const loweredQuery = query.toLowerCase()
-	let lastIndex = 0
-	let index = loweredText.indexOf(loweredQuery)
-
-	while (index !== -1) {
-		// Add text before match
-		if (index > lastIndex) {
-			parts.push(text.slice(lastIndex, index))
-		}
-
-		// Add highlighted match
-		parts.push(
-			<mark key={index} className="bg-warning/30 text-inherit">
-				{text.slice(index, index + query.length)}
-			</mark>,
-		)
-
-		lastIndex = index + query.length
-		index = loweredText.indexOf(loweredQuery, lastIndex)
-	}
-
-	// Add remaining text
-	if (lastIndex < text.length) {
-		parts.push(text.slice(lastIndex))
-	}
-
-	return parts.length > 0 ? parts : text
 }
 
 /**
@@ -83,7 +47,6 @@ export function SearchResultItem({
 	const ref = useRef<HTMLButtonElement>(null)
 	const authorName = author ? `${author.firstName} ${author.lastName}`.trim() : "Unknown"
 	const truncatedContent = truncateContent(message.content)
-	const highlightedContent = highlightMatches(truncatedContent, searchQuery)
 
 	// Scroll into view when selected via keyboard navigation
 	useEffect(() => {
@@ -133,7 +96,11 @@ export function SearchResultItem({
 				</div>
 
 				{/* Message Content */}
-				<p className="mt-0.5 line-clamp-2 text-muted-fg text-sm">{highlightedContent}</p>
+				<MarkdownText
+					text={truncatedContent}
+					searchQuery={searchQuery}
+					className="mt-0.5 line-clamp-2 text-muted-fg text-sm"
+				/>
 
 				{/* Attachment Indicator */}
 				{attachmentCount > 0 && (

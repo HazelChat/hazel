@@ -12,7 +12,7 @@ import { useChannelSuggestions, useUserSuggestions } from "~/hooks/use-search-qu
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import { HAS_FILTER_VALUES, VALID_FILTER_TYPES, type FilterType, type SearchFilter } from "~/lib/search-filter-parser"
+import { HAS_FILTER_VALUES, type FilterType, type SearchFilter } from "~/lib/search-filter-parser"
 import { decorateSearchFilters, SearchFilterLeaf } from "./search-filter-decorator"
 
 // Filter autocomplete state
@@ -40,6 +40,7 @@ export interface SearchSlateEditorProps {
 	onFilterSelect?: (filter: SearchFilter) => void
 	onArrowUp?: () => void
 	onArrowDown?: () => void
+	onBackspaceAtStart?: () => void
 	placeholder?: string
 	className?: string
 }
@@ -53,7 +54,20 @@ export interface SearchSlateEditorRef {
  * Single-line Slate editor for search with filter syntax highlighting and autocomplete
  */
 export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEditorProps>(
-	({ value, onChange, onSubmit, onFilterSelect, onArrowUp, onArrowDown, placeholder, className }, ref) => {
+	(
+		{
+			value,
+			onChange,
+			onSubmit,
+			onFilterSelect,
+			onArrowUp,
+			onArrowDown,
+			onBackspaceAtStart,
+			placeholder,
+			className,
+		},
+		ref,
+	) => {
 		const { organizationId } = useOrganization()
 		const { user } = useAuth()
 		const editorRef = useRef<ReturnType<typeof createEditor> | null>(null)
@@ -251,6 +265,19 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 					}
 				}
 
+				// Handle Backspace at start of input to delete last filter
+				if (event.key === "Backspace" && !autocomplete.isOpen) {
+					const { selection } = editor
+					if (selection && Range.isCollapsed(selection)) {
+						const [start] = Range.edges(selection)
+						// Check if cursor is at the very beginning (offset 0)
+						if (start.offset === 0) {
+							onBackspaceAtStart?.()
+							return
+						}
+					}
+				}
+
 				// Forward arrow keys to parent for result navigation (when autocomplete is closed)
 				if (!autocomplete.isOpen) {
 					if (event.key === "ArrowDown") {
@@ -271,7 +298,16 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 					onSubmit?.()
 				}
 			},
-			[autocomplete, currentSuggestions, selectOption, onSubmit, onArrowUp, onArrowDown],
+			[
+				autocomplete,
+				currentSuggestions,
+				selectOption,
+				onSubmit,
+				onArrowUp,
+				onArrowDown,
+				onBackspaceAtStart,
+				editor,
+			],
 		)
 
 		// Decorate function for syntax highlighting
@@ -317,35 +353,35 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 						</div>
 						<div className="p-1">
 							{currentSuggestions.map((option, index) => (
-							<button
-								key={option.id}
-								type="button"
-								onMouseDown={(e) => {
-									e.preventDefault() // Prevent focus loss
-									selectOption(option)
-								}}
-								onMouseEnter={() =>
-									setAutocomplete((prev) => ({ ...prev, activeIndex: index }))
-								}
-								className={cn(
-									"flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm outline-none transition-colors",
-									index === autocomplete.activeIndex
-										? "bg-primary/10 text-primary"
-										: "hover:bg-muted",
-								)}
-							>
-								{option.type === "user" && (
-									<Avatar
-										size="xs"
-										src={(option as any).avatarUrl ?? undefined}
-										alt={option.label}
-									/>
-								)}
-								{option.type === "channel" && (
-									<IconHashtag className="size-4 text-muted-fg" />
-								)}
-								<span className="truncate font-medium">{option.label}</span>
-							</button>
+								<button
+									key={option.id}
+									type="button"
+									onMouseDown={(e) => {
+										e.preventDefault() // Prevent focus loss
+										selectOption(option)
+									}}
+									onMouseEnter={() =>
+										setAutocomplete((prev) => ({ ...prev, activeIndex: index }))
+									}
+									className={cn(
+										"flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm outline-none transition-colors",
+										index === autocomplete.activeIndex
+											? "bg-primary/10 text-primary"
+											: "hover:bg-muted",
+									)}
+								>
+									{option.type === "user" && (
+										<Avatar
+											size="xs"
+											src={(option as any).avatarUrl ?? undefined}
+											alt={option.label}
+										/>
+									)}
+									{option.type === "channel" && (
+										<IconHashtag className="size-4 text-muted-fg" />
+									)}
+									<span className="truncate font-medium">{option.label}</span>
+								</button>
 							))}
 						</div>
 					</div>

@@ -2,6 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { type } from "arktype"
 import { useCallback, useEffect, useRef } from "react"
 import { clearChannelNotificationsMutation } from "~/atoms/channel-member-atoms"
 import { usePanelWidth } from "~/atoms/panel-atoms"
@@ -15,8 +16,13 @@ import { useChat } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
 import { ChatProvider } from "~/providers/chat-provider"
 
+const searchSchema = type({
+	"messageId?": "string",
+})
+
 export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	component: RouteComponent,
+	validateSearch: searchSchema,
 	loader: async ({ params }) => {
 		const channelId = params.id as ChannelId
 

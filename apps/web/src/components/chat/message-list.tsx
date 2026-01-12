@@ -22,6 +22,7 @@ interface MessageVirtualListProps {
 	hasNextPage: boolean
 	fetchNextPage: () => void
 	onViewableItemsChanged?: (info: { viewableItems: ViewToken<MessageRow>[] }) => void
+	highlightedMessageId: string | null
 }
 
 const MessageVirtualList = memo(
@@ -32,6 +33,7 @@ const MessageVirtualList = memo(
 		hasNextPage,
 		fetchNextPage,
 		onViewableItemsChanged,
+		highlightedMessageId,
 		ref,
 	}: MessageVirtualListProps & { ref: React.Ref<LegendListRef> }) => {
 		return (
@@ -71,6 +73,7 @@ const MessageVirtualList = memo(
 							isGroupEnd={props.item.isGroupEnd}
 							isFirstNewMessage={props.item.isFirstNewMessage}
 							isPinned={props.item.isPinned}
+							isHighlighted={highlightedMessageId === props.item.message.id}
 							onHoverChange={onHoverChange}
 						/>
 					)
@@ -85,6 +88,7 @@ MessageVirtualList.displayName = "MessageVirtualList"
 
 export interface MessageListRef {
 	scrollToBottom: () => void
+	scrollToMessage: (messageId: string) => Promise<void>
 }
 
 export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
@@ -93,6 +97,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 
 	const legendListRef = useRef<LegendListRef>(null)
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
+	const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
 	const targetRef = useRef<HTMLDivElement | null>(null)
 	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
 	const isToolbarHoveredRef = useRef(false)
@@ -117,9 +122,47 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		[onVisibleMessagesChange],
 	)
 
+	// We need messageRows for scrollToMessage, but it's defined later
+	// Use a ref to hold the latest messageRows value
+	const messageRowsRef = useRef<MessageRow[]>([])
+	const hasNextPageRef = useRef(false)
+	const fetchNextPageRef = useRef<() => void>(() => {})
+
 	useImperativeHandle(ref, () => ({
 		scrollToBottom: () => {
 			legendListRef.current?.scrollToEnd({ animated: true })
+		},
+		scrollToMessage: async (messageId: string) => {
+			// Helper to find and scroll to message
+			const tryScroll = () => {
+				const index = messageRowsRef.current.findIndex(
+					(row) => row.type === "row" && row.id === messageId,
+				)
+				if (index !== -1) {
+					legendListRef.current?.scrollToIndex({
+						index,
+						animated: true,
+						viewPosition: 0.5, // Center in view
+					})
+					setHighlightedMessageId(messageId)
+					setTimeout(() => setHighlightedMessageId(null), 2000)
+					return true
+				}
+				return false
+			}
+
+			// Try to scroll immediately
+			if (tryScroll()) return
+
+			// Message not in current data - fetch more pages until found
+			while (hasNextPageRef.current) {
+				await new Promise<void>((resolve) => {
+					fetchNextPageRef.current()
+					// Give time for data to update
+					setTimeout(resolve, 100)
+				})
+				if (tryScroll()) return
+			}
 		},
 	}))
 
@@ -133,6 +176,10 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		pageSize: 30,
 		getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
 	})
+
+	// Keep refs updated for scrollToMessage
+	hasNextPageRef.current = hasNextPage
+	fetchNextPageRef.current = fetchNextPage
 
 	const messages = (data || []) as MessageWithPinned[]
 	const isLoadingMessages = isLoading
@@ -227,6 +274,9 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		return { messageRows: rows, stickyIndices: sticky }
 	}, [processedMessages])
 
+	// Keep ref updated for scrollToMessage
+	messageRowsRef.current = messageRows
+
 	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
 	if (messages.length === 0) {
 		return (
@@ -263,6 +313,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 				hasNextPage={hasNextPage}
 				fetchNextPage={fetchNextPage}
 				onViewableItemsChanged={handleViewableItemsChanged}
+				highlightedMessageId={highlightedMessageId}
 			/>
 
 			{(hoveredMessageId || isToolbarMenuOpen) &&

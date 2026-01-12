@@ -104,13 +104,22 @@ export function SearchView({ onClose }: SearchViewProps) {
 		[setSearchState],
 	)
 
-	// Handle arrow key navigation for search results
+	// Handle backspace at start of input to remove last filter
+	const handleBackspaceAtStart = useCallback(() => {
+		if (searchState.filters.length > 0) {
+			removeFilter(searchState.filters.length - 1)
+		}
+	}, [searchState.filters.length, removeFilter])
+
+	// Handle arrow key navigation for search results OR recent searches
 	const handleArrowDown = useCallback(() => {
+		const maxIndex = hasQuery ? results.length - 1 : recentSearches.length - 1
+		if (maxIndex < 0) return
 		setSearchState((prev) => ({
 			...prev,
-			selectedIndex: Math.min(prev.selectedIndex + 1, results.length - 1),
+			selectedIndex: Math.min(prev.selectedIndex + 1, maxIndex),
 		}))
-	}, [results.length, setSearchState])
+	}, [hasQuery, results.length, recentSearches.length, setSearchState])
 
 	const handleArrowUp = useCallback(() => {
 		setSearchState((prev) => ({
@@ -119,13 +128,20 @@ export function SearchView({ onClose }: SearchViewProps) {
 		}))
 	}, [setSearchState])
 
-	// Handle result navigation and selection
+	// Handle result navigation and selection (or load recent search)
 	const handleSubmit = useCallback(() => {
-		const selectedResult = results[searchState.selectedIndex]
-		if (selectedResult) {
-			navigateToResult(selectedResult)
+		if (hasQuery) {
+			const selectedResult = results[searchState.selectedIndex]
+			if (selectedResult) {
+				navigateToResult(selectedResult)
+			}
+		} else if (recentSearches.length > 0) {
+			const selectedRecent = recentSearches[searchState.selectedIndex]
+			if (selectedRecent) {
+				loadRecentSearch(selectedRecent)
+			}
 		}
-	}, [results, searchState.selectedIndex])
+	}, [hasQuery, results, recentSearches, searchState.selectedIndex])
 
 	// Navigate to a search result
 	const navigateToResult = useCallback(
@@ -148,23 +164,14 @@ export function SearchView({ onClose }: SearchViewProps) {
 				})
 			}
 
-			// Navigate to channel
+			// Navigate to channel with messageId search param for deep linking
 			navigate({
 				to: "/$orgSlug/chat/$id",
 				params: { orgSlug: orgSlug!, id: result.message.channelId },
+				search: { messageId: result.message.id },
 			})
 
 			onClose()
-
-			// Scroll to message after navigation
-			setTimeout(() => {
-				const element = document.getElementById(`message-${result.message.id}`)
-				if (element) {
-					element.scrollIntoView({ behavior: "smooth", block: "center" })
-					element.classList.add("bg-secondary/30")
-					setTimeout(() => element.classList.remove("bg-secondary/30"), 2000)
-				}
-			}, 100)
 		},
 		[hasQuery, searchState.query, searchState.filters, setRecentSearches, navigate, orgSlug, onClose],
 	)
@@ -217,6 +224,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 					onFilterSelect={handleFilterSelect}
 					onArrowUp={handleArrowUp}
 					onArrowDown={handleArrowDown}
+					onBackspaceAtStart={handleBackspaceAtStart}
 					placeholder={
 						searchState.filters.length > 0
 							? "Add more filters or search..."
@@ -270,6 +278,7 @@ export function SearchView({ onClose }: SearchViewProps) {
 				{!hasQuery && recentSearches.length > 0 && (
 					<RecentSearchesList
 						searches={recentSearches}
+						selectedIndex={searchState.selectedIndex}
 						onSelect={loadRecentSearch}
 						onClear={() => setRecentSearches([])}
 					/>
@@ -314,10 +323,12 @@ export function SearchView({ onClose }: SearchViewProps) {
  */
 function RecentSearchesList({
 	searches,
+	selectedIndex,
 	onSelect,
 	onClear,
 }: {
 	searches: readonly RecentSearch[]
+	selectedIndex: number
 	onSelect: (search: RecentSearch) => void
 	onClear: () => void
 }) {
@@ -330,32 +341,65 @@ function RecentSearchesList({
 				</Button>
 			</div>
 			{searches.map((search, index) => (
-				<button
+				<RecentSearchItem
 					key={index}
-					type="button"
-					onClick={() => onSelect(search)}
-					className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary"
-				>
-					<span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-						{/* Render filters as badges */}
-						{search.filters.map((f, i) => (
-							<span
-								key={i}
-								className="inline-flex items-center gap-0.5 rounded-md bg-secondary px-1.5 py-0.5 text-xs ring-1 ring-inset ring-border"
-							>
-								<span className="text-muted-fg">{f.type}:</span>
-								<span className="font-medium text-fg">{f.displayValue}</span>
-							</span>
-						))}
-						{/* Render text query */}
-						{search.query && <span className="truncate text-fg">{search.query}</span>}
-					</span>
-					<span className="shrink-0 text-muted-fg text-xs">
-						{formatDistanceToNow(new Date(search.timestamp), { addSuffix: true })}
-					</span>
-				</button>
+					search={search}
+					isSelected={index === selectedIndex}
+					onSelect={() => onSelect(search)}
+				/>
 			))}
 		</div>
+	)
+}
+
+/**
+ * Individual recent search item with scroll-into-view support
+ */
+function RecentSearchItem({
+	search,
+	isSelected,
+	onSelect,
+}: {
+	search: RecentSearch
+	isSelected: boolean
+	onSelect: () => void
+}) {
+	const ref = useRef<HTMLButtonElement>(null)
+
+	useEffect(() => {
+		if (isSelected && ref.current) {
+			ref.current.scrollIntoView({ block: "nearest" })
+		}
+	}, [isSelected])
+
+	return (
+		<button
+			ref={ref}
+			type="button"
+			onClick={onSelect}
+			className={cn(
+				"flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary",
+				isSelected && "bg-secondary",
+			)}
+		>
+			<span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+				{/* Render filters as badges */}
+				{search.filters.map((f, i) => (
+					<span
+						key={i}
+						className="inline-flex items-center gap-0.5 rounded-md bg-secondary px-1.5 py-0.5 text-xs ring-1 ring-inset ring-border"
+					>
+						<span className="text-muted-fg">{f.type}:</span>
+						<span className="font-medium text-fg">{f.displayValue}</span>
+					</span>
+				))}
+				{/* Render text query */}
+				{search.query && <span className="truncate text-fg">{search.query}</span>}
+			</span>
+			<span className="shrink-0 text-muted-fg text-xs">
+				{formatDistanceToNow(new Date(search.timestamp), { addSuffix: true })}
+			</span>
+		</button>
 	)
 }
 
