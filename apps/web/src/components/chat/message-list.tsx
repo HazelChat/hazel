@@ -94,7 +94,8 @@ export interface MessageListRef {
 
 export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	const { messagesInfiniteQuery } = Route.useLoaderData()
-	const { id: channelId } = Route.useParams()
+	const { id } = Route.useParams()
+	const channelId = id as ChannelId
 
 	const legendListRef = useRef<LegendListRef>(null)
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
@@ -107,7 +108,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 
 	// Hook for clearing notifications when messages become visible
 	const { onVisibleMessagesChange } = useVisibleMessageNotificationCleaner({
-		channelId: channelId as ChannelId,
+		channelId,
 	})
 
 	// Handle viewable items changes from LegendList
@@ -126,8 +127,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 	// We need messageRows for scrollToMessage, but it's defined later
 	// Use a ref to hold the latest messageRows value
 	const messageRowsRef = useRef<MessageRow[]>([])
-	const hasNextPageRef = useRef(false)
-	const fetchNextPageRef = useRef<() => void>(() => {})
+	const collectionRef = useRef<{ utils?: { setWindow?: (params: { offset: number; limit: number }) => true | Promise<void> } }>({})
 
 	useImperativeHandle(ref, () => ({
 		scrollToBottom: () => {
@@ -160,7 +160,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			// Message not in current window - query local collection directly to find its position
 			// This works because Electric SQL syncs all messages locally
 			const allMessages = messageCollection.toArray
-				.filter((m) => m.channelId === (channelId as ChannelId))
+				.filter((m) => m.channelId === channelId)
 				.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
 			const messageIndex = allMessages.findIndex((m) => m.id === (messageId as MessageId))
@@ -174,16 +174,9 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			const windowLimit = messageIndex + PAGE_SIZE + 10
 
 			// Use setWindow to jump directly to the right position
-			const utils = collectionRef.current?.utils
-			if (utils && "setWindow" in utils) {
-				const result = (
-					utils as {
-						setWindow: (params: { offset: number; limit: number }) => true | Promise<void>
-					}
-				).setWindow({
-					offset: 0,
-					limit: windowLimit,
-				})
+			const setWindow = collectionRef.current?.utils?.setWindow
+			if (setWindow) {
+				const result = setWindow({ offset: 0, limit: windowLimit })
 
 				// Wait for window expansion if it returns a promise
 				if (result !== true) {
@@ -199,26 +192,18 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		},
 	}))
 
-	const {
-		data,
-		pages: _pages,
-		fetchNextPage,
-		hasNextPage,
-		isLoading,
-		collection,
-	} = useLiveInfiniteQuery(messagesInfiniteQuery, {
-		pageSize: 30,
-		getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
-	})
+	const { data, fetchNextPage, hasNextPage, isLoading, collection } = useLiveInfiniteQuery(
+		messagesInfiniteQuery,
+		{
+			pageSize: 30,
+			getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
+		},
+	)
 
-	// Keep refs updated for scrollToMessage
-	hasNextPageRef.current = hasNextPage
-	fetchNextPageRef.current = fetchNextPage
-	const collectionRef = useRef(collection)
-	collectionRef.current = collection
+	// Keep ref updated for scrollToMessage
+	collectionRef.current = collection as typeof collectionRef.current
 
 	const messages = (data || []) as MessageWithPinned[]
-	const isLoadingMessages = isLoading
 
 	const hoveredMessage = useMemo(
 		() => messages.find((m) => m.id === hoveredMessageId) || null,
@@ -335,7 +320,7 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			style={{
 				overflowAnchor: "auto",
 				scrollBehavior: "auto",
-				opacity: isLoadingMessages && messages.length > 0 ? 0.7 : 1,
+				opacity: isLoading && messages.length > 0 ? 0.7 : 1,
 			}}
 		>
 			{hoveredMessageId && (
