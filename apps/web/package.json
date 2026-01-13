@@ -54,6 +54,7 @@
 		"@tauri-apps/plugin-opener": "~2",
 		"@tauri-apps/plugin-process": "^2.3.1",
 		"@tauri-apps/plugin-updater": "~2",
+		"@tauri-apps/plugin-window-state": "~2",
 		"@untitledui/file-icons": "^0.0.9",
 		"@workos-inc/authkit-js": "^0.18.0",
 		"@workos-inc/widgets": "^1.7.2",
