@@ -7,9 +7,24 @@ import * as Effect from "effect/Effect"
 
 export const CustomFetchLive = FetchHttpClient.layer.pipe(
 	Layer.provideMerge(
-		Layer.succeed(FetchHttpClient.Fetch, (input, init) =>
-			fetch(input, { ...init, credentials: "include" }),
-		),
+		Layer.succeed(FetchHttpClient.Fetch, (input, init) => {
+			// Check for Bearer token (Tauri desktop apps)
+			const token = typeof window !== "undefined" ? localStorage.getItem("hazel_access_token") : null
+
+			if (token) {
+				// Use Bearer token auth for Tauri
+				return fetch(input, {
+					...init,
+					headers: {
+						...init?.headers,
+						Authorization: `Bearer ${token}`,
+					},
+				})
+			}
+
+			// Use cookie auth for web
+			return fetch(input, { ...init, credentials: "include" })
+		}),
 	),
 )
 

@@ -96,7 +96,7 @@ const RpcRouteHttp = RpcServer.layerHttpRouter({
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute, RpcRouteHttp).pipe(
 	Layer.provide(
 		HttpLayerRouter.cors({
-			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh"],
+			allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh", "tauri://localhost"],
 			allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 			credentials: true,
 		}),

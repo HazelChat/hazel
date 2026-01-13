@@ -32,13 +32,17 @@ export default defineConfig({
 		minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
 		sourcemap: !!process.env.TAURI_ENV_DEBUG,
 		rollupOptions: {
-			// Externalize Tauri plugins for web builds - they're only available in Tauri runtime
-			external: [
-				"@tauri-apps/plugin-deep-link",
-				"@tauri-apps/plugin-opener",
-				"@tauri-apps/plugin-updater",
-				"@tauri-apps/plugin-process",
-			],
+			// Only externalize Tauri plugins for web builds (not Tauri builds)
+			// Tauri builds have TAURI_ENV_PLATFORM set - Tauri provides these at runtime
+			external: process.env.TAURI_ENV_PLATFORM
+				? [] // Tauri build: don't externalize, Tauri provides them
+				: [
+						// Web build: externalize, they don't exist
+						"@tauri-apps/plugin-deep-link",
+						"@tauri-apps/plugin-opener",
+						"@tauri-apps/plugin-updater",
+						"@tauri-apps/plugin-process",
+					],
 		},
 	},
 	plugins: [

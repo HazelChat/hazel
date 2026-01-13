@@ -21,11 +21,22 @@ import { applyWhereToElectricUrl } from "./tables/where-clause-builder"
 // =============================================================================
 
 /**
+ * Check if an origin is allowed for user flow
+ * - Configured ALLOWED_ORIGIN (e.g., https://app.hazel.chat or http://localhost:3000)
+ * - tauri://localhost for Tauri desktop apps
+ */
+function isAllowedOrigin(origin: string | null, allowedOrigin: string): boolean {
+	if (!origin) return false
+	return origin === allowedOrigin || origin === "tauri://localhost"
+}
+
+/**
  * Get CORS headers for user flow response
  * Note: When using credentials, we must specify exact origin instead of "*"
  */
 function getUserCorsHeaders(allowedOrigin: string, requestOrigin: string | null): Record<string, string> {
-	const origin = requestOrigin === allowedOrigin ? allowedOrigin : "null"
+	// Echo back the origin if it's allowed, otherwise return "null"
+	const origin = isAllowedOrigin(requestOrigin, allowedOrigin) ? requestOrigin! : "null"
 	return {
 		"Access-Control-Allow-Origin": origin,
 		"Access-Control-Allow-Methods": "GET, DELETE, OPTIONS",
