@@ -1,7 +1,7 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { reactScanEnabledAtom } from "~/atoms/react-scan-atoms"
 import { IconServers } from "~/components/icons/icon-servers"
 import { Button } from "~/components/ui/button"
@@ -19,10 +19,7 @@ import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { useOrganization } from "~/hooks/use-organization"
-import { useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
-import { isTauri } from "~/lib/tauri"
-import { disableAutostart, enableAutostart, isAutostartEnabled } from "~/lib/tauri-autostart"
 import { toastExit } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
@@ -40,30 +37,11 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/debug")({
 function DebugSettings() {
 	const [showMockDataDialog, setShowMockDataDialog] = useState(false)
 	const [isGeneratingMockData, setIsGeneratingMockData] = useState(false)
-	const [autostartEnabled, setAutostartEnabled] = useState<boolean | null>(null)
 
 	const { organizationId } = useOrganization()
 
-	const { user } = useAuth()
-
 	const reactScanEnabled = useAtomValue(reactScanEnabledAtom)
 	const setReactScanEnabled = useAtomSet(reactScanEnabledAtom)
-
-	// Load autostart state on mount (only in Tauri)
-	useEffect(() => {
-		if (isTauri()) {
-			isAutostartEnabled().then(setAutostartEnabled)
-		}
-	}, [])
-
-	const handleAutostartToggle = async (isSelected: boolean) => {
-		if (isSelected) {
-			await enableAutostart()
-		} else {
-			await disableAutostart()
-		}
-		setAutostartEnabled(isSelected)
-	}
 
 	const generateMockData = useAtomSet(HazelApiClient.mutation("mockData", "generate"), {
 		mode: "promiseExit",
@@ -149,37 +127,6 @@ function DebugSettings() {
 
 					<hr className="h-px w-full border-none bg-border" />
 				</div>
-
-				{/* Autostart Section (Desktop only) */}
-				{isTauri() && (
-					<div className="flex flex-col gap-5">
-						<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
-							<SectionLabel.Root
-								size="sm"
-								title="Launch at Startup"
-								description="Automatically start the app when you log in."
-							/>
-
-							<div className="flex flex-col gap-4">
-								<div className="rounded-lg border border-border bg-secondary/50 p-4">
-									<Switch
-										isSelected={autostartEnabled ?? false}
-										isDisabled={autostartEnabled === null}
-										onChange={handleAutostartToggle}
-									>
-										<SwitchLabel>Open at login</SwitchLabel>
-									</Switch>
-									<p className="mt-3 text-muted-fg text-sm">
-										When enabled, the app will automatically launch when you log in to
-										your computer.
-									</p>
-								</div>
-							</div>
-						</div>
-
-						<hr className="h-px w-full border-none bg-border" />
-					</div>
-				)}
 
 				{/* Mock Data Section */}
 				<div className="flex flex-col gap-5">

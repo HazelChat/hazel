@@ -29,14 +29,14 @@ const INTERNAL_BOTS = {
 	linear: {
 		name: "Linear",
 		description: "Linear integration bot for creating issues and unfurling URLs",
-		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
+		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		allowedIntegrations: ["linear"] as const,
 	},
 	// Future bots can be added here:
 	// github: {
 	//   name: "GitHub",
 	//   description: "GitHub integration bot",
-	//   avatarUrl: "https://cdn.brandfetch.io/github.com/w/64/h/64/theme/dark/icon",
+	//   avatarUrl: "https://cdn.brandfetch.io/github.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 	//   allowedIntegrations: ["github"] as const,
 	// },
 } as const

@@ -23,22 +23,22 @@ export interface IntegrationBotConfig {
 export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBotConfig> = {
 	linear: {
 		name: "Linear",
-		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon",
+		avatarUrl: "https://cdn.brandfetch.io/linear.app/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-linear",
 	},
 	github: {
 		name: "GitHub",
-		avatarUrl: "https://cdn.brandfetch.io/github.com/w/64/h/64/theme/dark/icon",
+		avatarUrl: "https://cdn.brandfetch.io/github.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-github",
 	},
 	figma: {
 		name: "Figma",
-		avatarUrl: "https://cdn.brandfetch.io/figma.com/w/64/h/64/theme/dark/icon",
+		avatarUrl: "https://cdn.brandfetch.io/figma.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-figma",
 	},
 	notion: {
 		name: "Notion",
-		avatarUrl: "https://cdn.brandfetch.io/notion.so/w/64/h/64/theme/dark/icon",
+		avatarUrl: "https://cdn.brandfetch.io/notion.so/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-notion",
 	},
 }
@@ -55,12 +55,14 @@ export type WebhookProvider = "openstatus" | "railway"
 export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> = {
 	openstatus: {
 		name: "OpenStatus",
-		avatarUrl: "https://cdn.brandfetch.io/openstatus.dev/w/64/h/64/theme/dark/icon",
+		avatarUrl:
+			"https://cdn.brandfetch.io/openstatus.dev/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-openstatus",
 	},
 	railway: {
 		name: "Railway",
-		avatarUrl: "https://cdn.brandfetch.io/railway.com/w/64/h/64/theme/dark/icon",
+		avatarUrl:
+			"https://cdn.brandfetch.io/railway.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-railway",
 	},
 }

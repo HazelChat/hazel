@@ -27,7 +27,7 @@ export const getBrandfetchIcon = (
 	options: { theme?: "light" | "dark"; size?: number; type?: "symbol" | "icon" } = {},
 ): string => {
 	const { theme = "dark", size = 512, type = "symbol" } = options
-	return `https://cdn.brandfetch.io/${domain}/w/${size}/h/${size}/theme/${theme}/${type}`
+	return `https://cdn.brandfetch.io/${domain}/w/${size}/h/${size}/theme/${theme}/${type}?token=1id0IQ-4i8Z46-n-DfQ`
 }
 
 export const integrations: Integration[] = [
