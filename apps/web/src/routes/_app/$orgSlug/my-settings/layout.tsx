@@ -1,20 +1,24 @@
 import { createFileRoute, Outlet, useMatchRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { Tab, TabList, Tabs } from "~/components/ui/tabs"
+import { isTauri } from "~/lib/tauri"
 
 export const Route = createFileRoute("/_app/$orgSlug/my-settings")({
 	component: RouteComponent,
 })
 
-const tabs = [
+const allTabs = [
 	{ id: "appearance", label: "Appearance", to: "/$orgSlug/my-settings" as const },
 	{ id: "profile", label: "Profile", to: "/$orgSlug/my-settings/profile" as const },
 	{ id: "notifications", label: "Notifications", to: "/$orgSlug/my-settings/notifications" as const },
+	{ id: "desktop", label: "Desktop", to: "/$orgSlug/my-settings/desktop" as const, desktopOnly: true },
 ]
 
 function RouteComponent() {
 	const matchRoute = useMatchRoute()
 	const navigate = useNavigate()
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
+
+	const tabs = allTabs.filter((tab) => !("desktopOnly" in tab) || isTauri())
 
 	const selectedTab =
 		[...tabs].find((tab) =>

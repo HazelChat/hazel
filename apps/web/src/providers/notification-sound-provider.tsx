@@ -19,6 +19,12 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 	const quietHoursStart = useAtomValue(quietHoursStartAtom)
 	const quietHoursEnd = useAtomValue(quietHoursEndAtom)
 	const streamRef = useRef<ShapeStream | null>(null)
+	const playSoundRef = useRef(playSound)
+
+	// Keep playSound ref updated without triggering main effect re-runs
+	useEffect(() => {
+		playSoundRef.current = playSound
+	}, [playSound])
 
 	const { data: member } = useLiveQuery(
 		(q) =>
@@ -100,7 +106,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		const unsubscribe = stream.subscribe((messages) => {
 			for (const message of messages) {
 				if (isChangeMessage(message) && message.headers.operation === "insert") {
-					playSound()
+					playSoundRef.current()
 					sendNativeNotification("Hazel", "You have a new notification")
 					break
 				}
@@ -111,15 +117,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 			unsubscribe()
 			streamRef.current = null
 		}
-	}, [
-		isPrimed,
-		organizationMemberId,
-		settings.enabled,
-		doNotDisturb,
-		quietHoursStart,
-		quietHoursEnd,
-		playSound,
-	])
+	}, [isPrimed, organizationMemberId, settings.enabled, doNotDisturb, quietHoursStart, quietHoursEnd])
 
 	return <>{children}</>
 }

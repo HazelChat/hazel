@@ -34,6 +34,7 @@ import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgS
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$orgSlug/my-settings/profile'
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
+import { Route as AppOrgSlugMySettingsDesktopRouteImport } from './routes/_app/$orgSlug/my-settings/desktop'
 import { Route as AppOrgSlugChatIdRouteImport } from './routes/_app/$orgSlug/chat/$id'
 import { Route as AppOrgSlugSettingsIntegrationsIndexRouteImport } from './routes/_app/$orgSlug/settings/integrations/index'
 import { Route as AppOrgSlugChatIdIndexRouteImport } from './routes/_app/$orgSlug/chat/$id/index'
@@ -176,6 +177,12 @@ const AppOrgSlugMySettingsNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AppOrgSlugMySettingsLayoutRoute,
   } as any)
+const AppOrgSlugMySettingsDesktopRoute =
+  AppOrgSlugMySettingsDesktopRouteImport.update({
+    id: '/desktop',
+    path: '/desktop',
+    getParentRoute: () => AppOrgSlugMySettingsLayoutRoute,
+  } as any)
 const AppOrgSlugChatIdRoute = AppOrgSlugChatIdRouteImport.update({
   id: '/chat/$id',
   path: '/chat/$id',
@@ -252,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/select-organization': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds': typeof DevEmbedsIndexRoute
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
+  '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
@@ -284,6 +292,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AppOnboardingIndexRoute
   '/select-organization': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds': typeof DevEmbedsIndexRoute
+  '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
@@ -321,6 +330,7 @@ export interface FileRoutesById {
   '/_app/select-organization/': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds/': typeof DevEmbedsIndexRoute
   '/_app/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
+  '/_app/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/_app/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/select-organization'
     | '/dev/embeds'
     | '/$orgSlug/chat/$id'
+    | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/select-organization'
     | '/dev/embeds'
+    | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
@@ -427,6 +439,7 @@ export interface FileRouteTypes {
     | '/_app/select-organization/'
     | '/dev/embeds/'
     | '/_app/$orgSlug/chat/$id'
+    | '/_app/$orgSlug/my-settings/desktop'
     | '/_app/$orgSlug/my-settings/notifications'
     | '/_app/$orgSlug/my-settings/profile'
     | '/_app/$orgSlug/profile/$userId'
@@ -635,6 +648,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugMySettingsNotificationsRouteImport
       parentRoute: typeof AppOrgSlugMySettingsLayoutRoute
     }
+    '/_app/$orgSlug/my-settings/desktop': {
+      id: '/_app/$orgSlug/my-settings/desktop'
+      path: '/desktop'
+      fullPath: '/$orgSlug/my-settings/desktop'
+      preLoaderRoute: typeof AppOrgSlugMySettingsDesktopRouteImport
+      parentRoute: typeof AppOrgSlugMySettingsLayoutRoute
+    }
     '/_app/$orgSlug/chat/$id': {
       id: '/_app/$orgSlug/chat/$id'
       path: '/chat/$id'
@@ -709,6 +729,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppOrgSlugMySettingsLayoutRouteChildren {
+  AppOrgSlugMySettingsDesktopRoute: typeof AppOrgSlugMySettingsDesktopRoute
   AppOrgSlugMySettingsNotificationsRoute: typeof AppOrgSlugMySettingsNotificationsRoute
   AppOrgSlugMySettingsProfileRoute: typeof AppOrgSlugMySettingsProfileRoute
   AppOrgSlugMySettingsIndexRoute: typeof AppOrgSlugMySettingsIndexRoute
@@ -716,6 +737,7 @@ interface AppOrgSlugMySettingsLayoutRouteChildren {
 
 const AppOrgSlugMySettingsLayoutRouteChildren: AppOrgSlugMySettingsLayoutRouteChildren =
   {
+    AppOrgSlugMySettingsDesktopRoute: AppOrgSlugMySettingsDesktopRoute,
     AppOrgSlugMySettingsNotificationsRoute:
       AppOrgSlugMySettingsNotificationsRoute,
     AppOrgSlugMySettingsProfileRoute: AppOrgSlugMySettingsProfileRoute,

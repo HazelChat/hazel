@@ -1,14 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
 import type { Color } from "react-aria-components"
 import { ColorSwatch, parseColor, Radio, RadioGroup } from "react-aria-components"
 import { Dark, Light, System } from "~/components/modals/appearances"
 import { type Theme, useTheme } from "~/components/theme-provider"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
-import { Switch, SwitchLabel } from "~/components/ui/switch"
-import { isTauri } from "~/lib/tauri"
-import { disableAutostart, enableAutostart, isAutostartEnabled } from "~/lib/tauri-autostart"
 import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/my-settings/")({
@@ -16,24 +12,6 @@ export const Route = createFileRoute("/_app/$orgSlug/my-settings/")({
 })
 
 function AppearanceSettings() {
-	const [autostartEnabled, setAutostartEnabled] = useState<boolean | null>(null)
-
-	// Load autostart state on mount (only in Tauri)
-	useEffect(() => {
-		if (isTauri()) {
-			isAutostartEnabled().then(setAutostartEnabled)
-		}
-	}, [])
-
-	const handleAutostartToggle = async (isSelected: boolean) => {
-		if (isSelected) {
-			await enableAutostart()
-		} else {
-			await disableAutostart()
-		}
-		setAutostartEnabled(isSelected)
-	}
-
 	const colorSwatches = [
 		{ hex: "#535862", name: "gray" },
 		{ hex: "#099250", name: "green" },
@@ -194,35 +172,6 @@ function AppearanceSettings() {
 						</RadioGroup>
 					</div>
 				</div>
-
-				{/* Autostart Section (Desktop only) */}
-				{isTauri() && (
-					<>
-						<hr className="h-px w-full border-none bg-border" />
-						<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
-							<SectionLabel.Root
-								size="sm"
-								title="Launch at Startup"
-								description="Automatically start the app when you log in."
-							/>
-							<div className="flex flex-col gap-4">
-								<div className="rounded-lg border border-border bg-secondary/50 p-4">
-									<Switch
-										isSelected={autostartEnabled ?? false}
-										isDisabled={autostartEnabled === null}
-										onChange={handleAutostartToggle}
-									>
-										<SwitchLabel>Open at login</SwitchLabel>
-									</Switch>
-									<p className="mt-3 text-muted-fg text-sm">
-										When enabled, the app will automatically launch when you log in to
-										your computer.
-									</p>
-								</div>
-							</div>
-						</div>
-					</>
-				)}
 			</div>
 		</form>
 	)
