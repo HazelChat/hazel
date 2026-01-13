@@ -45,9 +45,9 @@ export const initDeepLinkListener = async (): Promise<void> => {
 	const handleUrl = (url: string) => {
 		try {
 			const parsed = new URL(url)
-			// Handle both hazel://auth/callback and hazel:auth/callback formats
-			const pathname = parsed.pathname.replace(/^\/\//, "/")
-			if (pathname === "/auth/callback") {
+			// hazel://auth/callback parses as host="auth", pathname="/callback"
+			const fullPath = `${parsed.host}${parsed.pathname}`
+			if (fullPath === "auth/callback") {
 				const code = parsed.searchParams.get("code")
 				const state = parsed.searchParams.get("state") || "{}"
 				if (code && deepLinkResolver) {
@@ -115,7 +115,7 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 	const { openUrl } = await import("@tauri-apps/plugin-opener")
 
 	const backendUrl = import.meta.env.VITE_BACKEND_URL
-	const isDev = backendUrl.includes("localhost")
+	const isDev = import.meta.env.DEV
 	const returnTo = options.returnTo || "/"
 
 	console.log("[tauri-auth] Initiating desktop auth flow, isDev:", isDev)
