@@ -9,6 +9,7 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { useAppForm } from "~/hooks/use-app-form"
+import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
 
 const organizationSchema = type({
@@ -24,6 +25,7 @@ interface CreateOrganizationModalProps {
 }
 
 export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganizationModalProps) {
+	const { login } = useAuth()
 	const createOrganization = useAtomSet(createOrganizationMutation, {
 		mode: "promiseExit",
 	})
@@ -58,11 +60,9 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 						form.reset()
 
 						// Redirect to the new organization
-						// WorkOS will handle the organization switch
-						const backendUrl = import.meta.env.VITE_BACKEND_URL
+						// Use login() to handle organization switch - Tauri-aware
 						const returnUrl = `/${result.data.slug}`
-
-						window.location.href = `${backendUrl}/auth/login?organizationId=${result.data.id}&returnTo=${encodeURIComponent(returnUrl)}`
+						login({ organizationId: result.data.id, returnTo: returnUrl })
 
 						return "Server created successfully"
 					},

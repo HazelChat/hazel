@@ -15,12 +15,37 @@
  * - `@hazel/backend/rpc/server` (contains server configuration)
  */
 
+import { Headers } from "@effect/platform"
 import { RpcMiddleware } from "@effect/rpc"
+import { AuthMiddleware } from "@hazel/domain/rpc"
 import { Effect } from "effect"
-import { AuthMiddleware } from "./auth-class"
+
+/**
+ * Get stored access token for Tauri desktop apps
+ * Always try to read from localStorage - if token exists, use it
+ * Web users won't have a token here, so they'll fall back to cookie auth
+ */
+const getAccessToken = (): string | null => {
+	if (typeof window === "undefined") return null
+	return localStorage.getItem("hazel_access_token")
+}
 
 export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
-	Effect.succeed({
-		...request,
+	Effect.gen(function* () {
+		// For Tauri desktop apps, add Bearer token to headers
+		const token = getAccessToken()
+		console.log("[AuthMiddleware] getAccessToken():", token ? "TOKEN_EXISTS" : "NO_TOKEN")
+		console.log("[AuthMiddleware] request.headers:", request.headers)
+
+		if (token) {
+			const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${token}`)
+			console.log("[AuthMiddleware] newHeaders after set:", newHeaders)
+			return {
+				...request,
+				headers: newHeaders,
+			}
+		}
+
+		return request
 	}),
 )

@@ -3,6 +3,9 @@ import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
 import { router } from "~/main"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
+import { isTauri } from "./tauri"
+import { initiateDesktopAuth } from "./tauri-auth"
+import { clearAccessToken } from "./token-storage"
 
 interface LoginOptions {
 	returnTo?: string
@@ -78,8 +81,6 @@ export function useAuth() {
 	const logoutFn = useAtomSet(logoutAtom)
 
 	const login = (options?: LoginOptions) => {
-		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
-
 		let returnTo = options?.returnTo || location.pathname + location.search + location.hash
 
 		// Ensure returnTo is a relative path (defense in depth)
@@ -93,6 +94,20 @@ export function useAuth() {
 			}
 		}
 
+		// Desktop auth flow - opens system browser and handles deep link callback
+		if (isTauri()) {
+			initiateDesktopAuth({
+				returnTo,
+				organizationId: options?.organizationId,
+				invitationToken: options?.invitationToken,
+			}).catch((error) => {
+				console.error("[auth] Desktop login failed:", error)
+			})
+			return
+		}
+
+		// Web auth flow - redirect to backend login endpoint
+		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
 		loginUrl.searchParams.set("returnTo", returnTo)
 
 		if (options?.organizationId) {
@@ -106,6 +121,14 @@ export function useAuth() {
 	}
 
 	const logout = (options?: LogoutOptions) => {
+		// Desktop logout - clear local token and redirect
+		if (isTauri()) {
+			clearAccessToken()
+			window.location.href = options?.redirectTo || "/"
+			return
+		}
+
+		// Web logout - call backend to clear cookie
 		logoutFn(options)
 	}
 

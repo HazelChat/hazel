@@ -6,13 +6,13 @@ import {
 	withSystemActor,
 } from "@hazel/domain"
 import { Config, Effect, FiberRef, Layer, Option } from "effect"
+import { AuthMiddleware } from "@hazel/domain/rpc"
 import { BotRepo } from "../../repositories/bot-repo"
 import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
 import { UserRepo } from "../../repositories/user-repo"
 import { SessionManager } from "../../services/session-manager"
-import { AuthMiddleware } from "./auth-class"
 
-export { AuthMiddleware } from "./auth-class"
+export { AuthMiddleware } from "@hazel/domain/rpc"
 
 /**
  * Hash a token using SHA-256 (Web Crypto API)
@@ -23,6 +23,14 @@ async function hashToken(token: string): Promise<string> {
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data)
 	const hashArray = Array.from(new Uint8Array(hashBuffer))
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+/**
+ * Check if a token looks like a JWT (three base64url-encoded segments)
+ */
+function isJwtToken(token: string): boolean {
+	const parts = token.split(".")
+	return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
 }
 
 export const AuthMiddlewareLive = Layer.scoped(
@@ -62,11 +70,24 @@ export const AuthMiddlewareLive = Layer.scoped(
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
-				// Check for Bearer token first (bot SDK authentication)
+				// Check for Bearer token first (bot SDK or desktop app authentication)
 				const authHeader = Headers.get(headers, "authorization")
 
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
+
+					// Check if this is a JWT token (used by desktop apps via WorkOS)
+					if (isJwtToken(token)) {
+						// Authenticate using WorkOS JWT
+						const currentUser = yield* sessionManager.authenticateWithBearer(token)
+
+						// Store in FiberRef for cleanup
+						yield* FiberRef.set(currentUserRef, Option.some(currentUser))
+
+						return currentUser
+					}
+
+					// Otherwise, treat as bot token (hash-based lookup)
 					const tokenHash = yield* Effect.promise(() => hashToken(token))
 
 					// Find bot by token hash

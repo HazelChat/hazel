@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
 import { Route as DevEmbedsIndexRouteImport } from './routes/dev/embeds/index'
 import { Route as AppSelectOrganizationIndexRouteImport } from './routes/_app/select-organization/index'
@@ -56,6 +57,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDesktopLoginRoute = AuthDesktopLoginRouteImport.update({
+  id: '/auth/desktop-login',
+  path: '/auth/desktop-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppOrgSlugLayoutRoute = AppOrgSlugLayoutRouteImport.update({
@@ -231,6 +237,7 @@ const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
 
 export interface FileRoutesByFullPath {
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/chat/$id/files': typeof AppOrgSlugChatIdFilesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppLayoutRouteWithChildren
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/$orgSlug'
+    | '/auth/desktop-login'
     | '/auth/login'
     | '/'
     | '/$orgSlug/my-settings'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/chat/$id/files'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/auth/desktop-login'
     | '/auth/login'
     | '/'
     | '/$orgSlug/notifications'
@@ -401,6 +412,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_app/$orgSlug'
+    | '/auth/desktop-login'
     | '/auth/login'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
@@ -437,6 +449,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
+  AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
   AuthLoginRoute: typeof AuthLoginRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/desktop-login': {
+      id: '/auth/desktop-login'
+      path: '/auth/desktop-login'
+      fullPath: '/auth/desktop-login'
+      preLoaderRoute: typeof AuthDesktopLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/$orgSlug': {
@@ -815,6 +835,7 @@ const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
+  AuthDesktopLoginRoute: AuthDesktopLoginRoute,
   AuthLoginRoute: AuthLoginRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,

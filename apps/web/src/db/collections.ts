@@ -19,6 +19,7 @@ import {
 	UserPresenceStatus,
 } from "@hazel/domain/models"
 import { Effect } from "effect"
+import { electricFetchClient } from "~/lib/electric-fetch"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { createEffectCollection } from "../../../../libs/effect-electric-db-collection/src"
@@ -39,7 +40,7 @@ export const organizationCollection = createEffectCollection({
 			timestamptz: (date) => new Date(date),
 		},
 
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Organization.Model.json,
 	getKey: (item) => item.id,
@@ -57,7 +58,7 @@ export const invitationCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Invitation.Model.json,
 	getKey: (item) => item.id,
@@ -76,7 +77,7 @@ export const messageCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date: string) => new Date(date),
 		} as any,
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Message.Model.json,
 	getKey: (item) => item.id,
@@ -94,7 +95,7 @@ export const messageReactionCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: MessageReaction.Model.json,
 	getKey: (item) => item.id,
@@ -112,7 +113,7 @@ export const pinnedMessageCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: PinnedMessage.Model.json,
 	getKey: (item) => item.id,
@@ -131,7 +132,7 @@ export const notificationCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Notification.Model.json,
 	getKey: (item) => item.id,
@@ -150,7 +151,7 @@ export const userCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: User.Model.json,
 	getKey: (item) => item.id,
@@ -168,7 +169,7 @@ export const organizationMemberCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: OrganizationMember.Model.json,
 	getKey: (item) => item.id,
@@ -186,7 +187,7 @@ export const channelCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Channel.Model.json,
 	getKey: (item) => item.id,
@@ -205,7 +206,7 @@ export const channelMemberCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: ChannelMember.Model.json,
 	getKey: (item) => item.id,
@@ -222,7 +223,7 @@ export const channelSectionCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: ChannelSection.Model.json,
 	getKey: (item) => item.id,
@@ -240,7 +241,7 @@ export const attachmentCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Attachment.Model.json,
 	getKey: (item) => item.id,
@@ -256,7 +257,7 @@ export const typingIndicatorCollection = createEffectCollection({
 		params: {
 			table: "typing_indicators",
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: TypingIndicator.Model.json,
 	getKey: (item) => item.id,
@@ -274,7 +275,7 @@ export const userPresenceStatusCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: UserPresenceStatus.Model.json,
 	getKey: (item) => item.id,
@@ -293,7 +294,7 @@ export const integrationConnectionCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date) => new Date(date),
 		},
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: IntegrationConnection.Model.json,
 	getKey: (item) => item.id,
@@ -310,7 +311,7 @@ export const botCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date: string) => new Date(date),
 		} as any,
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: Bot.Model.json,
 	getKey: (item) => item.id,
@@ -327,7 +328,7 @@ export const botCommandCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date: string) => new Date(date),
 		} as any,
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: BotCommand.Model.json,
 	getKey: (item) => item.id,
@@ -344,7 +345,7 @@ export const botInstallationCollection = createEffectCollection({
 		parser: {
 			timestamptz: (date: string) => new Date(date),
 		} as any,
-		fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+		fetchClient: electricFetchClient,
 	},
 	schema: BotInstallation.Model.json,
 	getKey: (item) => item.id,

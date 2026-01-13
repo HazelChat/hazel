@@ -15,3 +15,6 @@ docker/caddy/certs/*.pem
 
 # opensrc - source code for packages
 opensrc/
+
+# Tauri/Rust build artifacts
+**/target/

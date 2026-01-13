@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useSearch } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -11,6 +11,7 @@ import { Text } from "~/components/ui/text"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { useAuth } from "~/lib/auth"
+import { isTauri } from "~/lib/tauri"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
@@ -23,7 +24,8 @@ export const Route = createFileRoute("/_app")({
 })
 
 function RouteComponent() {
-	const { user, error, isLoading } = useAuth()
+	const { user, error, isLoading, login } = useAuth()
+	const router = useRouter()
 	usePostHogIdentify()
 	const search = useSearch({ from: "/_app" }) as {
 		loginRetry?: string
@@ -130,12 +132,13 @@ function RouteComponent() {
 			Match.when("WorkOSUserFetchError", () => serviceErrorScreen),
 			// 401 errors - user needs to re-authenticate - redirect to login
 			Match.orElse(() => {
-				const currentUrl = new URL(window.location.href)
-				currentUrl.searchParams.set("loginRetry", String(loginRetry + 1))
-				const returnTo = encodeURIComponent(currentUrl.pathname + currentUrl.search + currentUrl.hash)
-				const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"
-				window.location.href = `${backendUrl}/auth/login?returnTo=${returnTo}`
-
+				if (isTauri()) {
+					// Tauri desktop: show login screen instead of auto-redirect
+					router.navigate({ to: "/auth/desktop-login" })
+				} else {
+					// Web: auto-redirect to backend login
+					login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
+				}
 				return <Loader />
 			}),
 		)
@@ -143,11 +146,13 @@ function RouteComponent() {
 
 	// No user and no error - redirect to login
 	if (!user) {
-		const currentUrl = new URL(window.location.href)
-		currentUrl.searchParams.set("loginRetry", String(loginRetry + 1))
-		const returnTo = encodeURIComponent(currentUrl.pathname + currentUrl.search + currentUrl.hash)
-		const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"
-		window.location.href = `${backendUrl}/auth/login?returnTo=${returnTo}`
+		if (isTauri()) {
+			// Tauri desktop: show login screen instead of auto-redirect
+			router.navigate({ to: "/auth/desktop-login" })
+		} else {
+			// Web: auto-redirect to backend login
+			login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
+		}
 		return <Loader />
 	}
 

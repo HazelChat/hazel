@@ -52,10 +52,58 @@ function parseCookie(cookieHeader: string, cookieName: string): string | null {
 }
 
 /**
- * Validate a WorkOS sealed session cookie and return authenticated user
+ * Validate authentication and return authenticated user.
+ * Supports both Bearer token (Tauri desktop) and cookie (web) authentication.
  * Uses @hazel/auth for session validation with Redis caching.
  */
 export const validateSession = Effect.fn("ElectricProxy.validateSession")(function* (request: Request) {
+	const proxyAuth = yield* ProxyAuth
+	const cache = yield* AccessContextCacheService
+
+	// Check for Bearer token first (Tauri desktop apps)
+	const authHeader = request.headers.get("Authorization")
+	if (authHeader?.startsWith("Bearer ")) {
+		const token = authHeader.slice(7)
+		yield* Effect.logDebug("Auth: Using Bearer token authentication")
+
+		const authContext = yield* proxyAuth.validateBearerToken(token).pipe(
+			Effect.mapError((error) => {
+				if (error instanceof ProxyAuthenticationError) {
+					return new AuthenticationError({
+						message: error.message,
+						detail: error.detail,
+					})
+				}
+				return new AuthenticationError({
+					message: "Bearer token authentication failed",
+					detail: String(error),
+				})
+			}),
+		)
+
+		// Get cached access context from Redis-backed cache
+		const accessContext = yield* cache.getUserContext(authContext.internalUserId).pipe(
+			Effect.mapError(
+				(error) =>
+					new AuthenticationError({
+						message: "Failed to get user access context",
+						detail: String(error),
+					}),
+			),
+		)
+
+		return {
+			userId: authContext.workosUserId,
+			internalUserId: authContext.internalUserId,
+			email: authContext.email,
+			organizationId: authContext.organizationId,
+			role: authContext.role,
+			refreshedSession: undefined,
+			accessContext,
+		} satisfies AuthenticatedUserWithContext
+	}
+
+	// Fall back to cookie authentication (web apps)
 	const cookieHeader = request.headers.get("Cookie")
 	if (!cookieHeader) {
 		yield* Effect.logDebug("Auth failed: No cookie header")
@@ -78,8 +126,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		)
 	}
 
-	// Step 2: Validate session using @hazel/auth (uses Redis caching)
-	const proxyAuth = yield* ProxyAuth
+	// Validate session using @hazel/auth (uses Redis caching)
 	const authContext = yield* proxyAuth.validateSession(sessionCookie).pipe(
 		Effect.mapError((error) => {
 			if (error instanceof ProxyAuthenticationError) {
@@ -96,8 +143,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		}),
 	)
 
-	// Step 3: Get cached access context from Redis-backed cache
-	const cache = yield* AccessContextCacheService
+	// Get cached access context from Redis-backed cache
 	const accessContext = yield* cache.getUserContext(authContext.internalUserId).pipe(
 		Effect.mapError(
 			(error) =>

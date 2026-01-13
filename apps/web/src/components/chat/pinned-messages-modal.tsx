@@ -11,7 +11,9 @@ import { UserProfilePopover } from "./user-profile-popover"
 
 export function PinnedMessagesModal() {
 	const { channelId, unpinMessage } = useChat()
-	const navigate = useNavigate()
+	const navigate = useNavigate({
+		from: "/$orgSlug/chat/$id/",
+	})
 
 	const { data: pinnedMessages } = useLiveQuery(
 		(q) =>
@@ -39,7 +41,11 @@ export function PinnedMessagesModal() {
 	// TODO: Implement scroll-to-message - see GitHub issue
 	// For now, just navigate with messageId in search params (ready for when scroll is reimplemented)
 	const goToMessage = (messageId: string) => {
-		navigate({ search: { messageId } })
+		navigate({
+			search: {
+				messageId,
+			},
+		})
 	}
 
 	const sortedPins = [...(pinnedMessages || [])].sort(

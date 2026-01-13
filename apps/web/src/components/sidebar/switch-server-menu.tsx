@@ -15,7 +15,7 @@ interface SwitchServerMenuProps {
 }
 
 export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps) => {
-	const { user } = useAuth()
+	const { user, login } = useAuth()
 
 	const { organizationId: currentOrgId } = useOrganization()
 
@@ -47,10 +47,9 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 		const route = getOrganizationRoute(selectedOrg.org)
 		const returnUrl = route.to
 
-		// Redirect to backend login endpoint with the organization ID
-		// WorkOS will handle the organization switch and redirect back
-		const backendUrl = import.meta.env.VITE_BACKEND_URL
-		window.location.href = `${backendUrl}/auth/login?organizationId=${selectedOrgId}&returnTo=${encodeURIComponent(returnUrl)}`
+		// Use login() to handle organization switch
+		// This is Tauri-aware and will open system browser on desktop
+		login({ organizationId: selectedOrgId, returnTo: returnUrl })
 	}
 
 	return (

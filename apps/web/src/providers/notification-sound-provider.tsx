@@ -6,6 +6,7 @@ import { doNotDisturbAtom, quietHoursEndAtom, quietHoursStartAtom } from "~/atom
 import { organizationMemberCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useAuth } from "~/lib/auth"
+import { sendNativeNotification } from "~/lib/native-notifications"
 
 interface NotificationSoundProviderProps {
 	children: ReactNode
@@ -100,6 +101,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 			for (const message of messages) {
 				if (isChangeMessage(message) && message.headers.operation === "insert") {
 					playSound()
+					sendNativeNotification("Hazel", "You have a new notification")
 					break
 				}
 			}

@@ -1,6 +1,7 @@
 import { Database, eq, schema } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { Config, Effect, Option } from "effect"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { SessionValidator } from "../session/session-validator.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
@@ -135,8 +136,71 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			} satisfies AuthenticatedUserContext
 		})
 
+		/**
+		 * Validate a Bearer token (JWT) and return user context.
+		 * Used by Tauri desktop apps that authenticate via JWT instead of cookies.
+		 * Rejects if user is not found in database.
+		 */
+		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
+			bearerToken: string,
+		) {
+			const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+
+			// Verify JWT signature using WorkOS JWKS
+			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
+
+			const { payload } = yield* Effect.tryPromise({
+				try: () =>
+					jwtVerify(bearerToken, jwks, {
+						issuer: "https://api.workos.com",
+					}),
+				catch: (error) =>
+					new ProxyAuthenticationError(`Invalid token: ${error}`, "JWT verification failed"),
+			})
+
+			const workOsUserId = payload.sub
+			if (!workOsUserId) {
+				return yield* Effect.fail(
+					new ProxyAuthenticationError(
+						"Token missing user ID",
+						"The JWT does not contain a subject claim",
+					),
+				)
+			}
+
+			// Lookup user (uses cache, falls back to database)
+			const userIdOption = yield* lookupUser(workOsUserId).pipe(
+				Effect.withSpan("ProxyAuth.lookupUser", {
+					attributes: { "workos.user_id": workOsUserId },
+				}),
+			)
+
+			if (Option.isNone(userIdOption)) {
+				yield* Effect.annotateCurrentSpan("user.found", false)
+				return yield* Effect.fail(
+					new ProxyAuthenticationError(
+						"User not found in database",
+						`User must be created via backend first. WorkOS ID: ${workOsUserId}`,
+					),
+				)
+			}
+
+			yield* Effect.annotateCurrentSpan("user.found", true)
+			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
+
+			return {
+				workosUserId: workOsUserId,
+				internalUserId: userIdOption.value as UserId,
+				email: (payload.email as string) ?? "",
+				organizationId: (payload.org_id as OrganizationId) ?? undefined,
+				role: (payload.role as string) ?? undefined,
+				refreshedSession: undefined, // No session refresh for JWT auth
+			} satisfies AuthenticatedUserContext
+		})
+
 		return {
 			validateSession,
+			validateBearerToken,
 		}
 	}),
 }) {}
