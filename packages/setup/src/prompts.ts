@@ -1,5 +1,5 @@
 import { Prompt } from "@effect/cli"
-import { Effect } from "effect"
+import { Effect, Redacted } from "effect"
 import type { EnvReadResult } from "./services/env-writer.ts"
 import { getEnvValues, maskSecret, type EnvValue } from "./templates.ts"
 
@@ -27,7 +27,7 @@ export const promptWithExisting = (options: {
 			if (isSecret) {
 				const result = yield* Prompt.password({ message })
 				// Redacted is an opaque type, need to handle it
-				return (result as any).value ?? result
+				return Redacted.value(result);
 			}
 			return yield* Prompt.text({
 				message,
