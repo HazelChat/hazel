@@ -157,13 +157,15 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 			}, 120000)
 
 			// Set up listener - must be done inside promise to capture resolve/reject
-			event.listen<string>("oauth-callback", (evt) => {
-				if (cleanup.timeoutId) clearTimeout(cleanup.timeoutId)
-				console.log("[tauri-auth] Received OAuth callback:", evt.payload)
-				resolve(evt.payload)
-			}).then((unlistenFn) => {
-				cleanup.unlisten = unlistenFn
-			})
+			event
+				.listen<string>("oauth-callback", (evt) => {
+					if (cleanup.timeoutId) clearTimeout(cleanup.timeoutId)
+					console.log("[tauri-auth] Received OAuth callback:", evt.payload)
+					resolve(evt.payload)
+				})
+				.then((unlistenFn) => {
+					cleanup.unlisten = unlistenFn
+				})
 		})
 
 		// Build login URL with redirect URI

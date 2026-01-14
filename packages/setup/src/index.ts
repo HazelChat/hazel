@@ -25,7 +25,7 @@ const ServicesLive = Layer.mergeAll(
 	CredentialValidator.Default,
 	EnvWriter.Default,
 	Doctor.Default,
-  CertManager.Default,
+	CertManager.Default,
 )
 
 cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

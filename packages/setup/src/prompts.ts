@@ -27,7 +27,7 @@ export const promptWithExisting = (options: {
 			if (isSecret) {
 				const result = yield* Prompt.password({ message })
 				// Redacted is an opaque type, need to handle it
-				return Redacted.value(result);
+				return Redacted.value(result)
 			}
 			return yield* Prompt.text({
 				message,
