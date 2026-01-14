@@ -7,8 +7,15 @@ import {
 	useRouter,
 } from "@tanstack/react-router"
 import { RpcDevtoolsPanel } from "effect-rpc-tanstack-devtools/components"
+import { lazy, Suspense } from "react"
 import { RouterProvider } from "react-aria-components"
-import { VersionCheck } from "~/components/version-check"
+
+// Conditional lazy load - Vite tree-shakes the dynamic import for Tauri builds
+// Web builds: loads PWA version check component
+// Tauri builds: uses no-op component (Tauri has its own update mechanism via TauriUpdateCheck)
+const VersionCheck = import.meta.env.TAURI_ENV_PLATFORM
+	? () => null
+	: lazy(() => import("~/components/version-check").then((m) => ({ default: m.VersionCheck })))
 
 export const Route = createRootRouteWithContext<{}>()({
 	component: () => {
@@ -33,7 +40,11 @@ export const Route = createRootRouteWithContext<{}>()({
 					/>
 				)} */}
 				<Outlet />
-				{import.meta.env.PROD && <VersionCheck />}
+				{import.meta.env.PROD && (
+					<Suspense fallback={null}>
+						<VersionCheck />
+					</Suspense>
+				)}
 			</RouterProvider>
 		)
 	},
