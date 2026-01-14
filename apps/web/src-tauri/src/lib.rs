@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 use tauri::{command, AppHandle, Emitter};
+use url::Url;
 
 // Fixed port for OAuth callback in dev mode
 // Must be registered in WorkOS as a valid redirect URI
@@ -16,6 +17,33 @@ fn extract_full_url_header(request: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Validate OAuth callback URL for security
+/// - Must be from localhost (the OAuth server itself)
+/// - Must have required OAuth parameters (code)
+/// - Must not exceed reasonable length
+fn validate_oauth_url(url_str: &str) -> Option<String> {
+    // Length limit to prevent memory issues
+    if url_str.len() > 2048 {
+        return None;
+    }
+
+    // Parse and validate URL
+    let parsed = Url::parse(url_str).ok()?;
+    let host = parsed.host_str()?;
+
+    // Only accept URLs from localhost (the OAuth callback server itself)
+    if host != "127.0.0.1" && host != "localhost" {
+        return None;
+    }
+
+    // Must have code parameter (required for OAuth)
+    if !parsed.query_pairs().any(|(k, _)| k == "code") {
+        return None;
+    }
+
+    Some(url_str.to_string())
 }
 
 #[command]
@@ -44,14 +72,17 @@ fn start_oauth_server(app: AppHandle) -> Result<u16, String> {
 
                     // Check if this is the /cb request with Full-Url header
                     if request.starts_with("GET /cb") || request.starts_with("POST /cb") {
-                        if let Some(url) = extract_full_url_header(&request) {
-                            // Emit to frontend with the complete URL from browser
-                            let _ = app_handle.emit("oauth-callback", url);
+                        if let Some(raw_url) = extract_full_url_header(&request) {
+                            // Validate URL before emitting for security
+                            if let Some(url) = validate_oauth_url(&raw_url) {
+                                // Emit to frontend with the validated URL
+                                let _ = app_handle.emit("oauth-callback", url);
 
-                            // Send simple success response
-                            let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nAccess-Control-Allow-Origin: http://127.0.0.1:17927\r\n\r\n";
-                            let _ = stream.write_all(response.as_bytes());
-                            break;
+                                // Send simple success response
+                                let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nAccess-Control-Allow-Origin: http://127.0.0.1:17927\r\n\r\n";
+                                let _ = stream.write_all(response.as_bytes());
+                                break;
+                            }
                         }
                     }
 

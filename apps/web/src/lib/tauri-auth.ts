@@ -190,8 +190,17 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 		}
 	} else {
 		// PROD MODE: Use deep links
-		const callbackPromise = new Promise<AuthCallbackParams>((resolve) => {
-			deepLinkResolver = resolve
+		const callbackPromise = new Promise<AuthCallbackParams>((resolve, reject) => {
+			// Add timeout to match dev mode (2 minutes)
+			const timeoutId = setTimeout(() => {
+				deepLinkResolver = null
+				reject(new Error("OAuth callback timeout after 2 minutes"))
+			}, 120000)
+
+			deepLinkResolver = (params) => {
+				clearTimeout(timeoutId)
+				resolve(params)
+			}
 		})
 
 		// Build login URL (no redirectUri = backend uses hazel://auth/callback)

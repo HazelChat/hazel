@@ -6,6 +6,7 @@ import { doNotDisturbAtom, quietHoursEndAtom, quietHoursStartAtom } from "~/atom
 import { organizationMemberCollection } from "~/db/collections"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { useAuth } from "~/lib/auth"
+import { authenticatedFetch } from "~/lib/auth-fetch"
 import { sendNativeNotification } from "~/lib/native-notifications"
 
 interface NotificationSoundProviderProps {
@@ -95,7 +96,7 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 				table: "notifications",
 				where: `"memberId" = '${organizationMemberId}'`,
 			},
-			fetchClient: (url, init) => fetch(url, { ...init, credentials: "include" }),
+			fetchClient: authenticatedFetch,
 			offset: "now",
 			log: "changes_only",
 			liveSse: true,

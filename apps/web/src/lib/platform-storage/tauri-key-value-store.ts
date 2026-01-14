@@ -13,19 +13,23 @@ import { Effect, Layer, Option } from "effect"
 
 const STORE_NAME = "settings.json"
 
-// Lazy store instance - cached after first load
-let storeInstance: Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>> | null = null
+// Promise caching pattern to prevent race conditions during concurrent initialization
+type StoreType = Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>
+let storePromise: Promise<StoreType> | null = null
 
 const getStore = Effect.tryPromise({
 	try: async () => {
-		if (!storeInstance) {
-			const { load } = await import("@tauri-apps/plugin-store")
-			storeInstance = await load(STORE_NAME, {
-				autoSave: true,
-				defaults: {},
-			})
+		// Use promise caching to ensure only one store instance is created
+		// even if getStore is called concurrently
+		if (!storePromise) {
+			storePromise = import("@tauri-apps/plugin-store").then(({ load }) =>
+				load(STORE_NAME, {
+					autoSave: true,
+					defaults: {},
+				}),
+			)
 		}
-		return storeInstance
+		return storePromise
 	},
 	catch: (error) =>
 		new SystemError({
