@@ -1,3 +1,9 @@
+/**
+ * @module Desktop settings page
+ * @platform desktop
+ * @description User settings specific to the desktop application (autostart, etc.)
+ */
+
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { SectionHeader } from "~/components/ui/section-header"

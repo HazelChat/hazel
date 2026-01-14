@@ -1,3 +1,9 @@
+/**
+ * @module Tauri update checker component
+ * @platform desktop
+ * @description Check for app updates and prompt user to install (no-op in browser)
+ */
+
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { isTauri } from "~/lib/tauri"

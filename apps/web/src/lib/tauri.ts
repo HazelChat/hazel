@@ -1,5 +1,7 @@
 /**
- * Tauri detection and utilities
+ * @module Tauri detection and utilities
+ * @platform desktop
+ * @description Check if the app is running inside Tauri desktop environment
  */
 
 /**

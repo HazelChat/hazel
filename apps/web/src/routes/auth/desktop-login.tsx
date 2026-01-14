@@ -1,3 +1,9 @@
+/**
+ * @module Desktop login page
+ * @platform desktop
+ * @description Login page for desktop app that initiates OAuth flow via system browser
+ */
+
 import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { Logo } from "~/components/logo"

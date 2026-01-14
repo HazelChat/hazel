@@ -1,3 +1,9 @@
+/**
+ * @module Application entry point
+ * @platform shared (with platform-specific sections)
+ * @description Main entry point with Tauri initialization for desktop
+ */
+
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
@@ -13,7 +19,8 @@ import "./styles/styles.css"
 // Note: RPC devtools are now integrated via Effect layers in rpc-atom-client.ts
 import "./lib/registry.ts"
 
-// Initialize Tauri-specific features
+// --- PLATFORM: DESKTOP INITIALIZATION ---
+// Initialize Tauri-specific features (no-op in browser)
 import { isTauri } from "./lib/tauri.ts"
 import { initNativeNotifications } from "./lib/native-notifications.ts"
 import { initDeepLinkListener } from "./lib/tauri-auth.ts"
@@ -28,6 +35,7 @@ if (isTauri()) {
 		console.error("[main] Failed to initialize deep link listener:", error)
 	})
 }
+// --- END PLATFORM: DESKTOP INITIALIZATION ---
 
 import { PostHogProvider } from "posthog-js/react"
 import { Loader } from "./components/loader.tsx"

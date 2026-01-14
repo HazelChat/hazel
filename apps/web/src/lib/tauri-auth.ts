@@ -1,5 +1,7 @@
 /**
- * Tauri desktop authentication flow
+ * @module Tauri desktop authentication flow
+ * @platform desktop
+ * @description OAuth authentication for desktop apps using localhost server (dev) or deep links (prod)
  *
  * - Dev mode: Uses localhost OAuth server on fixed port (17927)
  * - Prod mode: Uses deep links (hazel://auth/callback)

@@ -1,3 +1,9 @@
+/**
+ * @module API client with platform-aware authentication
+ * @platform shared (with platform-specific sections)
+ * @description HTTP client that uses Bearer tokens for desktop and cookies for web
+ */
+
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpApiClient from "@effect/platform/HttpApiClient"
 import * as HttpClient from "@effect/platform/HttpClient"
@@ -8,11 +14,11 @@ import * as Effect from "effect/Effect"
 export const CustomFetchLive = FetchHttpClient.layer.pipe(
 	Layer.provideMerge(
 		Layer.succeed(FetchHttpClient.Fetch, (input, init) => {
-			// Check for Bearer token (Tauri desktop apps)
+			// --- PLATFORM: DESKTOP ---
+			// Bearer token authentication for Tauri desktop apps
 			const token = typeof window !== "undefined" ? localStorage.getItem("hazel_access_token") : null
 
 			if (token) {
-				// Use Bearer token auth for Tauri
 				return fetch(input, {
 					...init,
 					headers: {
@@ -21,9 +27,12 @@ export const CustomFetchLive = FetchHttpClient.layer.pipe(
 					},
 				})
 			}
+			// --- END PLATFORM: DESKTOP ---
 
-			// Use cookie auth for web
+			// --- PLATFORM: WEB ---
+			// Cookie-based authentication for web browser
 			return fetch(input, { ...init, credentials: "include" })
+			// --- END PLATFORM: WEB ---
 		}),
 	),
 )

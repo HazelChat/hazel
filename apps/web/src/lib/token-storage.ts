@@ -1,5 +1,8 @@
 /**
- * Secure token storage for desktop apps
+ * @module Secure token storage for desktop apps
+ * @platform desktop
+ * @description Store/retrieve access tokens for desktop authentication
+ *
  * Uses localStorage for now - can upgrade to tauri-plugin-store for encryption later
  */
 

@@ -1,3 +1,9 @@
+/**
+ * @module Native notification handling
+ * @platform desktop
+ * @description Send system-level notifications via Tauri notification plugin
+ */
+
 import { isTauri } from "./tauri"
 
 let notificationApi: typeof import("@tauri-apps/plugin-notification") | null = null
