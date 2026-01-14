@@ -9,9 +9,11 @@ import { SecretGenerator } from "./services/secrets.ts"
 import { CredentialValidator } from "./services/validators.ts"
 import { EnvWriter } from "./services/env-writer.ts"
 import { Doctor } from "./services/doctor.ts"
+import { certsCommand } from "./commands/certs.ts"
+import { CertManager } from "./services/cert-manager.ts"
 
 // Root command with subcommands
-const rootCommand = setupCommand.pipe(Command.withSubcommands([doctorCommand, envCommand]))
+const rootCommand = setupCommand.pipe(Command.withSubcommands([doctorCommand, envCommand, certsCommand]))
 
 const cli = Command.run(rootCommand, {
 	name: "hazel-setup",
@@ -23,6 +25,7 @@ const ServicesLive = Layer.mergeAll(
 	CredentialValidator.Default,
 	EnvWriter.Default,
 	Doctor.Default,
+  CertManager.Default,
 )
 
 cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

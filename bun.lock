@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "maki-chat",
@@ -429,6 +428,7 @@
       "name": "@hazel/schema",
       "version": "0.0.0",
       "dependencies": {
+        "@effect/platform": "catalog:effect",
         "effect": "catalog:effect",
       },
       "devDependencies": {

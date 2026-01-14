@@ -106,11 +106,11 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				),
 			),
 
-		checkPostgres: (): Effect.Effect<CheckResult> => checkContainer("app-postgres-1", "PostgreSQL"),
-		checkRedis: (): Effect.Effect<CheckResult> => checkContainer("app-cache_redis-1", "Redis"),
-		checkElectric: (): Effect.Effect<CheckResult> => checkContainer("app-electric-1", "Electric"),
-		checkSequin: (): Effect.Effect<CheckResult> => checkContainer("app-sequin-1", "Sequin"),
-		checkCaddy: (): Effect.Effect<CheckResult> => checkContainer("app-caddy-1", "Caddy"),
+		checkPostgres: (): Effect.Effect<CheckResult> => checkContainer("hazel-postgres-1", "PostgreSQL"),
+		checkRedis: (): Effect.Effect<CheckResult> => checkContainer("hazel-cache_redis-1", "Redis"),
+		checkElectric: (): Effect.Effect<CheckResult> => checkContainer("hazel-electric-1", "Electric"),
+		checkSequin: (): Effect.Effect<CheckResult> => checkContainer("hazel-sequin-1", "Sequin"),
+		checkCaddy: (): Effect.Effect<CheckResult> => checkContainer("hazel-caddy-1", "Caddy"),
 
 		runAllChecks: (): Effect.Effect<
 			{ environment: CheckResult[]; services: CheckResult[] },
