@@ -36,7 +36,7 @@ export default defineConfig({
 			// Only externalize Tauri plugins for web builds (not Tauri builds)
 			// Tauri builds have TAURI_ENV_PLATFORM set - Tauri provides these at runtime
 			external: isTauriBuild
-				? [] // Tauri build: don't externalize, Tauri provides them
+				? ["virtual:pwa-register/react"] // Tauri build: PWA not used, externalize virtual module
 				: [
 						// Web build: externalize all Tauri packages, they don't exist
 						// Core Tauri API
