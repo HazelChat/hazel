@@ -38,7 +38,11 @@ export default defineConfig({
 			external: isTauriBuild
 				? [] // Tauri build: don't externalize, Tauri provides them
 				: [
-						// Web build: externalize all Tauri plugins, they don't exist
+						// Web build: externalize all Tauri packages, they don't exist
+						// Core Tauri API
+						"@tauri-apps/api/core",
+						"@tauri-apps/api/event",
+						// Tauri plugins
 						"@tauri-apps/plugin-autostart",
 						"@tauri-apps/plugin-deep-link",
 						"@tauri-apps/plugin-notification",
