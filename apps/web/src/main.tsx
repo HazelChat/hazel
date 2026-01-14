@@ -19,23 +19,9 @@ import "./styles/styles.css"
 // Note: RPC devtools are now integrated via Effect layers in rpc-atom-client.ts
 import "./lib/registry.ts"
 
-// --- PLATFORM: DESKTOP INITIALIZATION ---
 // Initialize Tauri-specific features (no-op in browser)
-import { isTauri } from "./lib/tauri.ts"
-import { initNativeNotifications } from "./lib/native-notifications.ts"
-import { initDeepLinkListener } from "./lib/tauri-auth.ts"
-
-if (isTauri()) {
-	initNativeNotifications().catch((error: unknown) => {
-		console.error("[main] Failed to initialize native notifications:", error)
-	})
-
-	// Initialize deep link listener for production auth callbacks
-	initDeepLinkListener().catch((error: unknown) => {
-		console.error("[main] Failed to initialize deep link listener:", error)
-	})
-}
-// --- END PLATFORM: DESKTOP INITIALIZATION ---
+import { initTauri } from "./lib/tauri.ts"
+initTauri()
 
 import { PostHogProvider } from "posthog-js/react"
 import { Loader } from "./components/loader.tsx"

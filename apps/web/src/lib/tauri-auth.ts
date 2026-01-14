@@ -11,7 +11,8 @@
  */
 
 import type { OrganizationId } from "@hazel/schema"
-import { storeAccessToken } from "./token-storage"
+import { startTokenRefresh } from "./token-refresh"
+import { storeTokens } from "./token-storage"
 
 interface DesktopAuthOptions {
 	returnTo?: string
@@ -26,6 +27,8 @@ interface AuthCallbackParams {
 
 interface TokenResponse {
 	accessToken: string
+	refreshToken: string
+	expiresIn: number
 	user: {
 		id: string
 		email: string
@@ -221,11 +224,15 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 	console.log("[tauri-auth] Got authorization code, exchanging for token...")
 
 	// Exchange code for token
-	const { accessToken } = await exchangeCodeForToken(code, state)
+	const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(code, state)
 
-	// Store token
-	storeAccessToken(accessToken)
-	console.log("[tauri-auth] Token stored, navigating to:", returnTo)
+	// Store tokens securely
+	await storeTokens(accessToken, refreshToken, expiresIn)
+	console.log("[tauri-auth] Tokens stored securely")
+
+	// Start background token refresh
+	await startTokenRefresh()
+	console.log("[tauri-auth] Token refresh scheduled, navigating to:", returnTo)
 
 	// Navigate to return path
 	window.location.href = returnTo

@@ -3,5 +3,11 @@
 	"identifier": "default",
 	"description": "enables the default permissions",
 	"windows": ["main"],
-	"permissions": ["core:default", "deep-link:default", "opener:default", "notification:default"]
+	"permissions": [
+		"core:default",
+		"deep-link:default",
+		"opener:default",
+		"notification:default",
+		"store:default"
+	]
 }

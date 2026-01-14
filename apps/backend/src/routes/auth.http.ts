@@ -1,4 +1,5 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
+import { getJwtExpiry } from "@hazel/auth"
 import {
 	CurrentUser,
 	InternalServerError,
@@ -406,7 +407,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						),
 					)
 
-				const { user: workosUser, accessToken } = authResponse
+				const { user: workosUser, accessToken, refreshToken } = authResponse
 
 				// Ensure user exists in our DB
 				const userOption = yield* userRepo.findByExternalId(workosUser.id).pipe(
@@ -454,14 +455,54 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					onSome: (user) => Effect.succeed(user),
 				})
 
+				// Calculate expires in seconds from JWT expiry
+				const expiresIn = getJwtExpiry(accessToken) - Math.floor(Date.now() / 1000)
+
 				return {
 					accessToken,
+					refreshToken: refreshToken!,
+					expiresIn,
 					user: {
 						id: workosUser.id,
 						email: workosUser.email,
 						firstName: workosUser.firstName || "",
 						lastName: workosUser.lastName || "",
 					},
+				}
+			}),
+		)
+		.handle("refresh", ({ payload }) =>
+			Effect.gen(function* () {
+				const workos = yield* WorkOS
+				const { refreshToken } = payload
+
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+
+				// Exchange refresh token for new tokens
+				const authResponse = yield* workos
+					.call(async (client) => {
+						return await client.userManagement.authenticateWithRefreshToken({
+							clientId,
+							refreshToken,
+						})
+					})
+					.pipe(
+						Effect.catchTag("WorkOSApiError", (error) =>
+							Effect.fail(
+								new UnauthorizedError({
+									message: "Failed to refresh token",
+									detail: String(error.cause),
+								}),
+							),
+						),
+					)
+
+				const expiresIn = getJwtExpiry(authResponse.accessToken) - Math.floor(Date.now() / 1000)
+
+				return {
+					accessToken: authResponse.accessToken,
+					refreshToken: authResponse.refreshToken!,
+					expiresIn,
 				}
 			}),
 		),

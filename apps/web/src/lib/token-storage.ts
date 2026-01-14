@@ -1,32 +1,83 @@
 /**
  * @module Secure token storage for desktop apps
  * @platform desktop
- * @description Store/retrieve access tokens for desktop authentication
+ * @description Store/retrieve access tokens for desktop authentication using Tauri's encrypted store
  *
- * TODO: Upgrade to tauri-plugin-store for encrypted storage in Tauri environment.
- * localStorage is vulnerable to XSS attacks. For production, tokens should be
- * stored using the system keychain or encrypted storage.
+ * Note: This module is only used by the Tauri desktop app.
+ * The web app uses cookies (WorkOS sealed sessions) for authentication.
  */
 
-const TOKEN_KEY = "hazel_access_token"
+const STORE_NAME = "auth.json"
+const ACCESS_TOKEN_KEY = "access_token"
+const REFRESH_TOKEN_KEY = "refresh_token"
+const EXPIRES_AT_KEY = "expires_at"
+
+// Lazy-loaded store instance
+let storePromise: Promise<Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>> | null = null
 
 /**
- * Store access token
+ * Get or create the store instance
  */
-export const storeAccessToken = (token: string): void => {
-	localStorage.setItem(TOKEN_KEY, token)
+const getStore = async () => {
+	if (!storePromise) {
+		storePromise = import("@tauri-apps/plugin-store").then((mod) =>
+			mod.load(STORE_NAME, { defaults: {}, autoSave: true }),
+		)
+	}
+	return storePromise
+}
+
+/**
+ * Check if we're running in a Tauri environment
+ */
+export const isTauri = (): boolean => {
+	return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
+}
+
+/**
+ * Store all auth tokens
+ */
+export const storeTokens = async (
+	accessToken: string,
+	refreshToken: string,
+	expiresIn: number,
+): Promise<void> => {
+	const s = await getStore()
+	await s.set(ACCESS_TOKEN_KEY, accessToken)
+	await s.set(REFRESH_TOKEN_KEY, refreshToken)
+	await s.set(EXPIRES_AT_KEY, Date.now() + expiresIn * 1000)
 }
 
 /**
  * Get stored access token
  */
-export const getAccessToken = (): string | null => {
-	return localStorage.getItem(TOKEN_KEY)
+export const getAccessToken = async (): Promise<string | null> => {
+	const s = await getStore()
+	return (await s.get<string>(ACCESS_TOKEN_KEY)) ?? null
 }
 
 /**
- * Clear stored access token
+ * Get stored refresh token
  */
-export const clearAccessToken = (): void => {
-	localStorage.removeItem(TOKEN_KEY)
+export const getRefreshToken = async (): Promise<string | null> => {
+	const s = await getStore()
+	return (await s.get<string>(REFRESH_TOKEN_KEY)) ?? null
+}
+
+/**
+ * Get token expiration timestamp (ms)
+ */
+export const getExpiresAt = async (): Promise<number | null> => {
+	const s = await getStore()
+	return (await s.get<number>(EXPIRES_AT_KEY)) ?? null
+}
+
+/**
+ * Clear all stored tokens
+ */
+export const clearTokens = async (): Promise<void> => {
+	const s = await getStore()
+	await s.delete(ACCESS_TOKEN_KEY)
+	await s.delete(REFRESH_TOKEN_KEY)
+	await s.delete(EXPIRES_AT_KEY)
 }

@@ -5,7 +5,8 @@ import { router } from "~/main"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
 import { initiateDesktopAuth } from "./tauri-auth"
-import { clearAccessToken } from "./token-storage"
+import { stopTokenRefresh } from "./token-refresh"
+import { clearTokens } from "./token-storage"
 
 interface LoginOptions {
 	returnTo?: string
@@ -120,10 +121,11 @@ export function useAuth() {
 		window.location.href = loginUrl.toString()
 	}
 
-	const logout = (options?: LogoutOptions) => {
-		// Desktop logout - clear local token and redirect
+	const logout = async (options?: LogoutOptions) => {
+		// Desktop logout - clear local tokens and redirect
 		if (isTauri()) {
-			clearAccessToken()
+			stopTokenRefresh()
+			await clearTokens()
 			window.location.href = options?.redirectTo || "/"
 			return
 		}

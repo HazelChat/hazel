@@ -48,6 +48,7 @@ export default defineConfig({
 						"@tauri-apps/plugin-notification",
 						"@tauri-apps/plugin-opener",
 						"@tauri-apps/plugin-process",
+						"@tauri-apps/plugin-store",
 						"@tauri-apps/plugin-updater",
 						"@tauri-apps/plugin-window-state",
 					],

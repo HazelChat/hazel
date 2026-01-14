@@ -19,12 +19,24 @@ export class TokenRequest extends Schema.Class<TokenRequest>("TokenRequest")({
 
 export class TokenResponse extends Schema.Class<TokenResponse>("TokenResponse")({
 	accessToken: Schema.String,
+	refreshToken: Schema.String,
+	expiresIn: Schema.Number,
 	user: Schema.Struct({
 		id: Schema.String,
 		email: Schema.String,
 		firstName: Schema.String,
 		lastName: Schema.String,
 	}),
+}) {}
+
+export class RefreshTokenRequest extends Schema.Class<RefreshTokenRequest>("RefreshTokenRequest")({
+	refreshToken: Schema.String,
+}) {}
+
+export class RefreshTokenResponse extends Schema.Class<RefreshTokenResponse>("RefreshTokenResponse")({
+	accessToken: Schema.String,
+	refreshToken: Schema.String,
+	expiresIn: Schema.Number,
 }) {}
 
 export class AuthGroup extends HttpApiGroup.make("auth")
@@ -114,6 +126,20 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					title: "Token Exchange",
 					description: "Exchange authorization code for access token (desktop apps)",
 					summary: "Exchange code for token",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.post("refresh")`/refresh`
+			.addSuccess(RefreshTokenResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPayload(RefreshTokenRequest)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Refresh Token",
+					description: "Exchange refresh token for new access token (desktop apps)",
+					summary: "Refresh access token",
 				}),
 			),
 	)
