@@ -71,10 +71,12 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 									),
 							)
 							.pipe(
-								Effect.mapError(
+								Effect.catchTag(
+									"DatabaseError",
 									(error) =>
 										new AccessContextLookupError({
-											message: `Failed to query user's organizations: ${String(error)}`,
+											message: "Failed to query user's organizations",
+											detail: error.message,
 											entityId: userId,
 											entityType: "user",
 										}),
@@ -115,10 +117,12 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 									),
 							)
 							.pipe(
-								Effect.mapError(
+								Effect.catchTag(
+									"DatabaseError",
 									(error) =>
 										new AccessContextLookupError({
-											message: `Failed to query bot's channels: ${String(error)}`,
+											message: "Failed to query bot's channels",
+											detail: error.message,
 											entityId: request.botId,
 											entityType: "bot",
 										}),

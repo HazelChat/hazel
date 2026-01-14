@@ -1,6 +1,6 @@
 import { ProxyAuth, ProxyAuthenticationError } from "@hazel/auth/proxy"
 import type { UserId } from "@hazel/schema"
-import { Effect, Schema } from "effect"
+import { Effect } from "effect"
 import { AccessContextCacheService, type UserAccessContext } from "../cache"
 
 // Re-export UserAccessContext from cache module
@@ -25,17 +25,6 @@ export interface AuthenticatedUser {
 export interface AuthenticatedUserWithContext extends AuthenticatedUser {
 	accessContext: UserAccessContext
 }
-
-/**
- * Authentication error
- */
-export class AuthenticationError extends Schema.TaggedError<AuthenticationError>("AuthenticationError")(
-	"AuthenticationError",
-	{
-		message: Schema.String,
-		detail: Schema.optional(Schema.String),
-	},
-) {}
 
 /**
  * Parse cookie header and extract a specific cookie by name
@@ -66,31 +55,10 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		const token = authHeader.slice(7)
 		yield* Effect.logDebug("Auth: Using Bearer token authentication")
 
-		const authContext = yield* proxyAuth.validateBearerToken(token).pipe(
-			Effect.mapError((error) => {
-				if (error instanceof ProxyAuthenticationError) {
-					return new AuthenticationError({
-						message: error.message,
-						detail: error.detail,
-					})
-				}
-				return new AuthenticationError({
-					message: "Bearer token authentication failed",
-					detail: String(error),
-				})
-			}),
-		)
+		const authContext = yield* proxyAuth.validateBearerToken(token)
 
 		// Get cached access context from Redis-backed cache
-		const accessContext = yield* cache.getUserContext(authContext.internalUserId).pipe(
-			Effect.mapError(
-				(error) =>
-					new AuthenticationError({
-						message: "Failed to get user access context",
-						detail: String(error),
-					}),
-			),
-		)
+		const accessContext = yield* cache.getUserContext(authContext.internalUserId)
 
 		return {
 			userId: authContext.workosUserId,
@@ -107,52 +75,26 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	const cookieHeader = request.headers.get("Cookie")
 	if (!cookieHeader) {
 		yield* Effect.logDebug("Auth failed: No cookie header")
-		return yield* Effect.fail(
-			new AuthenticationError({
-				message: "No cookie header found",
-				detail: "Authentication required",
-			}),
-		)
+		return yield* new ProxyAuthenticationError({
+			message: "No cookie header found",
+			detail: "Authentication required",
+		})
 	}
 
 	const sessionCookie = parseCookie(cookieHeader, "workos-session")
 	if (!sessionCookie) {
 		yield* Effect.logDebug("Auth failed: No workos-session cookie")
-		return yield* Effect.fail(
-			new AuthenticationError({
-				message: "No workos-session cookie found",
-				detail: "Authentication required",
-			}),
-		)
+		return yield* new ProxyAuthenticationError({
+			message: "No workos-session cookie found",
+			detail: "Authentication required",
+		})
 	}
 
 	// Validate session using @hazel/auth (uses Redis caching)
-	const authContext = yield* proxyAuth.validateSession(sessionCookie).pipe(
-		Effect.mapError((error) => {
-			if (error instanceof ProxyAuthenticationError) {
-				return new AuthenticationError({
-					message: error.message,
-					detail: error.detail,
-				})
-			}
-			// Handle other error types from the auth package
-			return new AuthenticationError({
-				message: "Authentication failed",
-				detail: String(error),
-			})
-		}),
-	)
+	const authContext = yield* proxyAuth.validateSession(sessionCookie)
 
 	// Get cached access context from Redis-backed cache
-	const accessContext = yield* cache.getUserContext(authContext.internalUserId).pipe(
-		Effect.mapError(
-			(error) =>
-				new AuthenticationError({
-					message: "Failed to get user access context",
-					detail: String(error),
-				}),
-		),
-	)
+	const accessContext = yield* cache.getUserContext(authContext.internalUserId)
 
 	return {
 		userId: authContext.workosUserId,

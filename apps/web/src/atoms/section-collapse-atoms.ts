@@ -1,12 +1,7 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom } from "@effect-atom/atom-react"
 import type { ChannelSectionId } from "@hazel/schema"
 import { Schema } from "effect"
-
-/**
- * localStorage runtime for section collapse persistence
- */
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 /**
  * Schema for collapsed sections state
@@ -22,7 +17,7 @@ const CollapsedSectionsSchema = Schema.Record({
  * Persisted to localStorage as "section_collapsed_state"
  */
 export const collapsedSectionsAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "section_collapsed_state",
 	schema: CollapsedSectionsSchema,
 	defaultValue: () => ({}) as Record<string, boolean>,

@@ -2,8 +2,8 @@ import { BunRuntime } from "@effect/platform-bun"
 import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
 import { Effect, Layer, Logger, Runtime } from "effect"
-import { type BotAuthenticationError, validateBotToken } from "./auth/bot-auth"
-import { type AuthenticationError, validateSession } from "./auth/user-auth"
+import { validateBotToken } from "./auth/bot-auth"
+import { validateSession } from "./auth/user-auth"
 import {
 	type AccessContextCacheService,
 	AccessContextCacheService as AccessContextCache,
@@ -126,7 +126,7 @@ const handleUserRequest = (request: Request) =>
 		})
 	}).pipe(
 		// Error handling
-		Effect.catchTag("AuthenticationError", (error: AuthenticationError) =>
+		Effect.catchTag("ProxyAuthenticationError", (error) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService
 				const requestOrigin = request.headers.get("Origin")
@@ -140,6 +140,31 @@ const handleUserRequest = (request: Request) =>
 					}),
 					{
 						status: 401,
+						headers: {
+							"Content-Type": "application/json",
+							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
+						},
+					},
+				)
+			}),
+		),
+		Effect.catchTag("AccessContextLookupError", (error) =>
+			Effect.gen(function* () {
+				const config = yield* ProxyConfigService
+				const requestOrigin = request.headers.get("Origin")
+				yield* Effect.logError("Access context lookup failed", {
+					error: error.message,
+					entityId: error.entityId,
+					entityType: error.entityType,
+				})
+				return new Response(
+					JSON.stringify({
+						error: error.message,
+						entityId: error.entityId,
+						entityType: error.entityType,
+					}),
+					{
+						status: 500,
 						headers: {
 							"Content-Type": "application/json",
 							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
@@ -257,7 +282,7 @@ const handleBotRequest = (request: Request) =>
 		})
 	}).pipe(
 		// Error handling
-		Effect.catchTag("BotAuthenticationError", (error: BotAuthenticationError) =>
+		Effect.catchTag("BotAuthenticationError", (error) =>
 			Effect.gen(function* () {
 				yield* Effect.logInfo("Bot authentication failed", {
 					error: error.message,
@@ -274,6 +299,23 @@ const handleBotRequest = (request: Request) =>
 						status: 401,
 						headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS },
 					},
+				)
+			}),
+		),
+		Effect.catchTag("AccessContextLookupError", (error) =>
+			Effect.gen(function* () {
+				yield* Effect.logError("Bot access context lookup failed", {
+					error: error.message,
+					entityId: error.entityId,
+					entityType: error.entityType,
+				})
+				return new Response(
+					JSON.stringify({
+						error: error.message,
+						entityId: error.entityId,
+						entityType: error.entityType,
+					}),
+					{ status: 500, headers: { "Content-Type": "application/json", ...BOT_CORS_HEADERS } },
 				)
 			}),
 		),

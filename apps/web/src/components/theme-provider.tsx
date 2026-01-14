@@ -1,7 +1,7 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Schema } from "effect"
 import { generateRgbShades } from "~/lib/helper/generate-shades"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 export type Theme = "dark" | "light" | "system"
 
@@ -29,19 +29,16 @@ const HexColorSchema = Schema.String.pipe(
 	Schema.annotations({ message: () => "Must be a valid hex color (#RRGGBB)" }),
 )
 
-// localStorage runtime for theme persistence
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
 // Theme atom with automatic localStorage persistence
 export const themeAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "hazel-ui-theme",
 	schema: Schema.NullOr(ThemeSchema),
 	defaultValue: () => "system" as const,
 })
 
 export const brandColorAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "brand-color",
 	schema: Schema.NullOr(HexColorSchema),
 	defaultValue: () => "#6938EF" as const,

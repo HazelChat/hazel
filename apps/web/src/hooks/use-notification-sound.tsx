@@ -1,7 +1,7 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Schema } from "effect"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 interface NotificationSoundSettings {
 	enabled: boolean
@@ -17,10 +17,8 @@ const NotificationSoundSettingsSchema = Schema.Struct({
 	cooldownMs: Schema.Number,
 })
 
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
 const notificationSettingsAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "notification-sound-settings",
 	schema: Schema.NullOr(NotificationSoundSettingsSchema),
 	defaultValue: () => ({

@@ -14,9 +14,7 @@ import { RouterProvider } from "react-aria-components"
 // Using if-statement for proper dead-code elimination in Tauri builds
 let VersionCheck: ReturnType<typeof lazy<React.FC>> | null = null
 if (!import.meta.env.TAURI_ENV_PLATFORM) {
-	VersionCheck = lazy(() =>
-		import("~/components/version-check").then((m) => ({ default: m.VersionCheck })),
-	)
+	VersionCheck = lazy(() => import("~/components/version-check").then((m) => ({ default: m.VersionCheck })))
 }
 
 export const Route = createRootRouteWithContext<{}>()({

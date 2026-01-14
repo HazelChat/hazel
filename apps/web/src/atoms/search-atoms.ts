@@ -1,6 +1,6 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom } from "@effect-atom/atom-react"
 import { Schema } from "effect"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 import type { FilterType, SearchFilter } from "~/lib/search-filter-parser"
 
 export const MAX_RECENT_SEARCHES = 10
@@ -32,15 +32,10 @@ export type RecentSearch = typeof RecentSearchSchema.Type
 const RecentSearchesSchema = Schema.Array(RecentSearchSchema)
 
 /**
- * localStorage runtime for recent searches persistence
- */
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
-/**
  * Atom that stores recent searches in localStorage
  */
 export const recentSearchesAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "recentSearches",
 	schema: RecentSearchesSchema,
 	defaultValue: () => [] as RecentSearch[],

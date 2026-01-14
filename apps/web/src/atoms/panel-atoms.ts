@@ -1,7 +1,7 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { Schema } from "effect"
 import { useCallback } from "react"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 /**
  * Panel types for the split panel system
@@ -28,17 +28,12 @@ export const PANEL_CONSTRAINTS = {
 } as const
 
 /**
- * localStorage runtime for panel width persistence
- */
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
-/**
  * Atom family that stores panel widths per type
  * Persisted to localStorage for user preference retention
  */
 export const panelWidthAtomFamily = Atom.family((panelType: PanelType) =>
 	Atom.kvs({
-		runtime: localStorageRuntime,
+		runtime: platformStorageRuntime,
 		key: `panel_width_${panelType}`,
 		schema: Schema.NullOr(Schema.Number),
 		defaultValue: () => DEFAULT_PANEL_WIDTHS[panelType],

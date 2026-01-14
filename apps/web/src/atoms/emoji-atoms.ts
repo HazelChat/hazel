@@ -1,6 +1,6 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom } from "@effect-atom/atom-react"
-import { Effect, Schema } from "effect"
+import { Schema } from "effect"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 /**
  * Default emojis to show when no usage data exists
@@ -19,15 +19,10 @@ const EmojiUsageSchema = Schema.Record({
 export type EmojiUsage = typeof EmojiUsageSchema.Type
 
 /**
- * localStorage runtime for emoji usage persistence
- */
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
-/**
  * Atom that stores emoji usage data in localStorage
  */
 export const emojiUsageAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "hazel-emoji-usage",
 	schema: EmojiUsageSchema,
 	defaultValue: () => ({}) as EmojiUsage,

@@ -34,12 +34,9 @@ export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware
 	Effect.gen(function* () {
 		// For Tauri desktop apps, add Bearer token to headers
 		const token = getAccessToken()
-		console.log("[AuthMiddleware] getAccessToken():", token ? "TOKEN_EXISTS" : "NO_TOKEN")
-		console.log("[AuthMiddleware] request.headers:", request.headers)
 
 		if (token) {
 			const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${token}`)
-			console.log("[AuthMiddleware] newHeaders after set:", newHeaders)
 			return {
 				...request,
 				headers: newHeaders,

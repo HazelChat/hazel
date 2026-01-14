@@ -1,6 +1,6 @@
-import { BrowserKeyValueStore } from "@effect/platform-browser"
 import { Atom } from "@effect-atom/atom-react"
 import { Schema } from "effect"
+import { platformStorageRuntime } from "~/lib/platform-storage"
 
 /**
  * Sidebar state type
@@ -8,16 +8,11 @@ import { Schema } from "effect"
 export type SidebarState = "expanded" | "collapsed"
 
 /**
- * localStorage runtime for sidebar persistence
- */
-const localStorageRuntime = Atom.runtime(BrowserKeyValueStore.layerLocalStorage)
-
-/**
  * Atom that stores whether the sidebar is open (desktop)
  * Persisted to localStorage as "sidebar_state" for backwards compatibility
  */
 export const sidebarOpenAtom = Atom.kvs({
-	runtime: localStorageRuntime,
+	runtime: platformStorageRuntime,
 	key: "sidebar_state",
 	schema: Schema.NullOr(Schema.Boolean),
 	defaultValue: () => true,

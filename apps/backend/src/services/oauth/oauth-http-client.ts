@@ -7,6 +7,7 @@
 
 import { FetchHttpClient, HttpBody, HttpClient } from "@effect/platform"
 import { Duration, Effect, Schema } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
 import type { IntegrationProvider } from "./provider-config"
 
 // ============================================================================
@@ -126,13 +127,18 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 
 			const data = yield* response.json.pipe(
 				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
-				Effect.mapError(
-					(error) =>
+				Effect.catchTags({
+					ParseError: (error) =>
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${String(error)}`,
+							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
 							cause: error,
 						}),
-				),
+					ResponseError: (error) =>
+						new OAuthHttpError({
+							message: `Failed to read response body: ${error.message}`,
+							cause: error,
+						}),
+				}),
 			)
 
 			return {
@@ -186,13 +192,18 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 
 			const data = yield* response.json.pipe(
 				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
-				Effect.mapError(
-					(error) =>
+				Effect.catchTags({
+					ParseError: (error) =>
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${String(error)}`,
+							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
 							cause: error,
 						}),
-				),
+					ResponseError: (error) =>
+						new OAuthHttpError({
+							message: `Failed to read response body: ${error.message}`,
+							cause: error,
+						}),
+				}),
 			)
 
 			return {

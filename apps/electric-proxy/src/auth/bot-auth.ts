@@ -65,27 +65,17 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 
 	// Query bot by token hash
 	const db = yield* Database.Database
-	const botOption = yield* db
-		.execute((client) =>
-			client
-				.select({
-					id: schema.botsTable.id,
-					userId: schema.botsTable.userId,
-				})
-				.from(schema.botsTable)
-				.where(and(eq(schema.botsTable.apiTokenHash, tokenHash), isNull(schema.botsTable.deletedAt)))
-				.limit(1),
-		)
-		.pipe(
-			Effect.map((results) => Option.fromNullable(results[0])),
-			Effect.mapError(
-				(error) =>
-					new BotAuthenticationError({
-						message: "Failed to lookup bot in database",
-						detail: String(error),
-					}),
-			),
-		)
+	const botResult = yield* db.execute((client) =>
+		client
+			.select({
+				id: schema.botsTable.id,
+				userId: schema.botsTable.userId,
+			})
+			.from(schema.botsTable)
+			.where(and(eq(schema.botsTable.apiTokenHash, tokenHash), isNull(schema.botsTable.deletedAt)))
+			.limit(1),
+	)
+	const botOption = Option.fromNullable(botResult[0])
 
 	if (Option.isNone(botOption)) {
 		return yield* Effect.fail(
@@ -100,15 +90,7 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 
 	// Get cached access context from Redis-backed cache
 	const cache = yield* AccessContextCacheService
-	const accessContext = yield* cache.getBotContext(bot.id, bot.userId).pipe(
-		Effect.mapError(
-			(error) =>
-				new BotAuthenticationError({
-					message: "Failed to get bot access context",
-					detail: String(error),
-				}),
-		),
-	)
+	const accessContext = yield* cache.getBotContext(bot.id, bot.userId)
 
 	return {
 		botId: bot.id,

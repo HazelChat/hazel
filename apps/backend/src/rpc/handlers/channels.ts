@@ -273,21 +273,12 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}).pipe(withSystemActor)
 
 							// 4. Link message to thread (direct SQL update to bypass schema restrictions)
-							yield* db
-								.execute((client) =>
-									client
-										.update(schema.messagesTable)
-										.set({ threadChannelId: createdChannel.id })
-										.where(eq(schema.messagesTable.id, messageId)),
-								)
-								.pipe(
-									Effect.mapError(
-										() =>
-											new InternalServerError({
-												message: "Failed to link message to thread",
-											}),
-									),
-								)
+							yield* db.execute((client) =>
+								client
+									.update(schema.messagesTable)
+									.set({ threadChannelId: createdChannel.id })
+									.where(eq(schema.messagesTable.id, messageId)),
+							)
 
 							const txid = yield* generateTransactionId()
 

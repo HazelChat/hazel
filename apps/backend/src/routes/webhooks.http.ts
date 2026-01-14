@@ -5,6 +5,7 @@ import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/do
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
+import { TreeFormatter } from "effect/ParseResult"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
@@ -151,7 +152,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											Effect.fail(
 												new WorkflowInitializationError({
 													message: "Failed to query channel type",
-													cause: String(err),
+													cause: err.message,
 												}),
 											),
 									}),
@@ -193,7 +194,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 											Effect.fail(
 												new WorkflowInitializationError({
 													message: "Failed to execute notification workflow",
-													cause: String(err),
+													cause: TreeFormatter.formatErrorSync(err),
 												}),
 											),
 										RequestError: (err) =>
