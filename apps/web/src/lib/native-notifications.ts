@@ -36,6 +36,10 @@ export async function sendNativeNotification(title: string, body: string) {
 
 	const granted = await api.isPermissionGranted()
 	if (granted) {
-		api.sendNotification({ title, body })
+		try {
+			api.sendNotification({ title, body })
+		} catch (error) {
+			console.error("[native-notifications] Failed to send notification:", error)
+		}
 	}
 }

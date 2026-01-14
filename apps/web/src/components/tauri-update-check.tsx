@@ -13,7 +13,7 @@ import { isTauri } from "~/lib/tauri"
  * when an update is available, prompting the user to install and restart.
  *
  * Features:
- * - Checks for updates on mount and every 30 minutes
+ * - Checks for updates on mount and every 6 hours
  * - Shows toast with version info and release notes
  * - Downloads and installs update, then relaunches the app
  * - Only runs in Tauri environment (no-op in browser)
@@ -62,8 +62,8 @@ export const TauriUpdateCheck = () => {
 		// Check on mount
 		checkForUpdates()
 
-		// Check every 30 minutes
-		const interval = setInterval(checkForUpdates, 30 * 60 * 1000)
+		// Check every 6 hours (reduces battery drain and network usage)
+		const interval = setInterval(checkForUpdates, 6 * 60 * 60 * 1000)
 		return () => clearInterval(interval)
 	}, [])
 

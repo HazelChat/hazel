@@ -49,7 +49,7 @@ fn start_oauth_server(app: AppHandle) -> Result<u16, String> {
                             let _ = app_handle.emit("oauth-callback", url);
 
                             // Send simple success response
-                            let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nAccess-Control-Allow-Origin: *\r\n\r\n";
+                            let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nAccess-Control-Allow-Origin: http://127.0.0.1:17927\r\n\r\n";
                             let _ = stream.write_all(response.as_bytes());
                             break;
                         }

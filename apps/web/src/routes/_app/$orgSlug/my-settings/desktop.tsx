@@ -19,16 +19,28 @@ function DesktopSettings() {
 	const [autostartEnabled, setAutostartEnabled] = useState<boolean | null>(null)
 
 	useEffect(() => {
-		isAutostartEnabled().then(setAutostartEnabled)
+		isAutostartEnabled()
+			.then(setAutostartEnabled)
+			.catch((error) => {
+				console.error("[desktop-settings] Failed to check autostart status:", error)
+				setAutostartEnabled(false)
+			})
 	}, [])
 
 	const handleAutostartToggle = async (isSelected: boolean) => {
-		if (isSelected) {
-			await enableAutostart()
-		} else {
-			await disableAutostart()
+		try {
+			if (isSelected) {
+				await enableAutostart()
+			} else {
+				await disableAutostart()
+			}
+			setAutostartEnabled(isSelected)
+		} catch (error) {
+			console.error("[desktop-settings] Failed to toggle autostart:", error)
+			// Revert to actual state on error
+			const actualState = await isAutostartEnabled().catch(() => false)
+			setAutostartEnabled(actualState)
 		}
-		setAutostartEnabled(isSelected)
 	}
 
 	return (

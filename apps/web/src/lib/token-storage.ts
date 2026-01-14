@@ -3,7 +3,9 @@
  * @platform desktop
  * @description Store/retrieve access tokens for desktop authentication
  *
- * Uses localStorage for now - can upgrade to tauri-plugin-store for encryption later
+ * TODO: Upgrade to tauri-plugin-store for encrypted storage in Tauri environment.
+ * localStorage is vulnerable to XSS attacks. For production, tokens should be
+ * stored using the system keychain or encrypted storage.
  */
 
 const TOKEN_KEY = "hazel_access_token"

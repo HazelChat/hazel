@@ -135,22 +135,25 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 		const redirectUri = `http://127.0.0.1:${port}`
 		console.log("[tauri-auth] OAuth server started on port:", port)
 
-		// Set up listener for OAuth callback BEFORE opening browser
-		// IMPORTANT: await listen() to ensure listener is attached before browser opens
-		// This fixes a race condition where the event could be emitted before the listener was ready
-		const unlisten = await listen<string>("oauth-callback", () => {})
-		unlisten() // Immediately unlisten - we just needed to ensure the event channel is ready
+		// Set up listener for OAuth callback with proper cleanup
+		// Using object wrapper to avoid TypeScript flow analysis narrowing issues
+		const cleanup = {
+			unlisten: null as (() => void) | null,
+			timeoutId: null as ReturnType<typeof setTimeout> | null,
+		}
 
-		// Now create the actual callback promise with timeout
 		const callbackPromise = new Promise<string>((resolve, reject) => {
-			const timeout = setTimeout(() => {
+			cleanup.timeoutId = setTimeout(() => {
 				reject(new Error("OAuth callback timeout after 2 minutes"))
 			}, 120000)
 
+			// Set up listener - must be done inside promise to capture resolve/reject
 			listen<string>("oauth-callback", (event) => {
-				clearTimeout(timeout)
+				if (cleanup.timeoutId) clearTimeout(cleanup.timeoutId)
 				console.log("[tauri-auth] Received OAuth callback:", event.payload)
 				resolve(event.payload)
+			}).then((unlistenFn) => {
+				cleanup.unlisten = unlistenFn
 			})
 		})
 
@@ -171,11 +174,17 @@ export const initiateDesktopAuth = async (options: DesktopAuthOptions = {}): Pro
 		await openUrl(loginUrl.toString())
 		console.log("[tauri-auth] Browser opened, waiting for callback...")
 
-		// Wait for OAuth callback
-		const callbackUrl = await callbackPromise
-		const url = new URL(callbackUrl)
-		code = url.searchParams.get("code")!
-		state = url.searchParams.get("state") || "{}"
+		// Wait for OAuth callback with cleanup
+		try {
+			const callbackUrl = await callbackPromise
+			const url = new URL(callbackUrl)
+			code = url.searchParams.get("code")!
+			state = url.searchParams.get("state") || "{}"
+		} finally {
+			// Clean up listener and timeout
+			cleanup.unlisten?.()
+			if (cleanup.timeoutId) clearTimeout(cleanup.timeoutId)
+		}
 	} else {
 		// PROD MODE: Use deep links
 		const callbackPromise = new Promise<AuthCallbackParams>((resolve) => {
