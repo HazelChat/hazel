@@ -4,14 +4,25 @@
  * @description Login page for desktop app that initiates OAuth flow via system browser
  */
 
-import { createFileRoute, Navigate } from "@tanstack/react-router"
+import { createFileRoute, Navigate, redirect } from "@tanstack/react-router"
 import { useState } from "react"
 import { Logo } from "~/components/logo"
 import { Button } from "~/components/ui/button"
 import { isTauri } from "~/lib/tauri"
 import { initiateDesktopAuth } from "~/lib/tauri-auth"
+import { getAccessToken } from "~/lib/token-storage"
 
 export const Route = createFileRoute("/auth/desktop-login")({
+	// Check for existing token before rendering - redirect to home if already logged in
+	loader: async () => {
+		if (!isTauri()) return null
+
+		const token = await getAccessToken()
+		if (token && token.trim().length > 10) {
+			throw redirect({ to: "/" })
+		}
+		return null
+	},
 	component: DesktopLoginPage,
 })
 
@@ -22,14 +33,6 @@ function DesktopLoginPage() {
 	// Redirect web users to regular login
 	if (!isTauri()) {
 		return <Navigate to="/auth/login" />
-	}
-
-	// Check localStorage (sync) for existing valid token - redirects to home if already logged in
-	// Validate token is non-empty and reasonable length to avoid corrupted token stuck state
-	const token = localStorage.getItem("hazel_access_token")
-	const hasValidToken = token && token.trim().length > 10
-	if (hasValidToken) {
-		return <Navigate to="/" />
 	}
 
 	const handleLogin = async () => {

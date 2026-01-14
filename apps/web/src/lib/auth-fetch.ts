@@ -4,36 +4,37 @@
  */
 
 import { isTauri } from "./tauri"
-import { clearTokens, LOCAL_STORAGE_TOKEN_KEY } from "./token-storage"
+import { clearTokens, getAccessToken } from "./token-storage"
 
 /**
  * Authenticated fetch that handles both Tauri (Bearer token) and web (cookies)
- * - Tauri: Reads access token from localStorage (synced from Tauri store) and sends as Authorization header
+ * - Tauri: Reads access token from Tauri store and sends as Authorization header
  * - Web: Uses credentials: "include" to send cookies
  */
 export const authenticatedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-	// Desktop: use Bearer token from localStorage (synced from Tauri store)
-	const token = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY)
+	// Desktop: use Bearer token from Tauri store
+	if (isTauri()) {
+		const token = await getAccessToken()
+		if (token) {
+			const response = await fetch(input, {
+				...init,
+				headers: {
+					...init?.headers,
+					Authorization: `Bearer ${token}`,
+				},
+			})
 
-	if (token) {
-		const response = await fetch(input, {
-			...init,
-			headers: {
-				...init?.headers,
-				Authorization: `Bearer ${token}`,
-			},
-		})
-
-		// If 401 (expired/invalid token), clear tokens so app redirects to login
-		if (response.status === 401 && isTauri()) {
-			try {
-				await clearTokens()
-			} catch (error) {
-				console.error("[auth-fetch] Failed to clear tokens:", error)
+			// If 401 (expired/invalid token), clear tokens so app redirects to login
+			if (response.status === 401) {
+				try {
+					await clearTokens()
+				} catch (error) {
+					console.error("[auth-fetch] Failed to clear tokens:", error)
+				}
 			}
-		}
 
-		return response
+			return response
+		}
 	}
 
 	// Web: use cookies

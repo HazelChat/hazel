@@ -12,9 +12,6 @@ const ACCESS_TOKEN_KEY = "access_token"
 const REFRESH_TOKEN_KEY = "refresh_token"
 const EXPIRES_AT_KEY = "expires_at"
 
-// localStorage key for sync access (Tauri only) - exported for auth-fetch.ts
-export const LOCAL_STORAGE_TOKEN_KEY = "hazel_access_token"
-
 // Lazy-loaded store instance
 let storePromise: Promise<Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>> | null = null
 
@@ -30,10 +27,8 @@ const getStore = async () => {
 	return storePromise
 }
 
-import { isTauri } from "./tauri"
-
 /**
- * Store all auth tokens (Tauri store + localStorage sync)
+ * Store all auth tokens in Tauri store
  */
 export const storeTokens = async (
 	accessToken: string,
@@ -44,11 +39,6 @@ export const storeTokens = async (
 	await s.set(ACCESS_TOKEN_KEY, accessToken)
 	await s.set(REFRESH_TOKEN_KEY, refreshToken)
 	await s.set(EXPIRES_AT_KEY, Date.now() + expiresIn * 1000)
-
-	// Sync to localStorage for fast sync access
-	if (typeof window !== "undefined") {
-		localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, accessToken)
-	}
 }
 
 /**
@@ -76,31 +66,11 @@ export const getExpiresAt = async (): Promise<number | null> => {
 }
 
 /**
- * Clear all stored tokens (Tauri store + localStorage)
+ * Clear all stored tokens from Tauri store
  */
 export const clearTokens = async (): Promise<void> => {
 	const s = await getStore()
 	await s.delete(ACCESS_TOKEN_KEY)
 	await s.delete(REFRESH_TOKEN_KEY)
 	await s.delete(EXPIRES_AT_KEY)
-
-	// Clear localStorage
-	if (typeof window !== "undefined") {
-		localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY)
-	}
-}
-
-/**
- * Sync tokens from Tauri store to localStorage on startup
- * Call this before other initialization to ensure tokens are available for sync access
- */
-export const syncTokensToLocalStorage = async (): Promise<void> => {
-	if (!isTauri()) return
-
-	const token = await getAccessToken()
-	if (token && typeof window !== "undefined") {
-		localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token)
-	} else if (typeof window !== "undefined") {
-		localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY)
-	}
 }

@@ -6,8 +6,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./api": "./src/api.ts",
-		"./rpc/groups/*": "./src/rpc/groups/*.ts",
-		"./rpc/middleware/client": "./src/rpc/middleware/client.ts"
+		"./rpc/groups/*": "./src/rpc/groups/*.ts"
 	},
 	"scripts": {
 		"dev": "bun run --hot src/index.ts",
