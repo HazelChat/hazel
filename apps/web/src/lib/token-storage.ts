@@ -12,8 +12,8 @@ const ACCESS_TOKEN_KEY = "access_token"
 const REFRESH_TOKEN_KEY = "refresh_token"
 const EXPIRES_AT_KEY = "expires_at"
 
-// localStorage key for sync access (Tauri only)
-const LOCAL_STORAGE_TOKEN_KEY = "hazel_access_token"
+// localStorage key for sync access (Tauri only) - exported for auth-fetch.ts
+export const LOCAL_STORAGE_TOKEN_KEY = "hazel_access_token"
 
 // Lazy-loaded store instance
 let storePromise: Promise<Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>> | null = null
@@ -30,9 +30,7 @@ const getStore = async () => {
 	return storePromise
 }
 
-// Import for internal use and re-export for backwards compatibility
 import { isTauri } from "./tauri"
-export { isTauri }
 
 /**
  * Store all auth tokens (Tauri store + localStorage sync)

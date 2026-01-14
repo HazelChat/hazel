@@ -4,9 +4,7 @@
  */
 
 import { isTauri } from "./tauri"
-import { clearTokens } from "./token-storage"
-
-const LOCAL_STORAGE_TOKEN_KEY = "hazel_access_token"
+import { clearTokens, LOCAL_STORAGE_TOKEN_KEY } from "./token-storage"
 
 /**
  * Authenticated fetch that handles both Tauri (Bearer token) and web (cookies)
@@ -14,8 +12,8 @@ const LOCAL_STORAGE_TOKEN_KEY = "hazel_access_token"
  * - Web: Uses credentials: "include" to send cookies
  */
 export const authenticatedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-	// Tauri desktop: use Bearer token from localStorage (synced from Tauri store)
-	const token = typeof window !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY) : null
+	// Desktop: use Bearer token from localStorage (synced from Tauri store)
+	const token = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY)
 
 	if (token) {
 		const response = await fetch(input, {
