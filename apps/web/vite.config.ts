@@ -33,12 +33,10 @@ export default defineConfig({
 		minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
 		sourcemap: !!process.env.TAURI_ENV_DEBUG,
 		rollupOptions: {
-			// Only externalize Tauri plugins for web builds (not Tauri builds)
-			// Tauri builds have TAURI_ENV_PLATFORM set - Tauri provides these at runtime
+			// Web build: externalize all Tauri packages, they don't exist
 			external: isTauriBuild
-				? ["virtual:pwa-register/react"] // Tauri build: PWA not used, externalize virtual module
+				? []
 				: [
-						// Web build: externalize all Tauri packages, they don't exist
 						// Core Tauri API
 						"@tauri-apps/api/core",
 						"@tauri-apps/api/event",
@@ -55,6 +53,24 @@ export default defineConfig({
 		},
 	},
 	plugins: [
+		// For Tauri builds, provide a no-op mock for PWA virtual module
+		...(isTauriBuild
+			? [
+					{
+						name: "mock-pwa-for-tauri",
+						resolveId(id: string) {
+							if (id === "virtual:pwa-register/react") {
+								return "\0virtual:pwa-noop"
+							}
+						},
+						load(id: string) {
+							if (id === "\0virtual:pwa-noop") {
+								return "export const useRegisterSW = () => ({ needRefresh: [false], updateServiceWorker: () => {} })"
+							}
+						},
+					},
+				]
+			: []),
 		devtools(),
 		tanstackRouter({ target: "react", autoCodeSplitting: false, routeToken: "layout" }),
 
