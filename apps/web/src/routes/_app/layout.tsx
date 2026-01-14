@@ -52,6 +52,18 @@ function RouteComponent() {
 		}
 	}, [user, error, isLoading, login, router])
 
+	// Handle session expiry events from token refresh failures (desktop only)
+	useEffect(() => {
+		if (!isTauri()) return
+
+		const handleSessionExpired = () => {
+			router.navigate({ to: "/auth/desktop-login" })
+		}
+
+		window.addEventListener("auth:session-expired", handleSessionExpired)
+		return () => window.removeEventListener("auth:session-expired", handleSessionExpired)
+	}, [router])
+
 	const handleCopyEmail = async () => {
 		try {
 			await navigator.clipboard.writeText("support@hazel.com")
