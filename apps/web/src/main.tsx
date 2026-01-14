@@ -21,7 +21,6 @@ import "./lib/registry.ts"
 
 // Initialize Tauri-specific features (no-op in browser)
 import { initTauri } from "./lib/tauri.ts"
-initTauri()
 
 import { PostHogProvider } from "posthog-js/react"
 import { Loader } from "./components/loader.tsx"
@@ -82,14 +81,20 @@ declare module "react-aria-components" {
 	}
 }
 
-const rootElement = document.getElementById("app")
-if (rootElement && !rootElement.innerHTML) {
-	const root = ReactDOM.createRoot(rootElement)
-	root.render(
-		<StrictMode>
-			<RouterProvider router={router} />
-		</StrictMode>,
-	)
-}
+// Initialize Tauri and render app
+// Must await initTauri to ensure tokens are synced before first API call
+;(async () => {
+	await initTauri()
 
-reportWebVitals()
+	const rootElement = document.getElementById("app")
+	if (rootElement && !rootElement.innerHTML) {
+		const root = ReactDOM.createRoot(rootElement)
+		root.render(
+			<StrictMode>
+				<RouterProvider router={router} />
+			</StrictMode>,
+		)
+	}
+
+	reportWebVitals()
+})()

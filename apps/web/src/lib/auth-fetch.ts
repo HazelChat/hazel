@@ -26,7 +26,11 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 
 		// If 401 (expired/invalid token), clear tokens so app redirects to login
 		if (response.status === 401 && isTauri()) {
-			await clearTokens()
+			try {
+				await clearTokens()
+			} catch (error) {
+				console.error("[auth-fetch] Failed to clear tokens:", error)
+			}
 		}
 
 		return response

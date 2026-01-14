@@ -19,15 +19,20 @@ export const isTauri = (): boolean => {
 /**
  * Initialize all Tauri-specific features
  * Safe to call in any environment - returns early if not in Tauri
+ * MUST be awaited before rendering to ensure tokens are synced
  */
-export const initTauri = (): void => {
+export const initTauri = async (): Promise<void> => {
 	if (!isTauri()) return
 
-	// Sync tokens to localStorage first - other features may depend on auth
-	syncTokensToLocalStorage().catch((error: unknown) => {
+	// Sync tokens to localStorage FIRST and await it - prevents race condition
+	// where first API request fires before tokens are available
+	try {
+		await syncTokensToLocalStorage()
+	} catch (error) {
 		console.error("[tauri] Failed to sync tokens to localStorage:", error)
-	})
+	}
 
+	// Other features can initialize in parallel (non-blocking)
 	initNativeNotifications().catch((error: unknown) => {
 		console.error("[tauri] Failed to initialize native notifications:", error)
 	})

@@ -24,9 +24,11 @@ function DesktopLoginPage() {
 		return <Navigate to="/auth/login" />
 	}
 
-	// Check localStorage (sync) for existing token - redirects to home if already logged in
-	const hasToken = typeof window !== "undefined" && localStorage.getItem("hazel_access_token")
-	if (hasToken) {
+	// Check localStorage (sync) for existing valid token - redirects to home if already logged in
+	// Validate token is non-empty and reasonable length to avoid corrupted token stuck state
+	const token = localStorage.getItem("hazel_access_token")
+	const hasValidToken = token && token.trim().length > 10
+	if (hasValidToken) {
 		return <Navigate to="/" />
 	}
 
