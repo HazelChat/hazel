@@ -8,7 +8,6 @@ import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { Logo } from "~/components/logo"
 import { Button } from "~/components/ui/button"
-import { useAuth } from "~/lib/auth"
 import { isTauri } from "~/lib/tauri"
 import { initiateDesktopAuth } from "~/lib/tauri-auth"
 
@@ -17,18 +16,18 @@ export const Route = createFileRoute("/auth/desktop-login")({
 })
 
 function DesktopLoginPage() {
-	const { user } = useAuth()
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-
-	// Redirect to home if already logged in
-	if (user) {
-		return <Navigate to="/" />
-	}
 
 	// Redirect web users to regular login
 	if (!isTauri()) {
 		return <Navigate to="/auth/login" />
+	}
+
+	// Check localStorage (sync) for existing token - redirects to home if already logged in
+	const hasToken = typeof window !== "undefined" && localStorage.getItem("hazel_access_token")
+	if (hasToken) {
+		return <Navigate to="/" />
 	}
 
 	const handleLogin = async () => {

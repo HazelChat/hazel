@@ -7,6 +7,7 @@
 import { initNativeNotifications } from "./native-notifications"
 import { initDeepLinkListener } from "./tauri-auth"
 import { startTokenRefresh } from "./token-refresh"
+import { syncTokensToLocalStorage } from "./token-storage"
 
 /**
  * Check if the app is running inside Tauri
@@ -21,6 +22,11 @@ export const isTauri = (): boolean => {
  */
 export const initTauri = (): void => {
 	if (!isTauri()) return
+
+	// Sync tokens to localStorage first - other features may depend on auth
+	syncTokensToLocalStorage().catch((error: unknown) => {
+		console.error("[tauri] Failed to sync tokens to localStorage:", error)
+	})
 
 	initNativeNotifications().catch((error: unknown) => {
 		console.error("[tauri] Failed to initialize native notifications:", error)

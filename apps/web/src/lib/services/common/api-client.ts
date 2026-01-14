@@ -10,31 +10,10 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import { HazelApi } from "@hazel/backend/api"
 import { Layer } from "effect"
 import * as Effect from "effect/Effect"
+import { authenticatedFetch } from "../../auth-fetch"
 
 export const CustomFetchLive = FetchHttpClient.layer.pipe(
-	Layer.provideMerge(
-		Layer.succeed(FetchHttpClient.Fetch, (input, init) => {
-			// --- PLATFORM: DESKTOP ---
-			// Bearer token authentication for Tauri desktop apps
-			const token = typeof window !== "undefined" ? localStorage.getItem("hazel_access_token") : null
-
-			if (token) {
-				return fetch(input, {
-					...init,
-					headers: {
-						...init?.headers,
-						Authorization: `Bearer ${token}`,
-					},
-				})
-			}
-			// --- END PLATFORM: DESKTOP ---
-
-			// --- PLATFORM: WEB ---
-			// Cookie-based authentication for web browser
-			return fetch(input, { ...init, credentials: "include" })
-			// --- END PLATFORM: WEB ---
-		}),
-	),
+	Layer.provideMerge(Layer.succeed(FetchHttpClient.Fetch, authenticatedFetch)),
 )
 
 export class ApiClient extends Effect.Service<ApiClient>()("ApiClient", {

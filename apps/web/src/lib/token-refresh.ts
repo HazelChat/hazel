@@ -4,7 +4,8 @@
  * @description Automatically refreshes access tokens before they expire
  */
 
-import { clearTokens, getExpiresAt, getRefreshToken, isTauri, storeTokens } from "./token-storage"
+import { isTauri } from "./tauri"
+import { clearTokens, getExpiresAt, getRefreshToken, storeTokens } from "./token-storage"
 
 // Refresh 5 minutes before expiry
 const REFRESH_BUFFER_MS = 5 * 60 * 1000

@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
@@ -33,6 +33,24 @@ function RouteComponent() {
 	const [copied, setCopied] = useState(false)
 
 	const loginRetry = Number(search.loginRetry) || 0
+
+	// Handle redirect to login - must be in useEffect, not during render
+	useEffect(() => {
+		if (user || isLoading) return // Don't redirect if logged in or still loading
+
+		// Check if there's an auth error that requires login
+		const hasAuthError =
+			Option.isSome(error) && !["SessionLoadError", "WorkOSUserFetchError"].includes(error.value._tag)
+		const needsLogin = !user && (hasAuthError || Option.isNone(error))
+
+		if (needsLogin) {
+			if (isTauri()) {
+				router.navigate({ to: "/auth/desktop-login" })
+			} else {
+				login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
+			}
+		}
+	}, [user, error, isLoading, login, router])
 
 	const handleCopyEmail = async () => {
 		try {
@@ -130,29 +148,13 @@ function RouteComponent() {
 			// 503 errors - infrastructure/service issues - show error screen with retry
 			Match.when("SessionLoadError", () => serviceErrorScreen),
 			Match.when("WorkOSUserFetchError", () => serviceErrorScreen),
-			// 401 errors - user needs to re-authenticate - redirect to login
-			Match.orElse(() => {
-				if (isTauri()) {
-					// Tauri desktop: show login screen instead of auto-redirect
-					router.navigate({ to: "/auth/desktop-login" })
-				} else {
-					// Web: auto-redirect to backend login
-					login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
-				}
-				return <Loader />
-			}),
+			// 401 errors - user needs to re-authenticate - useEffect handles redirect
+			Match.orElse(() => <Loader />),
 		)
 	}
 
-	// No user and no error - redirect to login
+	// No user and no error - useEffect handles redirect
 	if (!user) {
-		if (isTauri()) {
-			// Tauri desktop: show login screen instead of auto-redirect
-			router.navigate({ to: "/auth/desktop-login" })
-		} else {
-			// Web: auto-redirect to backend login
-			login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
-		}
 		return <Loader />
 	}
 
