@@ -3,7 +3,7 @@ import { Console, Effect, Redacted } from "effect"
 import pc from "picocolors"
 import { SecretGenerator } from "../services/secrets.ts"
 import { CredentialValidator } from "../services/validators.ts"
-import { EnvWriter, type EnvReadResult } from "../services/env-writer.ts"
+import { EnvWriter } from "../services/env-writer.ts"
 import { Doctor } from "../services/doctor.ts"
 import {
 	ENV_TEMPLATES,

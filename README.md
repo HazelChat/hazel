@@ -111,6 +111,12 @@ Hazel Chat is a full-stack chat application featuring:
 4. **Start development**
 
     ```bash
+    bun run dev:app
+    ```
+
+    Or start including bots:
+    
+    ```bash
     bun run dev
     ```
 
@@ -123,7 +129,8 @@ Hazel Chat is a full-stack chat application featuring:
 
 | Command                 | Description                                 |
 | ----------------------- | ------------------------------------------- |
-| `bun run dev`           | Start all apps in development mode          |
+| `bun run dev`           | Start all apps and bots in development mode |
+| `bun run dev:app`       | Start all apps in development mode          |
 | `bun run build`         | Build all apps and packages                 |
 | `bun run typecheck`     | Run TypeScript checking across all packages |
 | `bun run format`        | Format and lint code with OXC               |
