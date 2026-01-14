@@ -13,23 +13,13 @@ import { Effect, Layer, Option } from "effect"
 
 const STORE_NAME = "settings.json"
 
-// Promise caching pattern to prevent race conditions during concurrent initialization
 type StoreType = Awaited<ReturnType<typeof import("@tauri-apps/plugin-store").load>>
-let storePromise: Promise<StoreType> | null = null
 
-const getStore = Effect.tryPromise({
+// Load store effect - separate from caching
+const loadStore: Effect.Effect<StoreType, SystemError> = Effect.tryPromise({
 	try: async () => {
-		// Use promise caching to ensure only one store instance is created
-		// even if getStore is called concurrently
-		if (!storePromise) {
-			storePromise = import("@tauri-apps/plugin-store").then(({ load }) =>
-				load(STORE_NAME, {
-					autoSave: true,
-					defaults: {},
-				}),
-			)
-		}
-		return storePromise
+		const { load } = await import("@tauri-apps/plugin-store")
+		return load(STORE_NAME, { autoSave: true, defaults: {} })
 	},
 	catch: (error) =>
 		new SystemError({
@@ -40,6 +30,9 @@ const getStore = Effect.tryPromise({
 			description: `Failed to load Tauri store: ${error}`,
 		}),
 })
+
+// Effect.cached memoizes the effect - only runs once, result is cached
+const getStore = Effect.cached(loadStore)
 
 const makeError = (method: string, key: string, error: unknown) =>
 	new SystemError({
@@ -56,7 +49,8 @@ const makeError = (method: string, key: string, error: unknown) =>
 export const layerTauriStore: Layer.Layer<KeyValueStore.KeyValueStore> = Layer.effect(
 	KeyValueStore.KeyValueStore,
 	Effect.gen(function* () {
-		const store = yield* Effect.orDie(getStore)
+		// Effect.cached returns Effect<Effect<A, E>>, yield twice to get the cached value
+		const store = yield* (yield* getStore).pipe(Effect.orDie)
 
 		return KeyValueStore.makeStringOnly({
 			get: (key: string) =>
