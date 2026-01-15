@@ -9,7 +9,7 @@ import {
 } from "@hazel/domain"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
-import { AuthState, RelativeUrl } from "../lib/schema"
+import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "../services/workos"
@@ -327,13 +327,21 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const workos = yield* WorkOS
 
 				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
 
-				// Use redirect URI from frontend (localhost:PORT) or fall back to deep link
-				const redirectUri = urlParams.redirectUri || "hazel://auth/callback"
+				// Always use web app callback page
+				const redirectUri = `${frontendUrl}/auth/desktop-callback`
 
 				// Validate returnTo is a relative URL (defense in depth)
 				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(urlParams.returnTo)
-				const state = JSON.stringify(AuthState.make({ returnTo: validatedReturnTo }))
+
+				// Build state with desktop connection info
+				const stateObj = DesktopAuthState.make({
+					returnTo: validatedReturnTo,
+					desktopPort: urlParams.desktopPort,
+					desktopNonce: urlParams.desktopNonce,
+				})
+				const state = JSON.stringify(stateObj)
 
 				let workosOrgId: string | undefined
 

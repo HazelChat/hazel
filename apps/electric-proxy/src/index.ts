@@ -23,7 +23,8 @@ import { applyWhereToElectricUrl } from "./tables/where-clause-builder"
 /**
  * Check if an origin is allowed for user flow
  * - Configured ALLOWED_ORIGIN (e.g., https://app.hazel.chat or http://localhost:3000)
- * - tauri://localhost for Tauri desktop apps
+ * - tauri://localhost for Tauri desktop apps (Tauri 1.x)
+ * - http://tauri.localhost for Tauri desktop apps (Tauri 2.x)
  */
 function isAllowedOrigin(origin: string | null, allowedOrigin: string): boolean {
 	if (!origin) return false

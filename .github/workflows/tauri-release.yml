@@ -1,78 +1,78 @@
 name: Tauri Release
 
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
 
 jobs:
-  build:
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: "--target aarch64-apple-darwin"
-          - platform: macos-latest
-            args: "--target x86_64-apple-darwin"
-          - platform: ubuntu-22.04
-            args: ""
-          - platform: windows-latest
-            args: ""
+    build:
+        permissions:
+            contents: write
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: macos-latest
+                      args: "--target aarch64-apple-darwin"
+                    - platform: macos-latest
+                      args: "--target x86_64-apple-darwin"
+                    - platform: ubuntu-22.04
+                      args: ""
+                    - platform: windows-latest
+                      args: ""
 
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v4
+        runs-on: ${{ matrix.platform }}
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: latest
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+            - name: Install Rust stable
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./apps/web/src-tauri -> target"
+            - name: Rust cache
+              uses: swatinem/rust-cache@v2
+              with:
+                  workspaces: "./apps/web/src-tauri -> target"
 
-      - name: Install dependencies (Ubuntu)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+            - name: Install dependencies (Ubuntu)
+              if: matrix.platform == 'ubuntu-22.04'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+            - name: Install frontend dependencies
+              run: bun install --frozen-lockfile
 
-      - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
-          VITE_CLUSTER_URL: ${{ vars.VITE_CLUSTER_URL }}
-          VITE_ELECTRIC_URL: ${{ vars.VITE_ELECTRIC_URL }}
-          VITE_WORKOS_CLIENT_ID: ${{ vars.VITE_WORKOS_CLIENT_ID }}
-          VITE_R2_PUBLIC_URL: ${{ vars.VITE_R2_PUBLIC_URL }}
-        with:
-          projectPath: apps/web
-          tagName: v__VERSION__
-          releaseName: "Hazel v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+            - name: Build Tauri App
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+                  APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+                  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+                  APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+                  APPLE_ID: ${{ secrets.APPLE_ID }}
+                  APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+                  VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+                  VITE_CLUSTER_URL: ${{ vars.VITE_CLUSTER_URL }}
+                  VITE_ELECTRIC_URL: ${{ vars.VITE_ELECTRIC_URL }}
+                  VITE_WORKOS_CLIENT_ID: ${{ vars.VITE_WORKOS_CLIENT_ID }}
+                  VITE_R2_PUBLIC_URL: ${{ vars.VITE_R2_PUBLIC_URL }}
+              with:
+                  projectPath: apps/web
+                  tagName: v__VERSION__
+                  releaseName: "Hazel v__VERSION__"
+                  releaseBody: "See the assets to download this version and install."
+                  releaseDraft: true
+                  prerelease: false
+                  args: ${{ matrix.args }}
