@@ -13,6 +13,7 @@ import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
+import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
 import { Route as DevEmbedsIndexRouteImport } from './routes/dev/embeds/index'
 import { Route as AppSelectOrganizationIndexRouteImport } from './routes/_app/select-organization/index'
@@ -63,6 +64,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 const AuthDesktopLoginRoute = AuthDesktopLoginRouteImport.update({
   id: '/auth/desktop-login',
   path: '/auth/desktop-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDesktopCallbackRoute = AuthDesktopCallbackRouteImport.update({
+  id: '/auth/desktop-callback',
+  path: '/auth/desktop-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppOrgSlugLayoutRoute = AppOrgSlugLayoutRouteImport.update({
@@ -244,6 +250,7 @@ const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
 
 export interface FileRoutesByFullPath {
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/chat/$id/files': typeof AppOrgSlugChatIdFilesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/': typeof AppIndexRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppLayoutRouteWithChildren
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/_app/': typeof AppIndexRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/$orgSlug'
+    | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
     | '/'
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/chat/$id/files'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
     | '/'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_app/$orgSlug'
+    | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
     | '/_app/'
@@ -462,6 +474,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
+  AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
   AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
   AuthLoginRoute: typeof AuthLoginRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
@@ -499,6 +512,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/desktop-login'
       fullPath: '/auth/desktop-login'
       preLoaderRoute: typeof AuthDesktopLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/desktop-callback': {
+      id: '/auth/desktop-callback'
+      path: '/auth/desktop-callback'
+      fullPath: '/auth/desktop-callback'
+      preLoaderRoute: typeof AuthDesktopCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/$orgSlug': {
@@ -857,6 +877,7 @@ const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
+  AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
   AuthDesktopLoginRoute: AuthDesktopLoginRoute,
   AuthLoginRoute: AuthLoginRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,

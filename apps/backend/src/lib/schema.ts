@@ -11,3 +11,10 @@ export const RelativeUrl = Schema.String.pipe(
 export const AuthState = Schema.Struct({
 	returnTo: RelativeUrl,
 })
+
+// Auth state for desktop OAuth flow with connection info
+export const DesktopAuthState = Schema.Struct({
+	returnTo: RelativeUrl,
+	desktopPort: Schema.Number,
+	desktopNonce: Schema.String,
+})

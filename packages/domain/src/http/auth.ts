@@ -102,7 +102,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.setUrlParams(
 				Schema.Struct({
 					returnTo: Schema.String,
-					redirectUri: Schema.optional(Schema.String),
+					desktopPort: Schema.NumberFromString,
+					desktopNonce: Schema.String,
 					organizationId: Schema.optional(OrganizationId),
 					invitationToken: Schema.optional(Schema.String),
 				}),
@@ -110,7 +111,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Desktop Login",
-					description: "Initiate OAuth flow for desktop apps with localhost callback",
+					description: "Initiate OAuth flow for desktop apps with web callback",
 					summary: "Desktop login flow",
 				}),
 			),

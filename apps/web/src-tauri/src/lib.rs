@@ -1,144 +1,176 @@
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::sync::{Mutex, OnceLock};
 use std::thread;
 use tauri::{command, AppHandle, Emitter};
-use url::Url;
 
-// Fixed port for OAuth callback in dev mode
-// Must be registered in WorkOS as a valid redirect URI
-const OAUTH_PORT: u16 = 17927;
+// Port range for OAuth callback server (dynamic)
+const OAUTH_PORT_MIN: u16 = 17900;
+const OAUTH_PORT_MAX: u16 = 17999;
 
-/// Extract the Full-Url header value from an HTTP request
-fn extract_full_url_header(request: &str) -> Option<String> {
-    for line in request.lines() {
-        let lower = line.to_lowercase();
-        if lower.starts_with("full-url:") {
-            return Some(line[9..].trim().to_string());
+// Active nonces storage (port -> nonce mapping)
+fn active_nonces() -> &'static Mutex<HashMap<u16, String>> {
+    static NONCES: OnceLock<Mutex<HashMap<u16, String>>> = OnceLock::new();
+    NONCES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Find an available port in the range
+fn find_available_port() -> Option<u16> {
+    for port in OAUTH_PORT_MIN..=OAUTH_PORT_MAX {
+        if TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok() {
+            return Some(port);
         }
     }
     None
 }
 
-/// Validate OAuth callback URL for security
-/// - Must be from localhost (the OAuth server itself)
-/// - Must have required OAuth parameters (code)
-/// - Must not exceed reasonable length
-fn validate_oauth_url(url_str: &str) -> Option<String> {
-    // Length limit to prevent memory issues
-    if url_str.len() > 2048 {
-        return None;
-    }
-
-    // Parse and validate URL
-    let parsed = Url::parse(url_str).ok()?;
-    let host = parsed.host_str()?;
-
-    // Only accept URLs from localhost (the OAuth callback server itself)
-    if host != "127.0.0.1" && host != "localhost" {
-        return None;
-    }
-
-    // Must have code parameter (required for OAuth)
-    if !parsed.query_pairs().any(|(k, _)| k == "code") {
-        return None;
-    }
-
-    Some(url_str.to_string())
+/// Generate a unique nonce for OAuth session
+fn generate_nonce() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    // Add some randomness by mixing with thread id
+    let thread_id = format!("{:?}", std::thread::current().id());
+    format!("{:x}{}", timestamp, thread_id.len())
 }
 
-#[command]
-fn start_oauth_server(app: AppHandle) -> Result<u16, String> {
-    // Start server on fixed port (must be pre-registered with WorkOS)
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", OAUTH_PORT))
-        .map_err(|e| format!("Failed to bind port {}: {}", OAUTH_PORT, e))?;
+/// Extract JSON body from HTTP request
+fn extract_json_body(request: &str) -> Option<serde_json::Value> {
+    // Find empty line separating headers from body
+    let body_start = request.find("\r\n\r\n").map(|i| i + 4)?;
+    let body = &request[body_start..];
+    serde_json::from_str(body).ok()
+}
 
-    // Set a timeout so we don't block forever
+/// Send an error response with CORS headers
+fn send_error_response(stream: &mut std::net::TcpStream, status: u16, message: &str) {
+    let body = format!(r#"{{"error":"{}"}}"#, message);
+    let response = format!(
+        "HTTP/1.1 {} Error\r\n\
+         Access-Control-Allow-Origin: *\r\n\
+         Access-Control-Allow-Methods: POST, OPTIONS\r\n\
+         Access-Control-Allow-Headers: Content-Type\r\n\
+         Content-Type: application/json\r\n\
+         Content-Length: {}\r\n\
+         \r\n\
+         {}",
+        status,
+        body.len(),
+        body
+    );
+    let _ = stream.write_all(response.as_bytes());
+}
+
+/// Start OAuth server with dynamic port and nonce validation.
+/// Returns (port, nonce) tuple for the frontend to use.
+/// The web app callback page will POST auth data to this server.
+#[command]
+fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
+    // Find available port in range
+    let port = find_available_port().ok_or("No available ports in range 17900-17999")?;
+
+    // Generate and store nonce
+    let nonce = generate_nonce();
+    {
+        let mut nonces = active_nonces().lock().unwrap();
+        nonces.insert(port, nonce.clone());
+    }
+
+    // Bind to the port
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+        .map_err(|e| format!("Failed to bind port {}: {}", port, e))?;
+
     listener
         .set_nonblocking(false)
         .map_err(|e| format!("Failed to set blocking mode: {}", e))?;
 
     let app_handle = app.clone();
+    let expected_nonce = nonce.clone();
+    let server_port = port;
 
-    // Spawn thread to handle OAuth callback (two-phase approach)
-    // Phase 1: OAuth redirect arrives, we send HTML with JS
-    // Phase 2: JS fetches /cb with Full-Url header containing the complete URL
     thread::spawn(move || {
-        // Handle up to 2 requests (initial redirect + /cb fetch)
-        for _ in 0..2 {
+        // Set timeout for the listener (2 minutes)
+        let _ = listener.set_nonblocking(false);
+
+        // Handle requests (OPTIONS preflight + POST with auth data)
+        for _ in 0..3 {
             if let Ok((mut stream, _)) = listener.accept() {
-                let mut buffer = [0u8; 4096];
+                let mut buffer = [0u8; 8192];
                 if let Ok(n) = stream.read(&mut buffer) {
                     let request = String::from_utf8_lossy(&buffer[..n]);
 
-                    // Check if this is the /cb request with Full-Url header
-                    if request.starts_with("GET /cb") || request.starts_with("POST /cb") {
-                        if let Some(raw_url) = extract_full_url_header(&request) {
-                            // Validate URL before emitting for security
-                            if let Some(url) = validate_oauth_url(&raw_url) {
-                                // Emit to frontend with the validated URL
-                                let _ = app_handle.emit("oauth-callback", url);
-
-                                // Send simple success response
-                                let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nAccess-Control-Allow-Origin: http://127.0.0.1:17927\r\n\r\n";
-                                let _ = stream.write_all(response.as_bytes());
-                                break;
-                            }
-                        }
+                    // Handle CORS preflight request
+                    if request.starts_with("OPTIONS") {
+                        let response = "HTTP/1.1 204 No Content\r\n\
+                            Access-Control-Allow-Origin: *\r\n\
+                            Access-Control-Allow-Methods: POST, OPTIONS\r\n\
+                            Access-Control-Allow-Headers: Content-Type\r\n\
+                            Access-Control-Max-Age: 86400\r\n\
+                            \r\n";
+                        let _ = stream.write_all(response.as_bytes());
+                        continue;
                     }
 
-                    // Initial OAuth redirect - send HTML with JS to capture full URL
-                    // The JS will fetch /cb with window.location.href in a header
-                    let html = format!(
-                        r#"<!DOCTYPE html>
-<html>
-<head>
-    <title>Authentication Successful</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background: #f5f5f5;
-        }}
-        .container {{
-            text-align: center;
-            padding: 2rem;
-        }}
-        h1 {{ color: #333; margin-bottom: 0.5rem; }}
-        p {{ color: #666; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Authentication Successful</h1>
-        <p>You can close this tab and return to Hazel.</p>
-    </div>
-    <script>
-        fetch("http://127.0.0.1:{}/cb", {{
-            method: "POST",
-            headers: {{ "Full-Url": window.location.href }}
-        }});
-    </script>
-</body>
-</html>"#,
-                        OAUTH_PORT
-                    );
+                    // Handle POST request with auth data
+                    if request.starts_with("POST") {
+                        if let Some(body) = extract_json_body(&request) {
+                            let code = body.get("code").and_then(|v| v.as_str());
+                            let nonce = body.get("nonce").and_then(|v| v.as_str());
+                            let state = body.get("state").and_then(|v| v.as_str());
 
-                    let response = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
-                        html.len(),
-                        html
-                    );
-                    let _ = stream.write_all(response.as_bytes());
+                            if let (Some(code), Some(nonce), Some(state)) = (code, nonce, state) {
+                                // Validate nonce
+                                if nonce == expected_nonce {
+                                    // Clear nonce (one-time use)
+                                    {
+                                        let mut nonces = active_nonces().lock().unwrap();
+                                        nonces.remove(&server_port);
+                                    }
+
+                                    // Build callback URL for frontend
+                                    let callback_url = format!(
+                                        "http://127.0.0.1:{}?code={}&state={}",
+                                        server_port,
+                                        urlencoding::encode(code),
+                                        urlencoding::encode(state)
+                                    );
+
+                                    let _ = app_handle.emit("oauth-callback", callback_url);
+
+                                    // Send success response
+                                    let success_body = r#"{"success":true}"#;
+                                    let response = format!(
+                                        "HTTP/1.1 200 OK\r\n\
+                                        Access-Control-Allow-Origin: *\r\n\
+                                        Content-Type: application/json\r\n\
+                                        Content-Length: {}\r\n\
+                                        \r\n\
+                                        {}",
+                                        success_body.len(),
+                                        success_body
+                                    );
+                                    let _ = stream.write_all(response.as_bytes());
+                                    break;
+                                } else {
+                                    // Invalid nonce - potential attack
+                                    send_error_response(&mut stream, 403, "Invalid nonce");
+                                }
+                            } else {
+                                send_error_response(&mut stream, 400, "Missing required fields");
+                            }
+                        } else {
+                            send_error_response(&mut stream, 400, "Invalid JSON body");
+                        }
+                    }
                 }
             }
         }
     });
 
-    Ok(OAUTH_PORT)
+    Ok((port, nonce))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
