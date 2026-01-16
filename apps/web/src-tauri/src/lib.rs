@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
-use tauri::{command, AppHandle, Emitter};
+use tauri::{command, AppHandle, Emitter, Manager};
+use tauri_plugin_decorum::WebviewWindowExt;
 
 // Port range for OAuth callback server (dynamic)
 const OAUTH_PORT_MIN: u16 = 17900;
@@ -187,7 +188,8 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_decorum::init());
 
     builder
         .setup(|app| {
@@ -198,6 +200,18 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Configure custom titlebar with decorum
+            #[cfg(desktop)]
+            if let Some(main_window) = app.get_webview_window("main") {
+                // Create overlay titlebar (handles Windows custom controls)
+                main_window.create_overlay_titlebar().unwrap();
+
+                // macOS: Position traffic lights
+                #[cfg(target_os = "macos")]
+                main_window.set_traffic_lights_inset(16.0, 20.0).unwrap();
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())

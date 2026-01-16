@@ -34,7 +34,9 @@
 				"resizable": true,
 				"fullscreen": false,
 				"devtools": true,
-				"backgroundColor": "#27272a"
+				"backgroundColor": "#27272a",
+				"hiddenTitle": true,
+				"titleBarStyle": "Overlay"
 			}
 		],
 		"security": {

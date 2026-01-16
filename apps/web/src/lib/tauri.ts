@@ -18,6 +18,20 @@ export const isTauri = (): boolean => {
  * Initialize all Tauri-specific features
  * Safe to call in any environment - returns early if not in Tauri
  */
+/**
+ * Check if the app is running on macOS inside Tauri
+ * Used for platform-specific UI adjustments like titlebar padding
+ */
+export const isTauriMacOS = (): boolean => {
+	return isTauri() && navigator.platform.toLowerCase().includes("mac")
+}
+
+/**
+ * CSS class for Tauri titlebar padding on macOS
+ * Applied to top-level elements that need to clear the traffic lights
+ */
+export const TAURI_TITLEBAR_PADDING_CLASS = "pt-5"
+
 export const initTauri = async (): Promise<void> => {
 	if (!isTauri()) return
 

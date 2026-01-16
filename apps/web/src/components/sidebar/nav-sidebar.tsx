@@ -46,7 +46,9 @@ export function NavSidebar() {
 				</Link>
 			</SidebarHeader>
 			{!hasTauriTitlebar && <SidebarSeparator className="hidden sm:block" />}
-			<SidebarContent className={`mask-none ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}>
+			<SidebarContent
+				className={`mask-none ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}
+			>
 				<SidebarSectionGroup>
 					<SidebarSection className="p-2! *:data-[slot=sidebar-section-inner]:gap-y-2">
 						<SidebarItem

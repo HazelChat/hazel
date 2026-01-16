@@ -7,10 +7,16 @@ import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { Button as PrimitiveButton } from "~/components/ui/button"
 import { Separator } from "~/components/ui/separator"
 import { SidebarTrigger } from "~/components/ui/sidebar"
+import { isTauriMacOS } from "~/lib/tauri"
 
 export function AppNav({ openCmd }: { openCmd: (open: boolean) => void }) {
+	const hasTauriTitlebar = isTauriMacOS()
+
 	return (
-		<nav className="sticky top-0 flex items-center justify-between border-b bg-bg px-5 py-1.5">
+		<nav
+			data-tauri-drag-region
+			className={`sticky top-0 flex items-center justify-between border-b bg-bg px-5 py-1.5 ${hasTauriTitlebar ? "pt-5" : ""}`}
+		>
 			<div className="flex items-center gap-2 font-semibold text-sm/6">
 				<SidebarTrigger className="-ml-2 sm:-ml-0.5" />
 				<Separator className="mr-1.5 h-4" orientation="vertical" />
