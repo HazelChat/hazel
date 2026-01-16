@@ -1,0 +1,56 @@
+receivers:
+    otlp:
+        protocols:
+            grpc:
+                endpoint: 0.0.0.0:4317
+            http:
+                endpoint: 0.0.0.0:4318
+
+processors:
+    batch:
+        timeout: 5s
+        send_batch_size: 8192
+
+exporters:
+    tinybird:
+        endpoint: ${OTEL_TINYBIRD_API_HOST}
+        token: ${OTEL_TINYBIRD_TOKEN}
+        wait: true
+        metrics:
+            gauge:
+                datasource: "metrics_gauge"
+            sum:
+                datasource: "metrics_sum"
+            histogram:
+                datasource: "metrics_histogram"
+            exponential_histogram:
+                datasource: "metrics_exponential_histogram"
+        traces:
+            datasource: "traces"
+        logs:
+            datasource: "logs"
+        retry_on_failure:
+            enabled: true
+        sending_queue:
+            enabled: true
+            queue_size: 104857600
+            sizer: bytes
+            batch:
+                flush_timeout: 5s
+                min_size: 1024000
+                max_size: 10000000
+
+service:
+    pipelines:
+        traces:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [tinybird]
+        metrics:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [tinybird]
+        logs:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [tinybird]
