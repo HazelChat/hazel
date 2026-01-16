@@ -1,9 +1,7 @@
-import IconCheck from "~/components/icons/icon-check"
 import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import { IconMapPin } from "~/components/icons/icon-map-pin"
 import { useAtomSet } from "@effect-atom/atom-react"
-import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Exit } from "effect"
 import { updateUserMutation } from "~/atoms/user-atoms"
 import { Button } from "~/components/ui/button"
@@ -11,6 +9,12 @@ import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input, InputGroup } from "~/components/ui/input"
 import { useAuth } from "~/lib/auth"
 import { toastExitOnError } from "~/lib/toast-exit"
+import {
+	getAllTimezoneCities,
+	getTimezoneOffsetNumber,
+	timezoneToCity,
+	type TimezoneCity,
+} from "~/utils/timezone"
 import { CityCard } from "../city-card"
 import { GlobeVisual } from "../globe-visual"
 import { TimeRibbon } from "../time-ribbon"
@@ -72,72 +76,85 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 	const [selectedTimezone, setSelectedTimezone] = useState<string | null>(defaultTimezone || null)
 	const [detectedTimezone, setDetectedTimezone] = useState<string | null>(null)
 	const [searchQuery, setSearchQuery] = useState("")
+	const [debouncedQuery, setDebouncedQuery] = useState("")
 	const [hoveredOffset, setHoveredOffset] = useState<number | null>(null)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [detectionAttempted, setDetectionAttempted] = useState(false)
 
+	// Get all IANA timezones (cached, fast)
+	const allTimezones = useMemo(() => getAllTimezoneCities(), [])
+
+	// Debounce search query for performance
+	useEffect(() => {
+		const timer = setTimeout(() => setDebouncedQuery(searchQuery), 150)
+		return () => clearTimeout(timer)
+	}, [searchQuery])
+
+	// Auto-detect timezone on mount
 	useEffect(() => {
 		const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 		setDetectedTimezone(tz)
 		// Auto-select detected timezone if no default
 		if (!defaultTimezone) {
-			const detectedCity = CITIES.find((c) => c.timezone === tz)
-			if (detectedCity) {
-				setSelectedTimezone(detectedCity.timezone)
-			} else {
-				const closest = findClosestCity(tz)
-				if (closest) {
-					setSelectedTimezone(closest.timezone)
-				}
-			}
+			setSelectedTimezone(tz)
 		}
 	}, [defaultTimezone])
 
-	const filteredCities = CITIES.filter(
-		(city) =>
-			city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			city.country.toLowerCase().includes(searchQuery.toLowerCase()),
-	)
+	// Get city object for detected timezone (may not be in CITIES)
+	const detectedCity = useMemo(() => {
+		if (!detectedTimezone) return null
+		const fromCities = CITIES.find((c) => c.timezone === detectedTimezone)
+		if (fromCities) return fromCities
+		return timezoneToCity(detectedTimezone)
+	}, [detectedTimezone])
 
-	const selectedCity = CITIES.find((c) => c.timezone === selectedTimezone)
-	const detectedCity = CITIES.find((c) => c.timezone === detectedTimezone)
-	const closestCityToDetected = !detectedCity && detectedTimezone ? findClosestCity(detectedTimezone) : null
+	// Get city object for selected timezone
+	const selectedCity = useMemo(() => {
+		if (!selectedTimezone) return null
+		const fromCities = CITIES.find((c) => c.timezone === selectedTimezone)
+		if (fromCities) return fromCities
+		return timezoneToCity(selectedTimezone)
+	}, [selectedTimezone])
 
-	function findClosestCity(tz: string): (typeof CITIES)[0] | null {
-		try {
-			const now = new Date()
-			const formatter = new Intl.DateTimeFormat("en-US", {
-				timeZone: tz,
-				hour: "numeric",
-				hourCycle: "h23",
-			})
-			const localHour = Number.parseInt(formatter.format(now))
-			const utcHour = now.getUTCHours()
-			let detectedOffset = localHour - utcHour
-			if (detectedOffset > 12) detectedOffset -= 24
-			if (detectedOffset < -12) detectedOffset += 24
+	// Filter cities based on search query (debounced for performance)
+	const filteredCities = useMemo(() => {
+		const query = debouncedQuery.toLowerCase().trim()
 
-			const firstCity = CITIES[0]
-			if (!firstCity) return null
-
-			return CITIES.reduce((closest, city) => {
-				const currentDiff = Math.abs(city.offset - detectedOffset)
-				const closestDiff = Math.abs(closest.offset - detectedOffset)
-				return currentDiff < closestDiff ? city : closest
-			}, firstCity)
-		} catch {
-			return null
+		if (!query) {
+			// No search: show curated cities, plus detected if not already included
+			const result = [...CITIES]
+			if (detectedCity && !CITIES.some((c) => c.timezone === detectedCity.timezone)) {
+				result.unshift(detectedCity)
+			}
+			return result
 		}
-	}
 
-	const matchedTimezone = detectedCity?.timezone || closestCityToDetected?.timezone
+		// Search through ALL timezones (cached list, fast)
+		const matches = allTimezones.filter(
+			(city) =>
+				city.name.toLowerCase().includes(query) ||
+				city.country.toLowerCase().includes(query) ||
+				city.timezone.toLowerCase().includes(query),
+		)
+
+		// Sort: detected timezone first, then by name
+		const sorted = matches.sort((a, b) => {
+			if (a.timezone === detectedTimezone) return -1
+			if (b.timezone === detectedTimezone) return 1
+			return a.name.localeCompare(b.name)
+		})
+
+		// Limit results and calculate offset on demand for displayed items only
+		return sorted.slice(0, 30).map((city) => ({
+			...city,
+			offset: getTimezoneOffsetNumber(city.timezone),
+		}))
+	}, [debouncedQuery, allTimezones, detectedTimezone, detectedCity])
 
 	const handleDetect = () => {
 		setDetectionAttempted(true)
-		if (detectedCity) {
-			setSelectedTimezone(detectedCity.timezone)
-		} else if (closestCityToDetected) {
-			setSelectedTimezone(closestCityToDetected.timezone)
+		if (detectedTimezone) {
+			setSelectedTimezone(detectedTimezone)
 		}
 	}
 
@@ -200,37 +217,38 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 					<InputGroup className="w-full">
 						<IconMagnifier3 />
 						<Input
-							placeholder="Search cities..."
+							placeholder="Search all timezones..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
 					</InputGroup>
 					<Button
 						intent={
-							detectionAttempted && matchedTimezone === selectedTimezone ? "primary" : "outline"
+							detectionAttempted && detectedTimezone === selectedTimezone
+								? "primary"
+								: "outline"
 						}
 						onPress={handleDetect}
 						className="gap-2 shrink-0"
 					>
 						<IconMapPin className="size-4" />
-						{detectionAttempted && matchedTimezone === selectedTimezone
-							? `Detected: ${detectedCity?.name || closestCityToDetected?.name}`
+						{detectionAttempted && detectedTimezone === selectedTimezone
+							? `Detected: ${detectedCity?.name}`
 							: "Detect My Timezone"}
 					</Button>
 				</div>
 
 				{/* City Cards Grid */}
 				<div className="py-4 sm:py-6 @container">
-					<div className="grid grid-cols-1 @xs:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4 gap-3 max-h-[250px] sm:max-h-[400px] overflow-y-auto p-1 -m-1 pr-2">
-						{filteredCities.map((city, index) => (
+					<div className="grid grid-cols-1 @xs:grid-cols-2 @md:grid-cols-3 @lg:grid-cols-4 gap-3 max-h-[250px] sm:max-h-[400px] overflow-y-auto p-3 -m-3 pr-4">
+						{filteredCities.map((city) => (
 							<CityCard
 								key={city.timezone}
 								city={city}
 								isSelected={selectedTimezone === city.timezone}
-								isDetected={city.timezone === matchedTimezone}
+								isDetected={city.timezone === detectedTimezone}
 								onClick={() => setSelectedTimezone(city.timezone)}
 								onHover={(isHovered) => setHoveredOffset(isHovered ? city.offset : null)}
-								index={index}
 							/>
 						))}
 					</div>

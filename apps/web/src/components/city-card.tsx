@@ -17,10 +17,15 @@ interface CityCardProps {
 	isDetected: boolean
 	onClick: () => void
 	onHover: (isHovered: boolean) => void
-	index: number
 }
 
-export function CityCard({ city, isSelected, isDetected, onClick, onHover, index }: CityCardProps) {
+export function CityCard({
+	city,
+	isSelected,
+	isDetected,
+	onClick,
+	onHover,
+}: CityCardProps) {
 	const [time, setTime] = useState("")
 
 	useEffect(() => {
@@ -41,22 +46,19 @@ export function CityCard({ city, isSelected, isDetected, onClick, onHover, index
 	}, [city.timezone])
 
 	return (
-		<motion.button
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ delay: index * 0.03 }}
+		<button
+			type="button"
 			onClick={onClick}
 			onMouseEnter={() => onHover(true)}
 			onMouseLeave={() => onHover(false)}
 			className={`
-        relative p-4 rounded-xl text-left transition-all
+        relative p-4 rounded-xl text-left transition-all active:scale-[0.98]
         ${
 			isSelected
-				? "bg-primary text-primary-fg ring-2 ring-primary ring-offset-2 ring-offset-bg"
+				? "bg-primary text-primary-fg ring-2 ring-inset ring-primary/30"
 				: "bg-bg hover:bg-secondary border border-border hover:border-primary/50"
 		}
       `}
-			whileTap={{ scale: 0.98 }}
 		>
 			{isDetected && !isSelected && (
 				<motion.div
@@ -105,6 +107,6 @@ export function CityCard({ city, isSelected, isDetected, onClick, onHover, index
 					{city.offset}
 				</span>
 			</div>
-		</motion.button>
+		</button>
 	)
 }
