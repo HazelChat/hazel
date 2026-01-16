@@ -1,6 +1,5 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
 dockerfilePath = "infra/otel-collector/Dockerfile"
 watchPatterns = ["infra/otel-collector/**"]
 
