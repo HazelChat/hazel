@@ -29,15 +29,19 @@ export const TracingLive = Layer.unwrapEffect(
 		const environment = yield* Config.string("OTEL_ENVIRONMENT").pipe(Config.withDefault("local"))
 		const commitSha = yield* Config.string("RAILWAY_GIT_COMMIT_SHA,").pipe(Config.withDefault("unknown"))
 
+		const otelBaseUrl = yield* Config.string("OTEL_BASE_URL").pipe(
+			Config.withDefault("https://ingest.eu.signoz.cloud"),
+		)
+
 		if (environment === "local") {
 			return DevTools.layerWebSocket().pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
 		}
 
 		const otelServiceName = yield* Config.string("OTEL_SERVICE_NAME")
-		const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY")
+		const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY").pipe(Config.withDefault(""))
 
 		return Otlp.layer({
-			baseUrl: "https://ingest.eu.signoz.cloud",
+			baseUrl: otelBaseUrl,
 			resource: {
 				serviceName: otelServiceName,
 				serviceVersion: commitSha,
