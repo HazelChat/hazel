@@ -49,6 +49,7 @@ import IconIntegratio from "../icons/icon-integratio-"
 import { IconServers } from "../icons/icon-servers"
 import IconUsers from "../icons/icon-users"
 import IconUsersPlus from "../icons/icon-users-plus"
+import { isTauriMacOS } from "~/lib/tauri"
 
 interface ChannelSectionProps {
 	organizationId: OrganizationId
@@ -213,6 +214,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { organizationId, organization, slug } = useOrganization()
 	const { user } = useAuth()
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
+	const hasTauriTitlebar = isTauriMacOS()
 
 	// Modal hooks
 	const createOrgModal = useModal("create-organization")
@@ -236,7 +238,10 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
-			<SidebarHeader className="border-b py-4">
+			<SidebarHeader
+				data-tauri-drag-region
+				className={`border-b py-4 ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : ""}`}
+			>
 				<Menu>
 					<PrimitiveButton className="relative flex items-center justify-between gap-x-2 font-semibold outline-hidden focus-visible:ring focus-visible:ring-primary">
 						<div className="flex w-full items-center gap-1">

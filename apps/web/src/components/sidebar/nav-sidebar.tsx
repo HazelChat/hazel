@@ -18,19 +18,24 @@ import {
 import { useAppVersion } from "~/lib/version"
 import { useUnreadNotificationCount } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
+import { isTauriMacOS } from "~/lib/tauri"
 
 export function NavSidebar() {
 	const { isMobile } = useSidebar()
 	const { slug } = useOrganization()
 	const { unreadCount } = useUnreadNotificationCount()
 	const version = useAppVersion()
+	const hasTauriTitlebar = isTauriMacOS()
 
 	return (
 		<Sidebar
 			collapsible="none"
-			className="hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex md:border-r"
+			className={`hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasTauriTitlebar ? "" : "md:border-r"}`}
 		>
-			<SidebarHeader className="h-14 px-3 py-4">
+			<SidebarHeader
+				data-tauri-drag-region
+				className={`px-3 py-4 ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}`}
+			>
 				<Link
 					href={{
 						to: "/",
@@ -40,8 +45,8 @@ export function NavSidebar() {
 					<Logo className="size-7" />
 				</Link>
 			</SidebarHeader>
-			<SidebarSeparator className="hidden sm:block" />
-			<SidebarContent className="mask-none">
+			{!hasTauriTitlebar && <SidebarSeparator className="hidden sm:block" />}
+			<SidebarContent className={`mask-none ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}>
 				<SidebarSectionGroup>
 					<SidebarSection className="p-2! *:data-[slot=sidebar-section-inner]:gap-y-2">
 						<SidebarItem
@@ -117,7 +122,7 @@ export function NavSidebar() {
 					</SidebarSection>
 				</SidebarSectionGroup>
 			</SidebarContent>
-			<SidebarFooter className="p-2">
+			<SidebarFooter className={`p-2 ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}>
 				{version && (
 					<span className="text-center text-[10px] font-mono text-muted-fg">v{version}</span>
 				)}
