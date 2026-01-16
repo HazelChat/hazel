@@ -4,14 +4,17 @@
  * @description Check for app updates and prompt user to install (no-op in browser)
  */
 
+import { useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
-
-type UpdaterApi = typeof import("@tauri-apps/plugin-updater")
-type ProcessApi = typeof import("@tauri-apps/plugin-process")
-
-const updater: UpdaterApi | undefined = (window as any).__TAURI__?.updater
-const process: ProcessApi | undefined = (window as any).__TAURI__?.process
+import {
+	createDownloadEffect,
+	isTauriEnvironment,
+	tauriDownloadStateAtom,
+	tauriUpdateCheckAtom,
+	tauriUpdateStateAtom,
+} from "~/atoms/tauri-update-atoms"
+import { runtime } from "~/lib/services/common/runtime"
 
 /**
  * Component that checks for Tauri app updates and displays a toast notification
@@ -24,50 +27,79 @@ const process: ProcessApi | undefined = (window as any).__TAURI__?.process
  * - Only runs in Tauri environment (no-op in browser)
  */
 export const TauriUpdateCheck = () => {
-	const checkingRef = useRef(false)
+	// Mount the polling atom to start periodic update checks
+	useAtomMount(tauriUpdateCheckAtom)
 
+	// Subscribe to state
+	const updateState = useAtomValue(tauriUpdateStateAtom)
+	const downloadState = useAtomValue(tauriDownloadStateAtom)
+	const setDownloadState = useAtomSet(tauriDownloadStateAtom)
+
+	// Track whether we've shown the initial toast
+	const hasShownToastRef = useRef(false)
+
+	// Show toast when update becomes available
 	useEffect(() => {
-		if (!updater || !process) return
+		if (!isTauriEnvironment) return
 
-		const checkForUpdates = async () => {
-			if (checkingRef.current) return
-			checkingRef.current = true
+		if (updateState._tag === "available" && !hasShownToastRef.current) {
+			hasShownToastRef.current = true
+			const { update, version, body } = updateState
 
-			try {
-				const update = await updater.check()
-				if (update) {
-					toast(`Update available: v${update.version}`, {
-						id: "tauri-update",
-						description: update.body || "A new version is ready to install",
-						duration: Number.POSITIVE_INFINITY,
-						action: {
-							label: "Install & Restart",
-							onClick: async () => {
-								toast.loading("Downloading update...", { id: "tauri-update" })
-								await update.downloadAndInstall()
-								await process.relaunch()
-							},
-						},
-						cancel: {
-							label: "Later",
-							onClick: () => {},
-						},
-					})
-				}
-			} catch (error) {
-				console.error("Update check failed:", error)
-			} finally {
-				checkingRef.current = false
-			}
+			toast(`Update available: v${version}`, {
+				id: "tauri-update",
+				description: body || "A new version is ready to install",
+				duration: Number.POSITIVE_INFINITY,
+				action: {
+					label: "Install & Restart",
+					onClick: () => {
+						runtime.runPromise(createDownloadEffect(update, setDownloadState))
+					},
+				},
+				cancel: {
+					label: "Later",
+					onClick: () => {},
+				},
+			})
 		}
 
-		// Check on mount
-		checkForUpdates()
+		// Reset toast tracking when state goes back to idle or not-available
+		if (updateState._tag === "idle" || updateState._tag === "not-available") {
+			hasShownToastRef.current = false
+		}
+	}, [updateState, setDownloadState])
 
-		// Check every 6 hours (reduces battery drain and network usage)
-		const interval = setInterval(checkForUpdates, 6 * 60 * 60 * 1000)
-		return () => clearInterval(interval)
-	}, [])
+	// Update toast based on download state
+	useEffect(() => {
+		if (!isTauriEnvironment) return
+
+		switch (downloadState._tag) {
+			case "downloading": {
+				const { downloadedBytes, totalBytes } = downloadState
+				if (totalBytes) {
+					const percent = Math.round((downloadedBytes / totalBytes) * 100)
+					toast.loading(`Downloading update... ${percent}%`, { id: "tauri-update" })
+				} else {
+					const mb = (downloadedBytes / 1024 / 1024).toFixed(1)
+					toast.loading(`Downloading update... ${mb} MB`, { id: "tauri-update" })
+				}
+				break
+			}
+			case "installing":
+				toast.loading("Installing update...", { id: "tauri-update" })
+				break
+			case "restarting":
+				toast.loading("Restarting...", { id: "tauri-update" })
+				break
+			case "error":
+				toast.error("Update failed", {
+					id: "tauri-update",
+					description: downloadState.message,
+					duration: 10000,
+				})
+				break
+		}
+	}, [downloadState])
 
 	return null
 }
