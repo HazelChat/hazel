@@ -140,6 +140,30 @@ export function SectionGroup({
 		})
 	}
 
+	const menuActions = [
+		onCreateChannel && {
+			key: "create-channel",
+			icon: <IconCirclePlus />,
+			label: "Create new channel",
+			onAction: onCreateChannel,
+		},
+		onJoinChannel && {
+			key: "join-channel",
+			icon: <IconHashtag />,
+			label: "Join existing channel",
+			onAction: onJoinChannel,
+		},
+		onCreateDm && {
+			key: "create-dm",
+			icon: <IconPlus />,
+			label: "Start a conversation",
+			onAction: onCreateDm,
+		},
+	].filter(Boolean) as { key: string; icon: ReactNode; label: string; onAction: () => void }[]
+
+	const hasDeleteAction = isEditable
+	const singleAction = menuActions.length === 1 && !hasDeleteAction ? menuActions[0] : null
+
 	const headerContent = (
 		<div className="col-span-full flex items-center justify-between gap-x-2 pl-2.5 text-muted-fg text-xs/5">
 			<button
@@ -152,40 +176,34 @@ export function SectionGroup({
 				/>
 				<Strong>{name}</Strong>
 			</button>
-			<Menu>
-				<Button intent="plain" isCircle size="sq-sm">
+			{singleAction ? (
+				<Button intent="plain" isCircle size="sq-sm" onPress={singleAction.onAction}>
 					<IconPlus />
 				</Button>
-				<MenuContent>
-					{onCreateChannel && (
-						<MenuItem onAction={onCreateChannel}>
-							<IconCirclePlus />
-							<MenuLabel>Create new channel</MenuLabel>
-						</MenuItem>
-					)}
-					{onJoinChannel && (
-						<MenuItem onAction={onJoinChannel}>
-							<IconHashtag />
-							<MenuLabel>Join existing channel</MenuLabel>
-						</MenuItem>
-					)}
-					{onCreateDm && (
-						<MenuItem onAction={onCreateDm}>
-							<IconPlus />
-							<MenuLabel>Start a conversation</MenuLabel>
-						</MenuItem>
-					)}
-					{isEditable && (
-						<>
-							<MenuSeparator />
-							<MenuItem onAction={handleDelete} intent="danger">
-								<IconTrash />
-								<MenuLabel>Delete section</MenuLabel>
+			) : (
+				<Menu>
+					<Button intent="plain" isCircle size="sq-sm">
+						<IconPlus />
+					</Button>
+					<MenuContent>
+						{menuActions.map((action) => (
+							<MenuItem key={action.key} onAction={action.onAction}>
+								{action.icon}
+								<MenuLabel>{action.label}</MenuLabel>
 							</MenuItem>
-						</>
-					)}
-				</MenuContent>
-			</Menu>
+						))}
+						{hasDeleteAction && (
+							<>
+								<MenuSeparator />
+								<MenuItem onAction={handleDelete} intent="danger">
+									<IconTrash />
+									<MenuLabel>Delete section</MenuLabel>
+								</MenuItem>
+							</>
+						)}
+					</MenuContent>
+				</Menu>
+			)}
 		</div>
 	)
 
