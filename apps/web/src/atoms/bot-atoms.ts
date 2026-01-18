@@ -80,3 +80,8 @@ export const installBotMutation = HazelRpcClient.mutation("bot.install")
  * Mutation atom for uninstalling a bot.
  */
 export const uninstallBotMutation = HazelRpcClient.mutation("bot.uninstall")
+
+/**
+ * Mutation atom for updating a bot's avatar.
+ */
+export const updateBotAvatarMutation = HazelRpcClient.mutation("bot.updateAvatar")

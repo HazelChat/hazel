@@ -308,4 +308,24 @@ export class BotRpcs extends RpcGroup.make(
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * bot.updateAvatar
+	 *
+	 * Updates the bot's avatar URL.
+	 * This updates the machine user's avatarUrl associated with the bot.
+	 *
+	 * @param payload - Bot ID and new avatar URL
+	 * @returns Updated bot data and transaction ID
+	 * @throws BotNotFoundError if bot doesn't exist
+	 * @throws UnauthorizedError if user is not bot creator
+	 */
+	Rpc.mutation("bot.updateAvatar", {
+		payload: Schema.Struct({
+			id: BotId,
+			avatarUrl: Schema.String,
+		}),
+		success: BotResponse,
+		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

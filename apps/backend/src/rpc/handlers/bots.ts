@@ -505,6 +505,41 @@ export const BotRpcLive = BotRpcs.toLayer(
 						)
 						.pipe(withRemapDbErrors("BotInstallation", "delete"))
 				}),
+
+			"bot.updateAvatar": ({ id, avatarUrl }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const botRepo = yield* BotRepo
+
+							// Check bot exists
+							const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+							if (Option.isNone(botOption)) {
+								return yield* Effect.fail(new BotNotFoundError({ botId: id }))
+							}
+
+							const bot = botOption.value
+
+							// Update the machine user's avatar URL
+							yield* db
+								.execute((client) =>
+									client
+										.update(schema.usersTable)
+										.set({ avatarUrl, updatedAt: new Date() })
+										.where(eq(schema.usersTable.id, bot.userId)),
+								)
+								.pipe(withSystemActor)
+
+							// Return the bot data (unchanged, but user avatar is updated)
+							const txid = yield* generateTransactionId()
+
+							return new BotResponse({
+								data: bot,
+								transactionId: txid,
+							})
+						}).pipe(policyUse(BotPolicy.canUpdate(id))),
+					)
+					.pipe(withRemapDbErrors("Bot", "update")),
 		}
 	}),
 )

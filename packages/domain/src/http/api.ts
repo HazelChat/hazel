@@ -1,8 +1,6 @@
 import { HttpApi, OpenApi } from "@effect/platform"
 import { MessagesApiGroup } from "./api-v1/messages"
-import { AttachmentGroup } from "./attachments"
 import { AuthGroup } from "./auth"
-import { AvatarGroup } from "./avatars"
 import { BotCommandsApiGroup } from "./bot-commands"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
@@ -11,11 +9,10 @@ import { IntegrationGroup } from "./integrations"
 import { MockDataGroup } from "./mock-data"
 import { PresencePublicGroup } from "./presence"
 import { RootGroup } from "./root"
+import { UploadsGroup } from "./uploads"
 import { WebhookGroup } from "./webhooks"
 
 export class HazelApi extends HttpApi.make("HazelApp")
-	.add(AttachmentGroup)
-	.add(AvatarGroup)
 	.add(MessagesApiGroup)
 	.add(BotCommandsApiGroup)
 	.add(PresencePublicGroup)
@@ -25,6 +22,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(IntegrationCommandGroup)
 	.add(IntegrationResourceGroup)
 	.add(IncomingWebhookGroup)
+	.add(UploadsGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)
 	.annotateContext(

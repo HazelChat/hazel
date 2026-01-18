@@ -2,14 +2,17 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { useState } from "react"
 import { deleteBotMutation, regenerateBotTokenMutation } from "~/atoms/bot-atoms"
 import { BotAvatar } from "~/components/bots/bot-avatar"
-import type { BotWithUser } from "~/db/hooks"
 import { BotTokenDisplay } from "~/components/bots/bot-token-display"
+import IconArrowPath from "~/components/icons/icon-arrow-path"
 import IconCode from "~/components/icons/icon-code"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
+import IconEdit from "~/components/icons/icon-edit"
 import IconTrash from "~/components/icons/icon-trash"
+import { EditBotModal } from "~/components/modals/edit-bot-modal"
+import type { BotWithUser } from "~/db/hooks"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "~/components/ui/menu"
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "~/components/ui/menu"
 import {
 	Modal,
 	ModalBody,
@@ -40,6 +43,7 @@ export function BotCard({
 }: BotCardProps) {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 	const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
+	const [showEditModal, setShowEditModal] = useState(false)
 	const [regeneratedToken, setRegeneratedToken] = useState<string | null>(null)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isRegenerating, setIsRegenerating] = useState(false)
@@ -111,19 +115,29 @@ export function BotCard({
 					{/* Actions */}
 					{!showUninstall && (
 						<Menu>
-							<MenuTrigger>
-								<Button size="sm" intent="plain" className="size-8 p-0">
+							<MenuTrigger aria-label="Bot actions">
+								<Button
+									size="sm"
+									intent="plain"
+									className="size-8 p-0 hover:bg-secondary"
+									aria-label="Bot actions"
+								>
 									<IconDotsVertical className="size-4" />
 								</Button>
 							</MenuTrigger>
 							<MenuContent placement="bottom end">
+								<MenuItem onAction={() => setShowEditModal(true)}>
+									<IconEdit data-slot="icon" className="size-4" />
+									<MenuLabel>Edit</MenuLabel>
+								</MenuItem>
 								<MenuItem onAction={() => setShowRegenerateConfirm(true)}>
-									Regenerate Token
+									<IconArrowPath data-slot="icon" className="size-4" />
+									<MenuLabel>Regenerate Token</MenuLabel>
 								</MenuItem>
 								<MenuSeparator />
 								<MenuItem onAction={() => setShowDeleteConfirm(true)} intent="danger">
-									<IconTrash className="size-4" />
-									Delete
+									<IconTrash data-slot="icon" className="size-4" />
+									<MenuLabel>Delete</MenuLabel>
 								</MenuItem>
 							</MenuContent>
 						</Menu>
@@ -146,6 +160,15 @@ export function BotCard({
 					)}
 				</div>
 			</div>
+
+			{/* Edit Modal */}
+			<EditBotModal
+				isOpen={showEditModal}
+				onOpenChange={setShowEditModal}
+				bot={bot}
+				onSuccess={onUpdate}
+				reactivityKeys={reactivityKeys}
+			/>
 
 			{/* Delete Confirmation Modal */}
 			<Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

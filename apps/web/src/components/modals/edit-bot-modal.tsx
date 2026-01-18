@@ -1,9 +1,10 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { BotScope } from "@hazel/domain/rpc"
 import { type } from "arktype"
-import { useState } from "react"
-import { createBotMutation } from "~/atoms/bot-atoms"
-import { BotTokenDisplay } from "~/components/bots/bot-token-display"
+import { useEffect } from "react"
+import { updateBotMutation } from "~/atoms/bot-atoms"
+import { BotAvatarUpload } from "~/components/bots/bot-avatar-upload"
+import type { BotWithUser } from "~/db/hooks"
 import { Button } from "~/components/ui/button"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Description, FieldError, Label } from "~/components/ui/field"
@@ -32,26 +33,24 @@ const botSchema = type({
 	isPublic: "boolean",
 })
 
-interface CreateBotModalProps {
+interface EditBotModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
+	bot: BotWithUser
 	onSuccess?: () => void
 	reactivityKeys?: readonly string[]
 }
 
-export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys }: CreateBotModalProps) {
-	const [createdBotToken, setCreatedBotToken] = useState<string | null>(null)
-	const [createdBotName, setCreatedBotName] = useState<string>("")
-
-	const createBot = useAtomSet(createBotMutation, { mode: "promiseExit" })
+export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityKeys }: EditBotModalProps) {
+	const updateBot = useAtomSet(updateBotMutation, { mode: "promiseExit" })
 
 	const form = useAppForm({
 		defaultValues: {
-			name: "",
-			description: "",
-			webhookUrl: "",
-			scopes: ["messages:read", "messages:write"] as string[],
-			isPublic: false,
+			name: bot.name,
+			description: bot.description ?? "",
+			webhookUrl: bot.webhookUrl ?? "",
+			scopes: (bot.scopes ?? []) as string[],
+			isPublic: bot.isPublic ?? false,
 		},
 		validators: {
 			onChange: botSchema,
@@ -62,39 +61,48 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 			}
 
 			await toastExit(
-				createBot({
+				updateBot({
 					payload: {
+						id: bot.id,
 						name: value.name,
-						description: value.description || undefined,
-						webhookUrl: value.webhookUrl || undefined,
+						description: value.description || null,
+						webhookUrl: value.webhookUrl || null,
 						scopes: value.scopes as BotScope[],
 						isPublic: value.isPublic,
 					},
 					reactivityKeys,
 				}),
 				{
-					loading: "Creating application...",
-					success: (result) => {
-						setCreatedBotToken(result.token)
-						setCreatedBotName(value.name)
-						return `Application "${value.name}" created successfully`
+					loading: "Updating application...",
+					success: () => {
+						onOpenChange(false)
+						onSuccess?.()
+						return `Application "${value.name}" updated successfully`
 					},
-					customErrors: {},
+					customErrors: {
+						BotNotFoundError: () => ({
+							title: "Application not found",
+							description: "This application may have been deleted.",
+							isRetryable: false,
+						}),
+					},
 				},
 			)
 		},
 	})
 
-	const handleClose = () => {
-		if (createdBotToken) {
-			// Reset state when closing after token display
-			setCreatedBotToken(null)
-			setCreatedBotName("")
-			form.reset()
-			onSuccess?.()
+	// Reset form when modal opens with a different bot
+	useEffect(() => {
+		if (isOpen) {
+			form.reset({
+				name: bot.name,
+				description: bot.description ?? "",
+				webhookUrl: bot.webhookUrl ?? "",
+				scopes: (bot.scopes ?? []) as string[],
+				isPublic: bot.isPublic ?? false,
+			})
 		}
-		onOpenChange(false)
-	}
+	}, [isOpen, bot.id])
 
 	const toggleScope = (scopeId: string, currentScopes: string[]) => {
 		if (currentScopes.includes(scopeId)) {
@@ -103,39 +111,12 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 		return [...currentScopes, scopeId]
 	}
 
-	// Show token display after successful creation
-	if (createdBotToken) {
-		return (
-			<Modal isOpen={isOpen} onOpenChange={handleClose}>
-				<ModalContent size="lg">
-					<ModalHeader>
-						<ModalTitle>Application Created Successfully</ModalTitle>
-						<ModalDescription>
-							Your application "{createdBotName}" has been created. Save the token below - you
-							won't be able to see it again.
-						</ModalDescription>
-					</ModalHeader>
-					<ModalBody>
-						<BotTokenDisplay token={createdBotToken} />
-					</ModalBody>
-					<ModalFooter>
-						<Button intent="primary" onPress={handleClose}>
-							Done
-						</Button>
-					</ModalFooter>
-				</ModalContent>
-			</Modal>
-		)
-	}
-
 	return (
 		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
 			<ModalContent size="lg">
 				<ModalHeader>
-					<ModalTitle>Create Application</ModalTitle>
-					<ModalDescription>
-						Create an application to interact with your workspace programmatically using the SDK
-					</ModalDescription>
+					<ModalTitle>Edit Application</ModalTitle>
+					<ModalDescription>Update your application settings and permissions</ModalDescription>
 				</ModalHeader>
 
 				<form
@@ -145,6 +126,11 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 					}}
 				>
 					<ModalBody className="flex flex-col gap-6">
+						{/* Avatar Upload */}
+						<div className="flex justify-center">
+							<BotAvatarUpload bot={bot} />
+						</div>
+
 						{/* Basic Info */}
 						<form.AppField
 							name="name"
@@ -278,7 +264,7 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 									type="submit"
 									isDisabled={!canSubmit || isSubmitting}
 								>
-									{isSubmitting ? "Creating..." : "Create Application"}
+									{isSubmitting ? "Saving..." : "Save Changes"}
 								</Button>
 							)}
 						</form.Subscribe>

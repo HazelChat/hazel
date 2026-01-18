@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { useAuth } from "~/lib/auth"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
+import { uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 
 interface UseFileUploadOptions {
 	organizationId: OrganizationId
@@ -24,7 +25,7 @@ export function useFileUpload({
 	const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
 	const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
 
-	const getUploadUrlMutation = useAtomSet(HazelApiClient.mutation("attachments", "getUploadUrl"), {
+	const presignMutation = useAtomSet(HazelApiClient.mutation("uploads", "presign"), {
 		mode: "promiseExit",
 	})
 
@@ -35,60 +36,6 @@ export function useFileUpload({
 	const failUploadMutation = useAtomSet(HazelRpcClient.mutation("attachment.fail"), {
 		mode: "promiseExit",
 	})
-
-	// Upload file directly to R2 using XHR (for progress tracking)
-	// Returns { success: boolean, errorType?: 'network' | 'timeout' | 'server' | 'aborted' }
-	const uploadToR2 = useCallback(
-		(
-			url: string,
-			file: File,
-			fileId: string,
-		): Promise<{ success: boolean; errorType?: "network" | "timeout" | "server" | "aborted" }> => {
-			return new Promise((resolve) => {
-				const xhr = new XMLHttpRequest()
-				const abortController = new AbortController()
-				abortControllersRef.current.set(fileId, abortController)
-				xhr.timeout = 120000 // 2 minute timeout for larger files
-
-				xhr.upload.onprogress = (event) => {
-					if (event.lengthComputable) {
-						const percent = Math.round((event.loaded / event.total) * 100)
-						setUploadProgress((prev) => ({ ...prev, [fileId]: percent }))
-						onProgress?.(fileId, percent)
-					}
-				}
-
-				xhr.onload = () => {
-					abortControllersRef.current.delete(fileId)
-					if (xhr.status >= 200 && xhr.status < 300) {
-						resolve({ success: true })
-					} else {
-						resolve({ success: false, errorType: "server" })
-					}
-				}
-
-				xhr.onerror = () => {
-					abortControllersRef.current.delete(fileId)
-					resolve({ success: false, errorType: "network" })
-				}
-
-				xhr.ontimeout = () => {
-					abortControllersRef.current.delete(fileId)
-					resolve({ success: false, errorType: "timeout" })
-				}
-
-				xhr.onabort = () => {
-					abortControllersRef.current.delete(fileId)
-					resolve({ success: false, errorType: "aborted" })
-				}
-
-				xhr.open("PUT", url)
-				xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-				xhr.send(file)
-			})
-		},
-		[onProgress],
-	)
 
 	const uploadFile = useCallback(
 		async (file: File, fileId?: string): Promise<AttachmentId | null> => {
@@ -108,10 +55,15 @@ export function useFileUpload({
 				return null
 			}
 
+			// Create abort controller for this upload
+			const abortController = new AbortController()
+			abortControllersRef.current.set(trackingId, abortController)
+
 			try {
-				// Step 1: Get presigned URL from backend (creates attachment with "uploading" status)
-				const urlRes = await getUploadUrlMutation({
+				// Step 1: Get presigned URL from unified endpoint (creates attachment with "uploading" status)
+				const presignRes = await presignMutation({
 					payload: {
+						type: "attachment" as const,
 						fileName: file.name,
 						fileSize: file.size,
 						contentType: file.type || "application/octet-stream",
@@ -120,17 +72,34 @@ export function useFileUpload({
 					},
 				})
 
-				if (!Exit.isSuccess(urlRes)) {
+				if (!Exit.isSuccess(presignRes)) {
 					toast.error("Upload failed", {
 						description: "Failed to get upload URL. Please try again.",
 					})
 					return null
 				}
 
-				const { uploadUrl, attachmentId } = urlRes.value
+				const { uploadUrl, resourceId: attachmentId } = presignRes.value
 
-				// Step 2: Upload file directly to R2 using XHR (for progress tracking)
-				const uploadResult = await uploadToR2(uploadUrl, file, trackingId)
+				if (!attachmentId) {
+					toast.error("Upload failed", {
+						description: "Failed to create attachment record. Please try again.",
+					})
+					return null
+				}
+
+				// Step 2: Upload file directly to storage using shared utility
+				const uploadResult = await uploadToStorage(uploadUrl, file, {
+					timeout: 120000, // 2 minutes for larger files
+					signal: abortController.signal,
+					onProgress: (percent) => {
+						setUploadProgress((prev) => ({ ...prev, [trackingId]: percent }))
+						onProgress?.(trackingId, percent)
+					},
+				})
+
+				// Clean up abort controller
+				abortControllersRef.current.delete(trackingId)
 
 				if (!uploadResult.success) {
 					// Don't show error for aborted uploads (user cancelled)
@@ -139,16 +108,11 @@ export function useFileUpload({
 						await failUploadMutation({
 							payload: {
 								id: attachmentId,
-								reason: `R2 upload failed: ${uploadResult.errorType}`,
+								reason: `Storage upload failed: ${uploadResult.errorType}`,
 							},
 						})
-						const errorMessages = {
-							network: "Network error. Check your connection and try again.",
-							timeout: "Upload timed out. Try a smaller file or check your connection.",
-							server: "Server error during upload. Please try again later.",
-						}
 						toast.error("Upload failed", {
-							description: errorMessages[uploadResult.errorType ?? "server"],
+							description: uploadErrorMessages[uploadResult.errorType ?? "server"],
 						})
 					} else {
 						// Still mark as failed for aborted uploads
@@ -194,10 +158,10 @@ export function useFileUpload({
 			organizationId,
 			channelId,
 			user?.id,
-			getUploadUrlMutation,
+			presignMutation,
 			completeUploadMutation,
 			failUploadMutation,
-			uploadToR2,
+			onProgress,
 		],
 	)
 
