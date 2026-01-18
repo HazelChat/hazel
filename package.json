@@ -59,9 +59,9 @@
 		"vitest": "^4.0.17",
 		"wrangler": "^4.56.0"
 	},
-	"packageManager": "bun@1.3.5",
 	"engines": {
 		"bun": ">=1.2.14"
 	},
+	"packageManager": "bun@1.3.5",
 	"trustedDependencies": []
 }

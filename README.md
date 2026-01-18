@@ -138,17 +138,15 @@ Add the following redirect URI in **Redirects** → **Edit redirect URIs**:
 http://localhost:3003/auth/callback
 ```
 
-
 ### 3. Create Required Roles
 
 The application uses custom roles for organization members. Go to **Roles** and create these roles:
 
-| Role Slug | Name  | Description |
-|-----------|-------|-------------|
-| `owner`   | Owner | Full access, can delete organization |
-| `admin`   | Admin | Can manage members and settings |
-| `member`  | Member | Standard access (default) |
-
+| Role Slug | Name   | Description                          |
+| --------- | ------ | ------------------------------------ |
+| `owner`   | Owner  | Full access, can delete organization |
+| `admin`   | Admin  | Can manage members and settings      |
+| `member`  | Member | Standard access (default)            |
 
 ## Development Commands
 
