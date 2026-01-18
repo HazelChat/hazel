@@ -4,20 +4,24 @@
  * @description Login page for desktop app that initiates OAuth flow via system browser
  */
 
+import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute, Navigate, redirect } from "@tanstack/react-router"
-import { useState } from "react"
+import {
+	desktopAuthErrorAtom,
+	desktopAuthStatusAtom,
+	desktopLoginAtom,
+	getDesktopAccessToken,
+} from "~/atoms/desktop-auth"
 import { Logo } from "~/components/logo"
 import { Button } from "~/components/ui/button"
 import { isTauri } from "~/lib/tauri"
-import { initiateDesktopAuth } from "~/lib/tauri-auth"
-import { getAccessToken } from "~/lib/token-storage"
 
 export const Route = createFileRoute("/auth/desktop-login")({
 	// Check for existing token before rendering - redirect to home if already logged in
 	loader: async () => {
 		if (!isTauri()) return null
 
-		const token = await getAccessToken()
+		const token = await getDesktopAccessToken()
 		if (token && token.trim().length > 10) {
 			throw redirect({ to: "/" })
 		}
@@ -27,23 +31,20 @@ export const Route = createFileRoute("/auth/desktop-login")({
 })
 
 function DesktopLoginPage() {
-	const [isLoading, setIsLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const authStatus = useAtomValue(desktopAuthStatusAtom)
+	const authError = useAtomValue(desktopAuthErrorAtom)
+	const login = useAtomSet(desktopLoginAtom)
 
 	// Redirect web users to regular login
 	if (!isTauri()) {
 		return <Navigate to="/auth/login" />
 	}
 
-	const handleLogin = async () => {
-		setIsLoading(true)
-		setError(null)
-		try {
-			await initiateDesktopAuth({ returnTo: "/" })
-		} catch (e) {
-			setError(e instanceof Error ? e.message : "Login failed")
-			setIsLoading(false)
-		}
+	const isLoading = authStatus === "loading"
+	const error = authError?.message ?? null
+
+	const handleLogin = () => {
+		login({ returnTo: "/" })
 	}
 
 	return (

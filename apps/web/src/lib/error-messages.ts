@@ -1,15 +1,26 @@
 import type { HttpClientError } from "@effect/platform/HttpClientError"
 import { RpcClientError } from "@effect/rpc/RpcClientError"
 import {
+	DesktopConnectionError,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
 	InvalidBearerTokenError,
+	InvalidDesktopStateError,
 	InvalidJwtPayloadError,
+	MissingAuthCodeError,
+	OAuthCallbackError,
+	OAuthTimeoutError,
 	SessionAuthenticationError,
 	SessionExpiredError,
 	SessionLoadError,
 	SessionNotProvidedError,
 	SessionRefreshError,
+	TauriCommandError,
+	TauriNotAvailableError,
+	TokenDecodeError,
+	TokenExchangeError,
+	TokenNotFoundError,
+	TokenStoreError,
 	UnauthorizedError,
 	WorkOSUserFetchError,
 } from "@hazel/domain"
@@ -71,6 +82,18 @@ export const CommonAppErrorSchema = Schema.Union(
 	CollectionInErrorEffectError,
 	TransactionStateEffectError,
 	CollectionSyncEffectError,
+	// Desktop auth errors
+	TauriNotAvailableError,
+	TauriCommandError,
+	OAuthTimeoutError,
+	OAuthCallbackError,
+	MissingAuthCodeError,
+	TokenStoreError,
+	TokenNotFoundError,
+	TokenExchangeError,
+	TokenDecodeError,
+	DesktopConnectionError,
+	InvalidDesktopStateError,
 )
 
 /**
@@ -217,6 +240,63 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	CollectionSyncEffectError: {
 		title: "Sync error",
 		description: "Failed to sync data. Please try again.",
+		isRetryable: true,
+	},
+
+	// Desktop auth errors
+	TauriNotAvailableError: {
+		title: "Desktop app not available",
+		description: "Please make sure Hazel is running.",
+		isRetryable: false,
+	},
+	TauriCommandError: {
+		title: "Desktop command failed",
+		description: "Please restart Hazel and try again.",
+		isRetryable: true,
+	},
+	OAuthTimeoutError: {
+		title: "Sign in timed out",
+		description: "The sign in process took too long. Please try again.",
+		isRetryable: true,
+	},
+	OAuthCallbackError: {
+		title: "Authentication failed",
+		description: "There was a problem with the sign in process.",
+		isRetryable: true,
+	},
+	MissingAuthCodeError: {
+		title: "Authentication incomplete",
+		description: "No authorization code received. Please try again.",
+		isRetryable: true,
+	},
+	TokenStoreError: {
+		title: "Failed to store credentials",
+		description: "Please try signing in again.",
+		isRetryable: true,
+	},
+	TokenNotFoundError: {
+		title: "Not signed in",
+		description: "Please sign in to continue.",
+		isRetryable: false,
+	},
+	TokenExchangeError: {
+		title: "Sign in failed",
+		description: "Could not complete sign in. Please try again.",
+		isRetryable: true,
+	},
+	TokenDecodeError: {
+		title: "Invalid response",
+		description: "Received an invalid response from the server.",
+		isRetryable: true,
+	},
+	DesktopConnectionError: {
+		title: "Could not connect to Hazel",
+		description: "Make sure Hazel is running on your computer.",
+		isRetryable: true,
+	},
+	InvalidDesktopStateError: {
+		title: "Invalid authentication state",
+		description: "Please try signing in again.",
 		isRetryable: true,
 	},
 }

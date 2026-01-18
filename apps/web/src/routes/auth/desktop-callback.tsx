@@ -4,36 +4,205 @@
  * @description Receives OAuth callback from WorkOS and forwards to desktop app's local server
  */
 
+import {
+	DesktopConnectionError,
+	Http,
+	InvalidDesktopStateError,
+	MissingAuthCodeError,
+	OAuthCallbackError,
+} from "@hazel/domain"
 import { createFileRoute } from "@tanstack/react-router"
+import { Cause, Effect, Exit, Option, Schedule, Schema } from "effect"
 import { useEffect, useRef, useState } from "react"
 import { Logo } from "~/components/logo"
-import { Loader } from "~/components/ui/loader"
 import { Button } from "~/components/ui/button"
+import { Loader } from "~/components/ui/loader"
 
-interface DesktopAuthState {
-	returnTo: string
-	desktopPort?: number
-	desktopNonce?: string
-}
+// Schema for search params - state is already parsed by TanStack Router's JSON handling
+const RawSearchParams = Schema.Struct({
+	code: Schema.optional(Schema.String),
+	state: Schema.optional(Http.DesktopAuthState),
+	error: Schema.optional(Schema.String),
+	error_description: Schema.optional(Schema.String),
+})
 
-type CallbackStatus = { type: "connecting" } | { type: "success" } | { type: "error"; message: string }
+type CallbackStatus =
+	| { type: "connecting" }
+	| { type: "success" }
+	| { type: "error"; message: string; isRetryable: boolean }
 
 export const Route = createFileRoute("/auth/desktop-callback")({
 	component: DesktopCallbackPage,
-	validateSearch: (
-		search: Record<string, unknown>,
-	): {
-		code?: string
-		state?: DesktopAuthState
-		error?: string
-		error_description?: string
-	} => ({
-		code: search.code as string | undefined,
-		state: search.state as DesktopAuthState | undefined,
-		error: search.error as string | undefined,
-		error_description: search.error_description as string | undefined,
-	}),
+	validateSearch: (search: Record<string, unknown>) => Schema.decodeUnknownSync(RawSearchParams)(search),
 })
+
+/**
+ * Connect to desktop app's local server
+ */
+const connectToDesktop = (
+	port: number,
+	code: string,
+	state: typeof Http.DesktopAuthState.Type,
+	nonce: string,
+) =>
+	Effect.tryPromise({
+		try: async () => {
+			const response = await fetch(`http://127.0.0.1:${port}`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					code,
+					state: JSON.stringify(state),
+					nonce,
+				}),
+			})
+
+			if (!response.ok) {
+				const error = await response.json().catch(() => ({ error: "Unknown error" }))
+				throw new Error(error.error || `HTTP ${response.status}`)
+			}
+
+			return response
+		},
+		catch: (e) => e,
+	})
+
+/**
+ * Effect-based callback handler with full error typing
+ */
+const handleCallbackEffect = (search: typeof RawSearchParams.Type) =>
+	Effect.gen(function* () {
+		// Check for OAuth errors from WorkOS
+		if (search.error) {
+			return yield* new OAuthCallbackError({
+				message: search.error_description || search.error,
+				error: search.error,
+				errorDescription: search.error_description,
+			})
+		}
+
+		// Validate required code
+		if (!search.code) {
+			return yield* new MissingAuthCodeError({
+				message: "Missing authorization code",
+			})
+		}
+		const code = search.code
+
+		// State is already parsed and validated by TanStack Router + Schema
+		if (!search.state) {
+			return yield* new InvalidDesktopStateError({
+				message: "Missing state parameter",
+			})
+		}
+		const state = search.state
+
+		// Validate desktop connection params
+		if (state.desktopPort === undefined) {
+			return yield* new InvalidDesktopStateError({
+				message: "Missing desktop port in state",
+			})
+		}
+		const port = state.desktopPort
+
+		if (!state.desktopNonce) {
+			return yield* new InvalidDesktopStateError({
+				message: "Missing desktop nonce in state",
+			})
+		}
+		const nonce = state.desktopNonce
+
+		// Connect to desktop with exponential backoff retry
+		yield* connectToDesktop(port, code, state, nonce).pipe(
+			Effect.retry({
+				times: 3,
+				schedule: Schedule.exponential("500 millis"),
+			}),
+			Effect.mapError(
+				() =>
+					new DesktopConnectionError({
+						message: "Could not connect to Hazel",
+						port,
+						attempts: 3,
+					}),
+			),
+		)
+	})
+
+/**
+ * Error info type for UI display
+ */
+type ErrorInfo = { message: string; isRetryable: boolean }
+
+/**
+ * Desktop callback error types
+ */
+type CallbackError =
+	| OAuthCallbackError
+	| MissingAuthCodeError
+	| InvalidDesktopStateError
+	| DesktopConnectionError
+
+/**
+ * Get user-friendly error message from typed error using switch statement
+ */
+function getErrorMessage(error: CallbackError): ErrorInfo {
+	switch (error._tag) {
+		case "OAuthCallbackError":
+			return {
+				message: error.errorDescription || error.error,
+				isRetryable: true,
+			}
+		case "MissingAuthCodeError":
+			return {
+				message: "No authorization code received. Please try again.",
+				isRetryable: true,
+			}
+		case "InvalidDesktopStateError":
+			return {
+				message: "Invalid authentication state. Please try again.",
+				isRetryable: true,
+			}
+		case "DesktopConnectionError":
+			return {
+				message: "Could not connect to Hazel desktop app. Make sure Hazel is running.",
+				isRetryable: true,
+			}
+	}
+}
+
+/**
+ * Extract error info from Effect Exit with typed error handling
+ */
+function extractErrorFromExit(exit: Exit.Exit<void, CallbackError>): ErrorInfo {
+	if (Exit.isSuccess(exit)) {
+		return { message: "Success", isRetryable: false }
+	}
+
+	// Try to get the failure error
+	const failureOpt = Cause.failureOption(exit.cause)
+	if (Option.isSome(failureOpt)) {
+		return getErrorMessage(failureOpt.value)
+	}
+
+	// Try to get defect (die)
+	const dieOpt = Cause.dieOption(exit.cause)
+	if (Option.isSome(dieOpt)) {
+		const defect = dieOpt.value
+		return {
+			message: defect instanceof Error ? defect.message : String(defect),
+			isRetryable: false,
+		}
+	}
+
+	// Check if interrupted
+	if (Cause.isInterrupted(exit.cause)) {
+		return { message: "Operation was cancelled", isRetryable: true }
+	}
+
+	// Default fallback
+	return { message: "An unknown error occurred", isRetryable: false }
+}
 
 function DesktopCallbackPage() {
 	const search = Route.useSearch()
@@ -47,82 +216,20 @@ function DesktopCallbackPage() {
 	}, [])
 
 	async function handleCallback() {
-		// Check for OAuth errors from WorkOS
-		if (search.error) {
-			setStatus({
-				type: "error",
-				message: search.error_description || search.error,
-			})
-			return
-		}
+		const exit = await Effect.runPromiseExit(handleCallbackEffect(search))
 
-		// Validate required params
-		if (!search.code || !search.state) {
-			setStatus({ type: "error", message: "Missing authorization code or state" })
-			return
-		}
-
-		// State is already parsed by TanStack Router
-		const state = search.state
-
-		// Validate desktop connection params
-		if (!state.desktopPort || !state.desktopNonce) {
-			setStatus({ type: "error", message: "Missing desktop connection parameters" })
-			return
-		}
-
-		// POST to desktop app's local server with retry logic
-		try {
-			const response = await connectWithRetry(state.desktopPort, {
-				code: search.code,
-				state: JSON.stringify(state),
-				nonce: state.desktopNonce,
-			})
-
-			if (!response.ok) {
-				const error = await response.json().catch(() => ({ error: "Unknown error" }))
-				throw new Error(error.error || `HTTP ${response.status}`)
-			}
-
+		if (Exit.isSuccess(exit)) {
 			setStatus({ type: "success" })
-		} catch (error) {
-			console.error("[desktop-callback] Failed to contact desktop app:", error)
-			setStatus({
-				type: "error",
-				message:
-					error instanceof Error
-						? `Could not connect to Hazel: ${error.message}`
-						: "Could not connect to Hazel desktop app",
-			})
+		} else {
+			// Extract error info using typed error handling
+			const errorInfo = extractErrorFromExit(exit)
+			console.error("[desktop-callback] Failed to contact desktop app:", exit.cause)
+			setStatus({ type: "error", ...errorInfo })
 		}
-	}
-
-	async function connectWithRetry(port: number, body: object, maxRetries = 3): Promise<Response> {
-		let lastError: Error | null = null
-
-		for (let i = 0; i < maxRetries; i++) {
-			try {
-				const response = await fetch(`http://localhost:${port}`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(body),
-				})
-				return response
-			} catch (err) {
-				lastError = err instanceof Error ? err : new Error(String(err))
-				if (i < maxRetries - 1) {
-					// Exponential backoff: 500ms, 1000ms, 2000ms
-					await new Promise((r) => setTimeout(r, Math.pow(2, i) * 500))
-				}
-			}
-		}
-
-		throw lastError || new Error("Failed to connect after retries")
 	}
 
 	function handleRetry() {
+		hasStarted.current = false
 		setStatus({ type: "connecting" })
 		handleCallback()
 	}
@@ -195,14 +302,16 @@ function DesktopCallbackPage() {
 							<h1 className="font-semibold text-xl">Connection Failed</h1>
 							<p className="text-muted-fg text-sm">{status.message}</p>
 						</div>
-						<div className="space-y-2">
-							<Button intent="primary" onPress={handleRetry}>
-								Try Again
-							</Button>
-							<p className="text-muted-fg text-xs">
-								Make sure Hazel is running on your computer
-							</p>
-						</div>
+						{status.isRetryable && (
+							<div className="space-y-2">
+								<Button intent="primary" onPress={handleRetry}>
+									Try Again
+								</Button>
+								<p className="text-muted-fg text-xs">
+									Make sure Hazel is running on your computer
+								</p>
+							</div>
+						)}
 					</div>
 				)}
 			</div>

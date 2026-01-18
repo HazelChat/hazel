@@ -1,12 +1,15 @@
 import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import {
+	desktopInitAtom,
+	desktopLoginAtom,
+	desktopLogoutAtom,
+	desktopTokenSchedulerAtom,
+} from "~/atoms/desktop-auth"
 import { router } from "~/main"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
-import { initiateDesktopAuth } from "./tauri-auth"
-import { stopTokenRefresh } from "./token-refresh"
-import { clearTokens } from "./token-storage"
 
 interface LoginOptions {
 	returnTo?: string
@@ -81,6 +84,14 @@ export function useAuth() {
 	const { user: userResult, isLoading } = useAtomValue(authStateAtom)
 	const logoutFn = useAtomSet(logoutAtom)
 
+	// Initialize desktop auth atoms (loads stored tokens, starts refresh scheduler)
+	useAtomValue(desktopInitAtom)
+	useAtomValue(desktopTokenSchedulerAtom)
+
+	// Desktop auth action atoms
+	const desktopLogin = useAtomSet(desktopLoginAtom)
+	const desktopLogout = useAtomSet(desktopLogoutAtom)
+
 	const login = (options?: LoginOptions) => {
 		let returnTo = options?.returnTo || location.pathname + location.search + location.hash
 
@@ -95,14 +106,12 @@ export function useAuth() {
 			}
 		}
 
-		// Desktop auth flow - opens system browser and handles deep link callback
+		// Desktop auth flow - uses atom-based OAuth flow
 		if (isTauri()) {
-			initiateDesktopAuth({
+			desktopLogin({
 				returnTo,
 				organizationId: options?.organizationId,
 				invitationToken: options?.invitationToken,
-			}).catch((error) => {
-				console.error("[auth] Desktop login failed:", error)
 			})
 			return
 		}
@@ -122,11 +131,9 @@ export function useAuth() {
 	}
 
 	const logout = async (options?: LogoutOptions) => {
-		// Desktop logout - clear local tokens and redirect
+		// Desktop logout - uses atom-based cleanup
 		if (isTauri()) {
-			stopTokenRefresh()
-			await clearTokens()
-			window.location.href = options?.redirectTo || "/"
+			desktopLogout(options)
 			return
 		}
 

@@ -39,6 +39,22 @@ export class RefreshTokenResponse extends Schema.Class<RefreshTokenResponse>("Re
 	expiresIn: Schema.Number,
 }) {}
 
+// ============================================================================
+// Desktop OAuth State
+// ============================================================================
+
+/**
+ * OAuth state passed through the desktop authentication flow.
+ * Encoded as base64 JSON in the OAuth state parameter.
+ */
+export class DesktopAuthState extends Schema.Class<DesktopAuthState>("DesktopAuthState")({
+	returnTo: Schema.String,
+	desktopPort: Schema.optional(Schema.Number),
+	desktopNonce: Schema.optional(Schema.String),
+	organizationId: Schema.optional(OrganizationId),
+	invitationToken: Schema.optional(Schema.String),
+}) {}
+
 export class AuthGroup extends HttpApiGroup.make("auth")
 	.add(
 		HttpApiEndpoint.get("login")`/login`

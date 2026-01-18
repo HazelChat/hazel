@@ -3,8 +3,46 @@
  * @description Platform-aware fetch that uses Bearer tokens for desktop and cookies for web
  */
 
+import { Effect, Option } from "effect"
+import { TokenStorage } from "./services/desktop/token-storage"
 import { isTauri } from "./tauri"
-import { clearTokens, getAccessToken } from "./token-storage"
+
+const TokenStorageLive = TokenStorage.Default
+
+/**
+ * Get access token from Tauri store (Promise-based for fetch compatibility)
+ */
+const getAccessToken = async (): Promise<string | null> => {
+	if (!isTauri()) return null
+
+	return Effect.runPromise(
+		Effect.gen(function* () {
+			const tokenStorage = yield* TokenStorage
+			const tokenOpt = yield* tokenStorage.getAccessToken
+			return Option.getOrNull(tokenOpt)
+		}).pipe(
+			Effect.provide(TokenStorageLive),
+			Effect.catchAll(() => Effect.succeed(null)),
+		),
+	)
+}
+
+/**
+ * Clear tokens from Tauri store (Promise-based for fetch compatibility)
+ */
+const clearTokens = async (): Promise<void> => {
+	if (!isTauri()) return
+
+	return Effect.runPromise(
+		Effect.gen(function* () {
+			const tokenStorage = yield* TokenStorage
+			yield* tokenStorage.clearTokens
+		}).pipe(
+			Effect.provide(TokenStorageLive),
+			Effect.catchAll(() => Effect.void),
+		),
+	)
+}
 
 /**
  * Authenticated fetch that handles both Tauri (Bearer token) and web (cookies)

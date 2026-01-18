@@ -2,10 +2,12 @@
  * @module Tauri detection and initialization
  * @platform desktop
  * @description Check if the app is running inside Tauri desktop environment and initialize Tauri-specific features
+ *
+ * Note: Token refresh is now handled by the desktopTokenSchedulerAtom in ~/atoms/desktop-auth.ts
+ * which is mounted via useAuth() in auth.tsx
  */
 
 import { initNativeNotifications } from "./native-notifications"
-import { startTokenRefresh } from "./token-refresh"
 
 /**
  * Check if the app is running inside Tauri
@@ -14,10 +16,6 @@ export const isTauri = (): boolean => {
 	return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
 }
 
-/**
- * Initialize all Tauri-specific features
- * Safe to call in any environment - returns early if not in Tauri
- */
 /**
  * Check if the app is running on macOS inside Tauri
  * Used for platform-specific UI adjustments like titlebar padding
@@ -32,15 +30,18 @@ export const isTauriMacOS = (): boolean => {
  */
 export const TAURI_TITLEBAR_PADDING_CLASS = "pt-5"
 
+/**
+ * Initialize all Tauri-specific features
+ * Safe to call in any environment - returns early if not in Tauri
+ *
+ * Note: Desktop auth (token loading and refresh scheduling) is handled by
+ * Effect Atoms mounted in useAuth(), not here.
+ */
 export const initTauri = async (): Promise<void> => {
 	if (!isTauri()) return
 
-	// Initialize features in parallel (non-blocking)
+	// Initialize native notifications (non-blocking)
 	initNativeNotifications().catch((error: unknown) => {
 		console.error("[tauri] Failed to initialize native notifications:", error)
-	})
-
-	startTokenRefresh().catch((error: unknown) => {
-		console.error("[tauri] Failed to start token refresh:", error)
 	})
 }

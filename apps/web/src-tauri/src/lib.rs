@@ -16,11 +16,11 @@ fn active_nonces() -> &'static Mutex<HashMap<u16, String>> {
     NONCES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Find an available port in the range
-fn find_available_port() -> Option<u16> {
+/// Find an available port and return the bound listener to avoid race conditions
+fn find_available_port() -> Option<(u16, TcpListener)> {
     for port in OAUTH_PORT_MIN..=OAUTH_PORT_MAX {
-        if TcpListener::bind(format!("localhost:{}", port)).is_ok() {
-            return Some(port);
+        if let Ok(listener) = TcpListener::bind(format!("127.0.0.1:{}", port)) {
+            return Some((port, listener));
         }
     }
     None
@@ -70,8 +70,9 @@ fn send_error_response(stream: &mut std::net::TcpStream, status: u16, message: &
 /// The web app callback page will POST auth data to this server.
 #[command]
 fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
-    // Find available port in range
-    let port = find_available_port().ok_or("No available ports in range 17900-17999")?;
+    // Get port AND listener together - no race condition!
+    let (port, listener) = find_available_port()
+        .ok_or("No available ports in range 17900-17999")?;
 
     // Generate and store nonce
     let nonce = generate_nonce();
@@ -80,10 +81,7 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
         nonces.insert(port, nonce.clone());
     }
 
-    // Bind to the port
-    let listener = TcpListener::bind(format!("localhost:{}", port))
-        .map_err(|e| format!("Failed to bind port {}: {}", port, e))?;
-
+    // Listener is already bound, just configure it
     listener
         .set_nonblocking(false)
         .map_err(|e| format!("Failed to set blocking mode: {}", e))?;
@@ -97,7 +95,8 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
         let _ = listener.set_nonblocking(false);
 
         // Handle requests (OPTIONS preflight + POST with auth data)
-        for _ in 0..3 {
+        // Allow up to 10 connections to handle: preflight requests, the POST, and retries
+        for _ in 0..10 {
             if let Ok((mut stream, _)) = listener.accept() {
                 let mut buffer = [0u8; 8192];
                 if let Ok(n) = stream.read(&mut buffer) {
@@ -133,7 +132,7 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
 
                                     // Build callback URL for frontend
                                     let callback_url = format!(
-                                        "http://localhost:{}?code={}&state={}",
+                                        "http://127.0.0.1:{}?code={}&state={}",
                                         server_port,
                                         urlencoding::encode(code),
                                         urlencoding::encode(state)

@@ -8,13 +8,13 @@ import { Headers } from "@effect/platform"
 import { RpcMiddleware } from "@effect/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { Effect } from "effect"
+import { getDesktopAccessToken } from "~/atoms/desktop-auth"
 import { isTauri } from "~/lib/tauri"
-import { getAccessToken } from "~/lib/token-storage"
 
 export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
 	Effect.gen(function* () {
 		if (isTauri()) {
-			const token = yield* Effect.promise(() => getAccessToken())
+			const token = yield* Effect.promise(() => getDesktopAccessToken())
 			if (token) {
 				const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${token}`)
 				return { ...request, headers: newHeaders }
