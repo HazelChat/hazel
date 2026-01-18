@@ -27,9 +27,17 @@ interface BotCardProps {
 	onDelete?: () => void
 	onUpdate?: () => void
 	onUninstall?: () => void
+	reactivityKeys?: readonly string[]
 }
 
-export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }: BotCardProps) {
+export function BotCard({
+	bot,
+	showUninstall,
+	onDelete,
+	onUpdate,
+	onUninstall,
+	reactivityKeys,
+}: BotCardProps) {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 	const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
 	const [regeneratedToken, setRegeneratedToken] = useState<string | null>(null)
@@ -41,17 +49,17 @@ export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }:
 
 	const handleDelete = async () => {
 		setIsDeleting(true)
-		await toastExit(deleteBot({ payload: { id: bot.id } }), {
-			loading: "Deleting bot...",
+		await toastExit(deleteBot({ payload: { id: bot.id }, reactivityKeys }), {
+			loading: "Deleting application...",
 			success: () => {
 				setShowDeleteConfirm(false)
 				onDelete?.()
-				return "Bot deleted successfully"
+				return "Application deleted successfully"
 			},
 			customErrors: {
 				BotNotFoundError: () => ({
-					title: "Bot not found",
-					description: "This bot may have already been deleted.",
+					title: "Application not found",
+					description: "This application may have already been deleted.",
 					isRetryable: false,
 				}),
 			},
@@ -69,8 +77,8 @@ export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }:
 			},
 			customErrors: {
 				BotNotFoundError: () => ({
-					title: "Bot not found",
-					description: "This bot may have been deleted.",
+					title: "Application not found",
+					description: "This application may have been deleted.",
 					isRetryable: false,
 				}),
 			},
@@ -143,7 +151,7 @@ export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }:
 			<Modal isOpen={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
 				<ModalContent>
 					<ModalHeader>
-						<ModalTitle>Delete Bot</ModalTitle>
+						<ModalTitle>Delete Application</ModalTitle>
 						<ModalDescription>
 							Are you sure you want to delete "{bot.name}"? This action cannot be undone.
 						</ModalDescription>
@@ -153,7 +161,7 @@ export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }:
 							Cancel
 						</Button>
 						<Button intent="danger" onPress={handleDelete} isDisabled={isDeleting}>
-							{isDeleting ? "Deleting..." : "Delete Bot"}
+							{isDeleting ? "Deleting..." : "Delete Application"}
 						</Button>
 					</ModalFooter>
 				</ModalContent>
@@ -177,7 +185,7 @@ export function BotCard({ bot, showUninstall, onDelete, onUpdate, onUninstall }:
 						<ModalDescription>
 							{regeneratedToken
 								? "Save this new token now. The old token has been invalidated."
-								: "This will invalidate the current token. The bot will need to be updated with the new token."}
+								: "This will invalidate the current token. The application will need to be updated with the new token."}
 						</ModalDescription>
 					</ModalHeader>
 					<ModalBody>

@@ -1,5 +1,6 @@
 import IconBell from "~/components/icons/icon-bell"
 import IconDashboard from "~/components/icons/icon-dashboard"
+import IconGear from "~/components/icons/icon-gear"
 import IconMsgs from "~/components/icons/icon-msgs"
 import { Logo } from "~/components/logo"
 import { Link } from "~/components/ui/link"
@@ -119,6 +120,24 @@ export function NavSidebar() {
 										</span>
 									)}
 								</div>
+							</SidebarLink>
+						</SidebarItem>
+						<SidebarItem
+							aria-label="Settings"
+							className="size-9 justify-items-center"
+							tooltip={{
+								children: "Settings",
+								hidden: isMobile,
+							}}
+						>
+							<SidebarLink
+								to="/$orgSlug/settings"
+								params={{ orgSlug: slug }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+								}}
+							>
+								<IconGear className="size-5" />
 							</SidebarLink>
 						</SidebarItem>
 					</SidebarSection>

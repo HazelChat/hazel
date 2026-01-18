@@ -102,7 +102,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 												scopes: [...payload.scopes],
 												metadata: null,
 												isPublic: payload.isPublic ?? false,
-												installCount: 0,
+												installCount: 1,
 												allowedIntegrations: null,
 											})
 											.returning(),

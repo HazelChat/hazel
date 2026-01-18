@@ -32,14 +32,17 @@ import { Route as AppOrgSlugChatIndexRouteImport } from './routes/_app/$orgSlug/
 import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSlug/settings/team'
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
-import { Route as AppOrgSlugSettingsBotsRouteImport } from './routes/_app/$orgSlug/settings/bots'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$orgSlug/my-settings/profile'
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
 import { Route as AppOrgSlugMySettingsDesktopRouteImport } from './routes/_app/$orgSlug/my-settings/desktop'
 import { Route as AppOrgSlugChatIdRouteImport } from './routes/_app/$orgSlug/chat/$id'
+import { Route as AppOrgSlugSettingsIntegrationsLayoutRouteImport } from './routes/_app/$orgSlug/settings/integrations/layout'
 import { Route as AppOrgSlugSettingsIntegrationsIndexRouteImport } from './routes/_app/$orgSlug/settings/integrations/index'
 import { Route as AppOrgSlugChatIdIndexRouteImport } from './routes/_app/$orgSlug/chat/$id/index'
+import { Route as AppOrgSlugSettingsIntegrationsYourAppsRouteImport } from './routes/_app/$orgSlug/settings/integrations/your-apps'
+import { Route as AppOrgSlugSettingsIntegrationsMarketplaceRouteImport } from './routes/_app/$orgSlug/settings/integrations/marketplace'
+import { Route as AppOrgSlugSettingsIntegrationsInstalledRouteImport } from './routes/_app/$orgSlug/settings/integrations/installed'
 import { Route as AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport } from './routes/_app/$orgSlug/settings/integrations/$integrationId'
 import { Route as AppOrgSlugChannelsChannelIdSettingsLayoutRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/layout'
 import { Route as AppOrgSlugChatIdFilesIndexRouteImport } from './routes/_app/$orgSlug/chat/$id/files/index'
@@ -167,11 +170,6 @@ const AppOrgSlugSettingsDebugRoute = AppOrgSlugSettingsDebugRouteImport.update({
   path: '/debug',
   getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
 } as any)
-const AppOrgSlugSettingsBotsRoute = AppOrgSlugSettingsBotsRouteImport.update({
-  id: '/bots',
-  path: '/bots',
-  getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
-} as any)
 const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
   id: '/profile/$userId',
   path: '/profile/$userId',
@@ -200,22 +198,46 @@ const AppOrgSlugChatIdRoute = AppOrgSlugChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => AppOrgSlugLayoutRoute,
 } as any)
+const AppOrgSlugSettingsIntegrationsLayoutRoute =
+  AppOrgSlugSettingsIntegrationsLayoutRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+  } as any)
 const AppOrgSlugSettingsIntegrationsIndexRoute =
   AppOrgSlugSettingsIntegrationsIndexRouteImport.update({
-    id: '/integrations/',
-    path: '/integrations/',
-    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
   } as any)
 const AppOrgSlugChatIdIndexRoute = AppOrgSlugChatIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppOrgSlugChatIdRoute,
 } as any)
+const AppOrgSlugSettingsIntegrationsYourAppsRoute =
+  AppOrgSlugSettingsIntegrationsYourAppsRouteImport.update({
+    id: '/your-apps',
+    path: '/your-apps',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
+  } as any)
+const AppOrgSlugSettingsIntegrationsMarketplaceRoute =
+  AppOrgSlugSettingsIntegrationsMarketplaceRouteImport.update({
+    id: '/marketplace',
+    path: '/marketplace',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
+  } as any)
+const AppOrgSlugSettingsIntegrationsInstalledRoute =
+  AppOrgSlugSettingsIntegrationsInstalledRouteImport.update({
+    id: '/installed',
+    path: '/installed',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
+  } as any)
 const AppOrgSlugSettingsIntegrationsIntegrationIdRoute =
   AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport.update({
-    id: '/integrations/$integrationId',
-    path: '/integrations/$integrationId',
-    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+    id: '/$integrationId',
+    path: '/$integrationId',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
   } as any)
 const AppOrgSlugChannelsChannelIdSettingsLayoutRoute =
   AppOrgSlugChannelsChannelIdSettingsLayoutRouteImport.update({
@@ -271,12 +293,12 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AppOnboardingIndexRoute
   '/select-organization': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds': typeof DevEmbedsIndexRoute
+  '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -285,8 +307,11 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
+  '/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
+  '/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
   '/$orgSlug/chat/$id/': typeof AppOrgSlugChatIdIndexRoute
-  '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/$orgSlug/settings/integrations/': typeof AppOrgSlugSettingsIntegrationsIndexRoute
   '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   '/$orgSlug/chat/$id/files/media': typeof AppOrgSlugChatIdFilesMediaRoute
@@ -311,7 +336,6 @@ export interface FileRoutesByTo {
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -319,6 +343,9 @@ export interface FileRoutesByTo {
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsIndexRoute
   '/$orgSlug/settings': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
+  '/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
+  '/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdIndexRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsIndexRoute
   '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
@@ -346,12 +373,12 @@ export interface FileRoutesById {
   '/_app/onboarding/': typeof AppOnboardingIndexRoute
   '/_app/select-organization/': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds/': typeof DevEmbedsIndexRoute
+  '/_app/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   '/_app/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/_app/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/_app/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/_app/$orgSlug/settings/bots': typeof AppOrgSlugSettingsBotsRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/_app/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -360,6 +387,9 @@ export interface FileRoutesById {
   '/_app/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/_app/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/_app/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
+  '/_app/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
+  '/_app/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
   '/_app/$orgSlug/chat/$id/': typeof AppOrgSlugChatIdIndexRoute
   '/_app/$orgSlug/settings/integrations/': typeof AppOrgSlugSettingsIntegrationsIndexRoute
   '/_app/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
@@ -387,12 +417,12 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/select-organization'
     | '/dev/embeds'
+    | '/$orgSlug/settings/integrations'
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/bots'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -401,8 +431,11 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/'
     | '/$orgSlug/channels/$channelId/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
+    | '/$orgSlug/settings/integrations/installed'
+    | '/$orgSlug/settings/integrations/marketplace'
+    | '/$orgSlug/settings/integrations/your-apps'
     | '/$orgSlug/chat/$id/'
-    | '/$orgSlug/settings/integrations'
+    | '/$orgSlug/settings/integrations/'
     | '/$orgSlug/channels/$channelId/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/overview'
     | '/$orgSlug/chat/$id/files/media'
@@ -427,7 +460,6 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/bots'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -435,6 +467,9 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings'
     | '/$orgSlug/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
+    | '/$orgSlug/settings/integrations/installed'
+    | '/$orgSlug/settings/integrations/marketplace'
+    | '/$orgSlug/settings/integrations/your-apps'
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/integrations'
@@ -461,12 +496,12 @@ export interface FileRouteTypes {
     | '/_app/onboarding/'
     | '/_app/select-organization/'
     | '/dev/embeds/'
+    | '/_app/$orgSlug/settings/integrations'
     | '/_app/$orgSlug/chat/$id'
     | '/_app/$orgSlug/my-settings/desktop'
     | '/_app/$orgSlug/my-settings/notifications'
     | '/_app/$orgSlug/my-settings/profile'
     | '/_app/$orgSlug/profile/$userId'
-    | '/_app/$orgSlug/settings/bots'
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
     | '/_app/$orgSlug/settings/team'
@@ -475,6 +510,9 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/settings/'
     | '/_app/$orgSlug/channels/$channelId/settings'
     | '/_app/$orgSlug/settings/integrations/$integrationId'
+    | '/_app/$orgSlug/settings/integrations/installed'
+    | '/_app/$orgSlug/settings/integrations/marketplace'
+    | '/_app/$orgSlug/settings/integrations/your-apps'
     | '/_app/$orgSlug/chat/$id/'
     | '/_app/$orgSlug/settings/integrations/'
     | '/_app/$orgSlug/channels/$channelId/settings/integrations'
@@ -659,13 +697,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugSettingsDebugRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
-    '/_app/$orgSlug/settings/bots': {
-      id: '/_app/$orgSlug/settings/bots'
-      path: '/bots'
-      fullPath: '/$orgSlug/settings/bots'
-      preLoaderRoute: typeof AppOrgSlugSettingsBotsRouteImport
-      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
-    }
     '/_app/$orgSlug/profile/$userId': {
       id: '/_app/$orgSlug/profile/$userId'
       path: '/profile/$userId'
@@ -701,12 +732,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugChatIdRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
     }
-    '/_app/$orgSlug/settings/integrations/': {
-      id: '/_app/$orgSlug/settings/integrations/'
+    '/_app/$orgSlug/settings/integrations': {
+      id: '/_app/$orgSlug/settings/integrations'
       path: '/integrations'
       fullPath: '/$orgSlug/settings/integrations'
-      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsIndexRouteImport
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+    }
+    '/_app/$orgSlug/settings/integrations/': {
+      id: '/_app/$orgSlug/settings/integrations/'
+      path: '/'
+      fullPath: '/$orgSlug/settings/integrations/'
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsIndexRouteImport
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
     }
     '/_app/$orgSlug/chat/$id/': {
       id: '/_app/$orgSlug/chat/$id/'
@@ -715,12 +753,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugChatIdIndexRouteImport
       parentRoute: typeof AppOrgSlugChatIdRoute
     }
+    '/_app/$orgSlug/settings/integrations/your-apps': {
+      id: '/_app/$orgSlug/settings/integrations/your-apps'
+      path: '/your-apps'
+      fullPath: '/$orgSlug/settings/integrations/your-apps'
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsYourAppsRouteImport
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
+    }
+    '/_app/$orgSlug/settings/integrations/marketplace': {
+      id: '/_app/$orgSlug/settings/integrations/marketplace'
+      path: '/marketplace'
+      fullPath: '/$orgSlug/settings/integrations/marketplace'
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsMarketplaceRouteImport
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
+    }
+    '/_app/$orgSlug/settings/integrations/installed': {
+      id: '/_app/$orgSlug/settings/integrations/installed'
+      path: '/installed'
+      fullPath: '/$orgSlug/settings/integrations/installed'
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsInstalledRouteImport
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
+    }
     '/_app/$orgSlug/settings/integrations/$integrationId': {
       id: '/_app/$orgSlug/settings/integrations/$integrationId'
-      path: '/integrations/$integrationId'
+      path: '/$integrationId'
       fullPath: '/$orgSlug/settings/integrations/$integrationId'
       preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport
-      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
     }
     '/_app/$orgSlug/channels/$channelId/settings': {
       id: '/_app/$orgSlug/channels/$channelId/settings'
@@ -788,27 +847,49 @@ const AppOrgSlugMySettingsLayoutRouteWithChildren =
     AppOrgSlugMySettingsLayoutRouteChildren,
   )
 
+interface AppOrgSlugSettingsIntegrationsLayoutRouteChildren {
+  AppOrgSlugSettingsIntegrationsIntegrationIdRoute: typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  AppOrgSlugSettingsIntegrationsInstalledRoute: typeof AppOrgSlugSettingsIntegrationsInstalledRoute
+  AppOrgSlugSettingsIntegrationsMarketplaceRoute: typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
+  AppOrgSlugSettingsIntegrationsYourAppsRoute: typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
+  AppOrgSlugSettingsIntegrationsIndexRoute: typeof AppOrgSlugSettingsIntegrationsIndexRoute
+}
+
+const AppOrgSlugSettingsIntegrationsLayoutRouteChildren: AppOrgSlugSettingsIntegrationsLayoutRouteChildren =
+  {
+    AppOrgSlugSettingsIntegrationsIntegrationIdRoute:
+      AppOrgSlugSettingsIntegrationsIntegrationIdRoute,
+    AppOrgSlugSettingsIntegrationsInstalledRoute:
+      AppOrgSlugSettingsIntegrationsInstalledRoute,
+    AppOrgSlugSettingsIntegrationsMarketplaceRoute:
+      AppOrgSlugSettingsIntegrationsMarketplaceRoute,
+    AppOrgSlugSettingsIntegrationsYourAppsRoute:
+      AppOrgSlugSettingsIntegrationsYourAppsRoute,
+    AppOrgSlugSettingsIntegrationsIndexRoute:
+      AppOrgSlugSettingsIntegrationsIndexRoute,
+  }
+
+const AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren =
+  AppOrgSlugSettingsIntegrationsLayoutRoute._addFileChildren(
+    AppOrgSlugSettingsIntegrationsLayoutRouteChildren,
+  )
+
 interface AppOrgSlugSettingsLayoutRouteChildren {
-  AppOrgSlugSettingsBotsRoute: typeof AppOrgSlugSettingsBotsRoute
+  AppOrgSlugSettingsIntegrationsLayoutRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
   AppOrgSlugSettingsInvitationsRoute: typeof AppOrgSlugSettingsInvitationsRoute
   AppOrgSlugSettingsTeamRoute: typeof AppOrgSlugSettingsTeamRoute
   AppOrgSlugSettingsIndexRoute: typeof AppOrgSlugSettingsIndexRoute
-  AppOrgSlugSettingsIntegrationsIntegrationIdRoute: typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
-  AppOrgSlugSettingsIntegrationsIndexRoute: typeof AppOrgSlugSettingsIntegrationsIndexRoute
 }
 
 const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildren =
   {
-    AppOrgSlugSettingsBotsRoute: AppOrgSlugSettingsBotsRoute,
+    AppOrgSlugSettingsIntegrationsLayoutRoute:
+      AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren,
     AppOrgSlugSettingsDebugRoute: AppOrgSlugSettingsDebugRoute,
     AppOrgSlugSettingsInvitationsRoute: AppOrgSlugSettingsInvitationsRoute,
     AppOrgSlugSettingsTeamRoute: AppOrgSlugSettingsTeamRoute,
     AppOrgSlugSettingsIndexRoute: AppOrgSlugSettingsIndexRoute,
-    AppOrgSlugSettingsIntegrationsIntegrationIdRoute:
-      AppOrgSlugSettingsIntegrationsIntegrationIdRoute,
-    AppOrgSlugSettingsIntegrationsIndexRoute:
-      AppOrgSlugSettingsIntegrationsIndexRoute,
   }
 
 const AppOrgSlugSettingsLayoutRouteWithChildren =

@@ -46,9 +46,10 @@ interface CreateBotModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
 	onSuccess?: () => void
+	reactivityKeys?: readonly string[]
 }
 
-export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotModalProps) {
+export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys }: CreateBotModalProps) {
 	const [createdBotToken, setCreatedBotToken] = useState<string | null>(null)
 	const [createdBotName, setCreatedBotName] = useState<string>("")
 
@@ -79,13 +80,14 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotMod
 						scopes: value.scopes as BotScope[],
 						isPublic: value.isPublic,
 					},
+					reactivityKeys,
 				}),
 				{
-					loading: "Creating bot...",
+					loading: "Creating application...",
 					success: (result) => {
 						setCreatedBotToken(result.token)
 						setCreatedBotName(value.name)
-						return `Bot "${value.name}" created successfully`
+						return `Application "${value.name}" created successfully`
 					},
 					customErrors: {},
 				},
@@ -117,10 +119,10 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotMod
 			<Modal isOpen={isOpen} onOpenChange={handleClose}>
 				<ModalContent size="lg">
 					<ModalHeader>
-						<ModalTitle>Bot Created Successfully</ModalTitle>
+						<ModalTitle>Application Created Successfully</ModalTitle>
 						<ModalDescription>
-							Your bot "{createdBotName}" has been created. Save the token below - you won't be
-							able to see it again.
+							Your application "{createdBotName}" has been created. Save the token below - you
+							won't be able to see it again.
 						</ModalDescription>
 					</ModalHeader>
 					<ModalBody>
@@ -140,9 +142,9 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotMod
 		<Modal isOpen={isOpen} onOpenChange={onOpenChange}>
 			<ModalContent size="lg">
 				<ModalHeader>
-					<ModalTitle>Create Bot</ModalTitle>
+					<ModalTitle>Create Application</ModalTitle>
 					<ModalDescription>
-						Create a bot to interact with your workspace programmatically using the Bot SDK
+						Create an application to interact with your workspace programmatically using the SDK
 					</ModalDescription>
 				</ModalHeader>
 
@@ -259,9 +261,10 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotMod
 								children={(field) => (
 									<div className="flex items-center justify-between gap-4">
 										<div className="flex flex-col gap-0.5">
-											<Label className="font-medium">List in Bot Marketplace</Label>
+											<Label className="font-medium">List in Marketplace</Label>
 											<Description>
-												Allow other workspaces to discover and install this bot
+												Allow other workspaces to discover and install this
+												application
 											</Description>
 										</div>
 										<Switch
@@ -285,7 +288,7 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess }: CreateBotMod
 									type="submit"
 									isDisabled={!canSubmit || isSubmitting}
 								>
-									{isSubmitting ? "Creating..." : "Create Bot"}
+									{isSubmitting ? "Creating..." : "Create Application"}
 								</Button>
 							)}
 						</form.Subscribe>

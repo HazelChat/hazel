@@ -8,7 +8,6 @@ import { RequestIntegrationModal } from "~/components/modals/request-integration
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { SectionHeader } from "~/components/ui/section-header"
-import { Tab, TabList, Tabs } from "~/components/ui/tabs"
 import { useIntegrationConnections } from "~/db/hooks"
 import { useAuth } from "~/lib/auth"
 import {
@@ -77,37 +76,44 @@ function IntegrationsSettings() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 px-4 lg:px-8">
+		<>
 			<SectionHeader.Root className="border-none pb-0">
 				<SectionHeader.Group>
 					<div className="flex flex-1 flex-col justify-center gap-1">
 						<SectionHeader.Heading>Integrations</SectionHeader.Heading>
 						<SectionHeader.Subheading>
-							Connect your favorite tools to supercharge your workflow.
+							Connect your favorite tools to your workspace.
 						</SectionHeader.Subheading>
 					</div>
-					<SectionHeader.Actions>
-						<Button intent="secondary" size="md" onPress={() => setIsRequestModalOpen(true)}>
-							<IconPlus data-slot="icon" />
-							Request integration
-						</Button>
-					</SectionHeader.Actions>
+					<Button
+						intent="secondary"
+						size="md"
+						className="shrink-0"
+						onPress={() => setIsRequestModalOpen(true)}
+					>
+						<IconPlus data-slot="icon" />
+						Request integration
+					</Button>
 				</SectionHeader.Group>
 			</SectionHeader.Root>
 
-			<Tabs
-				className="hidden w-full lg:flex"
-				selectedKey={selectedCategory}
-				onSelectionChange={(value) => setSelectedCategory(value as string)}
-			>
-				<TabList className="w-full">
-					{categories.map((category) => (
-						<Tab key={category.id} id={category.id}>
-							{category.label}
-						</Tab>
-					))}
-				</TabList>
-			</Tabs>
+			{/* Category filter pills */}
+			<div className="flex flex-wrap gap-2">
+				{categories.map((category) => (
+					<button
+						key={category.id}
+						type="button"
+						onClick={() => setSelectedCategory(category.id)}
+						className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+							selectedCategory === category.id
+								? "bg-primary text-primary-fg"
+								: "bg-secondary text-secondary-fg hover:bg-secondary/80"
+						}`}
+					>
+						{category.label}
+					</button>
+				))}
+			</div>
 
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{filteredIntegrations.map((integration) => (
@@ -128,7 +134,7 @@ function IntegrationsSettings() {
 			)}
 
 			<RequestIntegrationModal isOpen={isRequestModalOpen} onOpenChange={setIsRequestModalOpen} />
-		</div>
+		</>
 	)
 }
 

@@ -57,7 +57,7 @@ export function BotTokenDisplay({ token }: BotTokenDisplayProps) {
 			<p className="text-muted-fg text-sm">
 				Use this token with the{" "}
 				<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">@hazel/bot-sdk</code> to
-				authenticate your bot.
+				authenticate your application.
 			</p>
 		</div>
 	)

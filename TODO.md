@@ -1,6 +1,8 @@
 # Today
 
 - voice to text
+- public Organizations
+
 - replace tanstack form with effect based form
 - setup sequin locally with config as code
 
