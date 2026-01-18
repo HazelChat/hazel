@@ -9,7 +9,6 @@ import {
 	buildNoFilterClause,
 	buildOrgMembershipClause,
 	buildUserMembershipClause,
-	buildUserOrgMembershipClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
 
@@ -124,14 +123,9 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("users", () =>
-			// Only users in same organizations as the current user
-			Effect.succeed(
-				buildUserOrgMembershipClause(
-					user.internalUserId,
-					schema.usersTable.id,
-					schema.usersTable.deletedAt,
-				),
-			),
+			// All non-deleted users (organization filtering removed to support bot machine users
+			// whose organization membership is soft-deleted on bot uninstall)
+			Effect.succeed(buildDeletedAtNullClause(schema.usersTable.deletedAt)),
 		),
 
 		Match.when("user_presence_status", () =>
