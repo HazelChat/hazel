@@ -132,7 +132,7 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
 
                                     // Build callback URL for frontend
                                     let callback_url = format!(
-                                        "http://127.0.0.1:{}?code={}&state={}",
+                                        "http://localhost:{}?code={}&state={}",
                                         server_port,
                                         urlencoding::encode(code),
                                         urlencoding::encode(state)

@@ -226,6 +226,15 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		return { messageRows: rows, stickyIndices: sticky }
 	}, [processedMessages])
 
+	const containerStyle = useMemo(
+		() => ({
+			overflowAnchor: "auto" as const,
+			scrollBehavior: "auto" as const,
+			opacity: isLoading && messages.length > 0 ? 0.7 : 1,
+		}),
+		[isLoading, messages.length],
+	)
+
 	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
 	if (messages.length === 0) {
 		return (
@@ -241,16 +250,6 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			</div>
 		)
 	}
-
-	// Memoize container style to avoid object recreation on each render
-	const containerStyle = useMemo(
-		() => ({
-			overflowAnchor: "auto" as const,
-			scrollBehavior: "auto" as const,
-			opacity: isLoading && messages.length > 0 ? 0.7 : 1,
-		}),
-		[isLoading, messages.length],
-	)
 
 	return (
 		<div

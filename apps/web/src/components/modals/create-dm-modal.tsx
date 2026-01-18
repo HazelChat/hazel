@@ -97,11 +97,10 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 				}),
 				{
 					loading: "Creating conversation...",
-					success: (_result) => {
-						// Navigate back to org page (TODO: navigate to channel when route exists)
+					success: (result) => {
 						navigate({
-							to: "/$orgSlug",
-							params: { orgSlug: slug },
+							to: "/$orgSlug/chat/$id",
+							params: { orgSlug: slug, id: result.data.id },
 						})
 
 						// Close modal and reset form

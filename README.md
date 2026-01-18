@@ -75,7 +75,7 @@ Hazel Chat is a full-stack chat application featuring:
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) (latest version)
+- [Bun](https://bun.sh/) **v1.2.14 or later** (required for [workspace catalogs](https://bun.sh/blog/release-notes/bun-v1.2.14))
 - [Docker](https://docker.com/) (for local services)
 - [WorkOS](https://workos.com/) account (for authentication)
 
@@ -118,6 +118,37 @@ Hazel Chat is a full-stack chat application featuring:
     - Web: http://localhost:3000
     - Backend: http://localhost:3003
     - Cluster: http://localhost:3020
+
+## WorkOS Configuration
+
+This project uses [WorkOS](https://workos.com/) for authentication. After creating a WorkOS account, configure the following:
+
+### 1. Enable AuthKit
+
+1. Go to **Authentication** → **AuthKit** in your WorkOS dashboard
+2. Click **"Get started"** or **"Enable AuthKit"**
+3. Configure your app name and branding
+4. Enable at least one sign-in method (Email + Password, Google, GitHub, etc.)
+
+### 2. Configure Redirect URI
+
+Add the following redirect URI in **Redirects** → **Edit redirect URIs**:
+
+```
+http://localhost:3003/auth/callback
+```
+
+
+### 3. Create Required Roles
+
+The application uses custom roles for organization members. Go to **Roles** and create these roles:
+
+| Role Slug | Name  | Description |
+|-----------|-------|-------------|
+| `owner`   | Owner | Full access, can delete organization |
+| `admin`   | Admin | Can manage members and settings |
+| `member`  | Member | Standard access (default) |
+
 
 ## Development Commands
 
