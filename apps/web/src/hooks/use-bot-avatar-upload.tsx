@@ -24,11 +24,22 @@ export function useBotAvatarUpload(botId: BotId) {
 				return null
 			}
 
+			// Construct the public URL on frontend (backend may not have S3_PUBLIC_URL set)
+			const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
+			if (!r2PublicUrl) {
+				console.error("VITE_R2_PUBLIC_URL environment variable is not set")
+				toast.error("Configuration error", {
+					description: "Image upload is not configured. Please contact support.",
+				})
+				return null
+			}
+			const publicUrl = `${r2PublicUrl}/${result.key}`
+
 			// Update bot's avatar URL via RPC
 			const updateResult = await updateBotAvatar({
 				payload: {
 					id: botId,
-					avatarUrl: result.publicUrl,
+					avatarUrl: publicUrl,
 				},
 			})
 
@@ -40,7 +51,7 @@ export function useBotAvatarUpload(botId: BotId) {
 			}
 
 			toast.success("Avatar updated")
-			return result.publicUrl
+			return publicUrl
 		},
 		[botId, upload, updateBotAvatar],
 	)

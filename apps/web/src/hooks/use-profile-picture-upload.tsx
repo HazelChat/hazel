@@ -33,10 +33,21 @@ export function useProfilePictureUpload() {
 				return null
 			}
 
+			// Construct the public URL on frontend (backend may not have S3_PUBLIC_URL set)
+			const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
+			if (!r2PublicUrl) {
+				console.error("VITE_R2_PUBLIC_URL environment variable is not set")
+				toast.error("Configuration error", {
+					description: "Image upload is not configured. Please contact support.",
+				})
+				return null
+			}
+			const publicUrl = `${r2PublicUrl}/${result.key}`
+
 			// Update user's avatar URL
 			const updateResult = await updateUserMutation({
 				userId: user.id as UserId,
-				avatarUrl: result.publicUrl,
+				avatarUrl: publicUrl,
 			})
 
 			if (!Exit.isSuccess(updateResult)) {
@@ -50,7 +61,7 @@ export function useProfilePictureUpload() {
 			refreshCurrentUser()
 
 			toast.success("Profile picture updated")
-			return result.publicUrl
+			return publicUrl
 		},
 		[user?.id, upload, updateUserMutation, refreshCurrentUser],
 	)
