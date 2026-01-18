@@ -1,13 +1,30 @@
 import type { Row, ShapeStreamOptions } from "@electric-sql/client"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
-import type { Collection, CollectionConfig } from "@tanstack/db"
+import type { Collection, CollectionConfig, CollectionStatus } from "@tanstack/db"
 import type { ElectricCollectionUtils, Txid } from "@tanstack/electric-db-collection"
 import { electricCollectionOptions } from "@tanstack/electric-db-collection"
 import { createCollection as tanstackCreateCollection } from "@tanstack/react-db"
-import { Effect, type ManagedRuntime, Schema } from "effect"
+import { Effect, type ManagedRuntime, Option, Schema } from "effect"
 import { InvalidTxIdError, TxIdTimeoutError } from "./errors"
 import { convertDeleteHandler, convertInsertHandler, convertUpdateHandler } from "./handlers"
+import { CollectionInErrorEffectError, wrapTanStackError } from "./tanstack-errors"
 import type { BackoffConfig, EffectElectricCollectionConfig } from "./types"
+
+// Re-export CollectionStatus from @tanstack/db
+export type { CollectionStatus } from "@tanstack/db"
+
+/**
+ * Error returned when the collection's last error is retrieved.
+ * Wraps the underlying TanStack DB error with collection context.
+ */
+export class CollectionSyncEffectError extends Schema.TaggedError<CollectionSyncEffectError>()(
+	"CollectionSyncEffectError",
+	{
+		message: Schema.String,
+		collectionId: Schema.optional(Schema.String),
+		cause: Schema.optional(Schema.Unknown),
+	},
+) {}
 
 /**
  * Type for the ShapeStream onError handler
@@ -127,6 +144,33 @@ export interface EffectElectricCollectionUtils extends ElectricCollectionUtils {
 		txid: Txid,
 		timeout?: number,
 	) => Effect.Effect<boolean, TxIdTimeoutError | InvalidTxIdError>
+
+	/**
+	 * Returns the last error that occurred during sync, if any.
+	 * The error is wrapped in an Effect Option for null-safety.
+	 */
+	readonly lastErrorEffect: Effect.Effect<Option.Option<CollectionSyncEffectError>>
+
+	/**
+	 * Returns whether the collection is currently in an error state.
+	 */
+	readonly isErrorEffect: Effect.Effect<boolean>
+
+	/**
+	 * Returns the count of errors that have occurred since the collection started.
+	 */
+	readonly errorCountEffect: Effect.Effect<number>
+
+	/**
+	 * Returns the current collection status.
+	 */
+	readonly statusEffect: Effect.Effect<CollectionStatus>
+
+	/**
+	 * Clears the error state and attempts to recover the collection.
+	 * Fails with CollectionSyncEffectError if the clear operation fails.
+	 */
+	readonly clearErrorEffect: Effect.Effect<void, CollectionSyncEffectError>
 }
 
 /**
@@ -256,11 +300,48 @@ export function effectElectricCollectionOptions(
 		})
 	}
 
+	// Error tracking utilities
+	const lastErrorEffect: Effect.Effect<Option.Option<CollectionSyncEffectError>> = Effect.sync(() => {
+		const lastError = standardConfig.utils.lastError
+		if (!lastError) {
+			return Option.none()
+		}
+		const wrappedError = wrapTanStackError(lastError, { collectionId: config.id })
+		return Option.some(
+			new CollectionSyncEffectError({
+				message: lastError instanceof Error ? lastError.message : String(lastError),
+				collectionId: config.id,
+				cause: wrappedError,
+			}),
+		)
+	})
+
+	const isErrorEffect: Effect.Effect<boolean> = Effect.sync(() => standardConfig.utils.isError)
+
+	const errorCountEffect: Effect.Effect<number> = Effect.sync(() => standardConfig.utils.errorCount)
+
+	const statusEffect: Effect.Effect<CollectionStatus> = Effect.sync(() => standardConfig.utils.status)
+
+	const clearErrorEffect: Effect.Effect<void, CollectionSyncEffectError> = Effect.try({
+		try: () => standardConfig.utils.clearError(),
+		catch: (error) =>
+			new CollectionSyncEffectError({
+				message: `Failed to clear error: ${error instanceof Error ? error.message : String(error)}`,
+				collectionId: config.id,
+				cause: error,
+			}),
+	})
+
 	return {
 		...standardConfig,
 		utils: {
 			...standardConfig.utils,
 			awaitTxIdEffect,
+			lastErrorEffect,
+			isErrorEffect,
+			errorCountEffect,
+			statusEffect,
+			clearErrorEffect,
 		},
 	}
 }

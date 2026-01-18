@@ -15,7 +15,18 @@ import {
 } from "@hazel/domain"
 import { Cause, Chunk, Match, Option, Schema } from "effect"
 import type { ParseError } from "effect/ParseResult"
-import { OptimisticActionError, SyncError } from "../../../../libs/effect-electric-db-collection/src"
+import {
+	CollectionInErrorEffectError,
+	CollectionSyncEffectError,
+	DuplicateKeyEffectError,
+	KeyNotFoundEffectError,
+	KeyUpdateNotAllowedEffectError,
+	OptimisticActionError,
+	SchemaValidationEffectError,
+	SyncError,
+	TransactionStateEffectError,
+	UndefinedKeyEffectError,
+} from "../../../../libs/effect-electric-db-collection/src"
 
 /**
  * User-friendly error message configuration
@@ -50,6 +61,16 @@ export const CommonAppErrorSchema = Schema.Union(
 	OptimisticActionError,
 	SyncError,
 	RpcClientError,
+	// TanStack DB errors (permanent - non-retryable)
+	DuplicateKeyEffectError,
+	KeyUpdateNotAllowedEffectError,
+	UndefinedKeyEffectError,
+	SchemaValidationEffectError,
+	// TanStack DB errors (recoverable - retryable)
+	KeyNotFoundEffectError,
+	CollectionInErrorEffectError,
+	TransactionStateEffectError,
+	CollectionSyncEffectError,
 )
 
 /**
@@ -67,107 +88,193 @@ export type CommonAppError =
 	| HttpClientError
 
 /**
- * Type-safe matcher for common application errors.
- * Returns UserErrorMessage for known errors.
+ * Static error messages for errors that don't need dynamic content
  */
-export const getCommonErrorMessage = Match.type<CommonAppError>().pipe(
+const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	// Auth errors (401) - User needs to re-authenticate
-	Match.tag("UnauthorizedError", () => ({
+	UnauthorizedError: {
 		title: "You don't have permission to do this",
 		description: "Contact your admin if you need access.",
 		isRetryable: false,
-	})),
-	Match.tag("SessionExpiredError", () => ({
+	},
+	SessionExpiredError: {
 		title: "Your session has expired",
 		description: "Please sign in again to continue.",
 		isRetryable: false,
-	})),
-	Match.tag("SessionNotProvidedError", () => ({
+	},
+	SessionNotProvidedError: {
 		title: "Please sign in to continue",
 		description: "You need to be signed in to perform this action.",
 		isRetryable: false,
-	})),
-	Match.tag("SessionAuthenticationError", () => ({
+	},
+	SessionAuthenticationError: {
 		title: "Authentication failed",
 		description: "Please sign in again.",
 		isRetryable: false,
-	})),
-	Match.tag("InvalidJwtPayloadError", () => ({
+	},
+	InvalidJwtPayloadError: {
 		title: "Invalid session",
 		description: "Please sign in again.",
 		isRetryable: false,
-	})),
-	Match.tag("InvalidBearerTokenError", () => ({
+	},
+	InvalidBearerTokenError: {
 		title: "Invalid authentication",
 		description: "Please sign in again.",
 		isRetryable: false,
-	})),
+	},
 
 	// Service errors (503) - User can retry
-	Match.tag("SessionLoadError", () => ({
+	SessionLoadError: {
 		title: "Service temporarily unavailable",
 		description: "We're having trouble connecting. Please try again.",
 		isRetryable: true,
-	})),
-	Match.tag("SessionRefreshError", () => ({
+	},
+	SessionRefreshError: {
 		title: "Session refresh failed",
 		description: "Please sign in again.",
 		isRetryable: false,
-	})),
-	Match.tag("WorkOSUserFetchError", () => ({
+	},
+	WorkOSUserFetchError: {
 		title: "Unable to load your profile",
 		description: "Please try refreshing the page.",
 		isRetryable: true,
-	})),
+	},
 
 	// Business logic errors (409)
-	Match.tag("DmChannelAlreadyExistsError", () => ({
+	DmChannelAlreadyExistsError: {
 		title: "This conversation already exists",
 		description: "You already have a direct message with this person.",
 		isRetryable: false,
-	})),
+	},
 
 	// Server errors (500)
-	Match.tag("InternalServerError", () => ({
+	InternalServerError: {
 		title: "Something went wrong",
 		description: "Please try again later.",
 		isRetryable: true,
-	})),
+	},
 
 	// Infrastructure errors - generic handling
-	Match.tag("OptimisticActionError", () => ({
+	OptimisticActionError: {
 		title: "Action failed",
 		description: "Please try again.",
 		isRetryable: true,
-	})),
-	Match.tag("SyncError", () => ({
+	},
+	SyncError: {
 		title: "Sync failed",
 		description: "Please try again.",
 		isRetryable: true,
-	})),
-	Match.tag("RpcClientError", () => ({
+	},
+	RpcClientError: {
 		title: "Request failed",
 		description: "Please try again.",
 		isRetryable: true,
-	})),
-	Match.tag("ParseError", () => ({
+	},
+	ParseError: {
 		title: "Invalid response",
 		description: "Please try again.",
 		isRetryable: true,
-	})),
-	Match.tag("RequestError", () => ({
+	},
+	RequestError: {
 		title: "Connection failed",
 		description: "Please check your internet connection.",
 		isRetryable: true,
-	})),
-	Match.tag("ResponseError", () => ({
+	},
+	ResponseError: {
 		title: "Server error",
 		description: "Please try again later.",
 		isRetryable: true,
-	})),
+	},
 
-	Match.exhaustive,
-)
+	// TanStack DB errors - permanent (non-retryable)
+	DuplicateKeyEffectError: {
+		title: "Item already exists",
+		description: "An item with this ID already exists. Please use a different ID.",
+		isRetryable: false,
+	},
+	KeyUpdateNotAllowedEffectError: {
+		title: "Cannot change item ID",
+		description: "Item IDs cannot be modified. Delete and recreate the item instead.",
+		isRetryable: false,
+	},
+	UndefinedKeyEffectError: {
+		title: "Missing item ID",
+		description: "The item is missing a required ID field.",
+		isRetryable: false,
+	},
+
+	// TanStack DB errors - recoverable (retryable)
+	CollectionInErrorEffectError: {
+		title: "Collection error",
+		description: "The data collection is in an error state. Please try refreshing.",
+		isRetryable: true,
+	},
+	TransactionStateEffectError: {
+		title: "Transaction error",
+		description: "The operation couldn't be completed. Please try again.",
+		isRetryable: true,
+	},
+	CollectionSyncEffectError: {
+		title: "Sync error",
+		description: "Failed to sync data. Please try again.",
+		isRetryable: true,
+	},
+}
+
+/**
+ * Gets error message for errors that need dynamic content based on error properties
+ */
+function getDynamicErrorMessage(error: CommonAppError): UserErrorMessage | null {
+	if (!("_tag" in error)) return null
+
+	switch (error._tag) {
+		case "SchemaValidationEffectError": {
+			const e = error as typeof SchemaValidationEffectError.Type
+			return {
+				title: "Invalid data",
+				description: e.issues[0]?.message || "The data doesn't match the expected format.",
+				isRetryable: false,
+			}
+		}
+		case "KeyNotFoundEffectError": {
+			const e = error as typeof KeyNotFoundEffectError.Type
+			return {
+				title: e.operation === "update" ? "Item not found" : "Already deleted",
+				description:
+					e.operation === "update"
+						? "The item you're trying to update doesn't exist."
+						: "This item has already been deleted.",
+				isRetryable: true,
+			}
+		}
+		default:
+			return null
+	}
+}
+
+/**
+ * Gets user-friendly error message for common application errors.
+ * Uses a tag-based lookup for static messages and dynamic handlers for errors
+ * that need to inspect error properties.
+ */
+export function getCommonErrorMessage(error: CommonAppError): UserErrorMessage {
+	// First check for dynamic error messages
+	const dynamicMessage = getDynamicErrorMessage(error)
+	if (dynamicMessage) return dynamicMessage
+
+	// Then check static message map
+	if ("_tag" in error) {
+		const staticMessage = ERROR_MESSAGE_MAP[error._tag]
+		if (staticMessage) return staticMessage
+	}
+
+	// Fallback for unknown errors
+	return {
+		title: "An error occurred",
+		description: undefined,
+		isRetryable: false,
+	}
+}
 
 /**
  * Network error message for connection issues
