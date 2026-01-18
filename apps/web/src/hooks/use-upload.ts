@@ -1,5 +1,10 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { PresignUploadRequest } from "@hazel/domain/http"
+import type {
+	AttachmentUploadRequest,
+	BotAvatarUploadRequest,
+	PresignUploadRequest,
+	UserAvatarUploadRequest,
+} from "@hazel/domain/http"
 import type { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useCallback, useRef, useState } from "react"
@@ -121,7 +126,7 @@ export function useUpload() {
 			try {
 				// Step 1: Get presigned URL from backend
 				const presignPayload = buildPresignPayload(params)
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Union type not compatible with mutation typing
 				const presignRes = await presignMutation({ payload: presignPayload as any })
 
 				if (!Exit.isSuccess(presignRes)) {
@@ -236,21 +241,25 @@ function buildPresignPayload(params: UploadParams): PresignUploadRequest {
 	const { file } = params
 
 	switch (params.type) {
-		case "user-avatar":
-			return {
+		case "user-avatar": {
+			const payload: UserAvatarUploadRequest = {
 				type: "user-avatar",
 				contentType: file.type,
 				fileSize: file.size,
 			}
-		case "bot-avatar":
-			return {
+			return payload
+		}
+		case "bot-avatar": {
+			const payload: BotAvatarUploadRequest = {
 				type: "bot-avatar",
 				botId: params.botId,
 				contentType: file.type,
 				fileSize: file.size,
 			}
-		case "attachment":
-			return {
+			return payload
+		}
+		case "attachment": {
+			const payload: AttachmentUploadRequest = {
 				type: "attachment",
 				fileName: file.name,
 				contentType: file.type || "application/octet-stream",
@@ -258,5 +267,7 @@ function buildPresignPayload(params: UploadParams): PresignUploadRequest {
 				organizationId: params.organizationId,
 				channelId: params.channelId,
 			}
+			return payload
+		}
 	}
 }

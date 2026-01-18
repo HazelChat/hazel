@@ -44,6 +44,24 @@ const DEFAULT_BACKOFF_CONFIG: Required<BackoffConfig> = {
 }
 
 /**
+ * Custom event name for collection error state changes
+ */
+export const COLLECTION_ERROR_STATE_CHANGED_EVENT = "collection:error-state-changed"
+
+/**
+ * Dispatch an event when collection error state changes
+ */
+function dispatchErrorStateChanged(collectionId: string | undefined, isError: boolean): void {
+	if (typeof window !== "undefined") {
+		window.dispatchEvent(
+			new CustomEvent(COLLECTION_ERROR_STATE_CHANGED_EVENT, {
+				detail: { collectionId, isError },
+			}),
+		)
+	}
+}
+
+/**
  * Creates an onError handler with exponential backoff
  */
 function createBackoffOnError(
@@ -71,6 +89,9 @@ function createBackoffOnError(
 		retryCount++
 
 		const prefix = collectionId ? `[${collectionId}]` : "[electric]"
+
+		// Dispatch error state changed event
+		dispatchErrorStateChanged(collectionId, true)
 
 		// Check if this is a 401 auth error - stop retrying and trigger session expired
 		const errorStatus = (error as { status?: number })?.status
@@ -323,7 +344,11 @@ export function effectElectricCollectionOptions(
 	const statusEffect: Effect.Effect<CollectionStatus> = Effect.sync(() => standardConfig.utils.status)
 
 	const clearErrorEffect: Effect.Effect<void, CollectionSyncEffectError> = Effect.try({
-		try: () => standardConfig.utils.clearError(),
+		try: () => {
+			standardConfig.utils.clearError()
+			// Dispatch event after clearing error
+			dispatchErrorStateChanged(config.id, false)
+		},
 		catch: (error) =>
 			new CollectionSyncEffectError({
 				message: `Failed to clear error: ${error instanceof Error ? error.message : String(error)}`,

@@ -4,6 +4,7 @@ import { Schema } from "effect"
 import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { Bot, BotCommand } from "../models"
+import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "../transaction-id"
 import { AuthMiddleware } from "./middleware"
 
@@ -132,7 +133,7 @@ export class BotRpcs extends RpcGroup.make(
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotCreatedResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union(UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -185,7 +186,7 @@ export class BotRpcs extends RpcGroup.make(
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -218,7 +219,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.mutation("bot.regenerateToken", {
 		payload: Schema.Struct({ id: BotId }),
 		success: BotCreatedResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -290,6 +291,7 @@ export class BotRpcs extends RpcGroup.make(
 			BotAlreadyInstalledError,
 			UnauthorizedError,
 			InternalServerError,
+			RateLimitExceededError,
 		),
 	}).middleware(AuthMiddleware),
 
@@ -306,7 +308,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.mutation("bot.uninstall", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
 	}).middleware(AuthMiddleware),
 
 	/**

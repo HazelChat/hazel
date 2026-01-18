@@ -3,6 +3,7 @@
 // Re-export useful types from electric-db-collection
 export type { Txid } from "@tanstack/electric-db-collection"
 export {
+	COLLECTION_ERROR_STATE_CHANGED_EVENT,
 	CollectionSyncEffectError,
 	type CollectionStatus,
 	createEffectCollection,

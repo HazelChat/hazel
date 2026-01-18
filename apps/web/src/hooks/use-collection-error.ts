@@ -4,7 +4,11 @@ import type {
 	CollectionSyncEffectError,
 	EffectCollection,
 } from "../../../../libs/effect-electric-db-collection/src"
-import { isPermanentError, isRecoverableError } from "../../../../libs/effect-electric-db-collection/src"
+import {
+	COLLECTION_ERROR_STATE_CHANGED_EVENT,
+	isPermanentError,
+	isRecoverableError,
+} from "../../../../libs/effect-electric-db-collection/src"
 
 /**
  * Result of the useCollectionError hook
@@ -97,7 +101,7 @@ export function useCollectionError(
 			return
 		}
 
-		// Initial state sync
+		// Sync state from collection utils
 		const syncState = () => {
 			setIsError(collection.utils.isError)
 			setErrorCount(collection.utils.errorCount)
@@ -105,12 +109,30 @@ export function useCollectionError(
 			setStatus(collection.utils.status)
 		}
 
+		// Initial state sync
 		syncState()
 
-		// Poll for changes since TanStack DB doesn't expose subscription API for these values
-		const interval = setInterval(syncState, 1000)
+		// Listen for error state change events for immediate updates
+		const handleErrorStateChanged = (event: Event) => {
+			const customEvent = event as CustomEvent<{ collectionId: string | undefined; isError: boolean }>
+			// Only sync if event is for this collection or all collections
+			if (
+				customEvent.detail.collectionId === undefined ||
+				customEvent.detail.collectionId === (collection as any).id
+			) {
+				syncState()
+			}
+		}
 
-		return () => clearInterval(interval)
+		window.addEventListener(COLLECTION_ERROR_STATE_CHANGED_EVENT, handleErrorStateChanged)
+
+		// Fallback polling at 10-second interval as safety net
+		const interval = setInterval(syncState, 10000)
+
+		return () => {
+			window.removeEventListener(COLLECTION_ERROR_STATE_CHANGED_EVENT, handleErrorStateChanged)
+			clearInterval(interval)
+		}
 	}, [collection])
 
 	// Clear error callback

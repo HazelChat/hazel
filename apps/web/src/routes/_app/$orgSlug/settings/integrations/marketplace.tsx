@@ -61,6 +61,11 @@ function MarketplaceSettings() {
 							description: "This application is already installed in your workspace.",
 							isRetryable: false,
 						}),
+						RateLimitExceededError: () => ({
+							title: "Rate limit exceeded",
+							description: "Please wait before trying again.",
+							isRetryable: true,
+						}),
 					},
 				},
 			)

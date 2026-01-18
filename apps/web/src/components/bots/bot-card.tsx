@@ -85,6 +85,11 @@ export function BotCard({
 					description: "This application may have been deleted.",
 					isRetryable: false,
 				}),
+				RateLimitExceededError: () => ({
+					title: "Rate limit exceeded",
+					description: "Please wait before trying again.",
+					isRetryable: true,
+				}),
 			},
 		})
 		setIsRegenerating(false)

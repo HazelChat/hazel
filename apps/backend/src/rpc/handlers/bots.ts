@@ -23,6 +23,7 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { BotPolicy } from "../../policies/bot-policy"
+import { checkBotOperationRateLimit, checkBotUpdateRateLimit } from "../../services/rate-limit-helpers"
 import { BotCommandRepo } from "../../repositories/bot-command-repo"
 import { BotInstallationRepo } from "../../repositories/bot-installation-repo"
 import { BotRepo } from "../../repositories/bot-repo"
@@ -49,6 +50,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 				Effect.gen(function* () {
 					const currentUser = yield* CurrentUser.Context
 
+					// Rate limit bot operations
+					yield* checkBotOperationRateLimit(currentUser.id)
+
 					if (!currentUser.organizationId) {
 						return yield* Effect.die(new Error("User must belong to an organization"))
 					}
@@ -68,7 +72,12 @@ export const BotRpcLive = BotRpcs.toLayer(
 								const botUserId = randomUUID() as UserId
 								const installationId = randomUUID() as BotInstallationId
 								const membershipId = randomUUID() as OrganizationMemberId
-								const botEmail = `${payload.name.toLowerCase().replace(/\s+/g, "-")}-${botId.slice(0, 8)}@bot.hazel.sh`
+								const sanitizedName = payload.name
+									.toLowerCase()
+									.replace(/[^a-z0-9-]/g, "-") // Allow only alphanumeric + hyphen
+									.replace(/-+/g, "-") // Collapse multiple hyphens
+									.replace(/^-|-$/g, "") // Trim hyphens
+								const botEmail = `${sanitizedName}-${botId.slice(0, 8)}@bot.hazel.sh`
 								const externalId = `bot_${botUserId}`
 
 								// 1. Create a machine user for the bot
@@ -174,38 +183,45 @@ export const BotRpcLive = BotRpcs.toLayer(
 				}).pipe(policyUse(BotPolicy.canRead(id)), withRemapDbErrors("Bot", "select")),
 
 			"bot.update": ({ id, ...payload }) =>
-				db
-					.transaction(
-						Effect.gen(function* () {
-							const botRepo = yield* BotRepo
+				Effect.gen(function* () {
+					const currentUser = yield* CurrentUser.Context
 
-							// Check bot exists
-							const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
-							if (Option.isNone(botOption)) {
-								return yield* Effect.fail(new BotNotFoundError({ botId: id }))
-							}
+					// Rate limit bot updates
+					yield* checkBotUpdateRateLimit(currentUser.id)
 
-							// Update bot
-							const updatedBot = yield* botRepo
-								.update({
-									id,
-									name: payload.name,
-									description: payload.description,
-									webhookUrl: payload.webhookUrl,
-									scopes: payload.scopes ? [...payload.scopes] : undefined,
-									isPublic: payload.isPublic,
+					return yield* db
+						.transaction(
+							Effect.gen(function* () {
+								const botRepo = yield* BotRepo
+
+								// Check bot exists
+								const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+								if (Option.isNone(botOption)) {
+									return yield* Effect.fail(new BotNotFoundError({ botId: id }))
+								}
+
+								// Update bot
+								const updatedBot = yield* botRepo
+									.update({
+										id,
+										name: payload.name,
+										description: payload.description,
+										webhookUrl: payload.webhookUrl,
+										scopes: payload.scopes ? [...payload.scopes] : undefined,
+										isPublic: payload.isPublic,
+									})
+									.pipe(withSystemActor)
+
+								const txid = yield* generateTransactionId()
+
+								return new BotResponse({
+									data: updatedBot,
+									transactionId: txid,
 								})
-								.pipe(withSystemActor)
-
-							const txid = yield* generateTransactionId()
-
-							return new BotResponse({
-								data: updatedBot,
-								transactionId: txid,
-							})
-						}).pipe(policyUse(BotPolicy.canUpdate(id))),
-					)
-					.pipe(withRemapDbErrors("Bot", "update")),
+							}).pipe(policyUse(BotPolicy.canUpdate(id))),
+						)
+						.pipe(withRemapDbErrors("Bot", "update"))
+				}),
 
 			"bot.delete": ({ id }) =>
 				db
@@ -230,35 +246,42 @@ export const BotRpcLive = BotRpcs.toLayer(
 					.pipe(withRemapDbErrors("Bot", "delete")),
 
 			"bot.regenerateToken": ({ id }) =>
-				db
-					.transaction(
-						Effect.gen(function* () {
-							const botRepo = yield* BotRepo
+				Effect.gen(function* () {
+					const currentUser = yield* CurrentUser.Context
 
-							// Check bot exists
-							const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
-							if (Option.isNone(botOption)) {
-								return yield* Effect.fail(new BotNotFoundError({ botId: id }))
-							}
+					// Rate limit bot operations
+					yield* checkBotOperationRateLimit(currentUser.id)
 
-							// Generate new token
-							const { token, tokenHash } = yield* Effect.promise(generateBotToken)
+					return yield* db
+						.transaction(
+							Effect.gen(function* () {
+								const botRepo = yield* BotRepo
 
-							// Update token
-							const updatedBot = yield* botRepo
-								.updateTokenHash(id, tokenHash)
-								.pipe(withSystemActor)
+								// Check bot exists
+								const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+								if (Option.isNone(botOption)) {
+									return yield* Effect.fail(new BotNotFoundError({ botId: id }))
+								}
 
-							const txid = yield* generateTransactionId()
+								// Generate new token
+								const { token, tokenHash } = yield* Effect.promise(generateBotToken)
 
-							return new BotCreatedResponse({
-								data: updatedBot,
-								token, // Only returned once
-								transactionId: txid,
-							})
-						}).pipe(policyUse(BotPolicy.canUpdate(id))),
-					)
-					.pipe(withRemapDbErrors("Bot", "update")),
+								// Update token
+								const updatedBot = yield* botRepo
+									.updateTokenHash(id, tokenHash)
+									.pipe(withSystemActor)
+
+								const txid = yield* generateTransactionId()
+
+								return new BotCreatedResponse({
+									data: updatedBot,
+									token, // Only returned once
+									transactionId: txid,
+								})
+							}).pipe(policyUse(BotPolicy.canUpdate(id))),
+						)
+						.pipe(withRemapDbErrors("Bot", "update"))
+				}),
 
 			"bot.getCommands": ({ botId }) =>
 				Effect.gen(function* () {
@@ -361,6 +384,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 				Effect.gen(function* () {
 					const currentUser = yield* CurrentUser.Context
 
+					// Rate limit bot operations
+					yield* checkBotOperationRateLimit(currentUser.id)
+
 					if (!currentUser.organizationId) {
 						return yield* Effect.die(new Error("User must belong to an organization"))
 					}
@@ -405,7 +431,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									)
 									.pipe(withSystemActor)
 
-								// Add bot user to the organization as a member
+								// Add bot user to the organization as a member (reactivate if soft-deleted)
 								const membershipId = randomUUID() as OrganizationMemberId
 								yield* db
 									.execute((client) =>
@@ -417,7 +443,13 @@ export const BotRpcLive = BotRpcs.toLayer(
 												userId: bot.userId,
 												role: "member",
 											})
-											.onConflictDoNothing(),
+											.onConflictDoUpdate({
+												target: [
+													schema.organizationMembersTable.organizationId,
+													schema.organizationMembersTable.userId,
+												],
+												set: { deletedAt: null },
+											}),
 									)
 									.pipe(withSystemActor)
 
@@ -435,6 +467,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 			"bot.uninstall": ({ botId }) =>
 				Effect.gen(function* () {
 					const currentUser = yield* CurrentUser.Context
+
+					// Rate limit bot operations
+					yield* checkBotOperationRateLimit(currentUser.id)
 
 					if (!currentUser.organizationId) {
 						return yield* Effect.die(new Error("User must belong to an organization"))

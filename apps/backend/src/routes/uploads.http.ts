@@ -140,6 +140,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							)
 
 							// Create attachment record with "uploading" status
+							// Validates user has permission to upload to the specified channel/org
 							yield* db
 								.transaction(
 									Effect.gen(function* () {

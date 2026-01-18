@@ -79,7 +79,13 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 						setCreatedBotName(value.name)
 						return `Application "${value.name}" created successfully`
 					},
-					customErrors: {},
+					customErrors: {
+						RateLimitExceededError: () => ({
+							title: "Rate limit exceeded",
+							description: "Please wait before trying again.",
+							isRetryable: true,
+						}),
+					},
 				},
 			)
 		},

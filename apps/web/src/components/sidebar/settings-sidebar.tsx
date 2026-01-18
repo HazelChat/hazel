@@ -36,6 +36,18 @@ export function SettingsSidebar() {
 		})
 	}
 
+	// Helper to check if the base integrations route is active (not sub-routes)
+	const isBaseIntegrationsRouteActive = () => {
+		const isExactMatch = !!isRouteActive("/$orgSlug/settings/integrations", true)
+		const isFuzzyMatch = !!isRouteActive("/$orgSlug/settings/integrations")
+		const isOnSubRoute =
+			!!isRouteActive("/$orgSlug/settings/integrations/marketplace") ||
+			!!isRouteActive("/$orgSlug/settings/integrations/installed") ||
+			!!isRouteActive("/$orgSlug/settings/integrations/your-apps")
+
+		return isExactMatch || (isFuzzyMatch && !isOnSubRoute)
+	}
+
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
 			<SidebarHeader
@@ -80,15 +92,7 @@ export function SettingsSidebar() {
 
 					{/* Apps & Integrations Section */}
 					<SidebarSection label="Apps & Integrations">
-						<SidebarItem
-							isCurrent={
-								!!isRouteActive("/$orgSlug/settings/integrations", true) ||
-								(!!isRouteActive("/$orgSlug/settings/integrations") &&
-									!isRouteActive("/$orgSlug/settings/integrations/marketplace") &&
-									!isRouteActive("/$orgSlug/settings/integrations/installed") &&
-									!isRouteActive("/$orgSlug/settings/integrations/your-apps"))
-							}
-						>
+						<SidebarItem isCurrent={isBaseIntegrationsRouteActive()}>
 							<SidebarLink
 								to="/$orgSlug/settings/integrations"
 								params={{ orgSlug: slug }}

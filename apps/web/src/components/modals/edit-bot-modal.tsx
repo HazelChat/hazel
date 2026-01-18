@@ -85,6 +85,11 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 							description: "This application may have been deleted.",
 							isRetryable: false,
 						}),
+						RateLimitExceededError: () => ({
+							title: "Rate limit exceeded",
+							description: "Please wait before trying again.",
+							isRetryable: true,
+						}),
 					},
 				},
 			)

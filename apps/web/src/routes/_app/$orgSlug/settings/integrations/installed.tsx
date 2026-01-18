@@ -44,6 +44,11 @@ function InstalledAppsSettings() {
 							description: "This application may have already been uninstalled.",
 							isRetryable: false,
 						}),
+						RateLimitExceededError: () => ({
+							title: "Rate limit exceeded",
+							description: "Please wait before trying again.",
+							isRetryable: true,
+						}),
 					},
 				},
 			)
