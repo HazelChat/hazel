@@ -1,15 +1,19 @@
 import { useState } from "react"
-import type { PublicBotData } from "~/atoms/bot-atoms"
+import { BotAvatar } from "~/components/bots/bot-avatar"
+import type { BotWithUser } from "~/db/hooks"
 import IconCheck from "~/components/icons/icon-check"
 import IconCode from "~/components/icons/icon-code"
 import IconDownload from "~/components/icons/icon-download"
-import IconRobot from "~/components/icons/icon-robot"
-import { Avatar } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 
+export interface PublicBotWithUser extends BotWithUser {
+	isInstalled: boolean
+	creatorName: string
+}
+
 interface MarketplaceBotCardProps {
-	bot: PublicBotData
+	bot: PublicBotWithUser
 	onInstall: () => void
 }
 
@@ -29,7 +33,7 @@ export function MarketplaceBotCard({ bot, onInstall }: MarketplaceBotCardProps) 
 			{/* Header */}
 			<div className="flex flex-1 flex-col gap-4 p-4">
 				<div className="flex items-start gap-3">
-					<Avatar size="lg" placeholderIcon={IconRobot} className="bg-primary/10 shrink-0" />
+					<BotAvatar size="lg" bot={bot} className="bg-primary/10 shrink-0" />
 					<div className="flex flex-1 flex-col gap-0.5">
 						<h3 className="font-semibold text-fg text-sm">{bot.name}</h3>
 						<p className="text-muted-fg text-xs">by {bot.creatorName}</p>

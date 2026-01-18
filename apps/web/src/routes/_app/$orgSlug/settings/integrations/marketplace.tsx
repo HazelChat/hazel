@@ -1,7 +1,7 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect-atom/atom-react"
 import type { BotId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
-import { useCallback, useDeferredValue, useState } from "react"
+import { useCallback, useDeferredValue, useMemo, useState } from "react"
 import { installBotMutation } from "~/atoms/bot-atoms"
 import { MarketplaceBotCard } from "~/components/bots/marketplace-bot-card"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
@@ -9,8 +9,9 @@ import IconRobot from "~/components/icons/icon-robot"
 import { EmptyState } from "~/components/ui/empty-state"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
+import { usePublicBots } from "~/db/hooks"
+import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
-import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/marketplace")({
 	component: MarketplaceSettings,
@@ -19,17 +20,22 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/marke
 function MarketplaceSettings() {
 	const [search, setSearch] = useState("")
 	const deferredSearch = useDeferredValue(search)
+	const { user } = useAuth()
 
-	// Query public bots with proper loading state
-	const publicBotsResult = useAtomValue(
-		HazelRpcClient.query(
-			"bot.listPublic",
-			{ search: deferredSearch || undefined },
-			{ reactivityKeys: ["publicBots", "installedBots"], timeToLive: "30 seconds" },
-		),
-	)
-	const publicBots = Result.getOrElse(publicBotsResult, () => ({ data: [] as const })).data
-	const isLoading = Result.isInitial(publicBotsResult) || publicBotsResult.waiting
+	// Query public bots using TanStack DB (real-time via Electric sync)
+	const { bots: allPublicBots, status } = usePublicBots(user?.organizationId ?? undefined)
+	const isLoading = status === "loading" || status === "idle"
+
+	// Filter bots by search term locally
+	const publicBots = useMemo(() => {
+		if (!deferredSearch) return allPublicBots
+		const searchLower = deferredSearch.toLowerCase()
+		return allPublicBots.filter(
+			(bot) =>
+				bot.name.toLowerCase().includes(searchLower) ||
+				bot.description?.toLowerCase().includes(searchLower),
+		)
+	}, [allPublicBots, deferredSearch])
 
 	// Mutation for installing
 	const installBot = useAtomSet(installBotMutation, { mode: "promiseExit" })
@@ -40,7 +46,6 @@ function MarketplaceSettings() {
 			await toastExit(
 				installBot({
 					payload: { botId: botId as BotId },
-					reactivityKeys: ["publicBots", "installedBots"],
 				}),
 				{
 					loading: "Installing application...",

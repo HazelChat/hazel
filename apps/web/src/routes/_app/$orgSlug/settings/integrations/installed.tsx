@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect-atom/atom-react"
 import type { BotId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useCallback } from "react"
@@ -8,8 +8,9 @@ import IconRobot from "~/components/icons/icon-robot"
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { SectionHeader } from "~/components/ui/section-header"
+import { useInstalledBots } from "~/db/hooks"
+import { useAuth } from "~/lib/auth"
 import { toastExit } from "~/lib/toast-exit"
-import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/installed")({
 	component: InstalledAppsSettings,
@@ -18,17 +19,11 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/insta
 function InstalledAppsSettings() {
 	const navigate = useNavigate()
 	const { orgSlug } = Route.useParams()
+	const { user } = useAuth()
 
-	// Query installed bots with proper loading state
-	const installedBotsResult = useAtomValue(
-		HazelRpcClient.query(
-			"bot.listInstalled",
-			{},
-			{ reactivityKeys: ["installedBots"], timeToLive: "30 seconds" },
-		),
-	)
-	const installedBots = Result.getOrElse(installedBotsResult, () => ({ data: [] as const })).data
-	const isLoading = Result.isInitial(installedBotsResult)
+	// Query installed bots using TanStack DB (real-time via Electric sync)
+	const { bots: installedBots, status } = useInstalledBots(user?.organizationId ?? undefined)
+	const isLoading = status === "loading" || status === "idle"
 
 	// Mutation for uninstalling
 	const uninstallBot = useAtomSet(uninstallBotMutation, { mode: "promiseExit" })
@@ -39,7 +34,6 @@ function InstalledAppsSettings() {
 			await toastExit(
 				uninstallBot({
 					payload: { botId: botId as BotId },
-					reactivityKeys: ["installedBots"],
 				}),
 				{
 					loading: "Uninstalling application...",

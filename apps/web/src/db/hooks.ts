@@ -1,10 +1,12 @@
-import type { Channel, ChannelMember, IntegrationConnection, User } from "@hazel/domain/models"
+import type { Bot, Channel, ChannelMember, IntegrationConnection, User } from "@hazel/domain/models"
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { and, eq, gte, inArray, isNull, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import { useAuth } from "~/lib/auth"
 import {
 	attachmentCollection,
+	botCollection,
+	botInstallationCollection,
 	channelCollection,
 	integrationConnectionCollection,
 	messageCollection,
@@ -340,4 +342,116 @@ export const useActiveThreads = (organizationId: OrganizationId | null, userId: 
 	}, [threads, recentMessages, threadMessages, organizationId])
 
 	return { threadsByParent }
+}
+
+/**
+ * Type for bot data with its machine user included.
+ */
+export type BotWithUser = typeof Bot.Model.Type & {
+	user: typeof User.Model.Type
+}
+
+/**
+ * Hook to fetch bots created by a specific user (for "Your Apps" page).
+ * Joins bots with their machine users to get avatar data.
+ */
+export const useMyBots = (createdBy: UserId | undefined) => {
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ bot: botCollection })
+				.innerJoin({ user: userCollection }, ({ bot, user }) => eq(bot.userId, user.id))
+				.where(({ bot }) =>
+					and(eq(bot.createdBy, createdBy ?? ("" as UserId)), isNull(bot.deletedAt)),
+				)
+				.select(({ bot, user }) => ({ ...bot, user }))
+				.orderBy(({ bot }) => bot.createdAt, "desc"),
+		[createdBy],
+	)
+
+	return {
+		bots: (data ?? []) as BotWithUser[],
+		...rest,
+	}
+}
+
+/**
+ * Hook to fetch bots installed in an organization (for "Installed Apps" page).
+ * Joins bots with their machine users to get avatar data.
+ */
+export const useInstalledBots = (organizationId: OrganizationId | undefined) => {
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ installation: botInstallationCollection })
+				.innerJoin({ bot: botCollection }, ({ installation, bot }) => eq(installation.botId, bot.id))
+				.innerJoin({ user: userCollection }, ({ bot, user }) => eq(bot.userId, user.id))
+				.where(({ installation, bot }) =>
+					and(
+						eq(installation.organizationId, organizationId ?? ("" as OrganizationId)),
+						isNull(bot.deletedAt),
+					),
+				)
+				.select(({ bot, user }) => ({ ...bot, user }))
+				.orderBy(({ bot }) => bot.name, "asc"),
+		[organizationId],
+	)
+
+	return {
+		bots: (data ?? []) as BotWithUser[],
+		...rest,
+	}
+}
+
+/**
+ * Hook to fetch public bots (for Marketplace page).
+ * Joins bots with their machine users to get avatar data.
+ * Also joins with bot installations to check if already installed.
+ */
+export const usePublicBots = (organizationId: OrganizationId | undefined) => {
+	// Get public bots with their machine users
+	const { data: botsWithUsers, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ bot: botCollection })
+				.innerJoin({ user: userCollection }, ({ bot, user }) => eq(bot.userId, user.id))
+				.leftJoin({ creator: userCollection }, ({ bot, creator }) => eq(bot.createdBy, creator.id))
+				.where(({ bot }) => and(eq(bot.isPublic, true), isNull(bot.deletedAt)))
+				.select(({ bot, user, creator }) => ({ ...bot, user, creator }))
+				.orderBy(({ bot }) => bot.installCount, "desc"),
+		[],
+	)
+
+	// Get installed bot IDs for this organization
+	const { data: installations } = useLiveQuery(
+		(q) =>
+			q
+				.from({ installation: botInstallationCollection })
+				.where(({ installation }) =>
+					eq(installation.organizationId, organizationId ?? ("" as OrganizationId)),
+				)
+				.select(({ installation }) => ({ botId: installation.botId })),
+		[organizationId],
+	)
+
+	// Build set of installed bot IDs
+	const installedBotIds = useMemo(() => new Set((installations ?? []).map((i) => i.botId)), [installations])
+
+	// Add isInstalled flag and creatorName to each bot
+	const publicBots = useMemo(() => {
+		return (botsWithUsers ?? []).map((bot) => ({
+			...bot,
+			isInstalled: installedBotIds.has(bot.id),
+			creatorName: bot.creator
+				? bot.creator.firstName && bot.creator.lastName
+					? `${bot.creator.firstName} ${bot.creator.lastName}`
+					: bot.creator.email
+				: "Unknown",
+		}))
+	}, [botsWithUsers, installedBotIds])
+
+	return {
+		bots: publicBots,
+		...rest,
+	}
 }

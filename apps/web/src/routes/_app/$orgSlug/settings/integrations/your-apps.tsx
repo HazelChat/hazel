@@ -1,4 +1,3 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import { BotCard } from "~/components/bots/bot-card"
@@ -8,7 +7,8 @@ import { CreateBotModal } from "~/components/modals/create-bot-modal"
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { SectionHeader } from "~/components/ui/section-header"
-import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
+import { useMyBots } from "~/db/hooks"
+import { useAuth } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/your-apps")({
 	component: YourAppsSettings,
@@ -16,13 +16,11 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/integrations/your-
 
 function YourAppsSettings() {
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+	const { user } = useAuth()
 
-	// Query my bots with proper loading state
-	const myBotsResult = useAtomValue(
-		HazelRpcClient.query("bot.list", {}, { reactivityKeys: ["myBots"], timeToLive: "30 seconds" }),
-	)
-	const myBots = Result.getOrElse(myBotsResult, () => ({ data: [] as const })).data
-	const isLoading = Result.isInitial(myBotsResult)
+	// Query my bots using TanStack DB (real-time via Electric sync)
+	const { bots: myBots, status } = useMyBots(user?.id)
+	const isLoading = status === "loading" || status === "idle"
 
 	// Refresh lists after bot creation
 	const handleBotCreated = useCallback(() => {
@@ -71,7 +69,7 @@ function YourAppsSettings() {
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{myBots.map((bot) => (
-						<BotCard key={bot.id} bot={bot} reactivityKeys={["myBots"]} />
+						<BotCard key={bot.id} bot={bot} />
 					))}
 				</div>
 			)}
@@ -80,7 +78,6 @@ function YourAppsSettings() {
 				isOpen={isCreateModalOpen}
 				onOpenChange={setIsCreateModalOpen}
 				onSuccess={handleBotCreated}
-				reactivityKeys={["myBots"]}
 			/>
 		</>
 	)

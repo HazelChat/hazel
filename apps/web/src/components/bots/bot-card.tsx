@@ -1,12 +1,12 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import { useState } from "react"
-import { type BotData, deleteBotMutation, regenerateBotTokenMutation } from "~/atoms/bot-atoms"
+import { deleteBotMutation, regenerateBotTokenMutation } from "~/atoms/bot-atoms"
+import { BotAvatar } from "~/components/bots/bot-avatar"
+import type { BotWithUser } from "~/db/hooks"
+import { BotTokenDisplay } from "~/components/bots/bot-token-display"
 import IconCode from "~/components/icons/icon-code"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
-import IconRobot from "~/components/icons/icon-robot"
 import IconTrash from "~/components/icons/icon-trash"
-import { BotTokenDisplay } from "~/components/bots/bot-token-display"
-import { Avatar } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "~/components/ui/menu"
@@ -22,7 +22,7 @@ import {
 import { toastExit } from "~/lib/toast-exit"
 
 interface BotCardProps {
-	bot: BotData
+	bot: BotWithUser
 	showUninstall?: boolean
 	onDelete?: () => void
 	onUpdate?: () => void
@@ -93,7 +93,7 @@ export function BotCard({
 			<div className="flex flex-col overflow-hidden rounded-xl border border-border bg-bg transition-all duration-200 hover:border-border-hover hover:shadow-md">
 				{/* Header */}
 				<div className="flex items-start gap-3 p-4">
-					<Avatar size="md" placeholderIcon={IconRobot} className="bg-primary/10" />
+					<BotAvatar size="md" bot={bot} className="bg-primary/10" />
 					<div className="flex flex-1 flex-col gap-0.5">
 						<div className="flex items-center gap-2">
 							<h3 className="font-semibold text-fg text-sm">{bot.name}</h3>
