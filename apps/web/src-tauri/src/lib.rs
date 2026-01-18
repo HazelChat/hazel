@@ -19,7 +19,7 @@ fn active_nonces() -> &'static Mutex<HashMap<u16, String>> {
 /// Find an available port in the range
 fn find_available_port() -> Option<u16> {
     for port in OAUTH_PORT_MIN..=OAUTH_PORT_MAX {
-        if TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok() {
+        if TcpListener::bind(format!("localhost:{}", port)).is_ok() {
             return Some(port);
         }
     }
@@ -81,7 +81,7 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
     }
 
     // Bind to the port
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+    let listener = TcpListener::bind(format!("localhost:{}", port))
         .map_err(|e| format!("Failed to bind port {}: {}", port, e))?;
 
     listener
@@ -133,7 +133,7 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
 
                                     // Build callback URL for frontend
                                     let callback_url = format!(
-                                        "http://127.0.0.1:{}?code={}&state={}",
+                                        "http://localhost:{}?code={}&state={}",
                                         server_port,
                                         urlencoding::encode(code),
                                         urlencoding::encode(state)

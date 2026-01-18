@@ -102,7 +102,7 @@ function DesktopCallbackPage() {
 
 		for (let i = 0; i < maxRetries; i++) {
 			try {
-				const response = await fetch(`http://127.0.0.1:${port}`, {
+				const response = await fetch(`http://localhost:${port}`, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
