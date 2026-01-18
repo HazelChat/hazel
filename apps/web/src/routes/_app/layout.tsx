@@ -8,7 +8,6 @@ import { IconEnvelope } from "~/components/icons/icon-envelope"
 import { Loader } from "~/components/loader"
 import { Button } from "~/components/ui/button"
 import { Text } from "~/components/ui/text"
-import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { useAuth } from "~/lib/auth"
 import { isTauri } from "~/lib/tauri"
@@ -16,6 +15,7 @@ import { isTauri } from "~/lib/tauri"
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
 	loader: async () => {
+		const { organizationCollection, organizationMemberCollection } = await import("~/db/collections")
 		await Promise.all([organizationCollection.preload(), organizationMemberCollection.preload()])
 
 		return null

@@ -35,15 +35,6 @@ const JoinChannelModal = lazy(() =>
 )
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
-import {
-	attachmentCollection,
-	channelCollection,
-	channelMemberCollection,
-	channelSectionCollection,
-	organizationCollection,
-	organizationMemberCollection,
-	userCollection,
-} from "~/db/collections"
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
@@ -53,6 +44,15 @@ import { PresenceProvider } from "~/providers/presence-provider"
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
 	loader: async () => {
+		const {
+			attachmentCollection,
+			channelCollection,
+			channelMemberCollection,
+			channelSectionCollection,
+			organizationCollection,
+			organizationMemberCollection,
+			userCollection,
+		} = await import("~/db/collections")
 		await Promise.all([
 			channelCollection.preload(),
 			channelMemberCollection.preload(),
