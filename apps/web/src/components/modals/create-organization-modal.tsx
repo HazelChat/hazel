@@ -50,6 +50,7 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 						slug: value.slug,
 						logoUrl: null,
 						settings: null,
+						isPublic: false,
 					},
 				}),
 				{

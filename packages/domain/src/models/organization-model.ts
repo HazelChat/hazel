@@ -14,6 +14,7 @@ export class Model extends M.Class<Model>("Organization")({
 			value: Schema.Unknown,
 		}),
 	),
+	isPublic: Schema.Boolean,
 	...baseFields,
 }) {}
 

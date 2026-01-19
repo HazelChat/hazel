@@ -26,3 +26,19 @@ export const setOrganizationSlugMutation = HazelRpcClient.mutation("organization
 export const updateOrganizationMemberMetadataMutation = HazelRpcClient.mutation(
 	"organizationMember.updateMetadata",
 )
+
+/**
+ * Mutation atom for setting organization public mode
+ */
+export const setPublicModeMutation = HazelRpcClient.mutation("organization.setPublicMode")
+
+/**
+ * Query atom factory for getting public organization info by slug
+ */
+export const getOrgBySlugPublicQuery = (slug: string) =>
+	HazelRpcClient.query("organization.getBySlugPublic", { slug })
+
+/**
+ * Mutation atom for joining an organization via public invite
+ */
+export const joinViaPublicInviteMutation = HazelRpcClient.mutation("organization.joinViaPublicInvite")

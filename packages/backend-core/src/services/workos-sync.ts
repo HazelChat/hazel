@@ -685,6 +685,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								name: data.name,
 								logoUrl: null,
 								settings: null,
+								isPublic: false,
 								deletedAt: null,
 								slug: data.name
 									.toLowerCase()

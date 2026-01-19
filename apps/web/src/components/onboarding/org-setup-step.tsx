@@ -71,6 +71,7 @@ export function OrgSetupStep({
 					slug: value.slug,
 					logoUrl: null,
 					settings: null,
+					isPublic: false,
 				},
 			})
 			toastExitOnError(exit, {

@@ -1,5 +1,16 @@
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { index, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core"
+import {
+	boolean,
+	index,
+	jsonb,
+	pgEnum,
+	pgTable,
+	text,
+	timestamp,
+	unique,
+	uuid,
+	varchar,
+} from "drizzle-orm/pg-core"
 
 // Organization member roles
 export const organizationRoleEnum = pgEnum("organization_role", ["admin", "member", "owner"])
@@ -13,6 +24,7 @@ export const organizationsTable = pgTable(
 		slug: varchar({ length: 100 }).unique(),
 		logoUrl: text(),
 		settings: jsonb(),
+		isPublic: boolean("is_public").notNull().default(false),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),

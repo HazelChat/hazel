@@ -22,17 +22,23 @@ interface LogoutOptions {
 }
 
 /**
+ * Check if a pathname is a public route
+ * Public routes: /auth/*, /join/*
+ */
+const isPublicPath = (pathname: string) => pathname.startsWith("/auth") || pathname.startsWith("/join")
+
+/**
  * Atom that tracks whether the current route is a public route
- * (i.e., starts with /auth)
+ * (i.e., starts with /auth or /join)
  */
 const isPublicRouteAtom = Atom.make((get) => {
 	const unsubscribe = router.subscribe("onResolved", (event) => {
-		get.setSelf(event.toLocation.pathname.startsWith("/auth"))
+		get.setSelf(isPublicPath(event.toLocation.pathname))
 	})
 
 	get.addFinalizer(unsubscribe)
 
-	return router.state.location.pathname.startsWith("/auth")
+	return isPublicPath(router.state.location.pathname)
 }).pipe(Atom.keepAlive)
 
 /**

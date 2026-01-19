@@ -6,10 +6,18 @@ import {
 	withRemapDbErrors,
 	withSystemActor,
 } from "@hazel/domain"
-import { OrganizationRpcs, OrganizationSlugAlreadyExistsError } from "@hazel/domain/rpc"
+import {
+	AlreadyMemberError,
+	OrganizationNotFoundError,
+	OrganizationRpcs,
+	OrganizationSlugAlreadyExistsError,
+	PublicInviteDisabledError,
+} from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
+import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
+import { ChannelRepo } from "../../repositories/channel-repo"
 import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 import { OrganizationRepo } from "../../repositories/organization-repo"
 import { UserRepo } from "../../repositories/user-repo"
@@ -144,6 +152,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								slug: payload.slug,
 								logoUrl: payload.logoUrl,
 								settings: payload.settings,
+								isPublic: false,
 								deletedAt: null,
 							}).pipe(
 								Effect.map((res) => res[0]!),
@@ -282,6 +291,194 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 						}),
 					)
 					.pipe(handleOrganizationDbErrors("Organization", "update")),
+
+			"organization.setPublicMode": ({ id, isPublic }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const updatedOrganization = yield* OrganizationRepo.update({
+								id,
+								isPublic,
+							}).pipe(policyUse(OrganizationPolicy.canUpdate(id)))
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: {
+									...updatedOrganization,
+									settings: updatedOrganization.settings as {
+										readonly [x: string]: unknown
+									} | null,
+								},
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("Organization", "update")),
+
+			"organization.getBySlugPublic": ({ slug }) =>
+				Effect.gen(function* () {
+					const orgOption = yield* OrganizationRepo.findBySlugIfPublic(slug).pipe(withSystemActor)
+
+					if (Option.isNone(orgOption)) {
+						return null
+					}
+
+					const org = orgOption.value
+
+					// Count members for this organization
+					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id).pipe(
+						withSystemActor,
+					)
+
+					return {
+						id: org.id,
+						name: org.name,
+						slug: org.slug,
+						logoUrl: org.logoUrl,
+						memberCount,
+					}
+				}).pipe(
+					Effect.catchAll((err) =>
+						Effect.fail(
+							new InternalServerError({
+								message: "Error fetching organization",
+								detail: String(err),
+							}),
+						),
+					),
+				),
+
+			"organization.joinViaPublicInvite": ({ slug }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const currentUser = yield* CurrentUser.Context
+
+							// Find the organization by slug
+							const orgOption = yield* OrganizationRepo.findBySlug(slug).pipe(withSystemActor)
+
+							if (Option.isNone(orgOption)) {
+								return yield* Effect.fail(
+									new OrganizationNotFoundError({
+										organizationId: "unknown" as any,
+									}),
+								)
+							}
+
+							const org = orgOption.value
+
+							// Check if organization has public invites enabled
+							if (!org.isPublic) {
+								return yield* Effect.fail(
+									new PublicInviteDisabledError({
+										organizationId: org.id,
+									}),
+								)
+							}
+
+							// Check if user is already a member
+							const existingMember = yield* OrganizationMemberRepo.findByOrgAndUser(
+								org.id,
+								currentUser.id,
+							).pipe(withSystemActor)
+
+							if (Option.isSome(existingMember)) {
+								return yield* Effect.fail(
+									new AlreadyMemberError({
+										organizationId: org.id,
+										organizationSlug: org.slug,
+									}),
+								)
+							}
+
+							// Get the user's external ID for WorkOS sync
+							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new InternalServerError({
+												message: "Failed to query user",
+												detail: String(err),
+											}),
+										),
+								}),
+								withSystemActor,
+							)
+
+							if (Option.isNone(userOption)) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "User not found",
+										detail: `Could not find user with ID ${currentUser.id}`,
+									}),
+								)
+							}
+
+							const user = userOption.value
+
+							// Create membership in local database
+							yield* OrganizationMemberRepo.upsertByOrgAndUser({
+								organizationId: org.id,
+								userId: currentUser.id,
+								role: "member",
+								nickname: undefined,
+								joinedAt: new Date(),
+								invitedBy: null,
+								deletedAt: null,
+							}).pipe(withSystemActor)
+
+							// Try to sync to WorkOS (non-blocking - we don't fail if WorkOS fails)
+							yield* workos
+								.call((client) =>
+									client.userManagement.createOrganizationMembership({
+										userId: user.externalId,
+										organizationId: org.id,
+										roleSlug: "member",
+									}),
+								)
+								.pipe(
+									Effect.catchAll((error) =>
+										Effect.logWarning(
+											`Failed to sync membership to WorkOS: ${String(error)}`,
+										),
+									),
+								)
+
+							// Add user to the default "general" channel
+							const generalChannel = yield* ChannelRepo.findByOrgAndName(
+								org.id,
+								"general",
+							).pipe(withSystemActor)
+
+							if (Option.isSome(generalChannel)) {
+								yield* ChannelMemberRepo.insert({
+									channelId: generalChannel.value.id,
+									userId: currentUser.id,
+									isHidden: false,
+									isMuted: false,
+									isFavorite: false,
+									lastSeenMessageId: null,
+									notificationCount: 0,
+									joinedAt: new Date(),
+									deletedAt: null,
+								}).pipe(withSystemActor)
+							}
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: {
+									...org,
+									settings: org.settings as {
+										readonly [x: string]: unknown
+									} | null,
+								},
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("Organization", "update")),
 		}
 	}),
 )

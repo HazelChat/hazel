@@ -2,6 +2,7 @@
 
 import { useMatchRoute } from "@tanstack/react-router"
 import IconCode from "~/components/icons/icon-code"
+import IconGear from "~/components/icons/icon-gear"
 import IconGridCirclePlus from "~/components/icons/icon-grid-circle-plus"
 import IconIntegratio from "~/components/icons/icon-integratio-"
 import IconShop from "~/components/icons/icon-shop"
@@ -59,12 +60,20 @@ export function SettingsSidebar() {
 			<SidebarContent>
 				<SidebarSectionGroup>
 					<SidebarSection>
-						<SidebarItem
-							isCurrent={
-								!!isRouteActive("/$orgSlug/settings/team", true) ||
-								!!isRouteActive("/$orgSlug/settings", true)
-							}
-						>
+						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings", true)}>
+							<SidebarLink
+								to="/$orgSlug/settings"
+								params={{ orgSlug: slug }}
+								activeOptions={{ exact: true }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+								}}
+							>
+								<IconGear data-slot="icon" />
+								<SidebarLabel>General</SidebarLabel>
+							</SidebarLink>
+						</SidebarItem>
+						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/team", true)}>
 							<SidebarLink
 								to="/$orgSlug/settings/team"
 								params={{ orgSlug: slug }}

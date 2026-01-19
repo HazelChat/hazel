@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, count, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { type OrganizationId, type OrganizationMemberId, policyRequire, type UserId } from "@hazel/domain"
 import { OrganizationMember } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
@@ -90,6 +90,25 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 					policyRequire("OrganizationMember", "select"),
 				)(organizationId, tx)
 
+			const countByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
+				db
+					.makeQuery(
+						(execute, orgId: OrganizationId) =>
+							execute((client) =>
+								client
+									.select({ count: count() })
+									.from(schema.organizationMembersTable)
+									.where(
+										and(
+											eq(schema.organizationMembersTable.organizationId, orgId),
+											isNull(schema.organizationMembersTable.deletedAt),
+										),
+									),
+							),
+						policyRequire("OrganizationMember", "select"),
+					)(organizationId, tx)
+					.pipe(Effect.map((results) => results[0]?.count ?? 0))
+
 			const findAllActive = (tx?: TxFn) =>
 				db.makeQuery(
 					(execute, _data: {}) =>
@@ -169,6 +188,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 				findByOrgAndUser,
 				upsertByOrgAndUser,
 				findAllByOrganization,
+				countByOrganization,
 				findAllActive,
 				softDelete,
 				softDeleteByOrgAndUser,

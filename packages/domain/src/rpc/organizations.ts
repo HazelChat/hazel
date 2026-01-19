@@ -38,6 +38,36 @@ export class OrganizationSlugAlreadyExistsError extends Schema.TaggedError<Organ
 	},
 ) {}
 
+/**
+ * Error thrown when trying to join an organization via public invite but the org has public invites disabled.
+ */
+export class PublicInviteDisabledError extends Schema.TaggedError<PublicInviteDisabledError>()(
+	"PublicInviteDisabledError",
+	{
+		organizationId: OrganizationId,
+	},
+) {}
+
+/**
+ * Error thrown when a user is already a member of the organization they're trying to join.
+ */
+export class AlreadyMemberError extends Schema.TaggedError<AlreadyMemberError>()("AlreadyMemberError", {
+	organizationId: OrganizationId,
+	organizationSlug: Schema.NullOr(Schema.String),
+}) {}
+
+/**
+ * Public organization info response for unauthenticated users.
+ * Contains only public information that's safe to expose.
+ */
+export class PublicOrganizationInfo extends Schema.Class<PublicOrganizationInfo>("PublicOrganizationInfo")({
+	id: OrganizationId,
+	name: Schema.String,
+	slug: Schema.NullOr(Schema.String),
+	logoUrl: Schema.NullOr(Schema.String),
+	memberCount: Schema.Number,
+}) {}
+
 export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.mutation("organization.create", {
 		payload: Organization.Model.jsonCreate,
@@ -48,8 +78,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.mutation("organization.update", {
 		payload: Schema.Struct({
 			id: OrganizationId,
-			...Organization.Model.jsonUpdate.fields,
-		}),
+		}).pipe(Schema.extend(Schema.partial(Organization.Model.jsonUpdate))),
 		success: OrganizationResponse,
 		error: Schema.Union(
 			OrganizationNotFoundError,
@@ -74,6 +103,51 @@ export class OrganizationRpcs extends RpcGroup.make(
 		error: Schema.Union(
 			OrganizationNotFoundError,
 			OrganizationSlugAlreadyExistsError,
+			UnauthorizedError,
+			InternalServerError,
+		),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * Toggle public invite mode for an organization.
+	 * When enabled, anyone with the invite URL can join the workspace.
+	 * Only admins/owners can modify this setting.
+	 */
+	Rpc.mutation("organization.setPublicMode", {
+		payload: Schema.Struct({
+			id: OrganizationId,
+			isPublic: Schema.Boolean,
+		}),
+		success: OrganizationResponse,
+		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * Get public organization info by slug.
+	 * Returns limited organization info for the join page.
+	 * No authentication required - only returns data if org has isPublic=true.
+	 */
+	Rpc.query("organization.getBySlugPublic", {
+		payload: Schema.Struct({
+			slug: Schema.String,
+		}),
+		success: Schema.NullOr(PublicOrganizationInfo),
+		error: InternalServerError,
+	}),
+
+	/**
+	 * Join an organization via public invite link.
+	 * Requires authentication. Creates membership with "member" role.
+	 */
+	Rpc.mutation("organization.joinViaPublicInvite", {
+		payload: Schema.Struct({
+			slug: Schema.String,
+		}),
+		success: OrganizationResponse,
+		error: Schema.Union(
+			OrganizationNotFoundError,
+			PublicInviteDisabledError,
+			AlreadyMemberError,
 			UnauthorizedError,
 			InternalServerError,
 		),

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as JoinSlugRouteImport } from './routes/join/$slug'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
 import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
@@ -59,6 +60,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppLayoutRoute,
+} as any)
+const JoinSlugRoute = JoinSlugRouteImport.update({
+  id: '/join/$slug',
+  path: '/join/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/join/$slug': typeof JoinSlugRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/join/$slug': typeof JoinSlugRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/join/$slug': typeof JoinSlugRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
@@ -405,6 +414,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/join/$slug'
     | '/'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/settings'
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/join/$slug'
     | '/'
     | '/$orgSlug/notifications'
     | '/dev/embeds/demo'
@@ -484,6 +495,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/join/$slug'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
     | '/_app/$orgSlug/settings'
@@ -527,6 +539,7 @@ export interface RootRouteChildren {
   AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
   AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  JoinSlugRoute: typeof JoinSlugRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
   DevEmbedsOpenstatusRoute: typeof DevEmbedsOpenstatusRoute
@@ -549,6 +562,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppLayoutRoute
+    }
+    '/join/$slug': {
+      id: '/join/$slug'
+      path: '/join/$slug'
+      fullPath: '/join/$slug'
+      preLoaderRoute: typeof JoinSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/login': {
       id: '/auth/login'
@@ -982,6 +1002,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
   AuthDesktopLoginRoute: AuthDesktopLoginRoute,
   AuthLoginRoute: AuthLoginRoute,
+  JoinSlugRoute: JoinSlugRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,
   DevEmbedsOpenstatusRoute: DevEmbedsOpenstatusRoute,

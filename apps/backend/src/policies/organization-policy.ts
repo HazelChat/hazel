@@ -81,7 +81,31 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 				),
 			)
 
-		return { canUpdate, canDelete, canCreate, isMember } as const
+		const canManagePublicInvite = (id: OrganizationId) =>
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"managePublicInvite",
+			)(
+				policy(
+					policyEntity,
+					"managePublicInvite",
+					Effect.fn(`${policyEntity}.managePublicInvite`)(function* (actor) {
+						const currentMember = yield* organziationMemberRepo
+							.findByOrgAndUser(id, actor.id)
+							.pipe(withSystemActor)
+
+						if (Option.isNone(currentMember)) {
+							return yield* Effect.succeed(false)
+						}
+
+						const currentMemberValue = currentMember.value
+
+						return yield* Effect.succeed(isAdminOrOwner(currentMemberValue.role))
+					}),
+				),
+			)
+
+		return { canUpdate, canDelete, canCreate, isMember, canManagePublicInvite } as const
 	}),
 	dependencies: [OrganizationMemberRepo.Default],
 	accessors: true,

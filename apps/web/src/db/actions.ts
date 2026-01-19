@@ -247,6 +247,7 @@ export const createOrganizationAction = optimisticAction({
 			slug: props.slug,
 			logoUrl: props.logoUrl || null,
 			settings: {},
+			isPublic: false,
 			createdAt: now,
 			updatedAt: null,
 			deletedAt: null,
@@ -264,6 +265,7 @@ export const createOrganizationAction = optimisticAction({
 				slug: props.slug,
 				logoUrl: props.logoUrl ?? null,
 				settings: null,
+				isPublic: false,
 			})
 
 			// No manual sync needed - automatic sync on organizationCollection!

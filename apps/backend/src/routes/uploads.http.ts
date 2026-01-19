@@ -1,15 +1,21 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
-import { BotNotFoundForUploadError, UploadError } from "@hazel/domain/http"
+import {
+	BotNotFoundForUploadError,
+	OrganizationNotFoundForUploadError,
+	UploadError,
+} from "@hazel/domain/http"
 import { AttachmentId } from "@hazel/domain/ids"
 import { S3 } from "@hazel/effect-bun"
 import { randomUUIDv7 } from "bun"
 import { Effect, Match, Option } from "effect"
 import { HazelApi } from "../api"
 import { AttachmentPolicy } from "../policies/attachment-policy"
+import { OrganizationPolicy } from "../policies/organization-policy"
 import { AttachmentRepo } from "../repositories/attachment-repo"
 import { BotRepo } from "../repositories/bot-repo"
+import { OrganizationRepo } from "../repositories/organization-repo"
 import { checkAvatarRateLimit } from "../services/rate-limit-helpers"
 
 /**
@@ -121,6 +127,63 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 								)
 
 							yield* Effect.logDebug(`Generated presigned URL for bot avatar: ${key}`)
+
+							return {
+								uploadUrl,
+								key,
+								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
+							}
+						}),
+					),
+
+					// ============ Organization Avatar Upload ============
+					Match.when({ type: "organization-avatar" }, (req) =>
+						Effect.gen(function* () {
+							const orgRepo = yield* OrganizationRepo
+
+							// Check if organization exists
+							const orgOption = yield* orgRepo
+								.findById(req.organizationId)
+								.pipe(withSystemActor, Effect.orDie)
+							if (Option.isNone(orgOption)) {
+								return yield* Effect.fail(
+									new OrganizationNotFoundForUploadError({
+										organizationId: req.organizationId,
+									}),
+								)
+							}
+
+							// Check if user is an admin or owner of the organization
+							yield* Effect.void.pipe(
+								policyUse(OrganizationPolicy.canUpdate(req.organizationId)),
+							)
+
+							// Check rate limit (5 per hour)
+							yield* checkAvatarRateLimit(user.id)
+
+							const key = `avatars/organizations/${req.organizationId}/${randomUUIDv7()}`
+
+							yield* Effect.logDebug(
+								`Generating presigned URL for organization avatar upload: ${key} (size: ${req.fileSize} bytes, type: ${req.contentType})`,
+							)
+
+							const uploadUrl = yield* s3
+								.presign(key, {
+									acl: "public-read",
+									method: "PUT",
+									type: req.contentType,
+									expiresIn: 300, // 5 minutes
+								})
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new UploadError({
+												message: `Failed to generate presigned URL: ${error.message}`,
+											}),
+									),
+								)
+
+							yield* Effect.logDebug(`Generated presigned URL for organization avatar: ${key}`)
 
 							return {
 								uploadUrl,

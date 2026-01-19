@@ -2,6 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type {
 	AttachmentUploadRequest,
 	BotAvatarUploadRequest,
+	OrganizationAvatarUploadRequest,
 	PresignUploadRequest,
 	UserAvatarUploadRequest,
 } from "@hazel/domain/http"
@@ -20,7 +21,7 @@ const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 // ============ Types ============
 
-export type UploadType = "user-avatar" | "bot-avatar" | "attachment"
+export type UploadType = "user-avatar" | "bot-avatar" | "organization-avatar" | "attachment"
 
 export interface UserAvatarUploadParams {
 	type: "user-avatar"
@@ -33,6 +34,12 @@ export interface BotAvatarUploadParams {
 	file: File
 }
 
+export interface OrganizationAvatarUploadParams {
+	type: "organization-avatar"
+	organizationId: OrganizationId
+	file: File
+}
+
 export interface AttachmentUploadParams {
 	type: "attachment"
 	file: File
@@ -42,7 +49,11 @@ export interface AttachmentUploadParams {
 	trackingId?: string
 }
 
-export type UploadParams = UserAvatarUploadParams | BotAvatarUploadParams | AttachmentUploadParams
+export type UploadParams =
+	| UserAvatarUploadParams
+	| BotAvatarUploadParams
+	| OrganizationAvatarUploadParams
+	| AttachmentUploadParams
 
 export interface UploadResult {
 	/** The public URL of the uploaded file */
@@ -98,7 +109,10 @@ export function useUpload() {
 			const { file } = params
 			const trackingId =
 				params.type === "attachment" ? (params.trackingId ?? crypto.randomUUID()) : "default"
-			const isAvatar = params.type === "user-avatar" || params.type === "bot-avatar"
+			const isAvatar =
+				params.type === "user-avatar" ||
+				params.type === "bot-avatar" ||
+				params.type === "organization-avatar"
 
 			// Validate file type for avatars
 			if (isAvatar && !ALLOWED_AVATAR_TYPES.includes(file.type)) {
@@ -253,6 +267,15 @@ function buildPresignPayload(params: UploadParams): PresignUploadRequest {
 			const payload: BotAvatarUploadRequest = {
 				type: "bot-avatar",
 				botId: params.botId,
+				contentType: file.type,
+				fileSize: file.size,
+			}
+			return payload
+		}
+		case "organization-avatar": {
+			const payload: OrganizationAvatarUploadRequest = {
+				type: "organization-avatar",
+				organizationId: params.organizationId,
 				contentType: file.type,
 				fileSize: file.size,
 			}

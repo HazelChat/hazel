@@ -38,6 +38,27 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 				)(slug, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
+			db
+				.makeQuery(
+					(execute, slugValue: string) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.organizationsTable)
+								.where(
+									and(
+										eq(schema.organizationsTable.slug, slugValue),
+										eq(schema.organizationsTable.isPublic, true),
+										isNull(schema.organizationsTable.deletedAt),
+									),
+								)
+								.limit(1),
+						),
+					policyRequire("Organization", "select"),
+				)(slug, tx)
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery(
 				(execute, _data: {}) =>
@@ -106,6 +127,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 		return {
 			...baseRepo,
 			findBySlug,
+			findBySlugIfPublic,
 			findAllActive,
 			softDelete,
 			setupDefaultChannels,
