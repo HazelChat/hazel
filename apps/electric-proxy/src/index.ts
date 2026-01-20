@@ -21,6 +21,12 @@ import { applyWhereToElectricUrl } from "./tables/where-clause-builder"
 // CORS HELPERS
 // =============================================================================
 
+const allowedOrigins = [
+	"http://localhost:3000",
+	"https://app.hazel.sh",
+	"tauri://localhost",
+	"http://tauri.localhost",
+]
 /**
  * Check if an origin is allowed for user flow
  * - Configured ALLOWED_ORIGIN (e.g., https://app.hazel.chat or http://localhost:3000)
@@ -29,7 +35,7 @@ import { applyWhereToElectricUrl } from "./tables/where-clause-builder"
  */
 function isAllowedOrigin(origin: string | null, allowedOrigin: string): boolean {
 	if (!origin) return false
-	return origin === allowedOrigin || origin === "tauri://localhost" || origin === "http://tauri.localhost"
+	return origin === allowedOrigin || allowedOrigins.includes(origin)
 }
 
 /**
