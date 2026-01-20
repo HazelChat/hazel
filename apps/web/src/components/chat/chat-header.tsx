@@ -5,7 +5,7 @@ import { IconChevronRight } from "~/components/icons/icon-chevron-right"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { useSidebar } from "~/components/ui/sidebar"
-import { Tooltip } from "~/components/ui/tooltip"
+import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 import { useChannelWithCurrentUser, useParentChannel } from "~/db/hooks"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useChat } from "~/hooks/use-chat"
@@ -140,16 +140,17 @@ export function ChatHeader() {
 
 			<div className="flex items-center gap-2">
 				{isDirectMessage && (
-					<Tooltip delay={100} closeDelay={20}>
-						<Button
+					<Tooltip delay={100} closeDelay={20} >
+						{channel.currentUser.isHidden && <Button
 							intent="plain"
 							onPress={handleToggleHidden}
 							aria-label={
-								channel.currentUser.isHidden ? "Unhide conversation" : "Hide conversation"
+								"Unhide conversation"
 							}
 						>
-							{channel.currentUser.isHidden ? <IconEyeSlash /> : <IconEye />}
-						</Button>
+							<IconEye />
+						</Button>}
+						<TooltipContent>Unhide conversation</TooltipContent>
 					</Tooltip>
 				)}
 				<PinnedMessagesModal />
