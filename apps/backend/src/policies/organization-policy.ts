@@ -76,7 +76,7 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 
 						const currentMemberValue = currentMember.value
 
-						return yield* Effect.succeed(currentMemberValue.role === "admin")
+						return yield* Effect.succeed(currentMemberValue.role === "owner")
 					}),
 				),
 			)

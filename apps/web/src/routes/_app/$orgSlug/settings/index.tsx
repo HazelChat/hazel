@@ -1,12 +1,14 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { createFileRoute, useParams } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import IconCompany from "~/components/icons/icon-company"
 import IconCopy from "~/components/icons/icon-copy"
 import IconEdit from "~/components/icons/icon-edit"
 import IconShare from "~/components/icons/icon-share"
+import IconWarning from "~/components/icons/icon-warning"
+import { DeleteWorkspaceModal } from "~/components/modals/delete-workspace-modal"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Description, Label } from "~/components/ui/field"
@@ -28,8 +30,10 @@ function GeneralSettings() {
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { organizationId, organization } = useOrganization()
 	const { user, isLoading: isAuthLoading } = useAuth()
+	const navigate = useNavigate()
 
 	const [name, setName] = useState(organization?.name ?? "")
+	const [showDeleteModal, setShowDeleteModal] = useState(false)
 
 	// Sync local state when organization name changes from server
 	useEffect(() => {
@@ -72,6 +76,7 @@ function GeneralSettings() {
 	// Check if user is admin or owner
 	const currentUserMember = teamMembers?.find((m) => m.userId === user?.id)
 	const isAdmin = currentUserMember?.role === "owner" || currentUserMember?.role === "admin"
+	const isOwner = currentUserMember?.role === "owner"
 
 	// While loading, don't hide UI elements - just disable them
 	const isPermissionsLoading = isAuthLoading || isLoadingMembers
@@ -154,6 +159,21 @@ function GeneralSettings() {
 				},
 			},
 		)
+	}
+
+	const workspaceUrl = orgSlug ? `${window.location.origin}/${orgSlug}` : ""
+
+	const handleCopyWorkspaceUrl = async () => {
+		try {
+			await navigator.clipboard.writeText(workspaceUrl)
+			toast.success("Workspace URL copied to clipboard")
+		} catch {
+			toast.error("Failed to copy URL")
+		}
+	}
+
+	const handleWorkspaceDeleted = () => {
+		navigate({ to: "/" })
 	}
 
 	if (!organizationId) {
@@ -255,6 +275,23 @@ function GeneralSettings() {
 								</Button>
 							</div>
 						)}
+
+						{/* Workspace URL */}
+						<div className="flex flex-col gap-2">
+							<Label>Workspace URL</Label>
+							<div className="flex items-center gap-2">
+								<div className="flex-1 rounded-lg border border-border bg-bg-muted/30 px-3 py-2">
+									<code className="break-all text-fg text-sm">{workspaceUrl}</code>
+								</div>
+								<Button intent="secondary" size="md" onPress={handleCopyWorkspaceUrl}>
+									<IconCopy data-slot="icon" />
+									Copy
+								</Button>
+							</div>
+							<Description>
+								This is your workspace's unique URL. Share it with your team.
+							</Description>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -305,6 +342,54 @@ function GeneralSettings() {
 						</div>
 					</div>
 				</div>
+			)}
+
+			{/* Danger Zone - Only visible to owners */}
+			{(isOwner || isPermissionsLoading) && (
+				<div className="overflow-hidden rounded-xl border border-danger/20 bg-danger/5 shadow-sm">
+					<div className="border-danger/20 border-b bg-danger/5 px-4 py-5 md:px-6">
+						<div className="flex flex-col gap-0.5">
+							<div className="flex items-center gap-2">
+								<IconWarning className="size-5 text-danger" />
+								<h2 className="font-semibold text-danger text-lg">Danger Zone</h2>
+							</div>
+							<p className="text-muted-fg text-sm">
+								Irreversible and destructive actions for this workspace.
+							</p>
+						</div>
+					</div>
+
+					<div className="p-4 md:p-6">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex flex-col gap-1">
+								<p className="font-medium text-fg text-sm">Delete this workspace</p>
+								<p className="text-muted-fg text-sm">
+									Once deleted, all data including channels, messages, and members will be
+									permanently removed.
+								</p>
+							</div>
+							<Button
+								intent="danger"
+								size="md"
+								onPress={() => setShowDeleteModal(true)}
+								isDisabled={isPermissionsLoading || !isOwner}
+							>
+								Delete workspace
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Delete Workspace Modal */}
+			{organization && (
+				<DeleteWorkspaceModal
+					organizationId={organizationId}
+					organizationName={organization.name}
+					isOpen={showDeleteModal}
+					onOpenChange={setShowDeleteModal}
+					onDeleted={handleWorkspaceDeleted}
+				/>
 			)}
 		</div>
 	)
