@@ -2,6 +2,7 @@ import { useMatchRoute, useParams } from "@tanstack/react-router"
 import { ChannelsSidebar } from "~/components/sidebar/channels-sidebar"
 import { MySettingsSidebar } from "~/components/sidebar/my-settings-sidebar"
 import { NavSidebar } from "~/components/sidebar/nav-sidebar"
+import { NotificationsSidebar } from "~/components/sidebar/notifications-sidebar"
 import { SettingsSidebar } from "~/components/sidebar/settings-sidebar"
 import { Sidebar } from "~/components/ui/sidebar"
 
@@ -15,6 +16,11 @@ export function AppSidebar(props: { openChannelsBrowser: () => void }) {
 		params: { orgSlug },
 		fuzzy: true,
 	})
+	const isNotificationsRoute = !!matchRoute({
+		to: "/$orgSlug/notifications",
+		params: { orgSlug },
+		fuzzy: true,
+	})
 
 	return (
 		<Sidebar
@@ -24,7 +30,9 @@ export function AppSidebar(props: { openChannelsBrowser: () => void }) {
 		>
 			<NavSidebar />
 
-			{isSettingsRoute ? (
+			{isNotificationsRoute ? (
+				<NotificationsSidebar />
+			) : isSettingsRoute ? (
 				<SettingsSidebar />
 			) : isMySettingsRoute ? (
 				<MySettingsSidebar />

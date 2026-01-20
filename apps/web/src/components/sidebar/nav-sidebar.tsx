@@ -84,9 +84,6 @@ export function NavSidebar() {
 							<SidebarLink
 								to="/$orgSlug/chat"
 								params={{ orgSlug: slug }}
-								activeOptions={{
-									exact: true,
-								}}
 								activeProps={{
 									className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
 								}}
@@ -105,9 +102,6 @@ export function NavSidebar() {
 							<SidebarLink
 								to="/$orgSlug/notifications"
 								params={{ orgSlug: slug }}
-								activeOptions={{
-									exact: true,
-								}}
 								activeProps={{
 									className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
 								}}

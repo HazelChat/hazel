@@ -25,16 +25,20 @@ import { Route as DevEmbedsOpenstatusRouteImport } from './routes/dev/embeds/ope
 import { Route as DevEmbedsGithubRouteImport } from './routes/dev/embeds/github'
 import { Route as DevEmbedsDemoRouteImport } from './routes/dev/embeds/demo'
 import { Route as AppOnboardingSetupOrganizationRouteImport } from './routes/_app/onboarding/setup-organization'
-import { Route as AppOrgSlugNotificationsRouteImport } from './routes/_app/$orgSlug/notifications'
 import { Route as AppOrgSlugSettingsLayoutRouteImport } from './routes/_app/$orgSlug/settings/layout'
+import { Route as AppOrgSlugNotificationsLayoutRouteImport } from './routes/_app/$orgSlug/notifications/layout'
 import { Route as AppOrgSlugMySettingsLayoutRouteImport } from './routes/_app/$orgSlug/my-settings/layout'
 import { Route as AppOrgSlugSettingsIndexRouteImport } from './routes/_app/$orgSlug/settings/index'
+import { Route as AppOrgSlugNotificationsIndexRouteImport } from './routes/_app/$orgSlug/notifications/index'
 import { Route as AppOrgSlugMySettingsIndexRouteImport } from './routes/_app/$orgSlug/my-settings/index'
 import { Route as AppOrgSlugChatIndexRouteImport } from './routes/_app/$orgSlug/chat/index'
 import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSlug/settings/team'
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
+import { Route as AppOrgSlugNotificationsThreadsRouteImport } from './routes/_app/$orgSlug/notifications/threads'
+import { Route as AppOrgSlugNotificationsGeneralRouteImport } from './routes/_app/$orgSlug/notifications/general'
+import { Route as AppOrgSlugNotificationsDmsRouteImport } from './routes/_app/$orgSlug/notifications/dms'
 import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$orgSlug/my-settings/profile'
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
 import { Route as AppOrgSlugMySettingsDesktopRouteImport } from './routes/_app/$orgSlug/my-settings/desktop'
@@ -134,15 +138,16 @@ const AppOnboardingSetupOrganizationRoute =
     path: '/onboarding/setup-organization',
     getParentRoute: () => AppLayoutRoute,
   } as any)
-const AppOrgSlugNotificationsRoute = AppOrgSlugNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppOrgSlugLayoutRoute,
-} as any)
 const AppOrgSlugSettingsLayoutRoute =
   AppOrgSlugSettingsLayoutRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => AppOrgSlugLayoutRoute,
+  } as any)
+const AppOrgSlugNotificationsLayoutRoute =
+  AppOrgSlugNotificationsLayoutRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
     getParentRoute: () => AppOrgSlugLayoutRoute,
   } as any)
 const AppOrgSlugMySettingsLayoutRoute =
@@ -156,6 +161,12 @@ const AppOrgSlugSettingsIndexRoute = AppOrgSlugSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
 } as any)
+const AppOrgSlugNotificationsIndexRoute =
+  AppOrgSlugNotificationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppOrgSlugNotificationsLayoutRoute,
+  } as any)
 const AppOrgSlugMySettingsIndexRoute =
   AppOrgSlugMySettingsIndexRouteImport.update({
     id: '/',
@@ -188,6 +199,24 @@ const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
   path: '/profile/$userId',
   getParentRoute: () => AppOrgSlugLayoutRoute,
 } as any)
+const AppOrgSlugNotificationsThreadsRoute =
+  AppOrgSlugNotificationsThreadsRouteImport.update({
+    id: '/threads',
+    path: '/threads',
+    getParentRoute: () => AppOrgSlugNotificationsLayoutRoute,
+  } as any)
+const AppOrgSlugNotificationsGeneralRoute =
+  AppOrgSlugNotificationsGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
+    getParentRoute: () => AppOrgSlugNotificationsLayoutRoute,
+  } as any)
+const AppOrgSlugNotificationsDmsRoute =
+  AppOrgSlugNotificationsDmsRouteImport.update({
+    id: '/dms',
+    path: '/dms',
+    getParentRoute: () => AppOrgSlugNotificationsLayoutRoute,
+  } as any)
 const AppOrgSlugMySettingsProfileRoute =
   AppOrgSlugMySettingsProfileRouteImport.update({
     id: '/profile',
@@ -297,8 +326,8 @@ export interface FileRoutesByFullPath {
   '/join/$slug': typeof JoinSlugRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
+  '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
-  '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
@@ -313,12 +342,16 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
+  '/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
+  '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
+  '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
   '/$orgSlug/chat': typeof AppOrgSlugChatIndexRoute
   '/$orgSlug/my-settings/': typeof AppOrgSlugMySettingsIndexRoute
+  '/$orgSlug/notifications/': typeof AppOrgSlugNotificationsIndexRoute
   '/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
@@ -339,7 +372,6 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
   '/': typeof AppIndexRoute
-  '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
@@ -352,12 +384,16 @@ export interface FileRoutesByTo {
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
+  '/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
+  '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
+  '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
   '/$orgSlug/chat': typeof AppOrgSlugChatIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsIndexRoute
+  '/$orgSlug/notifications': typeof AppOrgSlugNotificationsIndexRoute
   '/$orgSlug/settings': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
   '/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
@@ -381,8 +417,8 @@ export interface FileRoutesById {
   '/join/$slug': typeof JoinSlugRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
+  '/_app/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/_app/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
-  '/_app/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
   '/_app/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
@@ -397,12 +433,16 @@ export interface FileRoutesById {
   '/_app/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/_app/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
+  '/_app/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
+  '/_app/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
+  '/_app/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/_app/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
   '/_app/$orgSlug/chat/': typeof AppOrgSlugChatIndexRoute
   '/_app/$orgSlug/my-settings/': typeof AppOrgSlugMySettingsIndexRoute
+  '/_app/$orgSlug/notifications/': typeof AppOrgSlugNotificationsIndexRoute
   '/_app/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/_app/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
@@ -427,8 +467,8 @@ export interface FileRouteTypes {
     | '/join/$slug'
     | '/'
     | '/$orgSlug/my-settings'
-    | '/$orgSlug/settings'
     | '/$orgSlug/notifications'
+    | '/$orgSlug/settings'
     | '/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
@@ -443,12 +483,16 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
+    | '/$orgSlug/notifications/dms'
+    | '/$orgSlug/notifications/general'
+    | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
     | '/$orgSlug/chat'
     | '/$orgSlug/my-settings/'
+    | '/$orgSlug/notifications/'
     | '/$orgSlug/settings/'
     | '/$orgSlug/channels/$channelId/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
@@ -469,7 +513,6 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/join/$slug'
     | '/'
-    | '/$orgSlug/notifications'
     | '/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
@@ -482,12 +525,16 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
+    | '/$orgSlug/notifications/dms'
+    | '/$orgSlug/notifications/general'
+    | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
     | '/$orgSlug/chat'
     | '/$orgSlug/my-settings'
+    | '/$orgSlug/notifications'
     | '/$orgSlug/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
     | '/$orgSlug/settings/integrations/installed'
@@ -510,8 +557,8 @@ export interface FileRouteTypes {
     | '/join/$slug'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
-    | '/_app/$orgSlug/settings'
     | '/_app/$orgSlug/notifications'
+    | '/_app/$orgSlug/settings'
     | '/_app/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
@@ -526,12 +573,16 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/my-settings/desktop'
     | '/_app/$orgSlug/my-settings/notifications'
     | '/_app/$orgSlug/my-settings/profile'
+    | '/_app/$orgSlug/notifications/dms'
+    | '/_app/$orgSlug/notifications/general'
+    | '/_app/$orgSlug/notifications/threads'
     | '/_app/$orgSlug/profile/$userId'
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
     | '/_app/$orgSlug/settings/team'
     | '/_app/$orgSlug/chat/'
     | '/_app/$orgSlug/my-settings/'
+    | '/_app/$orgSlug/notifications/'
     | '/_app/$orgSlug/settings/'
     | '/_app/$orgSlug/channels/$channelId/settings'
     | '/_app/$orgSlug/settings/integrations/$integrationId'
@@ -674,18 +725,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOnboardingSetupOrganizationRouteImport
       parentRoute: typeof AppLayoutRoute
     }
-    '/_app/$orgSlug/notifications': {
-      id: '/_app/$orgSlug/notifications'
-      path: '/notifications'
-      fullPath: '/$orgSlug/notifications'
-      preLoaderRoute: typeof AppOrgSlugNotificationsRouteImport
-      parentRoute: typeof AppOrgSlugLayoutRoute
-    }
     '/_app/$orgSlug/settings': {
       id: '/_app/$orgSlug/settings'
       path: '/settings'
       fullPath: '/$orgSlug/settings'
       preLoaderRoute: typeof AppOrgSlugSettingsLayoutRouteImport
+      parentRoute: typeof AppOrgSlugLayoutRoute
+    }
+    '/_app/$orgSlug/notifications': {
+      id: '/_app/$orgSlug/notifications'
+      path: '/notifications'
+      fullPath: '/$orgSlug/notifications'
+      preLoaderRoute: typeof AppOrgSlugNotificationsLayoutRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
     }
     '/_app/$orgSlug/my-settings': {
@@ -701,6 +752,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$orgSlug/settings/'
       preLoaderRoute: typeof AppOrgSlugSettingsIndexRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+    }
+    '/_app/$orgSlug/notifications/': {
+      id: '/_app/$orgSlug/notifications/'
+      path: '/'
+      fullPath: '/$orgSlug/notifications/'
+      preLoaderRoute: typeof AppOrgSlugNotificationsIndexRouteImport
+      parentRoute: typeof AppOrgSlugNotificationsLayoutRoute
     }
     '/_app/$orgSlug/my-settings/': {
       id: '/_app/$orgSlug/my-settings/'
@@ -743,6 +801,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/$orgSlug/profile/$userId'
       preLoaderRoute: typeof AppOrgSlugProfileUserIdRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
+    }
+    '/_app/$orgSlug/notifications/threads': {
+      id: '/_app/$orgSlug/notifications/threads'
+      path: '/threads'
+      fullPath: '/$orgSlug/notifications/threads'
+      preLoaderRoute: typeof AppOrgSlugNotificationsThreadsRouteImport
+      parentRoute: typeof AppOrgSlugNotificationsLayoutRoute
+    }
+    '/_app/$orgSlug/notifications/general': {
+      id: '/_app/$orgSlug/notifications/general'
+      path: '/general'
+      fullPath: '/$orgSlug/notifications/general'
+      preLoaderRoute: typeof AppOrgSlugNotificationsGeneralRouteImport
+      parentRoute: typeof AppOrgSlugNotificationsLayoutRoute
+    }
+    '/_app/$orgSlug/notifications/dms': {
+      id: '/_app/$orgSlug/notifications/dms'
+      path: '/dms'
+      fullPath: '/$orgSlug/notifications/dms'
+      preLoaderRoute: typeof AppOrgSlugNotificationsDmsRouteImport
+      parentRoute: typeof AppOrgSlugNotificationsLayoutRoute
     }
     '/_app/$orgSlug/my-settings/profile': {
       id: '/_app/$orgSlug/my-settings/profile'
@@ -887,6 +966,26 @@ const AppOrgSlugMySettingsLayoutRouteWithChildren =
     AppOrgSlugMySettingsLayoutRouteChildren,
   )
 
+interface AppOrgSlugNotificationsLayoutRouteChildren {
+  AppOrgSlugNotificationsDmsRoute: typeof AppOrgSlugNotificationsDmsRoute
+  AppOrgSlugNotificationsGeneralRoute: typeof AppOrgSlugNotificationsGeneralRoute
+  AppOrgSlugNotificationsThreadsRoute: typeof AppOrgSlugNotificationsThreadsRoute
+  AppOrgSlugNotificationsIndexRoute: typeof AppOrgSlugNotificationsIndexRoute
+}
+
+const AppOrgSlugNotificationsLayoutRouteChildren: AppOrgSlugNotificationsLayoutRouteChildren =
+  {
+    AppOrgSlugNotificationsDmsRoute: AppOrgSlugNotificationsDmsRoute,
+    AppOrgSlugNotificationsGeneralRoute: AppOrgSlugNotificationsGeneralRoute,
+    AppOrgSlugNotificationsThreadsRoute: AppOrgSlugNotificationsThreadsRoute,
+    AppOrgSlugNotificationsIndexRoute: AppOrgSlugNotificationsIndexRoute,
+  }
+
+const AppOrgSlugNotificationsLayoutRouteWithChildren =
+  AppOrgSlugNotificationsLayoutRoute._addFileChildren(
+    AppOrgSlugNotificationsLayoutRouteChildren,
+  )
+
 interface AppOrgSlugSettingsIntegrationsLayoutRouteChildren {
   AppOrgSlugSettingsIntegrationsIntegrationIdRoute: typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
   AppOrgSlugSettingsIntegrationsInstalledRoute: typeof AppOrgSlugSettingsIntegrationsInstalledRoute
@@ -975,8 +1074,8 @@ const AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren =
 
 interface AppOrgSlugLayoutRouteChildren {
   AppOrgSlugMySettingsLayoutRoute: typeof AppOrgSlugMySettingsLayoutRouteWithChildren
+  AppOrgSlugNotificationsLayoutRoute: typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   AppOrgSlugSettingsLayoutRoute: typeof AppOrgSlugSettingsLayoutRouteWithChildren
-  AppOrgSlugNotificationsRoute: typeof AppOrgSlugNotificationsRoute
   AppOrgSlugIndexRoute: typeof AppOrgSlugIndexRoute
   AppOrgSlugChatIdRoute: typeof AppOrgSlugChatIdRouteWithChildren
   AppOrgSlugProfileUserIdRoute: typeof AppOrgSlugProfileUserIdRoute
@@ -986,8 +1085,9 @@ interface AppOrgSlugLayoutRouteChildren {
 
 const AppOrgSlugLayoutRouteChildren: AppOrgSlugLayoutRouteChildren = {
   AppOrgSlugMySettingsLayoutRoute: AppOrgSlugMySettingsLayoutRouteWithChildren,
+  AppOrgSlugNotificationsLayoutRoute:
+    AppOrgSlugNotificationsLayoutRouteWithChildren,
   AppOrgSlugSettingsLayoutRoute: AppOrgSlugSettingsLayoutRouteWithChildren,
-  AppOrgSlugNotificationsRoute: AppOrgSlugNotificationsRoute,
   AppOrgSlugIndexRoute: AppOrgSlugIndexRoute,
   AppOrgSlugChatIdRoute: AppOrgSlugChatIdRouteWithChildren,
   AppOrgSlugProfileUserIdRoute: AppOrgSlugProfileUserIdRoute,
