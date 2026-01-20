@@ -51,7 +51,7 @@ function RouteComponent() {
 		const org = membership.org
 
 		if (!org.slug) {
-			return <Navigate to="/onboarding" search={{ orgId: org.id }} />
+			return <Navigate to="/onboarding/setup-organization" search={{ orgId: org.id }} />
 		}
 
 		// User has a membership with a valid org - go directly to that org

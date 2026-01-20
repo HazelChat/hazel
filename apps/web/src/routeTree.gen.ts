@@ -24,6 +24,7 @@ import { Route as DevEmbedsRailwayRouteImport } from './routes/dev/embeds/railwa
 import { Route as DevEmbedsOpenstatusRouteImport } from './routes/dev/embeds/openstatus'
 import { Route as DevEmbedsGithubRouteImport } from './routes/dev/embeds/github'
 import { Route as DevEmbedsDemoRouteImport } from './routes/dev/embeds/demo'
+import { Route as AppOnboardingSetupOrganizationRouteImport } from './routes/_app/onboarding/setup-organization'
 import { Route as AppOrgSlugNotificationsRouteImport } from './routes/_app/$orgSlug/notifications'
 import { Route as AppOrgSlugSettingsLayoutRouteImport } from './routes/_app/$orgSlug/settings/layout'
 import { Route as AppOrgSlugMySettingsLayoutRouteImport } from './routes/_app/$orgSlug/my-settings/layout'
@@ -127,6 +128,12 @@ const DevEmbedsDemoRoute = DevEmbedsDemoRouteImport.update({
   path: '/dev/embeds/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppOnboardingSetupOrganizationRoute =
+  AppOnboardingSetupOrganizationRouteImport.update({
+    id: '/onboarding/setup-organization',
+    path: '/onboarding/setup-organization',
+    getParentRoute: () => AppLayoutRoute,
+  } as any)
 const AppOrgSlugNotificationsRoute = AppOrgSlugNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -292,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
+  '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -332,6 +340,7 @@ export interface FileRoutesByTo {
   '/join/$slug': typeof JoinSlugRoute
   '/': typeof AppIndexRoute
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
+  '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -374,6 +383,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
   '/_app/$orgSlug/notifications': typeof AppOrgSlugNotificationsRoute
+  '/_app/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/my-settings'
     | '/$orgSlug/settings'
     | '/$orgSlug/notifications'
+    | '/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/join/$slug'
     | '/'
     | '/$orgSlug/notifications'
+    | '/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -500,6 +512,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/my-settings'
     | '/_app/$orgSlug/settings'
     | '/_app/$orgSlug/notifications'
+    | '/_app/onboarding/setup-organization'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -653,6 +666,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/embeds/demo'
       preLoaderRoute: typeof DevEmbedsDemoRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/onboarding/setup-organization': {
+      id: '/_app/onboarding/setup-organization'
+      path: '/onboarding/setup-organization'
+      fullPath: '/onboarding/setup-organization'
+      preLoaderRoute: typeof AppOnboardingSetupOrganizationRouteImport
+      parentRoute: typeof AppLayoutRoute
     }
     '/_app/$orgSlug/notifications': {
       id: '/_app/$orgSlug/notifications'
@@ -982,6 +1002,7 @@ const AppOrgSlugLayoutRouteWithChildren =
 interface AppLayoutRouteChildren {
   AppOrgSlugLayoutRoute: typeof AppOrgSlugLayoutRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppOnboardingSetupOrganizationRoute: typeof AppOnboardingSetupOrganizationRoute
   AppOnboardingIndexRoute: typeof AppOnboardingIndexRoute
   AppSelectOrganizationIndexRoute: typeof AppSelectOrganizationIndexRoute
 }
@@ -989,6 +1010,7 @@ interface AppLayoutRouteChildren {
 const AppLayoutRouteChildren: AppLayoutRouteChildren = {
   AppOrgSlugLayoutRoute: AppOrgSlugLayoutRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppOnboardingSetupOrganizationRoute: AppOnboardingSetupOrganizationRoute,
   AppOnboardingIndexRoute: AppOnboardingIndexRoute,
   AppSelectOrganizationIndexRoute: AppSelectOrganizationIndexRoute,
 }
