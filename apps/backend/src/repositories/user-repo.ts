@@ -43,7 +43,7 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 									set: {
 										firstName: input.firstName,
 										lastName: input.lastName,
-										avatarUrl: input.avatarUrl,
+										// avatarUrl intentionally excluded - managed locally (R2), not by WorkOS
 										email: input.email,
 										updatedAt: new Date(),
 									},
