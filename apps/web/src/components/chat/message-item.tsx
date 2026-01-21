@@ -25,6 +25,7 @@ import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
+import { MessageContextMenu } from "./message-context-menu"
 import { MessageEmbeds } from "./message-embeds"
 import { MessageReplySection } from "./message-reply-section"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
@@ -107,166 +108,173 @@ export const MessageItem = memo(function MessageItem({
 	if (!message) return null
 
 	return (
-		<div
-			{...hoverProps}
-			ref={messageRef}
-			id={`message-${message.id}`}
-			className={cn(
-				"group relative flex flex-col rounded-lg px-0.5 py-1 hover:bg-secondary",
-				isGroupStart ? "mt-2" : "",
-				isGroupEnd ? "mb-2" : "",
-				isFirstNewMessage
-					? "rounded-l-none border-success border-l-2 bg-success/10 hover:bg-success/5"
-					: "",
-				isPinned
-					? "rounded-l-none border-warning border-l-4 bg-warning/10 pl-2 shadow-sm hover:bg-warning/15"
-					: "",
-				isHighlighted && "bg-accent/20 transition-colors duration-300",
-			)}
-			data-id={message.id}
-		>
-			{/* Reply Section */}
-			{isRepliedTo && message.replyToMessageId && (
-				<MessageReplySection
-					replyToMessageId={message.replyToMessageId}
-					onClick={() => {
-						const replyElement = document.getElementById(`message-${message.replyToMessageId}`)
-						if (replyElement) {
-							replyElement.scrollIntoView({ behavior: "smooth", block: "center" })
-							// Add a highlight effect
-							replyElement.classList.add("bg-secondary/30")
-							setTimeout(() => {
-								replyElement.classList.remove("bg-secondary/30")
-							}, 2000)
-						}
-					}}
-				/>
-			)}
-
-			{/* Main Content Row */}
-			<div className="flex gap-4">
-				{showAvatar ? (
-					<UserProfilePopover userId={message.authorId} />
-				) : (
-					<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
-						{format(message.createdAt, "HH:mm")}
-					</div>
+		<MessageContextMenu message={message}>
+			<div
+				{...hoverProps}
+				ref={messageRef}
+				id={`message-${message.id}`}
+				className={cn(
+					"group relative flex flex-col rounded-lg px-0.5 py-1 hover:bg-secondary",
+					isGroupStart ? "mt-2" : "",
+					isGroupEnd ? "mb-2" : "",
+					isFirstNewMessage
+						? "rounded-l-none border-success border-l-2 bg-success/10 hover:bg-success/5"
+						: "",
+					isPinned
+						? "rounded-l-none border-warning border-l-4 bg-warning/10 pl-2 shadow-sm hover:bg-warning/15"
+						: "",
+					isHighlighted && "bg-accent/20 transition-colors duration-300",
+				)}
+				data-id={message.id}
+			>
+				{/* Reply Section */}
+				{isRepliedTo && message.replyToMessageId && (
+					<MessageReplySection
+						replyToMessageId={message.replyToMessageId}
+						onClick={() => {
+							const replyElement = document.getElementById(
+								`message-${message.replyToMessageId}`,
+							)
+							if (replyElement) {
+								replyElement.scrollIntoView({ behavior: "smooth", block: "center" })
+								// Add a highlight effect
+								replyElement.classList.add("bg-secondary/30")
+								setTimeout(() => {
+									replyElement.classList.remove("bg-secondary/30")
+								}, 2000)
+							}
+						}}
+					/>
 				)}
 
-				{/* Content Section */}
-				<div className="min-w-0 flex-1">
-					{/* Author header (only when showing avatar) */}
-					{showAvatar && <MessageAuthorHeader message={message} isPinned={isPinned} />}
-
-					{/* Message Content */}
-					{(() => {
-						const urls = extractUrls(message.content)
-						const tweetUrls = urls.filter((url) => isTweetUrl(url))
-						const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
-						const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
-						const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
-						const otherUrls = urls.filter(
-							(url) =>
-								!isTweetUrl(url) &&
-								!isYoutubeUrl(url) &&
-								!isLinearIssueUrl(url) &&
-								!isGitHubPRUrl(url),
-						)
-
-						// Filter out embed URLs from displayed content
-						const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
-						let displayContent = message.content
-						for (const url of embedUrls) {
-							displayContent = displayContent.replace(url, "")
-						}
-						displayContent = displayContent.trim()
-
-						return (
-							<>
-								{/* Message text with embed URLs filtered out */}
-								{displayContent && <SlateMessageViewer content={displayContent} />}
-								{/* Render all tweet embeds */}
-								{tweetUrls.map((url) => {
-									const tweetId = extractTweetId(url)
-									return tweetId ? (
-										<Suspense key={url} fallback={<EmbedSkeleton />}>
-											<TweetEmbed
-												id={tweetId}
-												author={message.author ?? undefined}
-												messageCreatedAt={message.createdAt.getTime()}
-											/>
-										</Suspense>
-									) : null
-								})}
-								{/* Render all YouTube embeds */}
-								{youtubeUrls.map((url) => {
-									const videoId = extractYoutubeVideoId(url)
-									return videoId ? (
-										<YoutubeEmbed key={url} videoId={videoId} url={url} />
-									) : null
-								})}
-								{/* Render all Linear issue embeds */}
-								{linearUrls.map((url) => {
-									const issueKey = extractLinearIssueKey(url)
-									return issueKey && currentUser?.organizationId ? (
-										<Suspense key={url} fallback={<EmbedSkeleton />}>
-											<LinearIssueEmbed url={url} orgId={currentUser.organizationId} />
-										</Suspense>
-									) : null
-								})}
-								{/* Render all GitHub PR embeds */}
-								{githubPRUrls.map((url) => {
-									const info = extractGitHubInfo(url)
-									return info && currentUser?.organizationId ? (
-										<Suspense key={url} fallback={<EmbedSkeleton />}>
-											<GitHubPREmbed url={url} orgId={currentUser.organizationId} />
-										</Suspense>
-									) : null
-								})}
-								{/* Render last other URL as link preview */}
-								{otherUrls.length > 0 && otherUrls[otherUrls.length - 1] && (
-									<LinkPreview url={otherUrls[otherUrls.length - 1]!} />
-								)}
-								{/* Webhook/rich embeds */}
-								<MessageEmbeds embeds={message.embeds} />
-							</>
-						)
-					})()}
-
-					{/* Attachments */}
-					<MessageAttachments messageId={message.id} />
-
-					{/* Reactions */}
-					{aggregatedReactions.length > 0 && (
-						<div className="mt-2 flex flex-wrap gap-1">
-							{aggregatedReactions.map(([emoji, data]) => (
-								<button
-									type="button"
-									onClick={() => handleReaction(emoji)}
-									key={emoji}
-									className={cn(
-										"inline-flex size-max cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 font-medium text-sm ring ring-inset transition-colors",
-										data.hasReacted
-											? "bg-primary/10 text-primary ring-primary/20 hover:bg-primary/20"
-											: "bg-secondary text-fg ring-border hover:bg-secondary/80",
-									)}
-								>
-									{emoji} {data.count}
-								</button>
-							))}
+				{/* Main Content Row */}
+				<div className="flex gap-4">
+					{showAvatar ? (
+						<UserProfilePopover userId={message.authorId} />
+					) : (
+						<div className="flex w-10 items-center justify-end pr-1 text-[10px] text-muted-fg leading-tight opacity-0 group-hover:opacity-100">
+							{format(message.createdAt, "HH:mm")}
 						</div>
 					)}
 
-					{/* Thread Preview */}
-					{message.threadChannelId && (
-						<InlineThreadPreview
-							threadChannelId={message.threadChannelId}
-							messageId={message.id}
-						/>
-					)}
+					{/* Content Section */}
+					<div className="min-w-0 flex-1">
+						{/* Author header (only when showing avatar) */}
+						{showAvatar && <MessageAuthorHeader message={message} isPinned={isPinned} />}
+
+						{/* Message Content */}
+						{(() => {
+							const urls = extractUrls(message.content)
+							const tweetUrls = urls.filter((url) => isTweetUrl(url))
+							const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
+							const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
+							const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
+							const otherUrls = urls.filter(
+								(url) =>
+									!isTweetUrl(url) &&
+									!isYoutubeUrl(url) &&
+									!isLinearIssueUrl(url) &&
+									!isGitHubPRUrl(url),
+							)
+
+							// Filter out embed URLs from displayed content
+							const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
+							let displayContent = message.content
+							for (const url of embedUrls) {
+								displayContent = displayContent.replace(url, "")
+							}
+							displayContent = displayContent.trim()
+
+							return (
+								<>
+									{/* Message text with embed URLs filtered out */}
+									{displayContent && <SlateMessageViewer content={displayContent} />}
+									{/* Render all tweet embeds */}
+									{tweetUrls.map((url) => {
+										const tweetId = extractTweetId(url)
+										return tweetId ? (
+											<Suspense key={url} fallback={<EmbedSkeleton />}>
+												<TweetEmbed
+													id={tweetId}
+													author={message.author ?? undefined}
+													messageCreatedAt={message.createdAt.getTime()}
+												/>
+											</Suspense>
+										) : null
+									})}
+									{/* Render all YouTube embeds */}
+									{youtubeUrls.map((url) => {
+										const videoId = extractYoutubeVideoId(url)
+										return videoId ? (
+											<YoutubeEmbed key={url} videoId={videoId} url={url} />
+										) : null
+									})}
+									{/* Render all Linear issue embeds */}
+									{linearUrls.map((url) => {
+										const issueKey = extractLinearIssueKey(url)
+										return issueKey && currentUser?.organizationId ? (
+											<Suspense key={url} fallback={<EmbedSkeleton />}>
+												<LinearIssueEmbed
+													url={url}
+													orgId={currentUser.organizationId}
+												/>
+											</Suspense>
+										) : null
+									})}
+									{/* Render all GitHub PR embeds */}
+									{githubPRUrls.map((url) => {
+										const info = extractGitHubInfo(url)
+										return info && currentUser?.organizationId ? (
+											<Suspense key={url} fallback={<EmbedSkeleton />}>
+												<GitHubPREmbed url={url} orgId={currentUser.organizationId} />
+											</Suspense>
+										) : null
+									})}
+									{/* Render last other URL as link preview */}
+									{otherUrls.length > 0 && otherUrls[otherUrls.length - 1] && (
+										<LinkPreview url={otherUrls[otherUrls.length - 1]!} />
+									)}
+									{/* Webhook/rich embeds */}
+									<MessageEmbeds embeds={message.embeds} />
+								</>
+							)
+						})()}
+
+						{/* Attachments */}
+						<MessageAttachments messageId={message.id} />
+
+						{/* Reactions */}
+						{aggregatedReactions.length > 0 && (
+							<div className="mt-2 flex flex-wrap gap-1">
+								{aggregatedReactions.map(([emoji, data]) => (
+									<button
+										type="button"
+										onClick={() => handleReaction(emoji)}
+										key={emoji}
+										className={cn(
+											"inline-flex size-max cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 font-medium text-sm ring ring-inset transition-colors",
+											data.hasReacted
+												? "bg-primary/10 text-primary ring-primary/20 hover:bg-primary/20"
+												: "bg-secondary text-fg ring-border hover:bg-secondary/80",
+										)}
+									>
+										{emoji} {data.count}
+									</button>
+								))}
+							</div>
+						)}
+
+						{/* Thread Preview */}
+						{message.threadChannelId && (
+							<InlineThreadPreview
+								threadChannelId={message.threadChannelId}
+								messageId={message.id}
+							/>
+						)}
+					</div>
 				</div>
 			</div>
-		</div>
+		</MessageContextMenu>
 	)
 })
 

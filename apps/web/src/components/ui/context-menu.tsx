@@ -1,4 +1,4 @@
-import { createContext, use, useRef, useState } from "react"
+import { createContext, use, useEffect, useRef, useState } from "react"
 import { twMerge } from "tailwind-merge"
 import {
 	MenuContent,
@@ -79,6 +79,26 @@ type ContextMenuContentProps<T> = Omit<
 
 const ContextMenuContent = <T extends object>(props: ContextMenuContentProps<T>) => {
 	const { contextMenuOffset, setContextMenuOffset, buttonRef } = useContextMenuTrigger()
+
+	// Close context menu and prevent browser's default context menu when right-clicking elsewhere
+	useEffect(() => {
+		if (!contextMenuOffset) return
+
+		const handleContextMenu = (e: MouseEvent) => {
+			// Don't interfere if right-clicking on another context menu trigger
+			const target = e.target as HTMLElement
+			if (target.closest('button[aria-haspopup="menu"]')) {
+				return
+			}
+
+			e.preventDefault()
+			setContextMenuOffset(null)
+		}
+
+		document.addEventListener("contextmenu", handleContextMenu)
+		return () => document.removeEventListener("contextmenu", handleContextMenu)
+	}, [contextMenuOffset, setContextMenuOffset])
+
 	return contextMenuOffset ? (
 		<MenuContent
 			popover={{

@@ -1,6 +1,4 @@
-import type { PinnedMessageId } from "@hazel/schema"
 import { useState } from "react"
-import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { EmojiPickerDialog } from "~/components/emoji-picker"
 import { Button } from "~/components/ui/button"
@@ -8,9 +6,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger } from "~/component
 import { Separator } from "~/components/ui/separator"
 import { Toolbar } from "~/components/ui/toolbar"
 import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
-import { useChat } from "~/hooks/use-chat"
-import { useEmojiStats } from "~/hooks/use-emoji-stats"
-import { useAuth } from "~/lib/auth"
+import { useMessageActions } from "~/hooks/use-message-actions"
 import IconCopy from "../icons/icon-copy"
 import IconDotsVertical from "../icons/icon-dots-vertical"
 import IconEmojiAdd from "../icons/icon-emoji-add"
@@ -27,54 +23,18 @@ interface MessageToolbarProps {
 
 export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
 	const {
-		addReaction,
-		setReplyToMessageId,
-		deleteMessage,
-		pinMessage,
-		unpinMessage,
-		createThread,
+		handleReaction,
+		handleCopy,
+		handleReply,
+		handleThread,
+		handlePin,
+		handleDelete,
+		isOwnMessage,
+		isPinned,
+		topEmojis,
 		channel,
-	} = useChat()
-	const { topEmojis, trackEmojiUsage } = useEmojiStats()
-	const { user: currentUser } = useAuth()
+	} = useMessageActions(message)
 	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-
-	// Derived state
-	const isOwnMessage = currentUser?.id === message.authorId
-	const isPinned = message.pinnedMessage?.id !== undefined
-
-	const handleReaction = (emoji: string | { emoji: string; label: string }) => {
-		const emojiString = typeof emoji === "string" ? emoji : emoji.emoji
-		trackEmojiUsage(emojiString)
-		addReaction(message.id, message.channelId, emojiString)
-	}
-
-	const handleCopy = () => {
-		navigator.clipboard.writeText(message.content)
-		toast.success("Copied!", {
-			description: "Message content has been copied to your clipboard.",
-		})
-	}
-
-	const handleReply = () => {
-		setReplyToMessageId(message.id)
-	}
-
-	const handleThread = () => {
-		createThread(message.id, message.threadChannelId)
-	}
-
-	const handlePin = () => {
-		if (isPinned && message.pinnedMessage?.id) {
-			unpinMessage(message.pinnedMessage.id as PinnedMessageId)
-		} else {
-			pinMessage(message.id)
-		}
-	}
-
-	const handleDelete = () => {
-		deleteMessage(message.id)
-	}
 
 	const handleDeleteModalChange = (open: boolean) => {
 		setDeleteModalOpen(open)

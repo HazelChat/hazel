@@ -4,6 +4,9 @@
 - AI Threads/ AI MESSGAES
 - reset profile pic to workos pic button
 - Add User Custom Status
+- context menu on messgaes
+- rework notification sound system / native notification support
+
 - replace tanstack form with effect based form
 - setup sequin locally with config as code
 
