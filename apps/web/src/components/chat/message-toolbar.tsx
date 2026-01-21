@@ -43,8 +43,8 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 
 	return (
 		<Toolbar aria-label="Message actions" className="rounded-lg border border-border bg-bg shadow-sm">
-			{/* Quick Reactions */}
-			{topEmojis.map((emoji) => (
+			{/* Quick Reactions - Show only 3 in toolbar */}
+			{topEmojis.slice(0, 3).map((emoji) => (
 				<Tooltip key={emoji}>
 					<Button
 						size="sq-sm"

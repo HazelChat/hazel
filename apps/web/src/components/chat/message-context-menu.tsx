@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react"
-import { Dialog } from "react-aria-components"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import {
 	EmojiPicker,
@@ -25,7 +24,7 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "~/components/ui/context-menu"
-import { Modal, ModalContent } from "~/components/ui/modal"
+import { ModalContent } from "~/components/ui/modal"
 import { useMessageActions } from "~/hooks/use-message-actions"
 import { DeleteMessageModal } from "./delete-message-modal"
 
@@ -62,11 +61,11 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 						{topEmojis.map((emoji) => (
 							<Button
 								key={emoji}
-								size="sq-sm"
+								size="sq-md"
 								intent="plain"
 								onPress={() => handleReaction(emoji)}
 								aria-label={`React with ${emoji}`}
-								className="p-1.5! text-base hover:bg-secondary"
+								className="p-1! text-lg hover:bg-secondary"
 							>
 								{emoji}
 							</Button>
@@ -137,23 +136,25 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 			/>
 
 			{/* Emoji Picker Modal */}
-			<Modal isOpen={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-				<ModalContent size="xs" closeButton={false} className="overflow-hidden p-0!">
-					<Dialog aria-label="Emoji picker" className="outline-none">
-						<EmojiPicker
-							className="h-[420px]"
-							onEmojiSelect={(emoji) => {
-								handleReaction(emoji)
-								setEmojiPickerOpen(false)
-							}}
-						>
-							<EmojiPickerSearch />
-							<EmojiPickerContent />
-							<EmojiPickerFooter />
-						</EmojiPicker>
-					</Dialog>
-				</ModalContent>
-			</Modal>
+			<ModalContent
+				isOpen={emojiPickerOpen}
+				onOpenChange={setEmojiPickerOpen}
+				size="xs"
+				closeButton={false}
+				className="overflow-hidden p-0!"
+			>
+				<EmojiPicker
+					className="h-[420px]"
+					onEmojiSelect={(emoji) => {
+						handleReaction(emoji)
+						setEmojiPickerOpen(false)
+					}}
+				>
+					<EmojiPickerSearch />
+					<EmojiPickerContent />
+					<EmojiPickerFooter />
+				</EmojiPicker>
+			</ModalContent>
 		</>
 	)
 }

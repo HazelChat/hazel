@@ -103,7 +103,7 @@ const ContextMenuContent = <T extends object>(props: ContextMenuContentProps<T>)
 		<MenuContent
 			popover={{
 				isOpen: !!contextMenuOffset,
-				shouldFlip: false,
+				shouldFlip: true,
 				triggerRef: buttonRef,
 				onOpenChange: () => setContextMenuOffset(null),
 				placement: "bottom left",

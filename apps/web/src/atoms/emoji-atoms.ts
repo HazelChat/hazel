@@ -5,7 +5,7 @@ import { platformStorageRuntime } from "~/lib/platform-storage"
 /**
  * Default emojis to show when no usage data exists
  */
-const DEFAULT_EMOJIS = ["👍", "❤️", "😂"] as const
+const DEFAULT_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "🎉"] as const
 
 /**
  * Schema for emoji usage data
@@ -29,7 +29,7 @@ export const emojiUsageAtom = Atom.kvs({
 })
 
 /**
- * Derived atom that computes the top 3 most used emojis
+ * Derived atom that computes the top 6 most used emojis
  */
 export const topEmojisAtom = Atom.make((get) => {
 	const emojiUsage = get(emojiUsageAtom)
@@ -41,12 +41,12 @@ export const topEmojisAtom = Atom.make((get) => {
 
 	const entries = Object.entries(emojiUsage)
 	const sorted = entries.sort((a, b) => b[1] - a[1])
-	const topEmojis = sorted.slice(0, 3).map(([emoji]) => emoji)
+	const topEmojis = sorted.slice(0, 6).map(([emoji]) => emoji)
 
-	// Fill with defaults if we don't have 3 yet
-	if (topEmojis.length < 3) {
+	// Fill with defaults if we don't have 6 yet
+	if (topEmojis.length < 6) {
 		const remainingDefaults = DEFAULT_EMOJIS.filter((emoji) => !topEmojis.includes(emoji))
-		return [...topEmojis, ...remainingDefaults].slice(0, 3)
+		return [...topEmojis, ...remainingDefaults].slice(0, 6)
 	}
 
 	return topEmojis
