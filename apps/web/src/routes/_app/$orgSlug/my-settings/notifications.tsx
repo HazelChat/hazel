@@ -1,7 +1,5 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import { Radio, RadioGroup } from "react-aria-components"
-import { doNotDisturbAtom, quietHoursEndAtom, quietHoursStartAtom } from "~/atoms/notification-atoms"
 import { Button } from "~/components/ui/button"
 import { Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -10,6 +8,7 @@ import { SectionLabel } from "~/components/ui/section-label"
 import { Slider, SliderOutput, SliderTrack } from "~/components/ui/slider"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { TextField } from "~/components/ui/text-field"
+import { useNotificationSettings } from "~/hooks/use-notification-settings"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { cn } from "~/lib/utils"
 
@@ -19,15 +18,14 @@ export const Route = createFileRoute("/_app/$orgSlug/my-settings/notifications")
 
 function NotificationSettings() {
 	const { settings, updateSettings, testSound } = useNotificationSound()
-
-	const doNotDisturb = useAtomValue(doNotDisturbAtom)
-	const setDoNotDisturb = useAtomSet(doNotDisturbAtom)
-
-	const quietHoursStart = useAtomValue(quietHoursStartAtom)
-	const setQuietHoursStart = useAtomSet(quietHoursStartAtom)
-
-	const quietHoursEnd = useAtomValue(quietHoursEndAtom)
-	const setQuietHoursEnd = useAtomSet(quietHoursEndAtom)
+	const {
+		doNotDisturb,
+		setDoNotDisturb,
+		quietHoursStart,
+		setQuietHoursStart,
+		quietHoursEnd,
+		setQuietHoursEnd,
+	} = useNotificationSettings()
 
 	const soundOptions = [
 		{ value: "notification01", label: "Sound 1", description: "Classic notification" },

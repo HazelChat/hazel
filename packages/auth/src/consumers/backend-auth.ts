@@ -7,6 +7,7 @@ import {
 	withSystemActor,
 	WorkOSUserFetchError,
 } from "@hazel/domain"
+import { User } from "@hazel/domain/models"
 import type { UserId } from "@hazel/schema"
 import { Config, Effect, Layer, Option } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
@@ -31,6 +32,7 @@ export interface UserRepoLike {
 			avatarUrl: string
 			isOnboarded: boolean
 			timezone: string | null
+			settings: User.UserSettings | null
 		}>,
 		{ _tag: "DatabaseError" },
 		any
@@ -55,6 +57,7 @@ export interface UserRepoLike {
 			avatarUrl: string
 			isOnboarded: boolean
 			timezone: string | null
+			settings: User.UserSettings | null
 		},
 		{ _tag: "DatabaseError" },
 		any
@@ -68,6 +71,7 @@ export interface UserRepoLike {
 			avatarUrl: string
 			isOnboarded: boolean
 			timezone: string | null
+			settings: User.UserSettings | null
 		},
 		{ _tag: "DatabaseError" } | { _tag: "ParseError" },
 		any
@@ -211,6 +215,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					email: user.email,
 					isOnboarded: user.isOnboarded,
 					timezone: user.timezone,
+					settings: user.settings,
 				})
 
 				yield* Effect.logDebug("[Cookie Auth] Final CurrentUser", {
@@ -297,6 +302,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					email: user.email,
 					isOnboarded: user.isOnboarded,
 					timezone: user.timezone,
+					settings: user.settings,
 				})
 
 				return currentUser
@@ -320,6 +326,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		avatarUrl: "https://avatar.vercel.sh/test.svg",
 		isOnboarded: true,
 		timezone: "UTC" as string | null,
+		settings: null as User.UserSettings | null,
 	})
 
 	/** Default mock CurrentUser for tests */
@@ -334,6 +341,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			email: "test@example.com",
 			isOnboarded: true,
 			timezone: "UTC",
+			settings: null,
 		})
 
 	/** Test layer with successful authentication */

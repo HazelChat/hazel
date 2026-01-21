@@ -1,13 +1,16 @@
 import { useAtomValue } from "@effect-atom/atom-react"
-import { isChangeMessage, ShapeStream } from "@electric-sql/client"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type ReactNode, useEffect, useRef } from "react"
-import { doNotDisturbAtom, quietHoursEndAtom, quietHoursStartAtom } from "~/atoms/notification-atoms"
-import { organizationMemberCollection } from "~/db/collections"
-import { useNotificationSound } from "~/hooks/use-notification-sound"
+import {
+	createIsMutedGetter,
+	notificationSoundSettingsAtom,
+	sessionStartTimeAtom,
+} from "~/atoms/notification-sound-atoms"
+import { notificationCollection, organizationMemberCollection, userCollection } from "~/db/collections"
+import { currentChannelIdAtom } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
-import { authenticatedFetch } from "~/lib/auth-fetch"
 import { sendNativeNotification } from "~/lib/native-notifications"
+import { notificationSoundManager } from "~/lib/notification-sound-manager"
 
 interface NotificationSoundProviderProps {
 	children: ReactNode
@@ -15,18 +18,30 @@ interface NotificationSoundProviderProps {
 
 export function NotificationSoundProvider({ children }: NotificationSoundProviderProps) {
 	const { user } = useAuth()
-	const { playSound, settings, isPrimed } = useNotificationSound()
-	const doNotDisturb = useAtomValue(doNotDisturbAtom)
-	const quietHoursStart = useAtomValue(quietHoursStartAtom)
-	const quietHoursEnd = useAtomValue(quietHoursEndAtom)
-	const streamRef = useRef<ShapeStream | null>(null)
-	const playSoundRef = useRef(playSound)
 
-	// Keep playSound ref updated without triggering main effect re-runs
-	useEffect(() => {
-		playSoundRef.current = playSound
-	}, [playSound])
+	// Get reactive values from atoms
+	const settings = useAtomValue(notificationSoundSettingsAtom)
+	const sessionStartTime = useAtomValue(sessionStartTimeAtom)
+	const currentChannelId = useAtomValue(currentChannelIdAtom)
 
+	// Read user settings from userCollection (TanStack DB) - auto-updates on collection change
+	const { data: userData } = useLiveQuery(
+		(q) =>
+			user?.id
+				? q
+						.from({ u: userCollection })
+						.where(({ u }) => eq(u.id, user.id))
+						.findOne()
+				: null,
+		[user?.id],
+	)
+
+	// Derive notification settings from userData
+	const doNotDisturb = userData?.settings?.doNotDisturb ?? false
+	const quietHoursStart = userData?.settings?.quietHoursStart ?? "22:00"
+	const quietHoursEnd = userData?.settings?.quietHoursEnd ?? "08:00"
+
+	// Get current member
 	const { data: member } = useLiveQuery(
 		(q) =>
 			q
@@ -36,89 +51,116 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 		[user?.id],
 	)
 
-	const organizationMemberId = member?.id
+	// Subscribe to latest notification for current member
+	const { data: latestNotification } = useLiveQuery(
+		(q) =>
+			q
+				.from({ notification: notificationCollection })
+				.where(({ notification }) => eq(notification.memberId, member?.id))
+				.orderBy(({ notification }) => notification.createdAt, "desc")
+				.findOne(),
+		[member?.id],
+	)
 
+	// Track last processed notification to detect new ones
+	const lastProcessedIdRef = useRef<string | null>(null)
+
+	// Use refs for reactive values so manager always has current values
+	// without causing re-subscriptions
+	const settingsRef = useRef(settings)
+	const doNotDisturbRef = useRef(doNotDisturb)
+	const quietHoursStartRef = useRef(quietHoursStart)
+	const quietHoursEndRef = useRef(quietHoursEnd)
+	const sessionStartTimeRef = useRef(sessionStartTime)
+	const currentChannelIdRef = useRef(currentChannelId)
+
+	// Update refs when values change
 	useEffect(() => {
-		// Don't start stream until audio is primed (user has clicked)
-		if (!isPrimed) {
-			return
-		}
+		settingsRef.current = settings
+	}, [settings])
+	useEffect(() => {
+		doNotDisturbRef.current = doNotDisturb
+	}, [doNotDisturb])
+	useEffect(() => {
+		quietHoursStartRef.current = quietHoursStart
+	}, [quietHoursStart])
+	useEffect(() => {
+		quietHoursEndRef.current = quietHoursEnd
+	}, [quietHoursEnd])
+	useEffect(() => {
+		sessionStartTimeRef.current = sessionStartTime
+	}, [sessionStartTime])
+	useEffect(() => {
+		currentChannelIdRef.current = currentChannelId
+	}, [currentChannelId])
 
-		if (!organizationMemberId || !settings.enabled) {
-			return
-		}
+	// Initialize manager dependencies once on mount
+	useEffect(() => {
+		// Initialize priming (for browser autoplay)
+		const cleanupPriming = notificationSoundManager.initPriming()
 
-		// Check if we're in Do Not Disturb mode
-		if (doNotDisturb) {
-			return
-		}
-
-		// Helper to parse time string (HH:MM) to hour number
-		const parseTimeToHour = (time: string): number => {
-			const [hours] = time.split(":").map(Number)
-			return hours ?? 0
-		}
-
-		// Check quiet hours
-		const isInQuietHours = () => {
-			if (!quietHoursStart || !quietHoursEnd) {
-				return false
-			}
-
-			const now = new Date()
-			const currentHour = now.getHours()
-			const start = parseTimeToHour(quietHoursStart)
-			const end = parseTimeToHour(quietHoursEnd)
-
-			// Handle quiet hours that span midnight
-			if (start <= end) {
-				return currentHour >= start && currentHour < end
-			}
-			return currentHour >= start || currentHour < end
-		}
-
-		// Don't start stream if in quiet hours
-		if (isInQuietHours()) {
-			return
-		}
-
-		// Create the ShapeStream for notifications
-		const electricUrl = import.meta.env.VITE_ELECTRIC_URL
-
-		if (!electricUrl) {
-			console.warn("VITE_ELECTRIC_URL is not configured")
-			return
-		}
-
-		const stream = new ShapeStream({
-			url: electricUrl,
-			params: {
-				table: "notifications",
-				where: `"memberId" = '${organizationMemberId}'`,
-			},
-			fetchClient: authenticatedFetch,
-			offset: "now",
-			log: "changes_only",
-			liveSse: true,
+		// Set up dependencies using refs for latest values
+		notificationSoundManager.setDependencies({
+			getCurrentChannelId: () => currentChannelIdRef.current,
+			getSessionStartTime: () => sessionStartTimeRef.current,
+			getIsMuted: createIsMutedGetter(
+				settingsRef.current,
+				doNotDisturbRef.current,
+				quietHoursStartRef.current,
+				quietHoursEndRef.current,
+			),
+			getConfig: () => ({
+				soundFile: settingsRef.current?.soundFile ?? "notification01",
+				volume: settingsRef.current?.volume ?? 0.5,
+				cooldownMs: settingsRef.current?.cooldownMs ?? 2000,
+			}),
 		})
 
-		streamRef.current = stream
+		return cleanupPriming
+	}, [])
 
-		const unsubscribe = stream.subscribe((messages) => {
-			for (const message of messages) {
-				if (isChangeMessage(message) && message.headers.operation === "insert") {
-					playSoundRef.current()
-					sendNativeNotification("Hazel", "You have a new notification")
-					break
-				}
-			}
+	// Update the getIsMuted function when relevant settings change
+	useEffect(() => {
+		notificationSoundManager.setDependencies({
+			getCurrentChannelId: () => currentChannelIdRef.current,
+			getSessionStartTime: () => sessionStartTimeRef.current,
+			getIsMuted: createIsMutedGetter(
+				settingsRef.current,
+				doNotDisturbRef.current,
+				quietHoursStartRef.current,
+				quietHoursEndRef.current,
+			),
+			getConfig: () => ({
+				soundFile: settingsRef.current?.soundFile ?? "notification01",
+				volume: settingsRef.current?.volume ?? 0.5,
+				cooldownMs: settingsRef.current?.cooldownMs ?? 2000,
+			}),
+		})
+	}, [settings, doNotDisturb, quietHoursStart, quietHoursEnd])
+
+	// Process new notifications
+	useEffect(() => {
+		if (!latestNotification) {
+			return
+		}
+
+		// Skip if we've already processed this notification
+		if (latestNotification.id === lastProcessedIdRef.current) {
+			return
+		}
+
+		lastProcessedIdRef.current = latestNotification.id
+
+		// Play sound via manager (handles all suppression logic)
+		notificationSoundManager.playSound({
+			notificationId: latestNotification.id,
+			channelId: latestNotification.targetedResourceId,
+			createdAt: latestNotification.createdAt,
 		})
 
-		return () => {
-			unsubscribe()
-			streamRef.current = null
-		}
-	}, [isPrimed, organizationMemberId, settings.enabled, doNotDisturb, quietHoursStart, quietHoursEnd])
+		// Send native notification (has its own focus check)
+		sendNativeNotification("Hazel", "You have a new notification")
+	}, [latestNotification])
 
 	return <>{children}</>
 }

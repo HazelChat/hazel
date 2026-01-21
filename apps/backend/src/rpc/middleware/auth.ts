@@ -147,6 +147,7 @@ export const AuthMiddlewareLive = Layer.scoped(
 						isOnboarded: true,
 						timezone: user.timezone,
 						organizationId: null,
+						settings: user.settings,
 					}
 
 					// Store in FiberRef for cleanup

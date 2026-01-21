@@ -122,7 +122,7 @@ const computedPresenceStatusAtom = Atom.make((get) =>
  * Atom that tracks the current route's channel ID
  * Only extracts channel ID when user is on a chat route (/$orgSlug/chat/$id)
  */
-const currentChannelIdAtom = Atom.make((get) => {
+export const currentChannelIdAtom = Atom.make((get) => {
 	let currentChannelId: string | null = null
 
 	const unsubscribe = router.subscribe("onResolved", (event) => {

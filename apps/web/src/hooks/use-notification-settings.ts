@@ -1,58 +1,90 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { useCallback, useState } from "react"
+import { useAtomSet } from "@effect-atom/atom-react"
+import { type User } from "@hazel/domain/models"
+import type { UserId } from "@hazel/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
+import { Exit } from "effect"
+import { useCallback } from "react"
 import { toast } from "sonner"
-import { doNotDisturbAtom, quietHoursEndAtom, quietHoursStartAtom } from "~/atoms/notification-atoms"
+import { updateUserAction } from "~/db/actions"
+import { userCollection } from "~/db/collections"
+import { useAuth } from "~/lib/auth"
 
 /**
- * Hook for managing notification settings with Effect Atoms
- * All settings are automatically persisted to localStorage
+ * Hook for managing notification settings.
+ * Uses optimistic updates via userCollection for instant UI feedback.
  */
 export function useNotificationSettings() {
-	// Read atom values
-	const doNotDisturb = useAtomValue(doNotDisturbAtom) ?? false
-	const quietHoursStart = useAtomValue(quietHoursStartAtom) ?? "22:00"
-	const quietHoursEnd = useAtomValue(quietHoursEndAtom) ?? "08:00"
+	const { user } = useAuth()
 
-	// Get setters
-	const setDoNotDisturb = useAtomSet(doNotDisturbAtom)
-	const setQuietHoursStart = useAtomSet(quietHoursStartAtom)
-	const setQuietHoursEnd = useAtomSet(quietHoursEndAtom)
+	// Read from userCollection (TanStack DB) - auto-updates on collection change
+	const { data: userData } = useLiveQuery(
+		(q) =>
+			user?.id
+				? q
+						.from({ u: userCollection })
+						.where(({ u }) => eq(u.id, user.id))
+						.findOne()
+				: null,
+		[user?.id],
+	)
 
-	// Track form submission state
-	const [isSubmitting, setIsSubmitting] = useState(false)
+	// Get optimistic action setter
+	const updateUser = useAtomSet(updateUserAction, { mode: "promiseExit" })
 
-	/**
-	 * Save all notification settings
-	 * In a real app, this would sync to a backend API
-	 */
-	const saveSettings = useCallback(async () => {
-		setIsSubmitting(true)
-		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 500))
+	// Derive values from userData (which updates optimistically)
+	const doNotDisturb = userData?.settings?.doNotDisturb ?? false
+	const quietHoursStart = userData?.settings?.quietHoursStart ?? "22:00"
+	const quietHoursEnd = userData?.settings?.quietHoursEnd ?? "08:00"
 
-			// Settings are already persisted to localStorage via atoms
-			// In a real app, we would also send them to the backend here
+	const setDoNotDisturb = useCallback(
+		async (value: boolean) => {
+			if (!user?.id) return
+			const result = await updateUser({
+				userId: user.id as UserId,
+				settings: { ...userData?.settings, doNotDisturb: value },
+			})
+			if (!Exit.isSuccess(result)) {
+				toast.error("Failed to update setting")
+			}
+		},
+		[user?.id, userData?.settings, updateUser],
+	)
 
-			toast.success("Notification settings saved")
-		} catch (_error) {
-			toast.error("Failed to save settings")
-		} finally {
-			setIsSubmitting(false)
-		}
-	}, [])
+	const setQuietHoursStart = useCallback(
+		async (value: string) => {
+			if (!user?.id) return
+			const result = await updateUser({
+				userId: user.id as UserId,
+				settings: { ...userData?.settings, quietHoursStart: value as User.TimeString },
+			})
+			if (!Exit.isSuccess(result)) {
+				toast.error("Failed to update setting")
+			}
+		},
+		[user?.id, userData?.settings, updateUser],
+	)
+
+	const setQuietHoursEnd = useCallback(
+		async (value: string) => {
+			if (!user?.id) return
+			const result = await updateUser({
+				userId: user.id as UserId,
+				settings: { ...userData?.settings, quietHoursEnd: value as User.TimeString },
+			})
+			if (!Exit.isSuccess(result)) {
+				toast.error("Failed to update setting")
+			}
+		},
+		[user?.id, userData?.settings, updateUser],
+	)
 
 	return {
 		doNotDisturb,
 		quietHoursStart,
 		quietHoursEnd,
-		isSubmitting,
 
 		setDoNotDisturb,
 		setQuietHoursStart,
 		setQuietHoursEnd,
-
-		// Actions
-		saveSettings,
 	}
 }

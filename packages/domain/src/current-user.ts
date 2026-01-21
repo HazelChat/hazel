@@ -2,6 +2,7 @@ import { HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
 import { Context as C, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
 import { OrganizationId, UserId } from "./ids"
+import { User } from "./models"
 import {
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
@@ -23,6 +24,7 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	email: S.String,
 	isOnboarded: S.Boolean,
 	timezone: S.NullOr(S.String),
+	settings: S.NullOr(User.UserSettingsSchema),
 }) {}
 
 export class Context extends C.Tag("CurrentUser")<Context, Schema>() {}

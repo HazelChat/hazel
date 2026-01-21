@@ -83,6 +83,7 @@ const createBotUserContext = (bot: { userId: typeof import("@hazel/domain").User
 		isOnboarded: true,
 		timezone: null,
 		organizationId: null,
+		settings: null,
 	})
 
 export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messages", (handlers) =>

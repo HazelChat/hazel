@@ -1,3 +1,4 @@
+import { type User } from "@hazel/domain/models"
 import {
 	type AttachmentId,
 	type ChannelIcon,
@@ -413,12 +414,14 @@ export const updateUserAction = optimisticAction({
 		lastName?: string
 		avatarUrl?: string
 		timezone?: string | null
+		settings?: User.UserSettings | null
 	}) => {
 		userCollection.update(props.userId, (draft) => {
 			if (props.firstName !== undefined) draft.firstName = props.firstName
 			if (props.lastName !== undefined) draft.lastName = props.lastName
 			if (props.avatarUrl !== undefined) draft.avatarUrl = props.avatarUrl
 			if (props.timezone !== undefined) draft.timezone = props.timezone
+			if (props.settings !== undefined) draft.settings = props.settings
 		})
 
 		return { userId: props.userId }
@@ -434,6 +437,7 @@ export const updateUserAction = optimisticAction({
 				...(props.lastName !== undefined && { lastName: props.lastName }),
 				...(props.avatarUrl !== undefined && { avatarUrl: props.avatarUrl }),
 				...(props.timezone !== undefined && { timezone: props.timezone }),
+				...(props.settings !== undefined && { settings: props.settings }),
 			})
 
 			return result
