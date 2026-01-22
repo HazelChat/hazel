@@ -137,8 +137,8 @@ const SelectMonth = () => {
 			style={{ flex: 1, width: "fit-content" }}
 			value={state.focusedDate.month}
 			onChange={(key) => {
-				if (typeof key === "number") {
-					state.setFocusedDate(months[key - 1].date)
+				if (typeof key === "number" && months[key - 1]) {
+					state.setFocusedDate(months[key - 1]!.date)
 				}
 			}}
 		>
@@ -177,7 +177,7 @@ const SelectYear = () => {
 			aria-label="Year"
 			value={20}
 			onChange={(key) => {
-				if (typeof key === "number") {
+				if (typeof key === "number" && years[key]) {
 					state.setFocusedDate(years[key].date)
 				}
 			}}
