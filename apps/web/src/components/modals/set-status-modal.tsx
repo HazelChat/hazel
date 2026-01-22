@@ -164,28 +164,6 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 				</ModalHeader>
 
 				<ModalBody className="flex flex-col gap-5">
-					{/* Quick Presets - Most common action, placed at top */}
-					<div className="flex flex-col gap-2">
-						<Label className="text-muted-fg text-xs">Quick presets</Label>
-						<div className="flex flex-wrap gap-2">
-							{STATUS_PRESETS.map((preset) => (
-								<Button
-									key={preset.message}
-									intent="outline"
-									size="sm"
-									onPress={() => handlePresetClick(preset)}
-									className="gap-1.5"
-								>
-									<span>{preset.emoji}</span>
-									<span>{preset.message}</span>
-								</Button>
-							))}
-						</div>
-					</div>
-
-					{/* Visual Divider */}
-					<hr className="h-px w-full border-none bg-border" />
-
 					{/* Emoji + Message Input */}
 					<TextField>
 						<Label>Status</Label>
@@ -276,6 +254,28 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 						<p className="mt-1 text-muted-fg text-xs">
 							Don't receive notifications while this status is set
 						</p>
+					</div>
+
+					{/* Visual Divider */}
+					<hr className="h-px w-full border-none bg-border" />
+
+					{/* Quick Presets */}
+					<div className="flex flex-col gap-2">
+						<Label className="text-muted-fg text-xs">Quick presets</Label>
+						<div className="flex flex-wrap gap-2">
+							{STATUS_PRESETS.map((preset) => (
+								<Button
+									key={preset.message}
+									intent="outline"
+									size="sm"
+									onPress={() => handlePresetClick(preset)}
+									className="gap-1.5"
+								>
+									<span>{preset.emoji}</span>
+									<span>{preset.message}</span>
+								</Button>
+							))}
+						</div>
 					</div>
 				</ModalBody>
 
