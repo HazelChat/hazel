@@ -3,6 +3,7 @@ import { useState } from "react"
 import { twJoin } from "tailwind-merge"
 import { FeedbackModal } from "~/components/modals/feedback-modal"
 import { SetStatusModal } from "~/components/modals/set-status-modal"
+import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Avatar } from "~/components/ui/avatar"
 import {
 	Menu,
@@ -28,7 +29,7 @@ import IconSupport from "../icons/icon-support"
 export function UserMenu() {
 	const { user, logout } = useAuth()
 	const { slug: orgSlug } = useOrganization()
-	const { statusEmoji } = usePresence()
+	const { statusEmoji, customMessage, statusExpiresAt } = usePresence()
 	const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
 	const [statusModalOpen, setStatusModalOpen] = useState(false)
 
@@ -57,7 +58,12 @@ export function UserMenu() {
 						<div className="in-data-[collapsible=dock]:hidden min-w-0 text-sm">
 							<SidebarLabel>
 								{displayName}
-								{statusEmoji && <span className="ml-1">{statusEmoji}</span>}
+								<StatusEmojiWithTooltip
+									emoji={statusEmoji}
+									message={customMessage}
+									expiresAt={statusExpiresAt}
+									className="ml-1"
+								/>
 							</SidebarLabel>
 							{user?.email && (
 								<span className="-mt-0.5 block max-w-36 truncate text-muted-fg">

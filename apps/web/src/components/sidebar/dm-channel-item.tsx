@@ -8,6 +8,7 @@ import IconPhone from "~/components/icons/icon-phone"
 import { IconStar } from "~/components/icons/icon-star"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
+import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
@@ -46,14 +47,15 @@ function DmAvatar({ member }: DmAvatarProps) {
 }
 
 function DmUserStatusEmoji({ userId }: { userId: UserId }) {
-	const { statusEmoji, customMessage } = useUserPresence(userId)
-
-	if (!statusEmoji) return null
+	const { statusEmoji, customMessage, statusExpiresAt } = useUserPresence(userId)
 
 	return (
-		<span className="ml-1 text-xs opacity-80" title={customMessage ?? undefined}>
-			{statusEmoji}
-		</span>
+		<StatusEmojiWithTooltip
+			emoji={statusEmoji}
+			message={customMessage}
+			expiresAt={statusExpiresAt}
+			className="ml-1 text-xs opacity-80"
+		/>
 	)
 }
 

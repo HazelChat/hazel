@@ -18,7 +18,12 @@ import { Textarea } from "~/components/ui/textarea"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import { getStatusBadgeColor, getStatusDotColor, getStatusLabel } from "~/utils/status"
+import {
+	formatStatusExpiration,
+	getStatusBadgeColor,
+	getStatusDotColor,
+	getStatusLabel,
+} from "~/utils/status"
 import { formatUserLocalTime, getTimezoneAbbreviation } from "~/utils/timezone"
 
 interface UserProfilePopoverProps {
@@ -177,13 +182,14 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 								</span>
 							)}
 							{(presence?.statusEmoji || presence?.customMessage) && (
-								<div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
-									{presence?.statusEmoji && (
-										<span className="text-base">{presence.statusEmoji}</span>
-									)}
-									{presence?.customMessage && (
-										<span className="text-muted-fg text-xs">
-											{presence.customMessage}
+								<div className="mt-1 flex flex-col gap-0.5 text-sm">
+									<div className="flex items-center gap-1.5 text-muted-fg">
+										{presence?.statusEmoji && <span>{presence.statusEmoji}</span>}
+										{presence?.customMessage && <span>{presence.customMessage}</span>}
+									</div>
+									{presence?.statusExpiresAt && (
+										<span className="text-muted-fg/60 text-xs">
+											Until {formatStatusExpiration(presence.statusExpiresAt)}
 										</span>
 									)}
 								</div>

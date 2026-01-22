@@ -17,6 +17,7 @@ import {
 	isYoutubeUrl,
 	LinkPreview,
 } from "~/components/link-preview"
+import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Badge } from "~/components/ui/badge"
 import { YoutubeEmbed } from "~/components/youtube-embed"
 import { useChat } from "~/hooks/use-chat"
@@ -288,7 +289,7 @@ export const MessageAuthorHeader = ({
 }) => {
 	// Author is now directly attached to the message via leftJoin
 	const user = message.author
-	const { statusEmoji, customMessage } = useUserPresence(message.authorId)
+	const { statusEmoji, customMessage, statusExpiresAt } = useUserPresence(message.authorId)
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
@@ -299,11 +300,7 @@ export const MessageAuthorHeader = ({
 	return (
 		<div className="flex items-baseline gap-2">
 			<span className="font-semibold text-fg">{fullName}</span>
-			{statusEmoji && (
-				<span className="text-sm" title={customMessage ?? undefined}>
-					{statusEmoji}
-				</span>
-			)}
+			<StatusEmojiWithTooltip emoji={statusEmoji} message={customMessage} expiresAt={statusExpiresAt} />
 			{user.userType === "machine" && (
 				<Badge intent="primary" isCircle={false}>
 					APP
