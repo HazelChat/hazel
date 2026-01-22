@@ -1,14 +1,19 @@
+import { getLocalTimeZone, today, type DateValue } from "@internationalized/date"
+import type { TimeValue } from "react-aria-components"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
+import { DateInput } from "~/components/ui/date-field"
+import { DatePicker, DatePickerTrigger } from "~/components/ui/date-picker"
 import { Description, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 import { TextField } from "~/components/ui/text-field"
+import { TimeField } from "~/components/ui/time-field"
 import { usePresence } from "~/hooks/use-presence"
 import { EmojiPickerDialog } from "../emoji-picker/emoji-picker-dialog"
 
-type ExpirationOption = "never" | "30min" | "1hr" | "4hr" | "today" | "week"
+type ExpirationOption = "never" | "30min" | "1hr" | "4hr" | "today" | "week" | "custom"
 
 const EXPIRATION_OPTIONS: { id: ExpirationOption; label: string }[] = [
 	{ id: "never", label: "Don't clear" },
@@ -17,6 +22,7 @@ const EXPIRATION_OPTIONS: { id: ExpirationOption; label: string }[] = [
 	{ id: "4hr", label: "4 hours" },
 	{ id: "today", label: "Today" },
 	{ id: "week", label: "This week" },
+	{ id: "custom", label: "Choose date & time" },
 ]
 
 const STATUS_PRESETS: { emoji: string; message: string }[] = [
@@ -27,7 +33,11 @@ const STATUS_PRESETS: { emoji: string; message: string }[] = [
 	{ emoji: "🏠", message: "Working from home" },
 ]
 
-function getExpirationDate(option: ExpirationOption): Date | null {
+function getExpirationDate(
+	option: ExpirationOption,
+	customDate?: DateValue | null,
+	customTime?: TimeValue | null,
+): Date | null {
 	const now = new Date()
 
 	switch (option) {
@@ -52,6 +62,12 @@ function getExpirationDate(option: ExpirationOption): Date | null {
 			endOfWeek.setHours(23, 59, 59, 999)
 			return endOfWeek
 		}
+		case "custom": {
+			if (!customDate || !customTime) return null
+			const date = customDate.toDate(getLocalTimeZone())
+			date.setHours(customTime.hour, customTime.minute, 0, 0)
+			return date
+		}
 		default:
 			return null
 	}
@@ -68,6 +84,8 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 	const [emoji, setEmoji] = useState<string | null>(statusEmoji ?? null)
 	const [message, setMessage] = useState(customMessage ?? "")
 	const [expiration, setExpiration] = useState<ExpirationOption>("never")
+	const [customDate, setCustomDate] = useState<DateValue | null>(null)
+	const [customTime, setCustomTime] = useState<TimeValue | null>(null)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	const hasExistingStatus = !!(statusEmoji || customMessage)
@@ -80,7 +98,7 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 	const handleSave = async () => {
 		setIsSubmitting(true)
 		try {
-			const expiresAt = getExpirationDate(expiration)
+			const expiresAt = getExpirationDate(expiration, customDate, customTime)
 			await setCustomStatus(emoji, message || null, expiresAt)
 			onOpenChange(false)
 		} finally {
@@ -95,6 +113,8 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 			setEmoji(null)
 			setMessage("")
 			setExpiration("never")
+			setCustomDate(null)
+			setCustomTime(null)
 			onOpenChange(false)
 		} finally {
 			setIsSubmitting(false)
@@ -111,6 +131,8 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 			setEmoji(statusEmoji ?? null)
 			setMessage(customMessage ?? "")
 			setExpiration("never")
+			setCustomDate(null)
+			setCustomTime(null)
 		}
 		onOpenChange(open)
 	}
@@ -166,6 +188,28 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 						</Select>
 					</TextField>
 
+					{/* Custom Date/Time Picker */}
+					{expiration === "custom" && (
+						<div className="flex gap-3">
+							<div className="flex flex-1 flex-col gap-1">
+								<Label className="text-muted-fg text-xs">Date</Label>
+								<DatePicker
+									value={customDate}
+									onChange={setCustomDate}
+									minValue={today(getLocalTimeZone())}
+								>
+									<DatePickerTrigger />
+								</DatePicker>
+							</div>
+							<div className="flex flex-col gap-1">
+								<Label className="text-muted-fg text-xs">Time</Label>
+								<TimeField value={customTime} onChange={setCustomTime}>
+									<DateInput />
+								</TimeField>
+							</div>
+						</div>
+					)}
+
 					{/* Presets */}
 					<div className="flex flex-col gap-2">
 						<Label className="text-muted-fg text-xs">Quick presets</Label>
@@ -206,7 +250,11 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 						<Button
 							intent="primary"
 							onPress={handleSave}
-							isDisabled={isSubmitting || (!emoji && !message)}
+							isDisabled={
+								isSubmitting ||
+								(!emoji && !message) ||
+								(expiration === "custom" && (!customDate || !customTime))
+							}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
 						</Button>
