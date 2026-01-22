@@ -58,7 +58,7 @@ interface StatusEmojiWithTooltipProps {
 	quietHours?: QuietHoursInfo
 }
 
-const QUIET_HOURS_EMOJI = "🌙"
+const QUIET_HOURS_EMOJI = "😴"
 
 /**
  * Displays a status emoji with an optional tooltip showing the message and expiration.
@@ -104,9 +104,10 @@ export function StatusEmojiWithTooltip({
 
 	// If no custom emoji but user is in quiet hours, show moon indicator
 	if (quietHours?.isActive) {
-		const quietHoursText = quietHours.start && quietHours.end
-			? `In quiet hours (${quietHours.start} - ${quietHours.end})`
-			: "In quiet hours"
+		const quietHoursText =
+			quietHours.start && quietHours.end
+				? `In quiet hours (${quietHours.start} - ${quietHours.end})`
+				: "In quiet hours"
 
 		return (
 			<Tooltip delay={300}>
@@ -115,9 +116,7 @@ export function StatusEmojiWithTooltip({
 				>
 					{QUIET_HOURS_EMOJI}
 				</TooltipTrigger>
-				<TooltipContent placement="top">
-					{quietHoursText}
-				</TooltipContent>
+				<TooltipContent placement="top">{quietHoursText}</TooltipContent>
 			</Tooltip>
 		)
 	}

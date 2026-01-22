@@ -289,7 +289,7 @@ export const MessageAuthorHeader = ({
 }) => {
 	// Author is now directly attached to the message via leftJoin
 	const user = message.author
-	const { statusEmoji, customMessage, statusExpiresAt } = useUserPresence(message.authorId)
+	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserPresence(message.authorId)
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
@@ -300,7 +300,7 @@ export const MessageAuthorHeader = ({
 	return (
 		<div className="flex items-baseline gap-2">
 			<span className="font-semibold text-fg">{fullName}</span>
-			<StatusEmojiWithTooltip emoji={statusEmoji} message={customMessage} expiresAt={statusExpiresAt} />
+			<StatusEmojiWithTooltip emoji={statusEmoji} message={customMessage} expiresAt={statusExpiresAt} quietHours={quietHours} />
 			{user.userType === "machine" && (
 				<Badge intent="primary" isCircle={false}>
 					APP

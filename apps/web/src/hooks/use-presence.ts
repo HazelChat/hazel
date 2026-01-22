@@ -272,6 +272,29 @@ export function usePresence() {
 		shouldMarkAway: false,
 	}))
 
+	// Query current user's settings for quiet hours
+	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
+	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+
+	// Compute quiet hours for current user
+	const quietHours = useMemo((): QuietHoursInfo | undefined => {
+		if (userSettings?.settings?.showQuietHoursInStatus === false) {
+			return undefined
+		}
+		const start = userSettings?.settings?.quietHoursStart ?? null
+		const end = userSettings?.settings?.quietHoursEnd ?? null
+		if (!start || !end) return undefined
+		return {
+			isActive: isInQuietHours(start, end),
+			start,
+			end,
+		}
+	}, [
+		userSettings?.settings?.showQuietHoursInStatus,
+		userSettings?.settings?.quietHoursStart,
+		userSettings?.settings?.quietHoursEnd,
+	])
+
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
 	const setManualStatus = useAtomSet(manualStatusAtom)
 
@@ -442,6 +465,7 @@ export function usePresence() {
 		statusEmoji: currentPresence?.statusEmoji,
 		statusExpiresAt: currentPresence?.statusExpiresAt,
 		suppressNotifications: currentPresence?.suppressNotifications ?? false,
+		quietHours,
 	}
 }
 
@@ -480,7 +504,11 @@ export function useUserPresence(userId: UserId) {
 			start: quietHoursStart,
 			end: quietHoursEnd,
 		}
-	}, [userSettings?.settings?.showQuietHoursInStatus, userSettings?.settings?.quietHoursStart, userSettings?.settings?.quietHoursEnd])
+	}, [
+		userSettings?.settings?.showQuietHoursInStatus,
+		userSettings?.settings?.quietHoursStart,
+		userSettings?.settings?.quietHoursEnd,
+	])
 
 	return {
 		status: presence?.status ?? ("offline" as const),
