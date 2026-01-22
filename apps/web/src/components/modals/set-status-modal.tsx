@@ -1,4 +1,4 @@
-import { getLocalTimeZone, today, type DateValue } from "@internationalized/date"
+import { getLocalTimeZone, Time, today, type DateValue } from "@internationalized/date"
 import type { TimeValue } from "react-aria-components"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
@@ -90,6 +90,19 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 
 	const hasExistingStatus = !!(statusEmoji || customMessage)
 
+	// Format custom date/time for display in the select trigger
+	const customDateTimeLabel = (() => {
+		if (expiration !== "custom" || !customDate || !customTime) return null
+		const date = customDate.toDate(getLocalTimeZone())
+		date.setHours(customTime.hour, customTime.minute)
+		return date.toLocaleString(undefined, {
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+		})
+	})()
+
 	const handlePresetClick = (preset: (typeof STATUS_PRESETS)[0]) => {
 		setEmoji(preset.emoji)
 		setMessage(preset.message)
@@ -175,15 +188,33 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 						<Label>Clear after</Label>
 						<Select
 							selectedKey={expiration}
-							onSelectionChange={(key) => setExpiration(key as ExpirationOption)}
+							onSelectionChange={(key) => {
+								const option = key as ExpirationOption
+								setExpiration(option)
+								if (option === "custom" && !customTime) {
+									// Default to next hour
+									const now = new Date()
+									const nextHour = (now.getHours() + 1) % 24
+									setCustomTime(new Time(nextHour, 0))
+								}
+								if (option === "custom" && !customDate) {
+									setCustomDate(today(getLocalTimeZone()))
+								}
+							}}
 						>
 							<SelectTrigger />
 							<SelectContent>
-								{EXPIRATION_OPTIONS.map((option) => (
-									<SelectItem key={option.id} id={option.id} textValue={option.label}>
-										{option.label}
-									</SelectItem>
-								))}
+								{EXPIRATION_OPTIONS.map((option) => {
+									const label =
+										option.id === "custom" && customDateTimeLabel
+											? customDateTimeLabel
+											: option.label
+									return (
+										<SelectItem key={option.id} id={option.id} textValue={label}>
+											{label}
+										</SelectItem>
+									)
+								})}
 							</SelectContent>
 						</Select>
 					</TextField>
@@ -233,12 +264,7 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 				<ModalFooter className="flex justify-between">
 					<div>
 						{hasExistingStatus && (
-							<Button
-								intent="outline"
-								className="text-danger hover:bg-danger/10"
-								onPress={handleClear}
-								isDisabled={isSubmitting}
-							>
+							<Button intent="danger" onPress={handleClear} isDisabled={isSubmitting}>
 								Clear status
 							</Button>
 						)}
