@@ -9,6 +9,8 @@
 - replace tanstack form with effect based form
 - setup sequin locally with config as code
 
+- Figure out an cookie/auth setup that works without the need of a 3rd party cookie
+
 # Bugs
 
 # FE stuff

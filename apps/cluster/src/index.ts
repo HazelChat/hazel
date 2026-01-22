@@ -16,6 +16,7 @@ import { Cluster } from "@hazel/domain"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, Effect, Layer, Logger, Redacted } from "effect"
 import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
+import { StatusExpirationCronLayer } from "./cron/status-expiration-cron.ts"
 import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
 import { BotUserServiceLive } from "./services/bot-user-service.ts"
@@ -75,6 +76,7 @@ const WorkOSSyncLive = WorkOSSync.Default.pipe(
 const AllCronJobs = Layer.mergeAll(
 	WorkOSSyncCronLayer.pipe(Layer.provide(WorkOSSyncLive)),
 	PresenceCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
+	StatusExpirationCronLayer.pipe(Layer.provide(DatabaseLayer)),
 	UploadCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
 ).pipe(Layer.provide(WorkflowEngineLayer))
 

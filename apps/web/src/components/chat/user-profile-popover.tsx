@@ -176,10 +176,17 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 									{getStatusLabel(presence.status)}
 								</span>
 							)}
-							{presence?.customMessage && (
-								<span className="mt-1 text-muted-fg text-xs italic">
-									"{presence.customMessage}"
-								</span>
+							{(presence?.statusEmoji || presence?.customMessage) && (
+								<div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
+									{presence?.statusEmoji && (
+										<span className="text-base">{presence.statusEmoji}</span>
+									)}
+									{presence?.customMessage && (
+										<span className="text-muted-fg text-xs">
+											{presence.customMessage}
+										</span>
+									)}
+								</div>
 							)}
 							{user?.timezone && localTime && (
 								<div className="mt-2 flex items-center gap-1.5 text-muted-fg text-xs">

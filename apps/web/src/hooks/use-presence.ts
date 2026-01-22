@@ -379,12 +379,45 @@ export function usePresence() {
 		[user?.id, setManualStatus],
 	)
 
+	const setCustomStatus = useCallback(
+		async (emoji: string | null, message: string | null, expiresAt: Date | null) => {
+			if (!user?.id) return
+
+			const program = Effect.gen(function* () {
+				const client = yield* HazelRpcClient
+				yield* client("userPresenceStatus.update", {
+					statusEmoji: emoji,
+					customMessage: message,
+					statusExpiresAt: expiresAt,
+				})
+			})
+
+			await runtime.runPromise(program).catch(console.error)
+		},
+		[user?.id],
+	)
+
+	const clearCustomStatus = useCallback(async () => {
+		if (!user?.id) return
+
+		const program = Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			yield* client("userPresenceStatus.clearStatus", {})
+		})
+
+		await runtime.runPromise(program).catch(console.error)
+	}, [user?.id])
+
 	return {
 		status: currentPresence?.status ?? computedStatus,
 		isAFK: afkState.isAFK,
 		setStatus,
+		setCustomStatus,
+		clearCustomStatus,
 		activeChannelId: currentPresence?.activeChannelId,
 		customMessage: currentPresence?.customMessage,
+		statusEmoji: currentPresence?.statusEmoji,
+		statusExpiresAt: currentPresence?.statusExpiresAt,
 	}
 }
 
@@ -404,6 +437,8 @@ export function useUserPresence(userId: UserId) {
 			presence?.status === "away",
 		activeChannelId: presence?.activeChannelId,
 		customMessage: presence?.customMessage,
+		statusEmoji: presence?.statusEmoji,
+		statusExpiresAt: presence?.statusExpiresAt,
 		lastUpdated: presence?.updatedAt,
 	}
 }

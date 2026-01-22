@@ -45,6 +45,18 @@ function DmAvatar({ member }: DmAvatarProps) {
 	)
 }
 
+function DmUserStatusEmoji({ userId }: { userId: UserId }) {
+	const { statusEmoji, customMessage } = useUserPresence(userId)
+
+	if (!statusEmoji) return null
+
+	return (
+		<span className="ml-1 text-xs opacity-80" title={customMessage ?? undefined}>
+			{statusEmoji}
+		</span>
+	)
+}
+
 export interface DmChannelItemProps {
 	channelId: ChannelId
 }
@@ -169,11 +181,12 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 										<DmAvatar member={filteredMembers[0]} />
 										<SidebarLabel
 											className={cx(
-												"max-w-40 truncate",
+												"flex items-center max-w-40",
 												channel.currentUser.isMuted && "opacity-60",
 											)}
 										>
-											{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}
+											<span className="truncate">{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}</span>
+											<DmUserStatusEmoji userId={filteredMembers[0].userId} />
 										</SidebarLabel>
 									</>
 								) : (

@@ -36,6 +36,14 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 									payload.customMessage !== undefined
 										? payload.customMessage
 										: (existing?.customMessage ?? null),
+								statusEmoji:
+									payload.statusEmoji !== undefined
+										? payload.statusEmoji
+										: (existing?.statusEmoji ?? null),
+								statusExpiresAt:
+									payload.statusExpiresAt !== undefined
+										? payload.statusExpiresAt
+										: (existing?.statusExpiresAt ?? null),
 								activeChannelId:
 									payload.activeChannelId !== undefined
 										? payload.activeChannelId
@@ -71,6 +79,8 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 									userId: user.id,
 									status: "online",
 									customMessage: null,
+									statusEmoji: null,
+									statusExpiresAt: null,
 									activeChannelId: null,
 									updatedAt: now,
 									lastSeenAt: now,
@@ -80,6 +90,40 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 							}
 
 							return { lastSeenAt: result.value.lastSeenAt }
+						}),
+					)
+					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),
+
+			"userPresenceStatus.clearStatus": () =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const user = yield* CurrentUser.Context
+
+							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id).pipe(
+								policyUse(UserPresenceStatusPolicy.canRead()),
+							)
+
+							const existing = Option.getOrNull(existingOption)
+
+							const now = new Date()
+							const updatedStatus = yield* UserPresenceStatusRepo.upsertByUserId({
+								userId: user.id,
+								status: existing?.status ?? "online",
+								customMessage: null,
+								statusEmoji: null,
+								statusExpiresAt: null,
+								activeChannelId: existing?.activeChannelId ?? null,
+								updatedAt: now,
+								lastSeenAt: now,
+							}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: updatedStatus!,
+								transactionId: txid,
+							}
 						}),
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),

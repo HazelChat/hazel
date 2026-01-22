@@ -2,6 +2,7 @@ import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import { useState } from "react"
 import { twJoin } from "tailwind-merge"
 import { FeedbackModal } from "~/components/modals/feedback-modal"
+import { SetStatusModal } from "~/components/modals/set-status-modal"
 import { Avatar } from "~/components/ui/avatar"
 import {
 	Menu,
@@ -16,7 +17,9 @@ import {
 } from "~/components/ui/menu"
 import { SidebarLabel } from "~/components/ui/sidebar"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
+import IconEmoji1 from "../icons/icon-emoji-1"
 import IconGear from "../icons/icon-gear"
 import IconLogout from "../icons/icon-logout"
 import IconProfiles2 from "../icons/icon-persons-2"
@@ -25,7 +28,9 @@ import IconSupport from "../icons/icon-support"
 export function UserMenu() {
 	const { user, logout } = useAuth()
 	const { slug: orgSlug } = useOrganization()
+	const { statusEmoji } = usePresence()
 	const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
+	const [statusModalOpen, setStatusModalOpen] = useState(false)
 
 	// Fallbacks for missing user data
 	const displayName =
@@ -50,7 +55,10 @@ export function UserMenu() {
 						/>
 
 						<div className="in-data-[collapsible=dock]:hidden min-w-0 text-sm">
-							<SidebarLabel>{displayName}</SidebarLabel>
+							<SidebarLabel>
+								{displayName}
+								{statusEmoji && <span className="ml-1">{statusEmoji}</span>}
+							</SidebarLabel>
 							{user?.email && (
 								<span className="-mt-0.5 block max-w-36 truncate text-muted-fg">
 									{user.email}
@@ -83,6 +91,13 @@ export function UserMenu() {
 						<IconProfiles2 />
 						<MenuLabel>Profile</MenuLabel>
 					</MenuItemLink>
+					<MenuItem onAction={() => setStatusModalOpen(true)}>
+						<IconEmoji1 />
+						<MenuLabel>
+							Set status
+							{statusEmoji && <span className="ml-1">{statusEmoji}</span>}
+						</MenuLabel>
+					</MenuItem>
 					<MenuItemLink
 						to="/$orgSlug/my-settings"
 						params={{
@@ -108,6 +123,7 @@ export function UserMenu() {
 			</Menu>
 
 			<FeedbackModal isOpen={feedbackModalOpen} onOpenChange={setFeedbackModalOpen} />
+			<SetStatusModal isOpen={statusModalOpen} onOpenChange={setStatusModalOpen} />
 		</>
 	)
 }
