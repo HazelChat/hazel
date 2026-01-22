@@ -1,13 +1,14 @@
+import { Time } from "@internationalized/date"
 import { createFileRoute } from "@tanstack/react-router"
 import { Radio, RadioGroup } from "react-aria-components"
 import { Button } from "~/components/ui/button"
+import { DateInput } from "~/components/ui/date-field"
 import { Label } from "~/components/ui/field"
-import { Input } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Slider, SliderOutput, SliderTrack } from "~/components/ui/slider"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
-import { TextField } from "~/components/ui/text-field"
+import { TimeField } from "~/components/ui/time-field"
 import { useNotificationSettings } from "~/hooks/use-notification-settings"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
 import { cn } from "~/lib/utils"
@@ -15,6 +16,18 @@ import { cn } from "~/lib/utils"
 export const Route = createFileRoute("/_app/$orgSlug/my-settings/notifications")({
 	component: NotificationSettings,
 })
+
+// Parse "HH:mm" string to Time object
+function parseTimeString(timeStr: string): Time {
+	const [hours, minutes] = timeStr.split(":").map(Number)
+	return new Time(hours, minutes)
+}
+
+// Format Time object to "HH:mm" string
+function formatTime(time: Time | null): string {
+	if (!time) return "00:00"
+	return `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`
+}
 
 function NotificationSettings() {
 	const { settings, updateSettings, testSound } = useNotificationSound()
@@ -25,6 +38,8 @@ function NotificationSettings() {
 		setQuietHoursStart,
 		quietHoursEnd,
 		setQuietHoursEnd,
+		showQuietHoursInStatus,
+		setShowQuietHoursInStatus,
 	} = useNotificationSettings()
 
 	const soundOptions = [
@@ -181,23 +196,36 @@ function NotificationSettings() {
 							</p>
 
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-								<TextField className="flex-1">
+								<TimeField
+									value={parseTimeString(quietHoursStart ?? "22:00")}
+									onChange={(time) => time && setQuietHoursStart(formatTime(time))}
+									className="flex-1"
+								>
 									<Label>Start time</Label>
-									<Input
-										type="time"
-										value={quietHoursStart ?? "22:00"}
-										onChange={(e) => setQuietHoursStart(e.target.value)}
-									/>
-								</TextField>
-								<TextField className="flex-1">
+									<DateInput />
+								</TimeField>
+								<TimeField
+									value={parseTimeString(quietHoursEnd ?? "08:00")}
+									onChange={(time) => time && setQuietHoursEnd(formatTime(time))}
+									className="flex-1"
+								>
 									<Label>End time</Label>
-									<Input
-										type="time"
-										value={quietHoursEnd ?? "08:00"}
-										onChange={(e) => setQuietHoursEnd(e.target.value)}
-									/>
-								</TextField>
+									<DateInput />
+								</TimeField>
 							</div>
+						</div>
+
+						{/* Show quiet hours in status */}
+						<div className="flex flex-col gap-2">
+							<Switch
+								isSelected={showQuietHoursInStatus}
+								onChange={(value) => setShowQuietHoursInStatus(value)}
+							>
+								<SwitchLabel>Show quiet hours in status</SwitchLabel>
+							</Switch>
+							<p className="text-muted-fg text-sm">
+								Display a moon indicator to others when you're in quiet hours
+							</p>
 						</div>
 					</div>
 				</div>

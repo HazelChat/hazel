@@ -1,5 +1,5 @@
 import type { ChannelId, UserId, UserPresenceStatusId } from "@hazel/schema"
-import { index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
+import { boolean, index, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
 
 // User presence status enum - user-settable statuses
 export const userPresenceStatusEnum = pgEnum("user_presence_status_enum", [
@@ -18,7 +18,10 @@ export const userPresenceStatusTable = pgTable(
 		userId: uuid().notNull().$type<UserId>().unique(),
 		status: userPresenceStatusEnum().notNull().default("online"),
 		customMessage: varchar({ length: 255 }), // Optional custom status message
+		statusEmoji: varchar({ length: 10 }), // Single emoji for status (e.g., "🏠")
+		statusExpiresAt: timestamp({ mode: "date", withTimezone: true }), // Auto-clear time for custom status
 		activeChannelId: uuid().$type<ChannelId>(), // Currently active/viewing channel
+		suppressNotifications: boolean().notNull().default(false), // Suppress notifications while status is set
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		lastSeenAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(), // Track heartbeat for timeout-based offline detection
 	},

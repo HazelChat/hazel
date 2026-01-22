@@ -35,6 +35,7 @@ export function useNotificationSettings() {
 	const doNotDisturb = userData?.settings?.doNotDisturb ?? false
 	const quietHoursStart = userData?.settings?.quietHoursStart ?? "22:00"
 	const quietHoursEnd = userData?.settings?.quietHoursEnd ?? "08:00"
+	const showQuietHoursInStatus = userData?.settings?.showQuietHoursInStatus ?? true
 
 	const setDoNotDisturb = useCallback(
 		async (value: boolean) => {
@@ -78,13 +79,29 @@ export function useNotificationSettings() {
 		[user?.id, userData?.settings, updateUser],
 	)
 
+	const setShowQuietHoursInStatus = useCallback(
+		async (value: boolean) => {
+			if (!user?.id) return
+			const result = await updateUser({
+				userId: user.id as UserId,
+				settings: { ...userData?.settings, showQuietHoursInStatus: value },
+			})
+			if (!Exit.isSuccess(result)) {
+				toast.error("Failed to update setting")
+			}
+		},
+		[user?.id, userData?.settings, updateUser],
+	)
+
 	return {
 		doNotDisturb,
 		quietHoursStart,
 		quietHoursEnd,
+		showQuietHoursInStatus,
 
 		setDoNotDisturb,
 		setQuietHoursStart,
 		setQuietHoursEnd,
+		setShowQuietHoursInStatus,
 	}
 }

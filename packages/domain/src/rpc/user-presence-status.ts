@@ -65,9 +65,12 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		payload: Schema.Struct({
 			status: Schema.optional(UserPresenceStatus.Model.json.fields.status),
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
+			statusEmoji: Schema.optional(Schema.NullOr(Schema.String)),
+			statusExpiresAt: Schema.optional(Schema.NullOr(JsonDate)),
 			activeChannelId: Schema.optional(
 				Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId),
 			),
+			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -89,6 +92,22 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		success: Schema.Struct({
 			lastSeenAt: JsonDate,
 		}),
+		error: Schema.Union(UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * UserPresenceStatusClearStatus
+	 *
+	 * Clears the user's custom status (emoji, message, and expiration).
+	 * Does not affect the user's presence status (online/away/etc).
+	 *
+	 * @returns Updated status data and transaction ID
+	 * @throws UnauthorizedError if not authenticated
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("userPresenceStatus.clearStatus", {
+		payload: Schema.Struct({}),
+		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 ) {}

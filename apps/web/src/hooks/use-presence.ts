@@ -2,8 +2,9 @@ import { Atom, Result, useAtomMount, useAtomSet, useAtomValue } from "@effect-at
 import type { ChannelId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
 import { DateTime, Duration, Effect, Schedule, Stream } from "effect"
-import { useCallback, useEffect, useRef } from "react"
-import { userPresenceStatusCollection } from "~/db/collections"
+import { useCallback, useEffect, useMemo, useRef } from "react"
+import { isInQuietHours } from "~/atoms/notification-sound-atoms"
+import { userCollection, userPresenceStatusCollection } from "~/db/collections"
 import { useAuth, userAtom } from "~/lib/auth"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
@@ -229,6 +230,22 @@ const currentUserPresenceAtomFamily = Atom.family((userId: UserId) =>
 )
 
 /**
+ * Atom family that queries user settings from TanStack DB
+ * Used to check quiet hours configuration for other users
+ */
+const userSettingsAtomFamily = Atom.family((userId: UserId) =>
+	makeQuery((q) =>
+		q
+			.from({ user: userCollection })
+			.where(({ user }) => eq(user.id, userId))
+			.select(({ user }) => ({
+				settings: user.settings,
+			}))
+			.findOne(),
+	),
+)
+
+/**
  * Atom that automatically queries presence for the current user
  * Reads from userAtom and returns the presence data
  */
@@ -254,6 +271,29 @@ export function usePresence() {
 		timeSinceActivity: 0,
 		shouldMarkAway: false,
 	}))
+
+	// Query current user's settings for quiet hours
+	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
+	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+
+	// Compute quiet hours for current user
+	const quietHours = useMemo((): QuietHoursInfo | undefined => {
+		if (userSettings?.settings?.showQuietHoursInStatus === false) {
+			return undefined
+		}
+		const start = userSettings?.settings?.quietHoursStart ?? null
+		const end = userSettings?.settings?.quietHoursEnd ?? null
+		if (!start || !end) return undefined
+		return {
+			isActive: isInQuietHours(start, end),
+			start,
+			end,
+		}
+	}, [
+		userSettings?.settings?.showQuietHoursInStatus,
+		userSettings?.settings?.quietHoursStart,
+		userSettings?.settings?.quietHoursEnd,
+	])
 
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
 	const setManualStatus = useAtomSet(manualStatusAtom)
@@ -379,13 +419,60 @@ export function usePresence() {
 		[user?.id, setManualStatus],
 	)
 
+	const setCustomStatus = useCallback(
+		async (
+			emoji: string | null,
+			message: string | null,
+			expiresAt: Date | null,
+			suppressNotifications?: boolean,
+		) => {
+			if (!user?.id) return
+
+			const program = Effect.gen(function* () {
+				const client = yield* HazelRpcClient
+				yield* client("userPresenceStatus.update", {
+					statusEmoji: emoji,
+					customMessage: message,
+					statusExpiresAt: expiresAt,
+					suppressNotifications,
+				})
+			})
+
+			await runtime.runPromise(program).catch(console.error)
+		},
+		[user?.id],
+	)
+
+	const clearCustomStatus = useCallback(async () => {
+		if (!user?.id) return
+
+		const program = Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			yield* client("userPresenceStatus.clearStatus", {})
+		})
+
+		await runtime.runPromise(program).catch(console.error)
+	}, [user?.id])
+
 	return {
 		status: currentPresence?.status ?? computedStatus,
 		isAFK: afkState.isAFK,
 		setStatus,
+		setCustomStatus,
+		clearCustomStatus,
 		activeChannelId: currentPresence?.activeChannelId,
 		customMessage: currentPresence?.customMessage,
+		statusEmoji: currentPresence?.statusEmoji,
+		statusExpiresAt: currentPresence?.statusExpiresAt,
+		suppressNotifications: currentPresence?.suppressNotifications ?? false,
+		quietHours,
 	}
+}
+
+export interface QuietHoursInfo {
+	isActive: boolean
+	start?: string
+	end?: string
 }
 
 /**
@@ -394,6 +481,34 @@ export function usePresence() {
 export function useUserPresence(userId: UserId) {
 	const presenceResult = useAtomValue(currentUserPresenceAtomFamily(userId))
 	const presence = Result.getOrElse(presenceResult, () => undefined)
+	const userSettingsResult = useAtomValue(userSettingsAtomFamily(userId))
+	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+
+	// Compute quiet hours state
+	const quietHours = useMemo((): QuietHoursInfo | undefined => {
+		// If user has opted out of showing quiet hours in status, don't return info
+		if (userSettings?.settings?.showQuietHoursInStatus === false) {
+			return undefined
+		}
+
+		const quietHoursStart = userSettings?.settings?.quietHoursStart ?? null
+		const quietHoursEnd = userSettings?.settings?.quietHoursEnd ?? null
+
+		// If quiet hours are not configured, don't return info
+		if (!quietHoursStart || !quietHoursEnd) {
+			return undefined
+		}
+
+		return {
+			isActive: isInQuietHours(quietHoursStart, quietHoursEnd),
+			start: quietHoursStart,
+			end: quietHoursEnd,
+		}
+	}, [
+		userSettings?.settings?.showQuietHoursInStatus,
+		userSettings?.settings?.quietHoursStart,
+		userSettings?.settings?.quietHoursEnd,
+	])
 
 	return {
 		status: presence?.status ?? ("offline" as const),
@@ -404,6 +519,9 @@ export function useUserPresence(userId: UserId) {
 			presence?.status === "away",
 		activeChannelId: presence?.activeChannelId,
 		customMessage: presence?.customMessage,
+		statusEmoji: presence?.statusEmoji,
+		statusExpiresAt: presence?.statusExpiresAt,
 		lastUpdated: presence?.updatedAt,
+		quietHours,
 	}
 }

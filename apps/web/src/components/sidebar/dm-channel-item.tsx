@@ -8,6 +8,7 @@ import IconPhone from "~/components/icons/icon-phone"
 import { IconStar } from "~/components/icons/icon-star"
 import IconVolume from "~/components/icons/icon-volume"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
+import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
@@ -41,6 +42,20 @@ function DmAvatar({ member }: DmAvatarProps) {
 			src={member.user.avatarUrl}
 			alt={`${member.user.firstName} ${member.user.lastName}`}
 			status={status}
+		/>
+	)
+}
+
+function DmUserStatusEmoji({ userId }: { userId: UserId }) {
+	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserPresence(userId)
+
+	return (
+		<StatusEmojiWithTooltip
+			emoji={statusEmoji}
+			message={customMessage}
+			expiresAt={statusExpiresAt}
+			quietHours={quietHours}
+			className="ml-1 text-xs opacity-80"
 		/>
 	)
 }
@@ -169,11 +184,12 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 										<DmAvatar member={filteredMembers[0]} />
 										<SidebarLabel
 											className={cx(
-												"max-w-40 truncate",
+												"flex items-center max-w-40",
 												channel.currentUser.isMuted && "opacity-60",
 											)}
 										>
-											{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}
+											<span className="truncate">{`${filteredMembers[0]?.user.firstName} ${filteredMembers[0]?.user.lastName}`}</span>
+											<DmUserStatusEmoji userId={filteredMembers[0].userId} />
 										</SidebarLabel>
 									</>
 								) : (

@@ -18,7 +18,12 @@ import { Textarea } from "~/components/ui/textarea"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import { getStatusBadgeColor, getStatusDotColor, getStatusLabel } from "~/utils/status"
+import {
+	formatStatusExpiration,
+	getStatusBadgeColor,
+	getStatusDotColor,
+	getStatusLabel,
+} from "~/utils/status"
 import { formatUserLocalTime, getTimezoneAbbreviation } from "~/utils/timezone"
 
 interface UserProfilePopoverProps {
@@ -176,10 +181,18 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 									{getStatusLabel(presence.status)}
 								</span>
 							)}
-							{presence?.customMessage && (
-								<span className="mt-1 text-muted-fg text-xs italic">
-									"{presence.customMessage}"
-								</span>
+							{(presence?.statusEmoji || presence?.customMessage) && (
+								<div className="mt-1 flex flex-col gap-0.5 text-sm">
+									<div className="flex items-center gap-1.5 text-muted-fg">
+										{presence?.statusEmoji && <span>{presence.statusEmoji}</span>}
+										{presence?.customMessage && <span>{presence.customMessage}</span>}
+									</div>
+									{presence?.statusExpiresAt && (
+										<span className="text-muted-fg/60 text-xs">
+											Until {formatStatusExpiration(presence.statusExpiresAt)}
+										</span>
+									)}
+								</div>
 							)}
 							{user?.timezone && localTime && (
 								<div className="mt-2 flex items-center gap-1.5 text-muted-fg text-xs">

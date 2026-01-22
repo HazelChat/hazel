@@ -61,6 +61,8 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 										set: {
 											status: input.status,
 											customMessage: input.customMessage,
+											statusEmoji: input.statusEmoji,
+											statusExpiresAt: input.statusExpiresAt,
 											activeChannelId: input.activeChannelId,
 											updatedAt: new Date(),
 											lastSeenAt: new Date(),

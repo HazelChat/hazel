@@ -42,3 +42,39 @@ export function getStatusLabel(status?: PresenceStatus | string): string {
 	if (status === "dnd") return "Do Not Disturb"
 	return status.charAt(0).toUpperCase() + status.slice(1)
 }
+
+/**
+ * Formats the status expiration time in a human-readable way
+ */
+export function formatStatusExpiration(expiresAt: Date | null | undefined): string | null {
+	if (!expiresAt) return null
+
+	const now = new Date()
+	const expiry = new Date(expiresAt)
+
+	// If already expired, return null
+	if (expiry <= now) return null
+
+	const diffMs = expiry.getTime() - now.getTime()
+	const diffMins = Math.round(diffMs / (1000 * 60))
+	const diffHours = Math.round(diffMs / (1000 * 60 * 60))
+
+	// Less than 1 hour - show minutes
+	if (diffMins < 60) {
+		return `${diffMins} min`
+	}
+
+	// Less than 24 hours - show time today
+	if (diffHours < 24) {
+		const timeStr = expiry.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+		// Check if it's today
+		if (expiry.toDateString() === now.toDateString()) {
+			return timeStr
+		}
+		return `tomorrow ${timeStr}`
+	}
+
+	// Otherwise show date
+	const dateStr = expiry.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+	return dateStr
+}
