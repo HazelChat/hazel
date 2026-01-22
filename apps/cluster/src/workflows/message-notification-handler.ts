@@ -59,11 +59,23 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 										or(
 											// No presence record - send notification
 											isNull(schema.userPresenceStatusTable.userId),
-											ne(
-												schema.userPresenceStatusTable.activeChannelId,
-												payload.channelId,
+											// Has presence record - check suppressNotifications and activeChannel/status
+											and(
+												eq(
+													schema.userPresenceStatusTable.suppressNotifications,
+													false,
+												),
+												or(
+													ne(
+														schema.userPresenceStatusTable.activeChannelId,
+														payload.channelId,
+													),
+													ne(
+														schema.userPresenceStatusTable.status,
+														"online",
+													),
+												),
 											),
-											ne(schema.userPresenceStatusTable.status, "online"),
 										),
 									),
 								),
@@ -166,8 +178,20 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 									or(
 										// No presence record - send notification
 										isNull(schema.userPresenceStatusTable.userId),
-										ne(schema.userPresenceStatusTable.activeChannelId, payload.channelId),
-										ne(schema.userPresenceStatusTable.status, "online"),
+										// Has presence record - check suppressNotifications and activeChannel/status
+										and(
+											eq(
+												schema.userPresenceStatusTable.suppressNotifications,
+												false,
+											),
+											or(
+												ne(
+													schema.userPresenceStatusTable.activeChannelId,
+													payload.channelId,
+												),
+												ne(schema.userPresenceStatusTable.status, "online"),
+											),
+										),
 									),
 								),
 							),

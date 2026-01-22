@@ -22,6 +22,7 @@ export const UserSettingsSchema = Schema.Struct({
 	doNotDisturb: Schema.optional(Schema.Boolean),
 	quietHoursStart: Schema.optional(TimeString),
 	quietHoursEnd: Schema.optional(TimeString),
+	showQuietHoursInStatus: Schema.optional(Schema.Boolean),
 })
 export type UserSettings = Schema.Schema.Type<typeof UserSettingsSchema>
 

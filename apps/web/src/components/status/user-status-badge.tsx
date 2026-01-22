@@ -44,15 +44,25 @@ export function UserStatusBadge({ emoji, message, variant = "inline", className 
 	)
 }
 
+interface QuietHoursInfo {
+	isActive: boolean
+	start?: string
+	end?: string
+}
+
 interface StatusEmojiWithTooltipProps {
 	emoji: string | null | undefined
 	message?: string | null
 	expiresAt?: Date | null
 	className?: string
+	quietHours?: QuietHoursInfo
 }
+
+const QUIET_HOURS_EMOJI = "🌙"
 
 /**
  * Displays a status emoji with an optional tooltip showing the message and expiration.
+ * Also displays a moon indicator when the user is in quiet hours (if no custom emoji is set).
  * Unified component used across DM sidebar, message headers, and user menu.
  */
 export function StatusEmojiWithTooltip({
@@ -60,33 +70,57 @@ export function StatusEmojiWithTooltip({
 	message,
 	expiresAt,
 	className,
+	quietHours,
 }: StatusEmojiWithTooltipProps) {
-	if (!emoji) return null
+	// If user has a custom emoji, show that (takes precedence over quiet hours)
+	if (emoji) {
+		const expirationText = formatStatusExpiration(expiresAt)
 
-	const expirationText = formatStatusExpiration(expiresAt)
+		// If there's a custom message or expiration, show tooltip on hover
+		if (message || expirationText) {
+			return (
+				<Tooltip delay={300}>
+					<TooltipTrigger
+						className={cn("cursor-default border-none bg-transparent p-0 text-sm", className)}
+					>
+						{emoji}
+					</TooltipTrigger>
+					<TooltipContent placement="top">
+						<div className="flex flex-col gap-0.5">
+							<div>
+								<span className="text-base">{emoji}</span> {message}
+							</div>
+							{expirationText && (
+								<div className="text-muted-fg text-xs">Until {expirationText}</div>
+							)}
+						</div>
+					</TooltipContent>
+				</Tooltip>
+			)
+		}
 
-	// If there's a custom message or expiration, show tooltip on hover
-	if (message || expirationText) {
+		return <span className={cn("text-sm", className)}>{emoji}</span>
+	}
+
+	// If no custom emoji but user is in quiet hours, show moon indicator
+	if (quietHours?.isActive) {
+		const quietHoursText = quietHours.start && quietHours.end
+			? `In quiet hours (${quietHours.start} - ${quietHours.end})`
+			: "In quiet hours"
+
 		return (
 			<Tooltip delay={300}>
 				<TooltipTrigger
 					className={cn("cursor-default border-none bg-transparent p-0 text-sm", className)}
 				>
-					{emoji}
+					{QUIET_HOURS_EMOJI}
 				</TooltipTrigger>
 				<TooltipContent placement="top">
-					<div className="flex flex-col gap-0.5">
-						<div>
-							<span className="text-base">{emoji}</span> {message}
-						</div>
-						{expirationText && (
-							<div className="text-muted-fg text-xs">Until {expirationText}</div>
-						)}
-					</div>
+					{quietHoursText}
 				</TooltipContent>
 			</Tooltip>
 		)
 	}
 
-	return <span className={cn("text-sm", className)}>{emoji}</span>
+	return null
 }

@@ -14,6 +14,7 @@ export class Model extends M.Class<Model>("UserPresenceStatus")({
 	statusEmoji: Schema.NullOr(Schema.String),
 	statusExpiresAt: Schema.NullOr(JsonDate),
 	activeChannelId: Schema.NullOr(ChannelId),
+	suppressNotifications: Schema.Boolean,
 	updatedAt: JsonDate,
 	lastSeenAt: JsonDate,
 }) {}

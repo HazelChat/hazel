@@ -8,6 +8,7 @@ import { Description, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
+import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { TextField } from "~/components/ui/text-field"
 import { TimeField } from "~/components/ui/time-field"
 import { usePresence } from "~/hooks/use-presence"
@@ -79,13 +80,15 @@ interface SetStatusModalProps {
 }
 
 export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
-	const { statusEmoji, customMessage, setCustomStatus, clearCustomStatus } = usePresence()
+	const { statusEmoji, customMessage, suppressNotifications, setCustomStatus, clearCustomStatus } =
+		usePresence()
 
 	const [emoji, setEmoji] = useState<string | null>(statusEmoji ?? null)
 	const [message, setMessage] = useState(customMessage ?? "")
 	const [expiration, setExpiration] = useState<ExpirationOption>("never")
 	const [customDate, setCustomDate] = useState<DateValue | null>(null)
 	const [customTime, setCustomTime] = useState<TimeValue | null>(null)
+	const [pauseNotifications, setPauseNotifications] = useState(suppressNotifications)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	const hasExistingStatus = !!(statusEmoji || customMessage)
@@ -112,7 +115,7 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 		setIsSubmitting(true)
 		try {
 			const expiresAt = getExpirationDate(expiration, customDate, customTime)
-			await setCustomStatus(emoji, message || null, expiresAt)
+			await setCustomStatus(emoji, message || null, expiresAt, pauseNotifications)
 			onOpenChange(false)
 		} finally {
 			setIsSubmitting(false)
@@ -128,6 +131,7 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 			setExpiration("never")
 			setCustomDate(null)
 			setCustomTime(null)
+			setPauseNotifications(false)
 			onOpenChange(false)
 		} finally {
 			setIsSubmitting(false)
@@ -146,6 +150,7 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 			setExpiration("never")
 			setCustomDate(null)
 			setCustomTime(null)
+			setPauseNotifications(suppressNotifications)
 		}
 		onOpenChange(open)
 	}
@@ -240,6 +245,16 @@ export function SetStatusModal({ isOpen, onOpenChange }: SetStatusModalProps) {
 							</div>
 						</div>
 					)}
+
+					{/* Pause Notifications Toggle */}
+					<div className="flex flex-col gap-1">
+						<Switch isSelected={pauseNotifications} onChange={setPauseNotifications}>
+							<SwitchLabel>Pause notifications</SwitchLabel>
+						</Switch>
+						<p className="text-muted-fg text-sm">
+							Don't receive notifications while this status is set
+						</p>
+					</div>
 
 					{/* Presets */}
 					<div className="flex flex-col gap-2">

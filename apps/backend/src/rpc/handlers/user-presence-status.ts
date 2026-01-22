@@ -48,6 +48,10 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 									payload.activeChannelId !== undefined
 										? payload.activeChannelId
 										: (existing?.activeChannelId ?? null),
+								suppressNotifications:
+									payload.suppressNotifications !== undefined
+										? payload.suppressNotifications
+										: (existing?.suppressNotifications ?? false),
 								updatedAt: now,
 								lastSeenAt: now, // Update heartbeat on any status change
 							}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
@@ -82,6 +86,7 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 									statusEmoji: null,
 									statusExpiresAt: null,
 									activeChannelId: null,
+									suppressNotifications: false,
 									updatedAt: now,
 									lastSeenAt: now,
 								}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
@@ -114,6 +119,7 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 								statusEmoji: null,
 								statusExpiresAt: null,
 								activeChannelId: existing?.activeChannelId ?? null,
+								suppressNotifications: false,
 								updatedAt: now,
 								lastSeenAt: now,
 							}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))

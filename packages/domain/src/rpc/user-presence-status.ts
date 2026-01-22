@@ -70,6 +70,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 			activeChannelId: Schema.optional(
 				Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId),
 			),
+			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),

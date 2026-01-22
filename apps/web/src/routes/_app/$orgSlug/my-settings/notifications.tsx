@@ -38,6 +38,8 @@ function NotificationSettings() {
 		setQuietHoursStart,
 		quietHoursEnd,
 		setQuietHoursEnd,
+		showQuietHoursInStatus,
+		setShowQuietHoursInStatus,
 	} = useNotificationSettings()
 
 	const soundOptions = [
@@ -211,6 +213,19 @@ function NotificationSettings() {
 									<DateInput />
 								</TimeField>
 							</div>
+						</div>
+
+						{/* Show quiet hours in status */}
+						<div className="flex flex-col gap-2">
+							<Switch
+								isSelected={showQuietHoursInStatus}
+								onChange={(value) => setShowQuietHoursInStatus(value)}
+							>
+								<SwitchLabel>Show quiet hours in status</SwitchLabel>
+							</Switch>
+							<p className="text-muted-fg text-sm">
+								Display a moon indicator to others when you're in quiet hours
+							</p>
 						</div>
 					</div>
 				</div>

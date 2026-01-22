@@ -47,13 +47,14 @@ function DmAvatar({ member }: DmAvatarProps) {
 }
 
 function DmUserStatusEmoji({ userId }: { userId: UserId }) {
-	const { statusEmoji, customMessage, statusExpiresAt } = useUserPresence(userId)
+	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserPresence(userId)
 
 	return (
 		<StatusEmojiWithTooltip
 			emoji={statusEmoji}
 			message={customMessage}
 			expiresAt={statusExpiresAt}
+			quietHours={quietHours}
 			className="ml-1 text-xs opacity-80"
 		/>
 	)
