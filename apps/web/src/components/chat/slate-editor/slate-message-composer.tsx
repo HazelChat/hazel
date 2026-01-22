@@ -176,11 +176,13 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 
 		sendMessage({
 			content: content.trim(),
+			clearContent: () => editorRef.current?.clearContent(),
+			restoreContent: (savedContent: string) => {
+				editorRef.current?.setContent(savedContent)
+				editorRef.current?.focus()
+			},
 		})
 		stopTyping()
-
-		// Clear editor
-		editorRef.current?.clearContent()
 	}
 
 	const handleEmojiSelect = (emoji: string) => {

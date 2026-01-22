@@ -34,11 +34,18 @@ import {
 import { useAuth } from "~/lib/auth"
 import { matchExitWithToast, toastExitOnError } from "~/lib/toast-exit"
 
+interface SendMessageProps {
+	content: string
+	attachments?: AttachmentId[]
+	clearContent?: () => void
+	restoreContent?: (content: string) => void
+}
+
 interface ChatContextValue {
 	channelId: ChannelId
 	organizationId: OrganizationId
 	channel: typeof Channel.Model.Type | undefined
-	sendMessage: (props: { content: string; attachments?: AttachmentId[] }) => void
+	sendMessage: (props: SendMessageProps) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
 	deleteMessage: (messageId: MessageId) => void
 	addReaction: (messageId: MessageId, channelId: ChannelId, emoji: string) => void
@@ -158,38 +165,50 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	)
 
 	const sendMessage = useCallback(
-		async ({ content, attachments }: { content: string; attachments?: AttachmentId[] }) => {
+		async ({ content, attachments, clearContent, restoreContent }: SendMessageProps) => {
 			if (!user?.id) return
-
 			const attachmentsToSend = attachments ?? attachmentIds
+
+			// Save state for potential restore on error
+			const savedReplyToMessageId = replyToMessageId
+			const savedAttachmentIds = [...attachmentsToSend]
+
+			// Optimistically clear everything
+			clearContent?.()
+			setReplyToMessageId(null)
+			clearAttachments()
 
 			const tx = await sendMessageMutation({
 				channelId,
 				authorId: UserId.make(user.id),
 				content,
-				replyToMessageId,
+				replyToMessageId: savedReplyToMessageId,
 				threadChannelId: null,
-				attachmentIds: attachmentsToSend as AttachmentId[] | undefined,
+				attachmentIds: savedAttachmentIds as AttachmentId[] | undefined,
 			})
 
-			toastExitOnError(tx, {
-				customErrors: {
-					RateLimitExceededError: (e) => ({
-						title: "Rate limit exceeded",
-						description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before sending another message.`,
-						isRetryable: false,
-					}),
-					ChannelNotFoundError: () => ({
-						title: "Channel not found",
-						description: "This channel may have been deleted.",
-						isRetryable: false,
-					}),
-				},
-			})
 			if (Exit.isSuccess(tx)) {
-				setReplyToMessageId(null)
-				clearAttachments()
 				onMessageSent?.()
+			} else {
+				// Restore state on error
+				restoreContent?.(content)
+				setReplyToMessageId(savedReplyToMessageId)
+				setAttachmentIds(savedAttachmentIds)
+
+				toastExitOnError(tx, {
+					customErrors: {
+						RateLimitExceededError: (e) => ({
+							title: "Rate limit exceeded",
+							description: `Please wait ${Math.ceil(e.retryAfterMs / 1000)} seconds before sending another message.`,
+							isRetryable: false,
+						}),
+						ChannelNotFoundError: () => ({
+							title: "Channel not found",
+							description: "This channel may have been deleted.",
+							isRetryable: false,
+						}),
+					},
+				})
 			}
 		},
 		[
@@ -199,6 +218,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			attachmentIds,
 			sendMessageMutation,
 			setReplyToMessageId,
+			setAttachmentIds,
 			clearAttachments,
 			onMessageSent,
 		],

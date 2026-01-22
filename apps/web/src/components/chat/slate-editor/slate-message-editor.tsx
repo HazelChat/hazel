@@ -53,6 +53,7 @@ import {
 	type CustomDescendant,
 	type CustomElement,
 	createEmptyValue,
+	deserializeFromMarkdown,
 	isValueEmpty,
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
@@ -84,6 +85,8 @@ type CustomEditor = AutocompleteEditor
 export interface SlateMessageEditorRef {
 	focusAndInsertText: (text: string) => void
 	clearContent: () => void
+	setContent: (content: string) => void
+	focus: () => void
 }
 
 interface SlateMessageEditorProps {
@@ -592,6 +595,11 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			[editor],
 		)
 
+		const focus = useCallback(() => {
+			ReactEditor.focus(editor)
+			Transforms.select(editor, Editor.end(editor, []))
+		}, [editor])
+
 		// Clear content and focus
 		const resetAndFocus = useCallback(() => {
 			// Directly reset the editor's children to force complete state clear
@@ -611,14 +619,27 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			}, 0)
 		}, [editor])
 
+		// Set content from markdown string
+		const setContent = useCallback(
+			(markdown: string) => {
+				const newValue = deserializeFromMarkdown(markdown)
+				editor.children = newValue
+				editor.onChange()
+				setValue(newValue)
+			},
+			[editor],
+		)
+
 		// Expose imperative API
 		useImperativeHandle(
 			ref,
 			() => ({
 				focusAndInsertText: focusAndInsertTextInternal,
 				clearContent: resetAndFocus,
+				setContent,
+				focus,
 			}),
-			[focusAndInsertTextInternal, resetAndFocus],
+			[focusAndInsertTextInternal, resetAndFocus, setContent, focus],
 		)
 
 		// Handle submit
@@ -644,7 +665,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 			await onSubmit(textContent)
 
-			resetAndFocus()
+			// Note: Don't auto-clear here - let the caller decide via clearContent callback
 		}
 
 		// Handle key down
