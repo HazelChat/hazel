@@ -597,7 +597,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 		const focus = useCallback(() => {
 			ReactEditor.focus(editor)
-			Transforms.select(editor, Editor.start(editor, []))
+			Transforms.select(editor, Editor.end(editor, []))
 		}, [editor])
 
 		// Clear content and focus

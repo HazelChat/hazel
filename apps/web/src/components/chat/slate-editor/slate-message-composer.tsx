@@ -67,12 +67,10 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 	// Handle files dropped via drag-and-drop
 	const handleFileDrop = useCallback(
 		async (files: File[]) => {
-
 			if (files.length === 0) return
 
 			setIsUploading(true)
 			// Upload files sequentially
-
 			for (const file of files) {
 				const fileId = crypto.randomUUID()
 
@@ -315,7 +313,7 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 							className={cn(
 								"relative inset-ring inset-ring-secondary flex h-max flex-col rounded-xl bg-secondary",
 								(replyToMessageId || attachmentIds.length > 0 || uploadingFiles.length > 0) &&
-								"rounded-t-none",
+									"rounded-t-none",
 								isDropTarget && "ring-2 ring-primary ring-inset",
 							)}
 						>

@@ -308,7 +308,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			})
 
 			matchExitWithToast(exit, {
-				onSuccess: () => { },
+				onSuccess: () => {},
 				successMessage: "Message pinned",
 				customErrors: {
 					MessageNotFoundError: () => ({
@@ -327,7 +327,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			const exit = await unpinMessageMutation({ pinnedMessageId })
 
 			matchExitWithToast(exit, {
-				onSuccess: () => { },
+				onSuccess: () => {},
 				successMessage: "Message unpinned",
 				customErrors: {
 					PinnedMessageNotFoundError: () => ({
