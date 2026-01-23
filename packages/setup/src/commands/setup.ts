@@ -52,22 +52,47 @@ export const setupCommand = Command.make(
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Starting Docker Compose \u2500\u2500\u2500"))
 			yield* Console.log(pc.dim("Running `docker compose up -d`...\n"))
 
-			const composeResult = yield* Effect.tryPromise({
-				try: async () => {
-					const proc = Bun.spawn(["docker", "compose", "up", "-d"], {
-						stdout: "pipe",
-						stderr: "pipe",
-					})
-					await proc.exited
-					return proc.exitCode === 0
-				},
-				catch: () => false,
-			}).pipe(Effect.catchAll(() => Effect.succeed(false)))
+			const composeResult = yield* Effect.tryPromise(async () => {
+				const proc = Bun.spawn(["docker", "compose", "up", "-d"], {
+					stdout: "pipe",
+					stderr: "pipe",
+				})
+				const [stdout, stderr] = await Promise.all([
+					proc.stdout ? new Response(proc.stdout).text() : "",
+					proc.stderr ? new Response(proc.stderr).text() : "",
+					proc.exited,
+				])
+				return {
+					ok: proc.exitCode === 0,
+					exitCode: proc.exitCode,
+					stdout,
+					stderr,
+					error: undefined,
+				}
+			}).pipe(
+				Effect.catchAll((error) =>
+					Effect.succeed({
+						ok: false,
+						exitCode: null,
+						stdout: "",
+						stderr: "",
+						error: error instanceof Error ? error.message : String(error),
+					}),
+				),
+			)
 
-			if (composeResult) {
+			if (composeResult.ok) {
 				yield* Console.log(pc.green("\u2713") + " Docker Compose started\n")
 			} else {
 				yield* Console.log(pc.yellow("\u26A0") + " Failed to start Docker Compose")
+				const errorLines = [
+					composeResult.error,
+					composeResult.stderr?.trim(),
+					composeResult.stdout?.trim(),
+				].filter((value): value is string => Boolean(value && value.length > 0))
+				if (errorLines.length > 0) {
+					yield* Console.log(pc.red(errorLines.join("\n")))
+				}
 				const continueAnyway = yield* Prompt.confirm({
 					message: "Continue anyway?",
 					initial: false,
