@@ -11,7 +11,17 @@ import {
 	PinnedMessageId,
 	type UserId,
 } from "@hazel/schema"
-import { Effect } from "effect"
+import { Cause, Effect, Schedule, Duration } from "effect"
+import { isRetryableError } from "~/lib/error-messages"
+
+/**
+ * Wraps an error in a Cause and checks if it's retryable.
+ * Used by Schedule.whileInput which provides raw errors.
+ */
+const isErrorRetryable = (error: unknown): boolean => {
+	const cause = Cause.fail(error)
+	return isRetryableError(cause)
+}
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
 import { optimisticAction } from "../../../../libs/effect-electric-db-collection/src"
@@ -26,19 +36,35 @@ import {
 	userCollection,
 } from "./collections"
 
+/**
+ * Retry schedule for message sending:
+ * - Base delay: 1 second
+ * - Exponential backoff: 1s, 2s, 4s
+ * - Jittered to prevent thundering herd
+ * - Only retries retryable errors (transient failures)
+ * - Maximum 3 attempts
+ */
+const MessageRetrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
+	Schedule.jittered,
+	Schedule.whileInput(isErrorRetryable),
+	Schedule.intersect(Schedule.recurs(3)),
+)
+
 export const sendMessageAction = optimisticAction({
 	collections: [messageCollection],
 	runtime: runtime,
 
 	onMutate: (props: {
+		messageId?: MessageId // Accept pre-generated ID for retry tracking
 		channelId: ChannelId
 		authorId: UserId
 		content: string
 		replyToMessageId?: MessageId | null
 		threadChannelId?: ChannelId | null
 		attachmentIds?: AttachmentId[]
+		onRetryAttempt?: (attempt: number) => void
 	}) => {
-		const messageId = MessageId.make(crypto.randomUUID())
+		const messageId = props.messageId ?? MessageId.make(crypto.randomUUID())
 
 		messageCollection.insert({
 			id: messageId,
@@ -60,6 +86,19 @@ export const sendMessageAction = optimisticAction({
 		Effect.gen(function* () {
 			const client = yield* HazelRpcClient
 
+			// Create retry schedule with optional attempt callback
+			const scheduleWithCallback = props.onRetryAttempt
+				? MessageRetrySchedule.pipe(
+						Schedule.tapOutput((out: [Duration.Duration, number]) =>
+							Effect.sync(() => {
+								// out is [Duration, number] from intersect
+								const attemptCount = out[1] + 1
+								props.onRetryAttempt!(attemptCount)
+							}),
+						),
+					)
+				: MessageRetrySchedule
+
 			// Create the message with attachmentIds using RPC
 			// Note: authorId will be overridden by backend AuthMiddleware with the authenticated user
 			const result = yield* client("message.create", {
@@ -71,7 +110,7 @@ export const sendMessageAction = optimisticAction({
 				embeds: null,
 				deletedAt: null,
 				authorId: props.authorId,
-			})
+			}).pipe(Effect.retry(scheduleWithCallback))
 
 			// No manual sync needed - automatic sync on messageCollection!
 			return { data: result, transactionId: result.transactionId }

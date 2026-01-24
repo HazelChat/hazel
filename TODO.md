@@ -7,10 +7,8 @@
 
 - replace tanstack form with effect based form
 
-
 # Bugs
 
-- When message fails to send should retry
 - Profile Pic getting synced later, initally no pfp??
 - if github is already connecred to other org figure out how to let double connect
 

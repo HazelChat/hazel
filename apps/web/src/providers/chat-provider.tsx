@@ -11,7 +11,7 @@ import {
 } from "@hazel/schema"
 import { Exit } from "effect"
 import { toast } from "sonner"
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react"
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react"
 import {
 	activeThreadChannelIdAtom,
 	activeThreadMessageIdAtom,
@@ -164,6 +164,15 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		[setUploadingFiles],
 	)
 
+	// Store pending message data for manual retry
+	const pendingMessageRef = useRef<{
+		content: string
+		replyToMessageId: MessageId | null
+		attachmentIds: AttachmentId[]
+		clearContent?: () => void
+		restoreContent?: (content: string) => void
+	} | null>(null)
+
 	const sendMessage = useCallback(
 		async ({ content, attachments, clearContent, restoreContent }: SendMessageProps) => {
 			if (!user?.id) return
@@ -172,6 +181,15 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			// Save state for potential restore on error
 			const savedReplyToMessageId = replyToMessageId
 			const savedAttachmentIds = [...attachmentsToSend]
+
+			// Store pending message data for manual retry
+			pendingMessageRef.current = {
+				content,
+				replyToMessageId: savedReplyToMessageId,
+				attachmentIds: savedAttachmentIds,
+				clearContent,
+				restoreContent,
+			}
 
 			// Optimistically clear everything
 			clearContent?.()
@@ -188,9 +206,10 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			})
 
 			if (Exit.isSuccess(tx)) {
+				pendingMessageRef.current = null
 				onMessageSent?.()
 			} else {
-				// Restore state on error
+				// Restore state on error (after automatic retries exhausted)
 				restoreContent?.(content)
 				setReplyToMessageId(savedReplyToMessageId)
 				setAttachmentIds(savedAttachmentIds)
@@ -206,6 +225,21 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 						description: "This channel may have been deleted.",
 						isRetryable: false,
 					}))
+					.withRetry({
+						label: "Retry",
+						onRetry: () => {
+							// Manual retry after all automatic retries exhausted
+							if (pendingMessageRef.current) {
+								const pending = pendingMessageRef.current
+								sendMessage({
+									content: pending.content,
+									attachments: pending.attachmentIds,
+									clearContent: pending.clearContent,
+									restoreContent: pending.restoreContent,
+								})
+							}
+						},
+					})
 					.run()
 			}
 		},
