@@ -815,3 +815,4 @@ export const setPublicModeAction = optimisticAction({
 			return { data: result, transactionId: result.transactionId }
 		}),
 })
+

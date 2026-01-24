@@ -91,6 +91,7 @@ function ProfileSettings() {
 						currentAvatarUrl={user?.avatarUrl}
 						userId={user?.id || ""}
 						userInitials={`${user?.firstName?.charAt(0) || ""}${user?.lastName?.charAt(0) || ""}`}
+						showReset
 					/>
 				</div>
 

@@ -1,11 +1,15 @@
+import { useAtomRefresh, useAtomSet } from "@effect-atom/atom-react"
+import { Exit } from "effect"
 import { useState } from "react"
 import { Button, type DropItem, DropZone, FileTrigger } from "react-aria-components"
 import { toast } from "sonner"
+import { resetUserAvatarMutation } from "~/atoms/user-atoms"
 import IconEdit from "~/components/icons/icon-edit"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Loader } from "~/components/ui/loader"
 import { useDragDetection } from "~/hooks/use-drag-detection"
 import { useProfilePictureUpload } from "~/hooks/use-profile-picture-upload"
+import { currentUserQueryAtom } from "~/lib/auth"
 import { cx } from "~/utils/cx"
 import { AvatarCropModal } from "./avatar-crop-modal"
 
@@ -17,18 +21,43 @@ interface ProfilePictureUploadProps {
 	userId: string
 	userInitials?: string
 	className?: string
+	showReset?: boolean
 }
 
 export function ProfilePictureUpload({
 	currentAvatarUrl,
-	userId: _userId,
+	userId,
 	userInitials,
 	className,
+	showReset = false,
 }: ProfilePictureUploadProps) {
 	const { uploadProfilePicture, isUploading, uploadProgress } = useProfilePictureUpload()
 	const { isDraggingOnPage } = useDragDetection()
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [isCropModalOpen, setIsCropModalOpen] = useState(false)
+	const [isResetting, setIsResetting] = useState(false)
+
+	const resetAvatar = useAtomSet(resetUserAvatarMutation, { mode: "promiseExit" })
+	const refreshCurrentUser = useAtomRefresh(currentUserQueryAtom)
+
+	const handleResetAvatar = async () => {
+		if (!userId) return
+
+		setIsResetting(true)
+		try {
+			const result = await resetAvatar({ payload: void 0 })
+
+			if (Exit.isSuccess(result)) {
+				refreshCurrentUser()
+				toast.success("Profile picture reset to account photo")
+			} else {
+				console.error(result.cause)
+				toast.error("Failed to reset profile picture")
+			}
+		} finally {
+			setIsResetting(false)
+		}
+	}
 
 	// Shared file validation and processing
 	const processFile = (file: File) => {
@@ -194,6 +223,18 @@ export function ProfilePictureUpload({
 
 			{/* Helper text */}
 			<p className="mt-2 text-center text-muted-fg text-xs">Click or drop image</p>
+
+			{/* Reset link */}
+			{showReset && (
+				<button
+					type="button"
+					onClick={handleResetAvatar}
+					disabled={isResetting || isUploading}
+					className="mt-1 w-full text-center text-muted-fg text-xs underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{isResetting ? "Resetting..." : "Reset to account photo"}
+				</button>
+			)}
 
 			{/* Avatar cropping modal */}
 			<AvatarCropModal

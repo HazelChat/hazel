@@ -94,4 +94,21 @@ export class UserRpcs extends RpcGroup.make(
 		success: UserResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * UserResetAvatar
+	 *
+	 * Resets the current user's avatar to their original WorkOS profile picture
+	 * (e.g., Google/GitHub OAuth avatar). Falls back to Vercel avatar if
+	 * WorkOS doesn't have a profile picture.
+	 *
+	 * @returns Updated user data and transaction ID
+	 * @throws UnauthorizedError if user is not authenticated
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("user.resetAvatar", {
+		payload: Schema.Void,
+		success: UserResponse,
+		error: Schema.Union(UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}
