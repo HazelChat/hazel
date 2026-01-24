@@ -1,6 +1,6 @@
 import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
-import { InternalServerError, UnauthorizedError } from "../errors"
+import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "../errors"
 import { OrganizationId } from "../ids"
 
 export class AuthCallbackRequest extends Schema.Class<AuthCallbackRequest>("AuthCallbackRequest")({
@@ -136,6 +136,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 		HttpApiEndpoint.post("token")`/token`
 			.addSuccess(TokenResponse)
 			.addError(UnauthorizedError)
+			.addError(OAuthCodeExpiredError)
 			.addError(InternalServerError)
 			.setPayload(TokenRequest)
 			.annotateContext(

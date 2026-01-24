@@ -5,7 +5,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Http, TokenDecodeError, TokenExchangeError } from "@hazel/domain"
+import { Http, OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain"
 import { Duration, Effect, Schema } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
@@ -47,6 +47,20 @@ export class TokenExchange extends Effect.Service<TokenExchange>()("TokenExchang
 					// Handle HTTP errors
 					if (response.status >= 400) {
 						const errorText = yield* response.text
+						// Try to parse the error response to detect specific error types
+						try {
+							const errorJson = JSON.parse(errorText)
+							if (errorJson._tag === "OAuthCodeExpiredError") {
+								return yield* Effect.fail(
+									new OAuthCodeExpiredError({
+										message:
+											errorJson.message || "Authorization code expired or already used",
+									}),
+								)
+							}
+						} catch {
+							// JSON parsing failed, fall through to generic error
+						}
 						return yield* Effect.fail(
 							new TokenExchangeError({
 								message: "Failed to exchange code for token",

@@ -9,7 +9,10 @@
  */
 
 import { Effect, Option } from "effect"
-import { forceRefresh as forceDesktopRefresh, waitForRefresh as waitForDesktopRefresh } from "~/atoms/desktop-auth"
+import {
+	forceRefresh as forceDesktopRefresh,
+	waitForRefresh as waitForDesktopRefresh,
+} from "~/atoms/desktop-auth"
 import { forceWebRefresh, getWebAccessToken, waitForWebRefresh } from "~/atoms/web-auth"
 import { TokenStorage } from "./services/desktop/token-storage"
 import { WebTokenStorage } from "./services/web/token-storage"

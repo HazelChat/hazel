@@ -2,7 +2,6 @@
 
 - voice to text
 - AI Threads/ AI MESSGAES
-- reset profile pic to workos pic button
 
 - rework notification sound system / native notification support
 

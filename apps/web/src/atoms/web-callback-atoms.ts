@@ -6,7 +6,12 @@
 
 import { Atom } from "@effect-atom/atom-react"
 import { FetchHttpClient } from "@effect/platform"
-import { MissingAuthCodeError, OAuthCallbackError, TokenExchangeError } from "@hazel/domain"
+import {
+	MissingAuthCodeError,
+	OAuthCallbackError,
+	OAuthCodeExpiredError,
+	TokenExchangeError,
+} from "@hazel/domain"
 import { Effect, Layer } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
@@ -64,7 +69,7 @@ const TokenExchangeLive = TokenExchange.Default.pipe(Layer.provide(FetchHttpClie
 // Error Handling
 // ============================================================================
 
-type CallbackError = OAuthCallbackError | MissingAuthCodeError | TokenExchangeError
+type CallbackError = OAuthCallbackError | MissingAuthCodeError | TokenExchangeError | OAuthCodeExpiredError
 
 /**
  * Get user-friendly error info from typed error
@@ -83,6 +88,12 @@ function getErrorInfo(error: CallbackError): {
 			return {
 				message: "No authorization code received. Please try again.",
 				isRetryable: true,
+			}
+		case "OAuthCodeExpiredError":
+			// Code expired or already used - user must restart the login flow
+			return {
+				message: "Login session expired. Please try logging in again.",
+				isRetryable: false,
 			}
 		case "TokenExchangeError":
 			return {
@@ -111,10 +122,35 @@ interface AtomGetter {
 // ============================================================================
 
 /**
+ * Module-level Set to track codes that have been processed
+ * Prevents double-execution from React StrictMode or hot reload
+ */
+const processedCodes = new Set<string>()
+
+/**
  * Effect that handles the web callback - exchanges code for tokens and stores them
  */
 const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
 	Effect.gen(function* () {
+		// Guard against double-execution (React StrictMode, hot reload)
+		// OAuth codes are one-time use, so we track processed codes
+		if (params.code && processedCodes.has(params.code)) {
+			yield* Effect.log("[web-callback] Code already processed, skipping")
+			return
+		}
+
+		// Also check if we're already in a terminal state
+		const currentStatus = get(webCallbackStatusAtom)
+		if (currentStatus._tag === "exchanging" || currentStatus._tag === "success") {
+			yield* Effect.log(`[web-callback] Already in ${currentStatus._tag} state, skipping`)
+			return
+		}
+
+		// Mark code as being processed
+		if (params.code) {
+			processedCodes.add(params.code)
+		}
+
 		get.set(webCallbackStatusAtom, { _tag: "exchanging" })
 
 		// Check for OAuth errors from WorkOS
@@ -201,6 +237,21 @@ const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
 		}).pipe(
 			Effect.provide(TokenExchangeLive),
 			Effect.provide(WebTokenStorageLive),
+			// Preserve typed errors (OAuthCodeExpiredError, TokenExchangeError, etc.)
+			Effect.catchTag("OAuthCodeExpiredError", (error) => {
+				console.error("[web-callback] OAuth code expired:", error)
+				return Effect.succeed({
+					success: false as const,
+					error,
+				})
+			}),
+			Effect.catchTag("TokenExchangeError", (error) => {
+				console.error("[web-callback] Token exchange failed:", error)
+				return Effect.succeed({
+					success: false as const,
+					error,
+				})
+			}),
 			Effect.catchAll((error) => {
 				console.error("[web-callback] Token exchange failed:", error)
 				return Effect.succeed({

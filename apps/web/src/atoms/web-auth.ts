@@ -211,7 +211,9 @@ const doRefresh = (get: AtomGetter) =>
 
 					// Fatal error - don't retry, logout immediately
 					if (isFatalRefreshError(error)) {
-						yield* Effect.log(`[web-auth] Fatal refresh error (attempt ${attempt}): ${error.message}`)
+						yield* Effect.log(
+							`[web-auth] Fatal refresh error (attempt ${attempt}): ${error.message}`,
+						)
 						console.error("[web-auth] Fatal token refresh error:", error)
 						get.set(webAuthErrorAtom, {
 							_tag: error._tag ?? "UnknownError",
@@ -508,7 +510,11 @@ export const forceWebRefresh = (): Promise<boolean> => {
 			const result = yield* tokenExchange.refreshToken(refreshTokenOpt.value).pipe(
 				Effect.flatMap((tokens) =>
 					Effect.gen(function* () {
-						yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
+						yield* tokenStorage.storeTokens(
+							tokens.accessToken,
+							tokens.refreshToken,
+							tokens.expiresIn,
+						)
 						yield* Effect.log("[web-auth] forceRefresh: tokens refreshed successfully")
 						return true
 					}),

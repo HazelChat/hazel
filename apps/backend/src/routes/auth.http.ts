@@ -1,6 +1,12 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import {
+	CurrentUser,
+	InternalServerError,
+	OAuthCodeExpiredError,
+	UnauthorizedError,
+	withSystemActor,
+} from "@hazel/domain"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
@@ -225,13 +231,25 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						})
 					})
 					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
-							Effect.fail(
-								new UnauthorizedError({
-									message: "Failed to authenticate with WorkOS",
-									detail: String(error.cause),
-								}),
-							),
+						Effect.catchTag(
+							"WorkOSApiError",
+							(error): Effect.Effect<never, OAuthCodeExpiredError | UnauthorizedError> => {
+								const errorStr = String(error.cause)
+								// Detect expired/invalid code from WorkOS (invalid_grant)
+								if (errorStr.includes("invalid_grant")) {
+									return Effect.fail(
+										new OAuthCodeExpiredError({
+											message: "Authorization code expired or already used",
+										}),
+									)
+								}
+								return Effect.fail(
+									new UnauthorizedError({
+										message: "Failed to authenticate with WorkOS",
+										detail: errorStr,
+									}),
+								)
+							},
 						),
 					)
 

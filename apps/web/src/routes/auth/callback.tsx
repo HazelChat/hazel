@@ -80,7 +80,9 @@ function WebCallbackPage() {
 						<Loader className="size-8" />
 						<div className="space-y-2">
 							<h1 className="font-semibold text-xl">Signing you in...</h1>
-							<p className="text-muted-fg text-sm">Please wait while we complete authentication</p>
+							<p className="text-muted-fg text-sm">
+								Please wait while we complete authentication
+							</p>
 						</div>
 					</>
 				)}

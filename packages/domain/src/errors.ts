@@ -17,6 +17,24 @@ export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("Un
 	}
 }
 
+/**
+ * Error thrown when an OAuth authorization code has expired or has already been used.
+ * This is a specific 401 error that indicates the user must restart the OAuth flow.
+ */
+export class OAuthCodeExpiredError extends Schema.TaggedError<OAuthCodeExpiredError>("OAuthCodeExpiredError")(
+	"OAuthCodeExpiredError",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({
+		status: 401,
+	}),
+) {
+	static is(u: unknown): u is OAuthCodeExpiredError {
+		return Predicate.isTagged(u, "OAuthCodeExpiredError")
+	}
+}
+
 export class InternalServerError extends Schema.TaggedError<InternalServerError>("InternalServerError")(
 	"InternalServerError",
 	{
