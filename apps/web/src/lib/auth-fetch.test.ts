@@ -10,9 +10,16 @@ vi.mock("~/atoms/desktop-auth", () => ({
 	waitForRefresh: vi.fn(),
 }))
 
+vi.mock("~/atoms/web-auth", () => ({
+	forceWebRefresh: vi.fn(),
+	getWebAccessToken: vi.fn(),
+	waitForWebRefresh: vi.fn(),
+}))
+
 // Import after mocks are set up
 import { isTauri } from "./tauri"
 import { forceRefresh, waitForRefresh } from "~/atoms/desktop-auth"
+import { forceWebRefresh, getWebAccessToken, waitForWebRefresh } from "~/atoms/web-auth"
 
 describe("authenticatedFetch", () => {
 	let mockFetch: Mock
@@ -36,9 +43,14 @@ describe("authenticatedFetch", () => {
 			__TAURI_INTERNALS__: undefined,
 		})
 
-		// Default mock implementations
+		// Default mock implementations for desktop auth
 		;(waitForRefresh as Mock).mockResolvedValue(true)
 		;(forceRefresh as Mock).mockResolvedValue(false)
+
+		// Default mock implementations for web auth
+		;(getWebAccessToken as Mock).mockResolvedValue(null) // No token by default
+		;(waitForWebRefresh as Mock).mockResolvedValue(true)
+		;(forceWebRefresh as Mock).mockResolvedValue(false)
 	})
 
 	afterEach(() => {
@@ -50,18 +62,30 @@ describe("authenticatedFetch", () => {
 			;(isTauri as Mock).mockReturnValue(false)
 		})
 
-		it("uses cookies for authentication", async () => {
+		it("makes unauthenticated request when no token is available", async () => {
+			const { authenticatedFetch } = await import("./auth-fetch")
+			mockFetch.mockResolvedValue({ status: 200 })
+
+			await authenticatedFetch("https://api.example.com/data")
+
+			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", undefined)
+		})
+
+		it("adds Bearer token when token is available", async () => {
+			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
 			await authenticatedFetch("https://api.example.com/data")
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				credentials: "include",
+				headers: {
+					Authorization: "Bearer test-jwt-token",
+				},
 			})
 		})
 
-		it("preserves existing init options", async () => {
+		it("preserves existing init options without token", async () => {
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
@@ -73,7 +97,25 @@ describe("authenticatedFetch", () => {
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
 				method: "POST",
 				body: JSON.stringify({ foo: "bar" }),
-				credentials: "include",
+			})
+		})
+
+		it("preserves existing init options with token", async () => {
+			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
+			const { authenticatedFetch } = await import("./auth-fetch")
+			mockFetch.mockResolvedValue({ status: 200 })
+
+			await authenticatedFetch("https://api.example.com/data", {
+				method: "POST",
+				body: JSON.stringify({ foo: "bar" }),
+			})
+
+			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				method: "POST",
+				body: JSON.stringify({ foo: "bar" }),
+				headers: {
+					Authorization: "Bearer test-jwt-token",
+				},
 			})
 		})
 
@@ -162,7 +204,7 @@ describe("authenticatedFetch", () => {
 			;(isTauri as Mock).mockReturnValue(false)
 		})
 
-		it("preserves custom headers in web mode", async () => {
+		it("preserves custom headers in web mode without token", async () => {
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
@@ -178,7 +220,27 @@ describe("authenticatedFetch", () => {
 					"Content-Type": "application/json",
 					"X-Custom-Header": "custom-value",
 				},
-				credentials: "include",
+			})
+		})
+
+		it("merges Authorization header with custom headers when token available", async () => {
+			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
+			const { authenticatedFetch } = await import("./auth-fetch")
+			mockFetch.mockResolvedValue({ status: 200 })
+
+			await authenticatedFetch("https://api.example.com/data", {
+				headers: {
+					"Content-Type": "application/json",
+					"X-Custom-Header": "custom-value",
+				},
+			})
+
+			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				headers: {
+					"Content-Type": "application/json",
+					"X-Custom-Header": "custom-value",
+					Authorization: "Bearer test-jwt-token",
+				},
 			})
 		})
 	})
