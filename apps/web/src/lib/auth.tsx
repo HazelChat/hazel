@@ -1,12 +1,12 @@
 import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
 import {
 	desktopInitAtom,
 	desktopLoginAtom,
 	desktopLogoutAtom,
 	desktopTokenSchedulerAtom,
 } from "~/atoms/desktop-auth"
+import { webInitAtom, webLogoutAtom, webTokenSchedulerAtom } from "~/atoms/web-auth"
 import { router } from "~/main"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
@@ -66,29 +66,24 @@ const authStateAtom = Atom.make((get) => {
  */
 export const userAtom = Atom.make((get) => get(authStateAtom).user)
 
-/**
- * Logout function atom
- */
-const logoutAtom = Atom.fn(
-	Effect.fnUntraced(function* (options?: LogoutOptions) {
-		const redirectTo = options?.redirectTo || "/"
-		const logoutUrl = new URL("/auth/logout", import.meta.env.VITE_BACKEND_URL)
-		logoutUrl.searchParams.set("redirectTo", redirectTo)
-		window.location.href = logoutUrl.toString()
-	}),
-)
-
 export function useAuth() {
 	const { user: userResult, isLoading } = useAtomValue(authStateAtom)
-	const logoutFn = useAtomSet(logoutAtom)
 
-	// Initialize desktop auth atoms (loads stored tokens, starts refresh scheduler)
+	// Initialize auth atoms for both platforms
+	// Each atom internally checks platform and returns early if not applicable
+	// Desktop: loads stored tokens from Tauri store, starts refresh scheduler
 	useAtomValue(desktopInitAtom)
 	useAtomValue(desktopTokenSchedulerAtom)
+	// Web: loads stored tokens from localStorage, starts refresh scheduler
+	useAtomValue(webInitAtom)
+	useAtomValue(webTokenSchedulerAtom)
 
 	// Desktop auth action atoms
 	const desktopLogin = useAtomSet(desktopLoginAtom)
 	const desktopLogout = useAtomSet(desktopLogoutAtom)
+
+	// Web auth action atoms
+	const webLogout = useAtomSet(webLogoutAtom)
 
 	const login = (options?: LoginOptions) => {
 		let returnTo = options?.returnTo || location.pathname + location.search + location.hash
@@ -115,6 +110,8 @@ export function useAuth() {
 		}
 
 		// Web auth flow - redirect to backend login endpoint
+		// This endpoint redirects to WorkOS, then to /auth/callback,
+		// which redirects to frontend /auth/callback with code/state params
 		const loginUrl = new URL("/auth/login", import.meta.env.VITE_BACKEND_URL)
 		loginUrl.searchParams.set("returnTo", returnTo)
 
@@ -135,8 +132,9 @@ export function useAuth() {
 			return
 		}
 
-		// Web logout - call backend to clear cookie
-		logoutFn(options)
+		// Web logout - clear localStorage tokens and redirect
+		// No need to call backend since we're using JWT (no server-side session)
+		webLogout(options)
 	}
 
 	return {

@@ -1,17 +1,9 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
-import { Database, eq, schema } from "@hazel/db"
-import {
-	CurrentUser,
-	InternalServerError,
-	type OrganizationId,
-	UnauthorizedError,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { UserRepo } from "../repositories/user-repo"
 import { WorkOS } from "../services/workos"
 
@@ -88,11 +80,10 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 		)
 		.handle("callback", ({ urlParams }) =>
 			Effect.gen(function* () {
-				const workos = yield* WorkOS
-				const userRepo = yield* UserRepo
+				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
 
 				const code = urlParams.code
-				const state = AuthState.make(JSON.parse(urlParams.state))
+				const state = urlParams.state
 
 				if (!code) {
 					return yield* Effect.fail(
@@ -103,237 +94,16 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					)
 				}
 
-				// Get required configuration
-				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
-				const cookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
-				const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
-
-				// Exchange code for user information using WorkOS SDK
-				const authResponse = yield* workos
-					.call(async (client) => {
-						return await client.userManagement.authenticateWithCode({
-							clientId,
-							code,
-							session: {
-								sealSession: true,
-								cookiePassword: cookiePassword,
-							},
-						})
-					})
-					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
-							Effect.fail(
-								new UnauthorizedError({
-									message: "Failed to authenticate with WorkOS",
-									detail: String(error.cause),
-								}),
-							),
-						),
-					)
-
-				const { user: workosUser } = authResponse
-
-				// Find existing user or create if first login
-				// Using find-or-create pattern to avoid overwriting data set by webhooks
-				const userOption = yield* userRepo.findByExternalId(workosUser.id).pipe(
-					Effect.catchTags({
-						DatabaseError: (err) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Failed to query user",
-									detail: String(err),
-								}),
-							),
-					}),
-					withSystemActor,
-				)
-
-				yield* Option.match(userOption, {
-					onNone: () =>
-						userRepo
-							.upsertByExternalId({
-								externalId: workosUser.id,
-								email: workosUser.email,
-								firstName: workosUser.firstName || "",
-								lastName: workosUser.lastName || "",
-								avatarUrl:
-									workosUser.profilePictureUrl ||
-									`https://avatar.vercel.sh/${workosUser.id}.svg`,
-								userType: "user",
-								settings: null,
-								isOnboarded: false,
-								timezone: null,
-								deletedAt: null,
-							})
-							.pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.fail(
-											new InternalServerError({
-												message: "Failed to create user",
-												detail: String(err),
-											}),
-										),
-								}),
-								withSystemActor,
-							),
-					onSome: (user) => Effect.succeed(user),
-				})
-
-				// If auth response includes an organization context, ensure membership exists
-				// This handles cases where webhooks are slow to create the membership
-				if (authResponse.organizationId) {
-					const orgMemberRepo = yield* OrganizationMemberRepo
-
-					// Fetch the internal user (just upserted above)
-					const user = yield* userRepo.findByExternalId(workosUser.id).pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to query user",
-										detail: String(err),
-									}),
-								),
-						}),
-						withSystemActor,
-					)
-
-					// Fetch org by WorkOS org ID to get our internal org ID
-					const workosOrg = yield* workos
-						.call((client) => client.organizations.getOrganization(authResponse.organizationId!))
-						.pipe(Effect.catchAll(() => Effect.succeed(null)))
-
-					if (workosOrg?.externalId && Option.isSome(user)) {
-						const orgId = workosOrg.externalId as OrganizationId
-						const db = yield* Database.Database
-
-						// Ensure organization exists locally before creating membership
-						// (org may exist in WorkOS but not synced to our DB yet)
-						const existingOrgResult = yield* db
-							.execute((client) =>
-								client
-									.select()
-									.from(schema.organizationsTable)
-									.where(eq(schema.organizationsTable.id, orgId))
-									.limit(1),
-							)
-							.pipe(
-								Effect.map((results) => results[0]),
-								Effect.catchTags({
-									DatabaseError: () => Effect.succeed(undefined),
-								}),
-							)
-
-						if (!existingOrgResult) {
-							// Organization exists in WorkOS but not locally - create it
-							yield* db
-								.execute((client) =>
-									client.insert(schema.organizationsTable).values({
-										id: orgId,
-										name: workosOrg.name,
-										slug: workosOrg.name
-											.toLowerCase()
-											.replace(/[^a-z0-9]+/g, "-")
-											.replace(/^-|-$/g, ""),
-										logoUrl: null,
-										settings: null,
-										deletedAt: null,
-										createdAt: new Date(),
-										updatedAt: new Date(),
-									}),
-								)
-								.pipe(
-									Effect.catchTags({
-										DatabaseError: (err) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to create organization",
-													detail: String(err),
-												}),
-											),
-									}),
-								)
-						}
-
-						// Check if membership already exists - if so, skip creation
-						const existingMembership = yield* orgMemberRepo
-							.findByOrgAndUser(orgId, user.value.id)
-							.pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.fail(
-											new InternalServerError({
-												message: "Failed to query organization membership",
-												detail: String(err),
-											}),
-										),
-								}),
-								withSystemActor,
-							)
-
-						if (Option.isNone(existingMembership)) {
-							// Membership doesn't exist - fetch role from WorkOS and create it
-							const workosMembership = yield* workos
-								.call((client) =>
-									client.userManagement.listOrganizationMemberships({
-										organizationId: authResponse.organizationId!,
-										userId: workosUser.id,
-									}),
-								)
-								.pipe(Effect.catchAll(() => Effect.succeed(null)))
-
-							const role = (workosMembership?.data?.[0]?.role?.slug || "member") as
-								| "admin"
-								| "member"
-								| "owner"
-
-							// Create the membership (only runs if it doesn't exist)
-							yield* orgMemberRepo
-								.upsertByOrgAndUser({
-									organizationId: orgId,
-									userId: user.value.id,
-									role,
-									nickname: null,
-									joinedAt: new Date(),
-									invitedBy: null,
-									deletedAt: null,
-								})
-								.pipe(
-									Effect.catchTags({
-										DatabaseError: (err) =>
-											Effect.fail(
-												new InternalServerError({
-													message: "Failed to create organization membership",
-													detail: String(err),
-												}),
-											),
-									}),
-									withSystemActor,
-								)
-						}
-					}
-				}
-
-				const isSecure = true // Always use secure cookies with HTTPS proxy
-
-				yield* HttpApiBuilder.securitySetCookie(
-					CurrentUser.Cookie,
-					Redacted.make(authResponse.sealedSession!),
-					{
-						secure: isSecure,
-						sameSite: "none", // Allow cross-port cookies for localhost dev
-						domain: cookieDomain,
-						path: "/",
-					},
-				)
-
-				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+				// Redirect to frontend callback with code and state as URL params
+				// The frontend will exchange the code for tokens via POST /auth/token
+				const callbackUrl = new URL(`${frontendUrl}/auth/callback`)
+				callbackUrl.searchParams.set("code", code)
+				callbackUrl.searchParams.set("state", state)
 
 				return HttpServerResponse.empty({
 					status: 302,
 					headers: {
-						Location: `${frontendUrl}${state.returnTo}`,
+						Location: callbackUrl.toString(),
 					},
 				})
 			}),

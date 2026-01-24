@@ -109,6 +109,63 @@ export const UserRpcLive = UserRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),
+
+			"user.resetAvatar": () =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const currentUser = yield* CurrentUser.Context
+
+							// Fetch user from database to get externalId
+							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
+								policyUse(UserPolicy.canRead(currentUser.id)),
+							)
+
+							const user = yield* Option.match(userOption, {
+								onNone: () =>
+									Effect.fail(
+										new InternalServerError({
+											message: "User not found",
+											detail: `User ${currentUser.id} not found in database`,
+										}),
+									),
+								onSome: (user) => Effect.succeed(user),
+							})
+
+							// Fetch user from WorkOS to get their original profile picture
+							const workosUser = yield* workos
+								.call((client) => client.userManagement.getUser(user.externalId))
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new InternalServerError({
+												message: "Failed to fetch user from WorkOS",
+												detail: String(error.cause),
+												cause: String(error),
+											}),
+									),
+								)
+
+							// Use WorkOS profile picture, fallback to Vercel avatar if not available
+							const avatarUrl =
+								workosUser.profilePictureUrl ||
+								`https://avatar.vercel.sh/${user.externalId}.svg`
+
+							// Update user's avatar in our database
+							const updatedUser = yield* UserRepo.update({
+								id: currentUser.id,
+								avatarUrl,
+							}).pipe(policyUse(UserPolicy.canUpdate(currentUser.id)))
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: updatedUser,
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("User", "update")),
 		}
 	}),
 )
