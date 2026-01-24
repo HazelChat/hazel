@@ -853,7 +853,10 @@ const SidebarLabel = ({ className, ref, ...props }: React.ComponentProps<typeof 
 				tabIndex={-1}
 				ref={ref}
 				slot="label"
-				className={twMerge("col-start-2 overflow-hidden whitespace-nowrap outline-hidden", className)}
+				className={twMerge(
+					"col-start-2 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis outline-hidden",
+					className,
+				)}
 				{...props}
 			>
 				{props.children}

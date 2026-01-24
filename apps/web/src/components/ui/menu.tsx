@@ -116,19 +116,14 @@ const MenuItem = ({ className, intent, children, ...props }: MenuItemProps) => {
 			{(values) => (
 				<>
 					{values.isSelected && (
-						<span
+						<IconCheck
 							className={twJoin(
-								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:right-0",
-								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:right-0",
+								"mr-1.5 -ml-0.5 h-lh w-4 shrink-0",
+								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:top-1/2 group-has-data-[slot=icon]:right-0.5 group-has-data-[slot=icon]:-translate-y-1/2",
+								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:top-1/2 group-has-data-[slot=avatar]:right-0.5 group-has-data-[slot=avatar]:-translate-y-1/2",
 							)}
-						>
-							{values.selectionMode === "single" && (
-								<IconCheck className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
-							)}
-							{values.selectionMode === "multiple" && (
-								<IconCheck className="-mx-0.5 mr-2 size-4" data-slot="check-indicator" />
-							)}
-						</span>
+							data-slot="check-indicator"
+						/>
 					)}
 
 					{typeof children === "function" ? children(values) : children}

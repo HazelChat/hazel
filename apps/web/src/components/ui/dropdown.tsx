@@ -73,7 +73,10 @@ const dropdownItemStyles = tv({
 			true: "opacity-50 forced-colors:text-[GrayText]",
 		},
 		isSelected: {
-			true: "[&_[data-slot='icon']:not([class*='text-'])]:text-accent-fg",
+			true: [
+				"[&_[data-slot='icon']:not([class*='text-'])]:text-accent-fg",
+				"has-data-[slot=avatar]:pr-6 has-data-[slot=icon]:pr-6",
+			],
 		},
 		isFocused: {
 			true: [
