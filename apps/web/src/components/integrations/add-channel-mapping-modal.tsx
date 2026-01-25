@@ -147,9 +147,9 @@ export function AddChannelMappingModal({
 									<SelectItem key={ch.id} id={ch.id} textValue={ch.name}>
 										<div className="flex items-center gap-2">
 											<img
-												src="https://cdn.brandfetch.io/discord.com/w/32/h/32/theme/dark/symbol"
+												src="https://cdn.brandfetch.io/discord.com/w/512/h/512/theme/dark/symbol"
 												alt=""
-												className="size-4"
+												className="size-4 object-contain"
 											/>
 											<span>#{ch.name}</span>
 										</div>
