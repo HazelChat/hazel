@@ -8,97 +8,95 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SplatRouteImport } from './routes/$'
-import { Route as OgSplatRouteImport } from './routes/og/$'
-import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as rootRouteImport } from "./routes/__root"
+import { Route as SplatRouteImport } from "./routes/$"
+import { Route as OgSplatRouteImport } from "./routes/og/$"
+import { Route as ApiSearchRouteImport } from "./routes/api/search"
 
 const SplatRoute = SplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => rootRouteImport,
+	id: "/$",
+	path: "/$",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const OgSplatRoute = OgSplatRouteImport.update({
-  id: '/og/$',
-  path: '/og/$',
-  getParentRoute: () => rootRouteImport,
+	id: "/og/$",
+	path: "/og/$",
+	getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
-  id: '/api/search',
-  path: '/api/search',
-  getParentRoute: () => rootRouteImport,
+	id: "/api/search",
+	path: "/api/search",
+	getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/$': typeof SplatRoute
-  '/api/search': typeof ApiSearchRoute
-  '/og/$': typeof OgSplatRoute
+	"/$": typeof SplatRoute
+	"/api/search": typeof ApiSearchRoute
+	"/og/$": typeof OgSplatRoute
 }
 export interface FileRoutesByTo {
-  '/$': typeof SplatRoute
-  '/api/search': typeof ApiSearchRoute
-  '/og/$': typeof OgSplatRoute
+	"/$": typeof SplatRoute
+	"/api/search": typeof ApiSearchRoute
+	"/og/$": typeof OgSplatRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/$': typeof SplatRoute
-  '/api/search': typeof ApiSearchRoute
-  '/og/$': typeof OgSplatRoute
+	__root__: typeof rootRouteImport
+	"/$": typeof SplatRoute
+	"/api/search": typeof ApiSearchRoute
+	"/og/$": typeof OgSplatRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$' | '/api/search' | '/og/$'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/$' | '/api/search' | '/og/$'
-  id: '__root__' | '/$' | '/api/search' | '/og/$'
-  fileRoutesById: FileRoutesById
+	fileRoutesByFullPath: FileRoutesByFullPath
+	fullPaths: "/$" | "/api/search" | "/og/$"
+	fileRoutesByTo: FileRoutesByTo
+	to: "/$" | "/api/search" | "/og/$"
+	id: "__root__" | "/$" | "/api/search" | "/og/$"
+	fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  SplatRoute: typeof SplatRoute
-  ApiSearchRoute: typeof ApiSearchRoute
-  OgSplatRoute: typeof OgSplatRoute
+	SplatRoute: typeof SplatRoute
+	ApiSearchRoute: typeof ApiSearchRoute
+	OgSplatRoute: typeof OgSplatRoute
 }
 
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/$': {
-      id: '/$'
-      path: '/$'
-      fullPath: '/$'
-      preLoaderRoute: typeof SplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/og/$': {
-      id: '/og/$'
-      path: '/og/$'
-      fullPath: '/og/$'
-      preLoaderRoute: typeof OgSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/search': {
-      id: '/api/search'
-      path: '/api/search'
-      fullPath: '/api/search'
-      preLoaderRoute: typeof ApiSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  }
+declare module "@tanstack/react-router" {
+	interface FileRoutesByPath {
+		"/$": {
+			id: "/$"
+			path: "/$"
+			fullPath: "/$"
+			preLoaderRoute: typeof SplatRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/og/$": {
+			id: "/og/$"
+			path: "/og/$"
+			fullPath: "/og/$"
+			preLoaderRoute: typeof OgSplatRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+		"/api/search": {
+			id: "/api/search"
+			path: "/api/search"
+			fullPath: "/api/search"
+			preLoaderRoute: typeof ApiSearchRouteImport
+			parentRoute: typeof rootRouteImport
+		}
+	}
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  SplatRoute: SplatRoute,
-  ApiSearchRoute: ApiSearchRoute,
-  OgSplatRoute: OgSplatRoute,
+	SplatRoute: SplatRoute,
+	ApiSearchRoute: ApiSearchRoute,
+	OgSplatRoute: OgSplatRoute,
 }
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
+import type { getRouter } from "./router.tsx"
+import type { createStart } from "@tanstack/react-start"
+declare module "@tanstack/react-start" {
+	interface Register {
+		ssr: true
+		router: Awaited<ReturnType<typeof getRouter>>
+	}
 }

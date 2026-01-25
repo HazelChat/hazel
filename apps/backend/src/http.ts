@@ -4,7 +4,6 @@ import { HazelApi } from "./api"
 import { HttpMessagesApiLive } from "./routes/api-v1"
 import { HttpAuthLive } from "./routes/auth.http"
 import { HttpBotCommandsLive } from "./routes/bot-commands.http"
-import { HttpDiscordWebhooksLive } from "./routes/discord-webhooks.http"
 import { HttpIncomingWebhookLive } from "./routes/incoming-webhooks.http"
 import { HttpIntegrationCommandLive } from "./routes/integration-commands.http"
 import { HttpIntegrationResourceLive } from "./routes/integration-resources.http"
@@ -20,7 +19,6 @@ export const HttpApiRoutes = HttpLayerRouter.addHttpApi(HazelApi).pipe(
 	Layer.provide(HttpAuthLive),
 	Layer.provide(HttpMessagesApiLive),
 	Layer.provide(HttpBotCommandsLive),
-	Layer.provide(HttpDiscordWebhooksLive),
 	Layer.provide(HttpIntegrationLive),
 	Layer.provide(HttpIntegrationCommandLive),
 	Layer.provide(HttpIntegrationResourceLive),

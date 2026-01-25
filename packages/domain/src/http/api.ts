@@ -2,7 +2,6 @@ import { HttpApi, OpenApi } from "@effect/platform"
 import { MessagesApiGroup } from "./api-v1/messages"
 import { AuthGroup } from "./auth"
 import { BotCommandsApiGroup } from "./bot-commands"
-import { DiscordWebhookGroup } from "./discord-webhooks"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
 import { IntegrationResourceGroup } from "./integration-resources"
@@ -16,7 +15,6 @@ import { WebhookGroup } from "./webhooks"
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(MessagesApiGroup)
 	.add(BotCommandsApiGroup)
-	.add(DiscordWebhookGroup)
 	.add(PresencePublicGroup)
 	.add(RootGroup)
 	.add(AuthGroup)
