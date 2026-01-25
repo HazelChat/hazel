@@ -1,4 +1,4 @@
-import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
+import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import {
 	CurrentUser,
 	InternalServerError,
@@ -85,8 +85,18 @@ const buildRedirectUrl = (
 }
 
 /**
- * Get OAuth authorization URL for a provider.
- * Redirects the user to the provider's OAuth consent page.
+ * OAuth session cookie name prefix - combined with provider for uniqueness
+ */
+const OAUTH_SESSION_COOKIE_PREFIX = "oauth_session_"
+
+/**
+ * OAuth session cookie max age in seconds (15 minutes)
+ */
+const OAUTH_SESSION_COOKIE_MAX_AGE = 15 * 60
+
+/**
+ * Initiate OAuth flow for a provider.
+ * Sets a session cookie with context and redirects to the provider's OAuth consent page.
  */
 const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path: {
 	orgId: OrganizationId
@@ -108,6 +118,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	)
 
 	const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
 
 	// Get org slug for redirect URL
 	const orgRepo = yield* OrganizationRepo
@@ -137,20 +148,58 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
 	const environment = nodeEnv === "development" ? "local" : "production"
 
+	// Build state object for OAuth flow
+	const stateData = {
+		organizationId: orgId,
+		userId: currentUser.id,
+		returnTo: `${frontendUrl}/${org.slug}/settings/integrations/${provider}`,
+		environment,
+	}
+
 	// Encode state with return URL, context, and environment
-	const state = encodeURIComponent(
-		JSON.stringify({
-			organizationId: orgId,
-			userId: currentUser.id,
-			returnTo: `${frontendUrl}/${org.slug}/settings/integrations/${provider}`,
-			environment,
-		}),
-	)
+	const state = encodeURIComponent(JSON.stringify(stateData))
 
 	// Build authorization URL using the provider
 	const authorizationUrl = yield* oauthProvider.buildAuthorizationUrl(state)
 
-	return { authorizationUrl: authorizationUrl.toString() }
+	yield* Effect.logInfo("OAuth flow initiated", {
+		event: "oauth_flow_initiated",
+		provider,
+		organizationId: orgId,
+		userId: currentUser.id,
+	})
+
+	// Build session cookie with OAuth context
+	// This cookie is used as a fallback when GitHub drops the state parameter
+	// (e.g., when setup_action=update for already-installed apps)
+	const sessionCookieValue = encodeURIComponent(
+		JSON.stringify({
+			...stateData,
+			createdAt: Date.now(),
+		}),
+	)
+	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
+
+	// Return redirect with session cookie
+	return HttpServerResponse.empty({
+		status: 302,
+		headers: {
+			Location: authorizationUrl.toString(),
+			"Set-Cookie": `${sessionCookieName}=${sessionCookieValue}; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_SESSION_COOKIE_MAX_AGE}`,
+		},
+	})
+})
+
+/**
+ * OAuth session state schema - stored in session cookie
+ * Includes createdAt for expiration checking
+ */
+const OAuthSessionState = Schema.Struct({
+	organizationId: Schema.String,
+	userId: Schema.String,
+	returnTo: Schema.String,
+	environment: Schema.optional(Schema.Literal("local", "production")),
+	createdAt: Schema.Number,
 })
 
 /**
@@ -159,6 +208,11 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
  *
  * For GitHub App: Receives `installation_id` instead of `code`.
  * For standard OAuth: Receives `code` authorization code.
+ *
+ * State recovery priority:
+ * 1. URL state parameter (standard OAuth flow)
+ * 2. Session cookie (fallback for GitHub App updates when state is dropped)
+ * 3. Installation ID lookup (GitHub-initiated callbacks, not user-initiated)
  */
 const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	path: { provider: IntegrationConnection.IntegrationProvider },
@@ -172,20 +226,105 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	const { provider } = path
 	const { code, state: encodedState, installation_id, setup_action } = urlParams
 
+	// Get request to read cookies
+	const request = yield* HttpServerRequest.HttpServerRequest
+	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
+	const sessionCookie = request.cookies[sessionCookieName]
+	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
+
 	yield* Effect.logInfo("OAuth callback received", {
 		event: "integration_callback_start",
 		provider,
 		hasState: !!encodedState,
+		hasSessionCookie: !!sessionCookie,
 		hasInstallationId: !!installation_id,
 		hasCode: !!code,
 		setupAction: setup_action,
 	})
 
-	// Handle update callbacks that don't have state (GitHub sends these when permissions change)
-	if (!encodedState && installation_id && setup_action === "update") {
+	// Helper to build redirect with cookie clearing
+	const buildRedirectWithCookieClear = (url: string) =>
+		HttpServerResponse.empty({
+			status: 302,
+			headers: {
+				Location: url,
+				// Clear the session cookie after processing
+				"Set-Cookie": `${sessionCookieName}=; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+			},
+		})
+
+	// Try to get state from URL parameter first
+	let parsedState: typeof OAuthState.Type | null = null
+	let stateSource: "url" | "cookie" | "installation_lookup" = "url"
+
+	if (encodedState) {
+		// Priority 1: State from URL parameter
+		const stateResult = yield* Effect.try({
+			try: () => Schema.decodeUnknownSync(OAuthState)(JSON.parse(decodeURIComponent(encodedState))),
+			catch: (e) => new InvalidOAuthStateError({ message: `Invalid state: ${e}` }),
+		}).pipe(Effect.option)
+
+		if (Option.isSome(stateResult)) {
+			parsedState = stateResult.value
+			stateSource = "url"
+		}
+	}
+
+	// Priority 2: Try session cookie if state is missing or invalid
+	if (!parsedState && sessionCookie) {
+		yield* Effect.logDebug("Attempting to recover state from session cookie", {
+			event: "integration_callback_cookie_fallback",
+			provider,
+		})
+
+		const sessionResult = yield* Effect.try({
+			try: () =>
+				Schema.decodeUnknownSync(OAuthSessionState)(JSON.parse(decodeURIComponent(sessionCookie))),
+			catch: (e) => new InvalidOAuthStateError({ message: `Invalid session cookie: ${e}` }),
+		}).pipe(Effect.option)
+
+		if (Option.isSome(sessionResult)) {
+			const session = sessionResult.value
+			// Check if cookie has expired (15 minutes)
+			const cookieAge = Date.now() - session.createdAt
+			const maxAge = OAUTH_SESSION_COOKIE_MAX_AGE * 1000 // Convert to milliseconds
+
+			if (cookieAge <= maxAge) {
+				parsedState = {
+					organizationId: session.organizationId,
+					userId: session.userId,
+					returnTo: session.returnTo,
+					environment: session.environment,
+				}
+				stateSource = "cookie"
+
+				yield* Effect.logInfo("OAuth state recovered from session cookie", {
+					event: "integration_callback_cookie_recovery",
+					provider,
+					organizationId: session.organizationId,
+					cookieAgeSeconds: Math.round(cookieAge / 1000),
+				})
+			} else {
+				yield* Effect.logWarning("OAuth session cookie expired", {
+					event: "integration_callback_cookie_expired",
+					provider,
+					cookieAgeSeconds: Math.round(cookieAge / 1000),
+				})
+			}
+		}
+	}
+
+	// Priority 3: For GitHub update callbacks without state or cookie,
+	// fall back to installation ID lookup (GitHub-initiated, not user-initiated)
+	if (!parsedState && installation_id && setup_action === "update") {
 		const connectionRepo = yield* IntegrationConnectionRepo
 		const orgRepo = yield* OrganizationRepo
 		const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+
+		yield* Effect.logInfo("GitHub update callback - looking up by installation ID", {
+			event: "integration_callback_installation_lookup",
+			installationId: installation_id,
+		})
 
 		// Look up the connection by installation ID
 		const connectionOption = yield* connectionRepo
@@ -198,7 +337,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 				event: "integration_callback_update_unknown",
 				installationId: installation_id,
 			})
-			return HttpServerResponse.redirect(frontendUrl)
+			return buildRedirectWithCookieClear(frontendUrl)
 		}
 
 		const connection = connectionOption.value
@@ -214,44 +353,39 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 				event: "integration_callback_update_org_not_found",
 				organizationId: connection.organizationId,
 			})
-			return HttpServerResponse.redirect(frontendUrl)
+			return buildRedirectWithCookieClear(frontendUrl)
 		}
 
 		const org = orgOption.value
 
-		yield* Effect.logInfo("GitHub update callback processed", {
+		yield* Effect.logInfo("GitHub update callback processed (installation lookup)", {
 			event: "integration_callback_update_success",
 			installationId: installation_id,
 			organizationId: connection.organizationId,
 		})
 
 		// Redirect to the organization's GitHub integration settings with success status
-		return HttpServerResponse.redirect(
+		return buildRedirectWithCookieClear(
 			buildRedirectUrl(`${frontendUrl}/${org.slug}/settings/integrations/github`, provider, "success"),
 		)
 	}
 
-	// For fresh installs and other callbacks, state is required
-	if (!encodedState) {
-		yield* Effect.logError("OAuth callback missing state", {
+	// If we still don't have state, fail
+	if (!parsedState) {
+		yield* Effect.logError("OAuth callback missing state and no valid session cookie", {
 			event: "integration_callback_missing_state",
 			provider,
+			hasSessionCookie: !!sessionCookie,
 		})
 		return yield* Effect.fail(new InvalidOAuthStateError({ message: "Missing OAuth state" }))
 	}
 
-	// Parse and validate state
-	const parsedState = yield* Effect.try({
-		try: () => Schema.decodeUnknownSync(OAuthState)(JSON.parse(decodeURIComponent(encodedState))),
-		catch: () => new InvalidOAuthStateError({ message: "Invalid OAuth state" }),
-	}).pipe(
-		Effect.tapError(() =>
-			Effect.logError("OAuth callback invalid state", {
-				event: "integration_callback_invalid_state",
-				provider,
-			}),
-		),
-	)
+	yield* Effect.logDebug("OAuth callback state resolved", {
+		event: "integration_callback_state_resolved",
+		provider,
+		stateSource,
+		organizationId: parsedState.organizationId,
+	})
 
 	yield* Effect.logDebug("OAuth callback state parsed", {
 		event: "integration_callback_state_parsed",
@@ -260,9 +394,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		environment: parsedState.environment,
 	})
 
-	// Helper to redirect with error
+	// Helper to redirect with error (clears session cookie)
 	const redirectWithError = (errorCode: OAuthErrorCode) =>
-		HttpServerResponse.redirect(buildRedirectUrl(parsedState.returnTo, provider, "error", errorCode))
+		buildRedirectWithCookieClear(buildRedirectUrl(parsedState.returnTo, provider, "error", errorCode))
 
 	// Check if we need to redirect to local environment
 	// This happens when production receives a callback for a local dev flow
@@ -273,17 +407,32 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		yield* Effect.logDebug("OAuth callback redirecting to local environment", {
 			event: "integration_callback_local_redirect",
 			provider,
+			stateSource,
 		})
 		// Redirect to localhost with all params preserved
 		const localUrl = new URL(`http://localhost:3003/integrations/${provider}/callback`)
 		if (installation_id) localUrl.searchParams.set("installation_id", installation_id)
 		if (code) localUrl.searchParams.set("code", code)
-		localUrl.searchParams.set("state", encodedState)
 
-		return HttpServerResponse.empty({
-			status: 302,
-			headers: { Location: localUrl.toString() },
-		})
+		// If we recovered state from cookie, encode it and pass as state parameter
+		// This ensures the local callback has the state even if GitHub dropped it
+		const stateToPass =
+			stateSource === "cookie"
+				? encodeURIComponent(
+						JSON.stringify({
+							organizationId: parsedState.organizationId,
+							userId: parsedState.userId,
+							returnTo: parsedState.returnTo,
+							environment: parsedState.environment,
+						}),
+					)
+				: encodedState
+		if (stateToPass) {
+			localUrl.searchParams.set("state", stateToPass)
+		}
+
+		// Clear the cookie since we're forwarding to local
+		return buildRedirectWithCookieClear(localUrl.toString())
 	}
 
 	// Get the OAuth provider from registry
@@ -506,16 +655,17 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		),
 	)
 
-	// Redirect back to the settings page with success status
+	// Redirect back to the settings page with success status (clears session cookie)
 	const successUrl = buildRedirectUrl(parsedState.returnTo, provider, "success")
 	yield* Effect.logDebug("OAuth callback redirecting with success", {
 		event: "integration_callback_redirect",
 		provider,
 		status: "success",
+		stateSource,
 		redirectUrl: successUrl,
 	})
 
-	return HttpServerResponse.redirect(successUrl)
+	return buildRedirectWithCookieClear(successUrl)
 })
 
 /**

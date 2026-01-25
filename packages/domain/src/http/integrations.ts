@@ -8,7 +8,8 @@ import { IntegrationConnection } from "../models"
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
 
-// Request/Response schemas
+// Note: OAuthUrlResponse is no longer used - getOAuthUrl now returns a redirect directly
+// Kept for backward compatibility if needed
 export class OAuthUrlResponse extends Schema.Class<OAuthUrlResponse>("OAuthUrlResponse")({
 	authorizationUrl: Schema.String,
 }) {}
@@ -47,10 +48,10 @@ export class UnsupportedProviderError extends Schema.TaggedError<UnsupportedProv
 ) {}
 
 export class IntegrationGroup extends HttpApiGroup.make("integrations")
-	// Get OAuth authorization URL
+	// Initiate OAuth flow - redirects to provider with session cookie
 	.add(
 		HttpApiEndpoint.get("getOAuthUrl", `/:orgId/:provider/oauth`)
-			.addSuccess(OAuthUrlResponse)
+			.addSuccess(Schema.Void, { status: 302 })
 			.addError(UnsupportedProviderError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
@@ -62,8 +63,9 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			)
 			.annotateContext(
 				OpenApi.annotations({
-					title: "Get OAuth URL",
-					description: "Get the OAuth authorization URL for a provider",
+					title: "Initiate OAuth Flow",
+					description:
+						"Initiates the OAuth flow by redirecting to the provider's authorization page. Sets a session cookie to preserve context.",
 					summary: "Initiate OAuth flow",
 				}),
 			),

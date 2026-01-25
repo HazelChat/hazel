@@ -123,10 +123,7 @@ function IntegrationConfigPage() {
 		}
 	}, [isVerifying, isConnected])
 
-	// Mutations for OAuth flow and disconnect
-	const getOAuthUrl = useAtomSet(HazelApiClient.mutation("integrations", "getOAuthUrl"), {
-		mode: "promiseExit",
-	})
+	// Mutation for disconnect (OAuth flow is now a direct navigation)
 	const disconnectMutation = useAtomSet(HazelApiClient.mutation("integrations", "disconnect"), {
 		mode: "promiseExit",
 	})
@@ -137,27 +134,15 @@ function IntegrationConfigPage() {
 
 	const externalAccountName = connection?.externalAccountName ?? null
 
-	const handleConnect = async () => {
+	const handleConnect = () => {
 		if (!organizationId) return
 		setIsConnecting(true)
-		const exit = await getOAuthUrl({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
-		})
 
-		exitToast(exit)
-			.onErrorTag("UnsupportedProviderError", (error) => ({
-				title: "Unsupported provider",
-				description: `The provider "${error.provider}" is not supported.`,
-				isRetryable: false,
-			}))
-			.run()
-		if (Exit.isFailure(exit)) {
-			setIsConnecting(false)
-		}
-		if (Exit.isSuccess(exit)) {
-			// Redirect to OAuth authorization URL
-			window.location.href = exit.value.authorizationUrl
-		}
+		// Navigate directly to the OAuth endpoint
+		// The server will set a session cookie and redirect to the provider
+		const backendUrl = import.meta.env.VITE_BACKEND_URL
+		const oauthUrl = `${backendUrl}/integrations/${organizationId}/${integrationId}/oauth`
+		window.location.href = oauthUrl
 	}
 
 	const handleDisconnect = async () => {
