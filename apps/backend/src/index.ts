@@ -80,21 +80,14 @@ const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
 	path: "/docs",
 })
 
-// WebSocket RPC for web frontend
+// HTTP RPC endpoint
 const RpcRoute = RpcServer.layerHttpRouter({
 	group: AllRpcs,
 	path: "/rpc",
-	protocol: "websocket",
-}).pipe(Layer.provide(RpcSerialization.layerNdjson), Layer.provide(RpcServerLive))
-
-// HTTP RPC for bot SDK (simpler, doesn't require persistent connection)
-const RpcRouteHttp = RpcServer.layerHttpRouter({
-	group: AllRpcs,
-	path: "/rpc-http",
 	protocol: "http",
 }).pipe(Layer.provide(RpcSerialization.layerNdjson), Layer.provide(RpcServerLive))
 
-const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute, RpcRouteHttp).pipe(
+const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
 	Layer.provide(
 		HttpLayerRouter.cors({
 			allowedOrigins: [

@@ -164,6 +164,8 @@ Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src
 
 ## Effect-TS Best Practices
 
+> **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing Effect.Service, Schema.TaggedError, Layer composition, or effect-atom code.
+
 ### Always Use `Effect.Service` Instead of `Context.Tag`
 
 **ALWAYS** prefer `Effect.Service` over `Context.Tag` for defining services. Effect.Service provides built-in `Default` layer, automatic accessors, and proper dependency declaration.

@@ -1,5 +1,5 @@
 import { Reactivity } from "@effect/experimental"
-import * as BrowserSocket from "@effect/platform-browser/BrowserSocket"
+import { FetchHttpClient } from "@effect/platform"
 import { RpcClient as RpcClientBuilder, RpcSerialization } from "@effect/rpc"
 import { AtomRpc } from "@effect-atom/atom-react"
 import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
@@ -31,11 +31,11 @@ import {
 } from "effect-rpc-tanstack-devtools"
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
-const wsUrl = `${backendUrl.replace(/^http/, "ws")}/rpc`
+const httpUrl = `${backendUrl}/rpc`
 
-const BaseProtocolLive = RpcClientBuilder.layerProtocolSocket({
-	retryTransientErrors: true,
-}).pipe(Layer.provide(BrowserSocket.layerWebSocket(wsUrl)), Layer.provide(RpcSerialization.layerNdjson))
+const BaseProtocolLive = RpcClientBuilder.layerProtocolHttp({
+	url: httpUrl,
+}).pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(RpcSerialization.layerNdjson))
 
 export const RpcProtocolLive = BaseProtocolLive
 

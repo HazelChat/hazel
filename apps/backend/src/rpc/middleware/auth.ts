@@ -5,10 +5,9 @@ import {
 	SessionNotProvidedError,
 	withSystemActor,
 } from "@hazel/domain"
-import { Config, Effect, FiberRef, Layer, Option } from "effect"
+import { Config, Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { BotRepo } from "../../repositories/bot-repo"
-import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
 import { UserRepo } from "../../repositories/user-repo"
 import { SessionManager } from "../../services/session-manager"
 
@@ -33,40 +32,13 @@ function isJwtToken(token: string): boolean {
 	return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
 }
 
-export const AuthMiddlewareLive = Layer.scoped(
+export const AuthMiddlewareLive = Layer.effect(
 	AuthMiddleware,
 	Effect.gen(function* () {
 		const sessionManager = yield* SessionManager
-		const presenceRepo = yield* UserPresenceStatusRepo
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
 		const workOsCookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
-
-		// Create a FiberRef to track the current user in each WebSocket connection
-		const currentUserRef = yield* FiberRef.make<Option.Option<CurrentUser.Schema>>(Option.none())
-
-		// Add finalizer that runs when the WebSocket scope closes
-		yield* Effect.addFinalizer(() =>
-			Effect.gen(function* () {
-				const userOption = yield* FiberRef.get(currentUserRef)
-				if (Option.isSome(userOption)) {
-					yield* Effect.logDebug("Closing WebSocket connection")
-					const user = userOption.value
-					yield* presenceRepo
-						.updateStatus({
-							userId: user.id,
-							status: "offline",
-							customMessage: null,
-						})
-						.pipe(
-							withSystemActor,
-							Effect.catchAll((error) =>
-								Effect.logError("Failed to mark user offline on disconnect", error),
-							),
-						)
-				}
-			}),
-		)
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
@@ -80,10 +52,6 @@ export const AuthMiddlewareLive = Layer.scoped(
 					if (isJwtToken(token)) {
 						// Authenticate using WorkOS JWT
 						const currentUser = yield* sessionManager.authenticateWithBearer(token)
-
-						// Store in FiberRef for cleanup
-						yield* FiberRef.set(currentUserRef, Option.some(currentUser))
-
 						return currentUser
 					}
 
@@ -150,9 +118,6 @@ export const AuthMiddlewareLive = Layer.scoped(
 						settings: user.settings,
 					}
 
-					// Store in FiberRef for cleanup
-					yield* FiberRef.set(currentUserRef, Option.some(botUser))
-
 					return botUser
 				}
 
@@ -195,21 +160,14 @@ export const AuthMiddlewareLive = Layer.scoped(
 				}
 
 				// Use SessionManager to handle authentication and refresh logic
-				// Note: For WebSocket connections, we can't update the cookie, but we can
-				// still allow the connection if the session can be refreshed
 				const result = yield* sessionManager.authenticateAndGetUser(
 					sessionCookie,
 					workOsCookiePassword,
 				)
 
-				// Store the current user in the FiberRef so the finalizer can access it
-				yield* FiberRef.set(currentUserRef, Option.some(result.currentUser))
-
-				// Log if a session was refreshed (client should reconnect with new cookie on next HTTP request)
+				// Log if a session was refreshed
 				if (result.refreshedSession) {
-					yield* Effect.logDebug(
-						"Session was refreshed for WebSocket connection. Client should update cookie on next HTTP request.",
-					)
+					yield* Effect.logDebug("Session was refreshed during RPC request")
 				}
 
 				return result.currentUser
