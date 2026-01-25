@@ -89,6 +89,20 @@ export const PROVIDER_CONFIGS: Record<
 			owner: "user",
 		},
 	},
+	discord: {
+		provider: "discord",
+		authorizationUrl: "https://discord.com/api/oauth2/authorize",
+		tokenUrl: "https://discord.com/api/oauth2/token",
+		scopes: ["bot", "applications.commands"],
+		scopeDelimiter: " ",
+	},
+	slack: {
+		provider: "slack",
+		authorizationUrl: "https://slack.com/oauth/v2/authorize",
+		tokenUrl: "https://slack.com/api/oauth.v2.access",
+		scopes: ["channels:history", "channels:read", "chat:write", "users:read"],
+		scopeDelimiter: ",",
+	},
 }
 
 /**

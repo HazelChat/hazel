@@ -1,5 +1,6 @@
 import { AttachmentId, ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
+import { IntegrationProvider } from "./integration-connection-model"
 import { MessageEmbeds } from "./message-embed-schema"
 import * as M from "./utils"
 import { baseFields } from "./utils"
@@ -12,6 +13,8 @@ export class Model extends M.Class<Model>("Message")({
 	embeds: Schema.NullOr(MessageEmbeds),
 	replyToMessageId: Schema.NullOr(MessageId),
 	threadChannelId: Schema.NullOr(ChannelId),
+	// Source provider for bridged messages (null = Hazel native)
+	sourceProvider: Schema.NullOr(IntegrationProvider),
 	...baseFields,
 }) {}
 

@@ -12,7 +12,14 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core"
 
-export const integrationProviderEnum = pgEnum("integration_provider", ["linear", "github", "figma", "notion"])
+export const integrationProviderEnum = pgEnum("integration_provider", [
+	"linear",
+	"github",
+	"figma",
+	"notion",
+	"discord",
+	"slack",
+])
 
 export const connectionLevelEnum = pgEnum("connection_level", ["organization", "user"])
 

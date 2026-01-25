@@ -110,6 +110,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										embeds: embeds ?? null,
 										replyToMessageId: replyToMessageId ?? null,
 										threadChannelId: threadChannelId ?? null,
+										sourceProvider: null,
 										authorId: bot.userId,
 										deletedAt: null,
 									}).pipe(

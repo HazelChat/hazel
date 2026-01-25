@@ -1,5 +1,6 @@
 import type { ChannelId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import { index, jsonb, pgTable, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core"
+import { integrationProviderEnum } from "./integration-connections"
 
 // Embed types for JSONB column
 export interface MessageEmbedAuthor {
@@ -52,6 +53,8 @@ export const messagesTable = pgTable(
 		replyToMessageId: uuid().$type<MessageId>(),
 		// Thread channel (if this message started a thread)
 		threadChannelId: uuid().$type<ChannelId>(),
+		// Source provider for bridged messages (null = Hazel native)
+		sourceProvider: integrationProviderEnum(),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }),
 		deletedAt: timestamp({ mode: "date", withTimezone: true }),

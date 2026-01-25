@@ -5,6 +5,8 @@ import { botInstallationsTable } from "./bot-installations"
 import { botsTable } from "./bots"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
+import { externalChannelLinksTable } from "./external-channel-links"
+import { externalThreadLinksTable } from "./external-thread-links"
 import { integrationConnectionsTable } from "./integration-connections"
 import { integrationTokensTable } from "./integration-tokens"
 import { invitationsTable } from "./invitations"
@@ -74,6 +76,7 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	attachments: many(attachmentsTable),
 	typingIndicators: many(typingIndicatorsTable),
 	webhooks: many(channelWebhooksTable),
+	externalLinks: many(externalChannelLinksTable),
 }))
 
 // Channel members relations
@@ -288,5 +291,34 @@ export const channelWebhooksRelations = relations(channelWebhooksTable, ({ one }
 	createdByUser: one(usersTable, {
 		fields: [channelWebhooksTable.createdBy],
 		references: [usersTable.id],
+	}),
+}))
+
+// External channel links relations
+export const externalChannelLinksRelations = relations(externalChannelLinksTable, ({ one, many }) => ({
+	channel: one(channelsTable, {
+		fields: [externalChannelLinksTable.channelId],
+		references: [channelsTable.id],
+	}),
+	organization: one(organizationsTable, {
+		fields: [externalChannelLinksTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	createdByUser: one(usersTable, {
+		fields: [externalChannelLinksTable.createdBy],
+		references: [usersTable.id],
+	}),
+	threadLinks: many(externalThreadLinksTable),
+}))
+
+// External thread links relations
+export const externalThreadLinksRelations = relations(externalThreadLinksTable, ({ one }) => ({
+	hazelThread: one(channelsTable, {
+		fields: [externalThreadLinksTable.hazelThreadId],
+		references: [channelsTable.id],
+	}),
+	channelLink: one(externalChannelLinksTable, {
+		fields: [externalThreadLinksTable.channelLinkId],
+		references: [externalChannelLinksTable.id],
 	}),
 }))

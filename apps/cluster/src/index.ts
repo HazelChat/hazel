@@ -22,6 +22,8 @@ import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
 import { BotUserServiceLive } from "./services/bot-user-service.ts"
 import { OpenRouterLanguageModelLayer } from "./services/openrouter-service.ts"
 import {
+	ChatBridgeInboundWorkflowLayer,
+	ChatBridgeOutboundWorkflowLayer,
 	CleanupUploadsWorkflowLayer,
 	GitHubInstallationWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
@@ -54,6 +56,8 @@ const HealthLive = HttpApiBuilder.group(Cluster.WorkflowApi, "health", (handlers
 )
 
 const AllWorkflows = Layer.mergeAll(
+	ChatBridgeInboundWorkflowLayer,
+	ChatBridgeOutboundWorkflowLayer,
 	MessageNotificationWorkflowLayer,
 	CleanupUploadsWorkflowLayer,
 	GitHubInstallationWorkflowLayer,

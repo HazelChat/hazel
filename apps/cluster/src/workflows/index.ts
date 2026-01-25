@@ -1,3 +1,5 @@
+export * from "./chat-bridge-inbound-handler.ts"
+export * from "./chat-bridge-outbound-handler.ts"
 export * from "./cleanup-uploads-handler.ts"
 export * from "./github-installation-handler.ts"
 export * from "./github-webhook-handler.ts"
