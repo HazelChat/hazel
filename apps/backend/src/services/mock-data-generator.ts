@@ -418,8 +418,12 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 					const threadChannel = threadResult[0]!
 					threadCount++
 
-					// Update the parent message to link to the thread
-					// Note: We'll create thread messages instead since updating requires different logic
+					// Update the parent message to link to the thread channel
+					const parentMessageId = designMsgIds[0]!
+					yield* messageRepo.update({
+						id: parentMessageId,
+						threadChannelId: threadChannel.id as ChannelId,
+					})
 
 					// Add thread messages
 					const threadMessages = [
