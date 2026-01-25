@@ -7,8 +7,10 @@ import {
 	type ExternalChannelLinkData,
 	updateExternalChannelLinkMutation,
 } from "~/atoms/external-channel-link-atoms"
+import IconCirclePause from "~/components/icons/icon-circle-pause"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconHashtag from "~/components/icons/icon-hashtag"
+import IconPlay from "~/components/icons/icon-play"
 import IconTrash from "~/components/icons/icon-trash"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
@@ -25,7 +27,6 @@ interface ChannelMappingRowProps {
 }
 
 export function ChannelMappingRow({ link, hazelChannelName, onLinkChange }: ChannelMappingRowProps) {
-	const [confirmDelete, setConfirmDelete] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
 	const [isUpdatingDirection, setIsUpdatingDirection] = useState(false)
@@ -78,22 +79,13 @@ export function ChannelMappingRow({ link, hazelChannelName, onLinkChange }: Chan
 	}
 
 	const handleDelete = async () => {
-		if (!confirmDelete) {
-			setConfirmDelete(true)
-			setTimeout(() => setConfirmDelete(false), 3000)
-			return
-		}
-
 		setIsDeleting(true)
 		const exit = await deleteLink({
 			payload: { id: link.id as ExternalChannelLinkId },
 		})
 
 		exitToast(exit)
-			.onSuccess(() => {
-				setConfirmDelete(false)
-				onLinkChange()
-			})
+			.onSuccess(() => onLinkChange())
 			.successMessage("Mapping deleted")
 			.onErrorTag("ExternalChannelLinkNotFoundError", () => ({
 				title: "Mapping not found",
@@ -159,12 +151,17 @@ export function ChannelMappingRow({ link, hazelChannelName, onLinkChange }: Chan
 					</Button>
 					<MenuContent placement="bottom end">
 						<MenuItem onAction={handleToggleEnabled} isDisabled={isToggling}>
+							{link.isEnabled ? (
+								<IconCirclePause className="size-4" />
+							) : (
+								<IconPlay className="size-4" />
+							)}
 							<MenuLabel>{link.isEnabled ? "Disable" : "Enable"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
 						<MenuItem intent="danger" onAction={handleDelete} isDisabled={isDeleting}>
 							<IconTrash className="size-4" />
-							<MenuLabel>{confirmDelete ? "Confirm delete?" : "Delete"}</MenuLabel>
+							<MenuLabel>Delete</MenuLabel>
 						</MenuItem>
 					</MenuContent>
 				</Menu>

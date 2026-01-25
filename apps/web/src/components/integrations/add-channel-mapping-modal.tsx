@@ -158,7 +158,7 @@ export function AddChannelMappingModal({
 							</SelectContent>
 						</Select>
 						{availableDiscordChannels.length === 0 && (
-							<Description className="text-warning-fg">
+							<Description className="text-amber-500">
 								All Discord channels have been mapped
 							</Description>
 						)}
@@ -185,7 +185,7 @@ export function AddChannelMappingModal({
 							</SelectContent>
 						</Select>
 						{availableHazelChannels.length === 0 && (
-							<Description className="text-warning-fg">
+							<Description className="text-amber-500">
 								All Hazel channels have been mapped
 							</Description>
 						)}
