@@ -147,10 +147,13 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			// Verify JWT signature using WorkOS JWKS
 			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
+			// WorkOS User Management tokens use client-specific issuer
+			const expectedIssuer = `https://api.workos.com/user_management/${clientId}`
+
 			const { payload } = yield* Effect.tryPromise({
 				try: () =>
 					jwtVerify(bearerToken, jwks, {
-						issuer: "https://api.workos.com",
+						issuer: expectedIssuer,
 					}),
 				catch: (error) =>
 					new ProxyAuthenticationError({

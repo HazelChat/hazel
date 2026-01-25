@@ -250,6 +250,34 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 			})
 
 		/**
+		 * Resolve the internal organization UUID from a WorkOS organization ID.
+		 * WorkOS stores our internal UUID as the organization's externalId.
+		 */
+		const resolveInternalOrgId = (workosOrgId: string | null | undefined) =>
+			Effect.gen(function* () {
+				if (!workosOrgId) {
+					return undefined
+				}
+
+				const org = yield* workos.getOrganization(workosOrgId).pipe(
+					Effect.catchAll((error) => {
+						// Log warning but don't fail - org lookup is best-effort
+						return Effect.logWarning("Failed to resolve internal org ID from JWT", {
+							workosOrgId,
+							error: String(error),
+						}).pipe(Effect.as(null))
+					}),
+				)
+
+				if (!org) {
+					return undefined
+				}
+
+				// externalId is our internal organization UUID
+				return (org.externalId as OrganizationId) ?? undefined
+			})
+
+		/**
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
@@ -258,10 +286,13 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 				// Verify JWT signature using WorkOS JWKS
 				const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
+				// WorkOS User Management tokens use client-specific issuer
+				const expectedIssuer = `https://api.workos.com/user_management/${clientId}`
+
 				const { payload } = yield* Effect.tryPromise({
 					try: () =>
 						jwtVerify(bearerToken, jwks, {
-							issuer: "https://api.workos.com",
+							issuer: expectedIssuer,
 						}),
 					catch: (error) =>
 						new InvalidBearerTokenError({
@@ -313,11 +344,16 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					onSome: (user) => Effect.succeed(user),
 				})
 
+				// Resolve internal organization ID from WorkOS org_id claim
+				// The JWT contains org_id (WorkOS org ID), but we need the internal UUID
+				const workosOrgId = payload.org_id as string | undefined
+
+				const internalOrgId = yield* resolveInternalOrgId(workosOrgId)
 				// Build CurrentUser from JWT payload and DB user
 				const currentUser = new CurrentUser.Schema({
 					id: user.id,
 					role: (payload.role as "admin" | "member" | "owner") || "member",
-					organizationId: payload.externalOrganizationId as OrganizationId | undefined,
+					organizationId: internalOrgId,
 					avatarUrl: user.avatarUrl,
 					firstName: user.firstName,
 					lastName: user.lastName,
