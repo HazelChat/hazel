@@ -202,7 +202,10 @@ function DiscordIntegrationPage() {
 
 				{/* Channel Mappings - only show when connected */}
 				{isConnected && organizationId && (
-					<DiscordChannelMappings organizationId={organizationId as OrganizationId} />
+					<DiscordChannelMappings
+						organizationId={organizationId as OrganizationId}
+						guildId={connection?.externalAccountId ?? null}
+					/>
 				)}
 			</div>
 		</div>

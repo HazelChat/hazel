@@ -6,6 +6,7 @@ import {
 	ChannelRpcs,
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
+	DiscordRpcs,
 	ExternalChannelLinkRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
@@ -27,6 +28,7 @@ import { ChannelMemberRpcLive } from "./handlers/channel-members"
 import { ChannelSectionRpcLive } from "./handlers/channel-sections"
 import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
+import { DiscordRpcLive } from "./handlers/discord"
 import { ExternalChannelLinkRpcLive } from "./handlers/external-channel-links"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
@@ -76,6 +78,7 @@ export const AllRpcs = MessageRpcs.merge(
 	GitHubSubscriptionRpcs,
 	AttachmentRpcs,
 	BotRpcs,
+	DiscordRpcs,
 ).middleware(RpcLoggingMiddleware)
 
 // Split into smaller groups to avoid TypeScript limit on chained Layer.provideMerge
@@ -105,7 +108,7 @@ const ChannelHandlers = Layer.mergeAll(
 	GitHubSubscriptionRpcLive,
 )
 
-const OtherHandlers = Layer.mergeAll(AttachmentRpcLive, BotRpcLive)
+const OtherHandlers = Layer.mergeAll(AttachmentRpcLive, BotRpcLive, DiscordRpcLive)
 
 const MiddlewareLayers = Layer.mergeAll(AuthMiddlewareLive, RpcLoggingMiddlewareLive)
 

@@ -10,6 +10,7 @@ import {
 	ChannelRpcs,
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
+	DiscordRpcs,
 	ExternalChannelLinkRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
@@ -63,6 +64,7 @@ const AllRpcs = MessageRpcs.merge(
 	AttachmentRpcs,
 	UserPresenceStatusRpcs,
 	BotRpcs,
+	DiscordRpcs,
 )
 
 // Configure RPC type resolver for devtools (only in dev mode)

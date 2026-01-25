@@ -24,6 +24,28 @@ const DiscordChannel = Schema.Struct({
 })
 
 /**
+ * Discord Webhook schema
+ */
+const DiscordWebhook = Schema.Struct({
+	id: Schema.String,
+	token: Schema.optional(Schema.String),
+	url: Schema.optional(Schema.String),
+	name: Schema.NullOr(Schema.String),
+	channel_id: Schema.String,
+	guild_id: Schema.optional(Schema.NullOr(Schema.String)),
+})
+
+/**
+ * Discord Bot Guild (partial guild info from /users/@me/guilds)
+ */
+const DiscordBotGuild = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	icon: Schema.NullOr(Schema.String),
+	approximate_member_count: Schema.optional(Schema.Number),
+})
+
+/**
  * Discord API Client for bot operations.
  * Uses the Bot Token for authentication.
  */
@@ -113,11 +135,75 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 				return yield* response.json
 			})
 
+		/**
+		 * Get all guilds the bot is a member of.
+		 * Uses /users/@me/guilds endpoint with with_counts=true for member count.
+		 */
+		const getBotGuilds = () =>
+			Effect.gen(function* () {
+				const client = makeAuthenticatedClient()
+				const response = yield* client.get("/users/@me/guilds?with_counts=true").pipe(Effect.scoped)
+
+				if (response.status >= 400) {
+					return yield* Effect.fail(new Error(`Discord API error: ${response.status}`))
+				}
+
+				const json = yield* response.json
+				return yield* Schema.decodeUnknown(Schema.Array(DiscordBotGuild))(json)
+			})
+
+		/**
+		 * Create a webhook in a Discord channel.
+		 * Returns the webhook details including ID and URL.
+		 */
+		const createWebhook = (channelId: string, name: string) =>
+			Effect.gen(function* () {
+				const client = makeAuthenticatedClient()
+				const body = JSON.stringify({
+					name,
+				})
+
+				const response = yield* client
+					.post(`/channels/${channelId}/webhooks`, {
+						body: HttpBody.text(body, "application/json"),
+					})
+					.pipe(Effect.scoped)
+
+				if (response.status >= 400) {
+					const errorBody = yield* response.text
+					return yield* Effect.fail(
+						new Error(`Discord API error: ${response.status} - ${errorBody}`),
+					)
+				}
+
+				const json = yield* response.json
+				return yield* Schema.decodeUnknown(DiscordWebhook)(json)
+			})
+
+		/**
+		 * Get webhooks for a channel.
+		 */
+		const getChannelWebhooks = (channelId: string) =>
+			Effect.gen(function* () {
+				const client = makeAuthenticatedClient()
+				const response = yield* client.get(`/channels/${channelId}/webhooks`).pipe(Effect.scoped)
+
+				if (response.status >= 400) {
+					return yield* Effect.fail(new Error(`Discord API error: ${response.status}`))
+				}
+
+				const json = yield* response.json
+				return yield* Schema.decodeUnknown(Schema.Array(DiscordWebhook))(json)
+			})
+
 		return {
 			getGuild,
 			getGuildChannels,
 			getAccountInfo,
 			sendMessage,
+			getBotGuilds,
+			createWebhook,
+			getChannelWebhooks,
 		}
 	}),
 	dependencies: [FetchHttpClient.layer],

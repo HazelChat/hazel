@@ -26,7 +26,8 @@ type SyncDirection = ExternalChannelLink.SyncDirection
 interface DiscordChannel {
 	id: string
 	name: string
-	type: string
+	type: number
+	parentId: string | null
 }
 
 interface AddChannelMappingModalProps {

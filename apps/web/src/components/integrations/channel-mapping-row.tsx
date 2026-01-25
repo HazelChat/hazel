@@ -113,9 +113,9 @@ export function ChannelMappingRow({ link, hazelChannelName, onLinkChange }: Chan
 			<div className="flex items-center gap-2">
 				<div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#5865F2]">
 					<img
-						src="https://cdn.brandfetch.io/discord.com/w/32/h/32/theme/dark/symbol"
+						src="https://cdn.brandfetch.io/discord.com/w/512/h/512/theme/light/symbol"
 						alt="Discord"
-						className="size-4"
+						className="size-5 object-contain"
 					/>
 				</div>
 				<div>

@@ -19,6 +19,7 @@ import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
+import { DiscordPolicy } from "./policies/discord-policy"
 import { ExternalChannelLinkPolicy } from "./policies/external-channel-link-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
@@ -158,6 +159,7 @@ const PolicyLive = Layer.mergeAll(
 	ExternalChannelLinkPolicy.Default,
 	GitHubSubscriptionPolicy.Default,
 	BotPolicy.Default,
+	DiscordPolicy.Default,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)

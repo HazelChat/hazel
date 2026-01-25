@@ -18,15 +18,19 @@ import { ChannelMappingRow } from "./channel-mapping-row"
 
 interface DiscordChannelMappingsProps {
 	organizationId: OrganizationId
+	guildId: string | null
 }
 
-export function DiscordChannelMappings({ organizationId }: DiscordChannelMappingsProps) {
+export function DiscordChannelMappings({ organizationId, guildId }: DiscordChannelMappingsProps) {
 	const [links, setLinks] = useState<ExternalChannelLinkData[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [isModalOpen, setIsModalOpen] = useState(false)
 
-	// Fetch Discord channels (hardcoded for now)
-	const discordChannels = useDiscordChannels(organizationId)
+	// Fetch Discord channels from the connected guild
+	const { channels: discordChannels, isLoading: isLoadingChannels } = useDiscordChannels(
+		organizationId,
+		guildId,
+	)
 
 	// Fetch Hazel channels for this organization (non-thread channels only)
 	const { data: hazelChannels } = useLiveQuery(
@@ -94,7 +98,7 @@ export function DiscordChannelMappings({ organizationId }: DiscordChannelMapping
 			</div>
 
 			<div className="p-4">
-				{isLoading ? (
+				{isLoading || isLoadingChannels ? (
 					<div className="flex items-center justify-center py-8">
 						<Loader className="size-5" />
 					</div>
