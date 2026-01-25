@@ -92,6 +92,8 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					installation_id: Schema.optional(Schema.String),
 					// GitHub also sends setup_action (e.g., "install", "update")
 					setup_action: Schema.optional(Schema.String),
+					// Discord bot OAuth returns the guild (server) the bot was added to
+					guild_id: Schema.optional(Schema.String),
 				}),
 			)
 			.annotateContext(

@@ -207,6 +207,43 @@ export const integrations: Integration[] = [
 		],
 		configOptions: [],
 	},
+	{
+		id: "discord",
+		name: "Discord",
+		description: "Sync messages between Hazel and Discord channels.",
+		fullDescription:
+			"Connect your Discord server to sync messages bidirectionally between Hazel and Discord channels. Keep conversations synchronized across platforms with thread support and rich embed previews.",
+		logoDomain: "discord.com",
+		logoType: "symbol",
+		brandColor: "#5865F2",
+		category: "communication",
+		features: [
+			"Bidirectional message sync",
+			"Thread synchronization",
+			"Rich embed support",
+			"Flexible sync directions",
+		],
+		configOptions: [],
+	},
+	{
+		id: "slack",
+		name: "Slack",
+		description: "Sync messages between Hazel and Slack channels.",
+		fullDescription:
+			"Connect your Slack workspace to sync messages bidirectionally between Hazel and Slack channels. Keep conversations synchronized across platforms with thread support and rich message formatting.",
+		logoDomain: "slack.com",
+		logoType: "symbol",
+		brandColor: "#4A154B",
+		category: "communication",
+		features: [
+			"Bidirectional message sync",
+			"Thread synchronization",
+			"Rich message formatting",
+			"Flexible sync directions",
+		],
+		configOptions: [],
+		comingSoon: true,
+	},
 ]
 
 export const categories = [

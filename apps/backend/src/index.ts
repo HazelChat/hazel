@@ -19,6 +19,7 @@ import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
+import { ExternalChannelLinkPolicy } from "./policies/external-channel-link-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
 import { InvitationPolicy } from "./policies/invitation-policy"
@@ -36,6 +37,7 @@ import { ChannelMemberRepo } from "./repositories/channel-member-repo"
 import { ChannelRepo } from "./repositories/channel-repo"
 import { ChannelSectionRepo } from "./repositories/channel-section-repo"
 import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
+import { ExternalChannelLinkRepo } from "./repositories/external-channel-link-repo"
 import { BotCommandRepo } from "./repositories/bot-command-repo"
 import { BotInstallationRepo } from "./repositories/bot-installation-repo"
 import { BotRepo } from "./repositories/bot-repo"
@@ -129,6 +131,7 @@ const RepoLive = Layer.mergeAll(
 	IntegrationConnectionRepo.Default,
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
+	ExternalChannelLinkRepo.Default,
 	GitHubSubscriptionRepo.Default,
 	BotRepo.Default,
 	BotCommandRepo.Default,
@@ -152,6 +155,7 @@ const PolicyLive = Layer.mergeAll(
 	UserPresenceStatusPolicy.Default,
 	IntegrationConnectionPolicy.Default,
 	ChannelWebhookPolicy.Default,
+	ExternalChannelLinkPolicy.Default,
 	GitHubSubscriptionPolicy.Default,
 	BotPolicy.Default,
 )

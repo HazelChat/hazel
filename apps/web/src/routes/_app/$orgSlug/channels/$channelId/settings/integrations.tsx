@@ -175,7 +175,7 @@ function IntegrationsPage() {
 					</div>
 					<div className="flex flex-col gap-0.5">
 						<span className="font-medium text-muted-fg">More integrations coming soon</span>
-						<span className="text-muted-fg/70 text-sm">Slack, Linear, and more</span>
+						<span className="text-muted-fg/70 text-sm">Linear, and more</span>
 					</div>
 				</div>
 			</div>

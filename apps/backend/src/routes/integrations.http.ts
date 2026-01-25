@@ -221,10 +221,11 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		state?: string
 		installation_id?: string
 		setup_action?: string
+		guild_id?: string
 	},
 ) {
 	const { provider } = path
-	const { code, state: encodedState, installation_id, setup_action } = urlParams
+	const { code, state: encodedState, installation_id, setup_action, guild_id } = urlParams
 
 	// Get request to read cookies
 	const request = yield* HttpServerRequest.HttpServerRequest
@@ -512,7 +513,11 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		provider,
 	})
 
-	const accountInfoResult = yield* oauthProvider.getAccountInfo(tokens.accessToken).pipe(
+	// For Discord bot OAuth, we pass guild_id instead of access token
+	// because Discord's getAccountInfo uses the bot token to fetch guild info
+	const accountInfoParam = provider === "discord" && guild_id ? guild_id : tokens.accessToken
+
+	const accountInfoResult = yield* oauthProvider.getAccountInfo(accountInfoParam).pipe(
 		Effect.retry({
 			schedule: oauthRetrySchedule,
 			while: isRetryableError,
@@ -540,7 +545,12 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 
 	// Prepare connection metadata
 	// For GitHub App, store the installation ID for token regeneration
-	const metadata = isGitHubAppCallback ? { installationId: installation_id } : null
+	// For Discord, store the guild_id for API calls
+	const metadata = isGitHubAppCallback
+		? { installationId: installation_id }
+		: provider === "discord" && guild_id
+			? { guildId: guild_id }
+			: null
 
 	// Create or update connection
 	yield* Effect.logDebug("OAuth database upsert starting", {

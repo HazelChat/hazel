@@ -6,6 +6,7 @@ import {
 	ChannelRpcs,
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
+	ExternalChannelLinkRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
 	InvitationRpcs,
@@ -26,6 +27,7 @@ import { ChannelMemberRpcLive } from "./handlers/channel-members"
 import { ChannelSectionRpcLive } from "./handlers/channel-sections"
 import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
+import { ExternalChannelLinkRpcLive } from "./handlers/external-channel-links"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
 import { InvitationRpcLive } from "./handlers/invitations"
@@ -70,30 +72,47 @@ export const AllRpcs = MessageRpcs.merge(
 	ChannelMemberRpcs,
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
+	ExternalChannelLinkRpcs,
 	GitHubSubscriptionRpcs,
 	AttachmentRpcs,
 	BotRpcs,
 ).middleware(RpcLoggingMiddleware)
 
-export const RpcServerLive = Layer.empty.pipe(
-	Layer.provideMerge(MessageRpcLive),
-	Layer.provideMerge(MessageReactionRpcLive),
-	Layer.provideMerge(NotificationRpcLive),
-	Layer.provideMerge(InvitationRpcLive),
-	Layer.provideMerge(IntegrationRequestRpcLive),
-	Layer.provideMerge(TypingIndicatorRpcLive),
-	Layer.provideMerge(PinnedMessageRpcLive),
-	Layer.provideMerge(OrganizationRpcLive),
-	Layer.provideMerge(OrganizationMemberRpcLive),
-	Layer.provideMerge(UserRpcLive),
-	Layer.provideMerge(UserPresenceStatusRpcLive),
-	Layer.provideMerge(ChannelRpcLive),
-	Layer.provideMerge(ChannelMemberRpcLive),
-	Layer.provideMerge(ChannelSectionRpcLive),
-	Layer.provideMerge(ChannelWebhookRpcLive),
-	Layer.provideMerge(GitHubSubscriptionRpcLive),
-	Layer.provideMerge(AttachmentRpcLive),
-	Layer.provideMerge(BotRpcLive),
-	Layer.provideMerge(AuthMiddlewareLive),
-	Layer.provideMerge(RpcLoggingMiddlewareLive),
+// Split into smaller groups to avoid TypeScript limit on chained Layer.provideMerge
+const MessageHandlers = Layer.mergeAll(
+	MessageRpcLive,
+	MessageReactionRpcLive,
+	NotificationRpcLive,
+	InvitationRpcLive,
+	IntegrationRequestRpcLive,
+	TypingIndicatorRpcLive,
+	PinnedMessageRpcLive,
+)
+
+const OrgHandlers = Layer.mergeAll(
+	OrganizationRpcLive,
+	OrganizationMemberRpcLive,
+	UserRpcLive,
+	UserPresenceStatusRpcLive,
+)
+
+const ChannelHandlers = Layer.mergeAll(
+	ChannelRpcLive,
+	ChannelMemberRpcLive,
+	ChannelSectionRpcLive,
+	ChannelWebhookRpcLive,
+	ExternalChannelLinkRpcLive,
+	GitHubSubscriptionRpcLive,
+)
+
+const OtherHandlers = Layer.mergeAll(AttachmentRpcLive, BotRpcLive)
+
+const MiddlewareLayers = Layer.mergeAll(AuthMiddlewareLive, RpcLoggingMiddlewareLive)
+
+export const RpcServerLive = Layer.mergeAll(
+	MessageHandlers,
+	OrgHandlers,
+	ChannelHandlers,
+	OtherHandlers,
+	MiddlewareLayers,
 )

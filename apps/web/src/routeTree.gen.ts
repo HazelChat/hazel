@@ -50,6 +50,7 @@ import { Route as AppOrgSlugChatIdIndexRouteImport } from './routes/_app/$orgSlu
 import { Route as AppOrgSlugSettingsIntegrationsYourAppsRouteImport } from './routes/_app/$orgSlug/settings/integrations/your-apps'
 import { Route as AppOrgSlugSettingsIntegrationsMarketplaceRouteImport } from './routes/_app/$orgSlug/settings/integrations/marketplace'
 import { Route as AppOrgSlugSettingsIntegrationsInstalledRouteImport } from './routes/_app/$orgSlug/settings/integrations/installed'
+import { Route as AppOrgSlugSettingsIntegrationsDiscordRouteImport } from './routes/_app/$orgSlug/settings/integrations/discord'
 import { Route as AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport } from './routes/_app/$orgSlug/settings/integrations/$integrationId'
 import { Route as AppOrgSlugChannelsChannelIdSettingsLayoutRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/layout'
 import { Route as AppOrgSlugChatIdFilesIndexRouteImport } from './routes/_app/$orgSlug/chat/$id/files/index'
@@ -281,6 +282,12 @@ const AppOrgSlugSettingsIntegrationsInstalledRoute =
     path: '/installed',
     getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
   } as any)
+const AppOrgSlugSettingsIntegrationsDiscordRoute =
+  AppOrgSlugSettingsIntegrationsDiscordRouteImport.update({
+    id: '/discord',
+    path: '/discord',
+    getParentRoute: () => AppOrgSlugSettingsIntegrationsLayoutRoute,
+  } as any)
 const AppOrgSlugSettingsIntegrationsIntegrationIdRoute =
   AppOrgSlugSettingsIntegrationsIntegrationIdRouteImport.update({
     id: '/$integrationId',
@@ -362,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/$orgSlug/settings/integrations/discord': typeof AppOrgSlugSettingsIntegrationsDiscordRoute
   '/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
   '/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
   '/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
@@ -404,6 +412,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsIndexRoute
   '/$orgSlug/settings': typeof AppOrgSlugSettingsIndexRoute
   '/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/$orgSlug/settings/integrations/discord': typeof AppOrgSlugSettingsIntegrationsDiscordRoute
   '/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
   '/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
   '/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
@@ -455,6 +464,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/settings/': typeof AppOrgSlugSettingsIndexRoute
   '/_app/$orgSlug/channels/$channelId/settings': typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
   '/_app/$orgSlug/settings/integrations/$integrationId': typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  '/_app/$orgSlug/settings/integrations/discord': typeof AppOrgSlugSettingsIntegrationsDiscordRoute
   '/_app/$orgSlug/settings/integrations/installed': typeof AppOrgSlugSettingsIntegrationsInstalledRoute
   '/_app/$orgSlug/settings/integrations/marketplace': typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
   '/_app/$orgSlug/settings/integrations/your-apps': typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
@@ -506,6 +516,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/'
     | '/$orgSlug/channels/$channelId/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
+    | '/$orgSlug/settings/integrations/discord'
     | '/$orgSlug/settings/integrations/installed'
     | '/$orgSlug/settings/integrations/marketplace'
     | '/$orgSlug/settings/integrations/your-apps'
@@ -548,6 +559,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications'
     | '/$orgSlug/settings'
     | '/$orgSlug/settings/integrations/$integrationId'
+    | '/$orgSlug/settings/integrations/discord'
     | '/$orgSlug/settings/integrations/installed'
     | '/$orgSlug/settings/integrations/marketplace'
     | '/$orgSlug/settings/integrations/your-apps'
@@ -598,6 +610,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/settings/'
     | '/_app/$orgSlug/channels/$channelId/settings'
     | '/_app/$orgSlug/settings/integrations/$integrationId'
+    | '/_app/$orgSlug/settings/integrations/discord'
     | '/_app/$orgSlug/settings/integrations/installed'
     | '/_app/$orgSlug/settings/integrations/marketplace'
     | '/_app/$orgSlug/settings/integrations/your-apps'
@@ -913,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsInstalledRouteImport
       parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
     }
+    '/_app/$orgSlug/settings/integrations/discord': {
+      id: '/_app/$orgSlug/settings/integrations/discord'
+      path: '/discord'
+      fullPath: '/$orgSlug/settings/integrations/discord'
+      preLoaderRoute: typeof AppOrgSlugSettingsIntegrationsDiscordRouteImport
+      parentRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRoute
+    }
     '/_app/$orgSlug/settings/integrations/$integrationId': {
       id: '/_app/$orgSlug/settings/integrations/$integrationId'
       path: '/$integrationId'
@@ -1008,6 +1028,7 @@ const AppOrgSlugNotificationsLayoutRouteWithChildren =
 
 interface AppOrgSlugSettingsIntegrationsLayoutRouteChildren {
   AppOrgSlugSettingsIntegrationsIntegrationIdRoute: typeof AppOrgSlugSettingsIntegrationsIntegrationIdRoute
+  AppOrgSlugSettingsIntegrationsDiscordRoute: typeof AppOrgSlugSettingsIntegrationsDiscordRoute
   AppOrgSlugSettingsIntegrationsInstalledRoute: typeof AppOrgSlugSettingsIntegrationsInstalledRoute
   AppOrgSlugSettingsIntegrationsMarketplaceRoute: typeof AppOrgSlugSettingsIntegrationsMarketplaceRoute
   AppOrgSlugSettingsIntegrationsYourAppsRoute: typeof AppOrgSlugSettingsIntegrationsYourAppsRoute
@@ -1018,6 +1039,8 @@ const AppOrgSlugSettingsIntegrationsLayoutRouteChildren: AppOrgSlugSettingsInteg
   {
     AppOrgSlugSettingsIntegrationsIntegrationIdRoute:
       AppOrgSlugSettingsIntegrationsIntegrationIdRoute,
+    AppOrgSlugSettingsIntegrationsDiscordRoute:
+      AppOrgSlugSettingsIntegrationsDiscordRoute,
     AppOrgSlugSettingsIntegrationsInstalledRoute:
       AppOrgSlugSettingsIntegrationsInstalledRoute,
     AppOrgSlugSettingsIntegrationsMarketplaceRoute:

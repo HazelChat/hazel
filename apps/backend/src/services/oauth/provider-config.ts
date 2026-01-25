@@ -93,8 +93,11 @@ export const PROVIDER_CONFIGS: Record<
 		provider: "discord",
 		authorizationUrl: "https://discord.com/api/oauth2/authorize",
 		tokenUrl: "https://discord.com/api/oauth2/token",
-		scopes: ["bot", "applications.commands"],
+		scopes: ["bot", "guilds"],
 		scopeDelimiter: " ",
+		additionalAuthParams: {
+			permissions: "395137116224",
+		},
 	},
 	slack: {
 		provider: "slack",
