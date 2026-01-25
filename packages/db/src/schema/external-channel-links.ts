@@ -16,15 +16,13 @@ import { integrationProviderEnum } from "./integration-connections"
 export const syncDirectionEnum = pgEnum("sync_direction", ["inbound", "outbound", "bidirectional"])
 
 // Provider-specific config types
+// Outbound messages are sent via Discord REST API using the bot token
 export interface DiscordChannelConfig {
 	provider: "discord"
-	outboundWebhookUrl?: string
-	outboundWebhookId?: string
 }
 
 export interface SlackChannelConfig {
 	provider: "slack"
-	outboundWebhookUrl?: string
 	botToken?: string
 }
 

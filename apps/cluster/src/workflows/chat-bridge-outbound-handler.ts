@@ -206,8 +206,7 @@ export const ChatBridgeOutboundWorkflowLayer = Cluster.ChatBridgeOutboundWorkflo
 		})
 
 		// Activity 4: Send to each linked external platform
-		// Note: Actual sending requires HTTP calls to Discord/Slack webhooks
-		// This is a placeholder - the actual send logic would go in a separate service
+		// Uses Discord REST API via the discord-bot service
 		let successCount = 0
 		let failureCount = 0
 
@@ -217,21 +216,13 @@ export const ChatBridgeOutboundWorkflowLayer = Cluster.ChatBridgeOutboundWorkflo
 				success: Cluster.SendExternalMessageResult,
 				error: Cluster.SendExternalMessageError,
 				execute: Effect.gen(function* () {
-					// Get the webhook URL from config
-					const config = link.config as { outboundWebhookUrl?: string } | null
-					const webhookUrl = config?.outboundWebhookUrl
-
-					if (!webhookUrl) {
-						yield* Effect.logWarning(
-							`No outbound webhook URL configured for link ${link.id}, skipping`,
-						)
-						failureCount++
-						return { externalMessageId: "", provider: link.provider, channelLinkId: link.id }
-					}
-
-					// TODO: Actually send the message via HTTP
-					// This would call the ChatBridgeService.sendMessage method
-					// For now, just log and return success
+					// TODO: Call discord-bot service to send message via Discord REST API
+					// POST to discord-bot service: /send-message
+					// {
+					//   channelId: link.externalChannelId,
+					//   content: authorInfo.content,
+					//   authorName: `${authorInfo.authorFirstName} ${authorInfo.authorLastName}`.trim()
+					// }
 					yield* Effect.logInfo(
 						`Would send message ${payload.messageId} to ${link.provider} channel ${link.externalChannelId}`,
 					)

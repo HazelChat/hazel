@@ -8,16 +8,14 @@ export const SyncDirection = Schema.Literal("inbound", "outbound", "bidirectiona
 export type SyncDirection = Schema.Schema.Type<typeof SyncDirection>
 
 // Discord-specific config
+// Outbound messages are sent via Discord REST API using the bot token
 export const DiscordChannelConfig = Schema.Struct({
 	provider: Schema.Literal("discord"),
-	outboundWebhookUrl: Schema.optional(Schema.String),
-	outboundWebhookId: Schema.optional(Schema.String),
 })
 
 // Slack-specific config
 export const SlackChannelConfig = Schema.Struct({
 	provider: Schema.Literal("slack"),
-	outboundWebhookUrl: Schema.optional(Schema.String),
 	botToken: Schema.optional(Schema.String),
 })
 

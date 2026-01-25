@@ -63,13 +63,23 @@ const triggerInboundWorkflow = async (payload) => {
 
 ## Step 4: Outbound Sync (Hazel -> Discord)
 
-The outbound workflow in cluster needs to be updated to actually send messages.
-Currently has a TODO. Options:
+Use Discord REST API via bot token to send messages to channels:
 
-1. Call Discord webhook URL stored in channel link config
-2. Use Discord REST API via bot token (send message to channel)
+```typescript
+import { REST, Routes } from "discord.js"
 
-Option 1 is simpler and already partially implemented in cluster.
+const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_BOT_TOKEN)
+
+const sendMessageToDiscord = async (channelId: string, content: string, authorName: string) => {
+  await rest.post(Routes.channelMessages(channelId), {
+    body: {
+      content: `**${authorName}**: ${content}`,
+    },
+  })
+}
+```
+
+The cluster outbound workflow should call this bot service to send messages.
 
 ## Effect-TS Integration
 
