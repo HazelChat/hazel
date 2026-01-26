@@ -192,7 +192,11 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 				"Set-Cookie": cookieHeader,
 			},
 		},
-	).pipe(Effect.orDie)
+	).pipe(
+		Effect.catchTag("HttpBodyError", (e) =>
+			Effect.fail(new InternalServerError({ message: "Failed to serialize response", detail: String(e) })),
+		),
+	)
 })
 
 /**
