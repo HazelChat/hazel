@@ -14,7 +14,7 @@ import { Config } from "effect"
  * - BOT_TOKEN (required) - Bot authentication token
  * - ELECTRIC_URL (optional) - Electric SQL proxy URL
  * - BACKEND_URL (optional) - Backend API URL
- * - REDIS_URL (optional) - Redis URL for command delivery
+ * - DURABLE_STREAM_URL (optional) - Durable stream server URL for command delivery
  */
 export const BotEnvConfig = Config.all({
 	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
@@ -26,9 +26,9 @@ export const BotEnvConfig = Config.all({
 		Config.withDefault("http://localhost:3003"),
 		Config.withDescription("Backend API URL"),
 	),
-	redisUrl: Config.string("REDIS_URL").pipe(
-		Config.withDefault("redis://localhost:6379"),
-		Config.withDescription("Redis URL for command delivery"),
+	durableStreamUrl: Config.string("DURABLE_STREAM_URL").pipe(
+		Config.withDefault("http://localhost:4437"),
+		Config.withDescription("Durable stream server URL for command delivery"),
 	),
 })
 

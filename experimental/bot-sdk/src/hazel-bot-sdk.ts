@@ -29,6 +29,7 @@ import {
 	ManagedRuntime,
 	Option,
 	RateLimiter,
+	Redacted,
 	Schema,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
@@ -44,10 +45,10 @@ import type { HandlerError } from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
+	DurableStreamCommandListener,
+	DurableStreamCommandListenerConfigTag,
 	ElectricEventQueue,
 	EventDispatcher,
-	RedisCommandListener,
-	RedisCommandListenerConfigTag,
 	ShapeStreamSubscriber,
 } from "./services/index.ts"
 
@@ -172,7 +173,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		// Try to get the command listener (optional - only available if commands are configured)
-		const commandListenerOption = yield* Effect.serviceOption(RedisCommandListener)
+		const commandListenerOption = yield* Effect.serviceOption(DurableStreamCommandListener)
 
 		// Command handler registry - stores handlers keyed by command name
 		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
@@ -661,12 +662,12 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly backendUrl?: string
 
 	/**
-	 * Redis URL for command delivery
+	 * Durable stream server URL for command delivery
 	 * Required if commands are defined
-	 * @default "redis://localhost:6379"
-	 * @example "redis://localhost:6379" // For local development
+	 * @default "http://localhost:4437"
+	 * @example "http://localhost:4437" // For local development
 	 */
-	readonly redisUrl?: string
+	readonly durableStreamUrl?: string
 
 	/**
 	 * Bot authentication token (required)
@@ -752,7 +753,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Apply defaults for URLs
 	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
-	const redisUrl = config.redisUrl ?? "redis://localhost:6379"
+	const durableStreamUrl = config.durableStreamUrl ?? "http://localhost:4437"
 
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(
@@ -796,15 +797,15 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
-	// Create Redis command listener layer if commands are configured
+	// Create durable stream command listener layer if commands are configured
 	const hasCommands = config.commands && config.commands.commands.length > 0
-	const RedisCommandListenerLayer = hasCommands
+	const CommandListenerLayer = hasCommands
 		? Layer.provide(
-				RedisCommandListener.Default,
+				DurableStreamCommandListener.Default,
 				Layer.merge(
-					Layer.succeed(RedisCommandListenerConfigTag, {
-						redisUrl,
-						botToken: config.botToken,
+					Layer.succeed(DurableStreamCommandListenerConfigTag, {
+						durableStreamUrl,
+						botToken: Redacted.make(config.botToken),
 					}),
 					AuthLayer,
 				),
@@ -862,7 +863,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
 		Layer.provide(RpcClientConfigLayer),
-		Layer.provide(RedisCommandListenerLayer),
+		Layer.provide(CommandListenerLayer),
 		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(
 			Layer.mergeAll(

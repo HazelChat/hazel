@@ -78,22 +78,9 @@ export class TransientError extends Schema.TaggedError<TransientError>()("Transi
  */
 export class ConnectionError extends Schema.TaggedError<ConnectionError>()("ConnectionError", {
 	message: Schema.String,
-	service: Schema.Literal("redis", "electric", "backend"),
+	service: Schema.Literal("electric", "backend", "durable-stream"),
 	cause: Schema.Unknown,
 }) {
-	readonly retryable = true
-}
-
-/**
- * Error thrown when Redis subscription fails
- */
-export class RedisSubscriptionError extends Schema.TaggedError<RedisSubscriptionError>()(
-	"RedisSubscriptionError",
-	{
-		message: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {
 	readonly retryable = true
 }
 

@@ -13,6 +13,8 @@ export interface BotConfig {
 	readonly dispatcherConfig?: EventDispatcherConfig
 	/** Service name for tracing (defaults to "bot") */
 	readonly serviceName?: string
+	/** Durable stream server URL for command delivery */
+	readonly durableStreamUrl?: string
 }
 
 /**
