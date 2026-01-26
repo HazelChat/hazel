@@ -2,12 +2,7 @@ import { describe, expect, it, afterEach, beforeEach } from "@effect/vitest"
 import { vi } from "vitest"
 import { testPayloads } from "./__fixtures__/payloads"
 import { GITHUB_COLORS } from "./colors"
-import {
-	buildIssueEmbed,
-	buildPullRequestEmbed,
-	buildPushEmbed,
-	buildReleaseEmbed,
-} from "./embed-builder"
+import { buildIssueEmbed, buildPullRequestEmbed, buildPushEmbed, buildReleaseEmbed } from "./embed-builder"
 
 describe("GitHub embed builder", () => {
 	const fixedNow = new Date("2025-01-01T00:00:00.000Z")

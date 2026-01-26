@@ -9,12 +9,12 @@ import {
 	BotNotInstalledError,
 	SyncBotCommandsResponse,
 } from "@hazel/domain/http"
-import { Redis } from "@hazel/effect-bun"
 import { Effect, Option, Schema } from "effect"
-import { HazelApi } from "../api"
-import { BotCommandRepo } from "../repositories/bot-command-repo"
-import { BotInstallationRepo } from "../repositories/bot-installation-repo"
-import { BotRepo } from "../repositories/bot-repo"
+import { HazelApi } from "../api.ts"
+import { BotCommandRepo } from "../repositories/bot-command-repo.ts"
+import { BotInstallationRepo } from "../repositories/bot-installation-repo.ts"
+import { BotRepo } from "../repositories/bot-repo.ts"
+import { DurableStreamClient } from "../services/durable-stream-client.ts"
 
 /**
  * Hash a token using SHA-256 (Web Crypto API)
@@ -162,7 +162,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				const botRepo = yield* BotRepo
 				const commandRepo = yield* BotCommandRepo
 				const installationRepo = yield* BotInstallationRepo
-				const redis = yield* Redis
+				const durableStream = yield* DurableStreamClient
 
 				// Verify bot exists
 				const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
@@ -199,7 +199,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					argsMap[arg.name] = arg.value
 				}
 
-				// Publish command event to Redis
+				// Publish command event to durable stream
 				const commandEvent = {
 					type: "command" as const,
 					commandName,
@@ -210,10 +210,9 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					timestamp: Date.now(),
 				}
 
-				const channel = `bot:${botId}:commands`
-				yield* redis.publish(channel, JSON.stringify(commandEvent))
+				yield* durableStream.publishBotCommand(botId, commandEvent)
 
-				yield* Effect.logDebug(`Published command ${commandName} to ${channel}`)
+				yield* Effect.logDebug(`Published command ${commandName} to durable stream for bot ${botId}`)
 
 				return new BotCommandExecutionAccepted({
 					message: "Command sent to bot",
@@ -227,36 +226,12 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 								detail: String(error),
 							}),
 						),
-					RedisError: (error) =>
+					DurableStreamError: (error) =>
 						Effect.fail(
 							new BotCommandExecutionError({
 								commandName: path.commandName,
 								message: "Failed to publish command to bot",
-								details: String(error),
-							}),
-						),
-					RedisConnectionClosedError: (error) =>
-						Effect.fail(
-							new BotCommandExecutionError({
-								commandName: path.commandName,
-								message: "Redis connection closed",
-								details: String(error),
-							}),
-						),
-					RedisAuthenticationError: (error) =>
-						Effect.fail(
-							new BotCommandExecutionError({
-								commandName: path.commandName,
-								message: "Redis authentication failed",
-								details: String(error),
-							}),
-						),
-					RedisInvalidResponseError: (error) =>
-						Effect.fail(
-							new BotCommandExecutionError({
-								commandName: path.commandName,
-								message: "Invalid Redis response",
-								details: String(error),
+								details: String(error.message),
 							}),
 						),
 				}),

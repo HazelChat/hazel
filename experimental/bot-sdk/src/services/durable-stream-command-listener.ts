@@ -60,10 +60,9 @@ export interface DurableStreamCommandListenerConfig {
 	readonly botToken: Redacted.Redacted<string>
 }
 
-export const DurableStreamCommandListenerConfigTag =
-	Context.GenericTag<DurableStreamCommandListenerConfig>(
-		"@hazel/bot-sdk/DurableStreamCommandListenerConfig",
-	)
+export const DurableStreamCommandListenerConfigTag = Context.GenericTag<DurableStreamCommandListenerConfig>(
+	"@hazel/bot-sdk/DurableStreamCommandListenerConfig",
+)
 
 // ============ Error ============
 
@@ -254,7 +253,10 @@ export class DurableStreamCommandListener extends Effect.Service<DurableStreamCo
 
 								const commandResult = yield* Schema.decodeUnknown(CommandEventSchema)(
 									parsed,
-								).pipe(Effect.map(Option.some), Effect.catchAll(() => Effect.succeed(Option.none())))
+								).pipe(
+									Effect.map(Option.some),
+									Effect.catchAll(() => Effect.succeed(Option.none())),
+								)
 
 								return commandResult
 							}

@@ -65,6 +65,7 @@ import { WebhookBotService } from "./services/webhook-bot-service"
 import { WorkOS } from "./services/workos"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
+import { DurableStreamClientLive } from "./services/durable-stream-client"
 
 export { HazelApi }
 
@@ -170,6 +171,7 @@ const MainLive = Layer.mergeAll(
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
 	RateLimiter.Default,
+	DurableStreamClientLive,
 	// SessionManager.Default includes BackendAuth.Default via dependencies
 	SessionManager.Default,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
