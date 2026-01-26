@@ -1,12 +1,13 @@
 import type { Attachment, Channel, Message, User } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { and, eq, gt, ilike, inArray, lt, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, gt, ilike, inArray, isNull, lt, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import {
 	attachmentCollection,
 	channelCollection,
 	channelMemberCollection,
 	messageCollection,
+	organizationMemberCollection,
 	userCollection,
 } from "~/db/collections"
 import { parseDateFilter, type SearchFilter } from "~/lib/search-filter-parser"
@@ -229,20 +230,28 @@ export function useSearchQuery({
  * Hook to get user suggestions for "from:" filter autocomplete
  */
 export function useUserSuggestions(partial: string, organizationId: OrganizationId | null) {
-	// Query users, filter by partial match on firstName
-	// Note: Electric proxy already filters users to only those in same organizations
+	// Query users by firstName, filtered by organization membership
 	const { data: users } = useLiveQuery(
 		(q) => {
 			if (!organizationId) return null
 
-			let query = q.from({ user: userCollection })
+			let query = q
+				.from({ user: userCollection })
+				.innerJoin({ member: organizationMemberCollection }, ({ user, member }) =>
+					eq(user.id, member.userId),
+				)
+				.where(({ member }) =>
+					and(eq(member.organizationId, organizationId), isNull(member.deletedAt)),
+				)
 
-			// If there's a partial search term, filter in the query
 			if (partial.length > 0) {
 				query = query.where(({ user }) => ilike(user.firstName, `%${partial}%`))
 			}
 
-			return query.orderBy(({ user }) => user.firstName, "asc").limit(20)
+			return query
+				.orderBy(({ user }) => user.firstName, "asc")
+				.limit(20)
+				.select(({ user }) => ({ ...user }))
 		},
 		[organizationId, partial],
 	)
@@ -254,9 +263,19 @@ export function useUserSuggestions(partial: string, organizationId: Organization
 
 			return q
 				.from({ user: userCollection })
-				.where(({ user }) => ilike(user.lastName, `%${partial}%`))
+				.innerJoin({ member: organizationMemberCollection }, ({ user, member }) =>
+					eq(user.id, member.userId),
+				)
+				.where(({ user, member }) =>
+					and(
+						eq(member.organizationId, organizationId),
+						isNull(member.deletedAt),
+						ilike(user.lastName, `%${partial}%`),
+					),
+				)
 				.orderBy(({ user }) => user.lastName, "asc")
 				.limit(20)
+				.select(({ user }) => ({ ...user }))
 		},
 		[organizationId, partial],
 	)

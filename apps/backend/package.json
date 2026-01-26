@@ -9,7 +9,7 @@
 		"./rpc/groups/*": "./src/rpc/groups/*.ts"
 	},
 	"scripts": {
-		"dev": "bun run --hot src/index.ts",
+		"dev": "bun run --watch src/index.ts",
 		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit",
 		"setup": "bun run scripts/setup.ts",

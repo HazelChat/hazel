@@ -1,13 +1,7 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
-import {
-	CurrentUser,
-	InternalServerError,
-	OAuthCodeExpiredError,
-	UnauthorizedError,
-	withSystemActor,
-} from "@hazel/domain"
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { Config, Effect, Option, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
 import { UserRepo } from "../repositories/user-repo"
@@ -55,6 +49,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 							clientId,
 							redirectUri,
 							state,
+							screenHint: "sign-in",
 							...(workosOrgId && {
 								organizationId: workosOrgId,
 							}),
@@ -116,34 +111,15 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 		)
 		.handle("logout", ({ urlParams }) =>
 			Effect.gen(function* () {
-				const workos = yield* WorkOS
-				const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
 				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
 
-				// Try to get WorkOS logout URL, fall back to frontend if session is invalid
-				const logoutUrl = yield* workos.getLogoutUrl().pipe(
-					Effect.catchAll(() => {
-						// Session is invalid/expired - redirect to frontend instead
-						const fallbackUrl = urlParams.redirectTo
-							? `${frontendUrl}${urlParams.redirectTo}`
-							: frontendUrl
-						return Effect.succeed(fallbackUrl)
-					}),
-				)
-
-				// Always clear the cookie
-				yield* HttpApiBuilder.securitySetCookie(CurrentUser.Cookie, Redacted.make(""), {
-					secure: true,
-					sameSite: "none",
-					domain: cookieDomain,
-					path: "/",
-					maxAge: 0,
-				})
+				// Build the full return URL - redirect to frontend after logout
+				const returnTo = urlParams.redirectTo ? `${frontendUrl}${urlParams.redirectTo}` : frontendUrl
 
 				return HttpServerResponse.empty({
 					status: 302,
 					headers: {
-						Location: logoutUrl,
+						Location: returnTo,
 					},
 				})
 			}),

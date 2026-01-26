@@ -114,7 +114,7 @@ function TeamSettings() {
 	const handleMessageUser = async (targetUserId: UserId, targetUserName: string) => {
 		if (!user?.id || !organizationId || !orgSlug) return
 
-		const existingChannel = findExistingDmChannel(user.id, [targetUserId])
+		const existingChannel = findExistingDmChannel(user.id, [targetUserId], organizationId)
 
 		if (existingChannel) {
 			navigate({

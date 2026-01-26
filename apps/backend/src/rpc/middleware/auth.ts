@@ -5,7 +5,7 @@ import {
 	SessionNotProvidedError,
 	withSystemActor,
 } from "@hazel/domain"
-import { Config, Effect, Layer, Option } from "effect"
+import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { BotRepo } from "../../repositories/bot-repo"
 import { UserRepo } from "../../repositories/user-repo"
@@ -38,7 +38,6 @@ export const AuthMiddlewareLive = Layer.effect(
 		const sessionManager = yield* SessionManager
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
-		const workOsCookiePassword = yield* Config.string("WORKOS_COOKIE_PASSWORD").pipe(Effect.orDie)
 
 		return AuthMiddleware.of(({ headers }) =>
 			Effect.gen(function* () {
@@ -121,56 +120,13 @@ export const AuthMiddlewareLive = Layer.effect(
 					return botUser
 				}
 
-				// Fall back to WorkOS session cookie authentication
-				const cookieHeader = Headers.get(headers, "cookie")
-
-				if (Option.isNone(cookieHeader)) {
-					return yield* Effect.fail(
-						new SessionNotProvidedError({
-							message: "No session cookie provided",
-							detail: "Authentication required",
-						}),
-					)
-				}
-
-				// Parse cookies to find the workos-session cookie
-				const cookies = cookieHeader.value
-					.split(";")
-					.map((c) => c.trim())
-					.reduce(
-						(acc, cookie) => {
-							const [key, ...valueParts] = cookie.split("=")
-							if (key && valueParts.length > 0) {
-								acc[key] = valueParts.join("=")
-							}
-							return acc
-						},
-						{} as Record<string, string>,
-					)
-
-				const sessionCookie = cookies["workos-session"]
-
-				if (!sessionCookie) {
-					return yield* Effect.fail(
-						new SessionNotProvidedError({
-							message: "No WorkOS session cookie provided",
-							detail: "Authentication required",
-						}),
-					)
-				}
-
-				// Use SessionManager to handle authentication and refresh logic
-				const result = yield* sessionManager.authenticateAndGetUser(
-					sessionCookie,
-					workOsCookiePassword,
+				// No valid authentication provided
+				return yield* Effect.fail(
+					new SessionNotProvidedError({
+						message: "No authentication provided",
+						detail: "Bearer token required",
+					}),
 				)
-
-				// Log if a session was refreshed
-				if (result.refreshedSession) {
-					yield* Effect.logDebug("Session was refreshed during RPC request")
-				}
-
-				return result.currentUser
 			}),
 		)
 	}),

@@ -5,14 +5,11 @@ import {
 	type OrganizationId,
 	SessionLoadError,
 	withSystemActor,
-	WorkOSUserFetchError,
 } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
 import type { UserId } from "@hazel/schema"
 import { Config, Effect, Layer, Option } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
-import { SessionCache } from "../cache/session-cache.ts"
-import { AuthConfig } from "../config.ts"
 import type { BackendAuthResult } from "../types.ts"
 import { SessionValidator } from "../session/session-validator.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -255,20 +252,26 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		 */
 		const authenticateWithBearer = (bearerToken: string, userRepo: UserRepoLike) =>
 			Effect.gen(function* () {
-				// Verify JWT signature using WorkOS JWKS
 				const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
-				const { payload } = yield* Effect.tryPromise({
-					try: () =>
-						jwtVerify(bearerToken, jwks, {
-							issuer: "https://api.workos.com",
-						}),
-					catch: (error) =>
-						new InvalidBearerTokenError({
-							message: `Invalid token: ${error}`,
-							detail: `The provided token is invalid`,
-						}),
-				})
+				// WorkOS can issue tokens with either issuer format:
+				// - SSO/OIDC flow: https://api.workos.com
+				// - User Management flow: https://api.workos.com/user_management/${clientId}
+				const verifyWithIssuer = (issuer: string) =>
+					Effect.tryPromise({
+						try: () => jwtVerify(bearerToken, jwks, { issuer }),
+						catch: (error) =>
+							new InvalidBearerTokenError({
+								message: `JWT verification failed: ${error}`,
+								detail: `Issuer: ${issuer}`,
+							}),
+					})
+
+				const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
+					Effect.orElse(() =>
+						verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
+					),
+				)
 
 				const workOsUserId = payload.sub
 				if (!workOsUserId) {
@@ -313,11 +316,30 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 					onSome: (user) => Effect.succeed(user),
 				})
 
+				// Resolve WorkOS org ID to internal UUID
+				// The JWT contains org_id (WorkOS org ID like "org_01ABC123...")
+				// We need to convert to internal UUID for frontend comparison
+				const workosOrgId = payload.org_id as string | undefined
+				let internalOrgId: OrganizationId | undefined = undefined
+
+				if (workosOrgId) {
+					internalOrgId = yield* workos.getOrganization(workosOrgId).pipe(
+						Effect.map((org) => org.externalId as OrganizationId | undefined),
+						Effect.catchTag("OrganizationFetchError", (error) =>
+							// Log warning but don't fail - org is optional context
+							Effect.logWarning("Failed to resolve org ID from JWT", {
+								workosOrgId,
+								error: error.message,
+							}).pipe(Effect.as(undefined)),
+						),
+					)
+				}
+
 				// Build CurrentUser from JWT payload and DB user
 				const currentUser = new CurrentUser.Schema({
 					id: user.id,
 					role: (payload.role as "admin" | "member" | "owner") || "member",
-					organizationId: payload.externalOrganizationId as OrganizationId | undefined,
+					organizationId: internalOrgId,
 					avatarUrl: user.avatarUrl,
 					firstName: user.firstName,
 					lastName: user.lastName,

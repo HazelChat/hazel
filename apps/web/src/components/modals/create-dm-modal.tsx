@@ -87,8 +87,8 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 
 			const targetUser = organizationUsers?.find((u) => u?.id === value.userIds[0])
 
-			// Check if channel already exists locally
-			const existingChannel = findExistingDmChannel(user.id, value.userIds)
+			// Check if channel already exists locally (within the current organization)
+			const existingChannel = findExistingDmChannel(user.id, value.userIds as UserId[], organizationId)
 
 			// If channel already exists, navigate directly to it
 			if (existingChannel) {

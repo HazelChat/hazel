@@ -71,11 +71,11 @@ function RouteComponent() {
 		})
 	}, [membersData, searchQuery])
 
-	const handleOpenChat = async (targetUserId: string, targetUserName: string) => {
+	const handleOpenChat = async (targetUserId: UserId, targetUserName: string) => {
 		if (!targetUserId || !user?.id || !organizationId) return
 
-		// Check if a DM channel already exists
-		const existingChannel = findExistingDmChannel(user.id, [targetUserId])
+		// Check if a DM channel already exists in this organization
+		const existingChannel = findExistingDmChannel(user.id, [targetUserId], organizationId)
 
 		if (existingChannel) {
 			navigate({
