@@ -253,29 +253,25 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		 * Resolve the internal organization UUID from a WorkOS organization ID.
 		 * WorkOS stores our internal UUID as the organization's externalId.
 		 */
-		const resolveInternalOrgId = (workosOrgId: string | null | undefined) =>
-			Effect.gen(function* () {
-				if (!workosOrgId) {
-					return undefined
-				}
+		const resolveInternalOrgId = Effect.fn("BackendAuth.resolveInternalOrgId")(function* (
+			workosOrgId: string | undefined,
+		) {
+			if (!workosOrgId) {
+				return Option.none<OrganizationId>()
+			}
 
-				const org = yield* workos.getOrganization(workosOrgId).pipe(
-					Effect.catchAll((error) => {
-						// Log warning but don't fail - org lookup is best-effort
-						return Effect.logWarning("Failed to resolve internal org ID from JWT", {
-							workosOrgId,
-							error: String(error),
-						}).pipe(Effect.as(null))
-					}),
-				)
+			const orgResult = yield* workos.getOrganization(workosOrgId).pipe(
+				Effect.map(Option.some),
+				Effect.catchTag("OrganizationFetchError", (error) =>
+					Effect.logWarning("Failed to resolve internal org ID from JWT", {
+						workosOrgId,
+						error: error.message,
+					}).pipe(Effect.as(Option.none())),
+				),
+			)
 
-				if (!org) {
-					return undefined
-				}
-
-				// externalId is our internal organization UUID
-				return (org.externalId as OrganizationId) ?? undefined
-			})
+			return Option.flatMap(orgResult, (org) => Option.fromNullable(org.externalId as OrganizationId))
+		})
 
 		/**
 		 * Authenticate with a WorkOS bearer token (JWT).
@@ -347,13 +343,13 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 				// Resolve internal organization ID from WorkOS org_id claim
 				// The JWT contains org_id (WorkOS org ID), but we need the internal UUID
 				const workosOrgId = payload.org_id as string | undefined
-
 				const internalOrgId = yield* resolveInternalOrgId(workosOrgId)
+
 				// Build CurrentUser from JWT payload and DB user
 				const currentUser = new CurrentUser.Schema({
 					id: user.id,
 					role: (payload.role as "admin" | "member" | "owner") || "member",
-					organizationId: internalOrgId,
+					organizationId: Option.getOrUndefined(internalOrgId),
 					avatarUrl: user.avatarUrl,
 					firstName: user.firstName,
 					lastName: user.lastName,
