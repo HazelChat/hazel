@@ -60,6 +60,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Get OAuth Authorization URL",
@@ -114,6 +115,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Get Connection Status",
@@ -142,7 +144,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					description: "Disconnect an integration and revoke tokens",
 					summary: "Disconnect provider",
 				}),
-			),
+			)
+			.middleware(CurrentUser.Authorization),
 	)
-	.prefix("/integrations")
-	.middleware(CurrentUser.Authorization) {}
+	.prefix("/integrations") {}
