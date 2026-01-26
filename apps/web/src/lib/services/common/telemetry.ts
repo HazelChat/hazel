@@ -34,7 +34,7 @@ export const TracerLive = Layer.unwrapEffect(
 			return Layer.empty
 		}
 
-		return Otlp.layer({
+		return Otlp.layerJson({
 			baseUrl: "https://ingest.eu.signoz.cloud:443",
 			resource: {
 				serviceName: "hazel-web",
