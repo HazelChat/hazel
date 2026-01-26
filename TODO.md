@@ -4,6 +4,7 @@
 - AI Threads/ AI MESSGAES
 
 - rework notification sound system / native notification support
+- rework status system, away gets set way too fast
 
 - replace tanstack form with effect based form
 
