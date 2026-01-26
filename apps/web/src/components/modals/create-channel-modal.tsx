@@ -5,6 +5,7 @@ import { useState } from "react"
 import { ChannelIcon } from "~/components/channel-icon"
 
 import { Button } from "~/components/ui/button"
+import { Checkbox } from "~/components/ui/checkbox"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
@@ -19,6 +20,7 @@ import { exitToastAsync } from "~/lib/toast-exit"
 const channelSchema = type({
 	name: "string > 2",
 	type: "'public'|'private'",
+	addAllMembers: "boolean",
 })
 
 type ChannelFormData = typeof channelSchema.infer
@@ -42,6 +44,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 		defaultValues: {
 			name: "",
 			type: "public" as "public" | "private",
+			addAllMembers: false,
 		} as ChannelFormData,
 		validators: {
 			onChange: channelSchema,
@@ -57,6 +60,7 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 					organizationId,
 					parentChannelId: null,
 					currentUserId: user.id,
+					addAllMembers: value.addAllMembers,
 				}),
 			)
 				.loading("Creating channel...")
@@ -144,6 +148,18 @@ export function CreateChannelModal({ isOpen, onOpenChange }: CreateChannelModalP
 										<FieldError>{field.state.meta.errors[0].message}</FieldError>
 									)}
 								</>
+							)}
+						/>
+
+						<form.AppField
+							name="addAllMembers"
+							children={(field) => (
+								<Checkbox
+									isSelected={field.state.value}
+									onChange={(checked) => field.handleChange(checked)}
+								>
+									Add all members to this channel
+								</Checkbox>
 							)}
 						/>
 					</ModalBody>

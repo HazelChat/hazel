@@ -129,6 +129,7 @@ export const createChannelAction = optimisticAction({
 		type: "public" | "private" | "thread"
 		parentChannelId: ChannelId | null
 		currentUserId: UserId
+		addAllMembers?: boolean
 	}) => {
 		const channelId = ChannelId.make(crypto.randomUUID())
 		const now = new Date()
@@ -176,6 +177,7 @@ export const createChannelAction = optimisticAction({
 				organizationId: props.organizationId,
 				parentChannelId: props.parentChannelId,
 				sectionId: null,
+				addAllMembers: props.addAllMembers,
 			})
 			return { data: { channelId: result.data.id }, transactionId: result.transactionId }
 		}),
