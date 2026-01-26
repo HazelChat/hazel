@@ -50,22 +50,23 @@ import { Effect } from "effect"
 import { runHazelBot } from "@hazel/bot-sdk"
 
 runHazelBot({
-  setup: (bot) => Effect.gen(function* () {
-    // Log when the bot starts
-    yield* Effect.log("Bot is starting...")
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// Log when the bot starts
+			yield* Effect.log("Bot is starting...")
 
-    // Respond to every message
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        // Don't respond to our own messages
-        if (message.content.startsWith("Echo:")) {
-          return
-        }
+			// Respond to every message
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					// Don't respond to our own messages
+					if (message.content.startsWith("Echo:")) {
+						return
+					}
 
-        yield* bot.message.reply(message, `Echo: ${message.content}`)
-      })
-    )
-  }),
+					yield* bot.message.reply(message, `Echo: ${message.content}`)
+				}),
+			)
+		}),
 })
 ```
 
@@ -117,10 +118,10 @@ Sends a reply to a message. The SDK provides several message operations:
 ## Next Steps
 
 <Cards>
-  <Card title="Tutorial" href="/bot-sdk/tutorial">
-    Build a complete Task Bot with slash commands
-  </Card>
-  <Card title="API Reference" href="/bot-sdk/reference">
-    Explore all available APIs
-  </Card>
+	<Card title="Tutorial" href="/bot-sdk/tutorial">
+		Build a complete Task Bot with slash commands
+	</Card>
+	<Card title="API Reference" href="/bot-sdk/reference">
+		Explore all available APIs
+	</Card>
 </Cards>

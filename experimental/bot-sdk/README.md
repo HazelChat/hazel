@@ -79,13 +79,14 @@ Main client service that provides event subscription methods.
 Register a handler for new messages.
 
 ```typescript
-yield* bot.onMessage((message) =>
-	Effect.gen(function* () {
-		yield* Effect.log("New message:", message.content)
-		yield* Effect.log("Channel:", message.channelId)
-		yield* Effect.log("Author:", message.authorId)
-	}),
-)
+yield *
+	bot.onMessage((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log("New message:", message.content)
+			yield* Effect.log("Channel:", message.channelId)
+			yield* Effect.log("Author:", message.authorId)
+		}),
+	)
 ```
 
 ##### `onMessageUpdate(handler: MessageUpdateHandler)`
@@ -93,11 +94,12 @@ yield* bot.onMessage((message) =>
 Register a handler for message updates.
 
 ```typescript
-yield* bot.onMessageUpdate((message) =>
-	Effect.gen(function* () {
-		yield* Effect.log("Message updated:", message.id)
-	}),
-)
+yield *
+	bot.onMessageUpdate((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Message updated:", message.id)
+		}),
+	)
 ```
 
 ##### `onMessageDelete(handler: MessageDeleteHandler)`
@@ -105,11 +107,12 @@ yield* bot.onMessageUpdate((message) =>
 Register a handler for message deletes.
 
 ```typescript
-yield* bot.onMessageDelete((message) =>
-	Effect.gen(function* () {
-		yield* Effect.log("Message deleted:", message.id)
-	}),
-)
+yield *
+	bot.onMessageDelete((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Message deleted:", message.id)
+		}),
+	)
 ```
 
 ##### `onChannelCreated(handler: ChannelCreatedHandler)`
@@ -117,11 +120,12 @@ yield* bot.onMessageDelete((message) =>
 Register a handler for new channels.
 
 ```typescript
-yield* bot.onChannelCreated((channel) =>
-	Effect.gen(function* () {
-		yield* Effect.log("New channel:", channel.name)
-	}),
-)
+yield *
+	bot.onChannelCreated((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log("New channel:", channel.name)
+		}),
+	)
 ```
 
 ##### `onChannelUpdated(handler: ChannelUpdatedHandler)`
@@ -129,11 +133,12 @@ yield* bot.onChannelCreated((channel) =>
 Register a handler for channel updates.
 
 ```typescript
-yield* bot.onChannelUpdated((channel) =>
-	Effect.gen(function* () {
-		yield* Effect.log("Channel updated:", channel.id)
-	}),
-)
+yield *
+	bot.onChannelUpdated((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Channel updated:", channel.id)
+		}),
+	)
 ```
 
 ##### `onChannelDeleted(handler: ChannelDeletedHandler)`
@@ -141,11 +146,12 @@ yield* bot.onChannelUpdated((channel) =>
 Register a handler for channel deletes.
 
 ```typescript
-yield* bot.onChannelDeleted((channel) =>
-	Effect.gen(function* () {
-		yield* Effect.log("Channel deleted:", channel.id)
-	}),
-)
+yield *
+	bot.onChannelDeleted((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Channel deleted:", channel.id)
+		}),
+	)
 ```
 
 ##### `onChannelMemberAdded(handler: ChannelMemberAddedHandler)`
@@ -153,11 +159,12 @@ yield* bot.onChannelDeleted((channel) =>
 Register a handler for new channel members.
 
 ```typescript
-yield* bot.onChannelMemberAdded((member) =>
-	Effect.gen(function* () {
-		yield* Effect.log("New member added:", member.userId)
-	}),
-)
+yield *
+	bot.onChannelMemberAdded((member) =>
+		Effect.gen(function* () {
+			yield* Effect.log("New member added:", member.userId)
+		}),
+	)
 ```
 
 ##### `onChannelMemberRemoved(handler: ChannelMemberRemovedHandler)`
@@ -165,11 +172,12 @@ yield* bot.onChannelMemberAdded((member) =>
 Register a handler for removed channel members.
 
 ```typescript
-yield* bot.onChannelMemberRemoved((member) =>
-	Effect.gen(function* () {
-		yield* Effect.log("Member removed:", member.userId)
-	}),
-)
+yield *
+	bot.onChannelMemberRemoved((member) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Member removed:", member.userId)
+		}),
+	)
 ```
 
 #### Control Methods
@@ -179,7 +187,7 @@ yield* bot.onChannelMemberRemoved((member) =>
 Start the bot client (begins listening to events).
 
 ```typescript
-yield* bot.start
+yield * bot.start
 ```
 
 **Note**: This returns a scoped effect, so you must run it within `Effect.scoped()`.
@@ -189,7 +197,7 @@ yield* bot.start
 Get the bot's authentication context.
 
 ```typescript
-const context = yield* bot.getAuthContext
+const context = yield * bot.getAuthContext
 console.log("Bot ID:", context.botId)
 console.log("Organization:", context.organizationId)
 ```
@@ -288,9 +296,7 @@ type MessageHandler = (message: Message.Model.Json) => Effect.Effect<void, Handl
 type ChannelCreatedHandler = (channel: Channel.Model.Json) => Effect.Effect<void, HandlerError>
 
 // Channel member events
-type ChannelMemberAddedHandler = (
-	member: ChannelMember.Model.Json,
-) => Effect.Effect<void, HandlerError>
+type ChannelMemberAddedHandler = (member: ChannelMember.Model.Json) => Effect.Effect<void, HandlerError>
 ```
 
 ## Examples
@@ -355,9 +361,7 @@ const moderatorBot = Effect.gen(function* () {
 
 	yield* bot.onMessage((message) =>
 		Effect.gen(function* () {
-			const hasbannedWord = bannedWords.some((word) =>
-				message.content.toLowerCase().includes(word),
-			)
+			const hasbannedWord = bannedWords.some((word) => message.content.toLowerCase().includes(word))
 
 			if (hasbannedWord) {
 				yield* Effect.log(`Detected banned word in message: ${message.id}`)
@@ -432,8 +436,7 @@ const program = Effect.gen(function* () {
 		Effect.catchTags({
 			ShapeStreamError: (error) =>
 				Effect.logError(`Failed to subscribe to ${error.table}: ${error.message}`),
-			AuthenticationError: (error) =>
-				Effect.logError(`Auth failed: ${error.message}`),
+			AuthenticationError: (error) => Effect.logError(`Auth failed: ${error.message}`),
 			BotStartError: (error) => Effect.logError(`Failed to start bot: ${error.message}`),
 		}),
 	)

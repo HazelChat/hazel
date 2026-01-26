@@ -29,60 +29,58 @@ import { effectElectricCollectionOptions } from "@tanstack/effect-electric-db-co
 import { selectTodoSchema } from "./schema"
 
 const todoCollection = createCollection(
-  effectElectricCollectionOptions({
-    id: "todos",
-    shapeOptions: {
-      url: "http://localhost:3003/v1/shape",
-      params: { table: "todos" },
-    },
-    getKey: (item) => item.id,
-    schema: selectTodoSchema,
+	effectElectricCollectionOptions({
+		id: "todos",
+		shapeOptions: {
+			url: "http://localhost:3003/v1/shape",
+			params: { table: "todos" },
+		},
+		getKey: (item) => item.id,
+		schema: selectTodoSchema,
 
-    // Effect-based insert handler
-    onInsert: ({ transaction }) =>
-      Effect.gen(function* () {
-        const item = transaction.mutations[0].modified
-        const response = yield* api.todos.create(item)
-        return { txid: response.txid }
-      }),
+		// Effect-based insert handler
+		onInsert: ({ transaction }) =>
+			Effect.gen(function* () {
+				const item = transaction.mutations[0].modified
+				const response = yield* api.todos.create(item)
+				return { txid: response.txid }
+			}),
 
-    // Effect-based update handler
-    onUpdate: ({ transaction }) =>
-      Effect.gen(function* () {
-        const txids = yield* Effect.all(
-          transaction.mutations.map((mutation) =>
-            api.todos.update(mutation.original.id, mutation.changes).pipe(
-              Effect.map((res) => res.txid)
-            )
-          )
-        )
-        return { txid: txids }
-      }),
+		// Effect-based update handler
+		onUpdate: ({ transaction }) =>
+			Effect.gen(function* () {
+				const txids = yield* Effect.all(
+					transaction.mutations.map((mutation) =>
+						api.todos
+							.update(mutation.original.id, mutation.changes)
+							.pipe(Effect.map((res) => res.txid)),
+					),
+				)
+				return { txid: txids }
+			}),
 
-    // Effect-based delete handler
-    onDelete: ({ transaction }) =>
-      Effect.gen(function* () {
-        const txids = yield* Effect.all(
-          transaction.mutations.map((mutation) =>
-            api.todos.delete(mutation.original.id).pipe(
-              Effect.map((res) => res.txid)
-            )
-          )
-        )
-        return { txid: txids }
-      }),
-  })
+		// Effect-based delete handler
+		onDelete: ({ transaction }) =>
+			Effect.gen(function* () {
+				const txids = yield* Effect.all(
+					transaction.mutations.map((mutation) =>
+						api.todos.delete(mutation.original.id).pipe(Effect.map((res) => res.txid)),
+					),
+				)
+				return { txid: txids }
+			}),
+	}),
 )
 
 // Use the awaitTxId Effect utility
 const program = Effect.gen(function* () {
-  const tx = todoCollection.insert({ text: "Buy milk", completed: false })
-  const txid = yield* Effect.promise(() => tx.isPersisted.promise)
+	const tx = todoCollection.insert({ text: "Buy milk", completed: false })
+	const txid = yield* Effect.promise(() => tx.isPersisted.promise)
 
-  // Wait for sync using Effect
-  yield* todoCollection.utils.awaitTxIdEffect(txid.txid)
+	// Wait for sync using Effect
+	yield* todoCollection.utils.awaitTxIdEffect(txid.txid)
 
-  console.log("Item synced!")
+	console.log("Item synced!")
 })
 
 Effect.runPromise(program)
@@ -94,21 +92,19 @@ For more advanced use cases with dependency injection:
 
 ```typescript
 import { Effect, Layer, Context } from "effect"
-import {
-  ElectricCollection,
-  makeElectricCollectionLayer,
-} from "@tanstack/effect-electric-db-collection"
+import { ElectricCollection, makeElectricCollectionLayer } from "@tanstack/effect-electric-db-collection"
 
 // Define your API service
 class ApiService extends Effect.Service<ApiService>()("ApiService", {
-  effect: Effect.succeed({
-    createTodo: (data: any) =>
-      Effect.tryPromise(() => fetch("/api/todos", { method: "POST", body: JSON.stringify(data) })),
-    updateTodo: (id: string, changes: any) =>
-      Effect.tryPromise(() => fetch(`/api/todos/${id}`, { method: "PATCH", body: JSON.stringify(changes) })),
-    deleteTodo: (id: string) =>
-      Effect.tryPromise(() => fetch(`/api/todos/${id}`, { method: "DELETE" })),
-  }),
+	effect: Effect.succeed({
+		createTodo: (data: any) =>
+			Effect.tryPromise(() => fetch("/api/todos", { method: "POST", body: JSON.stringify(data) })),
+		updateTodo: (id: string, changes: any) =>
+			Effect.tryPromise(() =>
+				fetch(`/api/todos/${id}`, { method: "PATCH", body: JSON.stringify(changes) }),
+			),
+		deleteTodo: (id: string) => Effect.tryPromise(() => fetch(`/api/todos/${id}`, { method: "DELETE" })),
+	}),
 }) {}
 
 // Create collection tag
@@ -116,36 +112,36 @@ const TodoCollection = ElectricCollection<Todo>("todos")
 
 // Create collection layer with dependencies
 const TodoCollectionLive = makeElectricCollectionLayer(TodoCollection, {
-  id: "todos",
-  shapeOptions: {
-    url: "http://localhost:3003/v1/shape",
-    params: { table: "todos" },
-  },
-  getKey: (item) => item.id,
-  schema: selectTodoSchema,
+	id: "todos",
+	shapeOptions: {
+		url: "http://localhost:3003/v1/shape",
+		params: { table: "todos" },
+	},
+	getKey: (item) => item.id,
+	schema: selectTodoSchema,
 
-  // IMPORTANT: Handlers must be self-contained
-  // Provide dependencies within the handler using Effect.provide
-  onInsert: ({ transaction }) =>
-    Effect.gen(function* () {
-      const api = yield* ApiService
-      const item = transaction.mutations[0].modified
-      const response = yield* api.createTodo(item)
-      return { txid: response.txid }
-    }).pipe(Effect.provide(ApiService.Default)), // ← Provide dependencies here!
+	// IMPORTANT: Handlers must be self-contained
+	// Provide dependencies within the handler using Effect.provide
+	onInsert: ({ transaction }) =>
+		Effect.gen(function* () {
+			const api = yield* ApiService
+			const item = transaction.mutations[0].modified
+			const response = yield* api.createTodo(item)
+			return { txid: response.txid }
+		}).pipe(Effect.provide(ApiService.Default)), // ← Provide dependencies here!
 })
 
 // Use in your program
 const program = Effect.gen(function* () {
-  const collection = yield* TodoCollection
+	const collection = yield* TodoCollection
 
-  yield* collection.insert({ text: "Buy milk", completed: false })
+	yield* collection.insert({ text: "Buy milk", completed: false })
 
-  const todos = yield* collection.toArray
-  console.log("Todos:", todos)
+	const todos = yield* collection.toArray
+	console.log("Todos:", todos)
 }).pipe(
-  Effect.provide(TodoCollectionLive)
-  // Note: ApiService is already provided within the handlers
+	Effect.provide(TodoCollectionLive),
+	// Note: ApiService is already provided within the handlers
 )
 
 Effect.runPromise(program)
@@ -162,22 +158,22 @@ import { Effect } from "effect"
 import { InsertError, TxIdTimeoutError } from "@tanstack/effect-electric-db-collection"
 
 const program = Effect.gen(function* () {
-  const collection = yield* TodoCollection
+	const collection = yield* TodoCollection
 
-  yield* collection.insert({ text: "New todo" })
+	yield* collection.insert({ text: "New todo" })
 }).pipe(
-  Effect.catchTag("InsertError", (error) =>
-    Effect.gen(function* () {
-      console.error("Insert failed:", error.message, error.cause)
-      // Handle insert error
-    })
-  ),
-  Effect.catchTag("TxIdTimeoutError", (error) =>
-    Effect.gen(function* () {
-      console.error(`Timeout waiting for txid ${error.txid}`)
-      // Handle timeout
-    })
-  )
+	Effect.catchTag("InsertError", (error) =>
+		Effect.gen(function* () {
+			console.error("Insert failed:", error.message, error.cause)
+			// Handle insert error
+		}),
+	),
+	Effect.catchTag("TxIdTimeoutError", (error) =>
+		Effect.gen(function* () {
+			console.error(`Timeout waiting for txid ${error.txid}`)
+			// Handle timeout
+		}),
+	),
 )
 ```
 

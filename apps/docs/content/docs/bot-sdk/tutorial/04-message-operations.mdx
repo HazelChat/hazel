@@ -11,14 +11,14 @@ The Bot SDK provides several operations for interacting with messages.
 Use `bot.message.send` to send a new message to a channel:
 
 ```typescript
-yield* bot.message.send(channelId, "Hello, world!")
+yield * bot.message.send(channelId, "Hello, world!")
 ```
 
 The method returns the created message:
 
 ```typescript
-const sentMessage = yield* bot.message.send(channelId, "Hello!")
-yield* Effect.log(`Sent message: ${sentMessage.id}`)
+const sentMessage = yield * bot.message.send(channelId, "Hello!")
+yield * Effect.log(`Sent message: ${sentMessage.id}`)
 ```
 
 ## Reply to a Message
@@ -26,11 +26,12 @@ yield* Effect.log(`Sent message: ${sentMessage.id}`)
 Use `bot.message.reply` to reply to a specific message:
 
 ```typescript
-yield* bot.onMessage((message) =>
-  Effect.gen(function* () {
-    yield* bot.message.reply(message, "Got it!")
-  })
-)
+yield *
+	bot.onMessage((message) =>
+		Effect.gen(function* () {
+			yield* bot.message.reply(message, "Got it!")
+		}),
+	)
 ```
 
 ## React with an Emoji
@@ -38,26 +39,24 @@ yield* bot.onMessage((message) =>
 Use `bot.message.react` to add a reaction:
 
 ```typescript
-yield* bot.message.react(message, "👍")
+yield * bot.message.react(message, "👍")
 ```
 
 For our Task Bot, let's react with a checkmark when a task is added:
 
 ```typescript
-yield* bot.onCommand(AddTaskCommand, (ctx) =>
-  Effect.gen(function* () {
-    tasks.push(ctx.args.title)
+yield *
+	bot.onCommand(AddTaskCommand, (ctx) =>
+		Effect.gen(function* () {
+			tasks.push(ctx.args.title)
 
-    // Send confirmation
-    const confirmation = yield* bot.message.send(
-      ctx.channelId,
-      `Added: ${ctx.args.title}`
-    )
+			// Send confirmation
+			const confirmation = yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
 
-    // React to our own message
-    yield* bot.message.react(confirmation, "✅")
-  })
-)
+			// React to our own message
+			yield* bot.message.react(confirmation, "✅")
+		}),
+	)
 ```
 
 ## Update a Message
@@ -65,13 +64,13 @@ yield* bot.onCommand(AddTaskCommand, (ctx) =>
 Use `bot.message.update` to edit an existing message:
 
 ```typescript
-const message = yield* bot.message.send(channelId, "Loading...")
+const message = yield * bot.message.send(channelId, "Loading...")
 
 // Do some work...
-yield* Effect.sleep("2 seconds")
+yield * Effect.sleep("2 seconds")
 
 // Update the message
-yield* bot.message.update(message, "Done!")
+yield * bot.message.update(message, "Done!")
 ```
 
 ## Delete a Message
@@ -79,7 +78,7 @@ yield* bot.message.update(message, "Done!")
 Use `bot.message.delete` to remove a message:
 
 ```typescript
-yield* bot.message.delete(messageId)
+yield * bot.message.delete(messageId)
 ```
 
 ## Rate Limiting
@@ -99,71 +98,72 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 const tasks: string[] = []
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
+	description: "Add a new task",
+	args: { title: Schema.String },
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const ClearTasksCommand = Command.make("task-clear", {
-  description: "Clear all tasks",
+	description: "Clear all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand, ClearTasksCommand)
 
 runHazelBot({
-  commands,
-  setup: (bot) => Effect.gen(function* () {
-    yield* Effect.log("Task Bot is starting...")
+	commands,
+	setup: (bot) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Task Bot is starting...")
 
-    // Add task with confirmation and reaction
-    yield* bot.onCommand(AddTaskCommand, (ctx) =>
-      Effect.gen(function* () {
-        tasks.push(ctx.args.title)
-        const msg = yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-        yield* bot.message.react(msg, "✅")
-      })
-    )
+			// Add task with confirmation and reaction
+			yield* bot.onCommand(AddTaskCommand, (ctx) =>
+				Effect.gen(function* () {
+					tasks.push(ctx.args.title)
+					const msg = yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+					yield* bot.message.react(msg, "✅")
+				}),
+			)
 
-    // List tasks
-    yield* bot.onCommand(ListTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        if (tasks.length === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks yet! Use /task-add to add one.")
-          return
-        }
-        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
-        yield* bot.message.send(ctx.channelId, `**Tasks (${tasks.length}):**\n${list}`)
-      })
-    )
+			// List tasks
+			yield* bot.onCommand(ListTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					if (tasks.length === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks yet! Use /task-add to add one.")
+						return
+					}
+					const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+					yield* bot.message.send(ctx.channelId, `**Tasks (${tasks.length}):**\n${list}`)
+				}),
+			)
 
-    // Clear tasks with "deleting" feedback
-    yield* bot.onCommand(ClearTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        const count = tasks.length
-        if (count === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks to clear!")
-          return
-        }
+			// Clear tasks with "deleting" feedback
+			yield* bot.onCommand(ClearTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					const count = tasks.length
+					if (count === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks to clear!")
+						return
+					}
 
-        const msg = yield* bot.message.send(ctx.channelId, "Clearing tasks...")
-        tasks.length = 0
-        yield* bot.message.update(msg, `Cleared ${count} task${count === 1 ? "" : "s"}!`)
-        yield* bot.message.react(msg, "🗑️")
-      })
-    )
+					const msg = yield* bot.message.send(ctx.channelId, "Clearing tasks...")
+					tasks.length = 0
+					yield* bot.message.update(msg, `Cleared ${count} task${count === 1 ? "" : "s"}!`)
+					yield* bot.message.react(msg, "🗑️")
+				}),
+			)
 
-    // React to task mentions
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        if (message.content.toLowerCase().includes("task")) {
-          yield* bot.message.react(message, "📝")
-        }
-      })
-    )
-  }),
+			// React to task mentions
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					if (message.content.toLowerCase().includes("task")) {
+						yield* bot.message.react(message, "📝")
+					}
+				}),
+			)
+		}),
 })
 ```
 
@@ -172,7 +172,7 @@ runHazelBot({
 Let's add proper error handling to make the bot more robust.
 
 <Cards>
-  <Card title="Next: Error Handling" href="/bot-sdk/tutorial/05-error-handling">
-    Handle errors gracefully
-  </Card>
+	<Card title="Next: Error Handling" href="/bot-sdk/tutorial/05-error-handling">
+		Handle errors gracefully
+	</Card>
 </Cards>

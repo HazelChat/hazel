@@ -15,11 +15,11 @@ import { Schema } from "effect"
 import { Command } from "@hazel/bot-sdk"
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: {
-    title: Schema.String,
-  },
-  usageExample: "/task-add Buy groceries",
+	description: "Add a new task",
+	args: {
+		title: Schema.String,
+	},
+	usageExample: "/task-add Buy groceries",
 })
 ```
 
@@ -34,12 +34,12 @@ import { Command, CommandGroup } from "@hazel/bot-sdk"
 import { Schema } from "effect"
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
+	description: "Add a new task",
+	args: { title: Schema.String },
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
@@ -51,10 +51,11 @@ Pass the command group to `runHazelBot`:
 
 ```typescript
 runHazelBot({
-  commands,  // <-- Register commands here
-  setup: (bot) => Effect.gen(function* () {
-    // ...
-  }),
+	commands, // <-- Register commands here
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// ...
+		}),
 })
 ```
 
@@ -72,40 +73,41 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 const tasks: string[] = []
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
+	description: "Add a new task",
+	args: { title: Schema.String },
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
 
 runHazelBot({
-  commands,
-  setup: (bot) => Effect.gen(function* () {
-    // Handle /task-add
-    yield* bot.onCommand(AddTaskCommand, (ctx) =>
-      Effect.gen(function* () {
-        // ctx.args.title is typed as string!
-        tasks.push(ctx.args.title)
-        yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-      })
-    )
+	commands,
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// Handle /task-add
+			yield* bot.onCommand(AddTaskCommand, (ctx) =>
+				Effect.gen(function* () {
+					// ctx.args.title is typed as string!
+					tasks.push(ctx.args.title)
+					yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+				}),
+			)
 
-    // Handle /task-list
-    yield* bot.onCommand(ListTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        if (tasks.length === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks yet!")
-          return
-        }
-        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
-        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
-      })
-    )
-  }),
+			// Handle /task-list
+			yield* bot.onCommand(ListTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					if (tasks.length === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks yet!")
+						return
+					}
+					const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+					yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+				}),
+			)
+		}),
 })
 ```
 
@@ -128,22 +130,23 @@ Use `Schema.optional` for optional arguments:
 
 ```typescript
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: {
-    title: Schema.String,
-    priority: Schema.optional(Schema.String),
-  },
+	description: "Add a new task",
+	args: {
+		title: Schema.String,
+		priority: Schema.optional(Schema.String),
+	},
 })
 
 // In handler:
-yield* bot.onCommand(AddTaskCommand, (ctx) =>
-  Effect.gen(function* () {
-    // ctx.args.title is string
-    // ctx.args.priority is string | undefined
-    const priority = ctx.args.priority ?? "normal"
-    yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title} (${priority})`)
-  })
-)
+yield *
+	bot.onCommand(AddTaskCommand, (ctx) =>
+		Effect.gen(function* () {
+			// ctx.args.title is string
+			// ctx.args.priority is string | undefined
+			const priority = ctx.args.priority ?? "normal"
+			yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title} (${priority})`)
+		}),
+	)
 ```
 
 ## Current Code
@@ -157,48 +160,49 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 const tasks: string[] = []
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
-  usageExample: "/task-add Buy groceries",
+	description: "Add a new task",
+	args: { title: Schema.String },
+	usageExample: "/task-add Buy groceries",
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
 
 runHazelBot({
-  commands,
-  setup: (bot) => Effect.gen(function* () {
-    yield* Effect.log("Task Bot is starting...")
+	commands,
+	setup: (bot) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Task Bot is starting...")
 
-    yield* bot.onCommand(AddTaskCommand, (ctx) =>
-      Effect.gen(function* () {
-        tasks.push(ctx.args.title)
-        yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-      })
-    )
+			yield* bot.onCommand(AddTaskCommand, (ctx) =>
+				Effect.gen(function* () {
+					tasks.push(ctx.args.title)
+					yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+				}),
+			)
 
-    yield* bot.onCommand(ListTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        if (tasks.length === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks yet!")
-          return
-        }
-        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
-        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
-      })
-    )
+			yield* bot.onCommand(ListTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					if (tasks.length === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks yet!")
+						return
+					}
+					const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+					yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+				}),
+			)
 
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        if (message.content.toLowerCase().includes("task")) {
-          yield* bot.message.react(message, "📝")
-        }
-      })
-    )
-  }),
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					if (message.content.toLowerCase().includes("task")) {
+						yield* bot.message.react(message, "📝")
+					}
+				}),
+			)
+		}),
 })
 ```
 
@@ -207,7 +211,7 @@ runHazelBot({
 Let's explore more message operations like reactions and updates.
 
 <Cards>
-  <Card title="Next: Message Operations" href="/bot-sdk/tutorial/04-message-operations">
-    Send, reply, react, and more
-  </Card>
+	<Card title="Next: Message Operations" href="/bot-sdk/tutorial/04-message-operations">
+		Send, reply, react, and more
+	</Card>
 </Cards>

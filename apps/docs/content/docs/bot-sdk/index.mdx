@@ -22,40 +22,41 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 
 // Define a slash command with typed arguments
 const GreetCommand = Command.make("greet", {
-  description: "Greet someone",
-  args: { name: Schema.String },
+	description: "Greet someone",
+	args: { name: Schema.String },
 })
 
 runHazelBot({
-  commands: CommandGroup.make(GreetCommand),
-  setup: (bot) => Effect.gen(function* () {
-    // Handle the /greet command
-    yield* bot.onCommand(GreetCommand, (ctx) =>
-      bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`)
-    )
+	commands: CommandGroup.make(GreetCommand),
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// Handle the /greet command
+			yield* bot.onCommand(GreetCommand, (ctx) =>
+				bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`),
+			)
 
-    // React to messages containing "hello"
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        if (message.content.toLowerCase().includes("hello")) {
-          yield* bot.message.react(message, "👋")
-        }
-      })
-    )
-  }),
+			// React to messages containing "hello"
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					if (message.content.toLowerCase().includes("hello")) {
+						yield* bot.message.react(message, "👋")
+					}
+				}),
+			)
+		}),
 })
 ```
 
 ## Next Steps
 
 <Cards>
-  <Card title="Getting Started" href="/bot-sdk/getting-started">
-    Install the SDK and create your first bot
-  </Card>
-  <Card title="Tutorial" href="/bot-sdk/tutorial">
-    Build a complete Task Bot step-by-step
-  </Card>
-  <Card title="API Reference" href="/bot-sdk/reference">
-    Explore the full API documentation
-  </Card>
+	<Card title="Getting Started" href="/bot-sdk/getting-started">
+		Install the SDK and create your first bot
+	</Card>
+	<Card title="Tutorial" href="/bot-sdk/tutorial">
+		Build a complete Task Bot step-by-step
+	</Card>
+	<Card title="API Reference" href="/bot-sdk/reference">
+		Explore the full API documentation
+	</Card>
 </Cards>

@@ -10,11 +10,13 @@ Embeds let you send rich, formatted messages with titles, descriptions, colors, 
 
 ```typescript
 {
-  embeds: [{
-    title: "My Embed",
-    description: "This is the main content",
-    color: 5025616
-  }]
+	embeds: [
+		{
+			title: "My Embed",
+			description: "This is the main content",
+			color: 5025616,
+		},
+	]
 }
 ```
 
@@ -91,22 +93,22 @@ Display key-value pairs in a structured layout. Maximum 25 fields per embed.
 
 ```typescript
 {
-  fields: [
-    {
-      name: "Environment",    // Required, 1-256 chars
-      value: "Production",    // Required, 1-1024 chars
-      inline: true            // Optional, display side-by-side
-    },
-    {
-      name: "Status",
-      value: "Success",
-      inline: true,
-      type: "badge",          // Optional: "text" (default) or "badge"
-      options: {
-        intent: "success"     // Badge styling (see below)
-      }
-    }
-  ]
+	fields: [
+		{
+			name: "Environment", // Required, 1-256 chars
+			value: "Production", // Required, 1-1024 chars
+			inline: true, // Optional, display side-by-side
+		},
+		{
+			name: "Status",
+			value: "Success",
+			inline: true,
+			type: "badge", // Optional: "text" (default) or "badge"
+			options: {
+				intent: "success", // Badge styling (see below)
+			},
+		},
+	]
 }
 ```
 
@@ -163,12 +165,14 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ```json
 {
-  "embeds": [{
-    "title": "New User Signup",
-    "description": "john@example.com just created an account",
-    "color": 3447003,
-    "timestamp": "2024-01-15T10:30:00Z"
-  }]
+	"embeds": [
+		{
+			"title": "New User Signup",
+			"description": "john@example.com just created an account",
+			"color": 3447003,
+			"timestamp": "2024-01-15T10:30:00Z"
+		}
+	]
 }
 ```
 
@@ -176,29 +180,31 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ```json
 {
-  "embeds": [{
-    "title": "Deployment Complete",
-    "description": "Successfully deployed to production",
-    "color": 5025616,
-    "author": {
-      "name": "GitHub Actions",
-      "iconUrl": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-    },
-    "badge": {
-      "text": "Deployed",
-      "color": 5025616
-    },
-    "fields": [
-      {"name": "Environment", "value": "Production", "inline": true},
-      {"name": "Version", "value": "v2.1.0", "inline": true},
-      {"name": "Commit", "value": "`abc1234`", "inline": true},
-      {"name": "Duration", "value": "2m 34s", "inline": true}
-    ],
-    "footer": {
-      "text": "Triggered by merge to main"
-    },
-    "timestamp": "2024-01-15T10:30:00Z"
-  }]
+	"embeds": [
+		{
+			"title": "Deployment Complete",
+			"description": "Successfully deployed to production",
+			"color": 5025616,
+			"author": {
+				"name": "GitHub Actions",
+				"iconUrl": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+			},
+			"badge": {
+				"text": "Deployed",
+				"color": 5025616
+			},
+			"fields": [
+				{ "name": "Environment", "value": "Production", "inline": true },
+				{ "name": "Version", "value": "v2.1.0", "inline": true },
+				{ "name": "Commit", "value": "`abc1234`", "inline": true },
+				{ "name": "Duration", "value": "2m 34s", "inline": true }
+			],
+			"footer": {
+				"text": "Triggered by merge to main"
+			},
+			"timestamp": "2024-01-15T10:30:00Z"
+		}
+	]
 }
 ```
 
@@ -206,28 +212,30 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ```json
 {
-  "embeds": [{
-    "title": "Build Failed",
-    "description": "The build failed due to test failures",
-    "color": 15158332,
-    "badge": {
-      "text": "Failed",
-      "color": 15158332
-    },
-    "fields": [
-      {
-        "name": "Status",
-        "value": "Failed",
-        "type": "badge",
-        "options": {"intent": "danger"}
-      },
-      {"name": "Branch", "value": "feature/new-api", "inline": true},
-      {"name": "Failed Tests", "value": "3", "inline": true}
-    ],
-    "footer": {
-      "text": "View logs for details"
-    }
-  }]
+	"embeds": [
+		{
+			"title": "Build Failed",
+			"description": "The build failed due to test failures",
+			"color": 15158332,
+			"badge": {
+				"text": "Failed",
+				"color": 15158332
+			},
+			"fields": [
+				{
+					"name": "Status",
+					"value": "Failed",
+					"type": "badge",
+					"options": { "intent": "danger" }
+				},
+				{ "name": "Branch", "value": "feature/new-api", "inline": true },
+				{ "name": "Failed Tests", "value": "3", "inline": true }
+			],
+			"footer": {
+				"text": "View logs for details"
+			}
+		}
+	]
 }
 ```
 
@@ -235,26 +243,28 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ```json
 {
-  "embeds": [{
-    "title": "Service Degraded",
-    "description": "API response time has increased significantly",
-    "url": "https://status.example.com",
-    "color": 15105570,
-    "thumbnail": {
-      "url": "https://example.com/warning-icon.png"
-    },
-    "fields": [
-      {
-        "name": "Status",
-        "value": "Degraded",
-        "type": "badge",
-        "options": {"intent": "warning"}
-      },
-      {"name": "Latency", "value": "2340ms", "inline": true},
-      {"name": "Region", "value": "US-East", "inline": true}
-    ],
-    "timestamp": "2024-01-15T10:30:00Z"
-  }]
+	"embeds": [
+		{
+			"title": "Service Degraded",
+			"description": "API response time has increased significantly",
+			"url": "https://status.example.com",
+			"color": 15105570,
+			"thumbnail": {
+				"url": "https://example.com/warning-icon.png"
+			},
+			"fields": [
+				{
+					"name": "Status",
+					"value": "Degraded",
+					"type": "badge",
+					"options": { "intent": "warning" }
+				},
+				{ "name": "Latency", "value": "2340ms", "inline": true },
+				{ "name": "Region", "value": "US-East", "inline": true }
+			],
+			"timestamp": "2024-01-15T10:30:00Z"
+		}
+	]
 }
 ```
 
@@ -262,35 +272,37 @@ const decimal = parseInt("4CB050", 16)  // 5025616
 
 ```json
 {
-  "embeds": [{
-    "title": "Pull Request Merged",
-    "description": "**feat: Add user authentication**\n\nThis PR adds OAuth2 authentication with support for Google and GitHub providers.",
-    "url": "https://github.com/org/repo/pull/123",
-    "color": 10181046,
-    "author": {
-      "name": "Jane Developer",
-      "url": "https://github.com/janedev",
-      "iconUrl": "https://github.com/janedev.png"
-    },
-    "thumbnail": {
-      "url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-    },
-    "fields": [
-      {"name": "Repository", "value": "org/repo", "inline": true},
-      {"name": "Branch", "value": "main", "inline": true},
-      {"name": "Additions", "value": "+1,234", "inline": true},
-      {"name": "Deletions", "value": "-567", "inline": true},
-      {"name": "Reviewers", "value": "@alice, @bob"}
-    ],
-    "image": {
-      "url": "https://example.com/pr-screenshot.png"
-    },
-    "footer": {
-      "text": "Merged by janedev",
-      "iconUrl": "https://github.com/janedev.png"
-    },
-    "timestamp": "2024-01-15T10:30:00Z"
-  }]
+	"embeds": [
+		{
+			"title": "Pull Request Merged",
+			"description": "**feat: Add user authentication**\n\nThis PR adds OAuth2 authentication with support for Google and GitHub providers.",
+			"url": "https://github.com/org/repo/pull/123",
+			"color": 10181046,
+			"author": {
+				"name": "Jane Developer",
+				"url": "https://github.com/janedev",
+				"iconUrl": "https://github.com/janedev.png"
+			},
+			"thumbnail": {
+				"url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+			},
+			"fields": [
+				{ "name": "Repository", "value": "org/repo", "inline": true },
+				{ "name": "Branch", "value": "main", "inline": true },
+				{ "name": "Additions", "value": "+1,234", "inline": true },
+				{ "name": "Deletions", "value": "-567", "inline": true },
+				{ "name": "Reviewers", "value": "@alice, @bob" }
+			],
+			"image": {
+				"url": "https://example.com/pr-screenshot.png"
+			},
+			"footer": {
+				"text": "Merged by janedev",
+				"iconUrl": "https://github.com/janedev.png"
+			},
+			"timestamp": "2024-01-15T10:30:00Z"
+		}
+	]
 }
 ```
 

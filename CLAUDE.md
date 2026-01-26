@@ -173,11 +173,13 @@ Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src
 ```typescript
 // ✅ CORRECT - Use Effect.Service
 export class MyService extends Effect.Service<MyService>()("MyService", {
-    accessors: true,
-    effect: Effect.gen(function* () {
-        // ... implementation
-        return { /* methods */ }
-    }),
+	accessors: true,
+	effect: Effect.gen(function* () {
+		// ... implementation
+		return {
+			/* methods */
+		}
+	}),
 }) {}
 
 // Usage: MyService.Default, yield* MyService
@@ -186,10 +188,17 @@ export class MyService extends Effect.Service<MyService>()("MyService", {
 ```typescript
 // ❌ WRONG - Don't use Context.Tag for services
 export class MyService extends Context.Tag("MyService")<
-    MyService,
-    { /* shape */ }
+	MyService,
+	{
+		/* shape */
+	}
 >() {
-    static Default = Layer.effect(this, Effect.gen(function* () { /* ... */ }))
+	static Default = Layer.effect(
+		this,
+		Effect.gen(function* () {
+			/* ... */
+		}),
+	)
 }
 ```
 
@@ -205,13 +214,13 @@ export class MyService extends Context.Tag("MyService")<
 ```typescript
 // ✅ CORRECT - Dependencies declared in the service
 export class MyService extends Effect.Service<MyService>()("MyService", {
-    accessors: true,
-    dependencies: [DatabaseService.Default, CacheService.Default],
-    effect: Effect.gen(function* () {
-        const db = yield* DatabaseService
-        const cache = yield* CacheService
-        // ... implementation
-    }),
+	accessors: true,
+	dependencies: [DatabaseService.Default, CacheService.Default],
+	effect: Effect.gen(function* () {
+		const db = yield* DatabaseService
+		const cache = yield* CacheService
+		// ... implementation
+	}),
 }) {}
 
 // Usage is simple - MyService.Default includes all dependencies
@@ -221,21 +230,18 @@ const MainLive = Layer.mergeAll(MyService.Default, OtherService.Default)
 ```typescript
 // ❌ WRONG - Dependencies leaked to usage site
 export class MyService extends Effect.Service<MyService>()("MyService", {
-    accessors: true,
-    effect: Effect.gen(function* () {
-        const db = yield* DatabaseService
-        const cache = yield* CacheService
-        // ... implementation
-    }),
+	accessors: true,
+	effect: Effect.gen(function* () {
+		const db = yield* DatabaseService
+		const cache = yield* CacheService
+		// ... implementation
+	}),
 }) {}
 
 // Now every usage site must manually wire dependencies
 const MainLive = Layer.mergeAll(
-    MyService.Default.pipe(
-        Layer.provide(DatabaseService.Default),
-        Layer.provide(CacheService.Default),
-    ),
-    OtherService.Default,
+	MyService.Default.pipe(Layer.provide(DatabaseService.Default), Layer.provide(CacheService.Default)),
+	OtherService.Default,
 )
 ```
 
@@ -250,21 +256,23 @@ const MainLive = Layer.mergeAll(
 
 ```typescript
 // ❌ WRONG - catchAll loses error type information
-yield* someEffect.pipe(
-    Effect.catchAll((err) =>
-        Effect.fail(new InternalServerError({ message: "Something failed" }))
-    )
-)
+yield *
+	someEffect.pipe(
+		Effect.catchAll((err) => Effect.fail(new InternalServerError({ message: "Something failed" }))),
+	)
 
 // ✅ CORRECT - catchTag preserves error types and provides specific handling
-yield* someEffect.pipe(
-    Effect.catchTag("RequestError", (err) =>
-        Effect.fail(new WorkflowServiceUnavailableError({ message: "Service unreachable", cause: String(err) }))
-    ),
-    Effect.catchTag("ResponseError", (err) =>
-        Effect.fail(new InternalServerError({ message: err.reason, cause: String(err) }))
-    ),
-)
+yield *
+	someEffect.pipe(
+		Effect.catchTag("RequestError", (err) =>
+			Effect.fail(
+				new WorkflowServiceUnavailableError({ message: "Service unreachable", cause: String(err) }),
+			),
+		),
+		Effect.catchTag("ResponseError", (err) =>
+			Effect.fail(new InternalServerError({ message: err.reason, cause: String(err) })),
+		),
+	)
 ```
 
 **Why this matters:**
@@ -345,16 +353,17 @@ Or from backend code (typically in message creation handler):
 import { WorkflowClient } from "@hazel/cluster"
 
 // After creating a message, trigger the notification workflow
-yield* WorkflowClient.pipe(
-  Effect.flatMap(client =>
-    client.workflows.MessageNotificationWorkflow.execute({
-      id: message.id,           // Execution ID (use message ID for idempotency)
-      messageId: message.id,
-      channelId: message.channelId,
-      authorId: message.authorId
-    })
-  )
-)
+yield *
+	WorkflowClient.pipe(
+		Effect.flatMap((client) =>
+			client.workflows.MessageNotificationWorkflow.execute({
+				id: message.id, // Execution ID (use message ID for idempotency)
+				messageId: message.id,
+				channelId: message.channelId,
+				authorId: message.authorId,
+			}),
+		),
+	)
 ```
 
 ### Adding New Workflows
@@ -366,12 +375,12 @@ yield* WorkflowClient.pipe(
     import { Schema } from "effect"
 
     export const MyWorkflow = Workflow.make({
-      name: "MyWorkflow",
-      payload: {
-        id: Schema.String,
-        // ... other payload fields
-      },
-      idempotencyKey: ({ id }) => id
+    	name: "MyWorkflow",
+    	payload: {
+    		id: Schema.String,
+    		// ... other payload fields
+    	},
+    	idempotencyKey: ({ id }) => id,
     })
     ```
 
@@ -379,15 +388,12 @@ yield* WorkflowClient.pipe(
 
     ```typescript
     export const MyActivityResult = Schema.Struct({
-      resultField: Schema.String,
+    	resultField: Schema.String,
     })
 
-    export class MyActivityError extends Schema.TaggedError<MyActivityError>()(
-      "MyActivityError",
-      {
-        message: Schema.String,
-      }
-    ) {}
+    export class MyActivityError extends Schema.TaggedError<MyActivityError>()("MyActivityError", {
+    	message: Schema.String,
+    }) {}
     ```
 
 3. **Implement in cluster** (`apps/cluster/src/workflows/`):
@@ -398,21 +404,21 @@ yield* WorkflowClient.pipe(
     import { Effect } from "effect"
 
     export const MyWorkflowLayer = Cluster.MyWorkflow.toLayer(
-      Effect.fn(function*(payload) {
-        // Use activities with proper schemas
-        const result = yield* Activity.make({
-          name: "MyActivity",
-          success: Cluster.MyActivityResult,  // REQUIRED
-          error: Cluster.MyActivityError,     // REQUIRED
-          execute: Effect.gen(function*() {
-            // Activity implementation
-            return { resultField: "value" }
-          })
-        })
+    	Effect.fn(function* (payload) {
+    		// Use activities with proper schemas
+    		const result = yield* Activity.make({
+    			name: "MyActivity",
+    			success: Cluster.MyActivityResult, // REQUIRED
+    			error: Cluster.MyActivityError, // REQUIRED
+    			execute: Effect.gen(function* () {
+    				// Activity implementation
+    				return { resultField: "value" }
+    			}),
+    		})
 
-        // Use result (properly typed)
-        yield* Effect.log(result.resultField)
-      })
+    		// Use result (properly typed)
+    		yield* Effect.log(result.resultField)
+    	}),
     )
     ```
 
@@ -450,14 +456,15 @@ yield* Activity.make({
 ```typescript
 import { PgClient } from "@effect/sql-pg"
 
-yield* Activity.make({
-  name: "QueryDatabase",
-  success: QueryResult,
-  error: DatabaseError,
-  execute: Effect.gen(function*() {
-    const sql = yield* PgClient.PgClient
-    const rows = yield* sql`SELECT * FROM table WHERE id = ${id}`.pipe(Effect.orDie)
-    return rows
-  })
-})
+yield *
+	Activity.make({
+		name: "QueryDatabase",
+		success: QueryResult,
+		error: DatabaseError,
+		execute: Effect.gen(function* () {
+			const sql = yield* PgClient.PgClient
+			const rows = yield* sql`SELECT * FROM table WHERE id = ${id}`.pipe(Effect.orDie)
+			return rows
+		}),
+	})
 ```

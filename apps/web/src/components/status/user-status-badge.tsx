@@ -76,16 +76,16 @@ export function StatusEmojiWithTooltip({
 	if (emoji) {
 		const expirationText = formatStatusExpiration(expiresAt)
 
-		// If there's a custom message or expiration, show tooltip on hover
-		if (message || expirationText) {
-			return (
-				<Tooltip delay={300}>
-					<TooltipTrigger
-						className={cn("cursor-default border-none bg-transparent p-0 text-sm", className)}
-					>
-						{emoji}
-					</TooltipTrigger>
-					<TooltipContent placement="top">
+		// Always show tooltip - if no message, just show the emoji
+		return (
+			<Tooltip delay={300}>
+				<TooltipTrigger
+					className={cn("cursor-default border-none bg-transparent p-0 text-sm", className)}
+				>
+					{emoji}
+				</TooltipTrigger>
+				<TooltipContent placement="top">
+					{message || expirationText ? (
 						<div className="flex flex-col gap-0.5">
 							<div>
 								<span className="text-base">{emoji}</span> {message}
@@ -94,12 +94,12 @@ export function StatusEmojiWithTooltip({
 								<div className="text-muted-fg text-xs">Until {expirationText}</div>
 							)}
 						</div>
-					</TooltipContent>
-				</Tooltip>
-			)
-		}
-
-		return <span className={cn("text-sm", className)}>{emoji}</span>
+					) : (
+						<span className="text-base">{emoji}</span>
+					)}
+				</TooltipContent>
+			</Tooltip>
+		)
 	}
 
 	// If no custom emoji but user is in quiet hours, show moon indicator

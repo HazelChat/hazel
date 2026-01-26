@@ -14,9 +14,9 @@ Thrown when bot authentication fails.
 
 ```typescript
 class AuthenticationError {
-  readonly _tag = "AuthenticationError"
-  readonly message: string
-  readonly cause: unknown
+	readonly _tag = "AuthenticationError"
+	readonly message: string
+	readonly cause: unknown
 }
 ```
 
@@ -31,9 +31,9 @@ Thrown when the bot fails to start.
 
 ```typescript
 class BotStartError {
-  readonly _tag = "BotStartError"
-  readonly message: string
-  readonly cause: unknown
+	readonly _tag = "BotStartError"
+	readonly message: string
+	readonly cause: unknown
 }
 ```
 
@@ -48,10 +48,10 @@ Thrown when an event handler fails.
 
 ```typescript
 class HandlerError {
-  readonly _tag = "HandlerError"
-  readonly message: string
-  readonly eventType: string
-  readonly cause: unknown
+	readonly _tag = "HandlerError"
+	readonly message: string
+	readonly eventType: string
+	readonly cause: unknown
 }
 ```
 
@@ -61,10 +61,10 @@ Thrown when message operations fail.
 
 ```typescript
 class MessageOperationError {
-  readonly _tag = "MessageOperationError"
-  readonly message: string
-  readonly operation: string  // "send" | "reply" | "update" | "delete" | "react"
-  readonly cause: unknown
+	readonly _tag = "MessageOperationError"
+	readonly message: string
+	readonly operation: string // "send" | "reply" | "update" | "delete" | "react"
+	readonly cause: unknown
 }
 ```
 
@@ -74,9 +74,9 @@ Thrown when event queue operations fail.
 
 ```typescript
 class QueueError {
-  readonly _tag = "QueueError"
-  readonly message: string
-  readonly cause: unknown
+	readonly _tag = "QueueError"
+	readonly message: string
+	readonly cause: unknown
 }
 ```
 
@@ -86,10 +86,10 @@ Thrown when Electric SQL subscription fails.
 
 ```typescript
 class ShapeStreamError {
-  readonly _tag = "ShapeStreamError"
-  readonly message: string
-  readonly table: string
-  readonly cause: unknown
+	readonly _tag = "ShapeStreamError"
+	readonly message: string
+	readonly table: string
+	readonly cause: unknown
 }
 ```
 
@@ -99,10 +99,10 @@ Thrown when event dispatch fails.
 
 ```typescript
 class DispatchError {
-  readonly _tag = "DispatchError"
-  readonly message: string
-  readonly eventType: string
-  readonly cause: unknown
+	readonly _tag = "DispatchError"
+	readonly message: string
+	readonly eventType: string
+	readonly cause: unknown
 }
 ```
 
@@ -112,11 +112,11 @@ Thrown when connecting to external services fails.
 
 ```typescript
 class ConnectionError {
-  readonly _tag = "ConnectionError"
-  readonly message: string
-  readonly service: "redis" | "electric" | "backend"
-  readonly cause: unknown
-  readonly retryable = true
+	readonly _tag = "ConnectionError"
+	readonly message: string
+	readonly service: "redis" | "electric" | "backend"
+	readonly cause: unknown
+	readonly retryable = true
 }
 ```
 
@@ -126,10 +126,10 @@ Thrown when Redis subscription fails.
 
 ```typescript
 class RedisSubscriptionError {
-  readonly _tag = "RedisSubscriptionError"
-  readonly message: string
-  readonly cause: unknown
-  readonly retryable = true
+	readonly _tag = "RedisSubscriptionError"
+	readonly message: string
+	readonly cause: unknown
+	readonly retryable = true
 }
 ```
 
@@ -139,10 +139,10 @@ Thrown for temporary failures that can be retried.
 
 ```typescript
 class TransientError {
-  readonly _tag = "TransientError"
-  readonly message: string
-  readonly cause: unknown
-  readonly retryable = true
+	readonly _tag = "TransientError"
+	readonly message: string
+	readonly cause: unknown
+	readonly retryable = true
 }
 ```
 
@@ -152,11 +152,11 @@ Thrown when schema validation fails.
 
 ```typescript
 class ValidationError {
-  readonly _tag = "ValidationError"
-  readonly message: string
-  readonly table: string
-  readonly cause: unknown
-  readonly retryable = false
+	readonly _tag = "ValidationError"
+	readonly message: string
+	readonly table: string
+	readonly cause: unknown
+	readonly retryable = false
 }
 ```
 
@@ -167,11 +167,12 @@ class ValidationError {
 The simplest way to handle errors in command handlers:
 
 ```typescript
-yield* bot.onCommand(MyCommand, (ctx) =>
-  Effect.gen(function* () {
-    // Handler logic
-  }).pipe(bot.withErrorHandler(ctx))
-)
+yield *
+	bot.onCommand(MyCommand, (ctx) =>
+		Effect.gen(function* () {
+			// Handler logic
+		}).pipe(bot.withErrorHandler(ctx)),
+	)
 ```
 
 This:
@@ -185,14 +186,15 @@ This:
 Use Effect's error handling for more control:
 
 ```typescript
-yield* bot.message.send(channelId, content).pipe(
-  Effect.catchAll((error) =>
-    Effect.gen(function* () {
-      yield* Effect.logError("Failed to send message", { error })
-      // Handle the error
-    })
-  )
-)
+yield *
+	bot.message.send(channelId, content).pipe(
+		Effect.catchAll((error) =>
+			Effect.gen(function* () {
+				yield* Effect.logError("Failed to send message", { error })
+				// Handle the error
+			}),
+		),
+	)
 ```
 
 ### Catching Specific Errors
@@ -200,14 +202,15 @@ yield* bot.message.send(channelId, content).pipe(
 Use `Effect.catchTag` to handle specific error types:
 
 ```typescript
-yield* bot.message.send(channelId, content).pipe(
-  Effect.catchTag("MessageOperationError", (error) =>
-    Effect.gen(function* () {
-      yield* Effect.logError(`Message ${error.operation} failed: ${error.message}`)
-      // Retry or notify user
-    })
-  )
-)
+yield *
+	bot.message.send(channelId, content).pipe(
+		Effect.catchTag("MessageOperationError", (error) =>
+			Effect.gen(function* () {
+				yield* Effect.logError(`Message ${error.operation} failed: ${error.message}`)
+				// Retry or notify user
+			}),
+		),
+	)
 ```
 
 ### Checking Retryability
@@ -218,15 +221,15 @@ Use `isRetryable` to check if an error can be retried:
 import { isRetryable } from "@hazel/bot-sdk"
 
 Effect.catchAll((error) =>
-  Effect.gen(function* () {
-    if (isRetryable(error)) {
-      yield* Effect.logWarning("Retryable error, will retry...")
-      // The SDK handles retries automatically
-    } else {
-      yield* Effect.logError("Non-retryable error", { error })
-      // Handle permanently failed operation
-    }
-  })
+	Effect.gen(function* () {
+		if (isRetryable(error)) {
+			yield* Effect.logWarning("Retryable error, will retry...")
+			// The SDK handles retries automatically
+		} else {
+			yield* Effect.logError("Non-retryable error", { error })
+			// Handle permanently failed operation
+		}
+	}),
 )
 ```
 
@@ -242,13 +245,13 @@ Configure via `dispatcherConfig`:
 
 ```typescript
 runHazelBot({
-  config: {
-    dispatcherConfig: {
-      maxRetries: 5,
-      retryBaseDelay: 200,
-    },
-  },
-  // ...
+	config: {
+		dispatcherConfig: {
+			maxRetries: 5,
+			retryBaseDelay: 200,
+		},
+	},
+	// ...
 })
 ```
 
@@ -258,14 +261,10 @@ Handler errors are isolated - one handler failing doesn't affect others:
 
 ```typescript
 // Handler 1 throws an error
-yield* bot.onMessage((message) =>
-  Effect.fail(new Error("Handler 1 failed"))
-)
+yield * bot.onMessage((message) => Effect.fail(new Error("Handler 1 failed")))
 
 // Handler 2 still runs normally
-yield* bot.onMessage((message) =>
-  Effect.log("Handler 2 still works!")
-)
+yield * bot.onMessage((message) => Effect.log("Handler 2 still works!"))
 ```
 
 ## Logging Errors
@@ -273,18 +272,19 @@ yield* bot.onMessage((message) =>
 Use Effect's structured logging:
 
 ```typescript
-yield* Effect.logError("Operation failed", {
-  error,
-  context: {
-    channelId,
-    userId,
-    operation: "send",
-  },
-})
+yield *
+	Effect.logError("Operation failed", {
+		error,
+		context: {
+			channelId,
+			userId,
+			operation: "send",
+		},
+	})
 ```
 
 For warnings:
 
 ```typescript
-yield* Effect.logWarning("Retrying operation", { attempt: 2 })
+yield * Effect.logWarning("Retrying operation", { attempt: 2 })
 ```

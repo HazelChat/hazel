@@ -54,18 +54,18 @@ If the Effect has requirements (`R != never`), `runPromise` cannot execute it be
 
 ```typescript
 class MyApiService extends Effect.Service<MyApiService>()("MyApiService", {
-  effect: Effect.succeed({
-    create: (data) => Effect.succeed({ txid: 123 })
-  })
+	effect: Effect.succeed({
+		create: (data) => Effect.succeed({ txid: 123 }),
+	}),
 }) {}
 
 effectElectricCollectionOptions({
-  onInsert: ({ transaction }) =>
-    Effect.gen(function* () {
-      const api = yield* MyApiService
-      const result = yield* api.create(transaction.mutations[0].modified)
-      return { txid: result.txid }
-    }).pipe(Effect.provide(MyApiService.Default))
+	onInsert: ({ transaction }) =>
+		Effect.gen(function* () {
+			const api = yield* MyApiService
+			const result = yield* api.create(transaction.mutations[0].modified)
+			return { txid: result.txid }
+		}).pipe(Effect.provide(MyApiService.Default)),
 })
 ```
 
@@ -73,52 +73,48 @@ effectElectricCollectionOptions({
 
 ```typescript
 const ApiLayer = Layer.succeed(ApiService, {
-  create: (data) => Effect.succeed({ txid: 123 })
+	create: (data) => Effect.succeed({ txid: 123 }),
 })
 
 effectElectricCollectionOptions({
-  onInsert: ({ transaction }) =>
-    Effect.gen(function* () {
-      const api = yield* ApiService
-      const result = yield* api.create(transaction.mutations[0].modified)
-      return { txid: result.txid }
-    }).pipe(Effect.provide(ApiLayer))
+	onInsert: ({ transaction }) =>
+		Effect.gen(function* () {
+			const api = yield* ApiService
+			const result = yield* api.create(transaction.mutations[0].modified)
+			return { txid: result.txid }
+		}).pipe(Effect.provide(ApiLayer)),
 })
 ```
 
 ### Pattern 3: Multiple Dependencies
 
 ```typescript
-const AllDependencies = Layer.mergeAll(
-  ApiService.Default,
-  LoggerService.Default,
-  ConfigService.Default
-)
+const AllDependencies = Layer.mergeAll(ApiService.Default, LoggerService.Default, ConfigService.Default)
 
 effectElectricCollectionOptions({
-  onInsert: ({ transaction }) =>
-    Effect.gen(function* () {
-      const api = yield* ApiService
-      const logger = yield* LoggerService
-      const config = yield* ConfigService
+	onInsert: ({ transaction }) =>
+		Effect.gen(function* () {
+			const api = yield* ApiService
+			const logger = yield* LoggerService
+			const config = yield* ConfigService
 
-      yield* logger.log("Inserting item...")
-      const result = yield* api.create(transaction.mutations[0].modified)
-      return { txid: result.txid }
-    }).pipe(Effect.provide(AllDependencies))
+			yield* logger.log("Inserting item...")
+			const result = yield* api.create(transaction.mutations[0].modified)
+			return { txid: result.txid }
+		}).pipe(Effect.provide(AllDependencies)),
 })
 ```
 
 ## Type Signature Explained
 
 ```typescript
-type EffectInsertHandler<T, TKey, TUtils, E = never> =
-  (params: InsertMutationFnParams<T, TKey, TUtils>) =>
-    Effect.Effect<
-      { txid: Txid | Array<Txid> },  // Success type
-      E,                              // Error type (customizable)
-      never                           // Requirements (must be never!)
-    >
+type EffectInsertHandler<T, TKey, TUtils, E = never> = (
+	params: InsertMutationFnParams<T, TKey, TUtils>,
+) => Effect.Effect<
+	{ txid: Txid | Array<Txid> }, // Success type
+	E, // Error type (customizable)
+	never // Requirements (must be never!)
+>
 ```
 
 - **Success**: Always returns `{ txid: ... }`
@@ -158,10 +154,10 @@ The error type `ApiError` will be caught and wrapped in `InsertError` by the con
 ```typescript
 // ❌ Error: Effect has requirements that cannot be satisfied
 onInsert: ({ transaction }) =>
-  Effect.gen(function* () {
-    const api = yield* ApiService
-    return { txid: 123 }
-  })
+	Effect.gen(function* () {
+		const api = yield* ApiService
+		return { txid: 123 }
+	})
 // Fix: Add .pipe(Effect.provide(ApiService.Default))
 ```
 
@@ -191,12 +187,10 @@ effectElectricCollectionOptions({
 
 ```typescript
 // ❌ Error: Handler must return { txid: ... }
-onInsert: ({ transaction }) =>
-  Effect.succeed({ success: true })  // Missing txid!
+onInsert: ({ transaction }) => Effect.succeed({ success: true }) // Missing txid!
 
 // ✅ Correct
-onInsert: ({ transaction }) =>
-  Effect.succeed({ txid: 123 })
+onInsert: ({ transaction }) => Effect.succeed({ txid: 123 })
 ```
 
 ## Testing Handlers

@@ -113,11 +113,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 
 function CounterButton() {
 	const setCount = useAtomSet(countAtom)
-	return (
-		<button onClick={() => setCount((count) => count + 1)}>
-			Increment
-		</button>
-	)
+	return <button onClick={() => setCount((count) => count + 1)}>Increment</button>
 }
 ```
 
@@ -221,7 +217,7 @@ const userAtom: Atom<Result<User>> = Atom.make(
 	Effect.gen(function* () {
 		const response = yield* fetchUser()
 		return response
-	})
+	}),
 )
 ```
 
@@ -259,7 +255,7 @@ const userProfileAtom = Atom.make(
 		const user = yield* get.result(userAtom)
 		const posts = yield* fetchUserPosts(user.id)
 		return { user, posts }
-	})
+	}),
 )
 ```
 
@@ -343,7 +339,7 @@ import type { ChannelId } from "@hazel/db/schema"
 
 // Create a family of atoms, one per channel
 export const replyToMessageAtomFamily = Atom.family((channelId: ChannelId) =>
-	Atom.make<MessageId | null>(null).pipe(Atom.keepAlive)
+	Atom.make<MessageId | null>(null).pipe(Atom.keepAlive),
 )
 
 // Usage in components
@@ -371,7 +367,7 @@ export const modalAtomFamily = Atom.family((type: ModalType) =>
 		type,
 		isOpen: false,
 		metadata: undefined,
-	}).pipe(Atom.keepAlive)
+	}).pipe(Atom.keepAlive),
 )
 ```
 
@@ -487,17 +483,15 @@ export const messagesByChannelAtomFamily = Atom.family((channelId: ChannelId) =>
 	makeQuery((q) =>
 		q
 			.from({ message: messageCollection })
-			.leftJoin({ author: userCollection }, ({ message, author }) =>
-				eq(message.authorId, author.id)
-			)
+			.leftJoin({ author: userCollection }, ({ message, author }) => eq(message.authorId, author.id))
 			.where(({ message }) => eq(message.channelId, channelId))
 			.select(({ message, author }) => ({
 				...message,
 				author: author,
 			}))
 			.orderBy(({ message }) => message.createdAt, "desc")
-			.limit(50)
-	)
+			.limit(50),
+	),
 )
 ```
 
@@ -533,8 +527,8 @@ export const userAtom = Atom.family((id: string) =>
 		Effect.gen(function* () {
 			const users = yield* Users
 			return yield* users.findById(id)
-		})
-	)
+		}),
+	),
 )
 ```
 
@@ -590,7 +584,7 @@ const state = useAtomValue(appStateAtom)
 const userName = state.user.name
 
 // ✅ Good - derive focused atom
-const userNameAtom = Atom.map(appStateAtom, state => state.user.name)
+const userNameAtom = Atom.map(appStateAtom, (state) => state.user.name)
 const userName = useAtomValue(userNameAtom)
 ```
 
@@ -612,7 +606,9 @@ const expensiveComputationAtom = Atom.make((get) => {
 
 ```tsx
 export const modalAtomFamily = Atom.family((type: ModalType) =>
-	Atom.make<ModalState>({ /* ... */ }).pipe(Atom.keepAlive)
+	Atom.make<ModalState>({
+		/* ... */
+	}).pipe(Atom.keepAlive),
 )
 
 // Imperative helpers for outside React
@@ -642,11 +638,7 @@ export const closeModal = (type: ModalType) => {
 
 ```tsx
 export const openModalsAtom = Atom.make((get) => {
-	const modalTypes: ModalType[] = [
-		"create-dm",
-		"new-channel",
-		"join-channel",
-	]
+	const modalTypes: ModalType[] = ["create-dm", "new-channel", "join-channel"]
 
 	return modalTypes
 		.map((type) => get(modalAtomFamily(type)))
@@ -713,8 +705,8 @@ const afkStateAtom = Atom.make((get) =>
 				isAFK: Duration.greaterThanOrEqualTo(timeSinceActivity, AFK_TIMEOUT),
 				timeSinceActivity,
 			}
-		})
-	)
+		}),
+	),
 ).pipe(Atom.keepAlive)
 ```
 
@@ -730,7 +722,7 @@ const beforeUnloadAtom = Atom.make((get) => {
 	const handleBeforeUnload = () => {
 		const url = `${API_URL}/presence/offline`
 		const blob = new Blob([JSON.stringify({ userId: user.id })], {
-			type: "application/json"
+			type: "application/json",
 		})
 		navigator.sendBeacon(url, blob)
 	}

@@ -24,11 +24,12 @@ import { Effect } from "effect"
 import { runHazelBot } from "@hazel/bot-sdk"
 
 runHazelBot({
-  commands,  // Optional: CommandGroup
-  layers,    // Optional: Additional Effect layers
-  setup: (bot) => Effect.gen(function* () {
-    // Register handlers here
-  }),
+	commands, // Optional: CommandGroup
+	layers, // Optional: Additional Effect layers
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// Register handlers here
+		}),
 })
 ```
 
@@ -41,15 +42,15 @@ import { Effect } from "effect"
 import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
 
 const runtime = createHazelBot({
-  botToken: process.env.BOT_TOKEN!,
-  commands,
+	botToken: process.env.BOT_TOKEN!,
+	commands,
 })
 
 const program = Effect.gen(function* () {
-  const bot = yield* HazelBotClient
-  // ...
-  yield* bot.start
-  yield* Effect.never
+	const bot = yield* HazelBotClient
+	// ...
+	yield* bot.start
+	yield* Effect.never
 })
 
 runtime.runPromise(program.pipe(Effect.scoped))
@@ -58,18 +59,18 @@ runtime.runPromise(program.pipe(Effect.scoped))
 ## Reference Pages
 
 <Cards>
-  <Card title="HazelBotClient" href="/bot-sdk/reference/hazel-bot-client">
-    Event handlers and message operations
-  </Card>
-  <Card title="Commands" href="/bot-sdk/reference/commands">
-    Command.make and CommandGroup
-  </Card>
-  <Card title="Configuration" href="/bot-sdk/reference/configuration">
-    Environment variables and options
-  </Card>
-  <Card title="Errors" href="/bot-sdk/reference/errors">
-    Error types and handling
-  </Card>
+	<Card title="HazelBotClient" href="/bot-sdk/reference/hazel-bot-client">
+		Event handlers and message operations
+	</Card>
+	<Card title="Commands" href="/bot-sdk/reference/commands">
+		Command.make and CommandGroup
+	</Card>
+	<Card title="Configuration" href="/bot-sdk/reference/configuration">
+		Environment variables and options
+	</Card>
+	<Card title="Errors" href="/bot-sdk/reference/errors">
+		Error types and handling
+	</Card>
 </Cards>
 
 ## Quick Reference
