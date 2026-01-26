@@ -7,7 +7,7 @@ export const startTypingIndicatorCleanup = Effect.gen(function* () {
 
 	const cleanupStaleIndicators = Effect.gen(function* () {
 		const deleted = yield* typingIndicatorRepo.deleteStale(10000).pipe(
-			Effect.catchAll((error) =>
+			Effect.catchTag("DatabaseError", (error) =>
 				Effect.gen(function* () {
 					yield* Effect.logError("Failed to cleanup stale typing indicators", error)
 					return []

@@ -3,7 +3,7 @@
  *
  * HTTP client for publishing events to the durable stream server.
  */
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import { Config, Context, Effect, Layer, Redacted, Schema } from "effect"
 
 /**
@@ -34,6 +34,7 @@ export class DurableStreamError extends Schema.TaggedError<DurableStreamError>()
  */
 export class DurableStreamClient extends Effect.Service<DurableStreamClient>()("DurableStreamClient", {
 	accessors: true,
+	dependencies: [FetchHttpClient.layer],
 	effect: Effect.gen(function* () {
 		const config = yield* DurableStreamClientConfigTag
 		const httpClient = yield* HttpClient.HttpClient
@@ -54,7 +55,11 @@ export class DurableStreamClient extends Effect.Service<DurableStreamClient>()("
 
 				const response = yield* httpClient.execute(request).pipe(
 					Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Unknown)),
-					Effect.catchAll(() => Effect.succeed(null)),
+					Effect.catchTags({
+						RequestError: () => Effect.succeed(null),
+						ResponseError: () => Effect.succeed(null),
+						ParseError: () => Effect.succeed(null),
+					}),
 				)
 
 				return response

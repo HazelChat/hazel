@@ -180,14 +180,19 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	)
 	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
 
-	// Return redirect with session cookie
-	return HttpServerResponse.empty({
-		status: 302,
-		headers: {
-			Location: authorizationUrl.toString(),
-			"Set-Cookie": `${sessionCookieName}=${sessionCookieValue}; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_SESSION_COOKIE_MAX_AGE}`,
+	// Build Set-Cookie header value for session cookie
+	// This cookie is used for state recovery during callback
+	const cookieHeader = `${sessionCookieName}=${sessionCookieValue}; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_SESSION_COOKIE_MAX_AGE}`
+
+	// Return JSON response with authorization URL and session cookie
+	return yield* HttpServerResponse.json(
+		{ authorizationUrl: authorizationUrl.toString() },
+		{
+			headers: {
+				"Set-Cookie": cookieHeader,
+			},
 		},
-	})
+	).pipe(Effect.orDie)
 })
 
 /**
@@ -645,6 +650,8 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 						organizationId: parsedState.organizationId,
 					}),
 		),
+		// Note: catchAll is intentional here - this is a best-effort operation
+		// after OAuth success. We catch all errors to prevent disrupting the flow.
 		Effect.catchAll((error) =>
 			Effect.logWarning("Failed to add integration bot to org (non-critical)", {
 				event: "integration_bot_add_failed",

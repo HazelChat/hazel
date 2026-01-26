@@ -152,7 +152,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						.call(async (client) =>
 							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
 						)
-						.pipe(Effect.catchAll(() => Effect.succeed(null)))
+						.pipe(Effect.catchTag("WorkOSApiError", () => Effect.succeed(null)))
 
 					workosOrgId = workosOrg?.id
 				}
