@@ -27,7 +27,7 @@
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@effect/language-service": "catalog:effect",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.17",
+		"vitest": "^4.0.18",
 		"wrangler": "^4.56.0"
 	}
 }

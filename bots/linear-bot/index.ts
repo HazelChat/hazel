@@ -44,3 +44,5 @@ runHazelBot({
 			)
 		}),
 })
+
+console.log("Linear bot is running...")
