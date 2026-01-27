@@ -21,8 +21,8 @@
     "apps/backend": {
       "name": "@hazel/backend",
       "dependencies": {
-        "@durable-streams/client-effect": "https://pkg.pr.new/durable-streams/durable-streams/@durable-streams/client-effect@218",
         "@effect/cluster": "catalog:effect",
+        "@effect/experimental": "catalog:effect",
         "@effect/opentelemetry": "catalog:effect",
         "@effect/platform": "catalog:effect",
         "@effect/platform-bun": "catalog:effect",
@@ -304,7 +304,7 @@
       "name": "@hazel/bot-sdk",
       "version": "0.1.0",
       "dependencies": {
-        "@durable-streams/client-effect": "https://pkg.pr.new/durable-streams/durable-streams/@durable-streams/client-effect@218",
+        "@effect/experimental": "catalog:effect",
         "@effect/platform": "catalog:effect",
         "@effect/platform-bun": "catalog:effect",
         "@effect/rpc": "catalog:effect",

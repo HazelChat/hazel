@@ -88,6 +88,19 @@ export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecu
 // ============ API GROUP ============
 
 export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
+	// SSE stream for bot commands (bot token auth)
+	// This endpoint uses bot token authentication, not user auth
+	.add(
+		HttpApiEndpoint.get("streamCommands", `/stream`)
+			.addError(UnauthorizedError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Stream Bot Commands",
+					description: "SSE stream for receiving bot commands (used by Bot SDK)",
+					summary: "Stream commands via SSE",
+				}),
+			),
+	)
 	// Get current bot info (for bot token validation)
 	// This endpoint uses bot token authentication, not user auth
 	.add(

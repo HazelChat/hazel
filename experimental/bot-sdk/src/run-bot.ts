@@ -90,7 +90,6 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			botToken: Redacted.value(envConfig.botToken),
 			electricUrl: options.config?.electricUrl ?? envConfig.electricUrl,
 			backendUrl: options.config?.backendUrl ?? envConfig.backendUrl,
-			durableStreamUrl: options.config?.durableStreamUrl ?? envConfig.durableStreamUrl,
 			commands: options.commands,
 			serviceName: options.serviceName ?? "hazel-bot",
 			queueConfig: options.config?.queueConfig,

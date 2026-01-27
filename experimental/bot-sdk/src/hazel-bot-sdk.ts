@@ -45,8 +45,8 @@ import type { HandlerError } from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
-	DurableStreamCommandListener,
-	DurableStreamCommandListenerLive,
+	SseCommandListener,
+	SseCommandListenerLive,
 	ElectricEventQueue,
 	EventDispatcher,
 	ShapeStreamSubscriber,
@@ -173,7 +173,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		// Try to get the command listener (optional - only available if commands are configured)
-		const commandListenerOption = yield* Effect.serviceOption(DurableStreamCommandListener)
+		const commandListenerOption = yield* Effect.serviceOption(SseCommandListener)
 
 		// Command handler registry - stores handlers keyed by command name
 		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
@@ -655,19 +655,11 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly electricUrl?: string
 
 	/**
-	 * Backend URL for RPC API calls
+	 * Backend URL for RPC API calls and SSE command streaming
 	 * @default "https://api.hazel.sh"
 	 * @example "http://localhost:3003" // For local development
 	 */
 	readonly backendUrl?: string
-
-	/**
-	 * Durable stream server URL for command delivery
-	 * Required if commands are defined
-	 * @default "http://localhost:4437"
-	 * @example "http://localhost:4437" // For local development
-	 */
-	readonly durableStreamUrl?: string
 
 	/**
 	 * Bot authentication token (required)
@@ -753,7 +745,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Apply defaults for URLs
 	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
-	const durableStreamUrl = config.durableStreamUrl ?? "http://localhost:4437"
 
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(
@@ -797,12 +788,12 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
-	// Create durable stream command listener layer if commands are configured
+	// Create SSE command listener layer if commands are configured
 	const hasCommands = config.commands && config.commands.commands.length > 0
 	const CommandListenerLayer = hasCommands
 		? Layer.provide(
-				DurableStreamCommandListenerLive({
-					durableStreamUrl,
+				SseCommandListenerLive({
+					backendUrl,
 					botToken: Redacted.make(config.botToken),
 				}),
 				AuthLayer,

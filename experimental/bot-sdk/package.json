@@ -18,7 +18,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@durable-streams/client-effect": "https://pkg.pr.new/durable-streams/durable-streams/@durable-streams/client-effect@218",
+		"@effect/experimental": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/rpc": "catalog:effect",
