@@ -46,7 +46,7 @@ import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/cli
 import type { EventQueueConfig } from "./services/index.ts"
 import {
 	DurableStreamCommandListener,
-	DurableStreamCommandListenerConfigTag,
+	DurableStreamCommandListenerLive,
 	ElectricEventQueue,
 	EventDispatcher,
 	ShapeStreamSubscriber,
@@ -801,14 +801,11 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	const hasCommands = config.commands && config.commands.commands.length > 0
 	const CommandListenerLayer = hasCommands
 		? Layer.provide(
-				DurableStreamCommandListener.Default,
-				Layer.merge(
-					Layer.succeed(DurableStreamCommandListenerConfigTag, {
-						durableStreamUrl,
-						botToken: Redacted.make(config.botToken),
-					}),
-					AuthLayer,
-				),
+				DurableStreamCommandListenerLive({
+					durableStreamUrl,
+					botToken: Redacted.make(config.botToken),
+				}),
+				AuthLayer,
 			)
 		: Layer.empty
 

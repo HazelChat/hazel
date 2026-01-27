@@ -2,22 +2,17 @@
  * Durable Stream Client Service
  *
  * HTTP client for publishing events to the durable stream server.
+ * Uses @durable-streams/client-effect for the underlying implementation.
  */
-import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
-import { Config, Context, Effect, Layer, Redacted, Schema } from "effect"
-
-/**
- * Configuration for the durable stream client
- */
-export interface DurableStreamClientConfig {
-	readonly baseUrl: string
-	readonly serviceToken: Redacted.Redacted<string>
-}
-
-export class DurableStreamClientConfigTag extends Context.Tag("@hazel/backend/DurableStreamClientConfig")<
-	DurableStreamClientConfigTag,
-	DurableStreamClientConfig
->() {}
+import {
+	DurableStreamClient as DSClient,
+	DurableStreamClientLiveNode,
+	type HttpError,
+	type NetworkError,
+	type StreamConflictError,
+	type StreamNotFoundError,
+} from "@durable-streams/client-effect"
+import { Config, Effect, Layer, Redacted, Schema } from "effect"
 
 /**
  * Error thrown when durable stream operations fail
@@ -28,42 +23,48 @@ export class DurableStreamError extends Schema.TaggedError<DurableStreamError>()
 }) {}
 
 /**
+ * Map client errors to DurableStreamError for backward compatibility
+ */
+const mapClientError = (
+	error: StreamNotFoundError | StreamConflictError | HttpError | NetworkError,
+): DurableStreamError => {
+	switch (error._tag) {
+		case "StreamNotFoundError":
+			return new DurableStreamError({ message: `Stream not found: ${error.url}`, cause: error })
+		case "StreamConflictError":
+			return new DurableStreamError({ message: `Stream conflict: ${error.message}`, cause: error })
+		case "HttpError":
+			return new DurableStreamError({
+				message: `HTTP ${error.status}: ${error.statusText}`,
+				cause: error,
+			})
+		case "NetworkError":
+			return new DurableStreamError({ message: error.message, cause: error })
+	}
+}
+
+/**
  * Durable Stream Client Service
  *
  * Provides methods for publishing events to durable streams.
  */
 export class DurableStreamClient extends Effect.Service<DurableStreamClient>()("DurableStreamClient", {
 	accessors: true,
-	dependencies: [FetchHttpClient.layer],
 	effect: Effect.gen(function* () {
-		const config = yield* DurableStreamClientConfigTag
-		const httpClient = yield* HttpClient.HttpClient
+		const dsClient = yield* DSClient
 
 		/**
 		 * Create a stream if it doesn't exist
 		 */
 		const ensureStream = (path: string) =>
-			Effect.gen(function* () {
-				const url = `${config.baseUrl}${path}`
-				const request = HttpClientRequest.put(url).pipe(
-					HttpClientRequest.setHeader(
-						"Authorization",
-						`Bearer ${Redacted.value(config.serviceToken)}`,
-					),
-					HttpClientRequest.setHeader("Content-Type", "application/json"),
-				)
-
-				const response = yield* httpClient.execute(request).pipe(
-					Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Unknown)),
-					Effect.catchTags({
-						RequestError: () => Effect.succeed(null),
-						ResponseError: () => Effect.succeed(null),
-						ParseError: () => Effect.succeed(null),
-					}),
-				)
-
-				return response
-			})
+			dsClient.create(path, { contentType: "application/json" }).pipe(
+				Effect.asVoid,
+				Effect.catchTags({
+					StreamConflictError: () => Effect.void, // Already exists, that's fine
+					HttpError: (e) => Effect.fail(mapClientError(e)),
+					NetworkError: (e) => Effect.fail(mapClientError(e)),
+				}),
+			)
 
 		/**
 		 * Publish an event to a stream
@@ -73,49 +74,89 @@ export class DurableStreamClient extends Effect.Service<DurableStreamClient>()("
 				// First ensure the stream exists
 				yield* ensureStream(path)
 
-				// Then post the event
-				const url = `${config.baseUrl}${path}`
-				const body = JSON.stringify(event)
-
-				const request = HttpClientRequest.post(url).pipe(
-					HttpClientRequest.setHeader(
-						"Authorization",
-						`Bearer ${Redacted.value(config.serviceToken)}`,
-					),
-					HttpClientRequest.setHeader("Content-Type", "application/json"),
-					HttpClientRequest.bodyText(body),
-				)
-
-				const response = yield* httpClient.execute(request).pipe(
-					Effect.catchTag("RequestError", (error) =>
+				// Then append the event (must pass contentType for POST)
+				yield* dsClient.append(path, JSON.stringify(event), {
+					contentType: "application/json",
+				})
+			}).pipe(
+				Effect.catchTags({
+					StreamNotFoundError: (e) => Effect.fail(mapClientError(e)),
+					StreamConflictError: (e) => Effect.fail(mapClientError(e)),
+					HttpError: (e) => Effect.fail(mapClientError(e)),
+					NetworkError: (e) => Effect.fail(mapClientError(e)),
+					ContentTypeMismatchError: (e) =>
 						Effect.fail(
 							new DurableStreamError({
-								message: "Failed to connect to durable stream server",
-								cause: error,
+								message: `Content type mismatch: expected ${e.expected}, got ${e.received}`,
+								cause: e,
 							}),
 						),
-					),
-					Effect.catchTag("ResponseError", (error) =>
+					InvalidOffsetError: (e) =>
 						Effect.fail(
 							new DurableStreamError({
-								message: `Durable stream server returned error: ${error.response.status}`,
-								cause: error,
+								message: `Invalid offset: ${e.offset}`,
+								cause: e,
 							}),
 						),
-					),
-				)
-
-				// Check for success (2xx status)
-				if (response.status >= 400) {
-					return yield* Effect.fail(
-						new DurableStreamError({
-							message: `Durable stream server returned status ${response.status}`,
-						}),
-					)
-				}
-
-				return response
-			}).pipe(Effect.withSpan("durable-stream.publish", { attributes: { path } }))
+					SequenceConflictError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Sequence conflict: current=${e.currentSeq}, received=${e.receivedSeq}`,
+								cause: e,
+							}),
+						),
+					StaleEpochError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Stale epoch: current=${e.currentEpoch}`,
+								cause: e,
+							}),
+						),
+					SequenceGapError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Sequence gap: expected=${e.expectedSeq}, received=${e.receivedSeq}`,
+								cause: e,
+							}),
+						),
+					ParseError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Parse error: ${e.message}`,
+								cause: e,
+							}),
+						),
+					SSEParseError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `SSE parse error: ${e.message}`,
+								cause: e,
+							}),
+						),
+					TimeoutError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Timeout: ${e.message}`,
+								cause: e,
+							}),
+						),
+					ProducerClosedError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: "Producer closed",
+								cause: e,
+							}),
+						),
+					InvalidProducerOptionsError: (e) =>
+						Effect.fail(
+							new DurableStreamError({
+								message: `Invalid producer options: ${e.message}`,
+								cause: e,
+							}),
+						),
+				}),
+				Effect.withSpan("durable-stream.publish", { attributes: { path } }),
+			)
 
 		/**
 		 * Publish a bot command event
@@ -145,9 +186,12 @@ export const DurableStreamClientLive = Layer.unwrapEffect(
 
 		return DurableStreamClient.Default.pipe(
 			Layer.provide(
-				Layer.succeed(DurableStreamClientConfigTag, {
+				DurableStreamClientLiveNode({
 					baseUrl,
-					serviceToken,
+					headers: {
+						Authorization: () => `Bearer ${Redacted.value(serviceToken)}`,
+					},
+					defaultContentType: "application/json",
 				}),
 			),
 		)

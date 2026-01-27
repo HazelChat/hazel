@@ -4,14 +4,17 @@
  * Subscribes to a durable stream via SSE to receive command events from the backend.
  * Commands are published when users execute slash commands in the chat UI.
  *
- * The service auto-starts on construction and properly cleans up resources
- * when the scope is closed.
+ * Uses @durable-streams/client-effect for SSE streaming with proper parsing and retry.
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Layer, Option, Queue, Ref, Redacted, Schema, Stream } from "effect"
+import {
+	DurableStreamClient,
+	DurableStreamClientLiveNode,
+	type ParseError,
+} from "@durable-streams/client-effect"
+import { Context, Effect, Layer, Queue, Ref, Redacted, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
-import { RetryStrategy } from "../retry.ts"
 
 // ============ Command Event Schema ============
 
@@ -41,17 +44,6 @@ export interface CommandContext {
 	readonly args: Record<string, string>
 	readonly timestamp: number
 }
-
-// ============ SSE Event Schema ============
-
-/**
- * SSE control event from durable stream
- */
-const SSEControlEventSchema = Schema.Struct({
-	streamNextOffset: Schema.String,
-	streamCursor: Schema.optional(Schema.String),
-	upToDate: Schema.optional(Schema.Boolean),
-})
 
 // ============ Config ============
 
@@ -83,7 +75,7 @@ export class DurableStreamConnectionError extends Schema.TaggedError<DurableStre
  * for processing by the command dispatcher.
  *
  * Auto-starts on construction - no need to call start() manually.
- * Uses Stream.async pattern for proper Effect integration.
+ * Uses StreamSession from @durable-streams/client-effect for proper SSE handling.
  */
 export class DurableStreamCommandListener extends Effect.Service<DurableStreamCommandListener>()(
 	"DurableStreamCommandListener",
@@ -92,17 +84,13 @@ export class DurableStreamCommandListener extends Effect.Service<DurableStreamCo
 		scoped: Effect.gen(function* () {
 			const auth = yield* BotAuth
 			const context = yield* auth.getContext.pipe(Effect.orDie)
-			const config = yield* DurableStreamCommandListenerConfigTag
+			const dsClient = yield* DurableStreamClient
 
 			// Build the stream URL for this bot
 			const streamPath = `/bots/${context.botId}/commands`
-			const baseUrl = config.durableStreamUrl.replace(/\/$/, "")
 
 			// Track running state with Ref (immutable)
 			const isRunningRef = yield* Ref.make(false)
-
-			// Track the current offset for resumption
-			const offsetRef = yield* Ref.make<string>("now")
 
 			// Create command queue with proper scoped acquisition
 			const commandQueue = yield* Effect.acquireRelease(Queue.unbounded<CommandEvent>(), (queue) =>
@@ -114,171 +102,116 @@ export class DurableStreamCommandListener extends Effect.Service<DurableStreamCo
 				}),
 			)
 
-			// AbortController for cleanup
-			const abortControllerRef = yield* Ref.make<AbortController | null>(null)
-
 			/**
-			 * Connect to SSE stream and process events
+			 * Connect to SSE stream and process events using the new client
 			 */
 			const connectAndProcess = Effect.gen(function* () {
-				const currentOffset = yield* Ref.get(offsetRef)
-				const sseUrl = `${baseUrl}${streamPath}?live=sse&offset=${currentOffset}`
-
-				yield* Effect.logDebug(`Connecting to durable stream`, { url: sseUrl }).pipe(
+				yield* Effect.logDebug(`Connecting to durable stream`, { path: streamPath }).pipe(
 					Effect.annotateLogs("service", "DurableStreamCommandListener"),
 				)
 
-				const abortController = new AbortController()
-				yield* Ref.set(abortControllerRef, abortController)
-
-				const token = Redacted.value(config.botToken)
-
-				// Fetch with SSE headers
-				const response = yield* Effect.tryPromise({
-					try: () =>
-						fetch(sseUrl, {
-							headers: {
-								Accept: "text/event-stream",
-								Authorization: `Bearer ${token}`,
-								"Cache-Control": "no-cache",
-							},
-							signal: abortController.signal,
-						}),
-					catch: (error) =>
-						new DurableStreamConnectionError({
-							message: "Failed to connect to durable stream",
-							cause: error,
-						}),
+				// Use the new client's stream() method with SSE mode
+				const session = yield* dsClient.stream<unknown>(streamPath, {
+					offset: "now",
+					live: "sse",
 				})
-
-				if (!response.ok) {
-					const body = yield* Effect.promise(() => response.text())
-					return yield* Effect.fail(
-						new DurableStreamConnectionError({
-							message: `HTTP ${response.status}: ${body}`,
-						}),
-					)
-				}
-
-				if (!response.body) {
-					return yield* Effect.fail(
-						new DurableStreamConnectionError({
-							message: "Response body is null",
-						}),
-					)
-				}
 
 				yield* Ref.set(isRunningRef, true)
 
-				// Create a stream from the SSE response
-				const reader = response.body.getReader()
-				const decoder = new TextDecoder()
-				let buffer = ""
-
-				// Process SSE events
-				yield* Stream.repeatEffect(
-					Effect.tryPromise({
-						try: () => reader.read(),
-						catch: (error) =>
-							new DurableStreamConnectionError({
-								message: "Failed to read from stream",
-								cause: error,
-							}),
-					}),
-				).pipe(
-					Stream.takeWhile((result) => !result.done),
-					Stream.map((result) => decoder.decode(result.value, { stream: true })),
-					Stream.mapEffect((chunk) =>
-						Effect.gen(function* () {
-							buffer += chunk
-							const events: Array<{ event: string; data: string }> = []
-
-							// Parse SSE format: event: <type>\ndata: <json>\n\n
-							const lines = buffer.split("\n")
-							let currentEvent: { event?: string; data: string[] } = { data: [] }
-
-							for (let i = 0; i < lines.length; i++) {
-								const line = lines[i]!
-
-								if (line.startsWith("event:")) {
-									currentEvent.event = line.slice(6).trim()
-								} else if (line.startsWith("data:")) {
-									currentEvent.data.push(line.slice(5))
-								} else if (line === "") {
-									// Empty line means end of event
-									if (currentEvent.event && currentEvent.data.length > 0) {
-										events.push({
-											event: currentEvent.event,
-											data: currentEvent.data.join("\n"),
-										})
-									}
-									currentEvent = { data: [] }
-								}
-							}
-
-							// Keep incomplete event in buffer
-							const lastEmptyLineIndex = buffer.lastIndexOf("\n\n")
-							if (lastEmptyLineIndex !== -1) {
-								buffer = buffer.slice(lastEmptyLineIndex + 2)
-							}
-
-							return events
-						}),
-					),
-					Stream.flatMap((events) => Stream.fromIterable(events)),
-					Stream.mapEffect((event) =>
-						Effect.gen(function* () {
-							if (event.event === "control") {
-								// Parse control event to update offset
-								const controlResult = yield* Schema.decodeUnknown(SSEControlEventSchema)(
-									JSON.parse(event.data),
-								).pipe(Effect.catchAll(() => Effect.succeed(null)))
-
-								if (controlResult) {
-									yield* Ref.set(offsetRef, controlResult.streamNextOffset)
-								}
-								return Option.none<CommandEvent>()
-							}
-
-							if (event.event === "data") {
-								// Parse command event
-								const parsed = yield* Effect.try({
-									try: () => JSON.parse(event.data),
-									catch: () => null,
-								})
-
-								if (!parsed) {
-									return Option.none<CommandEvent>()
-								}
-
-								const commandResult = yield* Schema.decodeUnknown(CommandEventSchema)(
-									parsed,
-								).pipe(
-									Effect.map(Option.some),
-									Effect.catchAll(() => Effect.succeed(Option.none())),
-								)
-
-								return commandResult
-							}
-
-							return Option.none<CommandEvent>()
-						}).pipe(
-							Effect.catchAll((error) =>
-								Effect.logWarning("Error processing SSE event", { error }).pipe(
-									Effect.annotateLogs("service", "DurableStreamCommandListener"),
-									Effect.as(Option.none<CommandEvent>()),
-								),
+				// Process JSON stream - each item is a raw event
+				yield* session.jsonStream().pipe(
+					Stream.mapEffect((rawEvent) =>
+						Schema.decodeUnknown(CommandEventSchema)(rawEvent).pipe(
+							Effect.flatMap((cmd) => Queue.offer(commandQueue, cmd)),
+							Effect.catchAll((e) =>
+								Effect.logWarning("Failed to parse command event", {
+									error: e,
+									rawEvent,
+								}).pipe(Effect.annotateLogs("service", "DurableStreamCommandListener")),
 							),
 						),
 					),
-					Stream.filterMap((opt) => opt),
-					Stream.runForEach((event) => Queue.offer(commandQueue, event)),
+					Stream.runDrain,
 				)
-			})
+			}).pipe(
+				Effect.catchTags({
+					StreamNotFoundError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({ message: `Stream not found: ${e.url}` }),
+						),
+					StreamConflictError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Stream conflict: ${e.message}`,
+								cause: e,
+							}),
+						),
+					HttpError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `HTTP ${e.status}: ${e.statusText}`,
+								cause: e,
+							}),
+						),
+					NetworkError: (e) =>
+						Effect.fail(new DurableStreamConnectionError({ message: e.message, cause: e })),
+					ParseError: (e: ParseError) =>
+						Effect.fail(
+							new DurableStreamConnectionError({ message: `Parse error: ${e.message}` }),
+						),
+					SSEParseError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({ message: `SSE parse error: ${e.message}` }),
+						),
+					ContentTypeMismatchError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Content type mismatch: expected ${e.expected}, got ${e.received}`,
+							}),
+						),
+					InvalidOffsetError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({ message: `Invalid offset: ${e.offset}` }),
+						),
+					SequenceConflictError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Sequence conflict: current=${e.currentSeq}, received=${e.receivedSeq}`,
+							}),
+						),
+					StaleEpochError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Stale epoch: current=${e.currentEpoch}`,
+							}),
+						),
+					SequenceGapError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Sequence gap: expected=${e.expectedSeq}, received=${e.receivedSeq}`,
+							}),
+						),
+					TimeoutError: (e) =>
+						Effect.fail(new DurableStreamConnectionError({ message: `Timeout: ${e.message}` })),
+					ProducerClosedError: () =>
+						Effect.fail(new DurableStreamConnectionError({ message: "Producer closed" })),
+					InvalidProducerOptionsError: (e) =>
+						Effect.fail(
+							new DurableStreamConnectionError({
+								message: `Invalid producer options: ${e.message}`,
+							}),
+						),
+				}),
+			)
 
-			// Start the connection loop with retry
+			// Start the connection loop with retry using Effect's built-in retry
 			yield* connectAndProcess.pipe(
-				Effect.retry(RetryStrategy.connectionErrors),
+				Effect.retry(
+					Schedule.exponential("1 second", 2).pipe(
+						Schedule.jittered,
+						Schedule.intersect(Schedule.recurs(10)),
+					),
+				),
 				Effect.catchAll((error) =>
 					Effect.logError("Durable stream connection failed permanently", { error }).pipe(
 						Effect.annotateLogs("service", "DurableStreamCommandListener"),
@@ -295,10 +228,6 @@ export class DurableStreamCommandListener extends Effect.Service<DurableStreamCo
 			yield* Effect.addFinalizer(() =>
 				Effect.gen(function* () {
 					yield* Ref.set(isRunningRef, false)
-					const controller = yield* Ref.get(abortControllerRef)
-					if (controller) {
-						controller.abort()
-					}
 					yield* Effect.logDebug("Durable stream listener stopped").pipe(
 						Effect.annotateLogs("service", "DurableStreamCommandListener"),
 					)
@@ -336,5 +265,13 @@ export class DurableStreamCommandListener extends Effect.Service<DurableStreamCo
 export const DurableStreamCommandListenerLive = (config: DurableStreamCommandListenerConfig) =>
 	Layer.provide(
 		DurableStreamCommandListener.Default,
-		Layer.succeed(DurableStreamCommandListenerConfigTag, config),
+		Layer.mergeAll(
+			Layer.succeed(DurableStreamCommandListenerConfigTag, config),
+			DurableStreamClientLiveNode({
+				baseUrl: config.durableStreamUrl,
+				headers: {
+					Authorization: () => `Bearer ${Redacted.value(config.botToken)}`,
+				},
+			}),
+		),
 	)

@@ -1134,9 +1134,9 @@ export const runServer = (
 			yield* Effect.log(`Authentication disabled`)
 		}
 
-		yield* HttpServer.serve(router).pipe(
+		return yield* HttpServer.serve(router).pipe(
 			HttpServer.withLogAddress,
-			Layer.provide(BunHttpServer.layer({ port, hostname: host })),
+			Layer.provide(BunHttpServer.layer({ port, hostname: host, idleTimeout: 30 })),
 			Layer.launch,
 		)
 	})

@@ -19,6 +19,7 @@
 		"reset:force": "bun run scripts/reset-all.ts --force"
 	},
 	"dependencies": {
+		"@durable-streams/client-effect": "https://pkg.pr.new/durable-streams/durable-streams/@durable-streams/client-effect@218",
 		"@effect/cluster": "catalog:effect",
 		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform": "catalog:effect",

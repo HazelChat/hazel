@@ -49,6 +49,9 @@
 		"test:debug": "vitest --inspect-brk --no-file-parallelism",
 		"test:coverage": "vitest run --coverage --coverage.reporter=text"
 	},
+	"dependencies": {
+		"@durable-streams/client-effect": "https://pkg.pr.new/durable-streams/durable-streams/@durable-streams/client-effect@218"
+	},
 	"devDependencies": {
 		"@effect/vitest": "^0.27.0",
 		"@vitest/coverage-v8": "^4.0.16",

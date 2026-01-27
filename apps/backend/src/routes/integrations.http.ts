@@ -194,7 +194,9 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 		},
 	).pipe(
 		Effect.catchTag("HttpBodyError", (e) =>
-			Effect.fail(new InternalServerError({ message: "Failed to serialize response", detail: String(e) })),
+			Effect.fail(
+				new InternalServerError({ message: "Failed to serialize response", detail: String(e) }),
+			),
 		),
 	)
 })
