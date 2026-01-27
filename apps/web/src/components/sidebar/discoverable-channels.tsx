@@ -2,7 +2,7 @@
 
 import { useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import { eq, inArray, isNull, not, useLiveQuery } from "@tanstack/react-db"
+import { and, eq, inArray, isNull, not, or, useLiveQuery } from "@tanstack/react-db"
 import { sectionCollapsedAtomFamily } from "~/atoms/section-collapse-atoms"
 import { ChannelIcon } from "~/components/channel-icon"
 import { SidebarItem, SidebarLabel, SidebarLink } from "~/components/ui/sidebar"
@@ -22,14 +22,24 @@ export function DiscoverableChannels({ organizationId, onBrowseAll }: Discoverab
 	const { user } = useAuth()
 	const isCollapsed = useAtomValue(sectionCollapsedAtomFamily("default"))
 
-	// Get all channels the user is already a member of
+	// Get all non-thread public/private channels the user is a member of
 	const { data: userChannels } = useLiveQuery(
 		(q) =>
 			q
-				.from({ m: channelMemberCollection })
-				.where(({ m }) => eq(m.userId, user?.id || ""))
+				.from({ channel: channelCollection })
+				.innerJoin({ m: channelMemberCollection }, ({ channel, m }) =>
+					eq(m.channelId, channel.id),
+				)
+				.where(({ m, channel }) =>
+					and(
+						eq(m.userId, user?.id || ""),
+						eq(channel.organizationId, organizationId),
+						or(eq(channel.type, "public"), eq(channel.type, "private")),
+						isNull(channel.parentChannelId),
+					),
+				)
 				.select(({ m }) => ({ channelId: m.channelId })),
-		[user?.id],
+		[user?.id, organizationId],
 	)
 
 	// Get public channels user hasn't joined, excluding threads
@@ -54,7 +64,12 @@ export function DiscoverableChannels({ organizationId, onBrowseAll }: Discoverab
 		[user?.id, userChannels, organizationId],
 	)
 
-	if (isCollapsed || !discoverableChannels || discoverableChannels.length === 0) {
+	if (
+		isCollapsed ||
+		!discoverableChannels ||
+		discoverableChannels.length === 0 ||
+		(userChannels && userChannels.length >= 3)
+	) {
 		return null
 	}
 
@@ -94,8 +109,14 @@ function DiscoverableChannelItem({ channel }: DiscoverableChannelItemProps) {
 	const { slug } = useOrganization()
 
 	return (
-		<SidebarItem tooltip={channel.name} className="opacity-50 hover:opacity-100">
-			<SidebarLink to="/$orgSlug/chat/$id" params={{ orgSlug: slug, id: channel.id }}>
+		<SidebarItem tooltip={channel.name} className="opacity-50 hover:opacity-100 [&:has(.active)]:opacity-100">
+			<SidebarLink
+				to="/$orgSlug/chat/$id"
+				params={{ orgSlug: slug, id: channel.id }}
+				activeProps={{
+					className: "active bg-sidebar-accent font-medium text-sidebar-accent-fg",
+				}}
+			>
 				<ChannelIcon icon={channel.icon} />
 				<SidebarLabel>{channel.name}</SidebarLabel>
 			</SidebarLink>
