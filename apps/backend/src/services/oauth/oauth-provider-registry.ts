@@ -5,6 +5,7 @@ import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthProviderConfig } from "./provider-config"
 import { loadProviderConfig } from "./provider-config"
+import { createDiscordOAuthProvider } from "./providers/discord-oauth-provider"
 import { createGitHubAppProvider } from "./providers/github-app-provider"
 import { createLinearOAuthProvider } from "./providers/linear-oauth-provider"
 
@@ -25,6 +26,7 @@ const _APP_BASED_PROVIDERS: readonly IntegrationProvider[] = ["github"] as const
  */
 const PROVIDER_FACTORIES: Partial<Record<IntegrationProvider, ProviderFactory>> = {
 	linear: createLinearOAuthProvider,
+	discord: createDiscordOAuthProvider,
 	// Future providers:
 	// figma: createFigmaOAuthProvider,
 	// notion: createNotionOAuthProvider,
@@ -33,7 +35,7 @@ const PROVIDER_FACTORIES: Partial<Record<IntegrationProvider, ProviderFactory>> 
 /**
  * Providers that are fully implemented and available for use.
  */
-const SUPPORTED_PROVIDERS: readonly IntegrationProvider[] = ["linear", "github"] as const
+const SUPPORTED_PROVIDERS: readonly IntegrationProvider[] = ["linear", "github", "discord"] as const
 
 /**
  * OAuth Provider Registry Service.

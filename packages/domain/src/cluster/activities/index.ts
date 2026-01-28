@@ -20,6 +20,7 @@ export {
 	GitHubWorkflowRunPayload,
 } from "@hazel/integrations/github/schema"
 export * from "./bot-activities.ts"
+export * from "./chat-bridge-activities.ts"
 export * from "./cleanup-activities.ts"
 export * from "./github-activities.ts"
 export * from "./github-installation-activities.ts"

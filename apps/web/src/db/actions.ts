@@ -74,6 +74,7 @@ export const sendMessageAction = optimisticAction({
 			replyToMessageId: props.replyToMessageId || null,
 			threadChannelId: props.threadChannelId || null,
 			embeds: null,
+			sourceProvider: null,
 			createdAt: new Date(),
 			updatedAt: null,
 			deletedAt: null,
@@ -108,6 +109,7 @@ export const sendMessageAction = optimisticAction({
 				threadChannelId: props.threadChannelId || null,
 				attachmentIds: props.attachmentIds || [],
 				embeds: null,
+				sourceProvider: null,
 				deletedAt: null,
 				authorId: props.authorId,
 			}).pipe(Effect.retry(scheduleWithCallback))

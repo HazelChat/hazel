@@ -2,6 +2,8 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
 import { WorkflowProxy } from "@effect/workflow"
 import { Schema } from "effect"
 import {
+	ChatBridgeInboundWorkflow,
+	ChatBridgeOutboundWorkflow,
 	CleanupUploadsWorkflow,
 	GitHubInstallationWorkflow,
 	GitHubWebhookWorkflow,
@@ -11,6 +13,8 @@ import {
 
 // All workflows available in the cluster
 export const workflows = [
+	ChatBridgeInboundWorkflow,
+	ChatBridgeOutboundWorkflow,
 	MessageNotificationWorkflow,
 	CleanupUploadsWorkflow,
 	GitHubInstallationWorkflow,

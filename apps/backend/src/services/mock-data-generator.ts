@@ -319,6 +319,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 							embeds: null,
 							replyToMessageId: null,
 							threadChannelId: null,
+							sourceProvider: null,
 							deletedAt: null,
 							createdAt: timestamp,
 						}
@@ -390,6 +391,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 						embeds: null,
 						replyToMessageId: channelMsgIds[reply.replyTo]!,
 						threadChannelId: null,
+						sourceProvider: null,
 						deletedAt: null,
 					})
 					allMessages.push({
@@ -458,6 +460,7 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 							embeds: null,
 							replyToMessageId: null,
 							threadChannelId: null,
+							sourceProvider: null,
 							deletedAt: null,
 						})
 						allMessages.push({

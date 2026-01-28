@@ -165,3 +165,19 @@ export const IntegrationRequestId = Schema.UUID.pipe(
 	title: "Integration Request ID",
 })
 export type IntegrationRequestId = Schema.Schema.Type<typeof IntegrationRequestId>
+
+export const ExternalChannelLinkId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/ExternalChannelLinkId"),
+).annotations({
+	description: "The ID of an external channel link",
+	title: "External Channel Link ID",
+})
+export type ExternalChannelLinkId = Schema.Schema.Type<typeof ExternalChannelLinkId>
+
+export const ExternalThreadLinkId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/ExternalThreadLinkId"),
+).annotations({
+	description: "The ID of an external thread link",
+	title: "External Thread Link ID",
+})
+export type ExternalThreadLinkId = Schema.Schema.Type<typeof ExternalThreadLinkId>

@@ -59,6 +59,8 @@ const TOKEN_URLS: Record<IntegrationProvider, string> = {
 	github: "https://github.com/login/oauth/access_token",
 	figma: "https://www.figma.com/api/oauth/refresh",
 	notion: "https://api.notion.com/v1/oauth/token",
+	discord: "https://discord.com/api/oauth2/token",
+	slack: "https://slack.com/api/oauth.v2.access",
 }
 
 // ============================================================================
