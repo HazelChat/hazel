@@ -185,7 +185,8 @@ export function AddRssSubscriptionModal({
 							<div className="flex flex-col gap-2">
 								<label className="font-medium text-fg text-sm">Feed URL</label>
 								<p className="text-muted-fg text-xs">
-									Enter the RSS or Atom feed URL. The feed will be validated when you submit.
+									Enter the RSS or Atom feed URL. The feed will be validated when you
+									submit.
 								</p>
 								<InputGroup>
 									<Input

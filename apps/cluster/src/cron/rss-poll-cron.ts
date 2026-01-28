@@ -104,9 +104,7 @@ export const RssPollCronLayer = ClusterCron.make({
 			{ concurrency: 5 },
 		)
 
-		yield* Effect.logInfo(
-			`RSS Poll: Triggered workflows for ${dueSubscriptions.length} feeds`,
-		)
+		yield* Effect.logInfo(`RSS Poll: Triggered workflows for ${dueSubscriptions.length} feeds`)
 	}),
 	skipIfOlderThan: Duration.minutes(10),
 })

@@ -50,9 +50,7 @@ export const rssPostedItemsTable = pgTable(
 	"rss_posted_items",
 	{
 		id: uuid().primaryKey().defaultRandom(),
-		subscriptionId: uuid()
-			.notNull()
-			.$type<RssSubscriptionId>(),
+		subscriptionId: uuid().notNull().$type<RssSubscriptionId>(),
 		itemGuid: text().notNull(),
 		itemUrl: text(),
 		messageId: uuid().$type<MessageId>(),

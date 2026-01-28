@@ -20,6 +20,7 @@ import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
+import { RssSubscriptionPolicy } from "./policies/rss-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
 import { InvitationPolicy } from "./policies/invitation-policy"
 import { MessagePolicy } from "./policies/message-policy"
@@ -40,6 +41,7 @@ import { BotCommandRepo } from "./repositories/bot-command-repo"
 import { BotInstallationRepo } from "./repositories/bot-installation-repo"
 import { BotRepo } from "./repositories/bot-repo"
 import { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
+import { RssSubscriptionRepo } from "./repositories/rss-subscription-repo"
 import { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
 import { IntegrationTokenRepo } from "./repositories/integration-token-repo"
 import { InvitationRepo } from "./repositories/invitation-repo"
@@ -123,6 +125,7 @@ const RepoLive = Layer.mergeAll(
 	IntegrationTokenRepo.Default,
 	ChannelWebhookRepo.Default,
 	GitHubSubscriptionRepo.Default,
+	RssSubscriptionRepo.Default,
 	BotRepo.Default,
 	BotCommandRepo.Default,
 	BotInstallationRepo.Default,
@@ -146,6 +149,7 @@ const PolicyLive = Layer.mergeAll(
 	IntegrationConnectionPolicy.Default,
 	ChannelWebhookPolicy.Default,
 	GitHubSubscriptionPolicy.Default,
+	RssSubscriptionPolicy.Default,
 	BotPolicy.Default,
 )
 

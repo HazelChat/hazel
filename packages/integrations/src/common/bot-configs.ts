@@ -67,8 +67,7 @@ export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> 
 	},
 	rss: {
 		name: "RSS",
-		avatarUrl:
-			"https://cdn.brandfetch.io/rss.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
+		avatarUrl: "https://cdn.brandfetch.io/rss.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-rss",
 	},
 }

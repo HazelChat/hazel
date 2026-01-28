@@ -42,32 +42,22 @@ export const PostRssItemsResult = Schema.Struct({
 export type PostRssItemsResult = Schema.Schema.Type<typeof PostRssItemsResult>
 
 // Error types for RSS activities
-export class FetchRssFeedError extends Schema.TaggedError<FetchRssFeedError>()(
-	"FetchRssFeedError",
-	{
-		subscriptionId: Schema.String,
-		feedUrl: Schema.String,
-		message: Schema.String,
-		cause: Schema.Unknown.pipe(Schema.optional),
-	},
-) {
+export class FetchRssFeedError extends Schema.TaggedError<FetchRssFeedError>()("FetchRssFeedError", {
+	subscriptionId: Schema.String,
+	feedUrl: Schema.String,
+	message: Schema.String,
+	cause: Schema.Unknown.pipe(Schema.optional),
+}) {
 	readonly retryable = true
 }
 
-export class PostRssItemsError extends Schema.TaggedError<PostRssItemsError>()(
-	"PostRssItemsError",
-	{
-		channelId: ChannelId,
-		message: Schema.String,
-		cause: Schema.Unknown.pipe(Schema.optional),
-	},
-) {
+export class PostRssItemsError extends Schema.TaggedError<PostRssItemsError>()("PostRssItemsError", {
+	channelId: ChannelId,
+	message: Schema.String,
+	cause: Schema.Unknown.pipe(Schema.optional),
+}) {
 	readonly retryable = true
 }
 
 // Workflow Error Union
-export const RssFeedPollWorkflowError = Schema.Union(
-	FetchRssFeedError,
-	PostRssItemsError,
-	BotUserQueryError,
-)
+export const RssFeedPollWorkflowError = Schema.Union(FetchRssFeedError, PostRssItemsError, BotUserQueryError)

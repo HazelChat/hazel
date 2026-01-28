@@ -60,9 +60,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 									new RssFeedValidationError({
 										feedUrl: payload.feedUrl,
 										message:
-											error instanceof Error
-												? error.message
-												: "Invalid RSS feed URL",
+											error instanceof Error ? error.message : "Invalid RSS feed URL",
 									}),
 							})
 

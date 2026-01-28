@@ -368,8 +368,7 @@ function SubscriptionRow({ subscription, channelName, onToggle, onDelete }: Subs
 							<>
 								<span className="text-muted-fg/50">·</span>
 								<span>
-									Last fetched{" "}
-									{new Date(subscription.lastFetchedAt).toLocaleDateString()}
+									Last fetched {new Date(subscription.lastFetchedAt).toLocaleDateString()}
 								</span>
 							</>
 						)}

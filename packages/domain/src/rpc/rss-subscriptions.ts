@@ -8,12 +8,12 @@ import { TransactionId } from "../transaction-id"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
 
-export class RssSubscriptionResponse extends Schema.Class<RssSubscriptionResponse>(
-	"RssSubscriptionResponse",
-)({
-	data: RssSubscription.Model.json,
-	transactionId: TransactionId,
-}) {}
+export class RssSubscriptionResponse extends Schema.Class<RssSubscriptionResponse>("RssSubscriptionResponse")(
+	{
+		data: RssSubscription.Model.json,
+		transactionId: TransactionId,
+	},
+) {}
 
 export class RssSubscriptionListResponse extends Schema.Class<RssSubscriptionListResponse>(
 	"RssSubscriptionListResponse",

@@ -25,17 +25,12 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 						new Cluster.FetchRssFeedError({
 							subscriptionId: payload.subscriptionId,
 							feedUrl: payload.feedUrl,
-							message:
-								error instanceof Error
-									? error.message
-									: "Failed to fetch RSS feed",
+							message: error instanceof Error ? error.message : "Failed to fetch RSS feed",
 							cause: error,
 						}),
 				})
 
-				yield* Effect.logDebug(
-					`Fetched ${parsedFeed.items.length} items from ${payload.feedUrl}`,
-				)
+				yield* Effect.logDebug(`Fetched ${parsedFeed.items.length} items from ${payload.feedUrl}`)
 
 				return {
 					feedTitle: parsedFeed.metadata.title,
@@ -70,20 +65,24 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 				execute: Effect.gen(function* () {
 					const db = yield* Database.Database
 
-					yield* db.execute((client) =>
-						client
-							.update(schema.rssSubscriptionsTable)
-							.set({
-								lastFetchedAt: new Date(),
-								consecutiveErrors: 0,
-								lastErrorMessage: null,
-								lastErrorAt: null,
-								...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
-								...(feedResult.feedIconUrl && { feedIconUrl: feedResult.feedIconUrl }),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
-					)
+					yield* db
+						.execute((client) =>
+							client
+								.update(schema.rssSubscriptionsTable)
+								.set({
+									lastFetchedAt: new Date(),
+									consecutiveErrors: 0,
+									lastErrorMessage: null,
+									lastErrorAt: null,
+									...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
+									...(feedResult.feedIconUrl && {
+										feedIconUrl: feedResult.feedIconUrl,
+									}),
+									updatedAt: new Date(),
+								})
+								.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+						)
+						.pipe(Effect.orDie)
 
 					return { updated: true }
 				}),
@@ -115,12 +114,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 						client
 							.select({ itemGuid: schema.rssPostedItemsTable.itemGuid })
 							.from(schema.rssPostedItemsTable)
-							.where(
-								eq(
-									schema.rssPostedItemsTable.subscriptionId,
-									payload.subscriptionId,
-								),
-							),
+							.where(eq(schema.rssPostedItemsTable.subscriptionId, payload.subscriptionId)),
 					)
 					.pipe(
 						Effect.catchTags({
@@ -143,21 +137,25 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 				if (newItems.length === 0) {
 					yield* Effect.logDebug("No new items to post")
 
-					// Still update last fetched time
-					yield* db.execute((client) =>
-						client
-							.update(schema.rssSubscriptionsTable)
-							.set({
-								lastFetchedAt: new Date(),
-								consecutiveErrors: 0,
-								lastErrorMessage: null,
-								lastErrorAt: null,
-								...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
-								...(feedResult.feedIconUrl && { feedIconUrl: feedResult.feedIconUrl }),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
-					)
+					// Still update last fetched time (non-critical, use orDie)
+					yield* db
+						.execute((client) =>
+							client
+								.update(schema.rssSubscriptionsTable)
+								.set({
+									lastFetchedAt: new Date(),
+									consecutiveErrors: 0,
+									lastErrorMessage: null,
+									lastErrorAt: null,
+									...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
+									...(feedResult.feedIconUrl && {
+										feedIconUrl: feedResult.feedIconUrl,
+									}),
+									updatedAt: new Date(),
+								})
+								.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+						)
+						.pipe(Effect.orDie)
 
 					return { messageIds: [], messagesCreated: 0, itemGuidsPosted: [] }
 				}
@@ -207,7 +205,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 						messageIds.push(messageId)
 						itemGuidsPosted.push(item.guid)
 
-						// Record posted item for deduplication
+						// Record posted item for deduplication (non-critical)
 						yield* db
 							.execute((client) =>
 								client.insert(schema.rssPostedItemsTable).values({
@@ -218,39 +216,40 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 								}),
 							)
 							.pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.logWarning(
-											"Failed to record posted item (may cause duplicate on next poll)",
-											{ error: err, itemGuid: item.guid },
-										),
-								}),
+								Effect.catchAll((err) =>
+									Effect.logWarning(
+										"Failed to record posted item (may cause duplicate on next poll)",
+										{ error: err, itemGuid: item.guid },
+									),
+								),
 							)
 
-						yield* Effect.logDebug(
-							`Posted RSS item "${item.title}" as message ${messageId}`,
-						)
+						yield* Effect.logDebug(`Posted RSS item "${item.title}" as message ${messageId}`)
 					}
 				}
 
-				// Update subscription state
+				// Update subscription state (non-critical, use orDie)
 				const lastItem = itemsToPost[0]
-				yield* db.execute((client) =>
-					client
-						.update(schema.rssSubscriptionsTable)
-						.set({
-							lastFetchedAt: new Date(),
-							lastItemGuid: lastItem?.guid ?? null,
-							lastItemPublishedAt: lastItem?.pubDate ? new Date(lastItem.pubDate) : null,
-							consecutiveErrors: 0,
-							lastErrorMessage: null,
-							lastErrorAt: null,
-							...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
-							...(feedResult.feedIconUrl && { feedIconUrl: feedResult.feedIconUrl }),
-							updatedAt: new Date(),
-						})
-						.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
-				)
+				yield* db
+					.execute((client) =>
+						client
+							.update(schema.rssSubscriptionsTable)
+							.set({
+								lastFetchedAt: new Date(),
+								lastItemGuid: lastItem?.guid ?? null,
+								lastItemPublishedAt: lastItem?.pubDate ? new Date(lastItem.pubDate) : null,
+								consecutiveErrors: 0,
+								lastErrorMessage: null,
+								lastErrorAt: null,
+								...(feedResult.feedTitle && { feedTitle: feedResult.feedTitle }),
+								...(feedResult.feedIconUrl && {
+									feedIconUrl: feedResult.feedIconUrl,
+								}),
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+					)
+					.pipe(Effect.orDie)
 
 				return {
 					messageIds,

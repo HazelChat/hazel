@@ -69,9 +69,7 @@ export const fetchAndParseFeed = async (feedUrl: string): Promise<ParsedRssFeed>
  * Validates that a URL points to a valid RSS/Atom feed.
  * Returns feed metadata on success, throws on failure.
  */
-export const validateFeedUrl = async (
-	feedUrl: string,
-): Promise<RssFeedMetadata> => {
+export const validateFeedUrl = async (feedUrl: string): Promise<RssFeedMetadata> => {
 	const result = await fetchAndParseFeed(feedUrl)
 	return result.metadata
 }

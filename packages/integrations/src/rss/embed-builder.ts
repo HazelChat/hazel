@@ -7,10 +7,7 @@ const RSS_COLOR = 0xf26522
 /**
  * Build a message embed for an RSS feed item.
  */
-export const buildRssEmbed = (
-	item: RssFeedItem,
-	feedTitle: string | null,
-): MessageEmbed => {
+export const buildRssEmbed = (item: RssFeedItem, feedTitle: string | null): MessageEmbed => {
 	const embed: MessageEmbed = {
 		title: item.title,
 		url: item.link || undefined,
