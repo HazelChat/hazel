@@ -59,5 +59,21 @@ export class PostRssItemsError extends Schema.TaggedError<PostRssItemsError>()("
 	readonly retryable = true
 }
 
+export class UpdateSubscriptionStateError extends Schema.TaggedError<UpdateSubscriptionStateError>()(
+	"UpdateSubscriptionStateError",
+	{
+		subscriptionId: Schema.String,
+		message: Schema.String,
+		cause: Schema.Unknown.pipe(Schema.optional),
+	},
+) {
+	readonly retryable = true
+}
+
 // Workflow Error Union
-export const RssFeedPollWorkflowError = Schema.Union(FetchRssFeedError, PostRssItemsError, BotUserQueryError)
+export const RssFeedPollWorkflowError = Schema.Union(
+	FetchRssFeedError,
+	PostRssItemsError,
+	BotUserQueryError,
+	UpdateSubscriptionStateError,
+)

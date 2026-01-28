@@ -1,3 +1,4 @@
+import he from "he"
 import RssParser from "rss-parser"
 
 export interface RssFeedItem {
@@ -75,17 +76,13 @@ export const validateFeedUrl = async (feedUrl: string): Promise<RssFeedMetadata>
 }
 
 /**
- * Strip HTML tags from a string for plain text display.
+ * Strip HTML tags from a string and decode HTML entities for plain text display.
  */
 function stripHtml(html: string): string {
-	return html
-		.replace(/<[^>]*>/g, "")
-		.replace(/&nbsp;/g, " ")
-		.replace(/&amp;/g, "&")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&#39;/g, "'")
-		.replace(/\s+/g, " ")
-		.trim()
+	return he.decode(
+		html
+			.replace(/<[^>]*>/g, "")
+			.replace(/\s+/g, " ")
+			.trim(),
+	)
 }

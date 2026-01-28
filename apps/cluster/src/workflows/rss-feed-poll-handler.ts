@@ -61,7 +61,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 			yield* Activity.make({
 				name: "UpdateSubscriptionState",
 				success: Schema.Struct({ updated: Schema.Boolean }),
-				error: Cluster.FetchRssFeedError,
+				error: Cluster.UpdateSubscriptionStateError,
 				execute: Effect.gen(function* () {
 					const db = yield* Database.Database
 
@@ -82,7 +82,17 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 								})
 								.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
 						)
-						.pipe(Effect.orDie)
+						.pipe(
+							Effect.catchTag("DatabaseError", (err) =>
+								Effect.fail(
+									new Cluster.UpdateSubscriptionStateError({
+										subscriptionId: payload.subscriptionId,
+										message: "Failed to update subscription state",
+										cause: err,
+									}),
+								),
+							),
+						)
 
 					return { updated: true }
 				}),
