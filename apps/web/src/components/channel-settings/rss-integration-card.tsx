@@ -13,6 +13,7 @@ import IconTrash from "~/components/icons/icon-trash"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
+import { Modal, ModalClose, ModalContent, ModalFooter, ModalHeader } from "~/components/ui/modal"
 import { exitToast } from "~/lib/toast-exit"
 import { IconCirclePause } from "../icons/icon-circle-pause"
 import { IconPlay } from "../icons/icon-play"
@@ -128,7 +129,7 @@ function RssSubscriptionItem({
 	subscription: RssSubscriptionData
 	onUpdate: () => void
 }) {
-	const [confirmDelete, setConfirmDelete] = useState(false)
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
 
@@ -157,12 +158,6 @@ function RssSubscriptionItem({
 	}
 
 	const handleDelete = async () => {
-		if (!confirmDelete) {
-			setConfirmDelete(true)
-			setTimeout(() => setConfirmDelete(false), 3000)
-			return
-		}
-
 		setIsDeleting(true)
 		const exit = await deleteSubscription({
 			payload: { id: subscription.id as RssSubscriptionId },
@@ -178,6 +173,7 @@ function RssSubscriptionItem({
 			}))
 			.run()
 		setIsDeleting(false)
+		setShowDeleteDialog(false)
 	}
 
 	const intervalLabel =
@@ -222,12 +218,27 @@ function RssSubscriptionItem({
 						<MenuLabel>{subscription.isEnabled ? "Pause" : "Resume"}</MenuLabel>
 					</MenuItem>
 					<MenuSeparator />
-					<MenuItem intent="danger" onAction={handleDelete} isDisabled={isDeleting}>
+					<MenuItem intent="danger" onAction={() => setShowDeleteDialog(true)}>
 						<IconTrash className="size-4" />
-						<MenuLabel>{confirmDelete ? "Confirm delete?" : "Remove"}</MenuLabel>
+						<MenuLabel>Remove</MenuLabel>
 					</MenuItem>
 				</MenuContent>
 			</Menu>
+
+			<Modal isOpen={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<ModalContent role="alertdialog" size="xs">
+					<ModalHeader
+						title="Remove feed?"
+						description="This will stop posting updates from this RSS feed."
+					/>
+					<ModalFooter>
+						<ModalClose>Cancel</ModalClose>
+						<Button intent="danger" onPress={handleDelete} isPending={isDeleting}>
+							Remove
+						</Button>
+					</ModalFooter>
+				</ModalContent>
+			</Modal>
 		</div>
 	)
 }

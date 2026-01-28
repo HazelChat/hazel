@@ -131,8 +131,13 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 
 				const postedGuids = new Set(postedItems.map((p) => p.itemGuid))
 
-				// Filter to only new items
-				const newItems = feedResult.items.filter((item) => !postedGuids.has(item.guid))
+				// Filter to only new items (GUID dedup + date filter)
+				const newItems = feedResult.items.filter((item) => {
+					if (postedGuids.has(item.guid)) return false
+					// Skip items published before the subscription was created
+					if (item.pubDate && new Date(item.pubDate).getTime() < payload.subscribedAt) return false
+					return true
+				})
 
 				if (newItems.length === 0) {
 					yield* Effect.logDebug("No new items to post")

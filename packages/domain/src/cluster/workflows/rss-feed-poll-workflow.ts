@@ -14,6 +14,8 @@ export const RssFeedPollWorkflow = Workflow.make({
 		feedUrl: Schema.String,
 		// Timestamp of the poll (used with subscriptionId for unique execution ID)
 		pollTimestamp: Schema.Number,
+		// Epoch ms when the subscription was created — items older than this are skipped
+		subscribedAt: Schema.Number,
 	},
 	error: RssFeedPollWorkflowError,
 	// Use subscription ID + poll timestamp for idempotency within each poll cycle

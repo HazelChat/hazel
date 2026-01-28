@@ -20,6 +20,7 @@ import { resolvedThemeAtom } from "~/components/theme-provider"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
+import { Modal, ModalClose, ModalContent, ModalFooter, ModalHeader } from "~/components/ui/modal"
 import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { AddGitHubSubscriptionModal } from "./add-github-subscription-modal"
@@ -332,7 +333,7 @@ interface SubscriptionRowProps {
 }
 
 function SubscriptionRow({ subscription, channelName, onToggle, onDelete, onEdit }: SubscriptionRowProps) {
-	const [confirmDelete, setConfirmDelete] = useState(false)
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 
@@ -343,14 +344,10 @@ function SubscriptionRow({ subscription, channelName, onToggle, onDelete, onEdit
 	}
 
 	const handleDelete = async () => {
-		if (!confirmDelete) {
-			setConfirmDelete(true)
-			setTimeout(() => setConfirmDelete(false), 3000)
-			return
-		}
 		setIsDeleting(true)
 		await onDelete()
 		setIsDeleting(false)
+		setShowDeleteDialog(false)
 	}
 
 	// Get first 2 event labels
@@ -406,12 +403,27 @@ function SubscriptionRow({ subscription, channelName, onToggle, onDelete, onEdit
 						<MenuLabel>{subscription.isEnabled ? "Disable" : "Enable"}</MenuLabel>
 					</MenuItem>
 					<MenuSeparator />
-					<MenuItem intent="danger" onAction={handleDelete} isDisabled={isDeleting}>
+					<MenuItem intent="danger" onAction={() => setShowDeleteDialog(true)}>
 						<IconTrash className="size-4" />
-						<MenuLabel>{confirmDelete ? "Confirm delete?" : "Remove"}</MenuLabel>
+						<MenuLabel>Remove</MenuLabel>
 					</MenuItem>
 				</MenuContent>
 			</Menu>
+
+			<Modal isOpen={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<ModalContent role="alertdialog" size="xs">
+					<ModalHeader
+						title="Remove subscription?"
+						description="This will stop posting GitHub events to this channel."
+					/>
+					<ModalFooter>
+						<ModalClose>Cancel</ModalClose>
+						<Button intent="danger" onPress={handleDelete} isPending={isDeleting}>
+							Remove
+						</Button>
+					</ModalFooter>
+				</ModalContent>
+			</Modal>
 		</div>
 	)
 }

@@ -25,6 +25,7 @@ import { IconWebhook } from "~/components/icons/icon-webhook"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "~/components/ui/menu"
+import { Modal, ModalClose, ModalContent, ModalFooter, ModalHeader } from "~/components/ui/modal"
 import { SectionHeader } from "~/components/ui/section-header"
 import { channelCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
@@ -189,7 +190,7 @@ function IntegrationsPage() {
 
 function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDelete: () => void }) {
 	const [copied, setCopied] = useState(false)
-	const [confirmDelete, setConfirmDelete] = useState(false)
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 	const [isDeleting, setIsDeleting] = useState(false)
 	const [isToggling, setIsToggling] = useState(false)
 
@@ -231,12 +232,6 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 	}
 
 	const handleDelete = async () => {
-		if (!confirmDelete) {
-			setConfirmDelete(true)
-			setTimeout(() => setConfirmDelete(false), 3000)
-			return
-		}
-
 		setIsDeleting(true)
 		const exit = await deleteWebhook({
 			payload: { id: webhook.id as ChannelWebhookId },
@@ -252,6 +247,7 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 			}))
 			.run()
 		setIsDeleting(false)
+		setShowDeleteDialog(false)
 	}
 
 	return (
@@ -302,12 +298,27 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 							<MenuLabel>{webhook.isEnabled ? "Disable" : "Enable"}</MenuLabel>
 						</MenuItem>
 						<MenuSeparator />
-						<MenuItem intent="danger" onAction={handleDelete} isDisabled={isDeleting}>
+						<MenuItem intent="danger" onAction={() => setShowDeleteDialog(true)}>
 							<IconTrash className="size-4" />
-							<MenuLabel>{confirmDelete ? "Confirm delete?" : "Delete"}</MenuLabel>
+							<MenuLabel>Delete</MenuLabel>
 						</MenuItem>
 					</MenuContent>
 				</Menu>
+
+				<Modal isOpen={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+					<ModalContent role="alertdialog" size="xs">
+						<ModalHeader
+							title="Delete webhook?"
+							description="This webhook URL will stop working immediately."
+						/>
+						<ModalFooter>
+							<ModalClose>Cancel</ModalClose>
+							<Button intent="danger" onPress={handleDelete} isPending={isDeleting}>
+								Delete
+							</Button>
+						</ModalFooter>
+					</ModalContent>
+				</Modal>
 			</div>
 		</div>
 	)

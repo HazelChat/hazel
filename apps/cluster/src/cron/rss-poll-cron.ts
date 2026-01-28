@@ -36,6 +36,7 @@ export const RssPollCronLayer = ClusterCron.make({
 					organizationId: schema.rssSubscriptionsTable.organizationId,
 					feedUrl: schema.rssSubscriptionsTable.feedUrl,
 					pollingIntervalMinutes: schema.rssSubscriptionsTable.pollingIntervalMinutes,
+					createdAt: schema.rssSubscriptionsTable.createdAt,
 				})
 				.from(schema.rssSubscriptionsTable)
 				.where(
@@ -73,6 +74,7 @@ export const RssPollCronLayer = ClusterCron.make({
 							organizationId: sub.organizationId,
 							feedUrl: sub.feedUrl,
 							pollTimestamp,
+							subscribedAt: sub.createdAt.getTime(),
 						},
 						discard: true,
 					})
