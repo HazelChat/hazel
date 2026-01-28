@@ -215,10 +215,13 @@ function IntegrationConfigPage() {
 							style={{ backgroundColor: `${integration.brandColor}10` }}
 						>
 							<img
-								src={getBrandfetchIcon(integration.logoDomain, {
-									theme: "light",
-									type: integration.logoType,
-								})}
+								src={
+									integration.logoSrc ??
+									getBrandfetchIcon(integration.logoDomain, {
+										theme: "light",
+										type: integration.logoType,
+									})
+								}
 								alt={`${integration.name} logo`}
 								className="size-12 object-contain"
 							/>

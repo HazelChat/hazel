@@ -14,6 +14,7 @@ import {
 import { CreateWebhookForm } from "~/components/channel-settings/create-webhook-form"
 import { GitHubIntegrationCard } from "~/components/channel-settings/github-integration-card"
 import { IntegrationCard } from "~/components/channel-settings/integration-card"
+import { RssIntegrationCard } from "~/components/channel-settings/rss-integration-card"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
@@ -107,6 +108,9 @@ function IntegrationsPage() {
 					organizationId={organizationId as OrganizationId | null}
 					orgSlug={orgSlug}
 				/>
+
+				{/* RSS Feeds */}
+				<RssIntegrationCard channelId={channelId as ChannelId} />
 
 				<IntegrationCard
 					provider="openstatus"

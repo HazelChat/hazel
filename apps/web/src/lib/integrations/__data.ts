@@ -197,6 +197,8 @@ export const integrations: Integration[] = [
 			"Subscribe channels to RSS and Atom feeds to automatically post new articles, blog posts, and updates. Each feed is polled on a configurable interval with built-in deduplication and error handling.",
 		logoDomain: "rss.com",
 		logoType: "icon",
+		logoSrc:
+			"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F26522'%3E%3Ccircle cx='6.18' cy='17.82' r='2.18'/%3E%3Cpath d='M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z'/%3E%3C/svg%3E",
 		brandColor: "#F26522",
 		category: "productivity",
 		features: [

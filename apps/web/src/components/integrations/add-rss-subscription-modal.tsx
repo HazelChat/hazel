@@ -61,8 +61,17 @@ export function AddRssSubscriptionModal({
 
 	const createSubscription = useAtomSet(createRssSubscriptionMutation, { mode: "promiseExit" })
 
+	const isValidUrl = (() => {
+		try {
+			const url = new URL(feedUrl.trim())
+			return url.protocol === "https:" || url.protocol === "http:"
+		} catch {
+			return false
+		}
+	})()
+
 	const handleSubmit = async () => {
-		if (!selectedChannel || !feedUrl.trim()) return
+		if (!selectedChannel || !isValidUrl) return
 
 		setIsCreating(true)
 		const exit = await createSubscription({
@@ -195,11 +204,16 @@ export function AddRssSubscriptionModal({
 										onChange={(e) => setFeedUrl(e.target.value)}
 									/>
 								</InputGroup>
+								{feedUrl.trim() && !isValidUrl && (
+									<p className="text-danger text-xs">
+										Please enter a valid URL starting with https:// or http://
+									</p>
+								)}
 							</div>
 						)}
 
-						{/* Step 3: Polling interval (only show when URL is entered) */}
-						{selectedChannel && feedUrl.trim() && (
+						{/* Step 3: Polling interval (only show when URL is valid) */}
+						{selectedChannel && isValidUrl && (
 							<div className="flex flex-col gap-2">
 								<label className="font-medium text-fg text-sm">Polling Interval</label>
 								<p className="text-muted-fg text-xs">
@@ -231,7 +245,7 @@ export function AddRssSubscriptionModal({
 					<Button
 						intent="primary"
 						onPress={handleSubmit}
-						isDisabled={!selectedChannel || !feedUrl.trim() || isCreating}
+						isDisabled={!selectedChannel || !isValidUrl || isCreating}
 					>
 						{isCreating ? "Adding..." : "Add Subscription"}
 					</Button>

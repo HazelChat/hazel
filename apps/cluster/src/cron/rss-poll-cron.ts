@@ -3,6 +3,7 @@ import { WorkflowEngine } from "@effect/workflow"
 import { and, Database, eq, isNull, lt, schema, sql } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import * as Cron from "effect/Cron"
+import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
@@ -20,7 +21,8 @@ export const RssPollCronLayer = ClusterCron.make({
 		const db = yield* Database.Database
 		const engine = yield* WorkflowEngine.WorkflowEngine
 
-		const now = new Date()
+		const now = yield* DateTime.now
+		const nowIso = DateTime.formatIso(now)
 
 		// Find all active subscriptions that are due for polling:
 		// - enabled and not deleted
@@ -43,7 +45,7 @@ export const RssPollCronLayer = ClusterCron.make({
 						lt(schema.rssSubscriptionsTable.consecutiveErrors, 10),
 						sql`(
 							${schema.rssSubscriptionsTable.lastFetchedAt} IS NULL
-							OR ${schema.rssSubscriptionsTable.lastFetchedAt} + (${schema.rssSubscriptionsTable.pollingIntervalMinutes} || ' minutes')::interval <= ${now}
+							OR ${schema.rssSubscriptionsTable.lastFetchedAt} + (${schema.rssSubscriptionsTable.pollingIntervalMinutes} || ' minutes')::interval <= ${nowIso}
 						)`,
 					),
 				),
@@ -56,7 +58,7 @@ export const RssPollCronLayer = ClusterCron.make({
 		yield* Effect.logInfo(`RSS Poll: Found ${dueSubscriptions.length} feeds due for polling`)
 
 		// Use poll timestamp (rounded to 5min) for idempotent workflow execution IDs
-		const pollTimestamp = Math.floor(now.getTime() / (5 * 60 * 1000)) * (5 * 60 * 1000)
+		const pollTimestamp = Math.floor(DateTime.toEpochMillis(now) / (5 * 60 * 1000)) * (5 * 60 * 1000)
 
 		// Trigger workflows for each due feed (concurrency: 5)
 		yield* Effect.forEach(
