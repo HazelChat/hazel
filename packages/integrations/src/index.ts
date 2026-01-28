@@ -1,3 +1,4 @@
 export * as Common from "./common/index.ts"
 export * as GitHub from "./github/index.ts"
 export * as Linear from "./linear/index.ts"
+export * as Rss from "./rss/index.ts"

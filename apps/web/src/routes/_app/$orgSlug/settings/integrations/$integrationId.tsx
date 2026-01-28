@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { GitHubSubscriptionsSection } from "~/components/integrations/github-subscriptions-section"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
 import { RailwayIntegrationContent } from "~/components/integrations/railway-integration-content"
+import { RssSubscriptionsSection } from "~/components/integrations/rss-subscriptions-section"
 import { Button, buttonStyles } from "~/components/ui/button"
 import { Input, InputGroup } from "~/components/ui/input"
 import { SectionHeader } from "~/components/ui/section-header"
@@ -187,8 +188,9 @@ function IntegrationConfigPage() {
 		navigate({ to: "/$orgSlug/settings/integrations", params: { orgSlug } })
 	}
 
-	// OpenStatus and Railway use webhook-based integration (per-channel), not OAuth
-	const isWebhookIntegration = integrationId === "openstatus" || integrationId === "railway"
+	// OpenStatus, Railway, and RSS use webhook/polling-based integration (per-channel), not OAuth
+	const isWebhookIntegration =
+		integrationId === "openstatus" || integrationId === "railway" || integrationId === "rss"
 
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">
@@ -243,6 +245,8 @@ function IntegrationConfigPage() {
 							<OpenStatusIntegrationContent organizationId={organizationId} />
 						) : integrationId === "railway" ? (
 							<RailwayIntegrationContent organizationId={organizationId} />
+						) : integrationId === "rss" ? (
+							<RssSubscriptionsSection organizationId={organizationId} />
 						) : null)
 					) : (
 						<>

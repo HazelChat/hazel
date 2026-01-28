@@ -21,7 +21,7 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 		 * Get the bot user ID for a provider, with caching.
 		 * Falls back to database lookup if not cached.
 		 */
-		const getBotUserId = (provider: "github" | "linear" | "figma" | "notion") =>
+		const getBotUserId = (provider: "github" | "linear" | "figma" | "notion" | "rss") =>
 			Effect.gen(function* () {
 				const externalId = Integrations.makeIntegrationBotExternalId(provider)
 
@@ -80,12 +80,18 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 		const getGitHubBotUserId = () => getBotUserId("github")
 
 		/**
+		 * Get RSS bot user ID.
+		 * Returns None if the bot user has not been created.
+		 */
+		const getRssBotUserId = () => getBotUserId("rss")
+
+		/**
 		 * Pre-warm the cache by loading common bot user IDs.
 		 * Call this at service initialization if needed.
 		 */
 		const warmCache = Effect.gen(function* () {
 			yield* Effect.logDebug("Warming bot user cache...")
-			const providers = ["github", "linear", "figma", "notion"] as const
+			const providers = ["github", "linear", "figma", "notion", "rss"] as const
 			yield* Effect.forEach(providers, (p) => getBotUserId(p), { concurrency: "unbounded" })
 			yield* Effect.logDebug(`Bot user cache warmed with ${cache.size} entries`)
 		})
@@ -93,6 +99,7 @@ export class BotUserService extends Effect.Service<BotUserService>()("BotUserSer
 		return {
 			getBotUserId,
 			getGitHubBotUserId,
+			getRssBotUserId,
 			warmCache,
 		}
 	}),

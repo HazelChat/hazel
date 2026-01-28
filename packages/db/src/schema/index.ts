@@ -17,6 +17,7 @@ export * from "./messages"
 export * from "./notifications"
 export * from "./organizations"
 export * from "./pinned-messages"
+export * from "./rss-subscriptions"
 // Export all relations
 export * from "./relations"
 export * from "./typing-indicators"

@@ -5,6 +5,7 @@ import { botInstallationsTable } from "./bot-installations"
 import { botsTable } from "./bots"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
+import { rssSubscriptionsTable } from "./rss-subscriptions"
 import { integrationConnectionsTable } from "./integration-connections"
 import { integrationTokensTable } from "./integration-tokens"
 import { invitationsTable } from "./invitations"
@@ -74,6 +75,7 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	attachments: many(attachmentsTable),
 	typingIndicators: many(typingIndicatorsTable),
 	webhooks: many(channelWebhooksTable),
+	rssSubscriptions: many(rssSubscriptionsTable),
 }))
 
 // Channel members relations
@@ -287,6 +289,22 @@ export const channelWebhooksRelations = relations(channelWebhooksTable, ({ one }
 	}),
 	createdByUser: one(usersTable, {
 		fields: [channelWebhooksTable.createdBy],
+		references: [usersTable.id],
+	}),
+}))
+
+// RSS subscriptions relations
+export const rssSubscriptionsRelations = relations(rssSubscriptionsTable, ({ one }) => ({
+	channel: one(channelsTable, {
+		fields: [rssSubscriptionsTable.channelId],
+		references: [channelsTable.id],
+	}),
+	organization: one(organizationsTable, {
+		fields: [rssSubscriptionsTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	createdByUser: one(usersTable, {
+		fields: [rssSubscriptionsTable.createdBy],
 		references: [usersTable.id],
 	}),
 }))

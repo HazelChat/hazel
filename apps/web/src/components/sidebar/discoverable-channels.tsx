@@ -27,9 +27,7 @@ export function DiscoverableChannels({ organizationId, onBrowseAll }: Discoverab
 		(q) =>
 			q
 				.from({ channel: channelCollection })
-				.innerJoin({ m: channelMemberCollection }, ({ channel, m }) =>
-					eq(m.channelId, channel.id),
-				)
+				.innerJoin({ m: channelMemberCollection }, ({ channel, m }) => eq(m.channelId, channel.id))
 				.where(({ m, channel }) =>
 					and(
 						eq(m.userId, user?.id || ""),
@@ -109,7 +107,10 @@ function DiscoverableChannelItem({ channel }: DiscoverableChannelItemProps) {
 	const { slug } = useOrganization()
 
 	return (
-		<SidebarItem tooltip={channel.name} className="opacity-50 hover:opacity-100 [&:has(.active)]:opacity-100">
+		<SidebarItem
+			tooltip={channel.name}
+			className="opacity-50 hover:opacity-100 [&:has(.active)]:opacity-100"
+		>
 			<SidebarLink
 				to="/$orgSlug/chat/$id"
 				params={{ orgSlug: slug, id: channel.id }}

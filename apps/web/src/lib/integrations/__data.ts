@@ -190,6 +190,24 @@ export const integrations: Integration[] = [
 		configOptions: [],
 	},
 	{
+		id: "rss",
+		name: "RSS Feeds",
+		description: "Subscribe to RSS feeds and post new items to channels.",
+		fullDescription:
+			"Subscribe channels to RSS and Atom feeds to automatically post new articles, blog posts, and updates. Each feed is polled on a configurable interval with built-in deduplication and error handling.",
+		logoDomain: "rss.com",
+		logoType: "icon",
+		brandColor: "#F26522",
+		category: "productivity",
+		features: [
+			"Subscribe to RSS & Atom feeds",
+			"Configurable polling intervals",
+			"Automatic deduplication",
+			"Rich embed previews",
+		],
+		configOptions: [],
+	},
+	{
 		id: "railway",
 		name: "Railway",
 		description: "Deployment notifications and alerts for your Railway projects.",

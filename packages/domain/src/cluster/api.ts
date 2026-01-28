@@ -6,6 +6,7 @@ import {
 	GitHubInstallationWorkflow,
 	GitHubWebhookWorkflow,
 	MessageNotificationWorkflow,
+	RssFeedPollWorkflow,
 	ThreadNamingWorkflow,
 } from "./workflows/index.ts"
 
@@ -15,6 +16,7 @@ export const workflows = [
 	CleanupUploadsWorkflow,
 	GitHubInstallationWorkflow,
 	GitHubWebhookWorkflow,
+	RssFeedPollWorkflow,
 	ThreadNamingWorkflow,
 ] as const
 

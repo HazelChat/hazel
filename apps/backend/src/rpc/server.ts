@@ -8,6 +8,7 @@ import {
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
+	RssSubscriptionRpcs,
 	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
@@ -28,6 +29,7 @@ import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
+import { RssSubscriptionRpcLive } from "./handlers/rss-subscriptions"
 import { InvitationRpcLive } from "./handlers/invitations"
 import { MessageReactionRpcLive } from "./handlers/message-reactions"
 import { MessageRpcLive } from "./handlers/messages"
@@ -71,6 +73,7 @@ export const AllRpcs = MessageRpcs.merge(
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
+	RssSubscriptionRpcs,
 	AttachmentRpcs,
 	BotRpcs,
 ).middleware(RpcLoggingMiddleware)
@@ -92,6 +95,7 @@ export const RpcServerLive = Layer.empty.pipe(
 	Layer.provideMerge(ChannelSectionRpcLive),
 	Layer.provideMerge(ChannelWebhookRpcLive),
 	Layer.provideMerge(GitHubSubscriptionRpcLive),
+	Layer.provideMerge(RssSubscriptionRpcLive),
 	Layer.provideMerge(AttachmentRpcLive),
 	Layer.provideMerge(BotRpcLive),
 	Layer.provideMerge(AuthMiddlewareLive),

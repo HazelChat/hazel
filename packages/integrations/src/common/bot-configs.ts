@@ -46,7 +46,7 @@ export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBot
 /**
  * Webhook provider types (non-OAuth integrations)
  */
-export type WebhookProvider = "openstatus" | "railway"
+export type WebhookProvider = "openstatus" | "railway" | "rss"
 
 /**
  * Bot configurations for webhook-based integrations.
@@ -64,6 +64,12 @@ export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> 
 		avatarUrl:
 			"https://cdn.brandfetch.io/railway.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-railway",
+	},
+	rss: {
+		name: "RSS",
+		avatarUrl:
+			"https://cdn.brandfetch.io/rss.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
+		botId: "bot-rss",
 	},
 }
 

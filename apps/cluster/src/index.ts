@@ -21,11 +21,13 @@ import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
 import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
 import { BotUserServiceLive } from "./services/bot-user-service.ts"
 import { OpenRouterLanguageModelLayer } from "./services/openrouter-service.ts"
+import { RssPollCronLayer } from "./cron/rss-poll-cron.ts"
 import {
 	CleanupUploadsWorkflowLayer,
 	GitHubInstallationWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
 	MessageNotificationWorkflowLayer,
+	RssFeedPollWorkflowLayer,
 	ThreadNamingWorkflowLayer,
 } from "./workflows/index.ts"
 
@@ -58,6 +60,7 @@ const AllWorkflows = Layer.mergeAll(
 	CleanupUploadsWorkflowLayer,
 	GitHubInstallationWorkflowLayer,
 	GitHubWebhookWorkflowLayer,
+	RssFeedPollWorkflowLayer,
 	ThreadNamingWorkflowLayer.pipe(Layer.provide(OpenRouterLanguageModelLayer)),
 ).pipe(Layer.provide(BotUserServiceLive), Layer.provide(DatabaseLayer))
 
@@ -78,6 +81,7 @@ const AllCronJobs = Layer.mergeAll(
 	PresenceCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
 	StatusExpirationCronLayer.pipe(Layer.provide(DatabaseLayer)),
 	UploadCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
+	RssPollCronLayer.pipe(Layer.provide(DatabaseLayer)),
 ).pipe(Layer.provide(WorkflowEngineLayer))
 
 // Workflow API implementation
