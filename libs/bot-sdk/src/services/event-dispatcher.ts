@@ -1,7 +1,14 @@
 import type { ConfigError } from "effect"
 import { Config, Effect, Fiber, Layer, Metric, Schedule, type Scope } from "effect"
+import {
+	createEventLogContext,
+	generateEventId,
+	withLogContext,
+	type BotIdentity,
+	type EventId,
+} from "../log-context.ts"
 import { composeMiddleware, type Middleware } from "../middleware.ts"
-import type { EventType } from "../types/events.ts"
+import type { EventOperation, EventType } from "../types/events.ts"
 import type { EventHandler, EventHandlerRegistry } from "../types/handlers.ts"
 import { ElectricEventQueue } from "./electric-event-queue.ts"
 
@@ -33,6 +40,12 @@ export interface EventDispatcherConfig {
 	 * @default 10
 	 */
 	readonly maxConcurrentHandlers?: number | "unbounded"
+
+	/**
+	 * Bot identity for log context (optional)
+	 * If provided, enables rich correlation logging with bot ID and name
+	 */
+	readonly botIdentity?: BotIdentity
 }
 
 /**
@@ -90,13 +103,38 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 		// Compose all middleware
 		const composedMiddleware = composeMiddleware(config.middleware || [])
 
+		// Extract table and operation from eventType (e.g., "messages.insert" -> table="messages", operation="insert")
+		const parseEventType = (eventType: EventType): { table: string; operation: EventOperation } => {
+			const [table, operation] = eventType.split(".") as [string, EventOperation]
+			return { table, operation }
+		}
+
 		// Helper to dispatch event to handlers
-		const dispatchToHandlers = (eventType: EventType, value: any) =>
+		const dispatchToHandlers = (eventType: EventType, value: any, eventId: EventId) =>
 			Effect.gen(function* () {
 				const handlers = registry.get(eventType)
 				if (!handlers || handlers.size === 0) {
 					return
 				}
+
+				const handlerCount = handlers.size
+				yield* Effect.logDebug("Dispatching event to handlers", {
+					eventType,
+					eventId,
+					handlerCount,
+				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
+
+				// Create log context if bot identity is available
+				const { table, operation } = parseEventType(eventType)
+				const logContext = config.botIdentity
+					? createEventLogContext({
+							...config.botIdentity,
+							eventId,
+							eventType,
+							table,
+							operation,
+						})
+					: null
 
 				// Execute all handlers with bounded concurrency
 				yield* Effect.forEach(
@@ -109,9 +147,8 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 							handler(value) as Effect.Effect<void, any, never>,
 						)
 
-						return wrappedHandler.pipe(
+						const handlerEffect = wrappedHandler.pipe(
 							Effect.tap(() => Metric.increment(handlerExecutionsCounter)),
-							Effect.withSpan("bot.event.handle", { attributes: { eventType } }),
 							Effect.retry(retryPolicy),
 							Effect.catchAllCause((cause) =>
 								Effect.gen(function* () {
@@ -121,10 +158,20 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 									yield* Effect.logError("Handler failed after retries", {
 										cause,
 										eventType,
+										eventId,
 									}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
 								}),
 							),
 						)
+
+						// Wrap with log context if available
+						return logContext
+							? withLogContext(logContext, "bot.event.handle", handlerEffect)
+							: handlerEffect.pipe(
+									Effect.withSpan("bot.event.handle", {
+										attributes: { eventType, eventId },
+									}),
+								)
 					},
 					{ concurrency },
 				)
@@ -161,8 +208,15 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 								return
 							}
 
+							// Generate event ID for correlation
+							const eventId = generateEventId()
+
 							// Dispatch to handlers based on event type
-							yield* dispatchToHandlers(eventType, event.value)
+							yield* dispatchToHandlers(eventType, event.value, eventId).pipe(
+								Effect.withSpan("bot.event.dispatch", {
+									attributes: { eventType, eventId },
+								}),
+							)
 						}),
 					),
 				)
@@ -202,10 +256,6 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 			 * Start the event dispatcher - begins consuming events for all registered handlers
 			 */
 			start: Effect.gen(function* () {
-				yield* Effect.logDebug("Starting event dispatcher", {
-					concurrency: concurrency === "unbounded" ? "unbounded" : concurrency,
-				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
-
 				// Start consumers for all registered event types
 				const eventTypes = Array.from(registry.keys())
 
@@ -216,12 +266,23 @@ export class EventDispatcher extends Effect.Service<EventDispatcher>()("EventDis
 					return
 				}
 
+				// Count total handlers across all event types
+				const totalHandlers = eventTypes.reduce((sum, eventType) => {
+					const handlers = registry.get(eventType)
+					return sum + (handlers?.size ?? 0)
+				}, 0)
+
+				yield* Effect.logInfo("Starting event dispatcher", {
+					eventTypesCount: eventTypes.length,
+					totalHandlers,
+					concurrency: concurrency === "unbounded" ? "unbounded" : concurrency,
+				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
+
 				yield* Effect.forEach(eventTypes, consumeEvents, {
 					concurrency: "unbounded",
 				})
 
-				yield* Effect.logDebug(`Event dispatcher started`, {
-					eventTypesCount: eventTypes.length,
+				yield* Effect.logDebug(`Event consumers started for all event types`, {
 					eventTypes: eventTypes.join(", "),
 				}).pipe(Effect.annotateLogs("service", "EventDispatcher"))
 			}),

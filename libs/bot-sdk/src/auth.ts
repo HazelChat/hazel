@@ -13,6 +13,11 @@ export interface BotAuthContext {
 	readonly botId: string
 
 	/**
+	 * Human-readable bot name (for logging)
+	 */
+	readonly botName: string
+
+	/**
 	 * User ID associated with this bot (used as authorId for messages)
 	 */
 	readonly userId: string
@@ -96,6 +101,7 @@ export const createAuthContextFromToken = (
 
 		return {
 			botId: response.botId,
+			botName: response.name,
 			userId: response.userId,
 			channelIds: [],
 			token,

@@ -16,6 +16,8 @@
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/printer": "catalog:effect",
 		"@effect/printer-ansi": "catalog:effect",
+		"@hazel/db": "workspace:*",
+		"@hazel/schema": "workspace:*",
 		"@workos-inc/node": "^7.77.0",
 		"effect": "catalog:effect",
 		"picocolors": "^1.1.1"

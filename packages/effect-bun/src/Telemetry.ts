@@ -40,7 +40,7 @@ export const TracingLive = Layer.unwrapEffect(
 		const otelServiceName = yield* Config.string("OTEL_SERVICE_NAME")
 		const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY").pipe(Config.withDefault(""))
 
-		return Otlp.layer({
+		return Otlp.layerJson({
 			baseUrl: otelBaseUrl,
 			resource: {
 				serviceName: otelServiceName,
@@ -104,7 +104,7 @@ export const createTracingLayer = (otelServiceName: string) =>
 
 			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY").pipe(Config.withDefault(""))
 
-			return Otlp.layer({
+			return Otlp.layerJson({
 				baseUrl: otelBaseUrl,
 				resource: {
 					serviceName: otelServiceName,

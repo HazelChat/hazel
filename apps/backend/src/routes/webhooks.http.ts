@@ -293,7 +293,20 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 														},
 													),
 												),
-												Effect.catchAll(() => Effect.void), // Don't fail the main flow
+												// Don't fail the main flow - catch all workflow errors
+												Effect.catchTags({
+													HttpApiDecodeError: () => Effect.void,
+													ParseError: () => Effect.void,
+													RequestError: () => Effect.void,
+													ResponseError: () => Effect.void,
+													ThreadChannelNotFoundError: () => Effect.void,
+													OriginalMessageNotFoundError: () => Effect.void,
+													ThreadContextQueryError: () => Effect.void,
+													AIProviderUnavailableError: () => Effect.void,
+													AIRateLimitError: () => Effect.void,
+													AIResponseParseError: () => Effect.void,
+													ThreadNameUpdateError: () => Effect.void,
+												}),
 											)
 
 										yield* Effect.logDebug("Triggered thread naming workflow", {
@@ -352,7 +365,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				)
 
 				const webhookSecret = yield* Config.redacted("GITHUB_WEBHOOK_SECRET").pipe(
-					Effect.catchAll(() =>
+					Effect.catchTag("ConfigError", () =>
 						skipSignatureVerification
 							? Effect.succeed(Redacted.make(""))
 							: Effect.fail(

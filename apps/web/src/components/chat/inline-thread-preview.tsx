@@ -1,18 +1,13 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { Message } from "@hazel/domain/models"
-import type { ChannelId, MessageId } from "@hazel/schema"
+import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { format } from "date-fns"
-import {
-	threadMessageCountAtomFamily,
-	threadMessagesAtomFamily,
-	userWithPresenceAtomFamily,
-} from "~/atoms/message-atoms"
-import { channelCollection } from "~/db/collections"
+import { formatDistanceToNow } from "date-fns"
+import { useMemo } from "react"
+import { threadMessageCountAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import { channelCollection, messageCollection } from "~/db/collections"
 import { useChat } from "~/hooks/use-chat"
-import IconThread from "../icons/icon-thread"
+import { cx } from "~/utils/cx"
 import { Avatar } from "../ui/avatar"
-import { Button } from "../ui/button"
 
 interface InlineThreadPreviewProps {
 	threadChannelId: ChannelId
@@ -23,7 +18,7 @@ interface InlineThreadPreviewProps {
 export function InlineThreadPreview({
 	threadChannelId,
 	messageId,
-	maxPreviewMessages = 1,
+	maxPreviewMessages = 3,
 }: InlineThreadPreviewProps) {
 	const { openThread } = useChat()
 
@@ -33,85 +28,126 @@ export function InlineThreadPreview({
 		[threadChannelId],
 	)
 	const threadName = threadData?.[0]?.name
-
-	// Use atoms for thread messages - automatically deduplicated across all thread previews
-	const threadMessagesResult = useAtomValue(
-		threadMessagesAtomFamily({ threadChannelId, maxPreviewMessages }),
-	)
-	const threadMessages = Result.getOrElse(threadMessagesResult, () => [])
+	const hasCustomName = threadName && threadName !== "Thread"
 
 	// Get total thread message count using atom
 	const countResult = useAtomValue(threadMessageCountAtomFamily(threadChannelId))
 	const countData = Result.getOrElse(countResult, () => [])
-
 	const totalCount = countData?.[0]?.count ?? 0
-	const previewMessages = threadMessages?.slice(0, maxPreviewMessages) ?? []
-	const hasMoreMessages = totalCount > maxPreviewMessages
 
-	if (!previewMessages || previewMessages.length === 0) {
+	// Get last message timestamp and unique authors for avatar stack
+	const { data: threadMessages } = useLiveQuery(
+		(q) =>
+			q
+				.from({ message: messageCollection })
+				.where(({ message }) => eq(message.channelId, threadChannelId))
+				.orderBy(({ message }) => message.createdAt, "desc")
+				.limit(10), // Get enough to find unique authors
+		[threadChannelId],
+	)
+
+	// Get unique author IDs (up to maxPreviewMessages)
+	const uniqueAuthorIds = useMemo(() => {
+		if (!threadMessages) return []
+		const seen = new Set<UserId>()
+		const ids: UserId[] = []
+		for (const msg of threadMessages) {
+			if (!seen.has(msg.authorId) && ids.length < maxPreviewMessages) {
+				seen.add(msg.authorId)
+				ids.push(msg.authorId)
+			}
+		}
+		return ids
+	}, [threadMessages, maxPreviewMessages])
+
+	// Get last reply timestamp
+	const lastReplyAt = threadMessages?.[0]?.createdAt
+
+	if (totalCount === 0) {
 		return null
 	}
 
 	return (
-		<div className="mt-2 rounded-lg border border-border bg-bg p-3">
-			{/* Thread title header */}
-			{threadName && threadName !== "Thread" && (
-				<div className="mb-2 flex items-center gap-2 font-medium text-fg text-sm">
-					<IconThread className="size-4 text-primary" />
-					<span>{threadName}</span>
-				</div>
+		<button
+			type="button"
+			onClick={() => openThread(threadChannelId, messageId)}
+			className={cx(
+				"group/thread mt-1 flex items-center gap-2 rounded-md py-1 px-1 -ml-1 max-w-full",
+				"transition-colors hover:bg-secondary/60 active:bg-secondary/80",
+				"cursor-pointer select-none",
 			)}
-
-			{/* Thread messages */}
-			<div className="space-y-1">
-				{previewMessages.map((message) => (
-					<ThreadMessagePreview key={message.id} message={message} />
-				))}
+		>
+			{/* Avatar stack */}
+			<div className="shrink-0">
+				<AvatarStack authorIds={uniqueAuthorIds} />
 			</div>
 
-			{/* View full thread button */}
-			<Button
-				intent="plain"
-				size="sm"
-				onPress={() => openThread(threadChannelId, messageId)}
-				className="mt-2 flex items-center gap-2 text-primary hover:text-primary/80"
-			>
-				{/* Only show icon if no title header is displayed */}
-				{!(threadName && threadName !== "Thread") && (
-					<IconThread data-slot="icon" className="size-4" />
+			{/* Thread info */}
+			<div className="flex min-w-0 items-center gap-1.5 text-[13px] whitespace-nowrap">
+				{/* Thread name if custom */}
+				{hasCustomName && (
+					<>
+						<span className="max-w-[150px] font-medium text-fg/80">{threadName}</span>
+						<span className="shrink-0 text-muted-fg">·</span>
+					</>
 				)}
-				<span className="font-medium">
-					{hasMoreMessages
-						? `View all ${totalCount} ${totalCount === 1 ? "reply" : "replies"}`
-						: `${totalCount} ${totalCount === 1 ? "reply" : "replies"}`}
+
+				{/* Reply count - primary action color */}
+				<span className="shrink-0 font-medium text-primary group-hover/thread:underline">
+					{totalCount} {totalCount === 1 ? "reply" : "replies"}
 				</span>
-			</Button>
+
+				{/* Reply time / View thread - swap on hover without layout shift */}
+				<span className="shrink-0 text-muted-fg">·</span>
+				<span className="relative shrink-0">
+					{/* Last reply time - invisible on hover but keeps space */}
+					{lastReplyAt && (
+						<span className="text-muted-fg group-hover/thread:invisible truncate">
+							{totalCount > 1 ? "Last reply " : ""}
+							{formatDistanceToNow(lastReplyAt, { addSuffix: false })} ago
+						</span>
+					)}
+					{/* View thread - absolutely positioned on hover */}
+					<span className="invisible absolute left-0 text-muted-fg group-hover/thread:visible">
+						View thread
+					</span>
+				</span>
+			</div>
+		</button>
+	)
+}
+
+/**
+ * Stacked avatar component showing overlapping user avatars
+ */
+function AvatarStack({ authorIds }: { authorIds: UserId[] }) {
+	if (authorIds.length === 0) return null
+
+	return (
+		<div className="flex items-center -space-x-1.5">
+			{authorIds.map((authorId, index) => (
+				<AvatarStackItem key={authorId} authorId={authorId} index={index} />
+			))}
 		</div>
 	)
 }
 
-function ThreadMessagePreview({ message }: { message: typeof Message.Model.Type }) {
-	// Use atom for user data - automatically deduplicated across all thread messages
-	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(message.authorId))
+function AvatarStackItem({ authorId, index }: { authorId: UserId; index: number }) {
+	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(authorId))
 	const data = Result.getOrElse(userPresenceResult, () => [])
-	const result = data[0]
-	const user = result?.user
+	const user = data[0]?.user
 
-	if (!user) return null
+	if (!user) {
+		return <div className="size-5 rounded-md bg-muted ring-2 ring-bg" style={{ zIndex: 10 - index }} />
+	}
 
 	return (
-		<div className="group flex gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/50">
-			<Avatar src={user.avatarUrl} initials={`${user.firstName} ${user.lastName}`} className="size-6" />
-
-			<div className="min-w-0 flex-1">
-				<div className="flex items-baseline gap-2">
-					<span className="font-medium text-sm">
-						{user.firstName} {user.lastName}
-					</span>
-					<span className="text-muted-fg text-xs">{format(message.createdAt, "HH:mm")}</span>
-				</div>
-				<p className="text-base text-fg leading-snug">{message.content}</p>
-			</div>
-		</div>
+		<Avatar
+			src={user.avatarUrl}
+			initials={`${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`}
+			size="xxs"
+			className="ring-2 ring-bg"
+			isSquare
+		/>
 	)
 }

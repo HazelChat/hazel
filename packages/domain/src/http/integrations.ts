@@ -8,8 +8,7 @@ import { IntegrationConnection } from "../models"
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
 
-// Note: OAuthUrlResponse is no longer used - getOAuthUrl now returns a redirect directly
-// Kept for backward compatibility if needed
+// OAuth URL response - returned from getOAuthUrl endpoint for SPA OAuth flow
 export class OAuthUrlResponse extends Schema.Class<OAuthUrlResponse>("OAuthUrlResponse")({
 	authorizationUrl: Schema.String,
 }) {}
@@ -48,10 +47,10 @@ export class UnsupportedProviderError extends Schema.TaggedError<UnsupportedProv
 ) {}
 
 export class IntegrationGroup extends HttpApiGroup.make("integrations")
-	// Initiate OAuth flow - redirects to provider with session cookie
+	// Initiate OAuth flow - returns authorization URL for SPA redirect
 	.add(
 		HttpApiEndpoint.get("getOAuthUrl", `/:orgId/:provider/oauth`)
-			.addSuccess(Schema.Void, { status: 302 })
+			.addSuccess(OAuthUrlResponse)
 			.addError(UnsupportedProviderError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
@@ -61,12 +60,13 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
-					title: "Initiate OAuth Flow",
+					title: "Get OAuth Authorization URL",
 					description:
-						"Initiates the OAuth flow by redirecting to the provider's authorization page. Sets a session cookie to preserve context.",
-					summary: "Initiate OAuth flow",
+						"Returns the OAuth authorization URL for the provider. The frontend should redirect the user to this URL. Sets a session cookie to preserve context for the callback.",
+					summary: "Get OAuth URL",
 				}),
 			),
 	)
@@ -117,6 +117,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
 					title: "Get Connection Status",
@@ -145,7 +146,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					description: "Disconnect an integration and revoke tokens",
 					summary: "Disconnect provider",
 				}),
-			),
+			)
+			.middleware(CurrentUser.Authorization),
 	)
-	.prefix("/integrations")
-	.middleware(CurrentUser.Authorization) {}
+	.prefix("/integrations") {}

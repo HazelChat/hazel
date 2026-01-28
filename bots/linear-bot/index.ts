@@ -1,7 +1,6 @@
-import { Effect, Layer, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 import { LinearApiClient } from "@hazel/integrations/linear"
-import { getLinearAccessToken, IntegrationLayerLive } from "./src/db.ts"
 
 const IssueCommand = Command.make("issue", {
 	description: "Create a Linear issue",
@@ -16,7 +15,7 @@ const commands = CommandGroup.make(IssueCommand)
 
 runHazelBot({
 	commands,
-	layers: [Layer.mergeAll(IntegrationLayerLive, LinearApiClient.Default)],
+	layers: [LinearApiClient.Default],
 	setup: (bot) =>
 		Effect.gen(function* () {
 			yield* bot.onCommand(IssueCommand, (ctx) =>
@@ -27,7 +26,7 @@ runHazelBot({
 
 					yield* Effect.log(`Creating Linear issue: ${title}`)
 
-					const accessToken = yield* getLinearAccessToken(ctx.orgId)
+					const { accessToken } = yield* bot.integration.getToken(ctx.orgId, "linear")
 
 					const issue = yield* LinearApiClient.createIssue(accessToken, {
 						title,

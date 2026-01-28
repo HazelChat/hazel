@@ -15,13 +15,16 @@ The SDK provides a `withErrorHandler` utility that:
 3. Sends a user-friendly message to the channel
 
 ```typescript
-yield* bot.onCommand(AddTaskCommand, (ctx) =>
-  Effect.gen(function* () {
-    // Your command logic here
-    tasks.push(ctx.args.title)
-    yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-  }).pipe(bot.withErrorHandler(ctx))  // <-- Wrap with error handler
-)
+yield *
+	bot.onCommand(
+		AddTaskCommand,
+		(ctx) =>
+			Effect.gen(function* () {
+				// Your command logic here
+				tasks.push(ctx.args.title)
+				yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+			}).pipe(bot.withErrorHandler(ctx)), // <-- Wrap with error handler
+	)
 ```
 
 If anything fails, the user sees:
@@ -33,22 +36,23 @@ If anything fails, the user sees:
 For more control, use Effect's error handling:
 
 ```typescript
-yield* bot.onCommand(AddTaskCommand, (ctx) =>
-  Effect.gen(function* () {
-    tasks.push(ctx.args.title)
-    yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-  }).pipe(
-    Effect.catchAll((error) =>
-      Effect.gen(function* () {
-        yield* Effect.logError("Failed to add task", { error })
-        yield* bot.message.send(
-          ctx.channelId,
-          "Sorry, I couldn't add that task. Please try again."
-        )
-      })
-    )
-  )
-)
+yield *
+	bot.onCommand(AddTaskCommand, (ctx) =>
+		Effect.gen(function* () {
+			tasks.push(ctx.args.title)
+			yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+		}).pipe(
+			Effect.catchAll((error) =>
+				Effect.gen(function* () {
+					yield* Effect.logError("Failed to add task", { error })
+					yield* bot.message.send(
+						ctx.channelId,
+						"Sorry, I couldn't add that task. Please try again.",
+					)
+				}),
+			),
+		),
+	)
 ```
 
 ## Handling Specific Errors
@@ -56,14 +60,15 @@ yield* bot.onCommand(AddTaskCommand, (ctx) =>
 Use `Effect.catchTag` to handle specific error types:
 
 ```typescript
-yield* bot.message.send(channelId, content).pipe(
-  Effect.catchTag("HttpClientError", (error) =>
-    Effect.gen(function* () {
-      yield* Effect.logError("HTTP error", { error })
-      // Maybe retry or notify the user
-    })
-  )
-)
+yield *
+	bot.message.send(channelId, content).pipe(
+		Effect.catchTag("HttpClientError", (error) =>
+			Effect.gen(function* () {
+				yield* Effect.logError("HTTP error", { error })
+				// Maybe retry or notify the user
+			}),
+		),
+	)
 ```
 
 ## Validation Errors
@@ -71,23 +76,24 @@ yield* bot.message.send(channelId, content).pipe(
 The SDK validates command arguments automatically. If validation fails, the command handler won't run. To provide custom validation:
 
 ```typescript
-yield* bot.onCommand(AddTaskCommand, (ctx) =>
-  Effect.gen(function* () {
-    // Custom validation
-    if (ctx.args.title.length > 100) {
-      yield* bot.message.send(ctx.channelId, "Task title too long! Keep it under 100 characters.")
-      return
-    }
+yield *
+	bot.onCommand(AddTaskCommand, (ctx) =>
+		Effect.gen(function* () {
+			// Custom validation
+			if (ctx.args.title.length > 100) {
+				yield* bot.message.send(ctx.channelId, "Task title too long! Keep it under 100 characters.")
+				return
+			}
 
-    if (tasks.includes(ctx.args.title)) {
-      yield* bot.message.send(ctx.channelId, "That task already exists!")
-      return
-    }
+			if (tasks.includes(ctx.args.title)) {
+				yield* bot.message.send(ctx.channelId, "That task already exists!")
+				return
+			}
 
-    tasks.push(ctx.args.title)
-    yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-  }).pipe(bot.withErrorHandler(ctx))
-)
+			tasks.push(ctx.args.title)
+			yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+		}).pipe(bot.withErrorHandler(ctx)),
+	)
 ```
 
 ## Error Logging
@@ -95,14 +101,15 @@ yield* bot.onCommand(AddTaskCommand, (ctx) =>
 Use Effect's logging for structured error logs:
 
 ```typescript
-yield* Effect.logError("Operation failed", {
-  error,
-  context: {
-    command: ctx.commandName,
-    userId: ctx.userId,
-    channelId: ctx.channelId,
-  }
-})
+yield *
+	Effect.logError("Operation failed", {
+		error,
+		context: {
+			command: ctx.commandName,
+			userId: ctx.userId,
+			channelId: ctx.channelId,
+		},
+	})
 ```
 
 ## Complete Task Bot
@@ -116,92 +123,91 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 const tasks: string[] = []
 
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
-  usageExample: "/task-add Buy groceries",
+	description: "Add a new task",
+	args: { title: Schema.String },
+	usageExample: "/task-add Buy groceries",
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const ClearTasksCommand = Command.make("task-clear", {
-  description: "Clear all tasks",
+	description: "Clear all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand, ClearTasksCommand)
 
 runHazelBot({
-  commands,
-  setup: (bot) => Effect.gen(function* () {
-    yield* Effect.log("Task Bot is starting...")
+	commands,
+	setup: (bot) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Task Bot is starting...")
 
-    // Add task with validation and error handling
-    yield* bot.onCommand(AddTaskCommand, (ctx) =>
-      Effect.gen(function* () {
-        // Validate title length
-        if (ctx.args.title.length > 100) {
-          yield* bot.message.send(
-            ctx.channelId,
-            "Task title too long! Keep it under 100 characters."
-          )
-          return
-        }
+			// Add task with validation and error handling
+			yield* bot.onCommand(AddTaskCommand, (ctx) =>
+				Effect.gen(function* () {
+					// Validate title length
+					if (ctx.args.title.length > 100) {
+						yield* bot.message.send(
+							ctx.channelId,
+							"Task title too long! Keep it under 100 characters.",
+						)
+						return
+					}
 
-        // Check for duplicates
-        if (tasks.includes(ctx.args.title)) {
-          yield* bot.message.send(ctx.channelId, "That task already exists!")
-          return
-        }
+					// Check for duplicates
+					if (tasks.includes(ctx.args.title)) {
+						yield* bot.message.send(ctx.channelId, "That task already exists!")
+						return
+					}
 
-        // Add the task
-        tasks.push(ctx.args.title)
-        const msg = yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
-        yield* bot.message.react(msg, "✅")
-      }).pipe(bot.withErrorHandler(ctx))
-    )
+					// Add the task
+					tasks.push(ctx.args.title)
+					const msg = yield* bot.message.send(ctx.channelId, `Added: ${ctx.args.title}`)
+					yield* bot.message.react(msg, "✅")
+				}).pipe(bot.withErrorHandler(ctx)),
+			)
 
-    // List tasks with error handling
-    yield* bot.onCommand(ListTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        if (tasks.length === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks yet! Use /task-add to create one.")
-          return
-        }
-        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
-        yield* bot.message.send(ctx.channelId, `**Tasks (${tasks.length}):**\n${list}`)
-      }).pipe(bot.withErrorHandler(ctx))
-    )
+			// List tasks with error handling
+			yield* bot.onCommand(ListTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					if (tasks.length === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks yet! Use /task-add to create one.")
+						return
+					}
+					const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+					yield* bot.message.send(ctx.channelId, `**Tasks (${tasks.length}):**\n${list}`)
+				}).pipe(bot.withErrorHandler(ctx)),
+			)
 
-    // Clear tasks with error handling
-    yield* bot.onCommand(ClearTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        const count = tasks.length
-        if (count === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks to clear!")
-          return
-        }
+			// Clear tasks with error handling
+			yield* bot.onCommand(ClearTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					const count = tasks.length
+					if (count === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks to clear!")
+						return
+					}
 
-        const msg = yield* bot.message.send(ctx.channelId, "Clearing tasks...")
-        tasks.length = 0
-        yield* bot.message.update(msg, `Cleared ${count} task${count === 1 ? "" : "s"}!`)
-        yield* bot.message.react(msg, "🗑️")
-      }).pipe(bot.withErrorHandler(ctx))
-    )
+					const msg = yield* bot.message.send(ctx.channelId, "Clearing tasks...")
+					tasks.length = 0
+					yield* bot.message.update(msg, `Cleared ${count} task${count === 1 ? "" : "s"}!`)
+					yield* bot.message.react(msg, "🗑️")
+				}).pipe(bot.withErrorHandler(ctx)),
+			)
 
-    // React to task mentions (with error catching)
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        if (message.content.toLowerCase().includes("task")) {
-          yield* bot.message.react(message, "📝")
-        }
-      }).pipe(
-        Effect.catchAll((error) =>
-          Effect.logWarning("Failed to react to message", { error })
-        )
-      )
-    )
-  }),
+			// React to task mentions (with error catching)
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					if (message.content.toLowerCase().includes("task")) {
+						yield* bot.message.react(message, "📝")
+					}
+				}).pipe(
+					Effect.catchAll((error) => Effect.logWarning("Failed to react to message", { error })),
+				),
+			)
+		}),
 })
 ```
 
@@ -215,10 +221,10 @@ Congratulations! You've built a complete Task Bot with:
 - Proper error handling
 
 <Cards>
-  <Card title="API Reference" href="/bot-sdk/reference">
-    Explore the full API documentation
-  </Card>
-  <Card title="HazelBotClient" href="/bot-sdk/reference/hazel-bot-client">
-    All available methods
-  </Card>
+	<Card title="API Reference" href="/bot-sdk/reference">
+		Explore the full API documentation
+	</Card>
+	<Card title="HazelBotClient" href="/bot-sdk/reference/hazel-bot-client">
+		All available methods
+	</Card>
 </Cards>

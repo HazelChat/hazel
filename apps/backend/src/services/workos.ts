@@ -36,14 +36,14 @@ export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
 			return session
 		})
 
-		const getLogoutUrl = Effect.fn("WorkOS.getLogoutUrl")(function* () {
+		const getLogoutUrl = Effect.fn("WorkOS.getLogoutUrl")(function* (options?: { returnTo?: string }) {
 			const request = yield* HttpServerRequest.HttpServerRequest
 			const workOsCookie = request.cookies[CurrentUser.Cookie.key]
 
 			const session = yield* loadSealedSession(workOsCookie)
 
 			const logoutUrl = yield* Effect.tryPromise({
-				try: () => session.getLogoutUrl(),
+				try: () => session.getLogoutUrl(options),
 				catch: (error) => {
 					return new WorkOSApiError({ cause: error })
 				},

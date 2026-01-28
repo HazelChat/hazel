@@ -1,5 +1,7 @@
+import type { ChannelId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { lazy, Suspense, useEffect } from "react"
+import { ChannelJoinBanner, useIsChannelMember } from "~/components/chat/channel-join-banner"
 import { MessageList } from "~/components/chat/message-list"
 import { TypingIndicator } from "~/components/chat/typing-indicator"
 
@@ -25,7 +27,9 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id/")({
 
 function MessagesRoute() {
 	const { messageId } = Route.useSearch()
+	const { id } = Route.useParams()
 	const navigate = Route.useNavigate()
+	const isMember = useIsChannelMember(id as ChannelId)
 
 	// TODO: Implement scroll-to-message - see GitHub issue
 	// Clear messageId from URL when present (scroll functionality not yet implemented)
@@ -34,6 +38,10 @@ function MessagesRoute() {
 			navigate({ search: {}, replace: true })
 		}
 	}, [messageId, navigate])
+
+	if (!isMember) {
+		return <ChannelJoinBanner channelId={id as ChannelId} />
+	}
 
 	return (
 		<>

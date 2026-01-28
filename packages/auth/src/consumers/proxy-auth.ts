@@ -1,9 +1,10 @@
 import { Database, eq, schema } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { Config, Effect, Option, Schema } from "effect"
+import { Effect, Option, Schema } from "effect"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { SessionValidator } from "../session/session-validator.ts"
+import { WorkOSClient } from "../session/workos-client.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
 
 /**
@@ -31,10 +32,11 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
  */
 export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	accessors: true,
-	dependencies: [SessionValidator.Default, UserLookupCache.Default],
+	dependencies: [SessionValidator.Default, UserLookupCache.Default, WorkOSClient.Default],
 	effect: Effect.gen(function* () {
 		const validator = yield* SessionValidator
 		const userLookupCache = yield* UserLookupCache
+		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
 
 		/**
@@ -142,22 +144,25 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
 			bearerToken: string,
 		) {
-			const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
-
-			// Verify JWT signature using WorkOS JWKS
+			const clientId = workos.clientId
 			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
-			const { payload } = yield* Effect.tryPromise({
-				try: () =>
-					jwtVerify(bearerToken, jwks, {
-						issuer: "https://api.workos.com",
-					}),
-				catch: (error) =>
-					new ProxyAuthenticationError({
-						message: `Invalid token: ${error}`,
-						detail: "JWT verification failed",
-					}),
-			})
+			// WorkOS can issue tokens with either issuer format:
+			// - SSO/OIDC flow: https://api.workos.com
+			// - User Management flow: https://api.workos.com/user_management/${clientId}
+			const verifyWithIssuer = (issuer: string) =>
+				Effect.tryPromise({
+					try: () => jwtVerify(bearerToken, jwks, { issuer }),
+					catch: (error) =>
+						new ProxyAuthenticationError({
+							message: `JWT verification failed: ${error}`,
+							detail: `Issuer: ${issuer}`,
+						}),
+				})
+
+			const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
+				Effect.orElse(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
+			)
 
 			const workOsUserId = payload.sub
 			if (!workOsUserId) {
@@ -185,11 +190,30 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			yield* Effect.annotateCurrentSpan("user.found", true)
 			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
 
+			// Resolve WorkOS org ID to internal UUID
+			// The JWT contains org_id (WorkOS org ID like "org_01ABC123...")
+			// We need to convert to internal UUID for frontend comparison
+			const workosOrgId = payload.org_id as string | undefined
+			let internalOrgId: OrganizationId | undefined = undefined
+
+			if (workosOrgId) {
+				internalOrgId = yield* workos.getOrganization(workosOrgId).pipe(
+					Effect.map((org) => org.externalId as OrganizationId | undefined),
+					Effect.catchTag("OrganizationFetchError", (error) =>
+						// Log warning but don't fail - org is optional context
+						Effect.logWarning("Failed to resolve org ID from JWT", {
+							workosOrgId,
+							error: error.message,
+						}).pipe(Effect.as(undefined)),
+					),
+				)
+			}
+
 			return {
 				workosUserId: workOsUserId,
 				internalUserId: userIdOption.value as UserId,
 				email: (payload.email as string) ?? "",
-				organizationId: (payload.org_id as OrganizationId) ?? undefined,
+				organizationId: internalOrgId,
 				role: (payload.role as string) ?? undefined,
 				refreshedSession: undefined, // No session refresh for JWT auth
 			} satisfies AuthenticatedUserContext

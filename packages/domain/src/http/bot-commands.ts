@@ -3,7 +3,12 @@ import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { BotId, ChannelId, OrganizationId, UserId } from "../ids"
+import { IntegrationConnection } from "../models"
 import { CommandArgumentValue } from "./integration-commands"
+import { IntegrationNotConnectedError } from "./integrations"
+
+// Re-export IntegrationProvider for convenience
+const IntegrationProvider = IntegrationConnection.IntegrationProvider
 
 // ============ SHARED SCHEMAS ============
 
@@ -85,9 +90,40 @@ export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecu
 	},
 ) {}
 
+// ============ INTEGRATION TOKEN SCHEMAS ============
+
+export class IntegrationTokenResponse extends Schema.Class<IntegrationTokenResponse>(
+	"IntegrationTokenResponse",
+)({
+	accessToken: Schema.String,
+	provider: IntegrationProvider,
+	expiresAt: Schema.NullOr(Schema.String),
+}) {}
+
+export class IntegrationNotAllowedError extends Schema.TaggedError<IntegrationNotAllowedError>()(
+	"IntegrationNotAllowedError",
+	{
+		botId: BotId,
+		provider: IntegrationProvider,
+	},
+) {}
+
 // ============ API GROUP ============
 
 export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
+	// SSE stream for bot commands (bot token auth)
+	// This endpoint uses bot token authentication, not user auth
+	.add(
+		HttpApiEndpoint.get("streamCommands", `/stream`)
+			.addError(UnauthorizedError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Stream Bot Commands",
+					description: "SSE stream for receiving bot commands (used by Bot SDK)",
+					summary: "Stream commands via SSE",
+				}),
+			),
+	)
 	// Get current bot info (for bot token validation)
 	// This endpoint uses bot token authentication, not user auth
 	.add(
@@ -145,5 +181,30 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 				}),
 			)
 			.middleware(CurrentUser.Authorization),
+	)
+	// Get integration token (bot token auth)
+	// Bot must have the provider in its allowedIntegrations and be installed in the org
+	.add(
+		HttpApiEndpoint.get("getIntegrationToken", `/integrations/:orgId/:provider/token`)
+			.addSuccess(IntegrationTokenResponse)
+			.addError(UnauthorizedError)
+			.addError(BotNotInstalledError)
+			.addError(IntegrationNotConnectedError)
+			.addError(IntegrationNotAllowedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+					provider: IntegrationProvider,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Integration Token",
+					description:
+						"Get a valid OAuth access token for an integration provider. Bot must have the provider in its allowedIntegrations and be installed in the target org.",
+					summary: "Get integration token",
+				}),
+			),
 	)
 	.prefix("/bot-commands") {}

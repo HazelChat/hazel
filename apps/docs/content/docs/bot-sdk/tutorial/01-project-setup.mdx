@@ -30,15 +30,15 @@ Update your `tsconfig.json`:
 
 ```json
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "types": ["bun-types"]
-  }
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"types": ["bun-types"]
+	}
 }
 ```
 
@@ -65,9 +65,10 @@ import { Effect } from "effect"
 import { runHazelBot } from "@hazel/bot-sdk"
 
 runHazelBot({
-  setup: (bot) => Effect.gen(function* () {
-    yield* Effect.log("Task Bot is starting...")
-  }),
+	setup: (bot) =>
+		Effect.gen(function* () {
+			yield* Effect.log("Task Bot is starting...")
+		}),
 })
 ```
 
@@ -103,7 +104,7 @@ task-bot/
 Now that the project is set up, let's make the bot respond to messages.
 
 <Cards>
-  <Card title="Next: Handling Messages" href="/bot-sdk/tutorial/02-handling-messages">
-    Learn to react to new messages
-  </Card>
+	<Card title="Next: Handling Messages" href="/bot-sdk/tutorial/02-handling-messages">
+		Learn to react to new messages
+	</Card>
 </Cards>

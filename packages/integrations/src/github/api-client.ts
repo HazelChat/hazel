@@ -331,6 +331,19 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			)
 
 		/**
+		 * Create an unauthenticated client with GitHub headers (for public API)
+		 */
+		const makeUnauthenticatedClient = () =>
+			httpClient.pipe(
+				HttpClient.mapRequest(
+					HttpClientRequest.setHeaders({
+						Accept: "application/vnd.github+json",
+						"X-GitHub-Api-Version": "2022-11-28",
+					}),
+				),
+			)
+
+		/**
 		 * Fetch a GitHub PR by owner, repo, and number
 		 */
 		const fetchPR = Effect.fn("GitHubApiClient.fetchPR")(function* (
@@ -358,6 +371,110 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 						message: "Rate limit exceeded",
 						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
 					}),
+				)
+			}
+
+			// Handle other error status codes
+			if (response.status >= 400) {
+				const errorBody = yield* response.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+					Effect.catchAll((error) =>
+						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
+							Effect.as({ message: "Unknown error" }),
+						),
+					),
+				)
+				const message = parseGitHubErrorMessage(response.status, errorBody.message)
+				return yield* Effect.fail(new GitHubApiError({ message, status: response.status }))
+			}
+
+			// Parse successful response
+			const prData = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(GitHubPRApiResponse)),
+				Effect.mapError(
+					(error) =>
+						new GitHubApiError({
+							message: `Failed to parse GitHub PR response: ${String(error)}`,
+							cause: error,
+						}),
+				),
+			)
+
+			// Transform API response to domain model
+			return {
+				owner,
+				repo,
+				number: prData.number,
+				title: prData.title,
+				body: prData.body ?? null,
+				state: prData.state as "open" | "closed",
+				draft: prData.draft,
+				merged: prData.merged,
+				author: prData.user
+					? {
+							login: prData.user.login,
+							avatarUrl: prData.user.avatar_url ?? null,
+						}
+					: null,
+				additions: prData.additions,
+				deletions: prData.deletions,
+				headRefName: prData.head?.ref ?? "",
+				updatedAt: prData.updated_at ?? new Date().toISOString(),
+				labels: prData.labels.map((label) => ({
+					name: label.name,
+					color: label.color,
+				})),
+			} satisfies GitHubPR
+		})
+
+		/**
+		 * Fetch a GitHub PR from the public API (unauthenticated).
+		 * Limited to 60 requests/hour per IP.
+		 */
+		const fetchPRPublic = Effect.fn("GitHubApiClient.fetchPRPublic")(function* (
+			owner: string,
+			repo: string,
+			prNumber: number,
+		) {
+			const client = makeUnauthenticatedClient()
+			const url = `${GITHUB_API_BASE_URL}/repos/${owner}/${repo}/pulls/${prNumber}`
+
+			const response = yield* client.get(url).pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			// Handle 404 as not found error
+			if (response.status === 404) {
+				return yield* Effect.fail(new GitHubPRNotFoundError({ owner, repo, number: prNumber }))
+			}
+
+			// Handle 429 rate limit with retry-after header
+			if (response.status === 429) {
+				const retryAfterHeader = response.headers["retry-after"]
+				const retryAfter = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : undefined
+				return yield* Effect.fail(
+					new GitHubRateLimitError({
+						message:
+							"Public API rate limit exceeded (60 req/hour). Connect GitHub for higher limits.",
+						retryAfter: Number.isFinite(retryAfter) ? retryAfter : undefined,
+					}),
+				)
+			}
+
+			// Handle 403 which GitHub uses for rate limiting on unauthenticated requests
+			if (response.status === 403) {
+				const errorBody = yield* response.json.pipe(
+					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+					Effect.catchAll(() => Effect.succeed({ message: "" })),
+				)
+				if (errorBody.message.toLowerCase().includes("rate limit")) {
+					return yield* Effect.fail(
+						new GitHubRateLimitError({
+							message:
+								"Public API rate limit exceeded (60 req/hour). Connect GitHub for higher limits.",
+						}),
+					)
+				}
+				return yield* Effect.fail(
+					new GitHubApiError({ message: errorBody.message || "Forbidden", status: 403 }),
 				)
 			}
 
@@ -609,6 +726,35 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 				Effect.withSpan("GitHubApiClient.fetchPR", { attributes: { owner, repo, prNumber } }),
 			)
 
+		const wrappedFetchPRPublic = (owner: string, repo: string, prNumber: number) =>
+			fetchPRPublic(owner, repo, prNumber).pipe(
+				Effect.catchTag("TimeoutException", () =>
+					Effect.fail(new GitHubApiError({ message: "Request timed out" })),
+				),
+				Effect.catchTag("RequestError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Network error: ${String(error)}`,
+							cause: error,
+						}),
+					),
+				),
+				Effect.catchTag("ResponseError", (error) =>
+					Effect.fail(
+						new GitHubApiError({
+							message: `Response error: ${String(error)}`,
+							status: error.response.status,
+							cause: error,
+						}),
+					),
+				),
+				Effect.retry({
+					schedule: makeRetrySchedule,
+					while: isRetryableError,
+				}),
+				Effect.withSpan("GitHubApiClient.fetchPRPublic", { attributes: { owner, repo, prNumber } }),
+			)
+
 		const wrappedFetchRepositories = (accessToken: string, page: number, perPage: number) =>
 			fetchRepositories(accessToken, page, perPage).pipe(
 				Effect.catchTag("TimeoutException", () =>
@@ -675,6 +821,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 
 		return {
 			fetchPR: wrappedFetchPR,
+			fetchPRPublic: wrappedFetchPRPublic,
 			fetchRepositories: wrappedFetchRepositories,
 			getAccountInfo: wrappedGetAccountInfo,
 		}

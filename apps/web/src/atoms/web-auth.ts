@@ -11,7 +11,7 @@
 
 import { Atom } from "@effect-atom/atom-react"
 import { FetchHttpClient } from "@effect/platform"
-import { Deferred, Duration, Effect, Layer, Option, Ref } from "effect"
+import { Deferred, Duration, Effect, Layer, Option, Ref, Schema } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
@@ -32,6 +32,52 @@ export type WebAuthStatus = "idle" | "loading" | "authenticated" | "error"
 export interface WebAuthError {
 	_tag: string
 	message: string
+}
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+/**
+ * Error type for JWT decoding failures
+ */
+class JwtDecodeError extends Schema.TaggedError<JwtDecodeError>()("JwtDecodeError", {
+	message: Schema.String,
+}) {}
+
+// ============================================================================
+// JWT Helpers
+// ============================================================================
+
+/**
+ * Decode the session ID from a JWT access token
+ */
+const decodeJwtSessionId = (token: string): Effect.Effect<string, JwtDecodeError> =>
+	Effect.try({
+		try: () => {
+			const parts = token.split(".")
+			if (parts.length !== 3 || !parts[1]) {
+				throw new Error("Invalid JWT format")
+			}
+			const base64Url = parts[1]
+			const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+			const payload = JSON.parse(atob(base64)) as { sid?: string }
+			if (!payload.sid) {
+				throw new Error("No session ID in JWT payload")
+			}
+			return payload.sid
+		},
+		catch: (error) => new JwtDecodeError({ message: String(error) }),
+	})
+
+/**
+ * Build the WorkOS logout URL with session ID and return URL
+ */
+const buildWorkosLogoutUrl = (sessionId: string, returnTo: string): URL => {
+	const url = new URL("https://api.workos.com/user_management/sessions/logout")
+	url.searchParams.set("session_id", sessionId)
+	url.searchParams.set("return_to", returnTo)
+	return url
 }
 
 // ============================================================================
@@ -285,7 +331,8 @@ const doRefresh = (get: AtomGetter) =>
 
 /**
  * Action atom that performs web logout
- * Clears tokens from storage and resets atom state
+ * Clears tokens from storage, resets atom state, and redirects through WorkOS logout
+ * to clear the WorkOS session (prevents silent re-authentication)
  */
 export const webLogoutAtom = Atom.fn(
 	Effect.fnUntraced(function* (options?: { redirectTo?: string }, get?) {
@@ -297,24 +344,56 @@ export const webLogoutAtom = Atom.fn(
 
 		yield* Effect.gen(function* () {
 			const tokenStorage = yield* WebTokenStorage
-			yield* tokenStorage.clearTokens
-		}).pipe(
-			Effect.provide(WebTokenStorageLive),
-			Effect.catchAll((error) => {
-				console.error("[web-auth] Failed to clear tokens:", error)
-				return Effect.void
-			}),
-		)
 
-		// Reset atom state
-		get?.set(webTokensAtom, null)
-		get?.set(webAuthStatusAtom, "idle")
-		get?.set(webAuthErrorAtom, null)
+			// Get the access token BEFORE clearing to extract session ID
+			const accessTokenOption = yield* tokenStorage.getAccessToken
 
-		// Navigate to redirect path
-		const redirectTo = options?.redirectTo || "/"
-		yield* Effect.log(`[web-auth] Logout complete, redirecting to: ${redirectTo}`)
-		window.location.href = redirectTo
+			// Clear localStorage tokens
+			yield* tokenStorage.clearTokens.pipe(
+				Effect.catchAll((error) => Effect.logError("[web-auth] Failed to clear tokens", error)),
+			)
+
+			// Reset atom state
+			get?.set(webTokensAtom, null)
+			get?.set(webAuthStatusAtom, "idle")
+			get?.set(webAuthErrorAtom, null)
+
+			const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin
+			const redirectTo = options?.redirectTo || "/"
+			const returnTo = `${frontendUrl}${redirectTo}`
+
+			// Try to extract session ID and redirect through WorkOS logout
+			yield* Option.match(accessTokenOption, {
+				onNone: () =>
+					Effect.gen(function* () {
+						yield* Effect.log(`[web-auth] No access token, redirecting to: ${returnTo}`)
+						yield* Effect.sync(() => {
+							window.location.href = returnTo
+						})
+					}),
+				onSome: (accessToken) =>
+					decodeJwtSessionId(accessToken).pipe(
+						Effect.flatMap((sessionId) =>
+							Effect.gen(function* () {
+								const workosLogoutUrl = buildWorkosLogoutUrl(sessionId, returnTo)
+								yield* Effect.log("[web-auth] Redirecting to WorkOS logout to clear session")
+								yield* Effect.sync(() => {
+									window.location.href = workosLogoutUrl.toString()
+								})
+							}),
+						),
+						Effect.catchTag("JwtDecodeError", (error) =>
+							Effect.gen(function* () {
+								yield* Effect.logError("[web-auth] Failed to parse JWT for session ID", error)
+								yield* Effect.log(`[web-auth] Falling back to direct redirect: ${returnTo}`)
+								yield* Effect.sync(() => {
+									window.location.href = returnTo
+								})
+							}),
+						),
+					),
+			})
+		}).pipe(Effect.provide(WebTokenStorageLive))
 	}),
 )
 

@@ -123,7 +123,12 @@ function IntegrationConfigPage() {
 		}
 	}, [isVerifying, isConnected])
 
-	// Mutation for disconnect (OAuth flow is now a direct navigation)
+	// Mutation for OAuth flow - get authorization URL then redirect
+	const getOAuthUrlMutation = useAtomSet(HazelApiClient.mutation("integrations", "getOAuthUrl"), {
+		mode: "promiseExit",
+	})
+
+	// Mutation for disconnect
 	const disconnectMutation = useAtomSet(HazelApiClient.mutation("integrations", "disconnect"), {
 		mode: "promiseExit",
 	})
@@ -134,15 +139,25 @@ function IntegrationConfigPage() {
 
 	const externalAccountName = connection?.externalAccountName ?? null
 
-	const handleConnect = () => {
+	const handleConnect = async () => {
 		if (!organizationId) return
 		setIsConnecting(true)
 
-		// Navigate directly to the OAuth endpoint
-		// The server will set a session cookie and redirect to the provider
-		const backendUrl = import.meta.env.VITE_BACKEND_URL
-		const oauthUrl = `${backendUrl}/integrations/${organizationId}/${integrationId}/oauth`
-		window.location.href = oauthUrl
+		// Make authenticated API call to get OAuth URL, then redirect
+		// This ensures the bearer token auth is properly sent
+		const exit = await getOAuthUrlMutation({
+			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+		})
+
+		if (Exit.isSuccess(exit)) {
+			// Redirect to OAuth provider
+			window.location.href = exit.value.authorizationUrl
+		} else {
+			setIsConnecting(false)
+			toast.error(`Failed to connect to ${integration?.name ?? "integration"}`, {
+				description: "Could not initiate the connection. Please try again.",
+			})
+		}
 	}
 
 	const handleDisconnect = async () => {

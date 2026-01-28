@@ -1,5 +1,6 @@
 import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
+import { useMatchRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { Button } from "~/components/ui/button"
 import { Description } from "~/components/ui/field"
 import { ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
@@ -19,6 +20,10 @@ export function DeleteChannelModal({
 	isOpen,
 	onOpenChange,
 }: DeleteChannelModalProps) {
+	const navigate = useNavigate()
+	const matchRoute = useMatchRoute()
+	const { orgSlug } = useParams({ strict: false }) as { orgSlug: string }
+
 	const deleteChannel = useAtomSet(deleteChannelAction, {
 		mode: "promiseExit",
 	})
@@ -27,7 +32,24 @@ export function DeleteChannelModal({
 		const exit = await deleteChannel({ channelId })
 
 		exitToast(exit)
-			.onSuccess(() => onOpenChange(false))
+			.onSuccess(() => {
+				const isOnDeletedChannel =
+					matchRoute({
+						to: "/$orgSlug/chat/$id",
+						params: { orgSlug, id: channelId },
+						fuzzy: true,
+					}) ||
+					matchRoute({
+						to: "/$orgSlug/channels/$channelId/settings",
+						params: { orgSlug, channelId },
+						fuzzy: true,
+					})
+
+				if (isOnDeletedChannel) {
+					navigate({ to: "/$orgSlug/chat", params: { orgSlug } })
+				}
+				onOpenChange(false)
+			})
 			.successMessage("Channel deleted successfully")
 			.onErrorTag("ChannelNotFoundError", () => ({
 				title: "Channel not found",

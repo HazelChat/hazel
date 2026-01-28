@@ -13,8 +13,7 @@ import { Config } from "effect"
  * Reads and validates the following environment variables:
  * - BOT_TOKEN (required) - Bot authentication token
  * - ELECTRIC_URL (optional) - Electric SQL proxy URL
- * - BACKEND_URL (optional) - Backend API URL
- * - REDIS_URL (optional) - Redis URL for command delivery
+ * - BACKEND_URL (optional) - Backend API URL (also used for SSE command streaming)
  */
 export const BotEnvConfig = Config.all({
 	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
@@ -24,11 +23,7 @@ export const BotEnvConfig = Config.all({
 	),
 	backendUrl: Config.string("BACKEND_URL").pipe(
 		Config.withDefault("http://localhost:3003"),
-		Config.withDescription("Backend API URL"),
-	),
-	redisUrl: Config.string("REDIS_URL").pipe(
-		Config.withDefault("redis://localhost:6379"),
-		Config.withDescription("Redis URL for command delivery"),
+		Config.withDescription("Backend API URL (also used for SSE command streaming)"),
 	),
 })
 

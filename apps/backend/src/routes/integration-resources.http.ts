@@ -21,6 +21,24 @@ import {
 	parseLinearIssueUrl,
 } from "../services/integrations/linear-resource-provider"
 
+const prToResponse = (pr: GitHub.GitHubPR) =>
+	new GitHubPRResourceResponse({
+		owner: pr.owner,
+		repo: pr.repo,
+		number: pr.number,
+		title: pr.title,
+		body: pr.body,
+		state: pr.state,
+		draft: pr.draft,
+		merged: pr.merged,
+		author: pr.author,
+		additions: pr.additions,
+		deletions: pr.deletions,
+		headRefName: pr.headRefName,
+		updatedAt: pr.updatedAt,
+		labels: pr.labels,
+	})
+
 export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 	HazelApi,
 	"integration-resources",
@@ -153,67 +171,48 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 						)
 					}
 
-					// Check if organization has GitHub connected
-					const connectionRepo = yield* IntegrationConnectionRepo
-					const connectionOption = yield* connectionRepo
-						.findByOrgAndProvider(orgId, "github")
-						.pipe(withSystemActor)
-
-					if (Option.isNone(connectionOption)) {
-						return yield* Effect.fail(
-							new IntegrationNotConnectedForPreviewError({ provider: "github" }),
-						)
-					}
-
-					const connection = connectionOption.value
-
-					// Check if connection is active
-					if (connection.status !== "active") {
-						return yield* Effect.fail(
-							new IntegrationNotConnectedForPreviewError({ provider: "github" }),
-						)
-					}
-
-					// Get valid access token
-					const tokenService = yield* IntegrationTokenService
-					const accessToken = yield* tokenService.getValidAccessToken(connection.id)
-
-					// Fetch PR from GitHub API
 					const gitHubApiClient = yield* GitHub.GitHubApiClient
-					const pr = yield* gitHubApiClient.fetchPR(
-						parsed.owner,
-						parsed.repo,
-						parsed.number,
-						accessToken,
-					)
 
-					// Transform to response
-					return new GitHubPRResourceResponse({
-						owner: pr.owner,
-						repo: pr.repo,
-						number: pr.number,
-						title: pr.title,
-						body: pr.body,
-						state: pr.state,
-						draft: pr.draft,
-						merged: pr.merged,
-						author: pr.author,
-						additions: pr.additions,
-						deletions: pr.deletions,
-						headRefName: pr.headRefName,
-						updatedAt: pr.updatedAt,
-						labels: pr.labels,
-					})
-				}).pipe(
-					Effect.tapError((error) =>
-						Effect.logError("GitHub PR fetch failed").pipe(
-							Effect.annotateLogs({ error: String(error), errorType: error._tag }),
+					// Phase 1: Try authenticated fetch
+					const authenticatedResult = yield* Effect.gen(function* () {
+						const connectionRepo = yield* IntegrationConnectionRepo
+						const connectionOption = yield* connectionRepo
+							.findByOrgAndProvider(orgId, "github")
+							.pipe(withSystemActor)
+
+						if (Option.isNone(connectionOption)) {
+							return Option.none<GitHub.GitHubPR>()
+						}
+
+						const connection = connectionOption.value
+
+						if (connection.status !== "active") {
+							return Option.none<GitHub.GitHubPR>()
+						}
+
+						const tokenService = yield* IntegrationTokenService
+						const accessToken = yield* tokenService.getValidAccessToken(connection.id)
+
+						const pr = yield* gitHubApiClient.fetchPR(
+							parsed.owner,
+							parsed.repo,
+							parsed.number,
+							accessToken,
+						)
+
+						return Option.some(pr)
+					}).pipe(
+						// Auth worked but PR genuinely not found — propagate immediately
+						Effect.catchTag("GitHubPRNotFoundError", (error) =>
+							Effect.fail(
+								new ResourceNotFoundError({
+									url: urlParams.url,
+									message: `PR not found: ${error.owner}/${error.repo}#${error.number}`,
+								}),
+							),
 						),
-					),
-					Effect.catchTags({
-						TokenNotFoundError: () =>
-							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-						GitHubApiError: (error: GitHub.GitHubApiError) =>
+						// Auth worked but API error — propagate immediately
+						Effect.catchTag("GitHubApiError", (error) =>
 							Effect.fail(
 								new IntegrationResourceError({
 									url: urlParams.url,
@@ -221,7 +220,8 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 									provider: "github",
 								}),
 							),
-						GitHubRateLimitError: (error: GitHub.GitHubRateLimitError) =>
+						),
+						Effect.catchTag("GitHubRateLimitError", (error) =>
 							Effect.fail(
 								new IntegrationResourceError({
 									url: urlParams.url,
@@ -231,30 +231,59 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 									provider: "github",
 								}),
 							),
-						GitHubPRNotFoundError: (error: GitHub.GitHubPRNotFoundError) =>
-							Effect.fail(
-								new ResourceNotFoundError({
-									url: urlParams.url,
-									message: `PR not found: ${error.owner}/${error.repo}#${error.number}`,
-								}),
+						),
+						// Auth-related failures — fall through to public API
+						Effect.catchTags({
+							TokenNotFoundError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+							IntegrationEncryptionError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+							KeyVersionNotFoundError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+							TokenRefreshError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+							ConnectionNotFoundError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+							DatabaseError: () => Effect.succeed(Option.none<GitHub.GitHubPR>()),
+						}),
+					)
+
+					if (Option.isSome(authenticatedResult)) {
+						return prToResponse(authenticatedResult.value)
+					}
+
+					// Phase 2: Try public API fallback
+					const pr = yield* gitHubApiClient
+						.fetchPRPublic(parsed.owner, parsed.repo, parsed.number)
+						.pipe(
+							// 404 on public API = private repo or not found; show "Connect GitHub"
+							Effect.catchTag("GitHubPRNotFoundError", () =>
+								Effect.fail(
+									new IntegrationNotConnectedForPreviewError({ provider: "github" }),
+								),
 							),
-						DatabaseError: (error) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Database error while fetching integration",
-									detail: String(error),
-								}),
+							Effect.catchTag("GitHubRateLimitError", (error) =>
+								Effect.fail(
+									new IntegrationResourceError({
+										url: urlParams.url,
+										message: error.message,
+										provider: "github",
+									}),
+								),
 							),
-						// When token decryption fails, prompt user to reconnect instead of showing 500 error
-						IntegrationEncryptionError: () =>
-							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-						KeyVersionNotFoundError: () =>
-							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-						TokenRefreshError: () =>
-							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-						ConnectionNotFoundError: () =>
-							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
-					}),
+							Effect.catchTag("GitHubApiError", (error) =>
+								Effect.fail(
+									new IntegrationResourceError({
+										url: urlParams.url,
+										message: error.message,
+										provider: "github",
+									}),
+								),
+							),
+						)
+
+					return prToResponse(pr)
+				}).pipe(
+					Effect.tapError((error) =>
+						Effect.logError("GitHub PR fetch failed").pipe(
+							Effect.annotateLogs({ error: String(error), errorType: error._tag }),
+						),
+					),
 				),
 			)
 			.handle("getGitHubRepositories", ({ path, urlParams }) =>

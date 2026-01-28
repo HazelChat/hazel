@@ -8,6 +8,7 @@ import { useModal } from "~/atoms/modal-atoms"
 import { IconChevronUpDown } from "~/components/icons/icon-chevron-up-down"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import { ChannelItem } from "~/components/sidebar/channel-item"
+import { DiscoverableChannels } from "~/components/sidebar/discoverable-channels"
 import { DmChannelItem } from "~/components/sidebar/dm-channel-item"
 import { FavoriteSection } from "~/components/sidebar/favorite-section"
 import { SectionGroup } from "~/components/sidebar/section-group"
@@ -150,25 +151,30 @@ const ChannelSection = ({
 	}, [channels, threadsByParent])
 
 	return (
-		<SectionGroup
-			sectionId={sectionDisplayId}
-			name={sectionName}
-			onCreateChannel={onCreateChannel}
-			onJoinChannel={onJoinChannel}
-			channelDataMap={channelDataMap}
-			isEditable={isEditable}
-			expandedChannelIds={expandedChannelIds}
-		>
-			{channels.map(({ channel, member }) => (
-				<ChannelItem
-					key={channel.id}
-					channel={channel}
-					member={member}
-					threads={threadsByParent?.get(channel.id)}
-					sections={sections}
-				/>
-			))}
-		</SectionGroup>
+		<>
+			<SectionGroup
+				sectionId={sectionDisplayId}
+				name={sectionName}
+				onCreateChannel={onCreateChannel}
+				onJoinChannel={onJoinChannel}
+				channelDataMap={channelDataMap}
+				isEditable={isEditable}
+				expandedChannelIds={expandedChannelIds}
+			>
+				{channels.map(({ channel, member }) => (
+					<ChannelItem
+						key={channel.id}
+						channel={channel}
+						member={member}
+						threads={threadsByParent?.get(channel.id)}
+						sections={sections}
+					/>
+				))}
+			</SectionGroup>
+			{sectionId === null && (
+				<DiscoverableChannels organizationId={organizationId} onBrowseAll={onJoinChannel} />
+			)}
+		</>
 	)
 }
 

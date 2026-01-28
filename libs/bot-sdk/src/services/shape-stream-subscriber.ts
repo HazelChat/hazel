@@ -2,6 +2,7 @@ import { isChangeMessage, type ChangeMessage, type Message, ShapeStream } from "
 import type { ConfigError } from "effect"
 import { Config, Effect, Layer, Metric, Option, Schema, Stream } from "effect"
 import { ConnectionError, ValidationError } from "../errors.ts"
+import { generateEventId } from "../log-context.ts"
 import { RetryStrategy } from "../retry.ts"
 import { createElectricEvent, type EventOperation } from "../types/events.ts"
 import { ElectricEventQueue } from "./electric-event-queue.ts"
@@ -143,6 +144,17 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 		 */
 		const validateAndTransform = (subscription: ShapeSubscriptionConfig, message: ChangeMessage<any>) =>
 			Effect.gen(function* () {
+				// Generate event ID for correlation
+				const eventId = generateEventId()
+				const operation = message.headers.operation as EventOperation
+
+				// Log at DEBUG level with event details
+				yield* Effect.logDebug("Shape event received", {
+					table: subscription.table,
+					operation,
+					eventId,
+				}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
+
 				// Track received events
 				yield* Metric.increment(eventsReceivedCounter).pipe(
 					Effect.tagMetrics("table", subscription.table),
@@ -162,7 +174,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 
 				// Create immutable event using Data.Class factory
 				const event = createElectricEvent({
-					operation: message.headers.operation as EventOperation,
+					operation,
 					table: subscription.table,
 					value: parseResult,
 				})
@@ -198,7 +210,7 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 			Effect.gen(function* () {
 				const shapeStream = yield* acquireShapeStream(subscription)
 
-				yield* Effect.logDebug(`Shape stream subscription active`, {
+				yield* Effect.logInfo(`Shape stream subscription active`, {
 					table: subscription.table,
 				}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
 
@@ -221,25 +233,51 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 
 		return {
 			/**
-			 * Start all shape stream subscriptions
+			 * Start shape stream subscriptions, optionally filtered to only required tables.
+			 * If no filter is provided, all configured subscriptions are started.
+			 * If an empty set is provided, no streams are opened (useful for command-only bots).
 			 */
-			start: Effect.gen(function* () {
-				yield* Effect.logDebug(`Starting shape stream subscriptions`, {
-					tablesCount: config.subscriptions.length,
-					tables: config.subscriptions.map((s) => s.table).join(", "),
-				}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
+			start: (requiredTables?: ReadonlySet<string>) =>
+				Effect.gen(function* () {
+					const activeSubscriptions = requiredTables
+						? config.subscriptions.filter((s) => requiredTables.has(s.table))
+						: config.subscriptions
 
-				// Start each subscription in a forked fiber
-				yield* Effect.forEach(
-					config.subscriptions,
-					(subscription) => Effect.forkScoped(processSubscription(subscription)),
-					{ concurrency: "unbounded" },
-				)
+					// Log which tables were filtered out
+					if (requiredTables) {
+						const skippedTables = config.subscriptions
+							.filter((s) => !requiredTables.has(s.table))
+							.map((s) => s.table)
+						if (skippedTables.length > 0) {
+							yield* Effect.logInfo(`Skipping shape streams for unused tables`, {
+								skippedTables: skippedTables.join(", "),
+							}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
+						}
+					}
 
-				yield* Effect.logDebug("All shape stream subscriptions started successfully").pipe(
-					Effect.annotateLogs("service", "ShapeStreamSubscriber"),
-				)
-			}),
+					if (activeSubscriptions.length === 0) {
+						yield* Effect.logWarning(
+							"No shape stream subscriptions to start (no event handlers registered for any table)",
+						).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
+						return
+					}
+
+					yield* Effect.logInfo(`Starting shape stream subscriptions`, {
+						tablesCount: activeSubscriptions.length,
+						tables: activeSubscriptions.map((s) => s.table).join(", "),
+					}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
+
+					// Start each subscription in a forked fiber
+					yield* Effect.forEach(
+						activeSubscriptions,
+						(subscription) => Effect.forkScoped(processSubscription(subscription)),
+						{ concurrency: "unbounded" },
+					)
+
+					yield* Effect.logInfo("All shape stream subscriptions started successfully").pipe(
+						Effect.annotateLogs("service", "ShapeStreamSubscriber"),
+					)
+				}),
 		}
 	}),
 }) {

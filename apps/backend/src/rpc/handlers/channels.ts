@@ -20,6 +20,7 @@ import { UserPolicy } from "../../policies/user-policy"
 import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
 import { ChannelRepo } from "../../repositories/channel-repo"
 import { MessageRepo } from "../../repositories/message-repo"
+import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 import { UserRepo } from "../../repositories/user-repo"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
@@ -27,7 +28,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 		const db = yield* Database.Database
 
 		return {
-			"channel.create": ({ id, ...payload }) =>
+			"channel.create": ({ id, addAllMembers, ...payload }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
@@ -56,6 +57,30 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								joinedAt: new Date(),
 								deletedAt: null,
 							}).pipe(withSystemActor)
+
+							// Add all organization members if requested
+							if (addAllMembers) {
+								const orgMembers = yield* OrganizationMemberRepo.findAllByOrganization(
+									payload.organizationId,
+								).pipe(withSystemActor)
+
+								yield* Effect.forEach(
+									orgMembers.filter((m) => m.userId !== user.id),
+									(member) =>
+										ChannelMemberRepo.insert({
+											channelId: createdChannel.id,
+											userId: member.userId,
+											isHidden: false,
+											isMuted: false,
+											isFavorite: false,
+											lastSeenMessageId: null,
+											notificationCount: 0,
+											joinedAt: new Date(),
+											deletedAt: null,
+										}).pipe(withSystemActor),
+									{ concurrency: 10 },
+								)
+							}
 
 							const txid = yield* generateTransactionId()
 

@@ -3,6 +3,7 @@ import { BotAuth, type BotAuthContext } from "./auth.ts"
 import { BotStartError } from "./errors.ts"
 import { EventDispatcher } from "./services/event-dispatcher.ts"
 import { ShapeStreamSubscriber, type ShapeSubscriptionConfig } from "./services/shape-stream-subscriber.ts"
+import { extractTablesFromEventTypes } from "./types/events.ts"
 import type { EventHandler } from "./types/handlers.ts"
 import type { EventSchemaMap, SubscriptionEventTypes } from "./types/subscription-types.ts"
 
@@ -66,8 +67,12 @@ export const createBotClientLayer = <Subs extends readonly ShapeSubscriptionConf
 				start: Effect.gen(function* () {
 					yield* Effect.logDebug("Starting bot client...")
 
-					// Start shape stream subscriptions
-					yield* subscriber.start.pipe(
+					// Derive required tables from registered event handlers
+					const eventTypes = yield* dispatcher.registeredEventTypes
+					const requiredTables = extractTablesFromEventTypes(eventTypes)
+
+					// Start shape stream subscriptions (only for tables with handlers)
+					yield* subscriber.start(requiredTables).pipe(
 						Effect.catchAll((error) =>
 							Effect.fail(
 								new BotStartError({

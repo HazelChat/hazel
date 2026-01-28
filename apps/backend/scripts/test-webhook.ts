@@ -34,14 +34,15 @@ const samplePayload = {
  * Generate WorkOS webhook signature
  */
 function generateSignature(secret: string, payload: string): { header: string; timestamp: number } {
-	const timestamp = Math.floor(Date.now() / 1000)
+	// WorkOS expects millisecond timestamps in the signature header
+	const timestamp = Date.now()
 	const signedPayload = `${timestamp}.${payload}`
 	const hmac = crypto.createHmac("sha256", secret)
 	hmac.update(signedPayload)
 	const signature = hmac.digest("hex")
 
 	return {
-		header: `t=${timestamp}, sig=${signature}`,
+		header: `t=${timestamp},v1=${signature}`,
 		timestamp,
 	}
 }
@@ -97,7 +98,7 @@ async function testInvalidSignature() {
 	console.log("\n\n🧪 Testing invalid signature...")
 
 	const payloadString = JSON.stringify(samplePayload)
-	const invalidSignature = "t=1234567890, sig=invalid_signature_here"
+	const invalidSignature = "t=1234567890,v1=invalid_signature_here"
 
 	try {
 		const response = await fetch(WEBHOOK_URL, {

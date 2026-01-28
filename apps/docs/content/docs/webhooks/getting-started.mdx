@@ -80,17 +80,19 @@ curl -X POST "YOUR_WEBHOOK_URL" \
 const webhookUrl = "YOUR_WEBHOOK_URL"
 
 await fetch(webhookUrl, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    content: "Deployment complete!",
-    embeds: [{
-      title: "Production Deploy",
-      description: "v1.2.3 is now live",
-      color: 5025616,
-      timestamp: new Date().toISOString()
-    }]
-  })
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({
+		content: "Deployment complete!",
+		embeds: [
+			{
+				title: "Production Deploy",
+				description: "v1.2.3 is now live",
+				color: 5025616,
+				timestamp: new Date().toISOString(),
+			},
+		],
+	}),
 })
 ```
 
@@ -125,8 +127,8 @@ At least one of `content` or `embeds` must be provided.
 
 ```json
 {
-  "messageId": "msg_abc123",
-  "channelId": "ch_xyz789"
+	"messageId": "msg_abc123",
+	"channelId": "ch_xyz789"
 }
 ```
 
@@ -134,7 +136,7 @@ At least one of `content` or `embeds` must be provided.
 
 ```json
 {
-  "error": "Error message describing what went wrong"
+	"error": "Error message describing what went wrong"
 }
 ```
 
@@ -154,9 +156,10 @@ At least one of `content` or `embeds` must be provided.
 
   </Accordion>
 
-  <Accordion title="Regenerate Compromised Tokens">
-    If your webhook token is accidentally exposed, regenerate it immediately from the channel settings. This invalidates the old URL and creates a new one.
-  </Accordion>
+<Accordion title="Regenerate Compromised Tokens">
+	If your webhook token is accidentally exposed, regenerate it immediately from the channel settings. This
+	invalidates the old URL and creates a new one.
+</Accordion>
 
   <Accordion title="Use HTTPS">
     Always use HTTPS URLs when configuring webhooks in external services. This ensures the token is encrypted in transit.
@@ -166,7 +169,7 @@ At least one of `content` or `embeds` must be provided.
 ## Next Steps
 
 <Cards>
-  <Card title="Embeds Reference" href="/webhooks/embeds">
-    Create rich, formatted messages with embeds
-  </Card>
+	<Card title="Embeds Reference" href="/webhooks/embeds">
+		Create rich, formatted messages with embeds
+	</Card>
 </Cards>

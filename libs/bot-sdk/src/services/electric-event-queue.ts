@@ -1,6 +1,7 @@
 import type { ConfigError } from "effect"
 import { Config, Effect, Layer, Metric, Option, Queue, Ref } from "effect"
 import { QueueError } from "../errors.ts"
+import { generateCorrelationId } from "../log-context.ts"
 import type { ElectricEvent, EventType } from "../types/events.ts"
 
 /**
@@ -145,8 +146,13 @@ export class ElectricEventQueue extends Effect.Service<ElectricEventQueue>()("El
 
 				// Handle backpressure for bounded queues with drop-oldest strategy
 				if (!offered && config.backpressureStrategy === "drop-oldest") {
+					// Generate correlation ID for tracking this backpressure event
+					const correlationId = generateCorrelationId()
+
 					yield* Effect.logWarning(`Queue full, dropping oldest event`, {
 						eventType,
+						correlationId,
+						capacity: config.capacity,
 					}).pipe(Effect.annotateLogs("service", "ElectricEventQueue"))
 
 					yield* Metric.increment(droppedEventsCounter).pipe(

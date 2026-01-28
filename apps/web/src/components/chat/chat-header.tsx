@@ -1,4 +1,5 @@
 import type { UserId } from "@hazel/schema"
+import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Link } from "@tanstack/react-router"
 import { ChannelIcon } from "~/components/channel-icon"
 import { IconChevronRight } from "~/components/icons/icon-chevron-right"
@@ -6,6 +7,7 @@ import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { useSidebar } from "~/components/ui/sidebar"
 import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
+import { channelCollection } from "~/db/collections"
 import { useChannelWithCurrentUser, useParentChannel } from "~/db/hooks"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useChat } from "~/hooks/use-chat"
@@ -49,13 +51,24 @@ export function ChatHeader() {
 
 	const { handleToggleHidden } = useChannelMemberActions(channel?.currentUser, "conversation")
 
+	// Fallback query for channel data when user is not a member
+	const { data: channelFallback } = useLiveQuery(
+		(q) =>
+			q
+				.from({ channel: channelCollection })
+				.where(({ channel: c }) => eq(c.id, channelId))
+				.findOne()
+				.select(({ channel: c }) => ({ ...c })),
+		[channelId],
+	)
+
 	// Determine if this is a thread and fetch parent channel data
 	const isThread = channel?.type === "thread"
 	const { parentChannel } = useParentChannel(isThread ? (channel.parentChannelId ?? null) : null)
 
 	if (!channel) {
 		return (
-			<div className="flex h-14 shrink-0 items-center border-border border-b px-4">
+			<div className="flex h-14 shrink-0 items-center border-border border-b bg-bg px-4">
 				{isMobile && (
 					<button
 						type="button"
@@ -65,7 +78,14 @@ export function ChatHeader() {
 						<IconMenu className="size-5" />
 					</button>
 				)}
-				<div className="h-4 w-32 animate-pulse rounded bg-secondary" />
+				{channelFallback ? (
+					<div className="flex items-center gap-3">
+						<ChannelIcon icon={channelFallback.icon} className="size-5 text-muted-fg" />
+						<h2 className="font-semibold text-fg text-sm">{channelFallback.name}</h2>
+					</div>
+				) : (
+					<div className="h-4 w-32 animate-pulse rounded bg-secondary" />
+				)}
 			</div>
 		)
 	}

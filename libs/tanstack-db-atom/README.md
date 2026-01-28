@@ -17,9 +17,9 @@ This package is part of the Hazel workspace:
 
 ```json
 {
-  "dependencies": {
-    "@hazel/tanstack-db-atom": "workspace:*"
-  }
+	"dependencies": {
+		"@hazel/tanstack-db-atom": "workspace:*"
+	}
 }
 ```
 
@@ -86,11 +86,10 @@ Queries that can be enabled/disabled based on runtime conditions:
 
 ```typescript
 const userTodosAtom = makeQueryConditional((q) => {
-  const userId = getCurrentUserId()
-  if (!userId) return null  // Disabled when no user
+	const userId = getCurrentUserId()
+	if (!userId) return null // Disabled when no user
 
-  return q.from({ todos: todoCollection })
-          .where(({ todos }) => eq(todos.userId, userId))
+	return q.from({ todos: todoCollection }).where(({ todos }) => eq(todos.userId, userId))
 })
 ```
 
@@ -99,10 +98,12 @@ const userTodosAtom = makeQueryConditional((q) => {
 For queries that return a single item:
 
 ```typescript
-const currentUserAtom = makeQuery((q) =>
-  q.from({ users: userCollection })
-   .where(({ users }) => eq(users.id, currentUserId))
-   .findOne()  // Returns User | undefined instead of Array<User>
+const currentUserAtom = makeQuery(
+	(q) =>
+		q
+			.from({ users: userCollection })
+			.where(({ users }) => eq(users.id, currentUserId))
+			.findOne(), // Returns User | undefined instead of Array<User>
 )
 ```
 
@@ -111,7 +112,7 @@ const currentUserAtom = makeQuery((q) =>
 Create atoms from pre-existing TanStack DB collections:
 
 ```typescript
-import { makeCollectionAtom, makeSingleCollectionAtom } from '@hazel/tanstack-db-atom'
+import { makeCollectionAtom, makeSingleCollectionAtom } from "@hazel/tanstack-db-atom"
 
 // For collections that return arrays
 const todosAtom = makeCollectionAtom(todoCollection)
@@ -125,18 +126,15 @@ const userAtom = makeSingleCollectionAtom(currentUserCollection)
 Create parameterized queries with Atom families:
 
 ```typescript
-import { Atom } from '@effect-atom/atom-react'
+import { Atom } from "@effect-atom/atom-react"
 
 const todosByStatusFamily = Atom.family((completed: boolean) =>
-  makeQuery((q) =>
-    q.from({ todos: todoCollection })
-     .where(({ todos }) => eq(todos.completed, completed))
-  )
+	makeQuery((q) => q.from({ todos: todoCollection }).where(({ todos }) => eq(todos.completed, completed))),
 )
 
 function CompletedTodos() {
-  const completedTodos = useAtom(todosByStatusFamily(true))
-  // ...
+	const completedTodos = useAtom(todosByStatusFamily(true))
+	// ...
 }
 ```
 
@@ -146,18 +144,16 @@ TanStack DB's query builder supports joins and complex transformations:
 
 ```typescript
 const enrichedTodosAtom = makeQuery((q) =>
-  q.from({ todos: todoCollection })
-   .join(
-     { users: userCollection },
-     ({ todos, users }) => eq(todos.userId, users.id)
-   )
-   .where(({ todos }) => eq(todos.completed, false))
-   .select(({ todos, users }) => ({
-     id: todos.id,
-     text: todos.text,
-     userName: users.name,
-     userAvatar: users.avatarUrl
-   }))
+	q
+		.from({ todos: todoCollection })
+		.join({ users: userCollection }, ({ todos, users }) => eq(todos.userId, users.id))
+		.where(({ todos }) => eq(todos.completed, false))
+		.select(({ todos, users }) => ({
+			id: todos.id,
+			text: todos.text,
+			userName: users.name,
+			userAvatar: users.avatarUrl,
+		})),
 )
 ```
 
@@ -169,8 +165,8 @@ Creates an Atom from a TanStack DB query function.
 
 ```typescript
 function makeQuery<TContext extends Context>(
-  queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
-  options?: QueryOptions
+	queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
+	options?: QueryOptions,
 ): Atom<Result<InferResultType<TContext>>>
 ```
 
@@ -188,8 +184,8 @@ Creates an Atom that returns data or undefined (no Result wrapper).
 
 ```typescript
 function makeQueryUnsafe<TContext extends Context>(
-  queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
-  options?: QueryOptions
+	queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
+	options?: QueryOptions,
 ): Atom<InferResultType<TContext> | undefined>
 ```
 
@@ -199,8 +195,8 @@ Creates an Atom from a conditional query function.
 
 ```typescript
 function makeQueryConditional<TContext extends Context>(
-  queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext> | null | undefined,
-  options?: QueryOptions
+	queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext> | null | undefined,
+	options?: QueryOptions,
 ): Atom<Result<InferResultType<TContext>> | undefined>
 ```
 
@@ -210,7 +206,7 @@ Creates an Atom from an existing TanStack DB collection.
 
 ```typescript
 function makeCollectionAtom<T extends object, TKey extends string | number>(
-  collection: Collection<T, TKey> & NonSingleResult
+	collection: Collection<T, TKey> & NonSingleResult,
 ): Atom<Result<Array<T>>>
 ```
 
@@ -220,7 +216,7 @@ Creates an Atom from a single-result collection.
 
 ```typescript
 function makeSingleCollectionAtom<T extends object, TKey extends string | number>(
-  collection: Collection<T, TKey> & SingleResult
+	collection: Collection<T, TKey> & SingleResult,
 ): Atom<Result<T | undefined>>
 ```
 
@@ -257,25 +253,25 @@ Works seamlessly with other Effect Atom features:
 ```typescript
 // Combine with Atom.map
 const todoCountAtom = Atom.map(
-  makeQueryUnsafe((q) => q.from({ todos: todoCollection })),
-  (todos) => todos?.length ?? 0
+	makeQueryUnsafe((q) => q.from({ todos: todoCollection })),
+	(todos) => todos?.length ?? 0,
 )
 
 // Use with Atom.flatMap
-const selectedTodoAtom = Atom.flatMap(
-  selectedIdAtom,
-  (id) => makeQuery((q) =>
-    q.from({ todos: todoCollection })
-     .where(({ todos }) => eq(todos.id, id))
-     .findOne()
-  )
+const selectedTodoAtom = Atom.flatMap(selectedIdAtom, (id) =>
+	makeQuery((q) =>
+		q
+			.from({ todos: todoCollection })
+			.where(({ todos }) => eq(todos.id, id))
+			.findOne(),
+	),
 )
 
 // Combine multiple queries
 const dashboardDataAtom = Atom.all({
-  todos: makeQuery((q) => q.from({ todos: todoCollection })),
-  users: makeQuery((q) => q.from({ users: userCollection })),
-  stats: makeQuery((q) => q.from({ stats: statsCollection }))
+	todos: makeQuery((q) => q.from({ todos: todoCollection })),
+	users: makeQuery((q) => q.from({ users: userCollection })),
+	stats: makeQuery((q) => q.from({ stats: statsCollection })),
 })
 ```
 

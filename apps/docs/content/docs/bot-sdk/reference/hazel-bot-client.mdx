@@ -13,8 +13,8 @@ import { Effect } from "effect"
 import { HazelBotClient } from "@hazel/bot-sdk"
 
 const program = Effect.gen(function* () {
-  const bot = yield* HazelBotClient
-  // Use bot here
+	const bot = yield* HazelBotClient
+	// Use bot here
 })
 ```
 
@@ -25,11 +25,12 @@ const program = Effect.gen(function* () {
 Register a handler for new messages.
 
 ```typescript
-yield* bot.onMessage((message) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`New message: ${message.content}`)
-  })
-)
+yield *
+	bot.onMessage((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`New message: ${message.content}`)
+		}),
+	)
 ```
 
 **Message properties:**
@@ -50,11 +51,12 @@ yield* bot.onMessage((message) =>
 Register a handler for message edits.
 
 ```typescript
-yield* bot.onMessageUpdate((message) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Message edited: ${message.content}`)
-  })
-)
+yield *
+	bot.onMessageUpdate((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Message edited: ${message.content}`)
+		}),
+	)
 ```
 
 ### `onMessageDelete`
@@ -62,11 +64,12 @@ yield* bot.onMessageUpdate((message) =>
 Register a handler for message deletions.
 
 ```typescript
-yield* bot.onMessageDelete((message) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Message deleted: ${message.id}`)
-  })
-)
+yield *
+	bot.onMessageDelete((message) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Message deleted: ${message.id}`)
+		}),
+	)
 ```
 
 ### `onChannelCreated`
@@ -74,11 +77,12 @@ yield* bot.onMessageDelete((message) =>
 Register a handler for new channels.
 
 ```typescript
-yield* bot.onChannelCreated((channel) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`New channel: ${channel.name}`)
-  })
-)
+yield *
+	bot.onChannelCreated((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`New channel: ${channel.name}`)
+		}),
+	)
 ```
 
 ### `onChannelUpdated`
@@ -86,11 +90,12 @@ yield* bot.onChannelCreated((channel) =>
 Register a handler for channel updates.
 
 ```typescript
-yield* bot.onChannelUpdated((channel) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Channel updated: ${channel.name}`)
-  })
-)
+yield *
+	bot.onChannelUpdated((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Channel updated: ${channel.name}`)
+		}),
+	)
 ```
 
 ### `onChannelDeleted`
@@ -98,11 +103,12 @@ yield* bot.onChannelUpdated((channel) =>
 Register a handler for channel deletions.
 
 ```typescript
-yield* bot.onChannelDeleted((channel) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Channel deleted: ${channel.id}`)
-  })
-)
+yield *
+	bot.onChannelDeleted((channel) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Channel deleted: ${channel.id}`)
+		}),
+	)
 ```
 
 ### `onChannelMemberAdded`
@@ -110,11 +116,12 @@ yield* bot.onChannelDeleted((channel) =>
 Register a handler for members joining a channel.
 
 ```typescript
-yield* bot.onChannelMemberAdded((member) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Member joined: ${member.userId}`)
-  })
-)
+yield *
+	bot.onChannelMemberAdded((member) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Member joined: ${member.userId}`)
+		}),
+	)
 ```
 
 ### `onChannelMemberRemoved`
@@ -122,11 +129,12 @@ yield* bot.onChannelMemberAdded((member) =>
 Register a handler for members leaving a channel.
 
 ```typescript
-yield* bot.onChannelMemberRemoved((member) =>
-  Effect.gen(function* () {
-    yield* Effect.log(`Member left: ${member.userId}`)
-  })
-)
+yield *
+	bot.onChannelMemberRemoved((member) =>
+		Effect.gen(function* () {
+			yield* Effect.log(`Member left: ${member.userId}`)
+		}),
+	)
 ```
 
 ### `onCommand`
@@ -134,11 +142,12 @@ yield* bot.onChannelMemberRemoved((member) =>
 Register a handler for a slash command. See [Commands](/bot-sdk/reference/commands) for details.
 
 ```typescript
-yield* bot.onCommand(MyCommand, (ctx) =>
-  Effect.gen(function* () {
-    yield* bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`)
-  })
-)
+yield *
+	bot.onCommand(MyCommand, (ctx) =>
+		Effect.gen(function* () {
+			yield* bot.message.send(ctx.channelId, `Hello, ${ctx.args.name}!`)
+		}),
+	)
 ```
 
 ## Message Operations
@@ -148,17 +157,19 @@ yield* bot.onCommand(MyCommand, (ctx) =>
 Send a message to a channel.
 
 ```typescript
-const message = yield* bot.message.send(channelId, "Hello!")
+const message = yield * bot.message.send(channelId, "Hello!")
 ```
 
 **With options:**
 
 ```typescript
-const message = yield* bot.message.send(channelId, "Reply!", {
-  replyToMessageId: parentMessageId,  // Optional: reply to message
-  threadChannelId: threadId,          // Optional: send in thread
-  attachmentIds: [attachmentId],      // Optional: attachments
-})
+const message =
+	yield *
+	bot.message.send(channelId, "Reply!", {
+		replyToMessageId: parentMessageId, // Optional: reply to message
+		threadChannelId: threadId, // Optional: send in thread
+		attachmentIds: [attachmentId], // Optional: attachments
+	})
 ```
 
 ### `bot.message.reply`
@@ -166,7 +177,7 @@ const message = yield* bot.message.send(channelId, "Reply!", {
 Reply to a message.
 
 ```typescript
-yield* bot.message.reply(message, "Got it!")
+yield * bot.message.reply(message, "Got it!")
 ```
 
 ### `bot.message.update`
@@ -174,7 +185,7 @@ yield* bot.message.reply(message, "Got it!")
 Edit a message.
 
 ```typescript
-yield* bot.message.update(message, "Updated content")
+yield * bot.message.update(message, "Updated content")
 ```
 
 ### `bot.message.delete`
@@ -182,7 +193,7 @@ yield* bot.message.update(message, "Updated content")
 Delete a message by ID.
 
 ```typescript
-yield* bot.message.delete(messageId)
+yield * bot.message.delete(messageId)
 ```
 
 ### `bot.message.react`
@@ -190,7 +201,7 @@ yield* bot.message.delete(messageId)
 React to a message with an emoji.
 
 ```typescript
-yield* bot.message.react(message, "👍")
+yield * bot.message.react(message, "👍")
 ```
 
 ## Typing Indicators
@@ -200,7 +211,7 @@ yield* bot.message.react(message, "👍")
 Show a typing indicator.
 
 ```typescript
-const indicator = yield* bot.typing.start(channelId, channelMemberId)
+const indicator = yield * bot.typing.start(channelId, channelMemberId)
 ```
 
 ### `bot.typing.stop`
@@ -208,7 +219,7 @@ const indicator = yield* bot.typing.start(channelId, channelMemberId)
 Hide a typing indicator.
 
 ```typescript
-yield* bot.typing.stop(typingIndicatorId)
+yield * bot.typing.stop(typingIndicatorId)
 ```
 
 ## Channel Operations
@@ -218,10 +229,11 @@ yield* bot.typing.stop(typingIndicatorId)
 Update a channel's name or description.
 
 ```typescript
-yield* bot.channel.update(channel, {
-  name: "new-name",
-  description: "New description",
-})
+yield *
+	bot.channel.update(channel, {
+		name: "new-name",
+		description: "New description",
+	})
 ```
 
 ## Utilities
@@ -231,11 +243,12 @@ yield* bot.channel.update(channel, {
 Wrap a command handler with error handling. Catches errors, logs them, and sends a user-friendly message.
 
 ```typescript
-yield* bot.onCommand(MyCommand, (ctx) =>
-  Effect.gen(function* () {
-    // Handler logic
-  }).pipe(bot.withErrorHandler(ctx))
-)
+yield *
+	bot.onCommand(MyCommand, (ctx) =>
+		Effect.gen(function* () {
+			// Handler logic
+		}).pipe(bot.withErrorHandler(ctx)),
+	)
 ```
 
 ### `bot.start`
@@ -243,7 +256,7 @@ yield* bot.onCommand(MyCommand, (ctx) =>
 Start the bot. Must be called after registering all handlers.
 
 ```typescript
-yield* bot.start
+yield * bot.start
 ```
 
 ### `bot.getAuthContext`
@@ -251,9 +264,9 @@ yield* bot.start
 Get the bot's authentication context.
 
 ```typescript
-const auth = yield* bot.getAuthContext
-yield* Effect.log(`Bot ID: ${auth.botId}`)
-yield* Effect.log(`Bot User ID: ${auth.userId}`)
+const auth = yield * bot.getAuthContext
+yield * Effect.log(`Bot ID: ${auth.botId}`)
+yield * Effect.log(`Bot User ID: ${auth.userId}`)
 ```
 
 ## Rate Limiting

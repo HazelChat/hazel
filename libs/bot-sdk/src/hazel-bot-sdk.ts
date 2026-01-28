@@ -15,6 +15,7 @@ import type {
 	TypingIndicatorId,
 	UserId,
 } from "@hazel/domain/ids"
+import type { IntegrationConnection } from "@hazel/domain/models"
 import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
@@ -24,14 +25,16 @@ import {
 	Duration,
 	Effect,
 	Layer,
-	Logger,
 	LogLevel,
 	ManagedRuntime,
 	Option,
 	RateLimiter,
+	Redacted,
 	Schema,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
+import { createLoggerLayer, type BotLogConfig, type LogFormat } from "./log-config.ts"
+import { createCommandLogContext, withLogContext, type BotIdentity } from "./log-context.ts"
 import { createBotClientTag } from "./bot-client.ts"
 import {
 	CommandGroup,
@@ -44,12 +47,13 @@ import type { HandlerError } from "./errors.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
 import type { EventQueueConfig } from "./services/index.ts"
 import {
+	SseCommandListener,
+	SseCommandListenerLive,
 	ElectricEventQueue,
 	EventDispatcher,
-	RedisCommandListener,
-	RedisCommandListenerConfigTag,
 	ShapeStreamSubscriber,
 } from "./services/index.ts"
+import { extractTablesFromEventTypes } from "./types/events.ts"
 
 /**
  * Internal configuration context for HazelBotClient
@@ -159,8 +163,14 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 			),
 		)
-		// Get auth context (contains botId and userId for message authoring)
-		const _authContext = yield* bot.getAuthContext
+		// Get auth context (contains botId, botName, userId for message authoring)
+		const authContext = yield* bot.getAuthContext
+
+		// Create bot identity for log context
+		const botIdentity: BotIdentity = {
+			botId: authContext.botId,
+			botName: authContext.botName,
+		}
 
 		// Create rate limiter for outbound message operations
 		// Default: 10 messages per second to prevent API rate limiting
@@ -172,7 +182,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		// Try to get the command listener (optional - only available if commands are configured)
-		const commandListenerOption = yield* Effect.serviceOption(RedisCommandListener)
+		const commandListenerOption = yield* Effect.serviceOption(SseCommandListener)
 
 		// Command handler registry - stores handlers keyed by command name
 		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
@@ -478,6 +488,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 
 			/**
+			 * Integration operations - get OAuth tokens for connected integrations
+			 * Requires the provider to be listed in the bot's `allowedIntegrations`
+			 */
+			integration: {
+				/**
+				 * Get a valid OAuth access token for an integration provider.
+				 * The token is auto-refreshed if expired.
+				 *
+				 * @param orgId - The organization ID to get the token for
+				 * @param provider - The integration provider ("linear" | "github" | "figma" | "notion")
+				 * @returns The access token, provider, and expiry info
+				 *
+				 * @example
+				 * ```typescript
+				 * const { accessToken } = yield* bot.integration.getToken(orgId, "linear")
+				 * // Use accessToken to call Linear API directly
+				 * ```
+				 */
+				getToken: (orgId: OrganizationId, provider: IntegrationConnection.IntegrationProvider) =>
+					httpApiClient["bot-commands"].getIntegrationToken({ path: { orgId, provider } }).pipe(
+						Effect.withSpan("bot.integration.getToken", {
+							attributes: { orgId, provider },
+						}),
+					),
+			},
+
+			/**
 			 * Register a handler for a slash command (typesafe version)
 			 * @param command - The command definition created with Command.make
 			 * @param handler - Handler function that receives typed CommandContext
@@ -608,18 +645,24 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 											timestamp: event.timestamp,
 										}
 
-										yield* handler(ctx).pipe(
-											Effect.withSpan("bot.command.handle", {
-												attributes: {
-													commandName: event.commandName,
-													channelId: event.channelId,
-													userId: event.userId,
-												},
-											}),
-											Effect.catchAllCause((cause) =>
-												Effect.logError(
-													`Command handler failed for ${event.commandName}`,
-													{ cause },
+										// Create log context for this command invocation
+										const logCtx = createCommandLogContext({
+											...botIdentity,
+											commandName: event.commandName,
+											channelId: event.channelId as ChannelId,
+											userId: event.userId as UserId,
+											orgId: event.orgId as OrganizationId,
+										})
+
+										yield* withLogContext(
+											logCtx,
+											"bot.command.handle",
+											handler(ctx).pipe(
+												Effect.catchAllCause((cause) =>
+													Effect.logError(
+														`Command handler failed for ${event.commandName}`,
+														{ cause },
+													),
 												),
 											),
 										)
@@ -654,19 +697,11 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly electricUrl?: string
 
 	/**
-	 * Backend URL for RPC API calls
+	 * Backend URL for RPC API calls and SSE command streaming
 	 * @default "https://api.hazel.sh"
 	 * @example "http://localhost:3003" // For local development
 	 */
 	readonly backendUrl?: string
-
-	/**
-	 * Redis URL for command delivery
-	 * Required if commands are defined
-	 * @default "redis://localhost:6379"
-	 * @example "redis://localhost:6379" // For local development
-	 */
-	readonly redisUrl?: string
 
 	/**
 	 * Bot authentication token (required)
@@ -704,6 +739,33 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	 * @default "hazel-bot"
 	 */
 	readonly serviceName?: string
+
+	/**
+	 * Logging configuration (optional)
+	 *
+	 * @example
+	 * ```typescript
+	 * const runtime = createHazelBot({
+	 *   botToken: process.env.BOT_TOKEN!,
+	 *   logging: {
+	 *     level: LogLevel.Debug,  // Enable DEBUG logs
+	 *     format: "pretty",       // Human-readable output
+	 *   },
+	 * })
+	 * ```
+	 */
+	readonly logging?: {
+		/**
+		 * Minimum log level to output
+		 * @default LogLevel.Info
+		 */
+		readonly level?: LogLevel.LogLevel
+		/**
+		 * Output format: "pretty" for development, "structured" for production
+		 * @default Automatic based on NODE_ENV
+		 */
+		readonly format?: LogFormat
+	}
 }
 
 /**
@@ -752,7 +814,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Apply defaults for URLs
 	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
-	const redisUrl = config.redisUrl ?? "redis://localhost:6379"
 
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(
@@ -796,18 +857,15 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
-	// Create Redis command listener layer if commands are configured
+	// Create SSE command listener layer if commands are configured
 	const hasCommands = config.commands && config.commands.commands.length > 0
-	const RedisCommandListenerLayer = hasCommands
+	const CommandListenerLayer = hasCommands
 		? Layer.provide(
-				RedisCommandListener.Default,
-				Layer.merge(
-					Layer.succeed(RedisCommandListenerConfigTag, {
-						redisUrl,
-						botToken: config.botToken,
-					}),
-					AuthLayer,
-				),
+				SseCommandListenerLive({
+					backendUrl,
+					botToken: Redacted.make(config.botToken),
+				}),
+				AuthLayer,
 			)
 		: Layer.empty
 
@@ -833,7 +891,13 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 				on: (eventType, handler) => dispatcher.on(eventType, handler),
 				start: Effect.gen(function* () {
 					yield* Effect.logDebug("Starting bot client...")
-					yield* subscriber.start
+
+					// Derive required tables from registered event handlers
+					const eventTypes = yield* dispatcher.registeredEventTypes
+					const requiredTables = extractTablesFromEventTypes(eventTypes)
+
+					// Start shape stream subscriptions (only for tables with handlers)
+					yield* subscriber.start(requiredTables)
 					yield* dispatcher.start
 					yield* Effect.logDebug("Bot client started successfully")
 				}),
@@ -842,16 +906,20 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		}),
 	)
 
-	// Use pretty logger in non-production, structured logger in production
-	// Default log level is INFO to reduce noise
-	const LoggerLayer = Layer.mergeAll(
-		Layer.unwrapEffect(
-			Effect.gen(function* () {
-				const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
-				return nodeEnv === "production" ? Logger.structured : Logger.pretty
-			}),
-		),
-		Logger.minimumLogLevel(LogLevel.Info),
+	// Create logger layer with configurable level and format
+	// Defaults: INFO level, format based on NODE_ENV
+	const LoggerLayer = Layer.unwrapEffect(
+		Effect.gen(function* () {
+			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
+			const defaultFormat: LogFormat = nodeEnv === "production" ? "structured" : "pretty"
+
+			const logConfig: BotLogConfig = {
+				level: config.logging?.level ?? LogLevel.Info,
+				format: config.logging?.format ?? defaultFormat,
+			}
+
+			return createLoggerLayer(logConfig)
+		}),
 	)
 
 	// Create tracing layer with configurable service name
@@ -862,7 +930,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
 		Layer.provide(RpcClientConfigLayer),
-		Layer.provide(RedisCommandListenerLayer),
+		Layer.provide(CommandListenerLayer),
 		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(
 			Layer.mergeAll(

@@ -66,8 +66,14 @@ export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("Crea
 /**
  * Request schema for creating channels.
  * Uses jsonCreate which includes optional id for optimistic updates.
+ * Extended with addAllMembers option to auto-add all organization members.
  */
-export const CreateChannelRequest = Channel.Model.jsonCreate
+export const CreateChannelRequest = Schema.extend(
+	Channel.Model.jsonCreate,
+	Schema.Struct({
+		addAllMembers: Schema.optional(Schema.Boolean),
+	}),
+)
 
 export class ChannelRpcs extends RpcGroup.make(
 	/**

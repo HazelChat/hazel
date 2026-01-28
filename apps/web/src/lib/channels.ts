@@ -1,4 +1,5 @@
 import type { Channel } from "@hazel/domain/models"
+import type { OrganizationId, UserId } from "@hazel/schema"
 import { createLiveQueryCollection, eq, or } from "@tanstack/react-db"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 
@@ -18,16 +19,18 @@ export const dmChannelsCollection = createLiveQueryCollection({
 })
 
 /**
- * Finds an existing DM channel between users.
+ * Finds an existing DM channel between users within a specific organization.
  * This is a synchronous function that reads from the local collection.
  *
  * @param currentUserId - The current user's ID
  * @param targetUserIds - Array of target user IDs
+ * @param organizationId - The organization to search within
  * @returns The channel if found, otherwise null
  */
 export function findExistingDmChannel(
-	currentUserId: string,
-	targetUserIds: string[],
+	currentUserId: UserId,
+	targetUserIds: UserId[],
+	organizationId: OrganizationId,
 ): typeof Channel.Model.Type | null {
 	const channels = dmChannelsCollection.toArray
 
@@ -41,6 +44,10 @@ export function findExistingDmChannel(
 	const channelMembersMap = new Map<string, { channel: typeof Channel.Model.Type; memberIds: string[] }>()
 
 	for (const item of channels) {
+		// Skip channels from other organizations
+		if (item.channel.organizationId !== organizationId) {
+			continue
+		}
 		if (!channelMembersMap.has(item.channel.id)) {
 			channelMembersMap.set(item.channel.id, {
 				channel: item.channel,

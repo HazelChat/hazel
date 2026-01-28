@@ -339,14 +339,15 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 						memberCount,
 					}
 				}).pipe(
-					Effect.catchAll((err) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Error fetching organization",
-								detail: String(err),
-							}),
-						),
-					),
+					Effect.catchTags({
+						DatabaseError: (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Error fetching organization",
+									detail: String(err),
+								}),
+							),
+					}),
 				),
 
 			"organization.joinViaPublicInvite": ({ slug }) =>
@@ -423,7 +424,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 										userId: user.externalId,
 									}),
 								)
-								.pipe(Effect.catchAll(() => Effect.succeed({ data: [] })))
+								.pipe(Effect.catchTag("WorkOSApiError", () => Effect.succeed({ data: [] })))
 
 							const hasWorkosMembership = workosMembers.data.length > 0
 

@@ -10,7 +10,7 @@ import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
 import { InvitationRepo } from "../../repositories/invitation-repo"
-import { WorkOS } from "../../services/workos"
+import { WorkOS, WorkOSApiError } from "../../services/workos"
 
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {
@@ -46,20 +46,13 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 								(invite) =>
 									Effect.gen(function* () {
 										// Send invitation via WorkOS
-										const workosInvitation = yield* workos
-											.call((client) =>
-												client.userManagement.sendInvitation({
-													email: invite.email,
-													organizationId: workosOrg.id,
-													roleSlug: invite.role,
-												}),
-											)
-											.pipe(
-												Effect.mapError((error) => ({
-													message: "Failed to create invitation in WorkOS",
-													detail: String(error.cause),
-												})),
-											)
+										const workosInvitation = yield* workos.call((client) =>
+											client.userManagement.sendInvitation({
+												email: invite.email,
+												organizationId: workosOrg.id,
+												roleSlug: invite.role,
+											}),
+										)
 
 										// Calculate expiration (7 days from now, matching WorkOS default)
 										const expiresAt = new Date()
@@ -88,16 +81,16 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 											transactionId: txid,
 										})
 									}).pipe(
+										// Note: catchAll is intentional here for batch processing -
+										// we want to convert ALL errors to InvitationBatchResult entries
 										Effect.catchAll((error) =>
 											Effect.succeed(
 												new InvitationBatchResult({
 													email: invite.email,
 													success: false,
 													error:
-														typeof error === "object" &&
-														error !== null &&
-														"message" in error
-															? String(error.message)
+														error && typeof error === "object" && "_tag" in error
+															? `${error._tag}: ${String(error)}`
 															: String(error),
 												}),
 											),

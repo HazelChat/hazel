@@ -122,7 +122,11 @@ const makeAuthMiddlewareLayer = (options?: {
 								status: "offline",
 								customMessage: null,
 							}) as unknown as Effect.Effect<void>
-						).pipe(Effect.catchAll(() => Effect.void))
+						).pipe(
+							// Note: catchAll is used here because the mock doesn't have
+							// typed errors - in production code, use catchTag("DatabaseError", ...)
+							Effect.catchAll(() => Effect.void),
+						)
 					}
 				}),
 			)
@@ -132,24 +136,20 @@ const makeAuthMiddlewareLayer = (options?: {
 					// Check for Bearer token first (skip for user auth tests)
 					const authHeader = Headers.get(headers, "authorization")
 					if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
-						return yield* Effect.fail(
-							new InvalidBearerTokenError({
-								message: "Bearer auth not tested here",
-								detail: "",
-							}),
-						)
+						return yield* new InvalidBearerTokenError({
+							message: "Bearer auth not tested here",
+							detail: "",
+						})
 					}
 
 					// Parse cookie header
 					const cookieHeader = Headers.get(headers, "cookie")
 
 					if (Option.isNone(cookieHeader)) {
-						return yield* Effect.fail(
-							new SessionNotProvidedError({
-								message: "No session cookie provided",
-								detail: "Authentication required",
-							}),
-						)
+						return yield* new SessionNotProvidedError({
+							message: "No session cookie provided",
+							detail: "Authentication required",
+						})
 					}
 
 					// Parse cookies
@@ -170,12 +170,10 @@ const makeAuthMiddlewareLayer = (options?: {
 					const sessionCookie = cookies["workos-session"]
 
 					if (!sessionCookie) {
-						return yield* Effect.fail(
-							new SessionNotProvidedError({
-								message: "No WorkOS session cookie provided",
-								detail: "Authentication required",
-							}),
-						)
+						return yield* new SessionNotProvidedError({
+							message: "No WorkOS session cookie provided",
+							detail: "Authentication required",
+						})
 					}
 
 					// Authenticate via SessionManager

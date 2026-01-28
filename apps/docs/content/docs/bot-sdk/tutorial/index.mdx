@@ -32,21 +32,21 @@ Before starting, make sure you have:
 Each step builds on the previous one. We recommend following them in order:
 
 <Cards>
-  <Card title="1. Project Setup" href="/bot-sdk/tutorial/01-project-setup">
-    Initialize your bot project
-  </Card>
-  <Card title="2. Handling Messages" href="/bot-sdk/tutorial/02-handling-messages">
-    React to new messages
-  </Card>
-  <Card title="3. Slash Commands" href="/bot-sdk/tutorial/03-slash-commands">
-    Add typed slash commands
-  </Card>
-  <Card title="4. Message Operations" href="/bot-sdk/tutorial/04-message-operations">
-    Send, reply, and react
-  </Card>
-  <Card title="5. Error Handling" href="/bot-sdk/tutorial/05-error-handling">
-    Handle errors gracefully
-  </Card>
+	<Card title="1. Project Setup" href="/bot-sdk/tutorial/01-project-setup">
+		Initialize your bot project
+	</Card>
+	<Card title="2. Handling Messages" href="/bot-sdk/tutorial/02-handling-messages">
+		React to new messages
+	</Card>
+	<Card title="3. Slash Commands" href="/bot-sdk/tutorial/03-slash-commands">
+		Add typed slash commands
+	</Card>
+	<Card title="4. Message Operations" href="/bot-sdk/tutorial/04-message-operations">
+		Send, reply, and react
+	</Card>
+	<Card title="5. Error Handling" href="/bot-sdk/tutorial/05-error-handling">
+		Handle errors gracefully
+	</Card>
 </Cards>
 
 ## Final Code Preview
@@ -62,49 +62,50 @@ const tasks: string[] = []
 
 // Define commands
 const AddTaskCommand = Command.make("task-add", {
-  description: "Add a new task",
-  args: { title: Schema.String },
-  usageExample: "/task-add Buy groceries",
+	description: "Add a new task",
+	args: { title: Schema.String },
+	usageExample: "/task-add Buy groceries",
 })
 
 const ListTasksCommand = Command.make("task-list", {
-  description: "List all tasks",
+	description: "List all tasks",
 })
 
 const commands = CommandGroup.make(AddTaskCommand, ListTasksCommand)
 
 runHazelBot({
-  commands,
-  setup: (bot) => Effect.gen(function* () {
-    // Handle /task-add command
-    yield* bot.onCommand(AddTaskCommand, (ctx) =>
-      Effect.gen(function* () {
-        tasks.push(ctx.args.title)
-        yield* bot.message.send(ctx.channelId, `Added task: ${ctx.args.title}`)
-      }).pipe(bot.withErrorHandler(ctx))
-    )
+	commands,
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// Handle /task-add command
+			yield* bot.onCommand(AddTaskCommand, (ctx) =>
+				Effect.gen(function* () {
+					tasks.push(ctx.args.title)
+					yield* bot.message.send(ctx.channelId, `Added task: ${ctx.args.title}`)
+				}).pipe(bot.withErrorHandler(ctx)),
+			)
 
-    // Handle /task-list command
-    yield* bot.onCommand(ListTasksCommand, (ctx) =>
-      Effect.gen(function* () {
-        if (tasks.length === 0) {
-          yield* bot.message.send(ctx.channelId, "No tasks yet!")
-          return
-        }
-        const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
-        yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
-      }).pipe(bot.withErrorHandler(ctx))
-    )
+			// Handle /task-list command
+			yield* bot.onCommand(ListTasksCommand, (ctx) =>
+				Effect.gen(function* () {
+					if (tasks.length === 0) {
+						yield* bot.message.send(ctx.channelId, "No tasks yet!")
+						return
+					}
+					const list = tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")
+					yield* bot.message.send(ctx.channelId, `**Tasks:**\n${list}`)
+				}).pipe(bot.withErrorHandler(ctx)),
+			)
 
-    // React to messages mentioning "task"
-    yield* bot.onMessage((message) =>
-      Effect.gen(function* () {
-        if (message.content.toLowerCase().includes("task")) {
-          yield* bot.message.react(message, "📝")
-        }
-      })
-    )
-  }),
+			// React to messages mentioning "task"
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					if (message.content.toLowerCase().includes("task")) {
+						yield* bot.message.react(message, "📝")
+					}
+				}),
+			)
+		}),
 })
 ```
 

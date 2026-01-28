@@ -58,3 +58,9 @@ export const getEventType = (table: string, operation: EventOperation): EventTyp
  * Type guard to check if value is an ElectricEvent
  */
 export const isElectricEvent = (value: unknown): value is ElectricEvent => value instanceof ElectricEvent
+
+/**
+ * Extract unique table names from event types (e.g. "messages.insert" → "messages")
+ */
+export const extractTablesFromEventTypes = (eventTypes: readonly EventType[]): ReadonlySet<string> =>
+	new Set(eventTypes.map((et) => et.split(".")[0]))

@@ -56,8 +56,7 @@ const commands = CommandGroup.make(EchoCommand, PingCommand)
  *
  * Configuration options:
  * - electricUrl: Electric SQL proxy URL (defaults to https://electric.hazel.sh/v1/shape)
- * - backendUrl: Backend API URL for RPC calls (defaults to https://api.hazel.sh)
- * - redisUrl: Redis URL for receiving slash commands (defaults to redis://localhost:6379)
+ * - backendUrl: Backend API URL for RPC calls and SSE command streaming (defaults to https://api.hazel.sh)
  * - botToken: Your bot's authentication token (required)
  * - commands: Typesafe CommandGroup for slash commands (optional)
  */
@@ -66,7 +65,6 @@ const runtime = createHazelBot({
 	// For local development, override the URLs:
 	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 	backendUrl: process.env.BACKEND_URL ?? "http://localhost:3003",
-	redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
 	// Pass the typesafe command group
 	commands,
 })

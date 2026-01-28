@@ -1,4 +1,5 @@
-import { Effect, Metric } from "effect"
+import { Effect, FiberRef, Metric } from "effect"
+import { currentLogContext } from "./log-context.ts"
 import type { EventType } from "./types/events.ts"
 
 /**
@@ -41,11 +42,17 @@ export const composeMiddleware = <A = any, E = any, R = never>(
 
 /**
  * Logging middleware - logs before and after handler execution
+ * Includes correlationId from FiberRef if available
  */
 export const loggingMiddleware: Middleware = (_event, eventType, next) =>
 	Effect.gen(function* () {
+		// Get correlation ID from log context if available
+		const logContext = yield* FiberRef.get(currentLogContext)
+		const correlationId = logContext?.correlationId
+
 		yield* Effect.logDebug(`Handler starting`, {
 			eventType,
+			...(correlationId && { correlationId }),
 		}).pipe(Effect.annotateLogs("middleware", "logging"))
 
 		const startTime = performance.now()
@@ -54,17 +61,26 @@ export const loggingMiddleware: Middleware = (_event, eventType, next) =>
 
 		const duration = performance.now() - startTime
 
+		// Annotate the current span with duration
+		yield* Effect.annotateCurrentSpan("duration_ms", duration)
+
 		yield* Effect.logDebug(`Handler completed`, {
 			eventType,
 			duration: `${duration.toFixed(2)}ms`,
+			...(correlationId && { correlationId }),
 		}).pipe(Effect.annotateLogs("middleware", "logging"))
 	})
 
 /**
  * Metrics middleware - tracks handler execution metrics
+ * Includes correlationId from FiberRef if available
  */
 export const metricsMiddleware: Middleware = (_event, eventType, next) =>
 	Effect.gen(function* () {
+		// Get correlation ID from log context if available
+		const logContext = yield* FiberRef.get(currentLogContext)
+		const correlationId = logContext?.correlationId
+
 		const startTime = performance.now()
 
 		// Increment event counter
@@ -80,6 +96,7 @@ export const metricsMiddleware: Middleware = (_event, eventType, next) =>
 		yield* Effect.logDebug(`Handler execution time: ${duration.toFixed(2)}ms`, {
 			eventType,
 			duration,
+			...(correlationId && { correlationId }),
 		})
 
 		// Track success/failure
@@ -95,24 +112,32 @@ export const metricsMiddleware: Middleware = (_event, eventType, next) =>
 
 /**
  * Error tracking middleware - provides detailed error context
+ * Includes correlationId from FiberRef if available
  */
 export const errorTrackingMiddleware: Middleware = (_event, eventType, next) =>
-	next.pipe(
-		Effect.catchAll((error) =>
-			Effect.gen(function* () {
-				yield* Effect.logError(`Handler error`, {
-					eventType,
-					error,
-					errorType:
-						typeof error === "object" && error !== null && "_tag" in error
-							? error._tag
-							: "unknown",
-				}).pipe(Effect.annotateLogs("middleware", "errorTracking"))
+	Effect.gen(function* () {
+		// Get correlation ID from log context if available
+		const logContext = yield* FiberRef.get(currentLogContext)
+		const correlationId = logContext?.correlationId
 
-				return yield* Effect.fail(error)
-			}),
-		),
-	)
+		return yield* next.pipe(
+			Effect.catchAll((error) =>
+				Effect.gen(function* () {
+					yield* Effect.logError(`Handler error`, {
+						eventType,
+						error,
+						errorType:
+							typeof error === "object" && error !== null && "_tag" in error
+								? error._tag
+								: "unknown",
+						...(correlationId && { correlationId }),
+					}).pipe(Effect.annotateLogs("middleware", "errorTracking"))
+
+					return yield* Effect.fail(error)
+				}),
+			),
+		)
+	})
 
 /**
  * Combine common middleware (logging + metrics + error tracking)

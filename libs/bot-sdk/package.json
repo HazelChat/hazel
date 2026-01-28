@@ -18,6 +18,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect/experimental": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/rpc": "catalog:effect",
