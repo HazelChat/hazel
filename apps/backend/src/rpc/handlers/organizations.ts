@@ -1,3 +1,4 @@
+import { GeneratePortalLinkIntent } from "@workos-inc/node"
 import { Database } from "@hazel/db"
 import {
 	CurrentUser,
@@ -502,6 +503,55 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("Organization", "update")),
+
+			"organization.getAdminPortalLink": ({ id, intent }) =>
+				Effect.gen(function* () {
+					// Policy check - only admins/owners can access admin portal
+					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+
+					// Get the WorkOS organization by our local org ID
+					const workosOrg = yield* workos
+						.call((client) => client.organizations.getOrganizationByExternalId(id))
+						.pipe(
+							Effect.catchTag("WorkOSApiError", () =>
+								Effect.fail(
+									new OrganizationNotFoundError({
+										organizationId: id,
+									}),
+								),
+							),
+						)
+
+					// Map intent string to WorkOS enum
+					const intentMap = {
+						sso: GeneratePortalLinkIntent.SSO,
+						domain_verification: GeneratePortalLinkIntent.DomainVerification,
+						dsync: GeneratePortalLinkIntent.DSync,
+						audit_logs: GeneratePortalLinkIntent.AuditLogs,
+						log_streams: GeneratePortalLinkIntent.LogStreams,
+					} as const
+
+					// Generate portal link
+					const portalLink = yield* workos
+						.call((client) =>
+							client.portal.generateLink({
+								organization: workosOrg.id,
+								intent: intentMap[intent],
+							}),
+						)
+						.pipe(
+							Effect.mapError(
+								(error) =>
+									new InternalServerError({
+										message: "Failed to generate admin portal link",
+										detail: String(error.cause),
+										cause: String(error),
+									}),
+							),
+						)
+
+					return { link: portalLink.link }
+				}),
 		}
 	}),
 )

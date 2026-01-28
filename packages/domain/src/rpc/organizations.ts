@@ -152,4 +152,18 @@ export class OrganizationRpcs extends RpcGroup.make(
 			InternalServerError,
 		),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * Generate a WorkOS Admin Portal link.
+	 * Only admins and owners can access the admin portal.
+	 * Supports different intents: sso, domain_verification, dsync, audit_logs, etc.
+	 */
+	Rpc.mutation("organization.getAdminPortalLink", {
+		payload: Schema.Struct({
+			id: OrganizationId,
+			intent: Schema.Literal("sso", "domain_verification", "dsync", "audit_logs", "log_streams"),
+		}),
+		success: Schema.Struct({ link: Schema.String }),
+		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

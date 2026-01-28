@@ -36,6 +36,7 @@ import { Route as AppOrgSlugChatIndexRouteImport } from './routes/_app/$orgSlug/
 import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSlug/settings/team'
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
+import { Route as AppOrgSlugSettingsAuthenticationRouteImport } from './routes/_app/$orgSlug/settings/authentication'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugNotificationsThreadsRouteImport } from './routes/_app/$orgSlug/notifications/threads'
 import { Route as AppOrgSlugNotificationsGeneralRouteImport } from './routes/_app/$orgSlug/notifications/general'
@@ -200,6 +201,12 @@ const AppOrgSlugSettingsDebugRoute = AppOrgSlugSettingsDebugRouteImport.update({
   path: '/debug',
   getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
 } as any)
+const AppOrgSlugSettingsAuthenticationRoute =
+  AppOrgSlugSettingsAuthenticationRouteImport.update({
+    id: '/authentication',
+    path: '/authentication',
+    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+  } as any)
 const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
   id: '/profile/$userId',
   path: '/profile/$userId',
@@ -353,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -396,6 +404,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -446,6 +455,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/_app/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
+  '/_app/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/_app/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
+    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -540,6 +551,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
+    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
@@ -589,6 +601,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/notifications/general'
     | '/_app/$orgSlug/notifications/threads'
     | '/_app/$orgSlug/profile/$userId'
+    | '/_app/$orgSlug/settings/authentication'
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
     | '/_app/$orgSlug/settings/team'
@@ -815,6 +828,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugSettingsDebugRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
+    '/_app/$orgSlug/settings/authentication': {
+      id: '/_app/$orgSlug/settings/authentication'
+      path: '/authentication'
+      fullPath: '/$orgSlug/settings/authentication'
+      preLoaderRoute: typeof AppOrgSlugSettingsAuthenticationRouteImport
+      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+    }
     '/_app/$orgSlug/profile/$userId': {
       id: '/_app/$orgSlug/profile/$userId'
       path: '/profile/$userId'
@@ -1035,6 +1055,7 @@ const AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren =
 
 interface AppOrgSlugSettingsLayoutRouteChildren {
   AppOrgSlugSettingsIntegrationsLayoutRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
+  AppOrgSlugSettingsAuthenticationRoute: typeof AppOrgSlugSettingsAuthenticationRoute
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
   AppOrgSlugSettingsInvitationsRoute: typeof AppOrgSlugSettingsInvitationsRoute
   AppOrgSlugSettingsTeamRoute: typeof AppOrgSlugSettingsTeamRoute
@@ -1045,6 +1066,8 @@ const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildr
   {
     AppOrgSlugSettingsIntegrationsLayoutRoute:
       AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren,
+    AppOrgSlugSettingsAuthenticationRoute:
+      AppOrgSlugSettingsAuthenticationRoute,
     AppOrgSlugSettingsDebugRoute: AppOrgSlugSettingsDebugRoute,
     AppOrgSlugSettingsInvitationsRoute: AppOrgSlugSettingsInvitationsRoute,
     AppOrgSlugSettingsTeamRoute: AppOrgSlugSettingsTeamRoute,
