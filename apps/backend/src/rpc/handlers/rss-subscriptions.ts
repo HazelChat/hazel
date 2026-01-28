@@ -15,12 +15,14 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { RssSubscriptionPolicy } from "../../policies/rss-subscription-policy"
 import { ChannelRepo } from "../../repositories/channel-repo"
 import { RssSubscriptionRepo } from "../../repositories/rss-subscription-repo"
+import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
 
 export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const channelRepo = yield* ChannelRepo
 		const subscriptionRepo = yield* RssSubscriptionRepo
+		const integrationBotService = yield* IntegrationBotService
 
 		return {
 			"rssSubscription.create": (payload) =>
@@ -78,6 +80,12 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 									deletedAt: null,
 								})
 								.pipe(withSystemActor)
+
+							// Ensure RSS bot user exists for this organization
+							yield* integrationBotService.getOrCreateWebhookBotUser(
+								"rss",
+								channel.organizationId,
+							)
 
 							const txid = yield* generateTransactionId()
 
