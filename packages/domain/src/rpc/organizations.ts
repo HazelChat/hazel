@@ -166,4 +166,52 @@ export class OrganizationRpcs extends RpcGroup.make(
 		success: Schema.Struct({ link: Schema.String }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	/**
+	 * List all domains for an organization.
+	 * Only admins/owners can list domains.
+	 */
+	Rpc.query("organization.listDomains", {
+		payload: Schema.Struct({ id: OrganizationId }),
+		success: Schema.Array(
+			Schema.Struct({
+				id: Schema.String,
+				domain: Schema.String,
+				state: Schema.Literal("pending", "verified", "failed", "legacy_verified"),
+				verificationToken: Schema.NullOr(Schema.String),
+			}),
+		),
+		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * Add a domain to an organization.
+	 * Only admins/owners can add domains.
+	 */
+	Rpc.mutation("organization.addDomain", {
+		payload: Schema.Struct({
+			id: OrganizationId,
+			domain: Schema.String,
+		}),
+		success: Schema.Struct({
+			id: Schema.String,
+			domain: Schema.String,
+			state: Schema.String,
+			verificationToken: Schema.NullOr(Schema.String),
+		}),
+		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * Remove a domain from an organization.
+	 * Only admins/owners can remove domains.
+	 */
+	Rpc.mutation("organization.removeDomain", {
+		payload: Schema.Struct({
+			id: OrganizationId,
+			domainId: Schema.String,
+		}),
+		success: Schema.Struct({ success: Schema.Boolean }),
+		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

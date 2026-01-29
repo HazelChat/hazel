@@ -552,6 +552,100 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 					return { link: portalLink.link }
 				}),
+
+			"organization.listDomains": ({ id }) =>
+				Effect.gen(function* () {
+					// Policy check - only admins/owners can list domains
+					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+
+					// Get the WorkOS organization by our local org ID
+					const workosOrg = yield* workos
+						.call((client) => client.organizations.getOrganizationByExternalId(id))
+						.pipe(
+							Effect.catchTag("WorkOSApiError", () =>
+								Effect.fail(
+									new OrganizationNotFoundError({
+										organizationId: id,
+									}),
+								),
+							),
+						)
+
+					// The domains are included in the organization response
+					return workosOrg.domains.map((d) => ({
+						id: d.id,
+						domain: d.domain,
+						state: d.state as "pending" | "verified" | "failed" | "legacy_verified",
+						verificationToken: d.verificationToken ?? null,
+					}))
+				}),
+
+			"organization.addDomain": ({ id, domain }) =>
+				Effect.gen(function* () {
+					// Policy check - only admins/owners can add domains
+					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+
+					// Get the WorkOS organization by our local org ID
+					const workosOrg = yield* workos
+						.call((client) => client.organizations.getOrganizationByExternalId(id))
+						.pipe(
+							Effect.catchTag("WorkOSApiError", () =>
+								Effect.fail(
+									new OrganizationNotFoundError({
+										organizationId: id,
+									}),
+								),
+							),
+						)
+
+					// Create domain in WorkOS
+					const newDomain = yield* workos
+						.call((client) =>
+							client.organizationDomains.create({
+								domain,
+								organizationId: workosOrg.id,
+							}),
+						)
+						.pipe(
+							Effect.mapError(
+								(error) =>
+									new InternalServerError({
+										message: "Failed to add domain",
+										detail: String(error.cause),
+										cause: String(error),
+									}),
+							),
+						)
+
+					return {
+						id: newDomain.id,
+						domain: newDomain.domain,
+						state: newDomain.state,
+						verificationToken: newDomain.verificationToken ?? null,
+					}
+				}),
+
+			"organization.removeDomain": ({ id, domainId }) =>
+				Effect.gen(function* () {
+					// Policy check - only admins/owners can remove domains
+					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+
+					// Delete domain from WorkOS
+					yield* workos
+						.call((client) => client.organizationDomains.delete(domainId))
+						.pipe(
+							Effect.mapError(
+								(error) =>
+									new InternalServerError({
+										message: "Failed to remove domain",
+										detail: String(error.cause),
+										cause: String(error),
+									}),
+							),
+						)
+
+					return { success: true }
+				}),
 		}
 	}),
 )
