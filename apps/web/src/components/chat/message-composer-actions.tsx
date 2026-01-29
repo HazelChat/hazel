@@ -4,10 +4,9 @@ import { EmojiPickerDialog } from "~/components/emoji-picker"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
 import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
-import { useFileUpload } from "~/hooks/use-file-upload"
+import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { useOrganization } from "~/hooks/use-organization"
 import { useChat } from "~/providers/chat-provider"
-import { IconSquareCommand } from "../icons/icon-square-command"
 
 export interface MessageComposerActionsRef {
 	cleanup: () => void
@@ -23,53 +22,17 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const { organizationId } = useOrganization()
 		const fileInputRef = useRef<HTMLInputElement>(null)
 		const { trackEmojiUsage } = useEmojiStats()
+		const { channelId } = useChat()
 
-		const {
-			channelId,
-			addAttachment,
-			isUploading,
-			setIsUploading,
-			addUploadingFile,
-			updateUploadingFileProgress,
-			removeUploadingFile,
-		} = useChat()
-
-		const { uploadFile } = useFileUpload({
+		// Use consolidated file upload handler
+		const { handleFileInputChange, isUploading } = useFileUploadHandler({
 			organizationId: organizationId!,
 			channelId,
-			onProgress: updateUploadingFileProgress,
 		})
 
 		const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-			const files = e.target.files
-			if (files && files.length > 0) {
-				setIsUploading(true)
-				// Upload files sequentially
-				for (const file of Array.from(files)) {
-					// Generate unique file ID for tracking
-					const fileId = crypto.randomUUID()
-
-					// Add to uploading files state (shows loading spinner)
-					addUploadingFile({
-						fileId,
-						fileName: file.name,
-						fileSize: file.size,
-					})
-
-					// Upload the file with file ID for progress tracking
-					const attachmentId = await uploadFile(file, fileId)
-
-					// Remove from uploading files state
-					removeUploadingFile(fileId)
-
-					// Add to completed attachments if successful
-					if (attachmentId) {
-						addAttachment(attachmentId)
-					}
-				}
-				setIsUploading(false)
-			}
-			// Reset input
+			await handleFileInputChange(e)
+			// Reset input (handleFileInputChange already does this, but be explicit)
 			if (fileInputRef.current) {
 				fileInputRef.current.value = ""
 			}

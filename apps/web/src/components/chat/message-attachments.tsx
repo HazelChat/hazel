@@ -8,7 +8,7 @@ import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { IconDownload } from "../icons/icon-download"
 import { Button } from "../ui/button"
 import { ImageViewerModal, type ViewerImage } from "./image-viewer-modal"
-import { VideoPlayer } from "./video-player"
+import { VideoPlayerSimple } from "./video-player"
 
 interface MessageAttachmentsProps {
 	messageId: MessageId
@@ -76,7 +76,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 		const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
 		const videoUrl = `${publicUrl}/${attachment.id}`
 
-		return <VideoPlayer src={videoUrl} fileName={attachment.fileName} onDownload={handleDownload} />
+		return <VideoPlayerSimple src={videoUrl} fileName={attachment.fileName} onDownload={handleDownload} />
 	}
 
 	// For other files, show a compact file card

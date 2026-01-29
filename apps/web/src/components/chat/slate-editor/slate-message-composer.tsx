@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button"
 import { Loader } from "~/components/ui/loader"
 import { attachmentCollection, channelMemberCollection } from "~/db/collections"
 import { useDragDetection } from "~/hooks/use-drag-detection"
-import { useFileUpload } from "~/hooks/use-file-upload"
+import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { useTyping } from "~/hooks/use-typing"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
@@ -45,53 +45,18 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 		organizationId,
 		attachmentIds,
 		removeAttachment,
-		isUploading,
 		uploadingFiles,
-		addAttachment,
-		setIsUploading,
-		addUploadingFile,
-		updateUploadingFileProgress,
-		removeUploadingFile,
 		activeThreadChannelId,
 	} = useChat()
 
 	const editorRef = useRef<SlateMessageEditorRef>(null)
 	const { isDraggingOnPage } = useDragDetection()
 
-	const { uploadFile } = useFileUpload({
+	// Use consolidated file upload handler
+	const { handleFilesUpload, isUploading } = useFileUploadHandler({
 		organizationId,
 		channelId,
-		onProgress: updateUploadingFileProgress,
 	})
-
-	// Handle files dropped via drag-and-drop
-	const handleFileDrop = useCallback(
-		async (files: File[]) => {
-			if (files.length === 0) return
-
-			setIsUploading(true)
-			// Upload files sequentially
-			for (const file of files) {
-				const fileId = crypto.randomUUID()
-
-				addUploadingFile({
-					fileId,
-					fileName: file.name,
-					fileSize: file.size,
-				})
-
-				const attachmentId = await uploadFile(file, fileId)
-
-				removeUploadingFile(fileId)
-
-				if (attachmentId) {
-					addAttachment(attachmentId)
-				}
-			}
-			setIsUploading(false)
-		},
-		[uploadFile, addUploadingFile, removeUploadingFile, addAttachment, setIsUploading],
-	)
 
 	// Handle drop event from DropZone
 	const handleDrop = useCallback(
@@ -107,10 +72,10 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 			}
 
 			if (files.length > 0) {
-				await handleFileDrop(files)
+				await handleFilesUpload(files)
 			}
 		},
-		[handleFileDrop],
+		[handleFilesUpload],
 	)
 
 	// Check if dropped types are acceptable
@@ -330,7 +295,7 @@ export const SlateMessageComposer = ({ placeholder = "Type a message..." }: Slat
 								disableGlobalKeyboardFocus={
 									!!activeThreadChannelId && channelId !== activeThreadChannelId
 								}
-								onFilePaste={handleFileDrop}
+								onFilePaste={handleFilesUpload}
 							/>
 							<MessageComposerActions onEmojiSelect={handleEmojiSelect} />
 						</div>

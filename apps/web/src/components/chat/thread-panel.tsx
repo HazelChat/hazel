@@ -2,11 +2,11 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
-import { useState } from "react"
 import { generateThreadNameMutation } from "~/atoms/channel-atoms"
 import { exitToast } from "~/lib/toast-exit"
 import { channelCollection } from "~/db/collections"
 import { useMessage } from "~/db/hooks"
+import { useSingleModalState } from "~/hooks/use-modal-state"
 import { ChatProvider } from "~/providers/chat-provider"
 import IconClose from "../icons/icon-close"
 import IconEdit from "../icons/icon-edit"
@@ -31,8 +31,8 @@ interface ThreadPanelProps {
 
 function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating }: ThreadPanelProps) {
 	const { data: originalMessage } = useMessage(originalMessageId)
-	const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
-	const [isGenerating, setIsGenerating] = useState(false)
+	const renameModal = useSingleModalState()
+	const [isGenerating, setIsGenerating] = React.useState(false)
 
 	const generateName = useAtomSet(generateThreadNameMutation, { mode: "promiseExit" })
 
@@ -137,7 +137,7 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating
 						<Button
 							intent="plain"
 							size="sq-sm"
-							onPress={() => setIsRenameModalOpen(true)}
+							onPress={renameModal.open}
 							aria-label="Rename thread"
 							className="rounded p-1 hover:bg-secondary"
 						>
@@ -205,12 +205,14 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating
 
 			<RenameThreadModal
 				threadId={threadChannelId}
-				isOpen={isRenameModalOpen}
-				onOpenChange={setIsRenameModalOpen}
+				isOpen={renameModal.isOpen}
+				onOpenChange={renameModal.setIsOpen}
 			/>
 		</div>
 	)
 }
+
+import React from "react"
 
 export function ThreadPanel({
 	threadChannelId,

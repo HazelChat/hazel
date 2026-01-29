@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react"
+import type { ReactNode } from "react"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import {
 	EmojiPicker,
@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/context-menu"
 import { ModalContent } from "~/components/ui/modal"
 import { useMessageActions } from "~/hooks/use-message-actions"
+import { useModalState } from "~/hooks/use-modal-state"
 import { DeleteMessageModal } from "./delete-message-modal"
 
 interface MessageContextMenuProps {
@@ -48,8 +49,7 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 		channel,
 	} = useMessageActions(message)
 
-	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-	const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+	const modal = useModalState(["delete", "emoji"] as const)
 
 	return (
 		<>
@@ -74,7 +74,7 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 					<ContextMenuSeparator />
 
 					{/* Add Reaction */}
-					<ContextMenuItem onAction={() => setEmojiPickerOpen(true)}>
+					<ContextMenuItem onAction={() => modal.open("emoji")}>
 						<ContextMenuLabel>Add Reaction</ContextMenuLabel>
 						<IconEmojiAdd data-slot="icon" className="ml-auto size-4 text-muted-fg" />
 					</ContextMenuItem>
@@ -114,7 +114,7 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 
 					{/* Delete Message (own messages only) */}
 					{isOwnMessage && (
-						<ContextMenuItem onAction={() => setDeleteModalOpen(true)} intent="danger">
+						<ContextMenuItem onAction={() => modal.open("delete")} intent="danger">
 							<ContextMenuLabel>Delete Message</ContextMenuLabel>
 							<IconTrash data-slot="icon" className="ml-auto size-4" />
 						</ContextMenuItem>
@@ -130,15 +130,15 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 
 			{/* Delete Confirmation Modal */}
 			<DeleteMessageModal
-				isOpen={deleteModalOpen}
-				onOpenChange={setDeleteModalOpen}
+				isOpen={modal.isOpen("delete")}
+				onOpenChange={modal.getOpenChangeHandler("delete")}
 				onConfirm={handleDelete}
 			/>
 
 			{/* Emoji Picker Modal */}
 			<ModalContent
-				isOpen={emojiPickerOpen}
-				onOpenChange={setEmojiPickerOpen}
+				isOpen={modal.isOpen("emoji")}
+				onOpenChange={modal.getOpenChangeHandler("emoji")}
 				size="xs"
 				closeButton={false}
 				className="overflow-hidden p-0!"
@@ -147,7 +147,7 @@ export function MessageContextMenu({ message, children }: MessageContextMenuProp
 					className="h-[420px]"
 					onEmojiSelect={(emoji) => {
 						handleReaction(emoji)
-						setEmojiPickerOpen(false)
+						modal.close()
 					}}
 				>
 					<EmojiPickerSearch />

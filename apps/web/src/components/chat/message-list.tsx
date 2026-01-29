@@ -1,11 +1,12 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
 import type { ChannelId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
-import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useImperativeHandle, useMemo, useRef } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
 import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-message-notification-cleaner"
+import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
 import { MessageItem } from "./message-item"
@@ -18,7 +19,6 @@ type MessageRow = MessageRowHeader | MessageRowItem
 interface MessageVirtualListProps {
 	messageRows: MessageRow[]
 	stickyIndices: number[]
-	onHoverChange: (messageId: string | null, ref: HTMLDivElement | null) => void
 	hasNextPage: boolean
 	fetchNextPage: () => void
 	onViewableItemsChanged?: (info: { viewableItems: ViewToken<MessageRow>[] }) => void
@@ -28,7 +28,6 @@ const MessageVirtualList = memo(
 	({
 		messageRows,
 		stickyIndices,
-		onHoverChange,
 		hasNextPage,
 		fetchNextPage,
 		onViewableItemsChanged,
@@ -72,7 +71,6 @@ const MessageVirtualList = memo(
 							isFirstNewMessage={props.item.isFirstNewMessage}
 							isPinned={props.item.isPinned}
 							isHighlighted={false}
-							onHoverChange={onHoverChange}
 						/>
 					)
 				}
@@ -89,18 +87,31 @@ export interface MessageListRef {
 	// TODO: Implement scroll-to-message - see GitHub issue
 }
 
-export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
-	const { messagesInfiniteQuery } = Route.useLoaderData()
-	const { id } = Route.useParams()
-	const channelId = id as ChannelId
+interface MessageListContentProps {
+	messages: MessageWithPinned[]
+	isLoading: boolean
+	hasNextPage: boolean
+	fetchNextPage: () => void
+	channelId: ChannelId
+	legendListRef: React.RefObject<LegendListRef | null>
+}
 
-	const legendListRef = useRef<LegendListRef>(null)
-	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
-	const targetRef = useRef<HTMLDivElement | null>(null)
-	const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false)
-	const isToolbarHoveredRef = useRef(false)
+function MessageListContent({
+	messages,
+	isLoading,
+	hasNextPage,
+	fetchNextPage,
+	channelId,
+	legendListRef,
+}: MessageListContentProps) {
+	const { state, actions, meta } = useMessageHover()
 	const overlayRef = useRef<HTMLDivElement>(null)
-	const hideTimeoutRef = useRef<number | null>(null)
+	const targetRef = useRef<HTMLDivElement | null>(null)
+
+	// Keep targetRef in sync with context state
+	if (state.targetRef) {
+		targetRef.current = state.targetRef
+	}
 
 	// Hook for clearing notifications when messages become visible
 	const { onVisibleMessagesChange } = useVisibleMessageNotificationCleaner({
@@ -120,25 +131,9 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		[onVisibleMessagesChange],
 	)
 
-	useImperativeHandle(ref, () => ({
-		scrollToBottom: () => {
-			legendListRef.current?.scrollToEnd({ animated: true })
-		},
-	}))
-
-	const { data, fetchNextPage, hasNextPage, isLoading, collection } = useLiveInfiniteQuery(
-		messagesInfiniteQuery,
-		{
-			pageSize: 30,
-			getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
-		},
-	)
-
-	const messages = (data || []) as MessageWithPinned[]
-
 	const hoveredMessage = useMemo(
-		() => messages.find((m) => m.id === hoveredMessageId) || null,
-		[messages, hoveredMessageId],
+		() => messages.find((m) => m.id === state.hoveredMessageId) || null,
+		[messages, state.hoveredMessageId],
 	)
 
 	const { overlayProps } = useOverlayPosition({
@@ -147,28 +142,8 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 		placement: "top end",
 		offset: -6,
 		shouldFlip: true,
-		isOpen: hoveredMessageId !== null,
+		isOpen: state.hoveredMessageId !== null,
 	})
-
-	const handleHoverChange = useCallback(
-		(messageId: string | null, ref: HTMLDivElement | null) => {
-			if (messageId) {
-				if (hideTimeoutRef.current) {
-					clearTimeout(hideTimeoutRef.current)
-					hideTimeoutRef.current = null
-				}
-				setHoveredMessageId(messageId)
-				targetRef.current = ref
-			} else if (!isToolbarMenuOpen && !isToolbarHoveredRef.current) {
-				hideTimeoutRef.current = window.setTimeout(() => {
-					setHoveredMessageId(null)
-					targetRef.current = null
-					hideTimeoutRef.current = null
-				}, 200)
-			}
-		},
-		[isToolbarMenuOpen],
-	)
 
 	const processedMessages = useMemo(() => {
 		const timeThreshold = 5 * 60 * 1000
@@ -256,20 +231,19 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 			className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2 transition-opacity duration-200"
 			style={containerStyle}
 		>
-			{hoveredMessageId && (
-				<style>{`#message-${hoveredMessageId} { background-color: var(--color-secondary) !important; }`}</style>
+			{state.hoveredMessageId && (
+				<style>{`#message-${state.hoveredMessageId} { background-color: var(--color-secondary) !important; }`}</style>
 			)}
 			<MessageVirtualList
 				ref={legendListRef}
 				messageRows={messageRows}
 				stickyIndices={stickyIndices}
-				onHoverChange={handleHoverChange}
 				hasNextPage={hasNextPage}
 				fetchNextPage={fetchNextPage}
 				onViewableItemsChanged={handleViewableItemsChanged}
 			/>
 
-			{(hoveredMessageId || isToolbarMenuOpen) &&
+			{(state.hoveredMessageId || meta.isToolbarMenuOpen) &&
 				hoveredMessage &&
 				createPortal(
 					<div
@@ -278,26 +252,53 @@ export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
 						style={{ ...overlayProps.style, zIndex: 50 }}
 						role="group"
 						onMouseEnter={() => {
-							if (hideTimeoutRef.current) {
-								clearTimeout(hideTimeoutRef.current)
-								hideTimeoutRef.current = null
-							}
-							isToolbarHoveredRef.current = true
+							actions.setToolbarHovered(true)
 						}}
 						onMouseLeave={() => {
-							isToolbarHoveredRef.current = false
+							actions.setToolbarHovered(false)
 						}}
 					>
 						{/* Invisible padding for larger hitbox */}
 						<div className="-m-3 p-3">
-							<MessageToolbar
-								message={hoveredMessage}
-								onMenuOpenChange={setIsToolbarMenuOpen}
-							/>
+							<MessageToolbar message={hoveredMessage} />
 						</div>
 					</div>,
 					document.body,
 				)}
 		</div>
+	)
+}
+
+export function MessageList({ ref }: { ref?: React.Ref<MessageListRef> }) {
+	const { messagesInfiniteQuery } = Route.useLoaderData()
+	const { id } = Route.useParams()
+	const channelId = id as ChannelId
+
+	const legendListRef = useRef<LegendListRef>(null)
+
+	useImperativeHandle(ref, () => ({
+		scrollToBottom: () => {
+			legendListRef.current?.scrollToEnd({ animated: true })
+		},
+	}))
+
+	const { data, fetchNextPage, hasNextPage, isLoading } = useLiveInfiniteQuery(messagesInfiniteQuery, {
+		pageSize: 30,
+		getNextPageParam: (lastPage) => (lastPage.length === 30 ? lastPage.length : undefined),
+	})
+
+	const messages = (data || []) as MessageWithPinned[]
+
+	return (
+		<MessageHoverProvider>
+			<MessageListContent
+				messages={messages}
+				isLoading={isLoading}
+				hasNextPage={hasNextPage}
+				fetchNextPage={fetchNextPage}
+				channelId={channelId}
+				legendListRef={legendListRef}
+			/>
+		</MessageHoverProvider>
 	)
 }

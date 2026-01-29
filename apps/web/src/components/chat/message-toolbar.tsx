@@ -1,4 +1,3 @@
-import { useState } from "react"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { EmojiPickerDialog } from "~/components/emoji-picker"
 import { Button } from "~/components/ui/button"
@@ -7,6 +6,8 @@ import { Separator } from "~/components/ui/separator"
 import { Toolbar } from "~/components/ui/toolbar"
 import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 import { useMessageActions } from "~/hooks/use-message-actions"
+import { useSingleModalState } from "~/hooks/use-modal-state"
+import { useMessageHover } from "~/providers/message-hover-provider"
 import IconCopy from "../icons/icon-copy"
 import IconDotsVertical from "../icons/icon-dots-vertical"
 import IconEmojiAdd from "../icons/icon-emoji-add"
@@ -18,10 +19,10 @@ import { DeleteMessageModal } from "./delete-message-modal"
 
 interface MessageToolbarProps {
 	message: MessageWithPinned
-	onMenuOpenChange?: (isOpen: boolean) => void
 }
 
-export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProps) {
+export function MessageToolbar({ message }: MessageToolbarProps) {
+	const { actions } = useMessageHover()
 	const {
 		handleReaction,
 		handleCopy,
@@ -34,11 +35,12 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 		topEmojis,
 		channel,
 	} = useMessageActions(message)
-	const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+
+	const deleteModal = useSingleModalState()
 
 	const handleDeleteModalChange = (open: boolean) => {
-		setDeleteModalOpen(open)
-		onMenuOpenChange?.(open)
+		deleteModal.setIsOpen(open)
+		actions.setToolbarMenuOpen(open)
 	}
 
 	return (
@@ -109,7 +111,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 					<Button
 						size="sq-sm"
 						intent="plain"
-						onPress={() => handleDeleteModalChange(true)}
+						onPress={deleteModal.open}
 						aria-label="Delete message"
 						className="p-1.5! text-danger hover:bg-danger/10"
 					>
@@ -146,7 +148,7 @@ export function MessageToolbar({ message, onMenuOpenChange }: MessageToolbarProp
 
 			{/* Delete Confirmation Modal */}
 			<DeleteMessageModal
-				isOpen={deleteModalOpen}
+				isOpen={deleteModal.isOpen}
 				onOpenChange={handleDeleteModalChange}
 				onConfirm={handleDelete}
 			/>

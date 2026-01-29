@@ -1,62 +1,25 @@
 import { useAtomValue } from "@effect-atom/atom-react"
 import { format } from "date-fns"
-import { lazy, memo, Suspense, useRef } from "react"
+import { memo, useRef } from "react"
 import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
-import {
-	extractGitHubInfo,
-	extractLinearIssueKey,
-	extractTweetId,
-	extractUrls,
-	extractYoutubeVideoId,
-	isGitHubPRUrl,
-	isLinearIssueUrl,
-	isTweetUrl,
-	isYoutubeUrl,
-	LinkPreview,
-} from "~/components/link-preview"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Badge } from "~/components/ui/badge"
-import { YoutubeEmbed } from "~/components/youtube-embed"
 import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
+import { useMessageHover } from "~/providers/message-hover-provider"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
+import { MessageContent } from "./message-content"
 import { MessageContextMenu } from "./message-context-menu"
-import { MessageEmbeds } from "./message-embeds"
 import { MessageReplySection } from "./message-reply-section"
 import { ReactionButton } from "./reaction-button"
-import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 import { UserProfilePopover } from "./user-profile-popover"
-
-// Lazy load heavy embed components (~85KB combined savings)
-const TweetEmbed = lazy(() => import("~/components/tweet-embed").then((m) => ({ default: m.TweetEmbed })))
-const GitHubPREmbed = lazy(() =>
-	import("~/components/integrations/github-pr-embed").then((m) => ({ default: m.GitHubPREmbed })),
-)
-const LinearIssueEmbed = lazy(() =>
-	import("~/components/integrations/linear-issue-embed").then((m) => ({
-		default: m.LinearIssueEmbed,
-	})),
-)
-
-// Skeleton placeholder for lazy-loaded embeds
-function EmbedSkeleton() {
-	return (
-		<div className="mt-2 flex max-w-sm flex-col gap-2 rounded-lg border border-fg/15 bg-muted/40 p-4">
-			<div className="flex flex-row gap-2">
-				<div className="size-10 shrink-0 animate-pulse rounded-full bg-muted" />
-				<div className="h-10 w-full animate-pulse rounded bg-muted" />
-			</div>
-			<div className="h-20 w-full animate-pulse rounded bg-muted" />
-		</div>
-	)
-}
 
 interface MessageItemProps {
 	message: MessageWithPinned
@@ -65,7 +28,6 @@ interface MessageItemProps {
 	isFirstNewMessage?: boolean
 	isPinned?: boolean
 	isHighlighted?: boolean
-	onHoverChange?: (messageId: string | null, ref: HTMLDivElement | null) => void
 }
 
 export const MessageItem = memo(function MessageItem({
@@ -75,10 +37,10 @@ export const MessageItem = memo(function MessageItem({
 	isFirstNewMessage = false,
 	isPinned = false,
 	isHighlighted = false,
-	onHoverChange,
 }: MessageItemProps) {
 	const { addReaction } = useChat()
 	const { trackEmojiUsage } = useEmojiStats()
+	const { actions } = useMessageHover()
 
 	const messageRef = useRef<HTMLDivElement>(null)
 
@@ -94,10 +56,10 @@ export const MessageItem = memo(function MessageItem({
 
 	const { hoverProps } = useHover({
 		onHoverStart: () => {
-			onHoverChange?.(message.id, messageRef.current)
+			actions.setHovered(message.id, messageRef.current)
 		},
 		onHoverEnd: () => {
-			onHoverChange?.(null, null)
+			actions.setHovered(null, null)
 		},
 	})
 
@@ -165,83 +127,14 @@ export const MessageItem = memo(function MessageItem({
 						{/* Author header (only when showing avatar) */}
 						{showAvatar && <MessageAuthorHeader message={message} isPinned={isPinned} />}
 
-						{/* Message Content */}
-						{(() => {
-							const urls = extractUrls(message.content)
-							const tweetUrls = urls.filter((url) => isTweetUrl(url))
-							const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
-							const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
-							const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
-							const otherUrls = urls.filter(
-								(url) =>
-									!isTweetUrl(url) &&
-									!isYoutubeUrl(url) &&
-									!isLinearIssueUrl(url) &&
-									!isGitHubPRUrl(url),
-							)
-
-							// Filter out embed URLs from displayed content
-							const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
-							let displayContent = message.content
-							for (const url of embedUrls) {
-								displayContent = displayContent.replace(url, "")
-							}
-							displayContent = displayContent.trim()
-
-							return (
-								<>
-									{/* Message text with embed URLs filtered out */}
-									{displayContent && <SlateMessageViewer content={displayContent} />}
-									{/* Render all tweet embeds */}
-									{tweetUrls.map((url) => {
-										const tweetId = extractTweetId(url)
-										return tweetId ? (
-											<Suspense key={url} fallback={<EmbedSkeleton />}>
-												<TweetEmbed
-													id={tweetId}
-													author={message.author ?? undefined}
-													messageCreatedAt={message.createdAt.getTime()}
-												/>
-											</Suspense>
-										) : null
-									})}
-									{/* Render all YouTube embeds */}
-									{youtubeUrls.map((url) => {
-										const videoId = extractYoutubeVideoId(url)
-										return videoId ? (
-											<YoutubeEmbed key={url} videoId={videoId} url={url} />
-										) : null
-									})}
-									{/* Render all Linear issue embeds */}
-									{linearUrls.map((url) => {
-										const issueKey = extractLinearIssueKey(url)
-										return issueKey && currentUser?.organizationId ? (
-											<Suspense key={url} fallback={<EmbedSkeleton />}>
-												<LinearIssueEmbed
-													url={url}
-													orgId={currentUser.organizationId}
-												/>
-											</Suspense>
-										) : null
-									})}
-									{/* Render all GitHub PR embeds */}
-									{githubPRUrls.map((url) => {
-										const info = extractGitHubInfo(url)
-										return info && currentUser?.organizationId ? (
-											<Suspense key={url} fallback={<EmbedSkeleton />}>
-												<GitHubPREmbed url={url} orgId={currentUser.organizationId} />
-											</Suspense>
-										) : null
-									})}
-									{/* Render last other URL as link preview */}
-									{otherUrls.length > 0 && otherUrls[otherUrls.length - 1] && (
-										<LinkPreview url={otherUrls[otherUrls.length - 1]!} />
-									)}
-									{/* Webhook/rich embeds */}
-									<MessageEmbeds embeds={message.embeds} />
-								</>
-							)
-						})()}
+						{/* Message Content - using compound component */}
+						<MessageContent.Provider
+							message={message}
+							organizationId={currentUser?.organizationId ?? undefined}
+						>
+							<MessageContent.Text />
+							<MessageContent.Embeds />
+						</MessageContent.Provider>
 
 						{/* Attachments */}
 						<MessageAttachments messageId={message.id} />
