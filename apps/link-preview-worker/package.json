@@ -28,6 +28,6 @@
 		"@effect/language-service": "catalog:effect",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18",
-		"wrangler": "^4.56.0"
+		"wrangler": "^4.60.0"
 	}
 }

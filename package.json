@@ -54,17 +54,17 @@
 	},
 	"devDependencies": {
 		"@effect/vitest": "^0.27.0",
-		"@vitest/coverage-v8": "^4.0.16",
+		"@vitest/coverage-v8": "^4.0.18",
 		"oxfmt": "^0.27.0",
 		"oxlint": "^1.42.0",
-		"turbo": "^2.7.2",
+		"turbo": "^2.8.0",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18",
-		"wrangler": "^4.60.0"
+		"wrangler": "^4.61.1"
 	},
 	"engines": {
 		"bun": ">=1.2.14"
 	},
-	"packageManager": "bun@1.3.5",
+	"packageManager": "bun@1.3.8",
 	"trustedDependencies": []
 }
