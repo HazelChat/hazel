@@ -9,8 +9,27 @@ import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-messag
 import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
-import { MessageItem } from "./message-item"
+import {
+	MessageItem,
+	type MessageGroupPosition,
+	type MessageHighlight,
+} from "./message-item"
 import { MessageToolbar } from "./message-toolbar"
+
+/** Helper to convert boolean flags to group position */
+function toGroupPosition(isGroupStart: boolean, isGroupEnd: boolean): MessageGroupPosition {
+	if (isGroupStart && isGroupEnd) return "standalone"
+	if (isGroupStart) return "start"
+	if (isGroupEnd) return "end"
+	return "middle"
+}
+
+/** Helper to convert boolean flags to highlight type */
+function toHighlight(isFirstNewMessage: boolean, isPinned: boolean): MessageHighlight {
+	if (isPinned) return "pinned"
+	if (isFirstNewMessage) return "new"
+	return "none"
+}
 
 type MessageRowHeader = { id: string; type: "header"; date: string }
 type MessageRowItem = { id: string; type: "row" } & ProcessedMessage
@@ -66,11 +85,10 @@ const MessageVirtualList = memo(
 					) : (
 						<MessageItem
 							message={props.item.message}
-							isGroupStart={props.item.isGroupStart}
-							isGroupEnd={props.item.isGroupEnd}
-							isFirstNewMessage={props.item.isFirstNewMessage}
-							isPinned={props.item.isPinned}
-							isHighlighted={false}
+							variants={{
+								groupPosition: toGroupPosition(props.item.isGroupStart, props.item.isGroupEnd),
+								highlight: toHighlight(props.item.isFirstNewMessage, props.item.isPinned),
+							}}
 						/>
 					)
 				}

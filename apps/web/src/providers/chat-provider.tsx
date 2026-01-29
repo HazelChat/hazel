@@ -41,45 +41,130 @@ interface SendMessageProps {
 	restoreContent?: (content: string) => void
 }
 
-interface ChatContextValue {
+/**
+ * Chat state - read-only values representing current state
+ */
+export interface ChatState {
 	channelId: ChannelId
 	organizationId: OrganizationId
 	channel: typeof Channel.Model.Type | undefined
+	replyToMessageId: MessageId | null
+	attachmentIds: AttachmentId[]
+	isUploading: boolean
+	uploadingFiles: UploadingFile[]
+	activeThreadChannelId: ChannelId | null
+	activeThreadMessageId: MessageId | null
+	isThreadCreating: boolean
+}
+
+/**
+ * Chat actions - functions to mutate state or perform side effects
+ */
+export interface ChatActions {
 	sendMessage: (props: SendMessageProps) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
 	deleteMessage: (messageId: MessageId) => void
 	addReaction: (messageId: MessageId, channelId: ChannelId, emoji: string) => void
+	/** @deprecated Use addReaction which toggles reactions */
 	removeReaction: (reactionId: MessageReactionId) => void
 	pinMessage: (messageId: MessageId) => void
 	unpinMessage: (pinnedMessageId: PinnedMessageId) => void
 	createThread: (messageId: MessageId, threadChannelId: ChannelId | null) => Promise<void>
 	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
 	closeThread: () => void
-	activeThreadChannelId: ChannelId | null
-	activeThreadMessageId: MessageId | null
-	isThreadCreating: boolean
-	replyToMessageId: MessageId | null
 	setReplyToMessageId: (messageId: MessageId | null) => void
-	attachmentIds: AttachmentId[]
 	addAttachment: (attachmentId: AttachmentId) => void
 	removeAttachment: (attachmentId: AttachmentId) => void
 	clearAttachments: () => void
-	isUploading: boolean
 	setIsUploading: (value: boolean) => void
-	uploadingFiles: UploadingFile[]
 	addUploadingFile: (file: Omit<UploadingFile, "progress">) => void
 	updateUploadingFileProgress: (fileId: string, progress: number) => void
 	removeUploadingFile: (fileId: string) => void
 }
 
-const ChatContext = createContext<ChatContextValue | undefined>(undefined)
+/**
+ * Chat meta - future: refs, callbacks for imperative operations
+ */
+export interface ChatMeta {
+	// Reserved for future use
+}
 
-export function useChat() {
+/**
+ * Structured context value with clear separation of concerns
+ */
+export interface ChatContextStructured {
+	state: ChatState
+	actions: ChatActions
+	meta: ChatMeta
+}
+
+/**
+ * Flat context value for backwards compatibility
+ * Contains all state and actions at the top level
+ */
+export type ChatContextValue = ChatState & ChatActions & ChatMeta
+
+const ChatContext = createContext<ChatContextStructured | undefined>(undefined)
+
+/**
+ * Hook to access the full structured chat context
+ * Provides clear separation between state and actions
+ *
+ * @example
+ * ```tsx
+ * const { state, actions } = useChatContext()
+ * // Read state
+ * const { channelId, replyToMessageId } = state
+ * // Call actions
+ * actions.sendMessage({ content: "Hello" })
+ * ```
+ */
+export function useChatContext(): ChatContextStructured {
 	const context = useContext(ChatContext)
 	if (!context) {
-		throw new Error("useChat must be used within a ChatProvider")
+		throw new Error("useChatContext must be used within a ChatProvider")
 	}
 	return context
+}
+
+/**
+ * Hook for backwards compatibility - returns flattened context
+ * All state and actions are available at the top level
+ *
+ * @example
+ * ```tsx
+ * const { channelId, sendMessage, replyToMessageId } = useChat()
+ * sendMessage({ content: "Hello" })
+ * ```
+ */
+export function useChat(): ChatContextValue {
+	const { state, actions, meta } = useChatContext()
+	return useMemo(
+		() => ({
+			...state,
+			...actions,
+			...meta,
+		}),
+		[state, actions, meta],
+	)
+}
+
+/**
+ * Hook to access only chat state (read-only values)
+ * Useful when you only need to read state without actions
+ */
+export function useChatState(): ChatState {
+	const { state } = useChatContext()
+	return state
+}
+
+/**
+ * Hook to access only chat actions
+ * Useful when you only need to perform actions
+ */
+export function useChatActions(): ChatActions {
+	const { actions } = useChatContext()
+	return actions
 }
 
 interface ChatProviderProps {
@@ -441,41 +526,36 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		setActiveThreadMessageId(null)
 	}, [setActiveThreadChannelId, setActiveThreadMessageId])
 
-	const contextValue = useMemo<ChatContextValue>(
+	// Build structured context value
+	const state = useMemo<ChatState>(
 		() => ({
 			channelId,
 			organizationId,
 			channel,
-			sendMessage,
-			editMessage,
-			deleteMessage,
-			addReaction,
-			removeReaction,
-			pinMessage,
-			unpinMessage,
-			createThread,
-			openThread,
-			closeThread,
+			replyToMessageId,
+			attachmentIds,
+			isUploading,
+			uploadingFiles,
 			activeThreadChannelId,
 			activeThreadMessageId,
 			isThreadCreating,
-			replyToMessageId,
-			setReplyToMessageId,
-			attachmentIds,
-			addAttachment,
-			removeAttachment,
-			clearAttachments,
-			isUploading,
-			setIsUploading,
-			uploadingFiles,
-			addUploadingFile,
-			updateUploadingFileProgress,
-			removeUploadingFile,
 		}),
 		[
 			channelId,
 			organizationId,
 			channel,
+			replyToMessageId,
+			attachmentIds,
+			isUploading,
+			uploadingFiles,
+			activeThreadChannelId,
+			activeThreadMessageId,
+			isThreadCreating,
+		],
+	)
+
+	const actions = useMemo<ChatActions>(
+		() => ({
 			sendMessage,
 			editMessage,
 			deleteMessage,
@@ -486,22 +566,46 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			createThread,
 			openThread,
 			closeThread,
-			activeThreadChannelId,
-			activeThreadMessageId,
-			isThreadCreating,
-			replyToMessageId,
 			setReplyToMessageId,
-			attachmentIds,
 			addAttachment,
 			removeAttachment,
 			clearAttachments,
-			isUploading,
 			setIsUploading,
-			uploadingFiles,
+			addUploadingFile,
+			updateUploadingFileProgress,
+			removeUploadingFile,
+		}),
+		[
+			sendMessage,
+			editMessage,
+			deleteMessage,
+			addReaction,
+			removeReaction,
+			pinMessage,
+			unpinMessage,
+			createThread,
+			openThread,
+			closeThread,
+			setReplyToMessageId,
+			addAttachment,
+			removeAttachment,
+			clearAttachments,
+			setIsUploading,
 			addUploadingFile,
 			updateUploadingFileProgress,
 			removeUploadingFile,
 		],
+	)
+
+	const meta = useMemo<ChatMeta>(() => ({}), [])
+
+	const contextValue = useMemo<ChatContextStructured>(
+		() => ({
+			state,
+			actions,
+			meta,
+		}),
+		[state, actions, meta],
 	)
 
 	return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>

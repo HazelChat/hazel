@@ -21,23 +21,84 @@ import { MessageReplySection } from "./message-reply-section"
 import { ReactionButton } from "./reaction-button"
 import { UserProfilePopover } from "./user-profile-popover"
 
+/**
+ * Position of the message within a group of consecutive messages from the same author
+ * - 'start': First message in a group (shows avatar)
+ * - 'middle': Message between start and end
+ * - 'end': Last message in a group
+ * - 'standalone': Single message (both start and end)
+ */
+export type MessageGroupPosition = "start" | "middle" | "end" | "standalone"
+
+/**
+ * Visual highlight style for the message
+ * - 'new': First new/unread message highlight
+ * - 'pinned': Pinned message with special styling
+ * - 'search': Highlighted from search result (animated)
+ * - 'none': No highlight
+ */
+export type MessageHighlight = "new" | "pinned" | "search" | "none"
+
+/**
+ * Variant-based props for MessageItem
+ * Replaces boolean prop proliferation with semantic groupings
+ */
+export interface MessageItemVariants {
+	/** Position within a message group - controls avatar visibility and spacing */
+	groupPosition?: MessageGroupPosition
+	/** Highlight style for the message - controls visual emphasis */
+	highlight?: MessageHighlight
+}
+
 interface MessageItemProps {
 	message: MessageWithPinned
+	/**
+	 * Variant configuration for the message item
+	 * @example { groupPosition: 'start', highlight: 'pinned' }
+	 */
+	variants?: MessageItemVariants
+	/**
+	 * @deprecated Use `variants.groupPosition` instead
+	 */
 	isGroupStart?: boolean
+	/**
+	 * @deprecated Use `variants.groupPosition` instead
+	 */
 	isGroupEnd?: boolean
+	/**
+	 * @deprecated Use `variants.highlight === 'new'` instead
+	 */
 	isFirstNewMessage?: boolean
+	/**
+	 * @deprecated Use `variants.highlight === 'pinned'` instead
+	 */
 	isPinned?: boolean
+	/**
+	 * @deprecated Use `variants.highlight === 'search'` instead
+	 */
 	isHighlighted?: boolean
 }
 
 export const MessageItem = memo(function MessageItem({
 	message,
-	isGroupStart = false,
-	isGroupEnd = false,
-	isFirstNewMessage = false,
-	isPinned = false,
-	isHighlighted = false,
+	variants,
+	// Legacy props for backwards compatibility
+	isGroupStart: legacyIsGroupStart = false,
+	isGroupEnd: legacyIsGroupEnd = false,
+	isFirstNewMessage: legacyIsFirstNewMessage = false,
+	isPinned: legacyIsPinned = false,
+	isHighlighted: legacyIsHighlighted = false,
 }: MessageItemProps) {
+	// Resolve variants with backwards compatibility
+	const groupPosition = variants?.groupPosition ?? resolveGroupPosition(legacyIsGroupStart, legacyIsGroupEnd)
+	const highlight = variants?.highlight ?? resolveHighlight(legacyIsFirstNewMessage, legacyIsPinned, legacyIsHighlighted)
+
+	// Derived state from variants
+	const isGroupStart = groupPosition === "start" || groupPosition === "standalone"
+	const isGroupEnd = groupPosition === "end" || groupPosition === "standalone"
+	const isFirstNewMessage = highlight === "new"
+	const isPinned = highlight === "pinned"
+	const isHighlighted = highlight === "search"
 	const { addReaction } = useChat()
 	const { trackEmojiUsage } = useEmojiStats()
 	const { actions } = useMessageHover()
@@ -211,4 +272,29 @@ export const MessageAuthorHeader = ({
 			)}
 		</div>
 	)
+}
+
+/**
+ * Helper to resolve group position from legacy boolean props
+ */
+function resolveGroupPosition(isGroupStart: boolean, isGroupEnd: boolean): MessageGroupPosition {
+	if (isGroupStart && isGroupEnd) return "standalone"
+	if (isGroupStart) return "start"
+	if (isGroupEnd) return "end"
+	return "middle"
+}
+
+/**
+ * Helper to resolve highlight from legacy boolean props
+ * Priority: pinned > new > search > none
+ */
+function resolveHighlight(
+	isFirstNewMessage: boolean,
+	isPinned: boolean,
+	isHighlighted: boolean,
+): MessageHighlight {
+	if (isPinned) return "pinned"
+	if (isFirstNewMessage) return "new"
+	if (isHighlighted) return "search"
+	return "none"
 }
