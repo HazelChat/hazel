@@ -75,9 +75,7 @@ export const UPDATE_CHECK_INTERVAL_MS = Duration.toMillis(Duration.hours(6))
  * Checks for updates and calls the setter with the result.
  * This is a plain async function that works with React's useAtomSet.
  */
-export async function checkForUpdates(
-	setUpdateState: (state: TauriUpdateState) => void,
-): Promise<void> {
+export async function checkForUpdates(setUpdateState: (state: TauriUpdateState) => void): Promise<void> {
 	if (!updater || !process) return
 
 	setUpdateState({ _tag: "checking" })
@@ -195,7 +193,6 @@ export const createDownloadEffect = (
 				}),
 		}),
 	)
-
 
 /**
  * Check if we're in a Tauri environment
