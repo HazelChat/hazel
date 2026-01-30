@@ -78,20 +78,14 @@ export const UPDATE_CHECK_INTERVAL_MS = Duration.toMillis(Duration.hours(6))
 export async function checkForUpdates(
 	setUpdateState: (state: TauriUpdateState) => void,
 ): Promise<void> {
-	if (!updater || !process) {
-		console.log("[update] Not in Tauri environment, skipping check")
-		return
-	}
+	if (!updater || !process) return
 
-	console.log("[update] Starting update check...")
 	setUpdateState({ _tag: "checking" })
 
 	try {
 		const update = await updater.check()
-		console.log("[update] Check completed:", update)
 
 		if (update) {
-			console.log("[update] Update available:", update.version)
 			setUpdateState({
 				_tag: "available",
 				version: update.version,
@@ -99,7 +93,6 @@ export async function checkForUpdates(
 				update,
 			})
 		} else {
-			console.log("[update] No update available")
 			setUpdateState({ _tag: "not-available", lastCheckedAt: new Date() })
 		}
 	} catch (error) {
