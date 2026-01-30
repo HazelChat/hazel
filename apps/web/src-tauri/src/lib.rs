@@ -3,6 +3,8 @@ use std::io::Read;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
 use tauri::{command, AppHandle, Emitter, Manager};
+#[cfg(desktop)]
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri_plugin_decorum::WebviewWindowExt;
 use tiny_http::{Header, Method, Response, Server};
 
@@ -205,6 +207,62 @@ pub fn run() {
                 // macOS: Position traffic lights
                 #[cfg(target_os = "macos")]
                 main_window.set_traffic_lights_inset(16.0, 20.0).unwrap();
+            }
+
+            // Create native menu
+            #[cfg(desktop)]
+            {
+                let settings = MenuItem::with_id(app, "settings", "Settings...", true, Some("CmdOrCtrl+,"))?;
+                let check_updates = MenuItem::with_id(app, "check_updates", "Check for Updates...", true, None::<&str>)?;
+
+                let app_submenu = Submenu::with_items(
+                    app,
+                    "Hazel",
+                    true,
+                    &[
+                        &settings,
+                        &check_updates,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::quit(app, Some("Quit Hazel"))?,
+                    ],
+                )?;
+
+                let new_channel = MenuItem::with_id(app, "new_channel", "New Channel...", true, Some("CmdOrCtrl+Alt+N"))?;
+                let invite = MenuItem::with_id(app, "invite", "Invite People...", true, Some("CmdOrCtrl+Alt+I"))?;
+
+                let file_submenu = Submenu::with_items(
+                    app,
+                    "File",
+                    true,
+                    &[
+                        &new_channel,
+                        &PredefinedMenuItem::separator(app)?,
+                        &invite,
+                    ],
+                )?;
+
+                let menu = Menu::with_items(app, &[&app_submenu, &file_submenu])?;
+                app.set_menu(menu)?;
+
+                // Handle menu events
+                let app_handle = app.handle().clone();
+                app.on_menu_event(move |_app, event| {
+                    match event.id().as_ref() {
+                        "settings" => {
+                            let _ = app_handle.emit("menu-open-settings", ());
+                        }
+                        "check_updates" => {
+                            let _ = app_handle.emit("menu-check-updates", ());
+                        }
+                        "new_channel" => {
+                            let _ = app_handle.emit("menu-new-channel", ());
+                        }
+                        "invite" => {
+                            let _ = app_handle.emit("menu-invite", ());
+                        }
+                        _ => {}
+                    }
+                });
             }
 
             Ok(())
