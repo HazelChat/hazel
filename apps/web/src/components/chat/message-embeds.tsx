@@ -1,21 +1,29 @@
+import type { MessageId } from "@hazel/schema"
 import type { Message } from "@hazel/domain/models"
 import { Embed } from "~/components/embeds"
+import { MessageLiveState } from "./message-live-state"
 
 // Extract embed type from the Message model
 type MessageEmbedType = NonNullable<typeof Message.Model.Type.embeds>[number]
 
 interface MessageEmbedsProps {
 	embeds: typeof Message.Model.Type.embeds
+	messageId?: MessageId
 }
 
-export function MessageEmbeds({ embeds }: MessageEmbedsProps) {
+export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 	if (!embeds?.length) return null
+
+	// Check if any embed has live state enabled
+	const hasLiveState = embeds.some((embed) => embed.liveState?.enabled === true)
 
 	return (
 		<div className="mt-2 flex flex-col gap-2">
 			{embeds.map((embed, index) => (
 				<MessageEmbedCard key={index} embed={embed} />
 			))}
+			{/* Render live state UI if enabled and messageId is provided */}
+			{hasLiveState && messageId && <MessageLiveState messageId={messageId} enabled />}
 		</div>
 	)
 }

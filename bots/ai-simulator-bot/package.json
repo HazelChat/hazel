@@ -1,0 +1,21 @@
+{
+	"name": "ai-simulator-bot",
+	"version": "1.0.0",
+	"private": true,
+	"description": "AI simulator bot for testing live state UI",
+	"type": "module",
+	"scripts": {
+		"start": "bun run index.ts",
+		"dev": "bun run --watch index.ts"
+	},
+	"dependencies": {
+		"@effect/platform": "catalog:effect",
+		"@hazel/actors": "workspace:*",
+		"@hazel/bot-sdk": "workspace:*",
+		"@hazel/domain": "workspace:*",
+		"effect": "catalog:effect"
+	},
+	"devDependencies": {
+		"@types/bun": "1.3.8"
+	}
+}

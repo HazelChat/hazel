@@ -54,6 +54,23 @@ export const MessageEmbedBadge = Schema.Struct({
 })
 export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
 
+// Live state cached snapshot for non-realtime clients
+export const MessageEmbedLiveStateCached = Schema.Struct({
+	status: Schema.Literal("idle", "active", "completed", "failed"),
+	data: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	text: Schema.optional(Schema.String),
+	progress: Schema.optional(Schema.Number),
+	error: Schema.optional(Schema.String),
+})
+export type MessageEmbedLiveStateCached = Schema.Schema.Type<typeof MessageEmbedLiveStateCached>
+
+// Live state configuration for real-time updates
+export const MessageEmbedLiveState = Schema.Struct({
+	enabled: Schema.Literal(true),
+	cached: Schema.optional(MessageEmbedLiveStateCached),
+})
+export type MessageEmbedLiveState = Schema.Schema.Type<typeof MessageEmbedLiveState>
+
 // Full embed schema (Discord-style)
 export const MessageEmbed = Schema.Struct({
 	title: Schema.optional(Schema.String.pipe(Schema.maxLength(256))),
@@ -67,6 +84,7 @@ export const MessageEmbed = Schema.Struct({
 	fields: Schema.optional(Schema.Array(MessageEmbedField).pipe(Schema.maxItems(25))),
 	timestamp: Schema.optional(Schema.String), // ISO 8601 timestamp
 	badge: Schema.optional(MessageEmbedBadge), // Status badge (e.g., "Deployed", "Failed")
+	liveState: Schema.optional(MessageEmbedLiveState), // Live state for real-time updates
 })
 export type MessageEmbed = Schema.Schema.Type<typeof MessageEmbed>
 

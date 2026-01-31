@@ -10,7 +10,6 @@
 	},
 	"dependencies": {
 		"@hazel/actors": "workspace:*",
-		"hono": "^4.6.0",
 		"rivetkit": "^2.0.42"
 	},
 	"devDependencies": {

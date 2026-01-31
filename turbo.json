@@ -38,7 +38,8 @@
 		"OTEL_SERVICE_NAME",
 		"SIGNOZ_INGESTION_KEY",
 		"RAILWAY_GIT_COMMIT_SHA,",
-		"OPENROUTER_API_KEY"
+		"OPENROUTER_API_KEY",
+		"RIVET_URL"
 	],
 	"ui": "tui",
 	"tasks": {

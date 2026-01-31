@@ -134,6 +134,8 @@ export interface SendMessageOptions {
 	readonly threadChannelId?: ChannelId | null
 	/** Attachment IDs to include */
 	readonly attachmentIds?: readonly AttachmentId[]
+	/** Embeds to include (rich content, live state, etc.) */
+	readonly embeds?: import("@hazel/domain/models").MessageEmbed.MessageEmbeds | null
 }
 
 /**
@@ -305,7 +307,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * Send a message to a channel
 				 * @param channelId - The channel to send the message to
 				 * @param content - Message content
-				 * @param options - Optional settings (reply, thread, attachments)
+				 * @param options - Optional settings (reply, thread, attachments, embeds)
 				 */
 				send: (channelId: ChannelId, content: string, options?: SendMessageOptions) =>
 					messageLimiter(
@@ -319,7 +321,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									attachmentIds: options?.attachmentIds
 										? [...options.attachmentIds]
 										: undefined,
-									embeds: null,
+									embeds: options?.embeds ?? null,
 								},
 							})
 							.pipe(

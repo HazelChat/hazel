@@ -183,7 +183,7 @@ function Embeds() {
 				)}
 
 			{/* Webhook/rich embeds */}
-			<MessageEmbeds embeds={message.embeds} />
+			<MessageEmbeds embeds={message.embeds} messageId={message.id} />
 		</>
 	)
 }
