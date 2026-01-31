@@ -33,6 +33,7 @@ import { Route as AppOrgSlugSettingsIndexRouteImport } from './routes/_app/$orgS
 import { Route as AppOrgSlugNotificationsIndexRouteImport } from './routes/_app/$orgSlug/notifications/index'
 import { Route as AppOrgSlugMySettingsIndexRouteImport } from './routes/_app/$orgSlug/my-settings/index'
 import { Route as AppOrgSlugChatIndexRouteImport } from './routes/_app/$orgSlug/chat/index'
+import { Route as AppOrgSlugAgentIndexRouteImport } from './routes/_app/$orgSlug/agent/index'
 import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSlug/settings/team'
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
@@ -45,6 +46,7 @@ import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
 import { Route as AppOrgSlugMySettingsDesktopRouteImport } from './routes/_app/$orgSlug/my-settings/desktop'
 import { Route as AppOrgSlugChatIdRouteImport } from './routes/_app/$orgSlug/chat/$id'
+import { Route as AppOrgSlugAgentSandboxIdRouteImport } from './routes/_app/$orgSlug/agent/$sandboxId'
 import { Route as AppOrgSlugSettingsIntegrationsLayoutRouteImport } from './routes/_app/$orgSlug/settings/integrations/layout'
 import { Route as AppOrgSlugSettingsIntegrationsIndexRouteImport } from './routes/_app/$orgSlug/settings/integrations/index'
 import { Route as AppOrgSlugChatIdIndexRouteImport } from './routes/_app/$orgSlug/chat/$id/index'
@@ -185,6 +187,11 @@ const AppOrgSlugChatIndexRoute = AppOrgSlugChatIndexRouteImport.update({
   path: '/chat/',
   getParentRoute: () => AppOrgSlugLayoutRoute,
 } as any)
+const AppOrgSlugAgentIndexRoute = AppOrgSlugAgentIndexRouteImport.update({
+  id: '/agent/',
+  path: '/agent/',
+  getParentRoute: () => AppOrgSlugLayoutRoute,
+} as any)
 const AppOrgSlugSettingsTeamRoute = AppOrgSlugSettingsTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -253,6 +260,12 @@ const AppOrgSlugChatIdRoute = AppOrgSlugChatIdRouteImport.update({
   path: '/chat/$id',
   getParentRoute: () => AppOrgSlugLayoutRoute,
 } as any)
+const AppOrgSlugAgentSandboxIdRoute =
+  AppOrgSlugAgentSandboxIdRouteImport.update({
+    id: '/agent/$sandboxId',
+    path: '/agent/$sandboxId',
+    getParentRoute: () => AppOrgSlugLayoutRoute,
+  } as any)
 const AppOrgSlugSettingsIntegrationsLayoutRoute =
   AppOrgSlugSettingsIntegrationsLayoutRouteImport.update({
     id: '/integrations',
@@ -352,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/select-organization/': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds/': typeof DevEmbedsIndexRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
+  '/$orgSlug/agent/$sandboxId': typeof AppOrgSlugAgentSandboxIdRoute
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
@@ -364,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
+  '/$orgSlug/agent/': typeof AppOrgSlugAgentIndexRoute
   '/$orgSlug/chat/': typeof AppOrgSlugChatIndexRoute
   '/$orgSlug/my-settings/': typeof AppOrgSlugMySettingsIndexRoute
   '/$orgSlug/notifications/': typeof AppOrgSlugNotificationsIndexRoute
@@ -397,6 +412,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AppOnboardingIndexRoute
   '/select-organization': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds': typeof DevEmbedsIndexRoute
+  '/$orgSlug/agent/$sandboxId': typeof AppOrgSlugAgentSandboxIdRoute
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
@@ -408,6 +424,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
+  '/$orgSlug/agent': typeof AppOrgSlugAgentIndexRoute
   '/$orgSlug/chat': typeof AppOrgSlugChatIndexRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsIndexRoute
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsIndexRoute
@@ -447,6 +464,7 @@ export interface FileRoutesById {
   '/_app/select-organization/': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds/': typeof DevEmbedsIndexRoute
   '/_app/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
+  '/_app/$orgSlug/agent/$sandboxId': typeof AppOrgSlugAgentSandboxIdRoute
   '/_app/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/_app/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
@@ -459,6 +477,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
   '/_app/$orgSlug/settings/team': typeof AppOrgSlugSettingsTeamRoute
+  '/_app/$orgSlug/agent/': typeof AppOrgSlugAgentIndexRoute
   '/_app/$orgSlug/chat/': typeof AppOrgSlugChatIndexRoute
   '/_app/$orgSlug/my-settings/': typeof AppOrgSlugMySettingsIndexRoute
   '/_app/$orgSlug/notifications/': typeof AppOrgSlugNotificationsIndexRoute
@@ -499,6 +518,7 @@ export interface FileRouteTypes {
     | '/select-organization/'
     | '/dev/embeds/'
     | '/$orgSlug/settings/integrations'
+    | '/$orgSlug/agent/$sandboxId'
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
@@ -511,6 +531,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
+    | '/$orgSlug/agent/'
     | '/$orgSlug/chat/'
     | '/$orgSlug/my-settings/'
     | '/$orgSlug/notifications/'
@@ -544,6 +565,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/select-organization'
     | '/dev/embeds'
+    | '/$orgSlug/agent/$sandboxId'
     | '/$orgSlug/my-settings/desktop'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
@@ -555,6 +577,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
     | '/$orgSlug/settings/team'
+    | '/$orgSlug/agent'
     | '/$orgSlug/chat'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
@@ -593,6 +616,7 @@ export interface FileRouteTypes {
     | '/_app/select-organization/'
     | '/dev/embeds/'
     | '/_app/$orgSlug/settings/integrations'
+    | '/_app/$orgSlug/agent/$sandboxId'
     | '/_app/$orgSlug/chat/$id'
     | '/_app/$orgSlug/my-settings/desktop'
     | '/_app/$orgSlug/my-settings/notifications'
@@ -605,6 +629,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
     | '/_app/$orgSlug/settings/team'
+    | '/_app/$orgSlug/agent/'
     | '/_app/$orgSlug/chat/'
     | '/_app/$orgSlug/my-settings/'
     | '/_app/$orgSlug/notifications/'
@@ -807,6 +832,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugChatIndexRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
     }
+    '/_app/$orgSlug/agent/': {
+      id: '/_app/$orgSlug/agent/'
+      path: '/agent'
+      fullPath: '/$orgSlug/agent/'
+      preLoaderRoute: typeof AppOrgSlugAgentIndexRouteImport
+      parentRoute: typeof AppOrgSlugLayoutRoute
+    }
     '/_app/$orgSlug/settings/team': {
       id: '/_app/$orgSlug/settings/team'
       path: '/team'
@@ -889,6 +921,13 @@ declare module '@tanstack/react-router' {
       path: '/chat/$id'
       fullPath: '/$orgSlug/chat/$id'
       preLoaderRoute: typeof AppOrgSlugChatIdRouteImport
+      parentRoute: typeof AppOrgSlugLayoutRoute
+    }
+    '/_app/$orgSlug/agent/$sandboxId': {
+      id: '/_app/$orgSlug/agent/$sandboxId'
+      path: '/agent/$sandboxId'
+      fullPath: '/$orgSlug/agent/$sandboxId'
+      preLoaderRoute: typeof AppOrgSlugAgentSandboxIdRouteImport
       parentRoute: typeof AppOrgSlugLayoutRoute
     }
     '/_app/$orgSlug/settings/integrations': {
@@ -1120,8 +1159,10 @@ interface AppOrgSlugLayoutRouteChildren {
   AppOrgSlugNotificationsLayoutRoute: typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   AppOrgSlugSettingsLayoutRoute: typeof AppOrgSlugSettingsLayoutRouteWithChildren
   AppOrgSlugIndexRoute: typeof AppOrgSlugIndexRoute
+  AppOrgSlugAgentSandboxIdRoute: typeof AppOrgSlugAgentSandboxIdRoute
   AppOrgSlugChatIdRoute: typeof AppOrgSlugChatIdRouteWithChildren
   AppOrgSlugProfileUserIdRoute: typeof AppOrgSlugProfileUserIdRoute
+  AppOrgSlugAgentIndexRoute: typeof AppOrgSlugAgentIndexRoute
   AppOrgSlugChatIndexRoute: typeof AppOrgSlugChatIndexRoute
   AppOrgSlugChannelsChannelIdSettingsLayoutRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren
 }
@@ -1132,8 +1173,10 @@ const AppOrgSlugLayoutRouteChildren: AppOrgSlugLayoutRouteChildren = {
     AppOrgSlugNotificationsLayoutRouteWithChildren,
   AppOrgSlugSettingsLayoutRoute: AppOrgSlugSettingsLayoutRouteWithChildren,
   AppOrgSlugIndexRoute: AppOrgSlugIndexRoute,
+  AppOrgSlugAgentSandboxIdRoute: AppOrgSlugAgentSandboxIdRoute,
   AppOrgSlugChatIdRoute: AppOrgSlugChatIdRouteWithChildren,
   AppOrgSlugProfileUserIdRoute: AppOrgSlugProfileUserIdRoute,
+  AppOrgSlugAgentIndexRoute: AppOrgSlugAgentIndexRoute,
   AppOrgSlugChatIndexRoute: AppOrgSlugChatIndexRoute,
   AppOrgSlugChannelsChannelIdSettingsLayoutRoute:
     AppOrgSlugChannelsChannelIdSettingsLayoutRouteWithChildren,

@@ -43,9 +43,7 @@ function NotificationSettings() {
 		showQuietHoursInStatus,
 		setShowQuietHoursInStatus,
 	} = useNotificationSettings()
-	const [notificationStatus, setNotificationStatus] = useState<"idle" | "sent" | "unavailable">(
-		"idle",
-	)
+	const [notificationStatus, setNotificationStatus] = useState<"idle" | "sent" | "unavailable">("idle")
 
 	const handleTestNotification = async () => {
 		const success = await testNativeNotification()
@@ -168,11 +166,7 @@ function NotificationSettings() {
 
 						{/* Test buttons */}
 						<div className="flex items-center gap-3">
-							<Button
-								type="button"
-								onPress={testSound}
-								isDisabled={!settings.enabled}
-							>
+							<Button type="button" onPress={testSound} isDisabled={!settings.enabled}>
 								Test sound
 							</Button>
 							<Button type="button" intent="outline" onPress={handleTestNotification}>

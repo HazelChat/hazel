@@ -13,6 +13,7 @@ import { GitHub } from "@hazel/integrations"
 import { Config, Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
+import { AgentSessionPolicy } from "./policies/agent-session-policy"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { BotPolicy } from "./policies/bot-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
@@ -29,7 +30,9 @@ import { NotificationPolicy } from "./policies/notification-policy"
 import { OrganizationMemberPolicy } from "./policies/organization-member-policy"
 import { OrganizationPolicy } from "./policies/organization-policy"
 import { PinnedMessagePolicy } from "./policies/pinned-message-policy"
+import { SandboxPolicy } from "./policies/sandbox-policy"
 import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
+import { UserCredentialPolicy } from "./policies/user-credential-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy"
 import { AttachmentRepo } from "./repositories/attachment-repo"
@@ -52,6 +55,9 @@ import { OrganizationMemberRepo } from "./repositories/organization-member-repo"
 import { OrganizationRepo } from "./repositories/organization-repo"
 import { PinnedMessageRepo } from "./repositories/pinned-message-repo"
 import { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
+import { AgentSessionRepo } from "./repositories/agent-session-repo"
+import { SandboxRepo } from "./repositories/sandbox-repo"
+import { UserCredentialRepo } from "./repositories/user-credential-repo"
 import { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
 import { UserRepo } from "./repositories/user-repo"
 import { AllRpcs, RpcServerLive } from "./rpc/server"
@@ -63,6 +69,7 @@ import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
+import { CredentialVault } from "./services/credential-vault"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { WorkOS } from "./services/workos"
 import { WorkOSSync } from "@hazel/backend-core/services"
@@ -129,6 +136,10 @@ const RepoLive = Layer.mergeAll(
 	BotRepo.Default,
 	BotCommandRepo.Default,
 	BotInstallationRepo.Default,
+	// Sandbox-related repos
+	UserCredentialRepo.Default,
+	SandboxRepo.Default,
+	AgentSessionRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -151,6 +162,10 @@ const PolicyLive = Layer.mergeAll(
 	GitHubSubscriptionPolicy.Default,
 	RssSubscriptionPolicy.Default,
 	BotPolicy.Default,
+	// Sandbox-related policies
+	UserCredentialPolicy.Default,
+	SandboxPolicy.Default,
+	AgentSessionPolicy.Default,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)
@@ -174,6 +189,8 @@ const MainLive = Layer.mergeAll(
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
 	RateLimiter.Default,
+	// Credential vault for encrypting API keys
+	CredentialVault.Default,
 	// SessionManager.Default includes BackendAuth.Default via dependencies
 	SessionManager.Default,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))

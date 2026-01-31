@@ -1,6 +1,7 @@
 // Export all tables
 
 export * from "@hazel/schema"
+export * from "./agent-sessions"
 export * from "./attachments"
 export * from "./bot-commands"
 export * from "./bot-installations"
@@ -20,6 +21,8 @@ export * from "./pinned-messages"
 export * from "./rss-subscriptions"
 // Export all relations
 export * from "./relations"
+export * from "./sandboxes"
 export * from "./typing-indicators"
+export * from "./user-credentials"
 export * from "./user-presence-status"
 export * from "./users"

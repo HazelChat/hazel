@@ -16,6 +16,7 @@ import {
 	OrganizationMemberRpcs,
 	OrganizationRpcs,
 	PinnedMessageRpcs,
+	SandboxRpcs,
 	TypingIndicatorRpcs,
 	UserPresenceStatusRpcs,
 	UserRpcs,
@@ -30,6 +31,7 @@ import { ChannelRpcLive } from "./handlers/channels"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
 import { RssSubscriptionRpcLive } from "./handlers/rss-subscriptions"
+import { SandboxRpcLive } from "./handlers/sandboxes"
 import { InvitationRpcLive } from "./handlers/invitations"
 import { MessageReactionRpcLive } from "./handlers/message-reactions"
 import { MessageRpcLive } from "./handlers/messages"
@@ -74,6 +76,7 @@ export const AllRpcs = MessageRpcs.merge(
 	ChannelWebhookRpcs,
 	GitHubSubscriptionRpcs,
 	RssSubscriptionRpcs,
+	SandboxRpcs,
 	AttachmentRpcs,
 	BotRpcs,
 ).middleware(RpcLoggingMiddleware)
@@ -97,6 +100,7 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(ChannelWebhookRpcLive),
 		Layer.provideMerge(GitHubSubscriptionRpcLive),
 		Layer.provideMerge(RssSubscriptionRpcLive),
+		Layer.provideMerge(SandboxRpcLive),
 		Layer.provideMerge(AttachmentRpcLive),
 		Layer.provideMerge(BotRpcLive),
 	)

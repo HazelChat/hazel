@@ -17,6 +17,7 @@ export * from "./policy"
 export * from "./rate-limit-errors"
 // RPC contracts
 export * as Rpc from "./rpc"
+export * from "./sandbox-errors"
 export * from "./session"
 export * from "./session-errors"
 export * from "./transaction-id"

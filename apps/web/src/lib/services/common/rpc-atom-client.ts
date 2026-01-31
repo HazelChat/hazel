@@ -20,6 +20,7 @@ import {
 	OrganizationMemberRpcs,
 	OrganizationRpcs,
 	PinnedMessageRpcs,
+	SandboxRpcs,
 	TypingIndicatorRpcs,
 	UserPresenceStatusRpcs,
 	UserRpcs,
@@ -63,6 +64,7 @@ const AllRpcs = MessageRpcs.merge(
 	AttachmentRpcs,
 	UserPresenceStatusRpcs,
 	BotRpcs,
+	SandboxRpcs,
 )
 
 // Configure RPC type resolver for devtools (only in dev mode)

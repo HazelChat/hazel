@@ -1,6 +1,7 @@
 // Model utilities
 
 // Model definitions
+export * as AgentSession from "./agent-session-model"
 export * as Attachment from "./attachment-model"
 export * as Bot from "./bot-model"
 export * as BotCommand from "./bot-command-model"
@@ -23,7 +24,9 @@ export * as OrganizationMember from "./organization-member-model"
 export * as Organization from "./organization-model"
 export * as PinnedMessage from "./pinned-message-model"
 export * as RssSubscription from "./rss-subscription-model"
+export * as Sandbox from "./sandbox-model"
 export * as TypingIndicator from "./typing-indicator-model"
+export * as UserCredential from "./user-credential-model"
 export * as User from "./user-model"
 export * as UserPresenceStatus from "./user-presence-status-model"
 export * from "./utils"

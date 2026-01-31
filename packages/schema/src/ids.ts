@@ -177,3 +177,21 @@ export const IntegrationRequestId = Schema.UUID.pipe(
 	title: "Integration Request ID",
 })
 export type IntegrationRequestId = Schema.Schema.Type<typeof IntegrationRequestId>
+
+export const UserCredentialId = Schema.UUID.pipe(Schema.brand("@HazelChat/UserCredentialId")).annotations({
+	description: "The ID of a user credential",
+	title: "User Credential ID",
+})
+export type UserCredentialId = Schema.Schema.Type<typeof UserCredentialId>
+
+export const SandboxId = Schema.UUID.pipe(Schema.brand("@HazelChat/SandboxId")).annotations({
+	description: "The ID of a cloud sandbox",
+	title: "Sandbox ID",
+})
+export type SandboxId = Schema.Schema.Type<typeof SandboxId>
+
+export const AgentSessionId = Schema.UUID.pipe(Schema.brand("@HazelChat/AgentSessionId")).annotations({
+	description: "The ID of an agent session within a sandbox",
+	title: "Agent Session ID",
+})
+export type AgentSessionId = Schema.Schema.Type<typeof AgentSessionId>
