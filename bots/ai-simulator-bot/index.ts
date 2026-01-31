@@ -3,27 +3,6 @@ import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
 import { createActorsClient } from "@hazel/actors/client"
 import type { MessageId } from "@hazel/domain/ids"
 
-// Sample responses for simulation
-const SAMPLE_RESPONSES = [
-	"Let me help you with that! I'll need to look up some information first.",
-	"Based on my analysis, here's what I found about your question...",
-	"I've completed the task. Here's a summary of what I did.",
-	"Great question! Let me break this down step by step for you.",
-]
-
-const SAMPLE_THINKING = [
-	"Analyzing the request...",
-	"Determining best approach...",
-	"Processing the information...",
-	"Formulating a response...",
-]
-
-const SAMPLE_TOOLS = [
-	{ name: "web_search", input: { query: "latest news" }, output: { results: ["Result 1", "Result 2"] } },
-	{ name: "code_interpreter", input: { code: "print('hello')" }, output: { stdout: "hello" } },
-	{ name: "file_read", input: { path: "/data/config.json" }, output: { content: '{"version": "1.0"}' } },
-]
-
 // Create the actors client
 const actorsClient = createActorsClient()
 
@@ -33,52 +12,107 @@ const actorsClient = createActorsClient()
 async function simulateAiStream(
 	messageId: MessageId,
 	options?: {
-		includeToolCalls?: boolean
 		streamDelay?: number
 		thinkingDelay?: number
 	},
 ) {
-	const { includeToolCalls = true, streamDelay = 50, thinkingDelay = 1000 } = options ?? {}
+	const { streamDelay = 25, thinkingDelay = 800 } = options ?? {}
 
 	const actor = actorsClient.message.getOrCreate([messageId])
 
 	// Start the actor
-	await actor.start({ model: "simulator", simulatedAt: Date.now() })
+	await actor.start({ model: "claude-3.5-sonnet" })
 
-	// Step 1: Thinking
-	const thinkingId = await actor.startThinking()
-	await actor.updateStepContent(thinkingId, SAMPLE_THINKING[0])
+	// Step 1: Initial thinking
+	const thinking1 = await actor.startThinking()
+	await streamText(actor, thinking1, "Analyzing the user's request about implementing a React hook...")
 	await sleep(thinkingDelay)
-	await actor.updateStepContent(thinkingId, ` ${SAMPLE_THINKING[1]}`, true)
+	await actor.completeStep(thinking1)
+
+	// Step 2: Search for relevant code
+	const searchId = await actor.startToolCall("search_codebase", {
+		query: "useEffect cleanup pattern",
+		fileTypes: ["tsx", "ts"],
+	})
+	await sleep(thinkingDelay * 1.5)
+	await actor.completeStep(searchId, {
+		output: {
+			matches: 3,
+			files: ["src/hooks/use-subscription.ts", "src/hooks/use-websocket.ts"],
+		},
+	})
+
+	// Step 3: Read a file
+	const readId = await actor.startToolCall("read_file", {
+		path: "src/hooks/use-subscription.ts",
+		lines: "1-45",
+	})
+	await sleep(thinkingDelay)
+	await actor.completeStep(readId, {
+		output: "// Found existing cleanup pattern implementation",
+	})
+
+	// Step 4: More thinking
+	const thinking2 = await actor.startThinking()
+	await streamText(
+		actor,
+		thinking2,
+		"I found a similar pattern in the codebase. Let me adapt it for your use case...",
+	)
 	await sleep(thinkingDelay / 2)
-	await actor.completeStep(thinkingId)
+	await actor.completeStep(thinking2)
 
-	// Step 2: Optional tool calls
-	if (includeToolCalls) {
-		const tool = SAMPLE_TOOLS[Math.floor(Math.random() * SAMPLE_TOOLS.length)]
-		if (tool) {
-			const toolId = await actor.startToolCall(tool.name, tool.input)
-			await sleep(thinkingDelay)
-			await actor.completeStep(toolId, { output: tool.output })
-		}
-	}
+	// Step 5: Stream the final response
+	const response = `Here's how you can implement a React hook with proper cleanup:
 
-	// Step 3: Stream response
-	const responseId = await actor.startThinking()
-	const response =
-		SAMPLE_RESPONSES[Math.floor(Math.random() * SAMPLE_RESPONSES.length)] ?? SAMPLE_RESPONSES[0]
+\`\`\`typescript
+import { useEffect, useRef } from 'react'
 
-	if (response) {
-		for (const char of response) {
-			await actor.updateStepContent(responseId, char, true)
-			await actor.appendText(char)
-			await sleep(streamDelay)
-		}
+export function useSubscription<T>(
+  subscribe: (callback: (value: T) => void) => () => void
+) {
+  const callbackRef = useRef<((value: T) => void) | null>(null)
+
+  useEffect(() => {
+    // Subscribe and store the unsubscribe function
+    const unsubscribe = subscribe((value) => {
+      callbackRef.current?.(value)
+    })
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe()
+      callbackRef.current = null
+    }
+  }, [subscribe])
+
+  return callbackRef
+}
+\`\`\`
+
+This pattern ensures:
+1. **Proper cleanup** - The unsubscribe function is called on unmount
+2. **No memory leaks** - References are cleared
+3. **Stable callback** - Using a ref prevents unnecessary re-subscriptions`
+
+	for (const char of response) {
+		await actor.appendText(char)
+		await sleep(streamDelay)
 	}
 
 	await actor.stopStreaming()
-	await actor.completeStep(responseId)
 	await actor.complete()
+}
+
+async function streamText(
+	actor: ReturnType<typeof actorsClient.message.getOrCreate>,
+	stepId: string,
+	text: string,
+) {
+	for (const char of text) {
+		await actor.updateStepContent(stepId, char, true)
+		await sleep(15)
+	}
 }
 
 function sleep(ms: number) {
@@ -89,10 +123,9 @@ function sleep(ms: number) {
 const SimulateAiCommand = Command.make("simulate-ai", {
 	description: "Simulate an AI streaming response with live state updates",
 	args: {
-		includeTools: Schema.optional(Schema.String),
-		streamDelay: Schema.optional(Schema.String),
+		speed: Schema.optional(Schema.String),
 	},
-	usageExample: "/simulate-ai includeTools=true streamDelay=30",
+	usageExample: "/simulate-ai speed=fast",
 })
 
 const commands = CommandGroup.make(SimulateAiCommand)
@@ -106,15 +139,12 @@ runHazelBot({
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /simulate-ai command from ${ctx.userId}`)
 
-					const includeToolCalls = ctx.args.includeTools !== "false"
-					const streamDelay = ctx.args.streamDelay ? Number.parseInt(ctx.args.streamDelay, 10) : 50
+					const speed = ctx.args.speed === "fast" ? 10 : ctx.args.speed === "slow" ? 50 : 25
 
-					// Create a message with live state enabled
-					const message = yield* bot.message.send(ctx.channelId, "AI Response:", {
+					// Create a message with live state enabled (minimal embed, just the flag)
+					const message = yield* bot.message.send(ctx.channelId, "", {
 						embeds: [
 							{
-								title: "AI Simulation",
-								description: "Simulating AI response with live state...",
 								liveState: { enabled: true },
 							},
 						],
@@ -125,9 +155,8 @@ runHazelBot({
 					// Run the simulation
 					yield* Effect.promise(() =>
 						simulateAiStream(message.id as MessageId, {
-							includeToolCalls,
-							streamDelay,
-							thinkingDelay: 1000,
+							streamDelay: speed,
+							thinkingDelay: 800,
 						}),
 					)
 

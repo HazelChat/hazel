@@ -2,6 +2,7 @@ import type { MessageId } from "@hazel/schema"
 import { useMessageActor } from "~/hooks/use-message-actor"
 import { cn } from "~/lib/utils"
 import { AgentStepsView } from "./agent-steps-view"
+import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 
 interface MessageLiveStateProps {
 	messageId: MessageId
@@ -28,17 +29,25 @@ export function MessageLiveState({ messageId, enabled }: MessageLiveStateProps) 
 				</div>
 			)}
 
-			{/* Streaming text indicator */}
-			{state.isStreaming && (
-				<div className="flex items-center gap-2 text-muted-fg text-sm">
-					<StreamingIndicator />
-					<span>Generating...</span>
-				</div>
-			)}
-
 			{/* AI Agent Steps */}
 			{state.steps.length > 0 && (
 				<AgentStepsView steps={state.steps} currentIndex={state.currentStepIndex} />
+			)}
+
+			{/* Streaming text content */}
+			{state.text && (
+				<div className="prose prose-sm dark:prose-invert max-w-none">
+					{state.isStreaming ? (
+						// Simple pre-formatted text while streaming (avoids expensive re-renders)
+						<pre className="whitespace-pre-wrap font-sans text-sm text-fg">
+							{state.text}
+							<span className="ml-0.5 inline-block size-2 animate-pulse rounded-full bg-primary" />
+						</pre>
+					) : (
+						// Rich markdown rendering after streaming completes
+						<SlateMessageViewer content={state.text} />
+					)}
+				</div>
 			)}
 
 			{/* Error state */}
@@ -71,25 +80,6 @@ function ProgressBar({ value }: { value: number }) {
 				style={{ width: `${value}%` }}
 			/>
 		</div>
-	)
-}
-
-function StreamingIndicator() {
-	return (
-		<span className="flex gap-0.5">
-			<span
-				className="size-1 animate-bounce rounded-full bg-primary"
-				style={{ animationDelay: "0ms" }}
-			/>
-			<span
-				className="size-1 animate-bounce rounded-full bg-primary"
-				style={{ animationDelay: "150ms" }}
-			/>
-			<span
-				className="size-1 animate-bounce rounded-full bg-primary"
-				style={{ animationDelay: "300ms" }}
-			/>
-		</span>
 	)
 }
 

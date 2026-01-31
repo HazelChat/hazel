@@ -17,14 +17,30 @@ export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 	// Check if any embed has live state enabled
 	const hasLiveState = embeds.some((embed) => embed.liveState?.enabled === true)
 
+	// Filter out embeds that only have liveState (no visible content)
+	const visibleEmbeds = embeds.filter((embed) => hasVisibleContent(embed))
+
 	return (
 		<div className="mt-2 flex flex-col gap-2">
-			{embeds.map((embed, index) => (
+			{visibleEmbeds.map((embed, index) => (
 				<MessageEmbedCard key={index} embed={embed} />
 			))}
 			{/* Render live state UI if enabled and messageId is provided */}
 			{hasLiveState && messageId && <MessageLiveState messageId={messageId} enabled />}
 		</div>
+	)
+}
+
+/** Check if an embed has any visible content (not just liveState) */
+function hasVisibleContent(embed: MessageEmbedType): boolean {
+	return !!(
+		embed.title ||
+		embed.description ||
+		embed.author ||
+		embed.footer ||
+		embed.image ||
+		embed.thumbnail ||
+		(embed.fields && embed.fields.length > 0)
 	)
 }
 
