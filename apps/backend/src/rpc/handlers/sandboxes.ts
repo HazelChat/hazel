@@ -85,7 +85,11 @@ export const SandboxRpcLive = SandboxRpcs.toLayer(
 						withRemapDbErrors("UserCredential", "create"),
 						// Map CredentialEncryptionError to InternalServerError
 						Effect.catchTag("CredentialEncryptionError", (err) =>
-							Effect.fail(new InternalServerError({ message: `Failed to encrypt credential: ${err.operation}` })),
+							Effect.fail(
+								new InternalServerError({
+									message: `Failed to encrypt credential: ${err.operation}`,
+								}),
+							),
 						),
 					),
 
@@ -328,7 +332,10 @@ export const SandboxRpcLive = SandboxRpcs.toLayer(
 								metadata: null,
 								endedAt: null,
 								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!), withSystemActor)
+							}).pipe(
+								Effect.map((res) => res[0]!),
+								withSystemActor,
+							)
 
 							const txid = yield* generateTransactionId()
 

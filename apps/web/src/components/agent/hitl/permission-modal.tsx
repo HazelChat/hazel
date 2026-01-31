@@ -3,14 +3,13 @@ import { useState } from "react"
 import type { AgentSessionId } from "@hazel/schema"
 import { Button } from "~/components/ui/button"
 import {
-	Dialog,
-	DialogBody,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
-import { ModalOverlay, Modal } from "react-aria-components"
+	ModalContent,
+	ModalBody,
+	ModalDescription,
+	ModalFooter,
+	ModalHeader,
+	ModalTitle,
+} from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -72,63 +71,51 @@ export function PermissionModal({ sessionId, request, isOpen, onClose }: Permiss
 	}
 
 	return (
-		<ModalOverlay isOpen={isOpen} onOpenChange={() => {}} isDismissable={false}>
-			<Modal>
-				<Dialog>
-					<DialogHeader>
-						<div className="flex items-center gap-3">
-							<div className="flex size-10 items-center justify-center rounded-full bg-warning/20">
-								<IconWarning className="size-5 fill-warning" />
-							</div>
-							<div>
-								<DialogTitle>Permission Request</DialogTitle>
-								<DialogDescription>
-									The agent is requesting permission to perform an action.
-								</DialogDescription>
-							</div>
-						</div>
-					</DialogHeader>
+		<ModalContent isOpen={isOpen} onOpenChange={() => {}} isDismissable={false}>
+			<ModalHeader>
+				<div className="flex items-center gap-3">
+					<div className="flex size-10 items-center justify-center rounded-full bg-warning/20">
+						<IconWarning className="size-5 fill-warning" />
+					</div>
+					<div>
+						<ModalTitle>Permission Request</ModalTitle>
+						<ModalDescription>
+							The agent is requesting permission to perform an action.
+						</ModalDescription>
+					</div>
+				</div>
+			</ModalHeader>
 
-					<DialogBody className="space-y-4">
-						<div className="rounded-lg border border-border bg-secondary/50 p-4">
-							<p className="text-sm">{request.description}</p>
-							{request.command && (
-								<pre className="mt-3 overflow-x-auto rounded bg-secondary p-2 font-mono text-xs">
-									{request.command}
-								</pre>
-							)}
-						</div>
+			<ModalBody className="space-y-4">
+				<div className="rounded-lg border border-border bg-secondary/50 p-4">
+					<p className="text-sm">{request.description}</p>
+					{request.command && (
+						<pre className="mt-3 overflow-x-auto rounded bg-secondary p-2 font-mono text-xs">
+							{request.command}
+						</pre>
+					)}
+				</div>
 
-						<TextField>
-							<Label>Explanation (optional, for denial)</Label>
-							<Input
-								placeholder="Explain why you're denying this request..."
-								value={explanation}
-								onChange={(e) => setExplanation(e.target.value)}
-							/>
-						</TextField>
-					</DialogBody>
+				<TextField>
+					<Label>Explanation (optional, for denial)</Label>
+					<Input
+						placeholder="Explain why you're denying this request..."
+						value={explanation}
+						onChange={(e) => setExplanation(e.target.value)}
+					/>
+				</TextField>
+			</ModalBody>
 
-					<DialogFooter>
-						<Button
-							intent="danger"
-							onPress={() => handleRespond(false)}
-							isDisabled={isSubmitting}
-						>
-							<IconClose className="size-4" />
-							Deny
-						</Button>
-						<Button
-							intent="primary"
-							onPress={() => handleRespond(true)}
-							isDisabled={isSubmitting}
-						>
-							<IconCheck className="size-4" />
-							Approve
-						</Button>
-					</DialogFooter>
-				</Dialog>
-			</Modal>
-		</ModalOverlay>
+			<ModalFooter>
+				<Button intent="danger" onPress={() => handleRespond(false)} isDisabled={isSubmitting}>
+					<IconClose className="size-4" />
+					Deny
+				</Button>
+				<Button intent="primary" onPress={() => handleRespond(true)} isDisabled={isSubmitting}>
+					<IconCheck className="size-4" />
+					Approve
+				</Button>
+			</ModalFooter>
+		</ModalContent>
 	)
 }

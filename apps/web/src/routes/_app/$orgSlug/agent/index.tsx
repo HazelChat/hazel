@@ -46,9 +46,7 @@ function AgentPage() {
 					</div>
 					<div>
 						<h1 className="text-lg font-semibold">AI Agent</h1>
-						<p className="text-sm text-muted-fg">
-							Run AI coding agents in cloud sandboxes
-						</p>
+						<p className="text-sm text-muted-fg">Run AI coding agents in cloud sandboxes</p>
 					</div>
 				</div>
 
@@ -67,8 +65,8 @@ function AgentPage() {
 						</div>
 						<h2 className="mt-6 text-lg font-semibold">Setup API Keys</h2>
 						<p className="mt-2 max-w-md text-muted-fg">
-							To use AI agents, you need to configure your API keys for providers like
-							Anthropic (Claude) or OpenAI (Codex), plus a sandbox provider like E2B.
+							To use AI agents, you need to configure your API keys for providers like Anthropic
+							(Claude) or OpenAI (Codex), plus a sandbox provider like E2B.
 						</p>
 						<Button
 							intent="primary"
@@ -89,10 +87,7 @@ function AgentPage() {
 			</div>
 
 			{/* Credential Setup Dialog */}
-			<CredentialSetupDialog
-				isOpen={showCredentialDialog}
-				onOpenChange={setShowCredentialDialog}
-			/>
+			<CredentialSetupDialog isOpen={showCredentialDialog} onOpenChange={setShowCredentialDialog} />
 		</div>
 	)
 }

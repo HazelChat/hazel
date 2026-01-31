@@ -9,16 +9,8 @@ import { IconCloud } from "~/components/icons/icon-cloud"
 import { IconLoader } from "~/components/icons/icon-loader"
 import { IconPlus } from "~/components/icons/icon-plus"
 import { IconTerminal } from "~/components/icons/icon-terminal"
-import {
-	AGENT_TYPE_INFO,
-	createSessionMutation,
-	type AgentSessionData,
-} from "~/atoms/agent-session-atoms"
-import {
-	SANDBOX_PROVIDER_INFO,
-	SANDBOX_STATUS_INFO,
-	type SandboxData,
-} from "~/atoms/sandbox-atoms"
+import { AGENT_TYPE_INFO, createSessionMutation, type AgentSessionData } from "~/atoms/agent-session-atoms"
+import { SANDBOX_PROVIDER_INFO, SANDBOX_STATUS_INFO, type SandboxData } from "~/atoms/sandbox-atoms"
 import { useOrganization } from "~/hooks/use-organization"
 import { exitToastAsync } from "~/lib/toast-exit"
 
@@ -77,9 +69,7 @@ function SandboxPage() {
 				}))
 				.run()
 
-			if (result.isSuccess) {
-				// Session created - would navigate or select it
-			}
+			// Session created - would navigate or select it
 		} finally {
 			setIsCreatingSession(false)
 		}

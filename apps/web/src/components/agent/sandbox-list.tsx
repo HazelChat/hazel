@@ -70,12 +70,8 @@ export function SandboxList({ sandboxes, onSelectSandbox, onRefresh }: SandboxLi
 		onRefresh()
 	}
 
-	const activeSandboxes = sandboxes.filter(
-		(s) => s.status === "running" || s.status === "provisioning",
-	)
-	const inactiveSandboxes = sandboxes.filter(
-		(s) => s.status !== "running" && s.status !== "provisioning",
-	)
+	const activeSandboxes = sandboxes.filter((s) => s.status === "running" || s.status === "provisioning")
+	const inactiveSandboxes = sandboxes.filter((s) => s.status !== "running" && s.status !== "provisioning")
 
 	return (
 		<div className="space-y-6">
@@ -113,8 +109,10 @@ export function SandboxList({ sandboxes, onSelectSandbox, onRefresh }: SandboxLi
 					<h3 className="text-sm font-medium text-muted-fg">Active Sandboxes</h3>
 					<div className="space-y-2">
 						{activeSandboxes.map((sandbox) => {
-							const statusInfo = SANDBOX_STATUS_INFO[sandbox.status as keyof typeof SANDBOX_STATUS_INFO]
-							const providerInfo = SANDBOX_PROVIDER_INFO[sandbox.provider as keyof typeof SANDBOX_PROVIDER_INFO]
+							const statusInfo =
+								SANDBOX_STATUS_INFO[sandbox.status as keyof typeof SANDBOX_STATUS_INFO]
+							const providerInfo =
+								SANDBOX_PROVIDER_INFO[sandbox.provider as keyof typeof SANDBOX_PROVIDER_INFO]
 
 							return (
 								<div
@@ -174,8 +172,10 @@ export function SandboxList({ sandboxes, onSelectSandbox, onRefresh }: SandboxLi
 					<h3 className="text-sm font-medium text-muted-fg">Recent</h3>
 					<div className="space-y-2">
 						{inactiveSandboxes.slice(0, 5).map((sandbox) => {
-							const statusInfo = SANDBOX_STATUS_INFO[sandbox.status as keyof typeof SANDBOX_STATUS_INFO]
-							const providerInfo = SANDBOX_PROVIDER_INFO[sandbox.provider as keyof typeof SANDBOX_PROVIDER_INFO]
+							const statusInfo =
+								SANDBOX_STATUS_INFO[sandbox.status as keyof typeof SANDBOX_STATUS_INFO]
+							const providerInfo =
+								SANDBOX_PROVIDER_INFO[sandbox.provider as keyof typeof SANDBOX_PROVIDER_INFO]
 
 							return (
 								<div

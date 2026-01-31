@@ -3,14 +3,13 @@ import { useState } from "react"
 import type { AgentSessionId } from "@hazel/schema"
 import { Button } from "~/components/ui/button"
 import {
-	Dialog,
-	DialogBody,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
-import { ModalOverlay, Modal } from "react-aria-components"
+	ModalContent,
+	ModalBody,
+	ModalDescription,
+	ModalFooter,
+	ModalHeader,
+	ModalTitle,
+} from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -109,69 +108,65 @@ export function QuestionModal({ sessionId, request, isOpen, onClose }: QuestionM
 	}
 
 	return (
-		<ModalOverlay isOpen={isOpen} onOpenChange={() => {}} isDismissable={false}>
-			<Modal>
-				<Dialog>
-					<DialogHeader>
-						<div className="flex items-center gap-3">
-							<div className="flex size-10 items-center justify-center rounded-full bg-info/20">
-								<IconChatBubble className="size-5 fill-info" />
-							</div>
-							<div>
-								<DialogTitle>Question from Agent</DialogTitle>
-								<DialogDescription>The agent needs your input to continue.</DialogDescription>
-							</div>
+		<ModalContent isOpen={isOpen} onOpenChange={() => {}} isDismissable={false}>
+			<ModalHeader>
+				<div className="flex items-center gap-3">
+					<div className="flex size-10 items-center justify-center rounded-full bg-info/20">
+						<IconChatBubble className="size-5 fill-info" />
+					</div>
+					<div>
+						<ModalTitle>Question from Agent</ModalTitle>
+						<ModalDescription>The agent needs your input to continue.</ModalDescription>
+					</div>
+				</div>
+			</ModalHeader>
+
+			<ModalBody className="space-y-4">
+				<div className="rounded-lg border border-border bg-secondary/50 p-4">
+					<p className="text-sm">{request.description}</p>
+				</div>
+
+				{request.options && request.options.length > 0 ? (
+					<div className="space-y-2">
+						<p className="text-sm font-medium text-muted-fg">Choose an option:</p>
+						<div className="space-y-2">
+							{request.options.map((option, index) => (
+								<button
+									key={index}
+									type="button"
+									disabled={isSubmitting}
+									onClick={() => handleOptionSelect(option)}
+									className="w-full rounded-lg border border-border p-3 text-left text-sm transition-colors hover:border-primary/50 hover:bg-secondary disabled:opacity-50"
+								>
+									{option}
+								</button>
+							))}
 						</div>
-					</DialogHeader>
+					</div>
+				) : (
+					<TextField>
+						<Label>Your answer</Label>
+						<Input
+							placeholder="Type your answer..."
+							value={answer}
+							onChange={(e) => setAnswer(e.target.value)}
+						/>
+					</TextField>
+				)}
+			</ModalBody>
 
-					<DialogBody className="space-y-4">
-						<div className="rounded-lg border border-border bg-secondary/50 p-4">
-							<p className="text-sm">{request.description}</p>
-						</div>
-
-						{request.options && request.options.length > 0 ? (
-							<div className="space-y-2">
-								<p className="text-sm font-medium text-muted-fg">Choose an option:</p>
-								<div className="space-y-2">
-									{request.options.map((option, index) => (
-										<button
-											key={index}
-											type="button"
-											disabled={isSubmitting}
-											onClick={() => handleOptionSelect(option)}
-											className="w-full rounded-lg border border-border p-3 text-left text-sm transition-colors hover:border-primary/50 hover:bg-secondary disabled:opacity-50"
-										>
-											{option}
-										</button>
-									))}
-								</div>
-							</div>
-						) : (
-							<TextField>
-								<Label>Your answer</Label>
-								<Input
-									placeholder="Type your answer..."
-									value={answer}
-									onChange={(e) => setAnswer(e.target.value)}
-								/>
-							</TextField>
-						)}
-					</DialogBody>
-
-					{(!request.options || request.options.length === 0) && (
-						<DialogFooter>
-							<Button
-								intent="primary"
-								onPress={handleSubmit}
-								isDisabled={!answer.trim() || isSubmitting}
-							>
-								<IconSend className="size-4" />
-								Submit Answer
-							</Button>
-						</DialogFooter>
-					)}
-				</Dialog>
-			</Modal>
-		</ModalOverlay>
+			{(!request.options || request.options.length === 0) && (
+				<ModalFooter>
+					<Button
+						intent="primary"
+						onPress={handleSubmit}
+						isDisabled={!answer.trim() || isSubmitting}
+					>
+						<IconSend className="size-4" />
+						Submit Answer
+					</Button>
+				</ModalFooter>
+			)}
+		</ModalContent>
 	)
 }

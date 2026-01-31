@@ -2,6 +2,7 @@ import IconBell from "~/components/icons/icon-bell"
 import IconDashboard from "~/components/icons/icon-dashboard"
 import IconGear from "~/components/icons/icon-gear"
 import IconMsgs from "~/components/icons/icon-msgs"
+import { IconTerminal } from "~/components/icons/icon-terminal"
 import { Logo } from "~/components/logo"
 import { Link } from "~/components/ui/link"
 import {
@@ -113,6 +114,24 @@ export function NavSidebar() {
 										</span>
 									)}
 								</div>
+							</SidebarLink>
+						</SidebarItem>
+						<SidebarItem
+							aria-label="Agent"
+							className="size-9 justify-items-center"
+							tooltip={{
+								children: "Agent",
+								hidden: isMobile,
+							}}
+						>
+							<SidebarLink
+								to="/$orgSlug/agent"
+								params={{ orgSlug: slug }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+								}}
+							>
+								<IconTerminal className="size-5" />
 							</SidebarLink>
 						</SidebarItem>
 						<SidebarItem

@@ -3,16 +3,14 @@ import { useState } from "react"
 import type { UserCredentialId } from "@hazel/schema"
 import { Button } from "~/components/ui/button"
 import {
-	Dialog,
-	DialogBody,
-	DialogClose,
-	DialogCloseIcon,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog"
-import { ModalOverlay, Modal } from "react-aria-components"
+	ModalContent,
+	ModalBody,
+	ModalClose,
+	ModalDescription,
+	ModalFooter,
+	ModalHeader,
+	ModalTitle,
+} from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -86,144 +84,130 @@ export function CredentialSetupDialog({ isOpen, onOpenChange }: CredentialSetupD
 	const configuredProviders = new Set(credentials.map((c) => c.provider))
 
 	return (
-		<ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable>
-			<Modal>
-				<Dialog>
-					<DialogCloseIcon isDismissable />
-					<DialogHeader>
-						<DialogTitle>API Credentials</DialogTitle>
-						<DialogDescription>
-							Configure your API keys for AI agents and sandbox providers. Keys are encrypted
-							and stored securely.
-						</DialogDescription>
-					</DialogHeader>
+		<ModalContent isOpen={isOpen} onOpenChange={onOpenChange} isDismissable>
+			<ModalHeader>
+				<ModalTitle>API Credentials</ModalTitle>
+				<ModalDescription>
+					Configure your API keys for AI agents and sandbox providers. Keys are encrypted and stored
+					securely.
+				</ModalDescription>
+			</ModalHeader>
 
-					<DialogBody className="space-y-6">
-						{/* Configured credentials */}
-						{credentials.length > 0 && (
-							<div className="space-y-3">
-								<h3 className="text-sm font-medium text-muted-fg">Configured</h3>
-								<div className="space-y-2">
-									{credentials.map((credential) => {
-										const providerInfo = CREDENTIAL_PROVIDERS.find(
-											(p) => p.id === credential.provider,
-										)
-										return (
-											<div
-												key={credential.id}
-												className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3"
-											>
-												<div className="flex items-center gap-3">
-													<div className="flex size-8 items-center justify-center rounded-md bg-success/20">
-														<IconCheck className="size-4 fill-success" />
-													</div>
-													<div>
-														<p className="text-sm font-medium">
-															{providerInfo?.name}
-														</p>
-														<p className="text-xs text-muted-fg">
-															{credential.keyHint || "Configured"}
-														</p>
-													</div>
-												</div>
-												<Button
-													intent="plain"
-													size="sq-sm"
-													onPress={() => handleDeleteCredential(credential.id)}
-												>
-													<IconTrash className="size-4 fill-danger" />
-												</Button>
+			<ModalBody className="space-y-6">
+				{/* Configured credentials */}
+				{credentials.length > 0 && (
+					<div className="space-y-3">
+						<h3 className="text-sm font-medium text-muted-fg">Configured</h3>
+						<div className="space-y-2">
+							{credentials.map((credential) => {
+								const providerInfo = CREDENTIAL_PROVIDERS.find(
+									(p) => p.id === credential.provider,
+								)
+								return (
+									<div
+										key={credential.id}
+										className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3"
+									>
+										<div className="flex items-center gap-3">
+											<div className="flex size-8 items-center justify-center rounded-md bg-success/20">
+												<IconCheck className="size-4 fill-success" />
 											</div>
-										)
-									})}
-								</div>
-							</div>
-						)}
-
-						{/* Add new credential */}
-						<div className="space-y-3">
-							<h3 className="text-sm font-medium text-muted-fg">Add Credential</h3>
-
-							{/* Provider selection */}
-							<div className="grid grid-cols-2 gap-2">
-								{CREDENTIAL_PROVIDERS.map((provider) => {
-									const isConfigured = configuredProviders.has(provider.id)
-									const isSelected = selectedProvider === provider.id
-
-									return (
-										<button
-											key={provider.id}
-											type="button"
-											disabled={isConfigured}
-											onClick={() => setSelectedProvider(provider.id)}
-											className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${
-												isConfigured
-													? "cursor-not-allowed border-border bg-secondary/30 opacity-50"
-													: isSelected
-														? "border-primary bg-primary/10"
-														: "border-border hover:border-primary/50 hover:bg-secondary"
-											}`}
-										>
-											<div className="flex w-full items-center justify-between">
-												<span className="text-sm font-medium">{provider.name}</span>
-												{isConfigured && (
-													<IconCheck className="size-4 fill-success" />
-												)}
+											<div>
+												<p className="text-sm font-medium">{providerInfo?.name}</p>
+												<p className="text-xs text-muted-fg">
+													{credential.keyHint || "Configured"}
+												</p>
 											</div>
-											<span className="text-xs text-muted-fg">
-												{provider.description}
-											</span>
-										</button>
-									)
-								})}
-							</div>
-
-							{/* API key input */}
-							{selectedProvider && (
-								<div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
-									<TextField>
-										<Label>
-											{CREDENTIAL_PROVIDERS.find((p) => p.id === selectedProvider)?.name} API Key
-										</Label>
-										<Input
-											type="password"
-											placeholder="sk-..."
-											value={apiKey}
-											onChange={(e) => setApiKey(e.target.value)}
-										/>
-									</TextField>
-									<div className="flex justify-end gap-2">
+										</div>
 										<Button
 											intent="plain"
-											size="sm"
-											onPress={() => setSelectedProvider(null)}
+											size="sq-sm"
+											onPress={() => handleDeleteCredential(credential.id)}
 										>
-											Cancel
-										</Button>
-										<Button
-											intent="primary"
-											size="sm"
-											isDisabled={!apiKey.trim() || isSubmitting}
-											onPress={handleStoreCredential}
-										>
-											{isSubmitting ? (
-												<IconLoader className="size-4 animate-spin" />
-											) : (
-												<IconPlus className="size-4" />
-											)}
-											Store Key
+											<IconTrash className="size-4 fill-danger" />
 										</Button>
 									</div>
-								</div>
-							)}
+								)
+							})}
 						</div>
-					</DialogBody>
+					</div>
+				)}
 
-					<DialogFooter>
-						<DialogClose>Done</DialogClose>
-					</DialogFooter>
-				</Dialog>
-			</Modal>
-		</ModalOverlay>
+				{/* Add new credential */}
+				<div className="space-y-3">
+					<h3 className="text-sm font-medium text-muted-fg">Add Credential</h3>
+
+					{/* Provider selection */}
+					<div className="grid grid-cols-2 gap-2">
+						{CREDENTIAL_PROVIDERS.map((provider) => {
+							const isConfigured = configuredProviders.has(provider.id)
+							const isSelected = selectedProvider === provider.id
+
+							return (
+								<button
+									key={provider.id}
+									type="button"
+									disabled={isConfigured}
+									onClick={() => setSelectedProvider(provider.id)}
+									className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${
+										isConfigured
+											? "cursor-not-allowed border-border bg-secondary/30 opacity-50"
+											: isSelected
+												? "border-primary bg-primary/10"
+												: "border-border hover:border-primary/50 hover:bg-secondary"
+									}`}
+								>
+									<div className="flex w-full items-center justify-between">
+										<span className="text-sm font-medium">{provider.name}</span>
+										{isConfigured && <IconCheck className="size-4 fill-success" />}
+									</div>
+									<span className="text-xs text-muted-fg">{provider.description}</span>
+								</button>
+							)
+						})}
+					</div>
+
+					{/* API key input */}
+					{selectedProvider && (
+						<div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
+							<TextField>
+								<Label>
+									{CREDENTIAL_PROVIDERS.find((p) => p.id === selectedProvider)?.name} API
+									Key
+								</Label>
+								<Input
+									type="password"
+									placeholder="sk-..."
+									value={apiKey}
+									onChange={(e) => setApiKey(e.target.value)}
+								/>
+							</TextField>
+							<div className="flex justify-end gap-2">
+								<Button intent="plain" size="sm" onPress={() => setSelectedProvider(null)}>
+									Cancel
+								</Button>
+								<Button
+									intent="primary"
+									size="sm"
+									isDisabled={!apiKey.trim() || isSubmitting}
+									onPress={handleStoreCredential}
+								>
+									{isSubmitting ? (
+										<IconLoader className="size-4 animate-spin" />
+									) : (
+										<IconPlus className="size-4" />
+									)}
+									Store Key
+								</Button>
+							</div>
+						</div>
+					)}
+				</div>
+			</ModalBody>
+
+			<ModalFooter>
+				<ModalClose>Done</ModalClose>
+			</ModalFooter>
+		</ModalContent>
 	)
 }

@@ -24,10 +24,7 @@ export function IconSend({ fill = "currentColor", secondaryfill, title = "send",
 					fill={secondaryfill}
 					opacity="0.4"
 				/>
-				<path
-					d="M16.707 1.293L7.5 10.5L16.707 1.293Z"
-					fill={fill}
-				/>
+				<path d="M16.707 1.293L7.5 10.5L16.707 1.293Z" fill={fill} />
 				<path
 					d="M7.5 10.5L16.707 1.293"
 					stroke={fill}
