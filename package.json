@@ -37,6 +37,7 @@
 	"scripts": {
 		"dev:withBots": "turbo dev",
 		"dev": "turbo run dev --filter=* --filter=!*bot*",
+		"dev:bots": "turbo run dev --filter=*bot*",
 		"build": "turbo build typecheck",
 		"start": "turbo start",
 		"setup": "bun run packages/setup/src/index.ts",
