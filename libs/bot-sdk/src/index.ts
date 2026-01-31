@@ -59,3 +59,5 @@ export * from "./layers.ts"
 export * from "./rpc/index.ts"
 export * from "./services/index.ts"
 export * from "./types/index.ts"
+// Streaming for real-time message updates and AI streaming
+export * from "./streaming/index.ts"

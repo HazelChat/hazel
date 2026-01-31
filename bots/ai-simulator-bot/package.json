@@ -10,9 +10,7 @@
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
-		"@hazel/actors": "workspace:*",
 		"@hazel/bot-sdk": "workspace:*",
-		"@hazel/domain": "workspace:*",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

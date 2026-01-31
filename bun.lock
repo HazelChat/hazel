@@ -322,6 +322,7 @@
         "@effect/platform-bun": "catalog:effect",
         "@effect/rpc": "catalog:effect",
         "@electric-sql/client": "1.5.1",
+        "@hazel/actors": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/effect-bun": "workspace:*",
         "effect": "catalog:effect",

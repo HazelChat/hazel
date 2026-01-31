@@ -1,69 +1,96 @@
 import { Effect, Schema } from "effect"
-import { Command, CommandGroup, runHazelBot } from "@hazel/bot-sdk"
-import { createActorsClient } from "@hazel/actors/client"
-import type { MessageId } from "@hazel/domain/ids"
-
-// Create the actors client
-const actorsClient = createActorsClient()
+import { Command, CommandGroup, runHazelBot, type StreamSession } from "@hazel/bot-sdk"
 
 /**
- * Simulate an AI stream with steps and streaming text.
+ * Helper to create a sleep effect
  */
-async function simulateAiStream(
-	messageId: MessageId,
+const sleep = (ms: number) => Effect.promise(() => new Promise((resolve) => setTimeout(resolve, ms)))
+
+/**
+ * Stream text character by character to a step
+ */
+const streamTextToStep = (
+	stream: StreamSession,
+	stepId: string,
+	text: string,
+	delayMs = 15,
+): Effect.Effect<void, unknown> =>
+	Effect.forEach(
+		text.split(""),
+		(char) => stream.updateStepContent(stepId, char, true).pipe(Effect.andThen(sleep(delayMs))),
+		{ discard: true },
+	)
+
+/**
+ * Stream text character by character to the main content
+ */
+const streamTextContent = (
+	stream: StreamSession,
+	text: string,
+	delayMs = 25,
+): Effect.Effect<void, unknown> =>
+	Effect.forEach(text.split(""), (char) => stream.appendText(char).pipe(Effect.andThen(sleep(delayMs))), {
+		discard: true,
+	})
+
+/**
+ * Simulate an AI stream with steps and streaming text using the new SDK API
+ */
+const simulateAiStream = (
+	stream: StreamSession,
 	options?: {
 		streamDelay?: number
 		thinkingDelay?: number
 	},
-) {
-	const { streamDelay = 25, thinkingDelay = 800 } = options ?? {}
+): Effect.Effect<void, unknown> =>
+	Effect.gen(function* () {
+		const { streamDelay = 25, thinkingDelay = 800 } = options ?? {}
 
-	const actor = actorsClient.message.getOrCreate([messageId])
+		// Step 1: Initial thinking
+		const thinking1 = yield* stream.startThinking()
+		yield* streamTextToStep(
+			stream,
+			thinking1,
+			"Analyzing the user's request about implementing a React hook...",
+		)
+		yield* sleep(thinkingDelay)
+		yield* stream.completeStep(thinking1)
 
-	// Start the actor
-	await actor.start({ model: "claude-3.5-sonnet" })
+		// Step 2: Search for relevant code
+		const searchId = yield* stream.startToolCall("search_codebase", {
+			query: "useEffect cleanup pattern",
+			fileTypes: ["tsx", "ts"],
+		})
+		yield* sleep(thinkingDelay * 1.5)
+		yield* stream.completeStep(searchId, {
+			output: {
+				matches: 3,
+				files: ["src/hooks/use-subscription.ts", "src/hooks/use-websocket.ts"],
+			},
+		})
 
-	// Step 1: Initial thinking
-	const thinking1 = await actor.startThinking()
-	await streamText(actor, thinking1, "Analyzing the user's request about implementing a React hook...")
-	await sleep(thinkingDelay)
-	await actor.completeStep(thinking1)
+		// Step 3: Read a file
+		const readId = yield* stream.startToolCall("read_file", {
+			path: "src/hooks/use-subscription.ts",
+			lines: "1-45",
+		})
+		yield* sleep(thinkingDelay)
+		yield* stream.completeStep(readId, {
+			output: "// Found existing cleanup pattern implementation",
+		})
 
-	// Step 2: Search for relevant code
-	const searchId = await actor.startToolCall("search_codebase", {
-		query: "useEffect cleanup pattern",
-		fileTypes: ["tsx", "ts"],
-	})
-	await sleep(thinkingDelay * 1.5)
-	await actor.completeStep(searchId, {
-		output: {
-			matches: 3,
-			files: ["src/hooks/use-subscription.ts", "src/hooks/use-websocket.ts"],
-		},
-	})
+		// Step 4: More thinking
+		const thinking2 = yield* stream.startThinking()
+		yield* streamTextToStep(
+			stream,
+			thinking2,
+			"I found a similar pattern in the codebase. Let me adapt it for your use case...",
+		)
+		yield* sleep(thinkingDelay / 2)
+		yield* stream.completeStep(thinking2)
 
-	// Step 3: Read a file
-	const readId = await actor.startToolCall("read_file", {
-		path: "src/hooks/use-subscription.ts",
-		lines: "1-45",
-	})
-	await sleep(thinkingDelay)
-	await actor.completeStep(readId, {
-		output: "// Found existing cleanup pattern implementation",
-	})
-
-	// Step 4: More thinking
-	const thinking2 = await actor.startThinking()
-	await streamText(
-		actor,
-		thinking2,
-		"I found a similar pattern in the codebase. Let me adapt it for your use case...",
-	)
-	await sleep(thinkingDelay / 2)
-	await actor.completeStep(thinking2)
-
-	// Step 5: Stream the final response
-	const response = `Here's how you can implement a React hook with proper cleanup:
+		// Step 5: Stream the final response
+		const response = `Here's how you can implement a React hook with proper cleanup:
 
 \`\`\`typescript
 import { useEffect, useRef } from 'react'
@@ -95,29 +122,9 @@ This pattern ensures:
 2. **No memory leaks** - References are cleared
 3. **Stable callback** - Using a ref prevents unnecessary re-subscriptions`
 
-	for (const char of response) {
-		await actor.appendText(char)
-		await sleep(streamDelay)
-	}
-
-	await actor.stopStreaming()
-	await actor.complete()
-}
-
-async function streamText(
-	actor: ReturnType<typeof actorsClient.message.getOrCreate>,
-	stepId: string,
-	text: string,
-) {
-	for (const char of text) {
-		await actor.updateStepContent(stepId, char, true)
-		await sleep(15)
-	}
-}
-
-function sleep(ms: number) {
-	return new Promise((resolve) => setTimeout(resolve, ms))
-}
+		yield* streamTextContent(stream, response, streamDelay)
+		yield* stream.complete()
+	})
 
 // Define the /simulate-ai command
 const SimulateAiCommand = Command.make("simulate-ai", {
@@ -141,26 +148,20 @@ runHazelBot({
 
 					const speed = ctx.args.speed === "fast" ? 10 : ctx.args.speed === "slow" ? 50 : 25
 
-					// Create a message with live state enabled (minimal embed, just the flag)
-					const message = yield* bot.message.send(ctx.channelId, "", {
-						embeds: [
-							{
-								liveState: { enabled: true },
-							},
-						],
+					// Use the new SDK streaming API - creates message with live state automatically
+					const stream = yield* bot.stream.create(ctx.channelId, {
+						initialData: { model: "claude-3.5-sonnet" },
 					})
 
-					yield* Effect.log(`Created message ${message.id} with live state`)
+					yield* Effect.log(`Created streaming message ${stream.messageId}`)
 
-					// Run the simulation
-					yield* Effect.promise(() =>
-						simulateAiStream(message.id as MessageId, {
-							streamDelay: speed,
-							thinkingDelay: 800,
-						}),
-					)
+					// Run the simulation using the stream session
+					yield* simulateAiStream(stream, {
+						streamDelay: speed,
+						thinkingDelay: 800,
+					})
 
-					yield* Effect.log(`Simulation complete for message ${message.id}`)
+					yield* Effect.log(`Simulation complete for message ${stream.messageId}`)
 				}).pipe(bot.withErrorHandler(ctx)),
 			)
 		}),

@@ -53,6 +53,13 @@ import {
 	EventDispatcher,
 	ShapeStreamSubscriber,
 } from "./services/index.ts"
+import {
+	ActorsClient,
+	createAIStreamSession,
+	createStreamSession,
+	type AIStreamOptions,
+	type CreateStreamOptions,
+} from "./streaming/index.ts"
 import { extractTablesFromEventTypes } from "./types/events.ts"
 
 /**
@@ -151,6 +158,8 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		const rpc = yield* BotRpcClient
 		// Get the RPC client config (for HTTP API calls)
 		const rpcClientConfig = yield* BotRpcClientConfigTag
+		// Get the actors client from context (for streaming)
+		const actorsClient = yield* ActorsClient
 		// Create typed HTTP API client for public API endpoints
 		const httpApiClient = yield* HttpApiClient.make(HazelApi, {
 			baseUrl: rpcClientConfig.backendUrl,
@@ -683,6 +692,61 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 * Get bot authentication context
 			 */
 			getAuthContext: bot.getAuthContext,
+
+			/**
+			 * Low-level streaming API for real-time message updates.
+			 * Creates messages with live state and provides direct control over the actor.
+			 *
+			 * @example
+			 * ```typescript
+			 * yield* Effect.scoped(
+			 *   Effect.gen(function* () {
+			 *     const stream = yield* bot.stream.create(channelId)
+			 *     yield* stream.appendText("Hello ")
+			 *     yield* stream.startThinking()
+			 *     yield* stream.complete()
+			 *   })
+			 * )
+			 * ```
+			 */
+			stream: {
+				/**
+				 * Create a new stream session for real-time message updates.
+				 * @param channelId - The channel to create the message in
+				 * @param options - Optional configuration (initialData, replyToMessageId, threadChannelId)
+				 */
+				create: (channelId: ChannelId, options?: CreateStreamOptions) =>
+					createStreamSession(channelId, options).pipe(
+						Effect.provideService(ActorsClient, actorsClient),
+					),
+			},
+
+			/**
+			 * High-level AI streaming API with helpers for processing AI model output.
+			 * Automatically handles thinking steps, tool calls, and text streaming.
+			 *
+			 * @example
+			 * ```typescript
+			 * yield* Effect.scoped(
+			 *   Effect.gen(function* () {
+			 *     const stream = yield* bot.ai.stream(channelId, { model: "claude-3.5-sonnet" })
+			 *     yield* stream.processChunk({ type: "text", text: "Hello" })
+			 *     yield* stream.complete()
+			 *   })
+			 * )
+			 * ```
+			 */
+			ai: {
+				/**
+				 * Create an AI stream session with helpers for processing AI model output.
+				 * @param channelId - The channel to create the message in
+				 * @param options - Optional configuration including model info
+				 */
+				stream: (channelId: ChannelId, options?: AIStreamOptions) =>
+					createAIStreamSession(channelId, options).pipe(
+						Effect.provideService(ActorsClient, actorsClient),
+					),
+			},
 		}
 	}),
 }) {}
@@ -704,6 +768,13 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	 * @example "http://localhost:3003" // For local development
 	 */
 	readonly backendUrl?: string
+
+	/**
+	 * Actors/Rivet endpoint for live state streaming
+	 * @default Uses RIVET_PUBLIC_ENDPOINT or RIVET_URL env vars, falls back to "http://localhost:6420"
+	 * @example "http://localhost:6420" // For local development
+	 */
+	readonly actorsEndpoint?: string
 
 	/**
 	 * Bot authentication token (required)
@@ -859,6 +930,9 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
+	// Create the ActorsClient layer for streaming
+	const ActorsClientLayer = ActorsClient.layerConfig(config.actorsEndpoint)
+
 	// Create SSE command listener layer if commands are configured
 	const hasCommands = config.commands && config.commands.commands.length > 0
 	const CommandListenerLayer = hasCommands
@@ -932,6 +1006,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
 		Layer.provide(RpcClientConfigLayer),
+		Layer.provide(ActorsClientLayer),
 		Layer.provide(CommandListenerLayer),
 		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(
