@@ -1,3 +1,4 @@
+import type { ChannelId, MessageId } from "@hazel/schema"
 import { useAtomValue } from "@effect-atom/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type ReactNode, useEffect, useRef } from "react"
@@ -6,10 +7,16 @@ import {
 	notificationSoundSettingsAtom,
 	sessionStartTimeAtom,
 } from "~/atoms/notification-sound-atoms"
-import { notificationCollection, organizationMemberCollection, userCollection } from "~/db/collections"
+import {
+	channelCollection,
+	messageCollection,
+	notificationCollection,
+	organizationMemberCollection,
+	userCollection,
+} from "~/db/collections"
 import { currentChannelIdAtom } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
-import { sendNativeNotification } from "~/lib/native-notifications"
+import { buildNotificationContent, sendNativeNotification } from "~/lib/native-notifications"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 
 interface NotificationSoundProviderProps {
@@ -141,8 +148,23 @@ export function NotificationSoundProvider({ children }: NotificationSoundProvide
 			createdAt: latestNotification.createdAt,
 		})
 
-		// Send native notification (has its own focus check)
-		sendNativeNotification("Hazel", "You have a new notification")
+		// Send native notification with rich content
+		try {
+			const messageId = latestNotification.resourceId as MessageId | null
+			const channelId = latestNotification.targetedResourceId as ChannelId | null
+
+			// Synchronous lookups from local TanStack DB collections
+			const message = messageId ? messageCollection.state.get(messageId) : undefined
+			const author = message?.authorId ? userCollection.state.get(message.authorId) : undefined
+			const channel = channelId ? channelCollection.state.get(channelId) : undefined
+
+			const content = buildNotificationContent(message, author, channel)
+			sendNativeNotification(content)
+		} catch (error) {
+			// Fallback to generic notification on any error
+			console.error("[notification-sound-provider] Failed to build rich notification:", error)
+			sendNativeNotification({ title: "Hazel", body: "You have a new notification" })
+		}
 	}, [latestNotification])
 
 	return <>{children}</>

@@ -1,5 +1,6 @@
 import { Time } from "@internationalized/date"
 import { createFileRoute } from "@tanstack/react-router"
+import { useState } from "react"
 import { Radio, RadioGroup } from "react-aria-components"
 import { Button } from "~/components/ui/button"
 import { DateInput } from "~/components/ui/date-field"
@@ -11,6 +12,7 @@ import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { TimeField } from "~/components/ui/time-field"
 import { useNotificationSettings } from "~/hooks/use-notification-settings"
 import { useNotificationSound } from "~/hooks/use-notification-sound"
+import { testNativeNotification } from "~/lib/native-notifications"
 import { cn } from "~/lib/utils"
 
 export const Route = createFileRoute("/_app/$orgSlug/my-settings/notifications")({
@@ -41,6 +43,15 @@ function NotificationSettings() {
 		showQuietHoursInStatus,
 		setShowQuietHoursInStatus,
 	} = useNotificationSettings()
+	const [notificationStatus, setNotificationStatus] = useState<"idle" | "sent" | "unavailable">(
+		"idle",
+	)
+
+	const handleTestNotification = async () => {
+		const success = await testNativeNotification()
+		setNotificationStatus(success ? "sent" : "unavailable")
+		setTimeout(() => setNotificationStatus("idle"), 3000)
+	}
 
 	const soundOptions = [
 		{ value: "notification01", label: "Sound 1", description: "Classic notification" },
@@ -155,16 +166,26 @@ function NotificationSettings() {
 							</Slider>
 						</div>
 
-						{/* Test sound button */}
-						<div>
+						{/* Test buttons */}
+						<div className="flex items-center gap-3">
 							<Button
 								type="button"
 								onPress={testSound}
 								isDisabled={!settings.enabled}
-								className="w-fit"
 							>
 								Test sound
 							</Button>
+							<Button type="button" intent="outline" onPress={handleTestNotification}>
+								Test notification
+							</Button>
+							{notificationStatus === "sent" && (
+								<span className="text-sm text-success">Notification sent!</span>
+							)}
+							{notificationStatus === "unavailable" && (
+								<span className="text-muted-fg text-sm">
+									Native notifications unavailable (desktop app only)
+								</span>
+							)}
 						</div>
 					</div>
 				</div>
