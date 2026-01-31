@@ -184,17 +184,30 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			yield* Effect.logInfo(`Upserting ${workosUsers.length} users...`)
 			const upsertStart = Date.now()
 			yield* Effect.all(
-				workosUsers.map((workosUser) =>
-					collectResult(
+				workosUsers.map((workosUser) => {
+					const existingUser = existingUserMap.get(workosUser.id)
+
+					// For existing users, preserve their custom profile data
+					// Only update from WorkOS if WorkOS has meaningful values
+					const firstName = existingUser
+						? workosUser.firstName || existingUser.firstName // Keep existing if WorkOS is empty
+						: workosUser.firstName || ""
+					const lastName = existingUser
+						? workosUser.lastName || existingUser.lastName // Keep existing if WorkOS is empty
+						: workosUser.lastName || ""
+					const avatarUrl = existingUser
+						? workosUser.profilePictureUrl || existingUser.avatarUrl // Keep existing if WorkOS has no picture
+						: workosUser.profilePictureUrl ||
+							`https://avatar.vercel.sh/${workosUser.id}.svg`
+
+					return collectResult(
 						userRepo
 							.upsertByExternalId({
 								externalId: workosUser.id,
 								email: workosUser.email,
-								firstName: workosUser.firstName || "",
-								lastName: workosUser.lastName || "",
-								avatarUrl:
-									workosUser.profilePictureUrl ||
-									`https://avatar.vercel.sh/${workosUser.id}.svg`,
+								firstName,
+								lastName,
+								avatarUrl,
 								userType: "user",
 								settings: null,
 								isOnboarded: false,
@@ -203,7 +216,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 							})
 							.pipe(withSystemActor),
 						() => {
-							if (existingUserMap.has(workosUser.id)) {
+							if (existingUser) {
 								result.updated++
 							} else {
 								result.created++
@@ -212,8 +225,8 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						(error) => {
 							result.errors.push(`Error syncing user ${workosUser.id}: ${error}`)
 						},
-					),
-				),
+					)
+				}),
 				{ concurrency: "unbounded" },
 			)
 			yield* Effect.logInfo(
@@ -649,20 +662,37 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			lastName: string | null
 			profilePictureUrl: string | null
 		}) =>
-			userRepo
-				.upsertByExternalId({
+			Effect.gen(function* () {
+				// Check if user already exists to preserve their custom profile data
+				const existingUser = yield* userRepo.findByExternalId(data.id)
+
+				const existing = Option.getOrNull(existingUser)
+
+				// For existing users, preserve their custom profile data
+				// Only update from WorkOS if WorkOS has meaningful values
+				const firstName = existing
+					? data.firstName || existing.firstName // Keep existing if WorkOS is empty
+					: data.firstName || ""
+				const lastName = existing
+					? data.lastName || existing.lastName // Keep existing if WorkOS is empty
+					: data.lastName || ""
+				const avatarUrl = existing
+					? data.profilePictureUrl || existing.avatarUrl // Keep existing if WorkOS has no picture
+					: data.profilePictureUrl || `https://avatar.vercel.sh/${data.id}.svg`
+
+				yield* userRepo.upsertByExternalId({
 					externalId: data.id,
 					email: data.email,
-					firstName: data.firstName || "",
-					lastName: data.lastName || "",
-					avatarUrl: data.profilePictureUrl || `https://avatar.vercel.sh/${data.id}.svg`,
+					firstName,
+					lastName,
+					avatarUrl,
 					userType: "user",
 					settings: null,
 					isOnboarded: false,
 					timezone: null,
 					deletedAt: null,
 				})
-				.pipe(Effect.asVoid)
+			}).pipe(Effect.asVoid)
 
 		const handleUserDeleted = (data: { id: string }) =>
 			userRepo.softDeleteByExternalId(data.id).pipe(Effect.asVoid)
