@@ -36,5 +36,9 @@ export { StreamError } from "./errors.ts"
 // Services
 export { ActorsClient, type MessageActor } from "./actors-client.ts"
 
-// Core functions
-export { createAIStreamSession, createStreamSession } from "./streaming-service.ts"
+// Core functions (internal - use bot.stream.create or bot.ai.stream instead)
+export {
+	createAIStreamSessionInternal,
+	createStreamSessionInternal,
+	type MessageCreateFn,
+} from "./streaming-service.ts"

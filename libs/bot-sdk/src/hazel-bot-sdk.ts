@@ -53,10 +53,10 @@ import {
 	EventDispatcher,
 	ShapeStreamSubscriber,
 } from "./services/index.ts"
+import { createActorsClient } from "@hazel/actors/client"
 import {
-	ActorsClient,
-	createAIStreamSession,
-	createStreamSession,
+	createAIStreamSessionInternal,
+	createStreamSessionInternal,
 	type AIStreamOptions,
 	type CreateStreamOptions,
 } from "./streaming/index.ts"
@@ -158,8 +158,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		const rpc = yield* BotRpcClient
 		// Get the RPC client config (for HTTP API calls)
 		const rpcClientConfig = yield* BotRpcClientConfigTag
-		// Get the actors client from context (for streaming)
-		const actorsClient = yield* ActorsClient
 		// Create typed HTTP API client for public API endpoints
 		const httpApiClient = yield* HttpApiClient.make(HazelApi, {
 			baseUrl: rpcClientConfig.backendUrl,
@@ -715,10 +713,41 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param channelId - The channel to create the message in
 				 * @param options - Optional configuration (initialData, replyToMessageId, threadChannelId)
 				 */
-				create: (channelId: ChannelId, options?: CreateStreamOptions) =>
-					createStreamSession(channelId, options).pipe(
-						Effect.provideService(ActorsClient, actorsClient),
-					),
+				create: (channelId: ChannelId, options?: CreateStreamOptions) => {
+					// Create actors client lazily - uses env vars with localhost fallback
+					const client = createActorsClient()
+					const actorsService = {
+						getMessageActor: (messageId: string) =>
+							Effect.sync(() => client.message.getOrCreate([messageId])),
+						client,
+					}
+					// Use message.send as the message creation function
+					const createMessage = (
+						chId: ChannelId,
+						content: string,
+						opts?: {
+							readonly replyToMessageId?: MessageId | null
+							readonly threadChannelId?: ChannelId | null
+							readonly embeds?:
+								| readonly { readonly liveState?: { readonly enabled: true } }[]
+								| null
+						},
+					) =>
+						messageLimiter(
+							httpApiClient["api-v1-messages"]
+								.createMessage({
+									payload: {
+										channelId: chId,
+										content,
+										replyToMessageId: opts?.replyToMessageId ?? null,
+										threadChannelId: opts?.threadChannelId ?? null,
+										embeds: opts?.embeds ?? null,
+									},
+								})
+								.pipe(Effect.map((r) => r.data)),
+						)
+					return createStreamSessionInternal(createMessage, actorsService, channelId, options)
+				},
 			},
 
 			/**
@@ -742,10 +771,41 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param channelId - The channel to create the message in
 				 * @param options - Optional configuration including model info
 				 */
-				stream: (channelId: ChannelId, options?: AIStreamOptions) =>
-					createAIStreamSession(channelId, options).pipe(
-						Effect.provideService(ActorsClient, actorsClient),
-					),
+				stream: (channelId: ChannelId, options?: AIStreamOptions) => {
+					// Create actors client lazily - uses env vars with localhost fallback
+					const client = createActorsClient()
+					const actorsService = {
+						getMessageActor: (messageId: string) =>
+							Effect.sync(() => client.message.getOrCreate([messageId])),
+						client,
+					}
+					// Use message.send as the message creation function
+					const createMessage = (
+						chId: ChannelId,
+						content: string,
+						opts?: {
+							readonly replyToMessageId?: MessageId | null
+							readonly threadChannelId?: ChannelId | null
+							readonly embeds?:
+								| readonly { readonly liveState?: { readonly enabled: true } }[]
+								| null
+						},
+					) =>
+						messageLimiter(
+							httpApiClient["api-v1-messages"]
+								.createMessage({
+									payload: {
+										channelId: chId,
+										content,
+										replyToMessageId: opts?.replyToMessageId ?? null,
+										threadChannelId: opts?.threadChannelId ?? null,
+										embeds: opts?.embeds ?? null,
+									},
+								})
+								.pipe(Effect.map((r) => r.data)),
+						)
+					return createAIStreamSessionInternal(createMessage, actorsService, channelId, options)
+				},
 			},
 		}
 	}),
@@ -930,9 +990,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create the scoped RPC client layer
 	const RpcClientLayer = BotRpcClientLive.pipe(Layer.provide(RpcClientConfigLayer))
 
-	// Create the ActorsClient layer for streaming
-	const ActorsClientLayer = ActorsClient.layerConfig(config.actorsEndpoint)
-
 	// Create SSE command listener layer if commands are configured
 	const hasCommands = config.commands && config.commands.commands.length > 0
 	const CommandListenerLayer = hasCommands
@@ -1006,7 +1063,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		Layer.provide(BotClientLayer),
 		Layer.provide(RpcClientLayer),
 		Layer.provide(RpcClientConfigLayer),
-		Layer.provide(ActorsClientLayer),
 		Layer.provide(CommandListenerLayer),
 		Layer.provide(RuntimeConfigLayer),
 		Layer.provide(

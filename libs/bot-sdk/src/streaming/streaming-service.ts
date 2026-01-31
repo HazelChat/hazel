@@ -7,8 +7,7 @@
 
 import type { ChannelId, MessageId } from "@hazel/domain/ids"
 import { Effect, Ref } from "effect"
-import { HazelBotClient } from "../hazel-bot-sdk.ts"
-import { ActorsClient, type MessageActor } from "./actors-client.ts"
+import type { ActorsClientService, MessageActor } from "./actors-client.ts"
 import { StreamError } from "./errors.ts"
 import type {
 	AIContentChunk,
@@ -19,12 +18,22 @@ import type {
 } from "./types.ts"
 
 /**
+ * Message creation function type - matches bot.message.send signature
+ */
+export type MessageCreateFn = (
+	channelId: ChannelId,
+	content: string,
+	options?: {
+		readonly replyToMessageId?: MessageId | null
+		readonly threadChannelId?: ChannelId | null
+		readonly embeds?: readonly { readonly liveState?: { readonly enabled: true } }[] | null
+	},
+) => Effect.Effect<{ id: string }, unknown>
+
+/**
  * Wrap an actor method call with Effect and error handling
  */
-const wrapActorCall = <T>(
-	operation: string,
-	fn: () => Promise<T>,
-): Effect.Effect<T, StreamError> =>
+const wrapActorCall = <T>(operation: string, fn: () => Promise<T>): Effect.Effect<T, StreamError> =>
 	Effect.tryPromise({
 		try: fn,
 		catch: (error) =>
@@ -69,55 +78,34 @@ const createSessionFromActor = (messageId: MessageId, actor: MessageActor): Stre
 })
 
 /**
- * Create a new stream session for real-time message updates.
- *
- * This creates a message with live state enabled and returns a session
- * object for managing the stream. Use `Effect.scoped` to ensure proper cleanup.
- *
- * @param channelId - The channel to create the message in
- * @param options - Optional configuration for the stream
- * @returns Effect that yields a StreamSession
- *
- * @example
- * ```typescript
- * yield* Effect.scoped(
- *   Effect.gen(function* () {
- *     const stream = yield* createStreamSession(channelId)
- *     yield* stream.appendText("Hello ")
- *     yield* stream.appendText("World!")
- *     yield* stream.complete()
- *   })
- * )
- * ```
+ * Internal function to create a stream session with injected dependencies.
+ * This avoids circular dependencies with HazelBotClient.
  */
-export const createStreamSession = (
+export const createStreamSessionInternal = (
+	createMessage: MessageCreateFn,
+	actorsClient: ActorsClientService,
 	channelId: ChannelId,
 	options: CreateStreamOptions = {},
-): Effect.Effect<StreamSession, StreamError, HazelBotClient | ActorsClient> =>
+): Effect.Effect<StreamSession, StreamError> =>
 	Effect.gen(function* () {
-		const bot = yield* HazelBotClient
-		const actors = yield* ActorsClient
-
 		// Create message with live state enabled
-		const message = yield* bot.message
-			.send(channelId, "", {
-				replyToMessageId: options.replyToMessageId,
-				threadChannelId: options.threadChannelId,
-				embeds: [{ liveState: { enabled: true } }],
-			})
-			.pipe(
-				Effect.mapError(
-					(e) =>
-						new StreamError({
-							message: "Failed to create message with live state",
-							operation: "createMessage",
-							cause: e,
-						}),
-				),
-			)
+		const message = yield* createMessage(channelId, "", {
+			replyToMessageId: options.replyToMessageId,
+			threadChannelId: options.threadChannelId,
+			embeds: [{ liveState: { enabled: true } }],
+		}).pipe(
+			Effect.mapError(
+				(e) =>
+					new StreamError({
+						message: "Failed to create message with live state",
+						operation: "createMessage",
+						cause: e,
+					}),
+			),
+		)
 
 		// Get the actor for this message
-		const actor = yield* actors.getMessageActor(message.id)
+		const actor = yield* actorsClient.getMessageActor(message.id)
 
 		// Start the actor with initial data
 		yield* wrapActorCall("start", () => actor.start(options.initialData ?? {}))
@@ -127,35 +115,14 @@ export const createStreamSession = (
 	})
 
 /**
- * Create an AI stream session with helpers for processing AI model output.
- *
- * Extends StreamSession with `processChunk` and `processStream` methods
- * for easy integration with AI model streaming responses.
- *
- * @param channelId - The channel to create the message in
- * @param options - Optional configuration including model info
- * @returns Effect that yields an AIStreamSession
- *
- * @example
- * ```typescript
- * yield* Effect.scoped(
- *   Effect.gen(function* () {
- *     const stream = yield* createAIStreamSession(channelId, { model: "claude-3.5-sonnet" })
- *
- *     // Process chunks from AI model
- *     for await (const chunk of aiModelStream) {
- *       yield* stream.processChunk(chunk)
- *     }
- *
- *     yield* stream.complete()
- *   })
- * )
- * ```
+ * Internal function to create an AI stream session with injected dependencies.
  */
-export const createAIStreamSession = (
+export const createAIStreamSessionInternal = (
+	createMessage: MessageCreateFn,
+	actorsClient: ActorsClientService,
 	channelId: ChannelId,
 	options: AIStreamOptions = {},
-): Effect.Effect<AIStreamSession, StreamError, HazelBotClient | ActorsClient> =>
+): Effect.Effect<AIStreamSession, StreamError> =>
 	Effect.gen(function* () {
 		// Add model to initial data if provided
 		const initialData = {
@@ -166,7 +133,7 @@ export const createAIStreamSession = (
 		}
 
 		// Create base session with enriched initial data
-		const baseSession = yield* createStreamSession(channelId, {
+		const baseSession = yield* createStreamSessionInternal(createMessage, actorsClient, channelId, {
 			...options,
 			initialData,
 		})
