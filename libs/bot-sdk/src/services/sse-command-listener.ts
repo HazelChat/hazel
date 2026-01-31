@@ -10,7 +10,7 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Sse } from "@effect/experimental"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import { Context, Effect, Fiber, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
 import { generateCorrelationId } from "../log-context.ts"
 
@@ -135,17 +135,29 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 
 			const parser = Sse.makeParser((sseEvent) => {
 				if (sseEvent._tag === "Event") {
-					// Fire and forget - offer to queue
-					Effect.runFork(Queue.offer(eventQueue, sseEvent))
+					// Use runPromise with error logging instead of fire-and-forget
+					Effect.runPromise(
+						Queue.offer(eventQueue, sseEvent).pipe(
+							Effect.tapError((error) =>
+								Effect.logWarning("Failed to queue SSE event", {
+									error: String(error),
+									botId,
+								}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
+							),
+							Effect.ignore,
+						),
+					)
 				}
 				// Ignore Retry events for now
 			})
 
-			// Process the response stream
-			yield* response.stream.pipe(
+			// Process the response stream - fork and coordinate with event processing
+			const streamFiber = yield* response.stream.pipe(
 				Stream.decodeText(),
 				Stream.tap((text) => Effect.sync(() => parser.feed(text))),
 				Stream.runDrain,
+				// Shutdown queue when stream ends to signal event processor
+				Effect.ensuring(Queue.shutdown(eventQueue)),
 				Effect.fork,
 			)
 
@@ -194,6 +206,9 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 				}),
 				Stream.runDrain,
 			)
+
+			// Wait for stream fiber to complete and propagate any error
+			yield* Fiber.join(streamFiber)
 		}).pipe(
 			Effect.catchTags({
 				RequestError: (e) =>
@@ -223,21 +238,36 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		)
 
 		// Start the connection loop with retry using Effect's built-in retry
-		yield* connectAndProcess.pipe(
-			Effect.retry(
-				Schedule.exponential("1 second", 2).pipe(
-					Schedule.jittered,
-					Schedule.intersect(Schedule.recurs(10)),
+		// Uses Effect.forever to keep reconnecting even after permanent failures
+		yield* Effect.forever(
+			connectAndProcess.pipe(
+				Effect.retry(
+					Schedule.exponential("1 second", 2).pipe(
+						Schedule.jittered,
+						Schedule.intersect(Schedule.recurs(10)),
+					),
+				),
+				Effect.tapError((error) =>
+					Effect.logError("SSE connection failed permanently after all retries", {
+						error,
+						botId,
+						botName,
+					}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
+				),
+				// After exhausting retries, wait before trying the whole cycle again
+				Effect.catchAll(() =>
+					Effect.gen(function* () {
+						yield* Ref.set(isRunningRef, false)
+						yield* Effect.logWarning(
+							"SSE connection exhausted retries, waiting before reconnection attempt",
+							{ botId, botName },
+						).pipe(Effect.annotateLogs("service", "SseCommandListener"))
+						// Wait 60 seconds before starting the retry cycle again
+						yield* Effect.sleep("60 seconds")
+					}),
 				),
 			),
-			Effect.tapError((error) =>
-				Effect.logError("SSE connection failed permanently", { error, botId, botName }).pipe(
-					Effect.annotateLogs("service", "SseCommandListener"),
-				),
-			),
-			Effect.catchAll(() => Effect.void),
-			Effect.forkScoped,
-		)
+		).pipe(Effect.forkScoped)
 
 		yield* Effect.logInfo(`Listening for commands via SSE`, { url: sseUrl, botId, botName }).pipe(
 			Effect.annotateLogs("service", "SseCommandListener"),

@@ -90,6 +90,7 @@
 		"slate-history": "^0.113.1",
 		"slate-react": "^0.123.0",
 		"sonner": "^2.0.7",
+		"streamdown": "^2.1.0",
 		"tailwind-merge": "^3.4.0",
 		"tailwind-variants": "^3.2.2",
 		"tailwindcss": "^4.1.18",

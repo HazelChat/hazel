@@ -148,7 +148,9 @@ export function useMessageActor(messageId: MessageId, enabled = false): UseMessa
 		conn.on("stepContentUpdate", (payload: { stepId: string; content: string }) => {
 			setState((prev) => ({
 				...prev,
-				steps: prev.steps.map((s) => (s.id === payload.stepId ? { ...s, content: payload.content } : s)),
+				steps: prev.steps.map((s) =>
+					s.id === payload.stepId ? { ...s, content: payload.content } : s,
+				),
 			}))
 		})
 
@@ -173,7 +175,6 @@ export function useMessageActor(messageId: MessageId, enabled = false): UseMessa
 export function useMessageLiveText(messageId: MessageId, enabled: boolean, staticContent: string): string {
 	const { text, isConnected } = useMessageActor(messageId, enabled)
 
-	// Return live text if connected and has content, otherwise return static content
 	if (isConnected && text) {
 		return text
 	}

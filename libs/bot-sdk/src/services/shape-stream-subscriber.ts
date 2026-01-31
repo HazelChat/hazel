@@ -1,6 +1,6 @@
 import { isChangeMessage, type ChangeMessage, type Message, ShapeStream } from "@electric-sql/client"
 import type { ConfigError } from "effect"
-import { Config, Effect, Layer, Metric, Option, Schema, Stream } from "effect"
+import { Config, Effect, Layer, Metric, Option, Schedule, Schema, Stream } from "effect"
 import { ConnectionError, ValidationError } from "../errors.ts"
 import { generateEventId } from "../log-context.ts"
 import { RetryStrategy } from "../retry.ts"
@@ -123,17 +123,30 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 
 		/**
 		 * Convert a ShapeStream to an Effect Stream
+		 * Handles both messages and stream errors via the error callback
 		 */
 		const shapeStreamToEffectStream = (
 			shapeStream: ShapeStream,
 			table: string,
-		): Stream.Stream<Message, never> =>
-			Stream.async<Message>((emit) => {
-				const unsubscribe = shapeStream.subscribe((messages) => {
-					for (const message of messages) {
-						emit.single(message)
-					}
-				})
+		): Stream.Stream<Message, ConnectionError> =>
+			Stream.async<Message, ConnectionError>((emit) => {
+				const unsubscribe = shapeStream.subscribe(
+					(messages) => {
+						for (const message of messages) {
+							emit.single(message)
+						}
+					},
+					(error) => {
+						// Handle stream errors by failing the stream
+						emit.fail(
+							new ConnectionError({
+								message: `Shape stream error for table: ${table}`,
+								service: "electric",
+								cause: error,
+							}),
+						)
+					},
+				)
 				// Note: cleanup is handled by acquireRelease, not here
 				return Effect.sync(() => unsubscribe())
 			})
@@ -267,10 +280,31 @@ export class ShapeStreamSubscriber extends Effect.Service<ShapeStreamSubscriber>
 						tables: activeSubscriptions.map((s) => s.table).join(", "),
 					}).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber"))
 
-					// Start each subscription in a forked fiber
+					// Start each subscription in a forked fiber with retry on failure
 					yield* Effect.forEach(
 						activeSubscriptions,
-						(subscription) => Effect.forkScoped(processSubscription(subscription)),
+						(subscription) =>
+							Effect.forkScoped(
+								Effect.forever(
+									processSubscription(subscription).pipe(
+										Effect.tapError((error) =>
+											Effect.logWarning(
+												`Shape stream subscription ended, reconnecting`,
+												{
+													table: subscription.table,
+													error: String(error),
+												},
+											).pipe(Effect.annotateLogs("service", "ShapeStreamSubscriber")),
+										),
+										Effect.retry(
+											Schedule.exponential("1 second", 2).pipe(
+												Schedule.jittered,
+												Schedule.union(Schedule.spaced("30 seconds")), // Cap at 30s
+											),
+										),
+									),
+								),
+							),
 						{ concurrency: "unbounded" },
 					)
 

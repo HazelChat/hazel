@@ -56,6 +56,8 @@ interface StatusEmojiWithTooltipProps {
 	expiresAt?: Date | null
 	className?: string
 	quietHours?: QuietHoursInfo
+	/** Set to false when inside another interactive element (e.g., MenuTrigger) to avoid nested buttons */
+	interactive?: boolean
 }
 
 const QUIET_HOURS_EMOJI = "😴"
@@ -71,12 +73,29 @@ export function StatusEmojiWithTooltip({
 	expiresAt,
 	className,
 	quietHours,
+	interactive = true,
 }: StatusEmojiWithTooltipProps) {
 	// If user has a custom emoji, show that (takes precedence over quiet hours)
 	if (emoji) {
 		const expirationText = formatStatusExpiration(expiresAt)
 
-		// Always show tooltip - if no message, just show the emoji
+		// Build tooltip text for non-interactive mode
+		const tooltipText = message
+			? `${emoji} ${message}${expirationText ? ` • Until ${expirationText}` : ""}`
+			: expirationText
+				? `${emoji} • Until ${expirationText}`
+				: emoji
+
+		// Non-interactive: use span with title (for use inside other interactive elements)
+		if (!interactive) {
+			return (
+				<span className={cn("text-sm", className)} title={tooltipText}>
+					{emoji}
+				</span>
+			)
+		}
+
+		// Interactive: full Tooltip behavior
 		return (
 			<Tooltip delay={300}>
 				<TooltipTrigger
@@ -109,6 +128,16 @@ export function StatusEmojiWithTooltip({
 				? `In quiet hours (${quietHours.start} - ${quietHours.end})`
 				: "In quiet hours"
 
+		// Non-interactive: use span with title
+		if (!interactive) {
+			return (
+				<span className={cn("text-sm", className)} title={quietHoursText}>
+					{QUIET_HOURS_EMOJI}
+				</span>
+			)
+		}
+
+		// Interactive: full Tooltip behavior
 		return (
 			<Tooltip delay={300}>
 				<TooltipTrigger

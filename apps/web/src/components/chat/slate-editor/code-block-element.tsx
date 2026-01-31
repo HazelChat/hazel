@@ -53,10 +53,17 @@ export function CodeBlockElement({
 							{language}
 						</span>
 					)}
-					<button
-						type="button"
+					<span
+						role="button"
+						tabIndex={0}
 						onClick={handleCopy}
-						className="rounded bg-accent-9/10 p-1.5 opacity-0 transition-opacity hover:bg-accent-9/20 group-hover:opacity-100"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault()
+								handleCopy()
+							}
+						}}
+						className="cursor-pointer rounded bg-accent-9/10 p-1.5 opacity-0 transition-opacity hover:bg-accent-9/20 group-hover:opacity-100"
 						contentEditable={false}
 						title="Copy code"
 					>
@@ -65,7 +72,7 @@ export function CodeBlockElement({
 						) : (
 							<IconCopy data-slot="icon" className="size-3.5" />
 						)}
-					</button>
+					</span>
 				</div>
 			)}
 			<pre
@@ -85,10 +92,17 @@ export function CodeBlockElement({
 					)}
 					contentEditable={false}
 				>
-					<button
-						type="button"
+					<span
+						role="button"
+						tabIndex={0}
 						onClick={() => setExpanded(!expanded)}
-						className="flex items-center gap-1 rounded-md bg-accent-9/20 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent-9/30"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault()
+								setExpanded(!expanded)
+							}
+						}}
+						className="flex cursor-pointer items-center gap-1 rounded-md bg-accent-9/20 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent-9/30"
 					>
 						{expanded ? (
 							<>
@@ -101,7 +115,7 @@ export function CodeBlockElement({
 								Show more ({lineCount} lines)
 							</>
 						)}
-					</button>
+					</span>
 				</div>
 			)}
 		</div>

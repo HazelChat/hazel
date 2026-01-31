@@ -63,6 +63,7 @@ export function UserMenu() {
 									message={customMessage}
 									expiresAt={statusExpiresAt}
 									className="ml-1"
+									interactive={false}
 								/>
 							</SidebarLabel>
 							{user?.email && (
