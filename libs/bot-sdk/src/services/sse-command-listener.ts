@@ -10,7 +10,7 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Sse } from "@effect/experimental"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Fiber, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import { Context, Effect, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
 import { generateCorrelationId } from "../log-context.ts"
 
@@ -130,39 +130,11 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 				Effect.annotateLogs("service", "SseCommandListener"),
 			)
 
-			// Create SSE parser that emits events to a queue
-			const eventQueue = yield* Queue.unbounded<Sse.Event>()
-
-			const parser = Sse.makeParser((sseEvent) => {
-				if (sseEvent._tag === "Event") {
-					// Use runPromise with error logging instead of fire-and-forget
-					Effect.runPromise(
-						Queue.offer(eventQueue, sseEvent).pipe(
-							Effect.tapError((error) =>
-								Effect.logWarning("Failed to queue SSE event", {
-									error: String(error),
-									botId,
-								}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
-							),
-							Effect.ignore,
-						),
-					)
-				}
-				// Ignore Retry events for now
-			})
-
-			// Process the response stream - fork and coordinate with event processing
-			const streamFiber = yield* response.stream.pipe(
+			// Process the response stream using Effect-native Sse.makeChannel()
+			// This eliminates the need for Effect.runPromise inside callbacks
+			yield* response.stream.pipe(
 				Stream.decodeText(),
-				Stream.tap((text) => Effect.sync(() => parser.feed(text))),
-				Stream.runDrain,
-				// Shutdown queue when stream ends to signal event processor
-				Effect.ensuring(Queue.shutdown(eventQueue)),
-				Effect.fork,
-			)
-
-			// Process events from the queue
-			yield* Stream.fromQueue(eventQueue).pipe(
+				Stream.pipeThroughChannel(Sse.makeChannel()),
 				Stream.tap((event) =>
 					Effect.logDebug("Received SSE event", { eventType: event.event, botId }).pipe(
 						Effect.annotateLogs("service", "SseCommandListener"),
@@ -206,9 +178,6 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 				}),
 				Stream.runDrain,
 			)
-
-			// Wait for stream fiber to complete and propagate any error
-			yield* Fiber.join(streamFiber)
 		}).pipe(
 			Effect.catchTags({
 				RequestError: (e) =>
