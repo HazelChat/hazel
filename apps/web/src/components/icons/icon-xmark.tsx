@@ -5,12 +5,7 @@ type IconProps = SVGProps<SVGSVGElement> & {
 	title?: string
 }
 
-export function IconXmark({
-	fill = "currentColor",
-	secondaryfill,
-	title = "xmark",
-	...props
-}: IconProps) {
+export function IconXmark({ fill = "currentColor", secondaryfill, title = "xmark", ...props }: IconProps) {
 	secondaryfill = secondaryfill || fill
 	return (
 		<svg

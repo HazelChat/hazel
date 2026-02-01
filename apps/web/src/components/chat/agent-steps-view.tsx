@@ -90,9 +90,7 @@ function ToolCallStep({ step, isActive }: { step: AgentStep; isActive: boolean }
 				{step.status === "completed" && (
 					<IconCheck className="size-4 text-success" aria-label="Completed" />
 				)}
-				{step.status === "failed" && (
-					<IconXmark className="size-4 text-danger" aria-label="Failed" />
-				)}
+				{step.status === "failed" && <IconXmark className="size-4 text-danger" aria-label="Failed" />}
 			</div>
 			{step.toolInput && Object.keys(step.toolInput).length > 0 && (
 				<pre className="mt-1 overflow-x-auto text-muted-fg text-xs">
@@ -123,4 +121,3 @@ function ErrorStep({ step }: { step: AgentStep }) {
 		</div>
 	)
 }
-

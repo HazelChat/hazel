@@ -100,12 +100,7 @@ function getErrorInfo(error: CallbackError): {
 /**
  * Connect to desktop app's local OAuth server
  */
-const connectToDesktop = (
-	port: number,
-	code: string,
-	state: typeof DesktopAuthState.Type,
-	nonce: string,
-) =>
+const connectToDesktop = (port: number, code: string, state: typeof DesktopAuthState.Type, nonce: string) =>
 	Effect.tryPromise({
 		try: async () => {
 			console.log("[desktop-callback] Connecting to desktop app...", { port, nonce })
