@@ -1,7 +1,7 @@
 import { actor, UserError } from "rivetkit"
 import { Action, CreateConnState, Log } from "@rivetkit/effect"
 import { Effect } from "effect"
-import { validateToken, type AuthenticatedClient, type ActorConnectParams } from "../auth"
+import { validateToken, type ActorConnectParams } from "../auth"
 
 /**
  * Represents a step in an AI agent workflow.
