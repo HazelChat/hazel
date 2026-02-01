@@ -11,12 +11,6 @@ export default defineConfig({
 	server: {
 		port: 3000,
 	},
-	ssr: {
-		external: ["@takumi-rs/core", "@takumi-rs/image-response", "@takumi-rs/helpers"],
-	},
-	optimizeDeps: {
-		exclude: ["@takumi-rs/core", "@takumi-rs/image-response", "@takumi-rs/helpers"],
-	},
 	plugins: [
 		mdx(await import("./source.config")),
 		tailwindcss(),
