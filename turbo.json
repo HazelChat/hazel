@@ -46,7 +46,7 @@
 	"ui": "tui",
 	"tasks": {
 		"build": {
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**", ".vercel/output/**"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"]

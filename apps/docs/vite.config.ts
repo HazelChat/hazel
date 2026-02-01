@@ -24,11 +24,11 @@ export default defineConfig({
 			projects: ["./tsconfig.json"],
 		}),
 		tanstackStart({
-			prerender: {
-				enabled: true,
-			},
+			// prerender: {
+			// 	enabled: true,
+			// },
 		}),
-		// nitro({ preset: "bun" }),
+		nitro(),
 		react(),
 	],
 })

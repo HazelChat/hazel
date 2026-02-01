@@ -6,7 +6,6 @@
 	"scripts": {
 		"dev": "vite dev --port 3012",
 		"build": "vite build",
-		"start": "bun run ./server.ts",
 		"types:check": "fumadocs-mdx && tsc --noEmit",
 		"postinstall": "fumadocs-mdx"
 	},
