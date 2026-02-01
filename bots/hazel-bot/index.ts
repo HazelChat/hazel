@@ -189,15 +189,15 @@ const SimulateAiCommand = Command.make("simulate-ai", {
 	usageExample: "/simulate-ai speed=fast",
 })
 
-const VercelAskCommand = Command.make("vercel-ask", {
+const AskCommand = Command.make("ask", {
 	description: "Ask the AI agent using ToolLoopAgent pattern (supports tool use and reasoning)",
 	args: {
 		message: Schema.String,
 	},
-	usageExample: '/vercel-ask message="Search for patterns in the codebase"',
+	usageExample: '/ask message="Search for patterns in the codebase"',
 })
 
-const commands = CommandGroup.make(SimulateAiCommand, VercelAskCommand)
+const commands = CommandGroup.make(SimulateAiCommand, AskCommand)
 
 // ============================================================================
 // Bot Setup
@@ -257,8 +257,7 @@ runHazelBot({
 				}).pipe(bot.withErrorHandler(ctx)),
 			)
 
-			// Handle /vercel-ask command - Using ToolLoopAgent pattern
-			yield* bot.onCommand(VercelAskCommand, (ctx) =>
+			yield* bot.onCommand(AskCommand, (ctx) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /vercel-ask: ${ctx.args.message}`)
 

@@ -200,7 +200,15 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 					// Generate correlation ID for this command
 					const correlationId = generateCorrelationId()
 
-					return Schema.decodeUnknown(CommandEventSchema)(JSON.parse(event.data)).pipe(
+					return Effect.try({
+						try: () => JSON.parse(event.data) as unknown,
+						catch: (error) =>
+							new SseConnectionError({
+								message: `Failed to parse SSE event data as JSON`,
+								cause: error,
+							}),
+					}).pipe(
+						Effect.flatMap((parsed) => Schema.decodeUnknown(CommandEventSchema)(parsed)),
 						Effect.tap((cmd) =>
 							Effect.logInfo("Command received", {
 								commandName: cmd.commandName,

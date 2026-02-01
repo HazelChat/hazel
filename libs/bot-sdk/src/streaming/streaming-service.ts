@@ -153,6 +153,8 @@ const createSessionFromActor = (
 				}
 
 				// Update message with final content and cached state
+				// Note: Using catchAll here is intentional since updateMessage has error type `unknown`
+				// and we want to gracefully log and continue if persistence fails
 				yield* options
 					.updateMessage(messageId, {
 						content: finalState.text || undefined,
@@ -162,7 +164,8 @@ const createSessionFromActor = (
 						Effect.catchAll((error) =>
 							Effect.logWarning("Failed to persist streaming message to database", {
 								messageId,
-								error,
+								error: String(error),
+								errorType: error instanceof Error ? error.name : typeof error,
 							}),
 						),
 					)

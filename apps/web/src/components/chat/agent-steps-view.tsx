@@ -10,6 +10,30 @@ import IconXmark from "~/components/icons/icon-xmark"
 import { cn } from "~/lib/utils"
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Formats a duration in milliseconds to a human-readable string,
+ * rounded to the most significant unit.
+ */
+function formatDuration(ms: number): string {
+	if (ms < 3000) {
+		return `${Math.round(ms)}ms`
+	}
+	const seconds = Math.round(ms / 1000)
+	if (seconds < 60) {
+		return `${seconds}s`
+	}
+	const minutes = Math.floor(seconds / 60)
+	const remainingSeconds = seconds % 60
+	if (remainingSeconds === 0) {
+		return `${minutes}m`
+	}
+	return `${minutes}m ${remainingSeconds}s`
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -148,11 +172,11 @@ interface ThinkingStepProps {
 }
 
 function ThinkingStep({ step, isActive = false, globalFailed = false }: ThinkingStepProps) {
-	// Calculate duration from startedAt/completedAt
-	const duration = useMemo(() => {
+	// Calculate duration from startedAt/completedAt (in milliseconds)
+	const durationMs = useMemo(() => {
 		if (!step.startedAt) return null
 		const endTime = step.completedAt ?? Date.now()
-		return Math.round((endTime - step.startedAt) / 1000)
+		return endTime - step.startedAt
 	}, [step.startedAt, step.completedAt])
 
 	// Auto-expand while active, auto-collapse when completed or when global status becomes failed
@@ -176,7 +200,7 @@ function ThinkingStep({ step, isActive = false, globalFailed = false }: Thinking
 							? "Thinking..."
 							: step.status === "failed"
 								? "Thinking stopped"
-								: `Thought for ${duration ?? 0} seconds`}
+								: `Thought for ${formatDuration(durationMs ?? 0)}`}
 					</span>
 					{step.status === "active" && isActive && !globalFailed && (
 						<IconLoader className="size-4 animate-spin" aria-label="In progress" />
@@ -226,9 +250,7 @@ function ToolCallStep({ step, isActive = false }: ToolCallStepProps) {
 					/>
 				</Button>
 			</Heading>
-			<DisclosurePanel
-				className={cn("ml-2 mt-1 py-2 pl-3 text-sm", isExpanded && "border-l-2 border-muted/50")}
-			>
+			<DisclosurePanel className="ml-2 mt-1 py-2 pl-3 text-sm">
 				{step.toolInput && Object.keys(step.toolInput).length > 0 && (
 					<pre className="overflow-x-auto font-mono text-xs text-muted-fg">
 						{JSON.stringify(step.toolInput, null, 2)}
