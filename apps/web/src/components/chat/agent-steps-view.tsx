@@ -37,11 +37,7 @@ export function AgentStepsView({ steps, currentIndex }: AgentStepsViewProps) {
 	if (steps.length === 0) return null
 
 	return (
-		<div
-			className="mt-2 space-y-2 border-border border-l-2 pl-3"
-			role="list"
-			aria-label="AI agent workflow steps"
-		>
+		<div className="mt-2 space-y-2" role="list" aria-label="AI agent workflow steps">
 			{steps.map((step, index) => (
 				<StepItem key={step.id} step={step} isActive={index === currentIndex} />
 			))}
