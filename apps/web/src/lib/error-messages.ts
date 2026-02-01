@@ -1,7 +1,9 @@
 import type { HttpClientError } from "@effect/platform/HttpClientError"
 import { RpcClientError } from "@effect/rpc/RpcClientError"
 import {
-	Cluster,
+	AIProviderUnavailableError,
+	AIRateLimitError,
+	AIResponseParseError,
 	DesktopConnectionError,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
@@ -11,6 +13,7 @@ import {
 	MissingAuthCodeError,
 	OAuthCallbackError,
 	OAuthTimeoutError,
+	OriginalMessageNotFoundError,
 	SessionAuthenticationError,
 	SessionExpiredError,
 	SessionLoadError,
@@ -18,6 +21,9 @@ import {
 	SessionRefreshError,
 	TauriCommandError,
 	TauriNotAvailableError,
+	ThreadChannelNotFoundError,
+	ThreadContextQueryError,
+	ThreadNameUpdateError,
 	TokenDecodeError,
 	TokenExchangeError,
 	TokenNotFoundError,
@@ -25,18 +31,7 @@ import {
 	UnauthorizedError,
 	WorkflowServiceUnavailableError,
 	WorkOSUserFetchError,
-} from "@hazel/domain"
-
-// Extract thread naming workflow errors from Cluster namespace
-const {
-	AIProviderUnavailableError,
-	AIRateLimitError,
-	AIResponseParseError,
-	OriginalMessageNotFoundError,
-	ThreadChannelNotFoundError,
-	ThreadContextQueryError,
-	ThreadNameUpdateError,
-} = Cluster
+} from "@hazel/domain/errors"
 import { Cause, Chunk, Match, Option, Schema } from "effect"
 import type { ParseError } from "effect/ParseResult"
 import {

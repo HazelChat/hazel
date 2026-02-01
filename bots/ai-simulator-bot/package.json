@@ -2,13 +2,15 @@
 	"name": "ai-simulator-bot",
 	"version": "1.0.0",
 	"private": true,
-	"description": "AI simulator bot for testing live state UI",
+	"description": "AI bot with real AI capabilities and tool calling",
 	"type": "module",
 	"scripts": {
 		"start": "bun run index.ts",
 		"dev": "bun run --watch index.ts"
 	},
 	"dependencies": {
+		"@effect/ai": "catalog:effect",
+		"@effect/ai-openrouter": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@hazel/bot-sdk": "workspace:*",
 		"effect": "catalog:effect"

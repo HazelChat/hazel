@@ -1,4 +1,9 @@
 import { memo } from "react"
+import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
+import IconCheck from "~/components/icons/icon-check"
+import IconLoader from "~/components/icons/icon-loader"
+import IconSquareTerminal from "~/components/icons/icon-square-terminal"
+import IconXmark from "~/components/icons/icon-xmark"
 import { cn } from "~/lib/utils"
 
 /**
@@ -61,11 +66,13 @@ const StepItem = memo(function StepItem({ step, isActive }: StepItemProps) {
 function ThinkingStep({ step, isActive }: { step: AgentStep; isActive: boolean }) {
 	return (
 		<div className="flex items-center gap-2 text-muted-fg">
-			<BrainIcon className="size-4 shrink-0" aria-hidden />
+			<IconBrainSparkle className="size-4 shrink-0" aria-hidden />
 			<span className="italic">{step.content || "Thinking..."}</span>
-			{step.status === "active" && isActive && <Spinner aria-label="In progress" />}
+			{step.status === "active" && isActive && (
+				<IconLoader className="size-4 animate-spin" aria-label="In progress" />
+			)}
 			{step.status === "completed" && (
-				<CheckIcon className="size-4 text-success" aria-label="Completed" />
+				<IconCheck className="size-4 text-success" aria-label="Completed" />
 			)}
 		</div>
 	)
@@ -75,13 +82,17 @@ function ToolCallStep({ step, isActive }: { step: AgentStep; isActive: boolean }
 	return (
 		<div className="rounded bg-muted/50 p-2">
 			<div className="flex items-center gap-2 font-mono text-xs">
-				<TerminalIcon className="size-4 shrink-0" aria-hidden />
+				<IconSquareTerminal className="size-4 shrink-0" aria-hidden />
 				<span className="font-medium">{step.toolName}</span>
-				{step.status === "active" && isActive && <Spinner aria-label="In progress" />}
-				{step.status === "completed" && (
-					<CheckIcon className="size-4 text-success" aria-label="Completed" />
+				{step.status === "active" && isActive && (
+					<IconLoader className="size-4 animate-spin" aria-label="In progress" />
 				)}
-				{step.status === "failed" && <XIcon className="size-4 text-danger" aria-label="Failed" />}
+				{step.status === "completed" && (
+					<IconCheck className="size-4 text-success" aria-label="Completed" />
+				)}
+				{step.status === "failed" && (
+					<IconXmark className="size-4 text-danger" aria-label="Failed" />
+				)}
 			</div>
 			{step.toolInput && Object.keys(step.toolInput).length > 0 && (
 				<pre className="mt-1 overflow-x-auto text-muted-fg text-xs">
@@ -107,118 +118,9 @@ function TextStep({ step }: { step: AgentStep }) {
 function ErrorStep({ step }: { step: AgentStep }) {
 	return (
 		<div className="flex items-center gap-2 text-danger" role="alert">
-			<XIcon className="size-4 shrink-0" aria-hidden />
+			<IconXmark className="size-4 shrink-0" aria-hidden />
 			<span>{step.content || step.toolError || "An error occurred"}</span>
 		</div>
 	)
 }
 
-// Simple icon components
-interface IconProps {
-	className?: string
-	"aria-label"?: string
-	"aria-hidden"?: boolean
-}
-
-function BrainIcon({ className, "aria-label": ariaLabel, "aria-hidden": ariaHidden }: IconProps) {
-	return (
-		<svg
-			className={className}
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-label={ariaLabel}
-			aria-hidden={ariaHidden}
-			role={ariaLabel ? "img" : undefined}
-		>
-			<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
-			<path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
-		</svg>
-	)
-}
-
-function TerminalIcon({ className, "aria-label": ariaLabel, "aria-hidden": ariaHidden }: IconProps) {
-	return (
-		<svg
-			className={className}
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-label={ariaLabel}
-			aria-hidden={ariaHidden}
-			role={ariaLabel ? "img" : undefined}
-		>
-			<polyline points="4 17 10 11 4 5" />
-			<line x1="12" x2="20" y1="19" y2="19" />
-		</svg>
-	)
-}
-
-function CheckIcon({ className, "aria-label": ariaLabel, "aria-hidden": ariaHidden }: IconProps) {
-	return (
-		<svg
-			className={className}
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-label={ariaLabel}
-			aria-hidden={ariaHidden}
-			role={ariaLabel ? "img" : undefined}
-		>
-			<polyline points="20 6 9 17 4 12" />
-		</svg>
-	)
-}
-
-function XIcon({ className, "aria-label": ariaLabel, "aria-hidden": ariaHidden }: IconProps) {
-	return (
-		<svg
-			className={className}
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-label={ariaLabel}
-			aria-hidden={ariaHidden}
-			role={ariaLabel ? "img" : undefined}
-		>
-			<path d="M18 6 6 18" />
-			<path d="m6 6 12 12" />
-		</svg>
-	)
-}
-
-function Spinner({ "aria-label": ariaLabel = "Loading" }: { "aria-label"?: string }) {
-	return (
-		<svg
-			className="size-4 animate-spin text-muted-fg"
-			xmlns="http://www.w3.org/2000/svg"
-			fill="none"
-			viewBox="0 0 24 24"
-			aria-label={ariaLabel}
-			role="img"
-		>
-			<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-			<path
-				className="opacity-75"
-				fill="currentColor"
-				d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-			/>
-		</svg>
-	)
-}

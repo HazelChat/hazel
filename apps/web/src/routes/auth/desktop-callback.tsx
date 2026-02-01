@@ -5,7 +5,7 @@
  */
 
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { Http } from "@hazel/domain"
+import { Http } from "@hazel/domain/http"
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 import { useMemo } from "react"

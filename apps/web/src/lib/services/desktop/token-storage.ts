@@ -4,7 +4,7 @@
  * @description Secure token storage using Tauri's encrypted store with Effect error safety
  */
 
-import { TokenNotFoundError, TokenStoreError, TauriNotAvailableError } from "@hazel/domain"
+import { TokenNotFoundError, TokenStoreError, TauriNotAvailableError } from "@hazel/domain/errors"
 import { Effect, Option } from "effect"
 
 type StoreApi = typeof import("@tauri-apps/plugin-store")

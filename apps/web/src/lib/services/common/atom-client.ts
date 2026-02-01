@@ -1,5 +1,5 @@
 import { AtomHttpApi } from "@effect-atom/atom-react"
-import { HazelApi } from "@hazel/backend/api"
+import { HazelApi } from "@hazel/domain/http"
 import { CustomFetchLive } from "./api-client"
 
 export class HazelApiClient extends AtomHttpApi.Tag<HazelApiClient>()("HazelApiClient", {

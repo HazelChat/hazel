@@ -7,11 +7,11 @@
 import { Atom } from "@effect-atom/atom-react"
 import {
 	DesktopConnectionError,
-	Http,
 	InvalidDesktopStateError,
 	MissingAuthCodeError,
 	OAuthCallbackError,
-} from "@hazel/domain"
+} from "@hazel/domain/errors"
+import { Http } from "@hazel/domain/http"
 import { Effect, Schedule } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 

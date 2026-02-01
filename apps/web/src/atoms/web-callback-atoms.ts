@@ -11,7 +11,7 @@ import {
 	OAuthCallbackError,
 	OAuthCodeExpiredError,
 	TokenExchangeError,
-} from "@hazel/domain"
+} from "@hazel/domain/errors"
 import { Effect, Layer } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"

@@ -173,3 +173,22 @@ const constructDetailMessage = (
 
 	return `${title} the ${entityType}`
 }
+
+// Re-export session errors for frontend convenience
+export * from "./session-errors"
+
+// Re-export desktop auth errors for frontend convenience
+export * from "./desktop-auth-errors"
+
+// Re-export thread naming workflow errors for frontend error handling
+// These are plain Schema.TaggedError classes that don't depend on @effect/cluster
+export {
+	AIProviderUnavailableError,
+	AIRateLimitError,
+	AIResponseParseError,
+	OriginalMessageNotFoundError,
+	ThreadChannelNotFoundError,
+	ThreadContextQueryError,
+	ThreadNameUpdateError,
+	ThreadNamingWorkflowError,
+} from "./cluster/activities/thread-naming-activities"

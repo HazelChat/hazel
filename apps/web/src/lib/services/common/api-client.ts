@@ -7,7 +7,7 @@
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpApiClient from "@effect/platform/HttpApiClient"
 import * as HttpClient from "@effect/platform/HttpClient"
-import { HazelApi } from "@hazel/backend/api"
+import { HazelApi } from "@hazel/domain/http"
 import { Layer } from "effect"
 import * as Effect from "effect/Effect"
 import { authenticatedFetch } from "../../auth-fetch"
