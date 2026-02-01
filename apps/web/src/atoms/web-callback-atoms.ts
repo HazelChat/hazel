@@ -268,6 +268,10 @@ const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
 			get.set(webCallbackStatusAtom, { _tag: "success", returnTo: result.returnTo })
 		} else {
 			const errorInfo = getErrorInfo(result.error)
+			// Allow retry for retryable errors by clearing the processed code
+			if (errorInfo.isRetryable && code) {
+				processedCodes.delete(code)
+			}
 			get.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
 		}
 	})
@@ -287,6 +291,18 @@ export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
 		const fiber = runtime.runFork(callbackEffect)
 
 		get.addFinalizer(() => {
+			// Check if we completed successfully before cleanup
+			const status = get(webCallbackStatusAtom)
+			if (status._tag !== "success") {
+				// Interrupted before success - clean up so next mount can try
+				if (params.code) {
+					processedCodes.delete(params.code)
+				}
+				// Reset to idle if we were mid-exchange
+				if (status._tag === "exchanging") {
+					get.set(webCallbackStatusAtom, { _tag: "idle" })
+				}
+			}
 			fiber.unsafeInterruptAsFork(fiber.id())
 		})
 
