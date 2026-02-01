@@ -2,6 +2,15 @@ import { createFileRoute, notFound } from "@tanstack/react-router"
 import { source } from "@/lib/source"
 import { ImageResponse } from "@vercel/og"
 
+// Load Inter font from Google Fonts
+const interRegular = fetch(
+	"https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff",
+).then((res) => res.arrayBuffer())
+
+const interBold = fetch(
+	"https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hjp-Ek-_EeA.woff",
+).then((res) => res.arrayBuffer())
+
 export const Route = createFileRoute("/og/$")({
 	server: {
 		handlers: {
@@ -15,10 +24,12 @@ export const Route = createFileRoute("/og/$")({
 				const title = page.data.title ?? "Hazel Docs"
 				const description = page.data.description ?? ""
 
+				const [interRegularData, interBoldData] = await Promise.all([interRegular, interBold])
+
 				return new ImageResponse(
 					<div
 						tw="flex flex-col w-full h-full bg-zinc-950 text-white p-16"
-						style={{ fontFamily: "Geist" }}
+						style={{ fontFamily: "Inter" }}
 					>
 						<div tw="flex flex-col flex-1 justify-center">
 							<div tw="flex items-center mb-6">
@@ -50,6 +61,20 @@ export const Route = createFileRoute("/og/$")({
 					{
 						width: 1200,
 						height: 630,
+						fonts: [
+							{
+								name: "Inter",
+								data: interRegularData,
+								weight: 400,
+								style: "normal",
+							},
+							{
+								name: "Inter",
+								data: interBoldData,
+								weight: 700,
+								style: "normal",
+							},
+						],
 					},
 				)
 			},

@@ -22,11 +22,7 @@ export default defineConfig({
 			// 	enabled: true,
 			// },
 		}),
-		nitro({
-			externals: {
-				traceInclude: ["node_modules/@vercel/og/dist/**"],
-			},
-		}),
+		nitro(),
 		react(),
 	],
 })
