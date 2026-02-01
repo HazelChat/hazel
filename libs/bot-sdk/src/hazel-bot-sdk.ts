@@ -519,6 +519,46 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								}),
 							),
 					),
+
+				/**
+				 * List messages in a channel with cursor-based pagination (Stripe-style)
+				 * @param channelId - The channel to list messages from
+				 * @param options - Pagination options (startingAfter, endingBefore, limit)
+				 * @returns Messages in reverse chronological order (newest first) with has_more indicator
+				 *
+				 * @example
+				 * ```typescript
+				 * // Get first page (newest 25 messages)
+				 * const page1 = yield* bot.message.list(channelId)
+				 *
+				 * // Get older messages (next page)
+				 * if (page1.has_more) {
+				 *   const lastMsg = page1.data[page1.data.length - 1]
+				 *   const page2 = yield* bot.message.list(channelId, { startingAfter: lastMsg.id })
+				 * }
+				 * ```
+				 */
+				list: (
+					channelId: ChannelId,
+					options?: {
+						/** Cursor for older messages (fetch messages before this message) */
+						readonly startingAfter?: MessageId
+						/** Cursor for newer messages (fetch messages after this message) */
+						readonly endingBefore?: MessageId
+						/** Maximum number of messages to return (1-100, default 25) */
+						readonly limit?: number
+					},
+				) =>
+					httpApiClient["api-v1-messages"]
+						.listMessages({
+							urlParams: {
+								channel_id: channelId,
+								starting_after: options?.startingAfter,
+								ending_before: options?.endingBefore,
+								limit: options?.limit,
+							},
+						})
+						.pipe(Effect.withSpan("bot.message.list", { attributes: { channelId } })),
 			},
 
 			/**

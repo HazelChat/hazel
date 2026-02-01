@@ -181,13 +181,6 @@ const mapVercelPartToChunk = (
 // ============================================================================
 // Commands
 // ============================================================================
-const SimulateAiCommand = Command.make("simulate-ai", {
-	description: "Legacy: Simulate an AI streaming response (for comparison)",
-	args: {
-		speed: Schema.optional(Schema.String),
-	},
-	usageExample: "/simulate-ai speed=fast",
-})
 
 const AskCommand = Command.make("ask", {
 	description: "Ask the AI agent using ToolLoopAgent pattern (supports tool use and reasoning)",
@@ -197,7 +190,7 @@ const AskCommand = Command.make("ask", {
 	usageExample: '/ask message="Search for patterns in the codebase"',
 })
 
-const commands = CommandGroup.make(SimulateAiCommand, AskCommand)
+const commands = CommandGroup.make(AskCommand)
 
 // ============================================================================
 // Bot Setup
@@ -208,55 +201,6 @@ runHazelBot({
 	layers: [],
 	setup: (bot) =>
 		Effect.gen(function* () {
-			// Handle /simulate-ai command - legacy simulation for comparison
-			yield* bot.onCommand(SimulateAiCommand, (ctx) =>
-				Effect.gen(function* () {
-					yield* Effect.log(`Received /simulate-ai command from ${ctx.userId}`)
-
-					const speed = ctx.args.speed === "fast" ? 10 : ctx.args.speed === "slow" ? 50 : 25
-
-					const stream = yield* bot.stream.create(ctx.channelId, {
-						initialData: { model: "moonshotai/kimi-k2.5 (simulated)" },
-					})
-
-					yield* Effect.log(`Created streaming message ${stream.messageId}`)
-
-					// Simulate thinking
-					const thinkingId = yield* stream.startThinking()
-					yield* stream.updateStepContent(thinkingId, "Analyzing the request...", true)
-					yield* Effect.sleep(800)
-					yield* stream.completeStep(thinkingId)
-
-					// Simulate tool call
-					const toolId = yield* stream.startToolCall("search_codebase", {
-						query: "example patterns",
-						fileTypes: ["ts", "tsx"],
-					})
-					yield* Effect.sleep(600)
-					yield* stream.completeStep(toolId, {
-						output: { matches: 2, files: ["src/example.ts", "src/patterns.tsx"] },
-					})
-
-					// Stream response
-					const response =
-						"Here's what I found in the codebase:\n\n" +
-						"```typescript\n" +
-						"export const example = () => {\n" +
-						'  console.log("Hello, world!")\n' +
-						"}\n" +
-						"```\n\n" +
-						"This is a **simulated** response for testing the UI."
-
-					for (const char of response) {
-						yield* stream.appendText(char)
-						yield* Effect.sleep(speed)
-					}
-
-					yield* stream.complete()
-					yield* Effect.log(`Simulation complete for message ${stream.messageId}`)
-				}).pipe(bot.withErrorHandler(ctx)),
-			)
-
 			yield* bot.onCommand(AskCommand, (ctx) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /vercel-ask: ${ctx.args.message}`)

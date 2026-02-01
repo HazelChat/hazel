@@ -7,6 +7,29 @@ import { MessageEmbeds } from "../../models/message-embed-schema"
 import { RateLimitExceededError } from "../../rate-limit-errors"
 import { TransactionId } from "../../transaction-id"
 
+// ============ PAGINATION SCHEMAS (Stripe-style) ============
+
+export class ListMessagesQuery extends Schema.Class<ListMessagesQuery>("ListMessagesQuery")({
+	channel_id: ChannelId,
+	/** Cursor for older messages (fetch messages created before this message) */
+	starting_after: Schema.optional(MessageId),
+	/** Cursor for newer messages (fetch messages created after this message) */
+	ending_before: Schema.optional(MessageId),
+	/** Maximum number of messages to return (1-100, default 25) */
+	limit: Schema.optional(
+		Schema.NumberFromString.pipe(
+			Schema.int(),
+			Schema.greaterThanOrEqualTo(1),
+			Schema.lessThanOrEqualTo(100),
+		),
+	),
+}) {}
+
+export class ListMessagesResponse extends Schema.Class<ListMessagesResponse>("ListMessagesResponse")({
+	data: Schema.Array(Message.Model.json),
+	has_more: Schema.Boolean,
+}) {}
+
 // ============ REQUEST SCHEMAS ============
 
 export class CreateMessageRequest extends Schema.Class<CreateMessageRequest>("CreateMessageRequest")({
@@ -55,9 +78,35 @@ export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundErro
 	HttpApiSchema.annotations({ status: 404 }),
 ) {}
 
+export class InvalidPaginationError extends Schema.TaggedError<InvalidPaginationError>()(
+	"InvalidPaginationError",
+	{
+		message: Schema.String,
+	},
+	HttpApiSchema.annotations({ status: 400 }),
+) {}
+
 // ============ API GROUP ============
 
 export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
+	// List messages (with cursor-based pagination)
+	.add(
+		HttpApiEndpoint.get("listMessages", `/messages`)
+			.setUrlParams(ListMessagesQuery)
+			.addSuccess(ListMessagesResponse)
+			.addError(ChannelNotFoundError)
+			.addError(UnauthorizedError)
+			.addError(InvalidPaginationError)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "List Messages",
+					description:
+						"List messages in a channel with Stripe-style cursor-based pagination. Returns messages in reverse chronological order (newest first).",
+					summary: "List messages",
+				}),
+			),
+	)
 	// Create message
 	.add(
 		HttpApiEndpoint.post("createMessage", `/messages`)

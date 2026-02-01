@@ -118,6 +118,113 @@ export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolic
 				),
 			)
 
+		/**
+		 * Check if the current user can read messages in a channel.
+		 * Uses the same logic as canCreate since both require channel access.
+		 */
+		const canRead = (channelId: ChannelId) =>
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"read",
+			)(
+				channelRepo.with(channelId, (channel) =>
+					policy(
+						policyEntity,
+						"read",
+						Effect.fn(`${policyEntity}.read`)(function* (actor) {
+							// Check if user is a member of the organization
+							const orgMember = yield* organizationMemberRepo
+								.findByOrgAndUser(channel.organizationId, actor.id)
+								.pipe(withSystemActor)
+
+							// Handle based on channel type
+							if (channel.type === "public") {
+								// Org members can read public channels
+								return Option.isSome(orgMember)
+							}
+
+							if (channel.type === "private") {
+								// Check if user is a channel member or org admin
+								if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
+									return true
+								}
+
+								const channelMembership = yield* channelMemberRepo
+									.findByChannelAndUser(channelId, actor.id)
+									.pipe(withSystemActor)
+
+								return Option.isSome(channelMembership)
+							}
+
+							if (channel.type === "direct" || channel.type === "single") {
+								// Check if user is a channel member
+								const channelMembership = yield* channelMemberRepo
+									.findByChannelAndUser(channelId, actor.id)
+									.pipe(withSystemActor)
+
+								return Option.isSome(channelMembership)
+							}
+
+							if (channel.type === "thread") {
+								// Threads inherit permissions from parent channel
+								if (channel.parentChannelId) {
+									// Check parent channel - get parent channel and check its type
+									const parentChannel = yield* channelRepo
+										.findById(channel.parentChannelId)
+										.pipe(withSystemActor)
+
+									if (Option.isNone(parentChannel)) {
+										return false
+									}
+
+									const parent = parentChannel.value
+
+									// Check parent channel permissions based on its type
+									if (parent.type === "public") {
+										return Option.isSome(orgMember)
+									}
+
+									if (parent.type === "private") {
+										if (
+											Option.isSome(orgMember) &&
+											isAdminOrOwner(orgMember.value.role)
+										) {
+											return true
+										}
+
+										const parentMembership = yield* channelMemberRepo
+											.findByChannelAndUser(parent.id, actor.id)
+											.pipe(withSystemActor)
+
+										return Option.isSome(parentMembership)
+									}
+
+									if (parent.type === "direct" || parent.type === "single") {
+										const parentMembership = yield* channelMemberRepo
+											.findByChannelAndUser(parent.id, actor.id)
+											.pipe(withSystemActor)
+
+										return Option.isSome(parentMembership)
+									}
+
+									if (parent.type === "thread") {
+										// Nested threads not supported - deny
+										return false
+									}
+
+									// Unknown parent type - deny
+									return false
+								}
+								// Thread without parent - deny
+								return false
+							}
+
+							return false
+						}),
+					),
+				),
+			)
+
 		const canUpdate = (id: MessageId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
@@ -167,7 +274,7 @@ export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolic
 				),
 			)
 
-		return { canCreate, canUpdate, canDelete } as const
+		return { canCreate, canRead, canUpdate, canDelete } as const
 	}),
 	dependencies: [
 		MessageRepo.Default,

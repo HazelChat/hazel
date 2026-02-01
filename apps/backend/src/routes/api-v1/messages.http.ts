@@ -3,6 +3,7 @@ import { Database } from "@hazel/db"
 import {
 	CurrentUser,
 	InternalServerError,
+	type MessageId,
 	policyUse,
 	UnauthorizedError,
 	withRemapDbErrors,
@@ -11,6 +12,8 @@ import {
 import {
 	ChannelNotFoundError,
 	DeleteMessageResponse,
+	InvalidPaginationError,
+	ListMessagesResponse,
 	MessageResponse,
 	ToggleReactionResponse,
 } from "@hazel/domain/http"
@@ -92,6 +95,105 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 		return (
 			handlers
+				// List Messages (with cursor-based pagination)
+				.handle("listMessages", ({ urlParams }) =>
+					Effect.gen(function* () {
+						const bot = yield* authenticateBotFromToken
+						const currentUser = createBotUserContext(bot)
+
+						const { channel_id, starting_after, ending_before, limit } = urlParams
+
+						// Validate: cannot specify both cursors
+						if (starting_after && ending_before) {
+							return yield* Effect.fail(
+								new InvalidPaginationError({
+									message: "Cannot specify both starting_after and ending_before",
+								}),
+							)
+						}
+
+						const effectiveLimit = limit ?? 25
+
+						// First, check if user can read this channel (policy authorization)
+						yield* MessagePolicy.canRead(channel_id).pipe(
+							Effect.provideService(CurrentUser.Context, currentUser),
+						)
+
+						// Resolve cursor IDs to stable cursor tuples.
+						let cursorBefore:
+							| {
+									id: MessageId
+									createdAt: Date
+							  }
+							| undefined = undefined
+						let cursorAfter:
+							| {
+									id: MessageId
+									createdAt: Date
+							  }
+							| undefined = undefined
+
+						if (starting_after) {
+							const cursorMsg = yield* MessageRepo.findByIdForCursor({
+								id: starting_after,
+								channelId: channel_id,
+							}).pipe(withSystemActor)
+							if (Option.isNone(cursorMsg)) {
+								return yield* Effect.fail(
+									new InvalidPaginationError({
+										message: "Invalid starting_after cursor for channel",
+									}),
+								)
+							}
+							cursorBefore = {
+								id: cursorMsg.value.id,
+								createdAt: cursorMsg.value.createdAt,
+							}
+						} else if (ending_before) {
+							const cursorMsg = yield* MessageRepo.findByIdForCursor({
+								id: ending_before,
+								channelId: channel_id,
+							}).pipe(withSystemActor)
+							if (Option.isNone(cursorMsg)) {
+								return yield* Effect.fail(
+									new InvalidPaginationError({
+										message: "Invalid ending_before cursor for channel",
+									}),
+								)
+							}
+							cursorAfter = {
+								id: cursorMsg.value.id,
+								createdAt: cursorMsg.value.createdAt,
+							}
+						}
+
+						// Query messages (policy already checked, use system actor for db access)
+						const messages = yield* MessageRepo.listByChannel({
+							channelId: channel_id,
+							cursorBefore,
+							cursorAfter,
+							limit: effectiveLimit,
+						}).pipe(withSystemActor)
+
+						const hasMore = messages.length > effectiveLimit
+						const data = hasMore ? messages.slice(0, effectiveLimit) : messages
+
+						return new ListMessagesResponse({
+							data,
+							has_more: hasMore,
+						})
+					}).pipe(
+						Effect.catchTag("DatabaseError", (err) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while listing messages",
+									detail: String(err),
+								}),
+							),
+						),
+					),
+				)
+
 				// Create Message
 				.handle("createMessage", ({ payload }) =>
 					Effect.gen(function* () {

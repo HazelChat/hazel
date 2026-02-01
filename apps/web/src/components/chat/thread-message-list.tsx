@@ -3,8 +3,9 @@ import type { Message } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { format } from "date-fns"
 import { threadMessagesAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
+import { useAuth } from "~/lib/auth"
 import { Avatar } from "../ui/avatar"
-import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
+import { MessageContent } from "./message-content"
 
 interface ThreadMessageListProps {
 	threadChannelId: ChannelId
@@ -38,6 +39,14 @@ function ThreadMessage({ message }: { message: typeof Message.Model.Type }) {
 	const userResult = useAtomValue(userWithPresenceAtomFamily(message.authorId))
 	const userData = Result.getOrElse(userResult, () => [])
 	const user = userData[0]?.user
+	const { user: currentUser } = useAuth()
+
+	// Adapt message to MessageWithPinned type (thread messages don't have pinned state)
+	const messageWithPinned = {
+		...message,
+		author: user ?? null,
+		pinnedMessage: null,
+	}
 
 	return (
 		<div className="flex gap-3 rounded-lg px-2 py-2 hover:bg-secondary">
@@ -54,7 +63,13 @@ function ThreadMessage({ message }: { message: typeof Message.Model.Type }) {
 					<span className="text-muted-fg text-xs">{format(message.createdAt, "HH:mm")}</span>
 				</div>
 				<div className="mt-0.5">
-					<SlateMessageViewer content={message.content} />
+					<MessageContent.Provider
+						message={messageWithPinned}
+						organizationId={currentUser?.organizationId ?? undefined}
+					>
+						<MessageContent.Text />
+						<MessageContent.Embeds />
+					</MessageContent.Provider>
 				</div>
 			</div>
 		</div>
