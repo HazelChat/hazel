@@ -131,6 +131,7 @@ const createSessionFromActor = (
 					text: finalState.text || undefined,
 					progress: finalState.progress ?? undefined,
 					error: finalState.error ?? undefined,
+					steps: finalState.steps.length > 0 ? finalState.steps : undefined,
 				}
 
 				// Update message with final content and cached state
@@ -348,11 +349,13 @@ export const createAIStreamSessionInternal = Effect.fn("AIStreamSession.create")
 	): Effect.Effect<void, ActorOperationError | StreamProcessingError> =>
 		Effect.gen(function* () {
 			// Convert AsyncIterable to Effect Stream - proper Effect composition
-			const stream = Stream.fromAsyncIterable(chunks, (error) =>
-				new StreamProcessingError({
-					message: "Failed to read from async iterable",
-					cause: error,
-				}),
+			const stream = Stream.fromAsyncIterable(
+				chunks,
+				(error) =>
+					new StreamProcessingError({
+						message: "Failed to read from async iterable",
+						cause: error,
+					}),
 			)
 
 			// Process each chunk as an Effect using Stream.runForEach

@@ -54,6 +54,21 @@ export const MessageEmbedBadge = Schema.Struct({
 })
 export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
 
+// Agent step for cached state (matches actor's AgentStep)
+export const CachedAgentStep = Schema.Struct({
+	id: Schema.String,
+	type: Schema.Literal("thinking", "tool_call", "tool_result", "text", "error"),
+	status: Schema.Literal("pending", "active", "completed", "failed"),
+	content: Schema.optional(Schema.String),
+	toolName: Schema.optional(Schema.String),
+	toolInput: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	toolOutput: Schema.optional(Schema.Unknown),
+	toolError: Schema.optional(Schema.String),
+	startedAt: Schema.optional(Schema.Number),
+	completedAt: Schema.optional(Schema.Number),
+})
+export type CachedAgentStep = Schema.Schema.Type<typeof CachedAgentStep>
+
 // Live state cached snapshot for non-realtime clients
 export const MessageEmbedLiveStateCached = Schema.Struct({
 	status: Schema.Literal("idle", "active", "completed", "failed"),
@@ -61,6 +76,7 @@ export const MessageEmbedLiveStateCached = Schema.Struct({
 	text: Schema.optional(Schema.String),
 	progress: Schema.optional(Schema.Number),
 	error: Schema.optional(Schema.String),
+	steps: Schema.optional(Schema.Array(CachedAgentStep)),
 })
 export type MessageEmbedLiveStateCached = Schema.Schema.Type<typeof MessageEmbedLiveStateCached>
 

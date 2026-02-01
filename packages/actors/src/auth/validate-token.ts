@@ -1,11 +1,6 @@
 import { UserError } from "rivetkit"
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
-import type {
-	AuthenticatedClient,
-	BotClient,
-	BotTokenValidationResponse,
-	UserClient,
-} from "./types"
+import type { AuthenticatedClient, BotClient, BotTokenValidationResponse, UserClient } from "./types"
 import type { BotId, OrganizationId, UserId } from "@hazel/schema"
 
 // Cache JWKS for WorkOS
@@ -42,10 +37,7 @@ interface JWTPayloadWithClaims extends JWTPayload {
  * Validate a WorkOS JWT token.
  * Verifies the signature against WorkOS JWKS and extracts user identity.
  */
-async function validateJwt(
-	token: string,
-	config: TokenValidationConfig,
-): Promise<UserClient> {
+async function validateJwt(token: string, config: TokenValidationConfig): Promise<UserClient> {
 	const jwks = getJwks(config.workosClientId)
 
 	// WorkOS can issue tokens with either issuer format
@@ -92,10 +84,7 @@ async function validateJwt(
  * Validate a bot token by calling the backend validation endpoint.
  * Bot tokens are hashed and looked up in the database.
  */
-async function validateBotToken(
-	token: string,
-	config: TokenValidationConfig,
-): Promise<BotClient> {
+async function validateBotToken(token: string, config: TokenValidationConfig): Promise<BotClient> {
 	const response = await fetch(`${config.backendUrl}/internal/actors/validate-bot-token`, {
 		method: "POST",
 		headers: {

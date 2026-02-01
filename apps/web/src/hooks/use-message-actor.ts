@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { MessageId } from "@hazel/schema"
 import type { AgentStep } from "~/components/chat/agent-steps-view"
 import { rivetClient, getAccessToken } from "~/lib/rivet-client"
@@ -14,6 +14,25 @@ interface MessageActorState {
 	completedAt: number | null
 	steps: AgentStep[]
 	currentStepIndex: number | null
+}
+
+/**
+ * Cached state from the database embed - used when actor is already completed/failed
+ */
+export interface CachedActorState {
+	status: "idle" | "active" | "completed" | "failed"
+	data: Record<string, unknown>
+	text?: string
+	progress?: number
+	error?: string
+	steps?: readonly AgentStep[]
+}
+
+interface UseMessageActorOptions {
+	/** Whether to enable the actor connection */
+	enabled?: boolean
+	/** Cached state from the database - if completed/failed, skip actor connection */
+	cached?: CachedActorState
 }
 
 interface UseMessageActorResult extends MessageActorState {
@@ -33,21 +52,59 @@ const initialState: MessageActorState = {
 	currentStepIndex: null,
 }
 
-export function useMessageActor(messageId: MessageId, enabled = false): UseMessageActorResult {
-	const [state, setState] = useState<MessageActorState>(initialState)
+/**
+ * Create initial state from cached data
+ */
+function stateFromCache(cached: CachedActorState): MessageActorState {
+	return {
+		status: cached.status,
+		data: cached.data,
+		text: cached.text ?? "",
+		isStreaming: false,
+		progress: cached.progress ?? (cached.status === "completed" ? 100 : null),
+		error: cached.error ?? null,
+		startedAt: null,
+		completedAt: cached.status === "completed" || cached.status === "failed" ? Date.now() : null,
+		steps: cached.steps ? [...cached.steps] : [],
+		currentStepIndex: null,
+	}
+}
+
+export function useMessageActor(
+	messageId: MessageId,
+	options: UseMessageActorOptions = {},
+): UseMessageActorResult {
+	const { enabled = false, cached } = options
+
+	// If cached state is completed/failed, use it directly without connecting
+	const shouldUseCached = cached && (cached.status === "completed" || cached.status === "failed")
+
+	const [state, setState] = useState<MessageActorState>(() =>
+		shouldUseCached ? stateFromCache(cached) : initialState,
+	)
 	const [isConnected, setIsConnected] = useState(false)
 	const connectionRef = useRef<ReturnType<
 		ReturnType<typeof rivetClient.message.getOrCreate>["connect"]
 	> | null>(null)
 
+	// Sync state from cache when cached prop changes (e.g., after database update with steps)
 	useEffect(() => {
-		if (!enabled || !messageId) {
+		if (shouldUseCached && cached) {
+			setState(stateFromCache(cached))
+		}
+	}, [shouldUseCached, cached])
+
+	useEffect(() => {
+		// Skip connection if disabled, no messageId, or using cached completed/failed state
+		if (!enabled || !messageId || shouldUseCached) {
 			return
 		}
 
+		// Reset state when starting a new connection
+		setState(initialState)
+
 		let disposed = false
-		let conn: ReturnType<ReturnType<typeof rivetClient.message.getOrCreate>["connect"]> | null =
-			null
+		let conn: ReturnType<ReturnType<typeof rivetClient.message.getOrCreate>["connect"]> | null = null
 
 		// Get token and connect
 		getAccessToken().then((token) => {
@@ -182,17 +239,22 @@ export function useMessageActor(messageId: MessageId, enabled = false): UseMessa
 			}
 			connectionRef.current = null
 			setIsConnected(false)
-			setState(initialState)
 		}
-	}, [messageId, enabled])
+	}, [messageId, enabled, shouldUseCached])
 
 	return { ...state, isConnected }
 }
 
-export function useMessageLiveText(messageId: MessageId, enabled: boolean, staticContent: string): string {
-	const { text, isConnected } = useMessageActor(messageId, enabled)
+export function useMessageLiveText(
+	messageId: MessageId,
+	enabled: boolean,
+	staticContent: string,
+	cached?: CachedActorState,
+): string {
+	const { text, isConnected, status } = useMessageActor(messageId, { enabled, cached })
 
-	if (isConnected && text) {
+	// If we have text from actor (connected) or from cache, use it
+	if ((isConnected || status === "completed" || status === "failed") && text) {
 		return text
 	}
 	return staticContent

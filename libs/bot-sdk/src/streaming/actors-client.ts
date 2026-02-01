@@ -81,9 +81,7 @@ export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk
 		yield* Effect.annotateCurrentSpan("endpoint", endpoint)
 
 		// Use Effect.fn for automatic tracing of actor operations
-		const getMessageActor = Effect.fn("ActorsClient.getMessageActor")(function* (
-			messageId: string,
-		) {
+		const getMessageActor = Effect.fn("ActorsClient.getMessageActor")(function* (messageId: string) {
 			yield* Effect.annotateCurrentSpan("messageId", messageId)
 			return client.message.getOrCreate([messageId], {
 				params: { token: config.botToken },

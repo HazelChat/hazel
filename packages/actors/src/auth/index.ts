@@ -6,9 +6,4 @@ export type {
 	BotTokenValidationResponse,
 } from "./types"
 
-export {
-	validateToken,
-	getConfig,
-	loadConfigFromEnv,
-	type TokenValidationConfig,
-} from "./validate-token"
+export { validateToken, getConfig, loadConfigFromEnv, type TokenValidationConfig } from "./validate-token"

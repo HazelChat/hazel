@@ -1,69 +1,163 @@
 import type { MessageId } from "@hazel/schema"
-import { useMessageActor } from "~/hooks/use-message-actor"
+import { useMessageActor, type CachedActorState } from "~/hooks/use-message-actor"
 import { cn } from "~/lib/utils"
 import { AgentStepsView } from "./agent-steps-view"
+import { MessageLiveContext, useMessageLive } from "./message-live-context"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 import { StreamingMarkdown } from "./streaming-markdown"
+
+// ============================================================================
+// Provider
+// ============================================================================
+
+interface MessageLiveProviderProps {
+	messageId: MessageId
+	enabled: boolean
+	/** Cached state from the database - if completed/failed, renders without actor connection */
+	cached?: CachedActorState
+	children: React.ReactNode
+}
+
+/**
+ * Provides message actor state to child components via context.
+ * Returns null if disabled or status is idle.
+ */
+function MessageLiveProvider({ messageId, enabled, cached, children }: MessageLiveProviderProps) {
+	const actorState = useMessageActor(messageId, { enabled, cached })
+
+	// Don't render children if disabled or idle
+	if (!enabled || actorState.status === "idle") {
+		return null
+	}
+
+	return <MessageLiveContext value={{ state: actorState }}>{children}</MessageLiveContext>
+}
+
+// ============================================================================
+// Sub-Components
+// ============================================================================
+
+interface MessageLiveRootProps {
+	children: React.ReactNode
+	className?: string
+}
+
+function MessageLiveRoot({ children, className }: MessageLiveRootProps) {
+	return <div className={cn("mt-2 space-y-2", className)}>{children}</div>
+}
+
+function MessageLiveProgress() {
+	const { state } = useMessageLive()
+	if (state.status !== "active" || state.progress === null) return null
+
+	return (
+		<div className="w-full max-w-xs">
+			<ProgressBar value={state.progress} />
+		</div>
+	)
+}
+
+function MessageLiveSteps() {
+	const { state } = useMessageLive()
+	if (state.steps.length === 0) return null
+
+	return <AgentStepsView steps={state.steps} currentIndex={state.currentStepIndex} />
+}
+
+function MessageLiveText() {
+	const { state } = useMessageLive()
+	if (!state.text) return null
+
+	return state.isStreaming ? (
+		<StreamingMarkdown isAnimating>{state.text}</StreamingMarkdown>
+	) : (
+		<SlateMessageViewer content={state.text} />
+	)
+}
+
+function MessageLiveError() {
+	const { state } = useMessageLive()
+	if (state.status !== "failed" || !state.error) return null
+
+	return <ErrorBadge error={state.error} />
+}
+
+interface MessageLiveDataProps<T> {
+	dataKey: string
+	children: (value: T) => React.ReactNode
+}
+
+function MessageLiveData<T>({ dataKey, children }: MessageLiveDataProps<T>) {
+	const { state } = useMessageLive()
+	const value = state.data[dataKey] as T | undefined
+	if (value === undefined) return null
+
+	return <>{children(value)}</>
+}
+
+// ============================================================================
+// Compound Component Export
+// ============================================================================
+
+export const MessageLive = {
+	Provider: MessageLiveProvider,
+	Root: MessageLiveRoot,
+	Progress: MessageLiveProgress,
+	Steps: MessageLiveSteps,
+	Text: MessageLiveText,
+	Error: MessageLiveError,
+	Data: MessageLiveData,
+}
+
+// ============================================================================
+// Backwards Compatible Legacy Component
+// ============================================================================
 
 interface MessageLiveStateProps {
 	messageId: MessageId
 	enabled: boolean
+	/** Cached state from the database - if completed/failed, renders without actor connection */
+	cached?: CachedActorState
 }
 
 /**
  * Renders the live state UI for a message with an attached actor.
  * Shows progress bar, streaming text, AI agent steps, and error states.
+ *
+ * If cached state is provided and status is "completed" or "failed",
+ * renders directly from cache without connecting to the Rivet actor.
+ *
+ * @deprecated Use MessageLive compound component for more flexibility
  */
-export function MessageLiveState({ messageId, enabled }: MessageLiveStateProps) {
-	const state = useMessageActor(messageId, enabled)
-
-	if (!enabled || state.status === "idle") {
-		return null
-	}
-
+export function MessageLiveState({ messageId, enabled, cached }: MessageLiveStateProps) {
 	return (
-		<div className="mt-2 space-y-2">
-			{/* Progress bar */}
-			{state.status === "active" && state.progress !== null && (
-				<div className="w-full max-w-xs">
-					<ProgressBar value={state.progress} />
-				</div>
-			)}
-
-			{/* AI Agent Steps */}
-			{state.steps.length > 0 && (
-				<AgentStepsView steps={state.steps} currentIndex={state.currentStepIndex} />
-			)}
-
-			{/* Streaming text content */}
-			{state.text && (
-				state.isStreaming ? (
-					// Fast markdown renderer during streaming with blinking caret
-					<StreamingMarkdown isAnimating>{state.text}</StreamingMarkdown>
-				) : (
-					// Rich rendering after streaming (mentions, Prism highlighting)
-					<SlateMessageViewer content={state.text} />
-				)
-			)}
-
-			{/* Error state */}
-			{state.status === "failed" && state.error !== null && <ErrorBadge error={state.error} />}
-
-			{/* Custom data display */}
-			{typeof state.data.deploymentUrl === "string" && (
-				<a
-					href={state.data.deploymentUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="inline-flex items-center gap-1 text-primary text-sm hover:underline"
-				>
-					View Deployment
-					<ExternalLinkIcon className="size-3" />
-				</a>
-			)}
-		</div>
+		<MessageLive.Provider messageId={messageId} enabled={enabled} cached={cached}>
+			<MessageLive.Root>
+				<MessageLive.Progress />
+				<MessageLive.Steps />
+				<MessageLive.Text />
+				<MessageLive.Error />
+				<MessageLive.Data<string> dataKey="deploymentUrl">
+					{(url) => (
+						<a
+							href={url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-1 text-primary text-sm hover:underline"
+						>
+							View Deployment
+							<ExternalLinkIcon className="size-3" />
+						</a>
+					)}
+				</MessageLive.Data>
+			</MessageLive.Root>
+		</MessageLive.Provider>
 	)
 }
+
+// ============================================================================
+// Internal Components
+// ============================================================================
 
 function ProgressBar({ value }: { value: number }) {
 	return (

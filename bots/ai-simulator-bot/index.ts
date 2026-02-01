@@ -24,11 +24,7 @@ const streamTextToStep = (
 /**
  * Stream text character by character to the main content
  */
-const streamTextContent = (
-	stream: StreamSession,
-	text: string,
-	delayMs = 25,
-): Effect.Effect<void, unknown> =>
+const streamTextContent = (stream: StreamSession, text: string, delayMs = 25): Effect.Effect<void, unknown> =>
 	Effect.forEach(text.split(""), (char) => stream.appendText(char).pipe(Effect.andThen(sleep(delayMs))), {
 		discard: true,
 	})

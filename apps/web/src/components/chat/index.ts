@@ -1,6 +1,7 @@
 export { AgentStepsView } from "./agent-steps-view"
 export { DeleteMessageModal } from "./delete-message-modal"
-export { MessageLiveState } from "./message-live-state"
+export { useMessageLive } from "./message-live-context"
+export { MessageLive, MessageLiveState } from "./message-live-state"
 export { PinnedMessagesModal } from "./pinned-messages-modal"
 export { TypingIndicator } from "./typing-indicator"
 export { UserProfilePopover } from "./user-profile-popover"

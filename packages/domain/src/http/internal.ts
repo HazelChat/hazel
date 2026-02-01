@@ -8,11 +8,11 @@ import { BotId, OrganizationId, UserId } from "../ids"
 // Bot Token Validation (for Actor authentication)
 // ============================================================================
 
-export class ValidateBotTokenRequest extends Schema.Class<ValidateBotTokenRequest>(
-	"ValidateBotTokenRequest",
-)({
-	token: Schema.String,
-}) {}
+export class ValidateBotTokenRequest extends Schema.Class<ValidateBotTokenRequest>("ValidateBotTokenRequest")(
+	{
+		token: Schema.String,
+	},
+) {}
 
 export class ValidateBotTokenResponse extends Schema.Class<ValidateBotTokenResponse>(
 	"ValidateBotTokenResponse",
