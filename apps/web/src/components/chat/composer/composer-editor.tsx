@@ -15,8 +15,9 @@ interface ComposerEditorProps {
 
 export function ComposerEditor({ placeholder, className }: ComposerEditorProps) {
 	const { user } = useAuth()
-	const composerContext = useComposerContext()
-	const { channelId, organizationId, editorRef, placeholder: defaultPlaceholder } = composerContext
+	const { state, meta } = useComposerContext()
+	const { channelId, organizationId, placeholder: defaultPlaceholder } = state
+	const { editorRef } = meta
 
 	const { sendMessage, attachmentIds, activeThreadChannelId } = useChat()
 

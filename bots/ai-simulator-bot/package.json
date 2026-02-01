@@ -13,6 +13,8 @@
 		"@effect/ai-openrouter": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@hazel/bot-sdk": "workspace:*",
+		"@openrouter/ai-sdk-provider": "^1.5.4",
+		"ai": "^6.0.67",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

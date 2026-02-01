@@ -59,4 +59,4 @@ export const Composer = {
 	Actions: ComposerActions,
 }
 
-export { useComposerContext } from "./composer-context"
+export { useComposerContext, useComposerState, useComposerActions, useComposerMeta } from "./composer-context"

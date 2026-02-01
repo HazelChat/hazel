@@ -197,8 +197,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						: workosUser.lastName || ""
 					const avatarUrl = existingUser
 						? workosUser.profilePictureUrl || existingUser.avatarUrl // Keep existing if WorkOS has no picture
-						: workosUser.profilePictureUrl ||
-							`https://avatar.vercel.sh/${workosUser.id}.svg`
+						: workosUser.profilePictureUrl || `https://avatar.vercel.sh/${workosUser.id}.svg`
 
 					return collectResult(
 						userRepo

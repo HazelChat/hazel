@@ -1,7 +1,7 @@
 import type { MessageId } from "@hazel/schema"
 import type { Message } from "@hazel/domain/models"
 import { Embed } from "~/components/embeds"
-import { MessageLiveState } from "./message-live-state"
+import { MessageLive } from "./message-live-state"
 
 // Extract embed type from the Message model
 type MessageEmbedType = NonNullable<typeof Message.Model.Type.embeds>[number]
@@ -30,12 +30,19 @@ export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 			))}
 			{/* Render live state UI if enabled and messageId is provided */}
 			{hasLiveState && messageId && (
-				<MessageLiveState
+				<MessageLive.Provider
 					messageId={messageId}
 					enabled
 					cached={cachedState}
 					loading={loadingConfig}
-				/>
+				>
+					<MessageLive.Root>
+						<MessageLive.Progress />
+						<MessageLive.Steps />
+						<MessageLive.Text />
+						<MessageLive.Error />
+					</MessageLive.Root>
+				</MessageLive.Provider>
 			)}
 		</div>
 	)

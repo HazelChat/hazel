@@ -15,7 +15,9 @@ interface ComposerActionsProps {
 }
 
 export function ComposerActions({ className, minimal = false }: ComposerActionsProps) {
-	const { channelId, organizationId, editorRef } = useComposerContext()
+	const { state, meta } = useComposerContext()
+	const { channelId, organizationId } = state
+	const { editorRef } = meta
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { trackEmojiUsage } = useEmojiStats()
 

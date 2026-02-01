@@ -258,6 +258,89 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				}),
 		})
 
+		/**
+		 * Helper to create actors service from runtime config.
+		 * Shared between stream.create and ai.stream to avoid code duplication.
+		 */
+		const createActorsServiceFn = () =>
+			Option.match(runtimeConfigOption, {
+				onNone: () =>
+					Effect.fail(
+						new BotNotConfiguredError({
+							message: "Bot runtime config not available for streaming",
+						}),
+					),
+				onSome: (config) => {
+					const client = createActorsClient()
+					return Effect.succeed({
+						getMessageActor: (messageId: string) =>
+							Effect.sync(() =>
+								client.message.getOrCreate([messageId], {
+									params: { token: config.botToken },
+								}),
+							),
+						client,
+						botToken: config.botToken,
+					})
+				},
+			})
+
+		/**
+		 * Helper to create the message creation function.
+		 * Shared between stream.create and ai.stream to avoid code duplication.
+		 */
+		const createMessageFnHelper = (
+			chId: ChannelId,
+			content: string,
+			opts?: {
+				readonly replyToMessageId?: MessageId | null
+				readonly threadChannelId?: ChannelId | null
+				readonly embeds?:
+					| readonly {
+							readonly liveState?: {
+								readonly enabled: true
+								readonly loading?: {
+									readonly text?: string
+									readonly icon?: "sparkle" | "brain"
+									readonly showSpinner?: boolean
+									readonly throbbing?: boolean
+								}
+							}
+					  }[]
+					| null
+			},
+		) =>
+			messageLimiter(
+				httpApiClient["api-v1-messages"]
+					.createMessage({
+						payload: {
+							channelId: chId,
+							content,
+							replyToMessageId: opts?.replyToMessageId ?? null,
+							threadChannelId: opts?.threadChannelId ?? null,
+							embeds: opts?.embeds ?? null,
+						},
+					})
+					.pipe(Effect.map((r) => r.data)),
+			)
+
+		/**
+		 * Helper to update a message (for persisting streaming state).
+		 * Shared between stream.create and ai.stream to avoid code duplication.
+		 */
+		const updateMessageFnHelper: MessageUpdateFn = (messageId, payload) =>
+			messageLimiter(
+				httpApiClient["api-v1-messages"]
+					.updateMessage({
+						path: { id: messageId },
+						payload: {
+							content: payload.content,
+							embeds: payload.embeds ?? null,
+						},
+					})
+					.pipe(Effect.map((r) => r.data)),
+			)
+
 		return {
 			/**
 			 * Register a handler for new messages
@@ -644,7 +727,12 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 											onNone: () => Effect.succeed(event.arguments),
 											onSome: (def) =>
 												Schema.decodeUnknown(def.argsSchema)(event.arguments).pipe(
-													Effect.catchAll(() => Effect.succeed(event.arguments)),
+													Effect.catchAll((error) =>
+														Effect.logWarning(
+															`Failed to decode args for /${event.commandName}, using raw arguments`,
+															{ error, rawArgs: event.arguments },
+														).pipe(Effect.as(event.arguments)),
+													),
 												),
 										})
 
@@ -699,84 +787,19 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 * Uses Option.match for explicit handling of missing config.
 			 * Fails with BotNotConfiguredError if config is not available.
 			 */
-			createActorsService: () =>
-				Option.match(runtimeConfigOption, {
-					onNone: () =>
-						Effect.fail(
-							new BotNotConfiguredError({
-								message: "Bot runtime config not available for streaming",
-							}),
-						),
-					onSome: (config) => {
-						const client = createActorsClient()
-						return Effect.succeed({
-							getMessageActor: (messageId: string) =>
-								Effect.sync(() =>
-									client.message.getOrCreate([messageId], {
-										params: { token: config.botToken },
-									}),
-								),
-							client,
-							botToken: config.botToken,
-						})
-					},
-				}),
+			createActorsService: createActorsServiceFn,
 
 			/**
 			 * Helper to create the message creation function.
 			 * Shared between stream.create and ai.stream.
 			 */
-			createMessageFn: (
-				chId: ChannelId,
-				content: string,
-				opts?: {
-					readonly replyToMessageId?: MessageId | null
-					readonly threadChannelId?: ChannelId | null
-					readonly embeds?:
-						| readonly {
-								readonly liveState?: {
-									readonly enabled: true
-									readonly loading?: {
-										readonly text?: string
-										readonly icon?: "sparkle" | "brain"
-										readonly showSpinner?: boolean
-										readonly throbbing?: boolean
-									}
-								}
-						  }[]
-						| null
-				},
-			) =>
-				messageLimiter(
-					httpApiClient["api-v1-messages"]
-						.createMessage({
-							payload: {
-								channelId: chId,
-								content,
-								replyToMessageId: opts?.replyToMessageId ?? null,
-								threadChannelId: opts?.threadChannelId ?? null,
-								embeds: opts?.embeds ?? null,
-							},
-						})
-						.pipe(Effect.map((r) => r.data)),
-				),
+			createMessageFn: createMessageFnHelper,
 
 			/**
 			 * Helper to update a message (for persisting streaming state).
 			 * @internal
 			 */
-			updateMessageFn: ((messageId: MessageId, payload: Parameters<MessageUpdateFn>[1]) =>
-				messageLimiter(
-					httpApiClient["api-v1-messages"]
-						.updateMessage({
-							path: { id: messageId },
-							payload: {
-								content: payload.content,
-								embeds: payload.embeds ?? null,
-							},
-						})
-						.pipe(Effect.map((r) => r.data)),
-				)) as MessageUpdateFn,
+			updateMessageFn: updateMessageFnHelper,
 
 			/**
 			 * Low-level streaming API for real-time message updates.
@@ -802,79 +825,11 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 */
 				create: (channelId: ChannelId, options?: CreateStreamOptions) =>
 					Effect.gen(function* () {
-						const actorsService = yield* Option.match(runtimeConfigOption, {
-							onNone: () =>
-								Effect.fail(
-									new BotNotConfiguredError({
-										message: "Bot runtime config not available for streaming",
-									}),
-								),
-							onSome: (config) => {
-								const client = createActorsClient()
-								return Effect.succeed({
-									getMessageActor: (messageId: string) =>
-										Effect.sync(() =>
-											client.message.getOrCreate([messageId], {
-												params: { token: config.botToken },
-											}),
-										),
-									client,
-									botToken: config.botToken,
-								})
-							},
-						})
-
-						const createMessage = (
-							chId: ChannelId,
-							content: string,
-							opts?: {
-								readonly replyToMessageId?: MessageId | null
-								readonly threadChannelId?: ChannelId | null
-								readonly embeds?:
-									| readonly {
-											readonly liveState?: {
-												readonly enabled: true
-												readonly loading?: {
-													readonly text?: string
-													readonly icon?: "sparkle" | "brain"
-													readonly showSpinner?: boolean
-													readonly throbbing?: boolean
-												}
-											}
-									  }[]
-									| null
-							},
-						) =>
-							messageLimiter(
-								httpApiClient["api-v1-messages"]
-									.createMessage({
-										payload: {
-											channelId: chId,
-											content,
-											replyToMessageId: opts?.replyToMessageId ?? null,
-											threadChannelId: opts?.threadChannelId ?? null,
-											embeds: opts?.embeds ?? null,
-										},
-									})
-									.pipe(Effect.map((r) => r.data)),
-							)
-
-						const updateMessage: MessageUpdateFn = (messageId, payload) =>
-							messageLimiter(
-								httpApiClient["api-v1-messages"]
-									.updateMessage({
-										path: { id: messageId },
-										payload: {
-											content: payload.content,
-											embeds: payload.embeds ?? null,
-										},
-									})
-									.pipe(Effect.map((r) => r.data)),
-							)
+						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createStreamSessionInternal(
-							createMessage,
-							updateMessage,
+							createMessageFnHelper,
+							updateMessageFnHelper,
 							actorsService,
 							channelId,
 							options,
@@ -905,79 +860,11 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 */
 				stream: (channelId: ChannelId, options?: AIStreamOptions) =>
 					Effect.gen(function* () {
-						const actorsService = yield* Option.match(runtimeConfigOption, {
-							onNone: () =>
-								Effect.fail(
-									new BotNotConfiguredError({
-										message: "Bot runtime config not available for streaming",
-									}),
-								),
-							onSome: (config) => {
-								const client = createActorsClient()
-								return Effect.succeed({
-									getMessageActor: (messageId: string) =>
-										Effect.sync(() =>
-											client.message.getOrCreate([messageId], {
-												params: { token: config.botToken },
-											}),
-										),
-									client,
-									botToken: config.botToken,
-								})
-							},
-						})
-
-						const createMessage = (
-							chId: ChannelId,
-							content: string,
-							opts?: {
-								readonly replyToMessageId?: MessageId | null
-								readonly threadChannelId?: ChannelId | null
-								readonly embeds?:
-									| readonly {
-											readonly liveState?: {
-												readonly enabled: true
-												readonly loading?: {
-													readonly text?: string
-													readonly icon?: "sparkle" | "brain"
-													readonly showSpinner?: boolean
-													readonly throbbing?: boolean
-												}
-											}
-									  }[]
-									| null
-							},
-						) =>
-							messageLimiter(
-								httpApiClient["api-v1-messages"]
-									.createMessage({
-										payload: {
-											channelId: chId,
-											content,
-											replyToMessageId: opts?.replyToMessageId ?? null,
-											threadChannelId: opts?.threadChannelId ?? null,
-											embeds: opts?.embeds ?? null,
-										},
-									})
-									.pipe(Effect.map((r) => r.data)),
-							)
-
-						const updateMessage: MessageUpdateFn = (messageId, payload) =>
-							messageLimiter(
-								httpApiClient["api-v1-messages"]
-									.updateMessage({
-										path: { id: messageId },
-										payload: {
-											content: payload.content,
-											embeds: payload.embeds ?? null,
-										},
-									})
-									.pipe(Effect.map((r) => r.data)),
-							)
+						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createAIStreamSessionInternal(
-							createMessage,
-							updateMessage,
+							createMessageFnHelper,
+							updateMessageFnHelper,
 							actorsService,
 							channelId,
 							options,

@@ -10,7 +10,7 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
 import { Sse } from "@effect/experimental"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/domain/ids"
-import { Context, Effect, Layer, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
+import { Context, Effect, Layer, Metric, Queue, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { BotAuth } from "../auth.ts"
 import { generateCorrelationId } from "../log-context.ts"
 
@@ -43,11 +43,52 @@ export interface CommandContext {
 	readonly timestamp: number
 }
 
+// ============ Queue Config ============
+
+/**
+ * Configuration for the command queue
+ */
+export interface CommandQueueConfig {
+	/**
+	 * Maximum number of commands to buffer
+	 * @default 100
+	 */
+	readonly capacity: number
+
+	/**
+	 * Strategy when queue is full
+	 * - "sliding": Use sliding queue (drops oldest automatically) - RECOMMENDED
+	 * - "drop-newest": Ignore new command when full
+	 * @default "sliding"
+	 */
+	readonly backpressureStrategy: "sliding" | "drop-newest"
+}
+
+/**
+ * Default queue configuration
+ */
+export const defaultCommandQueueConfig: CommandQueueConfig = {
+	capacity: 100,
+	backpressureStrategy: "sliding",
+}
+
+// ============ Metrics ============
+
+const commandQueueDroppedCounter = Metric.counter("bot_command_queue_dropped")
+const commandQueueEnqueuedCounter = Metric.counter("bot_command_queue_enqueued")
+const commandQueueDequeuedCounter = Metric.counter("bot_command_queue_dequeued")
+const commandQueueSizeGauge = Metric.gauge("bot_command_queue_size")
+
 // ============ Config ============
 
 export interface SseCommandListenerConfig {
 	readonly backendUrl: string
 	readonly botToken: Redacted.Redacted<string>
+	/**
+	 * Queue configuration for backpressure handling
+	 * @default defaultCommandQueueConfig
+	 */
+	readonly queue?: CommandQueueConfig
 }
 
 export const SseCommandListenerConfigTag = Context.GenericTag<SseCommandListenerConfig>(
@@ -90,15 +131,28 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		// Track running state with Ref (immutable)
 		const isRunningRef = yield* Ref.make(false)
 
-		// Create command queue with proper scoped acquisition
-		const commandQueue = yield* Effect.acquireRelease(Queue.unbounded<CommandEvent>(), (queue) =>
-			Effect.gen(function* () {
-				yield* Effect.logDebug("Shutting down command queue").pipe(
-					Effect.annotateLogs("service", "SseCommandListener"),
-				)
-				yield* Queue.shutdown(queue)
-			}),
+		// Get queue configuration with defaults
+		const queueConfig = config.queue ?? defaultCommandQueueConfig
+
+		// Create command queue with proper scoped acquisition and backpressure
+		const commandQueue = yield* Effect.acquireRelease(
+			queueConfig.backpressureStrategy === "sliding"
+				? Queue.sliding<CommandEvent>(queueConfig.capacity)
+				: Queue.dropping<CommandEvent>(queueConfig.capacity),
+			(queue) =>
+				Effect.gen(function* () {
+					yield* Effect.logDebug("Shutting down command queue", {
+						capacity: queueConfig.capacity,
+						backpressureStrategy: queueConfig.backpressureStrategy,
+					}).pipe(Effect.annotateLogs("service", "SseCommandListener"))
+					yield* Queue.shutdown(queue)
+				}),
 		)
+
+		yield* Effect.logDebug("Command queue created", {
+			capacity: queueConfig.capacity,
+			backpressureStrategy: queueConfig.backpressureStrategy,
+		}).pipe(Effect.annotateLogs("service", "SseCommandListener"))
 
 		/**
 		 * Connect to SSE stream and process events
@@ -163,7 +217,26 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 								correlationId,
 							}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
 						),
-						Effect.flatMap((cmd) => Queue.offer(commandQueue, cmd)),
+						Effect.flatMap((cmd) =>
+							Effect.gen(function* () {
+								const offered = yield* Queue.offer(commandQueue, cmd)
+								if (!offered) {
+									// Command was dropped due to backpressure
+									yield* Metric.increment(commandQueueDroppedCounter)
+									yield* Effect.logWarning("Command dropped due to queue backpressure", {
+										commandName: cmd.commandName,
+										channelId: cmd.channelId,
+										capacity: queueConfig.capacity,
+										correlationId,
+									}).pipe(Effect.annotateLogs("service", "SseCommandListener"))
+								} else {
+									yield* Metric.increment(commandQueueEnqueuedCounter)
+								}
+								// Update queue size metric
+								const size = yield* Queue.size(commandQueue)
+								yield* Metric.set(commandQueueSizeGauge, size)
+							}),
+						),
 						Effect.withSpan("bot.command.receive", {
 							attributes: { correlationId, botId },
 						}),
@@ -255,8 +328,16 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		return {
 			/**
 			 * Take the next command event from the queue (blocks until available)
+			 * Tracks dequeue metrics and updates queue size gauge
 			 */
-			take: Queue.take(commandQueue),
+			take: Queue.take(commandQueue).pipe(
+				Effect.tap(() => Metric.increment(commandQueueDequeuedCounter)),
+				Effect.tap(() =>
+					Queue.size(commandQueue).pipe(
+						Effect.flatMap((size) => Metric.set(commandQueueSizeGauge, size)),
+					),
+				),
+			),
 
 			/**
 			 * Take all available command events from the queue (non-blocking)
@@ -272,6 +353,11 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 			 * Get the SSE URL this listener is connected to
 			 */
 			sseUrl: Effect.succeed(sseUrl),
+
+			/**
+			 * Get the current size of the command queue
+			 */
+			size: Queue.size(commandQueue),
 		}
 	}),
 }) {}

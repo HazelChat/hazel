@@ -23,7 +23,8 @@ interface ComposerDropZoneProps {
 }
 
 export function ComposerDropZone({ children }: ComposerDropZoneProps) {
-	const { channelId, organizationId } = useComposerContext()
+	const { state } = useComposerContext()
+	const { channelId, organizationId } = state
 	const { isDraggingOnPage } = useDragDetection()
 
 	const { handleFilesUpload, isUploading } = useFileUploadHandler({

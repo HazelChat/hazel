@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Queue, Ref, Schedule, Stream, TestContext } from "effect"
-import { SseConnectionError } from "./sse-command-listener.ts"
+import { Duration, Effect, Exit, Fiber, Metric, Queue, Ref, Schedule, Stream, TestContext } from "effect"
+import { CommandQueueConfig, defaultCommandQueueConfig, SseConnectionError } from "./sse-command-listener.ts"
 
 // ============================================================================
 // Test: Queue coordination
@@ -363,4 +363,234 @@ describe("Effect.forever pattern", () => {
 
 			yield* Fiber.interrupt(fiber)
 		}).pipe(Effect.runPromise))
+})
+
+// ============================================================================
+// Test: Command queue backpressure
+// ============================================================================
+
+describe("command queue backpressure", () => {
+	describe("configuration", () => {
+		it("default config has sensible values", () => {
+			expect(defaultCommandQueueConfig.capacity).toBe(100)
+			expect(defaultCommandQueueConfig.backpressureStrategy).toBe("sliding")
+		})
+
+		it("config interface accepts custom values", () => {
+			const customConfig: CommandQueueConfig = {
+				capacity: 50,
+				backpressureStrategy: "drop-newest",
+			}
+
+			expect(customConfig.capacity).toBe(50)
+			expect(customConfig.backpressureStrategy).toBe("drop-newest")
+		})
+	})
+
+	describe("sliding queue strategy", () => {
+		it("sliding queue drops oldest when full", () =>
+			Effect.gen(function* () {
+				const queue = yield* Queue.sliding<string>(3)
+
+				// Fill queue to capacity
+				yield* Queue.offer(queue, "first")
+				yield* Queue.offer(queue, "second")
+				yield* Queue.offer(queue, "third")
+
+				// This should cause "first" to be dropped
+				yield* Queue.offer(queue, "fourth")
+
+				const items = yield* Queue.takeAll(queue)
+				const itemArray = Array.from(items)
+
+				expect(itemArray.length).toBe(3)
+				expect(itemArray).toEqual(["second", "third", "fourth"])
+				expect(itemArray).not.toContain("first")
+			}).pipe(Effect.runPromise))
+
+		it("sliding queue always accepts new items", () =>
+			Effect.gen(function* () {
+				const queue = yield* Queue.sliding<number>(2)
+
+				// Offer more items than capacity
+				for (let i = 1; i <= 10; i++) {
+					const offered = yield* Queue.offer(queue, i)
+					expect(offered).toBe(true) // Sliding queue always accepts
+				}
+
+				// Should only have last 2 items
+				const items = yield* Queue.takeAll(queue)
+				expect(Array.from(items)).toEqual([9, 10])
+			}).pipe(Effect.runPromise))
+	})
+
+	describe("dropping queue strategy", () => {
+		it("dropping queue rejects new items when full", () =>
+			Effect.gen(function* () {
+				const queue = yield* Queue.dropping<string>(2)
+
+				// Fill queue to capacity
+				const first = yield* Queue.offer(queue, "first")
+				const second = yield* Queue.offer(queue, "second")
+
+				expect(first).toBe(true)
+				expect(second).toBe(true)
+
+				// This should be rejected (dropped)
+				const third = yield* Queue.offer(queue, "third")
+				expect(third).toBe(false)
+
+				// Queue should still have original items
+				const items = yield* Queue.takeAll(queue)
+				expect(Array.from(items)).toEqual(["first", "second"])
+			}).pipe(Effect.runPromise))
+
+		it("dropping queue accepts items after space is freed", () =>
+			Effect.gen(function* () {
+				const queue = yield* Queue.dropping<string>(2)
+
+				yield* Queue.offer(queue, "first")
+				yield* Queue.offer(queue, "second")
+
+				// Rejected
+				const rejected = yield* Queue.offer(queue, "third")
+				expect(rejected).toBe(false)
+
+				// Free up space
+				yield* Queue.take(queue)
+
+				// Now it should accept
+				const accepted = yield* Queue.offer(queue, "fourth")
+				expect(accepted).toBe(true)
+
+				const items = yield* Queue.takeAll(queue)
+				expect(Array.from(items)).toEqual(["second", "fourth"])
+			}).pipe(Effect.runPromise))
+	})
+
+	describe("queue size tracking", () => {
+		it("Queue.size returns current queue depth", () =>
+			Effect.gen(function* () {
+				const queue = yield* Queue.sliding<string>(10)
+
+				expect(yield* Queue.size(queue)).toBe(0)
+
+				yield* Queue.offer(queue, "a")
+				expect(yield* Queue.size(queue)).toBe(1)
+
+				yield* Queue.offer(queue, "b")
+				yield* Queue.offer(queue, "c")
+				expect(yield* Queue.size(queue)).toBe(3)
+
+				yield* Queue.take(queue)
+				expect(yield* Queue.size(queue)).toBe(2)
+
+				yield* Queue.takeAll(queue)
+				expect(yield* Queue.size(queue)).toBe(0)
+			}).pipe(Effect.runPromise))
+	})
+
+	describe("metrics", () => {
+		it("Metric.counter can track enqueued events", () =>
+			Effect.gen(function* () {
+				const enqueuedCounter = Metric.counter("test_enqueued")
+				const queue = yield* Queue.sliding<string>(10)
+
+				// Simulate enqueue with metric tracking
+				yield* Queue.offer(queue, "item1")
+				yield* Metric.increment(enqueuedCounter)
+
+				yield* Queue.offer(queue, "item2")
+				yield* Metric.increment(enqueuedCounter)
+
+				// Verify counter was incremented (basic smoke test)
+				// In real usage, metrics would be collected by a metrics backend
+			}).pipe(Effect.runPromise))
+
+		it("Metric.counter can track dropped events", () =>
+			Effect.gen(function* () {
+				const droppedCounter = Metric.counter("test_dropped")
+				const queue = yield* Queue.dropping<string>(1)
+
+				yield* Queue.offer(queue, "first")
+
+				// Second offer should fail
+				const offered = yield* Queue.offer(queue, "second")
+				if (!offered) {
+					yield* Metric.increment(droppedCounter)
+				}
+
+				// Verify the pattern works
+				expect(offered).toBe(false)
+			}).pipe(Effect.runPromise))
+
+		it("Metric.gauge can track queue size", () =>
+			Effect.gen(function* () {
+				const sizeGauge = Metric.gauge("test_queue_size")
+				const queue = yield* Queue.sliding<string>(10)
+
+				yield* Queue.offer(queue, "item1")
+				yield* Queue.offer(queue, "item2")
+
+				const size = yield* Queue.size(queue)
+				yield* Metric.set(sizeGauge, size)
+
+				expect(size).toBe(2)
+			}).pipe(Effect.runPromise))
+
+		it("metrics pattern matches production code", () =>
+			Effect.gen(function* () {
+				// Simulate the exact pattern used in SseCommandListener
+				const commandQueueDroppedCounter = Metric.counter("bot_command_queue_dropped")
+				const commandQueueEnqueuedCounter = Metric.counter("bot_command_queue_enqueued")
+				const commandQueueDequeuedCounter = Metric.counter("bot_command_queue_dequeued")
+				const commandQueueSizeGauge = Metric.gauge("bot_command_queue_size")
+
+				const queue = yield* Queue.sliding<{ commandName: string }>(2)
+
+				// Simulate offer with metrics
+				const cmd = { commandName: "test" }
+				const offered = yield* Queue.offer(queue, cmd)
+				if (!offered) {
+					yield* Metric.increment(commandQueueDroppedCounter)
+				} else {
+					yield* Metric.increment(commandQueueEnqueuedCounter)
+				}
+				const sizeAfterOffer = yield* Queue.size(queue)
+				yield* Metric.set(commandQueueSizeGauge, sizeAfterOffer)
+
+				expect(offered).toBe(true)
+				expect(sizeAfterOffer).toBe(1)
+
+				// Simulate take with metrics
+				yield* Queue.take(queue)
+				yield* Metric.increment(commandQueueDequeuedCounter)
+				const sizeAfterTake = yield* Queue.size(queue)
+				yield* Metric.set(commandQueueSizeGauge, sizeAfterTake)
+
+				expect(sizeAfterTake).toBe(0)
+			}).pipe(Effect.runPromise))
+	})
+
+	describe("backpressure logging pattern", () => {
+		it("can log when command is dropped", () =>
+			Effect.gen(function* () {
+				const loggedDrops: string[] = []
+				const queue = yield* Queue.dropping<{ commandName: string; channelId: string }>(1)
+
+				yield* Queue.offer(queue, { commandName: "cmd1", channelId: "ch1" })
+
+				const cmd2 = { commandName: "cmd2", channelId: "ch2" }
+				const offered = yield* Queue.offer(queue, cmd2)
+
+				if (!offered) {
+					// Simulate the logging pattern
+					loggedDrops.push(`Dropped: ${cmd2.commandName} for channel ${cmd2.channelId}`)
+				}
+
+				expect(offered).toBe(false)
+				expect(loggedDrops).toHaveLength(1)
+				expect(loggedDrops[0]).toContain("cmd2")
+			}).pipe(Effect.runPromise))
+	})
 })

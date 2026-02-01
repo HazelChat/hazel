@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react"
+import { createContext, memo, use, useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
@@ -8,6 +8,10 @@ import IconLoader from "~/components/icons/icon-loader"
 import IconSquareTerminal from "~/components/icons/icon-square-terminal"
 import IconXmark from "~/components/icons/icon-xmark"
 import { cn } from "~/lib/utils"
+
+// ============================================================================
+// Types
+// ============================================================================
 
 /**
  * Represents a step in an AI agent workflow.
@@ -25,61 +29,106 @@ export interface AgentStep {
 	completedAt?: number
 }
 
-interface AgentStepsViewProps {
+// ============================================================================
+// Context
+// ============================================================================
+
+interface AgentStepsContextValue {
+	globalFailed: boolean
+	currentIndex: number | null
+}
+
+const AgentStepsContext = createContext<AgentStepsContextValue | null>(null)
+
+function useAgentStepsContext(): AgentStepsContextValue {
+	const ctx = use(AgentStepsContext)
+	if (!ctx) {
+		throw new Error("AgentSteps components must be used within AgentSteps.Root")
+	}
+	return ctx
+}
+
+// ============================================================================
+// Root Component
+// ============================================================================
+
+interface AgentStepsRootProps {
 	steps: AgentStep[]
 	currentIndex: number | null
 	/** Global status - used to auto-collapse thinking when the operation fails */
 	status?: "idle" | "active" | "completed" | "failed"
+	children?: React.ReactNode | ((step: AgentStep, index: number) => React.ReactNode)
+	className?: string
 }
 
 /**
- * Renders a visual representation of AI agent workflow steps.
- * Shows thinking, tool calls, and text generation steps with their status.
+ * Root component for the AgentSteps compound component.
+ * Provides context and renders steps with animation.
  */
-export function AgentStepsView({ steps, currentIndex, status }: AgentStepsViewProps) {
+function AgentStepsRoot({ steps, currentIndex, status, children, className }: AgentStepsRootProps) {
+	const contextValue = useMemo(
+		(): AgentStepsContextValue => ({
+			globalFailed: status === "failed",
+			currentIndex,
+		}),
+		[status, currentIndex],
+	)
+
 	if (steps.length === 0) return null
 
 	return (
-		<div className="mt-2 space-y-2" role="list" aria-label="AI agent workflow steps">
-			<AnimatePresence mode="popLayout">
-				{steps.map((step, index) => (
-					<motion.div
-						key={step.id}
-						initial={{ opacity: 0, x: -8 }}
-						animate={{ opacity: 1, x: 0 }}
-						exit={{ opacity: 0, x: -8 }}
-						transition={{
-							duration: 0.2,
-							delay: index * 0.05,
-							ease: [0.215, 0.61, 0.355, 1],
-						}}
-					>
-						<StepItem
-							step={step}
-							isActive={index === currentIndex}
-							globalFailed={status === "failed"}
-						/>
-					</motion.div>
-				))}
-			</AnimatePresence>
-		</div>
+		<AgentStepsContext value={contextValue}>
+			<div className={cn("mt-2 space-y-2", className)} role="list" aria-label="AI agent workflow steps">
+				<AnimatePresence mode="popLayout">
+					{steps.map((step, index) => (
+						<motion.div
+							key={step.id}
+							initial={{ opacity: 0, x: -8 }}
+							animate={{ opacity: 1, x: 0 }}
+							exit={{ opacity: 0, x: -8 }}
+							transition={{
+								duration: 0.2,
+								delay: index * 0.05,
+								ease: [0.215, 0.61, 0.355, 1],
+							}}
+						>
+							{typeof children === "function" ? (
+								children(step, index)
+							) : (
+								<AgentStepItem step={step} index={index} />
+							)}
+						</motion.div>
+					))}
+				</AnimatePresence>
+			</div>
+		</AgentStepsContext>
 	)
 }
 
-interface StepItemProps {
+// ============================================================================
+// Step Item (Default Renderer)
+// ============================================================================
+
+interface AgentStepItemProps {
 	step: AgentStep
-	isActive: boolean
-	globalFailed?: boolean
+	index: number
 }
 
-const StepItem = memo(function StepItem({ step, isActive, globalFailed }: StepItemProps) {
+/**
+ * Default step item that automatically renders the appropriate step type.
+ * Can be used directly or as a building block for custom renderers.
+ */
+const AgentStepItem = memo(function AgentStepItem({ step, index }: AgentStepItemProps) {
+	const { currentIndex, globalFailed } = useAgentStepsContext()
+	const isActive = index === currentIndex
+
 	return (
 		<div
 			className={cn("text-sm", isActive && step.type !== "thinking" && "animate-pulse")}
 			role="listitem"
 		>
 			{step.type === "thinking" && (
-				<ThinkingDisclosure step={step} isActive={isActive} globalFailed={globalFailed} />
+				<ThinkingStep step={step} isActive={isActive} globalFailed={globalFailed} />
 			)}
 			{step.type === "tool_call" && <ToolCallStep step={step} isActive={isActive} />}
 			{step.type === "text" && <TextStep step={step} />}
@@ -88,15 +137,17 @@ const StepItem = memo(function StepItem({ step, isActive, globalFailed }: StepIt
 	)
 })
 
-function ThinkingDisclosure({
-	step,
-	isActive,
-	globalFailed,
-}: {
+// ============================================================================
+// Step Type Components
+// ============================================================================
+
+interface ThinkingStepProps {
 	step: AgentStep
-	isActive: boolean
+	isActive?: boolean
 	globalFailed?: boolean
-}) {
+}
+
+function ThinkingStep({ step, isActive = false, globalFailed = false }: ThinkingStepProps) {
 	// Calculate duration from startedAt/completedAt
 	const duration = useMemo(() => {
 		if (!step.startedAt) return null
@@ -143,7 +194,12 @@ function ThinkingDisclosure({
 	)
 }
 
-function ToolCallStep({ step, isActive }: { step: AgentStep; isActive: boolean }) {
+interface ToolCallStepProps {
+	step: AgentStep
+	isActive?: boolean
+}
+
+function ToolCallStep({ step, isActive = false }: ToolCallStepProps) {
 	const [isExpanded, setIsExpanded] = useState(false)
 
 	return (
@@ -191,15 +247,63 @@ function ToolCallStep({ step, isActive }: { step: AgentStep; isActive: boolean }
 	)
 }
 
-function TextStep({ step }: { step: AgentStep }) {
+interface TextStepProps {
+	step: AgentStep
+}
+
+function TextStep({ step }: TextStepProps) {
 	return <div className="text-fg">{step.content}</div>
 }
 
-function ErrorStep({ step }: { step: AgentStep }) {
+interface ErrorStepProps {
+	step: AgentStep
+}
+
+function ErrorStep({ step }: ErrorStepProps) {
 	return (
 		<div className="flex items-center gap-2 text-danger" role="alert">
 			<IconXmark className="size-4 shrink-0" aria-hidden />
 			<span>{step.content || step.toolError || "An error occurred"}</span>
 		</div>
 	)
+}
+
+// ============================================================================
+// Compound Component Export
+// ============================================================================
+
+/**
+ * Compound component for rendering AI agent workflow steps.
+ *
+ * @example Default usage (backwards compatible)
+ * ```tsx
+ * <AgentSteps.Root steps={steps} currentIndex={currentIndex} status={status} />
+ * ```
+ *
+ * @example Custom step rendering
+ * ```tsx
+ * <AgentSteps.Root steps={steps} currentIndex={currentIndex} status={status}>
+ *   {(step, index) => (
+ *     step.type === "tool_call"
+ *       ? <CustomToolCallRenderer step={step} />
+ *       : <AgentSteps.Step step={step} index={index} />
+ *   )}
+ * </AgentSteps.Root>
+ * ```
+ *
+ * @example Individual step components
+ * ```tsx
+ * <AgentSteps.Thinking step={thinkingStep} isActive={true} />
+ * <AgentSteps.ToolCall step={toolCallStep} isActive={false} />
+ * <AgentSteps.Text step={textStep} />
+ * <AgentSteps.Error step={errorStep} />
+ * ```
+ */
+export const AgentSteps = {
+	Root: AgentStepsRoot,
+	Step: AgentStepItem,
+	Thinking: ThinkingStep,
+	ToolCall: ToolCallStep,
+	Text: TextStep,
+	Error: ErrorStep,
 }
