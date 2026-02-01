@@ -80,10 +80,25 @@ export const MessageEmbedLiveStateCached = Schema.Struct({
 })
 export type MessageEmbedLiveStateCached = Schema.Schema.Type<typeof MessageEmbedLiveStateCached>
 
+// Loading state configuration for AI streaming messages
+export const MessageEmbedLoadingState = Schema.Struct({
+	/** Text to display while loading (default: "Thinking...") */
+	text: Schema.optional(Schema.String),
+	/** Icon to display: "sparkle" or "brain" (default: "sparkle") */
+	icon: Schema.optional(Schema.Literal("sparkle", "brain")),
+	/** Whether to show spinning animation on the icon (default: true) */
+	showSpinner: Schema.optional(Schema.Boolean),
+	/** Whether to pulse/throb the entire loading indicator (default: false) */
+	throbbing: Schema.optional(Schema.Boolean),
+})
+export type MessageEmbedLoadingState = Schema.Schema.Type<typeof MessageEmbedLoadingState>
+
 // Live state configuration for real-time updates
 export const MessageEmbedLiveState = Schema.Struct({
 	enabled: Schema.Literal(true),
 	cached: Schema.optional(MessageEmbedLiveStateCached),
+	/** Loading state configuration for the initial loading indicator */
+	loading: Schema.optional(MessageEmbedLoadingState),
 })
 export type MessageEmbedLiveState = Schema.Schema.Type<typeof MessageEmbedLiveState>
 

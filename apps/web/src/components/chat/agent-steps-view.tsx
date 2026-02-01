@@ -27,19 +27,26 @@ export interface AgentStep {
 interface AgentStepsViewProps {
 	steps: AgentStep[]
 	currentIndex: number | null
+	/** Global status - used to auto-collapse thinking when the operation fails */
+	status?: "idle" | "active" | "completed" | "failed"
 }
 
 /**
  * Renders a visual representation of AI agent workflow steps.
  * Shows thinking, tool calls, and text generation steps with their status.
  */
-export function AgentStepsView({ steps, currentIndex }: AgentStepsViewProps) {
+export function AgentStepsView({ steps, currentIndex, status }: AgentStepsViewProps) {
 	if (steps.length === 0) return null
 
 	return (
 		<div className="mt-2 space-y-2" role="list" aria-label="AI agent workflow steps">
 			{steps.map((step, index) => (
-				<StepItem key={step.id} step={step} isActive={index === currentIndex} />
+				<StepItem
+					key={step.id}
+					step={step}
+					isActive={index === currentIndex}
+					globalFailed={status === "failed"}
+				/>
 			))}
 		</div>
 	)
@@ -48,15 +55,18 @@ export function AgentStepsView({ steps, currentIndex }: AgentStepsViewProps) {
 interface StepItemProps {
 	step: AgentStep
 	isActive: boolean
+	globalFailed?: boolean
 }
 
-const StepItem = memo(function StepItem({ step, isActive }: StepItemProps) {
+const StepItem = memo(function StepItem({ step, isActive, globalFailed }: StepItemProps) {
 	return (
 		<div
 			className={cn("text-sm", isActive && step.type !== "thinking" && "animate-pulse")}
 			role="listitem"
 		>
-			{step.type === "thinking" && <ThinkingDisclosure step={step} isActive={isActive} />}
+			{step.type === "thinking" && (
+				<ThinkingDisclosure step={step} isActive={isActive} globalFailed={globalFailed} />
+			)}
 			{step.type === "tool_call" && <ToolCallStep step={step} isActive={isActive} />}
 			{step.type === "text" && <TextStep step={step} />}
 			{step.type === "error" && <ErrorStep step={step} />}
@@ -64,7 +74,15 @@ const StepItem = memo(function StepItem({ step, isActive }: StepItemProps) {
 	)
 })
 
-function ThinkingDisclosure({ step, isActive }: { step: AgentStep; isActive: boolean }) {
+function ThinkingDisclosure({
+	step,
+	isActive,
+	globalFailed,
+}: {
+	step: AgentStep
+	isActive: boolean
+	globalFailed?: boolean
+}) {
 	// Calculate duration from startedAt/completedAt
 	const duration = useMemo(() => {
 		if (!step.startedAt) return null
@@ -72,13 +90,13 @@ function ThinkingDisclosure({ step, isActive }: { step: AgentStep; isActive: boo
 		return Math.round((endTime - step.startedAt) / 1000)
 	}, [step.startedAt, step.completedAt])
 
-	// Auto-expand while active, auto-collapse when completed
+	// Auto-expand while active, auto-collapse when completed or when global status becomes failed
 	const [isExpanded, setIsExpanded] = useState(step.status === "active")
 
 	useEffect(() => {
 		if (step.status === "active") setIsExpanded(true)
-		if (step.status === "completed") setIsExpanded(false)
-	}, [step.status])
+		if (step.status === "completed" || step.status === "failed" || globalFailed) setIsExpanded(false)
+	}, [step.status, globalFailed])
 
 	return (
 		<Disclosure isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
@@ -89,9 +107,13 @@ function ThinkingDisclosure({ step, isActive }: { step: AgentStep; isActive: boo
 				>
 					<IconBrainSparkle className="size-4 shrink-0" aria-hidden />
 					<span className="flex-1 text-left">
-						{step.status === "active" ? "Thinking..." : `Thought for ${duration ?? 0} seconds`}
+						{step.status === "active"
+							? "Thinking..."
+							: step.status === "failed"
+								? "Thinking stopped"
+								: `Thought for ${duration ?? 0} seconds`}
 					</span>
-					{step.status === "active" && isActive && (
+					{step.status === "active" && isActive && !globalFailed && (
 						<IconLoader className="size-4 animate-spin" aria-label="In progress" />
 					)}
 					<IconChevronUp

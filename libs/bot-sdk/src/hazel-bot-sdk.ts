@@ -59,6 +59,7 @@ import {
 	createAIStreamSessionInternal,
 	createStreamSessionInternal,
 	type AIStreamOptions,
+	type AIStreamSession,
 	type CreateStreamOptions,
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
@@ -731,7 +732,19 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				opts?: {
 					readonly replyToMessageId?: MessageId | null
 					readonly threadChannelId?: ChannelId | null
-					readonly embeds?: readonly { readonly liveState?: { readonly enabled: true } }[] | null
+					readonly embeds?:
+						| readonly {
+								readonly liveState?: {
+									readonly enabled: true
+									readonly loading?: {
+										readonly text?: string
+										readonly icon?: "sparkle" | "brain"
+										readonly showSpinner?: boolean
+										readonly throbbing?: boolean
+									}
+								}
+						  }[]
+						| null
 				},
 			) =>
 				messageLimiter(
@@ -818,7 +831,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								readonly replyToMessageId?: MessageId | null
 								readonly threadChannelId?: ChannelId | null
 								readonly embeds?:
-									| readonly { readonly liveState?: { readonly enabled: true } }[]
+									| readonly {
+											readonly liveState?: {
+												readonly enabled: true
+												readonly loading?: {
+													readonly text?: string
+													readonly icon?: "sparkle" | "brain"
+													readonly showSpinner?: boolean
+													readonly throbbing?: boolean
+												}
+											}
+									  }[]
 									| null
 							},
 						) =>
@@ -911,7 +934,17 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								readonly replyToMessageId?: MessageId | null
 								readonly threadChannelId?: ChannelId | null
 								readonly embeds?:
-									| readonly { readonly liveState?: { readonly enabled: true } }[]
+									| readonly {
+											readonly liveState?: {
+												readonly enabled: true
+												readonly loading?: {
+													readonly text?: string
+													readonly icon?: "sparkle" | "brain"
+													readonly showSpinner?: boolean
+													readonly throbbing?: boolean
+												}
+											}
+									  }[]
 									| null
 							},
 						) =>
@@ -950,6 +983,49 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							options,
 						)
 					}),
+
+				/**
+				 * Error handler for AI streaming sessions.
+				 * Unlike the generic `withErrorHandler`, this one:
+				 * 1. Marks the AI session as failed (calls `session.fail()`)
+				 * 2. Does NOT create a separate error message (the ErrorCard displays it inline)
+				 *
+				 * @param ctx - The command context
+				 * @param session - The AI stream session to mark as failed on error
+				 * @returns A function that wraps an effect with AI-aware error handling
+				 *
+				 * @example
+				 * ```typescript
+				 * yield* bot.onCommand(AskCommand, (ctx) =>
+				 *   Effect.gen(function* () {
+				 *     const session = yield* bot.ai.stream(ctx.channelId, {...})
+				 *
+				 *     yield* model.streamText({...}).pipe(
+				 *       Stream.runForEach((part) => session.processChunk(mapPart(part))),
+				 *     ).pipe(bot.ai.withErrorHandler(ctx, session))
+				 *
+				 *     yield* session.complete()
+				 *   })
+				 * )
+				 * ```
+				 */
+				withErrorHandler:
+					<Args>(ctx: TypedCommandContext<Args>, session: AIStreamSession) =>
+					<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | void, never, R> =>
+						effect.pipe(
+							Effect.catchAll((error) =>
+								Effect.gen(function* () {
+									yield* Effect.logError(`Error in AI streaming for /${ctx.commandName}`, {
+										error,
+									})
+									// Mark the session as failed - this updates the existing message
+									yield* session
+										.fail("An unexpected error occurred. Please try again.")
+										.pipe(Effect.ignore)
+									// Do NOT create a new message - the ErrorCard will show the error
+								}),
+							),
+						),
 			},
 		}
 	}),

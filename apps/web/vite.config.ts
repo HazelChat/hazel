@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite"
 import { devtools } from "@tanstack/devtools-vite"
 import tanstackRouter from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
+import { visualizer } from "rollup-plugin-visualizer"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 
@@ -116,6 +117,17 @@ export default defineConfig({
 			},
 		}),
 		tailwindcss(),
+		// Bundle visualizer - run with ANALYZE=true bun run build
+		...(process.env.ANALYZE
+			? [
+					visualizer({
+						filename: "stats.html",
+						open: false,
+						gzipSize: true,
+						brotliSize: true,
+					}),
+				]
+			: []),
 		// Only enable PWA for web builds (not Tauri - it has its own update mechanism)
 		...(isTauriBuild
 			? []

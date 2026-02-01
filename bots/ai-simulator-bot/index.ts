@@ -1,8 +1,8 @@
-import { LanguageModel, Tool, Toolkit } from "@effect/ai"
+import { AiError, LanguageModel, Tool, Toolkit } from "@effect/ai"
 import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { FetchHttpClient } from "@effect/platform"
-import { Command, CommandGroup, runHazelBot, type AIContentChunk } from "@hazel/bot-sdk"
-import { Config, Effect, Layer, Schema, Stream } from "effect"
+import { ActorOperationError, Command, CommandGroup, runHazelBot, type AIContentChunk } from "@hazel/bot-sdk"
+import { Cause, Config, Effect, Layer, Match, Schema, Stream } from "effect"
 import type { Response } from "@effect/ai"
 
 // ============================================================================
@@ -215,39 +215,87 @@ runHazelBot({
 	setup: (bot) =>
 		Effect.gen(function* () {
 			// Handle /ask command - real AI with tool support
-			yield* bot.onCommand(AskCommand, (ctx) =>
-				Effect.gen(function* () {
-					yield* Effect.log(`Received /ask: ${ctx.args.message}`)
+			yield* bot.onCommand(
+				AskCommand,
+				(ctx) =>
+					Effect.gen(function* () {
+						yield* Effect.log(`Received /ask: ${ctx.args.message}`)
 
-					const model = yield* LanguageModel.LanguageModel
-					const toolkit = yield* BotToolkit
+						const model = yield* LanguageModel.LanguageModel
+						const toolkit = yield* BotToolkit
 
-					// Create AI streaming session
-					const session = yield* bot.ai.stream(ctx.channelId, {
-						model: "moonshotai/kimi-k2.5",
-						showThinking: true,
-						showToolCalls: true,
-					})
-
-					yield* Effect.log(`Created streaming message ${session.messageId}`)
-
-					// Stream with tool support
-					yield* model
-						.streamText({
-							prompt: ctx.args.message,
-							toolkit,
-							toolChoice: "auto",
+						// Create AI streaming session
+						const session = yield* bot.ai.stream(ctx.channelId, {
+							model: "moonshotai/kimi-k2.5",
+							showThinking: true,
+							showToolCalls: true,
+							loading: {
+								text: "Thinking...",
+								icon: "sparkle",
+								throbbing: true,
+							},
 						})
-						.pipe(
-							Stream.runForEach((part) => {
-								const chunk = mapPartToChunk(part)
-								return chunk ? session.processChunk(chunk) : Effect.void
-							}),
-						)
 
-					yield* session.complete()
-					yield* Effect.log(`Response complete: ${session.messageId}`)
-				}).pipe(bot.withErrorHandler(ctx)),
+						yield* Effect.log(`Created streaming message ${session.messageId}`)
+
+						// Stream with tool support - use matchCauseEffect for AI-aware error handling
+						yield* model
+							.streamText({
+								prompt: ctx.args.message,
+								toolkit,
+								toolChoice: "auto",
+							})
+							.pipe(
+								Stream.runForEach((part) => {
+									const chunk = mapPartToChunk(part)
+									return chunk ? session.processChunk(chunk) : Effect.void
+								}),
+								Effect.matchCauseEffect({
+									onSuccess: () =>
+										Effect.gen(function* () {
+											yield* session.complete()
+											yield* Effect.log(`Response complete: ${session.messageId}`)
+										}),
+									onFailure: (cause) =>
+										Effect.gen(function* () {
+											yield* Effect.logError("AI streaming failed", { error: cause })
+
+											const userMessage = Cause.match(cause, {
+												onEmpty: "Request was cancelled.",
+												onFail: (error) =>
+													Match.value(error).pipe(
+														Match.tagsExhaustive({
+															HttpResponseError: (err) => {
+																return `AI service returned an error: ${err.reason}`
+															},
+															HttpRequestError: () =>
+																"Network connection failed.",
+															ActorOperationError: (err) => {
+																return `Actor operation failed: ${err.operation}`
+															},
+															MalformedInput: (err) => {
+																return `Invalid input: ${err.message}`
+															},
+															MalformedOutput: (err) => {
+																return `Invalid output: ${err.message}`
+															},
+															UnknownError: (err) => {
+																return `An error occurred: ${err.message}`
+															},
+														}),
+													),
+												onDie: () => "An unexpected error occurred.",
+												onInterrupt: () => "Request was cancelled.",
+												onSequential: (left) => left,
+												onParallel: (left) => left,
+											})
+
+											yield* session.fail(userMessage).pipe(Effect.ignore)
+										}),
+								}),
+							)
+					}),
+				// NO withErrorHandler - handled by matchCauseEffect to avoid duplicate messages
 			)
 
 			// Handle /simulate-ai command - legacy simulation for comparison

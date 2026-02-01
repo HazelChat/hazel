@@ -72,6 +72,21 @@ export interface StreamSession {
 }
 
 /**
+ * Loading state configuration for AI streaming messages.
+ * Controls the appearance of the loading indicator shown before streaming begins.
+ */
+export interface LoadingState {
+	/** Text to display while loading (default: "Thinking...") */
+	readonly text?: string
+	/** Icon to display: "sparkle" or "brain" (default: "sparkle") */
+	readonly icon?: "sparkle" | "brain"
+	/** Whether to show spinning animation on the icon (default: true) */
+	readonly showSpinner?: boolean
+	/** Whether to pulse/throb the entire loading indicator (default: false) */
+	readonly throbbing?: boolean
+}
+
+/**
  * Options for creating an AI stream session
  */
 export interface AIStreamOptions extends CreateStreamOptions {
@@ -81,6 +96,8 @@ export interface AIStreamOptions extends CreateStreamOptions {
 	readonly showThinking?: boolean
 	/** Whether to show tool calls in the UI */
 	readonly showToolCalls?: boolean
+	/** Loading state configuration for the initial loading indicator */
+	readonly loading?: LoadingState
 	// persistOnComplete is inherited from CreateStreamOptions
 }
 

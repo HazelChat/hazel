@@ -19,8 +19,19 @@ import type {
 	AIStreamOptions,
 	AIStreamSession,
 	CreateStreamOptions,
+	LoadingState,
 	StreamSession,
 } from "./types.ts"
+
+/**
+ * Loading state configuration for message embeds
+ */
+export interface MessageEmbedLoadingState {
+	readonly text?: string
+	readonly icon?: "sparkle" | "brain"
+	readonly showSpinner?: boolean
+	readonly throbbing?: boolean
+}
 
 /**
  * Message creation function type - matches bot.message.send signature
@@ -31,7 +42,14 @@ export type MessageCreateFn = (
 	options?: {
 		readonly replyToMessageId?: MessageId | null
 		readonly threadChannelId?: ChannelId | null
-		readonly embeds?: readonly { readonly liveState?: { readonly enabled: true } }[] | null
+		readonly embeds?:
+			| readonly {
+					readonly liveState?: {
+						readonly enabled: true
+						readonly loading?: MessageEmbedLoadingState
+					}
+			  }[]
+			| null
 	},
 ) => Effect.Effect<{ id: string }, unknown>
 
@@ -168,15 +186,15 @@ export const createStreamSessionInternal = Effect.fn("StreamSession.create")(fun
 	updateMessage: MessageUpdateFn | undefined,
 	actorsClient: ActorsClientService,
 	channelId: ChannelId,
-	options: CreateStreamOptions = {},
+	options: CreateStreamOptions & { loading?: LoadingState } = {},
 ) {
 	yield* Effect.annotateCurrentSpan("channelId", channelId)
 
-	// Create message with live state enabled
+	// Create message with live state enabled and loading configuration
 	const message = yield* createMessage(channelId, "", {
 		replyToMessageId: options.replyToMessageId,
 		threadChannelId: options.threadChannelId,
-		embeds: [{ liveState: { enabled: true } }],
+		embeds: [{ liveState: { enabled: true, loading: options.loading } }],
 	}).pipe(
 		Effect.mapError(
 			(e) =>
@@ -224,7 +242,7 @@ export const createAIStreamSessionInternal = Effect.fn("AIStreamSession.create")
 		...(options.showToolCalls !== undefined ? { showToolCalls: options.showToolCalls } : {}),
 	}
 
-	// Create base session with enriched initial data
+	// Create base session with enriched initial data and loading configuration
 	const baseSession = yield* createStreamSessionInternal(
 		createMessage,
 		updateMessage,
@@ -233,6 +251,7 @@ export const createAIStreamSessionInternal = Effect.fn("AIStreamSession.create")
 		{
 			...options,
 			initialData,
+			loading: options.loading,
 		},
 	)
 

@@ -14,10 +14,11 @@ interface MessageEmbedsProps {
 export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 	if (!embeds?.length) return null
 
-	// Find the embed with live state enabled and extract cached state
+	// Find the embed with live state enabled and extract cached state and loading config
 	const liveStateEmbed = embeds.find((embed) => embed.liveState?.enabled === true)
 	const hasLiveState = !!liveStateEmbed
 	const cachedState = liveStateEmbed?.liveState?.cached
+	const loadingConfig = liveStateEmbed?.liveState?.loading
 
 	// Filter out embeds that only have liveState (no visible content)
 	const visibleEmbeds = embeds.filter((embed) => hasVisibleContent(embed))
@@ -29,7 +30,12 @@ export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 			))}
 			{/* Render live state UI if enabled and messageId is provided */}
 			{hasLiveState && messageId && (
-				<MessageLiveState messageId={messageId} enabled cached={cachedState} />
+				<MessageLiveState
+					messageId={messageId}
+					enabled
+					cached={cachedState}
+					loading={loadingConfig}
+				/>
 			)}
 		</div>
 	)

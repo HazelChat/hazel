@@ -173,6 +173,15 @@ export const messageActor = actor({
 			c.state.error = error
 			c.state.completedAt = Date.now()
 			c.state.isStreaming = false
+
+			// Mark any active steps as failed
+			for (const step of c.state.steps) {
+				if (step.status === "active") {
+					step.status = "failed"
+					step.completedAt = Date.now()
+				}
+			}
+
 			c.broadcast("failed", { error })
 		},
 

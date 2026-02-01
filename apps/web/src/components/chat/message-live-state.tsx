@@ -1,10 +1,25 @@
 import type { MessageId } from "@hazel/schema"
+import { IconBrainSparkle } from "~/components/icons/icon-brain-sparkle"
+import { IconLoader } from "~/components/icons/icon-loader"
+import { IconSparkles } from "~/components/icons/icon-sparkles"
+import { IconWarning } from "~/components/icons/icon-warning"
 import { useMessageActor, type CachedActorState } from "~/hooks/use-message-actor"
 import { cn } from "~/lib/utils"
 import { AgentStepsView } from "./agent-steps-view"
 import { MessageLiveContext, useMessageLive } from "./message-live-context"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 import { StreamingMarkdown } from "./streaming-markdown"
+
+// ============================================================================
+// Loading Configuration
+// ============================================================================
+
+interface LoadingConfig {
+	text?: string
+	icon?: "sparkle" | "brain"
+	showSpinner?: boolean
+	throbbing?: boolean
+}
 
 // ============================================================================
 // Provider
@@ -15,22 +30,54 @@ interface MessageLiveProviderProps {
 	enabled: boolean
 	/** Cached state from the database - if completed/failed, renders without actor connection */
 	cached?: CachedActorState
+	/** Loading state configuration for the initial loading indicator */
+	loading?: LoadingConfig
 	children: React.ReactNode
 }
 
 /**
  * Provides message actor state to child components via context.
- * Returns null if disabled or status is idle.
+ * Returns null if disabled, shows loading state while waiting for actor to start.
  */
-function MessageLiveProvider({ messageId, enabled, cached, children }: MessageLiveProviderProps) {
+function MessageLiveProvider({ messageId, enabled, cached, loading, children }: MessageLiveProviderProps) {
 	const actorState = useMessageActor(messageId, { enabled, cached })
 
-	// Don't render children if disabled or idle
-	if (!enabled || actorState.status === "idle") {
+	// Don't render if disabled
+	if (!enabled) {
 		return null
 	}
 
+	// Show loading state while waiting for content
+	// This handles the case where actor is already "active" but hasn't produced any output yet
+	const isWaitingForContent =
+		actorState.status === "idle" ||
+		(actorState.status === "active" && !actorState.text && actorState.steps.length === 0)
+
+	if (isWaitingForContent) {
+		return <MessageLiveLoading config={loading} />
+	}
+
 	return <MessageLiveContext value={{ state: actorState }}>{children}</MessageLiveContext>
+}
+
+function MessageLiveLoading({ config }: { config?: LoadingConfig }) {
+	const { text = "Thinking...", icon = "sparkle", showSpinner = true, throbbing = false } = config ?? {}
+
+	// Select icon component based on config
+	const IconComponent = icon === "brain" ? IconBrainSparkle : IconSparkles
+
+	return (
+		<div
+			className={cn("mt-2 flex items-center gap-2 text-muted-fg text-sm", throbbing && "animate-pulse")}
+		>
+			{showSpinner ? (
+				<IconLoader className="size-4 animate-spin" aria-hidden />
+			) : (
+				<IconComponent className="size-4" aria-hidden />
+			)}
+			<span>{text}</span>
+		</div>
+	)
 }
 
 // ============================================================================
@@ -61,7 +108,7 @@ function MessageLiveSteps() {
 	const { state } = useMessageLive()
 	if (state.steps.length === 0) return null
 
-	return <AgentStepsView steps={state.steps} currentIndex={state.currentStepIndex} />
+	return <AgentStepsView steps={state.steps} currentIndex={state.currentStepIndex} status={state.status} />
 }
 
 function MessageLiveText() {
@@ -79,7 +126,7 @@ function MessageLiveError() {
 	const { state } = useMessageLive()
 	if (state.status !== "failed" || !state.error) return null
 
-	return <ErrorBadge error={state.error} />
+	return <ErrorCard error={state.error} />
 }
 
 interface MessageLiveDataProps<T> {
@@ -118,6 +165,8 @@ interface MessageLiveStateProps {
 	enabled: boolean
 	/** Cached state from the database - if completed/failed, renders without actor connection */
 	cached?: CachedActorState
+	/** Loading state configuration for the initial loading indicator */
+	loading?: LoadingConfig
 }
 
 /**
@@ -129,9 +178,9 @@ interface MessageLiveStateProps {
  *
  * @deprecated Use MessageLive compound component for more flexibility
  */
-export function MessageLiveState({ messageId, enabled, cached }: MessageLiveStateProps) {
+export function MessageLiveState({ messageId, enabled, cached, loading }: MessageLiveStateProps) {
 	return (
-		<MessageLive.Provider messageId={messageId} enabled={enabled} cached={cached}>
+		<MessageLive.Provider messageId={messageId} enabled={enabled} cached={cached} loading={loading}>
 			<MessageLive.Root>
 				<MessageLive.Progress />
 				<MessageLive.Steps />
@@ -173,24 +222,18 @@ function ProgressBar({ value }: { value: number }) {
 	)
 }
 
-function ErrorBadge({ error }: { error: string }) {
+function ErrorCard({ error }: { error: string }) {
 	return (
-		<div className="inline-flex items-center gap-1.5 rounded bg-danger/10 px-2 py-1 text-danger text-sm">
-			<svg
-				className="size-4"
-				xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				strokeWidth="2"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			>
-				<circle cx="12" cy="12" r="10" />
-				<line x1="12" x2="12" y1="8" y2="12" />
-				<line x1="12" x2="12.01" y1="16" y2="16" />
-			</svg>
-			<span>{error}</span>
+		<div className="rounded-lg border border-danger/20 bg-danger/5 p-4" role="alert">
+			<div className="flex items-start gap-3">
+				<div className="rounded-full bg-danger/10 p-2">
+					<IconWarning className="size-5 text-danger" aria-hidden />
+				</div>
+				<div className="flex-1 space-y-1">
+					<p className="font-medium text-danger text-sm">Something went wrong</p>
+					<p className="text-muted-fg text-sm">{error}</p>
+				</div>
+			</div>
 		</div>
 	)
 }

@@ -37,6 +37,7 @@ export type {
 	AIStreamSession,
 	AIStreamProcessingError,
 	CreateStreamOptions,
+	LoadingState,
 	StreamSession,
 	StreamSessionCreationError,
 	TextChunk,
