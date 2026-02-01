@@ -1,5 +1,5 @@
 {
-	"name": "ai-simulator-bot",
+	"name": "hazel-bot",
 	"version": "1.0.0",
 	"private": true,
 	"description": "AI bot with real AI capabilities and tool calling",
@@ -13,7 +13,7 @@
 		"@effect/ai-openrouter": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@hazel/bot-sdk": "workspace:*",
-		"@openrouter/ai-sdk-provider": "^1.5.4",
+		"@openrouter/ai-sdk-provider": "^2.1.1",
 		"ai": "^6.0.67",
 		"effect": "catalog:effect"
 	},
