@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
 import { source } from "@/lib/source"
-import { ImageResponse } from "@takumi-rs/image-response"
+import { ImageResponse } from "@vercel/og"
 
 export const Route = createFileRoute("/og/$")({
 	server: {
@@ -50,7 +50,6 @@ export const Route = createFileRoute("/og/$")({
 					{
 						width: 1200,
 						height: 630,
-						format: "png",
 					},
 				)
 			},
