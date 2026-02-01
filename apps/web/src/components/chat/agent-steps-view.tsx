@@ -1,6 +1,8 @@
-import { memo } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
+import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
 import IconCheck from "~/components/icons/icon-check"
+import { IconChevronUp } from "~/components/icons/icon-chevron-up"
 import IconLoader from "~/components/icons/icon-loader"
 import IconSquareTerminal from "~/components/icons/icon-square-terminal"
 import IconXmark from "~/components/icons/icon-xmark"
@@ -54,8 +56,11 @@ interface StepItemProps {
 
 const StepItem = memo(function StepItem({ step, isActive }: StepItemProps) {
 	return (
-		<div className={cn("text-sm", isActive && "animate-pulse")} role="listitem">
-			{step.type === "thinking" && <ThinkingStep step={step} isActive={isActive} />}
+		<div
+			className={cn("text-sm", isActive && step.type !== "thinking" && "animate-pulse")}
+			role="listitem"
+		>
+			{step.type === "thinking" && <ThinkingDisclosure step={step} isActive={isActive} />}
 			{step.type === "tool_call" && <ToolCallStep step={step} isActive={isActive} />}
 			{step.type === "text" && <TextStep step={step} />}
 			{step.type === "error" && <ErrorStep step={step} />}
@@ -63,18 +68,46 @@ const StepItem = memo(function StepItem({ step, isActive }: StepItemProps) {
 	)
 })
 
-function ThinkingStep({ step, isActive }: { step: AgentStep; isActive: boolean }) {
+function ThinkingDisclosure({ step, isActive }: { step: AgentStep; isActive: boolean }) {
+	// Calculate duration from startedAt/completedAt
+	const duration = useMemo(() => {
+		if (!step.startedAt) return null
+		const endTime = step.completedAt ?? Date.now()
+		return Math.round((endTime - step.startedAt) / 1000)
+	}, [step.startedAt, step.completedAt])
+
+	// Auto-expand while active, auto-collapse when completed
+	const [isExpanded, setIsExpanded] = useState(step.status === "active")
+
+	useEffect(() => {
+		if (step.status === "active") setIsExpanded(true)
+		if (step.status === "completed") setIsExpanded(false)
+	}, [step.status])
+
 	return (
-		<div className="flex items-center gap-2 text-muted-fg">
-			<IconBrainSparkle className="size-4 shrink-0" aria-hidden />
-			<span className="italic">{step.content || "Thinking..."}</span>
-			{step.status === "active" && isActive && (
-				<IconLoader className="size-4 animate-spin" aria-label="In progress" />
-			)}
-			{step.status === "completed" && (
-				<IconCheck className="size-4 text-success" aria-label="Completed" />
-			)}
-		</div>
+		<Disclosure isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
+			<Heading>
+				<Button
+					slot="trigger"
+					className="flex w-full items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-fg text-sm transition-colors hover:bg-muted/70"
+				>
+					<IconBrainSparkle className="size-4 shrink-0" aria-hidden />
+					<span className="flex-1 text-left">
+						{step.status === "active" ? "Thinking..." : `Thought for ${duration ?? 0} seconds`}
+					</span>
+					{step.status === "active" && isActive && (
+						<IconLoader className="size-4 animate-spin" aria-label="In progress" />
+					)}
+					<IconChevronUp
+						className={cn("size-4 transition-transform", !isExpanded && "rotate-180")}
+						aria-hidden
+					/>
+				</Button>
+			</Heading>
+			<DisclosurePanel className="px-3 py-2 text-muted-fg text-sm">
+				{step.content || "Processing..."}
+			</DisclosurePanel>
+		</Disclosure>
 	)
 }
 
