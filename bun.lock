@@ -246,7 +246,7 @@
         "remark-gfm": "^4.0.1",
         "remark-math": "^6.0.0",
         "remend": "^1.1.0",
-        "rivetkit": "^2.0.42",
+        "rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009",
         "slate": "0.123.0",
         "slate-history": "^0.113.1",
         "slate-react": "^0.123.0",
@@ -375,8 +375,10 @@
       "version": "0.0.1",
       "dependencies": {
         "@hazel/schema": "workspace:*",
+        "@rivetkit/effect": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/effect@4009",
+        "effect": "catalog:effect",
         "jose": "^6.0.11",
-        "rivetkit": "^2.0.42",
+        "rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009",
       },
       "devDependencies": {
         "@types/bun": "1.3.8",
@@ -1653,15 +1655,17 @@
 
     "@rivetkit/bare-ts": ["@rivetkit/bare-ts@0.6.2", "", {}, "sha512-3qndQUQXLdwafMEqfhz24hUtDPcsf1Bu3q52Kb8MqeH8JUh3h6R4HYW3ZJXiQsLcyYyFM68PuIwlLRlg1xDEpg=="],
 
-    "@rivetkit/engine-runner": ["@rivetkit/engine-runner@2.0.42", "", { "dependencies": { "@rivetkit/engine-runner-protocol": "2.0.42", "@rivetkit/virtual-websocket": "2.0.33", "pino": "^9.9.5", "uuid": "^12.0.0", "ws": "^8.18.3" } }, "sha512-diHBqZoE97F7Pd1yqY/qWpMCzHH0ddJt8YRUf7qwjjwqUdPF21wPsVOwcmvRArpd2JqEtUw+8CFKFB+pnqmX+A=="],
+    "@rivetkit/effect": ["@rivetkit/effect@https://pkg.pr.new/rivet-dev/rivet/@rivetkit/effect@4009", { "dependencies": { "rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27" }, "peerDependencies": { "effect": "^3.0.0" } }],
 
-    "@rivetkit/engine-runner-protocol": ["@rivetkit/engine-runner-protocol@2.0.42", "", { "dependencies": { "@rivetkit/bare-ts": "^0.6.2" } }, "sha512-gzo3J5NWS3sTIxPKTPTM8IIZuTfkHaMaAe9WI/WGO1/kYhh5y4oZ6WcyMicQlK5W6XmtYC3q0IqbNmxMYfHA1w=="],
+    "@rivetkit/engine-runner": ["@rivetkit/engine-runner@https://pkg.pr.new/rivet-dev/rivet/@rivetkit/engine-runner@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", { "dependencies": { "@rivetkit/engine-runner-protocol": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/engine-runner-protocol@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "@rivetkit/virtual-websocket": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/virtual-websocket@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "pino": "^9.9.5", "uuid": "^12.0.0", "ws": "^8.18.3" } }],
+
+    "@rivetkit/engine-runner-protocol": ["@rivetkit/engine-runner-protocol@https://pkg.pr.new/rivet-dev/rivet/@rivetkit/engine-runner-protocol@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", { "dependencies": { "@rivetkit/bare-ts": "^0.6.2" } }],
 
     "@rivetkit/fast-json-patch": ["@rivetkit/fast-json-patch@3.1.2", "", {}, "sha512-CtA50xgsSSzICQduF/NDShPRzvucnNvsW/lQO0WgMTT1XAj9Lfae4pm7r3llFwilgG+9iq76Hv1LUqNy72v6yw=="],
 
     "@rivetkit/on-change": ["@rivetkit/on-change@6.0.2-rc.1", "", {}, "sha512-5RC9Ze/wTKqSlJvopdCgr+EfyV93+iiH8Thog0QXrl8PT1unuBNw/jadXNMtwgAxrIaCJL+JLaHQH9w7rqpMDw=="],
 
-    "@rivetkit/virtual-websocket": ["@rivetkit/virtual-websocket@2.0.33", "", {}, "sha512-sMoHZgBy9WDW76pv+ML3LPgf7TWk5vXdu3ZpPO20j6n+rB3fLacnnmzjt5xD6tZcJ/x5qINyEywGgcxA7MTMuQ=="],
+    "@rivetkit/virtual-websocket": ["@rivetkit/virtual-websocket@https://pkg.pr.new/rivet-dev/rivet/@rivetkit/virtual-websocket@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", {}],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.53", "", {}, "sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ=="],
 
@@ -3377,7 +3381,7 @@
 
     "rettime": ["rettime@0.7.0", "", {}, "sha512-LPRKoHnLKd/r3dVxcwO7vhCW+orkOGj9ViueosEBK6ie89CijnfRlhaDhHq/3Hxu4CkWQtxwlBG0mzTQY6uQjw=="],
 
-    "rivetkit": ["rivetkit@2.0.42", "", { "dependencies": { "@hono/standard-validator": "^0.1.3", "@hono/zod-openapi": "^1.1.5", "@rivetkit/bare-ts": "^0.6.2", "@rivetkit/engine-runner": "2.0.42", "@rivetkit/fast-json-patch": "^3.1.2", "@rivetkit/on-change": "^6.0.2-rc.1", "@rivetkit/virtual-websocket": "2.0.33", "cbor-x": "^1.6.0", "get-port": "^7.1.0", "hono": "^4.7.0", "invariant": "^2.2.4", "nanoevents": "^9.1.0", "p-retry": "^6.2.1", "pino": "^9.5.0", "uuid": "^12.0.0", "vbare": "^0.0.4", "zod": "^4.1.0" }, "peerDependencies": { "@hono/node-server": "^1.14.0", "@hono/node-ws": "^1.1.1", "eventsource": "^4.0.0", "ws": "^8.0.0" }, "optionalPeers": ["@hono/node-server", "@hono/node-ws", "eventsource", "ws"] }, "sha512-b78t9RT8fb5e2f16Wl6z4CX6St8gJ5s5C3FfS1zEFtivAtPrhdAt/0yMqXaW76r62AWMrZqEi/tHzJlVd94yHQ=="],
+    "rivetkit": ["rivetkit@https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009", { "dependencies": { "@hono/standard-validator": "^0.1.3", "@hono/zod-openapi": "^1.1.5", "@rivetkit/bare-ts": "^0.6.2", "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/engine-runner@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "@rivetkit/fast-json-patch": "^3.1.2", "@rivetkit/on-change": "^6.0.2-rc.1", "@rivetkit/virtual-websocket": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/virtual-websocket@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "cbor-x": "^1.6.0", "get-port": "^7.1.0", "hono": "^4.7.0", "invariant": "^2.2.4", "nanoevents": "^9.1.0", "p-retry": "^6.2.1", "pino": "^9.5.0", "uuid": "^12.0.0", "vbare": "^0.0.4", "zod": "^4.1.0" }, "peerDependencies": { "@hono/node-server": "^1.14.0", "@hono/node-ws": "^1.1.1", "eventsource": "^4.0.0", "ws": "^8.0.0" }, "optionalPeers": ["@hono/node-server", "@hono/node-ws", "eventsource", "ws"] }],
 
     "rollup": ["rollup@4.53.2", "", { "dependencies": { "@types/estree": "1.0.8" }, "optionalDependencies": { "@rollup/rollup-android-arm-eabi": "4.53.2", "@rollup/rollup-android-arm64": "4.53.2", "@rollup/rollup-darwin-arm64": "4.53.2", "@rollup/rollup-darwin-x64": "4.53.2", "@rollup/rollup-freebsd-arm64": "4.53.2", "@rollup/rollup-freebsd-x64": "4.53.2", "@rollup/rollup-linux-arm-gnueabihf": "4.53.2", "@rollup/rollup-linux-arm-musleabihf": "4.53.2", "@rollup/rollup-linux-arm64-gnu": "4.53.2", "@rollup/rollup-linux-arm64-musl": "4.53.2", "@rollup/rollup-linux-loong64-gnu": "4.53.2", "@rollup/rollup-linux-ppc64-gnu": "4.53.2", "@rollup/rollup-linux-riscv64-gnu": "4.53.2", "@rollup/rollup-linux-riscv64-musl": "4.53.2", "@rollup/rollup-linux-s390x-gnu": "4.53.2", "@rollup/rollup-linux-x64-gnu": "4.53.2", "@rollup/rollup-linux-x64-musl": "4.53.2", "@rollup/rollup-openharmony-arm64": "4.53.2", "@rollup/rollup-win32-arm64-msvc": "4.53.2", "@rollup/rollup-win32-ia32-msvc": "4.53.2", "@rollup/rollup-win32-x64-gnu": "4.53.2", "@rollup/rollup-win32-x64-msvc": "4.53.2", "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-MHngMYwGJVi6Fmnk6ISmnk7JAHRNF0UkuucA0CUW3N3a4KnONPEZz+vUanQP/ZC/iY1Qkf3bwPWzyY84wEks1g=="],
 
@@ -3963,6 +3967,8 @@
 
     "@radix-ui/react-primitive/@radix-ui/react-slot": ["@radix-ui/react-slot@1.2.3", "", { "dependencies": { "@radix-ui/react-compose-refs": "1.1.2" }, "peerDependencies": { "@types/react": "*", "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" }, "optionalPeers": ["@types/react"] }, "sha512-aeNmHnBxbi2St0au6VBVC7JXFlhLlOnvIIlePNniyUNAClzmtAUEY8/pBiK3iHjufOlwA+c20/8jngo7xcrg8A=="],
 
+    "@rivetkit/effect/rivetkit": ["rivetkit@https://pkg.pr.new/rivet-dev/rivet/rivetkit@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", { "dependencies": { "@hono/standard-validator": "^0.1.3", "@hono/zod-openapi": "^1.1.5", "@rivetkit/bare-ts": "^0.6.2", "@rivetkit/engine-runner": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/engine-runner@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "@rivetkit/fast-json-patch": "^3.1.2", "@rivetkit/on-change": "^6.0.2-rc.1", "@rivetkit/virtual-websocket": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/virtual-websocket@3bc91d9904a0dfe27f14f26ea4106fae34a6fb27", "cbor-x": "^1.6.0", "get-port": "^7.1.0", "hono": "^4.7.0", "invariant": "^2.2.4", "nanoevents": "^9.1.0", "p-retry": "^6.2.1", "pino": "^9.5.0", "uuid": "^12.0.0", "vbare": "^0.0.4", "zod": "^4.1.0" }, "peerDependencies": { "@hono/node-server": "^1.14.0", "@hono/node-ws": "^1.1.1", "eventsource": "^4.0.0", "ws": "^8.0.0" }, "optionalPeers": ["@hono/node-server", "@hono/node-ws", "eventsource", "ws"] }],
+
     "@rollup/plugin-babel/rollup": ["rollup@2.79.2", "", { "optionalDependencies": { "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-fS6iqSPZDs3dr/y7Od6y5nha8dW1YnbgtsyotCVvoFGKbERG++CVRFv1meyGDE1SNItQA8BrnCw7ScdAhRJ3XQ=="],
 
     "@rollup/plugin-node-resolve/@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q=="],
@@ -4074,6 +4080,8 @@
     "@vite-pwa/assets-generator/sharp": ["sharp@0.33.5", "", { "dependencies": { "color": "^4.2.3", "detect-libc": "^2.0.3", "semver": "^7.6.3" }, "optionalDependencies": { "@img/sharp-darwin-arm64": "0.33.5", "@img/sharp-darwin-x64": "0.33.5", "@img/sharp-libvips-darwin-arm64": "1.0.4", "@img/sharp-libvips-darwin-x64": "1.0.4", "@img/sharp-libvips-linux-arm": "1.0.5", "@img/sharp-libvips-linux-arm64": "1.0.4", "@img/sharp-libvips-linux-s390x": "1.0.4", "@img/sharp-libvips-linux-x64": "1.0.4", "@img/sharp-libvips-linuxmusl-arm64": "1.0.4", "@img/sharp-libvips-linuxmusl-x64": "1.0.4", "@img/sharp-linux-arm": "0.33.5", "@img/sharp-linux-arm64": "0.33.5", "@img/sharp-linux-s390x": "0.33.5", "@img/sharp-linux-x64": "0.33.5", "@img/sharp-linuxmusl-arm64": "0.33.5", "@img/sharp-linuxmusl-x64": "0.33.5", "@img/sharp-wasm32": "0.33.5", "@img/sharp-win32-ia32": "0.33.5", "@img/sharp-win32-x64": "0.33.5" } }, "sha512-haPVm1EkS9pgvHrQ/F3Xy+hgcuMV0Wm9vfIBSiwZ05k+xgb0PkBQpGsAA/oWdDobNaZTH5ppvHtzCFbnSEwHVw=="],
 
     "@workos-inc/node/jose": ["jose@5.6.3", "", {}, "sha512-1Jh//hEEwMhNYPDDLwXHa2ePWgWiFNNUadVmguAAw2IJ6sj9mNxV5tGXJNqlMkJAybF6Lgw1mISDxTePP/187g=="],
+
+    "actors/rivetkit": ["rivetkit@2.0.42", "", { "dependencies": { "@hono/standard-validator": "^0.1.3", "@hono/zod-openapi": "^1.1.5", "@rivetkit/bare-ts": "^0.6.2", "@rivetkit/engine-runner": "2.0.42", "@rivetkit/fast-json-patch": "^3.1.2", "@rivetkit/on-change": "^6.0.2-rc.1", "@rivetkit/virtual-websocket": "2.0.33", "cbor-x": "^1.6.0", "get-port": "^7.1.0", "hono": "^4.7.0", "invariant": "^2.2.4", "nanoevents": "^9.1.0", "p-retry": "^6.2.1", "pino": "^9.5.0", "uuid": "^12.0.0", "vbare": "^0.0.4", "zod": "^4.1.0" }, "peerDependencies": { "@hono/node-server": "^1.14.0", "@hono/node-ws": "^1.1.1", "eventsource": "^4.0.0", "ws": "^8.0.0" }, "optionalPeers": ["@hono/node-server", "@hono/node-ws", "eventsource", "ws"] }, "sha512-b78t9RT8fb5e2f16Wl6z4CX6St8gJ5s5C3FfS1zEFtivAtPrhdAt/0yMqXaW76r62AWMrZqEi/tHzJlVd94yHQ=="],
 
     "anymatch/picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
 
@@ -4400,6 +4408,10 @@
     "@vite-pwa/assets-generator/sharp/@img/sharp-win32-ia32": ["@img/sharp-win32-ia32@0.33.5", "", { "os": "win32", "cpu": "ia32" }, "sha512-T36PblLaTwuVJ/zw/LaH0PdZkRz5rd3SmMHX8GSmR7vtNSP5Z6bQkExdSK7xGWyxLw4sUknBuugTelgw2faBbQ=="],
 
     "@vite-pwa/assets-generator/sharp/@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.33.5", "", { "os": "win32", "cpu": "x64" }, "sha512-MpY/o8/8kj+EcnxwvrP4aTJSWw/aZ7JIGR4aBeZkZw5B7/Jn+tY9/VNwtcoGmdT7GfggGIU4kygOMSbYnOrAbg=="],
+
+    "actors/rivetkit/@rivetkit/engine-runner": ["@rivetkit/engine-runner@2.0.42", "", { "dependencies": { "@rivetkit/engine-runner-protocol": "2.0.42", "@rivetkit/virtual-websocket": "2.0.33", "pino": "^9.9.5", "uuid": "^12.0.0", "ws": "^8.18.3" } }, "sha512-diHBqZoE97F7Pd1yqY/qWpMCzHH0ddJt8YRUf7qwjjwqUdPF21wPsVOwcmvRArpd2JqEtUw+8CFKFB+pnqmX+A=="],
+
+    "actors/rivetkit/@rivetkit/virtual-websocket": ["@rivetkit/virtual-websocket@2.0.33", "", {}, "sha512-sMoHZgBy9WDW76pv+ML3LPgf7TWk5vXdu3ZpPO20j6n+rB3fLacnnmzjt5xD6tZcJ/x5qINyEywGgcxA7MTMuQ=="],
 
     "archiver-utils/glob/jackspeak": ["jackspeak@3.4.3", "", { "dependencies": { "@isaacs/cliui": "^8.0.2" }, "optionalDependencies": { "@pkgjs/parseargs": "^0.11.0" } }, "sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw=="],
 
@@ -4778,6 +4790,8 @@
     "@tanstack/start-plugin-core/@tanstack/router-plugin/unplugin/acorn": ["acorn@8.15.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg=="],
 
     "@vite-pwa/assets-generator/sharp/@img/sharp-wasm32/@emnapi/runtime": ["@emnapi/runtime@1.7.0", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-oAYoQnCYaQZKVS53Fq23ceWMRxq5EhQsE0x0RdQ55jT7wagMu5k+fS39v1fiSLrtrLQlXwVINenqhLMtTrV/1Q=="],
+
+    "actors/rivetkit/@rivetkit/engine-runner/@rivetkit/engine-runner-protocol": ["@rivetkit/engine-runner-protocol@2.0.42", "", { "dependencies": { "@rivetkit/bare-ts": "^0.6.2" } }, "sha512-gzo3J5NWS3sTIxPKTPTM8IIZuTfkHaMaAe9WI/WGO1/kYhh5y4oZ6WcyMicQlK5W6XmtYC3q0IqbNmxMYfHA1w=="],
 
     "archiver-utils/glob/path-scurry/lru-cache": ["lru-cache@10.4.3", "", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
 

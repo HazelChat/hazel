@@ -128,8 +128,11 @@ export function useMessageActor(
 				if (disposed) return
 				setIsConnected(true)
 				// Fetch initial state
-				conn?.getState().then((s) => {
-					if (!disposed && s) setState(s as MessageActorState)
+				// Note: getState() returns Promise<Promise<T>> due to @rivetkit/effect type quirk,
+				// so we resolve through the inner promise
+				conn?.getState().then(async (s) => {
+					const state = await s
+					if (!disposed && state) setState(state)
 				})
 			})
 

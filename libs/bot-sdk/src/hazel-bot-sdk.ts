@@ -58,9 +58,11 @@ import {
 	BotNotConfiguredError,
 	createAIStreamSessionInternal,
 	createStreamSessionInternal,
+	type ActorsClientService,
 	type AIStreamOptions,
 	type AIStreamSession,
 	type CreateStreamOptions,
+	type MessageActor,
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
 import { extractTablesFromEventTypes } from "./types/events.ts"
@@ -274,14 +276,18 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					const client = createActorsClient()
 					return Effect.succeed({
 						getMessageActor: (messageId: string) =>
-							Effect.sync(() =>
-								client.message.getOrCreate([messageId], {
-									params: { token: config.botToken },
-								}),
+							Effect.sync(
+								() =>
+									// Cast to MessageActor to handle the @rivetkit/effect double-Promise typing issue
+									// The rivetkit client wraps action returns in Promise, but Action.effect already returns Promise,
+									// resulting in Promise<Promise<T>>. Our MessageActor interface has the corrected types.
+									client.message.getOrCreate([messageId], {
+										params: { token: config.botToken },
+									}) as unknown as MessageActor,
 							),
 						client,
 						botToken: config.botToken,
-					})
+					} satisfies ActorsClientService)
 				},
 			})
 

@@ -87,7 +87,7 @@
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
 		"remend": "^1.1.0",
-		"rivetkit": "^2.0.42",
+		"rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009",
 		"slate": "0.123.0",
 		"slate-history": "^0.113.1",
 		"slate-react": "^0.123.0",

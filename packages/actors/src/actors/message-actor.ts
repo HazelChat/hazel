@@ -1,4 +1,6 @@
 import { actor, UserError } from "rivetkit"
+import { Action, CreateConnState, Log } from "@rivetkit/effect"
+import { Effect } from "effect"
 import { validateToken, type AuthenticatedClient, type ActorConnectParams } from "../auth"
 
 /**
@@ -101,138 +103,202 @@ export const messageActor = actor({
 	 * All connections require a valid token (JWT or bot token).
 	 * Returns the authenticated client identity stored in c.conn.state.
 	 */
-	createConnState: async (_c, params: ActorConnectParams): Promise<AuthenticatedClient> => {
+	createConnState: CreateConnState.effect(function* (_c, params: ActorConnectParams) {
 		if (!params?.token) {
-			console.error("[messageActor] Connection rejected: no token provided")
-			throw new UserError("Authentication required", { code: "unauthorized" })
+			yield* Log.error("Connection rejected: no token provided")
+			return yield* Effect.fail(new UserError("Authentication required", { code: "unauthorized" }))
 		}
-		try {
-			return await validateToken(params.token)
-		} catch (error) {
-			console.error("[messageActor] Token validation failed:", error)
-			throw error
-		}
-	},
+
+		return yield* Effect.tryPromise({
+			try: () => validateToken(params.token),
+			catch: (error) =>
+				new Error(
+					`Token validation failed: ${error instanceof Error ? error.message : String(error)}`,
+				),
+		}).pipe(Effect.tapError((error) => Log.error("Token validation failed", { error: error.message })))
+	}),
 
 	actions: {
 		// Read full state
-		getState: (c) => c.state,
+		getState: Action.effect(function* (c) {
+			return yield* Action.state(c)
+		}),
 
 		// Start the live state (marks as active)
-		start: (c, initialData?: Record<string, unknown>) => {
-			c.state.status = "active"
-			c.state.startedAt = Date.now()
-			if (initialData) c.state.data = { ...c.state.data, ...initialData }
-			c.broadcast("started", { data: c.state.data })
-		},
+		start: Action.effect(function* (c, initialData?: Record<string, unknown>) {
+			let broadcastData: Record<string, unknown> = {}
+			yield* Action.updateState(c, (s) => {
+				s.status = "active"
+				s.startedAt = Date.now()
+				if (initialData) s.data = { ...s.data, ...initialData }
+				broadcastData = s.data
+			})
+			yield* Action.broadcast(c, "started", { data: broadcastData })
+		}),
 
 		// Update arbitrary data fields
-		setData: (c, data: Record<string, unknown>) => {
-			c.state.data = { ...c.state.data, ...data }
-			c.broadcast("dataUpdate", { data: c.state.data })
-		},
+		setData: Action.effect(function* (c, data: Record<string, unknown>) {
+			let broadcastData: Record<string, unknown> = {}
+			yield* Action.updateState(c, (s) => {
+				s.data = { ...s.data, ...data }
+				broadcastData = s.data
+			})
+			yield* Action.broadcast(c, "dataUpdate", { data: broadcastData })
+		}),
 
 		// Update progress (0-100)
-		setProgress: (c, progress: number) => {
-			c.state.progress = Math.min(100, Math.max(0, progress))
-			c.broadcast("progress", { progress: c.state.progress })
-		},
+		setProgress: Action.effect(function* (c, progress: number) {
+			const clampedProgress = Math.min(100, Math.max(0, progress))
+			yield* Action.updateState(c, (s) => {
+				s.progress = clampedProgress
+			})
+			yield* Action.broadcast(c, "progress", { progress: clampedProgress })
+		}),
 
 		// Append streaming text
-		appendText: (c, text: string) => {
-			c.state.text += text
-			c.state.isStreaming = true
-			c.broadcast("textChunk", { chunk: text, fullText: c.state.text })
-		},
+		appendText: Action.effect(function* (c, text: string) {
+			let fullText = ""
+			yield* Action.updateState(c, (s) => {
+				s.text += text
+				s.isStreaming = true
+				fullText = s.text
+			})
+			yield* Action.broadcast(c, "textChunk", { chunk: text, fullText })
+		}),
 
 		// Replace all text (for edits/corrections)
-		setText: (c, text: string) => {
-			c.state.text = text
-			c.broadcast("textUpdate", { text })
-		},
+		setText: Action.effect(function* (c, text: string) {
+			yield* Action.updateState(c, (s) => {
+				s.text = text
+			})
+			yield* Action.broadcast(c, "textUpdate", { text })
+		}),
 
 		// Stop streaming
-		stopStreaming: (c) => {
-			c.state.isStreaming = false
-			c.broadcast("streamEnd", { text: c.state.text })
-		},
+		stopStreaming: Action.effect(function* (c) {
+			let finalText = ""
+			yield* Action.updateState(c, (s) => {
+				s.isStreaming = false
+				finalText = s.text
+			})
+			yield* Action.broadcast(c, "streamEnd", { text: finalText })
+		}),
 
 		// Mark as completed
-		complete: (c, finalData?: Record<string, unknown>) => {
-			c.state.status = "completed"
-			c.state.completedAt = Date.now()
-			c.state.progress = 100
-			c.state.isStreaming = false
-			if (finalData) c.state.data = { ...c.state.data, ...finalData }
-			c.broadcast("completed", { data: c.state.data })
-		},
+		complete: Action.effect(function* (c, finalData?: Record<string, unknown>) {
+			let broadcastData: Record<string, unknown> = {}
+			yield* Action.updateState(c, (s) => {
+				s.status = "completed"
+				s.completedAt = Date.now()
+				s.progress = 100
+				s.isStreaming = false
+				if (finalData) s.data = { ...s.data, ...finalData }
+				broadcastData = s.data
+			})
+			yield* Action.broadcast(c, "completed", { data: broadcastData })
+		}),
 
 		// Mark as failed
-		fail: (c, error: string) => {
-			c.state.status = "failed"
-			c.state.error = error
-			c.state.completedAt = Date.now()
-			c.state.isStreaming = false
+		fail: Action.effect(function* (c, error: string) {
+			yield* Action.updateState(c, (s) => {
+				s.status = "failed"
+				s.error = error
+				s.completedAt = Date.now()
+				s.isStreaming = false
 
-			// Mark any active steps as failed
-			for (const step of c.state.steps) {
-				if (step.status === "active") {
-					step.status = "failed"
-					step.completedAt = Date.now()
+				// Mark any active steps as failed
+				for (const step of s.steps) {
+					if (step.status === "active") {
+						step.status = "failed"
+						step.completedAt = Date.now()
+					}
 				}
-			}
-
-			c.broadcast("failed", { error })
-		},
+			})
+			yield* Action.broadcast(c, "failed", { error })
+		}),
 
 		// === AI Agent Step Actions ===
 
 		// Add a new step (returns step id)
-		addStep: (c, step: Omit<AgentStep, "id" | "status">) => {
+		addStep: Action.effect(function* (c, step: Omit<AgentStep, "id" | "status">) {
 			const id = crypto.randomUUID()
 			const newStep: AgentStep = {
 				...step,
 				id,
 				status: "pending",
 			}
-			c.state.steps.push(newStep)
-			c.broadcast("stepAdded", { step: newStep, index: c.state.steps.length - 1 })
+			let index = 0
+			yield* Action.updateState(c, (s) => {
+				s.steps.push(newStep)
+				index = s.steps.length - 1
+			})
+			yield* Action.broadcast(c, "stepAdded", { step: newStep, index })
 			return id
-		},
+		}),
 
 		// Start a step (marks it as active)
-		startStep: (c, stepId: string) => {
-			const index = c.state.steps.findIndex((s) => s.id === stepId)
-			if (index === -1) return
-			const step = c.state.steps[index]
-			if (!step) return
-			step.status = "active"
-			step.startedAt = Date.now()
-			c.state.currentStepIndex = index
-			c.broadcast("stepStarted", { stepId, index })
-		},
+		startStep: Action.effect(function* (c, stepId: string) {
+			let found = false
+			let capturedIndex = -1
+			yield* Action.updateState(c, (s) => {
+				const idx = s.steps.findIndex((step) => step.id === stepId)
+				if (idx !== -1) {
+					const step = s.steps[idx]
+					if (step) {
+						found = true
+						capturedIndex = idx
+						step.status = "active"
+						step.startedAt = Date.now()
+						s.currentStepIndex = idx
+					}
+				}
+			})
+			if (found) {
+				yield* Action.broadcast(c, "stepStarted", { stepId, index: capturedIndex })
+			}
+		}),
 
 		// Update step content (for streaming thinking/text)
-		updateStepContent: (c, stepId: string, content: string, append = false) => {
-			const step = c.state.steps.find((s) => s.id === stepId)
-			if (!step) return
-			step.content = append ? (step.content ?? "") + content : content
-			c.broadcast("stepContentUpdate", { stepId, content: step.content, append })
-		},
+		updateStepContent: Action.effect(function* (c, stepId: string, content: string, append = false) {
+			let found = false
+			let newContent = ""
+			yield* Action.updateState(c, (s) => {
+				const step = s.steps.find((step) => step.id === stepId)
+				if (step) {
+					found = true
+					step.content = append ? (step.content ?? "") + content : content
+					newContent = step.content
+				}
+			})
+			if (found) {
+				yield* Action.broadcast(c, "stepContentUpdate", { stepId, content: newContent, append })
+			}
+		}),
 
 		// Complete a step
-		completeStep: (c, stepId: string, result?: { output?: unknown; error?: string }) => {
-			const step = c.state.steps.find((s) => s.id === stepId)
-			if (!step) return
-			step.status = result?.error ? "failed" : "completed"
-			step.completedAt = Date.now()
-			if (result?.output !== undefined) step.toolOutput = result.output
-			if (result?.error) step.toolError = result.error
-			c.broadcast("stepCompleted", { stepId, step })
-		},
+		completeStep: Action.effect(function* (
+			c,
+			stepId: string,
+			result?: { output?: unknown; error?: string },
+		) {
+			let completedStep: AgentStep | undefined
+			yield* Action.updateState(c, (s) => {
+				const step = s.steps.find((step) => step.id === stepId)
+				if (step) {
+					step.status = result?.error ? "failed" : "completed"
+					step.completedAt = Date.now()
+					if (result?.output !== undefined) step.toolOutput = result.output
+					if (result?.error) step.toolError = result.error
+					completedStep = { ...step }
+				}
+			})
+			if (completedStep) {
+				yield* Action.broadcast(c, "stepCompleted", { stepId, step: completedStep })
+			}
+		}),
 
 		// Convenience: Add and start a thinking step
-		startThinking: (c) => {
+		startThinking: Action.effect(function* (c) {
 			const id = crypto.randomUUID()
 			const step: AgentStep = {
 				id,
@@ -241,14 +307,18 @@ export const messageActor = actor({
 				content: "",
 				startedAt: Date.now(),
 			}
-			c.state.steps.push(step)
-			c.state.currentStepIndex = c.state.steps.length - 1
-			c.broadcast("stepAdded", { step, index: c.state.steps.length - 1 })
+			let index = 0
+			yield* Action.updateState(c, (s) => {
+				s.steps.push(step)
+				index = s.steps.length - 1
+				s.currentStepIndex = index
+			})
+			yield* Action.broadcast(c, "stepAdded", { step, index })
 			return id
-		},
+		}),
 
 		// Convenience: Add a tool call step
-		startToolCall: (c, toolName: string, toolInput: Record<string, unknown>) => {
+		startToolCall: Action.effect(function* (c, toolName: string, toolInput: Record<string, unknown>) {
 			const id = crypto.randomUUID()
 			const step: AgentStep = {
 				id,
@@ -258,10 +328,14 @@ export const messageActor = actor({
 				toolInput,
 				startedAt: Date.now(),
 			}
-			c.state.steps.push(step)
-			c.state.currentStepIndex = c.state.steps.length - 1
-			c.broadcast("stepAdded", { step, index: c.state.steps.length - 1 })
+			let index = 0
+			yield* Action.updateState(c, (s) => {
+				s.steps.push(step)
+				index = s.steps.length - 1
+				s.currentStepIndex = index
+			})
+			yield* Action.broadcast(c, "stepAdded", { step, index })
 			return id
-		},
+		}),
 	},
 })

@@ -67,7 +67,12 @@ export {
 } from "./errors.ts"
 
 // Services
-export { ActorsClient, type ActorsClientConfig, type MessageActor } from "./actors-client.ts"
+export {
+	ActorsClient,
+	type ActorsClientConfig,
+	type ActorsClientService,
+	type MessageActor,
+} from "./actors-client.ts"
 
 // Core functions (internal - use bot.stream.create or bot.ai.stream instead)
 export {

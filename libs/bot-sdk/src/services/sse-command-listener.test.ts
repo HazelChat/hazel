@@ -1,6 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Duration, Effect, Exit, Fiber, Metric, Queue, Ref, Schedule, Stream, TestContext } from "effect"
-import { CommandQueueConfig, defaultCommandQueueConfig, SseConnectionError } from "./sse-command-listener.ts"
+import {
+	defaultCommandQueueConfig,
+	SseConnectionError,
+	type CommandQueueConfig,
+} from "./sse-command-listener.ts"
 
 // ============================================================================
 // Test: Queue coordination
