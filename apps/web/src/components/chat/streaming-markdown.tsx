@@ -45,9 +45,15 @@ export function StreamingMarkdown({ children, isAnimating = false, className }: 
 				"[&_strong]:font-bold",
 				className,
 			)}
+			aria-live="polite"
+			aria-busy={isAnimating}
 		>
 			<span dangerouslySetInnerHTML={{ __html: html }} />
-			{isAnimating && <span className="animate-pulse ml-0.5">▋</span>}
+			{isAnimating && (
+				<span className="animate-pulse ml-0.5" aria-hidden="true">
+					▋
+				</span>
+			)}
 		</div>
 	)
 }

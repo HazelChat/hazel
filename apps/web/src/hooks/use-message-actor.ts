@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { MessageId } from "@hazel/schema"
 import type { AgentStep } from "~/components/chat/agent-steps-view"
 import { rivetClient, getAccessToken } from "~/lib/rivet-client"
+import type { MessageActorEvents } from "./message-actor-types"
 
 interface MessageActorState {
 	status: "idle" | "active" | "completed" | "failed"
@@ -117,27 +118,35 @@ export function useMessageActor(
 			conn = actor.connect()
 			connectionRef.current = conn
 
+			// Helper to safely update state only if not disposed
+			const safeSetState = (updater: (prev: MessageActorState) => MessageActorState) => {
+				if (!disposed) setState(updater)
+			}
+
 			// Connection lifecycle
 			conn.onOpen(() => {
+				if (disposed) return
 				setIsConnected(true)
 				// Fetch initial state
 				conn?.getState().then((s) => {
-					if (s) setState(s as MessageActorState)
+					if (!disposed && s) setState(s as MessageActorState)
 				})
 			})
 
 			conn.onClose(() => {
+				if (disposed) return
 				setIsConnected(false)
 			})
 
 			conn.onError((err) => {
+				if (disposed) return
 				console.error("[useMessageActor] Connection error:", err)
 				setIsConnected(false)
 			})
 
-			// Actor events
-			conn.on("started", (payload: { data: Record<string, unknown> }) => {
-				setState((prev) => ({
+			// Actor events - using centralized types
+			conn.on("started", (payload: MessageActorEvents["started"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					status: "active",
 					data: payload.data,
@@ -145,36 +154,36 @@ export function useMessageActor(
 				}))
 			})
 
-			conn.on("dataUpdate", (payload: { data: Record<string, unknown> }) => {
-				setState((prev) => ({ ...prev, data: payload.data }))
+			conn.on("dataUpdate", (payload: MessageActorEvents["dataUpdate"]) => {
+				safeSetState((prev) => ({ ...prev, data: payload.data }))
 			})
 
-			conn.on("progress", (payload: { progress: number }) => {
-				setState((prev) => ({ ...prev, progress: payload.progress }))
+			conn.on("progress", (payload: MessageActorEvents["progress"]) => {
+				safeSetState((prev) => ({ ...prev, progress: payload.progress }))
 			})
 
-			conn.on("textChunk", (payload: { chunk: string; fullText: string }) => {
-				setState((prev) => ({
+			conn.on("textChunk", (payload: MessageActorEvents["textChunk"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					text: payload.fullText,
 					isStreaming: true,
 				}))
 			})
 
-			conn.on("textUpdate", (payload: { text: string }) => {
-				setState((prev) => ({ ...prev, text: payload.text }))
+			conn.on("textUpdate", (payload: MessageActorEvents["textUpdate"]) => {
+				safeSetState((prev) => ({ ...prev, text: payload.text }))
 			})
 
-			conn.on("streamEnd", (payload: { text: string }) => {
-				setState((prev) => ({
+			conn.on("streamEnd", (payload: MessageActorEvents["streamEnd"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					text: payload.text,
 					isStreaming: false,
 				}))
 			})
 
-			conn.on("completed", (payload: { data: Record<string, unknown> }) => {
-				setState((prev) => ({
+			conn.on("completed", (payload: MessageActorEvents["completed"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					status: "completed",
 					data: payload.data,
@@ -184,8 +193,8 @@ export function useMessageActor(
 				}))
 			})
 
-			conn.on("failed", (payload: { error: string }) => {
-				setState((prev) => ({
+			conn.on("failed", (payload: MessageActorEvents["failed"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					status: "failed",
 					error: payload.error,
@@ -195,16 +204,16 @@ export function useMessageActor(
 			})
 
 			// Step events
-			conn.on("stepAdded", (payload: { step: AgentStep; index: number }) => {
-				setState((prev) => ({
+			conn.on("stepAdded", (payload: MessageActorEvents["stepAdded"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					steps: [...prev.steps, payload.step],
 					currentStepIndex: payload.index,
 				}))
 			})
 
-			conn.on("stepStarted", (payload: { stepId: string; index: number }) => {
-				setState((prev) => ({
+			conn.on("stepStarted", (payload: MessageActorEvents["stepStarted"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					steps: prev.steps.map((s) =>
 						s.id === payload.stepId
@@ -215,8 +224,8 @@ export function useMessageActor(
 				}))
 			})
 
-			conn.on("stepContentUpdate", (payload: { stepId: string; content: string }) => {
-				setState((prev) => ({
+			conn.on("stepContentUpdate", (payload: MessageActorEvents["stepContentUpdate"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					steps: prev.steps.map((s) =>
 						s.id === payload.stepId ? { ...s, content: payload.content } : s,
@@ -224,8 +233,8 @@ export function useMessageActor(
 				}))
 			})
 
-			conn.on("stepCompleted", (payload: { stepId: string; step: AgentStep }) => {
-				setState((prev) => ({
+			conn.on("stepCompleted", (payload: MessageActorEvents["stepCompleted"]) => {
+				safeSetState((prev) => ({
 					...prev,
 					steps: prev.steps.map((s) => (s.id === payload.stepId ? payload.step : s)),
 				}))
