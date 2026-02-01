@@ -62,6 +62,9 @@ runtime.runPromise(program.pipe(Effect.scoped))
 	<Card title="HazelBotClient" href="/bot-sdk/reference/hazel-bot-client">
 		Event handlers and message operations
 	</Card>
+	<Card title="AI Streaming" href="/bot-sdk/reference/ai-streaming">
+		Real-time AI response streaming
+	</Card>
 	<Card title="Commands" href="/bot-sdk/reference/commands">
 		Command.make and CommandGroup
 	</Card>
@@ -98,6 +101,14 @@ runtime.runPromise(program.pipe(Effect.scoped))
 | `bot.message.update(message, content)` | Edit a message     |
 | `bot.message.delete(messageId)`        | Delete a message   |
 | `bot.message.react(message, emoji)`    | React with emoji   |
+
+### Streaming Operations
+
+| Method                                  | Description                        |
+| --------------------------------------- | ---------------------------------- |
+| `bot.ai.stream(channelId, options)`     | Create AI streaming session        |
+| `bot.stream.create(channelId)`          | Create low-level streaming session |
+| `bot.ai.withErrorHandler(ctx, session)` | Wrap with AI-aware error handling  |
 
 ### Other Operations
 

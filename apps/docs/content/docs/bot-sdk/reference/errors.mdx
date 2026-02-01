@@ -160,6 +160,98 @@ class ValidationError {
 }
 ```
 
+## Streaming Errors
+
+These errors are specific to AI streaming operations.
+
+### `ActorConnectionError`
+
+Thrown when connecting to the streaming actor fails.
+
+```typescript
+class ActorConnectionError {
+	readonly _tag = "ActorConnectionError"
+	readonly message: string
+	readonly cause: unknown
+}
+```
+
+**Common causes:**
+
+- Streaming service unavailable
+- Network connectivity issues
+- Invalid actor configuration
+
+### `ActorOperationError`
+
+Thrown when a streaming actor operation fails.
+
+```typescript
+class ActorOperationError {
+	readonly _tag = "ActorOperationError"
+	readonly message: string
+	readonly operation: string
+	readonly cause: unknown
+}
+```
+
+### `MessageCreateError`
+
+Thrown when creating a streaming message fails.
+
+```typescript
+class MessageCreateError {
+	readonly _tag = "MessageCreateError"
+	readonly message: string
+	readonly channelId: string
+	readonly cause: unknown
+}
+```
+
+### `StreamProcessingError`
+
+Thrown when processing an AI content chunk fails.
+
+```typescript
+class StreamProcessingError {
+	readonly _tag = "StreamProcessingError"
+	readonly message: string
+	readonly chunkType: string
+	readonly cause: unknown
+}
+```
+
+### `MessagePersistError`
+
+Thrown when persisting the final streamed message fails.
+
+```typescript
+class MessagePersistError {
+	readonly _tag = "MessagePersistError"
+	readonly message: string
+	readonly messageId: string
+	readonly cause: unknown
+}
+```
+
+### `BotNotConfiguredError`
+
+Thrown when the bot is not properly configured for streaming.
+
+```typescript
+class BotNotConfiguredError {
+	readonly _tag = "BotNotConfiguredError"
+	readonly message: string
+	readonly missingConfig: string[]
+}
+```
+
+**Common causes:**
+
+- Missing streaming service URL
+- Bot not authenticated
+- Missing required permissions
+
 ## Error Handling
 
 ### Using `withErrorHandler`

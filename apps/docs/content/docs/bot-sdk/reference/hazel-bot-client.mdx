@@ -272,3 +272,91 @@ yield * Effect.log(`Bot User ID: ${auth.userId}`)
 ## Rate Limiting
 
 All message operations are automatically rate-limited to 10 per second. This prevents hitting API limits and ensures reliable delivery.
+
+## Streaming Operations
+
+The SDK provides two streaming APIs: a low-level `bot.stream` for full control and a high-level `bot.ai` for AI model integration.
+
+### `bot.stream.create`
+
+Create a low-level stream session for real-time message updates.
+
+```typescript
+const session =
+	yield *
+	bot.stream.create(channelId, {
+		loading: {
+			title: "Processing...",
+			description: "Please wait",
+		},
+	})
+```
+
+**StreamSession methods:**
+
+| Method                               | Description                                  |
+| ------------------------------------ | -------------------------------------------- |
+| `appendText(text)`                   | Append text to the current message           |
+| `setText(text)`                      | Replace the entire message text              |
+| `setProgress(progress)`              | Update the loading progress indicator        |
+| `setData(data)`                      | Set structured data on the message           |
+| `startThinking(label?)`              | Add a thinking/reasoning step                |
+| `startToolCall(name, input?)`        | Add a tool call step with name and input     |
+| `updateStepContent(stepId, content)` | Update a step's content                      |
+| `completeStep(stepId, output?)`      | Mark a step as complete with optional output |
+| `complete()`                         | Finalize the stream and persist the message  |
+| `fail(error)`                        | Mark the stream as failed with an error      |
+
+### `bot.ai.stream`
+
+Create an AI-aware stream session with automatic chunk processing.
+
+```typescript
+const session =
+	yield *
+	bot.ai.stream(channelId, {
+		model: "claude-3.5-sonnet",
+		showThinking: true,
+		showToolCalls: true,
+		loading: {
+			title: "Thinking...",
+		},
+	})
+```
+
+**AIStreamOptions:**
+
+| Option          | Type      | Description                                   |
+| --------------- | --------- | --------------------------------------------- |
+| `model`         | `string`  | AI model identifier for display               |
+| `showThinking`  | `boolean` | Show extended thinking steps (default: false) |
+| `showToolCalls` | `boolean` | Show tool call steps (default: false)         |
+| `loading`       | `object`  | Loading state with `title` and `description`  |
+
+**AIStreamSession methods:**
+
+All `StreamSession` methods plus:
+
+| Method                  | Description                        |
+| ----------------------- | ---------------------------------- |
+| `processChunk(chunk)`   | Process a single AI content chunk  |
+| `processStream(stream)` | Process an entire stream of chunks |
+
+**AIContentChunk types:**
+
+| Type          | Properties                              | Description               |
+| ------------- | --------------------------------------- | ------------------------- |
+| `text`        | `text: string`                          | Text content to append    |
+| `thinking`    | `thinking: string`                      | Extended thinking content |
+| `tool_call`   | `name: string`, `input?: unknown`       | Tool invocation           |
+| `tool_result` | `toolCallId: string`, `result: unknown` | Tool execution result     |
+
+### `bot.ai.withErrorHandler`
+
+Wrap an AI streaming operation with error handling that properly fails the stream on error.
+
+```typescript
+yield * myOperation.pipe(bot.ai.withErrorHandler(ctx, session))
+```
+
+See [AI Streaming](/bot-sdk/reference/ai-streaming) for complete documentation and examples.
