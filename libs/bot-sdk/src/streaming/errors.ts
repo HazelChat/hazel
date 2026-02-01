@@ -65,6 +65,20 @@ export class BotNotConfiguredError extends Schema.TaggedError<BotNotConfiguredEr
 ) {}
 
 /**
+ * Error thrown when persisting the final message state to the database fails.
+ * This is a non-fatal error - the stream completed successfully, but the
+ * final state wasn't saved to the database.
+ */
+export class MessagePersistError extends Schema.TaggedError<MessagePersistError>()(
+	"MessagePersistError",
+	{
+		messageId: Schema.String,
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
+
+/**
  * Union type for all streaming errors.
  * Use with Effect.catchTags for comprehensive error handling.
  *
@@ -84,3 +98,4 @@ export type StreamingError =
 	| ActorOperationError
 	| StreamProcessingError
 	| BotNotConfiguredError
+	| MessagePersistError

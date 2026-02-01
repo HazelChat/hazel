@@ -36,6 +36,28 @@ export type MessageCreateFn = (
 ) => Effect.Effect<{ id: string }, unknown>
 
 /**
+ * Message update function type - matches the message update API
+ */
+export type MessageUpdateFn = (
+	messageId: MessageId,
+	payload: {
+		readonly content?: string
+		readonly embeds?: ReadonlyArray<{
+			readonly liveState?: {
+				readonly enabled: true
+				readonly cached?: {
+					readonly status: "idle" | "active" | "completed" | "failed"
+					readonly data: Record<string, unknown>
+					readonly text?: string
+					readonly progress?: number
+					readonly error?: string
+				}
+			}
+		}> | null
+	},
+) => Effect.Effect<{ id: string }, unknown>
+
+/**
  * Wrap an actor method call with Effect, error handling, and tracing.
  * Uses Effect.fn for automatic span creation.
  */
@@ -56,9 +78,21 @@ const wrapActorCall = Effect.fn("StreamSession.actorCall")(function* <T>(
 })
 
 /**
+ * Options for creating a session from an actor
+ */
+interface CreateSessionFromActorOptions {
+	readonly updateMessage?: MessageUpdateFn
+	readonly persistOnComplete?: boolean
+}
+
+/**
  * Create a StreamSession object from a message actor
  */
-const createSessionFromActor = (messageId: MessageId, actor: MessageActor): StreamSession => ({
+const createSessionFromActor = (
+	messageId: MessageId,
+	actor: MessageActor,
+	options: CreateSessionFromActorOptions = {},
+): StreamSession => ({
 	messageId,
 
 	appendText: (text: string) => wrapActorCall("appendText", () => actor.appendText(text)),
@@ -81,9 +115,43 @@ const createSessionFromActor = (messageId: MessageId, actor: MessageActor): Stre
 		wrapActorCall("completeStep", () => actor.completeStep(stepId, result)),
 
 	complete: (finalData?: Record<string, unknown>) =>
-		wrapActorCall("complete", () => actor.complete(finalData)).pipe(
-			Effect.andThen(wrapActorCall("stopStreaming", () => actor.stopStreaming())),
-		),
+		Effect.gen(function* () {
+			// Complete the actor state
+			yield* wrapActorCall("complete", () => actor.complete(finalData))
+
+			// Persist to database if enabled (default: true)
+			if (options.persistOnComplete !== false && options.updateMessage) {
+				// Get final state from actor
+				const finalState = yield* wrapActorCall("getState", () => actor.getState())
+
+				// Build cached state for the embed
+				const cached = {
+					status: finalState.status,
+					data: finalState.data,
+					text: finalState.text || undefined,
+					progress: finalState.progress ?? undefined,
+					error: finalState.error ?? undefined,
+				}
+
+				// Update message with final content and cached state
+				yield* options
+					.updateMessage(messageId, {
+						content: finalState.text || undefined,
+						embeds: [{ liveState: { enabled: true, cached } }],
+					})
+					.pipe(
+						Effect.catchAll((error) =>
+							Effect.logWarning("Failed to persist streaming message to database", {
+								messageId,
+								error,
+							}),
+						),
+					)
+			}
+
+			// Stop streaming
+			yield* wrapActorCall("stopStreaming", () => actor.stopStreaming())
+		}),
 
 	fail: (error: string) => wrapActorCall("fail", () => actor.fail(error)),
 })
@@ -96,6 +164,7 @@ const createSessionFromActor = (messageId: MessageId, actor: MessageActor): Stre
  */
 export const createStreamSessionInternal = Effect.fn("StreamSession.create")(function* (
 	createMessage: MessageCreateFn,
+	updateMessage: MessageUpdateFn | undefined,
 	actorsClient: ActorsClientService,
 	channelId: ChannelId,
 	options: CreateStreamOptions = {},
@@ -127,7 +196,10 @@ export const createStreamSessionInternal = Effect.fn("StreamSession.create")(fun
 	yield* wrapActorCall("start", () => actor.start(options.initialData ?? {}))
 
 	// Return the session interface
-	return createSessionFromActor(message.id as MessageId, actor)
+	return createSessionFromActor(message.id as MessageId, actor, {
+		updateMessage,
+		persistOnComplete: options.persistOnComplete,
+	})
 })
 
 /**
@@ -138,6 +210,7 @@ export const createStreamSessionInternal = Effect.fn("StreamSession.create")(fun
  */
 export const createAIStreamSessionInternal = Effect.fn("AIStreamSession.create")(function* (
 	createMessage: MessageCreateFn,
+	updateMessage: MessageUpdateFn | undefined,
 	actorsClient: ActorsClientService,
 	channelId: ChannelId,
 	options: AIStreamOptions = {},
@@ -151,10 +224,16 @@ export const createAIStreamSessionInternal = Effect.fn("AIStreamSession.create")
 	}
 
 	// Create base session with enriched initial data
-	const baseSession = yield* createStreamSessionInternal(createMessage, actorsClient, channelId, {
-		...options,
-		initialData,
-	})
+	const baseSession = yield* createStreamSessionInternal(
+		createMessage,
+		updateMessage,
+		actorsClient,
+		channelId,
+		{
+			...options,
+			initialData,
+		},
+	)
 
 	// Track active thinking/tool steps by their chunk IDs
 	const activeStepsRef = yield* Ref.make<Map<string, string>>(new Map())

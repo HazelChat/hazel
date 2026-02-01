@@ -60,6 +60,7 @@ export {
 	ActorOperationError,
 	BotNotConfiguredError,
 	MessageCreateError,
+	MessagePersistError,
 	StreamProcessingError,
 	type StreamingError,
 } from "./errors.ts"
@@ -72,4 +73,5 @@ export {
 	createAIStreamSessionInternal,
 	createStreamSessionInternal,
 	type MessageCreateFn,
+	type MessageUpdateFn,
 } from "./streaming-service.ts"

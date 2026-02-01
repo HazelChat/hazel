@@ -60,6 +60,7 @@ import {
 	createStreamSessionInternal,
 	type AIStreamOptions,
 	type CreateStreamOptions,
+	type MessageUpdateFn,
 } from "./streaming/index.ts"
 import { extractTablesFromEventTypes } from "./types/events.ts"
 
@@ -748,6 +749,23 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 
 			/**
+			 * Helper to update a message (for persisting streaming state).
+			 * @internal
+			 */
+			updateMessageFn: ((messageId: MessageId, payload: Parameters<MessageUpdateFn>[1]) =>
+				messageLimiter(
+					httpApiClient["api-v1-messages"]
+						.updateMessage({
+							path: { id: messageId },
+							payload: {
+								content: payload.content,
+								embeds: payload.embeds ?? null,
+							},
+						})
+						.pipe(Effect.map((r) => r.data)),
+				)) as MessageUpdateFn,
+
+			/**
 			 * Low-level streaming API for real-time message updates.
 			 * Creates messages with live state and provides direct control over the actor.
 			 *
@@ -818,8 +836,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									.pipe(Effect.map((r) => r.data)),
 							)
 
+						const updateMessage: MessageUpdateFn = (messageId, payload) =>
+							messageLimiter(
+								httpApiClient["api-v1-messages"]
+									.updateMessage({
+										path: { id: messageId },
+										payload: {
+											content: payload.content,
+											embeds: payload.embeds ?? null,
+										},
+									})
+									.pipe(Effect.map((r) => r.data)),
+							)
+
 						return yield* createStreamSessionInternal(
 							createMessage,
+							updateMessage,
 							actorsService,
 							channelId,
 							options,
@@ -897,8 +929,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									.pipe(Effect.map((r) => r.data)),
 							)
 
+						const updateMessage: MessageUpdateFn = (messageId, payload) =>
+							messageLimiter(
+								httpApiClient["api-v1-messages"]
+									.updateMessage({
+										path: { id: messageId },
+										payload: {
+											content: payload.content,
+											embeds: payload.embeds ?? null,
+										},
+									})
+									.pipe(Effect.map((r) => r.data)),
+							)
+
 						return yield* createAIStreamSessionInternal(
 							createMessage,
+							updateMessage,
 							actorsService,
 							channelId,
 							options,

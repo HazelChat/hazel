@@ -19,6 +19,8 @@ export interface CreateStreamOptions {
 	readonly replyToMessageId?: MessageId | null
 	/** Send message in a thread */
 	readonly threadChannelId?: ChannelId | null
+	/** Persist final text and state to database on complete (default: true) */
+	readonly persistOnComplete?: boolean
 }
 
 /**
@@ -79,6 +81,7 @@ export interface AIStreamOptions extends CreateStreamOptions {
 	readonly showThinking?: boolean
 	/** Whether to show tool calls in the UI */
 	readonly showToolCalls?: boolean
+	// persistOnComplete is inherited from CreateStreamOptions
 }
 
 // ============================================================================
