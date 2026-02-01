@@ -1,134 +1,16 @@
-import { UserError } from "rivetkit"
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
-import type { AuthenticatedClient, BotClient, BotTokenValidationResponse, UserClient } from "./types"
-import type { BotId, OrganizationId, UserId } from "@hazel/schema"
-
-// Cache JWKS for WorkOS
-let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null
-
-function getJwks(clientId: string) {
-	if (!jwksCache) {
-		jwksCache = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
-	}
-	return jwksCache
-}
-
-/**
- * Check if a token looks like a JWT (three base64url-encoded segments)
- */
-function isJwtToken(token: string): boolean {
-	const parts = token.split(".")
-	return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
-}
-
-/**
- * Check if a token is a bot token (hzl_bot_xxxxx format)
- */
-function isBotToken(token: string): boolean {
-	return token.startsWith("hzl_bot_")
-}
-
-interface JWTPayloadWithClaims extends JWTPayload {
-	org_id?: string
-	role?: string
-}
-
-/**
- * Validate a WorkOS JWT token.
- * Verifies the signature against WorkOS JWKS and extracts user identity.
- */
-async function validateJwt(token: string, config: TokenValidationConfig): Promise<UserClient> {
-	const jwks = getJwks(config.workosClientId)
-
-	// WorkOS can issue tokens with either issuer format
-	const issuers = [
-		"https://api.workos.com",
-		`https://api.workos.com/user_management/${config.workosClientId}`,
-	]
-
-	let payload: JWTPayloadWithClaims | null = null
-
-	for (const issuer of issuers) {
-		try {
-			const result = await jwtVerify(token, jwks, { issuer })
-			payload = result.payload as JWTPayloadWithClaims
-			break
-		} catch {
-			// Try next issuer
-		}
-	}
-
-	if (!payload) {
-		throw new UserError("Invalid or expired token", { code: "invalid_token" })
-	}
-
-	const userId = payload.sub
-	if (!userId) {
-		throw new UserError("Token missing user ID", { code: "invalid_token" })
-	}
-
-	// Extract org_id if present (WorkOS org ID, not internal UUID)
-	// Note: For now we store WorkOS org ID; can be resolved to internal ID if needed
-	const organizationId = payload.org_id as OrganizationId | undefined
-	const role = (payload.role as "admin" | "member" | "owner") || "member"
-
-	return {
-		type: "user",
-		userId: userId as UserId,
-		organizationId: organizationId ?? null,
-		role,
-	}
-}
-
-/**
- * Validate a bot token by calling the backend validation endpoint.
- * Bot tokens are hashed and looked up in the database.
- */
-async function validateBotToken(token: string, config: TokenValidationConfig): Promise<BotClient> {
-	const response = await fetch(`${config.backendUrl}/internal/actors/validate-bot-token`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			// Use internal secret for server-to-server auth
-			...(config.internalSecret && { "X-Internal-Secret": config.internalSecret }),
-		},
-		body: JSON.stringify({ token }),
-	})
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => "Unknown error")
-		throw new UserError("Invalid bot token", {
-			code: "invalid_token",
-			metadata: { detail: errorText },
-		})
-	}
-
-	const data = (await response.json()) as BotTokenValidationResponse
-
-	return {
-		type: "bot",
-		userId: data.userId as UserId,
-		botId: data.botId as BotId,
-		organizationId: (data.organizationId as OrganizationId) ?? null,
-		scopes: data.scopes,
-	}
-}
-
-/**
- * Configuration required for token validation
- */
-export interface TokenValidationConfig {
-	/** WorkOS client ID for JWT validation */
-	readonly workosClientId: string
-	/** Backend URL for bot token validation */
-	readonly backendUrl: string
-	/** Internal secret for server-to-server auth (optional) */
-	readonly internalSecret?: string
-}
+import { FetchHttpClient } from "@effect/platform"
+import { Effect, Layer } from "effect"
+import { TokenValidationConfigService, type TokenValidationConfig } from "./config-service"
+import { ConfigError } from "./errors"
+import { JwksService } from "./jwks-service"
+import { TokenValidationLive, TokenValidationService } from "./token-validation-service"
+import type { AuthenticatedClient } from "./types"
 
 /**
  * Load token validation config from environment variables.
  * Throws if required variables are missing.
+ *
+ * @deprecated Use TokenValidationConfigService.Default instead for Effect-based code
  */
 export function loadConfigFromEnv(): TokenValidationConfig {
 	const workosClientId = process.env.WORKOS_CLIENT_ID
@@ -160,6 +42,8 @@ let cachedConfig: TokenValidationConfig | null = null
 
 /**
  * Get or load the token validation config from environment.
+ *
+ * @deprecated Use TokenValidationConfigService.Default instead for Effect-based code
  */
 export function getConfig(): TokenValidationConfig {
 	if (!cachedConfig) {
@@ -169,26 +53,44 @@ export function getConfig(): TokenValidationConfig {
 }
 
 /**
+ * Full layer with all dependencies for token validation.
+ * Includes HttpClient for bot token validation.
+ */
+const FullTokenValidationLayer = Layer.mergeAll(TokenValidationLive, FetchHttpClient.layer)
+
+/**
  * Validate a token (JWT or bot token) and return the authenticated client identity.
  *
+ * This is the Promise-based API for backwards compatibility.
+ * For new Effect-based code, use TokenValidationService.validateToken directly.
+ *
  * @param token - The token to validate (JWT or hzl_bot_xxxxx)
- * @param config - Optional config override; uses environment variables if not provided
+ * @param _config - Deprecated: config is now loaded from environment via Effect.Config
  * @returns AuthenticatedClient with user/bot identity
- * @throws UserError if token is invalid or missing
+ * @throws Error if token is invalid or missing
+ *
+ * @deprecated For new code, use TokenValidationService.validateToken with proper Effect patterns
  */
 export async function validateToken(
 	token: string,
-	config?: TokenValidationConfig,
+	_config?: TokenValidationConfig,
 ): Promise<AuthenticatedClient> {
-	const resolvedConfig = config ?? getConfig()
+	const program = Effect.gen(function* () {
+		const service = yield* TokenValidationService
+		return yield* service.validateToken(token)
+	}).pipe(
+		Effect.provide(FullTokenValidationLayer),
+		Effect.catchTags({
+			ConfigError: (e) => Effect.die(new Error(e.message)),
+			InvalidTokenFormatError: (e) => Effect.die(new Error(e.message)),
+			JwtValidationError: (e) => Effect.die(new Error(e.message)),
+			BotTokenValidationError: (e) => Effect.die(new Error(e.message)),
+		}),
+		Effect.scoped,
+	)
 
-	if (isBotToken(token)) {
-		return validateBotToken(token, resolvedConfig)
-	}
-
-	if (isJwtToken(token)) {
-		return validateJwt(token, resolvedConfig)
-	}
-
-	throw new UserError("Invalid token format", { code: "invalid_token" })
+	return Effect.runPromise(program)
 }
+
+// Re-export config type for backwards compatibility
+export type { TokenValidationConfig } from "./config-service"

@@ -12,6 +12,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect/platform": "catalog:effect",
 		"@hazel/schema": "workspace:*",
 		"@rivetkit/effect": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/effect@4009",
 		"effect": "catalog:effect",

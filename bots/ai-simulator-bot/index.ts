@@ -1,8 +1,8 @@
 import { Command, CommandGroup, runHazelBot, type AIContentChunk } from "@hazel/bot-sdk"
-import { Cause, Config, Effect, JSONSchema, Match, Redacted, Schema, Stream } from "effect"
+import { Cause, Config, Effect, JSONSchema, Redacted, Schema, Stream } from "effect"
 
 // Vercel AI SDK imports
-import { streamText, tool, jsonSchema } from "ai"
+import { ToolLoopAgent, tool, jsonSchema } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { TextStreamPart } from "ai"
 
@@ -190,7 +190,7 @@ const SimulateAiCommand = Command.make("simulate-ai", {
 })
 
 const VercelAskCommand = Command.make("vercel-ask", {
-	description: "Ask the AI using Vercel AI SDK (supports tool use and reasoning)",
+	description: "Ask the AI agent using ToolLoopAgent pattern (supports tool use and reasoning)",
 	args: {
 		message: Schema.String,
 	},
@@ -257,7 +257,7 @@ runHazelBot({
 				}).pipe(bot.withErrorHandler(ctx)),
 			)
 
-			// Handle /vercel-ask command - Vercel AI SDK with tool support
+			// Handle /vercel-ask command - Using ToolLoopAgent pattern
 			yield* bot.onCommand(VercelAskCommand, (ctx) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /vercel-ask: ${ctx.args.message}`)
@@ -267,7 +267,7 @@ runHazelBot({
 
 					// Create AI streaming session
 					const session = yield* bot.ai.stream(ctx.channelId, {
-						model: "moonshotai/kimi-k2.5 (vercel)",
+						model: "moonshotai/kimi-k2.5 (agent)",
 						showThinking: true,
 						showToolCalls: true,
 						loading: {
@@ -279,12 +279,33 @@ runHazelBot({
 
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
-					const result = streamText({
+					// Create the ToolLoopAgent instance
+					const codebaseAgent = new ToolLoopAgent({
 						model: openrouter("moonshotai/kimi-k2.5"),
-						prompt: ctx.args.message,
+						instructions: `You are a helpful AI assistant with access to codebase exploration tools.
+
+Your capabilities:
+- Search the codebase for files matching queries
+- Read file contents
+- Get current date/time
+- Perform arithmetic calculations
+
+When answering questions about code:
+1. First search for relevant files
+2. Read the most relevant files
+3. Provide a clear, helpful response based on what you found
+
+Be concise and helpful. Format code in markdown code blocks.`,
 						tools: vercelTools,
 						toolChoice: "auto",
 					})
+
+					// Use the agent's stream() method (returns a Promise)
+					const result = yield* Effect.promise(() =>
+						codebaseAgent.stream({
+							prompt: ctx.args.message,
+						}),
+					)
 
 					const streamState: VercelStreamState = { hasActiveReasoning: false }
 
@@ -296,11 +317,11 @@ runHazelBot({
 							onSuccess: () =>
 								Effect.gen(function* () {
 									yield* session.complete()
-									yield* Effect.log(`Vercel AI response complete: ${session.messageId}`)
+									yield* Effect.log(`Agent response complete: ${session.messageId}`)
 								}),
 							onFailure: (cause) =>
 								Effect.gen(function* () {
-									yield* Effect.logError("Vercel AI streaming failed", { error: cause })
+									yield* Effect.logError("Agent streaming failed", { error: cause })
 
 									const userMessage = Cause.match(cause, {
 										onEmpty: "Request was cancelled.",

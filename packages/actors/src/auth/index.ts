@@ -1,3 +1,18 @@
+// Error types
+export {
+	ConfigError,
+	InvalidTokenFormatError,
+	JwtValidationError,
+	BotTokenValidationError,
+	type TokenValidationError,
+} from "./errors"
+
+// Services
+export { TokenValidationConfigService, type TokenValidationConfig } from "./config-service"
+export { JwksService } from "./jwks-service"
+export { TokenValidationService, TokenValidationLive } from "./token-validation-service"
+
+// Types
 export type {
 	AuthenticatedClient,
 	UserClient,
@@ -6,4 +21,5 @@ export type {
 	BotTokenValidationResponse,
 } from "./types"
 
-export { validateToken, getConfig, loadConfigFromEnv, type TokenValidationConfig } from "./validate-token"
+// Legacy Promise-based API (deprecated, kept for backwards compatibility)
+export { validateToken, getConfig, loadConfigFromEnv } from "./validate-token"

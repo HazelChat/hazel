@@ -1,7 +1,8 @@
+import { FetchHttpClient } from "@effect/platform"
 import { actor, UserError } from "rivetkit"
 import { Action, CreateConnState, Log } from "@rivetkit/effect"
 import { Effect } from "effect"
-import { validateToken, type ActorConnectParams } from "../auth"
+import { TokenValidationService, TokenValidationLive, type ActorConnectParams } from "../auth"
 
 /**
  * Represents a step in an AI agent workflow.
@@ -109,13 +110,23 @@ export const messageActor = actor({
 			return yield* Effect.fail(new UserError("Authentication required", { code: "unauthorized" }))
 		}
 
-		return yield* Effect.tryPromise({
-			try: () => validateToken(params.token),
-			catch: (error) =>
-				new Error(
-					`Token validation failed: ${error instanceof Error ? error.message : String(error)}`,
-				),
-		}).pipe(Effect.tapError((error) => Log.error("Token validation failed", { error: error.message })))
+		return yield* Effect.gen(function* () {
+			const service = yield* TokenValidationService
+			return yield* service.validateToken(params.token)
+		}).pipe(
+			Effect.provide(TokenValidationLive),
+			Effect.provide(FetchHttpClient.layer),
+			Effect.scoped,
+			Effect.catchTags({
+				InvalidTokenFormatError: (e) =>
+					Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+				JwtValidationError: (e) => Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+				BotTokenValidationError: (e) =>
+					Effect.fail(new UserError(e.message, { code: "invalid_token" })),
+				ConfigError: (e) => Effect.fail(new UserError(e.message, { code: "server_error" })),
+			}),
+			Effect.tapError((error) => Log.error("Token validation failed", { error: error.message })),
+		)
 	}),
 
 	actions: {
