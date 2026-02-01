@@ -13,7 +13,7 @@ import {
 	OAuthTimeoutError,
 	TauriCommandError,
 	TauriNotAvailableError,
-} from "@hazel/domain"
+} from "@hazel/domain/errors"
 import { Deferred, Duration, Effect, FiberId } from "effect"
 import { TokenExchange } from "./token-exchange"
 import { TokenStorage } from "./token-storage"

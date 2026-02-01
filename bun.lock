@@ -288,6 +288,8 @@
       "name": "ai-simulator-bot",
       "version": "1.0.0",
       "dependencies": {
+        "@effect/ai": "catalog:effect",
+        "@effect/ai-openrouter": "catalog:effect",
         "@effect/platform": "catalog:effect",
         "@hazel/bot-sdk": "workspace:*",
         "effect": "catalog:effect",

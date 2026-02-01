@@ -5,16 +5,14 @@ import {
 	AIProviderUnavailableError,
 	AIRateLimitError,
 	AIResponseParseError,
-	OriginalMessageNotFoundError,
-	ThreadChannelNotFoundError,
-	ThreadContextQueryError,
-	ThreadNameUpdateError,
-} from "../cluster/activities/thread-naming-activities"
-import {
 	DmChannelAlreadyExistsError,
 	InternalServerError,
 	MessageNotFoundError,
 	NestedThreadError,
+	OriginalMessageNotFoundError,
+	ThreadChannelNotFoundError,
+	ThreadContextQueryError,
+	ThreadNameUpdateError,
 	UnauthorizedError,
 	WorkflowServiceUnavailableError,
 } from "../errors"

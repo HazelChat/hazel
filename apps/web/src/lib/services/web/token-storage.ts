@@ -4,7 +4,7 @@
  * @description Token storage using localStorage with same API as desktop TokenStorage
  */
 
-import { TokenNotFoundError, TokenStoreError } from "@hazel/domain"
+import { TokenNotFoundError, TokenStoreError } from "@hazel/domain/errors"
 import { Effect, Option } from "effect"
 
 const STORAGE_PREFIX = "hazel_auth_"

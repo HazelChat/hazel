@@ -11,7 +11,7 @@ import {
 	MissingAuthCodeError,
 	OAuthCallbackError,
 } from "@hazel/domain/errors"
-import { Http } from "@hazel/domain/http"
+import { DesktopAuthState } from "@hazel/domain/http"
 import { Effect, Schedule } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 
@@ -24,7 +24,7 @@ import { runtime } from "~/lib/services/common/runtime"
  */
 export interface DesktopCallbackParams {
 	code?: string
-	state?: typeof Http.DesktopAuthState.Type
+	state?: typeof DesktopAuthState.Type
 	error?: string
 	error_description?: string
 }
@@ -103,7 +103,7 @@ function getErrorInfo(error: CallbackError): {
 const connectToDesktop = (
 	port: number,
 	code: string,
-	state: typeof Http.DesktopAuthState.Type,
+	state: typeof DesktopAuthState.Type,
 	nonce: string,
 ) =>
 	Effect.tryPromise({

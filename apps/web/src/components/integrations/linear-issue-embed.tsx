@@ -1,7 +1,7 @@
 "use client"
 
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { OrganizationId } from "@hazel/domain"
+import type { OrganizationId } from "@hazel/domain/ids"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { cn } from "~/lib/utils"
 import { Embed, embedSectionStyles, useEmbedTheme } from "../embeds"

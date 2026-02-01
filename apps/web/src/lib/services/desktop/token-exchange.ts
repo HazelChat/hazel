@@ -5,7 +5,8 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Http, OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain"
+import { OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain/errors"
+import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
 import { Duration, Effect, Schema } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
@@ -71,7 +72,7 @@ export class TokenExchange extends Effect.Service<TokenExchange>()("TokenExchang
 
 					// Parse and validate response
 					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknown(Http.TokenResponse)(rawJson).pipe(
+					return yield* Schema.decodeUnknown(TokenResponse)(rawJson).pipe(
 						Effect.mapError(
 							(parseError) =>
 								new TokenDecodeError({
@@ -134,7 +135,7 @@ export class TokenExchange extends Effect.Service<TokenExchange>()("TokenExchang
 
 					// Parse and validate response
 					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknown(Http.RefreshTokenResponse)(rawJson).pipe(
+					return yield* Schema.decodeUnknown(RefreshTokenResponse)(rawJson).pipe(
 						Effect.mapError(
 							(parseError) =>
 								new TokenDecodeError({

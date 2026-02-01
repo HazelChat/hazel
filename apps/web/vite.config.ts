@@ -58,6 +58,27 @@ export default defineConfig({
 						"@tauri-apps/plugin-updater",
 						"@tauri-apps/plugin-window-state",
 					],
+			output: {
+				manualChunks: {
+					"vendor-react": ["react", "react-dom"],
+					"vendor-effect": [
+						"effect",
+						"@effect/platform",
+						"@effect/platform-browser",
+						"@effect/rpc",
+						"@effect/experimental",
+					],
+					"vendor-react-aria": ["react-aria", "react-aria-components", "react-stately"],
+					"vendor-slate": ["slate", "slate-react", "slate-history", "prismjs"],
+					"vendor-tanstack": [
+						"@tanstack/react-query",
+						"@tanstack/react-router",
+						"@tanstack/react-form",
+						"@tanstack/react-db",
+						"@tanstack/db",
+					],
+				},
+			},
 		},
 	},
 	plugins: [

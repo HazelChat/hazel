@@ -5,7 +5,7 @@
  */
 
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { Http } from "@hazel/domain/http"
+import { DesktopAuthState } from "@hazel/domain/http"
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"
 import { useMemo } from "react"
@@ -22,7 +22,7 @@ import { Loader } from "~/components/ui/loader"
 // Schema for search params - state is already parsed by TanStack Router's JSON handling
 const RawSearchParams = Schema.Struct({
 	code: Schema.optional(Schema.String),
-	state: Schema.optional(Http.DesktopAuthState),
+	state: Schema.optional(DesktopAuthState),
 	error: Schema.optional(Schema.String),
 	error_description: Schema.optional(Schema.String),
 })
