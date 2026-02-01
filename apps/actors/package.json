@@ -4,7 +4,7 @@
 	"type": "module",
 	"module": "src/index.ts",
 	"scripts": {
-		"dev": "bun run src/index.ts --hot",
+		"dev": "bun run src/index.ts --watch",
 		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit"
 	},

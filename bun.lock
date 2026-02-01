@@ -288,9 +288,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@effect/platform": "catalog:effect",
-        "@hazel/actors": "workspace:*",
         "@hazel/bot-sdk": "workspace:*",
-        "@hazel/domain": "workspace:*",
         "effect": "catalog:effect",
       },
       "devDependencies": {
@@ -370,6 +368,8 @@
       "name": "@hazel/actors",
       "version": "0.0.1",
       "dependencies": {
+        "@hazel/schema": "workspace:*",
+        "jose": "^6.0.11",
         "rivetkit": "^2.0.42",
       },
       "devDependencies": {

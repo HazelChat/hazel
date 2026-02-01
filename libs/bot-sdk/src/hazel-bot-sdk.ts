@@ -715,11 +715,20 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 */
 				create: (channelId: ChannelId, options?: CreateStreamOptions) => {
 					// Create actors client lazily - uses env vars with localhost fallback
+					// Get bot token from runtime config for actor authentication
+					const botToken = Option.getOrUndefined(
+						Option.map(runtimeConfigOption, (c) => c.botToken),
+					)
 					const client = createActorsClient()
 					const actorsService = {
 						getMessageActor: (messageId: string) =>
-							Effect.sync(() => client.message.getOrCreate([messageId])),
+							Effect.sync(() =>
+								client.message.getOrCreate([messageId], {
+									params: { token: botToken ?? "" },
+								}),
+							),
 						client,
+						botToken: botToken ?? "",
 					}
 					// Use message.send as the message creation function
 					const createMessage = (
@@ -773,11 +782,20 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 */
 				stream: (channelId: ChannelId, options?: AIStreamOptions) => {
 					// Create actors client lazily - uses env vars with localhost fallback
+					// Get bot token from runtime config for actor authentication
+					const botToken = Option.getOrUndefined(
+						Option.map(runtimeConfigOption, (c) => c.botToken),
+					)
 					const client = createActorsClient()
 					const actorsService = {
 						getMessageActor: (messageId: string) =>
-							Effect.sync(() => client.message.getOrCreate([messageId])),
+							Effect.sync(() =>
+								client.message.getOrCreate([messageId], {
+									params: { token: botToken ?? "" },
+								}),
+							),
 						client,
+						botToken: botToken ?? "",
 					}
 					// Use message.send as the message creation function
 					const createMessage = (

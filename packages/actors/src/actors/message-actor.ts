@@ -1,4 +1,5 @@
-import { actor } from "rivetkit"
+import { actor, UserError } from "rivetkit"
+import { validateToken, type AuthenticatedClient, type ActorConnectParams } from "../auth"
 
 /**
  * Represents a step in an AI agent workflow.
@@ -94,6 +95,24 @@ export const messageActor = actor({
 		steps: [],
 		currentStepIndex: null,
 	}),
+
+	/**
+	 * Validate authentication on connection.
+	 * All connections require a valid token (JWT or bot token).
+	 * Returns the authenticated client identity stored in c.conn.state.
+	 */
+	createConnState: async (_c, params: ActorConnectParams): Promise<AuthenticatedClient> => {
+		if (!params?.token) {
+			console.error("[messageActor] Connection rejected: no token provided")
+			throw new UserError("Authentication required", { code: "unauthorized" })
+		}
+		try {
+			return await validateToken(params.token)
+		} catch (error) {
+			console.error("[messageActor] Token validation failed:", error)
+			throw error
+		}
+	},
 
 	actions: {
 		// Read full state

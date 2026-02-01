@@ -6,6 +6,7 @@ import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
 import { IntegrationResourceGroup } from "./integration-resources"
 import { IntegrationGroup } from "./integrations"
+import { InternalApiGroup } from "./internal"
 import { MockDataGroup } from "./mock-data"
 import { PresencePublicGroup } from "./presence"
 import { RootGroup } from "./root"
@@ -22,6 +23,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(IntegrationCommandGroup)
 	.add(IntegrationResourceGroup)
 	.add(IncomingWebhookGroup)
+	.add(InternalApiGroup)
 	.add(UploadsGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)
