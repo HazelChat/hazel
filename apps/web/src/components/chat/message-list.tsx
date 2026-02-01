@@ -166,7 +166,7 @@ function MessageListContent({
 	})
 
 	const processedMessages = useMemo(() => {
-		const timeThreshold = 5 * 60 * 1000
+		const timeThreshold = 3 * 60 * 1000
 		const chronologicalMessages = [...messages].reverse()
 
 		return chronologicalMessages.map((message, index): ProcessedMessage => {

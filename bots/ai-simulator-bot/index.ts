@@ -274,9 +274,11 @@ runHazelBot({
 																return `Actor operation failed: ${err.operation}`
 															},
 															MalformedInput: (err) => {
+																console.error("Invalid input:", err.message)
 																return `Invalid input: ${err.message}`
 															},
 															MalformedOutput: (err) => {
+																console.error("Invalid output:", err.message)
 																return `Invalid output: ${err.message}`
 															},
 															UnknownError: (err) => {

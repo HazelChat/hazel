@@ -1,6 +1,5 @@
 import type { MessageId } from "@hazel/schema"
 import { IconBrainSparkle } from "~/components/icons/icon-brain-sparkle"
-import { IconLoader } from "~/components/icons/icon-loader"
 import { IconSparkles } from "~/components/icons/icon-sparkles"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { useMessageActor, type CachedActorState } from "~/hooks/use-message-actor"
@@ -61,21 +60,28 @@ function MessageLiveProvider({ messageId, enabled, cached, loading, children }: 
 }
 
 function MessageLiveLoading({ config }: { config?: LoadingConfig }) {
-	const { text = "Thinking...", icon = "sparkle", showSpinner = true, throbbing = false } = config ?? {}
+	const { text = "Thinking", icon = "sparkle" } = config ?? {}
 
 	// Select icon component based on config
 	const IconComponent = icon === "brain" ? IconBrainSparkle : IconSparkles
 
 	return (
-		<div
-			className={cn("mt-2 flex items-center gap-2 text-muted-fg text-sm", throbbing && "animate-pulse")}
-		>
-			{showSpinner ? (
-				<IconLoader className="size-4 animate-spin" aria-hidden />
-			) : (
-				<IconComponent className="size-4" aria-hidden />
-			)}
-			<span>{text}</span>
+		<div className="mt-2 flex items-center gap-2 text-muted-fg text-sm">
+			<IconComponent className="size-4" aria-hidden />
+			<span className="flex items-center gap-1">
+				{text}
+				<span className="inline-flex gap-0.5 ml-0.5">
+					<span className="size-1 rounded-full bg-current animate-[ai-thinking-dot_1.4s_ease-in-out_infinite]" />
+					<span
+						className="size-1 rounded-full bg-current animate-[ai-thinking-dot_1.4s_ease-in-out_infinite]"
+						style={{ animationDelay: "0.2s" }}
+					/>
+					<span
+						className="size-1 rounded-full bg-current animate-[ai-thinking-dot_1.4s_ease-in-out_infinite]"
+						style={{ animationDelay: "0.4s" }}
+					/>
+				</span>
+			</span>
 		</div>
 	)
 }
@@ -209,24 +215,35 @@ export function MessageLiveState({ messageId, enabled, cached, loading }: Messag
 // ============================================================================
 
 function ProgressBar({ value }: { value: number }) {
+	const isComplete = value === 100
+
 	return (
 		<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 			<div
 				className={cn(
-					"h-full rounded-full bg-primary transition-all duration-300",
-					value === 100 && "bg-success",
+					"relative h-full rounded-full transition-all duration-500 ease-out",
+					isComplete ? "bg-success" : "bg-primary",
 				)}
 				style={{ width: `${value}%` }}
-			/>
+			>
+				{!isComplete && (
+					<div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+						<div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[progress-shimmer_1.5s_ease-in-out_infinite]" />
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }
 
 function ErrorCard({ error }: { error: string }) {
 	return (
-		<div className="rounded-lg border border-danger/20 bg-danger/5 p-4" role="alert">
+		<div
+			className="rounded-lg border border-danger/20 bg-danger/5 p-4 animate-[error-enter_0.3s_var(--ease-out-cubic)_forwards]"
+			role="alert"
+		>
 			<div className="flex items-start gap-3">
-				<div className="rounded-full bg-danger/10 p-2">
+				<div className="rounded-full bg-danger/10 p-2 animate-[error-icon-bounce_0.4s_var(--ease-out-cubic)_0.3s]">
 					<IconWarning className="size-5 text-danger" aria-hidden />
 				</div>
 				<div className="flex-1 space-y-1">

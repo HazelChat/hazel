@@ -6,6 +6,7 @@ import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
+import { extractUrls } from "~/components/link-preview"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Badge } from "~/components/ui/badge"
 import { useChat } from "~/hooks/use-chat"
@@ -110,8 +111,18 @@ export const MessageItem = memo(function MessageItem({
 
 	const { user: currentUser } = useAuth()
 
-	const showAvatar = isGroupStart || !!message?.replyToMessageId
 	const isRepliedTo = !!message?.replyToMessageId
+
+	// Check if message has embeds (rich/webhook embeds or URL-based embeds)
+	const hasEmbed = useMemo(() => {
+		// Check for rich/webhook embeds
+		if (message.embeds && message.embeds.length > 0) return true
+		// Check for URL-based embeds (tweets, YouTube, Linear, GitHub, link previews)
+		const urls = extractUrls(message.content)
+		return urls.length > 0
+	}, [message.embeds, message.content])
+
+	const showAvatar = isGroupStart || isRepliedTo || hasEmbed
 
 	// Stabilize atom key to prevent atom family recreation on every render
 	const reactionsAtomKey = useMemo(

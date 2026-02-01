@@ -50,8 +50,11 @@ export function StreamingMarkdown({ children, isAnimating = false, className }: 
 		>
 			<span dangerouslySetInnerHTML={{ __html: html }} />
 			{isAnimating && (
-				<span className="animate-pulse ml-0.5" aria-hidden="true">
-					▋
+				<span
+					className="ml-0.5 text-primary animate-[ai-cursor-blink_1s_ease-in-out_infinite]"
+					aria-hidden="true"
+				>
+					|
 				</span>
 			)}
 		</div>

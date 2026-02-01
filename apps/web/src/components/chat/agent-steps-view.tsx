@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
 import IconCheck from "~/components/icons/icon-check"
@@ -40,14 +41,27 @@ export function AgentStepsView({ steps, currentIndex, status }: AgentStepsViewPr
 
 	return (
 		<div className="mt-2 space-y-2" role="list" aria-label="AI agent workflow steps">
-			{steps.map((step, index) => (
-				<StepItem
-					key={step.id}
-					step={step}
-					isActive={index === currentIndex}
-					globalFailed={status === "failed"}
-				/>
-			))}
+			<AnimatePresence mode="popLayout">
+				{steps.map((step, index) => (
+					<motion.div
+						key={step.id}
+						initial={{ opacity: 0, x: -8 }}
+						animate={{ opacity: 1, x: 0 }}
+						exit={{ opacity: 0, x: -8 }}
+						transition={{
+							duration: 0.2,
+							delay: index * 0.05,
+							ease: [0.215, 0.61, 0.355, 1],
+						}}
+					>
+						<StepItem
+							step={step}
+							isActive={index === currentIndex}
+							globalFailed={status === "failed"}
+						/>
+					</motion.div>
+				))}
+			</AnimatePresence>
 		</div>
 	)
 }
@@ -130,33 +144,50 @@ function ThinkingDisclosure({
 }
 
 function ToolCallStep({ step, isActive }: { step: AgentStep; isActive: boolean }) {
+	const [isExpanded, setIsExpanded] = useState(false)
+
 	return (
-		<div className="rounded bg-muted/50 p-2">
-			<div className="flex items-center gap-2 font-mono text-xs">
-				<IconSquareTerminal className="size-4 shrink-0" aria-hidden />
-				<span className="font-medium">{step.toolName}</span>
-				{step.status === "active" && isActive && (
-					<IconLoader className="size-4 animate-spin" aria-label="In progress" />
+		<Disclosure isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
+			<Heading>
+				<Button
+					slot="trigger"
+					className="flex w-full items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-fg text-sm transition-colors hover:bg-muted/70"
+				>
+					<IconSquareTerminal className="size-4 shrink-0" aria-hidden />
+					<span className="flex-1 text-left font-mono">{step.toolName}</span>
+					{step.status === "active" && isActive && (
+						<IconLoader className="size-4 animate-spin" aria-label="In progress" />
+					)}
+					{step.status === "completed" && (
+						<IconCheck className="size-4 text-success" aria-label="Completed" />
+					)}
+					{step.status === "failed" && (
+						<IconXmark className="size-4 text-danger" aria-label="Failed" />
+					)}
+					<IconChevronUp
+						className={cn("size-4 transition-transform", !isExpanded && "rotate-180")}
+						aria-hidden
+					/>
+				</Button>
+			</Heading>
+			<DisclosurePanel
+				className={cn("ml-2 mt-1 py-2 pl-3 text-sm", isExpanded && "border-l-2 border-muted/50")}
+			>
+				{step.toolInput && Object.keys(step.toolInput).length > 0 && (
+					<pre className="overflow-x-auto font-mono text-xs text-muted-fg">
+						{JSON.stringify(step.toolInput, null, 2)}
+					</pre>
 				)}
-				{step.status === "completed" && (
-					<IconCheck className="size-4 text-success" aria-label="Completed" />
+				{step.toolOutput !== undefined && (
+					<pre className="mt-1 overflow-x-auto font-mono text-xs text-success">
+						{typeof step.toolOutput === "string"
+							? step.toolOutput
+							: JSON.stringify(step.toolOutput, null, 2)}
+					</pre>
 				)}
-				{step.status === "failed" && <IconXmark className="size-4 text-danger" aria-label="Failed" />}
-			</div>
-			{step.toolInput && Object.keys(step.toolInput).length > 0 && (
-				<pre className="mt-1 overflow-x-auto text-muted-fg text-xs">
-					{JSON.stringify(step.toolInput, null, 2)}
-				</pre>
-			)}
-			{step.toolOutput !== undefined && (
-				<pre className="mt-1 overflow-x-auto text-success text-xs">
-					{typeof step.toolOutput === "string"
-						? step.toolOutput
-						: JSON.stringify(step.toolOutput, null, 2)}
-				</pre>
-			)}
-			{step.toolError && <div className="mt-1 text-danger text-xs">{step.toolError}</div>}
-		</div>
+				{step.toolError && <div className="mt-1 text-xs text-danger">{step.toolError}</div>}
+			</DisclosurePanel>
+		</Disclosure>
 	)
 }
 
