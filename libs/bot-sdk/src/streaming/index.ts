@@ -19,22 +19,53 @@
  * yield* stream.processChunk({ type: "text", text: "Hello" })
  * yield* stream.complete()
  * ```
+ *
+ * @example Error handling with specific error types
+ * ```typescript
+ * yield* stream.appendText("Hello").pipe(
+ *   Effect.catchTag("ActorOperationError", (err) =>
+ *     Effect.log(`Actor op failed: ${err.operation}`)
+ *   ),
+ * )
+ * ```
  */
 
-// Types
+// Types (including Schema-based chunk types)
 export type {
 	AIContentChunk,
 	AIStreamOptions,
 	AIStreamSession,
+	AIStreamProcessingError,
 	CreateStreamOptions,
 	StreamSession,
+	StreamSessionCreationError,
+	TextChunk,
+	ThinkingChunk,
+	ToolCallChunk,
+	ToolResultChunk,
 } from "./types.ts"
 
-// Errors
-export { StreamError } from "./errors.ts"
+// Schema exports for runtime validation
+export {
+	AIContentChunk as AIContentChunkSchema,
+	TextChunk as TextChunkSchema,
+	ThinkingChunk as ThinkingChunkSchema,
+	ToolCallChunk as ToolCallChunkSchema,
+	ToolResultChunk as ToolResultChunkSchema,
+} from "./types.ts"
+
+// Errors - specific error types for each failure mode
+export {
+	ActorConnectionError,
+	ActorOperationError,
+	BotNotConfiguredError,
+	MessageCreateError,
+	StreamProcessingError,
+	type StreamingError,
+} from "./errors.ts"
 
 // Services
-export { ActorsClient, type MessageActor } from "./actors-client.ts"
+export { ActorsClient, type ActorsClientConfig, type MessageActor } from "./actors-client.ts"
 
 // Core functions (internal - use bot.stream.create or bot.ai.stream instead)
 export {

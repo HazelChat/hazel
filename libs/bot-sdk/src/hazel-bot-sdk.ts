@@ -55,6 +55,7 @@ import {
 } from "./services/index.ts"
 import { createActorsClient } from "@hazel/actors/client"
 import {
+	BotNotConfiguredError,
 	createAIStreamSessionInternal,
 	createStreamSessionInternal,
 	type AIStreamOptions,
@@ -692,6 +693,61 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			getAuthContext: bot.getAuthContext,
 
 			/**
+			 * Helper to create actors service from runtime config.
+			 * Uses Option.match for explicit handling of missing config.
+			 * Fails with BotNotConfiguredError if config is not available.
+			 */
+			createActorsService: () =>
+				Option.match(runtimeConfigOption, {
+					onNone: () =>
+						Effect.fail(
+							new BotNotConfiguredError({
+								message: "Bot runtime config not available for streaming",
+							}),
+						),
+					onSome: (config) => {
+						const client = createActorsClient()
+						return Effect.succeed({
+							getMessageActor: (messageId: string) =>
+								Effect.sync(() =>
+									client.message.getOrCreate([messageId], {
+										params: { token: config.botToken },
+									}),
+								),
+							client,
+							botToken: config.botToken,
+						})
+					},
+				}),
+
+			/**
+			 * Helper to create the message creation function.
+			 * Shared between stream.create and ai.stream.
+			 */
+			createMessageFn: (
+				chId: ChannelId,
+				content: string,
+				opts?: {
+					readonly replyToMessageId?: MessageId | null
+					readonly threadChannelId?: ChannelId | null
+					readonly embeds?: readonly { readonly liveState?: { readonly enabled: true } }[] | null
+				},
+			) =>
+				messageLimiter(
+					httpApiClient["api-v1-messages"]
+						.createMessage({
+							payload: {
+								channelId: chId,
+								content,
+								replyToMessageId: opts?.replyToMessageId ?? null,
+								threadChannelId: opts?.threadChannelId ?? null,
+								embeds: opts?.embeds ?? null,
+							},
+						})
+						.pipe(Effect.map((r) => r.data)),
+				),
+
+			/**
 			 * Low-level streaming API for real-time message updates.
 			 * Creates messages with live state and provides direct control over the actor.
 			 *
@@ -713,50 +769,62 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param channelId - The channel to create the message in
 				 * @param options - Optional configuration (initialData, replyToMessageId, threadChannelId)
 				 */
-				create: (channelId: ChannelId, options?: CreateStreamOptions) => {
-					// Create actors client lazily - uses env vars with localhost fallback
-					// Get bot token from runtime config for actor authentication
-					const botToken = Option.getOrUndefined(
-						Option.map(runtimeConfigOption, (c) => c.botToken),
-					)
-					const client = createActorsClient()
-					const actorsService = {
-						getMessageActor: (messageId: string) =>
-							Effect.sync(() =>
-								client.message.getOrCreate([messageId], {
-									params: { token: botToken ?? "" },
-								}),
-							),
-						client,
-						botToken: botToken ?? "",
-					}
-					// Use message.send as the message creation function
-					const createMessage = (
-						chId: ChannelId,
-						content: string,
-						opts?: {
-							readonly replyToMessageId?: MessageId | null
-							readonly threadChannelId?: ChannelId | null
-							readonly embeds?:
-								| readonly { readonly liveState?: { readonly enabled: true } }[]
-								| null
-						},
-					) =>
-						messageLimiter(
-							httpApiClient["api-v1-messages"]
-								.createMessage({
-									payload: {
-										channelId: chId,
-										content,
-										replyToMessageId: opts?.replyToMessageId ?? null,
-										threadChannelId: opts?.threadChannelId ?? null,
-										embeds: opts?.embeds ?? null,
-									},
+				create: (channelId: ChannelId, options?: CreateStreamOptions) =>
+					Effect.gen(function* () {
+						const actorsService = yield* Option.match(runtimeConfigOption, {
+							onNone: () =>
+								Effect.fail(
+									new BotNotConfiguredError({
+										message: "Bot runtime config not available for streaming",
+									}),
+								),
+							onSome: (config) => {
+								const client = createActorsClient()
+								return Effect.succeed({
+									getMessageActor: (messageId: string) =>
+										Effect.sync(() =>
+											client.message.getOrCreate([messageId], {
+												params: { token: config.botToken },
+											}),
+										),
+									client,
+									botToken: config.botToken,
 								})
-								.pipe(Effect.map((r) => r.data)),
+							},
+						})
+
+						const createMessage = (
+							chId: ChannelId,
+							content: string,
+							opts?: {
+								readonly replyToMessageId?: MessageId | null
+								readonly threadChannelId?: ChannelId | null
+								readonly embeds?:
+									| readonly { readonly liveState?: { readonly enabled: true } }[]
+									| null
+							},
+						) =>
+							messageLimiter(
+								httpApiClient["api-v1-messages"]
+									.createMessage({
+										payload: {
+											channelId: chId,
+											content,
+											replyToMessageId: opts?.replyToMessageId ?? null,
+											threadChannelId: opts?.threadChannelId ?? null,
+											embeds: opts?.embeds ?? null,
+										},
+									})
+									.pipe(Effect.map((r) => r.data)),
+							)
+
+						return yield* createStreamSessionInternal(
+							createMessage,
+							actorsService,
+							channelId,
+							options,
 						)
-					return createStreamSessionInternal(createMessage, actorsService, channelId, options)
-				},
+					}),
 			},
 
 			/**
@@ -780,50 +848,62 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * @param channelId - The channel to create the message in
 				 * @param options - Optional configuration including model info
 				 */
-				stream: (channelId: ChannelId, options?: AIStreamOptions) => {
-					// Create actors client lazily - uses env vars with localhost fallback
-					// Get bot token from runtime config for actor authentication
-					const botToken = Option.getOrUndefined(
-						Option.map(runtimeConfigOption, (c) => c.botToken),
-					)
-					const client = createActorsClient()
-					const actorsService = {
-						getMessageActor: (messageId: string) =>
-							Effect.sync(() =>
-								client.message.getOrCreate([messageId], {
-									params: { token: botToken ?? "" },
-								}),
-							),
-						client,
-						botToken: botToken ?? "",
-					}
-					// Use message.send as the message creation function
-					const createMessage = (
-						chId: ChannelId,
-						content: string,
-						opts?: {
-							readonly replyToMessageId?: MessageId | null
-							readonly threadChannelId?: ChannelId | null
-							readonly embeds?:
-								| readonly { readonly liveState?: { readonly enabled: true } }[]
-								| null
-						},
-					) =>
-						messageLimiter(
-							httpApiClient["api-v1-messages"]
-								.createMessage({
-									payload: {
-										channelId: chId,
-										content,
-										replyToMessageId: opts?.replyToMessageId ?? null,
-										threadChannelId: opts?.threadChannelId ?? null,
-										embeds: opts?.embeds ?? null,
-									},
+				stream: (channelId: ChannelId, options?: AIStreamOptions) =>
+					Effect.gen(function* () {
+						const actorsService = yield* Option.match(runtimeConfigOption, {
+							onNone: () =>
+								Effect.fail(
+									new BotNotConfiguredError({
+										message: "Bot runtime config not available for streaming",
+									}),
+								),
+							onSome: (config) => {
+								const client = createActorsClient()
+								return Effect.succeed({
+									getMessageActor: (messageId: string) =>
+										Effect.sync(() =>
+											client.message.getOrCreate([messageId], {
+												params: { token: config.botToken },
+											}),
+										),
+									client,
+									botToken: config.botToken,
 								})
-								.pipe(Effect.map((r) => r.data)),
+							},
+						})
+
+						const createMessage = (
+							chId: ChannelId,
+							content: string,
+							opts?: {
+								readonly replyToMessageId?: MessageId | null
+								readonly threadChannelId?: ChannelId | null
+								readonly embeds?:
+									| readonly { readonly liveState?: { readonly enabled: true } }[]
+									| null
+							},
+						) =>
+							messageLimiter(
+								httpApiClient["api-v1-messages"]
+									.createMessage({
+										payload: {
+											channelId: chId,
+											content,
+											replyToMessageId: opts?.replyToMessageId ?? null,
+											threadChannelId: opts?.threadChannelId ?? null,
+											embeds: opts?.embeds ?? null,
+										},
+									})
+									.pipe(Effect.map((r) => r.data)),
+							)
+
+						return yield* createAIStreamSessionInternal(
+							createMessage,
+							actorsService,
+							channelId,
+							options,
 						)
-					return createAIStreamSessionInternal(createMessage, actorsService, channelId, options)
-				},
+					}),
 			},
 		}
 	}),

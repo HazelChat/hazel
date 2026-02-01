@@ -3,10 +3,12 @@
  *
  * Provides an Effect-based wrapper around the RivetKit actors client
  * for interacting with message actors with bot authentication.
+ *
+ * Uses Effect.Service pattern for proper dependency injection and testability.
  */
 
 import { createActorsClient, type ActorsClient as RivetActorsClient } from "@hazel/actors/client"
-import { Context, Effect, Layer } from "effect"
+import { Effect } from "effect"
 
 /**
  * Type for the message actor instance
@@ -40,65 +42,58 @@ export interface ActorsClientService {
  * Configuration for ActorsClient
  */
 export interface ActorsClientConfig {
-	/** The actors endpoint URL */
+	/** The actors endpoint URL (defaults to http://localhost:6420) */
 	readonly endpoint?: string
 	/** The bot token for authentication (hzl_bot_xxxxx) */
 	readonly botToken: string
 }
 
 /**
- * Get the actors endpoint from environment or use default
- */
-const getEndpoint = (providedEndpoint?: string): string => {
-	if (providedEndpoint) return providedEndpoint
-	return (
-		process.env.RIVET_PUBLIC_ENDPOINT ?? process.env.RIVET_URL ?? "http://localhost:6420"
-	)
-}
-
-/**
- * ActorsClient context tag for managing actor connections.
+ * ActorsClient Effect.Service for managing actor connections.
  * Wraps the RivetKit client with Effect patterns and bot authentication.
+ *
+ * Uses Effect.Service pattern with:
+ * - Effect.fn for automatic tracing
+ * - Config parameter for programmatic configuration
+ * - Proper accessors for convenient usage
+ *
+ * @example
+ * ```typescript
+ * // Create layer with config
+ * const layer = ActorsClient.Default({
+ *   botToken: "hzl_bot_xxx",
+ *   endpoint: "http://localhost:6420"
+ * })
+ *
+ * // Use in effect
+ * const program = Effect.gen(function* () {
+ *   const actor = yield* ActorsClient.getMessageActor("msg-123")
+ *   // ... use actor
+ * }).pipe(Effect.provide(layer))
+ * ```
  */
-export class ActorsClient extends Context.Tag("@hazel/bot-sdk/ActorsClient")<
-	ActorsClient,
-	ActorsClientService
->() {
-	/**
-	 * Create a layer with bot token and optional endpoint configuration.
-	 * The bot token is passed to actors for authentication.
-	 * @param config - Configuration with botToken and optional endpoint
-	 */
-	static readonly layerConfig = (config: ActorsClientConfig): Layer.Layer<ActorsClient> =>
-		Layer.sync(ActorsClient, () => {
-			const url = getEndpoint(config.endpoint)
-			const client = createActorsClient(url)
+export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
+	accessors: true,
+	effect: Effect.fn("ActorsClient.create")(function* (config: ActorsClientConfig) {
+		const endpoint = config.endpoint ?? "http://localhost:6420"
+		const client = createActorsClient(endpoint)
 
-			return {
-				getMessageActor: (messageId: string) =>
-					Effect.sync(() =>
-						client.message.getOrCreate([messageId], {
-							params: { token: config.botToken },
-						}),
-					),
-				client,
-				botToken: config.botToken,
-			}
+		yield* Effect.annotateCurrentSpan("endpoint", endpoint)
+
+		// Use Effect.fn for automatic tracing of actor operations
+		const getMessageActor = Effect.fn("ActorsClient.getMessageActor")(function* (
+			messageId: string,
+		) {
+			yield* Effect.annotateCurrentSpan("messageId", messageId)
+			return client.message.getOrCreate([messageId], {
+				params: { token: config.botToken },
+			})
 		})
 
-	/**
-	 * Default layer using environment variables.
-	 * Requires BOT_TOKEN environment variable.
-	 */
-	static readonly Default = Layer.unwrapEffect(
-		Effect.gen(function* () {
-			const botToken = process.env.BOT_TOKEN
-			if (!botToken) {
-				return yield* Effect.dieMessage(
-					"BOT_TOKEN environment variable is required for ActorsClient",
-				)
-			}
-			return ActorsClient.layerConfig({ botToken })
-		}),
-	)
-}
+		return {
+			getMessageActor,
+			client,
+			botToken: config.botToken,
+		}
+	}),
+}) {}

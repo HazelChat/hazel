@@ -1,9 +1,9 @@
 import type { MessageId } from "@hazel/schema"
-import { Streamdown } from "streamdown"
 import { useMessageActor } from "~/hooks/use-message-actor"
 import { cn } from "~/lib/utils"
 import { AgentStepsView } from "./agent-steps-view"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
+import { StreamingMarkdown } from "./streaming-markdown"
 
 interface MessageLiveStateProps {
 	messageId: MessageId
@@ -37,15 +37,13 @@ export function MessageLiveState({ messageId, enabled }: MessageLiveStateProps) 
 
 			{/* Streaming text content */}
 			{state.text && (
-				<div className="prose prose-sm dark:prose-invert max-w-none">
-					{state.isStreaming ? (
-						// Streamdown renders markdown during streaming with built-in caret indicator
-						<Streamdown isAnimating={state.isStreaming}>{state.text}</Streamdown>
-					) : (
-						// Rich markdown rendering after streaming completes (with mentions, Prism highlighting)
-						<SlateMessageViewer content={state.text} />
-					)}
-				</div>
+				state.isStreaming ? (
+					// Fast markdown renderer during streaming with blinking caret
+					<StreamingMarkdown isAnimating>{state.text}</StreamingMarkdown>
+				) : (
+					// Rich rendering after streaming (mentions, Prism highlighting)
+					<SlateMessageViewer content={state.text} />
+				)
 			)}
 
 			{/* Error state */}
