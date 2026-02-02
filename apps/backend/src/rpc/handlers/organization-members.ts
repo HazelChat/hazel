@@ -1,10 +1,10 @@
+import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
 import { OrganizationMemberNotFoundError, OrganizationMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
-import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 
 /**
  * Organization Member RPC Handlers

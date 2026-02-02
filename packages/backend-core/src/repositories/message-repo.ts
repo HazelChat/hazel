@@ -14,7 +14,6 @@ import {
 import { type ChannelId, type MessageId, policyRequire } from "@hazel/domain"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -132,5 +131,4 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 			findByIdForCursor,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

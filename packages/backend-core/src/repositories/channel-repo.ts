@@ -2,7 +2,6 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TransactionCli
 import { type OrganizationId, policyRequire } from "@hazel/domain"
 import { Channel } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -41,5 +40,4 @@ export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
 			findByOrgAndName,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

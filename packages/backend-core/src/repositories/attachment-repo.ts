@@ -1,7 +1,6 @@
 import { ModelRepository, schema } from "@hazel/db"
 import { Attachment } from "@hazel/domain/models"
 import { Effect } from "effect"
-import { DatabaseLive } from "../services/database"
 
 export class AttachmentRepo extends Effect.Service<AttachmentRepo>()("AttachmentRepo", {
 	accessors: true,
@@ -13,5 +12,4 @@ export class AttachmentRepo extends Effect.Service<AttachmentRepo>()("Attachment
 
 		return baseRepo
 	}),
-	dependencies: [DatabaseLive],
 }) {}

@@ -1,3 +1,4 @@
+import { ChannelRepo, GitHubSubscriptionRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import {
 	type ChannelId,
 	ErrorUtils,
@@ -9,9 +10,6 @@ import {
 } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { GitHubSubscriptionRepo } from "../repositories/github-subscription-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 /** @effect-leakable-service */
 export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionPolicy>()(

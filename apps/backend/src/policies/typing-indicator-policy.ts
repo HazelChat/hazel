@@ -1,3 +1,4 @@
+import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
 import {
 	type ChannelId,
 	type ChannelMemberId,
@@ -7,8 +8,6 @@ import {
 	withSystemActor,
 } from "@hazel/domain"
 import { Effect, Option, pipe } from "effect"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
-import { TypingIndicatorRepo } from "../repositories/typing-indicator-repo"
 
 export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>()(
 	"TypingIndicatorPolicy/Policy",

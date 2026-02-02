@@ -1,9 +1,7 @@
+import { ChannelRepo, OrganizationMemberRepo, PinnedMessageRepo } from "@hazel/backend-core"
 import { type ChannelId, ErrorUtils, type PinnedMessageId, policy, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
-import { PinnedMessageRepo } from "../repositories/pinned-message-repo"
 
 export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("PinnedMessagePolicy/Policy", {
 	effect: Effect.gen(function* () {

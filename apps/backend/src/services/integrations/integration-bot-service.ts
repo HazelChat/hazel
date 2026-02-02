@@ -1,10 +1,7 @@
+import { BotInstallationRepo, BotRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import { Integrations, type OrganizationId, withSystemActor } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { BotInstallationRepo } from "../../repositories/bot-installation-repo"
-import { BotRepo } from "../../repositories/bot-repo"
-import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
-import { UserRepo } from "../../repositories/user-repo"
 
 /**
  * Integration Bot Service

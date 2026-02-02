@@ -29,10 +29,22 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 				)(externalId, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
-		const upsertByExternalId = (data: Schema.Schema.Type<typeof User.Insert>, tx?: TxFn) =>
+		/**
+		 * Upsert user by external ID.
+		 * @param data - User data to upsert
+		 * @param options - Optional settings
+		 * @param options.syncAvatarUrl - If true, sync avatarUrl from external source (WorkOS).
+		 *                                 If false (default), preserve local avatarUrl (managed via R2 uploads).
+		 * @param tx - Optional transaction
+		 */
+		const upsertByExternalId = (
+			data: Schema.Schema.Type<typeof User.Insert>,
+			options?: { syncAvatarUrl?: boolean },
+			tx?: TxFn,
+		) =>
 			db
 				.makeQuery(
-					(execute, input: typeof data) =>
+					(execute, input: typeof data & { syncAvatarUrl?: boolean }) =>
 						execute((client) =>
 							client
 								.insert(schema.usersTable)
@@ -42,7 +54,9 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 									set: {
 										firstName: input.firstName,
 										lastName: input.lastName,
-										avatarUrl: input.avatarUrl,
+										// Only sync avatarUrl when explicitly requested (e.g., WorkOS sync)
+										// Otherwise preserve local avatarUrl managed via R2 uploads
+										...(input.syncAvatarUrl && { avatarUrl: input.avatarUrl }),
 										email: input.email,
 										updatedAt: new Date(),
 									},
@@ -50,7 +64,7 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 								.returning(),
 						),
 					policyRequire("User", "create"),
-				)(data, tx)
+				)({ ...data, syncAvatarUrl: options?.syncAvatarUrl }, tx)
 				.pipe(Effect.map((results) => results[0]))
 
 		const findAllActive = (tx?: TxFn) =>

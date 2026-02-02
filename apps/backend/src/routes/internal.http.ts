@@ -1,8 +1,8 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { BotRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, Option } from "effect"
 import { HazelApi } from "../api"
-import { BotRepo } from "../repositories/bot-repo"
 
 /**
  * Hash a token using SHA-256 (Web Crypto API)

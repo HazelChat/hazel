@@ -1,3 +1,4 @@
+import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import {
@@ -13,8 +14,6 @@ import { Rss } from "@hazel/integrations"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { RssSubscriptionPolicy } from "../../policies/rss-subscription-policy"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { RssSubscriptionRepo } from "../../repositories/rss-subscription-repo"
 import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
 
 export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(

@@ -1,11 +1,13 @@
+import {
+	ChannelMemberRepo,
+	ChannelRepo,
+	MessageReactionRepo,
+	MessageRepo,
+	OrganizationMemberRepo,
+} from "@hazel/backend-core"
 import { ErrorUtils, type MessageId, type MessageReactionId, policy, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { MessageReactionRepo } from "../repositories/message-reaction-repo"
-import { MessageRepo } from "../repositories/message-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>()(
 	"MessageReactionPolicy/Policy",

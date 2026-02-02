@@ -1,11 +1,11 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
+import { UserRepo } from "@hazel/backend-core"
 import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { Config, Effect, Option, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
-import { UserRepo } from "../repositories/user-repo"
-import { WorkOS } from "../services/workos"
+import { WorkOSAuth as WorkOS } from "../services/workos-auth"
 
 export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 	handlers
@@ -28,7 +28,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
 						)
 						.pipe(
-							Effect.catchTag("WorkOSApiError", (error) =>
+							Effect.catchTag("WorkOSAuthError", (error) =>
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to get organization from WorkOS",
@@ -58,7 +58,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						return authUrl
 					})
 					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
+						Effect.catchTag("WorkOSAuthError", (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to generate authorization URL",
@@ -152,7 +152,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						.call(async (client) =>
 							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
 						)
-						.pipe(Effect.catchTag("WorkOSApiError", () => Effect.succeed(null)))
+						.pipe(Effect.catchTag("WorkOSAuthError", () => Effect.succeed(null)))
 
 					workosOrgId = workosOrg?.id
 				}
@@ -169,7 +169,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						})
 					})
 					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
+						Effect.catchTag("WorkOSAuthError", (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Failed to generate authorization URL",
@@ -208,7 +208,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					})
 					.pipe(
 						Effect.catchTag(
-							"WorkOSApiError",
+							"WorkOSAuthError",
 							(error): Effect.Effect<never, OAuthCodeExpiredError | UnauthorizedError> => {
 								const errorStr = String(error.cause)
 								// Detect expired/invalid code from WorkOS (invalid_grant)
@@ -309,7 +309,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						})
 					})
 					.pipe(
-						Effect.catchTag("WorkOSApiError", (error) =>
+						Effect.catchTag("WorkOSAuthError", (error) =>
 							Effect.fail(
 								new UnauthorizedError({
 									message: "Failed to refresh token",

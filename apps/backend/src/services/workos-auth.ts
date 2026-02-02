@@ -1,13 +1,13 @@
-import { Cookies, HttpServerRequest } from "@effect/platform"
+import { HttpServerRequest } from "@effect/platform"
 import { CurrentUser } from "@hazel/domain"
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
 import { Config, Effect, Redacted, Schema } from "effect"
 
-export class WorkOSApiError extends Schema.TaggedError<WorkOSApiError>()("WorkOSApiError", {
+export class WorkOSAuthError extends Schema.TaggedError<WorkOSAuthError>()("WorkOSAuthError", {
 	cause: Schema.Unknown,
 }) {}
 
-export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
+export class WorkOSAuth extends Effect.Service<WorkOSAuth>()("WorkOSAuth", {
 	accessors: true,
 	effect: Effect.gen(function* () {
 		const apiKey = yield* Config.redacted("WORKOS_API_KEY")
@@ -22,10 +22,12 @@ export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
 		const call = <A>(f: (client: WorkOSNodeAPI, signal: AbortSignal) => Promise<A>) =>
 			Effect.tryPromise({
 				try: (signal) => f(workosClient, signal),
-				catch: (cause) => new WorkOSApiError({ cause }),
+				catch: (cause) => new WorkOSAuthError({ cause }),
 			}).pipe(Effect.tapError((error) => Effect.logError("WorkOS API error", error)))
 
-		const loadSealedSession = Effect.fn("WorkOS.loadSealedSession")(function* (sessionCookie: string) {
+		const loadSealedSession = Effect.fn("WorkOSAuth.loadSealedSession")(function* (
+			sessionCookie: string,
+		) {
 			const session = yield* call(async (client) =>
 				client.userManagement.loadSealedSession({
 					sessionData: sessionCookie,
@@ -36,7 +38,9 @@ export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
 			return session
 		})
 
-		const getLogoutUrl = Effect.fn("WorkOS.getLogoutUrl")(function* (options?: { returnTo?: string }) {
+		const getLogoutUrl = Effect.fn("WorkOSAuth.getLogoutUrl")(function* (options?: {
+			returnTo?: string
+		}) {
 			const request = yield* HttpServerRequest.HttpServerRequest
 			const workOsCookie = request.cookies[CurrentUser.Cookie.key]
 
@@ -45,7 +49,7 @@ export class WorkOS extends Effect.Service<WorkOS>()("Workos", {
 			const logoutUrl = yield* Effect.tryPromise({
 				try: () => session.getLogoutUrl(options),
 				catch: (error) => {
-					return new WorkOSApiError({ cause: error })
+					return new WorkOSAuthError({ cause: error })
 				},
 			})
 

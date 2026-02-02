@@ -1,7 +1,6 @@
+import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import { type ChannelWebhookId, type OrganizationId, type UserId, withSystemActor } from "@hazel/domain"
 import { Effect } from "effect"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
-import { UserRepo } from "../repositories/user-repo"
 
 /**
  * Webhook Bot Service

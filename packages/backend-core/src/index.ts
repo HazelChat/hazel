@@ -1,9 +1,27 @@
-// Services
-
+// Repositories
+export { AttachmentRepo } from "./repositories/attachment-repo"
+export { BotCommandRepo } from "./repositories/bot-command-repo"
+export { BotInstallationRepo } from "./repositories/bot-installation-repo"
+export { BotRepo } from "./repositories/bot-repo"
+export { ChannelMemberRepo } from "./repositories/channel-member-repo"
+export { ChannelRepo } from "./repositories/channel-repo"
+export { ChannelSectionRepo } from "./repositories/channel-section-repo"
+export { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
+export { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
+export { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
+export { IntegrationTokenRepo } from "./repositories/integration-token-repo"
 export { InvitationRepo } from "./repositories/invitation-repo"
+export { MessageReactionRepo } from "./repositories/message-reaction-repo"
+export { MessageRepo, type ListByChannelParams } from "./repositories/message-repo"
+export { NotificationRepo } from "./repositories/notification-repo"
 export { OrganizationMemberRepo } from "./repositories/organization-member-repo"
 export { OrganizationRepo } from "./repositories/organization-repo"
-// Repositories
+export { PinnedMessageRepo } from "./repositories/pinned-message-repo"
+export { RssSubscriptionRepo } from "./repositories/rss-subscription-repo"
+export { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
+export { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
 export { UserRepo } from "./repositories/user-repo"
-export { WorkOS, WorkOSApiError } from "./services/workos"
+
+// Services
+export { WorkOSClient, WorkOSApiError } from "./services/workos"
 export { type FullSyncResult, type SyncResult, WorkOSSync, WorkOSSyncError } from "./services/workos-sync"

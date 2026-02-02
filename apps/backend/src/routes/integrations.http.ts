@@ -1,4 +1,5 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
+import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
 import {
 	CurrentUser,
 	InternalServerError,
@@ -15,8 +16,6 @@ import {
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Config, Effect, Option, Schedule, Schema } from "effect"
 import { HazelApi } from "../api"
-import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
-import { OrganizationRepo } from "../repositories/organization-repo"
 import { IntegrationTokenService } from "../services/integration-token-service"
 import { IntegrationBotService } from "../services/integrations/integration-bot-service"
 import { OAuthProviderRegistry } from "../services/oauth"

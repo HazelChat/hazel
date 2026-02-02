@@ -10,8 +10,8 @@ import {
 	SessionRefreshError,
 	WorkOSUserFetchError,
 } from "@hazel/domain"
+import { UserRepo } from "@hazel/backend-core"
 import { Effect } from "effect"
-import { UserRepo } from "../repositories/user-repo"
 
 /**
  * Session management service that handles authentication via WorkOS.

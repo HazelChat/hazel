@@ -1,7 +1,6 @@
 import { ModelRepository, schema } from "@hazel/db"
 import { ChannelSection } from "@hazel/domain/models"
 import { Effect } from "effect"
-import { DatabaseLive } from "../services/database"
 
 export class ChannelSectionRepo extends Effect.Service<ChannelSectionRepo>()("ChannelSectionRepo", {
 	accessors: true,
@@ -17,5 +16,4 @@ export class ChannelSectionRepo extends Effect.Service<ChannelSectionRepo>()("Ch
 
 		return baseRepo
 	}),
-	dependencies: [DatabaseLive],
 }) {}

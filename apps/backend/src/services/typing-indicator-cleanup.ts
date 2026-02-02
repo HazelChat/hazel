@@ -1,5 +1,5 @@
+import { TypingIndicatorRepo } from "@hazel/backend-core"
 import { Effect, Schedule } from "effect"
-import { TypingIndicatorRepo } from "../repositories/typing-indicator-repo"
 
 // Simple cleanup function that runs periodically
 export const startTypingIndicatorCleanup = Effect.gen(function* () {

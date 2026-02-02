@@ -2,7 +2,6 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TransactionCli
 import { type ChannelId, type GitHubSubscriptionId, type OrganizationId, policyRequire } from "@hazel/domain"
 import { GitHubSubscription } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -150,6 +149,5 @@ export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRep
 				softDelete,
 			}
 		}),
-		dependencies: [DatabaseLive],
 	},
 ) {}

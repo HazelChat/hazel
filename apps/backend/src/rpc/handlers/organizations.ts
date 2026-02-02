@@ -1,4 +1,11 @@
 import { GeneratePortalLinkIntent } from "@workos-inc/node"
+import {
+	ChannelMemberRepo,
+	ChannelRepo,
+	OrganizationMemberRepo,
+	OrganizationRepo,
+	UserRepo,
+} from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import {
 	CurrentUser,
@@ -17,12 +24,7 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
-import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
-import { OrganizationRepo } from "../../repositories/organization-repo"
-import { UserRepo } from "../../repositories/user-repo"
-import { WorkOS } from "../../services/workos"
+import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 /**
  * Custom error handler for organization database operations that provides
@@ -425,7 +427,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 										userId: user.externalId,
 									}),
 								)
-								.pipe(Effect.catchTag("WorkOSApiError", () => Effect.succeed({ data: [] })))
+								.pipe(Effect.catchTag("WorkOSAuthError", () => Effect.succeed({ data: [] })))
 
 							const hasWorkosMembership = workosMembers.data.length > 0
 
@@ -513,7 +515,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const workosOrg = yield* workos
 						.call((client) => client.organizations.getOrganizationByExternalId(id))
 						.pipe(
-							Effect.catchTag("WorkOSApiError", () =>
+							Effect.catchTag("WorkOSAuthError", () =>
 								Effect.fail(
 									new OrganizationNotFoundError({
 										organizationId: id,
@@ -562,7 +564,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const workosOrg = yield* workos
 						.call((client) => client.organizations.getOrganizationByExternalId(id))
 						.pipe(
-							Effect.catchTag("WorkOSApiError", () =>
+							Effect.catchTag("WorkOSAuthError", () =>
 								Effect.fail(
 									new OrganizationNotFoundError({
 										organizationId: id,
@@ -589,7 +591,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const workosOrg = yield* workos
 						.call((client) => client.organizations.getOrganizationByExternalId(id))
 						.pipe(
-							Effect.catchTag("WorkOSApiError", () =>
+							Effect.catchTag("WorkOSAuthError", () =>
 								Effect.fail(
 									new OrganizationNotFoundError({
 										organizationId: id,

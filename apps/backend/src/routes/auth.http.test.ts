@@ -1,11 +1,9 @@
 import { describe, expect, it, layer } from "@effect/vitest"
-import { ConfigProvider, Effect, Layer, Option } from "effect"
-import { WorkOS, WorkOSApiError } from "../services/workos.ts"
-import { UserRepo } from "../repositories/user-repo.ts"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo.ts"
+import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
+import type { OrganizationId, UserId } from "@hazel/schema"
+import { ConfigProvider, Effect, Layer, Option, Schema } from "effect"
 import { AuthState, RelativeUrl } from "../lib/schema.ts"
-import { Schema } from "effect"
-import type { UserId, OrganizationId } from "@hazel/schema"
+import { WorkOSAuth as WorkOS, WorkOSAuthError as WorkOSApiError } from "../services/workos-auth.ts"
 
 // ===== Mock Configuration =====
 

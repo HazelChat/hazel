@@ -1,3 +1,4 @@
+import { InvitationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
 import {
@@ -9,8 +10,7 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
-import { InvitationRepo } from "../../repositories/invitation-repo"
-import { WorkOS, WorkOSApiError } from "../../services/workos"
+import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {

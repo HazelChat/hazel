@@ -1,5 +1,6 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { Sse } from "@effect/experimental"
+import { BotCommandRepo, BotInstallationRepo, BotRepo, IntegrationConnectionRepo } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import {
 	BotCommandExecutionAccepted,
@@ -16,10 +17,6 @@ import {
 import { Redis } from "@hazel/effect-bun"
 import { Effect, Option, Stream } from "effect"
 import { HazelApi } from "../api.ts"
-import { BotCommandRepo } from "../repositories/bot-command-repo.ts"
-import { BotInstallationRepo } from "../repositories/bot-installation-repo.ts"
-import { BotRepo } from "../repositories/bot-repo.ts"
-import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo.ts"
 import { IntegrationTokenService } from "../services/integration-token-service.ts"
 
 /**

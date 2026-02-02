@@ -2,7 +2,6 @@ import { and, Database, eq, isNull, ModelRepository, schema, sql, type Transacti
 import { type IntegrationConnectionId, type OrganizationId, policyRequire, type UserId } from "@hazel/domain"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -242,6 +241,5 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 				upsertByOrgAndProvider,
 			}
 		}),
-		dependencies: [DatabaseLive],
 	},
 ) {}

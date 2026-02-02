@@ -1,4 +1,5 @@
 import { HttpApiBuilder } from "@effect/platform"
+import { AttachmentRepo, BotRepo, OrganizationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import {
@@ -13,9 +14,6 @@ import { Effect, Match, Option } from "effect"
 import { HazelApi } from "../api"
 import { AttachmentPolicy } from "../policies/attachment-policy"
 import { OrganizationPolicy } from "../policies/organization-policy"
-import { AttachmentRepo } from "../repositories/attachment-repo"
-import { BotRepo } from "../repositories/bot-repo"
-import { OrganizationRepo } from "../repositories/organization-repo"
 import { checkAvatarRateLimit } from "../services/rate-limit-helpers"
 
 /**

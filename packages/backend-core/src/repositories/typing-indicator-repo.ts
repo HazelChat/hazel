@@ -1,8 +1,7 @@
-import { and, Database, eq, lt, ModelRepository, schema, sql, type TransactionClient } from "@hazel/db"
+import { and, Database, eq, lt, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { type ChannelId, type ChannelMemberId, policyRequire, TypingIndicatorId } from "@hazel/domain"
 import { TypingIndicator } from "@hazel/domain/models"
 import { Effect } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -99,5 +98,4 @@ export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("
 			deleteStale,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

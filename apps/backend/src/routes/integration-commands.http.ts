@@ -1,11 +1,9 @@
 import { HttpApiBuilder } from "@effect/platform"
+import { BotCommandRepo, BotInstallationRepo, BotRepo } from "@hazel/backend-core"
 import { InternalServerError, withSystemActor } from "@hazel/domain"
 import { AvailableCommandsResponse } from "@hazel/domain/http"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
-import { BotCommandRepo } from "../repositories/bot-command-repo"
-import { BotInstallationRepo } from "../repositories/bot-installation-repo"
-import { BotRepo } from "../repositories/bot-repo"
 
 export const HttpIntegrationCommandLive = HttpApiBuilder.group(HazelApi, "integration-commands", (handlers) =>
 	handlers

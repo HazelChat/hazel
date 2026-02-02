@@ -3,12 +3,12 @@ import {
 	OrganizationMemberRepo,
 	OrganizationRepo,
 	UserRepo,
+	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
 import { Effect, Layer, Logger } from "effect"
 import { DatabaseLive } from "../services/database"
-import { WorkOS } from "../services/workos"
 
 const RepoLive = Layer.mergeAll(
 	UserRepo.Default,
@@ -17,7 +17,7 @@ const RepoLive = Layer.mergeAll(
 	InvitationRepo.Default,
 ).pipe(Layer.provideMerge(DatabaseLive))
 
-const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOS.Default).pipe(
+const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOSClient.Default).pipe(
 	Layer.provideMerge(RepoLive),
 	Layer.provideMerge(DatabaseLive),
 )

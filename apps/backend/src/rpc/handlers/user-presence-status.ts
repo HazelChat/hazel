@@ -1,10 +1,10 @@
+import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
 import { UserPresenceStatusRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPresenceStatusPolicy } from "../../policies/user-presence-status-policy"
-import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo"
 
 export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 	Effect.gen(function* () {

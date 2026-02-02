@@ -1,11 +1,13 @@
+import {
+	AttachmentRepo,
+	ChannelMemberRepo,
+	ChannelRepo,
+	MessageRepo,
+	OrganizationMemberRepo,
+} from "@hazel/backend-core"
 import { type AttachmentId, ErrorUtils, policy, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { AttachmentRepo } from "../repositories/attachment-repo"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { MessageRepo } from "../repositories/message-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("AttachmentPolicy/Policy", {
 	effect: Effect.gen(function* () {

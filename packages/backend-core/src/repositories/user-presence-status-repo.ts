@@ -12,7 +12,6 @@ import {
 import { type ChannelId, policyRequire, type UserId } from "@hazel/domain"
 import { UserPresenceStatus } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -182,6 +181,5 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 				markUsersOffline,
 			}
 		}),
-		dependencies: [DatabaseLive],
 	},
 ) {}

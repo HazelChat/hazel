@@ -1,6 +1,6 @@
+import { ChannelRepo } from "@hazel/backend-core"
 import { type ChannelId, ErrorUtils, type OrganizationId, policy, policyCompose } from "@hazel/domain"
 import { Effect, pipe } from "effect"
-import { ChannelRepo } from "../repositories/channel-repo"
 import { OrganizationPolicy } from "./organization-policy"
 
 export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolicy/Policy", {

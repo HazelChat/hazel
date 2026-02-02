@@ -2,7 +2,6 @@ import { Database, eq, ModelRepository, schema, type TransactionClient } from "@
 import { type IntegrationConnectionId, type IntegrationTokenId, policyRequire } from "@hazel/domain"
 import { IntegrationToken } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -102,5 +101,4 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 			deleteByConnectionId,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

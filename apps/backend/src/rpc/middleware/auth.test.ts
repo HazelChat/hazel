@@ -1,11 +1,9 @@
 import { describe, expect, it, layer } from "@effect/vitest"
 import { Headers } from "@effect/platform"
+import { BotRepo, UserPresenceStatusRepo, UserRepo } from "@hazel/backend-core"
 import { Effect, Exit, Layer, Option, FiberRef } from "effect"
 import { AuthMiddleware } from "./auth-class.ts"
 import { SessionManager } from "../../services/session-manager.ts"
-import { UserPresenceStatusRepo } from "../../repositories/user-presence-status-repo.ts"
-import { BotRepo } from "../../repositories/bot-repo.ts"
-import { UserRepo } from "../../repositories/user-repo.ts"
 import type { CurrentUser } from "@hazel/domain"
 import {
 	SessionExpiredError,

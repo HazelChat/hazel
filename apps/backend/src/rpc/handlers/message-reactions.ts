@@ -1,10 +1,10 @@
+import { MessageReactionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
 import { MessageReactionRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
-import { MessageReactionRepo } from "../../repositories/message-reaction-repo"
 
 export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 	Effect.gen(function* () {

@@ -1,4 +1,11 @@
 import { HttpApiClient } from "@effect/platform"
+import {
+	ChannelMemberRepo,
+	ChannelRepo,
+	MessageRepo,
+	OrganizationMemberRepo,
+	UserRepo,
+} from "@hazel/backend-core"
 import { Database, schema } from "@hazel/db"
 import {
 	Cluster,
@@ -17,11 +24,6 @@ import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
-import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { MessageRepo } from "../../repositories/message-repo"
-import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
-import { UserRepo } from "../../repositories/user-repo"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
 	Effect.gen(function* () {

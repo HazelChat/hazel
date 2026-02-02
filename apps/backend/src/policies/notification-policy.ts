@@ -1,3 +1,4 @@
+import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import {
 	ErrorUtils,
 	type NotificationId,
@@ -7,8 +8,6 @@ import {
 } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { NotificationRepo } from "../repositories/notification-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("NotificationPolicy/Policy", {
 	effect: Effect.gen(function* () {

@@ -12,7 +12,6 @@ import {
 import { type ChannelId, type OrganizationId, policyRequire, type UserId } from "@hazel/domain"
 import { ChannelMember } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -102,5 +101,4 @@ export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("Chan
 			findExistingSingleDmChannel,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

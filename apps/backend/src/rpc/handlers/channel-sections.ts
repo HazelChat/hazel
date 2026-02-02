@@ -1,3 +1,4 @@
+import { ChannelRepo, ChannelSectionRepo } from "@hazel/backend-core"
 import { Database, schema } from "@hazel/db"
 import { policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
@@ -6,8 +7,6 @@ import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { ChannelSectionPolicy } from "../../policies/channel-section-policy"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { ChannelSectionRepo } from "../../repositories/channel-section-repo"
 
 export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 	Effect.gen(function* () {

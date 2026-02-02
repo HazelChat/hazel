@@ -164,12 +164,6 @@ export const RssSubscriptionId = Schema.UUID.pipe(Schema.brand("@HazelChat/RssSu
 })
 export type RssSubscriptionId = Schema.Schema.Type<typeof RssSubscriptionId>
 
-export const RssPostedItemId = Schema.UUID.pipe(Schema.brand("@HazelChat/RssPostedItemId")).annotations({
-	description: "The ID of an RSS posted item",
-	title: "RSS Posted Item ID",
-})
-export type RssPostedItemId = Schema.Schema.Type<typeof RssPostedItemId>
-
 export const IntegrationRequestId = Schema.UUID.pipe(
 	Schema.brand("@HazelChat/IntegrationRequestId"),
 ).annotations({

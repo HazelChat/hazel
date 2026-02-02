@@ -1,4 +1,5 @@
 import { HttpApiBuilder } from "@effect/platform"
+import { IntegrationConnectionRepo } from "@hazel/backend-core"
 import { InternalServerError, type OrganizationId, withSystemActor } from "@hazel/domain"
 import {
 	GitHubPRResourceResponse,
@@ -11,7 +12,6 @@ import {
 import { GitHub } from "@hazel/integrations"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
-import { IntegrationConnectionRepo } from "../repositories/integration-connection-repo"
 import { IntegrationTokenService, TokenNotFoundError } from "../services/integration-token-service"
 import {
 	fetchLinearIssue,

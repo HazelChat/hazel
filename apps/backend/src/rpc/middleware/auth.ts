@@ -1,4 +1,5 @@
 import { Headers } from "@effect/platform"
+import { BotRepo, UserRepo } from "@hazel/backend-core"
 import {
 	InvalidBearerTokenError,
 	type CurrentUser,
@@ -7,8 +8,6 @@ import {
 } from "@hazel/domain"
 import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
-import { BotRepo } from "../../repositories/bot-repo"
-import { UserRepo } from "../../repositories/user-repo"
 import { SessionManager } from "../../services/session-manager"
 
 export { AuthMiddleware } from "@hazel/domain/rpc"

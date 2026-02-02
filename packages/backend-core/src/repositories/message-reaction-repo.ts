@@ -2,7 +2,6 @@ import { and, Database, eq, ModelRepository, schema } from "@hazel/db"
 import { type MessageId, policyRequire, type UserId } from "@hazel/domain"
 import { MessageReaction } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("MessageReactionRepo", {
 	accessors: true,
@@ -44,5 +43,4 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 			findByMessageUserEmoji,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

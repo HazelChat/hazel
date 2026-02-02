@@ -8,7 +8,7 @@ import {
 	OrganizationMemberRepo,
 	OrganizationRepo,
 	UserRepo,
-	WorkOS,
+	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
@@ -67,7 +67,7 @@ const AllWorkflows = Layer.mergeAll(
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps
 const WorkOSSyncLive = WorkOSSync.Default.pipe(
-	Layer.provide(WorkOS.Default),
+	Layer.provide(WorkOSClient.Default),
 	Layer.provide(UserRepo.Default),
 	Layer.provide(OrganizationRepo.Default),
 	Layer.provide(OrganizationMemberRepo.Default),

@@ -1,4 +1,5 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { AttachmentRepo, BotRepo, MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import {
 	CurrentUser,
@@ -23,10 +24,6 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
-import { AttachmentRepo } from "../../repositories/attachment-repo"
-import { BotRepo } from "../../repositories/bot-repo"
-import { MessageReactionRepo } from "../../repositories/message-reaction-repo"
-import { MessageRepo } from "../../repositories/message-repo"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 /**

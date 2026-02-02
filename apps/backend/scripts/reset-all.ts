@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
 import { Database } from "@hazel/db"
+import { WorkOSClient } from "@hazel/backend-core"
 import { Effect, Logger, LogLevel } from "effect"
 import { DatabaseLive } from "../src/services/database"
-import { WorkOS } from "../src/services/workos"
 
 // Parse command line arguments
 const args = process.argv.slice(2)
@@ -83,7 +83,7 @@ const clearDatabase = Effect.gen(function* () {
 
 // WorkOS clearing logic
 const clearWorkOS = Effect.gen(function* () {
-	const workos = yield* WorkOS
+	const workos = yield* WorkOSClient
 
 	log("magenta", `\n${"=".repeat(50)}`)
 	log("magenta", "WORKOS CLEARING")
@@ -257,7 +257,7 @@ const resetScript = Effect.gen(function* () {
 // Run the script with proper Effect runtime
 const runnable = resetScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(WorkOS.Default),
+	Effect.provide(WorkOSClient.Default),
 	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
 )
 

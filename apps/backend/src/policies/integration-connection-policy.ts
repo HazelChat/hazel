@@ -1,7 +1,7 @@
+import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, type OrganizationId, policy, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConnectionPolicy>()(
 	"IntegrationConnectionPolicy/Policy",

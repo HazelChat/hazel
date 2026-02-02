@@ -1,3 +1,4 @@
+import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import {
 	ErrorUtils,
 	type InvitationId,
@@ -9,9 +10,6 @@ import {
 } from "@hazel/domain"
 import { Effect, Option, pipe } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { InvitationRepo } from "../repositories/invitation-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
-import { UserRepo } from "../repositories/user-repo"
 
 /**
  * @effect-leakable-service

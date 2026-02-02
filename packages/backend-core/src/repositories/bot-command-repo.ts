@@ -2,7 +2,6 @@ import { and, Database, eq, inArray, lt, ModelRepository, schema, type Transacti
 import { type BotCommandId, type BotId, policyRequire } from "@hazel/domain"
 import { BotCommand } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -172,5 +171,4 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			deleteStaleCommands,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

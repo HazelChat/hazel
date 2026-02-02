@@ -1,10 +1,7 @@
+import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { type ChannelId, ErrorUtils, type MessageId, policy, withSystemActor } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { MessageRepo } from "../repositories/message-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolicy/Policy", {
 	effect: Effect.gen(function* () {

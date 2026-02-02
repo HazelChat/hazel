@@ -1,3 +1,4 @@
+import { BotRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import {
 	type BotId,
 	ErrorUtils,
@@ -8,8 +9,6 @@ import {
 } from "@hazel/domain"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { BotRepo } from "../repositories/bot-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 
 /** @effect-leakable-service */
 export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {

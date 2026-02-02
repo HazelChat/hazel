@@ -5,7 +5,7 @@ export class WorkOSApiError extends Schema.TaggedError<WorkOSApiError>()("WorkOS
 	cause: Schema.Unknown,
 }) {}
 
-export class WorkOS extends Effect.Service<WorkOS>()("WorkOS", {
+export class WorkOSClient extends Effect.Service<WorkOSClient>()("WorkOSClient", {
 	accessors: true,
 	effect: Effect.gen(function* () {
 		const apiKey = yield* Config.redacted("WORKOS_API_KEY")

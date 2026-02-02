@@ -6,7 +6,7 @@ import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
 import { UserRepo } from "../repositories/user-repo"
-import { WorkOS } from "./workos"
+import { WorkOSClient } from "./workos"
 
 // Error types
 export class WorkOSSyncError extends Schema.TaggedError<WorkOSSyncError>("WorkOSSyncError")(
@@ -38,7 +38,7 @@ export interface FullSyncResult {
 export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const workos = yield* WorkOS
+		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
 		const userRepo = yield* UserRepo
 		const orgRepo = yield* OrganizationRepo
@@ -860,7 +860,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		}
 	}),
 	dependencies: [
-		WorkOS.Default,
+		WorkOSClient.Default,
 		UserRepo.Default,
 		OrganizationRepo.Default,
 		OrganizationMemberRepo.Default,

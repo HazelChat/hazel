@@ -14,7 +14,6 @@ import {
 import { type BotId, policyRequire, type UserId } from "@hazel/domain"
 import { Bot } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -297,5 +296,4 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 			decrementInstallCount,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

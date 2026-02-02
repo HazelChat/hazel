@@ -1,10 +1,10 @@
+import { AttachmentRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { policyUse, withRemapDbErrors } from "@hazel/domain"
 import { AttachmentRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
-import { AttachmentRepo } from "../../repositories/attachment-repo"
 
 export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 	Effect.gen(function* () {

@@ -2,7 +2,6 @@ import { and, Database, eq, inArray, ModelRepository, schema, type TransactionCl
 import { type ChannelId, type MessageId, type OrganizationMemberId, policyRequire } from "@hazel/domain"
 import { Notification } from "@hazel/domain/models"
 import { Effect } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -83,5 +82,4 @@ export class NotificationRepo extends Effect.Service<NotificationRepo>()("Notifi
 			deleteByChannelId,
 		} as const
 	}),
-	dependencies: [DatabaseLive],
 }) {}

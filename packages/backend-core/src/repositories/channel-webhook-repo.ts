@@ -2,7 +2,6 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TransactionCli
 import { type ChannelId, type ChannelWebhookId, type OrganizationId, policyRequire } from "@hazel/domain"
 import { ChannelWebhook } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -135,5 +134,4 @@ export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("Ch
 			findByOrganization,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

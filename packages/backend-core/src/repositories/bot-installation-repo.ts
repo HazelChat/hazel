@@ -2,7 +2,6 @@ import { and, Database, eq, inArray, ModelRepository, schema, type TransactionCl
 import { type BotId, type BotInstallationId, type OrganizationId, policyRequire } from "@hazel/domain"
 import { BotInstallation } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
-import { DatabaseLive } from "../services/database"
 
 type TxFn = <T>(fn: (client: TransactionClient) => Promise<T>) => Effect.Effect<T, any, never>
 
@@ -85,5 +84,4 @@ export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("
 			getBotIdsForOrg,
 		}
 	}),
-	dependencies: [DatabaseLive],
 }) {}

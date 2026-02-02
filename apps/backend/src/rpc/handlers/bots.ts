@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { BotCommandRepo, BotInstallationRepo, BotRepo, UserRepo } from "@hazel/backend-core"
 import { and, Database, eq, schema } from "@hazel/db"
 import {
 	type BotId,
@@ -24,10 +25,6 @@ import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { BotPolicy } from "../../policies/bot-policy"
 import { checkBotOperationRateLimit, checkBotUpdateRateLimit } from "../../services/rate-limit-helpers"
-import { BotCommandRepo } from "../../repositories/bot-command-repo"
-import { BotInstallationRepo } from "../../repositories/bot-installation-repo"
-import { BotRepo } from "../../repositories/bot-repo"
-import { UserRepo } from "../../repositories/user-repo"
 
 // Generate a secure bot token and return both the plain token and its hash
 const generateBotToken = async (): Promise<{ token: string; tokenHash: string }> => {

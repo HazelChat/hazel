@@ -1,7 +1,6 @@
 import { ModelRepository, schema } from "@hazel/db"
 import { PinnedMessage } from "@hazel/domain/models"
 import { Effect } from "effect"
-import { DatabaseLive } from "../services/database"
 
 export class PinnedMessageRepo extends Effect.Service<PinnedMessageRepo>()("PinnedMessageRepo", {
 	accessors: true,
@@ -17,5 +16,4 @@ export class PinnedMessageRepo extends Effect.Service<PinnedMessageRepo>()("Pinn
 
 		return baseRepo
 	}),
-	dependencies: [DatabaseLive],
 }) {}

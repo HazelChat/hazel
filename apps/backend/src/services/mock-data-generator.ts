@@ -1,3 +1,11 @@
+import {
+	ChannelMemberRepo,
+	ChannelRepo,
+	ChannelSectionRepo,
+	MessageRepo,
+	OrganizationMemberRepo,
+	UserRepo,
+} from "@hazel/backend-core"
 import type {
 	ChannelIcon,
 	ChannelId,
@@ -7,12 +15,6 @@ import type {
 	UserId,
 } from "@hazel/domain/ids"
 import { Effect } from "effect"
-import { ChannelMemberRepo } from "../repositories/channel-member-repo"
-import { ChannelRepo } from "../repositories/channel-repo"
-import { ChannelSectionRepo } from "../repositories/channel-section-repo"
-import { MessageRepo } from "../repositories/message-repo"
-import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
-import { UserRepo } from "../repositories/user-repo"
 import { DatabaseLive } from "./database"
 
 // Professional team members for a tech startup

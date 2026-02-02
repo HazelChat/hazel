@@ -1,3 +1,4 @@
+import { ChannelRepo, GitHubSubscriptionRepo, IntegrationConnectionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import {
@@ -12,9 +13,6 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { GitHubSubscriptionPolicy } from "../../policies/github-subscription-policy"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { GitHubSubscriptionRepo } from "../../repositories/github-subscription-repo"
-import { IntegrationConnectionRepo } from "../../repositories/integration-connection-repo"
 
 /**
  * GitHub Subscription RPC Handlers

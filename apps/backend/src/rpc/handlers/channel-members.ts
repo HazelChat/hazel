@@ -1,13 +1,10 @@
+import { ChannelMemberRepo, ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
 import { ChannelMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelMemberPolicy } from "../../policies/channel-member-policy"
-import { ChannelMemberRepo } from "../../repositories/channel-member-repo"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { NotificationRepo } from "../../repositories/notification-repo"
-import { OrganizationMemberRepo } from "../../repositories/organization-member-repo"
 
 export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 	Effect.gen(function* () {

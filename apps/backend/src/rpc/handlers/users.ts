@@ -1,11 +1,11 @@
+import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
 import { UserNotFoundError, UserRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPolicy } from "../../policies/user-policy"
-import { UserRepo } from "../../repositories/user-repo"
-import { WorkOS } from "../../services/workos"
+import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 export const UserRpcLive = UserRpcs.toLayer(
 	Effect.gen(function* () {

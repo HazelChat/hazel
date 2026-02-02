@@ -7,6 +7,32 @@ import {
 } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { RpcSerialization, RpcServer } from "@effect/rpc"
+import {
+	AttachmentRepo,
+	BotCommandRepo,
+	BotInstallationRepo,
+	BotRepo,
+	ChannelMemberRepo,
+	ChannelRepo,
+	ChannelSectionRepo,
+	ChannelWebhookRepo,
+	GitHubSubscriptionRepo,
+	IntegrationConnectionRepo,
+	IntegrationTokenRepo,
+	InvitationRepo,
+	MessageReactionRepo,
+	MessageRepo,
+	NotificationRepo,
+	OrganizationMemberRepo,
+	OrganizationRepo,
+	PinnedMessageRepo,
+	RssSubscriptionRepo,
+	TypingIndicatorRepo,
+	UserPresenceStatusRepo,
+	UserRepo,
+	WorkOSClient,
+	WorkOSSync,
+} from "@hazel/backend-core"
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
@@ -32,28 +58,6 @@ import { PinnedMessagePolicy } from "./policies/pinned-message-policy"
 import { TypingIndicatorPolicy } from "./policies/typing-indicator-policy"
 import { UserPolicy } from "./policies/user-policy"
 import { UserPresenceStatusPolicy } from "./policies/user-presence-status-policy"
-import { AttachmentRepo } from "./repositories/attachment-repo"
-import { ChannelMemberRepo } from "./repositories/channel-member-repo"
-import { ChannelRepo } from "./repositories/channel-repo"
-import { ChannelSectionRepo } from "./repositories/channel-section-repo"
-import { ChannelWebhookRepo } from "./repositories/channel-webhook-repo"
-import { BotCommandRepo } from "./repositories/bot-command-repo"
-import { BotInstallationRepo } from "./repositories/bot-installation-repo"
-import { BotRepo } from "./repositories/bot-repo"
-import { GitHubSubscriptionRepo } from "./repositories/github-subscription-repo"
-import { RssSubscriptionRepo } from "./repositories/rss-subscription-repo"
-import { IntegrationConnectionRepo } from "./repositories/integration-connection-repo"
-import { IntegrationTokenRepo } from "./repositories/integration-token-repo"
-import { InvitationRepo } from "./repositories/invitation-repo"
-import { MessageReactionRepo } from "./repositories/message-reaction-repo"
-import { MessageRepo } from "./repositories/message-repo"
-import { NotificationRepo } from "./repositories/notification-repo"
-import { OrganizationMemberRepo } from "./repositories/organization-member-repo"
-import { OrganizationRepo } from "./repositories/organization-repo"
-import { PinnedMessageRepo } from "./repositories/pinned-message-repo"
-import { TypingIndicatorRepo } from "./repositories/typing-indicator-repo"
-import { UserPresenceStatusRepo } from "./repositories/user-presence-status-repo"
-import { UserRepo } from "./repositories/user-repo"
 import { AllRpcs, RpcServerLive } from "./rpc/server"
 import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
@@ -64,8 +68,7 @@ import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
-import { WorkOS } from "./services/workos"
-import { WorkOSSync } from "@hazel/backend-core/services"
+import { WorkOSAuth } from "./services/workos-auth"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
 export { HazelApi }
@@ -160,7 +163,8 @@ const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.Default,
-	WorkOS.Default,
+	WorkOSAuth.Default,
+	WorkOSClient.Default,
 	WorkOSSync.Default,
 	WorkOSWebhookVerifier.Default,
 	DatabaseLive,
@@ -188,7 +192,7 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 		AuthorizationLive.pipe(
 			// SessionManager.Default includes BackendAuth and UserRepo via dependencies
 			Layer.provideMerge(SessionManager.Default),
-			Layer.provideMerge(WorkOS.Default),
+			Layer.provideMerge(WorkOSAuth.Default),
 			Layer.provideMerge(PersistenceLive),
 			Layer.provideMerge(Redis.Default),
 			Layer.provideMerge(DatabaseLive),

@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder } from "@effect/platform"
+import { ChannelWebhookRepo, MessageRepo } from "@hazel/backend-core"
 import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
 import { InternalServerError, withSystemActor } from "@hazel/domain"
 import {
@@ -13,8 +14,6 @@ import { buildOpenStatusEmbed } from "@hazel/integrations/openstatus"
 import { buildRailwayEmbed } from "@hazel/integrations/railway"
 import { Effect, Option } from "effect"
 import { HazelApi } from "../api"
-import { ChannelWebhookRepo } from "../repositories/channel-webhook-repo"
-import { MessageRepo } from "../repositories/message-repo"
 import { IntegrationBotService } from "../services/integrations/integration-bot-service"
 
 // Convert domain embed schema to database embed format

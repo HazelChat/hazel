@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
+import { and, count, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
 import { type OrganizationId, type OrganizationMemberId, policyRequire, type UserId } from "@hazel/domain"
 import { OrganizationMember } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
@@ -52,40 +52,22 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 				db.makeQuery(
 					(execute, input: typeof data) =>
 						execute(async (client) => {
-							// First check if exists
-							const existing = await client
-								.select()
-								.from(schema.organizationMembersTable)
-								.where(
-									and(
-										eq(
-											schema.organizationMembersTable.organizationId,
-											input.organizationId,
-										),
-										eq(schema.organizationMembersTable.userId, input.userId),
-									),
-								)
-								.limit(1)
-
-							if (existing.length > 0) {
-								// Update existing
-								const result = await client
-									.update(schema.organizationMembersTable)
-									.set({
+							// Atomic upsert using onConflictDoUpdate to avoid race conditions
+							const result = await client
+								.insert(schema.organizationMembersTable)
+								.values(input)
+								.onConflictDoUpdate({
+									target: [
+										schema.organizationMembersTable.organizationId,
+										schema.organizationMembersTable.userId,
+									],
+									set: {
 										role: input.role,
 										deletedAt: null,
-									})
-									.where(eq(schema.organizationMembersTable.id, existing[0]!.id))
-									.returning()
-								return result[0]!
-							} else {
-								// Insert new
-								const result = await client
-									.insert(schema.organizationMembersTable)
-									.values(input)
-									.returning()
-								return result[0]!
-							}
+									},
+								})
+								.returning()
+							return result[0]
 						}),
 					policyRequire("OrganizationMember", "create"),
 				)(data, tx)
@@ -106,6 +88,25 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 						),
 					policyRequire("OrganizationMember", "select"),
 				)(organizationId, tx)
+
+			const countByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
+				db
+					.makeQuery(
+						(execute, orgId: OrganizationId) =>
+							execute((client) =>
+								client
+									.select({ count: count() })
+									.from(schema.organizationMembersTable)
+									.where(
+										and(
+											eq(schema.organizationMembersTable.organizationId, orgId),
+											isNull(schema.organizationMembersTable.deletedAt),
+										),
+									),
+							),
+						policyRequire("OrganizationMember", "select"),
+					)(organizationId, tx)
+					.pipe(Effect.map((results) => results[0]?.count ?? 0))
 
 			const findAllActive = (tx?: TxFn) =>
 				db.makeQuery(
@@ -186,6 +187,7 @@ export class OrganizationMemberRepo extends Effect.Service<OrganizationMemberRep
 				findByOrgAndUser,
 				upsertByOrgAndUser,
 				findAllByOrganization,
+				countByOrganization,
 				findAllActive,
 				softDelete,
 				softDeleteByOrgAndUser,

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
+import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import {
 	type ChannelWebhookId,
@@ -18,8 +19,6 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelWebhookPolicy } from "../../policies/channel-webhook-policy"
-import { ChannelRepo } from "../../repositories/channel-repo"
-import { ChannelWebhookRepo } from "../../repositories/channel-webhook-repo"
 import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
 import { WebhookBotService } from "../../services/webhook-bot-service"
 
