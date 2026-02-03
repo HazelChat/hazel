@@ -1,0 +1,32 @@
+DESCRIPTION >
+    List traces with pagination. Returns aggregated trace info.
+
+NODE list_traces_node
+SQL >
+    %
+    SELECT
+        TraceId AS traceId,
+        min(Timestamp) AS startTime,
+        max(Timestamp) AS endTime,
+        dateDiff('microsecond', min(Timestamp), max(Timestamp)) AS durationMicros,
+        count() AS spanCount,
+        groupUniqArray(ServiceName) AS services,
+        argMin(SpanName, if(ParentSpanId = '', 0, 1)) AS rootSpanName,
+        max(if(StatusCode = 'ERROR', 1, 0)) AS hasError
+    FROM traces
+    WHERE TraceId != ''
+    {% if defined(service) %}
+        AND ServiceName = {{String(service, "")}}
+    {% end %}
+    {% if defined(start_time) %}
+        AND Timestamp >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Timestamp <= {{DateTime(end_time, "2023-12-31 23:59:59")}}
+    {% end %}
+    GROUP BY TraceId
+    ORDER BY startTime DESC
+    LIMIT {{Int32(limit, 100)}}
+    OFFSET {{Int32(offset, 0)}}
+
+TYPE endpoint

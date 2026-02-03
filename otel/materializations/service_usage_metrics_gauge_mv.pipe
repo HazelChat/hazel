@@ -1,0 +1,25 @@
+DESCRIPTION >
+    Materialized view to aggregate gauge metric usage statistics per service per hour
+
+NODE service_usage_metrics_gauge_mv_node
+SQL >
+    SELECT
+        ServiceName,
+        toStartOfHour(toDateTime(TimeUnix)) AS Hour,
+        0 AS LogCount,
+        0 AS LogSizeBytes,
+        0 AS TraceCount,
+        0 AS TraceSizeBytes,
+        0 AS SumMetricCount,
+        0 AS SumMetricSizeBytes,
+        count() AS GaugeMetricCount,
+        count() * 150 AS GaugeMetricSizeBytes,
+        0 AS HistogramMetricCount,
+        0 AS HistogramMetricSizeBytes,
+        0 AS ExpHistogramMetricCount,
+        0 AS ExpHistogramMetricSizeBytes
+    FROM metrics_gauge
+    GROUP BY ServiceName, Hour
+
+TYPE MATERIALIZED
+DATASOURCE service_usage

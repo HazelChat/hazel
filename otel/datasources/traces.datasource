@@ -1,0 +1,44 @@
+TOKEN OTEL_TINYBIRD_TOKEN APPEND
+
+DESCRIPTION >
+    A table that contains trace data from OpenTelemetry in Tinybird format.
+
+SCHEMA >
+    `Timestamp` DateTime64(9) `json:$.start_time` CODEC(Delta(8), ZSTD(1)),
+    `TraceId` String `json:$.trace_id` CODEC(ZSTD(1)),
+    `SpanId` String `json:$.span_id` CODEC(ZSTD(1)),
+    `ParentSpanId` String `json:$.parent_span_id` CODEC(ZSTD(1)),
+    `TraceState` String `json:$.trace_state` CODEC(ZSTD(1)),
+    `SpanName` LowCardinality(String) `json:$.span_name` CODEC(ZSTD(1)),
+    `SpanKind` LowCardinality(String) `json:$.span_kind` CODEC(ZSTD(1)),
+    `ServiceName` LowCardinality(String) `json:$.service_name` CODEC(ZSTD(1)),
+    `ResourceSchemaUrl` String `json:$.resource_schema_url` CODEC(ZSTD(1)),
+    `ResourceAttributes` Map(LowCardinality(String), String) `json:$.resource_attributes` CODEC(ZSTD(1)),
+    `ScopeSchemaUrl` String `json:$.scope_schema_url` CODEC(ZSTD(1)),
+    `ScopeName` String `json:$.scope_name` CODEC(ZSTD(1)),
+    `ScopeVersion` String `json:$.scope_version` CODEC(ZSTD(1)),
+    `ScopeAttributes` Map(LowCardinality(String), String) `json:$.scope_attributes` CODEC(ZSTD(1)),
+    `Duration` UInt64 `json:$.duration` CODEC(ZSTD(1)),
+    `StatusCode` LowCardinality(String) `json:$.status_code` CODEC(ZSTD(1)),
+    `StatusMessage` String `json:$.status_message` CODEC(ZSTD(1)),
+    `SpanAttributes` Map(LowCardinality(String), String) `json:$.span_attributes` CODEC(ZSTD(1)),
+    `EventsTimestamp` Array(DateTime64(9)) `json:$.events_timestamp[:]` CODEC(ZSTD(1)),
+    `EventsName` Array(LowCardinality(String)) `json:$.events_name[:]` CODEC(ZSTD(1)),
+    `EventsAttributes` Array(Map(LowCardinality(String), String)) `json:$.events_attributes[:]` CODEC(ZSTD(1)),
+    `LinksTraceId` Array(String) `json:$.links_trace_id[:]` CODEC(ZSTD(1)),
+    `LinksSpanId` Array(String) `json:$.links_span_id[:]` CODEC(ZSTD(1)),
+    `LinksTraceState` Array(String) `json:$.links_trace_state[:]` CODEC(ZSTD(1)),
+    `LinksAttributes` Array(Map(LowCardinality(String), String)) `json:$.links_attributes[:]` CODEC(ZSTD(1))
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toDate(Timestamp)"
+ENGINE_SORTING_KEY "ServiceName, SpanName, toDateTime(Timestamp)"
+ENGINE_SETTINGS index_granularity=8192
+
+INDEXES >
+    idx_trace_id TraceId TYPE bloom_filter(0.001) GRANULARITY 1,
+    idx_res_attr_key mapKeys(ResourceAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+    idx_res_attr_value mapValues(ResourceAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+    idx_span_attr_key mapKeys(SpanAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+    idx_span_attr_value mapValues(SpanAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+    idx_duration Duration TYPE minmax GRANULARITY 1

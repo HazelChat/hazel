@@ -1,0 +1,41 @@
+TOKEN OTEL_TINYBIRD_TOKEN APPEND
+
+DESCRIPTION >
+    This is a table that contains the metrics from the OpenTelemetry Collector.
+
+SCHEMA >
+    `ResourceAttributes` Map(LowCardinality(String), String) `json:$.resource_attributes` CODEC(ZSTD(1)),
+    `ResourceSchemaUrl` String `json:$.resource_schema_url` CODEC(ZSTD(1)),
+    `ScopeName` String `json:$.scope_name` CODEC(ZSTD(1)),
+    `ScopeVersion` String `json:$.scope_version` CODEC(ZSTD(1)),
+    `ScopeAttributes` Map(LowCardinality(String), String) `json:$.scope_attributes` CODEC(ZSTD(1)),
+    `ScopeSchemaUrl` String `json:$.scope_schema_url` CODEC(ZSTD(1)),
+    `ServiceName` String `json:$.service_name` DEFAULT 'unknown' CODEC(ZSTD(1)),
+    `MetricName` LowCardinality(String) `json:$.metric_name` CODEC(ZSTD(1)),
+    `MetricDescription` String `json:$.metric_description` CODEC(ZSTD(1)),
+    `MetricUnit` String `json:$.metric_unit` CODEC(ZSTD(1)),
+    `Attributes` Map(LowCardinality(String), String) `json:$.metric_attributes` CODEC(ZSTD(1)),
+    `StartTimeUnix` DateTime64(9) `json:$.start_timestamp` CODEC(Delta(8), ZSTD(1)),
+    `TimeUnix` DateTime64(9) `json:$.timestamp` CODEC(Delta(8), ZSTD(1)),
+    `Value` Float64 `json:$.value` CODEC(ZSTD(1)),
+    `Flags` UInt8 `json:$.flags` CODEC(ZSTD(1)),
+    `ExemplarsTraceId` Array(String) `json:$.exemplars_trace_id[:]` CODEC(ZSTD(1)),
+    `ExemplarsSpanId` Array(String) `json:$.exemplars_span_id[:]` CODEC(ZSTD(1)),
+    `ExemplarsTimestamp` Array(DateTime64(9)) `json:$.exemplars_timestamp[:]` CODEC(ZSTD(1)),
+    `ExemplarsValue` Array(Float64) `json:$.exemplars_value[:]` CODEC(ZSTD(1)),
+    `ExemplarsFilteredAttributes` Array(Map(LowCardinality(String), String)) `json:$.exemplars_filtered_attributes[:]` CODEC(ZSTD(1)),
+    `AggregationTemporality` Int32 `json:$.aggregation_temporality` CODEC(ZSTD(1)),
+    `IsMonotonic` Bool `json:$.is_monotonic` CODEC(Delta, ZSTD(1))
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toDate(TimeUnix)"
+ENGINE_SORTING_KEY "ServiceName, MetricName, Attributes, toUnixTimestamp64Nano(TimeUnix)"
+ENGINE_SETTINGS index_granularity=8192
+
+INDEXES >
+	idx_res_attr_key mapKeys(ResourceAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+	idx_res_attr_value mapValues(ResourceAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+	idx_scope_attr_key mapKeys(ScopeAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+	idx_scope_attr_value mapValues(ScopeAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+	idx_attr_key mapKeys(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1,
+	idx_attr_value mapValues(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1

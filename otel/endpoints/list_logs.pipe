@@ -1,0 +1,46 @@
+DESCRIPTION >
+    Paginate through logs with optional filtering. Supports cursor-based pagination for infinite scroll.
+
+NODE list_logs_node
+SQL >
+    %
+    SELECT
+        Timestamp,
+        SeverityText,
+        SeverityNumber,
+        ServiceName,
+        Body,
+        TraceId,
+        SpanId,
+        LogAttributes,
+        ResourceAttributes
+    FROM logs
+    WHERE 1=1
+    {% if defined(service) %}
+        AND ServiceName = {{String(service, "")}}
+    {% end %}
+    {% if defined(severity) %}
+        AND SeverityText = {{String(severity, "")}}
+    {% end %}
+    {% if defined(min_severity) %}
+        AND SeverityNumber >= {{UInt8(min_severity, 0)}}
+    {% end %}
+    {% if defined(start_time) %}
+        AND Timestamp >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Timestamp <= {{DateTime(end_time, "2099-12-31 23:59:59")}}
+    {% end %}
+    {% if defined(trace_id) %}
+        AND TraceId = {{String(trace_id, "")}}
+    {% end %}
+    {% if defined(cursor) %}
+        AND Timestamp < {{DateTime(cursor)}}
+    {% end %}
+    {% if defined(search) %}
+        AND Body ILIKE {{'%' || String(search, "") || '%'}}
+    {% end %}
+    ORDER BY Timestamp DESC
+    LIMIT {{Int32(limit, 50)}}
+
+TYPE endpoint

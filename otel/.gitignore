@@ -1,0 +1,10 @@
+.tinyb
+.terraform
+.DS_Store
+.claude
+.opencode
+.env
+.env.local
+*.local
+
+.mcp.json

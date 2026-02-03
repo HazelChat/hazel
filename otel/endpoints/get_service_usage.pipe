@@ -1,0 +1,36 @@
+DESCRIPTION >
+    Query aggregated service usage statistics with optional filtering by service and time range.
+
+NODE service_usage_node
+SQL >
+    %
+    SELECT
+        ServiceName,
+        sum(LogCount) AS TotalLogCount,
+        sum(LogSizeBytes) AS TotalLogSizeBytes,
+        sum(TraceCount) AS TotalTraceCount,
+        sum(TraceSizeBytes) AS TotalTraceSizeBytes,
+        sum(SumMetricCount) AS TotalSumMetricCount,
+        sum(SumMetricSizeBytes) AS TotalSumMetricSizeBytes,
+        sum(GaugeMetricCount) AS TotalGaugeMetricCount,
+        sum(GaugeMetricSizeBytes) AS TotalGaugeMetricSizeBytes,
+        sum(HistogramMetricCount) AS TotalHistogramMetricCount,
+        sum(HistogramMetricSizeBytes) AS TotalHistogramMetricSizeBytes,
+        sum(ExpHistogramMetricCount) AS TotalExpHistogramMetricCount,
+        sum(ExpHistogramMetricSizeBytes) AS TotalExpHistogramMetricSizeBytes,
+        sum(LogSizeBytes) + sum(TraceSizeBytes) + sum(SumMetricSizeBytes) + sum(GaugeMetricSizeBytes) + sum(HistogramMetricSizeBytes) + sum(ExpHistogramMetricSizeBytes) AS TotalSizeBytes
+    FROM service_usage
+    WHERE 1=1
+    {% if defined(service) %}
+        AND ServiceName = {{String(service, "")}}
+    {% end %}
+    {% if defined(start_time) %}
+        AND Hour >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Hour <= {{DateTime(end_time, "2023-12-31 23:59:59")}}
+    {% end %}
+    GROUP BY ServiceName
+    ORDER BY TotalSizeBytes DESC
+
+TYPE endpoint

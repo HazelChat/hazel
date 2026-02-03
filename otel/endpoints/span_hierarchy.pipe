@@ -1,0 +1,30 @@
+DESCRIPTION >
+    Get all spans for a trace to build span hierarchy.
+    Returns spans with parent/child relationships.
+
+NODE span_hierarchy_node
+SQL >
+    %
+    SELECT
+        TraceId AS traceId,
+        SpanId AS spanId,
+        ParentSpanId AS parentSpanId,
+        SpanName AS spanName,
+        ServiceName AS serviceName,
+        SpanKind AS spanKind,
+        Duration / 1000000 AS durationMs,
+        Timestamp AS startTime,
+        StatusCode AS statusCode,
+        StatusMessage AS statusMessage,
+        arrayMap(key -> map('key', key, 'value', SpanAttributes[key]), mapKeys(SpanAttributes)) AS tags,
+        arrayMap(key -> map('key', key, 'value', ResourceAttributes[key]), mapKeys(ResourceAttributes)) AS serviceTags,
+        {% if defined(span_id) %}
+        if(SpanId = {{String(span_id, "")}}, 'target', 'related') AS relationship
+        {% else %}
+        'related' AS relationship
+        {% end %}
+    FROM traces
+    WHERE TraceId = {{String(trace_id, required=True)}}
+    ORDER BY Timestamp ASC
+
+TYPE endpoint

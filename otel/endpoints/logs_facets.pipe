@@ -1,0 +1,54 @@
+DESCRIPTION >
+    Returns facet counts for SeverityText and ServiceName with optional filtering.
+
+NODE severity_facets
+SQL >
+    %
+    SELECT
+        SeverityText,
+        '' as ServiceName,
+        count() as count,
+        'severity' as facet_type
+    FROM logs
+    WHERE 1=1
+    {% if defined(service) %}
+        AND ServiceName = {{String(service, "")}}
+    {% end %}
+    {% if defined(start_time) %}
+        AND Timestamp >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Timestamp <= {{DateTime(end_time, "2099-12-31 23:59:59")}}
+    {% end %}
+    GROUP BY SeverityText
+    ORDER BY count DESC
+
+NODE service_facets
+SQL >
+    %
+    SELECT
+        '' as SeverityText,
+        ServiceName,
+        count() as count,
+        'service' as facet_type
+    FROM logs
+    WHERE 1=1
+    {% if defined(severity) %}
+        AND SeverityText = {{String(severity, "")}}
+    {% end %}
+    {% if defined(start_time) %}
+        AND Timestamp >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Timestamp <= {{DateTime(end_time, "2099-12-31 23:59:59")}}
+    {% end %}
+    GROUP BY ServiceName
+    ORDER BY count DESC
+
+NODE combined_facets
+SQL >
+    SELECT * FROM severity_facets
+    UNION ALL
+    SELECT * FROM service_facets
+
+TYPE endpoint

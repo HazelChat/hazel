@@ -1,0 +1,21 @@
+DESCRIPTION >
+    Aggregated usage statistics per service per hour. Uses SummingMergeTree for efficient incremental updates from multiple materialized views.
+
+SCHEMA >
+    `ServiceName` LowCardinality(String),
+    `Hour` DateTime,
+    `LogCount` UInt64,
+    `LogSizeBytes` UInt64,
+    `TraceCount` UInt64,
+    `TraceSizeBytes` UInt64,
+    `SumMetricCount` UInt64,
+    `SumMetricSizeBytes` UInt64,
+    `GaugeMetricCount` UInt64,
+    `GaugeMetricSizeBytes` UInt64,
+    `HistogramMetricCount` UInt64,
+    `HistogramMetricSizeBytes` UInt64,
+    `ExpHistogramMetricCount` UInt64,
+    `ExpHistogramMetricSizeBytes` UInt64
+
+ENGINE "SummingMergeTree"
+ENGINE_SORTING_KEY "ServiceName, Hour"

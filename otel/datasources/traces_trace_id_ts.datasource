@@ -1,0 +1,10 @@
+DESCRIPTION >
+    Target datasource for trace timing aggregations with TraceId start and end times
+
+SCHEMA >
+    `TraceId` String,
+    `Start` DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+	`End` DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "TraceId, toUnixTimestamp(Start)"

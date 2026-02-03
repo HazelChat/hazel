@@ -1,0 +1,23 @@
+DESCRIPTION >
+    Calculates the error rate over time, grouped by service name from OpenTelemetry logs
+
+NODE error_rate_by_service_node
+SQL >
+    %
+    SELECT
+        ServiceName,
+        count() AS total_logs,
+        countIf(SeverityText IN ('ERROR', 'FATAL')) AS error_logs,
+        round(error_logs / total_logs * 100, 2) AS error_rate_percent
+    FROM logs
+    WHERE 1=1
+    {% if defined(start_time) %}
+        AND Timestamp >= {{DateTime(start_time, "2023-01-01 00:00:00")}}
+    {% end %}
+    {% if defined(end_time) %}
+        AND Timestamp <= {{DateTime(end_time, "2023-12-31 23:59:59")}}
+    {% end %}
+    GROUP BY ServiceName
+    ORDER BY error_rate_percent DESC
+
+TYPE endpoint

@@ -1,0 +1,25 @@
+DESCRIPTION >
+    Materialized view to aggregate log usage statistics per service per hour
+
+NODE service_usage_logs_mv_node
+SQL >
+    SELECT
+        ServiceName,
+        toStartOfHour(TimestampTime) AS Hour,
+        count() AS LogCount,
+        sum(length(Body) + 200) AS LogSizeBytes,
+        0 AS TraceCount,
+        0 AS TraceSizeBytes,
+        0 AS SumMetricCount,
+        0 AS SumMetricSizeBytes,
+        0 AS GaugeMetricCount,
+        0 AS GaugeMetricSizeBytes,
+        0 AS HistogramMetricCount,
+        0 AS HistogramMetricSizeBytes,
+        0 AS ExpHistogramMetricCount,
+        0 AS ExpHistogramMetricSizeBytes
+    FROM logs
+    GROUP BY ServiceName, Hour
+
+TYPE MATERIALIZED
+DATASOURCE service_usage
