@@ -1,10 +1,9 @@
 # Today
 
 - voice to text
-- AI Threads/ AI MESSGAES
+- improve AI UI and better tool calling
 
 - rework notification sound system / native notification support
-- rework status system, away gets set way too fast
 
 - replace tanstack form with effect based form
 

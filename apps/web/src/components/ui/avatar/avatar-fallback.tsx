@@ -56,6 +56,8 @@ export function AvatarFallback({ children, icon: Icon, className }: AvatarFallba
 					]}
 					variant="gradient"
 					intensity3d="dramatic"
+					interactive={false}
+					showInitial={true}
 					aria-hidden="true"
 				/>
 			</div>
