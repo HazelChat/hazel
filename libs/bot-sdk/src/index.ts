@@ -61,3 +61,5 @@ export * from "./services/index.ts"
 export * from "./types/index.ts"
 // Streaming for real-time message updates and AI streaming
 export * from "./streaming/index.ts"
+// Integration tools for dynamic tool building based on enabled integrations
+export * from "./integration-tools/index.ts"

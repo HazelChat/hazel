@@ -1,10 +1,21 @@
-import { Command, CommandGroup, runHazelBot, type AIContentChunk } from "@hazel/bot-sdk"
-import { Cause, Config, Effect, JSONSchema, Redacted, Schema, Stream } from "effect"
+import {
+	Command,
+	CommandGroup,
+	runHazelBot,
+	buildIntegrationTools,
+	generateIntegrationInstructions,
+	type AIContentChunk,
+	type TokenResult,
+	type IntegrationToolFactory,
+	type ToolFactoryOptions,
+} from "@hazel/bot-sdk"
+import { Cause, Config, Effect, JSONSchema, Redacted, Runtime, Schema, Stream } from "effect"
+import { LinearApiClient, makeLinearSdkClient } from "@hazel/integrations/linear"
 
 // Vercel AI SDK imports
 import { ToolLoopAgent, tool, jsonSchema } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
-import type { TextStreamPart } from "ai"
+import type { TextStreamPart, Tool } from "ai"
 
 // ============================================================================
 // Effect Schema to Vercel AI SDK Helper
@@ -25,10 +36,10 @@ function effectSchemaToJsonSchema<A, I>(schema: Schema.Schema<A, I, never>) {
 }
 
 // ============================================================================
-// Vercel AI SDK Tools (using Effect Schema)
+// Base Tools (always available)
 // ============================================================================
 
-const vercelTools = {
+const baseTools = {
 	get_current_time: tool({
 		description: "Get the current date and time in ISO format",
 		inputSchema: effectSchemaToJsonSchema(Schema.Struct({})),
@@ -115,6 +126,369 @@ const vercelTools = {
 }
 
 // ============================================================================
+// Linear Tool Factory
+// ============================================================================
+
+const makeLinearTools = (options: ToolFactoryOptions) => {
+	const getLinearAccessToken = () => options.getAccessToken("linear")
+	const { runPromise } = options
+
+	return {
+		linear_get_account_info: tool({
+			description: "Get the connected Linear account info for the current organization",
+			inputSchema: effectSchemaToJsonSchema(Schema.Struct({})),
+			execute: async () => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const info = await runPromise(LinearApiClient.getAccountInfo(token.accessToken))
+					return {
+						ok: true,
+						externalAccountId: info.externalAccountId,
+						externalAccountName: info.externalAccountName,
+					} as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_get_default_team: tool({
+			description: "Get the default Linear team for the connected Linear account",
+			inputSchema: effectSchemaToJsonSchema(Schema.Struct({})),
+			execute: async () => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const team = await runPromise(LinearApiClient.getDefaultTeam(token.accessToken))
+					return { ok: true, team } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_create_issue: tool({
+			description:
+				"Create a Linear issue. Use this after confirming with the user what you will create.",
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					title: Schema.String.annotations({
+						description: "Issue title (max ~80 chars recommended)",
+					}),
+					description: Schema.optional(
+						Schema.String.annotations({ description: "Markdown description for the issue" }),
+					),
+					teamId: Schema.optional(
+						Schema.String.annotations({
+							description: "Optional team ID; if omitted, uses the user's default team",
+						}),
+					),
+				}),
+			),
+			execute: async ({
+				title,
+				description,
+				teamId,
+			}: {
+				title: string
+				description?: string
+				teamId?: string
+			}) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const issue = await runPromise(
+						LinearApiClient.createIssue(token.accessToken, { title, description, teamId }),
+					)
+					return { ok: true, issue } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_fetch_issue: tool({
+			description: 'Fetch a Linear issue by key (e.g. "ENG-123")',
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					issueKey: Schema.String.annotations({ description: 'Issue key like "ENG-123"' }),
+				}),
+			),
+			execute: async ({ issueKey }: { issueKey: string }) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const issue = await runPromise(LinearApiClient.fetchIssue(issueKey, token.accessToken))
+					return { ok: true, issue } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_list_issues: tool({
+			description:
+				"List Linear issues with optional filters (team, state, assignee, priority). Returns paginated results.",
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					teamId: Schema.optional(Schema.String.annotations({ description: "Filter by team ID" })),
+					stateType: Schema.optional(
+						Schema.Literal(
+							"triage",
+							"backlog",
+							"unstarted",
+							"started",
+							"completed",
+							"canceled",
+						).annotations({
+							description: "Filter by state type",
+						}),
+					),
+					assigneeId: Schema.optional(
+						Schema.String.annotations({ description: "Filter by assignee ID" }),
+					),
+					priority: Schema.optional(
+						Schema.Number.annotations({
+							description: "Filter by priority (0=None, 1=Urgent, 2=High, 3=Medium, 4=Low)",
+						}),
+					),
+					first: Schema.optional(
+						Schema.Number.annotations({
+							description: "Number of issues to return (default 25, max 50)",
+						}),
+					),
+					after: Schema.optional(
+						Schema.String.annotations({ description: "Pagination cursor for next page" }),
+					),
+				}),
+			),
+			execute: async ({
+				teamId,
+				stateType,
+				assigneeId,
+				priority,
+				first,
+				after,
+			}: {
+				teamId?: string
+				stateType?: "triage" | "backlog" | "unstarted" | "started" | "completed" | "canceled"
+				assigneeId?: string
+				priority?: number
+				first?: number
+				after?: string
+			}) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const sdkClient = makeLinearSdkClient(token.accessToken)
+					const result = await runPromise(
+						sdkClient.listIssues({ teamId, stateType, assigneeId, priority, first, after }),
+					)
+					return { ok: true, ...result } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_search_issues: tool({
+			description:
+				"Search Linear issues by text query. Searches across title, description, and comments.",
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					query: Schema.String.annotations({ description: "Search text to find issues" }),
+					first: Schema.optional(
+						Schema.Number.annotations({
+							description: "Number of issues to return (default 25, max 50)",
+						}),
+					),
+					after: Schema.optional(
+						Schema.String.annotations({ description: "Pagination cursor for next page" }),
+					),
+					includeArchived: Schema.optional(
+						Schema.Boolean.annotations({
+							description: "Include archived issues in search (default false)",
+						}),
+					),
+				}),
+			),
+			execute: async ({
+				query,
+				first,
+				after,
+				includeArchived,
+			}: {
+				query: string
+				first?: number
+				after?: string
+				includeArchived?: boolean
+			}) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const sdkClient = makeLinearSdkClient(token.accessToken)
+					const result = await runPromise(
+						sdkClient.searchIssues(query, { first, after, includeArchived }),
+					)
+					return { ok: true, ...result } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_list_teams: tool({
+			description: "List all teams in the connected Linear workspace",
+			inputSchema: effectSchemaToJsonSchema(Schema.Struct({})),
+			execute: async () => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const sdkClient = makeLinearSdkClient(token.accessToken)
+					const result = await runPromise(sdkClient.listTeams())
+					return { ok: true, ...result } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_get_workflow_states: tool({
+			description:
+				"Get available workflow states (statuses) from Linear. Optionally filter by team. Use this to find valid state IDs before updating issues.",
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					teamId: Schema.optional(
+						Schema.String.annotations({ description: "Filter states by team ID" }),
+					),
+				}),
+			),
+			execute: async ({ teamId }: { teamId?: string }) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const sdkClient = makeLinearSdkClient(token.accessToken)
+					const result = await runPromise(sdkClient.getWorkflowStates(teamId))
+					return { ok: true, ...result } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+
+		linear_update_issue: tool({
+			description:
+				"Update an existing Linear issue. Use this after confirming with the user what changes to make. First use linear_get_workflow_states to get valid state IDs if changing status.",
+			inputSchema: effectSchemaToJsonSchema(
+				Schema.Struct({
+					issueId: Schema.String.annotations({
+						description: 'Issue identifier (e.g., "ENG-123" or UUID)',
+					}),
+					title: Schema.optional(
+						Schema.String.annotations({ description: "New title for the issue" }),
+					),
+					description: Schema.optional(
+						Schema.String.annotations({ description: "New markdown description" }),
+					),
+					stateId: Schema.optional(
+						Schema.String.annotations({
+							description:
+								"New state/status ID (get valid IDs from linear_get_workflow_states)",
+						}),
+					),
+					assigneeId: Schema.optional(
+						Schema.NullOr(Schema.String).annotations({
+							description: "New assignee ID, or null to unassign",
+						}),
+					),
+					priority: Schema.optional(
+						Schema.Number.annotations({
+							description: "New priority (0=None, 1=Urgent, 2=High, 3=Medium, 4=Low)",
+						}),
+					),
+				}),
+			),
+			execute: async ({
+				issueId,
+				title,
+				description,
+				stateId,
+				assigneeId,
+				priority,
+			}: {
+				issueId: string
+				title?: string
+				description?: string
+				stateId?: string
+				assigneeId?: string | null
+				priority?: number
+			}) => {
+				const token = await getLinearAccessToken()
+				if (!token.ok) return { ok: false, error: token.error }
+
+				try {
+					const sdkClient = makeLinearSdkClient(token.accessToken)
+					const result = await runPromise(
+						sdkClient.updateIssue(issueId, { title, description, stateId, assigneeId, priority }),
+					)
+					return { ok: true, ...result } as const
+				} catch (e) {
+					return { ok: false, error: String(e) } as const
+				}
+			},
+		}),
+	} as const
+}
+
+/**
+ * Linear tool factory for use with buildIntegrationTools
+ */
+const LinearToolFactory: IntegrationToolFactory<Record<string, Tool>> = {
+	provider: "linear",
+	makeTools: makeLinearTools,
+}
+
+// ============================================================================
+// Integration Instructions (used for dynamic system prompt)
+// ============================================================================
+
+const INTEGRATION_INSTRUCTIONS = {
+	linear: `
+- Manage Linear issues:
+  - Create issues
+  - Fetch issue details by key (e.g., "ENG-123")
+  - List issues with filters (by team, state, assignee, priority)
+  - Search issues by text
+  - List teams in the workspace
+  - Get workflow states (statuses)
+  - Update issues (change status, assignee, priority, title, description)
+- Before creating or updating a Linear issue, restate what you plan to do and confirm the user wants you to proceed.
+- Prefer fetching context first (e.g., fetch an issue before summarizing or making suggestions).
+- When filtering issues, first get available teams and states if you need their IDs.
+- Use issue identifiers like "ENG-123" when referring to specific issues.`,
+	github: `
+- Manage GitHub repositories, issues, and pull requests
+- Search code and repositories
+- View and create issues
+- Review and comment on pull requests`,
+	figma: `
+- Access Figma files and components
+- Extract design information and assets`,
+	notion: `
+- Access Notion pages and databases
+- Create and update content`,
+} as const
+
+// ============================================================================
 // Vercel AI SDK Stream Part Mapper
 // ============================================================================
 
@@ -122,10 +496,7 @@ interface VercelStreamState {
 	hasActiveReasoning: boolean
 }
 
-const mapVercelPartToChunk = (
-	part: TextStreamPart<typeof vercelTools>,
-	state: VercelStreamState,
-): AIContentChunk | null => {
+const mapVercelPartToChunk = (part: TextStreamPart<any>, state: VercelStreamState): AIContentChunk | null => {
 	switch (part.type) {
 		case "text-delta":
 			return { type: "text", text: part.text }
@@ -153,6 +524,22 @@ const mapVercelPartToChunk = (
 				output: part.output,
 			}
 
+		case "tool-error":
+			return {
+				type: "tool_result",
+				toolCallId: part.toolCallId,
+				output: null,
+				error: String(part.error),
+			}
+
+		case "tool-output-denied":
+			return {
+				type: "tool_result",
+				toolCallId: part.toolCallId,
+				output: null,
+				error: "Tool execution denied",
+			}
+
 		// Skip non-content stream parts
 		case "start":
 		case "start-step":
@@ -162,8 +549,6 @@ const mapVercelPartToChunk = (
 		case "tool-input-start":
 		case "tool-input-delta":
 		case "tool-input-end":
-		case "tool-error":
-		case "tool-output-denied":
 		case "finish-step":
 		case "finish":
 		case "abort":
@@ -198,12 +583,79 @@ const commands = CommandGroup.make(AskCommand)
 
 runHazelBot({
 	commands,
-	layers: [],
+	layers: [LinearApiClient.Default],
 	setup: (bot) =>
 		Effect.gen(function* () {
 			yield* bot.onCommand(AskCommand, (ctx) =>
 				Effect.gen(function* () {
-					yield* Effect.log(`Received /vercel-ask: ${ctx.args.message}`)
+					yield* Effect.log(`Received /ask: ${ctx.args.message}`)
+
+					const runtime = yield* Effect.runtime<any>()
+					const runPromise = Runtime.runPromise(runtime as any) as <A>(
+						effect: Effect.Effect<A, any, any>,
+					) => Promise<A>
+
+					// Get enabled integrations for this org (cached)
+					const enabledIntegrations = yield* bot.integration.getEnabled(ctx.orgId)
+
+					yield* Effect.log(`Enabled integrations for org ${ctx.orgId}:`, {
+						integrations: Array.from(enabledIntegrations),
+					})
+
+					// Token cache per provider
+					const tokenCache = new Map<string, Promise<TokenResult>>()
+
+					// Create a cached token getter
+					const getAccessToken = (
+						provider: "linear" | "github" | "figma" | "notion",
+					): Promise<TokenResult> => {
+						const cached = tokenCache.get(provider)
+						if (cached) return cached
+
+						const promise = (async () => {
+							try {
+								const { accessToken } = await runPromise(
+									bot.integration.getToken(ctx.orgId, provider),
+								)
+								return { ok: true, accessToken } as const
+							} catch (e: any) {
+								const tag = e && typeof e === "object" && "_tag" in e ? String(e._tag) : null
+								if (tag === "IntegrationNotConnectedError") {
+									// Invalidate cache since the integration is not connected
+									runPromise(bot.integration.invalidateCache(ctx.orgId))
+									return {
+										ok: false,
+										error: `${provider} is not connected for this organization. Please connect ${provider} and try again.`,
+									} as const
+								}
+								if (tag === "IntegrationNotAllowedError") {
+									return {
+										ok: false,
+										error: `${provider} access is not allowed for this bot. Please allow the ${provider} integration and try again.`,
+									} as const
+								}
+								return {
+									ok: false,
+									error: `Failed to get ${provider} token: ${tag ?? String(e)}`,
+								} as const
+							}
+						})()
+
+						tokenCache.set(provider, promise)
+						return promise
+					}
+
+					// Build integration tools based on enabled integrations
+					const integrationTools = buildIntegrationTools(enabledIntegrations, [LinearToolFactory], {
+						runPromise,
+						getAccessToken,
+					})
+
+					// Generate dynamic instructions based on enabled integrations
+					const integrationInstructions = generateIntegrationInstructions(
+						enabledIntegrations,
+						INTEGRATION_INSTRUCTIONS,
+					)
 
 					const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
 					const openrouter = createOpenRouter({ apiKey: Redacted.value(apiKey) })
@@ -222,24 +674,30 @@ runHazelBot({
 
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
-					// Create the ToolLoopAgent instance
-					const codebaseAgent = new ToolLoopAgent({
-						model: openrouter("moonshotai/kimi-k2.5"),
-						instructions: `You are a helpful AI assistant with access to codebase exploration tools.
+					// Build dynamic system instructions
+					const systemInstructions = `You are a helpful AI assistant with access to codebase exploration tools.
 
-Your capabilities:
+Your core capabilities:
 - Search the codebase for files matching queries
 - Read file contents
 - Get current date/time
 - Perform arithmetic calculations
+${integrationInstructions}
 
-When answering questions about code:
-1. First search for relevant files
-2. Read the most relevant files
-3. Provide a clear, helpful response based on what you found
+Rules:
+- Never reveal secrets (tokens, API keys, credentials). You can mention that you used a token, but never output it.
+- When answering questions about code:
+  1. First search for relevant files
+  2. Read the most relevant files
+  3. Provide a clear, helpful response based on what you found
 
-Be concise and helpful. Format code in markdown code blocks.`,
-						tools: vercelTools,
+Be concise and helpful. Format code in markdown code blocks.`
+
+					// Create the ToolLoopAgent instance with dynamic tools
+					const codebaseAgent = new ToolLoopAgent({
+						model: openrouter("moonshotai/kimi-k2.5"),
+						instructions: systemInstructions,
+						tools: { ...baseTools, ...integrationTools },
 						toolChoice: "auto",
 					})
 

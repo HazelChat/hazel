@@ -9,6 +9,7 @@ import {
 	BotMeResponse,
 	BotNotFoundError,
 	BotNotInstalledError,
+	EnabledIntegrationsResponse,
 	IntegrationNotAllowedError,
 	IntegrationNotConnectedError,
 	IntegrationTokenResponse,
@@ -404,6 +405,49 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 						new InternalServerError({
 							message: `Encryption key version not found for ${path.provider} token`,
 							detail: String(error),
+						}),
+					),
+				),
+			),
+		)
+		// Get enabled integrations (bot token auth)
+		.handle("getEnabledIntegrations", ({ path }) =>
+			Effect.gen(function* () {
+				const bot = yield* validateBotToken
+				const { orgId } = path
+
+				// Verify bot is installed in this org
+				const installationRepo = yield* BotInstallationRepo
+				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId).pipe(withSystemActor)
+				if (!isInstalled) {
+					return yield* Effect.fail(new BotNotInstalledError({ botId: bot.id, orgId }))
+				}
+
+				// Get bot's allowed integrations
+				const allowedIntegrations = bot.allowedIntegrations ?? []
+				if (allowedIntegrations.length === 0) {
+					return new EnabledIntegrationsResponse({ providers: [] })
+				}
+
+				// Find active integration connections for the org
+				const connectionRepo = yield* IntegrationConnectionRepo
+				const activeConnections = yield* connectionRepo
+					.findActiveOrgConnections(orgId)
+					.pipe(withSystemActor)
+
+				// Compute intersection: providers that are both allowed AND connected
+				const activeProviders = new Set(activeConnections.map((c) => c.provider))
+				const enabledProviders = allowedIntegrations.filter((provider) =>
+					activeProviders.has(provider),
+				)
+
+				return new EnabledIntegrationsResponse({ providers: enabledProviders })
+			}).pipe(
+				Effect.catchTag("DatabaseError", () =>
+					Effect.fail(
+						new InternalServerError({
+							message: "Database error while fetching enabled integrations",
+							detail: "Database error",
 						}),
 					),
 				),

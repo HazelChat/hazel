@@ -44,7 +44,7 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 									sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${String(payload.installationId)}`,
 									isNull(schema.integrationConnectionsTable.deletedAt),
 								),
-							)
+							),
 					)
 					.pipe(
 						Effect.catchTags({

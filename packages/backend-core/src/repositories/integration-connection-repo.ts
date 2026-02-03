@@ -118,6 +118,30 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					policyRequire("IntegrationConnection", "select"),
 				)({ organizationId }, tx)
 
+			// Get all active org-level connections for an organization
+			const findActiveOrgConnections = (organizationId: OrganizationId, tx?: TxFn) =>
+				db.makeQuery(
+					(execute, data: { organizationId: OrganizationId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.integrationConnectionsTable)
+								.where(
+									and(
+										eq(
+											schema.integrationConnectionsTable.organizationId,
+											data.organizationId,
+										),
+										eq(schema.integrationConnectionsTable.level, "organization"),
+										eq(schema.integrationConnectionsTable.status, "active"),
+										isNull(schema.integrationConnectionsTable.userId),
+										isNull(schema.integrationConnectionsTable.deletedAt),
+									),
+								),
+						),
+					policyRequire("IntegrationConnection", "select"),
+				)({ organizationId }, tx)
+
 			// Update connection status
 			const updateStatus = (
 				connectionId: IntegrationConnectionId,
@@ -255,6 +279,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 				findByOrgAndProvider: findOrgConnection, // Alias for consistency
 				findUserConnection,
 				findAllForOrg,
+				findActiveOrgConnections,
 				findByGitHubInstallationId,
 				findAllByGitHubInstallationId,
 				updateStatus,

@@ -100,6 +100,12 @@ export class IntegrationTokenResponse extends Schema.Class<IntegrationTokenRespo
 	expiresAt: Schema.NullOr(Schema.String),
 }) {}
 
+export class EnabledIntegrationsResponse extends Schema.Class<EnabledIntegrationsResponse>(
+	"EnabledIntegrationsResponse",
+)({
+	providers: Schema.Array(IntegrationProvider),
+}) {}
+
 export class IntegrationNotAllowedError extends Schema.TaggedError<IntegrationNotAllowedError>()(
 	"IntegrationNotAllowedError",
 	{
@@ -204,6 +210,28 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					description:
 						"Get a valid OAuth access token for an integration provider. Bot must have the provider in its allowedIntegrations and be installed in the target org.",
 					summary: "Get integration token",
+				}),
+			),
+	)
+	// Get enabled integrations (bot token auth)
+	// Returns the intersection of bot's allowedIntegrations and org's active connections
+	.add(
+		HttpApiEndpoint.get("getEnabledIntegrations", `/integrations/:orgId/enabled`)
+			.addSuccess(EnabledIntegrationsResponse)
+			.addError(UnauthorizedError)
+			.addError(BotNotInstalledError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Enabled Integrations",
+					description:
+						"Get the list of integration providers enabled for the bot in the target org. Returns the intersection of the bot's allowedIntegrations and the org's active integration connections.",
+					summary: "Get enabled integrations",
 				}),
 			),
 	)
