@@ -1,5 +1,6 @@
 import type { OrganizationId } from "@hazel/schema"
 import { createContext, lazy, Suspense, useMemo } from "react"
+import { Node } from "slate"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import {
 	extractGitHubInfo,
@@ -15,6 +16,11 @@ import {
 } from "~/components/link-preview"
 import { YoutubeEmbed } from "~/components/youtube-embed"
 import { MessageEmbeds } from "./message-embeds"
+import {
+	deserializeFromMarkdown,
+	type CustomDescendant,
+	type CustomElement,
+} from "./slate-editor/slate-markdown-serializer"
 import { SlateMessageViewer } from "./slate-editor/slate-message-viewer"
 
 // Lazy load heavy embed components (~85KB combined savings)
@@ -68,6 +74,50 @@ function useMessageContent() {
 
 import React from "react"
 
+/**
+ * Extract URLs only from paragraph elements (skip code blocks, tables, blockquotes, etc.)
+ * This ensures we don't create embeds for URLs that are part of code or data.
+ */
+function extractUrlsFromParagraphs(content: string): string[] {
+	const value = deserializeFromMarkdown(content)
+	const urls: string[] = []
+
+	for (const node of value) {
+		if ("type" in node) {
+			const element = node as CustomElement
+			if (element.type === "paragraph") {
+				const text = Node.string(element)
+				urls.push(...extractUrls(text))
+			}
+		}
+	}
+	return [...new Set(urls)] // dedupe
+}
+
+/**
+ * Determine if a message is a "link share" style message.
+ * A link share is a short message where the URL is the focus,
+ * not a URL mentioned within longer content.
+ *
+ * @param content - The message content
+ * @param paragraphUrls - URLs extracted from paragraph elements only
+ * @returns true if the message should show auto-embeds
+ */
+function isLinkShareMessage(content: string, paragraphUrls: string[]): boolean {
+	if (paragraphUrls.length === 0) return false
+
+	// Remove URLs from content to measure actual text
+	let textOnly = content
+	for (const url of paragraphUrls) {
+		textOnly = textOnly.replaceAll(url, "")
+	}
+	// Normalize whitespace and trim
+	textOnly = textOnly.replace(/\s+/g, " ").trim()
+
+	// Link share = short accompanying text (under 300 chars)
+	return textOnly.length < 300
+}
+
 interface MessageContentProviderProps {
 	message: MessageWithPinned
 	organizationId: OrganizationId | undefined
@@ -76,16 +126,71 @@ interface MessageContentProviderProps {
 
 function MessageContentProvider({ message, organizationId, children }: MessageContentProviderProps) {
 	const processedUrls = useMemo((): ProcessedUrls => {
-		const urls = extractUrls(message.content)
-		const tweetUrls = urls.filter((url) => isTweetUrl(url))
-		const youtubeUrls = urls.filter((url) => isYoutubeUrl(url))
-		const linearUrls = urls.filter((url) => isLinearIssueUrl(url))
-		const githubPRUrls = urls.filter((url) => isGitHubPRUrl(url))
-		const otherUrls = urls.filter(
+		// 1. Extract URLs only from paragraphs (not tables, code blocks, blockquotes, etc.)
+		const paragraphUrls = extractUrlsFromParagraphs(message.content)
+
+		// 2. Collect URLs already represented in rich embeds (from tool calls/webhooks)
+		const existingEmbedUrls = new Set<string>()
+		const existingLinearKeys = new Set<string>()
+		const existingGitHubPRs = new Set<string>()
+
+		message.embeds?.forEach((embed) => {
+			// Collect direct URLs from embeds
+			if (embed.url) {
+				existingEmbedUrls.add(embed.url)
+				// Extract resource IDs for deeper deduplication
+				const linearKey = extractLinearIssueKey(embed.url)
+				if (linearKey) existingLinearKeys.add(linearKey)
+				const ghInfo = extractGitHubInfo(embed.url)
+				if (ghInfo) existingGitHubPRs.add(`${ghInfo.owner}/${ghInfo.repo}/${ghInfo.number}`)
+			}
+			// Also check author URL (some embeds link author to resource)
+			if (embed.author?.url) {
+				existingEmbedUrls.add(embed.author.url)
+				const linearKey = extractLinearIssueKey(embed.author.url)
+				if (linearKey) existingLinearKeys.add(linearKey)
+				const ghInfo = extractGitHubInfo(embed.author.url)
+				if (ghInfo) existingGitHubPRs.add(`${ghInfo.owner}/${ghInfo.repo}/${ghInfo.number}`)
+			}
+		})
+
+		// 3. Only show embeds if this is a "link share" message (short, URL-focused)
+		const shouldShowEmbeds = isLinkShareMessage(message.content, paragraphUrls)
+
+		if (!shouldShowEmbeds) {
+			return {
+				tweetUrls: [],
+				youtubeUrls: [],
+				linearUrls: [],
+				githubPRUrls: [],
+				otherUrls: [],
+				displayContent: message.content,
+			}
+		}
+
+		// 4. Filter out URLs that are already represented in rich embeds
+		const uniqueUrls = paragraphUrls.filter((url) => !existingEmbedUrls.has(url))
+
+		// 5. Categorize URLs and dedupe by resource ID
+		const tweetUrls = uniqueUrls.filter((url) => isTweetUrl(url))
+		const youtubeUrls = uniqueUrls.filter((url) => isYoutubeUrl(url))
+		const linearUrls = uniqueUrls.filter((url) => {
+			if (!isLinearIssueUrl(url)) return false
+			const key = extractLinearIssueKey(url)
+			// Exclude if this Linear issue is already shown in an embed
+			return key && !existingLinearKeys.has(key)
+		})
+		const githubPRUrls = uniqueUrls.filter((url) => {
+			if (!isGitHubPRUrl(url)) return false
+			const info = extractGitHubInfo(url)
+			// Exclude if this GitHub PR is already shown in an embed
+			return info && !existingGitHubPRs.has(`${info.owner}/${info.repo}/${info.number}`)
+		})
+		const otherUrls = uniqueUrls.filter(
 			(url) => !isTweetUrl(url) && !isYoutubeUrl(url) && !isLinearIssueUrl(url) && !isGitHubPRUrl(url),
 		)
 
-		// Filter out embed URLs from displayed content
+		// 6. Filter out embed URLs from displayed content
 		const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
 		let displayContent = message.content
 		for (const url of embedUrls) {
@@ -101,7 +206,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 			otherUrls,
 			displayContent,
 		}
-	}, [message.content])
+	}, [message.content, message.embeds])
 
 	const contextValue = useMemo(
 		(): MessageContentContextValue => ({
