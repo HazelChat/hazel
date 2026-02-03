@@ -1,3 +1,4 @@
+import { IconChatBubble } from "~/components/icons/icon-chat-bubble"
 import { IconClock } from "~/components/icons/icon-clock"
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { UserId } from "@hazel/schema"
@@ -9,22 +10,17 @@ import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
 import { presenceNowSignal } from "~/atoms/presence-atoms"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconPhone from "~/components/icons/icon-phone"
-import { IconStar } from "~/components/icons/icon-star"
 import { Avatar } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownLabel, DropdownSeparator } from "~/components/ui/dropdown"
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
 import { Popover, PopoverContent } from "~/components/ui/popover"
-import { Textarea } from "~/components/ui/textarea"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
-import {
-	formatStatusExpiration,
-	getStatusBadgeColor,
-	getStatusDotColor,
-	getStatusLabel,
-} from "~/utils/status"
+import type { PresenceStatus } from "~/utils/status"
+import { formatStatusExpiration, getStatusDotColor, getStatusLabel } from "~/utils/status"
 import { formatUserLocalTime, getTimezoneAbbreviation } from "~/utils/timezone"
 import { getEffectivePresenceStatus } from "~/utils/presence"
 
@@ -70,6 +66,7 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 	if (!user) return null
 
 	const isOwnProfile = currentUser?.id === userId
+	const isBot = user.userType === "machine"
 	const fullName = `${user.firstName} ${user.lastName}`
 
 	const handleCopyUserId = () => {
@@ -103,134 +100,165 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 		})
 	}
 
+	const getStatusBadgeIntent = (status: PresenceStatus) => {
+		switch (status) {
+			case "online":
+				return "success"
+			case "away":
+				return "warning"
+			case "dnd":
+				return "danger"
+			case "offline":
+			default:
+				return "secondary"
+		}
+	}
+
 	return (
 		<Popover>
 			<PrimitiveButton className="size-fit outline-hidden">
 				<Avatar size="md" alt={fullName} src={user.avatarUrl} seed={fullName} />
 			</PrimitiveButton>
 			<PopoverContent placement="right top" className="w-72 p-0 lg:w-80">
-				<div className="relative h-32 rounded-t-xl bg-gradient-to-br from-primary/10 to-accent/10">
-					{!isOwnProfile && (
-						<div className="absolute top-2 right-2 flex items-center gap-2">
-							<Button
-								size="sq-xs"
-								intent={isFavorite ? "secondary" : "outline"}
-								onPress={handleToggleFavorite}
-								aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-								isCircle
-							>
-								<IconStar data-slot="icon" />
-							</Button>
-
-							<Button
-								size="sq-xs"
-								intent="outline"
-								onPress={handleCall}
-								aria-label="Call user"
-								isCircle
-							>
-								<IconPhone data-slot="icon" />
-							</Button>
-
-							<Menu>
-								<MenuTrigger aria-label="More options">
-									<Button size="sq-xs" intent="outline" isCircle>
-										<IconDotsVertical data-slot="icon" />
-									</Button>
-								</MenuTrigger>
-
-								<MenuContent placement="bottom end">
-									<MenuItem onAction={handleToggleMute}>
-										<DropdownLabel>{isMuted ? "Unmute" : "Mute"}</DropdownLabel>
-									</MenuItem>
-									<DropdownSeparator />
-									<MenuItem onAction={handleCopyUserId}>
-										<DropdownLabel>Copy user ID</DropdownLabel>
-									</MenuItem>
-								</MenuContent>
-							</Menu>
-						</div>
+				{/* Banner with layered gradient */}
+				<div
+					className={cn(
+						"relative h-20 overflow-hidden rounded-t-xl",
+						"bg-gradient-to-br from-primary/20 via-accent/10 to-transparent",
+						"before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_30%_20%,var(--color-primary)/15_0%,transparent_50%)]",
 					)}
-				</div>
+				/>
 
-				<div className="rounded-t-xl border border-border bg-bg p-4 shadow-md">
-					<div className="-mt-16">
-						<div className="relative w-fit">
+				{/* Main content card */}
+				<div className="relative rounded-t-xl border border-border bg-bg shadow-md">
+					{/* Centered avatar overlapping banner */}
+					<div className="absolute left-1/2 -top-10 -translate-x-1/2">
+						<div className="relative">
 							<Avatar
-								size="xl"
-								className="ring-4 ring-bg"
+								size="3xl"
+								className="shadow-lg shadow-black/5 ring-[5px] ring-bg"
 								alt={fullName}
 								src={user.avatarUrl}
 								seed={fullName}
+								isSquare={isBot}
 							/>
-							<span
-								className={cn(
-									"absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-bg",
-									getStatusDotColor(effectiveStatus),
-								)}
-							/>
+							{!isBot && (
+								<span
+									className={cn(
+										"absolute right-1 bottom-1 size-4 rounded-full border-[3px] border-bg",
+										getStatusDotColor(effectiveStatus),
+									)}
+								/>
+							)}
 						</div>
-						<div className="mt-3 flex flex-col gap-1">
-							<span className="font-semibold text-fg">{user ? fullName : "Unknown"}</span>
-							<span className="text-muted-fg text-xs">{user?.email}</span>
-							<span
-								className={cn(
-									"mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-									getStatusBadgeColor(effectiveStatus),
-								)}
-							>
-								<span className="size-1.5 rounded-full bg-current" />
+					</div>
+
+					{/* Identity section - centered below avatar */}
+					<div className="flex flex-col items-center gap-1 pt-12 text-center">
+						<div className="flex items-center gap-2">
+							<span className="text-lg font-semibold text-fg">{fullName}</span>
+							{isBot && (
+								<Badge intent="primary" size="sm" isCircle={false}>
+									APP
+								</Badge>
+							)}
+						</div>
+						{!isBot && <span className="text-sm text-muted-fg">{user.email}</span>}
+						{!isBot && effectiveStatus !== "online" && (
+							<Badge intent={getStatusBadgeIntent(effectiveStatus)} size="sm" className="mt-1">
 								{getStatusLabel(effectiveStatus)}
-							</span>
-							{(presence?.statusEmoji || presence?.customMessage) && (
-								<div className="mt-1 flex flex-col gap-0.5 text-sm">
-									<div className="flex items-center gap-1.5 text-muted-fg">
-										{presence?.statusEmoji && <span>{presence.statusEmoji}</span>}
-										{presence?.customMessage && <span>{presence.customMessage}</span>}
-									</div>
-									{presence?.statusExpiresAt && (
-										<span className="text-muted-fg/60 text-xs">
+							</Badge>
+						)}
+					</div>
+
+					{/* Custom status section - only for non-bots */}
+					{!isBot && (presence?.statusEmoji || presence?.customMessage) && (
+						<div className="mx-4 mt-3 rounded-lg bg-secondary/50 p-3">
+							<div className="flex items-start gap-2">
+								{presence.statusEmoji && (
+									<span className="text-lg">{presence.statusEmoji}</span>
+								)}
+								<div className="flex flex-col gap-0.5">
+									{presence.customMessage && (
+										<span className="text-sm text-fg">{presence.customMessage}</span>
+									)}
+									{presence.statusExpiresAt && (
+										<span className="text-xs text-muted-fg">
 											Until {formatStatusExpiration(presence.statusExpiresAt)}
 										</span>
 									)}
 								</div>
-							)}
-							{user?.timezone && localTime && (
-								<div className="mt-2 flex items-center gap-1.5 text-muted-fg text-xs">
-									<IconClock className="size-3.5" />
-									<span>
-										{localTime} local time
-										<span className="ml-1 opacity-60">
-											({getTimezoneAbbreviation(user.timezone)})
-										</span>
-									</span>
-								</div>
-							)}
+							</div>
 						</div>
-					</div>
-					<div className="mt-4 flex flex-col gap-y-4">
-						<div className="flex items-center gap-2">
-							{isOwnProfile ? (
-								<Button
-									size="sm"
-									className="w-full"
-									onPress={() => {
-										navigate({
-											to: "/$orgSlug/my-settings/profile",
-											params: { orgSlug },
-										})
-									}}
-								>
-									Edit profile
+					)}
+
+					{/* Meta info section - only for non-bots */}
+					{!isBot && user.timezone && localTime && (
+						<div className="mt-3 px-4">
+							<div className="flex items-center justify-center gap-2 text-sm text-muted-fg">
+								<IconClock className="size-4 opacity-60" />
+								<span>
+									{localTime} ({getTimezoneAbbreviation(user.timezone)})
+								</span>
+							</div>
+						</div>
+					)}
+
+					{/* Action bar at bottom */}
+					<div className="mt-4 flex items-center gap-2 border-t border-border px-4 py-3">
+						{isOwnProfile ? (
+							<Button
+								size="sm"
+								intent="primary"
+								className="flex-1"
+								onPress={() => {
+									navigate({
+										to: "/$orgSlug/my-settings/profile",
+										params: { orgSlug },
+									})
+								}}
+							>
+								Edit profile
+							</Button>
+						) : (
+							<>
+								<Button size="sm" intent="primary" className="flex-1">
+									<IconChatBubble data-slot="icon" />
+									Message
 								</Button>
-							) : (
-								<Textarea
-									aria-label="Message"
-									placeholder={`Message @${user?.firstName}`}
-									className="resize-none"
-								/>
-							)}
-						</div>
+								{!isBot && (
+									<Button
+										size="sq-sm"
+										intent="secondary"
+										onPress={handleCall}
+										aria-label="Call"
+									>
+										<IconPhone data-slot="icon" />
+									</Button>
+								)}
+								<Menu>
+									<MenuTrigger>
+										<Button size="sq-sm" intent="secondary" aria-label="More options">
+											<IconDotsVertical data-slot="icon" />
+										</Button>
+									</MenuTrigger>
+									<MenuContent placement="top end">
+										<MenuItem onAction={handleToggleFavorite}>
+											<DropdownLabel>
+												{isFavorite ? "Remove from favorites" : "Add to favorites"}
+											</DropdownLabel>
+										</MenuItem>
+										<MenuItem onAction={handleToggleMute}>
+											<DropdownLabel>{isMuted ? "Unmute" : "Mute"}</DropdownLabel>
+										</MenuItem>
+										<DropdownSeparator />
+										<MenuItem onAction={handleCopyUserId}>
+											<DropdownLabel>Copy user ID</DropdownLabel>
+										</MenuItem>
+									</MenuContent>
+								</Menu>
+							</>
+						)}
 					</div>
 				</div>
 			</PopoverContent>
