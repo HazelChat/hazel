@@ -301,41 +301,16 @@ const currentUserPresenceAtom = Atom.make((get) => {
 })
 
 /**
- * Hook for managing the current user's presence status
+ * Effects-only hook for presence - mounts heartbeat and syncs status to server.
+ * Does NOT subscribe to frequently-changing atoms (presenceNowSignal, afkStateAtom).
+ * Use this in providers/layouts to avoid re-rendering children.
  */
-export function usePresence() {
+export function usePresenceEffects() {
 	const { user } = useAuth()
-	const nowMs = useAtomValue(presenceNowSignal)
-	const presenceResult = useAtomValue(currentUserPresenceAtom)
-	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
+
+	// Only subscribe to atoms needed for the sync effect
 	const computedStatus = useAtomValue(computedPresenceStatusAtom)
-	const afkState = useAtomValue(afkStateAtom)
-
-	// Query current user's settings for quiet hours
-	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
-	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
-
-	// Compute quiet hours for current user
-	const quietHours = useMemo((): QuietHoursInfo | undefined => {
-		if (userSettings?.settings?.showQuietHoursInStatus === false) {
-			return undefined
-		}
-		const start = userSettings?.settings?.quietHoursStart ?? null
-		const end = userSettings?.settings?.quietHoursEnd ?? null
-		if (!start || !end) return undefined
-		return {
-			isActive: isInQuietHours(start, end),
-			start,
-			end,
-		}
-	}, [
-		userSettings?.settings?.showQuietHoursInStatus,
-		userSettings?.settings?.quietHoursStart,
-		userSettings?.settings?.quietHoursEnd,
-	])
-
 	const currentChannelId = useAtomValue(currentChannelIdAtom)
-	const setManualStatus = useAtomSet(manualStatusAtom)
 
 	// Track previous values to avoid duplicate updates
 	const previousValuesRef = useRef<{
@@ -348,10 +323,9 @@ export function usePresence() {
 		initialUpdateSent: false,
 	})
 
-	// Debounce timer ref
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-	// Combined effect for both status and channel updates with debouncing and deduplication
+	// Sync effect - sends presence updates to server when status or channel changes
 	useEffect(() => {
 		if (!user?.id) return
 
@@ -428,7 +402,51 @@ export function usePresence() {
 		}
 	}, [computedStatus, currentChannelId, user?.id])
 
+	// Mount heartbeat
 	useAtomMount(heartbeatAtom)
+}
+
+/**
+ * Hook for managing the current user's presence status
+ */
+export function usePresence() {
+	const { user } = useAuth()
+
+	// Run all side effects (heartbeat, sync to server)
+	usePresenceEffects()
+
+	// Subscribe to atoms for return values (these cause re-renders, but that's expected for consumers)
+	const nowMs = useAtomValue(presenceNowSignal)
+	const presenceResult = useAtomValue(currentUserPresenceAtom)
+	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
+	const computedStatus = useAtomValue(computedPresenceStatusAtom)
+	const afkState = useAtomValue(afkStateAtom)
+
+	// Query current user's settings for quiet hours
+	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
+	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+
+	// Compute quiet hours for current user
+	const quietHours = useMemo((): QuietHoursInfo | undefined => {
+		if (userSettings?.settings?.showQuietHoursInStatus === false) {
+			return undefined
+		}
+		const start = userSettings?.settings?.quietHoursStart ?? null
+		const end = userSettings?.settings?.quietHoursEnd ?? null
+		if (!start || !end) return undefined
+		return {
+			isActive: isInQuietHours(start, end),
+			start,
+			end,
+		}
+	}, [
+		userSettings?.settings?.showQuietHoursInStatus,
+		userSettings?.settings?.quietHoursStart,
+		userSettings?.settings?.quietHoursEnd,
+	])
+
+	const currentChannelId = useAtomValue(currentChannelIdAtom)
+	const setManualStatus = useAtomSet(manualStatusAtom)
 
 	const previousManualStatusRef = useRef<PresenceStatus>("online")
 

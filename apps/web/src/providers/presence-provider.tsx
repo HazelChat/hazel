@@ -1,11 +1,11 @@
 import type { ReactNode } from "react"
-import { usePresence } from "~/hooks/use-presence"
+import { usePresenceEffects } from "~/hooks/use-presence"
 
 interface PresenceProviderProps {
 	children: ReactNode
 }
 
 export function PresenceProvider({ children }: PresenceProviderProps) {
-	usePresence()
+	usePresenceEffects()
 	return <>{children}</>
 }
