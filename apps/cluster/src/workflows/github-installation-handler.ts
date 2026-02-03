@@ -45,7 +45,6 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 									isNull(schema.integrationConnectionsTable.deletedAt),
 								),
 							)
-							.limit(1),
 					)
 					.pipe(
 						Effect.catchTags({
@@ -64,22 +63,21 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 					yield* Effect.logDebug(
 						`No connection found for installation ID ${payload.installationId}`,
 					)
-					return { found: false, connection: null }
+					return { connections: [], totalCount: 0 }
 				}
 
-				const connection = connections[0]!
 				yield* Effect.logDebug(
-					`Found connection ${connection.id} for installation ${payload.installationId}`,
+					`Found ${connections.length} connection(s) for installation ${payload.installationId}`,
 				)
 
 				return {
-					found: true,
-					connection: {
+					connections: connections.map((connection) => ({
 						id: connection.id,
 						organizationId: connection.organizationId,
 						status: connection.status,
 						externalAccountName: connection.externalAccountName,
-					},
+					})),
+					totalCount: connections.length,
 				}
 			}),
 		}).pipe(
@@ -92,14 +90,12 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 		)
 
 		// If no connection found, nothing more to do
-		if (!connectionResult.found || !connectionResult.connection) {
+		if (connectionResult.totalCount === 0) {
 			yield* Effect.logDebug(
 				`No connection found for installation ID ${payload.installationId}, workflow complete`,
 			)
 			return
 		}
-
-		const connection = connectionResult.connection
 
 		// Determine the new status based on action
 		const newStatus: "active" | "revoked" | "suspended" =
@@ -114,7 +110,7 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 				const db = yield* Database.Database
 
 				yield* Effect.logDebug(
-					`Updating connection ${connection.id} status from '${connection.status}' to '${newStatus}'`,
+					`Updating ${connectionResult.totalCount} connection(s) status to '${newStatus}' for installation ${payload.installationId}`,
 				)
 
 				// For "deleted" action, also set deletedAt
@@ -130,19 +126,26 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 								updatedAt: new Date(),
 							}
 
-				yield* db
+				const updated = yield* db
 					.execute((client) =>
 						client
 							.update(schema.integrationConnectionsTable)
 							.set(updateValues)
-							.where(eq(schema.integrationConnectionsTable.id, connection.id)),
+							.where(
+								and(
+									eq(schema.integrationConnectionsTable.provider, "github"),
+									sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${String(payload.installationId)}`,
+									isNull(schema.integrationConnectionsTable.deletedAt),
+								),
+							)
+							.returning({ id: schema.integrationConnectionsTable.id }),
 					)
 					.pipe(
 						Effect.catchTags({
 							DatabaseError: (err) =>
 								Effect.fail(
 									new Cluster.UpdateConnectionStatusError({
-										connectionId: connection.id,
+										installationId: payload.installationId,
 										message: "Failed to update connection status",
 										cause: err,
 									}),
@@ -150,11 +153,13 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 						}),
 					)
 
-				yield* Effect.logDebug(`Successfully updated connection ${connection.id} to '${newStatus}'`)
+				yield* Effect.logDebug(
+					`Successfully updated ${updated.length} connection(s) for installation ${payload.installationId} to '${newStatus}'`,
+				)
 
 				return {
-					updated: true,
-					previousStatus: connection.status,
+					updatedCount: updated.length,
+					connectionIds: updated.map((u) => u.id),
 					newStatus,
 				}
 			}),
@@ -168,7 +173,7 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 		)
 
 		yield* Effect.logDebug(
-			`GitHubInstallationWorkflow completed: connection ${connection.id} status changed from '${updateResult.previousStatus}' to '${updateResult.newStatus}' (action: ${payload.action})`,
+			`GitHubInstallationWorkflow completed: ${updateResult.updatedCount} connection(s) updated to '${updateResult.newStatus}' (action: ${payload.action}, installation: ${payload.installationId})`,
 		)
 	}),
 )

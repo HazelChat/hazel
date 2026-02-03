@@ -188,6 +188,25 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					)({ installationId }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
+			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
+				db.makeQuery(
+					(execute, data: { installationId: string }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.integrationConnectionsTable)
+								.where(
+									and(
+										eq(schema.integrationConnectionsTable.provider, "github"),
+										sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
+										isNull(schema.integrationConnectionsTable.deletedAt),
+									),
+								),
+						),
+					policyRequire("IntegrationConnection", "select"),
+				)({ installationId }, tx)
+
 			// Upsert org-level connection for a provider
 			const upsertByOrgAndProvider = (
 				insertData: typeof IntegrationConnection.Insert.Type,
@@ -237,6 +256,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 				findUserConnection,
 				findAllForOrg,
 				findByGitHubInstallationId,
+				findAllByGitHubInstallationId,
 				updateStatus,
 				softDelete,
 				upsertByOrgAndProvider,

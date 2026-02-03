@@ -68,7 +68,9 @@ describe("authenticatedFetch", () => {
 
 			await authenticatedFetch("https://api.example.com/data")
 
-			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", undefined)
+			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				credentials: "include",
+			})
 		})
 
 		it("adds Bearer token when token is available", async () => {
@@ -79,6 +81,7 @@ describe("authenticatedFetch", () => {
 			await authenticatedFetch("https://api.example.com/data")
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				credentials: "include",
 				headers: {
 					Authorization: "Bearer test-jwt-token",
 				},
@@ -97,6 +100,7 @@ describe("authenticatedFetch", () => {
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
 				method: "POST",
 				body: JSON.stringify({ foo: "bar" }),
+				credentials: "include",
 			})
 		})
 
@@ -113,9 +117,25 @@ describe("authenticatedFetch", () => {
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
 				method: "POST",
 				body: JSON.stringify({ foo: "bar" }),
+				credentials: "include",
 				headers: {
 					Authorization: "Bearer test-jwt-token",
 				},
+			})
+		})
+
+		it("respects explicit credentials option", async () => {
+			const { authenticatedFetch } = await import("./auth-fetch")
+			mockFetch.mockResolvedValue({ status: 200 })
+
+			await authenticatedFetch("https://api.example.com/data", {
+				method: "GET",
+				credentials: "omit",
+			})
+
+			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				method: "GET",
+				credentials: "omit",
 			})
 		})
 
@@ -216,6 +236,7 @@ describe("authenticatedFetch", () => {
 			})
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				credentials: "include",
 				headers: {
 					"Content-Type": "application/json",
 					"X-Custom-Header": "custom-value",
@@ -236,6 +257,7 @@ describe("authenticatedFetch", () => {
 			})
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
+				credentials: "include",
 				headers: {
 					"Content-Type": "application/json",
 					"X-Custom-Header": "custom-value",

@@ -102,6 +102,7 @@ const makeAuthenticatedRequest = async (
 ): Promise<Response> => {
 	return fetch(input, {
 		...init,
+		credentials: init?.credentials ?? "include",
 		headers: {
 			...init?.headers,
 			Authorization: `Bearer ${token}`,
@@ -173,7 +174,10 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 
 	// No token available - make unauthenticated request
 	// This handles the case where user is not logged in
-	const response = await fetch(input, init)
+	const response = await fetch(input, {
+		...init,
+		credentials: init?.credentials ?? "include",
+	})
 
 	// If 401 (requires auth but no token), trigger session expired for redirect to login
 	if (response.status === 401) {

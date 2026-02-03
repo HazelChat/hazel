@@ -1,4 +1,5 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
+import * as Cookies from "@effect/platform/Cookies"
 import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
@@ -9,6 +10,7 @@ import {
 } from "@hazel/domain/http"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Config, Effect, Option, Schedule, Schema } from "effect"
+import * as Duration from "effect/Duration"
 import { HazelApi } from "../api"
 import { IntegrationTokenService } from "../services/integration-token-service"
 import { IntegrationBotService } from "../services/integrations/integration-bot-service"
@@ -87,6 +89,41 @@ const OAUTH_SESSION_COOKIE_PREFIX = "oauth_session_"
  */
 const OAUTH_SESSION_COOKIE_MAX_AGE = 15 * 60
 
+const makeOAuthSessionCookie = (
+	name: string,
+	value: string,
+	options: {
+		cookieDomain: string
+		secure: boolean
+		maxAgeSeconds: number
+	},
+) =>
+	Effect.try({
+		try: () =>
+			Cookies.unsafeMakeCookie(name, value, {
+				domain: options.cookieDomain,
+				path: "/",
+				httpOnly: true,
+				secure: options.secure,
+				sameSite: "lax",
+				maxAge: Duration.seconds(options.maxAgeSeconds),
+			}),
+		catch: (error) =>
+			new InternalServerError({
+				message: "Failed to create OAuth session cookie",
+				detail: String(error),
+			}),
+	})
+
+const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string; secure: boolean }) =>
+	HttpServerResponse.expireCookie(name, {
+		domain: options.cookieDomain,
+		path: "/",
+		httpOnly: true,
+		secure: options.secure,
+		sameSite: "lax",
+	})
+
 /**
  * Initiate OAuth flow for a provider.
  * Sets a session cookie with context and redirects to the provider's OAuth consent page.
@@ -140,6 +177,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	// Local dev uses "local" so production can redirect callbacks back to localhost
 	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
 	const environment = nodeEnv === "development" ? "local" : "production"
+	const cookieSecure = nodeEnv !== "development"
 
 	// Build state object for OAuth flow
 	const stateData = {
@@ -173,17 +211,18 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	)
 	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
 
-	// Build Set-Cookie header value for session cookie
-	// This cookie is used for state recovery during callback
-	const cookieHeader = `${sessionCookieName}=${sessionCookieValue}; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_SESSION_COOKIE_MAX_AGE}`
+	// Build cookie for session state recovery during callback (e.g. when GitHub drops state)
+	const sessionCookie = yield* makeOAuthSessionCookie(sessionCookieName, sessionCookieValue, {
+		cookieDomain,
+		secure: cookieSecure,
+		maxAgeSeconds: OAUTH_SESSION_COOKIE_MAX_AGE,
+	})
 
 	// Return JSON response with authorization URL and session cookie
 	return yield* HttpServerResponse.json(
 		{ authorizationUrl: authorizationUrl.toString() },
 		{
-			headers: {
-				"Set-Cookie": cookieHeader,
-			},
+			cookies: Cookies.fromIterable([sessionCookie]),
 		},
 	).pipe(
 		Effect.catchTag("HttpBodyError", (e) =>
@@ -235,6 +274,8 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
 	const sessionCookie = request.cookies[sessionCookieName]
 	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
+	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
+	const cookieSecure = nodeEnv !== "development"
 
 	yield* Effect.logInfo("OAuth callback received", {
 		event: "integration_callback_start",
@@ -248,14 +289,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 
 	// Helper to build redirect with cookie clearing
 	const buildRedirectWithCookieClear = (url: string) =>
-		HttpServerResponse.empty({
-			status: 302,
-			headers: {
-				Location: url,
-				// Clear the session cookie after processing
-				"Set-Cookie": `${sessionCookieName}=; Path=/; Domain=${cookieDomain}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
-			},
-		})
+		HttpServerResponse.redirect(url, { status: 302 }).pipe(
+			expireOAuthSessionCookie(sessionCookieName, { cookieDomain, secure: cookieSecure }),
+		)
 
 	// Try to get state from URL parameter first
 	let parsedState: typeof OAuthState.Type | null = null
@@ -330,12 +366,12 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			installationId: installation_id,
 		})
 
-		// Look up the connection by installation ID
-		const connectionOption = yield* connectionRepo
-			.findByGitHubInstallationId(installation_id)
+		// Look up all connections by installation ID
+		const connections = yield* connectionRepo
+			.findAllByGitHubInstallationId(installation_id)
 			.pipe(withSystemActor)
 
-		if (Option.isNone(connectionOption)) {
+		if (connections.length === 0) {
 			// No connection found - redirect to root
 			yield* Effect.logWarning("GitHub update callback for unknown installation", {
 				event: "integration_callback_update_unknown",
@@ -344,7 +380,16 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			return buildRedirectWithCookieClear(frontendUrl)
 		}
 
-		const connection = connectionOption.value
+		if (connections.length > 1) {
+			yield* Effect.logWarning("GitHub update callback for shared installation (ambiguous org)", {
+				event: "integration_callback_update_ambiguous",
+				installationId: installation_id,
+				connectionCount: connections.length,
+			})
+			return buildRedirectWithCookieClear(frontendUrl)
+		}
+
+		const connection = connections[0]!
 
 		// Get the organization to find its slug
 		const orgOption = yield* orgRepo.findById(connection.organizationId).pipe(
@@ -404,7 +449,6 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 
 	// Check if we need to redirect to local environment
 	// This happens when production receives a callback for a local dev flow
-	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
 	const isProduction = nodeEnv !== "development"
 
 	if (isProduction && parsedState.environment === "local") {

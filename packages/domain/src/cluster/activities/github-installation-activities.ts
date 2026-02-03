@@ -2,10 +2,9 @@ import { IntegrationConnectionId, OrganizationId } from "@hazel/schema"
 import { Schema } from "effect"
 import { IntegrationConnection } from "../../models"
 
-// Result of finding a connection by installation ID
+// Result of finding connections by installation ID
 export const FindConnectionByInstallationResult = Schema.Struct({
-	found: Schema.Boolean,
-	connection: Schema.NullOr(
+	connections: Schema.Array(
 		Schema.Struct({
 			id: IntegrationConnectionId,
 			organizationId: OrganizationId,
@@ -13,14 +12,15 @@ export const FindConnectionByInstallationResult = Schema.Struct({
 			externalAccountName: Schema.NullOr(Schema.String),
 		}),
 	),
+	totalCount: Schema.Number,
 })
 
 export type FindConnectionByInstallationResult = Schema.Schema.Type<typeof FindConnectionByInstallationResult>
 
 // Result of updating connection status
 export const UpdateConnectionStatusResult = Schema.Struct({
-	updated: Schema.Boolean,
-	previousStatus: Schema.NullOr(IntegrationConnection.ConnectionStatus),
+	updatedCount: Schema.Number,
+	connectionIds: Schema.Array(IntegrationConnectionId),
 	newStatus: IntegrationConnection.ConnectionStatus,
 })
 
@@ -41,7 +41,7 @@ export class FindConnectionByInstallationError extends Schema.TaggedError<FindCo
 export class UpdateConnectionStatusError extends Schema.TaggedError<UpdateConnectionStatusError>()(
 	"UpdateConnectionStatusError",
 	{
-		connectionId: IntegrationConnectionId,
+		installationId: Schema.Number,
 		message: Schema.String,
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},

@@ -97,6 +97,7 @@ const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRout
 		HttpLayerRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
+				"http://localhost:5173",
 				"https://app.hazel.sh",
 				"tauri://localhost",
 				"http://tauri.localhost",
