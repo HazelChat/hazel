@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DevLayoutRouteImport } from './routes/_dev/layout'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as JoinSlugRouteImport } from './routes/join/$slug'
@@ -16,6 +17,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
 import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as DevUiLayoutRouteImport } from './routes/_dev/ui/layout'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
 import { Route as DevEmbedsIndexRouteImport } from './routes/dev/embeds/index'
 import { Route as AppSelectOrganizationIndexRouteImport } from './routes/_app/select-organization/index'
@@ -25,6 +27,7 @@ import { Route as DevEmbedsRailwayRouteImport } from './routes/dev/embeds/railwa
 import { Route as DevEmbedsOpenstatusRouteImport } from './routes/dev/embeds/openstatus'
 import { Route as DevEmbedsGithubRouteImport } from './routes/dev/embeds/github'
 import { Route as DevEmbedsDemoRouteImport } from './routes/dev/embeds/demo'
+import { Route as DevUiAgentStepsRouteImport } from './routes/_dev/ui/agent-steps'
 import { Route as AppOnboardingSetupOrganizationRouteImport } from './routes/_app/onboarding/setup-organization'
 import { Route as AppOrgSlugSettingsLayoutRouteImport } from './routes/_app/$orgSlug/settings/layout'
 import { Route as AppOrgSlugNotificationsLayoutRouteImport } from './routes/_app/$orgSlug/notifications/layout'
@@ -59,6 +62,10 @@ import { Route as AppOrgSlugChatIdFilesMediaRouteImport } from './routes/_app/$o
 import { Route as AppOrgSlugChannelsChannelIdSettingsOverviewRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/overview'
 import { Route as AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/integrations'
 
+const DevLayoutRoute = DevLayoutRouteImport.update({
+  id: '/_dev',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppLayoutRoute = AppLayoutRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -92,6 +99,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DevUiLayoutRoute = DevUiLayoutRouteImport.update({
+  id: '/ui',
+  path: '/ui',
+  getParentRoute: () => DevLayoutRoute,
 } as any)
 const AppOrgSlugLayoutRoute = AppOrgSlugLayoutRouteImport.update({
   id: '/$orgSlug',
@@ -138,6 +150,11 @@ const DevEmbedsDemoRoute = DevEmbedsDemoRouteImport.update({
   id: '/dev/embeds/demo',
   path: '/dev/embeds/demo',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DevUiAgentStepsRoute = DevUiAgentStepsRouteImport.update({
+  id: '/agent-steps',
+  path: '/agent-steps',
+  getParentRoute: () => DevUiLayoutRoute,
 } as any)
 const AppOnboardingSetupOrganizationRoute =
   AppOnboardingSetupOrganizationRouteImport.update({
@@ -334,6 +351,7 @@ const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/ui': typeof DevUiLayoutRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
@@ -343,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
+  '/ui/agent-steps': typeof DevUiAgentStepsRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -382,13 +401,15 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/chat/$id/files/': typeof AppOrgSlugChatIdFilesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof AppIndexRoute
+  '/ui': typeof DevUiLayoutRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
   '/join/$slug': typeof JoinSlugRoute
-  '/': typeof AppIndexRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
+  '/ui/agent-steps': typeof DevUiAgentStepsRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -427,7 +448,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppLayoutRouteWithChildren
+  '/_dev': typeof DevLayoutRouteWithChildren
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
+  '/_dev/ui': typeof DevUiLayoutRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
@@ -438,6 +461,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
   '/_app/$orgSlug/settings': typeof AppOrgSlugSettingsLayoutRouteWithChildren
   '/_app/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
+  '/_dev/ui/agent-steps': typeof DevUiAgentStepsRoute
   '/dev/embeds/demo': typeof DevEmbedsDemoRoute
   '/dev/embeds/github': typeof DevEmbedsGithubRoute
   '/dev/embeds/openstatus': typeof DevEmbedsOpenstatusRoute
@@ -481,6 +505,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$orgSlug'
+    | '/ui'
     | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
@@ -490,6 +515,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications'
     | '/$orgSlug/settings'
     | '/onboarding/setup-organization'
+    | '/ui/agent-steps'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -529,13 +555,15 @@ export interface FileRouteTypes {
     | '/$orgSlug/chat/$id/files/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
+    | '/ui'
     | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
     | '/join/$slug'
-    | '/'
     | '/onboarding/setup-organization'
+    | '/ui/agent-steps'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -573,7 +601,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_dev'
     | '/_app/$orgSlug'
+    | '/_dev/ui'
     | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
@@ -584,6 +614,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/notifications'
     | '/_app/$orgSlug/settings'
     | '/_app/onboarding/setup-organization'
+    | '/_dev/ui/agent-steps'
     | '/dev/embeds/demo'
     | '/dev/embeds/github'
     | '/dev/embeds/openstatus'
@@ -625,6 +656,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
+  DevLayoutRoute: typeof DevLayoutRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
   AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
@@ -639,6 +671,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_dev': {
+      id: '/_dev'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof DevLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -687,6 +726,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_dev/ui': {
+      id: '/_dev/ui'
+      path: '/ui'
+      fullPath: '/ui'
+      preLoaderRoute: typeof DevUiLayoutRouteImport
+      parentRoute: typeof DevLayoutRoute
     }
     '/_app/$orgSlug': {
       id: '/_app/$orgSlug'
@@ -750,6 +796,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/embeds/demo'
       preLoaderRoute: typeof DevEmbedsDemoRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_dev/ui/agent-steps': {
+      id: '/_dev/ui/agent-steps'
+      path: '/agent-steps'
+      fullPath: '/ui/agent-steps'
+      preLoaderRoute: typeof DevUiAgentStepsRouteImport
+      parentRoute: typeof DevUiLayoutRoute
     }
     '/_app/onboarding/setup-organization': {
       id: '/_app/onboarding/setup-organization'
@@ -1162,8 +1215,33 @@ const AppLayoutRouteWithChildren = AppLayoutRoute._addFileChildren(
   AppLayoutRouteChildren,
 )
 
+interface DevUiLayoutRouteChildren {
+  DevUiAgentStepsRoute: typeof DevUiAgentStepsRoute
+}
+
+const DevUiLayoutRouteChildren: DevUiLayoutRouteChildren = {
+  DevUiAgentStepsRoute: DevUiAgentStepsRoute,
+}
+
+const DevUiLayoutRouteWithChildren = DevUiLayoutRoute._addFileChildren(
+  DevUiLayoutRouteChildren,
+)
+
+interface DevLayoutRouteChildren {
+  DevUiLayoutRoute: typeof DevUiLayoutRouteWithChildren
+}
+
+const DevLayoutRouteChildren: DevLayoutRouteChildren = {
+  DevUiLayoutRoute: DevUiLayoutRouteWithChildren,
+}
+
+const DevLayoutRouteWithChildren = DevLayoutRoute._addFileChildren(
+  DevLayoutRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
+  DevLayoutRoute: DevLayoutRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
   AuthDesktopLoginRoute: AuthDesktopLoginRoute,

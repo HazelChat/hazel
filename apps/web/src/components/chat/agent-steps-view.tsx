@@ -98,9 +98,12 @@ interface AgentStepsRootProps {
 	className?: string
 }
 
+type GroupedStep = { type: "single"; step: AgentStep; index: number } | { type: "tool_group"; steps: AgentStep[]; startIndex: number }
+
 /**
  * Root component for the AgentSteps compound component.
  * Provides context and renders steps with animation.
+ * Groups consecutive tool calls into compact chip layout.
  */
 function AgentStepsRoot({ steps, currentIndex, status, children, className }: AgentStepsRootProps) {
 	const contextValue = useMemo(
@@ -111,31 +114,101 @@ function AgentStepsRoot({ steps, currentIndex, status, children, className }: Ag
 		[status, currentIndex],
 	)
 
+	// Group consecutive tool calls
+	const groupedSteps = useMemo(() => {
+		const groups: GroupedStep[] = []
+		let currentToolGroup: AgentStep[] = []
+		let toolGroupStartIndex = 0
+
+		for (let i = 0; i < steps.length; i++) {
+			const step = steps[i]!
+			if (step.type === "tool_call") {
+				if (currentToolGroup.length === 0) {
+					toolGroupStartIndex = i
+				}
+				currentToolGroup.push(step)
+			} else {
+				if (currentToolGroup.length > 0) {
+					groups.push({ type: "tool_group", steps: currentToolGroup, startIndex: toolGroupStartIndex })
+					currentToolGroup = []
+				}
+				groups.push({ type: "single", step, index: i })
+			}
+		}
+		if (currentToolGroup.length > 0) {
+			groups.push({ type: "tool_group", steps: currentToolGroup, startIndex: toolGroupStartIndex })
+		}
+		return groups
+	}, [steps])
+
 	if (steps.length === 0) return null
+
+	// If custom children renderer is provided, use legacy behavior
+	if (typeof children === "function") {
+		return (
+			<AgentStepsContext value={contextValue}>
+				<div className={cn("mt-2 space-y-2", className)} role="list" aria-label="AI agent workflow steps">
+					<AnimatePresence mode="popLayout">
+						{steps.map((step, index) => (
+							<motion.div
+								key={step.id}
+								initial={{ opacity: 0, x: -8 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -8 }}
+								transition={{
+									duration: 0.2,
+									delay: index * 0.05,
+									ease: [0.215, 0.61, 0.355, 1],
+								}}
+							>
+								{children(step, index)}
+							</motion.div>
+						))}
+					</AnimatePresence>
+				</div>
+			</AgentStepsContext>
+		)
+	}
 
 	return (
 		<AgentStepsContext value={contextValue}>
-			<div className={cn("mt-2 space-y-2", className)} role="list" aria-label="AI agent workflow steps">
+			<div className={cn("mt-2 space-y-1", className)} role="list" aria-label="AI agent workflow steps">
 				<AnimatePresence mode="popLayout">
-					{steps.map((step, index) => (
-						<motion.div
-							key={step.id}
-							initial={{ opacity: 0, x: -8 }}
-							animate={{ opacity: 1, x: 0 }}
-							exit={{ opacity: 0, x: -8 }}
-							transition={{
-								duration: 0.2,
-								delay: index * 0.05,
-								ease: [0.215, 0.61, 0.355, 1],
-							}}
-						>
-							{typeof children === "function" ? (
-								children(step, index)
-							) : (
-								<AgentStepItem step={step} index={index} />
-							)}
-						</motion.div>
-					))}
+					{groupedSteps.map((group, groupIndex) => {
+						if (group.type === "tool_group") {
+							const groupKey = group.steps.map((s) => s.id).join("-")
+							return (
+								<motion.div
+									key={groupKey}
+									initial={{ opacity: 0, x: -8 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: -8 }}
+									transition={{
+										duration: 0.2,
+										delay: groupIndex * 0.05,
+										ease: [0.215, 0.61, 0.355, 1],
+									}}
+								>
+									<ToolCallGroup steps={group.steps} currentIndex={currentIndex} startIndex={group.startIndex} />
+								</motion.div>
+							)
+						}
+						return (
+							<motion.div
+								key={group.step.id}
+								initial={{ opacity: 0, x: -8 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -8 }}
+								transition={{
+									duration: 0.2,
+									delay: groupIndex * 0.05,
+									ease: [0.215, 0.61, 0.355, 1],
+								}}
+							>
+								<AgentStepItem step={group.step} index={group.index} />
+							</motion.div>
+						)
+					})}
 				</AnimatePresence>
 			</div>
 		</AgentStepsContext>
@@ -192,11 +265,10 @@ function ThinkingStep({ step, isActive = false, globalFailed = false }: Thinking
 		return endTime - step.startedAt
 	}, [step.startedAt, step.completedAt])
 
-	// Auto-expand while active, auto-collapse when completed or when global status becomes failed
-	const [isExpanded, setIsExpanded] = useState(step.status === "active")
+	// Default collapsed, auto-collapse when completed or when global status becomes failed
+	const [isExpanded, setIsExpanded] = useState(false)
 
 	useEffect(() => {
-		if (step.status === "active") setIsExpanded(true)
 		if (step.status === "completed" || step.status === "failed" || globalFailed) setIsExpanded(false)
 	}, [step.status, globalFailed])
 
@@ -313,6 +385,131 @@ function ToolCallStep({ step, isActive = false }: ToolCallStepProps) {
 				{step.toolError && <div className="mt-1 text-xs text-danger">{step.toolError}</div>}
 			</DisclosurePanel>
 		</Disclosure>
+	)
+}
+
+// ============================================================================
+// Compact Tool Call Components
+// ============================================================================
+
+interface ToolCallChipProps {
+	step: AgentStep
+	isExpanded: boolean
+	isActive?: boolean
+	onToggle: () => void
+}
+
+/**
+ * Compact inline pill component for tool calls.
+ * Shows icon + short name + status indicator.
+ */
+function ToolCallChip({ step, isExpanded, isActive = false, onToggle }: ToolCallChipProps) {
+	return (
+		<button
+			type="button"
+			onClick={onToggle}
+			className={cn(
+				"inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+				"border",
+				step.status === "failed"
+					? "border-danger/30 bg-danger/10 text-danger hover:bg-danger/20"
+					: isExpanded
+						? "border-accent/50 bg-accent/10 text-accent-fg hover:bg-accent/20"
+						: "border-muted bg-muted/50 text-muted-fg hover:bg-muted/70",
+			)}
+		>
+			<ToolIcon toolName={step.toolName} className="size-3.5" />
+			<span className="font-mono">{getToolDisplayName(step.toolName)}</span>
+			{step.status === "active" && isActive && (
+				<IconLoader className="size-3 animate-spin" aria-label="In progress" />
+			)}
+			{step.status === "completed" && (
+				<IconCheck className="size-3 text-success" aria-label="Completed" />
+			)}
+			{step.status === "failed" && <IconXmark className="size-3" aria-label="Failed" />}
+		</button>
+	)
+}
+
+interface ToolCallDetailProps {
+	step: AgentStep
+}
+
+/**
+ * Detail panel shown below chips when one is selected.
+ */
+function ToolCallDetail({ step }: ToolCallDetailProps) {
+	return (
+		<motion.div
+			initial={{ opacity: 0, height: 0 }}
+			animate={{ opacity: 1, height: "auto" }}
+			exit={{ opacity: 0, height: 0 }}
+			transition={{ duration: 0.15 }}
+			className="overflow-hidden"
+		>
+			<div className="rounded-lg border border-muted bg-muted/30 p-3 text-sm">
+				{step.toolInput && Object.keys(step.toolInput).length > 0 && (
+					<div>
+						<div className="mb-1 text-xs font-medium text-muted-fg">Input</div>
+						<pre className="overflow-x-auto font-mono text-xs text-fg">
+							{JSON.stringify(step.toolInput, null, 2)}
+						</pre>
+					</div>
+				)}
+				{step.toolOutput !== undefined && (
+					<div className={step.toolInput && Object.keys(step.toolInput).length > 0 ? "mt-2" : ""}>
+						<div className="mb-1 text-xs font-medium text-muted-fg">Output</div>
+						<pre className="overflow-x-auto font-mono text-xs text-success">
+							{typeof step.toolOutput === "string"
+								? step.toolOutput
+								: JSON.stringify(step.toolOutput, null, 2)}
+						</pre>
+					</div>
+				)}
+				{step.toolError && (
+					<div className={step.toolInput || step.toolOutput !== undefined ? "mt-2" : ""}>
+						<div className="mb-1 text-xs font-medium text-danger">Error</div>
+						<div className="text-xs text-danger">{step.toolError}</div>
+					</div>
+				)}
+			</div>
+		</motion.div>
+	)
+}
+
+interface ToolCallGroupProps {
+	steps: AgentStep[]
+	currentIndex: number | null
+	startIndex: number
+}
+
+/**
+ * Container for grouped tool calls with expand-below pattern.
+ * Tracks which chip is expanded, shows detail panel below all chips.
+ */
+function ToolCallGroup({ steps, currentIndex, startIndex }: ToolCallGroupProps) {
+	const [expandedId, setExpandedId] = useState<string | null>(null)
+	const expandedStep = steps.find((s) => s.id === expandedId)
+
+	return (
+		<div className="space-y-1.5">
+			{/* Chips row */}
+			<div className="flex flex-wrap gap-1.5">
+				{steps.map((step, idx) => (
+					<ToolCallChip
+						key={step.id}
+						step={step}
+						isExpanded={expandedId === step.id}
+						isActive={startIndex + idx === currentIndex}
+						onToggle={() => setExpandedId(expandedId === step.id ? null : step.id)}
+					/>
+				))}
+			</div>
+			{/* Detail panel below */}
+			<AnimatePresence mode="wait">
+				{expandedStep && <ToolCallDetail key={expandedStep.id} step={expandedStep} />}
+			</AnimatePresence>
+		</div>
 	)
 }
 
