@@ -1,4 +1,4 @@
-import { createContext, memo, use, useEffect, useMemo, useState } from "react"
+import { createContext, memo, use, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import type { IntegrationConnection } from "@hazel/domain/models"
@@ -589,18 +589,22 @@ interface StepGroupProps {
  */
 function StepGroup({ group, currentIndex, globalFailed }: StepGroupProps) {
 	const [expandedId, setExpandedId] = useState<string | null>(null)
+	const prevStatusRef = useRef(group.thinking?.status)
 
-	// Auto-collapse thinking when completed or failed
+	// Auto-collapse thinking only when status TRANSITIONS to completed/failed
 	useEffect(() => {
-		if (group.thinking) {
-			const status = group.thinking.status
-			if (
-				(status === "completed" || status === "failed" || globalFailed) &&
-				expandedId === group.thinking.id
-			) {
+		if (group.thinking && expandedId === group.thinking.id) {
+			const prevStatus = prevStatusRef.current
+			const newStatus = group.thinking.status
+			// Only collapse if status just changed to completed/failed (or global failed)
+			if (prevStatus === "active" && (newStatus === "completed" || newStatus === "failed")) {
+				setExpandedId(null)
+			}
+			if (globalFailed && prevStatus !== "failed") {
 				setExpandedId(null)
 			}
 		}
+		prevStatusRef.current = group.thinking?.status
 	}, [group.thinking?.status, globalFailed, group.thinking?.id, expandedId])
 
 	const expandedThinking = group.thinking && expandedId === group.thinking.id
