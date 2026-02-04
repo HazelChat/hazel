@@ -5,6 +5,7 @@ import type { IntegrationConnection } from "@hazel/domain/models"
 import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
 import { ShinyText } from "~/components/ui/shiny-text"
 import IconCheck from "~/components/icons/icon-check"
+import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { IconChevronUp } from "~/components/icons/icon-chevron-up"
 import IconLoader from "~/components/icons/icon-loader"
 import IconSquareTerminal from "~/components/icons/icon-square-terminal"
@@ -45,6 +46,65 @@ function getToolIntegrationProvider(toolName: string | undefined): IntegrationPr
 		return prefix as IntegrationProvider
 	}
 	return null
+}
+
+// ============================================================================
+// Collapsible Content
+// ============================================================================
+
+/** Maximum number of lines to show before collapsing */
+const COLLAPSE_THRESHOLD = 15
+
+interface CollapsibleContentProps {
+	children: React.ReactNode
+	/** Content string used for line counting */
+	content: string
+}
+
+/**
+ * Wrapper component that adds show more/less behavior for tall content.
+ * Uses the same pattern as code-block-element.tsx.
+ */
+function CollapsibleContent({ children, content }: CollapsibleContentProps) {
+	const [expanded, setExpanded] = useState(false)
+
+	const lineCount = content.split("\n").length
+	const isCollapsible = lineCount > COLLAPSE_THRESHOLD
+
+	if (!isCollapsible) {
+		return <>{children}</>
+	}
+
+	return (
+		<div className="relative">
+			<div className={cn(isCollapsible && !expanded && "max-h-80 overflow-hidden")}>{children}</div>
+			<div
+				className={cn(
+					"flex items-end justify-center pb-2",
+					!expanded &&
+						"-mx-3 -mb-3 absolute right-0 bottom-0 left-0 bg-gradient-to-t from-muted via-muted/80 to-transparent pt-12",
+				)}
+			>
+				<button
+					type="button"
+					onClick={() => setExpanded(!expanded)}
+					className="flex cursor-pointer items-center gap-1 rounded-md bg-accent-9/20 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent-9/30"
+				>
+					{expanded ? (
+						<>
+							<IconChevronUp className="size-3.5" />
+							Show less
+						</>
+					) : (
+						<>
+							<IconChevronDown className="size-3.5" />
+							Show more ({lineCount} lines)
+						</>
+					)}
+				</button>
+			</div>
+		</div>
+	)
 }
 
 // ============================================================================
@@ -371,6 +431,8 @@ interface ThinkingDetailProps {
  * Expandable detail panel for thinking content.
  */
 function ThinkingDetail({ step }: ThinkingDetailProps) {
+	const content = step.content || "Processing..."
+
 	return (
 		<motion.div
 			initial={{ opacity: 0, height: 0 }}
@@ -380,7 +442,7 @@ function ThinkingDetail({ step }: ThinkingDetailProps) {
 			className="overflow-hidden"
 		>
 			<div className="rounded-lg border border-muted bg-muted/30 p-3 text-sm text-muted-fg">
-				{step.content || "Processing..."}
+				<CollapsibleContent content={content}>{content}</CollapsibleContent>
 			</div>
 		</motion.div>
 	)
@@ -530,6 +592,16 @@ interface ToolCallDetailProps {
  * Detail panel shown below chips when one is selected.
  */
 function ToolCallDetail({ step }: ToolCallDetailProps) {
+	// Compute full content for line counting
+	const inputText = step.toolInput ? JSON.stringify(step.toolInput, null, 2) : ""
+	const outputText =
+		step.toolOutput !== undefined
+			? typeof step.toolOutput === "string"
+				? step.toolOutput
+				: JSON.stringify(step.toolOutput, null, 2)
+			: ""
+	const fullContent = [inputText, outputText, step.toolError].filter(Boolean).join("\n")
+
 	return (
 		<motion.div
 			initial={{ opacity: 0, height: 0 }}
@@ -539,30 +611,34 @@ function ToolCallDetail({ step }: ToolCallDetailProps) {
 			className="overflow-hidden"
 		>
 			<div className="rounded-lg border border-muted bg-muted/30 p-3 text-sm">
-				{step.toolInput && Object.keys(step.toolInput).length > 0 && (
-					<div>
-						<div className="mb-1 text-xs font-medium text-muted-fg">Input</div>
-						<pre className="overflow-x-auto font-mono text-xs text-fg">
-							{JSON.stringify(step.toolInput, null, 2)}
-						</pre>
-					</div>
-				)}
-				{step.toolOutput !== undefined && (
-					<div className={step.toolInput && Object.keys(step.toolInput).length > 0 ? "mt-2" : ""}>
-						<div className="mb-1 text-xs font-medium text-muted-fg">Output</div>
-						<pre className="overflow-x-auto font-mono text-xs text-success">
-							{typeof step.toolOutput === "string"
-								? step.toolOutput
-								: JSON.stringify(step.toolOutput, null, 2)}
-						</pre>
-					</div>
-				)}
-				{step.toolError && (
-					<div className={step.toolInput || step.toolOutput !== undefined ? "mt-2" : ""}>
-						<div className="mb-1 text-xs font-medium text-danger">Error</div>
-						<div className="text-xs text-danger">{step.toolError}</div>
-					</div>
-				)}
+				<CollapsibleContent content={fullContent}>
+					{step.toolInput && Object.keys(step.toolInput).length > 0 && (
+						<div>
+							<div className="mb-1 text-xs font-medium text-muted-fg">Input</div>
+							<pre className="overflow-x-auto font-mono text-xs text-fg">
+								{JSON.stringify(step.toolInput, null, 2)}
+							</pre>
+						</div>
+					)}
+					{step.toolOutput !== undefined && (
+						<div
+							className={step.toolInput && Object.keys(step.toolInput).length > 0 ? "mt-2" : ""}
+						>
+							<div className="mb-1 text-xs font-medium text-muted-fg">Output</div>
+							<pre className="overflow-x-auto font-mono text-xs text-success">
+								{typeof step.toolOutput === "string"
+									? step.toolOutput
+									: JSON.stringify(step.toolOutput, null, 2)}
+							</pre>
+						</div>
+					)}
+					{step.toolError && (
+						<div className={step.toolInput || step.toolOutput !== undefined ? "mt-2" : ""}>
+							<div className="mb-1 text-xs font-medium text-danger">Error</div>
+							<div className="text-xs text-danger">{step.toolError}</div>
+						</div>
+					)}
+				</CollapsibleContent>
 			</div>
 		</motion.div>
 	)
