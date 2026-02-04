@@ -295,18 +295,22 @@ interface ThinkingChipProps {
 	isExpanded: boolean
 	isActive?: boolean
 	globalFailed?: boolean
+	/** When true, renders with tool-chip-like styling (bordered pill) */
+	standalone?: boolean
 	onToggle: () => void
 }
 
 /**
  * Compact inline indicator for thinking steps.
  * Shows animated indicator when active, duration when complete.
+ * When standalone (no tool calls following), renders with tool-chip-like styling.
  */
 function ThinkingChip({
 	step,
 	isExpanded,
 	isActive = false,
 	globalFailed = false,
+	standalone = false,
 	onToggle,
 }: ThinkingChipProps) {
 	const durationMs = useMemo(() => {
@@ -317,18 +321,35 @@ function ThinkingChip({
 
 	const isThinking = step.status === "active" && isActive && !globalFailed
 
+	// Standalone: show "Thought for Xs", Inline: show just "Xs"
+	const completedText = standalone
+		? `Thought for ${formatDuration(durationMs ?? 0)}`
+		: formatDuration(durationMs ?? 0)
+
 	return (
 		<button
 			type="button"
 			onClick={onToggle}
 			className={cn(
-				"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs transition-colors",
-				isExpanded ? "bg-muted text-muted-fg" : "text-muted-fg/60 hover:text-muted-fg",
+				"inline-flex items-center gap-1.5 rounded-full text-xs transition-colors",
+				standalone
+					? // Standalone: match tool chip style (bordered pill)
+						cn(
+							"border px-2.5 py-1 font-medium",
+							isExpanded
+								? "border-accent/50 bg-accent/10 text-accent-fg hover:bg-accent/20"
+								: "border-muted bg-muted/50 text-muted-fg hover:bg-muted/70",
+						)
+					: // Inline: minimal style
+						cn(
+							"px-2 py-0.5",
+							isExpanded ? "bg-muted text-muted-fg" : "text-muted-fg/80 hover:text-muted-fg",
+						),
 			)}
 		>
 			<IconBrainSparkle
 				className={cn(
-					"size-3",
+					standalone ? "size-3.5" : "size-3",
 					isThinking ? "animate-[icon-throb_1.5s_ease-in-out_infinite]" : "opacity-60",
 				)}
 				aria-hidden
@@ -336,7 +357,7 @@ function ThinkingChip({
 			{isThinking ? (
 				<ShinyText text="Thinking..." speed={1.5} color="var(--muted-fg)" shineColor="var(--fg)" />
 			) : (
-				<span>{step.status === "failed" ? "Stopped" : formatDuration(durationMs ?? 0)}</span>
+				<span>{step.status === "failed" ? "Stopped" : completedText}</span>
 			)}
 		</button>
 	)
@@ -598,6 +619,7 @@ function StepGroup({ group, currentIndex, globalFailed }: StepGroupProps) {
 						isExpanded={!!expandedThinking}
 						isActive={group.thinkingIndex === currentIndex}
 						globalFailed={globalFailed}
+						standalone={group.toolCalls.length === 0}
 						onToggle={() => setExpandedId(expandedThinking ? null : group.thinking!.id)}
 					/>
 				)}

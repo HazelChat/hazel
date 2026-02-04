@@ -628,7 +628,7 @@ runHazelBot({
 
 					// Create AI streaming session
 					const session = yield* bot.ai.stream(ctx.channelId, {
-						model: "moonshotai/kimi-k2.5 (agent)",
+						model: "moonshotai/kimi-k2.5",
 						showThinking: true,
 						showToolCalls: true,
 						loading: {
