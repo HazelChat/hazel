@@ -15,7 +15,9 @@ function RouteComponent() {
 		<div className="min-h-screen bg-canvas">
 			<header className="border-border border-b bg-surface px-4 py-3">
 				<div className="flex items-center gap-3">
-					<span className="rounded bg-warning/20 px-2 py-1 font-mono text-warning text-xs">DEV</span>
+					<span className="rounded bg-warning/20 px-2 py-1 font-mono text-warning text-xs">
+						DEV
+					</span>
 					<h1 className="font-semibold text-lg">Component Playground</h1>
 				</div>
 			</header>

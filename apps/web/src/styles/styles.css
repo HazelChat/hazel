@@ -231,6 +231,18 @@ If you want to use the typography plugin, uncomment the line below.
 		}
 	}
 
+	/* Icon Throb - subtle pulsing glow for icons */
+	@keyframes icon-throb {
+		0%,
+		100% {
+			opacity: 0.6;
+		}
+
+		50% {
+			opacity: 1;
+		}
+	}
+
 	/* Error Card Entry - fade up */
 	@keyframes error-enter {
 		from {

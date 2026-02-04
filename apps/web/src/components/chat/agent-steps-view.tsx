@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { Button, Disclosure, DisclosurePanel, Heading } from "react-aria-components"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import IconBrainSparkle from "~/components/icons/icon-brain-sparkle"
+import { ShinyText } from "~/components/ui/shiny-text"
 import IconCheck from "~/components/icons/icon-check"
 import { IconChevronUp } from "~/components/icons/icon-chevron-up"
 import IconLoader from "~/components/icons/icon-loader"
@@ -98,7 +99,15 @@ interface AgentStepsRootProps {
 	className?: string
 }
 
-type GroupedStep = { type: "single"; step: AgentStep; index: number } | { type: "tool_group"; steps: AgentStep[]; startIndex: number }
+type GroupedStep =
+	| { type: "single"; step: AgentStep; index: number }
+	| {
+			type: "step_group"
+			thinking?: AgentStep
+			thinkingIndex?: number
+			toolCalls: AgentStep[]
+			startIndex: number
+	  }
 
 /**
  * Root component for the AgentSteps compound component.
@@ -114,30 +123,52 @@ function AgentStepsRoot({ steps, currentIndex, status, children, className }: Ag
 		[status, currentIndex],
 	)
 
-	// Group consecutive tool calls
+	// Group thinking steps with their following tool calls
 	const groupedSteps = useMemo(() => {
 		const groups: GroupedStep[] = []
+		let pendingThinking: AgentStep | null = null
+		let pendingThinkingIndex: number | null = null
 		let currentToolGroup: AgentStep[] = []
 		let toolGroupStartIndex = 0
 
+		const flushToolGroup = () => {
+			if (currentToolGroup.length > 0 || pendingThinking) {
+				groups.push({
+					type: "step_group",
+					thinking: pendingThinking ?? undefined,
+					thinkingIndex: pendingThinkingIndex ?? undefined,
+					toolCalls: currentToolGroup,
+					startIndex: pendingThinking ? pendingThinkingIndex! : toolGroupStartIndex,
+				})
+				pendingThinking = null
+				pendingThinkingIndex = null
+				currentToolGroup = []
+			}
+		}
+
 		for (let i = 0; i < steps.length; i++) {
 			const step = steps[i]!
-			if (step.type === "tool_call") {
+
+			if (step.type === "thinking") {
+				// Flush any existing group before starting a new thinking
+				flushToolGroup()
+				pendingThinking = step
+				pendingThinkingIndex = i
+			} else if (step.type === "tool_call") {
 				if (currentToolGroup.length === 0) {
 					toolGroupStartIndex = i
 				}
 				currentToolGroup.push(step)
 			} else {
-				if (currentToolGroup.length > 0) {
-					groups.push({ type: "tool_group", steps: currentToolGroup, startIndex: toolGroupStartIndex })
-					currentToolGroup = []
-				}
+				// Non-thinking, non-tool_call step (text, error, etc.)
+				flushToolGroup()
 				groups.push({ type: "single", step, index: i })
 			}
 		}
-		if (currentToolGroup.length > 0) {
-			groups.push({ type: "tool_group", steps: currentToolGroup, startIndex: toolGroupStartIndex })
-		}
+
+		// Flush any remaining group
+		flushToolGroup()
+
 		return groups
 	}, [steps])
 
@@ -147,7 +178,11 @@ function AgentStepsRoot({ steps, currentIndex, status, children, className }: Ag
 	if (typeof children === "function") {
 		return (
 			<AgentStepsContext value={contextValue}>
-				<div className={cn("mt-2 space-y-2", className)} role="list" aria-label="AI agent workflow steps">
+				<div
+					className={cn("mt-2 space-y-2", className)}
+					role="list"
+					aria-label="AI agent workflow steps"
+				>
 					<AnimatePresence mode="popLayout">
 						{steps.map((step, index) => (
 							<motion.div
@@ -175,8 +210,10 @@ function AgentStepsRoot({ steps, currentIndex, status, children, className }: Ag
 			<div className={cn("mt-2 space-y-1", className)} role="list" aria-label="AI agent workflow steps">
 				<AnimatePresence mode="popLayout">
 					{groupedSteps.map((group, groupIndex) => {
-						if (group.type === "tool_group") {
-							const groupKey = group.steps.map((s) => s.id).join("-")
+						if (group.type === "step_group") {
+							const thinkingId = group.thinking?.id ?? ""
+							const toolIds = group.toolCalls.map((s) => s.id).join("-")
+							const groupKey = `${thinkingId}-${toolIds}`
 							return (
 								<motion.div
 									key={groupKey}
@@ -189,7 +226,11 @@ function AgentStepsRoot({ steps, currentIndex, status, children, className }: Ag
 										ease: [0.215, 0.61, 0.355, 1],
 									}}
 								>
-									<ToolCallGroup steps={group.steps} currentIndex={currentIndex} startIndex={group.startIndex} />
+									<StepGroup
+										group={group}
+										currentIndex={currentIndex}
+										globalFailed={contextValue.globalFailed}
+									/>
 								</motion.div>
 							)
 						}
@@ -229,17 +270,11 @@ interface AgentStepItemProps {
  * Can be used directly or as a building block for custom renderers.
  */
 const AgentStepItem = memo(function AgentStepItem({ step, index }: AgentStepItemProps) {
-	const { currentIndex, globalFailed } = useAgentStepsContext()
+	const { currentIndex } = useAgentStepsContext()
 	const isActive = index === currentIndex
 
 	return (
-		<div
-			className={cn("text-sm", isActive && step.type !== "thinking" && "animate-pulse")}
-			role="listitem"
-		>
-			{step.type === "thinking" && (
-				<ThinkingStep step={step} isActive={isActive} globalFailed={globalFailed} />
-			)}
+		<div className={cn("text-sm", isActive && "animate-pulse")} role="listitem">
 			{step.type === "tool_call" && <ToolCallStep step={step} isActive={isActive} />}
 			{step.type === "text" && <TextStep step={step} />}
 			{step.type === "error" && <ErrorStep step={step} />}
@@ -251,55 +286,82 @@ const AgentStepItem = memo(function AgentStepItem({ step, index }: AgentStepItem
 // Step Type Components
 // ============================================================================
 
-interface ThinkingStepProps {
+// ============================================================================
+// Thinking Components (Inline Chip + Expandable Detail)
+// ============================================================================
+
+interface ThinkingChipProps {
 	step: AgentStep
+	isExpanded: boolean
 	isActive?: boolean
 	globalFailed?: boolean
+	onToggle: () => void
 }
 
-function ThinkingStep({ step, isActive = false, globalFailed = false }: ThinkingStepProps) {
-	// Calculate duration from startedAt/completedAt (in milliseconds)
+/**
+ * Compact inline indicator for thinking steps.
+ * Shows animated indicator when active, duration when complete.
+ */
+function ThinkingChip({
+	step,
+	isExpanded,
+	isActive = false,
+	globalFailed = false,
+	onToggle,
+}: ThinkingChipProps) {
 	const durationMs = useMemo(() => {
 		if (!step.startedAt) return null
 		const endTime = step.completedAt ?? Date.now()
 		return endTime - step.startedAt
 	}, [step.startedAt, step.completedAt])
 
-	// Default collapsed, auto-collapse when completed or when global status becomes failed
-	const [isExpanded, setIsExpanded] = useState(false)
-
-	useEffect(() => {
-		if (step.status === "completed" || step.status === "failed" || globalFailed) setIsExpanded(false)
-	}, [step.status, globalFailed])
+	const isThinking = step.status === "active" && isActive && !globalFailed
 
 	return (
-		<Disclosure isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
-			<Heading>
-				<Button
-					slot="trigger"
-					className="flex w-full items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-fg text-sm transition-colors hover:bg-muted/70"
-				>
-					<IconBrainSparkle className="size-4 shrink-0" aria-hidden />
-					<span className="flex-1 text-left">
-						{step.status === "active"
-							? "Thinking..."
-							: step.status === "failed"
-								? "Thinking stopped"
-								: `Thought for ${formatDuration(durationMs ?? 0)}`}
-					</span>
-					{step.status === "active" && isActive && !globalFailed && (
-						<IconLoader className="size-4 animate-spin" aria-label="In progress" />
-					)}
-					<IconChevronUp
-						className={cn("size-4 transition-transform", !isExpanded && "rotate-180")}
-						aria-hidden
-					/>
-				</Button>
-			</Heading>
-			<DisclosurePanel className="px-3 py-2 text-muted-fg text-sm">
+		<button
+			type="button"
+			onClick={onToggle}
+			className={cn(
+				"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs transition-colors",
+				isExpanded ? "bg-muted text-muted-fg" : "text-muted-fg/60 hover:text-muted-fg",
+			)}
+		>
+			<IconBrainSparkle
+				className={cn(
+					"size-3",
+					isThinking ? "animate-[icon-throb_1.5s_ease-in-out_infinite]" : "opacity-60",
+				)}
+				aria-hidden
+			/>
+			{isThinking ? (
+				<ShinyText text="Thinking..." speed={1.5} color="var(--muted-fg)" shineColor="var(--fg)" />
+			) : (
+				<span>{step.status === "failed" ? "Stopped" : formatDuration(durationMs ?? 0)}</span>
+			)}
+		</button>
+	)
+}
+
+interface ThinkingDetailProps {
+	step: AgentStep
+}
+
+/**
+ * Expandable detail panel for thinking content.
+ */
+function ThinkingDetail({ step }: ThinkingDetailProps) {
+	return (
+		<motion.div
+			initial={{ opacity: 0, height: 0 }}
+			animate={{ opacity: 1, height: "auto" }}
+			exit={{ opacity: 0, height: 0 }}
+			transition={{ duration: 0.15 }}
+			className="overflow-hidden"
+		>
+			<div className="rounded-lg border border-muted bg-muted/30 p-3 text-sm text-muted-fg">
 				{step.content || "Processing..."}
-			</DisclosurePanel>
-		</Disclosure>
+			</div>
+		</motion.div>
 	)
 }
 
@@ -404,6 +466,8 @@ interface ToolCallChipProps {
  * Shows icon + short name + status indicator.
  */
 function ToolCallChip({ step, isExpanded, isActive = false, onToggle }: ToolCallChipProps) {
+	const isRunning = step.status === "active" && isActive
+
 	return (
 		<button
 			type="button"
@@ -411,22 +475,28 @@ function ToolCallChip({ step, isExpanded, isActive = false, onToggle }: ToolCall
 			className={cn(
 				"inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
 				"border",
-				step.status === "failed"
-					? "border-danger/30 bg-danger/10 text-danger hover:bg-danger/20"
-					: isExpanded
-						? "border-accent/50 bg-accent/10 text-accent-fg hover:bg-accent/20"
-						: "border-muted bg-muted/50 text-muted-fg hover:bg-muted/70",
+				isExpanded
+					? "border-accent/50 bg-accent/10 text-accent-fg hover:bg-accent/20"
+					: "border-muted bg-muted/50 text-muted-fg hover:bg-muted/70",
 			)}
 		>
 			<ToolIcon toolName={step.toolName} className="size-3.5" />
-			<span className="font-mono">{getToolDisplayName(step.toolName)}</span>
-			{step.status === "active" && isActive && (
-				<IconLoader className="size-3 animate-spin" aria-label="In progress" />
+			{isRunning ? (
+				<ShinyText
+					text={getToolDisplayName(step.toolName)}
+					speed={1.5}
+					color="var(--muted-fg)"
+					shineColor="var(--fg)"
+					className="font-mono"
+				/>
+			) : (
+				<span className="font-mono">{getToolDisplayName(step.toolName)}</span>
 			)}
+			{isRunning && <IconLoader className="size-3 animate-spin" aria-label="In progress" />}
 			{step.status === "completed" && (
 				<IconCheck className="size-3 text-success" aria-label="Completed" />
 			)}
-			{step.status === "failed" && <IconXmark className="size-3" aria-label="Failed" />}
+			{step.status === "failed" && <IconXmark className="size-3 text-danger" aria-label="Failed" />}
 		</button>
 	)
 }
@@ -477,37 +547,76 @@ function ToolCallDetail({ step }: ToolCallDetailProps) {
 	)
 }
 
-interface ToolCallGroupProps {
-	steps: AgentStep[]
+// ============================================================================
+// Step Group Component (Thinking + Tool Calls)
+// ============================================================================
+
+interface StepGroupProps {
+	group: {
+		thinking?: AgentStep
+		thinkingIndex?: number
+		toolCalls: AgentStep[]
+		startIndex: number
+	}
 	currentIndex: number | null
-	startIndex: number
+	globalFailed: boolean
 }
 
 /**
- * Container for grouped tool calls with expand-below pattern.
- * Tracks which chip is expanded, shows detail panel below all chips.
+ * Renders a thinking indicator inline with tool chips.
+ * Tracks which item is expanded (thinking OR a tool), shows detail panel below.
  */
-function ToolCallGroup({ steps, currentIndex, startIndex }: ToolCallGroupProps) {
+function StepGroup({ group, currentIndex, globalFailed }: StepGroupProps) {
 	const [expandedId, setExpandedId] = useState<string | null>(null)
-	const expandedStep = steps.find((s) => s.id === expandedId)
+
+	// Auto-collapse thinking when completed or failed
+	useEffect(() => {
+		if (group.thinking) {
+			const status = group.thinking.status
+			if (
+				(status === "completed" || status === "failed" || globalFailed) &&
+				expandedId === group.thinking.id
+			) {
+				setExpandedId(null)
+			}
+		}
+	}, [group.thinking?.status, globalFailed, group.thinking?.id, expandedId])
+
+	const expandedThinking = group.thinking && expandedId === group.thinking.id
+	const expandedTool = group.toolCalls.find((t) => t.id === expandedId)
+
+	// Calculate tool call start index (after thinking if present)
+	const toolStartIndex = group.thinking ? group.startIndex + 1 : group.startIndex
 
 	return (
 		<div className="space-y-1.5">
-			{/* Chips row */}
-			<div className="flex flex-wrap gap-1.5">
-				{steps.map((step, idx) => (
+			{/* Main row: thinking indicator + tool chips */}
+			<div className="flex flex-wrap items-center gap-1.5">
+				{group.thinking && (
+					<ThinkingChip
+						step={group.thinking}
+						isExpanded={!!expandedThinking}
+						isActive={group.thinkingIndex === currentIndex}
+						globalFailed={globalFailed}
+						onToggle={() => setExpandedId(expandedThinking ? null : group.thinking!.id)}
+					/>
+				)}
+				{group.toolCalls.map((step, idx) => (
 					<ToolCallChip
 						key={step.id}
 						step={step}
 						isExpanded={expandedId === step.id}
-						isActive={startIndex + idx === currentIndex}
+						isActive={toolStartIndex + idx === currentIndex}
 						onToggle={() => setExpandedId(expandedId === step.id ? null : step.id)}
 					/>
 				))}
 			</div>
-			{/* Detail panel below */}
+			{/* Expand panel below */}
 			<AnimatePresence mode="wait">
-				{expandedStep && <ToolCallDetail key={expandedStep.id} step={expandedStep} />}
+				{expandedThinking && group.thinking && (
+					<ThinkingDetail key={group.thinking.id} step={group.thinking} />
+				)}
+				{expandedTool && <ToolCallDetail key={expandedTool.id} step={expandedTool} />}
 			</AnimatePresence>
 		</div>
 	)
@@ -557,9 +666,9 @@ function ErrorStep({ step }: ErrorStepProps) {
  * </AgentSteps.Root>
  * ```
  *
- * @example Individual step components
+ * @example Individual components
  * ```tsx
- * <AgentSteps.Thinking step={thinkingStep} isActive={true} />
+ * <AgentSteps.ThinkingChip step={thinkingStep} isExpanded={false} onToggle={...} />
  * <AgentSteps.ToolCall step={toolCallStep} isActive={false} />
  * <AgentSteps.Text step={textStep} />
  * <AgentSteps.Error step={errorStep} />
@@ -568,8 +677,11 @@ function ErrorStep({ step }: ErrorStepProps) {
 export const AgentSteps = {
 	Root: AgentStepsRoot,
 	Step: AgentStepItem,
-	Thinking: ThinkingStep,
+	ThinkingChip: ThinkingChip,
+	ThinkingDetail: ThinkingDetail,
 	ToolCall: ToolCallStep,
+	ToolCallChip: ToolCallChip,
+	ToolCallDetail: ToolCallDetail,
 	Text: TextStep,
 	Error: ErrorStep,
 }
