@@ -27,7 +27,7 @@ import { Config, Effect, Layer } from "effect"
 export const TracingLive = Layer.unwrapEffect(
 	Effect.gen(function* () {
 		const environment = yield* Config.string("OTEL_ENVIRONMENT").pipe(Config.withDefault("local"))
-		const commitSha = yield* Config.string("RAILWAY_GIT_COMMIT_SHA,").pipe(Config.withDefault("unknown"))
+		const commitSha = yield* Config.string("RAILWAY_GIT_COMMIT_SHA").pipe(Config.withDefault("unknown"))
 
 		const otelBaseUrl = yield* Config.string("OTEL_BASE_URL").pipe(
 			Config.withDefault("https://ingest.eu.signoz.cloud"),

@@ -20,6 +20,7 @@ import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import {
+	Cache,
 	Config,
 	Context,
 	Duration,
@@ -30,6 +31,7 @@ import {
 	Option,
 	RateLimiter,
 	Redacted,
+	Ref,
 	Schema,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
@@ -75,6 +77,7 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly backendUrl: string
 	readonly botToken: string
 	readonly commands: Commands
+	readonly mentionable: boolean
 }
 
 export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
@@ -126,6 +129,11 @@ export type ChannelMemberHandler<E = HandlerError, R = never> = (
 export type CommandHandler<Args, E = HandlerError, R = never> = (
 	ctx: TypedCommandContext<Args>,
 ) => Effect.Effect<void, E, R>
+
+/**
+ * Handler for when the bot is @mentioned in a message
+ */
+export type MentionHandler<E = HandlerError, R = never> = (message: MessageType) => Effect.Effect<void, E, R>
 
 // Re-export command types for convenience
 export {
@@ -205,23 +213,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			(ctx: TypedCommandContext<any>) => Effect.Effect<void, any, any>
 		>()
 
-		// Cache for enabled integrations (30s TTL)
-		const enabledIntegrationsCache = new Map<
-			string,
-			{ providers: Set<IntegrationConnection.IntegrationProvider>; expiresAt: number }
-		>()
-		const ENABLED_INTEGRATIONS_CACHE_TTL_MS = 30_000
-		const CACHE_PRUNE_THRESHOLD = 100
+		// Mention handler registry - uses Ref for safe mutable state
+		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
+		type MentionHandlerFn = (message: MessageType) => Effect.Effect<void, any, any>
+		const mentionHandlersRef = yield* Ref.make<Array<MentionHandlerFn>>([])
 
-		// Prune expired cache entries to prevent unbounded memory growth
-		const pruneExpiredCacheEntries = () => {
-			const now = Date.now()
-			for (const [key, entry] of enabledIntegrationsCache) {
-				if (entry.expiresAt < now) {
-					enabledIntegrationsCache.delete(key)
-				}
-			}
-		}
+		// Helper to extract user mentions from content
+		// Mention format: @[userId:USER_ID]
+		const MENTION_PATTERN = /@\[userId:([^\]]+)\]/g
+		const extractUserMentions = (content: string): string[] =>
+			[...content.matchAll(MENTION_PATTERN)].map((m) => m[1]).filter(Boolean)
+
+		// Get mentionable flag from runtime config
+		const mentionableEnabled = Option.match(runtimeConfigOption, {
+			onNone: () => false,
+			onSome: (c) => c.mentionable ?? false,
+		})
+
+		// Cache for enabled integrations (30s TTL, max 100 entries)
+		const enabledIntegrationsCache = yield* Cache.make({
+			capacity: 100,
+			timeToLive: Duration.seconds(30),
+			lookup: (orgId: OrganizationId) =>
+				httpApiClient["bot-commands"].getEnabledIntegrations({ path: { orgId } }).pipe(
+					Effect.map((r) => new Set(r.providers)),
+					Effect.withSpan("bot.integration.getEnabled", { attributes: { orgId } }),
+				),
+		})
 
 		// Get command group from runtime config for schema decoding
 		const commandGroup = Option.map(runtimeConfigOption, (c) => c.commands)
@@ -275,6 +293,24 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					})
 
 					yield* Effect.logDebug(`Synced ${response.syncedCount} commands successfully`)
+				}),
+		})
+
+		/**
+		 * Sync mentionable flag with the backend
+		 * Updates the bot's mentionable setting in the database
+		 */
+		const syncMentionable = Option.match(runtimeConfigOption, {
+			onNone: () => Effect.void,
+			onSome: (config) =>
+				Effect.gen(function* () {
+					yield* Effect.logDebug(`Syncing mentionable=${config.mentionable} with backend...`)
+
+					yield* httpApiClient["bot-commands"].updateBotSettings({
+						payload: { mentionable: config.mentionable },
+					})
+
+					yield* Effect.logDebug("Mentionable flag synced successfully")
 				}),
 		})
 
@@ -413,6 +449,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 */
 			onChannelMemberRemoved: <E = HandlerError, R = never>(handler: ChannelMemberHandler<E, R>) =>
 				bot.on("channel_members.delete", handler),
+
+			/**
+			 * Register a handler for when the bot is @mentioned in a message.
+			 * Requires `mentionable: true` in bot config.
+			 *
+			 * @example
+			 * ```typescript
+			 * yield* bot.onMention((message) =>
+			 *   Effect.gen(function* () {
+			 *     yield* bot.message.reply(message, "You mentioned me! How can I help?")
+			 *   })
+			 * )
+			 * ```
+			 */
+			onMention: <E = HandlerError, R = never>(handler: MentionHandler<E, R>) =>
+				Ref.update(mentionHandlersRef, (handlers) => [...handlers, handler as MentionHandlerFn]),
 
 			/**
 			 * Message operations - send, reply, update, delete, react
@@ -688,39 +740,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 * }
 				 * ```
 				 */
-				getEnabled: (orgId: OrganizationId) =>
-					Effect.gen(function* () {
-						// Prune expired entries if cache is getting large
-						if (enabledIntegrationsCache.size > CACHE_PRUNE_THRESHOLD) {
-							pruneExpiredCacheEntries()
-						}
-
-						// Check cache first
-						const cacheKey = `enabled:${orgId}`
-						const cached = enabledIntegrationsCache.get(cacheKey)
-						if (cached && cached.expiresAt > Date.now()) {
-							// Return a defensive copy to prevent callers from mutating the cache
-							return new Set(cached.providers)
-						}
-
-						// Fetch from API
-						const response = yield* httpApiClient["bot-commands"]
-							.getEnabledIntegrations({ path: { orgId } })
-							.pipe(
-								Effect.withSpan("bot.integration.getEnabled", {
-									attributes: { orgId },
-								}),
-							)
-
-						// Cache the result
-						const providers = new Set(response.providers)
-						enabledIntegrationsCache.set(cacheKey, {
-							providers,
-							expiresAt: Date.now() + ENABLED_INTEGRATIONS_CACHE_TTL_MS,
-						})
-
-						return providers
-					}),
+				getEnabled: (orgId: OrganizationId) => enabledIntegrationsCache.get(orgId),
 
 				/**
 				 * Invalidate the enabled integrations cache for an organization.
@@ -728,10 +748,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				 *
 				 * @param orgId - The organization ID to invalidate cache for
 				 */
-				invalidateCache: (orgId: OrganizationId) =>
-					Effect.sync(() => {
-						enabledIntegrationsCache.delete(`enabled:${orgId}`)
-					}),
+				invalidateCache: (orgId: OrganizationId) => enabledIntegrationsCache.invalidate(orgId),
 			},
 
 			/**
@@ -806,13 +823,52 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 			/**
 			 * Start the bot client
-			 * Syncs commands with backend and begins listening to events (Electric + Redis commands)
+			 * Syncs commands and mentionable flag with backend and begins listening to events (Electric + Redis commands)
 			 */
 			start: Effect.gen(function* () {
 				yield* Effect.logDebug("Starting bot client...")
 
 				// Sync commands with backend (if configured)
 				yield* syncCommands
+
+				// Sync mentionable flag with backend
+				yield* syncMentionable
+
+				// Set up mention handling if enabled
+				if (mentionableEnabled) {
+					const mentionHandlers = yield* Ref.get(mentionHandlersRef)
+					if (mentionHandlers.length > 0) {
+						yield* bot.on("messages.insert", (message) =>
+							Effect.gen(function* () {
+								// Skip own messages
+								if (message.authorId === authContext.userId) return
+
+								// Check for bot mention in message content
+								const mentions = extractUserMentions(message.content)
+								if (!mentions.includes(authContext.userId)) return
+
+								yield* Effect.logDebug(`Bot mentioned in message ${message.id}`)
+
+								// Get current handlers (in case new ones were registered)
+								const handlers = yield* Ref.get(mentionHandlersRef)
+
+								// Call all mention handlers
+								yield* Effect.forEach(
+									handlers,
+									(handler) =>
+										handler(message).pipe(
+											Effect.catchAllCause((cause) =>
+												Effect.logError("Mention handler failed", { cause }),
+											),
+										),
+									{ discard: true },
+								)
+							}),
+						)
+
+						yield* Effect.logDebug("Mention handler registered")
+					}
+				}
 
 				// Start Electric event listener
 				yield* bot.start
@@ -1090,6 +1146,13 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly commands?: Commands
 
 	/**
+	 * Enable @mention handling. When true, the bot registers as mentionable
+	 * and triggers onMention handlers when users @ the bot in messages.
+	 * @default false
+	 */
+	readonly mentionable?: boolean
+
+	/**
 	 * Event queue configuration (optional)
 	 */
 	readonly queueConfig?: EventQueueConfig
@@ -1234,12 +1297,14 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 			)
 		: Layer.empty
 
-	// Create runtime config layer for command syncing
-	const RuntimeConfigLayer = hasCommands
+	// Create runtime config layer for command syncing and mentionable flag
+	const needsRuntimeConfig = hasCommands || config.mentionable !== undefined
+	const RuntimeConfigLayer = needsRuntimeConfig
 		? Layer.succeed(HazelBotRuntimeConfigTag, {
 				backendUrl,
 				botToken: config.botToken,
 				commands: config.commands ?? EmptyCommandGroup,
+				mentionable: config.mentionable ?? false,
 			})
 		: Layer.empty
 

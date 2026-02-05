@@ -24,6 +24,13 @@ export interface RunBotConfig<Commands extends CommandGroup<any> = EmptyCommands
 	readonly commands?: Commands
 
 	/**
+	 * Enable @mention handling. When true, the bot registers as mentionable
+	 * and triggers onMention handlers when users @ the bot in messages.
+	 * @default false
+	 */
+	readonly mentionable?: boolean
+
+	/**
 	 * Additional layers to provide to the bot program.
 	 * These are merged and provided to the setup function.
 	 */
@@ -91,6 +98,7 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			electricUrl: options.config?.electricUrl ?? envConfig.electricUrl,
 			backendUrl: options.config?.backendUrl ?? envConfig.backendUrl,
 			commands: options.commands,
+			mentionable: options.mentionable,
 			serviceName: options.serviceName ?? "hazel-bot",
 			queueConfig: options.config?.queueConfig,
 			dispatcherConfig: options.config?.dispatcherConfig,

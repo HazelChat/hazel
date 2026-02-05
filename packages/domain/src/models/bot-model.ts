@@ -23,6 +23,8 @@ export class Model extends M.Class<Model>("Bot")({
 	installCount: Schema.Number,
 	// List of integration providers this bot is allowed to use (e.g., ["linear", "github"])
 	allowedIntegrations: Schema.NullOr(Schema.Array(IntegrationProvider)),
+	// Whether this bot can be @mentioned in messages
+	mentionable: Schema.Boolean,
 	...baseFields,
 }) {}
 

@@ -18,6 +18,8 @@ export const botsTable = pgTable(
 		metadata: jsonb().$type<Record<string, any>>(),
 		isPublic: boolean().notNull().default(false),
 		installCount: integer().notNull().default(0),
+		// Whether this bot can be @mentioned in messages
+		mentionable: boolean().notNull().default(false),
 		// List of integration providers this bot is allowed to use (e.g., ["linear", "github"])
 		allowedIntegrations: jsonb().$type<IntegrationProvider[]>().default([]),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),

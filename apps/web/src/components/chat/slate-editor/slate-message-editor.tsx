@@ -366,7 +366,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		})
 
 		// Get options for each trigger type
-		const mentionOptions = useMentionOptions(autocompleteState)
+		const mentionOptions = useMentionOptions(autocompleteState, orgId)
 		const commandOptions = useBotCommandOptions(autocompleteState, botCommands)
 		const emojiOptions = useEmojiOptions(autocompleteState)
 
@@ -514,7 +514,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 						const mention: MentionElementType = {
 							type: "mention",
-							userId: option.data.type === "user" ? option.data.id : option.data.type,
+							userId: option.data.id,
 							displayName: option.data.displayName,
 							children: [{ text: "" }],
 						}

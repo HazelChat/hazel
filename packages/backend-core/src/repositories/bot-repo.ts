@@ -208,6 +208,9 @@ export class BotRepo extends Effect.Service<BotRepo>()("BotRepo", {
 									...(input.apiTokenHash !== undefined && {
 										apiTokenHash: input.apiTokenHash,
 									}),
+									...(input.mentionable !== undefined && {
+										mentionable: input.mentionable,
+									}),
 									updatedAt: new Date(),
 								})
 								.where(

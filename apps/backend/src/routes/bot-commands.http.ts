@@ -14,6 +14,7 @@ import {
 	IntegrationNotConnectedError,
 	IntegrationTokenResponse,
 	SyncBotCommandsResponse,
+	UpdateBotSettingsResponse,
 } from "@hazel/domain/http"
 import { Redis } from "@hazel/effect-bun"
 import { Effect, Option, Stream } from "effect"
@@ -447,6 +448,37 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error while fetching enabled integrations",
+							detail: "Database error",
+						}),
+					),
+				),
+			),
+		)
+		// Update bot settings (bot token auth)
+		.handle("updateBotSettings", ({ payload }) =>
+			Effect.gen(function* () {
+				const bot = yield* validateBotToken
+				const botRepo = yield* BotRepo
+
+				// Build update object with only provided fields
+				const updates: { id: typeof bot.id; mentionable?: boolean } = { id: bot.id }
+
+				if (payload.mentionable !== undefined) {
+					updates.mentionable = payload.mentionable
+				}
+
+				// Only update if there are fields to update
+				if (Object.keys(updates).length > 1) {
+					yield* botRepo.update(updates).pipe(withSystemActor)
+					yield* Effect.logDebug(`Updated bot ${bot.id} settings`, { updates })
+				}
+
+				return new UpdateBotSettingsResponse({ success: true })
+			}).pipe(
+				Effect.catchTag("DatabaseError", () =>
+					Effect.fail(
+						new InternalServerError({
+							message: "Database error while updating bot settings",
 							detail: "Database error",
 						}),
 					),

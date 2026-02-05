@@ -85,7 +85,7 @@ export interface AutocompleteItemRenderProps<T> {
 // Mention trigger data
 export interface MentionData {
 	id: string
-	type: "user" | "channel" | "here"
+	type: "user" | "channel" | "here" | "bot"
 	displayName: string
 	avatarUrl?: string
 	status?: "online" | "offline" | "away" | "busy" | "dnd"

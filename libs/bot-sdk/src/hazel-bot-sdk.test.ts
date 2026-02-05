@@ -1,0 +1,84 @@
+import { describe, expect, it, beforeAll, afterAll, afterEach } from "@effect/vitest"
+import { Effect, Layer, Ref } from "effect"
+import { http, HttpResponse } from "msw"
+import { setupServer } from "msw/node"
+import {
+	EmptyCommandGroup,
+	HAZEL_SUBSCRIPTIONS,
+	HazelBotClient,
+	HazelBotRuntimeConfigTag,
+	createBotClientTag,
+} from "./hazel-bot-sdk.ts"
+import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
+
+const BACKEND_URL = "http://localhost:3070"
+
+const server = setupServer(
+	http.patch(`${BACKEND_URL}/bot-commands/settings`, async () => HttpResponse.json({ success: true })),
+)
+
+describe("HazelBotClient mention handling", () => {
+	beforeAll(() => {
+		server.listen({ onUnhandledRequest: "error" })
+	})
+
+	afterEach(() => {
+		server.resetHandlers()
+	})
+
+	afterAll(() => {
+		server.close()
+	})
+
+	it.effect("registers mention handler before bot.start", () =>
+		Effect.gen(function* () {
+			const registered = yield* Ref.make<string[]>([])
+			const BotClientTag = createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
+
+			const botClientStub = {
+				on: (eventType: string, _handler: unknown) =>
+					Ref.update(registered, (events) => [...events, eventType]).pipe(Effect.asVoid),
+				start: Effect.gen(function* () {
+					const events = yield* Ref.get(registered)
+					if (!events.includes("messages.insert")) {
+						return yield* Effect.fail(
+							new Error("messages.insert not registered before bot.start"),
+						)
+					}
+				}),
+				getAuthContext: Effect.succeed({
+					botId: "bot-1",
+					botName: "Test Bot",
+					userId: "user-1",
+				}),
+			}
+
+			const TestLayer = HazelBotClient.Default.pipe(
+				Layer.provide(Layer.succeed(BotClientTag, botClientStub)),
+				Layer.provide(Layer.succeed(BotRpcClient, {} as any)),
+				Layer.provide(
+					Layer.succeed(BotRpcClientConfigTag, {
+						backendUrl: BACKEND_URL,
+						botToken: "test-bot-token",
+					}),
+				),
+				Layer.provide(
+					Layer.succeed(HazelBotRuntimeConfigTag, {
+						backendUrl: BACKEND_URL,
+						botToken: "test-bot-token",
+						commands: EmptyCommandGroup,
+						mentionable: true,
+					}),
+				),
+			)
+
+			const program = Effect.gen(function* () {
+				const bot = yield* HazelBotClient
+				yield* bot.onMention(() => Effect.void)
+				yield* bot.start
+			})
+
+			yield* program.pipe(Effect.scoped, Effect.provide(TestLayer))
+		}),
+	)
+})

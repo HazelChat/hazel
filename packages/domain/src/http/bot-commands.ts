@@ -106,6 +106,18 @@ export class EnabledIntegrationsResponse extends Schema.Class<EnabledIntegration
 	providers: Schema.Array(IntegrationProvider),
 }) {}
 
+export class UpdateBotSettingsRequest extends Schema.Class<UpdateBotSettingsRequest>(
+	"UpdateBotSettingsRequest",
+)({
+	mentionable: Schema.optional(Schema.Boolean),
+}) {}
+
+export class UpdateBotSettingsResponse extends Schema.Class<UpdateBotSettingsResponse>(
+	"UpdateBotSettingsResponse",
+)({
+	success: Schema.Boolean,
+}) {}
+
 export class IntegrationNotAllowedError extends Schema.TaggedError<IntegrationNotAllowedError>()(
 	"IntegrationNotAllowedError",
 	{
@@ -232,6 +244,23 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					description:
 						"Get the list of integration providers enabled for the bot in the target org. Returns the intersection of the bot's allowedIntegrations and the org's active integration connections.",
 					summary: "Get enabled integrations",
+				}),
+			),
+	)
+	// Update bot settings (bot token auth)
+	// Allows bots to update their own settings like mentionable flag
+	.add(
+		HttpApiEndpoint.patch("updateBotSettings", `/settings`)
+			.addSuccess(UpdateBotSettingsResponse)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPayload(UpdateBotSettingsRequest)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Update Bot Settings",
+					description:
+						"Update the bot's settings. Currently supports updating the mentionable flag which controls whether the bot can be @mentioned in messages.",
+					summary: "Update bot settings",
 				}),
 			),
 	)
