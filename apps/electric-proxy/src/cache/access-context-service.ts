@@ -101,20 +101,27 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 
 				lookup: (request: BotAccessContextRequest) =>
 					Effect.gen(function* () {
-						const botUserId = request.userId as UserId
+						const botId = request.botId as BotId
 
-						// Query channel memberships for the bot's userId
-						const channelMembers = yield* db
+						// Query channels in all orgs where the bot is installed.
+						// Bots are org-level (not channel members), so we join
+						// bot_installations → channels by organizationId.
+						const channels = yield* db
 							.execute((client) =>
 								client
-									.select({ channelId: schema.channelMembersTable.channelId })
-									.from(schema.channelMembersTable)
-									.where(
+									.selectDistinct({ channelId: schema.channelsTable.id })
+									.from(schema.botInstallationsTable)
+									.innerJoin(
+										schema.channelsTable,
 										and(
-											eq(schema.channelMembersTable.userId, botUserId),
-											isNull(schema.channelMembersTable.deletedAt),
+											eq(
+												schema.channelsTable.organizationId,
+												schema.botInstallationsTable.organizationId,
+											),
+											isNull(schema.channelsTable.deletedAt),
 										),
-									),
+									)
+									.where(eq(schema.botInstallationsTable.botId, botId)),
 							)
 							.pipe(
 								Effect.catchTag(
@@ -129,7 +136,7 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 								),
 							)
 
-						const channelIds = channelMembers.map((m) => m.channelId)
+						const channelIds = channels.map((c) => c.channelId)
 
 						return { channelIds }
 					}),

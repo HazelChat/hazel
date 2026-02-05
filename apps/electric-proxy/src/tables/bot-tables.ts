@@ -16,10 +16,7 @@ export class BotTableAccessError extends Schema.TaggedError<BotTableAccessError>
  * Tables that bots can access through the Electric proxy.
  * This is a restricted subset - more tables can be added as needed.
  */
-export const BOT_ALLOWED_TABLES = [
-	"messages",
-	// Future: "channels", "attachments", "channel_members", etc.
-] as const
+export const BOT_ALLOWED_TABLES = ["messages", "channels", "channel_members"] as const
 
 export type BotAllowedTable = (typeof BOT_ALLOWED_TABLES)[number]
 
@@ -81,6 +78,28 @@ export function getBotWhereClauseForTable(
 					schema.messagesTable.channelId,
 					bot.accessContext.channelIds,
 					schema.messagesTable.deletedAt,
+				),
+			),
+		),
+
+		Match.when("channels", () =>
+			// Channels the bot is a member of
+			Effect.succeed(
+				buildInClauseWithDeletedAt(
+					schema.channelsTable.id,
+					bot.accessContext.channelIds,
+					schema.channelsTable.deletedAt,
+				),
+			),
+		),
+
+		Match.when("channel_members", () =>
+			// Channel members from channels the bot is a member of
+			Effect.succeed(
+				buildInClauseWithDeletedAt(
+					schema.channelMembersTable.channelId,
+					bot.accessContext.channelIds,
+					schema.channelMembersTable.deletedAt,
 				),
 			),
 		),

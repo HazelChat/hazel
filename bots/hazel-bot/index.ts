@@ -601,7 +601,10 @@ const handleAIRequest = (params: {
 		})
 
 		// Generate dynamic instructions based on enabled integrations
-		const integrationInstructions = generateIntegrationInstructions(enabledIntegrations, INTEGRATION_INSTRUCTIONS)
+		const integrationInstructions = generateIntegrationInstructions(
+			enabledIntegrations,
+			INTEGRATION_INSTRUCTIONS,
+		)
 
 		const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
 
@@ -713,9 +716,16 @@ runHazelBot({
 				}),
 			)
 
+			yield* bot.onMessage((message) =>
+				Effect.gen(function* () {
+					yield* Effect.log(`Received message: ${message.content}`)
+				}),
+			)
+
 			// @mention handler — reply in a thread
 			yield* bot.onMention((message) =>
 				Effect.gen(function* () {
+					yield* Effect.log(`Received @mention: ${message.content}`)
 					const authContext = yield* bot.getAuthContext
 
 					// Strip the bot mention from content to get the question
@@ -743,14 +753,12 @@ runHazelBot({
 						threadChannelId = message.threadChannelId
 					} else {
 						// Create a new thread on this message
-						const thread = yield* bot.channel
-							.createThread(message.id, message.channelId)
-							.pipe(
-								Effect.catchTag("NestedThreadError", () =>
-									// Message is already IN a thread → reply in same channel
-									Effect.succeed({ id: message.channelId }),
-								),
-							)
+						const thread = yield* bot.channel.createThread(message.id, message.channelId).pipe(
+							Effect.catchTag("NestedThreadError", () =>
+								// Message is already IN a thread → reply in same channel
+								Effect.succeed({ id: message.channelId }),
+							),
+						)
 						threadChannelId = thread.id as ChannelId
 					}
 

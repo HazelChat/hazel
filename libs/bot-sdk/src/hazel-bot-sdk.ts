@@ -98,7 +98,7 @@ export const HAZEL_SUBSCRIPTIONS = [
 	{
 		table: "channels",
 		schema: Channel.Model.json,
-		startFromNow: true,
+		startFromNow: false,
 	},
 	{
 		table: "channel_members",
@@ -247,18 +247,32 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 		// Register internal handlers to keep channel→org cache warm
 		yield* bot.on("channels.insert", (channel) =>
-			Effect.sync(() => {
+			Effect.gen(function* () {
 				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
+				yield* Effect.logInfo("[channel-cache] Cached channel from insert", {
+					channelId: channel.id,
+					orgId: channel.organizationId,
+					cacheSize: channelOrgCache.size,
+				})
 			}),
 		)
 		yield* bot.on("channels.update", (channel) =>
-			Effect.sync(() => {
+			Effect.gen(function* () {
 				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
+				yield* Effect.logInfo("[channel-cache] Cached channel from update", {
+					channelId: channel.id,
+					orgId: channel.organizationId,
+					cacheSize: channelOrgCache.size,
+				})
 			}),
 		)
 		yield* bot.on("channels.delete", (channel) =>
-			Effect.sync(() => {
+			Effect.gen(function* () {
 				channelOrgCache.delete(channel.id as ChannelId)
+				yield* Effect.logInfo("[channel-cache] Removed channel from cache", {
+					channelId: channel.id,
+					cacheSize: channelOrgCache.size,
+				})
 			}),
 		)
 
@@ -900,14 +914,35 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					if (mentionHandlers.length > 0) {
 						yield* bot.on("messages.insert", (message) =>
 							Effect.gen(function* () {
+								yield* Effect.logInfo("[mention-pipeline] Received message", {
+									messageId: message.id,
+									authorId: message.authorId,
+									channelId: message.channelId,
+								})
+
 								// Skip own messages
-								if (message.authorId === authContext.userId) return
+								if (message.authorId === authContext.userId) {
+									yield* Effect.logInfo("[mention-pipeline] Skipping own message", {
+										messageId: message.id,
+									})
+									return
+								}
 
 								// Check for bot mention in message content
 								const mentions = extractUserMentions(message.content)
-								if (!mentions.includes(authContext.userId)) return
+								if (!mentions.includes(authContext.userId)) {
+									yield* Effect.logInfo("[mention-pipeline] No bot mention found", {
+										messageId: message.id,
+										mentionsFound: mentions.length,
+									})
+									return
+								}
 
-								yield* Effect.logDebug(`Bot mentioned in message ${message.id}`)
+								yield* Effect.logInfo(`[mention-pipeline] Bot mentioned in message`, {
+									messageId: message.id,
+									channelId: message.channelId,
+									authorId: message.authorId,
+								})
 
 								// Get current handlers (in case new ones were registered)
 								const handlers = yield* Ref.get(mentionHandlersRef)
@@ -926,7 +961,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							}),
 						)
 
-						yield* Effect.logDebug("Mention handler registered")
+						yield* Effect.logInfo("[mention-pipeline] Mention handler registered", {
+							handlerCount: mentionHandlers.length,
+							botUserId: authContext.userId,
+						})
 					}
 				}
 
