@@ -2,13 +2,9 @@ import { describe, expect, it, beforeAll, afterAll, afterEach } from "@effect/vi
 import { Effect, Layer, Ref } from "effect"
 import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
-import {
-	EmptyCommandGroup,
-	HAZEL_SUBSCRIPTIONS,
-	HazelBotClient,
-	HazelBotRuntimeConfigTag,
-	createBotClientTag,
-} from "./hazel-bot-sdk.ts"
+import { HAZEL_SUBSCRIPTIONS, HazelBotClient, HazelBotRuntimeConfigTag } from "./hazel-bot-sdk.ts"
+import { EmptyCommandGroup } from "./command.ts"
+import { createBotClientTag } from "./bot-client.ts"
 import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
 
 const BACKEND_URL = "http://localhost:3070"

@@ -14,8 +14,8 @@
 		"@effect/platform": "catalog:effect",
 		"@hazel/bot-sdk": "workspace:*",
 		"@hazel/integrations": "workspace:*",
+		"@hazel/schema": "workspace:*",
 		"@openrouter/ai-sdk-provider": "^2.1.1",
-		"@supermemory/tools": "^1.3.68",
 		"ai": "^6.0.67",
 		"effect": "catalog:effect"
 	},

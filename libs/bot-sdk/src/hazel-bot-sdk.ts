@@ -241,6 +241,27 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 		})
 
+		// Channel→Organization cache - populated from Electric channel subscriptions
+		// Used by createThread to look up organizationId for a channel
+		const channelOrgCache = new Map<ChannelId, OrganizationId>()
+
+		// Register internal handlers to keep channel→org cache warm
+		yield* bot.on("channels.insert", (channel) =>
+			Effect.sync(() => {
+				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
+			}),
+		)
+		yield* bot.on("channels.update", (channel) =>
+			Effect.sync(() => {
+				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
+			}),
+		)
+		yield* bot.on("channels.delete", (channel) =>
+			Effect.sync(() => {
+				channelOrgCache.delete(channel.id as ChannelId)
+			}),
+		)
+
 		// Get command group from runtime config for schema decoding
 		const commandGroup = Option.map(runtimeConfigOption, (c) => c.commands)
 
@@ -632,7 +653,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 
 			/**
-			 * Channel operations - update
+			 * Channel operations - update, createThread, getOrganizationId
 			 */
 			channel: {
 				/**
@@ -660,6 +681,45 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							Effect.map((r) => r.data),
 							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
 						),
+
+				/**
+				 * Create a thread on a message.
+				 * Looks up the organizationId from the channel→org cache.
+				 *
+				 * @param messageId - The message to create a thread on
+				 * @param channelId - The channel the message belongs to
+				 * @returns The new thread channel data (use `.id` as the thread's ChannelId)
+				 *
+				 * @throws NestedThreadError if the message is already in a thread
+				 * @throws MessageNotFoundError if the message doesn't exist
+				 */
+				createThread: (messageId: MessageId, channelId: ChannelId) =>
+					Effect.gen(function* () {
+						const organizationId = channelOrgCache.get(channelId)
+						if (!organizationId) {
+							return yield* Effect.die(
+								new Error(
+									`No organizationId cached for channel ${channelId}. Ensure the bot is subscribed to channel events.`,
+								),
+							)
+						}
+						const result = yield* rpc.channel.createThread({
+							messageId,
+							organizationId,
+						})
+						return result.data
+					}).pipe(
+						Effect.withSpan("bot.channel.createThread", {
+							attributes: { messageId, channelId },
+						}),
+					),
+
+				/**
+				 * Get the organizationId for a channel from the cache.
+				 * Returns Option.none if the channel is not in the cache.
+				 */
+				getOrganizationId: (channelId: ChannelId) =>
+					Effect.sync(() => Option.fromNullable(channelOrgCache.get(channelId))),
 			},
 
 			/**

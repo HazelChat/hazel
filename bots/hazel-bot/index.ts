@@ -5,20 +5,19 @@ import {
 	buildIntegrationTools,
 	generateIntegrationInstructions,
 	type AIContentChunk,
+	type HazelBotClient,
 	type TokenResult,
 	type IntegrationToolFactory,
 	type ToolFactoryOptions,
 } from "@hazel/bot-sdk"
-import { Cause, Config, Effect, JSONSchema, Redacted, Runtime, Schema, Stream } from "effect"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
+import { Cause, Config, Effect, JSONSchema, Option, Redacted, Runtime, Schema, Stream } from "effect"
 import { LinearApiClient, makeLinearSdkClient } from "@hazel/integrations/linear"
 
 // Vercel AI SDK imports
 import { ToolLoopAgent, tool, jsonSchema } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { TextStreamPart, Tool } from "ai"
-
-// Supermemory integration - using @supermemory/tools for explicit memory operations
-import { supermemoryTools } from "@supermemory/tools/ai-sdk"
 
 // ============================================================================
 // Effect Schema to Vercel AI SDK Helper
@@ -528,126 +527,108 @@ const AskCommand = Command.make("ask", {
 const commands = CommandGroup.make(AskCommand)
 
 // ============================================================================
-// Bot Setup
+// Shared AI Request Handler
 // ============================================================================
 
-runHazelBot({
-	commands,
-	layers: [LinearApiClient.Default],
-	setup: (bot) =>
-		Effect.gen(function* () {
-			yield* bot.onCommand(AskCommand, (ctx) =>
-				Effect.gen(function* () {
-					yield* Effect.log(`Received /ask: ${ctx.args.message}`)
+/**
+ * Shared AI pipeline used by both /ask command and @mention handler.
+ * Creates a streaming AI session in the given channel and runs the ToolLoopAgent.
+ */
+const handleAIRequest = (params: {
+	bot: HazelBotClient
+	message: string
+	channelId: ChannelId
+	orgId: OrganizationId
+}) =>
+	Effect.gen(function* () {
+		const { bot, message, channelId, orgId } = params
 
-					const runtime = yield* Effect.runtime<any>()
-					const runPromise = Runtime.runPromise(runtime as any) as <A>(
-						effect: Effect.Effect<A, any, any>,
-					) => Promise<A>
+		const runtime = yield* Effect.runtime<any>()
+		const runPromise = Runtime.runPromise(runtime as any) as <A>(
+			effect: Effect.Effect<A, any, any>,
+		) => Promise<A>
 
-					// Get enabled integrations for this org (cached)
-					const enabledIntegrations = yield* bot.integration.getEnabled(ctx.orgId)
+		// Get enabled integrations for this org (cached)
+		const enabledIntegrations = yield* bot.integration.getEnabled(orgId)
 
-					yield* Effect.log(`Enabled integrations for org ${ctx.orgId}:`, {
-						integrations: Array.from(enabledIntegrations),
-					})
+		yield* Effect.log(`Enabled integrations for org ${orgId}:`, {
+			integrations: Array.from(enabledIntegrations),
+		})
 
-					// Token cache per provider
-					const tokenCache = new Map<string, Promise<TokenResult>>()
+		// Token cache per provider
+		const tokenCache = new Map<string, Promise<TokenResult>>()
 
-					// Create a cached token getter
-					const getAccessToken = (
-						provider: "linear" | "github" | "figma" | "notion",
-					): Promise<TokenResult> => {
-						const cached = tokenCache.get(provider)
-						if (cached) return cached
+		// Create a cached token getter
+		const getAccessToken = (provider: "linear" | "github" | "figma" | "notion"): Promise<TokenResult> => {
+			const cached = tokenCache.get(provider)
+			if (cached) return cached
 
-						const promise = (async () => {
-							try {
-								const { accessToken } = await runPromise(
-									bot.integration.getToken(ctx.orgId, provider),
-								)
-								return { ok: true, accessToken } as const
-							} catch (e: any) {
-								const tag = e && typeof e === "object" && "_tag" in e ? String(e._tag) : null
-								if (tag === "IntegrationNotConnectedError") {
-									// Invalidate cache since the integration is not connected
-									runPromise(bot.integration.invalidateCache(ctx.orgId))
-									return {
-										ok: false,
-										error: `${provider} is not connected for this organization. Please connect ${provider} and try again.`,
-									} as const
-								}
-								if (tag === "IntegrationNotAllowedError") {
-									return {
-										ok: false,
-										error: `${provider} access is not allowed for this bot. Please allow the ${provider} integration and try again.`,
-									} as const
-								}
-								return {
-									ok: false,
-									error: `Failed to get ${provider} token: ${tag ?? String(e)}`,
-								} as const
-							}
-						})()
-
-						tokenCache.set(provider, promise)
-						return promise
+			const promise = (async () => {
+				try {
+					const { accessToken } = await runPromise(bot.integration.getToken(orgId, provider))
+					return { ok: true, accessToken } as const
+				} catch (e: any) {
+					const tag = e && typeof e === "object" && "_tag" in e ? String(e._tag) : null
+					if (tag === "IntegrationNotConnectedError") {
+						// Invalidate cache since the integration is not connected
+						runPromise(bot.integration.invalidateCache(orgId))
+						return {
+							ok: false,
+							error: `${provider} is not connected for this organization. Please connect ${provider} and try again.`,
+						} as const
 					}
+					if (tag === "IntegrationNotAllowedError") {
+						return {
+							ok: false,
+							error: `${provider} access is not allowed for this bot. Please allow the ${provider} integration and try again.`,
+						} as const
+					}
+					return {
+						ok: false,
+						error: `Failed to get ${provider} token: ${tag ?? String(e)}`,
+					} as const
+				}
+			})()
 
-					// Build integration tools based on enabled integrations
-					const integrationTools = buildIntegrationTools(enabledIntegrations, [LinearToolFactory], {
-						runPromise,
-						getAccessToken,
-					})
+			tokenCache.set(provider, promise)
+			return promise
+		}
 
-					// Generate dynamic instructions based on enabled integrations
-					const integrationInstructions = generateIntegrationInstructions(
-						enabledIntegrations,
-						INTEGRATION_INSTRUCTIONS,
-					)
+		// Build integration tools based on enabled integrations
+		const integrationTools = buildIntegrationTools(enabledIntegrations, [LinearToolFactory], {
+			runPromise,
+			getAccessToken,
+		})
 
-					const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
-					const supermemoryApiKey = yield* Config.string("SUPERMEMORY_API_KEY")
+		// Generate dynamic instructions based on enabled integrations
+		const integrationInstructions = generateIntegrationInstructions(enabledIntegrations, INTEGRATION_INSTRUCTIONS)
 
-					// Memory tools from @supermemory/tools - provides addMemory and searchMemories
-					// The Memory Router proxy auto-handles conversation memory via headers
-					// Use containerTags with orgId to scope memories per organization
-					const memoryTools = supermemoryTools(supermemoryApiKey, {
-						containerTags: [`org:${ctx.orgId}`],
-					})
+		const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
 
-					const openrouter = createOpenRouter({
-						baseUrl: "https://api.supermemory.ai/v3/https://openrouter.ai/api/v1",
-						headers: {
-							"x-supermemory-api-key": supermemoryApiKey,
-							"x-sm-user-id": ctx.orgId,
-						},
-						apiKey: Redacted.value(apiKey),
-					})
+		const openrouter = createOpenRouter({
+			apiKey: Redacted.value(apiKey),
+		})
 
-					// Create AI streaming session
-					const session = yield* bot.ai.stream(ctx.channelId, {
-						model: "moonshotai/kimi-k2.5",
-						showThinking: true,
-						showToolCalls: true,
-						loading: {
-							text: "Thinking...",
-							icon: "sparkle",
-							throbbing: true,
-						},
-					})
+		// Create AI streaming session
+		const session = yield* bot.ai.stream(channelId, {
+			model: "moonshotai/kimi-k2.5",
+			showThinking: true,
+			showToolCalls: true,
+			loading: {
+				text: "Thinking...",
+				icon: "sparkle",
+				throbbing: true,
+			},
+		})
 
-					yield* Effect.log(`Created streaming message ${session.messageId}`)
+		yield* Effect.log(`Created streaming message ${session.messageId}`)
 
-					// Build dynamic system instructions
-					const systemInstructions = `You are Hazel, an AI assistant in a team chat app alongside human teammates.
+		// Build dynamic system instructions
+		const systemInstructions = `You are Hazel, an AI assistant in a team chat app alongside human teammates.
 
 Your capabilities:
 - Get current date/time
 - Perform arithmetic
-- Remember information using the addMemory tool
-- Search past memories using the searchMemories tool
 ${integrationInstructions}
 
 Formatting (GFM markdown supported):
@@ -661,54 +642,125 @@ Rules:
 - Answer in 1-3 sentences when possible. Only elaborate if truly necessary
 - Never reveal secrets (tokens, API keys, credentials)
 - Use formatting sparingly to highlight key info
-- When you learn important information, use the addMemory tool to save it for future reference
-
 Remember: This is a team chat with real humans. Be helpful but don't dominate the conversation.`
 
-					// Create the ToolLoopAgent instance with dynamic tools
-					const codebaseAgent = new ToolLoopAgent({
-						model: openrouter("moonshotai/kimi-k2.5"),
-						instructions: systemInstructions,
-						tools: { ...baseTools, ...integrationTools, ...memoryTools },
-						toolChoice: "auto",
+		// Create the ToolLoopAgent instance with dynamic tools
+		const codebaseAgent = new ToolLoopAgent({
+			model: openrouter("moonshotai/kimi-k2.5"),
+			instructions: systemInstructions,
+			tools: { ...baseTools, ...integrationTools },
+			toolChoice: "auto",
+		})
+
+		// Use the agent's stream() method (returns a Promise)
+		const result = yield* Effect.promise(() =>
+			codebaseAgent.stream({
+				prompt: message,
+			}),
+		)
+
+		const streamState: VercelStreamState = { hasActiveReasoning: false }
+
+		yield* Stream.fromAsyncIterable(result.fullStream, (e) => new Error(String(e))).pipe(
+			Stream.map((part) => mapVercelPartToChunk(part, streamState)),
+			Stream.filter((chunk): chunk is AIContentChunk => chunk !== null),
+			Stream.runForEach((chunk) => session.processChunk(chunk)),
+			Effect.matchCauseEffect({
+				onSuccess: () =>
+					Effect.gen(function* () {
+						yield* session.complete()
+						yield* Effect.log(`Agent response complete: ${session.messageId}`)
+					}),
+				onFailure: (cause) =>
+					Effect.gen(function* () {
+						yield* Effect.logError("Agent streaming failed", { error: cause })
+
+						const userMessage = Cause.match(cause, {
+							onEmpty: "Request was cancelled.",
+							onFail: (error) => `An error occurred: ${String(error)}`,
+							onDie: () => "An unexpected error occurred.",
+							onInterrupt: () => "Request was cancelled.",
+							onSequential: (left) => left,
+							onParallel: (left) => left,
+						})
+
+						yield* session.fail(userMessage).pipe(Effect.ignore)
+					}),
+			}),
+		)
+	})
+
+// ============================================================================
+// Bot Setup
+// ============================================================================
+
+runHazelBot({
+	commands,
+	mentionable: true,
+	layers: [LinearApiClient.Default],
+	setup: (bot) =>
+		Effect.gen(function* () {
+			// /ask command handler
+			yield* bot.onCommand(AskCommand, (ctx) =>
+				Effect.gen(function* () {
+					yield* Effect.log(`Received /ask: ${ctx.args.message}`)
+					yield* handleAIRequest({
+						bot,
+						message: ctx.args.message,
+						channelId: ctx.channelId,
+						orgId: ctx.orgId,
 					})
+				}),
+			)
 
-					// Use the agent's stream() method (returns a Promise)
-					const result = yield* Effect.promise(() =>
-						codebaseAgent.stream({
-							prompt: ctx.args.message,
-						}),
-					)
+			// @mention handler — reply in a thread
+			yield* bot.onMention((message) =>
+				Effect.gen(function* () {
+					const authContext = yield* bot.getAuthContext
 
-					const streamState: VercelStreamState = { hasActiveReasoning: false }
+					// Strip the bot mention from content to get the question
+					const question = message.content
+						.replace(new RegExp(`@\\[userId:${authContext.userId}\\]`, "g"), "")
+						.trim()
 
-					yield* Stream.fromAsyncIterable(result.fullStream, (e) => new Error(String(e))).pipe(
-						Stream.map((part) => mapVercelPartToChunk(part, streamState)),
-						Stream.filter((chunk): chunk is AIContentChunk => chunk !== null),
-						Stream.runForEach((chunk) => session.processChunk(chunk)),
-						Effect.matchCauseEffect({
-							onSuccess: () =>
-								Effect.gen(function* () {
-									yield* session.complete()
-									yield* Effect.log(`Agent response complete: ${session.messageId}`)
-								}),
-							onFailure: (cause) =>
-								Effect.gen(function* () {
-									yield* Effect.logError("Agent streaming failed", { error: cause })
+					if (!question) return // Empty mention, ignore
 
-									const userMessage = Cause.match(cause, {
-										onEmpty: "Request was cancelled.",
-										onFail: (error) => `An error occurred: ${String(error)}`,
-										onDie: () => "An unexpected error occurred.",
-										onInterrupt: () => "Request was cancelled.",
-										onSequential: (left) => left,
-										onParallel: (left) => left,
-									})
+					// Determine the orgId from the channel cache
+					const orgIdOption = yield* bot.channel.getOrganizationId(message.channelId)
+					if (Option.isNone(orgIdOption)) {
+						yield* Effect.logWarning(
+							`No organizationId cached for channel ${message.channelId}, skipping mention`,
+						)
+						return
+					}
+					const orgId = orgIdOption.value
 
-									yield* session.fail(userMessage).pipe(Effect.ignore)
-								}),
-						}),
-					)
+					// Determine thread channel to reply in
+					let threadChannelId: ChannelId
+
+					if (message.threadChannelId) {
+						// Message already has a thread → reply in existing thread
+						threadChannelId = message.threadChannelId
+					} else {
+						// Create a new thread on this message
+						const thread = yield* bot.channel
+							.createThread(message.id, message.channelId)
+							.pipe(
+								Effect.catchTag("NestedThreadError", () =>
+									// Message is already IN a thread → reply in same channel
+									Effect.succeed({ id: message.channelId }),
+								),
+							)
+						threadChannelId = thread.id as ChannelId
+					}
+
+					// Run AI pipeline in the thread
+					yield* handleAIRequest({
+						bot,
+						message: question,
+						channelId: threadChannelId,
+						orgId,
+					})
 				}),
 			)
 		}),
