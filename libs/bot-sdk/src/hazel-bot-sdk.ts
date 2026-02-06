@@ -241,41 +241,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				),
 		})
 
-		// Channel→Organization cache - populated from Electric channel subscriptions
-		// Used by createThread to look up organizationId for a channel
-		const channelOrgCache = new Map<ChannelId, OrganizationId>()
-
-		// Register internal handlers to keep channel→org cache warm
-		yield* bot.on("channels.insert", (channel) =>
-			Effect.gen(function* () {
-				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
-				yield* Effect.logInfo("[channel-cache] Cached channel from insert", {
-					channelId: channel.id,
-					orgId: channel.organizationId,
-					cacheSize: channelOrgCache.size,
-				})
-			}),
-		)
-		yield* bot.on("channels.update", (channel) =>
-			Effect.gen(function* () {
-				channelOrgCache.set(channel.id as ChannelId, channel.organizationId as OrganizationId)
-				yield* Effect.logInfo("[channel-cache] Cached channel from update", {
-					channelId: channel.id,
-					orgId: channel.organizationId,
-					cacheSize: channelOrgCache.size,
-				})
-			}),
-		)
-		yield* bot.on("channels.delete", (channel) =>
-			Effect.gen(function* () {
-				channelOrgCache.delete(channel.id as ChannelId)
-				yield* Effect.logInfo("[channel-cache] Removed channel from cache", {
-					channelId: channel.id,
-					cacheSize: channelOrgCache.size,
-				})
-			}),
-		)
-
 		// Get command group from runtime config for schema decoding
 		const commandGroup = Option.map(runtimeConfigOption, (c) => c.commands)
 
@@ -667,7 +632,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 
 			/**
-			 * Channel operations - update, createThread, getOrganizationId
+			 * Channel operations - update, createThread
 			 */
 			channel: {
 				/**
@@ -696,44 +661,26 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
 						),
 
-				/**
-				 * Create a thread on a message.
-				 * Looks up the organizationId from the channel→org cache.
-				 *
-				 * @param messageId - The message to create a thread on
-				 * @param channelId - The channel the message belongs to
-				 * @returns The new thread channel data (use `.id` as the thread's ChannelId)
-				 *
-				 * @throws NestedThreadError if the message is already in a thread
-				 * @throws MessageNotFoundError if the message doesn't exist
-				 */
-				createThread: (messageId: MessageId, channelId: ChannelId) =>
-					Effect.gen(function* () {
-						const organizationId = channelOrgCache.get(channelId)
-						if (!organizationId) {
-							return yield* Effect.die(
-								new Error(
-									`No organizationId cached for channel ${channelId}. Ensure the bot is subscribed to channel events.`,
-								),
-							)
-						}
-						const result = yield* rpc.channel.createThread({
-							messageId,
-							organizationId,
-						})
-						return result.data
-					}).pipe(
-						Effect.withSpan("bot.channel.createThread", {
-							attributes: { messageId, channelId },
-						}),
-					),
-
-				/**
-				 * Get the organizationId for a channel from the cache.
-				 * Returns Option.none if the channel is not in the cache.
-				 */
-				getOrganizationId: (channelId: ChannelId) =>
-					Effect.sync(() => Option.fromNullable(channelOrgCache.get(channelId))),
+					/**
+					 * Ensure a thread exists on a message and return it.
+					 *
+					 * @param messageId - The message to create a thread on
+					 * @param channelId - Deprecated/unused. Kept for backwards compatibility.
+					 * @returns The thread channel data (use `.id` as the thread's ChannelId)
+					 *
+					 * @throws MessageNotFoundError if the message doesn't exist
+					 */
+					createThread: (messageId: MessageId, channelId: ChannelId) =>
+						rpc.channel
+							.createThread({
+								messageId,
+							})
+							.pipe(
+								Effect.map((r) => r.data),
+								Effect.withSpan("bot.channel.createThread", {
+									attributes: { messageId, channelId },
+								}),
+							),
 			},
 
 			/**

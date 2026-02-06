@@ -52,13 +52,15 @@ export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>
 }) {}
 
 /**
- * Request schema for creating a thread channel from a message.
- * Creates the thread, adds creator as member, and links the message to the thread.
+ * Request schema for ensuring a thread channel exists for a message.
+ * If a thread already exists, it is returned as-is.
+ * If no thread exists, it is created, the creator is added as a member,
+ * and the message is linked to the thread.
  */
 export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("CreateThreadRequest")({
 	id: Schema.optional(ChannelId),
 	messageId: MessageId,
-	organizationId: OrganizationId,
+	organizationId: Schema.optional(OrganizationId),
 }) {}
 
 /**
@@ -152,11 +154,12 @@ export class ChannelRpcs extends RpcGroup.make(
 	/**
 	 * ChannelCreateThread
 	 *
-	 * Creates a thread channel from a message.
-	 * Atomically creates the thread channel, adds the creator as a member,
-	 * and links the original message to the thread.
+	 * Ensures a thread channel exists for a message and returns it.
+	 * If a thread already exists, it is returned.
+	 * Otherwise this atomically creates the thread channel, adds the creator
+	 * as a member, and links the original message to the thread.
 	 *
-	 * @param payload - Message ID, organization ID, and optional channel ID for optimistic updates
+	 * @param payload - Message ID, optional organization ID, and optional channel ID for optimistic updates
 	 * @returns Channel data and transaction ID
 	 * @throws MessageNotFoundError if the message doesn't exist
 	 * @throws UnauthorizedError if user lacks permission

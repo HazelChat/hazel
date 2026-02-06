@@ -505,6 +505,22 @@ export const setupCommand = Command.make(
 			)
 			yield* envWriter.writeEnvFile("packages/db/.env", ENV_TEMPLATES.db(), dryRun)
 
+			// Bot .env files — preserve existing BOT_TOKEN values
+			const existingHazelBotEnv = yield* envWriter.readEnvFile("bots/hazel-bot/.env")
+			const existingLinearBotEnv = yield* envWriter.readEnvFile("bots/linear-bot/.env")
+
+			const hazelBotVars = {
+				...ENV_TEMPLATES.hazelBot(config),
+				...(existingHazelBotEnv.BOT_TOKEN ? { BOT_TOKEN: existingHazelBotEnv.BOT_TOKEN } : {}),
+			}
+			const linearBotVars = {
+				...ENV_TEMPLATES.linearBot(config),
+				...(existingLinearBotEnv.BOT_TOKEN ? { BOT_TOKEN: existingLinearBotEnv.BOT_TOKEN } : {}),
+			}
+
+			yield* envWriter.writeEnvFile("bots/hazel-bot/.env", hazelBotVars, dryRun)
+			yield* envWriter.writeEnvFile("bots/linear-bot/.env", linearBotVars, dryRun)
+
 			if (dryRun) {
 				yield* Console.log(pc.dim("\nDry-run complete! No files were written."))
 				yield* Console.log(`Run without ${pc.cyan("--dry-run")} to apply these changes.\n`)

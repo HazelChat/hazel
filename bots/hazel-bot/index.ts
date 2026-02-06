@@ -11,7 +11,7 @@ import {
 	type ToolFactoryOptions,
 } from "@hazel/bot-sdk"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Cause, Config, Effect, JSONSchema, Option, Redacted, Runtime, Schema, Stream } from "effect"
+import { Cause, Config, Effect, JSONSchema, Redacted, Runtime, Schema, Stream } from "effect"
 import { LinearApiClient, makeLinearSdkClient } from "@hazel/integrations/linear"
 
 // Vercel AI SDK imports
@@ -559,7 +559,9 @@ const handleAIRequest = (params: {
 		const tokenCache = new Map<string, Promise<TokenResult>>()
 
 		// Create a cached token getter
-		const getAccessToken = (provider: "linear" | "github" | "figma" | "notion"): Promise<TokenResult> => {
+		const getAccessToken = (
+			provider: "linear" | "github" | "figma" | "notion" | "discord",
+		): Promise<TokenResult> => {
 			const cached = tokenCache.get(provider)
 			if (cached) return cached
 
@@ -735,32 +737,10 @@ runHazelBot({
 
 					if (!question) return // Empty mention, ignore
 
-					// Determine the orgId from the channel cache
-					const orgIdOption = yield* bot.channel.getOrganizationId(message.channelId)
-					if (Option.isNone(orgIdOption)) {
-						yield* Effect.logWarning(
-							`No organizationId cached for channel ${message.channelId}, skipping mention`,
-						)
-						return
-					}
-					const orgId = orgIdOption.value
-
-					// Determine thread channel to reply in
-					let threadChannelId: ChannelId
-
-					if (message.threadChannelId) {
-						// Message already has a thread → reply in existing thread
-						threadChannelId = message.threadChannelId
-					} else {
-						// Create a new thread on this message
-						const thread = yield* bot.channel.createThread(message.id, message.channelId).pipe(
-							Effect.catchTag("NestedThreadError", () =>
-								// Message is already IN a thread → reply in same channel
-								Effect.succeed({ id: message.channelId }),
-							),
-						)
-						threadChannelId = thread.id as ChannelId
-					}
+					// Resolve thread + org context from backend-authoritative thread API.
+					const thread = yield* bot.channel.createThread(message.id, message.channelId)
+					const threadChannelId = thread.id as ChannelId
+					const orgId = thread.organizationId as OrganizationId
 
 					// Run AI pipeline in the thread
 					yield* handleAIRequest({

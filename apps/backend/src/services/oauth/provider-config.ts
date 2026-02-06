@@ -89,6 +89,13 @@ export const PROVIDER_CONFIGS: Record<
 			owner: "user",
 		},
 	},
+	discord: {
+		provider: "discord",
+		authorizationUrl: "https://discord.com/oauth2/authorize",
+		tokenUrl: "https://discord.com/api/oauth2/token",
+		scopes: ["identify", "bot"],
+		scopeDelimiter: " ",
+	},
 }
 
 /**

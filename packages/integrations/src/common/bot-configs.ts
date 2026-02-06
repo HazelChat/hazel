@@ -1,7 +1,7 @@
 /**
  * Integration provider types for OAuth-based integrations.
  */
-export type IntegrationProvider = "linear" | "github" | "figma" | "notion"
+export type IntegrationProvider = "linear" | "github" | "figma" | "notion" | "discord"
 
 /**
  * Bot configuration for integration providers.
@@ -40,6 +40,12 @@ export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBot
 		name: "Notion",
 		avatarUrl: "https://cdn.brandfetch.io/notion.so/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-notion",
+	},
+	discord: {
+		name: "Discord",
+		avatarUrl:
+			"https://cdn.brandfetch.io/discord.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
+		botId: "bot-discord",
 	},
 }
 

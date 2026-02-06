@@ -18,11 +18,11 @@ import { Config } from "effect"
 export const BotEnvConfig = Config.all({
 	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
 	electricUrl: Config.string("ELECTRIC_URL").pipe(
-		Config.withDefault("http://localhost:8787/v1/shape"),
+		Config.withDefault("https://electric.hazel.sh/v1/shape"),
 		Config.withDescription("Electric SQL proxy URL"),
 	),
 	backendUrl: Config.string("BACKEND_URL").pipe(
-		Config.withDefault("http://localhost:3003"),
+		Config.withDefault("https://api.hazel.sh"),
 		Config.withDescription("Backend API URL (also used for SSE command streaming)"),
 	),
 })

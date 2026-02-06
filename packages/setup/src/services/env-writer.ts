@@ -19,6 +19,8 @@ const ENV_FILE_PATHS = [
 	"apps/cluster/.env",
 	"apps/electric-proxy/.env",
 	"packages/db/.env",
+	"bots/hazel-bot/.env",
+	"bots/linear-bot/.env",
 ] as const
 
 /** Parse a .env file content into key-value pairs */

@@ -227,4 +227,20 @@ export const ENV_TEMPLATES = {
 	db: () => ({
 		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
 	}),
+
+	hazelBot: (config: Config) => ({
+		BOT_TOKEN: "",
+		ELECTRIC_URL: "http://localhost:3333/v1/shape",
+		BACKEND_URL: "http://localhost:3003",
+		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
+	}),
+
+	linearBot: (config: Config) => ({
+		BOT_TOKEN: "",
+		ELECTRIC_URL: "http://localhost:3333/v1/shape",
+		BACKEND_URL: "http://localhost:3003",
+		REDIS_URL: "redis://localhost:6380",
+		IS_DEV: "true",
+		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
+	}),
 }

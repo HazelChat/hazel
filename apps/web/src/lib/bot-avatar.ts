@@ -10,6 +10,7 @@ const INTEGRATION_DOMAINS: Record<IntegrationProvider, string> = {
 	github: "github.com",
 	figma: "figma.com",
 	notion: "notion.so",
+	discord: "discord.com",
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, afterEach } from "@effect/vitest"
-import { Effect, Layer, Ref } from "effect"
+import { Effect, Layer, Ref, Scope } from "effect"
+import { BotStartError } from "./errors.ts"
 import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import { HAZEL_SUBSCRIPTIONS, HazelBotClient, HazelBotRuntimeConfigTag } from "./hazel-bot-sdk.ts"
@@ -38,14 +39,19 @@ describe("HazelBotClient mention handling", () => {
 					const events = yield* Ref.get(registered)
 					if (!events.includes("messages.insert")) {
 						return yield* Effect.fail(
-							new Error("messages.insert not registered before bot.start"),
+							new BotStartError({
+								message: "messages.insert not registered before bot.start",
+								cause: undefined,
+							}),
 						)
 					}
-				}),
+				}).pipe(Effect.asVoid) as Effect.Effect<void, BotStartError, Scope.Scope>,
 				getAuthContext: Effect.succeed({
 					botId: "bot-1",
 					botName: "Test Bot",
 					userId: "user-1",
+					channelIds: [] as readonly string[],
+					token: "test-bot-token",
 				}),
 			}
 

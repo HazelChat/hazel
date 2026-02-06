@@ -84,6 +84,7 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProvider, { label: string;
 	github: { label: "GitHub", domain: "github.com" },
 	figma: { label: "Figma", domain: "figma.com" },
 	notion: { label: "Notion", domain: "notion.so" },
+	discord: { label: "Discord", domain: "discord.com" },
 }
 
 /**
