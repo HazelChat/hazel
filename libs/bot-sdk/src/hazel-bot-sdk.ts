@@ -676,6 +676,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							messageId,
 						})
 						.pipe(
+							Effect.timeout(Duration.seconds(15)),
 							Effect.tapErrorCause((cause) =>
 								Effect.logError("[bot.channel.createThread] Failed to ensure thread", {
 									messageId,
