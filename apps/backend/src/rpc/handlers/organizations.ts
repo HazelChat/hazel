@@ -24,6 +24,7 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
+import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 /**
@@ -214,6 +215,11 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							yield* OrganizationRepo.setupDefaultChannels(
 								createdOrganization.id,
 								currentUser.id,
+							)
+
+							yield* ChannelAccessSyncService.syncUserInOrganization(
+								currentUser.id,
+								createdOrganization.id,
 							)
 
 							const txid = yield* generateTransactionId()
@@ -490,6 +496,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									deletedAt: null,
 								}).pipe(withSystemActor)
 							}
+
+							yield* ChannelAccessSyncService.syncUserInOrganization(currentUser.id, org.id)
 
 							const txid = yield* generateTransactionId()
 

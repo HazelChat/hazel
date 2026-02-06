@@ -3,6 +3,7 @@ import { attachmentsTable } from "./attachments"
 import { botCommandsTable } from "./bot-commands"
 import { botInstallationsTable } from "./bot-installations"
 import { botsTable } from "./bots"
+import { channelAccessTable } from "./channel-access"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
 import { rssSubscriptionsTable } from "./rss-subscriptions"
@@ -20,6 +21,7 @@ import { usersTable } from "./users"
 export const usersRelations = relations(usersTable, ({ many }) => ({
 	organizationMembers: many(organizationMembersTable),
 	channelMembers: many(channelMembersTable),
+	channelAccess: many(channelAccessTable),
 	messages: many(messagesTable),
 	messageReactions: many(messageReactionsTable),
 	attachments: many(attachmentsTable),
@@ -32,6 +34,7 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 export const organizationsRelations = relations(organizationsTable, ({ many }) => ({
 	members: many(organizationMembersTable),
 	channels: many(channelsTable),
+	channelAccess: many(channelAccessTable),
 	invitations: many(invitationsTable),
 	attachments: many(attachmentsTable),
 }))
@@ -76,6 +79,7 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	typingIndicators: many(typingIndicatorsTable),
 	webhooks: many(channelWebhooksTable),
 	rssSubscriptions: many(rssSubscriptionsTable),
+	channelAccess: many(channelAccessTable),
 }))
 
 // Channel members relations
@@ -91,6 +95,22 @@ export const channelMembersRelations = relations(channelMembersTable, ({ one }) 
 	lastSeenMessage: one(messagesTable, {
 		fields: [channelMembersTable.lastSeenMessageId],
 		references: [messagesTable.id],
+	}),
+}))
+
+// Channel access relations
+export const channelAccessRelations = relations(channelAccessTable, ({ one }) => ({
+	user: one(usersTable, {
+		fields: [channelAccessTable.userId],
+		references: [usersTable.id],
+	}),
+	channel: one(channelsTable, {
+		fields: [channelAccessTable.channelId],
+		references: [channelsTable.id],
+	}),
+	organization: one(organizationsTable, {
+		fields: [channelAccessTable.organizationId],
+		references: [organizationsTable.id],
 	}),
 }))
 

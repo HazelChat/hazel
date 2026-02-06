@@ -126,7 +126,9 @@ export const createCommandSseStream = ({
 			// Add finalizer to unsubscribe when stream closes
 			yield* Effect.addFinalizer(() =>
 				unsubscribe.pipe(
-					Effect.tap(() => Effect.logDebug(`Bot ${botId} (${botName}) disconnected from SSE stream`)),
+					Effect.tap(() =>
+						Effect.logDebug(`Bot ${botId} (${botName}) disconnected from SSE stream`),
+					),
 					Effect.catchAll(() => Effect.void),
 				),
 			)

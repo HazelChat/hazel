@@ -88,8 +88,7 @@ describe("HazelBotClient mention handling", () => {
 
 				yield* program.pipe(Effect.scoped, Effect.provide(TestLayer))
 			}) as Effect.Effect<void, unknown, never>,
-		),
-	)
+		))
 })
 
 describe("startBotEventPipeline", () => {
@@ -116,8 +115,7 @@ describe("startBotEventPipeline", () => {
 					expect(yield* Ref.get(dispatcherStarts)).toBe(0)
 				}),
 			),
-		),
-	)
+		))
 
 	it("starts shape streams and dispatcher when DB handlers exist", () =>
 		Effect.runPromise(
@@ -127,7 +125,10 @@ describe("startBotEventPipeline", () => {
 					const dispatcherStarts = yield* Ref.make(0)
 
 					const dispatcher = {
-						registeredEventTypes: Effect.succeed(["messages.insert", "channels.update"] as string[]),
+						registeredEventTypes: Effect.succeed([
+							"messages.insert",
+							"channels.update",
+						] as string[]),
 						start: Ref.update(dispatcherStarts, (n) => n + 1).pipe(Effect.asVoid),
 					}
 
@@ -144,6 +145,5 @@ describe("startBotEventPipeline", () => {
 					expect(yield* Ref.get(dispatcherStarts)).toBe(1)
 				}),
 			),
-		),
-	)
+		))
 })

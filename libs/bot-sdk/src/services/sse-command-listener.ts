@@ -310,15 +310,12 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 					Effect.gen(function* () {
 						const retryCycle = yield* Ref.updateAndGet(retryCycleRef, (n) => n + 1)
 						yield* Metric.increment(sseRetryExhaustedCounter)
-						yield* Effect.logWarning(
-							"SSE connection exhausted retries for current cycle",
-							{
-								error,
-								botId,
-								botName,
-								retryCycle,
-							},
-						).pipe(Effect.annotateLogs("service", "SseCommandListener"))
+						yield* Effect.logWarning("SSE connection exhausted retries for current cycle", {
+							error,
+							botId,
+							botName,
+							retryCycle,
+						}).pipe(Effect.annotateLogs("service", "SseCommandListener"))
 					}),
 				),
 				// After exhausting retries, wait before trying the whole cycle again

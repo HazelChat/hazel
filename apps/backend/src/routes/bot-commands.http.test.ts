@@ -13,8 +13,7 @@ describe("bot command SSE streams", () => {
 
 			expect(events).toHaveLength(1)
 			expect(events[0]).toContain("event: heartbeat")
-		}).pipe(Effect.runPromise),
-	)
+		}).pipe(Effect.runPromise))
 
 	it("continues sending heartbeats during idle periods", () =>
 		Effect.gen(function* () {
@@ -30,8 +29,7 @@ describe("bot command SSE streams", () => {
 			for (const event of events) {
 				expect(event).toContain("event: heartbeat")
 			}
-		}).pipe(Effect.runPromise),
-	)
+		}).pipe(Effect.runPromise))
 
 	it("passes command events through unchanged", () =>
 		Effect.gen(function* () {
@@ -70,6 +68,5 @@ describe("bot command SSE streams", () => {
 
 			expect(commandEvent).toBeDefined()
 			expect(commandEvent).toContain(`data: ${payload}`)
-		}).pipe(Effect.runPromise),
-	)
+		}).pipe(Effect.runPromise))
 })

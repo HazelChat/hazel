@@ -24,6 +24,7 @@ import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
+import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
 	Effect.gen(function* () {
@@ -84,6 +85,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								)
 							}
 
+							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
+
 							const txid = yield* generateTransactionId()
 
 							return {
@@ -103,6 +106,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								...payload,
 							}).pipe(policyUse(ChannelPolicy.canUpdate(id)))
 
+							yield* ChannelAccessSyncService.syncChannel(id)
+							yield* ChannelAccessSyncService.syncChildThreads(id)
+
 							const txid = yield* generateTransactionId()
 
 							return {
@@ -118,6 +124,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* ChannelRepo.deleteById(id)
+							yield* ChannelAccessSyncService.removeChannel(id)
+							yield* ChannelAccessSyncService.syncChildThreads(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -225,6 +233,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								}).pipe(withSystemActor)
 							}
 
+							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
+
 							const txid = yield* generateTransactionId()
 
 							return {
@@ -262,6 +272,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									)
 								}
 
+								yield* ChannelAccessSyncService.syncChannel(existingThread.value.id)
+
 								const txid = yield* generateTransactionId()
 								return {
 									data: existingThread.value,
@@ -283,6 +295,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// If the message is already in a thread channel, return that thread.
 							if (parentChannel.value.type === "thread") {
+								yield* ChannelAccessSyncService.syncChannel(parentChannel.value.id)
+
 								const txid = yield* generateTransactionId()
 								return {
 									data: parentChannel.value,
@@ -350,6 +364,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									.set({ threadChannelId: createdChannel.id })
 									.where(eq(schema.messagesTable.id, messageId)),
 							)
+
+							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
 
 							const txid = yield* generateTransactionId()
 

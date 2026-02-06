@@ -68,6 +68,7 @@ import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
+import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { WorkOSAuth } from "./services/workos-auth"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
@@ -178,6 +179,7 @@ const MainLive = Layer.mergeAll(
 	OAuthProviderRegistry.Default,
 	IntegrationBotService.Default,
 	WebhookBotService.Default,
+	ChannelAccessSyncService.Default,
 	RateLimiter.Default,
 	// SessionManager.Default includes BackendAuth.Default via dependencies
 	SessionManager.Default,

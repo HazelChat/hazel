@@ -5,6 +5,7 @@ import { ChannelMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelMemberPolicy } from "../../policies/channel-member-policy"
+import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 	Effect.gen(function* () {
@@ -31,6 +32,16 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 								Effect.map((res) => res[0]!),
 								policyUse(ChannelMemberPolicy.canCreate(payload.channelId)),
 							)
+
+							const channelOption = yield* ChannelRepo.findById(payload.channelId).pipe(
+								withSystemActor,
+							)
+							if (Option.isSome(channelOption)) {
+								yield* ChannelAccessSyncService.syncUserInOrganization(
+									user.id,
+									channelOption.value.organizationId,
+								)
+							}
 
 							const txid = yield* generateTransactionId()
 
@@ -65,9 +76,24 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							const deletedMemberOption =
+								yield* ChannelMemberRepo.findById(id).pipe(withSystemActor)
+
 							yield* ChannelMemberRepo.deleteById(id).pipe(
 								policyUse(ChannelMemberPolicy.canDelete(id)),
 							)
+
+							if (Option.isSome(deletedMemberOption)) {
+								const channelOption = yield* ChannelRepo.findById(
+									deletedMemberOption.value.channelId,
+								).pipe(withSystemActor)
+								if (Option.isSome(channelOption)) {
+									yield* ChannelAccessSyncService.syncUserInOrganization(
+										deletedMemberOption.value.userId,
+										channelOption.value.organizationId,
+									)
+								}
+							}
 
 							const txid = yield* generateTransactionId()
 

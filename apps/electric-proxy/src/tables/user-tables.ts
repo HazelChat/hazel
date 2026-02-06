@@ -101,10 +101,9 @@ export function validateTable(table: string | null): {
 /**
  * Get the WHERE clause for a table based on the authenticated user.
  *
- * NOTE: Array-based IN filters (channelIds, organizationIds, etc.) were removed
- * because the cached access context caused slow updates when users were added
- * to new channels/organizations. Electric now streams all non-deleted data,
- * and access control is handled at the application layer.
+ * Channel-scoped visibility uses a single subquery over `channel_access`.
+ * This keeps Electric parser compatibility while allowing thread inheritance
+ * to update through normal DB write paths.
  *
  * Uses unqualified column names (via column.name) for Electric SQL compatibility.
  * All WHERE clauses are parameterized for security.
@@ -164,14 +163,8 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("channels", () =>
-			// Channel visibility: public channels in user's orgs + member channels (via subquery)
-			Effect.succeed(
-				buildChannelVisibilityClause(
-					user.internalUserId,
-					user.accessContext.organizationIds,
-					schema.channelsTable.deletedAt,
-				),
-			),
+			// Channel visibility: rows materialized in channel_access for this user
+			Effect.succeed(buildChannelVisibilityClause(user.internalUserId, schema.channelsTable.deletedAt)),
 		),
 
 		Match.when("channel_members", () =>
@@ -179,7 +172,6 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					user.accessContext.organizationIds,
 					schema.channelMembersTable.channelId,
 					schema.channelMembersTable.deletedAt,
 				),
@@ -206,7 +198,6 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					user.accessContext.organizationIds,
 					schema.messagesTable.channelId,
 					schema.messagesTable.deletedAt,
 				),
@@ -216,11 +207,7 @@ export function getWhereClauseForTable(
 		Match.when("message_reactions", () =>
 			// Message reactions: only in channels user has access to
 			Effect.succeed(
-				buildChannelAccessClause(
-					user.internalUserId,
-					user.accessContext.organizationIds,
-					schema.messageReactionsTable.channelId,
-				),
+				buildChannelAccessClause(user.internalUserId, schema.messageReactionsTable.channelId),
 			),
 		),
 
@@ -249,11 +236,7 @@ export function getWhereClauseForTable(
 		Match.when("pinned_messages", () =>
 			// Pinned messages: only in channels user has access to
 			Effect.succeed(
-				buildChannelAccessClause(
-					user.internalUserId,
-					user.accessContext.organizationIds,
-					schema.pinnedMessagesTable.channelId,
-				),
+				buildChannelAccessClause(user.internalUserId, schema.pinnedMessagesTable.channelId),
 			),
 		),
 
@@ -264,11 +247,7 @@ export function getWhereClauseForTable(
 		Match.when("typing_indicators", () =>
 			// Typing indicators: only in channels user has access to
 			Effect.succeed(
-				buildChannelAccessClause(
-					user.internalUserId,
-					user.accessContext.organizationIds,
-					schema.typingIndicatorsTable.channelId,
-				),
+				buildChannelAccessClause(user.internalUserId, schema.typingIndicatorsTable.channelId),
 			),
 		),
 

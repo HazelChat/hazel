@@ -265,21 +265,21 @@ describe("retry schedule", () => {
 			expect(attempts).toBe(4)
 		}).pipe(Effect.runPromise))
 
-		it("schedule composition includes capped reconnect strategy", () => {
-			// Smoke test for exported production schedule (capped exponential + bounded retries).
-			expect(sseReconnectRetrySchedule).toBeDefined()
-		})
-
-		it("Schedule.union can cap exponential delay at 30 seconds", () => {
-			// Mirrors production cap strategy where exponential backoff is bounded by a 30-second schedule.
-			const cappedSchedule = Schedule.exponential("1 second", 2).pipe(
-				Schedule.jittered,
-				Schedule.union(Schedule.spaced("30 seconds")),
-			)
-
-			expect(cappedSchedule).toBeDefined()
-		})
+	it("schedule composition includes capped reconnect strategy", () => {
+		// Smoke test for exported production schedule (capped exponential + bounded retries).
+		expect(sseReconnectRetrySchedule).toBeDefined()
 	})
+
+	it("Schedule.union can cap exponential delay at 30 seconds", () => {
+		// Mirrors production cap strategy where exponential backoff is bounded by a 30-second schedule.
+		const cappedSchedule = Schedule.exponential("1 second", 2).pipe(
+			Schedule.jittered,
+			Schedule.union(Schedule.spaced("30 seconds")),
+		)
+
+		expect(cappedSchedule).toBeDefined()
+	})
+})
 
 // ============================================================================
 // Test: Queue offer error handling
@@ -530,7 +530,7 @@ describe("command queue backpressure", () => {
 			}).pipe(Effect.runPromise))
 	})
 
-		describe("metrics", () => {
+	describe("metrics", () => {
 		it("Metric.counter can track enqueued events", () =>
 			Effect.gen(function* () {
 				const enqueuedCounter = Metric.counter("test_enqueued")
@@ -578,8 +578,8 @@ describe("command queue backpressure", () => {
 				expect(size).toBe(2)
 			}).pipe(Effect.runPromise))
 
-			it("metrics pattern matches production code", () =>
-				Effect.gen(function* () {
+		it("metrics pattern matches production code", () =>
+			Effect.gen(function* () {
 				// Simulate the exact pattern used in SseCommandListener
 				const commandQueueDroppedCounter = Metric.counter("bot_command_queue_dropped")
 				const commandQueueEnqueuedCounter = Metric.counter("bot_command_queue_enqueued")
@@ -608,21 +608,21 @@ describe("command queue backpressure", () => {
 				const sizeAfterTake = yield* Queue.size(queue)
 				yield* Metric.set(commandQueueSizeGauge, sizeAfterTake)
 
-					expect(sizeAfterTake).toBe(0)
-				}).pipe(Effect.runPromise))
+				expect(sizeAfterTake).toBe(0)
+			}).pipe(Effect.runPromise))
 
-			it("tracks SSE retry failures and exhausted cycles", () =>
-				Effect.gen(function* () {
-					const failureCounter = Metric.counter("bot_sse_connection_failures")
-					const exhaustedCounter = Metric.counter("bot_sse_retry_exhausted")
+		it("tracks SSE retry failures and exhausted cycles", () =>
+			Effect.gen(function* () {
+				const failureCounter = Metric.counter("bot_sse_connection_failures")
+				const exhaustedCounter = Metric.counter("bot_sse_retry_exhausted")
 
-					yield* Metric.increment(failureCounter)
-					yield* Metric.increment(failureCounter)
-					yield* Metric.increment(exhaustedCounter)
+				yield* Metric.increment(failureCounter)
+				yield* Metric.increment(failureCounter)
+				yield* Metric.increment(exhaustedCounter)
 
-					// Smoke test for metrics wiring used by reconnection flow.
-				}).pipe(Effect.runPromise))
-		})
+				// Smoke test for metrics wiring used by reconnection flow.
+			}).pipe(Effect.runPromise))
+	})
 
 	describe("backpressure logging pattern", () => {
 		it("can log when command is dropped", () =>

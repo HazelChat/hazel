@@ -1,10 +1,17 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
+import {
+	CurrentUser,
+	InternalServerError,
+	policyUse,
+	withRemapDbErrors,
+	withSystemActor,
+} from "@hazel/domain"
 import { OrganizationMemberNotFoundError, OrganizationMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
+import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 /**
  * Organization Member RPC Handlers
@@ -37,6 +44,11 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							}).pipe(
 								Effect.map((res) => res[0]!),
 								policyUse(OrganizationMemberPolicy.canCreate(payload.organizationId)),
+							)
+
+							yield* ChannelAccessSyncService.syncUserInOrganization(
+								createdOrganizationMember.userId,
+								createdOrganizationMember.organizationId,
 							)
 
 							const txid = yield* generateTransactionId()
@@ -104,9 +116,19 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							const deletedMemberOption =
+								yield* OrganizationMemberRepo.findById(id).pipe(withSystemActor)
+
 							yield* OrganizationMemberRepo.deleteById(id).pipe(
 								policyUse(OrganizationMemberPolicy.canDelete(id)),
 							)
+
+							if (Option.isSome(deletedMemberOption)) {
+								yield* ChannelAccessSyncService.syncUserInOrganization(
+									deletedMemberOption.value.userId,
+									deletedMemberOption.value.organizationId,
+								)
+							}
 
 							const txid = yield* generateTransactionId()
 

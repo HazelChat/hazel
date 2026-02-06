@@ -17,6 +17,7 @@ import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { BotPolicy } from "../../policies/bot-policy"
 import { checkBotOperationRateLimit, checkBotUpdateRateLimit } from "../../services/rate-limit-helpers"
+import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 // Generate a secure bot token and return both the plain token and its hash
 const generateBotToken = async (): Promise<{ token: string; tokenHash: string }> => {
@@ -130,6 +131,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 										}),
 									)
 									.pipe(withSystemActor)
+
+								yield* ChannelAccessSyncService.syncUserInOrganization(
+									botUserId,
+									organizationId,
+								)
 
 								const txid = yield* generateTransactionId()
 
@@ -442,6 +448,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 									)
 									.pipe(withSystemActor)
 
+								yield* ChannelAccessSyncService.syncUserInOrganization(
+									bot.userId,
+									organizationId,
+								)
+
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId).pipe(withSystemActor)
 
@@ -517,6 +528,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 												),
 										)
 										.pipe(withSystemActor)
+
+									yield* ChannelAccessSyncService.syncUserInOrganization(
+										botOption.value.userId,
+										organizationId,
+									)
 
 									// Decrement install count
 									yield* botRepo.decrementInstallCount(botId).pipe(withSystemActor)
@@ -599,6 +615,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 											}),
 									)
 									.pipe(withSystemActor)
+
+								yield* ChannelAccessSyncService.syncUserInOrganization(
+									bot.userId,
+									organizationId,
+								)
 
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId).pipe(withSystemActor)
