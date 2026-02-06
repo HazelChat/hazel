@@ -159,7 +159,12 @@ export function ImageViewerModal({
 			{/* Author info - top left */}
 			{author && (
 				<div className="absolute top-5 left-5 flex items-center gap-2">
-					<Avatar src={author.avatarUrl} alt={`${author.firstName} ${author.lastName}`} size="md" />
+					<Avatar
+						src={author.avatarUrl}
+						alt={`${author.firstName} ${author.lastName}`}
+						seed={`${author.firstName} ${author.lastName}`}
+						size="md"
+					/>
 					<div className="flex flex-col">
 						<span className="text-sm text-white">
 							{author.firstName} {author.lastName}

@@ -52,6 +52,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 									size="xs"
 									src={data.author.avatarUrl}
 									initials={`${data.author.firstName[0]}${data.author.lastName[0]}`}
+									seed={`${data.author.firstName} ${data.author.lastName}`}
 									alt={`${data.author.firstName} ${data.author.lastName}`}
 								/>
 								<span className="font-medium text-fg text-sm hover:underline">

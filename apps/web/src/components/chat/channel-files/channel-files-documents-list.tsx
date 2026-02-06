@@ -70,7 +70,13 @@ function DocumentItem({ attachment }: { attachment: AttachmentWithUser }) {
 			</div>
 
 			<div className="flex shrink-0 items-center gap-2">
-				<Avatar size="xs" src={attachment.user?.avatarUrl} initials={initials} alt={uploaderName} />
+				<Avatar
+					size="xs"
+					src={attachment.user?.avatarUrl}
+					initials={initials}
+					seed={uploaderName}
+					alt={uploaderName}
+				/>
 				<span className="hidden text-muted-fg text-xs sm:inline">{uploaderName}</span>
 			</div>
 

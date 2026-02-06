@@ -202,6 +202,7 @@ function TeamSettings() {
 														initials={getInitials(
 															`${member.user.firstName} ${member.user.lastName}`,
 														)}
+														seed={`${member.user.firstName} ${member.user.lastName}`}
 														className="size-9"
 													/>
 													<div className="flex flex-col">

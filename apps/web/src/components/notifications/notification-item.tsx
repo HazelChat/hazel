@@ -98,6 +98,7 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
 						src={author.avatarUrl}
 						alt={`${author.firstName} ${author.lastName}`}
 						initials={`${author.firstName?.charAt(0) ?? ""}${author.lastName?.charAt(0) ?? ""}`}
+						seed={`${author.firstName} ${author.lastName}`}
 					/>
 				) : (
 					<div className="flex size-10 items-center justify-center rounded-lg bg-secondary">

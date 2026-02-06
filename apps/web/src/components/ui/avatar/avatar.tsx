@@ -103,7 +103,9 @@ export const Avatar = ({
 			seed={seed}
 		>
 			<AvatarImage src={src} alt={alt} />
-			<AvatarFallback icon={placeholderIcon}>{initials || placeholder}</AvatarFallback>
+			<AvatarFallback icon={placeholderIcon}>
+				{seed ? placeholder : initials || placeholder}
+			</AvatarFallback>
 			{(status || verified || badge) && (
 				<AvatarBadge>
 					{status ? (
