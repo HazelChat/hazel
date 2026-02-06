@@ -13,7 +13,6 @@
 		"start": "bun run src/index.ts",
 		"typecheck": "tsc --noEmit",
 		"setup": "bun run scripts/setup.ts",
-		"rebuild:channel-access": "bun run scripts/rebuild-channel-access.ts",
 		"sync:workos": "bun run src/scripts/sync-workos.ts",
 		"reset": "bun run scripts/reset-all.ts",
 		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
