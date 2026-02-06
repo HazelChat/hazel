@@ -78,6 +78,8 @@ const commandQueueDroppedCounter = Metric.counter("bot_command_queue_dropped")
 const commandQueueEnqueuedCounter = Metric.counter("bot_command_queue_enqueued")
 const commandQueueDequeuedCounter = Metric.counter("bot_command_queue_dequeued")
 const commandQueueSizeGauge = Metric.gauge("bot_command_queue_size")
+const sseConnectionFailuresCounter = Metric.counter("bot_sse_connection_failures")
+const sseRetryExhaustedCounter = Metric.counter("bot_sse_retry_exhausted")
 
 // ============ Config ============
 
@@ -101,6 +103,12 @@ export class SseConnectionError extends Schema.TaggedError<SseConnectionError>()
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
+
+export const sseReconnectRetrySchedule = Schedule.exponential("1 second", 2).pipe(
+	Schedule.jittered,
+	Schedule.union(Schedule.spaced("30 seconds")), // Cap at 30s
+	Schedule.intersect(Schedule.recurs(10)),
+)
 
 // ============ Service ============
 
@@ -130,6 +138,7 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 
 		// Track running state with Ref (immutable)
 		const isRunningRef = yield* Ref.make(false)
+		const retryCycleRef = yield* Ref.make(0)
 
 		// Get queue configuration with defaults
 		const queueConfig = config.queue ?? defaultCommandQueueConfig
@@ -291,18 +300,26 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 		// Uses Effect.forever to keep reconnecting even after permanent failures
 		yield* Effect.forever(
 			connectAndProcess.pipe(
-				Effect.retry(
-					Schedule.exponential("1 second", 2).pipe(
-						Schedule.jittered,
-						Schedule.intersect(Schedule.recurs(10)),
+				Effect.tapError(() =>
+					Metric.increment(sseConnectionFailuresCounter).pipe(
+						Effect.annotateLogs("service", "SseCommandListener"),
 					),
 				),
+				Effect.retry(sseReconnectRetrySchedule),
 				Effect.tapError((error) =>
-					Effect.logError("SSE connection failed permanently after all retries", {
-						error,
-						botId,
-						botName,
-					}).pipe(Effect.annotateLogs("service", "SseCommandListener")),
+					Effect.gen(function* () {
+						const retryCycle = yield* Ref.updateAndGet(retryCycleRef, (n) => n + 1)
+						yield* Metric.increment(sseRetryExhaustedCounter)
+						yield* Effect.logWarning(
+							"SSE connection exhausted retries for current cycle",
+							{
+								error,
+								botId,
+								botName,
+								retryCycle,
+							},
+						).pipe(Effect.annotateLogs("service", "SseCommandListener"))
+					}),
 				),
 				// After exhausting retries, wait before trying the whole cycle again
 				Effect.catchAll(() =>
@@ -312,8 +329,8 @@ export class SseCommandListener extends Effect.Service<SseCommandListener>()("Ss
 							"SSE connection exhausted retries, waiting before reconnection attempt",
 							{ botId, botName },
 						).pipe(Effect.annotateLogs("service", "SseCommandListener"))
-						// Wait 60 seconds before starting the retry cycle again
-						yield* Effect.sleep("60 seconds")
+						// Keep the outer reconnection loop hot without long dark periods.
+						yield* Effect.sleep("1 second")
 					}),
 				),
 			),

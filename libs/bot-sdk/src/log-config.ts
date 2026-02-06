@@ -44,8 +44,12 @@ export interface BotLogConfig {
 	 *
 	 * ERROR:
 	 * - Handler failed after retries
-	 * - SSE connection failed permanently
+	 * - Fatal, unrecoverable SDK failures
 	 * - Authentication failed
+	 *
+	 * Note:
+	 * - SSE retry exhaustion per cycle is logged at WARNING with metrics.
+	 *   This indicates degraded connectivity, not a terminal bot failure.
 	 */
 	readonly level: LogLevel.LogLevel
 

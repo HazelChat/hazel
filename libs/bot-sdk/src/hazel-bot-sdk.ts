@@ -1249,6 +1249,38 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	}
 }
 
+type EventPipelineDispatcher = Pick<
+	Context.Tag.Service<typeof EventDispatcher>,
+	"registeredEventTypes" | "start"
+>
+
+type EventPipelineSubscriber = Pick<Context.Tag.Service<typeof ShapeStreamSubscriber>, "start">
+
+/**
+ * Start the DB event pipeline (shape streams + dispatcher) only when DB event handlers exist.
+ * Command-only bots intentionally skip this pipeline to avoid unnecessary startup warnings.
+ */
+export const startBotEventPipeline = (
+	dispatcher: EventPipelineDispatcher,
+	subscriber: EventPipelineSubscriber,
+) =>
+	Effect.gen(function* () {
+		// Derive required tables from registered event handlers
+		const eventTypes = yield* dispatcher.registeredEventTypes
+		if (eventTypes.length === 0) {
+			yield* Effect.logInfo(
+				"No DB event handlers registered; skipping shape streams and dispatcher startup",
+			).pipe(Effect.annotateLogs("service", "BotClient"))
+			return
+		}
+
+		const requiredTables = extractTablesFromEventTypes(eventTypes)
+
+		// Start shape stream subscriptions (only for tables with handlers)
+		yield* subscriber.start(requiredTables)
+		yield* dispatcher.start
+	})
+
 /**
  * Create a Hazel bot runtime with pre-configured subscriptions
  *
@@ -1374,14 +1406,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 				on: (eventType, handler) => dispatcher.on(eventType, handler),
 				start: Effect.gen(function* () {
 					yield* Effect.logDebug("Starting bot client...")
-
-					// Derive required tables from registered event handlers
-					const eventTypes = yield* dispatcher.registeredEventTypes
-					const requiredTables = extractTablesFromEventTypes(eventTypes)
-
-					// Start shape stream subscriptions (only for tables with handlers)
-					yield* subscriber.start(requiredTables)
-					yield* dispatcher.start
+					yield* startBotEventPipeline(dispatcher, subscriber)
 					yield* Effect.logDebug("Bot client started successfully")
 				}),
 				getAuthContext: auth.getContext.pipe(Effect.orDie),
