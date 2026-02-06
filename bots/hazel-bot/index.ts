@@ -735,10 +735,14 @@ runHazelBot({
 						.replace(new RegExp(`@\\[userId:${authContext.userId}\\]`, "g"), "")
 						.trim()
 
-					if (!question) return // Empty mention, ignore
+					yield* Effect.log(`Received question: ${question}`)
+
+					if (!question) return
 
 					// Resolve thread + org context from backend-authoritative thread API.
 					const thread = yield* bot.channel.createThread(message.id, message.channelId)
+
+					yield* Effect.log(`Created thread: ${thread.id}`)
 					const threadChannelId = thread.id as ChannelId
 					const orgId = thread.organizationId as OrganizationId
 

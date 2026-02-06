@@ -661,26 +661,33 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
 						),
 
-					/**
-					 * Ensure a thread exists on a message and return it.
-					 *
-					 * @param messageId - The message to create a thread on
-					 * @param channelId - Deprecated/unused. Kept for backwards compatibility.
-					 * @returns The thread channel data (use `.id` as the thread's ChannelId)
-					 *
-					 * @throws MessageNotFoundError if the message doesn't exist
-					 */
-					createThread: (messageId: MessageId, channelId: ChannelId) =>
-						rpc.channel
-							.createThread({
-								messageId,
-							})
-							.pipe(
-								Effect.map((r) => r.data),
-								Effect.withSpan("bot.channel.createThread", {
-									attributes: { messageId, channelId },
+				/**
+				 * Ensure a thread exists on a message and return it.
+				 *
+				 * @param messageId - The message to create a thread on
+				 * @param channelId - Deprecated/unused. Kept for backwards compatibility.
+				 * @returns The thread channel data (use `.id` as the thread's ChannelId)
+				 *
+				 * @throws MessageNotFoundError if the message doesn't exist
+				 */
+				createThread: (messageId: MessageId, channelId: ChannelId) =>
+					rpc.channel
+						.createThread({
+							messageId,
+						})
+						.pipe(
+							Effect.tapErrorCause((cause) =>
+								Effect.logError("[bot.channel.createThread] Failed to ensure thread", {
+									messageId,
+									channelId,
+									cause,
 								}),
 							),
+							Effect.map((r) => r.data),
+							Effect.withSpan("bot.channel.createThread", {
+								attributes: { messageId, channelId },
+							}),
+						),
 			},
 
 			/**
@@ -861,7 +868,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					if (mentionHandlers.length > 0) {
 						yield* bot.on("messages.insert", (message) =>
 							Effect.gen(function* () {
-								yield* Effect.logInfo("[mention-pipeline] Received message", {
+								yield* Effect.logDebug("[mention-pipeline] Received message", {
 									messageId: message.id,
 									authorId: message.authorId,
 									channelId: message.channelId,
@@ -869,7 +876,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 								// Skip own messages
 								if (message.authorId === authContext.userId) {
-									yield* Effect.logInfo("[mention-pipeline] Skipping own message", {
+									yield* Effect.logDebug("[mention-pipeline] Skipping own message", {
 										messageId: message.id,
 									})
 									return
@@ -878,14 +885,14 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								// Check for bot mention in message content
 								const mentions = extractUserMentions(message.content)
 								if (!mentions.includes(authContext.userId)) {
-									yield* Effect.logInfo("[mention-pipeline] No bot mention found", {
+									yield* Effect.logDebug("[mention-pipeline] No bot mention found", {
 										messageId: message.id,
 										mentionsFound: mentions.length,
 									})
 									return
 								}
 
-								yield* Effect.logInfo(`[mention-pipeline] Bot mentioned in message`, {
+								yield* Effect.logDebug(`[mention-pipeline] Bot mentioned in message`, {
 									messageId: message.id,
 									channelId: message.channelId,
 									authorId: message.authorId,
@@ -908,7 +915,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							}),
 						)
 
-						yield* Effect.logInfo("[mention-pipeline] Mention handler registered", {
+						yield* Effect.logDebug("[mention-pipeline] Mention handler registered", {
 							handlerCount: mentionHandlers.length,
 							botUserId: authContext.userId,
 						})
