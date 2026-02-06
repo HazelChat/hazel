@@ -43,6 +43,7 @@
 		"OPENROUTER_API_KEY",
 		"RIVET_URL"
 	],
+	"globalPassThroughEnv": ["*"],
 	"ui": "tui",
 	"tasks": {
 		"build": {
