@@ -3,6 +3,7 @@ import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { IntegrationRequestRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 
 /**
  * Integration Request RPC Handlers
@@ -22,7 +23,7 @@ export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Direct database insert
-							const [result] = yield* db.execute((client) =>
+							const [result] = yield* transactionAwareExecute((client) =>
 								client
 									.insert(schema.integrationRequestsTable)
 									.values({

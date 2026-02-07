@@ -6,8 +6,6 @@ export {
 	CACHE_TTL,
 	IN_MEMORY_CAPACITY,
 	IN_MEMORY_TTL,
-	type UserAccessContext,
-	UserAccessContextRequest,
 } from "./access-context-cache"
 
 export { type AccessContextCache, AccessContextCacheService } from "./access-context-service"

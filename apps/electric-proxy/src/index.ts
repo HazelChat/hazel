@@ -199,31 +199,6 @@ const handleUserRequest = (request: Request) =>
 			}),
 		),
 		// Access/table errors → 500
-		Effect.catchTag("AccessContextLookupError", (error) =>
-			Effect.gen(function* () {
-				const config = yield* ProxyConfigService
-				const requestOrigin = request.headers.get("Origin")
-				yield* Effect.logError("Access context lookup failed", {
-					error: error.message,
-					entityId: error.entityId,
-					entityType: error.entityType,
-				})
-				return new Response(
-					JSON.stringify({
-						error: error.message,
-						entityId: error.entityId,
-						entityType: error.entityType,
-					}),
-					{
-						status: 500,
-						headers: {
-							"Content-Type": "application/json",
-							...getUserCorsHeaders(config.allowedOrigin, requestOrigin),
-						},
-					},
-				)
-			}),
-		),
 		Effect.catchTag("TableAccessError", (error: TableAccessError) =>
 			Effect.gen(function* () {
 				const config = yield* ProxyConfigService

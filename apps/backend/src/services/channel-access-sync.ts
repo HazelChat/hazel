@@ -1,14 +1,13 @@
-import { and, Database, eq, isNull, notInArray, schema } from "@hazel/db"
+import { and, eq, isNull, notInArray, schema } from "@hazel/db"
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
+import { transactionAwareExecute } from "../lib/transaction-aware-execute"
 
 export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncService>()(
 	"ChannelAccessSyncService",
 	{
 		accessors: true,
 		effect: Effect.gen(function* () {
-			const db = yield* Database.Database
-
 			const upsertChannelUsers = Effect.fn("ChannelAccessSyncService.upsertChannelUsers")(function* (
 				channelId: ChannelId,
 				organizationId: OrganizationId,
@@ -16,7 +15,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 			) {
 				const dedupedUserIds = [...new Set(userIds)].sort()
 				if (dedupedUserIds.length === 0) {
-					yield* db.execute((client) =>
+					yield* transactionAwareExecute((client) =>
 						client
 							.delete(schema.channelAccessTable)
 							.where(eq(schema.channelAccessTable.channelId, channelId)),
@@ -24,7 +23,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					return
 				}
 
-				yield* db.execute((client) =>
+				yield* transactionAwareExecute((client) =>
 					client
 						.insert(schema.channelAccessTable)
 						.values(
@@ -43,7 +42,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 						}),
 				)
 
-				yield* db.execute((client) =>
+				yield* transactionAwareExecute((client) =>
 					client
 						.delete(schema.channelAccessTable)
 						.where(
@@ -58,7 +57,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 			const removeChannel = Effect.fn("ChannelAccessSyncService.removeChannel")(function* (
 				channelId: ChannelId,
 			) {
-				yield* db.execute((client) =>
+				yield* transactionAwareExecute((client) =>
 					client
 						.delete(schema.channelAccessTable)
 						.where(eq(schema.channelAccessTable.channelId, channelId)),
@@ -68,7 +67,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 			const syncChannel = Effect.fn("ChannelAccessSyncService.syncChannel")(function* (
 				channelId: ChannelId,
 			) {
-				const channels = yield* db.execute((client) =>
+				const channels = yield* transactionAwareExecute((client) =>
 					client
 						.select({
 							id: schema.channelsTable.id,
@@ -95,7 +94,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 				let userIds: readonly UserId[] = []
 
 				if (channel.type === "public") {
-					const members = yield* db.execute((client) =>
+					const members = yield* transactionAwareExecute((client) =>
 						client
 							.select({ userId: schema.organizationMembersTable.userId })
 							.from(schema.organizationMembersTable)
@@ -115,7 +114,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					channel.type === "direct" ||
 					channel.type === "single"
 				) {
-					const members = yield* db.execute((client) =>
+					const members = yield* transactionAwareExecute((client) =>
 						client
 							.select({ userId: schema.channelMembersTable.userId })
 							.from(schema.channelMembersTable)
@@ -148,7 +147,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					}
 					const parentChannelId = channel.parentChannelId
 
-					const parentAccess = yield* db.execute((client) =>
+					const parentAccess = yield* transactionAwareExecute((client) =>
 						client
 							.select({ userId: schema.channelAccessTable.userId })
 							.from(schema.channelAccessTable)
@@ -182,7 +181,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 			const syncChildThreads = Effect.fn("ChannelAccessSyncService.syncChildThreads")(function* (
 				parentChannelId: ChannelId,
 			) {
-				const childThreads = yield* db.execute((client) =>
+				const childThreads = yield* transactionAwareExecute((client) =>
 					client
 						.select({ id: schema.channelsTable.id })
 						.from(schema.channelsTable)
@@ -200,7 +199,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 
 			const syncUserInOrganization = Effect.fn("ChannelAccessSyncService.syncUserInOrganization")(
 				function* (userId: UserId, organizationId: OrganizationId) {
-					const activeMembership = yield* db.execute((client) =>
+					const activeMembership = yield* transactionAwareExecute((client) =>
 						client
 							.select({ id: schema.organizationMembersTable.id })
 							.from(schema.organizationMembersTable)
@@ -215,7 +214,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					)
 
 					if (activeMembership.length === 0) {
-						yield* db.execute((client) =>
+						yield* transactionAwareExecute((client) =>
 							client
 								.delete(schema.channelAccessTable)
 								.where(
@@ -228,7 +227,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 						return
 					}
 
-					const channels = yield* db.execute((client) =>
+					const channels = yield* transactionAwareExecute((client) =>
 						client
 							.select({
 								id: schema.channelsTable.id,
@@ -244,7 +243,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 							),
 					)
 
-					const membershipChannels = yield* db.execute((client) =>
+					const membershipChannels = yield* transactionAwareExecute((client) =>
 						client
 							.select({ channelId: schema.channelMembersTable.channelId })
 							.from(schema.channelMembersTable)
@@ -283,7 +282,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					const desiredChannelIds = [...new Set([...baseChannelIds, ...threadChannelIds])].sort()
 
 					if (desiredChannelIds.length === 0) {
-						yield* db.execute((client) =>
+						yield* transactionAwareExecute((client) =>
 							client
 								.delete(schema.channelAccessTable)
 								.where(
@@ -296,7 +295,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 						return
 					}
 
-					yield* db.execute((client) =>
+					yield* transactionAwareExecute((client) =>
 						client
 							.insert(schema.channelAccessTable)
 							.values(
@@ -318,7 +317,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 							}),
 					)
 
-					yield* db.execute((client) =>
+					yield* transactionAwareExecute((client) =>
 						client
 							.delete(schema.channelAccessTable)
 							.where(

@@ -5,6 +5,7 @@ import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs }
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { ChannelSectionPolicy } from "../../policies/channel-section-policy"
 
@@ -20,21 +21,19 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							// Calculate next order value if not provided or is 0
 							let order = payload.order
 							if (order === 0) {
-								const maxOrderResult = yield* db
-									.execute((client) =>
-										client
-											.select({
-												maxOrder: sql<number>`COALESCE(MAX(${schema.channelSectionsTable.order}), -1)`,
-											})
-											.from(schema.channelSectionsTable)
-											.where(
-												eq(
-													schema.channelSectionsTable.organizationId,
-													payload.organizationId,
-												),
+								const maxOrderResult = yield* transactionAwareExecute((client) =>
+									client
+										.select({
+											maxOrder: sql<number>`COALESCE(MAX(${schema.channelSectionsTable.order}), -1)`,
+										})
+										.from(schema.channelSectionsTable)
+										.where(
+											eq(
+												schema.channelSectionsTable.organizationId,
+												payload.organizationId,
 											),
-									)
-									.pipe(withSystemActor)
+										),
+								).pipe(withSystemActor)
 
 								order = (maxOrderResult[0]?.maxOrder ?? -1) + 1
 							}
@@ -92,14 +91,12 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							}
 
 							// Update all channels in this section to have null sectionId
-							yield* db
-								.execute((client) =>
-									client
-										.update(schema.channelsTable)
-										.set({ sectionId: null })
-										.where(eq(schema.channelsTable.sectionId, id)),
-								)
-								.pipe(withSystemActor)
+							yield* transactionAwareExecute((client) =>
+								client
+									.update(schema.channelsTable)
+									.set({ sectionId: null })
+									.where(eq(schema.channelsTable.sectionId, id)),
+							).pipe(withSystemActor)
 
 							// Delete the section
 							yield* ChannelSectionRepo.deleteById(id)
@@ -118,7 +115,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* db.execute((client) =>
+							yield* transactionAwareExecute((client) =>
 								client
 									.update(schema.channelSectionsTable)
 									.set({
