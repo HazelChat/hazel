@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
 import type { ChannelId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
-import { memo, useCallback, useImperativeHandle, useMemo, useRef } from "react"
+import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
@@ -33,6 +33,18 @@ function toHighlight(isFirstNewMessage: boolean, isPinned: boolean): MessageHigh
 	return "none"
 }
 
+/** Date divider that shows a horizontal line only when not stuck to the top */
+function DateDivider({ date, isStuck }: { date: string; isStuck: boolean }) {
+	return (
+		<div className="sticky top-0 z-0 my-2 flex items-center justify-center">
+			{!isStuck && <div className="absolute inset-x-4 border-t border-border" />}
+			<span className="relative rounded-full bg-secondary px-3 py-1 font-mono text-muted-fg text-xs shadow-sm">
+				{date}
+			</span>
+		</div>
+	)
+}
+
 type MessageRowHeader = { id: string; type: "header"; date: string }
 type MessageRowItem = { id: string; type: "row" } & ProcessedMessage
 type MessageRow = MessageRowHeader | MessageRowItem
@@ -54,6 +66,8 @@ const MessageVirtualList = memo(
 		onViewableItemsChanged,
 		ref,
 	}: MessageVirtualListProps & { ref: React.Ref<LegendListRef> }) => {
+		const [activeStickyIndex, setActiveStickyIndex] = useState<number | undefined>()
+
 		return (
 			<LegendList<MessageRow>
 				ref={ref}
@@ -72,15 +86,12 @@ const MessageVirtualList = memo(
 				keyExtractor={(it) => it.id}
 				initialScrollIndex={messageRows.length - 1}
 				stickyHeaderIndices={stickyIndices}
+				onStickyHeaderChange={({ index }) => setActiveStickyIndex(index)}
 				viewabilityConfig={VIEWABILITY_CONFIG}
 				onViewableItemsChanged={onViewableItemsChanged}
 				renderItem={(props) =>
 					props.item.type === "header" ? (
-						<div className="sticky top-0 z-0 my-4 flex items-center justify-center">
-							<span className="rounded-full bg-secondary px-3 py-1 font-mono text-muted-fg text-xs shadow-sm">
-								{props.item.date}
-							</span>
-						</div>
+						<DateDivider date={props.item.date} isStuck={props.index === activeStickyIndex} />
 					) : (
 						<MessageItem
 							message={props.item.message}

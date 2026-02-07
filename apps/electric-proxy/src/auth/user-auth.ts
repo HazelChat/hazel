@@ -1,10 +1,6 @@
 import { ProxyAuth, ProxyAuthenticationError } from "@hazel/auth/proxy"
 import type { UserId } from "@hazel/schema"
 import { Effect } from "effect"
-import { AccessContextCacheService, type UserAccessContext } from "../cache"
-
-// Re-export UserAccessContext from cache module
-export type { UserAccessContext } from "../cache"
 
 /**
  * Authenticated user context extracted from session
@@ -17,13 +13,6 @@ export interface AuthenticatedUser {
 	role?: string
 	/** New sealed session cookie if the session was refreshed */
 	refreshedSession?: string
-}
-
-/**
- * Authenticated user with pre-queried access context
- */
-export interface AuthenticatedUserWithContext extends AuthenticatedUser {
-	accessContext: UserAccessContext
 }
 
 /**
@@ -47,7 +36,6 @@ function parseCookie(cookieHeader: string, cookieName: string): string | null {
  */
 export const validateSession = Effect.fn("ElectricProxy.validateSession")(function* (request: Request) {
 	const proxyAuth = yield* ProxyAuth
-	const cache = yield* AccessContextCacheService
 
 	// Check for Bearer token first (Tauri desktop apps)
 	const authHeader = request.headers.get("Authorization")
@@ -57,9 +45,6 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 
 		const authContext = yield* proxyAuth.validateBearerToken(token)
 
-		// Get cached access context from Redis-backed cache
-		const accessContext = yield* cache.getUserContext(authContext.internalUserId)
-
 		return {
 			userId: authContext.workosUserId,
 			internalUserId: authContext.internalUserId,
@@ -67,8 +52,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 			organizationId: authContext.organizationId,
 			role: authContext.role,
 			refreshedSession: undefined,
-			accessContext,
-		} satisfies AuthenticatedUserWithContext
+		} satisfies AuthenticatedUser
 	}
 
 	// Fall back to cookie authentication (web apps)
@@ -93,9 +77,6 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	// Validate session using @hazel/auth (uses Redis caching)
 	const authContext = yield* proxyAuth.validateSession(sessionCookie)
 
-	// Get cached access context from Redis-backed cache
-	const accessContext = yield* cache.getUserContext(authContext.internalUserId)
-
 	return {
 		userId: authContext.workosUserId,
 		internalUserId: authContext.internalUserId,
@@ -103,6 +84,5 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 		organizationId: authContext.organizationId,
 		role: authContext.role,
 		refreshedSession: authContext.refreshedSession,
-		accessContext,
-	} satisfies AuthenticatedUserWithContext
+	} satisfies AuthenticatedUser
 })

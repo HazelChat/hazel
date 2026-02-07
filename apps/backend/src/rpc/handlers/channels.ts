@@ -22,6 +22,7 @@ import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError } from "@hazel/
 import { eq } from "drizzle-orm"
 import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
@@ -358,7 +359,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}).pipe(withSystemActor)
 
 							// 4. Link message to thread (direct SQL update to bypass schema restrictions)
-							yield* db.execute((client) =>
+							yield* transactionAwareExecute((client) =>
 								client
 									.update(schema.messagesTable)
 									.set({ threadChannelId: createdChannel.id })
@@ -404,15 +405,13 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						)
 					}
 
-					const originalMessageResult = yield* db
-						.execute((client) =>
-							client
-								.select({ id: schema.messagesTable.id })
-								.from(schema.messagesTable)
-								.where(eq(schema.messagesTable.threadChannelId, channelId))
-								.limit(1),
-						)
-						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
+					const originalMessageResult = yield* transactionAwareExecute((client) =>
+						client
+							.select({ id: schema.messagesTable.id })
+							.from(schema.messagesTable)
+							.where(eq(schema.messagesTable.threadChannelId, channelId))
+							.limit(1),
+					).pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
 
 					if (originalMessageResult.length === 0) {
 						return yield* Effect.fail(

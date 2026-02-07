@@ -1,6 +1,6 @@
 import { schema } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
-import type { AuthenticatedUserWithContext } from "../auth/user-auth"
+import type { AuthenticatedUser } from "../auth/user-auth"
 import {
 	buildChannelAccessClause,
 	buildChannelVisibilityClause,
@@ -114,7 +114,7 @@ export function validateTable(table: string | null): {
  */
 export function getWhereClauseForTable(
 	table: AllowedTable,
-	user: AuthenticatedUserWithContext,
+	user: AuthenticatedUser,
 ): Effect.Effect<WhereClauseResult, TableAccessError> {
 	return Match.value(table).pipe(
 		// ===========================================

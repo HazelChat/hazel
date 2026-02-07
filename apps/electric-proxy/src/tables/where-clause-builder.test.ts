@@ -1,5 +1,5 @@
 import { schema } from "@hazel/db"
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it } from "vitest"
 import { buildChannelAccessClause, buildChannelVisibilityClause } from "./where-clause-builder"
 
 describe("where-clause-builder channel access", () => {

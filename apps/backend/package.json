@@ -16,7 +16,8 @@
 		"sync:workos": "bun run src/scripts/sync-workos.ts",
 		"reset": "bun run scripts/reset-all.ts",
 		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
-		"reset:force": "bun run scripts/reset-all.ts --force"
+		"reset:force": "bun run scripts/reset-all.ts --force",
+		"rebuild-channel-access": "bun run scripts/rebuild-channel-access.ts"
 	},
 	"dependencies": {
 		"@effect/cluster": "catalog:effect",

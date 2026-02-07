@@ -42,6 +42,7 @@ function DmAvatar({ member }: DmAvatarProps) {
 			size="xs"
 			src={member.user.avatarUrl}
 			alt={`${member.user.firstName} ${member.user.lastName}`}
+			seed={`${member.user.firstName} ${member.user.lastName}`}
 			status={status}
 		/>
 	)
@@ -196,6 +197,7 @@ export const DmChannelItem = ({ channelId }: DmChannelItemProps) => {
 													size="xs"
 													src={member.user.avatarUrl}
 													alt={member.user.firstName[0]}
+													seed={`${member.user.firstName} ${member.user.lastName}`}
 													className="ring-[1.5px] ring-sidebar"
 												/>
 											))}

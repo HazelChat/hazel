@@ -138,15 +138,18 @@ function AvatarStackItem({ authorId, index }: { authorId: UserId; index: number 
 	const user = data[0]?.user
 
 	if (!user) {
-		return <div className="size-5 rounded-md bg-muted ring-2 ring-bg" style={{ zIndex: 10 - index }} />
+		return (
+			<div className="size-5 rounded-md bg-muted ring-[1.5px] ring-bg" style={{ zIndex: 10 - index }} />
+		)
 	}
 
 	return (
 		<Avatar
 			src={user.avatarUrl}
 			initials={`${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`}
+			seed={`${user.firstName} ${user.lastName}`}
 			size="xxs"
-			className="ring-2 ring-bg"
+			className="ring-[1.5px] ring-bg"
 			isSquare
 		/>
 	)

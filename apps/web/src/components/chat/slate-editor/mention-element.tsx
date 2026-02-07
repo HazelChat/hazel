@@ -105,7 +105,7 @@ export function MentionElement({ attributes, children, element, interactive = fa
 					<div className="flex items-center gap-3">
 						{/* Avatar with status */}
 						<div className="relative shrink-0">
-							<Avatar size="md" alt={fullName} src={user?.avatarUrl || ""} />
+							<Avatar size="md" alt={fullName} src={user?.avatarUrl || ""} seed={fullName} />
 							<span
 								className={cn(
 									"absolute right-0 bottom-0 size-3 rounded-full border-2 border-bg",

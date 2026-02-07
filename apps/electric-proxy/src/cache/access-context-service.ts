@@ -1,6 +1,6 @@
 import { PersistedCache, type Persistence } from "@effect/experimental"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
-import type { BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
+import type { BotId, ChannelId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import {
 	AccessContextLookupError,
@@ -10,32 +10,24 @@ import {
 	CACHE_TTL,
 	IN_MEMORY_CAPACITY,
 	IN_MEMORY_TTL,
-	type UserAccessContext,
-	UserAccessContextRequest,
 } from "./access-context-cache"
 
 /**
  * Service interface for access context caching.
- * Provides get/invalidate methods for both user and bot contexts.
+ * Provides get/invalidate methods for bot contexts.
  */
 export interface AccessContextCache {
-	readonly getUserContext: (
-		userId: UserId,
-	) => Effect.Effect<UserAccessContext, AccessContextLookupError | Persistence.PersistenceError>
-
 	readonly getBotContext: (
 		botId: BotId,
 		userId: UserId,
 	) => Effect.Effect<BotAccessContext, AccessContextLookupError | Persistence.PersistenceError>
-
-	readonly invalidateUser: (userId: UserId) => Effect.Effect<void, Persistence.PersistenceError>
 
 	readonly invalidateBot: (botId: BotId) => Effect.Effect<void, Persistence.PersistenceError>
 }
 
 /**
  * Access context caching service.
- * Uses PersistedCache to cache user and bot access contexts with Redis persistence.
+ * Uses PersistedCache to cache bot access contexts with Redis persistence.
  *
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
@@ -46,54 +38,6 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 		accessors: true,
 		scoped: Effect.gen(function* () {
 			const db = yield* Database.Database
-
-			// Create user access context cache
-			const userCache = yield* PersistedCache.make({
-				storeId: `${CACHE_STORE_ID}:user`,
-
-				lookup: (request: UserAccessContextRequest) =>
-					Effect.gen(function* () {
-						const userId = request.userId as UserId
-
-						// Query organization memberships
-						const orgMembers = yield* db
-							.execute((client) =>
-								client
-									.select({
-										organizationId: schema.organizationMembersTable.organizationId,
-									})
-									.from(schema.organizationMembersTable)
-									.where(
-										and(
-											eq(schema.organizationMembersTable.userId, userId),
-											isNull(schema.organizationMembersTable.deletedAt),
-										),
-									),
-							)
-							.pipe(
-								Effect.catchTag(
-									"DatabaseError",
-									(error) =>
-										new AccessContextLookupError({
-											message: "Failed to query user's organizations",
-											detail: error.message,
-											entityId: userId,
-											entityType: "user",
-										}),
-								),
-							)
-
-						const organizationIds = orgMembers.map((m) => m.organizationId)
-
-						return {
-							organizationIds,
-						}
-					}),
-
-				timeToLive: () => CACHE_TTL,
-				inMemoryCapacity: IN_MEMORY_CAPACITY,
-				inMemoryTTL: IN_MEMORY_TTL,
-			})
 
 			// Create bot access context cache
 			const botCache = yield* PersistedCache.make({
@@ -147,22 +91,12 @@ export class AccessContextCacheService extends Effect.Service<AccessContextCache
 			})
 
 			return {
-				getUserContext: (userId: UserId) =>
-					userCache.get(new UserAccessContextRequest({ userId })).pipe(
-						Effect.map((result) => ({
-							organizationIds: result.organizationIds as readonly OrganizationId[],
-						})),
-					),
-
 				getBotContext: (botId: BotId, userId: UserId) =>
 					botCache.get(new BotAccessContextRequest({ botId, userId })).pipe(
 						Effect.map((result) => ({
 							channelIds: result.channelIds as readonly ChannelId[],
 						})),
 					),
-
-				invalidateUser: (userId: UserId) =>
-					userCache.invalidate(new UserAccessContextRequest({ userId })),
 
 				invalidateBot: (botId: BotId) =>
 					// Note: We don't have userId here, but invalidation only uses the primary key (botId)

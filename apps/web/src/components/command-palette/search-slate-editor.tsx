@@ -375,6 +375,7 @@ export const SearchSlateEditor = forwardRef<SearchSlateEditorRef, SearchSlateEdi
 											size="xs"
 											src={(option as any).avatarUrl ?? undefined}
 											alt={option.label}
+											seed={option.label}
 										/>
 									)}
 									{option.type === "channel" && (

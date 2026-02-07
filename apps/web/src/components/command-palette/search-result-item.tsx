@@ -71,6 +71,7 @@ export function SearchResultItem({
 				size="sm"
 				src={author?.avatarUrl ?? undefined}
 				alt={authorName}
+				seed={authorName}
 				className="mt-0.5 shrink-0"
 			/>
 

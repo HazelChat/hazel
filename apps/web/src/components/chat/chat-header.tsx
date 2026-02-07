@@ -37,6 +37,7 @@ function OtherMemberAvatar({ member }: OtherMemberAvatarProps) {
 			size="sm"
 			src={member.user.avatarUrl}
 			initials={initials}
+			seed={`${member.user.firstName} ${member.user.lastName}`}
 			alt={`${member.user.firstName} ${member.user.lastName}`}
 		/>
 	)
