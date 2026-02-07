@@ -249,7 +249,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 				className={`border-b ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
 			>
 				<Menu>
-					<PrimitiveButton className="relative flex items-center justify-between gap-x-2 font-semibold outline-hidden focus-visible:ring focus-visible:ring-primary">
+					<PrimitiveButton className="group/switcher relative flex items-center justify-between gap-x-2 font-semibold outline-hidden text-fg/80 hover:text-fg transition-colors focus-visible:ring focus-visible:ring-primary">
 						<div className="flex w-full items-center gap-1">
 							<span className="flex gap-x-2 font-medium text-sm/6">
 								<Avatar
@@ -260,7 +260,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								/>
 								{organization?.name}
 							</span>
-							<IconChevronUpDown className="ml-auto size-4 text-muted-fg" />
+							<IconChevronUpDown className="ml-auto size-4 text-muted-fg group-hover/switcher:text-fg transition-colors" />
 						</div>
 					</PrimitiveButton>
 					<MenuContent className="min-w-(--trigger-width)">
