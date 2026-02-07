@@ -73,7 +73,7 @@ const createBotScript = Effect.gen(function* () {
 			externalId,
 			email: botEmail,
 			firstName: botName,
-			lastName: "Bot",
+			lastName: "",
 			avatarUrl: "",
 			userType: "machine",
 		}),

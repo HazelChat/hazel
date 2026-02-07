@@ -86,7 +86,7 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 				externalId,
 				email: botEmail,
 				firstName: botName,
-				lastName: "Bot",
+				lastName: "",
 				avatarUrl: "",
 				userType: "machine",
 			}),

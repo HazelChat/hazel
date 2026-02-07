@@ -134,7 +134,7 @@ const seedBot = Effect.fn("seedInternalBots.seedBot")(function* (provider: Inter
 			externalId,
 			email: botEmail,
 			firstName: config.name,
-			lastName: "Bot",
+			lastName: "",
 			avatarUrl: config.avatarUrl,
 			userType: "machine",
 		}),

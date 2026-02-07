@@ -78,7 +78,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										externalId,
 										email: botEmail,
 										firstName: payload.name,
-										lastName: "Bot",
+										lastName: "",
 										avatarUrl: "",
 										userType: "machine",
 									}),
