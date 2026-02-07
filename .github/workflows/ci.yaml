@@ -138,7 +138,7 @@ jobs:
                   docker compose version
 
             - name: Run electric-proxy E2E filter tests
-              run: bunx vitest run "${{ github.workspace }}/apps/electric-proxy/src/e2e/electric-proxy-filters.e2e.test.ts"
+              run: bunx vitest run --config apps/electric-proxy/vitest.e2e.config.ts
 
             - name: Docker diagnostics
               if: always()
