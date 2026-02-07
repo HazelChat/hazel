@@ -98,7 +98,7 @@ jobs:
               run: bun install --frozen-lockfile
 
             - name: Run tests
-              run: bun --bun vitest run --coverage.enabled true
+              run: bun run test:once --coverage.enabled true
               env:
                   VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
 
