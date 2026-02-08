@@ -1,13 +1,35 @@
 import { LanguageModel } from "@effect/ai"
 import { generateIntegrationInstructions, type AIContentChunk, type HazelBotClient } from "@hazel/bot-sdk"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Cause, Config, Effect, Exit, Stream } from "effect"
+import { Cause, Config, Duration, Effect, Exit, Ref, Stream } from "effect"
 
+import {
+	DegenerateOutputError,
+	IterationTimeoutError,
+	SessionTimeoutError,
+	StreamIdleTimeoutError,
+} from "./errors.ts"
 import { streamAgentLoop } from "./agent-loop.ts"
 import { makeOpenRouterModel } from "./openrouter.ts"
 import { INTEGRATION_INSTRUCTIONS, buildSystemPrompt } from "./prompt.ts"
 import { mapEffectPartToChunk } from "./stream.ts"
 import { buildToolkit } from "./tools/toolkit.ts"
+
+const mapErrorToUserMessage = (error: unknown): string => {
+	if (typeof error === "object" && error !== null && "_tag" in error) {
+		switch ((error as { _tag: string })._tag) {
+			case "SessionTimeoutError":
+				return "The response took too long and was stopped."
+			case "IterationTimeoutError":
+				return "The AI took too long to respond. Please try again."
+			case "StreamIdleTimeoutError":
+				return "The AI stopped responding. Please try again."
+			case "DegenerateOutputError":
+				return "The AI got stuck in a loop. Please try rephrasing."
+		}
+	}
+	return `An error occurred: ${String(error)}`
+}
 
 /**
  * Shared AI pipeline used by both /ask command and @mention handler.
@@ -71,15 +93,35 @@ export const handleAIRequest = (params: {
 				Effect.gen(function* () {
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
+					// Deduplicate reasoning deltas that the OpenRouter adapter emits
+					// twice (from both delta.reasoning and delta.reasoning_details)
+					const lastThinkingDelta = yield* Ref.make("")
+
 					yield* streamAgentLoop({ prompt, toolkit }).pipe(
 						Stream.map(mapEffectPartToChunk),
 						Stream.filter((chunk): chunk is AIContentChunk => chunk !== null),
+						Stream.filterEffect((chunk) => {
+							if (chunk.type !== "thinking" || chunk.text.length === 0) {
+								return Ref.set(lastThinkingDelta, "").pipe(Effect.as(true))
+							}
+							return Ref.getAndSet(lastThinkingDelta, chunk.text).pipe(
+								Effect.map((prev) => prev !== chunk.text),
+							)
+						}),
 						Stream.runForEach((chunk) => session.processChunk(chunk)),
 					)
 
 					yield* session.complete()
 					yield* Effect.log(`Agent response complete: ${session.messageId}`)
-				}),
+				}).pipe(
+					Effect.timeoutFail({
+						onTimeout: () =>
+							new SessionTimeoutError({
+								message: "Overall AI session exceeded 3 minute time limit",
+							}),
+						duration: Duration.minutes(3),
+					}),
+				),
 			// Release: on failure/interrupt, persist the error state
 			(session, exit) =>
 				Exit.isSuccess(exit)
@@ -90,7 +132,7 @@ export const handleAIRequest = (params: {
 
 							const userMessage: string = Cause.match(cause, {
 								onEmpty: "Request was cancelled.",
-								onFail: (error) => `An error occurred: ${String(error)}`,
+								onFail: (error) => mapErrorToUserMessage(error),
 								onDie: () => "An unexpected error occurred.",
 								onInterrupt: () => "Request was cancelled.",
 								onSequential: (left: string) => left,
