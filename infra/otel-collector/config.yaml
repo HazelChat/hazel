@@ -7,6 +7,12 @@ receivers:
                 endpoint: 0.0.0.0:4318
 
 processors:
+    resource/maple_org:
+        attributes:
+            - key: maple.org_id
+              action: upsert
+              value: ${env:MAPLE_ORG_ID}
+
     batch:
         timeout: 5s
         send_batch_size: 8192
@@ -56,13 +62,13 @@ service:
     pipelines:
         traces:
             receivers: [otlp]
-            processors: [probabilistic_sampler, batch]
+            processors: [resource/maple_org, probabilistic_sampler, batch]
             exporters: [debug, tinybird]
         metrics:
             receivers: [otlp]
-            processors: [batch]
+            processors: [resource/maple_org, batch]
             exporters: [debug, tinybird]
         logs:
             receivers: [otlp]
-            processors: [batch]
+            processors: [resource/maple_org, batch]
             exporters: [debug, tinybird]
