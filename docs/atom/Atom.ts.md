@@ -92,11 +92,6 @@ Added in v1.0.0
   - [Interrupt (type alias)](#interrupt-type-alias)
   - [Reset](#reset)
   - [Reset (type alias)](#reset-type-alias)
-- [type ids](#type-ids)
-  - [TypeId](#typeid)
-  - [TypeId (type alias)](#typeid-type-alias)
-  - [WritableTypeId](#writabletypeid)
-  - [WritableTypeId (type alias)](#writabletypeid-type-alias)
 - [utils](#utils)
   - [Failure (type alias)](#failure-type-alias)
   - [PullSuccess (type alias)](#pullsuccess-type-alias)
@@ -323,11 +318,11 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface Serializable {
+export interface Serializable<S extends Schema.Schema.Any> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: unknown) => unknown
-    readonly decode: (value: unknown) => unknown
+    readonly encode: (value: S["Type"]) => S["Encoded"]
+    readonly decode: (value: S["Encoded"]) => S["Type"]
   }
 }
 ```
@@ -359,7 +354,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const isSerializable: (self: Atom<any>) => self is Atom<any> & Serializable
+export declare const isSerializable: (self: Atom<any>) => self is Atom<any> & Serializable<any>
 ```
 
 Added in v1.0.0
@@ -548,14 +543,14 @@ Added in v1.0.0
 
 ```ts
 export declare const serializable: {
-  <R extends Atom<any>, I>(options: {
+  <R extends Atom<any>, S extends Schema.Schema<Type<R>, any>>(options: {
     readonly key: string
-    readonly schema: Schema.Schema<Type<R>, I>
-  }): (self: R) => R & Serializable
-  <R extends Atom<any>, I>(
+    readonly schema: S
+  }): (self: R) => R & Serializable<S>
+  <R extends Atom<any>, S extends Schema.Schema<Type<R>, any>>(
     self: R,
-    options: { readonly key: string; readonly schema: Schema.Schema<Type<R>, I> }
-  ): R & Serializable
+    options: { readonly key: string; readonly schema: S }
+  ): R & Serializable<S>
 }
 ```
 
@@ -840,6 +835,7 @@ export interface Context {
   self<A>(this: Context): Option.Option<A>
   setSelf<A>(this: Context, a: A): void
   set<R, W>(this: Context, atom: Writable<R, W>, value: W): void
+  setResult<A, E, W>(this: Context, atom: Writable<Result.Result<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: Context, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   someOnce<A>(this: Context, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   stream<A>(
@@ -1023,18 +1019,26 @@ export interface AtomRuntime<R, ER = never> extends Atom<Result.Result<Runtime.R
 
   readonly subscriptionRef: <A, E>(
     create:
-      | Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, R | AtomRegistry | Reactivity.Reactivity>
+      | Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>
       | ((
           get: Context
-        ) => Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, R | AtomRegistry | Reactivity.Reactivity>)
+        ) => Effect.Effect<
+          SubscriptionRef.SubscriptionRef<A>,
+          E,
+          Scope.Scope | R | AtomRegistry | Reactivity.Reactivity
+        >)
   ) => Writable<Result.Result<A, E>, A>
 
   readonly subscribable: <A, E, E1 = never>(
     create:
-      | Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, R | AtomRegistry | Reactivity.Reactivity>
+      | Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>
       | ((
           get: Context
-        ) => Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, R | AtomRegistry | Reactivity.Reactivity>)
+        ) => Effect.Effect<
+          Subscribable.Subscribable<A, E, R>,
+          E1,
+          Scope.Scope | R | AtomRegistry | Reactivity.Reactivity
+        >)
   ) => Atom<Result.Result<A, E | E1>>
 }
 ```
@@ -1061,6 +1065,7 @@ export interface FnContext {
   self<A>(this: FnContext): Option.Option<A>
   setSelf<A>(this: FnContext, a: A): void
   set<R, W>(this: FnContext, atom: Writable<R, W>, value: W): void
+  setResult<A, E, W>(this: FnContext, atom: Writable<Result.Result<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: FnContext, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   stream<A>(
     this: FnContext,
@@ -1197,48 +1202,6 @@ Added in v1.0.0
 
 ```ts
 export type Reset = typeof Reset
-```
-
-Added in v1.0.0
-
-# type ids
-
-## TypeId
-
-**Signature**
-
-```ts
-export declare const TypeId: "~effect-atom/atom/Atom"
-```
-
-Added in v1.0.0
-
-## TypeId (type alias)
-
-**Signature**
-
-```ts
-export type TypeId = "~effect-atom/atom/Atom"
-```
-
-Added in v1.0.0
-
-## WritableTypeId
-
-**Signature**
-
-```ts
-export declare const WritableTypeId: "~effect-atom/atom/Atom/Writable"
-```
-
-Added in v1.0.0
-
-## WritableTypeId (type alias)
-
-**Signature**
-
-```ts
-export type WritableTypeId = "~effect-atom/atom/Atom/Writable"
 ```
 
 Added in v1.0.0

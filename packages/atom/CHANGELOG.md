@@ -1,5 +1,75 @@
 # @effect-rx/rx
 
+## 0.5.0
+
+### Minor Changes
+
+- [`7b9289d`](https://github.com/tim-smart/effect-atom/commit/7b9289d0bfd904d1434a38df0808e69c876767b4) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+## 0.4.13
+
+### Patch Changes
+
+- [`02b8cec`](https://github.com/tim-smart/effect-atom/commit/02b8cec7f204146b50990f0040fe9355d94fed25) Thanks [@tim-smart](https://github.com/tim-smart)! - don't overwrite kvs values with defaultValue
+
+## 0.4.12
+
+### Patch Changes
+
+- [`c874a58`](https://github.com/tim-smart/effect-atom/commit/c874a58df3d7bf921d987bbdce5cd219587c8755) Thanks [@tim-smart](https://github.com/tim-smart)! - try hiding type ids to fix declaration emit errors
+
+## 0.4.11
+
+### Patch Changes
+
+- [`827bd5a`](https://github.com/tim-smart/effect-atom/commit/827bd5a8863834836b982173802b5fced1ade6ba) Thanks [@tim-smart](https://github.com/tim-smart)! - update kvs when default value is generated
+
+## 0.4.10
+
+### Patch Changes
+
+- [`8764061`](https://github.com/tim-smart/effect-atom/commit/87640619ec6015ff3696cbc692c66fbc809fc177) Thanks [@tim-smart](https://github.com/tim-smart)! - improve Serializable compatibility
+
+## 0.4.9
+
+### Patch Changes
+
+- [#380](https://github.com/tim-smart/effect-atom/pull/380) [`9db8b26`](https://github.com/tim-smart/effect-atom/commit/9db8b2631c078d29d0f8401a356f955fe1dcf356) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - add Scope support to Atom.subscriptionRef types
+
+- [#384](https://github.com/tim-smart/effect-atom/pull/384) [`84fd4f7`](https://github.com/tim-smart/effect-atom/commit/84fd4f74dd52c7a516848ffeb4bd3ef8b3eb6d34) Thanks [@lucas-barake](https://github.com/lucas-barake)! - pass suspendOnWaiting options to resultOnce in Atom.fn context
+
+## 0.4.8
+
+### Patch Changes
+
+- [`c2f083c`](https://github.com/tim-smart/effect-atom/commit/c2f083c9e48235ac2821b6e5245d1ab5dd7078da) Thanks [@tim-smart](https://github.com/tim-smart)! - make Atom.searchParam work when window is undefined
+
+## 0.4.7
+
+### Patch Changes
+
+- [#378](https://github.com/tim-smart/effect-atom/pull/378) [`07af354`](https://github.com/tim-smart/effect-atom/commit/07af3549641d85009e3ab66065fff391f5966917) Thanks [@lucas-barake](https://github.com/lucas-barake)! - establish atom relationship after rebuilds
+
+## 0.4.6
+
+### Patch Changes
+
+- [`5338c6f`](https://github.com/tim-smart/effect-atom/commit/5338c6f465b5601aac1004a438e7dde5ff8923c5) Thanks [@tim-smart](https://github.com/tim-smart)! - expose HttpApi `withResponse` option
+
+## 0.4.5
+
+### Patch Changes
+
+- [`2d71357`](https://github.com/tim-smart/effect-atom/commit/2d71357fc3b2c3c735f067c8a7e29152b8829d32) Thanks [@tim-smart](https://github.com/tim-smart)! - fix this constraint for FnContext.setResult
+
+## 0.4.4
+
+### Patch Changes
+
+- [`14b1b1d`](https://github.com/tim-smart/effect-atom/commit/14b1b1dd6f0d1438397991cbf9248f9e593822fa) Thanks [@tim-smart](https://github.com/tim-smart)! - add get.setResult, which can be used to call a Atom.fn inside an atom context
+
+- [`73e0319`](https://github.com/tim-smart/effect-atom/commit/73e03195b371e83cfaa2dd2fcac1bb89afce9d6c) Thanks [@tim-smart](https://github.com/tim-smart)! - add Result.flatMap
+
 ## 0.4.3
 
 ### Patch Changes

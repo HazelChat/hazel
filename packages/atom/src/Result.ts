@@ -15,17 +15,8 @@ import { hasProperty, isIterable } from "effect/Predicate"
 import * as Schema_ from "effect/Schema"
 import type * as Types from "effect/Types"
 
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const TypeId = Symbol.for("@effect-atom/atom/Result")
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = typeof TypeId
+type TypeId = "~effect-atom/atom/Result"
+const TypeId: TypeId = "~effect-atom/atom/Result"
 
 /**
  * @since 1.0.0
@@ -233,7 +224,7 @@ export const isInterrupted = <A, E>(result: Result<A, E>): result is Failure<A, 
  * @since 1.0.0
  * @category constructors
  */
-export const failure = <E, A = never>(
+export const failure = <A, E = never>(
   cause: Cause.Cause<E>,
   options?: {
     readonly previousSuccess?: Option.Option<Success<A, E>> | undefined
@@ -414,6 +405,30 @@ export const map: {
       })
     case "Success":
       return success(f(self.value), self)
+  }
+})
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const flatMap: {
+  <A, E, B, E2>(f: (a: A, prev: Success<A, E>) => Result<A, E2>): (self: Result<A, E>) => Result<B, E | E2>
+  <E, A, B, E2>(self: Result<A, E>, f: (a: A, prev: Success<A, E>) => Result<B, E2>): Result<B, E | E2>
+} = dual(2, <E, A, B, E2>(self: Result<A, E>, f: (a: A, prev: Success<A, E>) => Result<B, E2>): Result<B, E | E2> => {
+  switch (self._tag) {
+    case "Initial":
+      return self as any as Result<B, E>
+    case "Failure":
+      return failure<B, E | E2>(self.cause, {
+        previousSuccess: Option.flatMap(self.previousSuccess, (s) => {
+          const next = f(s.value, s)
+          return isSuccess(next) ? Option.some(next) : Option.none()
+        }),
+        waiting: self.waiting
+      })
+    case "Success":
+      return f(self.value, self)
   }
 })
 
@@ -777,6 +792,21 @@ export const schemaFromSelf: Schema_.Schema<Result<any, any>> = Schema_.declare(
  * @since 1.0.0
  * @category Schemas
  */
+export interface Schema<
+  Success extends Schema_.Schema.All,
+  Error extends Schema_.Schema.All
+> extends
+  Schema_.Schema<
+    Result<Success["Type"], Error["Type"]>,
+    Encoded<Success["Encoded"], Error["Encoded"]>,
+    Success["Context"] | Error["Context"]
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export const Schema = <
   Success extends Schema_.Schema.All = typeof Schema_.Never,
   Error extends Schema_.Schema.All = typeof Schema_.Never
@@ -785,14 +815,7 @@ export const Schema = <
     readonly success?: Success | undefined
     readonly error?: Error | undefined
   }
-): Schema_.transform<
-  Schema_.Schema<
-    PartialEncoded<Success["Type"], Error["Type"]>,
-    Encoded<Success["Encoded"], Error["Encoded"]>,
-    Success["Context"] | Error["Context"]
-  >,
-  Schema_.Schema<Result<Success["Type"], Error["Type"]>>
-> => {
+): Schema<Success, Error> => {
   const success_: Success = options.success ?? Schema_.Never as any
   const error: Error = options.error ?? Schema_.Never as any
   const Success = Schema_.TaggedStruct("Success", {

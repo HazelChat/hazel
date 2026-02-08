@@ -23,7 +23,7 @@ export interface AtomLiveStore<Self, Id extends string, S extends LiveStoreSchem
     _: never
   ): Context.TagClassShape<Id, Store<S, Context>>
 
-  readonly layer: Layer.Layer<Self>
+  readonly layer: Atom.Atom<Layer.Layer<Self>>
   readonly runtime: Atom.AtomRuntime<Self>
 
   /**
@@ -40,12 +40,16 @@ export interface AtomLiveStore<Self, Id extends string, S extends LiveStoreSchem
    * Creates a Atom that allows you to resolve a LiveQueryDef. It embeds the loading
    * of the Store and will emit a `Result` that contains the result of the query
    */
-  readonly makeQuery: <A>(query: LiveQueryDef<A>) => Atom.Atom<Result.Result<A>>
+  readonly makeQuery: <A>(
+    query: LiveQueryDef<A> | ((get: Atom.Context) => LiveQueryDef<A>)
+  ) => Atom.Atom<Result.Result<A>>
   /**
    * Creates a Atom that allows you to resolve a LiveQueryDef. If the Store has
    * not been created yet, it will return `undefined`.
    */
-  readonly makeQueryUnsafe: <A>(query: LiveQueryDef<A>) => Atom.Atom<A | undefined>
+  readonly makeQueryUnsafe: <A>(
+    query: LiveQueryDef<A> | ((get: Atom.Context) => LiveQueryDef<A>)
+  ) => Atom.Atom<A | undefined>
   /**
    * A Atom.Writable that allows you to commit an event to the Store.
    */
@@ -60,62 +64,76 @@ declare global {
 
 /**
  * @since 1.0.0
+ * @category Models
+ */
+export type Options<S extends LiveStoreSchema, Context = {}> =
+  & CreateStoreOptions<S, Context>
+  & {
+    readonly otelOptions?: Partial<OtelOptions> | undefined
+  }
+
+/**
+ * @since 1.0.0
  * @category Constructors
  */
 export const Tag = <Self>() =>
 <const Id extends string, S extends LiveStoreSchema, Context = {}>(
   id: Id,
-  options: CreateStoreOptions<S, Context> & {
-    readonly otelOptions?: Partial<OtelOptions> | undefined
-  }
+  options: Options<S, Context> | ((get: Atom.Context) => Options<S, Context>)
 ): AtomLiveStore<Self, Id, S, Context> => {
   const self: Mutable<AtomLiveStore<Self, Id, S, Context>> = Context.Tag(id)<Self, Store<S, Context>>() as any
 
-  self.layer = Layer.scoped(
-    self,
-    createStore(options).pipe(
-      provideOtel({
-        parentSpanContext: options?.otelOptions?.rootSpanContext,
-        otelTracer: options?.otelOptions?.tracer
-      }),
-      Effect.orDie
+  const layerFromOptions = (opts: Options<S, Context>) =>
+    Layer.scoped(
+      self,
+      createStore(opts).pipe(
+        provideOtel({
+          parentSpanContext: opts?.otelOptions?.rootSpanContext,
+          otelTracer: opts?.otelOptions?.tracer
+        }),
+        Effect.orDie
+      )
     )
+
+  self.runtime = Atom.runtime(
+    typeof options === "function" ? (get) => layerFromOptions(options(get)) : layerFromOptions(options)
   )
-  self.runtime = Atom.runtime(self.layer)
+  self.layer = self.runtime.layer
   self.store = self.runtime.atom(Effect.contextWith(Context.get(self)) as any)
   self.storeUnsafe = Atom.readable((get) => {
     const result = get(self.store)
     return Result.getOrElse(result, constUndefined)
   })
-  self.makeQuery = <A>(query: LiveQueryDef<A>) =>
+  self.makeQuery = <A>(query: LiveQueryDef<A> | ((get: Atom.Context) => LiveQueryDef<A>)) =>
     Atom.readable((get) => {
       const store = get(self.store)
       return Result.map(store, (store) => {
-        const result = store.query(query)
+        const q = typeof query === "function" ? query(get) : query
+        function onUpdate(value: A) {
+          get.setSelf(Result.success(value))
+        }
+        onUpdate.onUpdate = onUpdate
         get.addFinalizer(
-          store.subscribe(query, {
-            onUpdate(value) {
-              get.setSelf(Result.success(value))
-            }
-          })
+          store.subscribe(q, onUpdate)
         )
-        return result
+        return store.query(q)
       })
     })
-  self.makeQueryUnsafe = <A>(query: LiveQueryDef<A>) =>
+  self.makeQueryUnsafe = <A>(query: LiveQueryDef<A> | ((get: Atom.Context) => LiveQueryDef<A>)) =>
     Atom.readable((get) => {
       const store = get(self.storeUnsafe)
       if (store === undefined) {
         return undefined
       }
+      const q = typeof query === "function" ? query(get) : query
+      function onUpdate(value: A) {
+        get.setSelf(value)
+      }
+      onUpdate.onUpdate = onUpdate
       get.addFinalizer(
-        store.subscribe(query, {
-          onUpdate(value) {
-            get.setSelf(Result.success(value))
-          }
-        })
+        store.subscribe(q, onUpdate)
       )
-      return store.query(query)
+      return store.query(q)
     })
   self.commit = Atom.writable((get) => {
     get(self.storeUnsafe)

@@ -1,5 +1,67 @@
 # @effect-rx/rx-react
 
+## 0.5.0
+
+### Minor Changes
+
+- [`7b9289d`](https://github.com/tim-smart/effect-atom/commit/7b9289d0bfd904d1434a38df0808e69c876767b4) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`7b9289d`](https://github.com/tim-smart/effect-atom/commit/7b9289d0bfd904d1434a38df0808e69c876767b4)]:
+  - @effect-atom/atom@0.5.0
+
+## 0.4.6
+
+### Patch Changes
+
+- [`fb922c9`](https://github.com/tim-smart/effect-atom/commit/fb922c964a6c2f6095da2ca01367584ed0f37938) Thanks [@tim-smart](https://github.com/tim-smart)! - add ScopedAtom module to atom-react
+
+## 0.4.5
+
+### Patch Changes
+
+- [`c874a58`](https://github.com/tim-smart/effect-atom/commit/c874a58df3d7bf921d987bbdce5cd219587c8755) Thanks [@tim-smart](https://github.com/tim-smart)! - try hiding type ids to fix declaration emit errors
+
+- Updated dependencies [[`c874a58`](https://github.com/tim-smart/effect-atom/commit/c874a58df3d7bf921d987bbdce5cd219587c8755)]:
+  - @effect-atom/atom@0.4.12
+
+## 0.4.4
+
+### Patch Changes
+
+- [`8764061`](https://github.com/tim-smart/effect-atom/commit/87640619ec6015ff3696cbc692c66fbc809fc177) Thanks [@tim-smart](https://github.com/tim-smart)! - improve Serializable compatibility
+
+- Updated dependencies [[`8764061`](https://github.com/tim-smart/effect-atom/commit/87640619ec6015ff3696cbc692c66fbc809fc177)]:
+  - @effect-atom/atom@0.4.10
+
+## 0.4.3
+
+### Patch Changes
+
+- [`c2f083c`](https://github.com/tim-smart/effect-atom/commit/c2f083c9e48235ac2821b6e5245d1ab5dd7078da) Thanks [@tim-smart](https://github.com/tim-smart)! - make Atom.searchParam work when window is undefined
+
+- Updated dependencies [[`c2f083c`](https://github.com/tim-smart/effect-atom/commit/c2f083c9e48235ac2821b6e5245d1ab5dd7078da)]:
+  - @effect-atom/atom@0.4.8
+
+## 0.4.2
+
+### Patch Changes
+
+- [#378](https://github.com/tim-smart/effect-atom/pull/378) [`07af354`](https://github.com/tim-smart/effect-atom/commit/07af3549641d85009e3ab66065fff391f5966917) Thanks [@lucas-barake](https://github.com/lucas-barake)! - establish atom relationship after rebuilds
+
+- Updated dependencies [[`07af354`](https://github.com/tim-smart/effect-atom/commit/07af3549641d85009e3ab66065fff391f5966917)]:
+  - @effect-atom/atom@0.4.7
+
+## 0.4.1
+
+### Patch Changes
+
+- [`14b1b1d`](https://github.com/tim-smart/effect-atom/commit/14b1b1dd6f0d1438397991cbf9248f9e593822fa) Thanks [@tim-smart](https://github.com/tim-smart)! - add get.setResult, which can be used to call a Atom.fn inside an atom context
+
+- Updated dependencies [[`14b1b1d`](https://github.com/tim-smart/effect-atom/commit/14b1b1dd6f0d1438397991cbf9248f9e593822fa), [`73e0319`](https://github.com/tim-smart/effect-atom/commit/73e03195b371e83cfaa2dd2fcac1bb89afce9d6c)]:
+  - @effect-atom/atom@0.4.4
+
 ## 0.4.0
 
 ### Minor Changes

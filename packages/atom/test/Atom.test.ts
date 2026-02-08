@@ -2,6 +2,7 @@ import * as Atom from "@effect-atom/atom/Atom"
 import * as Hydration from "@effect-atom/atom/Hydration"
 import * as Registry from "@effect-atom/atom/Registry"
 import * as Result from "@effect-atom/atom/Result"
+import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import { addEqualityTesters, afterEach, assert, beforeEach, describe, expect, it, test, vitest } from "@effect/vitest"
 import { Cause, Either, Equal, FiberRef, Schema, Struct, Subscribable, SubscriptionRef } from "effect"
 import * as Arr from "effect/Array"
@@ -979,6 +980,30 @@ describe("Atom", () => {
     unmount()
   })
 
+  it("SubscriptionRef/runtime/scoped", async () => {
+    let finalized = false
+    const atom = counterRuntime.subscriptionRef(
+      Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+        return yield* SubscriptionRef.make(0)
+      })
+    )
+    const r = Registry.make()
+    const unmount = r.mount(atom)
+    assert.deepStrictEqual(r.get(atom), Result.success(0, { waiting: true }))
+    r.set(atom, 1)
+    await new Promise((resolve) => resolve(null))
+    assert.deepStrictEqual(r.get(atom), Result.success(1, { waiting: true }))
+    assert.strictEqual(finalized, false)
+    unmount()
+    await new Promise((resolve) => resolve(null))
+    assert.strictEqual(finalized, true)
+  })
+
   it("setLazy(true)", async () => {
     const count = Atom.make(0).pipe(Atom.keepAlive)
     let rebuilds = 0
@@ -1111,14 +1136,15 @@ describe("Atom", () => {
     }))
     r.mount(pending)
 
-    const state = Hydration.dehydrate(r, {
+    const state = Hydration.toValues(Hydration.dehydrate(r, {
       encodeInitialAs: "promise"
-    })
+    }))
     expect(state.map((r) => Struct.omit(r, "dehydratedAt", "resultPromise"))).toMatchInlineSnapshot(`
       [
         {
           "key": "basicSerializable",
           "value": 0,
+          "~@effect-atom/atom/DehydratedAtom": true,
         },
         {
           "key": "errored",
@@ -1133,6 +1159,7 @@ describe("Atom", () => {
             },
             "waiting": false,
           },
+          "~@effect-atom/atom/DehydratedAtom": true,
         },
         {
           "key": "success",
@@ -1142,6 +1169,7 @@ describe("Atom", () => {
             "value": 123,
             "waiting": false,
           },
+          "~@effect-atom/atom/DehydratedAtom": true,
         },
         {
           "key": "pending",
@@ -1149,6 +1177,7 @@ describe("Atom", () => {
             "_tag": "Initial",
             "waiting": true,
           },
+          "~@effect-atom/atom/DehydratedAtom": true,
         },
       ]
     `)
@@ -1387,6 +1416,194 @@ describe("Atom", () => {
     await Effect.runPromise(Effect.yieldNow())
     const result = r.get(atom)
     expect(Result.isInterrupted(result)).toBeTruthy()
+  })
+
+  it("writable derived clears waiting after refresh", async () => {
+    let count = 0
+    const base = Atom.make(Effect.sync(() => ++count).pipe(Effect.delay(100))).pipe(
+      Atom.withLabel("base")
+    )
+    const derived = Atom.writable(
+      (get) => get(base),
+      () => {},
+      (refresh) => refresh(base)
+    ).pipe(
+      Atom.withLabel("derived")
+    )
+    const r = Registry.make()
+
+    const unmount1 = r.mount(derived)
+    await vitest.advanceTimersByTimeAsync(100)
+    let result = r.get(derived)
+    assert(Result.isSuccess(result))
+    expect(result.value).toEqual(1)
+    expect(result.waiting).toEqual(false)
+    unmount1()
+
+    r.refresh(derived)
+    const unmount2 = r.mount(derived)
+    await vitest.advanceTimersByTimeAsync(100)
+
+    result = r.get(derived)
+    expect(result.waiting).toEqual(false)
+    assert(Result.isSuccess(result))
+    expect(result.value).toEqual(2)
+
+    unmount2()
+  })
+
+  it("get.result suspendOnWaiting", async () => {
+    const r = Registry.make()
+
+    const inner = Atom.make(Effect.succeed(1).pipe(Effect.delay(50)))
+    const outer = Atom.make((get) => get.result(inner, { suspendOnWaiting: true }))
+
+    r.mount(outer)
+
+    let result = r.get(outer)
+    assert(result.waiting)
+
+    await vitest.advanceTimersByTimeAsync(50)
+
+    result = r.get(outer)
+    assert(Result.isSuccess(result))
+    assert.strictEqual(result.value, 1)
+  })
+
+  it("fn get.result suspendOnWaiting", async () => {
+    const r = Registry.make()
+    let runs = 0
+
+    const inner = Atom.fn((n: number) => {
+      runs++
+      return Effect.succeed(n * 2).pipe(Effect.delay(50))
+    })
+
+    const outer = Atom.fn(
+      Effect.fn(function*(_: void, get: Atom.FnContext) {
+        get.set(inner, 1)
+        const a = yield* get.result(inner, { suspendOnWaiting: true })
+
+        get.set(inner, 2)
+        const b = yield* get.result(inner, { suspendOnWaiting: true })
+
+        return { a, b }
+      })
+    )
+
+    r.mount(outer)
+    r.set(outer, void 0)
+
+    await vitest.advanceTimersByTimeAsync(100)
+
+    const result = r.get(outer)
+    assert(Result.isSuccess(result))
+    assert.strictEqual(result.value.a, 2)
+    assert.strictEqual(result.value.b, 4)
+    assert.strictEqual(runs, 2)
+  })
+
+  describe("kvs", () => {
+    it("memoizes defaultValue while loading empty storage", async () => {
+      let calls = 0
+      const storage = new Map<string, string>()
+
+      const DelayedKVS = Layer.succeed(
+        KeyValueStore.KeyValueStore,
+        KeyValueStore.makeStringOnly({
+          get: (key) =>
+            Effect.gen(function*() {
+              yield* Effect.sleep(20)
+              return Option.fromNullable(storage.get(key))
+            }),
+          set: (key, value) =>
+            Effect.sync(() => {
+              storage.set(key, value)
+            }),
+          remove: (key) =>
+            Effect.sync(() => {
+              storage.delete(key)
+            }),
+          clear: Effect.sync(() => storage.clear()),
+          size: Effect.sync(() => storage.size)
+        })
+      )
+
+      const kvsRuntime = Atom.runtime(DelayedKVS)
+      const atom = Atom.kvs({
+        runtime: kvsRuntime,
+        key: "default-value-key",
+        schema: Schema.Number,
+        defaultValue: () => {
+          calls++
+          return 0
+        }
+      })
+
+      const r = Registry.make()
+      r.mount(atom)
+
+      expect(r.get(atom)).toEqual(0)
+      expect(calls).toEqual(1)
+
+      await vitest.advanceTimersByTimeAsync(50)
+
+      expect(r.get(atom)).toEqual(0)
+      expect(calls).toEqual(1)
+    })
+
+    it("preserves existing value after async load completes", async () => {
+      vitest.useRealTimers()
+      // Create an in-memory store with a pre-existing value
+      const storage = new Map<string, string>()
+      storage.set("test-key", JSON.stringify(42))
+
+      // Create a delayed KeyValueStore to simulate async loading
+      // Use KeyValueStore.make to get proper forSchema support
+      const DelayedKVS = Layer.succeed(
+        KeyValueStore.KeyValueStore,
+        KeyValueStore.makeStringOnly({
+          get: (key) =>
+            Effect.gen(function*() {
+              yield* Effect.sleep(20) // Short delay to create Initial state window
+              return Option.fromNullable(storage.get(key))
+            }),
+          set: (key, value) =>
+            Effect.sync(() => {
+              storage.set(key, value)
+            }),
+          remove: (key) =>
+            Effect.sync(() => {
+              storage.delete(key)
+            }),
+          clear: Effect.sync(() => storage.clear()),
+          size: Effect.sync(() => storage.size)
+        })
+      )
+
+      const kvsRuntime = Atom.runtime(DelayedKVS)
+      const atom = Atom.kvs({
+        runtime: kvsRuntime,
+        key: "test-key",
+        schema: Schema.Number,
+        defaultValue: () => 0
+      })
+
+      const r = Registry.make()
+      r.mount(atom)
+
+      // First read during Initial state returns default
+      const value = r.get(atom)
+      expect(value).toEqual(0)
+
+      // Wait for async load AND any set effects to complete
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // THE KEY ASSERTION: After load completes, storage should still have original value.
+      // The bug was that the default (0) would be written during Initial state,
+      // corrupting the storage before the async load could read it.
+      expect(storage.get("test-key")).toEqual(JSON.stringify(42))
+    })
   })
 })
 

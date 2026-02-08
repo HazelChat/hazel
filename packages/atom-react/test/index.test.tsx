@@ -1,12 +1,12 @@
 import * as Atom from "@effect-atom/atom/Atom"
 import * as Registry from "@effect-atom/atom/Registry"
 import { act, render, screen, waitFor } from "@testing-library/react"
-import { Effect, Schema } from "effect"
+import { Effect, Layer, Schema } from "effect"
 import { Suspense } from "react"
 import { renderToString } from "react-dom/server"
 import { ErrorBoundary } from "react-error-boundary"
 import { beforeEach, describe, expect, it, test, vi } from "vitest"
-import { Hydration, RegistryContext, Result, useAtomSuspense, useAtomValue } from "../src/index.js"
+import { Hydration, RegistryContext, RegistryProvider, Result, useAtomSuspense, useAtomValue } from "../src/index.js"
 import { HydrationBoundary } from "../src/ReactHydration.js"
 
 describe("atom-react", () => {
@@ -14,6 +14,36 @@ describe("atom-react", () => {
 
   beforeEach(() => {
     registry = Registry.make()
+  })
+
+  describe("runtime", () => {
+    test("can inject test layers", () => {
+      class TheNumber extends Effect.Service<TheNumber>()("TheNumber", {
+        succeed: { n: 42 as number }
+      }) {}
+      const runtime = Atom.runtime(TheNumber.Default)
+      const numberAtom = runtime.atom(TheNumber.use((_) => Effect.succeed(_.n)))
+
+      function TestComponent() {
+        const value = useAtomValue(numberAtom, Result.getOrThrow)
+        return <div data-testid="value">{value}</div>
+      }
+
+      render(
+        <RegistryProvider
+          initialValues={[
+            Atom.initialValue(
+              runtime.layer,
+              Layer.succeed(TheNumber, new TheNumber({ n: 69 }))
+            )
+          ]}
+        >
+          <TestComponent />
+        </RegistryProvider>
+      )
+
+      expect(screen.getByTestId("value")).toHaveTextContent("69")
+    })
   })
 
   describe("useAtomValue", () => {
@@ -150,13 +180,15 @@ describe("atom-react", () => {
     const atomResult2 = makeAtomResult("errored")
     const atomResult3 = makeAtomResult("pending")
 
-    const dehydratedState: Array<Hydration.DehydratedAtom> = [
+    const dehydratedState: Array<Hydration.DehydratedAtomValue> = [
       {
+        "~@effect-atom/atom/DehydratedAtom": true,
         key: "basic",
         value: 1,
         dehydratedAt: Date.now()
       },
       {
+        "~@effect-atom/atom/DehydratedAtom": true,
         key: "success",
         value: {
           _tag: "Success",
@@ -167,6 +199,7 @@ describe("atom-react", () => {
         dehydratedAt: Date.now()
       },
       {
+        "~@effect-atom/atom/DehydratedAtom": true,
         key: "errored",
         value: {
           _tag: "Failure",
@@ -182,6 +215,7 @@ describe("atom-react", () => {
         dehydratedAt: Date.now()
       },
       {
+        "~@effect-atom/atom/DehydratedAtom": true,
         key: "pending",
         value: {
           _tag: "Initial",

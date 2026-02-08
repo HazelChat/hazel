@@ -1,6 +1,6 @@
 {
   "name": "@effect-atom/atom-livestore",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "effect-atom bindings to livestore",
   "type": "module",
   "publishConfig": {
@@ -25,7 +25,7 @@
   "sideEffects": [],
   "devDependencies": {
     "@livestore/livestore": "^0.3.1",
-    "effect": "^3.19.0"
+    "effect": "^3.19.15"
   },
   "peerDependencies": {
     "@livestore/livestore": "*",

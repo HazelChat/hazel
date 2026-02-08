@@ -21,6 +21,7 @@ Added in v1.0.0
   - [Encoded (type alias)](#encoded-type-alias)
   - [PartialEncoded (type alias)](#partialencoded-type-alias)
   - [Schema](#schema)
+  - [Schema (interface)](#schema-interface)
   - [schemaFromSelf](#schemafromself)
 - [accessors](#accessors)
   - [cause](#cause)
@@ -30,6 +31,7 @@ Added in v1.0.0
   - [value](#value)
 - [combinators](#combinators)
   - [all](#all)
+  - [flatMap](#flatmap)
   - [map](#map)
   - [match](#match)
   - [matchWithError](#matchwitherror)
@@ -64,9 +66,6 @@ Added in v1.0.0
   - [isNotInitial](#isnotinitial)
   - [isSuccess](#issuccess)
   - [isWaiting](#iswaiting)
-- [type ids](#type-ids)
-  - [TypeId](#typeid)
-  - [TypeId (type alias)](#typeid-type-alias)
 - [utils](#utils)
   - [With (type alias)](#with-type-alias)
 
@@ -216,14 +215,21 @@ export declare const Schema: <
 >(options: {
   readonly success?: Success | undefined
   readonly error?: Error | undefined
-}) => Schema_.transform<
-  Schema_.Schema<
-    PartialEncoded<Success["Type"], Error["Type"]>,
-    Encoded<Success["Encoded"], Error["Encoded"]>,
-    Success["Context"] | Error["Context"]
-  >,
-  Schema_.Schema<Result<Success["Type"], Error["Type"]>>
->
+}) => Schema<Success, Error>
+```
+
+Added in v1.0.0
+
+## Schema (interface)
+
+**Signature**
+
+```ts
+export interface Schema<Success extends Schema_.Schema.All, Error extends Schema_.Schema.All> extends Schema_.Schema<
+  Result<Success["Type"], Error["Type"]>,
+  Encoded<Success["Encoded"], Error["Encoded"]>,
+  Success["Context"] | Error["Context"]
+> {}
 ```
 
 Added in v1.0.0
@@ -323,6 +329,19 @@ export declare const all: <const Arg extends Iterable<any> | Record<string, any>
         ? Result.Failure<Arg[keyof Arg]>
         : never
 >
+```
+
+Added in v1.0.0
+
+## flatMap
+
+**Signature**
+
+```ts
+export declare const flatMap: {
+  <A, E, B, E2>(f: (a: A, prev: Success<A, E>) => Result<A, E2>): (self: Result<A, E>) => Result<B, E | E2>
+  <E, A, B, E2>(self: Result<A, E>, f: (a: A, prev: Success<A, E>) => Result<B, E2>): Result<B, E | E2>
+}
 ```
 
 Added in v1.0.0
@@ -472,7 +491,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const failure: <E, A = never>(
+export declare const failure: <A, E = never>(
   cause: Cause.Cause<E>,
   options?: {
     readonly previousSuccess?: Option.Option<Success<A, E>> | undefined
@@ -728,28 +747,6 @@ Added in v1.0.0
 
 ```ts
 export declare const isWaiting: <A, E>(result: Result<A, E>) => boolean
-```
-
-Added in v1.0.0
-
-# type ids
-
-## TypeId
-
-**Signature**
-
-```ts
-export declare const TypeId: typeof TypeId
-```
-
-Added in v1.0.0
-
-## TypeId (type alias)
-
-**Signature**
-
-```ts
-export type TypeId = typeof TypeId
 ```
 
 Added in v1.0.0

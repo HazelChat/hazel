@@ -62,8 +62,13 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, ApiE, E>
-  extends Context.Tag<Self, Simplify<HttpApiClient.Client<Groups, ApiE, never>>> {
+export interface AtomHttpApiClient<
+  Self,
+  Id extends string,
+  Groups extends HttpApiGroup.HttpApiGroup.Any,
+  ApiE,
+  E
+> extends Context.Tag<Self, Simplify<HttpApiClient.Client<Groups, ApiE, never>>> {
   new (_: never): Context.TagClassShape<Id, Simplify<HttpApiClient.Client<Groups, ApiE, never>>>
 
   readonly layer: Layer.Layer<Self, E>
@@ -76,10 +81,14 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     Endpoint extends HttpApiEndpoint.HttpApiEndpoint.Any = HttpApiEndpoint.HttpApiEndpoint.WithName<
       HttpApiGroup.HttpApiGroup.Endpoints<Group>,
       Name
-    >
+    >,
+    const WithResponse extends boolean = false
   >(
     group: GroupName,
-    endpoint: Name
+    endpoint: Name,
+    options?: {
+      readonly withResponse?: WithResponse | undefined
+    }
   ) => [Endpoint] extends [
     HttpApiEndpoint.HttpApiEndpoint<
       infer _Name,
@@ -103,7 +112,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
               | undefined
           }
         >,
-        _Success,
+        WithResponse extends true ? [_Success, HttpClientResponse] : _Success,
         _Error | HttpApiGroup.HttpApiGroup.Error<Group> | E | HttpClientError.HttpClientError | ParseResult.ParseError
       >
     : never
@@ -115,7 +124,8 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     Endpoint extends HttpApiEndpoint.HttpApiEndpoint.Any = HttpApiEndpoint.HttpApiEndpoint.WithName<
       HttpApiGroup.HttpApiGroup.Endpoints<Group>,
       Name
-    >
+    >,
+    const WithResponse extends boolean = false
   >(
     group: GroupName,
     endpoint: Name,
@@ -134,7 +144,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
       >
     ]
       ? Simplify<
-          HttpApiEndpoint.HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, false> & {
+          HttpApiEndpoint.HttpApiEndpoint.ClientRequest<_Path, _UrlParams, _Payload, _Headers, WithResponse> & {
             readonly reactivityKeys?:
               | ReadonlyArray<unknown>
               | ReadonlyRecord<string, ReadonlyArray<unknown>>
@@ -159,7 +169,7 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
   ]
     ? Atom.Atom<
         Result.Result<
-          _Success,
+          WithResponse extends true ? [_Success, HttpClientResponse] : _Success,
           _Error | HttpApiGroup.HttpApiGroup.Error<Group> | E | HttpClientError.HttpClientError | ParseResult.ParseError
         >
       >

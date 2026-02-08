@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
-import { pipe } from "effect/Function"
+import { constVoid, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
@@ -11,10 +11,9 @@ import type * as Registry from "../Registry.js"
 import * as Result from "../Result.js"
 
 const constImmediate = { immediate: true }
-function constListener(_: any) {}
 
-/** @internal */
-export const TypeId: Registry.TypeId = "~effect-atom/atom/Registry"
+type TypeId = "~effect-atom/atom/Registry"
+const TypeId: TypeId = "~effect-atom/atom/Registry" as const
 
 /** @internal */
 export const make = (options?: {
@@ -32,10 +31,10 @@ export const make = (options?: {
 
 const SerializableTypeId: Atom.SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
 const atomKey = <A>(atom: Atom.Atom<A>): Atom.Atom<A> | string =>
-  SerializableTypeId in atom ? (atom as Atom.Serializable)[SerializableTypeId].key : atom
+  SerializableTypeId in atom ? (atom as Atom.Serializable<any>)[SerializableTypeId].key : atom
 
 class RegistryImpl implements Registry.Registry {
-  readonly [TypeId]: Registry.TypeId
+  readonly [TypeId]: TypeId
   readonly timeoutResolution: number
 
   constructor(
@@ -116,7 +115,7 @@ class RegistryImpl implements Registry.Registry {
   }
 
   mount<A>(atom: Atom.Atom<A>) {
-    return this.subscribe(atom, constListener, constImmediate)
+    return this.subscribe(atom, constVoid, constImmediate)
   }
 
   atomHasTtl(atom: Atom.Atom<any>): boolean {
@@ -135,7 +134,7 @@ class RegistryImpl implements Registry.Registry {
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
       const encoded = this.preloadedSerializable.get(key)
       this.preloadedSerializable.delete(key)
-      const decoded = (atom as any as Atom.Serializable)[SerializableTypeId].decode(encoded)
+      const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
       node.setValue(decoded)
     }
     return node
@@ -539,7 +538,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
     if (this.disposed) {
       throw disposedError(this.node.atom)
     } else if (this.isFn) {
-      return this.resultOnce(atom)
+      return this.resultOnce(atom, options)
     }
     const result = this.get(atom)
     if (options?.suspendOnWaiting && result.waiting) {
@@ -576,6 +575,14 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
       }, { immediate: false })
       return Effect.sync(cancel)
     })
+  },
+
+  setResult<A, E, W>(this: Lifetime<any>, atom: Atom.Writable<Result.Result<A, E>, W>, value: W): Effect.Effect<A, E> {
+    if (this.disposed) {
+      throw disposedError(this.node.atom)
+    }
+    this.node.registry.set(atom, value)
+    return this.resultOnce(atom, { suspendOnWaiting: true })
   },
 
   some<A>(this: Lifetime<any>, atom: Atom.Atom<Option.Option<A>>): Effect.Effect<A> {
@@ -727,8 +734,9 @@ const makeLifetime = <A>(node: Node<A>): Lifetime<A> => {
       return node.registry.get(atom)
     }
     const parent = node.registry.ensureNode(atom)
+    const value = parent.value()
     node.addParent(parent)
-    return parent.value()
+    return value
   }
   Object.setPrototypeOf(get, LifetimeProto)
   get.isFn = false

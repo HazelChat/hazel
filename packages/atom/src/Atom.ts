@@ -40,17 +40,8 @@ import * as Registry from "./Registry.js"
 import { AtomRegistry as AtomRegistry } from "./Registry.js"
 import * as Result from "./Result.js"
 
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const TypeId: TypeId = "~effect-atom/atom/Atom"
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = "~effect-atom/atom/Atom"
+const TypeId: TypeId = "~effect-atom/atom/Atom"
+type TypeId = "~effect-atom/atom/Atom"
 
 /**
  * @since 1.0.0
@@ -98,17 +89,8 @@ export type Failure<T extends Atom<any>> = T extends Atom<Result.Result<infer _,
 export type WithoutSerializable<T extends Atom<any>> = T extends Writable<infer R, infer W> ? Writable<R, W>
   : Atom<Type<T>>
 
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const WritableTypeId: WritableTypeId = "~effect-atom/atom/Atom/Writable"
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type WritableTypeId = "~effect-atom/atom/Atom/Writable"
+type WritableTypeId = "~effect-atom/atom/Atom/Writable"
+const WritableTypeId: WritableTypeId = "~effect-atom/atom/Atom/Writable"
 
 /**
  * @since 1.0.0
@@ -140,6 +122,7 @@ export interface Context {
   self<A>(this: Context): Option.Option<A>
   setSelf<A>(this: Context, a: A): void
   set<R, W>(this: Context, atom: Writable<R, W>, value: W): void
+  setResult<A, E, W>(this: Context, atom: Writable<Result.Result<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: Context, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   someOnce<A>(this: Context, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   stream<A>(this: Context, atom: Atom<A>, options?: {
@@ -621,18 +604,22 @@ export interface AtomRuntime<R, ER = never> extends Atom<Result.Result<Runtime.R
 
   readonly subscriptionRef: <A, E>(
     create:
-      | Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, R | AtomRegistry | Reactivity.Reactivity>
+      | Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>
       | ((
         get: Context
-      ) => Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, R | AtomRegistry | Reactivity.Reactivity>)
+      ) => Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>)
   ) => Writable<Result.Result<A, E>, A>
 
   readonly subscribable: <A, E, E1 = never>(
     create:
-      | Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, R | AtomRegistry | Reactivity.Reactivity>
+      | Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>
       | ((
         get: Context
-      ) => Effect.Effect<Subscribable.Subscribable<A, E, R>, E1, R | AtomRegistry | Reactivity.Reactivity>)
+      ) => Effect.Effect<
+        Subscribable.Subscribable<A, E, R>,
+        E1,
+        Scope.Scope | R | AtomRegistry | Reactivity.Reactivity
+      >)
   ) => Atom<Result.Result<A, E | E1>>
 }
 
@@ -983,6 +970,7 @@ export interface FnContext {
   self<A>(this: FnContext): Option.Option<A>
   setSelf<A>(this: FnContext, a: A): void
   set<R, W>(this: FnContext, atom: Writable<R, W>, value: W): void
+  setResult<A, E, W>(this: FnContext, atom: Writable<Result.Result<A, E>, W>, value: W): Effect.Effect<A, E>
   some<A>(this: FnContext, atom: Atom<Option.Option<A>>): Effect.Effect<A>
   stream<A>(this: FnContext, atom: Atom<A>, options?: {
     readonly withoutInitialValue?: boolean
@@ -1814,13 +1802,23 @@ export const kvs = <A>(options: {
   const resultAtom = options.runtime.atom(
     Effect.flatMap(
       KeyValueStore.KeyValueStore,
-      (store) => Effect.flatten(store.forSchema(options.schema).get(options.key))
+      (store) => store.forSchema(options.schema).get(options.key)
     )
   )
   return writable(
     (get) => {
       get.mount(setAtom)
-      return Result.getOrElse(get(resultAtom), options.defaultValue)
+      get.subscribe(resultAtom, (result) => {
+        if (!Result.isSuccess(result)) return
+        if (Option.isSome(result.value)) {
+          get.setSelf(result.value.value)
+        } else {
+          const value = Option.getOrElse(get.self<A>(), options.defaultValue)
+          get.setSelf(value)
+          get.set(setAtom, value)
+        }
+      }, { immediate: true })
+      return Option.getOrElse(get.self<A>(), options.defaultValue)
     },
     (ctx, value: A) => {
       ctx.set(setAtom, value as any)
@@ -1848,6 +1846,9 @@ export const searchParam = <A = never, I extends string = never>(name: string, o
   const encode = options?.schema && Schema.encodeEither(options.schema)
   return writable(
     (get) => {
+      if (typeof window === "undefined") {
+        return decode ? Option.none() : ""
+      }
       const handleUpdate = () => {
         if (searchParamState.updating) return
         const searchParams = new URLSearchParams(window.location.search)
@@ -1868,6 +1869,11 @@ export const searchParam = <A = never, I extends string = never>(name: string, o
       return decode ? Either.getRight(decode(value as I)) : value as any
     },
     (ctx, value: any) => {
+      if (typeof window === "undefined") {
+        ctx.setSelf(value)
+        return
+      }
+
       if (encode) {
         const encoded = Option.flatMap(value, (v) => Either.getRight(encode(v as A)))
         searchParamState.updates.set(name, Option.getOrElse(encoded, () => ""))
@@ -2009,11 +2015,11 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * @since 1.0.0
  * @category Serializable
  */
-export interface Serializable {
+export interface Serializable<S extends Schema.Schema.Any> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: unknown) => unknown
-    readonly decode: (value: unknown) => unknown
+    readonly encode: (value: S["Type"]) => S["Encoded"]
+    readonly decode: (value: S["Encoded"]) => S["Type"]
   }
 }
 
@@ -2021,25 +2027,25 @@ export interface Serializable {
  * @since 1.0.0
  * @category Serializable
  */
-export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializable => SerializableTypeId in self
+export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializable<any> => SerializableTypeId in self
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const serializable: {
-  <R extends Atom<any>, I>(options: {
+  <R extends Atom<any>, S extends Schema.Schema<Type<R>, any>>(options: {
     readonly key: string
-    readonly schema: Schema.Schema<Type<R>, I>
-  }): (self: R) => R & Serializable
-  <R extends Atom<any>, I>(self: R, options: {
+    readonly schema: S
+  }): (self: R) => R & Serializable<S>
+  <R extends Atom<any>, S extends Schema.Schema<Type<R>, any>>(self: R, options: {
     readonly key: string
-    readonly schema: Schema.Schema<Type<R>, I>
-  }): R & Serializable
+    readonly schema: S
+  }): R & Serializable<S>
 } = dual(2, <R extends Atom<any>, A, I>(self: R, options: {
   readonly key: string
   readonly schema: Schema.Schema<A, I>
-}): R & Serializable =>
+}): R & Serializable<any> =>
   Object.assign(Object.create(Object.getPrototypeOf(self)), {
     ...self,
     label: self.label ?? [options.key, new Error().stack?.split("\n")[5] ?? ""],
