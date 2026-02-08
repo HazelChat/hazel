@@ -1,23 +1,17 @@
-import {
-	buildIntegrationTools,
-	generateIntegrationInstructions,
-	type AIContentChunk,
-	type HazelBotClient,
-	type TokenResult,
-} from "@hazel/bot-sdk"
+import { LanguageModel } from "@effect/ai"
+import { generateIntegrationInstructions, type AIContentChunk, type HazelBotClient } from "@hazel/bot-sdk"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Cause, Config, Effect, Exit, Redacted, Runtime, Stream } from "effect"
-import { ToolLoopAgent } from "ai"
-import { createOpenRouter } from "@openrouter/ai-sdk-provider"
+import { Cause, Config, Effect, Exit, Stream } from "effect"
 
-import { baseTools } from "./tools/base.ts"
-import { LinearToolFactory } from "./tools/linear.ts"
-import { mapVercelPartToChunk, type VercelStreamState } from "./stream.ts"
+import { streamAgentLoop } from "./agent-loop.ts"
+import { makeOpenRouterModel } from "./openrouter.ts"
 import { INTEGRATION_INSTRUCTIONS, buildSystemPrompt } from "./prompt.ts"
+import { mapEffectPartToChunk } from "./stream.ts"
+import { buildToolkit } from "./tools/toolkit.ts"
 
 /**
  * Shared AI pipeline used by both /ask command and @mention handler.
- * Creates a streaming AI session in the given channel and runs the ToolLoopAgent.
+ * Creates a streaming AI session in the given channel and runs the agent loop.
  */
 export const handleAIRequest = (params: {
 	bot: HazelBotClient
@@ -29,81 +23,40 @@ export const handleAIRequest = (params: {
 	Effect.gen(function* () {
 		const { bot, message, channelId, orgId } = params
 
-		const runtime = yield* Effect.runtime()
-		const runPromise = Runtime.runPromise(runtime) as <A, E, R>(
-			effect: Effect.Effect<A, E, R>,
-		) => Promise<A>
-
-		// Get enabled integrations for this org (cached)
 		const enabledIntegrations = yield* bot.integration.getEnabled(orgId)
 
 		yield* Effect.log(`Enabled integrations for org ${orgId}:`, {
 			integrations: Array.from(enabledIntegrations),
 		})
 
-		// Token cache per provider
-		const tokenCache = new Map<string, Promise<TokenResult>>()
-
-		const getAccessToken = (
-			provider: "linear" | "github" | "figma" | "notion" | "discord",
-		): Promise<TokenResult> => {
-			const cached = tokenCache.get(provider)
-			if (cached) return cached
-
-			const promise = (async () => {
-				try {
-					const { accessToken } = await runPromise(bot.integration.getToken(orgId, provider))
-					return { ok: true, accessToken } as const
-				} catch (e: any) {
-					const tag = e && typeof e === "object" && "_tag" in e ? String(e._tag) : null
-					if (tag === "IntegrationNotConnectedError") {
-						runPromise(bot.integration.invalidateCache(orgId))
-						return {
-							ok: false,
-							error: `${provider} is not connected for this organization. Please connect ${provider} and try again.`,
-						} as const
-					}
-					if (tag === "IntegrationNotAllowedError") {
-						return {
-							ok: false,
-							error: `${provider} access is not allowed for this bot. Please allow the ${provider} integration and try again.`,
-						} as const
-					}
-					return {
-						ok: false,
-						error: `Failed to get ${provider} token: ${tag ?? String(e)}`,
-					} as const
-				}
-			})()
-
-			tokenCache.set(provider, promise)
-			return promise
-		}
-
-		// Build integration tools based on enabled integrations
-		const integrationTools = buildIntegrationTools(enabledIntegrations, [LinearToolFactory], {
-			runPromise,
-			getAccessToken,
-		})
+		const modelName = yield* Config.string("AI_MODEL").pipe(Config.withDefault("moonshotai/kimi-k2.5"))
 
 		// Generate dynamic instructions based on enabled integrations
 		const integrationInstructions = generateIntegrationInstructions(
 			enabledIntegrations,
 			INTEGRATION_INSTRUCTIONS,
 		)
+		const systemInstructions = buildSystemPrompt(integrationInstructions)
 
-		const apiKey = yield* Config.redacted("OPENROUTER_API_KEY")
-		const modelName = yield* Config.string("AI_MODEL").pipe(Config.withDefault("moonshotai/kimi-k2.5"))
+		// Build prompt (with optional conversation history)
+		const prompt = params.history
+			? [
+					{ role: "system" as const, content: systemInstructions },
+					...params.history.map((m) => ({
+						role: m.role as "user" | "assistant",
+						content: m.content,
+					})),
+				]
+			: [
+					{ role: "system" as const, content: systemInstructions },
+					{ role: "user" as const, content: message },
+				]
 
-		const openrouter = createOpenRouter({
-			apiKey: Redacted.value(apiKey),
-		})
+		// Build toolkit with Effect-native handlers (resolved WithHandler)
+		const toolkit = yield* buildToolkit({ bot, orgId, enabledIntegrations })
 
 		// Use acquireUseRelease for guaranteed cleanup of the streaming session.
-		// This ensures session.fail() is called even if the handler is interrupted
-		// during agent setup, stream processing, or process shutdown.
 		yield* Effect.acquireUseRelease(
-			// Acquire: create the streaming session
 			bot.ai.stream(channelId, {
 				model: modelName,
 				showThinking: true,
@@ -114,37 +67,12 @@ export const handleAIRequest = (params: {
 					throbbing: true,
 				},
 			}),
-			// Use: run the agent and complete on success
 			(session) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
-					const systemInstructions = buildSystemPrompt(integrationInstructions)
-
-					const codebaseAgent = new ToolLoopAgent({
-						model: openrouter(modelName),
-						instructions: systemInstructions,
-						tools: { ...baseTools, ...integrationTools },
-						toolChoice: "auto",
-					})
-
-					const result = yield* Effect.promise(() =>
-						params.history
-							? codebaseAgent.stream({
-									messages: params.history.map((m) => ({
-										role: m.role,
-										content: m.content,
-									})),
-								})
-							: codebaseAgent.stream({
-									prompt: message,
-								}),
-					)
-
-					const streamState: VercelStreamState = { hasActiveReasoning: false }
-
-					yield* Stream.fromAsyncIterable(result.fullStream, (e) => new Error(String(e))).pipe(
-						Stream.map((part) => mapVercelPartToChunk(part, streamState)),
+					yield* streamAgentLoop({ prompt, toolkit }).pipe(
+						Stream.map(mapEffectPartToChunk),
 						Stream.filter((chunk): chunk is AIContentChunk => chunk !== null),
 						Stream.runForEach((chunk) => session.processChunk(chunk)),
 					)
@@ -172,4 +100,13 @@ export const handleAIRequest = (params: {
 							yield* session.fail(userMessage).pipe(Effect.ignore)
 						}),
 		)
-	})
+	}).pipe(
+		// Provide the LanguageModel dynamically based on config
+		Effect.provideServiceEffect(
+			LanguageModel.LanguageModel,
+			Config.string("AI_MODEL").pipe(
+				Config.withDefault("moonshotai/kimi-k2.5"),
+				Effect.flatMap((model) => makeOpenRouterModel(model)),
+			),
+		),
+	)

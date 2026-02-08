@@ -2,7 +2,7 @@ import { Command, CommandGroup } from "@hazel/bot-sdk"
 import { Schema } from "effect"
 
 export const AskCommand = Command.make("ask", {
-	description: "Ask the AI agent using ToolLoopAgent pattern (supports tool use and reasoning)",
+	description: "Ask the AI agent (supports tool use and reasoning)",
 	args: {
 		message: Schema.String,
 	},
