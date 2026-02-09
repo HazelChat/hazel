@@ -180,7 +180,7 @@ function InvitationsSettings() {
 										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
 											Expiration
 										</th>
-										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+										<th className="px-4 py-3 text-right font-medium text-muted-fg text-xs">
 											Actions
 										</th>
 									</tr>
@@ -213,7 +213,7 @@ function InvitationsSettings() {
 													)}
 												</p>
 											</td>
-											<td className="px-4 py-4">
+											<td className="px-4 py-4 text-right">
 												<Menu>
 													<Button
 														intent="plain"
