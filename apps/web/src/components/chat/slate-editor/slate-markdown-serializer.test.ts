@@ -773,6 +773,38 @@ describe("slate-markdown-serializer", () => {
 			expect(children[2]).toMatchObject({ text: " cool!" })
 		})
 
+		it("should serialize paragraph with only a custom emoji", () => {
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: "https://example.com/hazel.png",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			expect(markdown).toBe("![custom-emoji:hazel](https://example.com/hazel.png)")
+
+			// Also verify isValueEmpty recognizes this as non-empty
+			expect(isValueEmpty(original)).toBe(false)
+
+			// And round-trip works
+			const result = deserializeFromMarkdown(markdown)
+			expect((result[0] as any).type).toBe("paragraph")
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({
+				type: "custom-emoji",
+				name: "hazel",
+				imageUrl: "https://example.com/hazel.png",
+			})
+		})
+
 		it("should preserve custom emoji alongside mentions through round-trip", () => {
 			const original = [
 				{
@@ -861,6 +893,40 @@ describe("slate-markdown-serializer", () => {
 				},
 			]
 			expect(isValueEmpty(value)).toBe(true)
+		})
+
+		it("should return false for mention-only content", () => {
+			const value = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "mention" as const,
+							userId: "user-1",
+							displayName: "User 1",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+			expect(isValueEmpty(value)).toBe(false)
+		})
+
+		it("should return false for custom-emoji-only content", () => {
+			const value = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: "https://example.com/hazel.png",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+			expect(isValueEmpty(value)).toBe(false)
 		})
 	})
 

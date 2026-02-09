@@ -692,7 +692,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			const textContent = serializeToMarkdown(value).trim()
 
 			// Allow empty content if there are attachments
-			if ((!textContent || textContent.length === 0 || isValueEmpty(value)) && !hasAttachments) return
+			if ((!textContent || textContent.length === 0) && isValueEmpty(value) && !hasAttachments) return
 
 			// Auto-detect language for any code blocks without explicit language before submit
 			for (const [node, path] of Editor.nodes(editor, {

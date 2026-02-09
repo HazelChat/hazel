@@ -539,19 +539,24 @@ export function createEmptyValue(): CustomDescendant[] {
 export function isValueEmpty(nodes: CustomDescendant[]): boolean {
 	if (!nodes || nodes.length === 0) return true
 
-	// Check if any node has actual text content
-	for (const node of nodes) {
+	const hasMeaningfulContent = (node: CustomDescendant): boolean => {
 		if ("text" in node) {
-			// Text node - check if it has non-whitespace content
-			if (node.text.trim().length > 0) return false
-		} else {
-			// Element node - check if it has text content
-			const element = node as CustomElement
-			const textContent = Node.string(element).trim()
-
-			if (textContent.length > 0) return false
+			return node.text.trim().length > 0
 		}
+
+		const element = node as CustomElement
+
+		// Inline void nodes carry semantic content even though Node.string() is empty.
+		if (element.type === "mention" || element.type === "custom-emoji") {
+			return true
+		}
+
+		if ("children" in element && Array.isArray(element.children)) {
+			return element.children.some((child) => hasMeaningfulContent(child as CustomDescendant))
+		}
+
+		return Node.string(element).trim().length > 0
 	}
 
-	return true
+	return !nodes.some((node) => hasMeaningfulContent(node))
 }

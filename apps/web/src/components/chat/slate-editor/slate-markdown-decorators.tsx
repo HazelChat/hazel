@@ -187,11 +187,25 @@ export interface MarkdownLeafProps extends RenderLeafProps {
  * Markers are dimmed, content is styled, code tokens get Prism classes
  */
 export function MarkdownLeaf({ attributes, children, leaf, mode = "composer" }: MarkdownLeafProps) {
+	// Check for emoji decoration — runs before markdown so emoji inside bold/italic still gets tooltip
+	const leafRecord = leaf as unknown as Record<string, unknown>
+	if (leafRecord.type === "emoji" && leafRecord.shortcode) {
+		return (
+			<span
+				{...attributes}
+				data-emoji-tooltip
+				data-emoji={leafRecord.emoji as string}
+				data-shortcode={leafRecord.shortcode as string}
+			>
+				{children}
+			</span>
+		)
+	}
+
 	// Base classes for all markdown leaves
 	let className = ""
 
 	// Check if this is a code token from Prism decoration
-	const leafRecord = leaf as unknown as Record<string, unknown>
 	if (leafRecord.token) {
 		// Build className from all token types (e.g., "token keyword", "token function")
 		const tokenClasses: string[] = ["token"]

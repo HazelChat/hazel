@@ -9,7 +9,13 @@ interface CustomEmojiElementProps extends RenderElementProps {
 
 export function CustomEmojiElement({ attributes, children, element }: CustomEmojiElementProps) {
 	return (
-		<span {...attributes} contentEditable={false}>
+		<span
+			{...attributes}
+			contentEditable={false}
+			data-emoji-tooltip
+			data-shortcode={element.name}
+			data-custom-emoji-url={element.imageUrl}
+		>
 			<img
 				src={element.imageUrl}
 				alt={`:${element.name}:`}

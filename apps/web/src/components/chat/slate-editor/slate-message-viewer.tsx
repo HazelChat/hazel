@@ -11,7 +11,9 @@ import { CustomEmojiElement } from "./custom-emoji-element"
 import { HeadingElement } from "./heading-element"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
+import { EmojiTooltipProvider } from "./emoji-tooltip-provider"
 import { decorateCodeBlock } from "./slate-code-decorator"
+import { decorateEmoji } from "./slate-emoji-decorator"
 import { decorateMarkdown } from "./slate-markdown-decorators"
 import { type CustomElement, deserializeFromMarkdown } from "./slate-markdown-serializer"
 import { TableCellElement, TableElement, TableRowElement } from "./table-element"
@@ -100,32 +102,34 @@ export const SlateMessageViewer = memo(({ content, className }: SlateMessageView
 				return decorateCodeBlock(entry)
 			}
 
-			// Get parent element for markdown decoration
+			// Get parent element for markdown/emoji decoration
 			const parentPath = nodePath.slice(0, -1)
 			const parentEntry = Editor.node(editor, parentPath)
 			const parentElement = parentEntry ? parentEntry[0] : null
 
-			return decorateMarkdown(entry, parentElement)
+			return [...decorateMarkdown(entry, parentElement), ...decorateEmoji(entry, parentElement)]
 		},
 		[editor],
 	)
 
 	return (
-		<div className={cx("w-full", className)}>
-			<Slate editor={editor} initialValue={value}>
-				<Editable
-					className={cx(
-						"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
-						isOnlyEmojis ? "text-2xl" : "text-base",
-						"[&_strong]:font-bold",
-					)}
-					readOnly={true}
-					renderElement={Element}
-					renderLeaf={Leaf}
-					decorate={decorate}
-				/>
-			</Slate>
-		</div>
+		<EmojiTooltipProvider>
+			<div className={cx("w-full", className)}>
+				<Slate editor={editor} initialValue={value}>
+					<Editable
+						className={cx(
+							"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
+							isOnlyEmojis ? "text-2xl" : "text-base",
+							"[&_strong]:font-bold",
+						)}
+						readOnly={true}
+						renderElement={Element}
+						renderLeaf={Leaf}
+						decorate={decorate}
+					/>
+				</Slate>
+			</div>
+		</EmojiTooltipProvider>
 	)
 })
 
