@@ -2,6 +2,7 @@
 
 import { useMatchRoute } from "@tanstack/react-router"
 import IconCode from "~/components/icons/icon-code"
+import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconGear from "~/components/icons/icon-gear"
 import IconGridCirclePlus from "~/components/icons/icon-grid-circle-plus"
 import IconIntegratio from "~/components/icons/icon-integratio-"
@@ -108,6 +109,18 @@ export function SettingsSidebar() {
 							>
 								<IconLock data-slot="icon" />
 								<SidebarLabel>Authentication</SidebarLabel>
+							</SidebarLink>
+						</SidebarItem>
+						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/custom-emojis")}>
+							<SidebarLink
+								to="/$orgSlug/settings/custom-emojis"
+								params={{ orgSlug: slug }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+								}}
+							>
+								<IconEmojiAdd data-slot="icon" />
+								<SidebarLabel>Custom Emoji</SidebarLabel>
 							</SidebarLink>
 						</SidebarItem>
 					</SidebarSection>

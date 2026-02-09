@@ -368,7 +368,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		// Get options for each trigger type
 		const mentionOptions = useMentionOptions(autocompleteState, orgId)
 		const commandOptions = useBotCommandOptions(autocompleteState, botCommands)
-		const emojiOptions = useEmojiOptions(autocompleteState)
+		const emojiOptions = useEmojiOptions(autocompleteState, orgId)
 
 		// Get current options based on active trigger
 		const currentOptions = useMemo(() => {

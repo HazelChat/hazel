@@ -133,6 +133,8 @@ export interface EmojiData {
 	emoji: string
 	name: string
 	keywords?: string[]
+	/** Image URL for custom emojis */
+	imageUrl?: string
 }
 
 // Command input state (Discord-style argument entry)

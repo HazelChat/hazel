@@ -2,6 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import type {
 	AttachmentUploadRequest,
 	BotAvatarUploadRequest,
+	CustomEmojiUploadRequest,
 	OrganizationAvatarUploadRequest,
 	PresignUploadRequest,
 	UserAvatarUploadRequest,
@@ -17,11 +18,13 @@ import { uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_EMOJI_SIZE = 256 * 1024 // 256KB
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const ALLOWED_EMOJI_TYPES = ["image/png", "image/gif", "image/webp"]
 
 // ============ Types ============
 
-export type UploadType = "user-avatar" | "bot-avatar" | "organization-avatar" | "attachment"
+export type UploadType = "user-avatar" | "bot-avatar" | "organization-avatar" | "attachment" | "custom-emoji"
 
 export interface UserAvatarUploadParams {
 	type: "user-avatar"
@@ -49,11 +52,18 @@ export interface AttachmentUploadParams {
 	trackingId?: string
 }
 
+export interface CustomEmojiUploadParams {
+	type: "custom-emoji"
+	organizationId: OrganizationId
+	file: File
+}
+
 export type UploadParams =
 	| UserAvatarUploadParams
 	| BotAvatarUploadParams
 	| OrganizationAvatarUploadParams
 	| AttachmentUploadParams
+	| CustomEmojiUploadParams
 
 export interface UploadResult {
 	/** The public URL of the uploaded file */
@@ -113,6 +123,7 @@ export function useUpload() {
 				params.type === "user-avatar" ||
 				params.type === "bot-avatar" ||
 				params.type === "organization-avatar"
+			const isEmoji = params.type === "custom-emoji"
 
 			// Validate file type for avatars
 			if (isAvatar && !ALLOWED_AVATAR_TYPES.includes(file.type)) {
@@ -122,11 +133,19 @@ export function useUpload() {
 				return null
 			}
 
+			// Validate file type for custom emojis
+			if (isEmoji && !ALLOWED_EMOJI_TYPES.includes(file.type)) {
+				toast.error("Invalid file type", {
+					description: "Please select a PNG, GIF, or WebP image",
+				})
+				return null
+			}
+
 			// Validate file size
-			const maxSize = isAvatar ? MAX_AVATAR_SIZE : MAX_ATTACHMENT_SIZE
+			const maxSize = isEmoji ? MAX_EMOJI_SIZE : isAvatar ? MAX_AVATAR_SIZE : MAX_ATTACHMENT_SIZE
 			if (file.size > maxSize) {
 				toast.error("File too large", {
-					description: `File size must be less than ${maxSize / 1024 / 1024}MB`,
+					description: `File size must be less than ${isEmoji ? "256KB" : `${maxSize / 1024 / 1024}MB`}`,
 				})
 				return null
 			}
@@ -289,6 +308,15 @@ function buildPresignPayload(params: UploadParams): PresignUploadRequest {
 				fileSize: file.size,
 				organizationId: params.organizationId,
 				channelId: params.channelId,
+			}
+			return payload
+		}
+		case "custom-emoji": {
+			const payload: CustomEmojiUploadRequest = {
+				type: "custom-emoji",
+				organizationId: params.organizationId,
+				contentType: file.type,
+				fileSize: file.size,
 			}
 			return payload
 		}

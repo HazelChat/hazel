@@ -18,6 +18,7 @@ interface ReactionButtonProps {
 	data: ReactionData
 	onReaction: (emoji: string) => void
 	currentUserId?: string
+	customEmojiImageUrl?: string
 }
 
 export const ReactionButton = memo(function ReactionButton({
@@ -25,6 +26,7 @@ export const ReactionButton = memo(function ReactionButton({
 	data,
 	onReaction,
 	currentUserId,
+	customEmojiImageUrl,
 }: ReactionButtonProps) {
 	// Track tooltip open state to lazy-load user data
 	const [isTooltipOpen, setIsTooltipOpen] = useState(false)
@@ -40,10 +42,19 @@ export const ReactionButton = memo(function ReactionButton({
 						: "bg-secondary text-fg ring-border hover:bg-secondary/80",
 				)}
 			>
-				{emoji} {data.count}
+				{customEmojiImageUrl ? (
+					<img src={customEmojiImageUrl} alt={emoji} className="size-5 object-contain" />
+				) : (
+					emoji
+				)}{" "}
+				{data.count}
 			</TooltipTrigger>
 			<TooltipContent placement="top" className="flex items-center gap-3 px-3 py-2">
-				<span className="text-3xl">{emoji}</span>
+				{customEmojiImageUrl ? (
+					<img src={customEmojiImageUrl} alt={emoji} className="size-7 object-contain" />
+				) : (
+					<span className="text-3xl">{emoji}</span>
+				)}
 				<span className="text-sm">
 					{/* Only render user list (and subscribe to atoms) when tooltip is open */}
 					{isTooltipOpen && <ReactionUserList userIds={data.users} currentUserId={currentUserId} />}

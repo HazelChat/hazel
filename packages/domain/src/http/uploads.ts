@@ -8,12 +8,20 @@ import { RateLimitExceededError } from "../rate-limit-errors"
 
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5MB
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
+export const MAX_EMOJI_SIZE = 256 * 1024 // 256KB
 
 export const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
+export const ALLOWED_EMOJI_TYPES = ["image/png", "image/gif", "image/webp"] as const
 
 // ============ Upload Type Schema ============
 
-export const UploadType = Schema.Literal("user-avatar", "bot-avatar", "organization-avatar", "attachment")
+export const UploadType = Schema.Literal(
+	"user-avatar",
+	"bot-avatar",
+	"organization-avatar",
+	"attachment",
+	"custom-emoji",
+)
 export type UploadType = typeof UploadType.Type
 
 // ============ Request Schemas ============
@@ -102,6 +110,26 @@ export class AttachmentUploadRequest extends Schema.Class<AttachmentUploadReques
 ) {}
 
 /**
+ * Custom emoji upload request
+ */
+export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequest>(
+	"CustomEmojiUploadRequest",
+)({
+	type: Schema.Literal("custom-emoji"),
+	organizationId: OrganizationId,
+	contentType: Schema.String.pipe(
+		Schema.filter((s) => ALLOWED_EMOJI_TYPES.includes(s as (typeof ALLOWED_EMOJI_TYPES)[number]), {
+			message: () => "Content type must be image/png, image/gif, or image/webp",
+		}),
+	),
+	fileSize: Schema.Number.pipe(
+		Schema.between(1, MAX_EMOJI_SIZE, {
+			message: () => "File size must be between 1 byte and 256KB",
+		}),
+	),
+}) {}
+
+/**
  * Unified presign upload request - discriminated union of all upload types
  */
 export const PresignUploadRequest = Schema.Union(
@@ -109,6 +137,7 @@ export const PresignUploadRequest = Schema.Union(
 	BotAvatarUploadRequest,
 	OrganizationAvatarUploadRequest,
 	AttachmentUploadRequest,
+	CustomEmojiUploadRequest,
 )
 export type PresignUploadRequest = typeof PresignUploadRequest.Type
 

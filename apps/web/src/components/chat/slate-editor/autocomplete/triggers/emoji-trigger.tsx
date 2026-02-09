@@ -1,6 +1,9 @@
 "use client"
 
+import { Result, useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/schema"
 import { useMemo } from "react"
+import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { AutocompleteListBox } from "../autocomplete-listbox"
 import type { AutocompleteOption, AutocompleteState, EmojiData } from "../types"
 
@@ -466,25 +469,62 @@ export function EmojiTrigger({ items, activeIndex, onSelect, onHover, searchLeng
 function EmojiItem({ option }: { option: AutocompleteOption<EmojiData> }) {
 	return (
 		<div className="flex items-center gap-2">
-			<span className="text-xl">{option.data.emoji}</span>
+			{option.data.imageUrl ? (
+				<img src={option.data.imageUrl} alt={option.data.name} className="size-5 object-contain" />
+			) : (
+				<span className="text-xl">{option.data.emoji}</span>
+			)}
 			<span className="text-muted-fg">:{option.data.name}:</span>
 		</div>
 	)
 }
 
 /**
+ * Hook to get custom emoji options from the org's custom emoji list.
+ * Separated to avoid subscribing all editors without custom emojis to the atom.
+ */
+function useCustomEmojiOptions(organizationId: OrganizationId | undefined): AutocompleteOption<EmojiData>[] {
+	const emojisResult = useAtomValue(customEmojisForOrgAtomFamily(organizationId ?? ("" as OrganizationId)))
+	const emojis = Result.getOrElse(emojisResult, () => [])
+
+	return useMemo(() => {
+		if (!organizationId || emojis.length === 0) return []
+		return emojis.map((emoji) => ({
+			id: `custom:${emoji.name}`,
+			label: `:${emoji.name}:`,
+			data: {
+				id: `custom:${emoji.name}`,
+				emoji: `custom:${emoji.name}`,
+				name: emoji.name,
+				imageUrl: emoji.imageUrl,
+			},
+		}))
+	}, [organizationId, emojis])
+}
+
+/**
  * Get emoji options for external use
  */
-export function useEmojiOptions(state: AutocompleteState): AutocompleteOption<EmojiData>[] {
+export function useEmojiOptions(
+	state: AutocompleteState,
+	organizationId?: OrganizationId,
+): AutocompleteOption<EmojiData>[] {
+	const customOptions = useCustomEmojiOptions(organizationId)
+
 	return useMemo(() => {
 		const search = state.search.toLowerCase()
 		if (search.length < 2) return []
 
-		return ALL_EMOJI_OPTIONS.filter((option) => {
+		const standardResults = ALL_EMOJI_OPTIONS.filter((option) => {
 			const { name, keywords } = option.data
 			if (name.includes(search)) return true
 			if (keywords?.some((kw) => kw.includes(search))) return true
 			return false
-		}).slice(0, 20)
-	}, [state.search])
+		})
+
+		const customResults = customOptions.filter((option) => option.data.name.includes(search))
+
+		// Custom emojis first, then standard
+		return [...customResults, ...standardResults].slice(0, 20)
+	}, [state.search, customOptions])
 }

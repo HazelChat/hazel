@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm"
 import { attachmentsTable } from "./attachments"
+import { customEmojisTable } from "./custom-emojis"
 import { botCommandsTable } from "./bot-commands"
 import { botInstallationsTable } from "./bot-installations"
 import { botsTable } from "./bots"
@@ -37,6 +38,7 @@ export const organizationsRelations = relations(organizationsTable, ({ many }) =
 	channelAccess: many(channelAccessTable),
 	invitations: many(invitationsTable),
 	attachments: many(attachmentsTable),
+	customEmojis: many(customEmojisTable),
 }))
 
 // Organization members relations
@@ -325,6 +327,18 @@ export const rssSubscriptionsRelations = relations(rssSubscriptionsTable, ({ one
 	}),
 	createdByUser: one(usersTable, {
 		fields: [rssSubscriptionsTable.createdBy],
+		references: [usersTable.id],
+	}),
+}))
+
+// Custom emojis relations
+export const customEmojisRelations = relations(customEmojisTable, ({ one }) => ({
+	organization: one(organizationsTable, {
+		fields: [customEmojisTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	createdByUser: one(usersTable, {
+		fields: [customEmojisTable.createdBy],
 		references: [usersTable.id],
 	}),
 }))

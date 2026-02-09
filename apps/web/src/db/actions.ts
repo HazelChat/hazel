@@ -5,6 +5,7 @@ import {
 	ChannelId,
 	ChannelMemberId,
 	ChannelSectionId,
+	CustomEmojiId,
 	MessageId,
 	MessageReactionId,
 	OrganizationId,
@@ -29,6 +30,7 @@ import {
 	channelCollection,
 	channelMemberCollection,
 	channelSectionCollection,
+	customEmojiCollection,
 	messageCollection,
 	messageReactionCollection,
 	organizationCollection,
@@ -853,6 +855,66 @@ export const setPublicModeAction = optimisticAction({
 				id: props.organizationId,
 				isPublic: props.isPublic,
 			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+// Custom Emoji Actions
+
+export const createCustomEmojiAction = optimisticAction({
+	collections: [customEmojiCollection],
+	runtime: runtime,
+
+	onMutate: (props: {
+		organizationId: OrganizationId
+		name: string
+		imageUrl: string
+		createdBy: UserId
+	}) => {
+		const emojiId = CustomEmojiId.make(crypto.randomUUID())
+		const now = new Date()
+
+		customEmojiCollection.insert({
+			id: emojiId,
+			organizationId: props.organizationId,
+			name: props.name,
+			imageUrl: props.imageUrl,
+			createdBy: props.createdBy,
+			createdAt: now,
+			updatedAt: null,
+			deletedAt: null,
+		})
+
+		return { emojiId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("customEmoji.create", {
+				organizationId: props.organizationId,
+				name: props.name,
+				imageUrl: props.imageUrl,
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
+export const deleteCustomEmojiAction = optimisticAction({
+	collections: [customEmojiCollection],
+	runtime: runtime,
+
+	onMutate: (props: { emojiId: CustomEmojiId }) => {
+		customEmojiCollection.update(props.emojiId, (emoji) => {
+			emoji.deletedAt = new Date()
+		})
+		return { emojiId: props.emojiId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("customEmoji.delete", { id: props.emojiId })
 			return { data: result, transactionId: result.transactionId }
 		}),
 })

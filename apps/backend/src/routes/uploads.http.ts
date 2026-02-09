@@ -191,6 +191,49 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 						}),
 					),
 
+					// ============ Custom Emoji Upload ============
+					Match.when({ type: "custom-emoji" }, (req) =>
+						Effect.gen(function* () {
+							// Check if user is admin/owner of the org
+							yield* Effect.void.pipe(
+								policyUse(OrganizationPolicy.canUpdate(req.organizationId)),
+							)
+
+							// Check rate limit (reuse avatar rate limit)
+							yield* checkAvatarRateLimit(user.id)
+
+							const key = `emojis/${req.organizationId}/${randomUUIDv7()}`
+
+							yield* Effect.logDebug(
+								`Generating presigned URL for custom emoji upload: ${key} (size: ${req.fileSize} bytes, type: ${req.contentType})`,
+							)
+
+							const uploadUrl = yield* s3
+								.presign(key, {
+									acl: "public-read",
+									method: "PUT",
+									type: req.contentType,
+									expiresIn: 300, // 5 minutes
+								})
+								.pipe(
+									Effect.mapError(
+										(error) =>
+											new UploadError({
+												message: `Failed to generate presigned URL: ${error.message}`,
+											}),
+									),
+								)
+
+							yield* Effect.logDebug(`Generated presigned URL for custom emoji: ${key}`)
+
+							return {
+								uploadUrl,
+								key,
+								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
+							}
+						}),
+					),
+
 					// ============ Attachment Upload ============
 					Match.when({ type: "attachment" }, (req) =>
 						Effect.gen(function* () {
