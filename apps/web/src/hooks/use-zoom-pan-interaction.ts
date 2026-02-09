@@ -85,6 +85,7 @@ function computeInitialState(
 	const minZoom = computeMinZoom(imageWidth, imageHeight, cropSize, 0)
 
 	if (!contentBounds) {
+		console.warn("[emoji] computeInitialState: no contentBounds, using minZoom", minZoom)
 		return { zoom: minZoom, panX: 0, panY: 0, rotation: 0 }
 	}
 
@@ -103,7 +104,17 @@ function computeInitialState(
 	const rawPanY = -(contentCenterY - imageCenterY) * zoom
 
 	const clamped = clampPan(rawPanX, rawPanY, zoom, imageWidth, imageHeight, cropSize, 0)
-	return { zoom, rotation: 0, ...clamped }
+	const result = { zoom, rotation: 0 as const, ...clamped }
+	console.warn("[emoji] computeInitialState:", {
+		contentBounds,
+		minZoom,
+		contentZoom,
+		zoom,
+		rawPan: { rawPanX, rawPanY },
+		clamped,
+		result,
+	})
+	return result
 }
 
 export function useZoomPanInteraction({
@@ -125,7 +136,11 @@ export function useZoomPanInteraction({
 	} | null>(null)
 
 	const minZoom = computeMinZoom(imageWidth, imageHeight, cropSize, state.rotation)
-	const maxZoom = minZoom * 3
+	// Expand maxZoom to allow framing small content within large canvases
+	const contentFillZoom = contentBounds
+		? cropSize / (Math.max(contentBounds.width, contentBounds.height) * 1.05)
+		: 0
+	const maxZoom = Math.max(minZoom * 3, contentFillZoom * 1.5)
 
 	// Re-compute initial state when image or content bounds change
 	useEffect(() => {
@@ -154,12 +169,15 @@ export function useZoomPanInteraction({
 		setState((prev) => {
 			const newRotation = ((prev.rotation + 90) % 360) as 0 | 90 | 180 | 270
 			const newMinZoom = computeMinZoom(imageWidth, imageHeight, cropSize, newRotation)
-			const newMaxZoom = newMinZoom * 3
+			const rotatedContentFill = contentBounds
+				? cropSize / (Math.max(contentBounds.width, contentBounds.height) * 1.05)
+				: 0
+			const newMaxZoom = Math.max(newMinZoom * 3, rotatedContentFill * 1.5)
 			const newZoom = Math.max(newMinZoom, Math.min(newMaxZoom, prev.zoom))
 			const clamped = clampPan(0, 0, newZoom, imageWidth, imageHeight, cropSize, newRotation)
 			return { zoom: newZoom, rotation: newRotation, ...clamped }
 		})
-	}, [imageWidth, imageHeight, cropSize])
+	}, [imageWidth, imageHeight, cropSize, contentBounds])
 
 	const handlePointerDown = useCallback(
 		(e: React.PointerEvent) => {
@@ -223,7 +241,10 @@ export function useZoomPanInteraction({
 			const zoomDelta = -e.deltaY * 0.001
 			setState((prev) => {
 				const currentMin = computeMinZoom(imageWidth, imageHeight, cropSize, prev.rotation)
-				const currentMax = currentMin * 3
+				const currentContentFill = contentBounds
+					? cropSize / (Math.max(contentBounds.width, contentBounds.height) * 1.05)
+					: 0
+				const currentMax = Math.max(currentMin * 3, currentContentFill * 1.5)
 				const newZoom = Math.max(currentMin, Math.min(currentMax, prev.zoom + zoomDelta))
 				const clamped = clampPan(
 					prev.panX,
@@ -237,7 +258,7 @@ export function useZoomPanInteraction({
 				return { ...prev, zoom: newZoom, ...clamped }
 			})
 		},
-		[imageWidth, imageHeight, cropSize],
+		[imageWidth, imageHeight, cropSize, contentBounds],
 	)
 
 	const getImageTransform = useCallback((): {

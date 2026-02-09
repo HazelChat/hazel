@@ -66,7 +66,17 @@ export function EmojiConfiguratorModal({
 
 		const img = new Image()
 		img.onload = () => {
-			const bounds = detectContentBounds(img)
+			let bounds: ContentBounds | null = null
+			try {
+				bounds = detectContentBounds(img)
+			} catch (e) {
+				console.warn("[emoji] detectContentBounds threw:", e)
+			}
+			console.warn("[emoji] image loaded", {
+				naturalWidth: img.naturalWidth,
+				naturalHeight: img.naturalHeight,
+				contentBounds: bounds,
+			})
 			setImageState({
 				status: "ready",
 				element: img,

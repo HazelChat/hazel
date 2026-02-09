@@ -1,6 +1,7 @@
 "use client"
 
 import type { RenderElementProps } from "slate-react"
+import { useEmojiTooltip } from "./emoji-tooltip-provider"
 import type { CustomEmojiElement as CustomEmojiElementType } from "./types"
 
 interface CustomEmojiElementProps extends RenderElementProps {
@@ -8,13 +9,22 @@ interface CustomEmojiElementProps extends RenderElementProps {
 }
 
 export function CustomEmojiElement({ attributes, children, element }: CustomEmojiElementProps) {
+	const tooltipCtx = useEmojiTooltip()
+
 	return (
 		<span
 			{...attributes}
 			contentEditable={false}
-			data-emoji-tooltip
-			data-shortcode={element.name}
-			data-custom-emoji-url={element.imageUrl}
+			onMouseEnter={
+				tooltipCtx
+					? (e) =>
+							tooltipCtx.show(
+								{ customEmojiUrl: element.imageUrl, shortcode: element.name },
+								e.currentTarget,
+							)
+					: undefined
+			}
+			onMouseLeave={tooltipCtx ? () => tooltipCtx.hide() : undefined}
 		>
 			<img
 				src={element.imageUrl}

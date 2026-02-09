@@ -1,5 +1,6 @@
 import type { BaseRange } from "slate"
 import type { RenderLeafProps } from "slate-react"
+import { useEmojiTooltip } from "./emoji-tooltip-provider"
 
 // Markdown patterns for Discord-style highlighting
 const MARKDOWN_PATTERNS = [
@@ -187,15 +188,18 @@ export interface MarkdownLeafProps extends RenderLeafProps {
  * Markers are dimmed, content is styled, code tokens get Prism classes
  */
 export function MarkdownLeaf({ attributes, children, leaf, mode = "composer" }: MarkdownLeafProps) {
+	const tooltipCtx = useEmojiTooltip()
+
 	// Check for emoji decoration — runs before markdown so emoji inside bold/italic still gets tooltip
 	const leafRecord = leaf as unknown as Record<string, unknown>
-	if (leafRecord.type === "emoji" && leafRecord.shortcode) {
+	if (leafRecord.type === "emoji" && leafRecord.shortcode && tooltipCtx) {
+		const emoji = leafRecord.emoji as string
+		const shortcode = leafRecord.shortcode as string
 		return (
 			<span
 				{...attributes}
-				data-emoji-tooltip
-				data-emoji={leafRecord.emoji as string}
-				data-shortcode={leafRecord.shortcode as string}
+				onMouseEnter={(e) => tooltipCtx.show({ emoji, shortcode }, e.currentTarget)}
+				onMouseLeave={() => tooltipCtx.hide()}
 			>
 				{children}
 			</span>
