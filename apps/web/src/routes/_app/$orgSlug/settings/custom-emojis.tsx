@@ -1,5 +1,5 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { eq, useLiveQuery } from "@tanstack/react-db"
+import { eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
@@ -44,7 +44,7 @@ function CustomEmojisSettings() {
 			q
 				.from({ emoji: customEmojiCollection })
 				.where(({ emoji }) => eq(emoji.organizationId, organizationId))
-				.where(({ emoji }) => eq(emoji.deletedAt, null))
+				.where(({ emoji }) => isNull(emoji.deletedAt))
 				.orderBy(({ emoji }) => emoji.createdAt, "desc"),
 		[organizationId],
 	)

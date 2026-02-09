@@ -7,6 +7,7 @@ import { Editable, type RenderElementProps, type RenderLeafProps, Slate, withRea
 import { isEmojiOnly } from "~/lib/emoji-utils"
 import { cx } from "~/utils/cx"
 import { CodeBlockElement } from "./code-block-element"
+import { CustomEmojiElement } from "./custom-emoji-element"
 import { HeadingElement } from "./heading-element"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
@@ -29,6 +30,8 @@ const Element = (props: RenderElementProps) => {
 	switch (customElement.type) {
 		case "mention":
 			return <MentionElement {...props} element={customElement as any} interactive={true} />
+		case "custom-emoji":
+			return <CustomEmojiElement {...props} element={customElement as any} />
 		case "paragraph":
 			return (
 				<p {...attributes} className="my-0 last:empty:hidden">

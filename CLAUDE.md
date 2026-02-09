@@ -197,6 +197,15 @@ Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src
     - Cluster entity and workflow definitions (importable by both frontend and cluster service)
     - Shared error types and data models
 
+### Electric SQL Proxy — Required When Adding New Collections
+
+**IMPORTANT**: When adding a new Electric-synced collection on the frontend (`apps/web/src/db/collections.ts`), you **must also** update the Electric proxy to allow the table:
+
+1. **Add to `ALLOWED_TABLES`** in `apps/electric-proxy/src/tables/user-tables.ts`
+2. **Add a `Match.when` case** in `getWhereClauseForTable` in the same file, using the appropriate WHERE clause builder (e.g., `buildOrgMembershipClause` for org-scoped tables, `buildChannelAccessClause` for channel-scoped tables)
+
+Without both changes, Electric sync requests for the new table will be rejected by the proxy.
+
 ## Effect-TS Best Practices
 
 > **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing Effect.Service, Schema.TaggedError, Layer composition, or effect-atom code.

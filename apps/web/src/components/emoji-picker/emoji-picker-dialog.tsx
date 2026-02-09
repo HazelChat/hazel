@@ -11,7 +11,7 @@ import { EmojiPickerSearch } from "./emoji-picker-search"
 
 interface EmojiPickerDialogProps {
 	children: ReactElement
-	onEmojiSelect: (emoji: { emoji: string; label: string }) => void
+	onEmojiSelect: (emoji: { emoji: string; label: string; imageUrl?: string }) => void
 }
 
 function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) {
@@ -20,7 +20,7 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 	const pickerRef = useRef<HTMLDivElement>(null)
 	const { organizationId } = useOrganization()
 
-	const handleEmojiSelect = (emoji: { emoji: string; label: string }) => {
+	const handleEmojiSelect = (emoji: { emoji: string; label: string; imageUrl?: string }) => {
 		onEmojiSelect(emoji)
 		setIsOpen(false)
 	}
@@ -47,7 +47,7 @@ function EmojiPickerDialog({ children, onEmojiSelect }: EmojiPickerDialogProps) 
 	}, [isOpen])
 
 	const handleCustomEmojiSelect = useCallback(
-		(emoji: { emoji: string; label: string }) => {
+		(emoji: { emoji: string; label: string; imageUrl?: string }) => {
 			handleEmojiSelect(emoji)
 		},
 		[onEmojiSelect],

@@ -9,7 +9,7 @@ import { cn } from "~/lib/utils"
 interface CustomEmojiSectionProps {
 	organizationId: OrganizationId
 	searchQuery: string
-	onEmojiSelect: (emoji: { emoji: string; label: string }) => void
+	onEmojiSelect: (emoji: { emoji: string; label: string; imageUrl?: string }) => void
 }
 
 export const CustomEmojiSection = memo(function CustomEmojiSection({
@@ -46,6 +46,7 @@ export const CustomEmojiSection = memo(function CustomEmojiSection({
 							onEmojiSelect({
 								emoji: `custom:${emoji.name}`,
 								label: emoji.name,
+								imageUrl: emoji.imageUrl,
 							})
 						}
 						className={cn("flex size-10 items-center justify-center rounded-md hover:bg-accent")}

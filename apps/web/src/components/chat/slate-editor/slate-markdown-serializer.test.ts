@@ -739,6 +739,74 @@ describe("slate-markdown-serializer", () => {
 			expect(children[0]).toMatchObject({ text: "Hello " })
 			expect(children[1]).toMatchObject({ type: "mention", userId: "test-user" })
 		})
+
+		it("should preserve custom emoji through round-trip", () => {
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{ text: "Look " },
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: "https://example.com/hazel.png",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+						{ text: " cool!" },
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			expect(markdown).toBe("Look ![custom-emoji:hazel](https://example.com/hazel.png) cool!")
+
+			const result = deserializeFromMarkdown(markdown)
+
+			expect((result[0] as any).type).toBe("paragraph")
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({ text: "Look " })
+			expect(children[1]).toMatchObject({
+				type: "custom-emoji",
+				name: "hazel",
+				imageUrl: "https://example.com/hazel.png",
+			})
+			expect(children[2]).toMatchObject({ text: " cool!" })
+		})
+
+		it("should preserve custom emoji alongside mentions through round-trip", () => {
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "mention" as const,
+							userId: "user1",
+							displayName: "User",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+						{ text: " " },
+						{
+							type: "custom-emoji" as const,
+							name: "wave",
+							imageUrl: "https://example.com/wave.gif",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			const result = deserializeFromMarkdown(markdown)
+
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({ type: "mention", userId: "user1" })
+			expect(children[1]).toMatchObject({ text: " " })
+			expect(children[2]).toMatchObject({
+				type: "custom-emoji",
+				name: "wave",
+				imageUrl: "https://example.com/wave.gif",
+			})
+		})
 	})
 
 	// ===========================================

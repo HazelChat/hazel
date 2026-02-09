@@ -35,6 +35,13 @@ export interface MentionElement {
 	children: [{ text: "" }]
 }
 
+export interface CustomEmojiElement {
+	type: "custom-emoji"
+	name: string
+	imageUrl: string
+	children: [{ text: "" }]
+}
+
 export interface TableElement {
 	type: "table"
 	children: TableRowElement[]
@@ -69,6 +76,7 @@ export type CustomElement =
 	| SubtextElement
 	| ListItemElement
 	| MentionElement
+	| CustomEmojiElement
 	| TableElement
 	| TableRowElement
 	| TableCellElement
@@ -123,6 +131,10 @@ export function serializeToMarkdown(nodes: CustomDescendant[]): string {
 			const element = node as CustomElement
 
 			switch (element.type) {
+				case "custom-emoji": {
+					const ce = element as CustomEmojiElement
+					return `![custom-emoji:${ce.name}](${ce.imageUrl})`
+				}
 				case "mention": {
 					// Serialize mention back to markdown syntax
 					const mentionElement = element as MentionElement
@@ -210,30 +222,36 @@ export function serializeToMarkdown(nodes: CustomDescendant[]): string {
 }
 
 /**
- * Parse inline mentions and text into a mixed array of text and mention nodes
+ * Parse inline mentions and custom emojis into a mixed array of text, mention, and custom-emoji nodes
  */
-function parseInlineContent(text: string): Array<CustomText | MentionElement> {
-	const nodes: Array<CustomText | MentionElement> = []
-	const mentionPattern = /@\[(userId|directive):([^\]]+)\]/g
+function parseInlineContent(text: string): Array<CustomText | MentionElement | CustomEmojiElement> {
+	const nodes: Array<CustomText | MentionElement | CustomEmojiElement> = []
+	// Combined pattern: mentions (@[prefix:value]) or custom emojis (![custom-emoji:name](url))
+	const inlinePattern = /@\[(userId|directive):([^\]]+)\]|!\[custom-emoji:([^\]]+)\]\(([^)]+)\)/g
 	let lastIndex = 0
 	let match: RegExpExecArray | null
 
 	// biome-ignore lint/suspicious/noAssignInExpressions: regex matching pattern
-	while ((match = mentionPattern.exec(text)) !== null) {
-		// Add text before the mention
+	while ((match = inlinePattern.exec(text)) !== null) {
+		// Add text before the match
 		if (match.index > lastIndex) {
 			nodes.push({ text: text.slice(lastIndex, match.index) })
 		}
 
-		// Add the mention element
-		const value = match[2]
-
-		// Only add mention if value exists (type guard)
-		if (value) {
+		if (match[1] && match[2]) {
+			// Mention match
 			nodes.push({
 				type: "mention",
-				userId: value,
-				displayName: value,
+				userId: match[2],
+				displayName: match[2],
+				children: [{ text: "" }],
+			})
+		} else if (match[3] && match[4]) {
+			// Custom emoji match
+			nodes.push({
+				type: "custom-emoji",
+				name: match[3],
+				imageUrl: match[4],
 				children: [{ text: "" }],
 			})
 		}
@@ -241,12 +259,12 @@ function parseInlineContent(text: string): Array<CustomText | MentionElement> {
 		lastIndex = match.index + match[0].length
 	}
 
-	// Add remaining text after last mention
+	// Add remaining text after last match
 	if (lastIndex < text.length) {
 		nodes.push({ text: text.slice(lastIndex) })
 	}
 
-	// If no mentions found, return the text as-is
+	// If no inline elements found, return the text as-is
 	if (nodes.length === 0) {
 		nodes.push({ text })
 	}
