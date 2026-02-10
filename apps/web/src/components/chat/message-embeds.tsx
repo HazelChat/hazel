@@ -1,4 +1,4 @@
-import type { MessageId } from "@hazel/schema"
+import type { MessageId, OrganizationId } from "@hazel/schema"
 import type { Message } from "@hazel/domain/models"
 import { Embed } from "~/components/embeds"
 import { MessageLive } from "./message-live-state"
@@ -9,9 +9,10 @@ type MessageEmbedType = NonNullable<typeof Message.Model.Type.embeds>[number]
 interface MessageEmbedsProps {
 	embeds: typeof Message.Model.Type.embeds
 	messageId?: MessageId
+	organizationId?: OrganizationId
 }
 
-export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
+export function MessageEmbeds({ embeds, messageId, organizationId }: MessageEmbedsProps) {
 	if (!embeds?.length) return null
 
 	// Find the embed with live state enabled and extract cached state and loading config
@@ -33,6 +34,7 @@ export function MessageEmbeds({ embeds, messageId }: MessageEmbedsProps) {
 				<MessageLive.Provider
 					messageId={messageId}
 					enabled
+					organizationId={organizationId}
 					cached={cachedState}
 					loading={loadingConfig}
 				>

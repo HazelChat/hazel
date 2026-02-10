@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema } from "@hazel/db"
+import { and, Database, eq, isNotNull, isNull, ModelRepository, schema } from "@hazel/db"
 import { policyRequire } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { CustomEmoji } from "@hazel/domain/models"
@@ -51,6 +51,51 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 				policyRequire("CustomEmoji", "select"),
 			)(organizationId)
 
+		const findDeletedByOrgAndName = (organizationId: OrganizationId, name: string) =>
+			db
+				.makeQuery(
+					(execute, data: { organizationId: OrganizationId; name: string }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.customEmojisTable)
+								.where(
+									and(
+										eq(schema.customEmojisTable.organizationId, data.organizationId),
+										eq(schema.customEmojisTable.name, data.name),
+										isNotNull(schema.customEmojisTable.deletedAt),
+									),
+								)
+								.limit(1),
+						),
+					policyRequire("CustomEmoji", "select"),
+				)({ organizationId, name })
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+		const restore = (id: CustomEmojiId, imageUrl?: string) =>
+			db
+				.makeQuery(
+					(execute, data: { id: CustomEmojiId; imageUrl?: string }) =>
+						execute((client) =>
+							client
+								.update(schema.customEmojisTable)
+								.set({
+									deletedAt: null,
+									updatedAt: new Date(),
+									...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
+								})
+								.where(
+									and(
+										eq(schema.customEmojisTable.id, data.id),
+										isNotNull(schema.customEmojisTable.deletedAt),
+									),
+								)
+								.returning(),
+						),
+					policyRequire("CustomEmoji", "create"),
+				)({ id, imageUrl })
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 		const softDelete = (id: CustomEmojiId) =>
 			db
 				.makeQuery(
@@ -74,8 +119,10 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 		return {
 			...baseRepo,
 			findByOrgAndName,
+			findDeletedByOrgAndName,
 			findAllByOrganization,
 			softDelete,
+			restore,
 		}
 	}),
 }) {}

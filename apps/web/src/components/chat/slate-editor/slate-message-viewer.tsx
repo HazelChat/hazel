@@ -1,6 +1,9 @@
 "use client"
 
+import { useAtomValue } from "@effect-atom/atom-react"
+import type { OrganizationId } from "@hazel/schema"
 import { memo, useCallback, useMemo } from "react"
+import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { createEditor, Editor, Element as SlateElement } from "slate"
 import { withHistory } from "slate-history"
 import { Editable, type RenderElementProps, type RenderLeafProps, Slate, withReact } from "slate-react"
@@ -21,59 +24,7 @@ import { isCodeBlockElement } from "./types"
 interface SlateMessageViewerProps {
 	content: string
 	className?: string
-}
-
-// Define custom element renderer (same as editor but readonly optimized)
-const Element = (props: RenderElementProps) => {
-	const { attributes, children, element } = props
-	const customElement = element as CustomElement
-
-	switch (customElement.type) {
-		case "mention":
-			return <MentionElement {...props} element={customElement as any} interactive={true} />
-		case "custom-emoji":
-			return <CustomEmojiElement {...props} element={customElement as any} />
-		case "paragraph":
-			return (
-				<p {...attributes} className="my-0 last:empty:hidden">
-					{children}
-				</p>
-			)
-		case "blockquote":
-			return (
-				<blockquote {...attributes} className="relative my-1 pl-4 italic">
-					<span
-						className="absolute top-0 left-0 h-full w-1 rounded-xs bg-primary"
-						aria-hidden="true"
-					/>
-					{children}
-				</blockquote>
-			)
-		case "code-block":
-			return <CodeBlockElement {...props} element={customElement as any} showControls={true} />
-		case "subtext":
-			return (
-				<p {...attributes} className="my-0 text-muted-fg text-xs">
-					{children}
-				</p>
-			)
-		case "list-item":
-			return (
-				<li {...attributes} className="my-0.5 ml-4">
-					{children}
-				</li>
-			)
-		case "table":
-			return <TableElement {...props} element={customElement as any} />
-		case "table-row":
-			return <TableRowElement {...props} />
-		case "table-cell":
-			return <TableCellElement {...props} element={customElement as any} />
-		case "heading":
-			return <HeadingElement {...props} element={customElement as any} />
-		default:
-			return <p {...attributes}>{children}</p>
-	}
+	organizationId?: OrganizationId
 }
 
 // Define custom leaf renderer with markdown highlighting and interactive mentions
@@ -81,52 +32,165 @@ const Leaf = (props: RenderLeafProps) => {
 	return <MentionLeaf {...props} interactive={true} mode="viewer" />
 }
 
-export const SlateMessageViewer = memo(({ content, className }: SlateMessageViewerProps) => {
-	// Create a readonly Slate editor
-	const editor = useMemo(() => withHistory(withReact(createEditor())), [])
+interface SlateMessageViewerBaseProps {
+	content: string
+	className?: string
+	resolveCustomEmojiUrl?: (name: string) => string | undefined
+}
 
-	// Deserialize markdown content to Slate value
-	const value = useMemo(() => deserializeFromMarkdown(content), [content])
+const SlateMessageViewerBase = memo(
+	({ content, className, resolveCustomEmojiUrl }: SlateMessageViewerBaseProps) => {
+		// Create a readonly Slate editor
+		const editor = useMemo(() => withHistory(withReact(createEditor())), [])
 
-	// Check if content contains only emojis
-	const isOnlyEmojis = useMemo(() => isEmojiOnly(content), [content])
+		// Deserialize markdown content to Slate value
+		const value = useMemo(() => deserializeFromMarkdown(content), [content])
 
-	// Custom decorator that handles both markdown and code syntax highlighting
-	const decorate = useCallback(
-		(entry: [node: any, path: number[]]) => {
-			const [node, nodePath] = entry
+		// Check if content contains only emojis
+		const isOnlyEmojis = useMemo(() => isEmojiOnly(content), [content])
 
-			// Check if this node is a code-block element
-			if (SlateElement.isElement(node) && isCodeBlockElement(node)) {
-				return decorateCodeBlock(entry)
-			}
+		const renderElement = useCallback(
+			(props: RenderElementProps) => {
+				const { attributes, children, element } = props
+				const customElement = element as CustomElement
 
-			// Get parent element for markdown/emoji decoration
-			const parentPath = nodePath.slice(0, -1)
-			const parentEntry = Editor.node(editor, parentPath)
-			const parentElement = parentEntry ? parentEntry[0] : null
+				switch (customElement.type) {
+					case "mention":
+						return <MentionElement {...props} element={customElement as any} interactive={true} />
+					case "custom-emoji":
+						return (
+							<CustomEmojiElement
+								{...props}
+								element={customElement as any}
+								resolvedImageUrl={resolveCustomEmojiUrl?.(customElement.name) ?? null}
+							/>
+						)
+					case "paragraph":
+						return (
+							<p {...attributes} className="my-0 last:empty:hidden">
+								{children}
+							</p>
+						)
+					case "blockquote":
+						return (
+							<blockquote {...attributes} className="relative my-1 pl-4 italic">
+								<span
+									className="absolute top-0 left-0 h-full w-1 rounded-xs bg-primary"
+									aria-hidden="true"
+								/>
+								{children}
+							</blockquote>
+						)
+					case "code-block":
+						return (
+							<CodeBlockElement {...props} element={customElement as any} showControls={true} />
+						)
+					case "subtext":
+						return (
+							<p {...attributes} className="my-0 text-muted-fg text-xs">
+								{children}
+							</p>
+						)
+					case "list-item":
+						return (
+							<li {...attributes} className="my-0.5 ml-4">
+								{children}
+							</li>
+						)
+					case "table":
+						return <TableElement {...props} element={customElement as any} />
+					case "table-row":
+						return <TableRowElement {...props} />
+					case "table-cell":
+						return <TableCellElement {...props} element={customElement as any} />
+					case "heading":
+						return <HeadingElement {...props} element={customElement as any} />
+					default:
+						return <p {...attributes}>{children}</p>
+				}
+			},
+			[resolveCustomEmojiUrl],
+		)
 
-			return [...decorateMarkdown(entry, parentElement), ...decorateEmoji(entry, parentElement)]
-		},
-		[editor],
-	)
+		// Custom decorator that handles both markdown and code syntax highlighting
+		const decorate = useCallback(
+			(entry: [node: any, path: number[]]) => {
+				const [node, nodePath] = entry
+
+				// Check if this node is a code-block element
+				if (SlateElement.isElement(node) && isCodeBlockElement(node)) {
+					return decorateCodeBlock(entry)
+				}
+
+				// Get parent element for markdown/emoji decoration
+				const parentPath = nodePath.slice(0, -1)
+				const parentEntry = Editor.node(editor, parentPath)
+				const parentElement = parentEntry ? parentEntry[0] : null
+
+				return [...decorateMarkdown(entry, parentElement), ...decorateEmoji(entry, parentElement)]
+			},
+			[editor],
+		)
+
+		return (
+			<div className={cx("w-full", className)}>
+				<Slate editor={editor} initialValue={value}>
+					<Editable
+						className={cx(
+							"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
+							isOnlyEmojis ? "text-2xl" : "text-base",
+							"[&_strong]:font-bold",
+						)}
+						readOnly={true}
+						renderElement={renderElement}
+						renderLeaf={Leaf}
+						decorate={decorate}
+					/>
+				</Slate>
+			</div>
+		)
+	},
+)
+
+SlateMessageViewerBase.displayName = "SlateMessageViewerBase"
+
+interface SlateMessageViewerWithEmojiResolutionProps {
+	content: string
+	className?: string
+	organizationId: OrganizationId
+}
+
+const SlateMessageViewerWithEmojiResolution = memo(
+	({ content, className, organizationId }: SlateMessageViewerWithEmojiResolutionProps) => {
+		const emojiMap = useAtomValue(customEmojiMapAtomFamily(organizationId))
+		const resolveCustomEmojiUrl = useCallback(
+			(name: string) => emojiMap.get(`custom:${name}`)?.imageUrl,
+			[emojiMap],
+		)
+
+		return (
+			<SlateMessageViewerBase
+				content={content}
+				className={className}
+				resolveCustomEmojiUrl={resolveCustomEmojiUrl}
+			/>
+		)
+	},
+)
+
+SlateMessageViewerWithEmojiResolution.displayName = "SlateMessageViewerWithEmojiResolution"
+
+export const SlateMessageViewer = memo(({ content, className, organizationId }: SlateMessageViewerProps) => {
+	if (!organizationId) {
+		return <SlateMessageViewerBase content={content} className={className} />
+	}
 
 	return (
-		<div className={cx("w-full", className)}>
-			<Slate editor={editor} initialValue={value}>
-				<Editable
-					className={cx(
-						"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
-						isOnlyEmojis ? "text-2xl" : "text-base",
-						"[&_strong]:font-bold",
-					)}
-					readOnly={true}
-					renderElement={Element}
-					renderLeaf={Leaf}
-					decorate={decorate}
-				/>
-			</Slate>
-		</div>
+		<SlateMessageViewerWithEmojiResolution
+			content={content}
+			className={className}
+			organizationId={organizationId}
+		/>
 	)
 })
 

@@ -900,6 +900,43 @@ export const createCustomEmojiAction = optimisticAction({
 		}),
 })
 
+export const restoreCustomEmojiAction = optimisticAction({
+	collections: [customEmojiCollection],
+	runtime: runtime,
+
+	onMutate: (props: {
+		emojiId: CustomEmojiId
+		organizationId: OrganizationId
+		name: string
+		imageUrl: string
+		createdBy: UserId
+	}) => {
+		// Deleted emojis aren't in the local collection, so insert optimistically
+		customEmojiCollection.insert({
+			id: props.emojiId,
+			organizationId: props.organizationId,
+			name: props.name,
+			imageUrl: props.imageUrl,
+			createdBy: props.createdBy,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			deletedAt: null,
+		})
+
+		return { emojiId: props.emojiId }
+	},
+
+	mutate: (props, _ctx) =>
+		Effect.gen(function* () {
+			const client = yield* HazelRpcClient
+			const result = yield* client("customEmoji.restore", {
+				id: props.emojiId,
+				imageUrl: props.imageUrl,
+			})
+			return { data: result, transactionId: result.transactionId }
+		}),
+})
+
 export const deleteCustomEmojiAction = optimisticAction({
 	collections: [customEmojiCollection],
 	runtime: runtime,

@@ -8,15 +8,31 @@ import type { CustomEmojiElement as CustomEmojiElementType } from "./types"
 
 interface CustomEmojiElementProps extends RenderElementProps {
 	element: CustomEmojiElementType
+	resolvedImageUrl?: string | null
 }
 
-export function CustomEmojiElement({ attributes, children, element }: CustomEmojiElementProps) {
+export function CustomEmojiElement({
+	attributes,
+	children,
+	element,
+	resolvedImageUrl,
+}: CustomEmojiElementProps) {
+	const imageUrl = resolvedImageUrl === undefined ? element.imageUrl : resolvedImageUrl
+
+	if (!imageUrl) {
+		return (
+			<span {...attributes} contentEditable={false} className="inline-block align-text-bottom">
+				:{element.name}:{children}
+			</span>
+		)
+	}
+
 	return (
 		<Tooltip delay={300} closeDelay={0}>
 			<Focusable>
 				<span {...attributes} contentEditable={false}>
 					<img
-						src={element.imageUrl}
+						src={imageUrl}
 						alt={`:${element.name}:`}
 						className="inline-block size-5 align-text-bottom"
 					/>
@@ -24,7 +40,7 @@ export function CustomEmojiElement({ attributes, children, element }: CustomEmoj
 				</span>
 			</Focusable>
 			<TooltipContent>
-				<EmojiPreview customEmojiUrl={element.imageUrl} shortcode={element.name} size="sm" />
+				<EmojiPreview customEmojiUrl={imageUrl} shortcode={element.name} size="sm" />
 			</TooltipContent>
 		</Tooltip>
 	)

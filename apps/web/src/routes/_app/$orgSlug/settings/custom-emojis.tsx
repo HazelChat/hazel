@@ -2,10 +2,11 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { Exit } from "effect"
+import { Cause, Chunk, Exit, Option } from "effect"
 import { useCallback, useEffect, useState } from "react"
 import { type DropItem, DropZone, FileTrigger } from "react-aria-components"
 import { toast } from "sonner"
+import { IconArrowPath } from "~/components/icons/icon-arrow-path"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
 import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconTrash from "~/components/icons/icon-trash"
@@ -24,7 +25,7 @@ import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
-import { createCustomEmojiAction, deleteCustomEmojiAction } from "~/db/actions"
+import { createCustomEmojiAction, deleteCustomEmojiAction, restoreCustomEmojiAction } from "~/db/actions"
 import { customEmojiCollection, organizationMemberCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useUpload } from "~/hooks/use-upload"
@@ -62,6 +63,12 @@ function CustomEmojisSettings() {
 	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const [deleteTarget, setDeleteTarget] = useState<{ id: CustomEmojiId; name: string } | null>(null)
+	const [restoreTarget, setRestoreTarget] = useState<{
+		id: CustomEmojiId
+		name: string
+		imageUrl: string
+		newImageUrl: string
+	} | null>(null)
 
 	// Upload zone state
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -74,6 +81,7 @@ function CustomEmojisSettings() {
 
 	const createCustomEmoji = useAtomSet(createCustomEmojiAction, { mode: "promiseExit" })
 	const deleteCustomEmoji = useAtomSet(deleteCustomEmojiAction, { mode: "promiseExit" })
+	const restoreCustomEmoji = useAtomSet(restoreCustomEmojiAction, { mode: "promiseExit" })
 
 	// Cleanup preview URL on unmount
 	useEffect(() => {
@@ -210,9 +218,56 @@ function CustomEmojisSettings() {
 				toast.success(`Emoji :${emojiName}: created`)
 				handleCancel()
 			} else {
-				toast.error("Failed to create emoji", {
-					description: "The name may already be taken. Please try another.",
-				})
+				// Check if the error is a deleted emoji conflict
+				const failures = Cause.failures(createResult.cause)
+				const firstError = Chunk.head(failures)
+
+				if (
+					Option.isSome(firstError) &&
+					"_tag" in firstError.value &&
+					firstError.value._tag === "CustomEmojiDeletedExistsError"
+				) {
+					const err = firstError.value as {
+						customEmojiId: CustomEmojiId
+						name: string
+						imageUrl: string
+					}
+					setRestoreTarget({
+						id: err.customEmojiId,
+						name: err.name,
+						imageUrl: err.imageUrl,
+						newImageUrl: publicUrl,
+					})
+				} else {
+					toast.error("Failed to create emoji", {
+						description: "The name may already be taken. Please try another.",
+					})
+				}
+			}
+		} finally {
+			setIsSaving(false)
+		}
+	}
+
+	const handleRestore = async () => {
+		if (!restoreTarget || !user || !organizationId) return
+
+		setIsSaving(true)
+		setRestoreTarget(null)
+		try {
+			const result = await restoreCustomEmoji({
+				emojiId: restoreTarget.id,
+				organizationId,
+				name: restoreTarget.name,
+				imageUrl: restoreTarget.newImageUrl,
+				createdBy: user.id,
+			})
+
+			if (Exit.isSuccess(result)) {
+				toast.success(`Emoji :${restoreTarget.name}: restored`)
+				handleCancel()
+			} else {
+				toast.error("Failed to restore emoji")
 			}
 		} finally {
 			setIsSaving(false)
@@ -232,6 +287,8 @@ function CustomEmojisSettings() {
 	if (!organizationId) return null
 
 	const busy = isUploading || isSaving
+
+	const imagesAreDifferent = restoreTarget && restoreTarget.imageUrl !== restoreTarget.newImageUrl
 
 	return (
 		<>
@@ -543,6 +600,61 @@ function CustomEmojisSettings() {
 								}
 							>
 								Delete emoji
+							</Button>
+						</DialogFooter>
+					</Dialog>
+				</ModalContent>
+			</Modal>
+
+			{/* Restore Confirmation Modal */}
+			<Modal>
+				<ModalContent
+					isOpen={!!restoreTarget}
+					onOpenChange={(open) => !open && setRestoreTarget(null)}
+					size="md"
+				>
+					<Dialog>
+						<DialogHeader>
+							<div className="flex size-12 items-center justify-center rounded-lg border border-primary/10 bg-primary/5">
+								<IconArrowPath className="size-6 text-primary" />
+							</div>
+							<DialogTitle>Restore deleted emoji</DialogTitle>
+							<DialogDescription>
+								An emoji named <strong>:{restoreTarget?.name}:</strong> was previously
+								deleted. Would you like to restore it with your new image?
+							</DialogDescription>
+						</DialogHeader>
+
+						{imagesAreDifferent && (
+							<div className="flex items-center justify-center gap-6 py-2">
+								<div className="flex flex-col items-center gap-1.5">
+									<div className="flex size-16 items-center justify-center overflow-hidden rounded-lg bg-secondary">
+										<img
+											src={restoreTarget.imageUrl}
+											alt="Previous"
+											className="size-16 object-contain"
+										/>
+									</div>
+									<span className="text-muted-fg text-xs">Previous</span>
+								</div>
+								<span className="text-muted-fg">&rarr;</span>
+								<div className="flex flex-col items-center gap-1.5">
+									<div className="flex size-16 items-center justify-center overflow-hidden rounded-lg bg-secondary">
+										<img
+											src={restoreTarget.newImageUrl}
+											alt="New"
+											className="size-16 object-contain"
+										/>
+									</div>
+									<span className="text-muted-fg text-xs">New</span>
+								</div>
+							</div>
+						)}
+
+						<DialogFooter>
+							<DialogClose intent="secondary">Cancel</DialogClose>
+							<Button intent="primary" onPress={handleRestore}>
+								Restore with new image
 							</Button>
 						</DialogFooter>
 					</Dialog>

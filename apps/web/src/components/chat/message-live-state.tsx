@@ -1,4 +1,4 @@
-import type { MessageId } from "@hazel/schema"
+import type { MessageId, OrganizationId } from "@hazel/schema"
 import { useMemo } from "react"
 import { IconBrainSparkle } from "~/components/icons/icon-brain-sparkle"
 import { IconSparkles } from "~/components/icons/icon-sparkles"
@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils"
 import { AgentSteps } from "./agent-steps-view"
 import {
 	MessageLiveContext,
+	useMessageLiveMeta,
 	useMessageLiveState,
 	type MessageLiveActions,
 	type MessageLiveMeta,
@@ -33,6 +34,7 @@ interface LoadingConfig {
 interface MessageLiveProviderProps {
 	messageId: MessageId
 	enabled: boolean
+	organizationId?: OrganizationId
 	/** Cached state from the database - if completed/failed, renders without actor connection */
 	cached?: CachedActorState
 	/** Loading state configuration for the initial loading indicator */
@@ -42,22 +44,29 @@ interface MessageLiveProviderProps {
 
 // Stable empty objects for actions and meta (to prevent re-renders)
 const emptyActions: MessageLiveActions = {}
-const emptyMeta: MessageLiveMeta = {}
 
 /**
  * Provides message actor state to child components via context.
  * Returns null if disabled, shows loading state while waiting for actor to start.
  */
-function MessageLiveProvider({ messageId, enabled, cached, loading, children }: MessageLiveProviderProps) {
+function MessageLiveProvider({
+	messageId,
+	enabled,
+	organizationId,
+	cached,
+	loading,
+	children,
+}: MessageLiveProviderProps) {
 	const actorState = useMessageActor(messageId, { enabled, cached })
+	const meta = useMemo<MessageLiveMeta>(() => ({ organizationId }), [organizationId])
 
 	const contextValue = useMemo(
 		() => ({
 			state: actorState,
 			actions: emptyActions,
-			meta: emptyMeta,
+			meta,
 		}),
-		[actorState],
+		[actorState, meta],
 	)
 
 	// Don't render if disabled
@@ -138,12 +147,13 @@ function MessageLiveSteps() {
 
 function MessageLiveText() {
 	const state = useMessageLiveState()
+	const meta = useMessageLiveMeta()
 	if (!state.text) return null
 
 	return state.isStreaming ? (
 		<StreamingMarkdown isAnimating>{state.text}</StreamingMarkdown>
 	) : (
-		<SlateMessageViewer content={state.text} />
+		<SlateMessageViewer content={state.text} organizationId={meta.organizationId} />
 	)
 }
 

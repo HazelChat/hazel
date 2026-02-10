@@ -29,7 +29,13 @@ interface ThreadPanelProps {
 	isCreating?: boolean
 }
 
-function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating }: ThreadPanelProps) {
+function ThreadContent({
+	threadChannelId,
+	originalMessageId,
+	organizationId,
+	onClose,
+	isCreating,
+}: ThreadPanelProps) {
 	const { data: originalMessage } = useMessage(originalMessageId)
 	const renameModal = useSingleModalState()
 	const [isGenerating, setIsGenerating] = React.useState(false)
@@ -176,7 +182,10 @@ function ThreadContent({ threadChannelId, originalMessageId, onClose, isCreating
 								</span>
 							</div>
 							<div className="mt-1">
-								<SlateMessageViewer content={originalMessage.content} />
+								<SlateMessageViewer
+									content={originalMessage.content}
+									organizationId={organizationId}
+								/>
 							</div>
 						</div>
 					</div>

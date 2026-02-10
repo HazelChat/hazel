@@ -1,7 +1,12 @@
 import { CustomEmojiRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
-import { CustomEmojiNameConflictError, CustomEmojiNotFoundError, CustomEmojiRpcs } from "@hazel/domain/rpc"
+import {
+	CustomEmojiDeletedExistsError,
+	CustomEmojiNameConflictError,
+	CustomEmojiNotFoundError,
+	CustomEmojiRpcs,
+} from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { CustomEmojiPolicy } from "../../policies/custom-emoji-policy"
@@ -26,6 +31,22 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 								return yield* Effect.fail(
 									new CustomEmojiNameConflictError({
 										name: payload.name,
+										organizationId: payload.organizationId,
+									}),
+								)
+							}
+
+							// Check if a soft-deleted emoji with same name exists
+							const deleted = yield* CustomEmojiRepo.findDeletedByOrgAndName(
+								payload.organizationId,
+								payload.name,
+							).pipe(withSystemActor)
+							if (Option.isSome(deleted)) {
+								return yield* Effect.fail(
+									new CustomEmojiDeletedExistsError({
+										customEmojiId: deleted.value.id,
+										name: deleted.value.name,
+										imageUrl: deleted.value.imageUrl,
 										organizationId: payload.organizationId,
 									}),
 								)
@@ -116,6 +137,48 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("CustomEmoji", "delete")),
+
+			"customEmoji.restore": ({ id, imageUrl }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							// Look up the deleted emoji first (system actor since we check canCreate below)
+							const existing = yield* CustomEmojiRepo.findById(id).pipe(withSystemActor)
+							if (Option.isNone(existing) || existing.value.deletedAt === null) {
+								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
+							}
+
+							// Check that no active emoji with the same name exists
+							const nameConflict = yield* CustomEmojiRepo.findByOrgAndName(
+								existing.value.organizationId,
+								existing.value.name,
+							).pipe(withSystemActor)
+							if (Option.isSome(nameConflict)) {
+								return yield* Effect.fail(
+									new CustomEmojiNameConflictError({
+										name: existing.value.name,
+										organizationId: existing.value.organizationId,
+									}),
+								)
+							}
+
+							const restored = yield* CustomEmojiRepo.restore(id, imageUrl).pipe(
+								policyUse(CustomEmojiPolicy.canCreate(existing.value.organizationId)),
+							)
+
+							if (Option.isNone(restored)) {
+								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
+							}
+
+							const txid = yield* generateTransactionId()
+
+							return {
+								data: restored.value,
+								transactionId: txid,
+							}
+						}),
+					)
+					.pipe(withRemapDbErrors("CustomEmoji", "update")),
 		}
 	}),
 )
