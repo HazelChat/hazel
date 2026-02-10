@@ -1,11 +1,14 @@
 import { useRef } from "react"
 import { Button as AriaButton } from "react-aria-components"
 import { EmojiPickerDialog } from "~/components/emoji-picker"
+import { GifPickerDialog } from "~/components/gif-picker"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
+import IconGif from "~/components/icons/icon-gif"
 import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { cn } from "~/lib/utils"
+import { useChat } from "~/providers/chat-provider"
 import { useComposerContext } from "./composer-context"
 
 interface ComposerActionsProps {
@@ -20,6 +23,7 @@ export function ComposerActions({ className, minimal = false }: ComposerActionsP
 	const { editorRef } = meta
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { trackEmojiUsage } = useEmojiStats()
+	const { sendMessage } = useChat()
 
 	const { handleFileInputChange, isUploading } = useFileUploadHandler({
 		organizationId,
@@ -31,6 +35,10 @@ export function ComposerActions({ className, minimal = false }: ComposerActionsP
 		if (fileInputRef.current) {
 			fileInputRef.current.value = ""
 		}
+	}
+
+	const handleGifSelect = (gifUrl: string) => {
+		sendMessage({ content: gifUrl })
 	}
 
 	const handleEmojiSelect = (emoji: { emoji: string; label: string; imageUrl?: string }) => {
@@ -66,6 +74,17 @@ export function ComposerActions({ className, minimal = false }: ComposerActionsP
 						<IconPaperclip className="size-4 text-muted-fg" />
 						{!minimal && "Attach"}
 					</button>
+
+					{/* GIF picker */}
+					<GifPickerDialog onGifSelect={handleGifSelect}>
+						<AriaButton
+							type="button"
+							className="inline-flex items-center gap-1.5 rounded-xs p-0 font-semibold text-muted-fg text-xs transition-colors hover:text-fg"
+						>
+							<IconGif className="size-4 text-muted-fg" />
+							{!minimal && "GIF"}
+						</AriaButton>
+					</GifPickerDialog>
 
 					{/* Emoji picker */}
 					<EmojiPickerDialog onEmojiSelect={handleEmojiSelect}>

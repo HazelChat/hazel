@@ -3,6 +3,7 @@ import { Layer } from "effect"
 import { HazelApi } from "./api"
 import { HttpMessagesApiLive } from "./routes/api-v1"
 import { HttpAuthLive } from "./routes/auth.http"
+import { HttpGiphyLive } from "./routes/giphy.http"
 import { HttpBotCommandsLive } from "./routes/bot-commands.http"
 import { HttpIncomingWebhookLive } from "./routes/incoming-webhooks.http"
 import { HttpIntegrationCommandLive } from "./routes/integration-commands.http"
@@ -28,5 +29,6 @@ export const HttpApiRoutes = HttpLayerRouter.addHttpApi(HazelApi).pipe(
 	Layer.provide(HttpPresencePublicLive),
 	Layer.provide(HttpUploadsLive),
 	Layer.provide(HttpWebhookLive),
+	Layer.provide(HttpGiphyLive),
 	Layer.provide(HttpMockDataLive),
 )

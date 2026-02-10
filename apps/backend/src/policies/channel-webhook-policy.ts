@@ -1,8 +1,8 @@
 import { ChannelRepo, ChannelWebhookRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
-import type { ChannelId, ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option } from "effect"
-import { isAdminOrOwner } from "../lib/policy-utils"
+import { withSystemActor } from "@hazel/domain"
+import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
+import { Effect } from "effect"
+import { makeOrganizationScopeChecks, makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
 
 /** @effect-leakable-service */
 export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()(
@@ -14,85 +14,55 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 			const channelRepo = yield* ChannelRepo
 			const webhookRepo = yield* ChannelWebhookRepo
 			const orgMemberRepo = yield* OrganizationMemberRepo
-
-			// Helper: check if user is org admin
-			const isOrgAdmin = (organizationId: OrganizationId, actorId: UserId) =>
-				Effect.gen(function* () {
-					const member = yield* orgMemberRepo
-						.findByOrgAndUser(organizationId, actorId)
-						.pipe(withSystemActor)
-
-					if (Option.isNone(member)) {
-						return false
-					}
-
-					return isAdminOrOwner(member.value.role)
-				})
+			const authorize = makePolicy(policyEntity)
+			const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
+				orgMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
+			)
 
 			// Can create webhook on a channel (org admin only)
 			const canCreate = (channelId: ChannelId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"create",
-				)(
 					channelRepo.with(channelId, (channel) =>
-						policy(
-							policyEntity,
-							"create",
-							Effect.fn(`${policyEntity}.create`)(function* (actor) {
-								return yield* isOrgAdmin(channel.organizationId, actor.id)
-							}),
+						authorize("create", (actor) =>
+							orgScope.isAdminOrOwner(channel.organizationId, actor.id),
 						),
 					),
 				)
 
 			// Can read webhooks for a channel (org admin only)
 			const canRead = (channelId: ChannelId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"select",
-				)(
 					channelRepo.with(channelId, (channel) =>
-						policy(
-							policyEntity,
-							"select",
-							Effect.fn(`${policyEntity}.select`)(function* (actor) {
-								return yield* isOrgAdmin(channel.organizationId, actor.id)
-							}),
+						authorize("select", (actor) =>
+							orgScope.isAdminOrOwner(channel.organizationId, actor.id),
 						),
 					),
 				)
 
 			// Can update a webhook (org admin only)
 			const canUpdate = (webhookId: ChannelWebhookId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"update",
-				)(
 					webhookRepo.with(webhookId, (webhook) =>
-						policy(
-							policyEntity,
-							"update",
-							Effect.fn(`${policyEntity}.update`)(function* (actor) {
-								return yield* isOrgAdmin(webhook.organizationId, actor.id)
-							}),
+						authorize("update", (actor) =>
+							orgScope.isAdminOrOwner(webhook.organizationId, actor.id),
 						),
 					),
 				)
 
 			// Can delete a webhook (org admin only)
 			const canDelete = (webhookId: ChannelWebhookId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"delete",
-				)(
 					webhookRepo.with(webhookId, (webhook) =>
-						policy(
-							policyEntity,
-							"delete",
-							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								return yield* isOrgAdmin(webhook.organizationId, actor.id)
-							}),
+						authorize("delete", (actor) =>
+							orgScope.isAdminOrOwner(webhook.organizationId, actor.id),
 						),
 					),
 				)

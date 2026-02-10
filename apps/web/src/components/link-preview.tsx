@@ -164,6 +164,61 @@ export function extractYoutubeTimestamp(url: string): number | null {
 }
 
 /**
+ * Check if a URL is a GIPHY media URL
+ * Matches: media*.giphy.com, i.giphy.com, giphy.com/media, giphy.com/gifs
+ */
+export function isGiphyUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		const hostname = parsed.hostname
+		return (
+			hostname === "i.giphy.com" ||
+			(hostname.startsWith("media") && hostname.endsWith(".giphy.com")) ||
+			((hostname === "giphy.com" || hostname === "www.giphy.com") &&
+				(/^\/media\//.test(parsed.pathname) || /^\/gifs\//.test(parsed.pathname)))
+		)
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Extract the direct media URL from a GIPHY URL.
+ * If it's already a direct media URL (media*.giphy.com or i.giphy.com), returns as-is.
+ * For page URLs (giphy.com/gifs/...), attempts to construct a media URL.
+ */
+export function extractGiphyMediaUrl(url: string): string {
+	try {
+		const parsed = new URL(url)
+		const hostname = parsed.hostname
+
+		// Already a direct media URL
+		if (hostname === "i.giphy.com" || (hostname.startsWith("media") && hostname.endsWith(".giphy.com"))) {
+			return url
+		}
+
+		// Page URL like giphy.com/gifs/slug-ID or giphy.com/media/ID/giphy.gif
+		if (hostname === "giphy.com" || hostname === "www.giphy.com") {
+			// /media/ID/giphy.gif format
+			const mediaMatch = parsed.pathname.match(/^\/media\/([^/]+)/)
+			if (mediaMatch?.[1]) {
+				return `https://media.giphy.com/media/${mediaMatch[1]}/giphy.gif`
+			}
+
+			// /gifs/slug-ID format (ID is the last segment after the final hyphen)
+			const gifsMatch = parsed.pathname.match(/^\/gifs\/.*-([a-zA-Z0-9]+)$/)
+			if (gifsMatch?.[1]) {
+				return `https://media.giphy.com/media/${gifsMatch[1]}/giphy.gif`
+			}
+		}
+
+		return url
+	} catch {
+		return url
+	}
+}
+
+/**
  * Check if a URL is a Linear issue URL
  * Format: https://linear.app/{workspace}/issue/{ISSUE-ID}
  */

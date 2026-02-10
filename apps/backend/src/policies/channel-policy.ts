@@ -1,7 +1,7 @@
 import { ChannelRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, policyCompose } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect, pipe } from "effect"
+import { Effect } from "effect"
+import { remapPolicyScope, withPolicyUnauthorized } from "../lib/policy-utils"
 import { OrganizationPolicy } from "./organization-policy"
 
 export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolicy/Policy", {
@@ -13,39 +13,27 @@ export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolic
 		const channelRepo = yield* ChannelRepo
 
 		const canCreate = (organizationId: OrganizationId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"create",
-			)(
-				pipe(
-					organizationPolicy.isMember(organizationId),
-					policyCompose(policy(policyEntity, "create", (_actor) => Effect.succeed(true))),
-				),
-			)
+			organizationPolicy.isMember(organizationId).pipe(remapPolicyScope(policyEntity, "create"))
 
 		const canUpdate = (id: ChannelId) =>
-			ErrorUtils.refailUnauthorized(
+			withPolicyUnauthorized(
 				policyEntity,
 				"update",
-			)(
 				channelRepo.with(id, (channel) =>
-					pipe(
-						organizationPolicy.canUpdate(channel.organizationId),
-						policyCompose(policy(policyEntity, "update", (_actor) => Effect.succeed(true))),
-					),
+					organizationPolicy
+						.canUpdate(channel.organizationId)
+						.pipe(remapPolicyScope(policyEntity, "update")),
 				),
 			)
 
 		const canDelete = (id: ChannelId) =>
-			ErrorUtils.refailUnauthorized(
+			withPolicyUnauthorized(
 				policyEntity,
 				"delete",
-			)(
 				channelRepo.with(id, (channel) =>
-					pipe(
-						organizationPolicy.canUpdate(channel.organizationId),
-						policyCompose(policy(policyEntity, "delete", (_actor) => Effect.succeed(true))),
-					),
+					organizationPolicy
+						.canUpdate(channel.organizationId)
+						.pipe(remapPolicyScope(policyEntity, "delete")),
 				),
 			)
 

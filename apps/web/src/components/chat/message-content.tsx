@@ -2,12 +2,14 @@ import type { OrganizationId } from "@hazel/schema"
 import { createContext, lazy, Suspense, useMemo } from "react"
 import { Node } from "slate"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
+import { GifEmbed } from "~/components/gif-embed"
 import {
 	extractGitHubInfo,
 	extractLinearIssueKey,
 	extractTweetId,
 	extractUrls,
 	extractYoutubeVideoId,
+	isGiphyUrl,
 	isGitHubPRUrl,
 	isLinearIssueUrl,
 	isTweetUrl,
@@ -52,6 +54,7 @@ interface ProcessedUrls {
 	youtubeUrls: string[]
 	linearUrls: string[]
 	githubPRUrls: string[]
+	giphyUrls: string[]
 	otherUrls: string[]
 	displayContent: string
 }
@@ -163,6 +166,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 				youtubeUrls: [],
 				linearUrls: [],
 				githubPRUrls: [],
+				giphyUrls: [],
 				otherUrls: [],
 				displayContent: message.content,
 			}
@@ -174,6 +178,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 		// 5. Categorize URLs and dedupe by resource ID
 		const tweetUrls = uniqueUrls.filter((url) => isTweetUrl(url))
 		const youtubeUrls = uniqueUrls.filter((url) => isYoutubeUrl(url))
+		const giphyUrls = uniqueUrls.filter((url) => isGiphyUrl(url))
 		const linearUrls = uniqueUrls.filter((url) => {
 			if (!isLinearIssueUrl(url)) return false
 			const key = extractLinearIssueKey(url)
@@ -187,11 +192,16 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 			return info && !existingGitHubPRs.has(`${info.owner}/${info.repo}/${info.number}`)
 		})
 		const otherUrls = uniqueUrls.filter(
-			(url) => !isTweetUrl(url) && !isYoutubeUrl(url) && !isLinearIssueUrl(url) && !isGitHubPRUrl(url),
+			(url) =>
+				!isTweetUrl(url) &&
+				!isYoutubeUrl(url) &&
+				!isGiphyUrl(url) &&
+				!isLinearIssueUrl(url) &&
+				!isGitHubPRUrl(url),
 		)
 
 		// 6. Filter out embed URLs from displayed content
-		const embedUrls = [...tweetUrls, ...youtubeUrls, ...linearUrls, ...githubPRUrls]
+		const embedUrls = [...tweetUrls, ...youtubeUrls, ...giphyUrls, ...linearUrls, ...githubPRUrls]
 		let displayContent = message.content
 		for (const url of embedUrls) {
 			displayContent = displayContent.replace(url, "")
@@ -203,6 +213,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 			youtubeUrls,
 			linearUrls,
 			githubPRUrls,
+			giphyUrls,
 			otherUrls,
 			displayContent,
 		}
@@ -266,6 +277,16 @@ function Embeds() {
 				const videoId = extractYoutubeVideoId(url)
 				return videoId ? <YoutubeEmbed key={url} videoId={videoId} url={url} /> : null
 			})}
+
+			{/* Render all GIF embeds */}
+			{processedUrls.giphyUrls.map((url) => (
+				<GifEmbed
+					key={url}
+					url={url}
+					author={message.author ?? undefined}
+					createdAt={message.createdAt.getTime()}
+				/>
+			))}
 
 			{/* Render all Linear issue embeds */}
 			{processedUrls.linearUrls.map((url) => {

@@ -1,71 +1,51 @@
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { withSystemActor } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
-import { Effect, Option, pipe } from "effect"
+import { Effect, Option } from "effect"
+import { makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
 
 export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>()(
 	"TypingIndicatorPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
 			const policyEntity = "TypingIndicator" as const
+			const authorize = makePolicy(policyEntity)
 
 			const channelMemberRepo = yield* ChannelMemberRepo
 			const typingIndicatorRepo = yield* TypingIndicatorRepo
 
-			const canRead = (_id: TypingIndicatorId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"select",
-				)(policy(policyEntity, "select", () => Effect.succeed(true)))
+			const canRead = (_id: TypingIndicatorId) => authorize("select", () => Effect.succeed(true))
 
 			const canCreate = (channelId: ChannelId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"create",
-				)(
-					policy(
-						policyEntity,
-						"create",
-						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							const member = yield* channelMemberRepo
-								.findByChannelAndUser(channelId, actor.id)
-								.pipe(withSystemActor)
-							return yield* Effect.succeed(Option.isSome(member))
-						}),
-					),
+				authorize("create", (actor) =>
+					channelMemberRepo
+						.findByChannelAndUser(channelId, actor.id)
+						.pipe(withSystemActor, Effect.map(Option.isSome)),
 				)
 
 			const canUpdate = (id: TypingIndicatorId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"update",
-				)(
 					typingIndicatorRepo.with(id, (indicator) =>
 						channelMemberRepo.with(indicator.memberId, (member) =>
-							policy(
-								policyEntity,
-								"update",
-								// User can only update their own typing indicator
-								(actor) => Effect.succeed(actor.id === member.userId),
-							),
+							// User can only update their own typing indicator
+							authorize("update", (actor) => Effect.succeed(actor.id === member.userId)),
 						),
 					),
 				)
 
 			const canDelete = (data: { memberId: ChannelMemberId } | { id: TypingIndicatorId }) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"delete",
-				)(
 					"memberId" in data
 						? channelMemberRepo.with(data.memberId, (member) =>
-								policy(policyEntity, "delete", (actor) =>
-									Effect.succeed(member.userId === actor.id),
-								),
+								authorize("delete", (actor) => Effect.succeed(member.userId === actor.id)),
 							)
 						: typingIndicatorRepo.with(data.id, (indicator) =>
 								channelMemberRepo.with(indicator.memberId, (member) =>
-									policy(policyEntity, "delete", (actor) =>
+									authorize("delete", (actor) =>
 										Effect.succeed(member.userId === actor.id),
 									),
 								),
