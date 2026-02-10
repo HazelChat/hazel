@@ -34,13 +34,16 @@ export function GifPickerDialog({ children, onGifSelect }: GifPickerDialogProps)
 }
 
 function GifPickerContent({ onGifSelect }: { onGifSelect: (gifUrl: string) => void }) {
-	const { gifs, categories, isLoading, hasMore, loadMore, search, searchQuery } = useGiphy()
+	const { gifs, categories, isLoading, isLoadingMore, hasMore, loadMore, search } = useGiphy()
 	const [query, setQuery] = useState("")
+	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+	const selectedCategoryRef = useRef<string | null>(null)
 	const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
 	const handleSearchChange = useCallback(
 		(value: string) => {
 			setQuery(value)
+			setSelectedCategory(null)
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 			debounceRef.current = setTimeout(() => search(value), 300)
 		},
@@ -49,9 +52,12 @@ function GifPickerContent({ onGifSelect }: { onGifSelect: (gifUrl: string) => vo
 
 	const handleCategorySelect = useCallback(
 		(name: string) => {
-			setQuery(name)
 			if (debounceRef.current) clearTimeout(debounceRef.current)
-			search(name)
+			const isDeselecting = selectedCategoryRef.current === name
+			const next = isDeselecting ? null : name
+			selectedCategoryRef.current = next
+			setSelectedCategory(next)
+			search(next ?? "")
 		},
 		[search],
 	)
@@ -59,12 +65,17 @@ function GifPickerContent({ onGifSelect }: { onGifSelect: (gifUrl: string) => vo
 	return (
 		<div className="flex h-[420px] w-[400px] flex-col overflow-hidden rounded-lg border border-fg/15 bg-overlay shadow-lg">
 			<GifPickerSearch value={query} onChange={handleSearchChange} />
-			{!searchQuery && (
-				<GifPickerCategories categories={categories} onCategorySelect={handleCategorySelect} />
+			{!query && (
+				<GifPickerCategories
+					categories={categories}
+					selectedCategory={selectedCategory}
+					onCategorySelect={handleCategorySelect}
+				/>
 			)}
 			<GifPickerGrid
 				gifs={gifs}
 				isLoading={isLoading}
+				isLoadingMore={isLoadingMore}
 				hasMore={hasMore}
 				onLoadMore={loadMore}
 				onGifSelect={onGifSelect}

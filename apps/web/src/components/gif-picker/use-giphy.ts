@@ -12,6 +12,7 @@ interface UseGiphyReturn {
 	gifs: GiphyGif[]
 	categories: GiphyCategory[]
 	isLoading: boolean
+	isLoadingMore: boolean
 	hasMore: boolean
 	loadMore: () => void
 	search: (query: string) => void
@@ -40,6 +41,7 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 	// null = showing trending query result; non-null = user has searched or loaded more
 	const [overrideGifs, setOverrideGifs] = useState<GiphyGif[] | null>(null)
 	const [isMutating, setIsMutating] = useState(false)
+	const [isLoadingMore, setIsLoadingMore] = useState(false)
 	const [hasMore, setHasMore] = useState(true)
 	const [searchQuery, setSearchQuery] = useState("")
 
@@ -87,6 +89,7 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 			const id = ++requestIdRef.current
 			isMutatingRef.current = true
 			setIsMutating(true)
+			setIsLoadingMore(append)
 			try {
 				let exit: Exit.Exit<GiphySearchResponse, unknown>
 				if (query) {
@@ -118,6 +121,7 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 			} finally {
 				isMutatingRef.current = false
 				setIsMutating(false)
+				setIsLoadingMore(false)
 			}
 		},
 		[limit],
@@ -151,6 +155,7 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 		gifs,
 		categories,
 		isLoading,
+		isLoadingMore,
 		hasMore,
 		loadMore,
 		search,
