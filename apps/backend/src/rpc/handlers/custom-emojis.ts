@@ -96,11 +96,17 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const existing = yield* CustomEmojiRepo.softDelete(id).pipe(
+							// Check existence first so missing IDs map to NotFound (not Unauthorized).
+							const existing = yield* CustomEmojiRepo.findById(id).pipe(withSystemActor)
+							if (Option.isNone(existing) || existing.value.deletedAt !== null) {
+								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
+							}
+
+							const deleted = yield* CustomEmojiRepo.softDelete(id).pipe(
 								policyUse(CustomEmojiPolicy.canDelete(id)),
 							)
 
-							if (Option.isNone(existing)) {
+							if (Option.isNone(deleted)) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
 							}
 

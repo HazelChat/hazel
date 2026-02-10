@@ -83,6 +83,44 @@ export type CustomElement =
 	| HeadingElement
 export type CustomDescendant = CustomElement | CustomText
 
+const TRUSTED_CUSTOM_EMOJI_PATH_SEGMENT = "/emojis/"
+
+function normalizePathPrefix(pathname: string): string {
+	return pathname.endsWith("/") ? pathname : `${pathname}/`
+}
+
+/**
+ * Accept only custom emoji URLs from our configured storage base.
+ * Inline markdown-provided URLs are otherwise treated as untrusted content.
+ */
+function isTrustedCustomEmojiUrl(rawUrl: string): boolean {
+	const customEmojiStorageBaseUrl = import.meta.env.VITE_R2_PUBLIC_URL
+	if (!customEmojiStorageBaseUrl) {
+		return false
+	}
+
+	try {
+		const candidate = new URL(rawUrl)
+		const trustedBase = new URL(customEmojiStorageBaseUrl)
+
+		if (candidate.protocol !== "https:" && candidate.protocol !== "http:") {
+			return false
+		}
+
+		if (candidate.origin !== trustedBase.origin) {
+			return false
+		}
+
+		const trustedPathPrefix = normalizePathPrefix(trustedBase.pathname)
+		return (
+			candidate.pathname.startsWith(trustedPathPrefix) &&
+			candidate.pathname.includes(TRUSTED_CUSTOM_EMOJI_PATH_SEGMENT)
+		)
+	} catch {
+		return false
+	}
+}
+
 /**
  * Extract mentions from markdown text
  * Returns array of { prefix, value } for each mention found
@@ -248,12 +286,20 @@ function parseInlineContent(text: string): Array<CustomText | MentionElement | C
 			})
 		} else if (match[3] && match[4]) {
 			// Custom emoji match
-			nodes.push({
-				type: "custom-emoji",
-				name: match[3],
-				imageUrl: match[4],
-				children: [{ text: "" }],
-			})
+			const emojiName = match[3]
+			const imageUrl = match[4]
+
+			if (isTrustedCustomEmojiUrl(imageUrl)) {
+				nodes.push({
+					type: "custom-emoji",
+					name: emojiName,
+					imageUrl,
+					children: [{ text: "" }],
+				})
+			} else {
+				// Untrusted custom emoji URLs are downgraded to shortcode text.
+				nodes.push({ text: `:${emojiName}:` })
+			}
 		}
 
 		lastIndex = match.index + match[0].length

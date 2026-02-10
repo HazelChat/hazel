@@ -36,6 +36,20 @@ export class CustomEmojiNameConflictError extends Schema.TaggedError<CustomEmoji
 	},
 ) {}
 
+/**
+ * Error thrown when a custom emoji with the same name exists but was soft-deleted.
+ * Contains the deleted emoji's info so the frontend can offer to restore it.
+ */
+export class CustomEmojiDeletedExistsError extends Schema.TaggedError<CustomEmojiDeletedExistsError>()(
+	"CustomEmojiDeletedExistsError",
+	{
+		customEmojiId: CustomEmojiId,
+		name: Schema.String,
+		imageUrl: Schema.String,
+		organizationId: OrganizationId,
+	},
+) {}
+
 export class CustomEmojiRpcs extends RpcGroup.make(
 	/**
 	 * CustomEmojiCreate
@@ -45,6 +59,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	 * @param payload - Custom emoji data (organizationId, name, imageUrl)
 	 * @returns Custom emoji data and transaction ID
 	 * @throws CustomEmojiNameConflictError if name already exists in org
+	 * @throws CustomEmojiDeletedExistsError if a deleted emoji with the same name exists
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
@@ -55,7 +70,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			imageUrl: Schema.String,
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(CustomEmojiNameConflictError, UnauthorizedError, InternalServerError),
+		error: Schema.Union(
+			CustomEmojiNameConflictError,
+			CustomEmojiDeletedExistsError,
+			UnauthorizedError,
+			InternalServerError,
+		),
 	}).middleware(AuthMiddleware),
 
 	/**
@@ -99,5 +119,31 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: CustomEmojiId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(CustomEmojiNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
+
+	/**
+	 * CustomEmojiRestore
+	 *
+	 * Restores a previously soft-deleted custom emoji.
+	 *
+	 * @param payload - Custom emoji ID and optional new image URL
+	 * @returns Restored custom emoji data and transaction ID
+	 * @throws CustomEmojiNotFoundError if emoji doesn't exist
+	 * @throws CustomEmojiNameConflictError if an active emoji with the same name exists
+	 * @throws UnauthorizedError if user lacks permission
+	 * @throws InternalServerError for unexpected errors
+	 */
+	Rpc.mutation("customEmoji.restore", {
+		payload: Schema.Struct({
+			id: CustomEmojiId,
+			imageUrl: Schema.optional(Schema.String),
+		}),
+		success: CustomEmojiResponse,
+		error: Schema.Union(
+			CustomEmojiNotFoundError,
+			CustomEmojiNameConflictError,
+			UnauthorizedError,
+			InternalServerError,
+		),
 	}).middleware(AuthMiddleware),
 ) {}
