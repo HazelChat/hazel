@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
 import { Cause, Chunk, Exit, Option } from "effect"
 import { useCallback, useEffect, useState } from "react"
-import { type DropItem, DropZone, FileTrigger } from "react-aria-components"
+import { type DropItem, DropZone, FileTrigger, Button as AriaButton } from "react-aria-components"
 import { toast } from "sonner"
 import { IconArrowPath } from "~/components/icons/icon-arrow-path"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
@@ -330,7 +330,7 @@ function CustomEmojisSettings() {
 											acceptedFileTypes={ALLOWED_EMOJI_TYPES}
 											onSelect={handleFileSelect}
 										>
-											<button
+											<AriaButton
 												type="button"
 												className={cx(
 													"flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-colors",
@@ -350,7 +350,7 @@ function CustomEmojisSettings() {
 														PNG, GIF, or WebP &middot; Max 256KB
 													</p>
 												</div>
-											</button>
+											</AriaButton>
 										</FileTrigger>
 									)}
 								</DropZone>
