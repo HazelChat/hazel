@@ -28,7 +28,7 @@ import { TextField } from "~/components/ui/text-field"
 import { createCustomEmojiAction, deleteCustomEmojiAction, restoreCustomEmojiAction } from "~/db/actions"
 import { customEmojiCollection, organizationMemberCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
-import { useUpload } from "~/hooks/use-upload"
+import { ALLOWED_EMOJI_TYPES, MAX_EMOJI_SIZE, useUpload } from "~/hooks/use-upload"
 import { useAuth } from "~/lib/auth"
 import { cx } from "~/utils/cx"
 import type { CustomEmojiId } from "@hazel/schema"
@@ -37,8 +37,6 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/custom-emojis")({
 	component: CustomEmojisSettings,
 })
 
-const ALLOWED_TYPES = ["image/png", "image/gif", "image/webp"]
-const MAX_FILE_SIZE = 256 * 1024 // 256KB
 const NAME_PATTERN = /^[a-z0-9_-]+$/
 
 function generateEmojiName(filename: string): string {
@@ -127,12 +125,12 @@ function CustomEmojisSettings() {
 
 	// File selection handler (shared by FileTrigger and DropZone)
 	const processFile = useCallback((file: File) => {
-		if (!ALLOWED_TYPES.includes(file.type)) {
+		if (!ALLOWED_EMOJI_TYPES.includes(file.type)) {
 			toast.error("Invalid file type", { description: "Please select a PNG, GIF, or WebP image" })
 			return
 		}
 
-		if (file.size > MAX_FILE_SIZE) {
+		if (file.size > MAX_EMOJI_SIZE) {
 			toast.error("File too large", { description: "Emoji images must be under 256KB" })
 			return
 		}
@@ -329,7 +327,7 @@ function CustomEmojisSettings() {
 								>
 									{({ isDropTarget }) => (
 										<FileTrigger
-											acceptedFileTypes={ALLOWED_TYPES}
+											acceptedFileTypes={ALLOWED_EMOJI_TYPES}
 											onSelect={handleFileSelect}
 										>
 											<button
@@ -484,7 +482,7 @@ function CustomEmojisSettings() {
 							action={
 								isAdmin ? (
 									<FileTrigger
-										acceptedFileTypes={ALLOWED_TYPES}
+										acceptedFileTypes={ALLOWED_EMOJI_TYPES}
 										onSelect={handleFileSelect}
 									>
 										<Button intent="primary" size="sm">

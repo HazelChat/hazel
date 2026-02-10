@@ -34,23 +34,6 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 				)({ organizationId, name })
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
-		const findAllByOrganization = (organizationId: OrganizationId) =>
-			db.makeQuery(
-				(execute, orgId: OrganizationId) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.customEmojisTable)
-							.where(
-								and(
-									eq(schema.customEmojisTable.organizationId, orgId),
-									isNull(schema.customEmojisTable.deletedAt),
-								),
-							),
-					),
-				policyRequire("CustomEmoji", "select"),
-			)(organizationId)
-
 		const findDeletedByOrgAndName = (organizationId: OrganizationId, name: string) =>
 			db
 				.makeQuery(
@@ -120,7 +103,6 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 			...baseRepo,
 			findByOrgAndName,
 			findDeletedByOrgAndName,
-			findAllByOrganization,
 			softDelete,
 			restore,
 		}

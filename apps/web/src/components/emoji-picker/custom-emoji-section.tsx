@@ -4,6 +4,7 @@ import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { memo } from "react"
 import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"
+import { formatCustomEmojiKey } from "~/lib/custom-emoji-utils"
 import { cn } from "~/lib/utils"
 
 interface CustomEmojiSectionProps {
@@ -44,7 +45,7 @@ export const CustomEmojiSection = memo(function CustomEmojiSection({
 						type="button"
 						onClick={() =>
 							onEmojiSelect({
-								emoji: `custom:${emoji.name}`,
+								emoji: formatCustomEmojiKey(emoji.name),
 								label: emoji.name,
 								imageUrl: emoji.imageUrl,
 							})

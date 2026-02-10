@@ -18,9 +18,9 @@ import { uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
-const MAX_EMOJI_SIZE = 256 * 1024 // 256KB
+export const MAX_EMOJI_SIZE = 256 * 1024 // 256KB
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"]
-const ALLOWED_EMOJI_TYPES = ["image/png", "image/gif", "image/webp"]
+export const ALLOWED_EMOJI_TYPES = ["image/png", "image/gif", "image/webp"]
 
 // ============ Types ============
 

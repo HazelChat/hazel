@@ -4,6 +4,7 @@ import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { useMemo } from "react"
 import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"
+import { formatCustomEmojiKey } from "~/lib/custom-emoji-utils"
 import { EMOJI_DATA } from "~/lib/emoji-shortcode-map"
 import { AutocompleteListBox } from "../autocomplete-listbox"
 import type { AutocompleteOption, AutocompleteState, EmojiData } from "../types"
@@ -80,11 +81,11 @@ function useCustomEmojiOptions(organizationId: OrganizationId | undefined): Auto
 	return useMemo(() => {
 		if (!organizationId || emojis.length === 0) return []
 		return emojis.map((emoji) => ({
-			id: `custom:${emoji.name}`,
+			id: formatCustomEmojiKey(emoji.name),
 			label: `:${emoji.name}:`,
 			data: {
-				id: `custom:${emoji.name}`,
-				emoji: `custom:${emoji.name}`,
+				id: formatCustomEmojiKey(emoji.name),
+				emoji: formatCustomEmojiKey(emoji.name),
 				name: emoji.name,
 				imageUrl: emoji.imageUrl,
 			},

@@ -2,6 +2,7 @@ import { Atom, Result } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { and, eq, isNull } from "@tanstack/db"
 import { customEmojiCollection } from "~/db/collections"
+import { formatCustomEmojiKey } from "~/lib/custom-emoji-utils"
 import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
 /**
@@ -27,7 +28,7 @@ export const customEmojiMapAtomFamily = Atom.family((orgId: OrganizationId) =>
 
 		const map = new Map<string, { name: string; imageUrl: string }>()
 		for (const emoji of emojis) {
-			map.set(`custom:${emoji.name}`, { name: emoji.name, imageUrl: emoji.imageUrl })
+			map.set(formatCustomEmojiKey(emoji.name), { name: emoji.name, imageUrl: emoji.imageUrl })
 		}
 		return map
 	}),
