@@ -1,8 +1,8 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { withSystemActor } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { Effect, Option } from "effect"
-import { isAdminOrOwner } from "../lib/policy-utils"
+import { Effect } from "effect"
+import { makeOrganizationScopeChecks, makePolicy } from "../lib/policy-utils"
 
 export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConnectionPolicy>()(
 	"IntegrationConnectionPolicy/Policy",
@@ -11,94 +11,26 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 			const policyEntity = "IntegrationConnection" as const
 
 			const orgMemberRepo = yield* OrganizationMemberRepo
+			const authorize = makePolicy(policyEntity)
+			const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
+				orgMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
+			)
 
 			// For select, any org member can view integrations
 			const canSelect = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"select",
-				)(
-					policy(
-						policyEntity,
-						"select",
-						Effect.fn(`${policyEntity}.select`)(function* (actor) {
-							const currentMember = yield* orgMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
-
-							return yield* Effect.succeed(Option.isSome(currentMember))
-						}),
-					),
-				)
+				authorize("select", (actor) => orgScope.isMember(organizationId, actor.id))
 
 			// For insert, only admins and owners can connect integrations
 			const canInsert = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"insert",
-				)(
-					policy(
-						policyEntity,
-						"insert",
-						Effect.fn(`${policyEntity}.insert`)(function* (actor) {
-							const currentMember = yield* orgMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
-
-							if (Option.isNone(currentMember)) {
-								return yield* Effect.succeed(false)
-							}
-
-							return yield* Effect.succeed(isAdminOrOwner(currentMember.value.role))
-						}),
-					),
-				)
+				authorize("insert", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
 
 			// For update, only admins and owners can modify integrations
 			const canUpdate = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"update",
-				)(
-					policy(
-						policyEntity,
-						"update",
-						Effect.fn(`${policyEntity}.update`)(function* (actor) {
-							const currentMember = yield* orgMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
-
-							if (Option.isNone(currentMember)) {
-								return yield* Effect.succeed(false)
-							}
-
-							return yield* Effect.succeed(isAdminOrOwner(currentMember.value.role))
-						}),
-					),
-				)
+				authorize("update", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
 
 			// For delete, only admins and owners can disconnect integrations
 			const canDelete = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"delete",
-				)(
-					policy(
-						policyEntity,
-						"delete",
-						Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-							const currentMember = yield* orgMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
-
-							if (Option.isNone(currentMember)) {
-								return yield* Effect.succeed(false)
-							}
-
-							return yield* Effect.succeed(isAdminOrOwner(currentMember.value.role))
-						}),
-					),
-				)
+				authorize("delete", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
 
 			return { canSelect, canInsert, canUpdate, canDelete } as const
 		}),

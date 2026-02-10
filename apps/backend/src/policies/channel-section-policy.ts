@@ -1,7 +1,7 @@
 import { ChannelSectionRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, policyCompose } from "@hazel/domain"
 import type { ChannelSectionId, OrganizationId } from "@hazel/schema"
-import { Effect, pipe } from "effect"
+import { Effect } from "effect"
+import { remapPolicyScope, withPolicyUnauthorized } from "../lib/policy-utils"
 import { OrganizationPolicy } from "./organization-policy"
 
 export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()(
@@ -15,55 +15,35 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 
 			// Only org admins/owners can create sections
 			const canCreate = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"create",
-				)(
-					pipe(
-						organizationPolicy.canUpdate(organizationId),
-						policyCompose(policy(policyEntity, "create", (_actor) => Effect.succeed(true))),
-					),
-				)
+				organizationPolicy.canUpdate(organizationId).pipe(remapPolicyScope(policyEntity, "create"))
 
 			// Only org admins/owners can update sections
 			const canUpdate = (id: ChannelSectionId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"update",
-				)(
 					channelSectionRepo.with(id, (section) =>
-						pipe(
-							organizationPolicy.canUpdate(section.organizationId),
-							policyCompose(policy(policyEntity, "update", (_actor) => Effect.succeed(true))),
-						),
+						organizationPolicy
+							.canUpdate(section.organizationId)
+							.pipe(remapPolicyScope(policyEntity, "update")),
 					),
 				)
 
 			// Only org admins/owners can delete sections
 			const canDelete = (id: ChannelSectionId) =>
-				ErrorUtils.refailUnauthorized(
+				withPolicyUnauthorized(
 					policyEntity,
 					"delete",
-				)(
 					channelSectionRepo.with(id, (section) =>
-						pipe(
-							organizationPolicy.canUpdate(section.organizationId),
-							policyCompose(policy(policyEntity, "delete", (_actor) => Effect.succeed(true))),
-						),
+						organizationPolicy
+							.canUpdate(section.organizationId)
+							.pipe(remapPolicyScope(policyEntity, "delete")),
 					),
 				)
 
 			// Only org admins/owners can reorder sections
 			const canReorder = (organizationId: OrganizationId) =>
-				ErrorUtils.refailUnauthorized(
-					policyEntity,
-					"reorder",
-				)(
-					pipe(
-						organizationPolicy.canUpdate(organizationId),
-						policyCompose(policy(policyEntity, "reorder", (_actor) => Effect.succeed(true))),
-					),
-				)
+				organizationPolicy.canUpdate(organizationId).pipe(remapPolicyScope(policyEntity, "reorder"))
 
 			return { canCreate, canUpdate, canDelete, canReorder } as const
 		}),
