@@ -11,7 +11,6 @@ import { CustomEmojiElement } from "./custom-emoji-element"
 import { HeadingElement } from "./heading-element"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
-import { EmojiTooltipProvider } from "./emoji-tooltip-provider"
 import { decorateCodeBlock } from "./slate-code-decorator"
 import { decorateEmoji } from "./slate-emoji-decorator"
 import { decorateMarkdown } from "./slate-markdown-decorators"
@@ -113,23 +112,21 @@ export const SlateMessageViewer = memo(({ content, className }: SlateMessageView
 	)
 
 	return (
-		<EmojiTooltipProvider>
-			<div className={cx("w-full", className)}>
-				<Slate editor={editor} initialValue={value}>
-					<Editable
-						className={cx(
-							"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
-							isOnlyEmojis ? "text-2xl" : "text-base",
-							"[&_strong]:font-bold",
-						)}
-						readOnly={true}
-						renderElement={Element}
-						renderLeaf={Leaf}
-						decorate={decorate}
-					/>
-				</Slate>
-			</div>
-		</EmojiTooltipProvider>
+		<div className={cx("w-full", className)}>
+			<Slate editor={editor} initialValue={value}>
+				<Editable
+					className={cx(
+						"wrap-break-word w-full cursor-text select-text whitespace-pre-wrap",
+						isOnlyEmojis ? "text-2xl" : "text-base",
+						"[&_strong]:font-bold",
+					)}
+					readOnly={true}
+					renderElement={Element}
+					renderLeaf={Leaf}
+					decorate={decorate}
+				/>
+			</Slate>
+		</div>
 	)
 })
 

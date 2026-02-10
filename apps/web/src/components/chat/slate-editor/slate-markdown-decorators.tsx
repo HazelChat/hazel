@@ -1,6 +1,8 @@
 import type { BaseRange } from "slate"
 import type { RenderLeafProps } from "slate-react"
-import { useEmojiTooltip } from "./emoji-tooltip-provider"
+import { Focusable } from "react-aria-components"
+import { EmojiPreview } from "~/components/emoji-preview"
+import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 
 // Markdown patterns for Discord-style highlighting
 const MARKDOWN_PATTERNS = [
@@ -188,21 +190,20 @@ export interface MarkdownLeafProps extends RenderLeafProps {
  * Markers are dimmed, content is styled, code tokens get Prism classes
  */
 export function MarkdownLeaf({ attributes, children, leaf, mode = "composer" }: MarkdownLeafProps) {
-	const tooltipCtx = useEmojiTooltip()
-
 	// Check for emoji decoration — runs before markdown so emoji inside bold/italic still gets tooltip
 	const leafRecord = leaf as unknown as Record<string, unknown>
-	if (leafRecord.type === "emoji" && leafRecord.shortcode && tooltipCtx) {
+	if (leafRecord.type === "emoji" && leafRecord.shortcode) {
 		const emoji = leafRecord.emoji as string
 		const shortcode = leafRecord.shortcode as string
 		return (
-			<span
-				{...attributes}
-				onMouseEnter={(e) => tooltipCtx.show({ emoji, shortcode }, e.currentTarget)}
-				onMouseLeave={() => tooltipCtx.hide()}
-			>
-				{children}
-			</span>
+			<Tooltip delay={300} closeDelay={0}>
+				<Focusable>
+					<span {...attributes}>{children}</span>
+				</Focusable>
+				<TooltipContent>
+					<EmojiPreview emoji={emoji} shortcode={shortcode} size="sm" />
+				</TooltipContent>
+			</Tooltip>
 		)
 	}
 

@@ -1,7 +1,9 @@
 "use client"
 
+import { Focusable } from "react-aria-components"
 import type { RenderElementProps } from "slate-react"
-import { useEmojiTooltip } from "./emoji-tooltip-provider"
+import { EmojiPreview } from "~/components/emoji-preview"
+import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 import type { CustomEmojiElement as CustomEmojiElementType } from "./types"
 
 interface CustomEmojiElementProps extends RenderElementProps {
@@ -9,29 +11,21 @@ interface CustomEmojiElementProps extends RenderElementProps {
 }
 
 export function CustomEmojiElement({ attributes, children, element }: CustomEmojiElementProps) {
-	const tooltipCtx = useEmojiTooltip()
-
 	return (
-		<span
-			{...attributes}
-			contentEditable={false}
-			onMouseEnter={
-				tooltipCtx
-					? (e) =>
-							tooltipCtx.show(
-								{ customEmojiUrl: element.imageUrl, shortcode: element.name },
-								e.currentTarget,
-							)
-					: undefined
-			}
-			onMouseLeave={tooltipCtx ? () => tooltipCtx.hide() : undefined}
-		>
-			<img
-				src={element.imageUrl}
-				alt={`:${element.name}:`}
-				className="inline-block size-5 align-text-bottom"
-			/>
-			{children}
-		</span>
+		<Tooltip delay={300} closeDelay={0}>
+			<Focusable>
+				<span {...attributes} contentEditable={false}>
+					<img
+						src={element.imageUrl}
+						alt={`:${element.name}:`}
+						className="inline-block size-5 align-text-bottom"
+					/>
+					{children}
+				</span>
+			</Focusable>
+			<TooltipContent>
+				<EmojiPreview customEmojiUrl={element.imageUrl} shortcode={element.name} size="sm" />
+			</TooltipContent>
+		</Tooltip>
 	)
 }
