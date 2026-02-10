@@ -2,10 +2,10 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { useRef, useState } from "react"
-import { toast } from "sonner"
 import { Exit } from "effect"
-import { EmojiConfiguratorModal } from "~/components/emoji-configurator/emoji-configurator-modal"
+import { useCallback, useEffect, useState } from "react"
+import { type DropItem, DropZone, FileTrigger } from "react-aria-components"
+import { toast } from "sonner"
 import IconEmoji1 from "~/components/icons/icon-emoji-1"
 import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconTrash from "~/components/icons/icon-trash"
@@ -20,31 +20,67 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog"
 import { EmptyState } from "~/components/ui/empty-state"
+import { Description, FieldError, Label } from "~/components/ui/field"
+import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalContent } from "~/components/ui/modal"
+import { TextField } from "~/components/ui/text-field"
 import { createCustomEmojiAction, deleteCustomEmojiAction } from "~/db/actions"
 import { customEmojiCollection, organizationMemberCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { useUpload } from "~/hooks/use-upload"
 import { useAuth } from "~/lib/auth"
+import { cx } from "~/utils/cx"
 import type { CustomEmojiId } from "@hazel/schema"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/custom-emojis")({
 	component: CustomEmojisSettings,
 })
 
+const ALLOWED_TYPES = ["image/png", "image/gif", "image/webp"]
+const MAX_FILE_SIZE = 256 * 1024 // 256KB
+const NAME_PATTERN = /^[a-z0-9_-]+$/
+
+function generateEmojiName(filename: string): string {
+	return filename
+		.replace(/\.[^.]+$/, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9_-]/g, "_")
+		.replace(/_+/g, "_")
+		.replace(/^_|_$/g, "")
+		.slice(0, 64)
+}
+
+function validateEmojiName(name: string): string | null {
+	if (!name) return "Name is required"
+	if (name.length > 64) return "Name must be 64 characters or less"
+	if (!NAME_PATTERN.test(name)) return "Only lowercase letters, numbers, hyphens, and underscores"
+	return null
+}
+
 function CustomEmojisSettings() {
 	const { organizationId, organization } = useOrganization()
 	const { user, isLoading: isAuthLoading } = useAuth()
 
-	const fileInputRef = useRef<HTMLInputElement>(null)
-	const [configuratorFile, setConfiguratorFile] = useState<File | null>(null)
-	const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false)
 	const [deleteTarget, setDeleteTarget] = useState<{ id: CustomEmojiId; name: string } | null>(null)
+
+	// Upload zone state
+	const [selectedFile, setSelectedFile] = useState<File | null>(null)
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+	const [emojiName, setEmojiName] = useState("")
+	const [nameError, setNameError] = useState<string | null>(null)
+	const [isSaving, setIsSaving] = useState(false)
 
 	const { upload, isUploading } = useUpload()
 
 	const createCustomEmoji = useAtomSet(createCustomEmojiAction, { mode: "promiseExit" })
 	const deleteCustomEmoji = useAtomSet(deleteCustomEmojiAction, { mode: "promiseExit" })
+
+	// Cleanup preview URL on unmount
+	useEffect(() => {
+		return () => {
+			if (previewUrl) URL.revokeObjectURL(previewUrl)
+		}
+	}, [previewUrl])
 
 	// Get custom emojis for this org with creator info
 	const { data: customEmojis, isLoading: isLoadingEmojis } = useLiveQuery(
@@ -81,60 +117,105 @@ function CustomEmojisSettings() {
 	const isAdmin = currentUserMember?.role === "owner" || currentUserMember?.role === "admin"
 	const isPermissionsLoading = isAuthLoading || isLoadingMembers
 
-	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0]
-		if (!file) return
-
-		const allowedTypes = ["image/png", "image/gif", "image/webp"]
-		if (!allowedTypes.includes(file.type)) {
+	// File selection handler (shared by FileTrigger and DropZone)
+	const processFile = useCallback((file: File) => {
+		if (!ALLOWED_TYPES.includes(file.type)) {
 			toast.error("Invalid file type", { description: "Please select a PNG, GIF, or WebP image" })
 			return
 		}
 
-		setConfiguratorFile(file)
-		setIsConfiguratorOpen(true)
-		// Reset file input so re-selecting the same file triggers onChange
-		if (fileInputRef.current) fileInputRef.current.value = ""
-	}
-
-	const handleConfiguratorSave = async (blob: Blob, name: string) => {
-		if (!organizationId || !user) return
-
-		setIsConfiguratorOpen(false)
-		setConfiguratorFile(null)
-
-		const file = new File([blob], `${name}.webp`, { type: "image/webp" })
-
-		const result = await upload({
-			type: "custom-emoji",
-			organizationId,
-			file,
-		})
-
-		if (!result) return
-
-		const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
-		if (!r2PublicUrl) {
-			toast.error("Configuration error", {
-				description: "Image upload is not configured. Please contact support.",
-			})
+		if (file.size > MAX_FILE_SIZE) {
+			toast.error("File too large", { description: "Emoji images must be under 256KB" })
 			return
 		}
-		const publicUrl = `${r2PublicUrl}/${result.key}`
 
-		const createResult = await createCustomEmoji({
-			organizationId,
-			name,
-			imageUrl: publicUrl,
-			createdBy: user.id,
-		})
+		const url = URL.createObjectURL(file)
+		setSelectedFile(file)
+		setPreviewUrl(url)
+		const name = generateEmojiName(file.name)
+		setEmojiName(name)
+		setNameError(name ? null : "Name is required")
+	}, [])
 
-		if (Exit.isSuccess(createResult)) {
-			toast.success(`Emoji :${name}: created`)
-		} else {
-			toast.error("Failed to create emoji", {
-				description: "The name may already be taken. Please try another.",
+	const handleFileSelect = useCallback(
+		(files: FileList | null) => {
+			const file = files?.[0]
+			if (file) processFile(file)
+		},
+		[processFile],
+	)
+
+	const handleDrop = useCallback(
+		async (e: { items: DropItem[] }) => {
+			const fileItem = e.items.find(
+				(item): item is DropItem & { kind: "file"; getFile: () => Promise<File> } =>
+					item.kind === "file",
+			)
+			if (!fileItem) return
+			const file = await fileItem.getFile()
+			processFile(file)
+		},
+		[processFile],
+	)
+
+	const handleCancel = useCallback(() => {
+		if (previewUrl) URL.revokeObjectURL(previewUrl)
+		setSelectedFile(null)
+		setPreviewUrl(null)
+		setEmojiName("")
+		setNameError(null)
+	}, [previewUrl])
+
+	const handleNameChange = useCallback((value: string) => {
+		const lower = value.toLowerCase()
+		setEmojiName(lower)
+		setNameError(validateEmojiName(lower))
+	}, [])
+
+	const handleSave = async () => {
+		const error = validateEmojiName(emojiName)
+		if (error) {
+			setNameError(error)
+			return
+		}
+		if (!selectedFile || !organizationId || !user) return
+
+		setIsSaving(true)
+		try {
+			const result = await upload({
+				type: "custom-emoji",
+				organizationId,
+				file: selectedFile,
 			})
+
+			if (!result) return
+
+			const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL
+			if (!r2PublicUrl) {
+				toast.error("Configuration error", {
+					description: "Image upload is not configured. Please contact support.",
+				})
+				return
+			}
+			const publicUrl = `${r2PublicUrl}/${result.key}`
+
+			const createResult = await createCustomEmoji({
+				organizationId,
+				name: emojiName,
+				imageUrl: publicUrl,
+				createdBy: user.id,
+			})
+
+			if (Exit.isSuccess(createResult)) {
+				toast.success(`Emoji :${emojiName}: created`)
+				handleCancel()
+			} else {
+				toast.error("Failed to create emoji", {
+					description: "The name may already be taken. Please try another.",
+				})
+			}
+		} finally {
+			setIsSaving(false)
 		}
 	}
 
@@ -150,46 +231,13 @@ function CustomEmojisSettings() {
 
 	if (!organizationId) return null
 
+	const busy = isUploading || isSaving
+
 	return (
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
-				{/* Upload Section */}
-				{(isAdmin || isPermissionsLoading) && (
-					<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-						<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
-							<div className="flex flex-col gap-0.5">
-								<div className="flex items-center gap-2">
-									<IconEmojiAdd className="size-5 text-muted-fg" />
-									<h2 className="font-semibold text-fg text-lg">Add Custom Emoji</h2>
-								</div>
-								<p className="text-muted-fg text-sm">
-									Upload custom emojis for your workspace. PNG, GIF, or WebP.
-								</p>
-							</div>
-						</div>
-
-						<div className="p-4 md:p-6">
-							<Button
-								intent="outline"
-								onPress={() => fileInputRef.current?.click()}
-								isDisabled={isUploading || isPermissionsLoading || !isAdmin}
-							>
-								<IconEmojiAdd data-slot="icon" />
-								{isUploading ? "Uploading..." : "Upload Emoji"}
-							</Button>
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept="image/png,image/gif,image/webp"
-								className="hidden"
-								onChange={handleFileSelect}
-							/>
-						</div>
-					</div>
-				)}
-
-				{/* Emoji List */}
 				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+					{/* Header */}
 					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
@@ -200,10 +248,132 @@ function CustomEmojisSettings() {
 									{(customEmojis?.length ?? 0) !== 1 ? "s" : ""}
 								</span>
 							</div>
-							<p className="text-muted-fg text-sm">Manage custom emojis for your workspace.</p>
+							<p className="text-muted-fg text-sm">
+								Upload and manage custom emojis for your workspace.
+							</p>
 						</div>
 					</div>
 
+					{/* Upload Zone — admin only */}
+					{(isAdmin || isPermissionsLoading) && (
+						<div className="border-border border-b px-4 py-4 md:px-6">
+							{!selectedFile ? (
+								<DropZone
+									getDropOperation={(types) =>
+										types.has("image/png") ||
+										types.has("image/gif") ||
+										types.has("image/webp")
+											? "copy"
+											: "cancel"
+									}
+									onDrop={handleDrop}
+									isDisabled={isPermissionsLoading || !isAdmin}
+									className="rounded-lg focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+								>
+									{({ isDropTarget }) => (
+										<FileTrigger
+											acceptedFileTypes={ALLOWED_TYPES}
+											onSelect={handleFileSelect}
+										>
+											<button
+												type="button"
+												className={cx(
+													"flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-colors",
+													isDropTarget
+														? "border-primary bg-primary/5"
+														: "border-border bg-secondary/20 hover:border-muted-fg/40 hover:bg-secondary/40",
+													(isPermissionsLoading || !isAdmin) &&
+														"pointer-events-none opacity-50",
+												)}
+											>
+												<IconEmojiAdd className="size-8 text-muted-fg" />
+												<div className="text-center">
+													<p className="font-medium text-fg text-sm">
+														Drop an image or click to browse
+													</p>
+													<p className="mt-0.5 text-muted-fg text-xs">
+														PNG, GIF, or WebP &middot; Max 256KB
+													</p>
+												</div>
+											</button>
+										</FileTrigger>
+									)}
+								</DropZone>
+							) : (
+								<div className="rounded-lg border border-border bg-bg p-4">
+									<div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+										{/* Preview */}
+										<div className="flex size-24 shrink-0 items-center justify-center self-center overflow-hidden rounded-lg bg-secondary sm:self-start">
+											{previewUrl && (
+												<img
+													src={previewUrl}
+													alt="Emoji preview"
+													className="size-24 object-contain"
+												/>
+											)}
+										</div>
+
+										{/* Form */}
+										<div className="flex min-w-0 flex-1 flex-col gap-3">
+											<TextField
+												value={emojiName}
+												onChange={handleNameChange}
+												isInvalid={!!nameError}
+												isDisabled={busy}
+												maxLength={64}
+												autoFocus
+											>
+												<Label>Name</Label>
+												<InputGroup>
+													<span data-slot="text" className="text-muted-fg">
+														:
+													</span>
+													<Input placeholder="emoji_name" />
+													<span data-slot="text" className="text-muted-fg">
+														:
+													</span>
+												</InputGroup>
+												<div className="mt-1 flex items-center justify-between gap-2">
+													{nameError ? (
+														<FieldError>{nameError}</FieldError>
+													) : (
+														<Description>
+															Lowercase letters, numbers, hyphens, and
+															underscores
+														</Description>
+													)}
+													<span className="shrink-0 text-muted-fg text-xs tabular-nums">
+														{emojiName.length}/64
+													</span>
+												</div>
+											</TextField>
+
+											<div className="flex items-center gap-2 sm:justify-end">
+												<Button
+													intent="secondary"
+													size="sm"
+													onPress={handleCancel}
+													isDisabled={busy}
+												>
+													Cancel
+												</Button>
+												<Button
+													intent="primary"
+													size="sm"
+													onPress={handleSave}
+													isDisabled={busy || !!nameError || !emojiName}
+												>
+													{busy ? "Saving..." : "Save Emoji"}
+												</Button>
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Emoji Table */}
 					{isLoadingEmojis ? (
 						<div className="overflow-x-auto">
 							<table className="w-full min-w-full">
@@ -256,13 +426,14 @@ function CustomEmojisSettings() {
 							description="Upload custom emojis to use in messages across your workspace."
 							action={
 								isAdmin ? (
-									<Button
-										intent="primary"
-										size="sm"
-										onPress={() => fileInputRef.current?.click()}
+									<FileTrigger
+										acceptedFileTypes={ALLOWED_TYPES}
+										onSelect={handleFileSelect}
 									>
-										Upload emoji
-									</Button>
+										<Button intent="primary" size="sm">
+											Upload emoji
+										</Button>
+									</FileTrigger>
 								) : undefined
 							}
 						/>
@@ -377,17 +548,6 @@ function CustomEmojisSettings() {
 					</Dialog>
 				</ModalContent>
 			</Modal>
-
-			{/* Emoji Configurator Modal */}
-			<EmojiConfiguratorModal
-				isOpen={isConfiguratorOpen}
-				onOpenChange={(open) => {
-					setIsConfiguratorOpen(open)
-					if (!open) setConfiguratorFile(null)
-				}}
-				imageFile={configuratorFile}
-				onSave={handleConfiguratorSave}
-			/>
 		</>
 	)
 }
