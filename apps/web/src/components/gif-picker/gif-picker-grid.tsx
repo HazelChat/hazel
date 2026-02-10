@@ -19,11 +19,7 @@ export function GifPickerGrid({ gifs, isLoading, hasMore, onLoadMore, onGifSelec
 				if (gif) onGifSelect(gif.images.original.url)
 			}}
 			renderEmptyState={() =>
-				isLoading ? (
-					<div className="flex flex-1 items-center justify-center py-4">
-						<div className="size-5 animate-spin rounded-full border-2 border-fg/20 border-t-fg/60" />
-					</div>
-				) : (
+				isLoading ? null : (
 					<div className="flex flex-1 items-center justify-center text-sm text-muted-fg">
 						No GIFs found
 					</div>
@@ -55,8 +51,9 @@ export function GifPickerGrid({ gifs, isLoading, hasMore, onLoadMore, onGifSelec
 				)}
 			</Collection>
 			<GridListLoadMoreItem
-				isLoading={isLoading && gifs.length > 0}
+				isLoading={isLoading}
 				onLoadMore={hasMore ? onLoadMore : undefined}
+				scrollOffset={0.5}
 				className="flex justify-center py-4"
 			>
 				<div className="size-5 animate-spin rounded-full border-2 border-fg/20 border-t-fg/60" />
