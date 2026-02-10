@@ -16,6 +16,13 @@ export interface MentionElement extends BaseElement {
 	children: [{ text: "" }]
 }
 
+export interface CustomEmojiElement extends BaseElement {
+	type: "custom-emoji"
+	name: string
+	imageUrl: string
+	children: [{ text: "" }]
+}
+
 export interface ParagraphElement extends BaseElement {
 	type: "paragraph"
 	children: Descendant[]
@@ -72,6 +79,7 @@ export interface TableCellElement extends BaseElement {
 export type CustomElement =
 	| CodeBlockElement
 	| MentionElement
+	| CustomEmojiElement
 	| ParagraphElement
 	| BlockquoteElement
 	| SubtextElement
@@ -107,6 +115,10 @@ export function isCodeBlockElement(element: BaseElement): element is CodeBlockEl
 
 export function isMentionElement(element: BaseElement): element is MentionElement {
 	return (element as CustomElement).type === "mention"
+}
+
+export function isCustomEmojiElement(element: BaseElement): element is CustomEmojiElement {
+	return (element as CustomElement).type === "custom-emoji"
 }
 
 export function isParagraphElement(element: BaseElement): element is ParagraphElement {

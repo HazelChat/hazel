@@ -33,9 +33,13 @@ export function ComposerActions({ className, minimal = false }: ComposerActionsP
 		}
 	}
 
-	const handleEmojiSelect = (emoji: { emoji: string; label: string }) => {
+	const handleEmojiSelect = (emoji: { emoji: string; label: string; imageUrl?: string }) => {
 		trackEmojiUsage(emoji.emoji)
-		editorRef.current?.focusAndInsertText(emoji.emoji)
+		if (emoji.imageUrl) {
+			editorRef.current?.insertCustomEmoji(emoji.label, emoji.imageUrl)
+		} else {
+			editorRef.current?.focusAndInsertText(emoji.emoji)
+		}
 	}
 
 	return (

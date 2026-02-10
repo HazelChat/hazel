@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
 	createEmptyValue,
 	deserializeFromMarkdown,
@@ -8,7 +8,17 @@ import {
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
 
+const TRUSTED_EMOJI_BASE_URL = "https://emoji-cdn.test"
+
 describe("slate-markdown-serializer", () => {
+	beforeEach(() => {
+		vi.stubEnv("VITE_R2_PUBLIC_URL", TRUSTED_EMOJI_BASE_URL)
+	})
+
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
 	// ===========================================
 	// DESERIALIZATION - Code Blocks
 	// ===========================================
@@ -739,6 +749,120 @@ describe("slate-markdown-serializer", () => {
 			expect(children[0]).toMatchObject({ text: "Hello " })
 			expect(children[1]).toMatchObject({ type: "mention", userId: "test-user" })
 		})
+
+		it("should preserve custom emoji through round-trip", () => {
+			const trustedHazelUrl = `${TRUSTED_EMOJI_BASE_URL}/emojis/hazel.png`
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{ text: "Look " },
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: trustedHazelUrl,
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+						{ text: " cool!" },
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			expect(markdown).toBe(`Look ![custom-emoji:hazel](${trustedHazelUrl}) cool!`)
+
+			const result = deserializeFromMarkdown(markdown)
+
+			expect((result[0] as any).type).toBe("paragraph")
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({ text: "Look " })
+			expect(children[1]).toMatchObject({
+				type: "custom-emoji",
+				name: "hazel",
+				imageUrl: trustedHazelUrl,
+			})
+			expect(children[2]).toMatchObject({ text: " cool!" })
+		})
+
+		it("should serialize paragraph with only a custom emoji", () => {
+			const trustedHazelUrl = `${TRUSTED_EMOJI_BASE_URL}/emojis/hazel.png`
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: trustedHazelUrl,
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			expect(markdown).toBe(`![custom-emoji:hazel](${trustedHazelUrl})`)
+
+			// Also verify isValueEmpty recognizes this as non-empty
+			expect(isValueEmpty(original)).toBe(false)
+
+			// And round-trip works
+			const result = deserializeFromMarkdown(markdown)
+			expect((result[0] as any).type).toBe("paragraph")
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({
+				type: "custom-emoji",
+				name: "hazel",
+				imageUrl: trustedHazelUrl,
+			})
+		})
+
+		it("should preserve custom emoji alongside mentions through round-trip", () => {
+			const trustedWaveUrl = `${TRUSTED_EMOJI_BASE_URL}/emojis/wave.gif`
+			const original = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "mention" as const,
+							userId: "user1",
+							displayName: "User",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+						{ text: " " },
+						{
+							type: "custom-emoji" as const,
+							name: "wave",
+							imageUrl: trustedWaveUrl,
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+
+			const markdown = serializeToMarkdown(original)
+			const result = deserializeFromMarkdown(markdown)
+
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({ type: "mention", userId: "user1" })
+			expect(children[1]).toMatchObject({ text: " " })
+			expect(children[2]).toMatchObject({
+				type: "custom-emoji",
+				name: "wave",
+				imageUrl: trustedWaveUrl,
+			})
+		})
+
+		it("should downgrade untrusted custom emoji URLs to shortcode text", () => {
+			const markdown = "Look ![custom-emoji:hazel](https://evil.example/emojis/hazel.png) cool!"
+			const result = deserializeFromMarkdown(markdown)
+
+			expect((result[0] as any).type).toBe("paragraph")
+			const children = (result[0] as any).children
+			expect(children[0]).toMatchObject({ text: "Look " })
+			expect(children[1]).toMatchObject({ text: ":hazel:" })
+			expect(children[2]).toMatchObject({ text: " cool!" })
+		})
 	})
 
 	// ===========================================
@@ -793,6 +917,40 @@ describe("slate-markdown-serializer", () => {
 				},
 			]
 			expect(isValueEmpty(value)).toBe(true)
+		})
+
+		it("should return false for mention-only content", () => {
+			const value = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "mention" as const,
+							userId: "user-1",
+							displayName: "User 1",
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+			expect(isValueEmpty(value)).toBe(false)
+		})
+
+		it("should return false for custom-emoji-only content", () => {
+			const value = [
+				{
+					type: "paragraph" as const,
+					children: [
+						{
+							type: "custom-emoji" as const,
+							name: "hazel",
+							imageUrl: `${TRUSTED_EMOJI_BASE_URL}/emojis/hazel.png`,
+							children: [{ text: "" }] as [{ text: "" }],
+						},
+					],
+				},
+			] as any
+			expect(isValueEmpty(value)).toBe(false)
 		})
 	})
 

@@ -6,6 +6,7 @@ import {
 	Channel,
 	ChannelMember,
 	ChannelSection,
+	CustomEmoji,
 	IntegrationConnection,
 	Invitation,
 	Message,
@@ -364,5 +365,23 @@ export const botInstallationCollection = createEffectCollection({
 		fetchClient: electricFetchClient,
 	},
 	schema: BotInstallation.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const customEmojiCollection = createEffectCollection({
+	id: "custom_emojis",
+	runtime: runtime,
+	backoff: false,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "custom_emojis",
+		},
+		parser: {
+			timestamptz: (date: string) => new Date(date),
+		} as any,
+		fetchClient: electricFetchClient,
+	},
+	schema: CustomEmoji.Model.json,
 	getKey: (item) => item.id,
 })

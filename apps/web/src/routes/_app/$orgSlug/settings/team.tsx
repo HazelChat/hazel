@@ -185,7 +185,7 @@ function TeamSettings() {
 									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
 										Role
 									</th>
-									<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
+									<th className="px-4 py-3 text-right font-medium text-muted-fg text-xs">
 										Actions
 									</th>
 								</tr>
@@ -239,7 +239,7 @@ function TeamSettings() {
 														member.role.slice(1)}
 												</span>
 											</td>
-											<td className="px-4 py-4">
+											<td className="px-4 py-4 text-right">
 												{user &&
 													member.userId !== user.id &&
 													canManageUser(member.role) && (

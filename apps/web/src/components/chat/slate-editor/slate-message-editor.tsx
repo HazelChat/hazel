@@ -42,6 +42,7 @@ import {
 import { CommandInputPanel } from "./autocomplete/command-input-panel"
 import { getOptionByIndex, useSlateAutocomplete } from "./autocomplete/use-slate-combobox"
 import { CodeBlockElement } from "./code-block-element"
+import { CustomEmojiElement } from "./custom-emoji-element"
 import { detectLanguage } from "./detect-language"
 import { MentionElement } from "./mention-element"
 import { MentionLeaf } from "./mention-leaf"
@@ -58,6 +59,7 @@ import {
 	serializeToMarkdown,
 } from "./slate-markdown-serializer"
 import type { MentionElement as MentionElementType } from "./slate-mention-plugin"
+import type { CustomEmojiElement as CustomEmojiElementType } from "./types"
 import type { CodeBlockElement as CodeBlockElementType } from "./types"
 import { isCodeBlockElement } from "./types"
 
@@ -84,6 +86,7 @@ type CustomEditor = AutocompleteEditor
 
 export interface SlateMessageEditorRef {
 	focusAndInsertText: (text: string) => void
+	insertCustomEmoji: (name: string, imageUrl: string) => void
 	clearContent: () => void
 	setContent: (content: string) => void
 	focus: () => void
@@ -229,15 +232,15 @@ const withMentionElements = (editor: CustomEditor): CustomEditor => {
 	const { isInline, isVoid, markableVoid } = editor
 
 	editor.isInline = (element: any) => {
-		return element.type === "mention" ? true : isInline(element)
+		return element.type === "mention" || element.type === "custom-emoji" ? true : isInline(element)
 	}
 
 	editor.isVoid = (element: any) => {
-		return element.type === "mention" ? true : isVoid(element)
+		return element.type === "mention" || element.type === "custom-emoji" ? true : isVoid(element)
 	}
 
 	editor.markableVoid = (element: any) => {
-		return element.type === "mention" || markableVoid(element)
+		return element.type === "mention" || element.type === "custom-emoji" || markableVoid(element)
 	}
 
 	return editor
@@ -251,6 +254,8 @@ const Element = (props: RenderElementProps) => {
 	switch (customElement.type) {
 		case "mention":
 			return <MentionElement {...props} element={customElement as any} interactive={false} />
+		case "custom-emoji":
+			return <CustomEmojiElement {...props} element={customElement as any} />
 		case "paragraph":
 			return (
 				<p {...attributes} className="my-0 min-h-6">
@@ -368,7 +373,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 		// Get options for each trigger type
 		const mentionOptions = useMentionOptions(autocompleteState, orgId)
 		const commandOptions = useBotCommandOptions(autocompleteState, botCommands)
-		const emojiOptions = useEmojiOptions(autocompleteState)
+		const emojiOptions = useEmojiOptions(autocompleteState, orgId)
 
 		// Get current options based on active trigger
 		const currentOptions = useMemo(() => {
@@ -549,7 +554,19 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 						const option = getOptionByIndex(emojiOptions, index)
 						if (!option) return
 
-						insertAutocompleteResult(editor, option.data.emoji, setAutocompleteState)
+						if (option.data.imageUrl) {
+							// Custom emoji — insert as inline void element
+							const node: CustomEmojiElementType = {
+								type: "custom-emoji",
+								name: option.data.name,
+								imageUrl: option.data.imageUrl,
+								children: [{ text: "" }],
+							}
+							insertAutocompleteResult(editor, node, setAutocompleteState)
+						} else {
+							// Standard unicode emoji
+							insertAutocompleteResult(editor, option.data.emoji, setAutocompleteState)
+						}
 						ReactEditor.focus(editor)
 						break
 					}
@@ -589,6 +606,27 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 					requestAnimationFrame(() => {
 						Editor.insertText(editor, text)
+					})
+				})
+			},
+			[editor],
+		)
+
+		const insertCustomEmojiInternal = useCallback(
+			(name: string, imageUrl: string) => {
+				requestAnimationFrame(() => {
+					ReactEditor.focus(editor)
+					Transforms.select(editor, Editor.end(editor, []))
+
+					requestAnimationFrame(() => {
+						const node: CustomEmojiElementType = {
+							type: "custom-emoji",
+							name,
+							imageUrl,
+							children: [{ text: "" }],
+						}
+						Transforms.insertNodes(editor, node)
+						Transforms.move(editor)
 					})
 				})
 			},
@@ -638,11 +676,12 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			ref,
 			() => ({
 				focusAndInsertText: focusAndInsertTextInternal,
+				insertCustomEmoji: insertCustomEmojiInternal,
 				clearContent: resetAndFocus,
 				setContent,
 				focus,
 			}),
-			[focusAndInsertTextInternal, resetAndFocus, setContent, focus],
+			[focusAndInsertTextInternal, insertCustomEmojiInternal, resetAndFocus, setContent, focus],
 		)
 
 		// Handle submit
@@ -653,7 +692,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 			const textContent = serializeToMarkdown(value).trim()
 
 			// Allow empty content if there are attachments
-			if ((!textContent || textContent.length === 0 || isValueEmpty(value)) && !hasAttachments) return
+			if ((!textContent || textContent.length === 0) && isValueEmpty(value) && !hasAttachments) return
 
 			// Auto-detect language for any code blocks without explicit language before submit
 			for (const [node, path] of Editor.nodes(editor, {

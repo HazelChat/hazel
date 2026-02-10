@@ -3,6 +3,8 @@
 - add better tracing + metrics shape proxy
 - rework notification sound system / native notification support
 
+- custom emojis
+
 - replace tanstack form with effect based form
 
 # Integrations

@@ -316,7 +316,10 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 										<IconGear />
 										<MenuLabel>Server settings</MenuLabel>
 									</MenuItemLink>
-									<MenuItemLink to="/$orgSlug/settings" params={{ orgSlug: slug }}>
+									<MenuItemLink
+										to="/$orgSlug/settings/custom-emojis"
+										params={{ orgSlug: slug }}
+									>
 										<IconEmoji1 />
 										<MenuLabel>Custom emojis</MenuLabel>
 									</MenuItemLink>

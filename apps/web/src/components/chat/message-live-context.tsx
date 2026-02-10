@@ -1,4 +1,5 @@
 import { createContext, use } from "react"
+import type { OrganizationId } from "@hazel/schema"
 import type { AgentStep } from "./agent-steps-view"
 
 export interface MessageLiveState {
@@ -18,7 +19,7 @@ export interface MessageLiveActions {
 }
 
 export interface MessageLiveMeta {
-	// Future: actorRef, connectionRef, etc.
+	organizationId?: OrganizationId
 }
 
 interface MessageLiveContextValue {

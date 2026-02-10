@@ -15,6 +15,7 @@ import {
 	ChannelMemberRepo,
 	ChannelRepo,
 	ChannelSectionRepo,
+	CustomEmojiRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
 	IntegrationConnectionRepo,
@@ -44,6 +45,7 @@ import { BotPolicy } from "./policies/bot-policy"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
+import { CustomEmojiPolicy } from "./policies/custom-emoji-policy"
 import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { RssSubscriptionPolicy } from "./policies/rss-subscription-policy"
@@ -134,6 +136,7 @@ const RepoLive = Layer.mergeAll(
 	BotRepo.Default,
 	BotCommandRepo.Default,
 	BotInstallationRepo.Default,
+	CustomEmojiRepo.Default,
 )
 
 const PolicyLive = Layer.mergeAll(
@@ -156,6 +159,7 @@ const PolicyLive = Layer.mergeAll(
 	GitHubSubscriptionPolicy.Default,
 	RssSubscriptionPolicy.Default,
 	BotPolicy.Default,
+	CustomEmojiPolicy.Default,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)

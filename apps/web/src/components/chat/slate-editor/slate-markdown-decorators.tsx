@@ -1,5 +1,8 @@
 import type { BaseRange } from "slate"
 import type { RenderLeafProps } from "slate-react"
+import { Focusable } from "react-aria-components"
+import { EmojiPreview } from "~/components/emoji-preview"
+import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 
 // Markdown patterns for Discord-style highlighting
 const MARKDOWN_PATTERNS = [
@@ -187,11 +190,27 @@ export interface MarkdownLeafProps extends RenderLeafProps {
  * Markers are dimmed, content is styled, code tokens get Prism classes
  */
 export function MarkdownLeaf({ attributes, children, leaf, mode = "composer" }: MarkdownLeafProps) {
+	// Check for emoji decoration — runs before markdown so emoji inside bold/italic still gets tooltip
+	const leafRecord = leaf as unknown as Record<string, unknown>
+	if (leafRecord.type === "emoji" && leafRecord.shortcode) {
+		const emoji = leafRecord.emoji as string
+		const shortcode = leafRecord.shortcode as string
+		return (
+			<Tooltip delay={300} closeDelay={0}>
+				<Focusable>
+					<span {...attributes}>{children}</span>
+				</Focusable>
+				<TooltipContent>
+					<EmojiPreview emoji={emoji} shortcode={shortcode} size="sm" />
+				</TooltipContent>
+			</Tooltip>
+		)
+	}
+
 	// Base classes for all markdown leaves
 	let className = ""
 
 	// Check if this is a code token from Prism decoration
-	const leafRecord = leaf as unknown as Record<string, unknown>
 	if (leafRecord.token) {
 		// Build className from all token types (e.g., "token keyword", "token function")
 		const tokenClasses: string[] = ["token"]

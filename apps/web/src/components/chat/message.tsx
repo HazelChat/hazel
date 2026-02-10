@@ -1,10 +1,11 @@
-import { useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { MessageId, OrganizationId } from "@hazel/schema"
 import type { DOMAttributes } from "@react-types/shared"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"
 import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
+import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
 import { extractUrls } from "~/components/link-preview"
@@ -363,7 +364,7 @@ function MessageAttachmentsComponent() {
  * Renders the reaction buttons for the message.
  */
 const MessageReactions = memo(function MessageReactions() {
-	const { aggregatedReactions, handleReaction, currentUserId } = useMessage()
+	const { aggregatedReactions, handleReaction, currentUserId, organizationId } = useMessage()
 
 	if (aggregatedReactions.length === 0) return null
 
@@ -376,11 +377,70 @@ const MessageReactions = memo(function MessageReactions() {
 					data={data}
 					onReaction={handleReaction}
 					currentUserId={currentUserId}
+					customEmojiImageUrl={
+						emoji.startsWith("custom:") && organizationId
+							? undefined // resolved in wrapper below
+							: undefined
+					}
 				/>
 			))}
+			{/* Re-render with custom emoji resolution when org is available */}
 		</div>
 	)
 })
+
+/**
+ * Wrapper that resolves custom emoji image URLs from the org's custom emoji map.
+ * Uses a separate component to avoid subscribing all messages to the emoji atom.
+ */
+const MessageReactionsWithCustomEmojis = memo(function MessageReactionsWithCustomEmojis() {
+	const { aggregatedReactions, handleReaction, currentUserId, organizationId } = useMessage()
+	const hasCustomEmojis = aggregatedReactions.some(([emoji]) => emoji.startsWith("custom:"))
+
+	if (aggregatedReactions.length === 0) return null
+
+	if (!hasCustomEmojis || !organizationId) {
+		return (
+			<div className="mt-2 flex flex-wrap gap-1">
+				{aggregatedReactions.map(([emoji, data]) => (
+					<ReactionButton
+						key={emoji}
+						emoji={emoji}
+						data={data}
+						onReaction={handleReaction}
+						currentUserId={currentUserId}
+					/>
+				))}
+			</div>
+		)
+	}
+
+	return <ReactionListWithEmojiMap organizationId={organizationId} />
+})
+
+/** Inner component that subscribes to the custom emoji map atom */
+function ReactionListWithEmojiMap({ organizationId }: { organizationId: OrganizationId }) {
+	const { aggregatedReactions, handleReaction, currentUserId } = useMessage()
+	const emojiMap = useAtomValue(customEmojiMapAtomFamily(organizationId))
+
+	return (
+		<div className="mt-2 flex flex-wrap gap-1">
+			{aggregatedReactions.map(([emoji, data]) => {
+				const customInfo = emoji.startsWith("custom:") ? emojiMap.get(emoji) : undefined
+				return (
+					<ReactionButton
+						key={emoji}
+						emoji={emoji}
+						data={data}
+						onReaction={handleReaction}
+						currentUserId={currentUserId}
+						customEmojiImageUrl={customInfo?.imageUrl}
+					/>
+				)
+			})}
+		</div>
+	)
+}
 
 /**
  * Renders the inline thread preview if the message has a thread.
@@ -449,7 +509,7 @@ export const Message = {
 	ReplySection: MessageReplySectionComponent,
 	Content: MessageContentComponent,
 	Attachments: MessageAttachmentsComponent,
-	Reactions: MessageReactions,
+	Reactions: MessageReactionsWithCustomEmojis,
 	ThreadPreview: MessageThreadPreview,
 }
 

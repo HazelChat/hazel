@@ -171,3 +171,9 @@ export const IntegrationRequestId = Schema.UUID.pipe(
 	title: "Integration Request ID",
 })
 export type IntegrationRequestId = Schema.Schema.Type<typeof IntegrationRequestId>
+
+export const CustomEmojiId = Schema.UUID.pipe(Schema.brand("@HazelChat/CustomEmojiId")).annotations({
+	description: "The ID of a custom emoji",
+	title: "Custom Emoji ID",
+})
+export type CustomEmojiId = Schema.Schema.Type<typeof CustomEmojiId>

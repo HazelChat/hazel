@@ -35,6 +35,13 @@ export interface MentionElement {
 	children: [{ text: "" }]
 }
 
+export interface CustomEmojiElement {
+	type: "custom-emoji"
+	name: string
+	imageUrl: string
+	children: [{ text: "" }]
+}
+
 export interface TableElement {
 	type: "table"
 	children: TableRowElement[]
@@ -69,11 +76,50 @@ export type CustomElement =
 	| SubtextElement
 	| ListItemElement
 	| MentionElement
+	| CustomEmojiElement
 	| TableElement
 	| TableRowElement
 	| TableCellElement
 	| HeadingElement
 export type CustomDescendant = CustomElement | CustomText
+
+const TRUSTED_CUSTOM_EMOJI_PATH_SEGMENT = "/emojis/"
+
+function normalizePathPrefix(pathname: string): string {
+	return pathname.endsWith("/") ? pathname : `${pathname}/`
+}
+
+/**
+ * Accept only custom emoji URLs from our configured storage base.
+ * Inline markdown-provided URLs are otherwise treated as untrusted content.
+ */
+function isTrustedCustomEmojiUrl(rawUrl: string): boolean {
+	const customEmojiStorageBaseUrl = import.meta.env.VITE_R2_PUBLIC_URL
+	if (!customEmojiStorageBaseUrl) {
+		return false
+	}
+
+	try {
+		const candidate = new URL(rawUrl)
+		const trustedBase = new URL(customEmojiStorageBaseUrl)
+
+		if (candidate.protocol !== "https:" && candidate.protocol !== "http:") {
+			return false
+		}
+
+		if (candidate.origin !== trustedBase.origin) {
+			return false
+		}
+
+		const trustedPathPrefix = normalizePathPrefix(trustedBase.pathname)
+		return (
+			candidate.pathname.startsWith(trustedPathPrefix) &&
+			candidate.pathname.includes(TRUSTED_CUSTOM_EMOJI_PATH_SEGMENT)
+		)
+	} catch {
+		return false
+	}
+}
 
 /**
  * Extract mentions from markdown text
@@ -123,6 +169,10 @@ export function serializeToMarkdown(nodes: CustomDescendant[]): string {
 			const element = node as CustomElement
 
 			switch (element.type) {
+				case "custom-emoji": {
+					const ce = element as CustomEmojiElement
+					return `![custom-emoji:${ce.name}](${ce.imageUrl})`
+				}
 				case "mention": {
 					// Serialize mention back to markdown syntax
 					const mentionElement = element as MentionElement
@@ -210,43 +260,57 @@ export function serializeToMarkdown(nodes: CustomDescendant[]): string {
 }
 
 /**
- * Parse inline mentions and text into a mixed array of text and mention nodes
+ * Parse inline mentions and custom emojis into a mixed array of text, mention, and custom-emoji nodes
  */
-function parseInlineContent(text: string): Array<CustomText | MentionElement> {
-	const nodes: Array<CustomText | MentionElement> = []
-	const mentionPattern = /@\[(userId|directive):([^\]]+)\]/g
+function parseInlineContent(text: string): Array<CustomText | MentionElement | CustomEmojiElement> {
+	const nodes: Array<CustomText | MentionElement | CustomEmojiElement> = []
+	// Combined pattern: mentions (@[prefix:value]) or custom emojis (![custom-emoji:name](url))
+	const inlinePattern = /@\[(userId|directive):([^\]]+)\]|!\[custom-emoji:([^\]]+)\]\(([^)]+)\)/g
 	let lastIndex = 0
 	let match: RegExpExecArray | null
 
 	// biome-ignore lint/suspicious/noAssignInExpressions: regex matching pattern
-	while ((match = mentionPattern.exec(text)) !== null) {
-		// Add text before the mention
+	while ((match = inlinePattern.exec(text)) !== null) {
+		// Add text before the match
 		if (match.index > lastIndex) {
 			nodes.push({ text: text.slice(lastIndex, match.index) })
 		}
 
-		// Add the mention element
-		const value = match[2]
-
-		// Only add mention if value exists (type guard)
-		if (value) {
+		if (match[1] && match[2]) {
+			// Mention match
 			nodes.push({
 				type: "mention",
-				userId: value,
-				displayName: value,
+				userId: match[2],
+				displayName: match[2],
 				children: [{ text: "" }],
 			})
+		} else if (match[3] && match[4]) {
+			// Custom emoji match
+			const emojiName = match[3]
+			const imageUrl = match[4]
+
+			if (isTrustedCustomEmojiUrl(imageUrl)) {
+				nodes.push({
+					type: "custom-emoji",
+					name: emojiName,
+					imageUrl,
+					children: [{ text: "" }],
+				})
+			} else {
+				// Untrusted custom emoji URLs are downgraded to shortcode text.
+				nodes.push({ text: `:${emojiName}:` })
+			}
 		}
 
 		lastIndex = match.index + match[0].length
 	}
 
-	// Add remaining text after last mention
+	// Add remaining text after last match
 	if (lastIndex < text.length) {
 		nodes.push({ text: text.slice(lastIndex) })
 	}
 
-	// If no mentions found, return the text as-is
+	// If no inline elements found, return the text as-is
 	if (nodes.length === 0) {
 		nodes.push({ text })
 	}
@@ -521,19 +585,24 @@ export function createEmptyValue(): CustomDescendant[] {
 export function isValueEmpty(nodes: CustomDescendant[]): boolean {
 	if (!nodes || nodes.length === 0) return true
 
-	// Check if any node has actual text content
-	for (const node of nodes) {
+	const hasMeaningfulContent = (node: CustomDescendant): boolean => {
 		if ("text" in node) {
-			// Text node - check if it has non-whitespace content
-			if (node.text.trim().length > 0) return false
-		} else {
-			// Element node - check if it has text content
-			const element = node as CustomElement
-			const textContent = Node.string(element).trim()
-
-			if (textContent.length > 0) return false
+			return node.text.trim().length > 0
 		}
+
+		const element = node as CustomElement
+
+		// Inline void nodes carry semantic content even though Node.string() is empty.
+		if (element.type === "mention" || element.type === "custom-emoji") {
+			return true
+		}
+
+		if ("children" in element && Array.isArray(element.children)) {
+			return element.children.some((child) => hasMeaningfulContent(child as CustomDescendant))
+		}
+
+		return Node.string(element).trim().length > 0
 	}
 
-	return true
+	return !nodes.some((node) => hasMeaningfulContent(node))
 }

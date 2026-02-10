@@ -59,6 +59,9 @@ export const ALLOWED_TABLES = [
 
 	// Integration tables
 	"integration_connections",
+
+	// Custom Emoji tables
+	"custom_emojis",
 ] as const
 
 export type AllowedTable = (typeof ALLOWED_TABLES)[number]
@@ -286,6 +289,20 @@ export function getWhereClauseForTable(
 				buildIntegrationConnectionClause(
 					user.internalUserId,
 					schema.integrationConnectionsTable.deletedAt,
+				),
+			),
+		),
+
+		// ===========================================
+		// Custom Emoji tables
+		// ===========================================
+
+		Match.when("custom_emojis", () =>
+			Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.customEmojisTable.organizationId,
+					schema.customEmojisTable.deletedAt,
 				),
 			),
 		),
