@@ -9,7 +9,7 @@ import {
 	extractTweetId,
 	extractUrls,
 	extractYoutubeVideoId,
-	isGiphyUrl,
+	isGifUrl,
 	isGitHubPRUrl,
 	isLinearIssueUrl,
 	isTweetUrl,
@@ -54,7 +54,7 @@ interface ProcessedUrls {
 	youtubeUrls: string[]
 	linearUrls: string[]
 	githubPRUrls: string[]
-	giphyUrls: string[]
+	gifUrls: string[]
 	otherUrls: string[]
 	displayContent: string
 }
@@ -166,7 +166,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 				youtubeUrls: [],
 				linearUrls: [],
 				githubPRUrls: [],
-				giphyUrls: [],
+				gifUrls: [],
 				otherUrls: [],
 				displayContent: message.content,
 			}
@@ -178,7 +178,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 		// 5. Categorize URLs and dedupe by resource ID
 		const tweetUrls = uniqueUrls.filter((url) => isTweetUrl(url))
 		const youtubeUrls = uniqueUrls.filter((url) => isYoutubeUrl(url))
-		const giphyUrls = uniqueUrls.filter((url) => isGiphyUrl(url))
+		const gifUrls = uniqueUrls.filter((url) => isGifUrl(url))
 		const linearUrls = uniqueUrls.filter((url) => {
 			if (!isLinearIssueUrl(url)) return false
 			const key = extractLinearIssueKey(url)
@@ -195,13 +195,13 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 			(url) =>
 				!isTweetUrl(url) &&
 				!isYoutubeUrl(url) &&
-				!isGiphyUrl(url) &&
+				!isGifUrl(url) &&
 				!isLinearIssueUrl(url) &&
 				!isGitHubPRUrl(url),
 		)
 
 		// 6. Filter out embed URLs from displayed content
-		const embedUrls = [...tweetUrls, ...youtubeUrls, ...giphyUrls, ...linearUrls, ...githubPRUrls]
+		const embedUrls = [...tweetUrls, ...youtubeUrls, ...gifUrls, ...linearUrls, ...githubPRUrls]
 		let displayContent = message.content
 		for (const url of embedUrls) {
 			displayContent = displayContent.replace(url, "")
@@ -213,7 +213,7 @@ function MessageContentProvider({ message, organizationId, children }: MessageCo
 			youtubeUrls,
 			linearUrls,
 			githubPRUrls,
-			giphyUrls,
+			gifUrls,
 			otherUrls,
 			displayContent,
 		}
@@ -279,7 +279,7 @@ function Embeds() {
 			})}
 
 			{/* Render all GIF embeds */}
-			{processedUrls.giphyUrls.map((url) => (
+			{processedUrls.gifUrls.map((url) => (
 				<GifEmbed
 					key={url}
 					url={url}

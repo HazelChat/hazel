@@ -1,16 +1,16 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import type { GiphyCategory, GiphyGif, GiphySearchResponse } from "@hazel/domain/http"
+import type { KlipyCategory, KlipyGif, KlipySearchResponse } from "@hazel/domain/http"
 import { Exit } from "effect"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 
-interface UseGiphyOptions {
-	limit?: number
+interface UseKlipyOptions {
+	perPage?: number
 }
 
-interface UseGiphyReturn {
-	gifs: GiphyGif[]
-	categories: GiphyCategory[]
+interface UseKlipyReturn {
+	gifs: KlipyGif[]
+	categories: KlipyCategory[]
 	isLoading: boolean
 	isLoadingMore: boolean
 	hasMore: boolean
@@ -19,16 +19,16 @@ interface UseGiphyReturn {
 	searchQuery: string
 }
 
-export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
+export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn {
 	// === Auto-fetching query atoms (no useEffect needed) ===
 	const trendingResult = useAtomValue(
-		HazelApiClient.query("giphy", "trending", { urlParams: { offset: 0, limit } }),
+		HazelApiClient.query("klipy", "trending", { urlParams: { page: 1, per_page: perPage } }),
 	)
-	const categoriesResult = useAtomValue(HazelApiClient.query("giphy", "categories", {}))
+	const categoriesResult = useAtomValue(HazelApiClient.query("klipy", "categories", {}))
 
 	// === Mutation atoms for user-triggered fetches ===
-	const searchAtom = useMemo(() => HazelApiClient.mutation("giphy", "search"), [])
-	const trendingMutAtom = useMemo(() => HazelApiClient.mutation("giphy", "trending"), [])
+	const searchAtom = useMemo(() => HazelApiClient.mutation("klipy", "search"), [])
+	const trendingMutAtom = useMemo(() => HazelApiClient.mutation("klipy", "trending"), [])
 	const searchMutation = useAtomSet(searchAtom, { mode: "promiseExit" })
 	const trendingMutation = useAtomSet(trendingMutAtom, { mode: "promiseExit" })
 
@@ -39,33 +39,32 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 
 	// === User interaction state ===
 	// null = showing trending query result; non-null = user has searched or loaded more
-	const [overrideGifs, setOverrideGifs] = useState<GiphyGif[] | null>(null)
+	const [overrideGifs, setOverrideGifs] = useState<KlipyGif[] | null>(null)
 	const [isMutating, setIsMutating] = useState(false)
 	const [isLoadingMore, setIsLoadingMore] = useState(false)
 	const [hasMore, setHasMore] = useState(true)
 	const [searchQuery, setSearchQuery] = useState("")
 
-	const offsetRef = useRef(0)
+	const pageRef = useRef(1)
 	const currentQueryRef = useRef("")
 	const isMutatingRef = useRef(false)
 	const hasMoreRef = useRef(true)
 	const requestIdRef = useRef(0)
 
-	// Initialize offset from trending query result
+	// Initialize pagination from trending query result
 	const trendingInitRef = useRef(false)
 	if (!trendingInitRef.current && Result.isSuccess(trendingResult) && overrideGifs === null) {
 		trendingInitRef.current = true
-		const p = trendingResult.value.pagination
-		offsetRef.current = p.offset + p.count
-		const more = p.offset + p.count < p.total_count
+		pageRef.current = trendingResult.value.current_page
+		const more = trendingResult.value.has_next
 		hasMoreRef.current = more
 		setHasMore(more)
 	}
 
 	// === Derived display values ===
-	const categories = Result.isSuccess(categoriesResult) ? [...categoriesResult.value.data] : []
+	const categories = Result.isSuccess(categoriesResult) ? [...categoriesResult.value.categories] : []
 
-	let gifs: GiphyGif[]
+	let gifs: KlipyGif[]
 	let isLoading: boolean
 
 	if (overrideGifs !== null) {
@@ -85,17 +84,17 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 
 	// === Fetch function for search & load-more ===
 	const fetchGifs = useCallback(
-		async (query: string, offset: number, append: boolean) => {
+		async (query: string, page: number, append: boolean) => {
 			const id = ++requestIdRef.current
 			isMutatingRef.current = true
 			setIsMutating(true)
 			setIsLoadingMore(append)
 			try {
-				let exit: Exit.Exit<GiphySearchResponse, unknown>
+				let exit: Exit.Exit<KlipySearchResponse, unknown>
 				if (query) {
-					exit = await searchRef.current({ urlParams: { q: query, offset, limit } })
+					exit = await searchRef.current({ urlParams: { q: query, page, per_page: perPage } })
 				} else {
-					exit = await trendingMutRef.current({ urlParams: { offset, limit } })
+					exit = await trendingMutRef.current({ urlParams: { page, per_page: perPage } })
 				}
 
 				if (requestIdRef.current !== id) return
@@ -107,11 +106,10 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 					} else {
 						setOverrideGifs([...data.data])
 					}
-					const newHasMore =
-						data.pagination.offset + data.pagination.count < data.pagination.total_count
+					const newHasMore = data.has_next
 					hasMoreRef.current = newHasMore
 					setHasMore(newHasMore)
-					offsetRef.current = offset + data.pagination.count
+					pageRef.current = data.current_page
 				} else {
 					console.error("[GifPicker] Fetch failed:", Exit.isFailure(exit) ? exit.cause : exit)
 				}
@@ -124,14 +122,14 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 				setIsLoadingMore(false)
 			}
 		},
-		[limit],
+		[perPage],
 	)
 
 	const search = useCallback(
 		(query: string) => {
 			setSearchQuery(query)
 			currentQueryRef.current = query
-			offsetRef.current = 0
+			pageRef.current = 1
 			hasMoreRef.current = true
 			setHasMore(true)
 			if (query === "") {
@@ -141,14 +139,14 @@ export function useGiphy({ limit = 25 }: UseGiphyOptions = {}): UseGiphyReturn {
 				return
 			}
 			setOverrideGifs([])
-			fetchGifs(query, 0, false)
+			fetchGifs(query, 1, false)
 		},
 		[fetchGifs],
 	)
 
 	const loadMore = useCallback(() => {
 		if (isMutatingRef.current || !hasMoreRef.current) return
-		fetchGifs(currentQueryRef.current, offsetRef.current, true)
+		fetchGifs(currentQueryRef.current, pageRef.current + 1, true)
 	}, [fetchGifs])
 
 	return {

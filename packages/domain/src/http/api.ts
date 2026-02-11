@@ -10,7 +10,7 @@ import { InternalApiGroup } from "./internal"
 import { MockDataGroup } from "./mock-data"
 import { PresencePublicGroup } from "./presence"
 import { RootGroup } from "./root"
-import { GiphyGroup } from "./giphy"
+import { KlipyGroup } from "./klipy"
 import { UploadsGroup } from "./uploads"
 import { WebhookGroup } from "./webhooks"
 
@@ -26,7 +26,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(IncomingWebhookGroup)
 	.add(InternalApiGroup)
 	.add(UploadsGroup)
-	.add(GiphyGroup)
+	.add(KlipyGroup)
 	.add(WebhookGroup)
 	.add(MockDataGroup)
 	.annotateContext(

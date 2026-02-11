@@ -1,7 +1,7 @@
 import type { User } from "@hazel/domain/models"
 import { useState } from "react"
 import { ImageViewerModal, type ViewerImage } from "~/components/chat/image-viewer-modal"
-import { extractGiphyMediaUrl } from "~/components/link-preview"
+import { extractGiphyMediaUrl, isKlipyUrl } from "~/components/link-preview"
 
 interface GifEmbedProps {
 	url: string
@@ -10,7 +10,8 @@ interface GifEmbedProps {
 }
 
 export function GifEmbed({ url, author, createdAt }: GifEmbedProps) {
-	const mediaUrl = extractGiphyMediaUrl(url)
+	const isKlipy = isKlipyUrl(url)
+	const mediaUrl = isKlipy ? url : extractGiphyMediaUrl(url)
 	const [isModalOpen, setIsModalOpen] = useState(false)
 
 	const viewerImages: ViewerImage[] = [{ type: "url", url: mediaUrl, alt: "GIF" }]
@@ -27,12 +28,12 @@ export function GifEmbed({ url, author, createdAt }: GifEmbedProps) {
 				/>
 			</button>
 			<a
-				href="https://giphy.com"
+				href={isKlipy ? "https://klipy.com" : "https://giphy.com"}
 				target="_blank"
 				rel="noopener noreferrer"
 				className="mt-0.5 block text-[10px] text-muted-fg hover:text-fg/60"
 			>
-				via GIPHY
+				via {isKlipy ? "KLIPY" : "GIPHY"}
 			</a>
 			<ImageViewerModal
 				isOpen={isModalOpen}

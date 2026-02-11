@@ -1,9 +1,9 @@
-import type { GiphyGif } from "@hazel/domain/http"
+import type { KlipyGif } from "@hazel/domain/http"
 import { Collection, GridList, GridListItem, GridListLoadMoreItem } from "react-aria-components"
 import { Loader } from "../ui/loader"
 
 interface GifPickerGridProps {
-	gifs: GiphyGif[]
+	gifs: KlipyGif[]
 	isLoading: boolean
 	isLoadingMore: boolean
 	hasMore: boolean
@@ -29,8 +29,8 @@ export function GifPickerGrid({
 			escapeKeyBehavior="none"
 			className="flex-1 columns-2 gap-2 overflow-y-auto overflow-x-hidden px-3 scrollbar-thin relative"
 			onAction={(key) => {
-				const gif = gifs.find((g) => g.id === key)
-				if (gif) onGifSelect(gif.images.original.url)
+				const gif = gifs.find((g) => g.slug === key)
+				if (gif) onGifSelect(gif.file.hd.gif.url)
 			}}
 			renderEmptyState={() =>
 				isLoading ? (
@@ -45,13 +45,13 @@ export function GifPickerGrid({
 			<Collection items={gifs}>
 				{(gif) => (
 					<GridListItem
-						id={gif.id}
+						id={gif.slug}
 						textValue={gif.title}
 						className={({ isPressed }) =>
 							`relative mb-2 cursor-pointer break-inside-avoid overflow-hidden rounded-md bg-muted/60 outline-none transition-all hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary ${isPressed ? "scale-95" : ""}`
 						}
 						style={{
-							aspectRatio: `${gif.images.fixed_width.width} / ${gif.images.fixed_width.height}`,
+							aspectRatio: `${gif.file.sm.gif.width} / ${gif.file.sm.gif.height}`,
 						}}
 					>
 						{({ isHovered, isFocusVisible }) => (
@@ -59,8 +59,8 @@ export function GifPickerGrid({
 								<img
 									src={
 										isHovered || isFocusVisible
-											? gif.images.fixed_width.url
-											: gif.images.fixed_width_still.url
+											? gif.file.sm.webp.url
+											: gif.file.sm.jpg.url
 									}
 									alt={gif.title}
 									className="h-full w-full object-cover"

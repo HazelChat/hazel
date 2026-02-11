@@ -4,7 +4,7 @@ import { GifPickerAttribution } from "./gif-picker-attribution"
 import { GifPickerCategories } from "./gif-picker-categories"
 import { GifPickerGrid } from "./gif-picker-grid"
 import { GifPickerSearch } from "./gif-picker-search"
-import { useGiphy } from "./use-giphy"
+import { useKlipy } from "./use-klipy"
 
 interface GifPickerDialogProps {
 	children: ReactElement
@@ -34,7 +34,7 @@ export function GifPickerDialog({ children, onGifSelect }: GifPickerDialogProps)
 }
 
 function GifPickerContent({ onGifSelect }: { onGifSelect: (gifUrl: string) => void }) {
-	const { gifs, categories, isLoading, isLoadingMore, hasMore, loadMore, search } = useGiphy()
+	const { gifs, categories, isLoading, isLoadingMore, hasMore, loadMore, search } = useKlipy()
 	const [query, setQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 	const selectedCategoryRef = useRef<string | null>(null)

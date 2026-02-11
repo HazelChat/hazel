@@ -164,7 +164,20 @@ export function extractYoutubeTimestamp(url: string): number | null {
 }
 
 /**
- * Check if a URL is a GIPHY media URL
+ * Check if a URL is a Klipy media URL
+ * Matches: static.klipy.com
+ */
+export function isKlipyUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		return parsed.hostname === "static.klipy.com"
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Check if a URL is a GIPHY media URL (kept for backward compat with existing messages)
  * Matches: media*.giphy.com, i.giphy.com, giphy.com/media, giphy.com/gifs
  */
 export function isGiphyUrl(url: string): boolean {
@@ -180,6 +193,13 @@ export function isGiphyUrl(url: string): boolean {
 	} catch {
 		return false
 	}
+}
+
+/**
+ * Check if a URL is any GIF provider URL (Klipy or legacy Giphy)
+ */
+export function isGifUrl(url: string): boolean {
+	return isKlipyUrl(url) || isGiphyUrl(url)
 }
 
 /**
