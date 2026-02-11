@@ -2,7 +2,7 @@ import { Cause, Effect, Exit, Option } from "effect"
 import { describe, expect, it, vi } from "vitest"
 import * as Action from "./action.ts"
 import * as Hook from "./actor.ts"
-import { OnStateChange } from "./lifecycle.ts"
+import { OnCreate, OnStateChange } from "./lifecycle.ts"
 
 const createContext = () => {
 	const waitUntil = vi.fn((promise: Promise<unknown>) => {
@@ -74,9 +74,7 @@ describe("@hazel/rivet-effect wrappers", () => {
 			_tag: "RuntimeExecutionError",
 			operation: "Hook.try",
 		})
-		expect(ctx.log.error).toHaveBeenCalledWith(
-			expect.objectContaining({ msg: "actor effect failed" }),
-		)
+		expect(ctx.log.error).toHaveBeenCalledWith(expect.objectContaining({ msg: "actor effect failed" }))
 	})
 
 	it("saveState maps promise rejection into StatePersistenceError", async () => {
@@ -108,5 +106,19 @@ describe("@hazel/rivet-effect wrappers", () => {
 		expect(ctx.log.error).toHaveBeenCalledWith(
 			expect.objectContaining({ msg: "onStateChange effect failed" }),
 		)
+	})
+
+	it("OnCreate.effect runs async lifecycle and returns result", async () => {
+		const ctx = createContext()
+		const onCreate = OnCreate.effect(function* (c: any, input: { name: string }) {
+			yield* Hook.updateState(c, (s: { count: number }) => {
+				s.count = 42
+			})
+			return input.name
+		})
+
+		const result = await onCreate(ctx as any, { name: "test-actor" })
+		expect(result).toBe("test-actor")
+		expect(ctx.state.count).toBe(42)
 	})
 })

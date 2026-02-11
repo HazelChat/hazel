@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Cause, Schema } from "effect"
 
 export class RuntimeNotConfiguredError extends Schema.TaggedError<RuntimeNotConfiguredError>()(
 	"RuntimeNotConfiguredError",
@@ -16,6 +16,13 @@ export class RuntimeExecutionError extends Schema.TaggedError<RuntimeExecutionEr
 		cause: Schema.optional(Schema.Unknown),
 	},
 ) {}
+
+export const makeRuntimeExecutionError = (operation: string, cause: Cause.Cause<unknown>) =>
+	new RuntimeExecutionError({
+		message: `Effect failed during ${operation}`,
+		operation,
+		cause: Cause.pretty(cause),
+	})
 
 export class QueueUnavailableError extends Schema.TaggedError<QueueUnavailableError>()(
 	"QueueUnavailableError",

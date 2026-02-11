@@ -1,24 +1,12 @@
 import type { ManagedRuntime } from "effect"
-import {
-	actor as rivetActor,
-	type Actions,
-	type ActorConfigInput,
-	type ActorDefinition,
-} from "rivetkit"
+import { actor as rivetActor, type Actions, type ActorConfigInput, type ActorDefinition } from "rivetkit"
 import { setManagedRuntime } from "./runtime.ts"
 
 type ActorRuntime = ManagedRuntime.ManagedRuntime<any, any>
-type AnyDatabaseProvider = Parameters<typeof rivetActor>[0] extends ActorConfigInput<
-	any,
-	any,
-	any,
-	any,
-	any,
-	infer TDatabase,
-	any
->
-	? TDatabase
-	: never
+type AnyDatabaseProvider =
+	Parameters<typeof rivetActor>[0] extends ActorConfigInput<any, any, any, any, any, infer TDatabase, any>
+		? TDatabase
+		: never
 
 const withContextRuntime = (
 	fn: (...args: unknown[]) => unknown,

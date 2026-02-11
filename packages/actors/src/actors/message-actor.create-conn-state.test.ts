@@ -61,7 +61,9 @@ describe("messageActor.createConnState", () => {
 
 		const createConnState = await loadCreateConnState()
 
-		await expect(createConnState(createContext(), { token: "hzl_bot_missing_backend" })).rejects.toMatchObject({
+		await expect(
+			createConnState(createContext(), { token: "hzl_bot_missing_backend" }),
+		).rejects.toMatchObject({
 			code: "auth_unavailable",
 		})
 	})
@@ -98,13 +100,15 @@ describe("messageActor.createConnState", () => {
 			process.env.BACKEND_URL = `http://127.0.0.1:${address.port}`
 			const createConnState = await loadCreateConnState()
 
-			await expect(createConnState(createContext(), { token: "hzl_bot_valid" })).resolves.toMatchObject({
-				type: "bot",
-				userId: "user-bot-1",
-				botId: "bot-1",
-				organizationId: "org-1",
-				scopes: ["messages:write"],
-			})
+			await expect(createConnState(createContext(), { token: "hzl_bot_valid" })).resolves.toMatchObject(
+				{
+					type: "bot",
+					userId: "user-bot-1",
+					botId: "bot-1",
+					organizationId: "org-1",
+					scopes: ["messages:write"],
+				},
+			)
 		} finally {
 			await new Promise<void>((resolve, reject) => {
 				server.close((error) => {

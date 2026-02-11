@@ -31,15 +31,17 @@ const runWithContextExit = <A, E, R>(
 const runGeneratorWithContext = <A>(
 	context: unknown,
 	gen: Generator<YieldWrap<Effect.Effect<any, any, any>>, A, never>,
-): Promise<A> => runWithContext(context, Effect.gen(() => gen))
+): Promise<A> =>
+	runWithContext(
+		context,
+		Effect.gen(() => gen),
+	)
 
 const makeAsyncLifecycle = <C, Args extends unknown[], AEff>(
-	genFn: (
-		context: C,
-		...args: Args
-	) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
+	genFn: (context: C, ...args: Args) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
 ) => {
-	return (context: C, ...args: Args): Promise<AEff> => runGeneratorWithContext(context, genFn(context, ...args))
+	return (context: C, ...args: Args): Promise<AEff> =>
+		runGeneratorWithContext(context, genFn(context, ...args))
 }
 
 export namespace OnCreate {
@@ -99,7 +101,10 @@ export namespace OnStateChange {
 		newState: TState,
 	) => void {
 		return (c, newState) => {
-			void runWithContextExit(c, Effect.gen(() => genFn(c, newState))).then((exit) => {
+			void runWithContextExit(
+				c,
+				Effect.gen(() => genFn(c, newState)),
+			).then((exit) => {
 				if (Exit.isFailure(exit)) {
 					c.log.error({
 						msg: "onStateChange effect failed",
@@ -117,10 +122,8 @@ export namespace OnBeforeConnect {
 			c: BeforeConnectContext<TState, TVars, TInput, undefined>,
 			params: TConnParams,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-	): (
-		c: BeforeConnectContext<TState, TVars, TInput, undefined>,
-		params: TConnParams,
-	) => Promise<AEff> => makeAsyncLifecycle(genFn)
+	): ((c: BeforeConnectContext<TState, TVars, TInput, undefined>, params: TConnParams) => Promise<AEff>) =>
+		makeAsyncLifecycle(genFn)
 }
 
 export namespace OnConnect {
@@ -129,10 +132,10 @@ export namespace OnConnect {
 			c: ConnectContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 			conn: Conn<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-	): (
+	): ((
 		c: ConnectContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		conn: Conn<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	) => Promise<AEff> => makeAsyncLifecycle(genFn)
+	) => Promise<AEff>) => makeAsyncLifecycle(genFn)
 }
 
 export namespace OnDisconnect {
@@ -141,10 +144,10 @@ export namespace OnDisconnect {
 			c: DisconnectContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 			conn: Conn<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-	): (
+	): ((
 		c: DisconnectContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		conn: Conn<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	) => Promise<AEff> => makeAsyncLifecycle(genFn)
+	) => Promise<AEff>) => makeAsyncLifecycle(genFn)
 }
 
 export namespace CreateConnState {
@@ -153,33 +156,26 @@ export namespace CreateConnState {
 			c: CreateConnStateContext<TState, TVars, TInput, undefined>,
 			params: TConnParams,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, TConnState, never>,
-	): (
+	): ((
 		c: CreateConnStateContext<TState, TVars, TInput, undefined>,
 		params: TConnParams,
-	) => Promise<TConnState> => makeAsyncLifecycle(genFn)
+	) => Promise<TConnState>) => makeAsyncLifecycle(genFn)
 }
 
 export namespace OnBeforeActionResponse {
 	export const effect = <TState, TConnParams, TConnState, TVars, TInput, Out = any>(
 		genFn: (
-			c: BeforeActionResponseContext<
-				TState,
-				TConnParams,
-				TConnState,
-				TVars,
-				TInput,
-				undefined
-			>,
+			c: BeforeActionResponseContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 			name: string,
 			args: unknown[],
 			output: Out,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, Out, never>,
-	): (
+	): ((
 		c: BeforeActionResponseContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		name: string,
 		args: unknown[],
 		output: Out,
-	) => Promise<Out> => makeAsyncLifecycle(genFn)
+	) => Promise<Out>) => makeAsyncLifecycle(genFn)
 }
 
 export namespace CreateState {
@@ -198,10 +194,8 @@ export namespace CreateVars {
 			c: CreateVarsContext<TState, TInput, undefined>,
 			driverCtx: unknown,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, TVars, never>,
-	): (
-		c: CreateVarsContext<TState, TInput, undefined>,
-		driverCtx: unknown,
-	) => Promise<TVars> => makeAsyncLifecycle(genFn)
+	): ((c: CreateVarsContext<TState, TInput, undefined>, driverCtx: unknown) => Promise<TVars>) =>
+		makeAsyncLifecycle(genFn)
 }
 
 export namespace OnRequest {
@@ -210,10 +204,10 @@ export namespace OnRequest {
 			c: RequestContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 			request: Request,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, Response, never>,
-	): (
+	): ((
 		c: RequestContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		request: Request,
-	) => Promise<Response> => makeAsyncLifecycle(genFn)
+	) => Promise<Response>) => makeAsyncLifecycle(genFn)
 }
 
 export namespace OnWebSocket {
@@ -222,8 +216,8 @@ export namespace OnWebSocket {
 			c: WebSocketContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 			websocket: UniversalWebSocket,
 		) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
-	): (
+	): ((
 		c: WebSocketContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 		websocket: UniversalWebSocket,
-	) => Promise<AEff> => makeAsyncLifecycle(genFn)
+	) => Promise<AEff>) => makeAsyncLifecycle(genFn)
 }

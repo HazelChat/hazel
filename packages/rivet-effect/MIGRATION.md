@@ -34,12 +34,12 @@ These are intended for actor boundaries where you want one standardized runtime 
 
 ## API Mapping
 
-| Previous | Current |
-| --- | --- |
-| `ActorContextTag` | `RivetActorContext` |
-| `Action.effect` (typed as sync return) | `Action.effect` (explicit async `Promise`) |
-| `Hook.effect` (typed as sync return) | `Hook.effect` (explicit async `Promise`) |
-| queue helpers with `never` error channel | queue helpers with tagged queue errors |
+| Previous                                 | Current                                    |
+| ---------------------------------------- | ------------------------------------------ |
+| `ActorContextTag`                        | `RivetActorContext`                        |
+| `Action.effect` (typed as sync return)   | `Action.effect` (explicit async `Promise`) |
+| `Hook.effect` (typed as sync return)     | `Hook.effect` (explicit async `Promise`)   |
+| queue helpers with `never` error channel | queue helpers with tagged queue errors     |
 
 ## Recommended Upgrade Steps
 

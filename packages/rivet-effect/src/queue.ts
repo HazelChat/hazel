@@ -25,7 +25,12 @@ const getQueueOrFail = (
 	queue: unknown,
 	queueName?: string,
 ): Effect.Effect<AnyQueue, QueueUnavailableError, never> => {
-	if (!queue || typeof queue !== "object" || !("next" in queue) || typeof (queue as any).next !== "function") {
+	if (
+		!queue ||
+		typeof queue !== "object" ||
+		!("next" in queue) ||
+		typeof (queue as any).next !== "function"
+	) {
 		return Effect.fail(
 			new QueueUnavailableError({
 				message: "Actor queue is unavailable in this context",
@@ -37,13 +42,7 @@ const getQueueOrFail = (
 	return Effect.succeed(queue as AnyQueue)
 }
 
-export const next = <
-	TState,
-	TConnParams,
-	TConnState,
-	TVars,
-	TInput,
->(
+export const next = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	name: string,
 	opts?: QueueReceiveOptions,
@@ -67,13 +66,7 @@ export const next = <
 		return Option.some(message as QueueMessage)
 	})
 
-export const nextMultiple = <
-	TState,
-	TConnParams,
-	TConnState,
-	TVars,
-	TInput,
->(
+export const nextMultiple = <TState, TConnParams, TConnState, TVars, TInput>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	names: string[],
 	opts?: QueueReceiveOptions,

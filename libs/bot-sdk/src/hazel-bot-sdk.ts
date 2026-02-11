@@ -368,11 +368,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					const client = createActorsClient(config.actorsEndpoint)
 					return Effect.succeed({
 						getMessageActor: (messageId: string) =>
-							Effect.sync(
-								() =>
-									client.message.getOrCreate([messageId], {
-										params: { token: config.botToken },
-									}),
+							Effect.sync(() =>
+								client.message.getOrCreate([messageId], {
+									params: { token: config.botToken },
+								}),
 							),
 						client,
 						botToken: config.botToken,
