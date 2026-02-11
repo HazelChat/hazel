@@ -15,6 +15,10 @@ import {
 	ChannelMemberRepo,
 	ChannelRepo,
 	ChannelSectionRepo,
+	ChatSyncChannelLinkRepo,
+	ChatSyncConnectionRepo,
+	ChatSyncEventReceiptRepo,
+	ChatSyncMessageLinkRepo,
 	CustomEmojiRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
@@ -65,6 +69,7 @@ import { AuthorizationLive } from "./services/auth"
 import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
+import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
@@ -118,6 +123,10 @@ const RepoLive = Layer.mergeAll(
 	ChannelRepo.Default,
 	ChannelMemberRepo.Default,
 	ChannelSectionRepo.Default,
+	ChatSyncConnectionRepo.Default,
+	ChatSyncChannelLinkRepo.Default,
+	ChatSyncMessageLinkRepo.Default,
+	ChatSyncEventReceiptRepo.Default,
 	UserRepo.Default,
 	OrganizationRepo.Default,
 	OrganizationMemberRepo.Default,
@@ -182,6 +191,7 @@ const MainLive = Layer.mergeAll(
 	IntegrationTokenService.Default,
 	OAuthProviderRegistry.Default,
 	IntegrationBotService.Default,
+	DiscordSyncWorker.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,
 	RateLimiter.Default,

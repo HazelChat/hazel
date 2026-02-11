@@ -104,6 +104,30 @@ export const IntegrationConnectionId = Schema.UUID.pipe(
 })
 export type IntegrationConnectionId = Schema.Schema.Type<typeof IntegrationConnectionId>
 
+export const SyncConnectionId = Schema.UUID.pipe(Schema.brand("@HazelChat/SyncConnectionId")).annotations({
+	description: "The ID of a chat sync connection",
+	title: "Sync Connection ID",
+})
+export type SyncConnectionId = Schema.Schema.Type<typeof SyncConnectionId>
+
+export const SyncChannelLinkId = Schema.UUID.pipe(Schema.brand("@HazelChat/SyncChannelLinkId")).annotations({
+	description: "The ID of a chat sync channel link",
+	title: "Sync Channel Link ID",
+})
+export type SyncChannelLinkId = Schema.Schema.Type<typeof SyncChannelLinkId>
+
+export const SyncMessageLinkId = Schema.UUID.pipe(Schema.brand("@HazelChat/SyncMessageLinkId")).annotations({
+	description: "The ID of a chat sync message link",
+	title: "Sync Message Link ID",
+})
+export type SyncMessageLinkId = Schema.Schema.Type<typeof SyncMessageLinkId>
+
+export const SyncEventReceiptId = Schema.UUID.pipe(Schema.brand("@HazelChat/SyncEventReceiptId")).annotations({
+	description: "The ID of a chat sync event receipt",
+	title: "Sync Event Receipt ID",
+})
+export type SyncEventReceiptId = Schema.Schema.Type<typeof SyncEventReceiptId>
+
 export const IntegrationTokenId = Schema.UUID.pipe(Schema.brand("@HazelChat/IntegrationTokenId")).annotations(
 	{
 		description: "The ID of an integration token record",

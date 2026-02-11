@@ -7,6 +7,12 @@ import { botsTable } from "./bots"
 import { channelAccessTable } from "./channel-access"
 import { channelWebhooksTable } from "./channel-webhooks"
 import { channelMembersTable, channelsTable } from "./channels"
+import {
+	chatSyncChannelLinksTable,
+	chatSyncConnectionsTable,
+	chatSyncEventReceiptsTable,
+	chatSyncMessageLinksTable,
+} from "./chat-sync"
 import { rssSubscriptionsTable } from "./rss-subscriptions"
 import { integrationConnectionsTable } from "./integration-connections"
 import { integrationTokensTable } from "./integration-tokens"
@@ -25,6 +31,7 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 	channelAccess: many(channelAccessTable),
 	messages: many(messagesTable),
 	messageReactions: many(messageReactionsTable),
+	chatSyncConnectionsCreated: many(chatSyncConnectionsTable),
 	attachments: many(attachmentsTable),
 	invitationsSent: many(invitationsTable),
 	invitationsAccepted: many(invitationsTable),
@@ -35,6 +42,7 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 export const organizationsRelations = relations(organizationsTable, ({ many }) => ({
 	members: many(organizationMembersTable),
 	channels: many(channelsTable),
+	chatSyncConnections: many(chatSyncConnectionsTable),
 	channelAccess: many(channelAccessTable),
 	invitations: many(invitationsTable),
 	attachments: many(attachmentsTable),
@@ -81,6 +89,10 @@ export const channelsRelations = relations(channelsTable, ({ one, many }) => ({
 	typingIndicators: many(typingIndicatorsTable),
 	webhooks: many(channelWebhooksTable),
 	rssSubscriptions: many(rssSubscriptionsTable),
+	chatSyncLinks: many(chatSyncChannelLinksTable),
+	chatSyncThreadMessageLinks: many(chatSyncMessageLinksTable, {
+		relationName: "chatSyncHazelThreadChannelLinks",
+	}),
 	channelAccess: many(channelAccessTable),
 }))
 
@@ -139,6 +151,12 @@ export const messagesRelations = relations(messagesTable, ({ one, many }) => ({
 		relationName: "messageReplies",
 	}),
 	reactions: many(messageReactionsTable),
+	chatSyncLinks: many(chatSyncMessageLinksTable, {
+		relationName: "chatSyncHazelMessageLinks",
+	}),
+	chatSyncRootLinks: many(chatSyncMessageLinksTable, {
+		relationName: "chatSyncRootHazelMessageLinks",
+	}),
 	attachments: many(attachmentsTable),
 	pinnedIn: many(pinnedMessagesTable),
 	seenBy: many(channelMembersTable),
@@ -247,6 +265,7 @@ export const integrationConnectionsRelations = relations(integrationConnectionsT
 		references: [usersTable.id],
 	}),
 	token: one(integrationTokensTable),
+	chatSyncConnections: many(chatSyncConnectionsTable),
 }))
 
 // Integration tokens relations
@@ -254,6 +273,73 @@ export const integrationTokensRelations = relations(integrationTokensTable, ({ o
 	connection: one(integrationConnectionsTable, {
 		fields: [integrationTokensTable.connectionId],
 		references: [integrationConnectionsTable.id],
+	}),
+}))
+
+// Chat sync connections relations
+export const chatSyncConnectionsRelations = relations(chatSyncConnectionsTable, ({ one, many }) => ({
+	organization: one(organizationsTable, {
+		fields: [chatSyncConnectionsTable.organizationId],
+		references: [organizationsTable.id],
+	}),
+	integrationConnection: one(integrationConnectionsTable, {
+		fields: [chatSyncConnectionsTable.integrationConnectionId],
+		references: [integrationConnectionsTable.id],
+	}),
+	createdByUser: one(usersTable, {
+		fields: [chatSyncConnectionsTable.createdBy],
+		references: [usersTable.id],
+	}),
+	channelLinks: many(chatSyncChannelLinksTable),
+	eventReceipts: many(chatSyncEventReceiptsTable),
+}))
+
+// Chat sync channel links relations
+export const chatSyncChannelLinksRelations = relations(chatSyncChannelLinksTable, ({ one, many }) => ({
+	syncConnection: one(chatSyncConnectionsTable, {
+		fields: [chatSyncChannelLinksTable.syncConnectionId],
+		references: [chatSyncConnectionsTable.id],
+	}),
+	hazelChannel: one(channelsTable, {
+		fields: [chatSyncChannelLinksTable.hazelChannelId],
+		references: [channelsTable.id],
+	}),
+	messageLinks: many(chatSyncMessageLinksTable),
+	eventReceipts: many(chatSyncEventReceiptsTable),
+}))
+
+// Chat sync message links relations
+export const chatSyncMessageLinksRelations = relations(chatSyncMessageLinksTable, ({ one }) => ({
+	channelLink: one(chatSyncChannelLinksTable, {
+		fields: [chatSyncMessageLinksTable.channelLinkId],
+		references: [chatSyncChannelLinksTable.id],
+	}),
+	hazelMessage: one(messagesTable, {
+		fields: [chatSyncMessageLinksTable.hazelMessageId],
+		references: [messagesTable.id],
+		relationName: "chatSyncHazelMessageLinks",
+	}),
+	rootHazelMessage: one(messagesTable, {
+		fields: [chatSyncMessageLinksTable.rootHazelMessageId],
+		references: [messagesTable.id],
+		relationName: "chatSyncRootHazelMessageLinks",
+	}),
+	hazelThreadChannel: one(channelsTable, {
+		fields: [chatSyncMessageLinksTable.hazelThreadChannelId],
+		references: [channelsTable.id],
+		relationName: "chatSyncHazelThreadChannelLinks",
+	}),
+}))
+
+// Chat sync event receipts relations
+export const chatSyncEventReceiptsRelations = relations(chatSyncEventReceiptsTable, ({ one }) => ({
+	syncConnection: one(chatSyncConnectionsTable, {
+		fields: [chatSyncEventReceiptsTable.syncConnectionId],
+		references: [chatSyncConnectionsTable.id],
+	}),
+	channelLink: one(chatSyncChannelLinksTable, {
+		fields: [chatSyncEventReceiptsTable.channelLinkId],
+		references: [chatSyncChannelLinksTable.id],
 	}),
 }))
 

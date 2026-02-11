@@ -5,6 +5,7 @@ import {
 	ChannelMemberRpcs,
 	ChannelRpcs,
 	ChannelSectionRpcs,
+	ChatSyncRpcs,
 	ChannelWebhookRpcs,
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
@@ -26,6 +27,7 @@ import { AttachmentRpcLive } from "./handlers/attachments"
 import { BotRpcLive } from "./handlers/bots"
 import { ChannelMemberRpcLive } from "./handlers/channel-members"
 import { ChannelSectionRpcLive } from "./handlers/channel-sections"
+import { ChatSyncRpcLive } from "./handlers/chat-sync"
 import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
 import { CustomEmojiRpcLive } from "./handlers/custom-emojis"
@@ -59,7 +61,7 @@ import { RpcLoggingMiddleware } from "./middleware/logging-class"
  *
  */
 
-export const AllRpcs = MessageRpcs.merge(
+const BaseRpcs = MessageRpcs.merge(
 	MessageReactionRpcs,
 	NotificationRpcs,
 	InvitationRpcs,
@@ -70,6 +72,7 @@ export const AllRpcs = MessageRpcs.merge(
 	OrganizationMemberRpcs,
 	UserRpcs,
 	UserPresenceStatusRpcs,
+).merge(
 	ChannelRpcs,
 	ChannelMemberRpcs,
 	ChannelSectionRpcs,
@@ -79,7 +82,9 @@ export const AllRpcs = MessageRpcs.merge(
 	AttachmentRpcs,
 	BotRpcs,
 	CustomEmojiRpcs,
-).middleware(RpcLoggingMiddleware)
+)
+
+export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(RpcLoggingMiddleware)
 
 export const RpcServerLive = Layer.empty
 	.pipe(
@@ -94,9 +99,12 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(OrganizationMemberRpcLive),
 		Layer.provideMerge(UserRpcLive),
 		Layer.provideMerge(UserPresenceStatusRpcLive),
+	)
+	.pipe(
 		Layer.provideMerge(ChannelRpcLive),
 		Layer.provideMerge(ChannelMemberRpcLive),
 		Layer.provideMerge(ChannelSectionRpcLive),
+		Layer.provideMerge(ChatSyncRpcLive),
 		Layer.provideMerge(ChannelWebhookRpcLive),
 		Layer.provideMerge(GitHubSubscriptionRpcLive),
 		Layer.provideMerge(RssSubscriptionRpcLive),
