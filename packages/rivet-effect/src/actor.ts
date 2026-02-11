@@ -11,9 +11,6 @@ export class RivetActorContext extends Context.Tag("@hazel/rivet-effect/RivetAct
 	AnyActorContext
 >() {}
 
-/** @deprecated Use RivetActorContext instead. */
-export const ActorContextTag = RivetActorContext
-
 export const provideActorContext = <A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 	context: unknown,

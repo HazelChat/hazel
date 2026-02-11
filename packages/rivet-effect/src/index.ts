@@ -22,6 +22,6 @@ export {
 	OnWebSocket,
 } from "./lifecycle.ts"
 
-export { RivetActorContext, ActorContextTag } from "./actor.ts"
+export { RivetActorContext } from "./actor.ts"
 export { actor } from "./rivet-actor.ts"
 export { getManagedRuntime, setManagedRuntime, type AnyManagedRuntime } from "./runtime.ts"

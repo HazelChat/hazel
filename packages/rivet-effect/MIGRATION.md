@@ -4,10 +4,8 @@
 
 ### 1. Context service naming
 
-- Preferred: `RivetActorContext`
-- Deprecated alias: `ActorContextTag`
-
-Existing code using `ActorContextTag` still works, but migrate to `RivetActorContext`.
+- Use `RivetActorContext`
+- `ActorContextTag` has been removed
 
 ### 2. Wrapper return types
 
@@ -38,7 +36,7 @@ These are intended for actor boundaries where you want one standardized runtime 
 
 | Previous | Current |
 | --- | --- |
-| `ActorContextTag` | `RivetActorContext` (preferred) |
+| `ActorContextTag` | `RivetActorContext` |
 | `Action.effect` (typed as sync return) | `Action.effect` (explicit async `Promise`) |
 | `Hook.effect` (typed as sync return) | `Hook.effect` (explicit async `Promise`) |
 | queue helpers with `never` error channel | queue helpers with tagged queue errors |
