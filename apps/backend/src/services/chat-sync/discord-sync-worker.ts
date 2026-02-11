@@ -108,14 +108,21 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")
 
-		const hasReceipt = (
-			syncConnectionId: SyncConnectionId,
-			source: "hazel" | "external",
-			dedupeKey: string,
-		) =>
-			eventReceiptRepo
-				.findByDedupeKey(syncConnectionId, source, dedupeKey)
-				.pipe(Effect.map(Option.isSome), withSystemActor)
+		const claimReceipt = Effect.fn("DiscordSyncWorker.claimReceipt")(function* (params: {
+			syncConnectionId: SyncConnectionId
+			channelLinkId?: SyncChannelLinkId
+			source: "hazel" | "external"
+			dedupeKey: string
+		}) {
+			return yield* eventReceiptRepo
+				.claimByDedupeKey({
+					syncConnectionId: params.syncConnectionId,
+					channelLinkId: params.channelLinkId,
+					source: params.source,
+					dedupeKey: params.dedupeKey,
+				})
+				.pipe(withSystemActor)
+		})
 
 		const writeReceipt = Effect.fn("DiscordSyncWorker.writeReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
@@ -127,22 +134,17 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			payload?: unknown
 		}) {
 			yield* eventReceiptRepo
-				.insert({
+				.updateByDedupeKey({
 					syncConnectionId: params.syncConnectionId,
-					channelLinkId: params.channelLinkId ?? null,
 					source: params.source,
-					externalEventId: null,
 					dedupeKey: params.dedupeKey,
+					channelLinkId: params.channelLinkId,
+					externalEventId: null,
 					payloadHash: params.payload ? payloadHash(params.payload) : null,
 					status: params.status ?? "processed",
 					errorMessage: params.errorMessage ?? null,
 				})
-				.pipe(
-					withSystemActor,
-					Effect.catchTag("DatabaseError", (error) =>
-						error.type === "unique_violation" ? Effect.void : Effect.fail(error),
-					),
-				)
+				.pipe(withSystemActor)
 		})
 
 		const discordCreateMessage = Effect.fn("DiscordSyncWorker.discordCreateMessage")(function* (
@@ -206,8 +208,8 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			hazelMessageId: MessageId,
 		) {
 			const dedupeKey = `hazel:message:create:${hazelMessageId}`
-			const alreadyProcessed = yield* hasReceipt(syncConnectionId, "hazel", dedupeKey)
-			if (alreadyProcessed) {
+			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+			if (!claimed) {
 				return { status: "deduped" as const }
 			}
 
@@ -372,8 +374,12 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			payload: DiscordIngressMessageCreate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `discord:message:create:${payload.externalMessageId}`
-			const alreadyProcessed = yield* hasReceipt(payload.syncConnectionId, "external", dedupeKey)
-			if (alreadyProcessed) {
+			const claimed = yield* claimReceipt({
+				syncConnectionId: payload.syncConnectionId,
+				source: "external",
+				dedupeKey,
+			})
+			if (!claimed) {
 				return { status: "deduped" as const }
 			}
 
@@ -457,8 +463,12 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			payload: DiscordIngressMessageUpdate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `discord:message:update:${payload.externalMessageId}`
-			const alreadyProcessed = yield* hasReceipt(payload.syncConnectionId, "external", dedupeKey)
-			if (alreadyProcessed) {
+			const claimed = yield* claimReceipt({
+				syncConnectionId: payload.syncConnectionId,
+				source: "external",
+				dedupeKey,
+			})
+			if (!claimed) {
 				return { status: "deduped" as const }
 			}
 
@@ -516,8 +526,12 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			payload: DiscordIngressMessageDelete,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `discord:message:delete:${payload.externalMessageId}`
-			const alreadyProcessed = yield* hasReceipt(payload.syncConnectionId, "external", dedupeKey)
-			if (alreadyProcessed) {
+			const claimed = yield* claimReceipt({
+				syncConnectionId: payload.syncConnectionId,
+				source: "external",
+				dedupeKey,
+			})
+			if (!claimed) {
 				return { status: "deduped" as const }
 			}
 
