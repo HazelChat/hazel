@@ -9,7 +9,8 @@
 		"./auth": "./src/auth/index.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",

@@ -1,4 +1,4 @@
-import { Config, Effect } from "effect"
+import { Config, Effect, Option } from "effect"
 
 /**
  * Configuration required for token validation
@@ -12,6 +12,17 @@ export interface TokenValidationConfig {
 	readonly internalSecret: string | undefined
 }
 
+const optionalValue = (effect: Effect.Effect<string, any, never>) =>
+	effect.pipe(
+		Effect.option,
+		Effect.map(
+			Option.match({
+				onNone: () => undefined,
+				onSome: (value) => value,
+			}),
+		),
+	)
+
 /**
  * Service for loading and providing token validation configuration.
  *
@@ -22,26 +33,17 @@ export class TokenValidationConfigService extends Effect.Service<TokenValidation
 	{
 		accessors: true,
 		effect: Effect.gen(function* () {
-			// Load WorkOS client ID (optional; only needed for JWT validation)
-			const workosClientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(
-				Effect.option,
-				Effect.map((opt) => (opt._tag === "Some" ? opt.value : undefined)),
+			const workosClientId = yield* optionalValue(Config.string("WORKOS_CLIENT_ID"))
+
+			const backendUrl = yield* optionalValue(
+				Config.string("BACKEND_URL").pipe(
+					Effect.orElse(() => Config.string("API_BASE_URL")),
+					Effect.orElse(() => Config.string("VITE_BACKEND_URL")),
+					Effect.orElse(() => Config.string("VITE_API_BASE_URL")),
+				),
 			)
 
-			// Load backend URL with fallbacks (optional; only needed for bot token validation)
-			const backendUrl = yield* Config.string("BACKEND_URL").pipe(
-				Effect.orElse(() => Config.string("API_BASE_URL")),
-				Effect.orElse(() => Config.string("VITE_BACKEND_URL")),
-				Effect.orElse(() => Config.string("VITE_API_BASE_URL")),
-				Effect.option,
-				Effect.map((opt) => (opt._tag === "Some" ? opt.value : undefined)),
-			)
-
-			// Load internal secret (optional)
-			const internalSecret = yield* Config.string("INTERNAL_SECRET").pipe(
-				Effect.option,
-				Effect.map((opt) => (opt._tag === "Some" ? opt.value : undefined)),
-			)
+			const internalSecret = yield* optionalValue(Config.string("INTERNAL_SECRET"))
 
 			const config: TokenValidationConfig = {
 				workosClientId,

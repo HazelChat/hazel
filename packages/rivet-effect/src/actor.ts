@@ -1,19 +1,26 @@
 import { Cause, Context, Effect, Exit } from "effect"
 import type { ActorContext } from "rivetkit"
 import type { YieldWrap } from "effect/Utils"
+import { RuntimeExecutionError, StatePersistenceError } from "./errors.ts"
 import { runPromise, runPromiseExit } from "./runtime.ts"
 
 type AnyActorContext = ActorContext<any, any, any, any, any, any>
 
-export const ActorContextTag = Context.GenericTag<AnyActorContext>("ActorContext")
+export class RivetActorContext extends Context.Tag("@hazel/rivet-effect/RivetActorContext")<
+	RivetActorContext,
+	AnyActorContext
+>() {}
+
+/** @deprecated Use RivetActorContext instead. */
+export const ActorContextTag = RivetActorContext
 
 export const provideActorContext = <A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 	context: unknown,
 ): Effect.Effect<A, E, never> =>
 	Effect.provideService(
-		effect as Effect.Effect<A, E, R | typeof ActorContextTag>,
-		ActorContextTag,
+		effect as Effect.Effect<A, E, R | RivetActorContext>,
+		RivetActorContext,
 		context as AnyActorContext,
 	) as Effect.Effect<A, E, never>
 
@@ -26,8 +33,8 @@ export const context = <
 >(): Effect.Effect<
 	ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	never,
-	typeof ActorContextTag
-> => ActorContextTag as any
+	RivetActorContext
+> => RivetActorContext as any
 
 export const state = <
 	TState,
@@ -203,7 +210,15 @@ export const saveState = <
 >(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	opts: Parameters<typeof c.saveState>[0],
-): Effect.Effect<void, never, never> => Effect.promise(() => c.saveState(opts))
+): Effect.Effect<void, StatePersistenceError, never> =>
+	Effect.tryPromise({
+		try: () => c.saveState(opts),
+		catch: (error) =>
+			new StatePersistenceError({
+				message: "Failed to persist actor state",
+				cause: error,
+			}),
+	})
 
 const logRuntimeFailure = (context: unknown, message: string, error: unknown): void => {
 	if (typeof context !== "object" || context === null) return
@@ -219,6 +234,30 @@ const logRuntimeFailure = (context: unknown, message: string, error: unknown): v
 	})
 }
 
+const makeRuntimeExecutionError = (operation: string, cause: Cause.Cause<unknown>) =>
+	new RuntimeExecutionError({
+		message: "Actor effect failed",
+		operation,
+		cause: Cause.pretty(cause),
+	})
+
+const runEffectOnActorContext = <A, E, R>(
+	c: unknown,
+	effect: Effect.Effect<A, E, R>,
+): Promise<A> => {
+	const withContext = provideActorContext(effect, c)
+	const effectPromise = runPromise(withContext, c)
+	const runtimeContext = c as { waitUntil: (promise: Promise<unknown>) => void }
+	runtimeContext.waitUntil(
+		effectPromise
+			.then(() => undefined)
+			.catch((error) => {
+				logRuntimeFailure(c, "actor effect failed", error)
+			}),
+	)
+	return effectPromise
+}
+
 export const waitUntil = <
 	TState,
 	TConnParams,
@@ -227,9 +266,10 @@ export const waitUntil = <
 	TInput,
 	A = any,
 	E = any,
+	R = never,
 >(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	effect: Effect.Effect<A, E, never>,
+	effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<void, never, never> =>
 	Effect.sync(() => {
 		const promise = runPromiseExit(effect, c).then((exit) => {
@@ -297,15 +337,40 @@ export function effect<
 	return (c) => {
 		const gen = genFn(c)
 		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen)
-		const withContext = provideActorContext(eff, c)
-		const effectPromise = runPromise(withContext, c)
-		c.waitUntil(
-			effectPromise
-				.then(() => undefined)
-				.catch((error) => {
-					logRuntimeFailure(c, "actor effect failed", error)
-				}),
-		)
-		return effectPromise
+		return runEffectOnActorContext(c, eff)
 	}
 }
+
+export function tryEffect<
+	TState,
+	TConnParams,
+	TConnState,
+	TVars,
+	TInput,
+	AEff = void,
+>(
+	genFn: (
+		c: ActorContext<
+			TState,
+			TConnParams,
+			TConnState,
+			TVars,
+			TInput,
+			undefined
+		>,
+	) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
+): (
+	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
+) => Promise<AEff> {
+	return (c) => {
+		const gen = genFn(c)
+		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen).pipe(
+			Effect.catchAllCause((cause) =>
+				Effect.fail(makeRuntimeExecutionError("Hook.try", cause)),
+			),
+		)
+		return runEffectOnActorContext(c, eff)
+	}
+}
+
+export { tryEffect as try }

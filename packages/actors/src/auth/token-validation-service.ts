@@ -59,7 +59,7 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 						)
 					}
 
-					const jwks = jwksService.getJwks
+					const jwks = yield* jwksService.getJwks()
 
 					// WorkOS can issue tokens with either issuer format
 					const issuers = [

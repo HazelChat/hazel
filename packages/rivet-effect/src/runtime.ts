@@ -1,4 +1,5 @@
 import { Cause, Effect, Exit, Layer, ManagedRuntime, Option, Runtime } from "effect"
+import { RuntimeExecutionError } from "./errors.ts"
 
 export type AnyManagedRuntime = ManagedRuntime.ManagedRuntime<any, any>
 
@@ -51,6 +52,14 @@ const runWithCurrentRuntime = <A, E, R>(effect: Effect.Effect<A, E, R>): Promise
 			Effect.map((runtime) => Runtime.runPromise(runtime)),
 			Effect.flatMap((run) => Effect.promise(() => run(effect))),
 		) as Effect.Effect<A, never, never>,
+	).catch((error) =>
+		Promise.reject(
+			new RuntimeExecutionError({
+				message: "Failed to execute effect with current runtime",
+				operation: "runWithCurrentRuntime",
+				cause: error,
+			}),
+		),
 	)
 
 const runExitWithCurrentRuntime = <A, E, R>(
@@ -61,6 +70,14 @@ const runExitWithCurrentRuntime = <A, E, R>(
 			Effect.map((runtime) => Runtime.runPromiseExit(runtime)),
 			Effect.flatMap((run) => Effect.promise(() => run(effect))),
 		) as Effect.Effect<Exit.Exit<A, E>, never, never>,
+	).catch((error) =>
+		Promise.reject(
+			new RuntimeExecutionError({
+				message: "Failed to execute effect exit with current runtime",
+				operation: "runExitWithCurrentRuntime",
+				cause: error,
+			}),
+		),
 	)
 
 const throwFromCause = <E>(cause: Cause.Cause<E>): never => {
@@ -93,9 +110,17 @@ export const runPromiseExit = <A, E, R>(
 	context?: unknown,
 ): Promise<Exit.Exit<A, E>> => {
 	const runtime = getManagedRuntime(context)
-	const execution = runtime
+	const execution: Promise<Exit.Exit<A, E>> = runtime
 		? runtime.runPromiseExit(effect as Effect.Effect<A, E, never>)
 		: runExitWithCurrentRuntime(effect)
 
-	return execution.catch((error) => Exit.fail(error as E))
+	return execution.catch((error) =>
+		Exit.die(
+			new RuntimeExecutionError({
+				message: "Runtime execution failed unexpectedly",
+				operation: "runPromiseExit",
+				cause: error,
+			}),
+		),
+	)
 }
