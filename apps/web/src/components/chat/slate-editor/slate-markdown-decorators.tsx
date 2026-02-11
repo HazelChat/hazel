@@ -198,7 +198,9 @@ export function MarkdownLeaf({ attributes, children, leaf, mode = "composer" }: 
 		return (
 			<Tooltip delay={300} closeDelay={0}>
 				<Focusable>
-					<span {...attributes}>{children}</span>
+					<span {...attributes} role="button">
+						{children}
+					</span>
 				</Focusable>
 				<TooltipContent>
 					<EmojiPreview emoji={emoji} shortcode={shortcode} size="sm" />

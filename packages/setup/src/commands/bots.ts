@@ -139,6 +139,7 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 		yield* Console.log(`\n${pc.bold("Add to your bot's .env file:")}`)
 		yield* Console.log(`BOT_TOKEN=${token}`)
 		yield* Console.log(`BACKEND_URL=http://localhost:3003`)
+		yield* Console.log(`ACTORS_URL=http://localhost:6420`)
 		yield* Console.log(`DURABLE_STREAM_URL=http://localhost:4437`)
 		yield* Console.log(`ELECTRIC_URL=http://localhost:8787/v1/shape`)
 

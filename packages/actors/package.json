@@ -13,11 +13,11 @@
 	},
 	"dependencies": {
 		"@effect/platform": "catalog:effect",
+		"@hazel/rivet-effect": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"@rivetkit/effect": "https://pkg.pr.new/rivet-dev/rivet/@rivetkit/effect@4009",
 		"effect": "catalog:effect",
 		"jose": "^6.0.11",
-		"rivetkit": "https://pkg.pr.new/rivet-dev/rivet/rivetkit@4009"
+		"rivetkit": "2.0.42"
 	},
 	"devDependencies": {
 		"@types/bun": "1.3.8"

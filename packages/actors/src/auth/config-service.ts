@@ -1,14 +1,13 @@
 import { Config, Effect } from "effect"
-import { ConfigError } from "./errors"
 
 /**
  * Configuration required for token validation
  */
 export interface TokenValidationConfig {
 	/** WorkOS client ID for JWT validation */
-	readonly workosClientId: string
+	readonly workosClientId: string | undefined
 	/** Backend URL for bot token validation */
-	readonly backendUrl: string
+	readonly backendUrl: string | undefined
 	/** Internal secret for server-to-server auth (optional) */
 	readonly internalSecret: string | undefined
 }
@@ -23,29 +22,19 @@ export class TokenValidationConfigService extends Effect.Service<TokenValidation
 	{
 		accessors: true,
 		effect: Effect.gen(function* () {
-			// Load WorkOS client ID (required)
+			// Load WorkOS client ID (optional; only needed for JWT validation)
 			const workosClientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(
-				Effect.mapError(
-					() =>
-						new ConfigError({
-							message:
-								"WORKOS_CLIENT_ID environment variable is required for actor authentication",
-						}),
-				),
+				Effect.option,
+				Effect.map((opt) => (opt._tag === "Some" ? opt.value : undefined)),
 			)
 
-			// Load backend URL with fallbacks (required)
+			// Load backend URL with fallbacks (optional; only needed for bot token validation)
 			const backendUrl = yield* Config.string("BACKEND_URL").pipe(
 				Effect.orElse(() => Config.string("API_BASE_URL")),
 				Effect.orElse(() => Config.string("VITE_BACKEND_URL")),
 				Effect.orElse(() => Config.string("VITE_API_BASE_URL")),
-				Effect.mapError(
-					() =>
-						new ConfigError({
-							message:
-								"BACKEND_URL or API_BASE_URL environment variable is required for actor authentication",
-						}),
-				),
+				Effect.option,
+				Effect.map((opt) => (opt._tag === "Some" ? opt.value : undefined)),
 			)
 
 			// Load internal secret (optional)

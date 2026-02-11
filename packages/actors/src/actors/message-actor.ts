@@ -1,8 +1,20 @@
-import { FetchHttpClient } from "@effect/platform"
-import { actor, UserError } from "rivetkit"
-import { Action, CreateConnState, Log } from "@rivetkit/effect"
-import { Effect } from "effect"
-import { TokenValidationService, TokenValidationLive, type ActorConnectParams } from "../auth"
+import { Action, CreateConnState, Log, actor } from "@hazel/rivet-effect"
+import { Cause, Effect, Option } from "effect"
+import { UserError } from "rivetkit"
+import { ConfigError, TokenValidationService, type ActorConnectParams } from "../auth"
+import { messageActorRuntime } from "../effect/runtime"
+
+const getTokenKind = (token: string): "bot" | "jwt" | "unknown" => {
+	if (token.startsWith("hzl_bot_")) return "bot"
+	if (token.split(".").length === 3) return "jwt"
+	return "unknown"
+}
+
+const isConfigError = (error: unknown): error is ConfigError =>
+	typeof error === "object" &&
+	error !== null &&
+	"_tag" in error &&
+	(error as { _tag: string })._tag === "ConfigError"
 
 /**
  * Represents a step in an AI agent workflow.
@@ -85,6 +97,8 @@ export interface MessageActorState {
  * ```
  */
 export const messageActor = actor({
+	runtime: messageActorRuntime,
+
 	// Dynamic initial state - accepts optional initialData
 	createState: (_c, input?: { initialData?: Record<string, unknown> }): MessageActorState => ({
 		status: "idle",
@@ -114,12 +128,10 @@ export const messageActor = actor({
 			const service = yield* TokenValidationService
 			return yield* service.validateToken(params.token)
 		}).pipe(
-			Effect.provide(TokenValidationLive),
-			Effect.provide(FetchHttpClient.layer),
-			Effect.scoped,
 			Effect.catchTags({
 				InvalidTokenFormatError: (e) =>
 					Log.error("Token validation failed: invalid format", {
+						tokenKind: getTokenKind(params.token),
 						tokenPrefix: params.token.slice(0, 12),
 					}).pipe(
 						Effect.flatMap(() =>
@@ -129,6 +141,7 @@ export const messageActor = actor({
 				JwtValidationError: (e) =>
 					Log.error("Token validation failed: JWT error", {
 						error: e.message,
+						tokenKind: getTokenKind(params.token),
 					}).pipe(
 						Effect.flatMap(() =>
 							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
@@ -137,6 +150,7 @@ export const messageActor = actor({
 				BotTokenValidationError: (e) =>
 					Log.error("Token validation failed: bot token error", {
 						statusCode: e.statusCode,
+						tokenKind: getTokenKind(params.token),
 						tokenPrefix: params.token.slice(0, 12),
 						error: e.message,
 					}).pipe(
@@ -144,12 +158,43 @@ export const messageActor = actor({
 							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
 						),
 					),
-				ConfigError: (e) =>
-					Log.error("Token validation failed: config error", {
-						error: e.message,
+			}),
+			Effect.catchAllCause((cause) => {
+				const failure = Cause.failureOption(cause)
+				if (Option.isSome(failure) && isConfigError(failure.value)) {
+					return Log.error("Token validation failed: auth config unavailable", {
+						error: failure.value.message,
+						tokenKind: getTokenKind(params.token),
+						tokenPrefix: params.token.slice(0, 12),
 					}).pipe(
-						Effect.flatMap(() => Effect.fail(new UserError(e.message, { code: "server_error" }))),
-					),
+						Effect.flatMap(() =>
+							Effect.fail(
+								new UserError("Authentication service unavailable", {
+									code: "auth_unavailable",
+								}),
+							),
+						),
+					)
+				}
+
+				const defect = Cause.dieOption(cause)
+				if (Option.isSome(defect) && isConfigError(defect.value)) {
+					return Log.error("Token validation failed: auth config unavailable", {
+						error: defect.value.message,
+						tokenKind: getTokenKind(params.token),
+						tokenPrefix: params.token.slice(0, 12),
+					}).pipe(
+						Effect.flatMap(() =>
+							Effect.fail(
+								new UserError("Authentication service unavailable", {
+									code: "auth_unavailable",
+								}),
+							),
+						),
+					)
+				}
+
+				return Effect.failCause(cause)
 			}),
 		)
 	}),
