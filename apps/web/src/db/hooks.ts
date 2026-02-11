@@ -345,6 +345,25 @@ export const useActiveThreads = (organizationId: OrganizationId | null, userId: 
 }
 
 /**
+ * Hook to resolve a bot's display name for machine users.
+ * Returns the bot's name (source of truth) if the userId belongs to a bot, otherwise null.
+ * Use this instead of user.firstName for machine users to avoid stale names.
+ */
+export const useBotName = (userId: UserId | undefined, userType: string | undefined | null) => {
+	const { data } = useLiveQuery(
+		(q) =>
+			userId && userType === "machine"
+				? q
+						.from({ bot: botCollection })
+						.where(({ bot }) => and(eq(bot.userId, userId), isNull(bot.deletedAt)))
+						.select(({ bot }) => ({ name: bot.name }))
+				: null,
+		[userId, userType],
+	)
+	return data?.[0]?.name ?? null
+}
+
+/**
  * Type for bot data with its machine user included.
  */
 export type BotWithUser = typeof Bot.Model.Type & {

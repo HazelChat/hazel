@@ -10,6 +10,7 @@ import { presenceNowSignal } from "~/atoms/presence-atoms"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Popover, PopoverContent } from "~/components/ui/popover"
+import { useBotName } from "~/db/hooks"
 import { cn } from "~/lib/utils"
 import { getEffectivePresenceStatus } from "~/utils/presence"
 import { getStatusDotColor } from "~/utils/status"
@@ -48,6 +49,9 @@ export function MentionElement({ attributes, children, element, interactive = fa
 	const presence = result?.presence
 	const effectiveStatus = getEffectivePresenceStatus(presence ?? null, nowMs)
 
+	// For machine users (bots), prefer bot.name as the source of truth
+	const botName = useBotName(userId as UserId | undefined, user?.userType)
+
 	// For special mentions (@channel, @here), use displayName
 	if (isSpecialMention) {
 		return (
@@ -66,7 +70,8 @@ export function MentionElement({ attributes, children, element, interactive = fa
 	}
 
 	// For regular mentions, fetch display name from user data
-	const fullName = user ? `${user.firstName} ${user.lastName}` : element.displayName
+	// Prefer bot.name for machine users to avoid stale user.firstName
+	const fullName = botName ?? (user ? `${user.firstName} ${user.lastName}` : element.displayName)
 
 	// If not interactive, just render the mention text without popover
 	if (!interactive) {

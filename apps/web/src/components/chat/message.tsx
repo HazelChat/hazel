@@ -1,5 +1,5 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
-import type { MessageId, OrganizationId } from "@hazel/schema"
+import type { MessageId, OrganizationId, UserId } from "@hazel/schema"
 import type { DOMAttributes } from "@react-types/shared"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"
@@ -15,6 +15,7 @@ import { useChat } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
+import { useBotName } from "~/db/hooks"
 import { cn } from "~/lib/utils"
 import { useMessageHover } from "~/providers/message-hover-provider"
 import { InlineThreadPreview } from "./inline-thread-preview"
@@ -295,9 +296,12 @@ function MessageHeader() {
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
+	// For machine users (bots), prefer bot.name as the source of truth
+	const botName = useBotName(user?.id as UserId | undefined, user?.userType)
+
 	if (!showAvatar || !user) return null
 
-	const fullName = `${user.firstName} ${user.lastName}`
+	const fullName = botName ?? `${user.firstName} ${user.lastName}`
 
 	return (
 		<div className="flex items-baseline gap-2">

@@ -18,6 +18,7 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
 import { Popover, PopoverContent } from "~/components/ui/popover"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
+import { useBotName } from "~/db/hooks"
 import { cn } from "~/lib/utils"
 import type { PresenceStatus } from "~/utils/status"
 import { formatStatusExpiration, getStatusDotColor, getStatusLabel } from "~/utils/status"
@@ -63,11 +64,14 @@ export function UserProfilePopover({ userId }: UserProfilePopoverProps) {
 		return () => clearInterval(interval)
 	}, [user?.timezone])
 
+	// Must be called before any early returns to satisfy React hooks rules
+	const botName = useBotName(userId, user?.userType)
+
 	if (!user) return null
 
 	const isOwnProfile = currentUser?.id === userId
 	const isBot = user.userType === "machine"
-	const fullName = `${user.firstName} ${user.lastName}`
+	const fullName = botName ?? `${user.firstName} ${user.lastName}`
 
 	const handleCopyUserId = () => {
 		navigator.clipboard.writeText(user.id)

@@ -200,6 +200,17 @@ export const BotRpcLive = BotRpcs.toLayer(
 									})
 									.pipe(withSystemActor)
 
+								// Keep machine user's firstName in sync with bot name
+								if (payload.name) {
+									const bot = botOption.value
+									yield* transactionAwareExecute((client) =>
+										client
+											.update(schema.usersTable)
+											.set({ firstName: payload.name, updatedAt: new Date() })
+											.where(eq(schema.usersTable.id, bot.userId)),
+									).pipe(withSystemActor)
+								}
+
 								const txid = yield* generateTransactionId()
 
 								return new BotResponse({

@@ -150,6 +150,11 @@ type Fixture = {
 			otherUserHidden: string
 			deletedHidden: string
 		}
+		customEmojis: {
+			orgAVisible: string
+			orgBHidden: string
+			orgADeleted: string
+		}
 		userPresenceStatus: {
 			viewer: string
 			other: string
@@ -502,6 +507,11 @@ const createFixture = (): Fixture => {
 			otherUserHidden: id(),
 			deletedHidden: id(),
 		},
+		customEmojis: {
+			orgAVisible: id(),
+			orgBHidden: id(),
+			orgADeleted: id(),
+		},
 		userPresenceStatus: {
 			viewer: id(),
 			other: id(),
@@ -694,6 +704,13 @@ VALUES
 	('${f.ids.userPresenceStatus.viewer}', '${f.ids.users.viewer}', 'online', NOW(), NOW()),
 	('${f.ids.userPresenceStatus.other}', '${f.ids.users.otherUser}', 'busy', NOW(), NOW())
 ON CONFLICT ("userId") DO UPDATE SET status = EXCLUDED.status, "updatedAt" = NOW(), "lastSeenAt" = NOW();
+
+INSERT INTO custom_emojis (id, "organizationId", name, "imageUrl", "createdBy", "createdAt", "deletedAt")
+VALUES
+	('${f.ids.customEmojis.orgAVisible}', '${f.ids.organizations.orgA}', 'visible_emoji_${f.runId}', 'https://example.test/emoji/visible.png', '${f.ids.users.viewer}', NOW(), NULL),
+	('${f.ids.customEmojis.orgBHidden}', '${f.ids.organizations.orgB}', 'hidden_emoji_${f.runId}', 'https://example.test/emoji/hidden.png', '${f.ids.users.otherUser}', NOW(), NULL),
+	('${f.ids.customEmojis.orgADeleted}', '${f.ids.organizations.orgA}', 'deleted_emoji_${f.runId}', 'https://example.test/emoji/deleted.png', '${f.ids.users.viewer}', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
 `
 
 	runSql(sql)
@@ -878,6 +895,12 @@ const buildUserVisibilitySpecs = (f: Fixture): VisibilitySpec<AllowedTable>[] =>
 			f.ids.integrationConnections.otherUserHidden,
 			f.ids.integrationConnections.deletedHidden,
 		],
+		strict: true,
+	},
+	{
+		table: "custom_emojis",
+		allowedIds: [f.ids.customEmojis.orgAVisible],
+		blockedIds: [f.ids.customEmojis.orgBHidden, f.ids.customEmojis.orgADeleted],
 		strict: true,
 	},
 ]
