@@ -20,6 +20,3 @@ export type {
 	ActorConnectParams,
 	BotTokenValidationResponse,
 } from "./types"
-
-// Legacy Promise-based API (deprecated, kept for backwards compatibility)
-export { validateToken, getConfig, loadConfigFromEnv } from "./validate-token"

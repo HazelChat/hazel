@@ -77,10 +77,12 @@ import {
 	type AIStreamOptions,
 	type AIStreamSession,
 	type CreateStreamOptions,
-	type MessageActor,
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
 import { extractTablesFromEventTypes } from "./types/events.ts"
+
+const DEFAULT_ACTORS_ENDPOINT =
+	"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
 
 /**
  * Internal configuration context for HazelBotClient
@@ -366,14 +368,10 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					const client = createActorsClient(config.actorsEndpoint)
 					return Effect.succeed({
 						getMessageActor: (messageId: string) =>
-							Effect.sync(
-								() =>
-									// Cast to MessageActor to handle the @rivetkit/effect double-Promise typing issue
-									// The rivetkit client wraps action returns in Promise, but Action.effect already returns Promise,
-									// resulting in Promise<Promise<T>>. Our MessageActor interface has the corrected types.
-									client.message.getOrCreate([messageId], {
-										params: { token: config.botToken },
-									}) as unknown as MessageActor,
+							Effect.sync(() =>
+								client.message.getOrCreate([messageId], {
+									params: { token: config.botToken },
+								}),
 							),
 						client,
 						botToken: config.botToken,
@@ -1505,8 +1503,10 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
 	const actorsEndpoint =
 		config.actorsEndpoint ??
+		process.env.ACTORS_URL ??
 		process.env.RIVET_PUBLIC_ENDPOINT ??
-		"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+		process.env.RIVET_URL ??
+		DEFAULT_ACTORS_ENDPOINT
 
 	// Create all the required layers using layerConfig pattern
 	const EventQueueLayer = ElectricEventQueue.layerConfig(

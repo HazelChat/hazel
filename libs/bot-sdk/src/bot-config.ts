@@ -7,6 +7,9 @@
 
 import { Config } from "effect"
 
+const DEFAULT_ACTORS_URL =
+	"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
+
 /**
  * Bot environment configuration schema
  *
@@ -27,9 +30,8 @@ export const BotEnvConfig = Config.all({
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
 		Config.orElse(() => Config.string("RIVET_PUBLIC_ENDPOINT")),
-		Config.withDefault(
-			"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev",
-		),
+		Config.orElse(() => Config.string("RIVET_URL")),
+		Config.withDefault(DEFAULT_ACTORS_URL),
 		Config.withDescription("Actors/Rivet endpoint for live state streaming"),
 	),
 	healthPort: Config.number("PORT").pipe(

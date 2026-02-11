@@ -225,6 +225,7 @@ export const ENV_TEMPLATES = {
 		BOT_TOKEN: "",
 		ELECTRIC_URL: "http://localhost:3333/v1/shape",
 		BACKEND_URL: "http://localhost:3003",
+		ACTORS_URL: "http://localhost:6420",
 		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
 	}),
 
@@ -232,6 +233,7 @@ export const ENV_TEMPLATES = {
 		BOT_TOKEN: "",
 		ELECTRIC_URL: "http://localhost:3333/v1/shape",
 		BACKEND_URL: "http://localhost:3003",
+		ACTORS_URL: "http://localhost:6420",
 		REDIS_URL: "redis://localhost:6380",
 		IS_DEV: "true",
 		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
