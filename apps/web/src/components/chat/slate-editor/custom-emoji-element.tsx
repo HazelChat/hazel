@@ -30,7 +30,7 @@ export function CustomEmojiElement({
 	return (
 		<Tooltip delay={300} closeDelay={0}>
 			<Focusable>
-				<span {...attributes} contentEditable={false}>
+				<span {...attributes} contentEditable={false} role="button">
 					<img
 						src={imageUrl}
 						alt={`:${element.name}:`}

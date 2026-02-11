@@ -494,17 +494,19 @@ export const setupCommand = Command.make(
 			)
 			yield* envWriter.writeEnvFile("packages/db/.env", ENV_TEMPLATES.db(), dryRun)
 
-			// Bot .env files — preserve existing BOT_TOKEN values
+			// Bot .env files — preserve existing BOT_TOKEN / ACTORS_URL values
 			const existingHazelBotEnv = yield* envWriter.readEnvFile("bots/hazel-bot/.env")
 			const existingLinearBotEnv = yield* envWriter.readEnvFile("bots/linear-bot/.env")
 
 			const hazelBotVars = {
 				...ENV_TEMPLATES.hazelBot(config),
 				...(existingHazelBotEnv.BOT_TOKEN ? { BOT_TOKEN: existingHazelBotEnv.BOT_TOKEN } : {}),
+				...(existingHazelBotEnv.ACTORS_URL ? { ACTORS_URL: existingHazelBotEnv.ACTORS_URL } : {}),
 			}
 			const linearBotVars = {
 				...ENV_TEMPLATES.linearBot(config),
 				...(existingLinearBotEnv.BOT_TOKEN ? { BOT_TOKEN: existingLinearBotEnv.BOT_TOKEN } : {}),
+				...(existingLinearBotEnv.ACTORS_URL ? { ACTORS_URL: existingLinearBotEnv.ACTORS_URL } : {}),
 			}
 
 			yield* envWriter.writeEnvFile("bots/hazel-bot/.env", hazelBotVars, dryRun)

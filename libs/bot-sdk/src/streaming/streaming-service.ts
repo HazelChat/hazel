@@ -81,18 +81,18 @@ export type MessageUpdateFn = (
  */
 const wrapActorCall = Effect.fn("StreamSession.actorCall")(function* <T>(
 	operation: string,
-	fn: () => Promise<T>,
+	fn: () => Promise<T> | T,
 ) {
 	yield* Effect.annotateCurrentSpan("operation", operation)
-	return yield* Effect.tryPromise({
-		try: fn,
+	return (yield* Effect.tryPromise({
+		try: () => Promise.resolve(fn()),
 		catch: (error) =>
 			new ActorOperationError({
 				operation,
 				message: `Actor operation failed: ${operation}`,
 				cause: error,
 			}),
-	})
+	})) as Awaited<T>
 })
 
 /**

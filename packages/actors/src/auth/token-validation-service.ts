@@ -4,7 +4,7 @@ import { Effect, Option } from "effect"
 import type { JWTPayload, JWTVerifyResult } from "jose"
 import { jwtVerify } from "jose"
 import { TokenValidationConfigService } from "./config-service"
-import { BotTokenValidationError, InvalidTokenFormatError, JwtValidationError } from "./errors"
+import { BotTokenValidationError, ConfigError, InvalidTokenFormatError, JwtValidationError } from "./errors"
 import { JwksService } from "./jwks-service"
 import type { AuthenticatedClient, BotClient, BotTokenValidationResponse, UserClient } from "./types"
 
@@ -46,9 +46,20 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 			 * Validate a WorkOS JWT token.
 			 * Verifies the signature against WorkOS JWKS and extracts user identity.
 			 */
-			const validateJwt = (token: string): Effect.Effect<UserClient, JwtValidationError> =>
+			const validateJwt = (
+				token: string,
+			): Effect.Effect<UserClient, JwtValidationError | ConfigError> =>
 				Effect.gen(function* () {
-					const jwks = jwksService.getJwks
+					if (!config.workosClientId) {
+						return yield* Effect.fail(
+							new ConfigError({
+								message:
+									"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
+							}),
+						)
+					}
+
+					const jwks = yield* jwksService.getJwks()
 
 					// WorkOS can issue tokens with either issuer format
 					const issuers = [
@@ -103,8 +114,17 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 			 */
 			const validateBotToken = (
 				token: string,
-			): Effect.Effect<BotClient, BotTokenValidationError, HttpClient.HttpClient> =>
+			): Effect.Effect<BotClient, BotTokenValidationError | ConfigError, HttpClient.HttpClient> =>
 				Effect.gen(function* () {
+					if (!config.backendUrl) {
+						return yield* Effect.fail(
+							new ConfigError({
+								message:
+									"BACKEND_URL or API_BASE_URL environment variable is required for bot token actor authentication",
+							}),
+						)
+					}
+
 					const httpClient = yield* HttpClient.HttpClient
 
 					const request = HttpClientRequest.post(
@@ -173,7 +193,7 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 				token: string,
 			): Effect.Effect<
 				AuthenticatedClient,
-				InvalidTokenFormatError | JwtValidationError | BotTokenValidationError,
+				InvalidTokenFormatError | JwtValidationError | BotTokenValidationError | ConfigError,
 				HttpClient.HttpClient
 			> => {
 				if (isBotToken(token)) {

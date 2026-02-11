@@ -8,74 +8,9 @@
  */
 
 import { createActorsClient, type ActorsClient as RivetActorsClient } from "@hazel/actors/client"
-import type { MessageActorState } from "@hazel/actors"
 import { Effect } from "effect"
 
-/**
- * Raw message actor type from RivetKit client.
- * Note: When using @rivetkit/effect's Action.effect wrapper, the client types
- * may double-wrap return values in Promise. Use MessageActor for the corrected type.
- */
-type RawMessageActor = ReturnType<RivetActorsClient["message"]["getOrCreate"]>
-
-/**
- * Type for the message actor instance with corrected method signatures.
- *
- * The @rivetkit/effect package's Action.effect wrapper makes actions return Promise<T>,
- * but the rivetkit client type system also wraps action returns in Promise, resulting
- * in Promise<Promise<T>>. This interface provides the correct types where methods
- * return Promise<T> directly.
- */
-export interface MessageActor extends Omit<RawMessageActor, keyof MessageActorActions> {
-	// Actions that return string (step IDs)
-	startThinking: () => Promise<string>
-	startToolCall: (name: string, input: Record<string, unknown>) => Promise<string>
-	addStep: (step: {
-		type: "thinking" | "tool_call" | "tool_result" | "text" | "error"
-		content?: string
-		toolName?: string
-		toolInput?: Record<string, unknown>
-		toolOutput?: unknown
-		toolError?: string
-		startedAt?: number
-		completedAt?: number
-	}) => Promise<string>
-
-	// Actions that return void
-	appendText: (text: string) => Promise<void>
-	setText: (text: string) => Promise<void>
-	setProgress: (progress: number) => Promise<void>
-	setData: (data: Record<string, unknown>) => Promise<void>
-	start: (initialData?: Record<string, unknown>) => Promise<void>
-	complete: (finalData?: Record<string, unknown>) => Promise<void>
-	fail: (error: string) => Promise<void>
-	stopStreaming: () => Promise<void>
-	startStep: (stepId: string) => Promise<void>
-	updateStepContent: (stepId: string, content: string, append?: boolean) => Promise<void>
-	completeStep: (stepId: string, result?: { output?: unknown; error?: string }) => Promise<void>
-
-	// Actions that return state
-	getState: () => Promise<MessageActorState>
-}
-
-// Helper type for the overridden actions
-type MessageActorActions = {
-	startThinking: unknown
-	startToolCall: unknown
-	addStep: unknown
-	appendText: unknown
-	setText: unknown
-	setProgress: unknown
-	setData: unknown
-	start: unknown
-	complete: unknown
-	fail: unknown
-	stopStreaming: unknown
-	startStep: unknown
-	updateStepContent: unknown
-	completeStep: unknown
-	getState: unknown
-}
+export type MessageActor = ReturnType<RivetActorsClient["message"]["getOrCreate"]>
 
 /**
  * ActorsClient service interface
