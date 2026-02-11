@@ -47,13 +47,16 @@ export function effect<
 ): (
 	c: ActionContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	...args: Args
-) => Promise<AEff> {
-	return (c, ...args) => {
+) => AEff {
+	return ((c, ...args) => {
 		const gen = genFn(c, ...args)
 		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen)
 		const withContext = provideActorContext(eff, c)
 		return runPromise(withContext, c)
-	}
+	}) as (
+		c: ActionContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
+		...args: Args
+	) => AEff
 }
 
 export function tryEffect<
@@ -79,8 +82,8 @@ export function tryEffect<
 ): (
 	c: ActionContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
 	...args: Args
-) => Promise<AEff> {
-	return (c, ...args) => {
+) => AEff {
+	return ((c, ...args) => {
 		const gen = genFn(c, ...args)
 		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen).pipe(
 			Effect.catchAllCause((cause) =>
@@ -89,7 +92,10 @@ export function tryEffect<
 		)
 		const withContext = provideActorContext(eff, c)
 		return runPromise(withContext, c)
-	}
+	}) as (
+		c: ActionContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
+		...args: Args
+	) => AEff
 }
 
 export { tryEffect as try }
