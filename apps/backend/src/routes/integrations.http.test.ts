@@ -1,7 +1,11 @@
 import { describe, expect, it } from "@effect/vitest"
 import { CraftApiError, CraftNotFoundError, CraftRateLimitError } from "@hazel/integrations/craft"
 import { Effect, Either } from "effect"
-import { mapCraftConnectApiKeyError, validateCraftBaseUrl } from "./integrations.http.ts"
+import {
+	mapCraftConnectApiKeyError,
+	parseOAuthStateParam,
+	validateCraftBaseUrl,
+} from "./integrations.http.ts"
 
 const expectInvalidBaseUrl = async (url: string) => {
 	const result = await Effect.runPromise(validateCraftBaseUrl(url).pipe(Effect.either))
@@ -12,6 +16,49 @@ const expectInvalidBaseUrl = async (url: string) => {
 }
 
 describe("integration connect API key helpers", () => {
+	describe("parseOAuthStateParam", () => {
+		const baseState = {
+			organizationId: "73f6777d-9ce4-4f88-88d4-33591ca59b7b",
+			userId: "673a6dab-30df-40b4-b9df-be14e4b97c21",
+			returnTo: "http://localhost:3000/hazel2/my-settings/linked-accounts",
+			environment: "production" as const,
+			level: "user" as const,
+		}
+
+		it("parses raw JSON state", () => {
+			const parsed = parseOAuthStateParam(JSON.stringify(baseState))
+			expect(parsed.organizationId).toBe(baseState.organizationId)
+			expect(parsed.userId).toBe(baseState.userId)
+			expect(parsed.level).toBe(baseState.level)
+		})
+
+		it("parses URL-encoded JSON state", () => {
+			const parsed = parseOAuthStateParam(encodeURIComponent(JSON.stringify(baseState)))
+			expect(parsed.organizationId).toBe(baseState.organizationId)
+			expect(parsed.userId).toBe(baseState.userId)
+			expect(parsed.level).toBe(baseState.level)
+		})
+
+		it("parses double URL-encoded JSON state (legacy)", () => {
+			const parsed = parseOAuthStateParam(encodeURIComponent(encodeURIComponent(JSON.stringify(baseState))))
+			expect(parsed.organizationId).toBe(baseState.organizationId)
+			expect(parsed.userId).toBe(baseState.userId)
+			expect(parsed.level).toBe(baseState.level)
+		})
+
+		it("defaults level to organization when missing", () => {
+			const parsed = parseOAuthStateParam(
+				JSON.stringify({
+					organizationId: baseState.organizationId,
+					userId: baseState.userId,
+					returnTo: baseState.returnTo,
+					environment: baseState.environment,
+				}),
+			)
+			expect(parsed.level).toBe("organization")
+		})
+	})
+
 	describe("validateCraftBaseUrl", () => {
 		it("accepts and normalizes a valid Craft connect URL", async () => {
 			const result = await Effect.runPromise(

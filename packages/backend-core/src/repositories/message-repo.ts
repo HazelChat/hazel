@@ -5,6 +5,7 @@ import {
 	desc,
 	eq,
 	gt,
+	inArray,
 	isNull,
 	lt,
 	ModelRepository,
@@ -12,7 +13,7 @@ import {
 	type TransactionClient,
 } from "@hazel/db"
 import { policyRequire } from "@hazel/domain"
-import type { ChannelId, MessageId } from "@hazel/schema"
+import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 
@@ -126,10 +127,93 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 				)(params, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+		/**
+		 * Reassign message authors for external chat-synced messages scoped to a provider + org.
+		 * Used when a user links/unlinks their external account and historical messages need re-attribution.
+		 */
+		const reassignExternalSyncedAuthors = (
+			params: {
+				organizationId: OrganizationId
+				provider: string
+				fromAuthorId: UserId
+				toAuthorId: UserId
+			},
+			tx?: TxFn,
+		) =>
+			db.makeQuery(
+				(
+					execute,
+					data: {
+						organizationId: OrganizationId
+						provider: string
+						fromAuthorId: UserId
+						toAuthorId: UserId
+					},
+				) =>
+					execute(async (client) => {
+						if (data.fromAuthorId === data.toAuthorId) {
+							return 0
+						}
+
+						const externalLinkedMessageIds = client
+							.select({
+								hazelMessageId: schema.chatSyncMessageLinksTable.hazelMessageId,
+							})
+							.from(schema.chatSyncMessageLinksTable)
+							.innerJoin(
+								schema.chatSyncChannelLinksTable,
+								and(
+									eq(
+										schema.chatSyncChannelLinksTable.id,
+										schema.chatSyncMessageLinksTable.channelLinkId,
+									),
+									isNull(schema.chatSyncChannelLinksTable.deletedAt),
+								),
+							)
+							.innerJoin(
+								schema.chatSyncConnectionsTable,
+								and(
+									eq(
+										schema.chatSyncConnectionsTable.id,
+										schema.chatSyncChannelLinksTable.syncConnectionId,
+									),
+									isNull(schema.chatSyncConnectionsTable.deletedAt),
+								),
+							)
+							.where(
+								and(
+									eq(schema.chatSyncMessageLinksTable.source, "external"),
+									isNull(schema.chatSyncMessageLinksTable.deletedAt),
+									eq(schema.chatSyncConnectionsTable.organizationId, data.organizationId),
+									eq(schema.chatSyncConnectionsTable.provider, data.provider),
+								),
+							)
+
+						const updatedMessages = await client
+							.update(schema.messagesTable)
+							.set({
+								authorId: data.toAuthorId,
+								updatedAt: new Date(),
+							})
+							.where(
+								and(
+									eq(schema.messagesTable.authorId, data.fromAuthorId),
+									isNull(schema.messagesTable.deletedAt),
+									inArray(schema.messagesTable.id, externalLinkedMessageIds),
+								),
+							)
+							.returning({ id: schema.messagesTable.id })
+
+						return updatedMessages.length
+					}),
+				policyRequire("Message", "update"),
+			)(params, tx)
+
 		return {
 			...baseRepo,
 			listByChannel,
 			findByIdForCursor,
+			reassignExternalSyncedAuthors,
 		}
 	}),
 }) {}

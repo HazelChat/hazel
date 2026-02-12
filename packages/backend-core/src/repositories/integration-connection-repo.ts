@@ -97,6 +97,45 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					)({ organizationId, userId, provider }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+			// Find user-level connection for a specific provider, including soft-deleted rows.
+			// Used by upsert to reactivate previously disconnected links.
+			const findUserConnectionIncludingDeleted = (
+				organizationId: OrganizationId,
+				userId: UserId,
+				provider: IntegrationConnection.IntegrationProvider,
+				tx?: TxFn,
+			) =>
+				db
+					.makeQuery(
+						(
+							execute,
+							data: {
+								organizationId: OrganizationId
+								userId: UserId
+								provider: IntegrationConnection.IntegrationProvider
+							},
+						) =>
+							execute((client) =>
+								client
+									.select()
+									.from(schema.integrationConnectionsTable)
+									.where(
+										and(
+											eq(
+												schema.integrationConnectionsTable.organizationId,
+												data.organizationId,
+											),
+											eq(schema.integrationConnectionsTable.userId, data.userId),
+											eq(schema.integrationConnectionsTable.provider, data.provider),
+											eq(schema.integrationConnectionsTable.level, "user"),
+										),
+									)
+									.limit(1),
+							),
+						policyRequire("IntegrationConnection", "select"),
+					)({ organizationId, userId, provider }, tx)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 			// Find active user-level connection by external account ID.
 			const findActiveUserByExternalAccountId = (
 				organizationId: OrganizationId,
@@ -328,7 +367,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 						)
 					}
 
-					const existing = yield* findUserConnection(
+					const existing = yield* findUserConnectionIncludingDeleted(
 						insertData.organizationId,
 						insertData.userId,
 						insertData.provider,
