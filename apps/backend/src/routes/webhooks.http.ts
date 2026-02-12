@@ -144,51 +144,100 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							yield* Effect.logDebug("Processing Sequin event", {
 								action: event.action,
 								tableName: event.metadata.table_name,
-								messageId: event.record.id,
+								recordId: event.record.id,
 								channelId: event.record.channelId,
 							})
 
 							// Drive Hazel -> Discord sync from Sequin events.
-							if (
-								event.metadata.table_name === "messages" &&
-								event.record.authorId !== integrationBotUserId
-							) {
+							if (event.metadata.table_name === "messages" && "authorId" in event.record) {
+								if (event.record.authorId === integrationBotUserId) {
+									yield* Effect.logDebug("Skipping Sequin message event from integration bot", {
+										tableName: event.metadata.table_name,
+										messageId: event.record.id,
+										channelId: event.record.channelId,
+									})
+								} else {
 								const dedupeKey = `hazel:sequin:${event.metadata.table_name}:${event.action}:${event.record.id}:${event.metadata.idempotency_key}`
 								const isSoftDeleteUpdate =
 									event.action === "update" && event.record.deletedAt !== null
 
-								yield* (
-									event.action === "insert"
-										? discordSyncWorker.syncHazelMessageCreateToAllConnections(
-												event.record.id,
-												dedupeKey,
-											)
-										: event.action === "delete" || isSoftDeleteUpdate
-											? discordSyncWorker.syncHazelMessageDeleteToAllConnections(
+									yield* (
+										event.action === "insert"
+											? discordSyncWorker.syncHazelMessageCreateToAllConnections(
 													event.record.id,
 													dedupeKey,
 												)
-											: discordSyncWorker.syncHazelMessageUpdateToAllConnections(
+											: event.action === "delete" || isSoftDeleteUpdate
+												? discordSyncWorker.syncHazelMessageDeleteToAllConnections(
+														event.record.id,
+														dedupeKey,
+													)
+												: discordSyncWorker.syncHazelMessageUpdateToAllConnections(
+														event.record.id,
+														dedupeKey,
+													)
+									).pipe(
+										Effect.catchAll((error) =>
+											Effect.logWarning("Failed to sync Sequin message event to Discord", {
+												action: event.action,
+												messageId: event.record.id,
+												channelId: event.record.channelId,
+												error: String(error),
+											}),
+										),
+									)
+								}
+							}
+
+							if (event.metadata.table_name === "message_reactions" && "userId" in event.record) {
+								if (event.record.userId === integrationBotUserId) {
+									yield* Effect.logDebug("Skipping Sequin reaction event from integration bot", {
+										tableName: event.metadata.table_name,
+										reactionId: event.record.id,
+										channelId: event.record.channelId,
+									})
+								} else {
+									const dedupeKey = `hazel:sequin:${event.metadata.table_name}:${event.action}:${event.record.id}:${event.metadata.idempotency_key}`
+
+									yield* (
+										event.action === "insert"
+											? discordSyncWorker.syncHazelReactionCreateToAllConnections(
 													event.record.id,
 													dedupeKey,
 												)
-								).pipe(
-									Effect.catchAll((error) =>
-										Effect.logWarning("Failed to sync Sequin message event to Discord", {
-											action: event.action,
-											messageId: event.record.id,
-											channelId: event.record.channelId,
-											error: String(error),
-										}),
-									),
-								)
+											: event.action === "delete"
+												? discordSyncWorker.syncHazelReactionDeleteToAllConnections(
+														{
+															hazelChannelId: event.record.channelId,
+															hazelMessageId: event.record.messageId,
+															emoji: event.record.emoji,
+															userId: event.record.userId,
+														},
+														dedupeKey,
+													)
+												: Effect.succeed({
+														synced: 0,
+														failed: 0,
+												  })
+									).pipe(
+										Effect.catchAll((error) =>
+											Effect.logWarning("Failed to sync Sequin reaction event to Discord", {
+												action: event.action,
+												reactionId: event.record.id,
+												channelId: event.record.channelId,
+												error: String(error),
+											}),
+										),
+									)
+								}
 							}
 
 							// Notification and thread-naming workflows are insert-only.
-							if (event.action !== "insert") {
+							if (event.metadata.table_name !== "messages" || event.action !== "insert") {
 								yield* Effect.logDebug("Skipping non-insert workflow actions", {
 									action: event.action,
-									messageId: event.record.id,
+									tableName: event.metadata.table_name,
+									recordId: event.record.id,
 								})
 								return
 							}

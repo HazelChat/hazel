@@ -24,7 +24,6 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
-import { DiscordSyncWorker } from "../../services/chat-sync/discord-sync-worker"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 /**
@@ -90,7 +89,6 @@ const createBotUserContext = (bot: { userId: typeof import("@hazel/schema").User
 export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messages", (handlers) =>
 	Effect.gen(function* () {
 		const db = yield* Database.Database
-		const discordSyncWorker = yield* DiscordSyncWorker
 
 		return (
 			handlers
@@ -405,41 +403,6 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("MessageReaction", "create"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
-
-						if (result.wasCreated && result.data) {
-							yield* discordSyncWorker
-								.syncHazelReactionCreateToAllConnections(
-									result.data.id,
-									`hazel:api-v1:reaction:create:${result.data.id}:${result.transactionId}`,
-								)
-								.pipe(
-									Effect.catchAll((error) =>
-										Effect.logWarning("Failed to sync reaction create to Discord", {
-											reactionId: result.data.id,
-											error: String(error),
-										}),
-									),
-								)
-						} else if (result.deletedSyncPayload) {
-							yield* discordSyncWorker
-								.syncHazelReactionDeleteToAllConnections(
-									{
-										hazelChannelId: result.deletedSyncPayload.hazelChannelId,
-										hazelMessageId: result.deletedSyncPayload.hazelMessageId,
-										emoji: result.deletedSyncPayload.emoji,
-										userId: result.deletedSyncPayload.userId,
-									},
-									`hazel:api-v1:reaction:delete:${result.deletedSyncPayload.reactionId}:${result.transactionId}`,
-								)
-								.pipe(
-									Effect.catchAll((error) =>
-										Effect.logWarning("Failed to sync reaction delete to Discord", {
-											reactionId: result.deletedSyncPayload.reactionId,
-											error: String(error),
-										}),
-									),
-								)
-						}
 
 						return new ToggleReactionResponse({
 							wasCreated: result.wasCreated,

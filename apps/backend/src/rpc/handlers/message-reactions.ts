@@ -6,12 +6,10 @@ import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
-import { DiscordSyncWorker } from "../../services/chat-sync/discord-sync-worker"
 
 export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
-		const discordSyncWorker = yield* DiscordSyncWorker
 
 		return {
 			"messageReaction.toggle": (payload) =>
@@ -72,41 +70,6 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 						)
 						.pipe(withRemapDbErrors("MessageReaction", "create"))
 
-					if (txResult.wasCreated && txResult.data) {
-						yield* discordSyncWorker
-							.syncHazelReactionCreateToAllConnections(
-								txResult.data.id,
-								`hazel:rpc:reaction:create:${txResult.data.id}:${txResult.transactionId}`,
-							)
-							.pipe(
-								Effect.catchAll((error) =>
-									Effect.logWarning("Failed to sync reaction create to Discord", {
-										reactionId: txResult.data?.id,
-										error: String(error),
-									}),
-								),
-							)
-					} else if (txResult.deletedSyncPayload) {
-						yield* discordSyncWorker
-							.syncHazelReactionDeleteToAllConnections(
-								{
-									hazelChannelId: txResult.deletedSyncPayload.hazelChannelId,
-									hazelMessageId: txResult.deletedSyncPayload.hazelMessageId,
-									emoji: txResult.deletedSyncPayload.emoji,
-									userId: txResult.deletedSyncPayload.userId,
-								},
-								`hazel:rpc:reaction:delete:${txResult.deletedSyncPayload.reactionId}:${txResult.transactionId}`,
-							)
-							.pipe(
-								Effect.catchAll((error) =>
-									Effect.logWarning("Failed to sync reaction delete to Discord", {
-										reactionId: txResult.deletedSyncPayload?.reactionId,
-										error: String(error),
-									}),
-								),
-							)
-					}
-
 					return {
 						wasCreated: txResult.wasCreated,
 						data: txResult.data,
@@ -138,20 +101,6 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("MessageReaction", "create"))
-
-					yield* discordSyncWorker
-						.syncHazelReactionCreateToAllConnections(
-							result.data.id,
-							`hazel:rpc:reaction:create:${result.data.id}:${result.transactionId}`,
-						)
-						.pipe(
-							Effect.catchAll((error) =>
-								Effect.logWarning("Failed to sync reaction create to Discord", {
-									reactionId: result.data.id,
-									error: String(error),
-								}),
-							),
-						)
 
 					return result
 				}),
@@ -209,27 +158,6 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("MessageReaction", "delete"))
-
-					if (txResult.deletedSyncPayload) {
-						yield* discordSyncWorker
-							.syncHazelReactionDeleteToAllConnections(
-								{
-									hazelChannelId: txResult.deletedSyncPayload.hazelChannelId,
-									hazelMessageId: txResult.deletedSyncPayload.hazelMessageId,
-									emoji: txResult.deletedSyncPayload.emoji,
-									userId: txResult.deletedSyncPayload.userId,
-								},
-								`hazel:rpc:reaction:delete:${id}:${txResult.transactionId}`,
-							)
-							.pipe(
-								Effect.catchAll((error) =>
-									Effect.logWarning("Failed to sync reaction delete to Discord", {
-										reactionId: id,
-										error: String(error),
-									}),
-								),
-							)
-					}
 
 					return { transactionId: txResult.transactionId }
 				}),

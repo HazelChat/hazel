@@ -1,5 +1,5 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
-import { ChannelId, MessageId, UserId } from "@hazel/schema"
+import { ChannelId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError, WorkflowInitializationError } from "../errors"
 
@@ -41,6 +41,18 @@ export class SequinMessageRecord extends Schema.Class<SequinMessageRecord>("Sequ
 	deletedAt: Schema.NullOr(Schema.String),
 }) {}
 
+export class SequinMessageReactionRecord extends Schema.Class<SequinMessageReactionRecord>(
+	"SequinMessageReactionRecord",
+)({
+	id: MessageReactionId,
+	messageId: MessageId,
+	channelId: ChannelId,
+	userId: UserId,
+	emoji: Schema.String,
+	createdAt: Schema.String,
+	updatedAt: Schema.NullOr(Schema.String),
+}) {}
+
 export class SequinConsumer extends Schema.Class<SequinConsumer>("SequinConsumer")({
 	id: Schema.String,
 	name: Schema.String,
@@ -74,7 +86,7 @@ export const SequinAction = Schema.Literal("insert", "update", "delete")
 
 // Individual event in the webhook data array
 export class SequinWebhookEvent extends Schema.Class<SequinWebhookEvent>("SequinWebhookEvent")({
-	record: SequinMessageRecord,
+	record: Schema.Union(SequinMessageRecord, SequinMessageReactionRecord),
 	metadata: SequinMetadata,
 	action: SequinAction,
 	changes: Schema.NullOr(Schema.Unknown),
