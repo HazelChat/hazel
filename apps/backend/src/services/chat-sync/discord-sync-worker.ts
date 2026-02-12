@@ -216,8 +216,9 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 		const syncHazelMessageToDiscord = Effect.fn("DiscordSyncWorker.syncHazelMessageToDiscord")(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
+			dedupeKeyOverride?: string,
 		) {
-			const dedupeKey = `hazel:message:create:${hazelMessageId}`
+			const dedupeKey = dedupeKeyOverride ?? `hazel:message:create:${hazelMessageId}`
 			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
 			if (!claimed) {
 				return { status: "deduped" as const }
@@ -371,8 +372,12 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncHazelMessageUpdateToDiscord = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageUpdateToDiscord",
-		)(function* (syncConnectionId: SyncConnectionId, hazelMessageId: MessageId) {
-			const dedupeKey = `hazel:message:update:${hazelMessageId}`
+		)(function* (
+			syncConnectionId: SyncConnectionId,
+			hazelMessageId: MessageId,
+			dedupeKeyOverride?: string,
+		) {
+			const dedupeKey = dedupeKeyOverride ?? `hazel:message:update:${hazelMessageId}`
 			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
 			if (!claimed) {
 				return { status: "deduped" as const }
@@ -437,8 +442,12 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncHazelMessageDeleteToDiscord = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageDeleteToDiscord",
-		)(function* (syncConnectionId: SyncConnectionId, hazelMessageId: MessageId) {
-			const dedupeKey = `hazel:message:delete:${hazelMessageId}`
+		)(function* (
+			syncConnectionId: SyncConnectionId,
+			hazelMessageId: MessageId,
+			dedupeKeyOverride?: string,
+		) {
+			const dedupeKey = dedupeKeyOverride ?? `hazel:message:delete:${hazelMessageId}`
 			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
 			if (!claimed) {
 				return { status: "deduped" as const }
@@ -534,7 +543,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
-		)(function* (hazelMessageId: MessageId) {
+		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
@@ -545,9 +554,11 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 			for (const target of targets) {
 				if (target.direction === "external_to_hazel") continue
-				const result = yield* syncHazelMessageToDiscord(target.syncConnectionId, hazelMessageId).pipe(
-					Effect.either,
-				)
+				const result = yield* syncHazelMessageToDiscord(
+					target.syncConnectionId,
+					hazelMessageId,
+					dedupeKey,
+				).pipe(Effect.either)
 				if (result._tag === "Right") {
 					if (result.right.status === "synced" || result.right.status === "already_linked") {
 						synced++
@@ -567,7 +578,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncHazelMessageUpdateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
-		)(function* (hazelMessageId: MessageId) {
+		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
@@ -581,6 +592,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				const result = yield* syncHazelMessageUpdateToDiscord(
 					target.syncConnectionId,
 					hazelMessageId,
+					dedupeKey,
 				).pipe(Effect.either)
 				if (result._tag === "Right") {
 					if (result.right.status === "updated") {
@@ -601,7 +613,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncHazelMessageDeleteToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
-		)(function* (hazelMessageId: MessageId) {
+		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
@@ -615,6 +627,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				const result = yield* syncHazelMessageDeleteToDiscord(
 					target.syncConnectionId,
 					hazelMessageId,
+					dedupeKey,
 				).pipe(Effect.either)
 				if (result._tag === "Right") {
 					if (result.right.status === "deleted") {

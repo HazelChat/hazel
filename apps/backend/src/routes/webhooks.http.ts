@@ -9,6 +9,7 @@ import { TreeFormatter } from "effect/ParseResult"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
+import { DiscordSyncWorker } from "../services/chat-sync/discord-sync-worker"
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
 	handlers
@@ -106,11 +107,33 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 
 				// Get database for channel type lookup
 				const db = yield* Database.Database
+				const discordSyncWorker = yield* DiscordSyncWorker
 
 				// Get the Cluster API client once for all events
 				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 					baseUrl: clusterUrl,
 				})
+
+				// Resolve Discord integration bot user once to avoid feedback loops.
+				const integrationBotResult = yield* db
+					.execute((client) =>
+						client
+							.select({ id: schema.usersTable.id })
+							.from(schema.usersTable)
+							.where(
+								and(
+									eq(schema.usersTable.externalId, "integration-bot-discord"),
+									isNull(schema.usersTable.deletedAt),
+								),
+							)
+							.limit(1),
+					)
+					.pipe(
+						Effect.catchTags({
+							DatabaseError: () => Effect.succeed([]),
+						}),
+					)
+				const integrationBotUserId = integrationBotResult[0]?.id ?? null
 
 				// Process each event in the batch
 				yield* Effect.forEach(
@@ -125,9 +148,45 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 								channelId: event.record.channelId,
 							})
 
-							// Only process 'insert' actions (new messages)
+							// Drive Hazel -> Discord sync from Sequin events.
+							if (
+								event.metadata.table_name === "messages" &&
+								event.record.authorId !== integrationBotUserId
+							) {
+								const dedupeKey = `hazel:sequin:${event.metadata.table_name}:${event.action}:${event.record.id}:${event.metadata.idempotency_key}`
+								const isSoftDeleteUpdate =
+									event.action === "update" && event.record.deletedAt !== null
+
+								yield* (
+									event.action === "insert"
+										? discordSyncWorker.syncHazelMessageCreateToAllConnections(
+												event.record.id,
+												dedupeKey,
+											)
+										: event.action === "delete" || isSoftDeleteUpdate
+											? discordSyncWorker.syncHazelMessageDeleteToAllConnections(
+													event.record.id,
+													dedupeKey,
+												)
+											: discordSyncWorker.syncHazelMessageUpdateToAllConnections(
+													event.record.id,
+													dedupeKey,
+												)
+								).pipe(
+									Effect.catchAll((error) =>
+										Effect.logWarning("Failed to sync Sequin message event to Discord", {
+											action: event.action,
+											messageId: event.record.id,
+											channelId: event.record.channelId,
+											error: String(error),
+										}),
+									),
+								)
+							}
+
+							// Notification and thread-naming workflows are insert-only.
 							if (event.action !== "insert") {
-								yield* Effect.logDebug("Ignoring non-insert action", {
+								yield* Effect.logDebug("Skipping non-insert workflow actions", {
 									action: event.action,
 									messageId: event.record.id,
 								})
