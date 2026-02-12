@@ -65,34 +65,35 @@ const STATUS_CONFIG: Record<ConnectionStatus, { label: string; badgeClass: strin
 	},
 }
 
+const DIRECTION_PATHS: Record<SyncDirection, string> = {
+	both: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5",
+	hazel_to_external: "M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3",
+	external_to_hazel: "M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18",
+}
+
+function DirectionIcon({
+	direction,
+	...props
+}: { direction: SyncDirection } & React.SVGProps<SVGSVGElement>) {
+	return (
+		<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} {...props}>
+			<path strokeLinecap="round" strokeLinejoin="round" d={DIRECTION_PATHS[direction]} />
+		</svg>
+	)
+}
+
 const DIRECTION_DISPLAY: Record<SyncDirection, { label: string; icon: React.ReactNode }> = {
 	both: {
 		label: "Both",
-		icon: (
-			<svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
-				/>
-			</svg>
-		),
+		icon: <DirectionIcon direction="both" className="size-4" />,
 	},
 	hazel_to_external: {
 		label: "Hazel to Discord",
-		icon: (
-			<svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-				<path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-			</svg>
-		),
+		icon: <DirectionIcon direction="hazel_to_external" className="size-4" />,
 	},
 	external_to_hazel: {
 		label: "Discord to Hazel",
-		icon: (
-			<svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-				<path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-			</svg>
-		),
+		icon: <DirectionIcon direction="external_to_hazel" className="size-4" />,
 	},
 }
 
@@ -758,7 +759,11 @@ function ChannelLinkRow({
 					<MenuContent placement="bottom end">
 						<MenuSubMenu>
 							<MenuItem>
-								{directionDisplay.icon}
+								<DirectionIcon
+									direction={direction}
+									className="size-4"
+									data-slot="icon"
+								/>
 								<MenuLabel>Change direction</MenuLabel>
 							</MenuItem>
 							<MenuContent>
@@ -769,7 +774,11 @@ function ChannelLinkRow({
 										key={dir}
 										onAction={() => onChangeDirection(dir)}
 									>
-										{DIRECTION_DISPLAY[dir].icon}
+										<DirectionIcon
+											direction={dir}
+											className="size-4"
+											data-slot="icon"
+										/>
 										<MenuLabel>
 											{DIRECTION_DISPLAY[dir].label}
 										</MenuLabel>

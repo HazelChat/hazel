@@ -1,10 +1,13 @@
 import { Effect } from "effect"
-import { MessageId, SyncConnectionId } from "@hazel/schema"
+import { ChannelId, MessageId, MessageReactionId, SyncConnectionId, UserId } from "@hazel/schema"
 import {
 	ChatSyncCoreWorker,
 	type ChatSyncIngressMessageCreate,
 	type ChatSyncIngressMessageDelete,
 	type ChatSyncIngressMessageUpdate,
+	type ChatSyncIngressReactionAdd,
+	type ChatSyncIngressReactionRemove,
+	type ChatSyncIngressThreadCreate,
 	DiscordSyncApiError,
 	DiscordSyncChannelLinkNotFoundError,
 	DiscordSyncConfigurationError,
@@ -15,6 +18,9 @@ import {
 export type DiscordIngressMessageCreate = ChatSyncIngressMessageCreate
 export type DiscordIngressMessageUpdate = ChatSyncIngressMessageUpdate
 export type DiscordIngressMessageDelete = ChatSyncIngressMessageDelete
+export type DiscordIngressReactionAdd = ChatSyncIngressReactionAdd
+export type DiscordIngressReactionRemove = ChatSyncIngressReactionRemove
+export type DiscordIngressThreadCreate = ChatSyncIngressThreadCreate
 
 export {
 	DiscordSyncApiError,
@@ -82,6 +88,39 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			)
 		})
 
+		const syncHazelReactionCreateToDiscord = Effect.fn(
+			"DiscordSyncWorker.syncHazelReactionCreateToDiscord",
+		)(function* (
+			syncConnectionId: SyncConnectionId,
+			hazelReactionId: MessageReactionId,
+			dedupeKeyOverride?: string,
+		) {
+			return yield* coreWorker.syncHazelReactionCreateToProvider(
+				syncConnectionId,
+				hazelReactionId,
+				dedupeKeyOverride,
+			)
+		})
+
+		const syncHazelReactionDeleteToDiscord = Effect.fn(
+			"DiscordSyncWorker.syncHazelReactionDeleteToDiscord",
+		)(function* (
+			syncConnectionId: SyncConnectionId,
+			payload: {
+				hazelChannelId: ChannelId
+				hazelMessageId: MessageId
+				emoji: string
+				userId?: UserId
+			},
+			dedupeKeyOverride?: string,
+		) {
+			return yield* coreWorker.syncHazelReactionDeleteToProvider(
+				syncConnectionId,
+				payload,
+				dedupeKeyOverride,
+			)
+		})
+
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
 		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
@@ -112,6 +151,34 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			)
 		})
 
+		const syncHazelReactionCreateToAllConnections = Effect.fn(
+			"DiscordSyncWorker.syncHazelReactionCreateToAllConnections",
+		)(function* (hazelReactionId: MessageReactionId, dedupeKey?: string) {
+			return yield* coreWorker.syncHazelReactionCreateToAllConnections(
+				"discord",
+				hazelReactionId,
+				dedupeKey,
+			)
+		})
+
+		const syncHazelReactionDeleteToAllConnections = Effect.fn(
+			"DiscordSyncWorker.syncHazelReactionDeleteToAllConnections",
+		)(function* (
+			payload: {
+				hazelChannelId: ChannelId
+				hazelMessageId: MessageId
+				emoji: string
+				userId?: UserId
+			},
+			dedupeKey?: string,
+		) {
+			return yield* coreWorker.syncHazelReactionDeleteToAllConnections(
+				"discord",
+				payload,
+				dedupeKey,
+			)
+		})
+
 		const ingestMessageCreate = Effect.fn("DiscordSyncWorker.ingestMessageCreate")(function* (
 			payload: DiscordIngressMessageCreate,
 		) {
@@ -130,18 +197,43 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			return yield* coreWorker.ingestMessageDelete(payload)
 		})
 
+		const ingestReactionAdd = Effect.fn("DiscordSyncWorker.ingestReactionAdd")(function* (
+			payload: DiscordIngressReactionAdd,
+		) {
+			return yield* coreWorker.ingestReactionAdd(payload)
+		})
+
+		const ingestReactionRemove = Effect.fn("DiscordSyncWorker.ingestReactionRemove")(function* (
+			payload: DiscordIngressReactionRemove,
+		) {
+			return yield* coreWorker.ingestReactionRemove(payload)
+		})
+
+		const ingestThreadCreate = Effect.fn("DiscordSyncWorker.ingestThreadCreate")(function* (
+			payload: DiscordIngressThreadCreate,
+		) {
+			return yield* coreWorker.ingestThreadCreate(payload)
+		})
+
 		return {
 			syncConnection,
 			syncAllActiveConnections,
 			syncHazelMessageToDiscord,
 			syncHazelMessageUpdateToDiscord,
 			syncHazelMessageDeleteToDiscord,
+			syncHazelReactionCreateToDiscord,
+			syncHazelReactionDeleteToDiscord,
 			syncHazelMessageCreateToAllConnections,
 			syncHazelMessageUpdateToAllConnections,
 			syncHazelMessageDeleteToAllConnections,
+			syncHazelReactionCreateToAllConnections,
+			syncHazelReactionDeleteToAllConnections,
 			ingestMessageCreate,
 			ingestMessageUpdate,
 			ingestMessageDelete,
+			ingestReactionAdd,
+			ingestReactionRemove,
+			ingestThreadCreate,
 		}
 	}),
 	dependencies: [ChatSyncCoreWorker.Default],

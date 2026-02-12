@@ -230,8 +230,24 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			channelId: string
 			content: string
 			botToken: string
+			replyToMessageId?: string
 		}) {
-			const requestBody = HttpBody.text(JSON.stringify({ content: params.content }), "application/json")
+			const payload: {
+				content: string
+				message_reference?: {
+					message_id: string
+				}
+			} = {
+				content: params.content,
+			}
+
+			if (params.replyToMessageId) {
+				payload.message_reference = {
+					message_id: params.replyToMessageId,
+				}
+			}
+
+			const requestBody = HttpBody.text(JSON.stringify(payload), "application/json")
 			const response = yield* makeBotClient(params.botToken)
 				.post(`${DISCORD_API_BASE_URL}/channels/${params.channelId}/messages`, {
 					body: requestBody,
@@ -294,6 +310,85 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			}
 		})
 
+		const addReaction = Effect.fn("DiscordApiClient.addReaction")(function* (params: {
+			channelId: string
+			messageId: string
+			emoji: string
+			botToken: string
+		}) {
+			const encodedEmoji = encodeURIComponent(params.emoji)
+			const response = yield* makeBotClient(params.botToken)
+				.put(
+					`${DISCORD_API_BASE_URL}/channels/${params.channelId}/messages/${params.messageId}/reactions/${encodedEmoji}/@me`,
+				)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+		})
+
+		const removeReaction = Effect.fn("DiscordApiClient.removeReaction")(function* (params: {
+			channelId: string
+			messageId: string
+			emoji: string
+			botToken: string
+		}) {
+			const encodedEmoji = encodeURIComponent(params.emoji)
+			const response = yield* makeBotClient(params.botToken)
+				.del(
+					`${DISCORD_API_BASE_URL}/channels/${params.channelId}/messages/${params.messageId}/reactions/${encodedEmoji}/@me`,
+				)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+		})
+
+		const createThread = Effect.fn("DiscordApiClient.createThread")(function* (params: {
+			channelId: string
+			messageId: string
+			name: string
+			botToken: string
+		}) {
+			const requestBody = HttpBody.text(
+				JSON.stringify({
+					name: params.name,
+					auto_archive_duration: 1440,
+				}),
+				"application/json",
+			)
+			const response = yield* makeBotClient(params.botToken)
+				.post(
+					`${DISCORD_API_BASE_URL}/channels/${params.channelId}/messages/${params.messageId}/threads`,
+					{
+						body: requestBody,
+						headers: {
+							"Content-Type": "application/json",
+						},
+					},
+				)
+				.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
+
+			if (response.status >= 400) {
+				return yield* handleApiError(response)
+			}
+
+			const body = yield* response.json.pipe(
+				Effect.flatMap(Schema.decodeUnknown(DiscordMessageCreateResponse)),
+				Effect.mapError(
+					(cause) =>
+						new DiscordApiError({
+							message: "Failed to parse Discord create thread response",
+							cause,
+						}),
+				),
+			)
+
+			return body.id
+		})
+
 		return {
 			getAccountInfo,
 			listGuilds,
@@ -301,6 +396,9 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			createMessage,
 			updateMessage,
 			deleteMessage,
+			addReaction,
+			removeReaction,
+			createThread,
 		}
 	}),
 	dependencies: [FetchHttpClient.layer],

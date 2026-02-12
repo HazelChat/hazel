@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { FetchHttpClient } from "@effect/platform"
 import { BunSocket } from "@effect/platform-bun"
 import { ChatSyncChannelLinkRepo } from "@hazel/backend-core"
@@ -25,6 +26,10 @@ interface DiscordMessageCreateEvent {
 	channel_id?: string
 	content?: string
 	author?: DiscordMessageAuthor
+	message_reference?: {
+		message_id?: string
+		channel_id?: string
+	}
 }
 
 interface DiscordMessageUpdateEvent {
@@ -32,11 +37,38 @@ interface DiscordMessageUpdateEvent {
 	channel_id?: string
 	content?: string
 	author?: DiscordMessageAuthor
+	edited_timestamp?: string | null
 }
 
 interface DiscordMessageDeleteEvent {
 	id?: string
 	channel_id?: string
+}
+
+interface DiscordReactionEmoji {
+	id?: string | null
+	name?: string | null
+}
+
+interface DiscordMessageReactionAddEvent {
+	channel_id?: string
+	message_id?: string
+	user_id?: string
+	emoji?: DiscordReactionEmoji
+}
+
+interface DiscordMessageReactionRemoveEvent {
+	channel_id?: string
+	message_id?: string
+	user_id?: string
+	emoji?: DiscordReactionEmoji
+}
+
+interface DiscordThreadCreateEvent {
+	id?: string
+	parent_id?: string
+	name?: string
+	type?: number
 }
 
 const formatDiscordDisplayName = (author?: DiscordMessageAuthor): string => {
@@ -53,6 +85,12 @@ const buildAuthorAvatarUrl = (author?: DiscordMessageAuthor): string | null => {
 	return `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png`
 }
 
+const formatDiscordEmoji = (emoji?: DiscordReactionEmoji): string | null => {
+	if (!emoji?.name) return null
+	if (emoji.id) return `${emoji.name}:${emoji.id}`
+	return emoji.name
+}
+
 export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>()("DiscordGatewayService", {
 	accessors: true,
 	effect: Effect.gen(function* () {
@@ -64,7 +102,8 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 			Effect.orDie,
 		)
 		const intents = yield* Config.number("DISCORD_GATEWAY_INTENTS").pipe(
-			Config.withDefault(33281),
+			// GUILDS + GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS + MESSAGE_CONTENT
+			Config.withDefault(34305),
 			Effect.orDie,
 		)
 		const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
@@ -128,6 +167,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 						externalAuthorId: externalAuthorId ?? undefined,
 						externalAuthorDisplayName,
 						externalAuthorAvatarUrl,
+						externalReplyToMessageId: event.message_reference?.message_id ?? null,
 						externalThreadId: null,
 						dedupeKey: `discord:gateway:create:${event.id}`,
 					})
@@ -147,12 +187,18 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 
 				for (const link of links) {
 					if (link.direction === "hazel_to_external") continue
+					const updateVersion =
+						event.edited_timestamp ??
+						createHash("sha256")
+							.update(`${event.id}:${event.content ?? ""}`)
+							.digest("hex")
+							.slice(0, 16)
 					yield* discordSyncWorker.ingestMessageUpdate({
 						syncConnectionId: link.syncConnectionId,
 						externalChannelId: event.channel_id,
 						externalMessageId: event.id,
 						content: event.content,
-						dedupeKey: `discord:gateway:update:${event.id}`,
+						dedupeKey: `discord:gateway:update:${event.id}:${updateVersion}`,
 					})
 				}
 			},
@@ -173,6 +219,81 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 						externalChannelId: event.channel_id,
 						externalMessageId: event.id,
 						dedupeKey: `discord:gateway:delete:${event.id}`,
+					})
+				}
+			},
+		)
+
+		const ingestMessageReactionAddEvent = Effect.fn(
+			"DiscordGatewayService.ingestMessageReactionAddEvent",
+		)(function* (event: DiscordMessageReactionAddEvent) {
+			if (!event.channel_id || !event.message_id || !event.user_id) return
+			if (yield* isCurrentBotAuthor(event.user_id)) return
+
+			const emoji = formatDiscordEmoji(event.emoji)
+			if (!emoji) return
+
+			const links = yield* channelLinkRepo
+				.findActiveByExternalChannel(event.channel_id)
+				.pipe(withSystemActor)
+
+			for (const link of links) {
+				if (link.direction === "hazel_to_external") continue
+				yield* discordSyncWorker.ingestReactionAdd({
+					syncConnectionId: link.syncConnectionId,
+					externalChannelId: event.channel_id,
+					externalMessageId: event.message_id,
+					externalUserId: event.user_id,
+					emoji,
+					dedupeKey: `discord:gateway:reaction:add:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
+				})
+			}
+		})
+
+		const ingestMessageReactionRemoveEvent = Effect.fn(
+			"DiscordGatewayService.ingestMessageReactionRemoveEvent",
+		)(function* (event: DiscordMessageReactionRemoveEvent) {
+			if (!event.channel_id || !event.message_id || !event.user_id) return
+			if (yield* isCurrentBotAuthor(event.user_id)) return
+
+			const emoji = formatDiscordEmoji(event.emoji)
+			if (!emoji) return
+
+			const links = yield* channelLinkRepo
+				.findActiveByExternalChannel(event.channel_id)
+				.pipe(withSystemActor)
+
+			for (const link of links) {
+				if (link.direction === "hazel_to_external") continue
+				yield* discordSyncWorker.ingestReactionRemove({
+					syncConnectionId: link.syncConnectionId,
+					externalChannelId: event.channel_id,
+					externalMessageId: event.message_id,
+					externalUserId: event.user_id,
+					emoji,
+					dedupeKey: `discord:gateway:reaction:remove:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
+				})
+			}
+		})
+
+		const ingestThreadCreateEvent = Effect.fn("DiscordGatewayService.ingestThreadCreateEvent")(
+			function* (event: DiscordThreadCreateEvent) {
+				if (!event.id || !event.parent_id) return
+				if (event.type !== undefined && event.type !== 11 && event.type !== 12) return
+
+				const links = yield* channelLinkRepo
+					.findActiveByExternalChannel(event.parent_id)
+					.pipe(withSystemActor)
+
+				for (const link of links) {
+					if (link.direction === "hazel_to_external") continue
+					yield* discordSyncWorker.ingestThreadCreate({
+						syncConnectionId: link.syncConnectionId,
+						externalParentChannelId: event.parent_id,
+						externalThreadId: event.id,
+						externalRootMessageId: event.id,
+						name: event.name ?? "Thread",
+						dedupeKey: `discord:gateway:thread:create:${event.id}`,
 					})
 				}
 			},
@@ -224,6 +345,25 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 						gateway.handleDispatch("MESSAGE_DELETE", (event) =>
 							ingestMessageDeleteEvent(event as DiscordMessageDeleteEvent).pipe(
 								Effect.catchAll((error) => onDispatchError("MESSAGE_DELETE", error)),
+							),
+						),
+						gateway.handleDispatch("MESSAGE_REACTION_ADD", (event) =>
+							ingestMessageReactionAddEvent(event as DiscordMessageReactionAddEvent).pipe(
+								Effect.catchAll((error) =>
+									onDispatchError("MESSAGE_REACTION_ADD", error),
+								),
+							),
+						),
+						gateway.handleDispatch("MESSAGE_REACTION_REMOVE", (event) =>
+							ingestMessageReactionRemoveEvent(event as DiscordMessageReactionRemoveEvent).pipe(
+								Effect.catchAll((error) =>
+									onDispatchError("MESSAGE_REACTION_REMOVE", error),
+								),
+							),
+						),
+						gateway.handleDispatch("THREAD_CREATE", (event) =>
+							ingestThreadCreateEvent(event as DiscordThreadCreateEvent).pipe(
+								Effect.catchAll((error) => onDispatchError("THREAD_CREATE", error)),
 							),
 						),
 					],

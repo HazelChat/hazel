@@ -31,6 +31,7 @@ export interface ChatSyncProviderAdapter {
 	readonly createMessage: (params: {
 		externalChannelId: string
 		content: string
+		replyToExternalMessageId?: string
 	}) => Effect.Effect<string, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly updateMessage: (params: {
 		externalChannelId: string
@@ -41,6 +42,21 @@ export interface ChatSyncProviderAdapter {
 		externalChannelId: string
 		externalMessageId: string
 	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+	readonly addReaction: (params: {
+		externalChannelId: string
+		externalMessageId: string
+		emoji: string
+	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+	readonly removeReaction: (params: {
+		externalChannelId: string
+		externalMessageId: string
+		emoji: string
+	}) => Effect.Effect<void, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+	readonly createThread: (params: {
+		externalChannelId: string
+		externalMessageId: string
+		name: string
+	}) => Effect.Effect<string, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 }
 
 export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderRegistry>()(
@@ -78,6 +94,7 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						return yield* Discord.DiscordApiClient.createMessage({
 							channelId: params.externalChannelId,
 							content: params.content,
+							replyToMessageId: params.replyToExternalMessageId,
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
@@ -119,6 +136,69 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						yield* Discord.DiscordApiClient.deleteMessage({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
+							botToken: token,
+						}).pipe(
+							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.mapError(
+								(error) =>
+									new ChatSyncProviderApiError({
+										provider: "discord",
+										message: error.message,
+										status: getStatusCode(error),
+										detail: String(error),
+									}),
+							),
+						)
+					}),
+				addReaction: (params) =>
+					Effect.gen(function* () {
+						const token = yield* getDiscordToken()
+						yield* Discord.DiscordApiClient.addReaction({
+							channelId: params.externalChannelId,
+							messageId: params.externalMessageId,
+							emoji: params.emoji,
+							botToken: token,
+						}).pipe(
+							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.mapError(
+								(error) =>
+									new ChatSyncProviderApiError({
+										provider: "discord",
+										message: error.message,
+										status: getStatusCode(error),
+										detail: String(error),
+									}),
+							),
+						)
+					}),
+				removeReaction: (params) =>
+					Effect.gen(function* () {
+						const token = yield* getDiscordToken()
+						yield* Discord.DiscordApiClient.removeReaction({
+							channelId: params.externalChannelId,
+							messageId: params.externalMessageId,
+							emoji: params.emoji,
+							botToken: token,
+						}).pipe(
+							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.mapError(
+								(error) =>
+									new ChatSyncProviderApiError({
+										provider: "discord",
+										message: error.message,
+										status: getStatusCode(error),
+										detail: String(error),
+									}),
+							),
+						)
+					}),
+				createThread: (params) =>
+					Effect.gen(function* () {
+						const token = yield* getDiscordToken()
+						return yield* Discord.DiscordApiClient.createThread({
+							channelId: params.externalChannelId,
+							messageId: params.externalMessageId,
+							name: params.name,
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),

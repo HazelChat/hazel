@@ -1,10 +1,12 @@
 import { describe, expect, it } from "@effect/vitest"
 import {
+	ChannelRepo,
 	ChatSyncChannelLinkRepo,
 	ChatSyncConnectionRepo,
 	ChatSyncEventReceiptRepo,
 	ChatSyncMessageLinkRepo,
 	IntegrationConnectionRepo,
+	MessageReactionRepo,
 	MessageRepo,
 	OrganizationMemberRepo,
 	UserRepo,
@@ -19,6 +21,7 @@ import type {
 	UserId,
 } from "@hazel/schema"
 import { Effect, Layer, Option } from "effect"
+import { ChannelAccessSyncService } from "../channel-access-sync.ts"
 import { IntegrationBotService } from "../integrations/integration-bot-service.ts"
 import { ChatSyncCoreWorker } from "./chat-sync-core-worker.ts"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry.ts"
@@ -44,10 +47,13 @@ const makeWorkerLayer = (deps: {
 	messageLinkRepo: ChatSyncMessageLinkRepo
 	eventReceiptRepo: ChatSyncEventReceiptRepo
 	messageRepo: MessageRepo
+	messageReactionRepo: MessageReactionRepo
+	channelRepo: ChannelRepo
 	integrationConnectionRepo: IntegrationConnectionRepo
 	userRepo: UserRepo
 	organizationMemberRepo: OrganizationMemberRepo
 	integrationBotService: IntegrationBotService
+	channelAccessSyncService: ChannelAccessSyncService
 }) =>
 	DiscordSyncWorker.DefaultWithoutDependencies.pipe(
 		Layer.provide(ChatSyncCoreWorker.DefaultWithoutDependencies),
@@ -65,10 +71,13 @@ const makeWorkerLayer = (deps: {
 		Layer.provide(Layer.succeed(ChatSyncMessageLinkRepo, deps.messageLinkRepo)),
 		Layer.provide(Layer.succeed(ChatSyncEventReceiptRepo, deps.eventReceiptRepo)),
 		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),
+		Layer.provide(Layer.succeed(MessageReactionRepo, deps.messageReactionRepo)),
+		Layer.provide(Layer.succeed(ChannelRepo, deps.channelRepo)),
 		Layer.provide(Layer.succeed(IntegrationConnectionRepo, deps.integrationConnectionRepo)),
 		Layer.provide(Layer.succeed(UserRepo, deps.userRepo)),
 		Layer.provide(Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo)),
 		Layer.provide(Layer.succeed(IntegrationBotService, deps.integrationBotService)),
+		Layer.provide(Layer.succeed(ChannelAccessSyncService, deps.channelAccessSyncService)),
 	)
 
 describe("DiscordSyncWorker dedupe claim", () => {
@@ -108,6 +117,8 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					return Effect.succeed([])
 				},
 			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
 			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
 			userRepo: {} as unknown as UserRepo,
 			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
@@ -119,6 +130,7 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					})
 				},
 			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
 		})
 
 		const result = await Effect.runPromise(
@@ -184,6 +196,8 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					return Effect.succeed([])
 				},
 			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
 			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
 			userRepo: {} as unknown as UserRepo,
 			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
@@ -195,6 +209,7 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					})
 				},
 			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
 		})
 
 		const result = await Effect.runPromise(
