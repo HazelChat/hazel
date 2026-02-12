@@ -91,6 +91,8 @@ const formatDiscordEmoji = (emoji?: DiscordReactionEmoji): string | null => {
 	return emoji.name
 }
 
+const DISCORD_REQUIRED_GATEWAY_INTENTS = 34305
+
 export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>()("DiscordGatewayService", {
 	accessors: true,
 	effect: Effect.gen(function* () {
@@ -101,11 +103,18 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 			Config.withDefault(true),
 			Effect.orDie,
 		)
-		const intents = yield* Config.number("DISCORD_GATEWAY_INTENTS").pipe(
+		const configuredIntents = yield* Config.number("DISCORD_GATEWAY_INTENTS").pipe(
 			// GUILDS + GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS + MESSAGE_CONTENT
-			Config.withDefault(34305),
+			Config.withDefault(DISCORD_REQUIRED_GATEWAY_INTENTS),
 			Effect.orDie,
 		)
+		const intents = configuredIntents | DISCORD_REQUIRED_GATEWAY_INTENTS
+		if (intents !== configuredIntents) {
+			yield* Effect.logWarning("DISCORD_GATEWAY_INTENTS missing required bits; forcing minimum intents", {
+				configuredIntents,
+				effectiveIntents: intents,
+			})
+		}
 		const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
 
 		if (!gatewayEnabled) {
