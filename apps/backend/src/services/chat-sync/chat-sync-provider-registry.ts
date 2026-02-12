@@ -1,5 +1,5 @@
 import { Discord } from "@hazel/integrations"
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { Config, Effect, Option, Redacted, Schema, Schedule } from "effect"
 
 export class ChatSyncProviderNotSupportedError extends Schema.TaggedError<ChatSyncProviderNotSupportedError>()(
 	"ChatSyncProviderNotSupportedError",
@@ -59,6 +59,20 @@ export interface ChatSyncProviderAdapter {
 	}) => Effect.Effect<string, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 }
 
+const DISCORD_MAX_MESSAGE_LENGTH = 2000
+const DISCORD_SNOWFLAKE_MIN_LENGTH = 17
+const DISCORD_SNOWFLAKE_MAX_LENGTH = 30
+const DISCORD_THREAD_NAME_MAX_LENGTH = 100
+const DISCORD_SYNC_RETRY_SCHEDULE = Schedule.intersect(
+	Schedule.exponential("250 millis").pipe(Schedule.jittered),
+	Schedule.recurs(3),
+)
+
+const isDiscordSnowflake = (value: string): boolean =>
+	/^\d+$/.test(value) &&
+	value.length >= DISCORD_SNOWFLAKE_MIN_LENGTH &&
+	value.length <= DISCORD_SNOWFLAKE_MAX_LENGTH
+
 export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderRegistry>()(
 	"ChatSyncProviderRegistry",
 	{
@@ -86,11 +100,88 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				return typeof status === "number" ? status : undefined
 			}
 
+			const isRetryableDiscordError = (error: unknown): boolean => {
+				const status = getStatusCode(error)
+				if (status === undefined) {
+					return false
+				}
+				return status === 429 || status === 408 || (status >= 500 && status < 600)
+			}
+
+			const validateDiscordId = (value: string, field: string) => {
+				if (!isDiscordSnowflake(value)) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: `${field} must be a valid Discord snowflake`,
+						}),
+					)
+				}
+				return Effect.void
+			}
+
+			const validateDiscordMessage = (content: string) => {
+				if (content.length === 0) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: "Message content cannot be empty",
+						}),
+					)
+				}
+				if (content.length > DISCORD_MAX_MESSAGE_LENGTH) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: `Message content exceeds Discord limit of ${DISCORD_MAX_MESSAGE_LENGTH} characters`,
+						}),
+					)
+				}
+				return Effect.void
+			}
+
+			const validateDiscordEmoji = (emoji: string) => {
+				if (!emoji.trim()) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: "Reaction emoji cannot be empty",
+						}),
+					)
+				}
+				return Effect.void
+			}
+
+			const validateDiscordThreadName = (name: string) => {
+				if (!name.trim()) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: "Thread name cannot be empty",
+						}),
+					)
+				}
+				if (name.length > DISCORD_THREAD_NAME_MAX_LENGTH) {
+					return Effect.fail(
+						new ChatSyncProviderConfigurationError({
+							provider: "discord",
+							message: "Thread name is too long",
+						}),
+					)
+				}
+				return Effect.void
+			}
+
 			const discordAdapter: ChatSyncProviderAdapter = {
 				provider: "discord",
 				createMessage: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordMessage(params.content)
+						if (params.replyToExternalMessageId) {
+							yield* validateDiscordId(params.replyToExternalMessageId, "replyToExternalMessageId")
+						}
 						return yield* Discord.DiscordApiClient.createMessage({
 							channelId: params.externalChannelId,
 							content: params.content,
@@ -98,13 +189,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)
@@ -112,6 +207,9 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				updateMessage: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
+						yield* validateDiscordMessage(params.content)
 						yield* Discord.DiscordApiClient.updateMessage({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
@@ -119,13 +217,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)
@@ -133,19 +235,25 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				deleteMessage: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 						yield* Discord.DiscordApiClient.deleteMessage({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)
@@ -153,6 +261,9 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				addReaction: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
+						yield* validateDiscordEmoji(params.emoji)
 						yield* Discord.DiscordApiClient.addReaction({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
@@ -160,13 +271,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)
@@ -174,6 +289,9 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				removeReaction: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
+						yield* validateDiscordEmoji(params.emoji)
 						yield* Discord.DiscordApiClient.removeReaction({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
@@ -181,13 +299,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)
@@ -195,6 +317,9 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				createThread: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
+						yield* validateDiscordThreadName(params.name)
 						return yield* Discord.DiscordApiClient.createThread({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
@@ -202,13 +327,17 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							botToken: token,
 						}).pipe(
 							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
 							Effect.mapError(
 								(error) =>
 									new ChatSyncProviderApiError({
 										provider: "discord",
 										message: error.message,
 										status: getStatusCode(error),
-										detail: String(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
 									}),
 							),
 						)

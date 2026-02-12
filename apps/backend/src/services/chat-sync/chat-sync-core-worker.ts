@@ -28,6 +28,9 @@ import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
 
+export const DEFAULT_MAX_MESSAGES_PER_CHANNEL = 50
+export const DEFAULT_CHAT_SYNC_CONCURRENCY = 5
+
 export class DiscordSyncConfigurationError extends Schema.TaggedError<DiscordSyncConfigurationError>()(
 	"DiscordSyncConfigurationError",
 	{
@@ -567,7 +570,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
 			syncConnectionId: SyncConnectionId,
-			maxMessagesPerChannel = 50,
+			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
 			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
 			if (Option.isNone(connectionOption)) {
@@ -1201,7 +1204,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
 			provider: string,
-			maxMessagesPerChannel = 50,
+			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
 			const connections = yield* connectionRepo.findActiveByProvider(provider).pipe(withSystemActor)
 			return yield* Effect.forEach(
@@ -1213,7 +1216,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							...summary,
 						})),
 					),
-				{ concurrency: 5 },
+				{ concurrency: DEFAULT_CHAT_SYNC_CONCURRENCY },
 			)
 		})
 

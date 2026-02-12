@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { ChannelId, MessageId, MessageReactionId, SyncConnectionId, UserId } from "@hazel/schema"
 import {
+	DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 	ChatSyncCoreWorker,
 	type ChatSyncIngressMessageCreate,
 	type ChatSyncIngressMessageDelete,
@@ -37,13 +38,13 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
 			syncConnectionId: SyncConnectionId,
-			maxMessagesPerChannel = 50,
+			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
 			return yield* coreWorker.syncConnection(syncConnectionId, maxMessagesPerChannel)
 		})
 
 		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
-			maxMessagesPerChannel = 50,
+			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
 			return yield* coreWorker.syncAllActiveConnections("discord", maxMessagesPerChannel)
 		})
