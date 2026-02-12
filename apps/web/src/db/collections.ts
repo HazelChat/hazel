@@ -6,6 +6,9 @@ import {
 	Channel,
 	ChannelMember,
 	ChannelSection,
+	ChatSyncChannelLink,
+	ChatSyncConnection,
+	ChatSyncMessageLink,
 	CustomEmoji,
 	IntegrationConnection,
 	Invitation,
@@ -311,6 +314,60 @@ export const integrationConnectionCollection = createEffectCollection({
 		fetchClient: electricFetchClient,
 	},
 	schema: IntegrationConnection.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const chatSyncConnectionCollection = createEffectCollection({
+	id: "chat_sync_connections",
+	runtime: runtime,
+	backoff: false,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "chat_sync_connections",
+		},
+		parser: {
+			timestamptz: (date) => new Date(date),
+		},
+		fetchClient: electricFetchClient,
+	},
+	schema: ChatSyncConnection.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const chatSyncChannelLinkCollection = createEffectCollection({
+	id: "chat_sync_channel_links",
+	runtime: runtime,
+	backoff: false,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "chat_sync_channel_links",
+		},
+		parser: {
+			timestamptz: (date) => new Date(date),
+		},
+		fetchClient: electricFetchClient,
+	},
+	schema: ChatSyncChannelLink.Model.json,
+	getKey: (item) => item.id,
+})
+
+export const chatSyncMessageLinkCollection = createEffectCollection({
+	id: "chat_sync_message_links",
+	runtime: runtime,
+	backoff: false,
+	shapeOptions: {
+		url: electricUrl,
+		params: {
+			table: "chat_sync_message_links",
+		},
+		parser: {
+			timestamptz: (date) => new Date(date),
+		},
+		fetchClient: electricFetchClient,
+	},
+	schema: ChatSyncMessageLink.Model.json,
 	getKey: (item) => item.id,
 })
 

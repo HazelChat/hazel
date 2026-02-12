@@ -1,7 +1,10 @@
 import { Atom, Result } from "@effect-atom/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
-import { count, eq } from "@tanstack/db"
+import { and, count, eq, isNull } from "@tanstack/db"
 import {
+	chatSyncChannelLinkCollection,
+	chatSyncConnectionCollection,
+	chatSyncMessageLinkCollection,
 	messageCollection,
 	messageReactionCollection,
 	userCollection,
@@ -88,6 +91,34 @@ export const messageWithAuthorAtomFamily = Atom.family((messageId: MessageId) =>
 			.findOne()
 			.select(({ message, author }) => ({ ...message, author: author }))
 			.orderBy((q) => q.message.createdAt, "desc"),
+	),
+)
+
+/**
+ * Atom family to check whether a Hazel message originated from Discord external->Hazel sync.
+ */
+export const isDiscordSyncedMessageAtomFamily = Atom.family((messageId: MessageId) =>
+	makeQuery((q) =>
+		q
+			.from({ messageLink: chatSyncMessageLinkCollection })
+			.innerJoin({ channelLink: chatSyncChannelLinkCollection }, ({ messageLink, channelLink }) =>
+				eq(messageLink.channelLinkId, channelLink.id),
+			)
+			.innerJoin({ connection: chatSyncConnectionCollection }, ({ channelLink, connection }) =>
+				eq(channelLink.syncConnectionId, connection.id),
+			)
+			.where(({ messageLink, channelLink, connection }) =>
+				and(
+					eq(messageLink.hazelMessageId, messageId),
+					eq(messageLink.source, "external"),
+					eq(connection.provider, "discord"),
+					isNull(messageLink.deletedAt),
+					isNull(channelLink.deletedAt),
+					isNull(connection.deletedAt),
+				),
+			)
+			.orderBy(({ messageLink }) => messageLink.createdAt, "desc")
+			.limit(1),
 	),
 )
 

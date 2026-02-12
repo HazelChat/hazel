@@ -118,6 +118,7 @@ export const chatSyncMessageLinksTable = pgTable(
 		channelLinkId: uuid().notNull().$type<SyncChannelLinkId>(),
 		hazelMessageId: uuid().notNull().$type<MessageId>(),
 		externalMessageId: varchar({ length: 255 }).notNull(),
+		source: chatSyncReceiptSourceEnum().notNull().default("hazel"),
 		// Optional root mapping enables thread/reply stitching across provider differences.
 		rootHazelMessageId: uuid().$type<MessageId>(),
 		rootExternalMessageId: varchar({ length: 255 }),

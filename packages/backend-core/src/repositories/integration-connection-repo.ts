@@ -97,6 +97,49 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					)({ organizationId, userId, provider }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+			// Find active user-level connection by external account ID.
+			const findActiveUserByExternalAccountId = (
+				organizationId: OrganizationId,
+				provider: IntegrationConnection.IntegrationProvider,
+				externalAccountId: string,
+				tx?: TxFn,
+			) =>
+				db
+					.makeQuery(
+						(
+							execute,
+							data: {
+								organizationId: OrganizationId
+								provider: IntegrationConnection.IntegrationProvider
+								externalAccountId: string
+							},
+						) =>
+							execute((client) =>
+								client
+									.select()
+									.from(schema.integrationConnectionsTable)
+									.where(
+										and(
+											eq(
+												schema.integrationConnectionsTable.organizationId,
+												data.organizationId,
+											),
+											eq(schema.integrationConnectionsTable.provider, data.provider),
+											eq(
+												schema.integrationConnectionsTable.externalAccountId,
+												data.externalAccountId,
+											),
+											eq(schema.integrationConnectionsTable.level, "user"),
+											eq(schema.integrationConnectionsTable.status, "active"),
+											isNull(schema.integrationConnectionsTable.deletedAt),
+										),
+									)
+									.limit(1),
+							),
+						policyRequire("IntegrationConnection", "select"),
+					)({ organizationId, provider, externalAccountId }, tx)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
 			// Get all connections for an organization (both org-level and user-level)
 			const findAllForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
 				db.makeQuery(
@@ -273,11 +316,59 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 					return inserted[0]!
 				})
 
+			// Upsert user-level connection for a provider.
+			const upsertByUserAndProvider = (
+				insertData: typeof IntegrationConnection.Insert.Type,
+				tx?: TxFn,
+			) =>
+				Effect.gen(function* () {
+					if (!insertData.userId) {
+						return yield* Effect.die(
+							"IntegrationConnectionRepo.upsertByUserAndProvider requires userId",
+						)
+					}
+
+					const existing = yield* findUserConnection(
+						insertData.organizationId,
+						insertData.userId,
+						insertData.provider,
+						tx,
+					)
+
+					if (Option.isSome(existing)) {
+						const results = yield* db.makeQuery(
+							(
+								execute,
+								updateParams: {
+									id: IntegrationConnectionId
+									data: Partial<typeof IntegrationConnection.Update.Type>
+								},
+							) =>
+								execute((client) =>
+									client
+										.update(schema.integrationConnectionsTable)
+										.set({
+											...updateParams.data,
+											updatedAt: new Date(),
+										})
+										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
+										.returning(),
+								),
+							policyRequire("IntegrationConnection", "update"),
+						)({ id: existing.value.id, data: insertData }, tx)
+						return results[0]!
+					}
+
+					const inserted = yield* baseRepo.insert(insertData, tx)
+					return inserted[0]!
+				})
+
 			return {
 				...baseRepo,
 				findOrgConnection,
 				findByOrgAndProvider: findOrgConnection, // Alias for consistency
 				findUserConnection,
+				findActiveUserByExternalAccountId,
 				findAllForOrg,
 				findActiveOrgConnections,
 				findByGitHubInstallationId,
@@ -285,6 +376,7 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 				updateStatus,
 				softDelete,
 				upsertByOrgAndProvider,
+				upsertByUserAndProvider,
 			}
 		}),
 	},

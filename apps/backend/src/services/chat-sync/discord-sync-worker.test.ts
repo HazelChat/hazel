@@ -4,7 +4,10 @@ import {
 	ChatSyncConnectionRepo,
 	ChatSyncEventReceiptRepo,
 	ChatSyncMessageLinkRepo,
+	IntegrationConnectionRepo,
 	MessageRepo,
+	OrganizationMemberRepo,
+	UserRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import type {
@@ -39,6 +42,9 @@ const makeWorkerLayer = (deps: {
 	messageLinkRepo: ChatSyncMessageLinkRepo
 	eventReceiptRepo: ChatSyncEventReceiptRepo
 	messageRepo: MessageRepo
+	integrationConnectionRepo: IntegrationConnectionRepo
+	userRepo: UserRepo
+	organizationMemberRepo: OrganizationMemberRepo
 	integrationBotService: IntegrationBotService
 }) =>
 	DiscordSyncWorker.DefaultWithoutDependencies.pipe(
@@ -58,6 +64,9 @@ const makeWorkerLayer = (deps: {
 		Layer.provide(Layer.succeed(ChatSyncMessageLinkRepo, deps.messageLinkRepo)),
 		Layer.provide(Layer.succeed(ChatSyncEventReceiptRepo, deps.eventReceiptRepo)),
 		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),
+		Layer.provide(Layer.succeed(IntegrationConnectionRepo, deps.integrationConnectionRepo)),
+		Layer.provide(Layer.succeed(UserRepo, deps.userRepo)),
+		Layer.provide(Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo)),
 		Layer.provide(Layer.succeed(IntegrationBotService, deps.integrationBotService)),
 	)
 
@@ -98,6 +107,9 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					return Effect.succeed([])
 				},
 			} as unknown as MessageRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
 			integrationBotService: {
 				getOrCreateBotUser: () => {
 					botLookupCalled = true
@@ -133,6 +145,8 @@ describe("DiscordSyncWorker dedupe claim", () => {
 						Option.some({
 							id: SYNC_CONNECTION_ID,
 							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
 						}),
 					),
 			} as unknown as ChatSyncConnectionRepo,
@@ -169,6 +183,9 @@ describe("DiscordSyncWorker dedupe claim", () => {
 					return Effect.succeed([])
 				},
 			} as unknown as MessageRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
 			integrationBotService: {
 				getOrCreateBotUser: () => {
 					botLookupCalled = true

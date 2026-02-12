@@ -65,6 +65,14 @@ export const integrationConnectionsTable = pgTable(
 			table.userId,
 			table.provider,
 		),
+		// Prevent linking the same external account to multiple users in the same org.
+		uniqueIndex("int_conn_org_provider_external_user_unique")
+			.on(table.organizationId, table.provider, table.externalAccountId)
+			.where(
+				sql`${table.deletedAt} IS NULL
+					AND ${table.level} = 'user'
+					AND ${table.externalAccountId} IS NOT NULL`,
+			),
 		// Index for faster GitHub installation ID lookups (used in token refresh and callbacks)
 		index("int_conn_github_installation_idx").using("btree", sql`(${table.metadata}->>'installationId')`),
 	],

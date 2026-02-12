@@ -18,6 +18,10 @@ interface DiscordReadyEvent {
 
 interface DiscordMessageAuthor {
 	id?: string
+	username?: string
+	global_name?: string | null
+	discriminator?: string
+	avatar?: string | null
 	bot?: boolean
 }
 
@@ -93,6 +97,18 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 					return
 				}
 
+				const externalAuthorId = event.author?.id ?? null
+				const externalAuthorDisplayName = event.author
+					? event.author.global_name ??
+						(event.author.discriminator && event.author.discriminator !== "0"
+							? `${event.author.username ?? "discord-user"}#${event.author.discriminator}`
+							: event.author.username ?? "Discord User")
+					: "Discord User"
+				const externalAuthorAvatarUrl =
+					externalAuthorId && event.author?.avatar
+						? `https://cdn.discordapp.com/avatars/${externalAuthorId}/${event.author.avatar}.png`
+						: null
+
 				const links = yield* channelLinkRepo
 					.findActiveByExternalChannel(event.channel_id)
 					.pipe(withSystemActor)
@@ -104,6 +120,9 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 							externalChannelId: event.channel_id,
 							externalMessageId: event.id,
 							content: event.content,
+							externalAuthorId: externalAuthorId ?? undefined,
+							externalAuthorDisplayName,
+							externalAuthorAvatarUrl,
 							externalThreadId: null,
 							dedupeKey: `discord:gateway:create:${event.id}`,
 						})

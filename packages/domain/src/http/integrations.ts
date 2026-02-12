@@ -7,6 +7,7 @@ import { IntegrationConnection } from "../models"
 
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
+const ConnectionLevel = IntegrationConnection.ConnectionLevel
 
 // OAuth URL response - returned from getOAuthUrl endpoint for SPA OAuth flow
 export class OAuthUrlResponse extends Schema.Class<OAuthUrlResponse>("OAuthUrlResponse")({
@@ -75,6 +76,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
+				}),
+			)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
@@ -133,6 +139,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					provider: IntegrationProvider,
 				}),
 			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
+				}),
+			)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
 				OpenApi.annotations({
@@ -179,6 +190,11 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				Schema.Struct({
 					orgId: OrganizationId,
 					provider: IntegrationProvider,
+				}),
+			)
+			.setUrlParams(
+				Schema.Struct({
+					level: Schema.optional(ConnectionLevel),
 				}),
 			)
 			.annotateContext(

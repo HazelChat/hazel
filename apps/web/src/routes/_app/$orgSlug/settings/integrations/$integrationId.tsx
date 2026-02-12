@@ -153,6 +153,7 @@ function IntegrationConfigPage() {
 		// This ensures the bearer token auth is properly sent
 		const exit = await getOAuthUrlMutation({
 			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			urlParams: { level: "organization" },
 		})
 
 		if (Exit.isSuccess(exit)) {
@@ -171,6 +172,7 @@ function IntegrationConfigPage() {
 		setIsDisconnecting(true)
 		const exit = await disconnectMutation({
 			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			urlParams: { level: "organization" },
 		})
 
 		exitToast(exit)

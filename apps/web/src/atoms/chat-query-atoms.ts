@@ -8,6 +8,7 @@ import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 export type MessageWithPinned = typeof Message.Model.Type & {
 	pinnedMessage: typeof PinnedMessage.Model.Type | null | undefined
 	author: typeof User.Model.Type | null | undefined
+	isSyncedFromDiscord?: boolean
 }
 
 export type ProcessedMessage = {

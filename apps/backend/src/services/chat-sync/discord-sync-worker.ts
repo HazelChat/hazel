@@ -5,10 +5,13 @@ import {
 	ChatSyncConnectionRepo,
 	ChatSyncEventReceiptRepo,
 	ChatSyncMessageLinkRepo,
+	IntegrationConnectionRepo,
 	MessageRepo,
+	OrganizationMemberRepo,
+	UserRepo,
 } from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
-import { MessageId, ChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
+import { MessageId, ChannelId, OrganizationId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { Discord } from "@hazel/integrations"
@@ -53,6 +56,9 @@ export interface DiscordIngressMessageCreate {
 	readonly externalChannelId: string
 	readonly externalMessageId: string
 	readonly content: string
+	readonly externalAuthorId?: string
+	readonly externalAuthorDisplayName?: string
+	readonly externalAuthorAvatarUrl?: string | null
 	readonly externalThreadId?: string | null
 	readonly dedupeKey?: string
 }
@@ -81,6 +87,9 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 		const messageLinkRepo = yield* ChatSyncMessageLinkRepo
 		const eventReceiptRepo = yield* ChatSyncEventReceiptRepo
 		const messageRepo = yield* MessageRepo
+		const integrationConnectionRepo = yield* IntegrationConnectionRepo
+		const userRepo = yield* UserRepo
+		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const integrationBotService = yield* IntegrationBotService
 
 		const getDiscordToken = Effect.fn("DiscordSyncWorker.getDiscordToken")(function* () {
@@ -213,6 +222,67 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			)
 		})
 
+		const getOrCreateDiscordShadowUserId = Effect.fn(
+			"DiscordSyncWorker.getOrCreateDiscordShadowUserId",
+		)(function* (params: {
+			organizationId: OrganizationId
+			discordUserId: string
+			displayName: string
+			avatarUrl: string | null
+		}) {
+			const externalId = `discord-user-${params.discordUserId}`
+			const user = yield* userRepo
+				.upsertByExternalId(
+					{
+						externalId,
+						email: `${externalId}@discord.internal`,
+						firstName: params.displayName,
+						lastName: "",
+						avatarUrl: params.avatarUrl ?? "",
+						userType: "machine",
+						settings: null,
+						isOnboarded: true,
+						timezone: null,
+						deletedAt: null,
+					},
+					{ syncAvatarUrl: true },
+				)
+				.pipe(withSystemActor)
+
+			yield* organizationMemberRepo
+				.upsertByOrgAndUser({
+					organizationId: params.organizationId,
+					userId: user.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
+				.pipe(withSystemActor)
+
+			return user.id
+		})
+
+		const resolveDiscordAuthorUserId = Effect.fn("DiscordSyncWorker.resolveDiscordAuthorUserId")(
+			function* (params: {
+				organizationId: OrganizationId
+				discordUserId: string
+				displayName: string
+				avatarUrl: string | null
+			}) {
+				const linkedConnection = yield* integrationConnectionRepo
+					.findActiveUserByExternalAccountId(params.organizationId, "discord", params.discordUserId)
+					.pipe(withSystemActor)
+
+				if (Option.isSome(linkedConnection) && linkedConnection.value.userId) {
+					return linkedConnection.value.userId
+				}
+
+				return yield* getOrCreateDiscordShadowUserId(params)
+			},
+		)
+
 		const syncHazelMessageToDiscord = Effect.fn("DiscordSyncWorker.syncHazelMessageToDiscord")(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -267,6 +337,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 					channelLinkId: link.id,
 					hazelMessageId: message.id,
 					externalMessageId,
+					source: "hazel",
 					rootHazelMessageId: null,
 					rootExternalMessageId: null,
 					hazelThreadChannelId: message.threadChannelId,
@@ -725,14 +796,23 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				return { status: "already_linked" as const }
 			}
 
-			const botUser = yield* integrationBotService.getOrCreateBotUser(
-				"discord",
-				connection.organizationId,
-			)
+			const authorId = payload.externalAuthorId
+				? yield* resolveDiscordAuthorUserId({
+						organizationId: connection.organizationId,
+						discordUserId: payload.externalAuthorId,
+						displayName: payload.externalAuthorDisplayName ?? "Discord User",
+						avatarUrl: payload.externalAuthorAvatarUrl ?? null,
+					})
+				: (
+						yield* integrationBotService.getOrCreateBotUser(
+							"discord",
+							connection.organizationId,
+						)
+					).id
 			const [message] = yield* messageRepo
 				.insert({
 					channelId: link.hazelChannelId,
-					authorId: botUser.id,
+					authorId,
 					content: payload.content,
 					embeds: null,
 					replyToMessageId: null,
@@ -746,6 +826,7 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 					channelLinkId: link.id,
 					hazelMessageId: message.id,
 					externalMessageId: payload.externalMessageId,
+					source: "external",
 					rootHazelMessageId: null,
 					rootExternalMessageId: null,
 					hazelThreadChannelId: message.threadChannelId,
@@ -957,6 +1038,9 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 		ChatSyncMessageLinkRepo.Default,
 		ChatSyncEventReceiptRepo.Default,
 		MessageRepo.Default,
+		IntegrationConnectionRepo.Default,
+		UserRepo.Default,
+		OrganizationMemberRepo.Default,
 		IntegrationBotService.Default,
 	],
 }) {}

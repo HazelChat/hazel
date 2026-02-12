@@ -6,7 +6,7 @@ import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type
 import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
-import { processedReactionsAtomFamily } from "~/atoms/message-atoms"
+import { isDiscordSyncedMessageAtomFamily, processedReactionsAtomFamily } from "~/atoms/message-atoms"
 import IconPin from "~/components/icons/icon-pin"
 import { extractUrls } from "~/components/link-preview"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
@@ -292,6 +292,8 @@ function MessageHeader() {
 	const { message, showAvatar, isPinned } = useMessage()
 	const user = message.author
 	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserPresence(message.authorId)
+	const isDiscordSyncedResult = useAtomValue(isDiscordSyncedMessageAtomFamily(message.id))
+	const isDiscordSynced = Result.getOrElse(isDiscordSyncedResult, () => []).length > 0
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
@@ -311,6 +313,11 @@ function MessageHeader() {
 			{user.userType === "machine" && (
 				<Badge intent="primary" isCircle={false}>
 					APP
+				</Badge>
+			)}
+			{isDiscordSynced && (
+				<Badge intent="secondary" isCircle={false}>
+					Synced from Discord
 				</Badge>
 			)}
 			<span className="text-muted-fg text-xs">

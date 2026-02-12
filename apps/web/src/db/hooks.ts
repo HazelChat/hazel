@@ -186,6 +186,8 @@ export const useIntegrationConnections = (organizationId: OrganizationId | null)
 				.where(({ connection }) =>
 					and(
 						eq(connection.organizationId, organizationId ?? ("" as OrganizationId)),
+						eq(connection.level, "organization"),
+						isNull(connection.userId),
 						isNull(connection.deletedAt),
 					),
 				),
@@ -231,6 +233,8 @@ export const useIntegrationConnection = (
 					and(
 						eq(connection.organizationId, organizationId ?? ("" as OrganizationId)),
 						eq(connection.provider, provider),
+						eq(connection.level, "organization"),
+						isNull(connection.userId),
 						isNull(connection.deletedAt),
 					),
 				),
@@ -239,6 +243,47 @@ export const useIntegrationConnection = (
 
 	// If no organizationId, return empty result
 	if (!organizationId) {
+		return {
+			connection: null,
+			isConnected: false,
+			...rest,
+		}
+	}
+
+	const connection = data?.[0] ?? null
+
+	return {
+		connection,
+		isConnected: connection?.status === "active",
+		...rest,
+	}
+}
+
+/**
+ * Query user-level integration connection by organization, user, and provider.
+ */
+export const useUserIntegrationConnection = (
+	organizationId: OrganizationId | null,
+	userId: UserId | undefined,
+	provider: IntegrationConnection.IntegrationProvider,
+) => {
+	const { data, ...rest } = useLiveQuery(
+		(q) =>
+			q
+				.from({ connection: integrationConnectionCollection })
+				.where(({ connection }) =>
+					and(
+						eq(connection.organizationId, organizationId ?? ("" as OrganizationId)),
+						eq(connection.provider, provider),
+						eq(connection.level, "user"),
+						eq(connection.userId, userId ?? ("" as UserId)),
+						isNull(connection.deletedAt),
+					),
+				),
+		[organizationId, userId, provider],
+	)
+
+	if (!organizationId || !userId) {
 		return {
 			connection: null,
 			isConnected: false,

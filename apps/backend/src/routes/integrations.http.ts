@@ -32,6 +32,9 @@ import { OAuthProviderRegistry } from "../services/oauth"
 const OAuthState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
+	level: Schema.optionalWith(Schema.Literal("organization", "user"), {
+		default: () => "organization",
+	}),
 	/** Full URL to redirect after OAuth completes (e.g., http://localhost:3000/org/settings/integrations/github) */
 	returnTo: Schema.String,
 	/** Environment that initiated the OAuth flow. Used to redirect back to localhost for local dev. */
@@ -235,9 +238,19 @@ const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string;
 const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path: {
 	orgId: OrganizationId
 	provider: IntegrationConnection.IntegrationProvider
-}) {
+}, urlParams: { level?: IntegrationConnection.ConnectionLevel }) {
 	const currentUser = yield* CurrentUser.Context
 	const { orgId, provider } = path
+	const level = urlParams.level ?? "organization"
+
+	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
+		return yield* Effect.fail(
+			new UnauthorizedError({
+				message: "You are not authorized to access this organization",
+				detail: `organizationId=${orgId}`,
+			}),
+		)
+	}
 
 	// Get the OAuth provider from registry
 	const registry = yield* OAuthProviderRegistry
@@ -287,7 +300,11 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	const stateData = {
 		organizationId: orgId,
 		userId: currentUser.id,
-		returnTo: `${frontendUrl}/${org.slug}/settings/integrations/${provider}`,
+		level,
+		returnTo:
+			level === "user"
+				? `${frontendUrl}/${org.slug}/my-settings/profile`
+				: `${frontendUrl}/${org.slug}/settings/integrations/${provider}`,
 		environment,
 	}
 
@@ -295,13 +312,23 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 	const state = encodeURIComponent(JSON.stringify(stateData))
 
 	// Build authorization URL using the provider
-	const authorizationUrl = yield* oauthProvider.buildAuthorizationUrl(state)
+	const authorizationUrl = yield* oauthProvider.buildAuthorizationUrl(state).pipe(
+		Effect.map((url) => {
+			// User-level Discord linking only needs identity; org-level keeps guild/bot scopes.
+			if (provider === "discord" && level === "user") {
+				url.searchParams.set("scope", "identify")
+				url.searchParams.delete("permissions")
+			}
+			return url
+		}),
+	)
 
 	yield* Effect.logInfo("OAuth flow initiated", {
 		event: "oauth_flow_initiated",
 		provider,
 		organizationId: orgId,
 		userId: currentUser.id,
+		level,
 	})
 
 	// Build session cookie with OAuth context
@@ -344,6 +371,9 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 const OAuthSessionState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
+	level: Schema.optionalWith(Schema.Literal("organization", "user"), {
+		default: () => "organization",
+	}),
 	returnTo: Schema.String,
 	environment: Schema.optional(Schema.Literal("local", "production")),
 	createdAt: Schema.Number,
@@ -440,6 +470,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 				parsedState = {
 					organizationId: session.organizationId,
 					userId: session.userId,
+					level: session.level,
 					returnTo: session.returnTo,
 					environment: session.environment,
 				}
@@ -541,6 +572,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		provider,
 		stateSource,
 		organizationId: parsedState.organizationId,
+		level: parsedState.level,
 	})
 
 	yield* Effect.logDebug("OAuth callback state parsed", {
@@ -577,6 +609,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 						JSON.stringify({
 							organizationId: parsedState.organizationId,
 							userId: parsedState.userId,
+							level: parsedState.level,
 							returnTo: parsedState.returnTo,
 							environment: parsedState.environment,
 						}),
@@ -697,7 +730,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	// For GitHub App, store the installation ID for token regeneration
 	const metadata = isGitHubAppCallback
 		? { installationId: installation_id }
-		: provider === "discord"
+		: provider === "discord" && parsedState.level === "organization"
 			? {
 					guildId: guild_id ?? null,
 					permissions: permissions ?? null,
@@ -709,25 +742,40 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		event: "integration_db_upsert_attempt",
 		provider,
 		organizationId: parsedState.organizationId,
+		level: parsedState.level,
 	})
 
-	const connectionResult = yield* connectionRepo
-		.upsertByOrgAndProvider({
-			provider,
-			organizationId: parsedState.organizationId as OrganizationId,
-			userId: null, // org-level connection
-			level: "organization",
-			status: "active",
-			externalAccountId: accountInfo.externalAccountId,
-			externalAccountName: accountInfo.externalAccountName,
-			connectedBy: parsedState.userId as UserId,
-			settings: null,
-			metadata,
-			errorMessage: null,
-			lastUsedAt: null,
-			deletedAt: null,
-		})
-		.pipe(withSystemActor, Effect.either)
+	const connectionResult = yield* (parsedState.level === "user"
+		? connectionRepo.upsertByUserAndProvider({
+				provider,
+				organizationId: parsedState.organizationId as OrganizationId,
+				userId: parsedState.userId as UserId,
+				level: "user",
+				status: "active",
+				externalAccountId: accountInfo.externalAccountId,
+				externalAccountName: accountInfo.externalAccountName,
+				connectedBy: parsedState.userId as UserId,
+				settings: null,
+				metadata,
+				errorMessage: null,
+				lastUsedAt: null,
+				deletedAt: null,
+			})
+		: connectionRepo.upsertByOrgAndProvider({
+				provider,
+				organizationId: parsedState.organizationId as OrganizationId,
+				userId: null,
+				level: "organization",
+				status: "active",
+				externalAccountId: accountInfo.externalAccountId,
+				externalAccountName: accountInfo.externalAccountName,
+				connectedBy: parsedState.userId as UserId,
+				settings: null,
+				metadata,
+				errorMessage: null,
+				lastUsedAt: null,
+				deletedAt: null,
+			})).pipe(withSystemActor, Effect.either)
 
 	if (connectionResult._tag === "Left") {
 		yield* Effect.logError("OAuth database upsert failed", {
@@ -782,41 +830,41 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		provider,
 		organizationId: parsedState.organizationId,
 		userId: parsedState.userId,
-		level: "organization",
+		level: parsedState.level,
 		externalAccountId: accountInfo.externalAccountId,
 		externalAccountName: accountInfo.externalAccountName,
 		isGitHubApp: isGitHubAppCallback,
 		connectionId: connection.id,
 	})
 
-	// Add seeded bot to org for all OAuth integration providers
-	// Bot user should already exist from seed script - this just adds org membership
-	// This is best-effort - OAuth has already succeeded, so we just log and continue on error
-	yield* IntegrationBotService.addBotToOrg(provider, parsedState.organizationId as OrganizationId).pipe(
-		Effect.tap((result) =>
-			Option.isSome(result)
-				? Effect.logInfo("Integration bot added to organization", {
-						event: "integration_bot_added_to_org",
-						provider,
-						organizationId: parsedState.organizationId,
-					})
-				: Effect.logWarning("Integration bot not found - run seed script", {
-						event: "integration_bot_not_seeded",
-						provider,
-						organizationId: parsedState.organizationId,
-					}),
-		),
-		// Note: catchAll is intentional here - this is a best-effort operation
-		// after OAuth success. We catch all errors to prevent disrupting the flow.
-		Effect.catchAll((error) =>
-			Effect.logWarning("Failed to add integration bot to org (non-critical)", {
-				event: "integration_bot_add_failed",
-				provider,
-				organizationId: parsedState.organizationId,
-				error: String(error),
-			}),
-		),
-	)
+	if (parsedState.level === "organization") {
+		// Add seeded bot to org for org-level OAuth integration providers.
+		yield* IntegrationBotService.addBotToOrg(provider, parsedState.organizationId as OrganizationId).pipe(
+			Effect.tap((result) =>
+				Option.isSome(result)
+					? Effect.logInfo("Integration bot added to organization", {
+							event: "integration_bot_added_to_org",
+							provider,
+							organizationId: parsedState.organizationId,
+						})
+					: Effect.logWarning("Integration bot not found - run seed script", {
+							event: "integration_bot_not_seeded",
+							provider,
+							organizationId: parsedState.organizationId,
+						}),
+			),
+			// Note: catchAll is intentional here - this is a best-effort operation
+			// after OAuth success. We catch all errors to prevent disrupting the flow.
+			Effect.catchAll((error) =>
+				Effect.logWarning("Failed to add integration bot to org (non-critical)", {
+					event: "integration_bot_add_failed",
+					provider,
+					organizationId: parsedState.organizationId,
+					error: String(error),
+				}),
+			),
+		)
+	}
 
 	// Redirect back to the settings page with success status (clears session cookie)
 	const successUrl = buildRedirectUrl(parsedState.returnTo, provider, "success")
@@ -951,11 +999,24 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(function* (path: {
 	orgId: OrganizationId
 	provider: IntegrationConnection.IntegrationProvider
-}) {
+}, urlParams: { level?: IntegrationConnection.ConnectionLevel }) {
 	const { orgId, provider } = path
+	const currentUser = yield* CurrentUser.Context
 	const connectionRepo = yield* IntegrationConnectionRepo
+	const level = urlParams.level ?? "organization"
 
-	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, provider).pipe(withSystemActor)
+	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
+		return yield* Effect.fail(
+			new UnauthorizedError({
+				message: "You are not authorized to access this organization",
+				detail: `organizationId=${orgId}`,
+			}),
+		)
+	}
+
+	const connectionOption = yield* (level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)).pipe(withSystemActor)
 
 	if (Option.isNone(connectionOption)) {
 		return new ConnectionStatusResponse({
@@ -985,12 +1046,25 @@ const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(
 const handleDisconnect = Effect.fn("integrations.disconnect")(function* (path: {
 	orgId: OrganizationId
 	provider: IntegrationConnection.IntegrationProvider
-}) {
+}, urlParams: { level?: IntegrationConnection.ConnectionLevel }) {
 	const { orgId, provider } = path
+	const currentUser = yield* CurrentUser.Context
 	const connectionRepo = yield* IntegrationConnectionRepo
 	const tokenService = yield* IntegrationTokenService
+	const level = urlParams.level ?? "organization"
 
-	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, provider).pipe(withSystemActor)
+	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
+		return yield* Effect.fail(
+			new UnauthorizedError({
+				message: "You are not authorized to access this organization",
+				detail: `organizationId=${orgId}`,
+			}),
+		)
+	}
+
+	const connectionOption = yield* (level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)).pipe(withSystemActor)
 
 	if (Option.isNone(connectionOption)) {
 		return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))
@@ -1008,6 +1082,8 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (path: {
 		event: "integration_disconnected",
 		provider,
 		organizationId: orgId,
+		level,
+		userId: level === "user" ? currentUser.id : null,
 		connectionId: connection.id,
 		externalAccountId: connection.externalAccountId,
 		externalAccountName: connection.externalAccountName,
@@ -1016,7 +1092,7 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (path: {
 
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>
 	handlers
-		.handle("getOAuthUrl", ({ path }) => handleGetOAuthUrl(path))
+		.handle("getOAuthUrl", ({ path, urlParams }) => handleGetOAuthUrl(path, urlParams))
 		.handle("oauthCallback", ({ path, urlParams }) =>
 			handleOAuthCallback(path, urlParams).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
@@ -1056,8 +1132,8 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				}),
 			),
 		)
-		.handle("getConnectionStatus", ({ path }) =>
-			handleGetConnectionStatus(path).pipe(
+		.handle("getConnectionStatus", ({ path, urlParams }) =>
+			handleGetConnectionStatus(path, urlParams).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
@@ -1068,8 +1144,8 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				),
 			),
 		)
-		.handle("disconnect", ({ path }) =>
-			handleDisconnect(path).pipe(
+		.handle("disconnect", ({ path, urlParams }) =>
+			handleDisconnect(path, urlParams).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
