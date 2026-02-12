@@ -136,6 +136,27 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 					)({ syncConnectionId, externalChannelId }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+			const findActiveByExternalChannel = (externalChannelId: string, tx?: TxFn) =>
+				db.makeQuery(
+					(execute, data: { externalChannelId: string }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncChannelLinksTable)
+								.where(
+									and(
+										eq(
+											schema.chatSyncChannelLinksTable.externalChannelId,
+											data.externalChannelId,
+										),
+										eq(schema.chatSyncChannelLinksTable.isActive, true),
+										isNull(schema.chatSyncChannelLinksTable.deletedAt),
+									),
+								),
+						),
+					policyRequire("ChatSyncChannelLink", "select"),
+				)({ externalChannelId }, tx)
+
 			const setActive = (id: SyncChannelLinkId, isActive: boolean, tx?: TxFn) =>
 				db.makeQuery(
 					(execute, data: { id: SyncChannelLinkId; isActive: boolean }) =>
@@ -191,6 +212,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 				findActiveBySyncConnection,
 				findByHazelChannel,
 				findByExternalChannel,
+				findActiveByExternalChannel,
 				setActive,
 				updateLastSyncedAt,
 				softDelete,

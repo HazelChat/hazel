@@ -103,6 +103,9 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					code: Schema.optional(Schema.String),
 					// State is optional because GitHub doesn't send it for update callbacks
 					state: Schema.optional(Schema.String),
+					// Discord bot scope callback includes selected guild context
+					guild_id: Schema.optional(Schema.String),
+					permissions: Schema.optional(Schema.String),
 					// GitHub App uses `installation_id` instead of code
 					installation_id: Schema.optional(Schema.String),
 					// GitHub also sends setup_action (e.g., "install", "update")

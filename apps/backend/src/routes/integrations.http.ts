@@ -366,12 +366,14 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	urlParams: {
 		code?: string
 		state?: string
+		guild_id?: string
+		permissions?: string
 		installation_id?: string
 		setup_action?: string
 	},
 ) {
 	const { provider } = path
-	const { code, state: encodedState, installation_id, setup_action } = urlParams
+	const { code, state: encodedState, installation_id, setup_action, guild_id, permissions } = urlParams
 
 	// Get request to read cookies
 	const request = yield* HttpServerRequest.HttpServerRequest
@@ -388,6 +390,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		hasSessionCookie: !!sessionCookie,
 		hasInstallationId: !!installation_id,
 		hasCode: !!code,
+		hasGuildId: !!guild_id,
 		setupAction: setup_action,
 	})
 
@@ -692,7 +695,14 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 
 	// Prepare connection metadata
 	// For GitHub App, store the installation ID for token regeneration
-	const metadata = isGitHubAppCallback ? { installationId: installation_id } : null
+	const metadata = isGitHubAppCallback
+		? { installationId: installation_id }
+		: provider === "discord"
+			? {
+					guildId: guild_id ?? null,
+					permissions: permissions ?? null,
+				}
+			: null
 
 	// Create or update connection
 	yield* Effect.logDebug("OAuth database upsert starting", {

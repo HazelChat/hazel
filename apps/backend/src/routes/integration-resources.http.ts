@@ -3,6 +3,8 @@ import { IntegrationConnectionRepo } from "@hazel/backend-core"
 import { InternalServerError, withSystemActor } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import {
+	DiscordGuildChannelsResponse,
+	DiscordGuildsResponse,
 	GitHubPRResourceResponse,
 	GitHubRepositoriesResponse,
 	IntegrationNotConnectedForPreviewError,
@@ -10,8 +12,8 @@ import {
 	LinearIssueResourceResponse,
 	ResourceNotFoundError,
 } from "@hazel/domain/http"
-import { GitHub } from "@hazel/integrations"
-import { Effect, Option } from "effect"
+import { Discord, GitHub } from "@hazel/integrations"
+import { Config, Effect, Option, Redacted } from "effect"
 import { HazelApi } from "../api"
 import { IntegrationTokenService, TokenNotFoundError } from "../services/integration-token-service"
 import {
@@ -309,6 +311,42 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" })),
 					}),
 				),
+			)
+			.handle("getDiscordGuilds", ({ path }) =>
+				handleGetDiscordGuilds(path).pipe(
+					Effect.catchTags({
+						DatabaseError: (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to fetch Discord guilds",
+									detail: String(error),
+								}),
+							),
+						TokenNotFoundError: () =>
+							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" })),
+						IntegrationEncryptionError: () =>
+							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" })),
+						KeyVersionNotFoundError: () =>
+							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" })),
+						TokenRefreshError: () =>
+							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" })),
+						ConnectionNotFoundError: () =>
+							Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" })),
+					}),
+				),
+			)
+			.handle("getDiscordGuildChannels", ({ path }) =>
+				handleGetDiscordGuildChannels(path).pipe(
+					Effect.catchTags({
+						DatabaseError: (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Failed to fetch Discord channels",
+									detail: String(error),
+								}),
+							),
+					}),
+				),
 			),
 )
 
@@ -374,3 +412,80 @@ const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRe
 		perPage: result.perPage,
 	})
 })
+
+const getActiveDiscordConnection = Effect.fn("integration-resources.getActiveDiscordConnection")(function* (
+	orgId: OrganizationId,
+) {
+	const connectionRepo = yield* IntegrationConnectionRepo
+	const connectionOption = yield* connectionRepo
+		.findByOrgAndProvider(orgId, "discord")
+		.pipe(withSystemActor)
+
+	if (Option.isNone(connectionOption)) {
+		return yield* Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" }))
+	}
+
+	const connection = connectionOption.value
+	if (connection.status !== "active") {
+		return yield* Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" }))
+	}
+
+	return connection
+})
+
+const handleGetDiscordGuilds = Effect.fn("integration-resources.getDiscordGuilds")(function* (path: {
+	orgId: OrganizationId
+}) {
+	const { orgId } = path
+	const tokenService = yield* IntegrationTokenService
+	const connection = yield* getActiveDiscordConnection(orgId)
+	const accessToken = yield* tokenService.getValidAccessToken(connection.id)
+
+	const guilds = yield* Discord.DiscordApiClient.listGuilds(accessToken).pipe(
+		Effect.provide(Discord.DiscordApiClient.Default),
+		Effect.mapError(
+			(error) =>
+				new IntegrationResourceError({
+					url: "discord://guilds",
+					message: error.message,
+					provider: "discord",
+				}),
+		),
+	)
+
+	return new DiscordGuildsResponse({ guilds })
+})
+
+const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscordGuildChannels")(
+	function* (path: { orgId: OrganizationId; guildId: string }) {
+		const { orgId, guildId } = path
+		yield* getActiveDiscordConnection(orgId)
+
+		const botToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(
+			Effect.mapError(
+				(error) =>
+					new InternalServerError({
+						message: "Discord bot token is not configured",
+						detail: String(error),
+					}),
+			),
+		)
+
+		const channels = yield* Discord.DiscordApiClient.listGuildChannels(
+			guildId,
+			Redacted.value(botToken),
+		).pipe(
+			Effect.provide(Discord.DiscordApiClient.Default),
+			Effect.mapError(
+				(error) =>
+					new IntegrationResourceError({
+						url: `discord://guilds/${guildId}/channels`,
+						message: error.message,
+						provider: "discord",
+					}),
+			),
+		)
+
+		return new DiscordGuildChannelsResponse({ channels })
+	},
+)

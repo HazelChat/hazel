@@ -1,6 +1,7 @@
 "use client"
 
 import { useMatchRoute } from "@tanstack/react-router"
+import IconArrowPath from "~/components/icons/icon-arrow-path"
 import IconCode from "~/components/icons/icon-code"
 import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconGear from "~/components/icons/icon-gear"
@@ -176,6 +177,22 @@ export function SettingsSidebar() {
 							>
 								<IconCode data-slot="icon" />
 								<SidebarLabel>Your Apps</SidebarLabel>
+							</SidebarLink>
+						</SidebarItem>
+					</SidebarSection>
+
+					{/* Chat Sync Section */}
+					<SidebarSection label="Chat Sync">
+						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/chat-sync")}>
+							<SidebarLink
+								to="/$orgSlug/settings/chat-sync"
+								params={{ orgSlug: slug }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+								}}
+							>
+								<IconArrowPath data-slot="icon" />
+								<SidebarLabel>Connections</SidebarLabel>
 							</SidebarLink>
 						</SidebarItem>
 					</SidebarSection>

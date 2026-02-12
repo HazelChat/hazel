@@ -24,6 +24,7 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
+import { DiscordSyncWorker } from "../../services/chat-sync/discord-sync-worker"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 /**
@@ -196,12 +197,13 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 					Effect.gen(function* () {
 						const bot = yield* authenticateBotFromToken
 						const currentUser = createBotUserContext(bot)
+						const discordSyncWorker = yield* DiscordSyncWorker
 
 						yield* checkMessageRateLimit(bot.userId)
 
 						const { attachmentIds, embeds, replyToMessageId, threadChannelId, ...rest } = payload
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									const createdMessage = yield* MessageRepo.insert({
@@ -238,6 +240,19 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "create"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						yield* discordSyncWorker
+							.syncHazelMessageCreateToAllConnections(response.data.id)
+							.pipe(
+								Effect.catchAll((error) =>
+									Effect.logWarning("Failed to sync API message create to Discord", {
+										messageId: response.data.id,
+										error: String(error),
+									}),
+								),
+							)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
@@ -255,12 +270,13 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 					Effect.gen(function* () {
 						const bot = yield* authenticateBotFromToken
 						const currentUser = createBotUserContext(bot)
+						const discordSyncWorker = yield* DiscordSyncWorker
 
 						yield* checkMessageRateLimit(bot.userId)
 
 						const { embeds, ...rest } = payload
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									const updatedMessage = yield* MessageRepo.update({
@@ -281,6 +297,17 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "update"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						yield* discordSyncWorker.syncHazelMessageUpdateToAllConnections(path.id).pipe(
+							Effect.catchAll((error) =>
+								Effect.logWarning("Failed to sync API message update to Discord", {
+									messageId: path.id,
+									error: String(error),
+								}),
+							),
+						)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
@@ -298,10 +325,11 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 					Effect.gen(function* () {
 						const bot = yield* authenticateBotFromToken
 						const currentUser = createBotUserContext(bot)
+						const discordSyncWorker = yield* DiscordSyncWorker
 
 						yield* checkMessageRateLimit(bot.userId)
 
-						return yield* db
+						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
 									yield* MessageRepo.deleteById(path.id).pipe(
@@ -317,6 +345,17 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								withRemapDbErrors("Message", "delete"),
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
+
+						yield* discordSyncWorker.syncHazelMessageDeleteToAllConnections(path.id).pipe(
+							Effect.catchAll((error) =>
+								Effect.logWarning("Failed to sync API message delete to Discord", {
+									messageId: path.id,
+									error: String(error),
+								}),
+							),
+						)
+
+						return response
 					}).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(

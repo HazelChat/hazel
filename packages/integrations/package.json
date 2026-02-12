@@ -16,6 +16,7 @@
 		"./railway": "./src/railway/index.ts",
 		"./railway/browser": "./src/railway/browser.ts",
 		"./craft": "./src/craft/index.ts",
+		"./discord": "./src/discord/index.ts",
 		"./rss": "./src/rss/index.ts"
 	},
 	"dependencies": {

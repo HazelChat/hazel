@@ -62,6 +62,14 @@ export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncCo
 	},
 ) {}
 
+export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<ChatSyncIntegrationNotConnectedError>()(
+	"ChatSyncIntegrationNotConnectedError",
+	{
+		organizationId: OrganizationId,
+		provider: Schema.String,
+	},
+) {}
+
 export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncChannelLinkExistsError>()(
 	"ChatSyncChannelLinkExistsError",
 	{
@@ -85,6 +93,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		success: ChatSyncConnectionResponse,
 		error: Schema.Union(
 			ChatSyncConnectionExistsError,
+			ChatSyncIntegrationNotConnectedError,
 			UnauthorizedError,
 			InternalServerError,
 		),
@@ -105,11 +114,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		success: Schema.Struct({
 			transactionId: TransactionId,
 		}),
-		error: Schema.Union(
-			ChatSyncConnectionNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-		),
+		error: Schema.Union(ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
 	Rpc.mutation("chatSync.channelLink.create", {
@@ -135,11 +140,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 			syncConnectionId: SyncConnectionId,
 		}),
 		success: ChatSyncChannelLinkListResponse,
-		error: Schema.Union(
-			ChatSyncConnectionNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-		),
+		error: Schema.Union(ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
 	Rpc.mutation("chatSync.channelLink.delete", {
@@ -149,10 +150,6 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		success: Schema.Struct({
 			transactionId: TransactionId,
 		}),
-		error: Schema.Union(
-			ChatSyncChannelLinkNotFoundError,
-			UnauthorizedError,
-			InternalServerError,
-		),
+		error: Schema.Union(ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 ) {}

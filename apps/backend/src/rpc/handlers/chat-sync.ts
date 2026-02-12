@@ -1,6 +1,7 @@
 import {
 	ChatSyncChannelLinkRepo,
 	ChatSyncConnectionRepo,
+	IntegrationConnectionRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
@@ -10,6 +11,7 @@ import {
 	ChatSyncChannelLinkNotFoundError,
 	ChatSyncChannelLinkResponse,
 	ChatSyncConnectionExistsError,
+	ChatSyncIntegrationNotConnectedError,
 	ChatSyncConnectionListResponse,
 	ChatSyncConnectionNotFoundError,
 	ChatSyncConnectionResponse,
@@ -35,77 +37,109 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 		const db = yield* Database.Database
 		const connectionRepo = yield* ChatSyncConnectionRepo
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
+		const integrationConnectionRepo = yield* IntegrationConnectionRepo
 
 		return {
 			"chatSync.connection.create": (payload) =>
-				db.transaction(
-					Effect.gen(function* () {
-						yield* ensureOrgAccess(payload.organizationId)
-						const currentUser = yield* CurrentUser.Context
+				db
+					.transaction(
+						Effect.gen(function* () {
+							yield* ensureOrgAccess(payload.organizationId)
+							const currentUser = yield* CurrentUser.Context
 
-						const existing = yield* connectionRepo
-							.findByProviderAndWorkspace(
-								payload.organizationId,
-								payload.provider,
-								payload.externalWorkspaceId,
-							)
-							.pipe(withSystemActor)
-						if (Option.isSome(existing)) {
-							return yield* Effect.fail(
-								new ChatSyncConnectionExistsError({
+							const integrationConnectionId = yield* Effect.gen(function* () {
+								if (payload.provider !== "discord") {
+									return payload.integrationConnectionId ?? null
+								}
+
+								if (payload.integrationConnectionId) {
+									return payload.integrationConnectionId
+								}
+
+								const integrationOption = yield* integrationConnectionRepo
+									.findOrgConnection(payload.organizationId, "discord")
+									.pipe(withSystemActor)
+								if (
+									Option.isNone(integrationOption) ||
+									integrationOption.value.status !== "active"
+								) {
+									return yield* Effect.fail(
+										new ChatSyncIntegrationNotConnectedError({
+											organizationId: payload.organizationId,
+											provider: "discord",
+										}),
+									)
+								}
+
+								return integrationOption.value.id
+							})
+
+							const existing = yield* connectionRepo
+								.findByProviderAndWorkspace(
+									payload.organizationId,
+									payload.provider,
+									payload.externalWorkspaceId,
+								)
+								.pipe(withSystemActor)
+							if (Option.isSome(existing)) {
+								return yield* Effect.fail(
+									new ChatSyncConnectionExistsError({
+										organizationId: payload.organizationId,
+										provider: payload.provider,
+										externalWorkspaceId: payload.externalWorkspaceId,
+									}),
+								)
+							}
+
+							const [connection] = yield* connectionRepo
+								.insert({
 									organizationId: payload.organizationId,
+									integrationConnectionId,
 									provider: payload.provider,
 									externalWorkspaceId: payload.externalWorkspaceId,
-								}),
-							)
-						}
+									externalWorkspaceName: payload.externalWorkspaceName ?? null,
+									status: "active",
+									settings: payload.settings ?? null,
+									metadata: payload.metadata ?? null,
+									errorMessage: null,
+									lastSyncedAt: null,
+									createdBy: currentUser.id,
+									deletedAt: null,
+								})
+								.pipe(withSystemActor)
 
-						const [connection] = yield* connectionRepo
-							.insert({
-								organizationId: payload.organizationId,
-								integrationConnectionId: payload.integrationConnectionId ?? null,
-								provider: payload.provider,
-								externalWorkspaceId: payload.externalWorkspaceId,
-								externalWorkspaceName: payload.externalWorkspaceName ?? null,
-								status: "active",
-								settings: payload.settings ?? null,
-								metadata: payload.metadata ?? null,
-								errorMessage: null,
-								lastSyncedAt: null,
-								createdBy: currentUser.id,
-								deletedAt: null,
+							const txid = yield* generateTransactionId()
+							return new ChatSyncConnectionResponse({
+								data: connection,
+								transactionId: txid,
 							})
-							.pipe(withSystemActor)
-
-						const txid = yield* generateTransactionId()
-						return new ChatSyncConnectionResponse({
-							data: connection,
-							transactionId: txid,
-						})
-					}),
-				).pipe(
-					Effect.catchTag("ParseError", (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Invalid sync connection data",
-								detail: String(error),
-							}),
+						}),
+					)
+					.pipe(
+						Effect.catchTag("ParseError", (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Invalid sync connection data",
+									detail: String(error),
+								}),
+							),
+						),
+						Effect.catchTag("DatabaseError", (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while creating sync connection",
+									detail: String(error),
+								}),
+							),
 						),
 					),
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while creating sync connection",
-								detail: String(error),
-							}),
-						),
-					),
-				),
 
 			"chatSync.connection.list": ({ organizationId }) =>
 				Effect.gen(function* () {
 					yield* ensureOrgAccess(organizationId)
-					const data = yield* connectionRepo.findByOrganization(organizationId).pipe(withSystemActor)
+					const data = yield* connectionRepo
+						.findByOrganization(organizationId)
+						.pipe(withSystemActor)
 					return new ChatSyncConnectionListResponse({ data })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
@@ -118,103 +152,115 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 					),
 				),
 
-				"chatSync.connection.delete": ({ syncConnectionId }) =>
-				db.transaction(
-					Effect.gen(function* () {
-						const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
-						if (Option.isNone(connectionOption)) {
-							return yield* Effect.fail(
-								new ChatSyncConnectionNotFoundError({
-									syncConnectionId,
-								}),
+			"chatSync.connection.delete": ({ syncConnectionId }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const connectionOption = yield* connectionRepo
+								.findById(syncConnectionId)
+								.pipe(withSystemActor)
+							if (Option.isNone(connectionOption)) {
+								return yield* Effect.fail(
+									new ChatSyncConnectionNotFoundError({
+										syncConnectionId,
+									}),
+								)
+							}
+							const connection = connectionOption.value
+							yield* ensureOrgAccess(connection.organizationId)
+
+							yield* connectionRepo.softDelete(syncConnectionId).pipe(withSystemActor)
+							const links = yield* channelLinkRepo
+								.findBySyncConnection(syncConnectionId)
+								.pipe(withSystemActor)
+							yield* Effect.forEach(
+								links,
+								(link) => channelLinkRepo.softDelete(link.id).pipe(withSystemActor),
+								{
+									concurrency: 10,
+								},
 							)
-						}
-						const connection = connectionOption.value
-						yield* ensureOrgAccess(connection.organizationId)
 
-						yield* connectionRepo.softDelete(syncConnectionId).pipe(withSystemActor)
-						const links = yield* channelLinkRepo.findBySyncConnection(syncConnectionId).pipe(withSystemActor)
-						yield* Effect.forEach(links, (link) => channelLinkRepo.softDelete(link.id).pipe(withSystemActor), {
-							concurrency: 10,
-						})
-
-						const txid = yield* generateTransactionId()
-						return { transactionId: txid }
+							const txid = yield* generateTransactionId()
+							return { transactionId: txid }
 						}),
-					).pipe(
+					)
+					.pipe(
 						Effect.catchTag("DatabaseError", (error) =>
 							Effect.fail(
 								new InternalServerError({
-								message: "Database error while deleting sync connection",
-								detail: String(error),
-							}),
+									message: "Database error while deleting sync connection",
+									detail: String(error),
+								}),
+							),
 						),
 					),
-				),
 
 			"chatSync.channelLink.create": (payload) =>
-				db.transaction(
-					Effect.gen(function* () {
-						const connectionOption = yield* connectionRepo
-							.findById(payload.syncConnectionId)
-							.pipe(withSystemActor)
-						if (Option.isNone(connectionOption)) {
-							return yield* Effect.fail(
-								new ChatSyncConnectionNotFoundError({
-									syncConnectionId: payload.syncConnectionId,
-								}),
-							)
-						}
-						const connection = connectionOption.value
-						yield* ensureOrgAccess(connection.organizationId)
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const connectionOption = yield* connectionRepo
+								.findById(payload.syncConnectionId)
+								.pipe(withSystemActor)
+							if (Option.isNone(connectionOption)) {
+								return yield* Effect.fail(
+									new ChatSyncConnectionNotFoundError({
+										syncConnectionId: payload.syncConnectionId,
+									}),
+								)
+							}
+							const connection = connectionOption.value
+							yield* ensureOrgAccess(connection.organizationId)
 
-						const existingHazel = yield* channelLinkRepo
-							.findByHazelChannel(payload.syncConnectionId, payload.hazelChannelId)
-							.pipe(withSystemActor)
-						if (Option.isSome(existingHazel)) {
-							return yield* Effect.fail(
-								new ChatSyncChannelLinkExistsError({
+							const existingHazel = yield* channelLinkRepo
+								.findByHazelChannel(payload.syncConnectionId, payload.hazelChannelId)
+								.pipe(withSystemActor)
+							if (Option.isSome(existingHazel)) {
+								return yield* Effect.fail(
+									new ChatSyncChannelLinkExistsError({
+										syncConnectionId: payload.syncConnectionId,
+										hazelChannelId: payload.hazelChannelId,
+										externalChannelId: payload.externalChannelId,
+									}),
+								)
+							}
+
+							const existingExternal = yield* channelLinkRepo
+								.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
+								.pipe(withSystemActor)
+							if (Option.isSome(existingExternal)) {
+								return yield* Effect.fail(
+									new ChatSyncChannelLinkExistsError({
+										syncConnectionId: payload.syncConnectionId,
+										hazelChannelId: payload.hazelChannelId,
+										externalChannelId: payload.externalChannelId,
+									}),
+								)
+							}
+
+							const [link] = yield* channelLinkRepo
+								.insert({
 									syncConnectionId: payload.syncConnectionId,
 									hazelChannelId: payload.hazelChannelId,
 									externalChannelId: payload.externalChannelId,
-								}),
-							)
-						}
+									externalChannelName: payload.externalChannelName ?? null,
+									direction: payload.direction ?? "both",
+									isActive: true,
+									settings: payload.settings ?? null,
+									lastSyncedAt: null,
+									deletedAt: null,
+								})
+								.pipe(withSystemActor)
 
-						const existingExternal = yield* channelLinkRepo
-							.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-							.pipe(withSystemActor)
-						if (Option.isSome(existingExternal)) {
-							return yield* Effect.fail(
-								new ChatSyncChannelLinkExistsError({
-									syncConnectionId: payload.syncConnectionId,
-									hazelChannelId: payload.hazelChannelId,
-									externalChannelId: payload.externalChannelId,
-								}),
-							)
-						}
-
-						const [link] = yield* channelLinkRepo
-							.insert({
-								syncConnectionId: payload.syncConnectionId,
-								hazelChannelId: payload.hazelChannelId,
-								externalChannelId: payload.externalChannelId,
-								externalChannelName: payload.externalChannelName ?? null,
-								direction: payload.direction ?? "both",
-								isActive: true,
-								settings: payload.settings ?? null,
-								lastSyncedAt: null,
-								deletedAt: null,
+							const txid = yield* generateTransactionId()
+							return new ChatSyncChannelLinkResponse({
+								data: link,
+								transactionId: txid,
 							})
-							.pipe(withSystemActor)
-
-						const txid = yield* generateTransactionId()
-						return new ChatSyncChannelLinkResponse({
-							data: link,
-							transactionId: txid,
-						})
 						}),
-					).pipe(
+					)
+					.pipe(
 						Effect.catchTag("ParseError", (error) =>
 							Effect.fail(
 								new InternalServerError({
@@ -226,16 +272,18 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						Effect.catchTag("DatabaseError", (error) =>
 							Effect.fail(
 								new InternalServerError({
-								message: "Database error while creating channel link",
-								detail: String(error),
-							}),
+									message: "Database error while creating channel link",
+									detail: String(error),
+								}),
+							),
 						),
 					),
-				),
 
 			"chatSync.channelLink.list": ({ syncConnectionId }) =>
 				Effect.gen(function* () {
-					const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+					const connectionOption = yield* connectionRepo
+						.findById(syncConnectionId)
+						.pipe(withSystemActor)
 					if (Option.isNone(connectionOption)) {
 						return yield* Effect.fail(
 							new ChatSyncConnectionNotFoundError({
@@ -246,7 +294,9 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 					const connection = connectionOption.value
 					yield* ensureOrgAccess(connection.organizationId)
 
-					const data = yield* channelLinkRepo.findBySyncConnection(syncConnectionId).pipe(withSystemActor)
+					const data = yield* channelLinkRepo
+						.findBySyncConnection(syncConnectionId)
+						.pipe(withSystemActor)
 					return new ChatSyncChannelLinkListResponse({ data })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
@@ -260,19 +310,24 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				),
 
 			"chatSync.channelLink.delete": ({ syncChannelLinkId }) =>
-				db.transaction(
-					Effect.gen(function* () {
-						const linkOption = yield* channelLinkRepo.findById(syncChannelLinkId).pipe(withSystemActor)
-						if (Option.isNone(linkOption)) {
-							return yield* Effect.fail(
-								new ChatSyncChannelLinkNotFoundError({
-									syncChannelLinkId,
-								}),
-							)
-						}
-						const link = linkOption.value
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const linkOption = yield* channelLinkRepo
+								.findById(syncChannelLinkId)
+								.pipe(withSystemActor)
+							if (Option.isNone(linkOption)) {
+								return yield* Effect.fail(
+									new ChatSyncChannelLinkNotFoundError({
+										syncChannelLinkId,
+									}),
+								)
+							}
+							const link = linkOption.value
 
-							const connectionOption = yield* connectionRepo.findById(link.syncConnectionId).pipe(withSystemActor)
+							const connectionOption = yield* connectionRepo
+								.findById(link.syncConnectionId)
+								.pipe(withSystemActor)
 							if (Option.isNone(connectionOption)) {
 								return yield* Effect.fail(
 									new InternalServerError({
@@ -281,22 +336,23 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									}),
 								)
 							}
-						yield* ensureOrgAccess(connectionOption.value.organizationId)
+							yield* ensureOrgAccess(connectionOption.value.organizationId)
 
-						yield* channelLinkRepo.softDelete(syncChannelLinkId).pipe(withSystemActor)
-						const txid = yield* generateTransactionId()
-						return { transactionId: txid }
-					}),
-				).pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							new InternalServerError({
-								message: "Database error while deleting channel link",
-								detail: String(error),
-							}),
+							yield* channelLinkRepo.softDelete(syncChannelLinkId).pipe(withSystemActor)
+							const txid = yield* generateTransactionId()
+							return { transactionId: txid }
+						}),
+					)
+					.pipe(
+						Effect.catchTag("DatabaseError", (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while deleting channel link",
+									detail: String(error),
+								}),
+							),
 						),
 					),
-				),
 		}
 	}),
 )

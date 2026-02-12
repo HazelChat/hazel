@@ -6,6 +6,7 @@ import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
+import { DiscordSyncWorker } from "../../services/chat-sync/discord-sync-worker"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 /**
@@ -30,11 +31,12 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 			"message.create": ({ attachmentIds, ...messageData }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
+					const discordSyncWorker = yield* DiscordSyncWorker
 
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								const createdMessage = yield* MessageRepo.insert({
@@ -65,16 +67,28 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "create"))
+
+					yield* discordSyncWorker.syncHazelMessageCreateToAllConnections(response.data.id).pipe(
+						Effect.catchAll((error) =>
+							Effect.logWarning("Failed to sync message create to Discord", {
+								messageId: response.data.id,
+								error: String(error),
+							}),
+						),
+					)
+
+					return response
 				}),
 
 			"message.update": ({ id, ...payload }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
+					const discordSyncWorker = yield* DiscordSyncWorker
 
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								const updatedMessage = yield* MessageRepo.update({
@@ -91,16 +105,28 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "update"))
+
+					yield* discordSyncWorker.syncHazelMessageUpdateToAllConnections(id).pipe(
+						Effect.catchAll((error) =>
+							Effect.logWarning("Failed to sync message update to Discord", {
+								messageId: id,
+								error: String(error),
+							}),
+						),
+					)
+
+					return response
 				}),
 
 			"message.delete": ({ id }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
+					const discordSyncWorker = yield* DiscordSyncWorker
 
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)
 
-					return yield* db
+					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
 								yield* MessageRepo.deleteById(id).pipe(policyUse(MessagePolicy.canDelete(id)))
@@ -111,6 +137,17 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "delete"))
+
+					yield* discordSyncWorker.syncHazelMessageDeleteToAllConnections(id).pipe(
+						Effect.catchAll((error) =>
+							Effect.logWarning("Failed to sync message delete to Discord", {
+								messageId: id,
+								error: String(error),
+							}),
+						),
+					)
+
+					return response
 				}),
 		}
 	}),

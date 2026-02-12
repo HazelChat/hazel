@@ -4,6 +4,7 @@ import {
 	ChatSyncChannelLinkResponse,
 	ChatSyncChannelLinkListResponse,
 	ChatSyncConnectionExistsError,
+	ChatSyncIntegrationNotConnectedError,
 	ChatSyncConnectionNotFoundError,
 	ChatSyncConnectionResponse,
 	ChatSyncConnectionListResponse,
@@ -12,6 +13,7 @@ import {
 import {
 	ChatSyncChannelLinkRepo,
 	ChatSyncConnectionRepo,
+	IntegrationConnectionRepo,
 } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
 import { HttpApiBuilder } from "@effect/platform"
@@ -41,6 +43,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 	Effect.gen(function* () {
 		const connectionRepo = yield* ChatSyncConnectionRepo
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
+		const integrationConnectionRepo = yield* IntegrationConnectionRepo
 
 		return handlers
 			.handle("createConnection", ({ path, payload }) =>
@@ -48,12 +51,32 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					yield* ensureOrgAccess(path.orgId)
 					const currentUser = yield* CurrentUser.Context
 
+					const integrationConnectionId = yield* Effect.gen(function* () {
+						if (payload.provider !== "discord") {
+							return payload.integrationConnectionId ?? null
+						}
+
+						if (payload.integrationConnectionId) {
+							return payload.integrationConnectionId
+						}
+
+						const integrationOption = yield* integrationConnectionRepo
+							.findOrgConnection(path.orgId, "discord")
+							.pipe(withSystemActor)
+						if (Option.isNone(integrationOption) || integrationOption.value.status !== "active") {
+							return yield* Effect.fail(
+								new ChatSyncIntegrationNotConnectedError({
+									organizationId: path.orgId,
+									provider: "discord",
+								}),
+							)
+						}
+
+						return integrationOption.value.id
+					})
+
 					const existing = yield* connectionRepo
-						.findByProviderAndWorkspace(
-							path.orgId,
-							payload.provider,
-							payload.externalWorkspaceId,
-						)
+						.findByProviderAndWorkspace(path.orgId, payload.provider, payload.externalWorkspaceId)
 						.pipe(withSystemActor)
 					if (Option.isSome(existing)) {
 						return yield* Effect.fail(
@@ -68,7 +91,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					const [connection] = yield* connectionRepo
 						.insert({
 							organizationId: path.orgId,
-							integrationConnectionId: payload.integrationConnectionId ?? null,
+							integrationConnectionId,
 							provider: payload.provider,
 							externalWorkspaceId: payload.externalWorkspaceId,
 							externalWorkspaceName: payload.externalWorkspaceName ?? null,
@@ -89,18 +112,24 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						Effect.fail(toInternalServerError("Invalid sync connection data", error)),
 					),
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while creating sync connection", error)),
+						Effect.fail(
+							toInternalServerError("Database error while creating sync connection", error),
+						),
 					),
 				),
 			)
 			.handle("listConnections", ({ path }) =>
 				Effect.gen(function* () {
 					yield* ensureOrgAccess(path.orgId)
-					const connections = yield* connectionRepo.findByOrganization(path.orgId).pipe(withSystemActor)
+					const connections = yield* connectionRepo
+						.findByOrganization(path.orgId)
+						.pipe(withSystemActor)
 					return new ChatSyncConnectionListResponse({ data: connections })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while listing sync connections", error)),
+						Effect.fail(
+							toInternalServerError("Database error while listing sync connections", error),
+						),
 					),
 				),
 			)
@@ -124,15 +153,21 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					const links = yield* channelLinkRepo
 						.findBySyncConnection(path.syncConnectionId)
 						.pipe(withSystemActor)
-					yield* Effect.forEach(links, (link) => channelLinkRepo.softDelete(link.id).pipe(withSystemActor), {
-						concurrency: 10,
-					})
+					yield* Effect.forEach(
+						links,
+						(link) => channelLinkRepo.softDelete(link.id).pipe(withSystemActor),
+						{
+							concurrency: 10,
+						},
+					)
 
 					const txid = yield* generateTransactionId()
 					return new ChatSyncDeleteResponse({ transactionId: txid })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while deleting sync connection", error)),
+						Effect.fail(
+							toInternalServerError("Database error while deleting sync connection", error),
+						),
 					),
 				),
 			)
@@ -198,7 +233,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						Effect.fail(toInternalServerError("Invalid channel link data", error)),
 					),
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while creating channel link", error)),
+						Effect.fail(
+							toInternalServerError("Database error while creating channel link", error),
+						),
 					),
 				),
 			)
@@ -223,13 +260,17 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					return new ChatSyncChannelLinkListResponse({ data: links })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while listing channel links", error)),
+						Effect.fail(
+							toInternalServerError("Database error while listing channel links", error),
+						),
 					),
 				),
 			)
 			.handle("deleteChannelLink", ({ path }) =>
 				Effect.gen(function* () {
-					const linkOption = yield* channelLinkRepo.findById(path.syncChannelLinkId).pipe(withSystemActor)
+					const linkOption = yield* channelLinkRepo
+						.findById(path.syncChannelLinkId)
+						.pipe(withSystemActor)
 					if (Option.isNone(linkOption)) {
 						return yield* Effect.fail(
 							new ChatSyncChannelLinkNotFoundError({
@@ -238,7 +279,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						)
 					}
 					const link = linkOption.value
-					const connectionOption = yield* connectionRepo.findById(link.syncConnectionId).pipe(withSystemActor)
+					const connectionOption = yield* connectionRepo
+						.findById(link.syncConnectionId)
+						.pipe(withSystemActor)
 					if (Option.isNone(connectionOption)) {
 						return yield* Effect.fail(
 							new InternalServerError({
@@ -254,7 +297,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					return new ChatSyncDeleteResponse({ transactionId: txid })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(toInternalServerError("Database error while deleting channel link", error)),
+						Effect.fail(
+							toInternalServerError("Database error while deleting channel link", error),
+						),
 					),
 				),
 			)

@@ -174,6 +174,23 @@ export const integrations: Integration[] = [
 		comingSoon: true,
 	},
 	{
+		id: "discord",
+		name: "Discord",
+		description: "Connect Discord servers for channel syncing.",
+		fullDescription:
+			"Connect Discord to sync messages between Hazel and Discord channels. Link specific channels, choose sync direction, and keep conversations aligned in real time.",
+		logoDomain: "discord.com",
+		brandColor: "#5865F2",
+		category: "communication",
+		features: [
+			"OAuth-based Discord connection",
+			"Server and channel picker",
+			"Bidirectional channel sync",
+			"Message create, edit, and delete sync",
+		],
+		configOptions: [],
+	},
+	{
 		id: "craft",
 		name: "Craft",
 		description: "Connect your Craft workspace for documents, tasks, and notes.",

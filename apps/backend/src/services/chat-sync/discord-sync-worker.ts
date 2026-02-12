@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto"
-import {
-	and,
-	asc,
-	Database,
-	eq,
-	isNull,
-	schema,
-} from "@hazel/db"
+import { and, asc, Database, eq, isNull, schema } from "@hazel/db"
 import {
 	ChatSyncChannelLinkRepo,
 	ChatSyncConnectionRepo,
@@ -15,13 +8,10 @@ import {
 	MessageRepo,
 } from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
-import {
-	MessageId,
-	SyncChannelLinkId,
-	SyncConnectionId,
-} from "@hazel/schema"
+import { MessageId, ChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
+import { Discord } from "@hazel/integrations"
 
 export class DiscordSyncConfigurationError extends Schema.TaggedError<DiscordSyncConfigurationError>()(
 	"DiscordSyncConfigurationError",
@@ -107,6 +97,14 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")
+		const getStatusCode = (error: unknown): number | undefined => {
+			if (typeof error !== "object" || error === null || !("status" in error)) {
+				return undefined
+			}
+
+			const status = (error as { status: unknown }).status
+			return typeof status === "number" ? status : undefined
+		}
 
 		const claimReceipt = Effect.fn("DiscordSyncWorker.claimReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
@@ -152,55 +150,67 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			content: string,
 		) {
 			const token = yield* getDiscordToken()
-			const response = yield* Effect.tryPromise({
-				try: () =>
-					fetch(`https://discord.com/api/v10/channels/${externalChannelId}/messages`, {
-						method: "POST",
-						headers: {
-							Authorization: `Bot ${token}`,
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({ content }),
-					}),
-				catch: (error) =>
-					new DiscordSyncApiError({
-						message: "Discord API request failed",
-						detail: String(error),
-					}),
-			})
+			return yield* Discord.DiscordApiClient.createMessage({
+				channelId: externalChannelId,
+				content,
+				botToken: token,
+			}).pipe(
+				Effect.provide(Discord.DiscordApiClient.Default),
+				Effect.mapError(
+					(error) =>
+						new DiscordSyncApiError({
+							message: error.message,
+							status: getStatusCode(error),
+							detail: String(error),
+						}),
+				),
+			)
+		})
 
-			if (!response.ok) {
-				const detail = yield* Effect.tryPromise({
-					try: () => response.text(),
-					catch: () => "",
-				})
-				return yield* Effect.fail(
-					new DiscordSyncApiError({
-						message: "Discord API returned an error",
-						status: response.status,
-						detail,
-					}),
-				)
-			}
+		const discordUpdateMessage = Effect.fn("DiscordSyncWorker.discordUpdateMessage")(function* (params: {
+			externalChannelId: string
+			externalMessageId: string
+			content: string
+		}) {
+			const token = yield* getDiscordToken()
+			yield* Discord.DiscordApiClient.updateMessage({
+				channelId: params.externalChannelId,
+				messageId: params.externalMessageId,
+				content: params.content,
+				botToken: token,
+			}).pipe(
+				Effect.provide(Discord.DiscordApiClient.Default),
+				Effect.mapError(
+					(error) =>
+						new DiscordSyncApiError({
+							message: error.message,
+							status: getStatusCode(error),
+							detail: String(error),
+						}),
+				),
+			)
+		})
 
-			const body = (yield* Effect.tryPromise({
-				try: () => response.json() as Promise<{ id?: string }>,
-				catch: (error) =>
-					new DiscordSyncApiError({
-						message: "Failed to parse Discord response",
-						detail: String(error),
-					}),
-			})) as { id?: string }
-
-			if (!body.id) {
-				return yield* Effect.fail(
-					new DiscordSyncApiError({
-						message: "Discord response missing message id",
-					}),
-				)
-			}
-
-			return body.id
+		const discordDeleteMessage = Effect.fn("DiscordSyncWorker.discordDeleteMessage")(function* (params: {
+			externalChannelId: string
+			externalMessageId: string
+		}) {
+			const token = yield* getDiscordToken()
+			yield* Discord.DiscordApiClient.deleteMessage({
+				channelId: params.externalChannelId,
+				messageId: params.externalMessageId,
+				botToken: token,
+			}).pipe(
+				Effect.provide(Discord.DiscordApiClient.Default),
+				Effect.mapError(
+					(error) =>
+						new DiscordSyncApiError({
+							message: error.message,
+							status: getStatusCode(error),
+							detail: String(error),
+						}),
+				),
+			)
 		})
 
 		const syncHazelMessageToDiscord = Effect.fn("DiscordSyncWorker.syncHazelMessageToDiscord")(function* (
@@ -296,8 +306,13 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			if (connection.provider !== "discord") {
 				return { sent: 0, skipped: 0, failed: 0 }
 			}
+			if (connection.status !== "active") {
+				return { sent: 0, skipped: 0, failed: 0 }
+			}
 
-			const links = yield* channelLinkRepo.findActiveBySyncConnection(syncConnectionId).pipe(withSystemActor)
+			const links = yield* channelLinkRepo
+				.findActiveBySyncConnection(syncConnectionId)
+				.pipe(withSystemActor)
 
 			let sent = 0
 			let skipped = 0
@@ -330,9 +345,10 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				)
 
 				for (const unsyncedMessage of unsyncedMessages) {
-					const result = yield* syncHazelMessageToDiscord(syncConnectionId, unsyncedMessage.id).pipe(
-						Effect.either,
-					)
+					const result = yield* syncHazelMessageToDiscord(
+						syncConnectionId,
+						unsyncedMessage.id,
+					).pipe(Effect.either)
 					if (result._tag === "Right") {
 						if (result.right.status === "synced") {
 							sent++
@@ -351,6 +367,270 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			}
 
 			return { sent, skipped, failed }
+		})
+
+		const syncHazelMessageUpdateToDiscord = Effect.fn(
+			"DiscordSyncWorker.syncHazelMessageUpdateToDiscord",
+		)(function* (syncConnectionId: SyncConnectionId, hazelMessageId: MessageId) {
+			const dedupeKey = `hazel:message:update:${hazelMessageId}`
+			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+			if (!claimed) {
+				return { status: "deduped" as const }
+			}
+
+			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			if (Option.isNone(messageOption)) {
+				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
+			}
+			const message = messageOption.value
+
+			const linkOption = yield* channelLinkRepo
+				.findByHazelChannel(syncConnectionId, message.channelId)
+				.pipe(withSystemActor)
+			if (Option.isNone(linkOption)) {
+				return yield* Effect.fail(
+					new DiscordSyncChannelLinkNotFoundError({
+						syncConnectionId,
+					}),
+				)
+			}
+			const link = linkOption.value
+
+			const messageLinkOption = yield* messageLinkRepo
+				.findByHazelMessage(link.id, hazelMessageId)
+				.pipe(withSystemActor)
+			if (Option.isNone(messageLinkOption)) {
+				yield* writeReceipt({
+					syncConnectionId,
+					channelLinkId: link.id,
+					source: "hazel",
+					dedupeKey,
+					status: "ignored",
+					payload: { hazelMessageId },
+				})
+				return { status: "ignored_missing_link" as const }
+			}
+			const messageLink = messageLinkOption.value
+
+			yield* discordUpdateMessage({
+				externalChannelId: link.externalChannelId,
+				externalMessageId: messageLink.externalMessageId,
+				content: message.content,
+			})
+
+			yield* messageLinkRepo.updateLastSyncedAt(messageLink.id).pipe(withSystemActor)
+			yield* writeReceipt({
+				syncConnectionId,
+				channelLinkId: link.id,
+				source: "hazel",
+				dedupeKey,
+				payload: {
+					hazelMessageId,
+					externalMessageId: messageLink.externalMessageId,
+				},
+			})
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+
+			return { status: "updated" as const, externalMessageId: messageLink.externalMessageId }
+		})
+
+		const syncHazelMessageDeleteToDiscord = Effect.fn(
+			"DiscordSyncWorker.syncHazelMessageDeleteToDiscord",
+		)(function* (syncConnectionId: SyncConnectionId, hazelMessageId: MessageId) {
+			const dedupeKey = `hazel:message:delete:${hazelMessageId}`
+			const claimed = yield* claimReceipt({ syncConnectionId, source: "hazel", dedupeKey })
+			if (!claimed) {
+				return { status: "deduped" as const }
+			}
+
+			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			if (Option.isNone(messageOption)) {
+				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
+			}
+			const message = messageOption.value
+
+			const linkOption = yield* channelLinkRepo
+				.findByHazelChannel(syncConnectionId, message.channelId)
+				.pipe(withSystemActor)
+			if (Option.isNone(linkOption)) {
+				return yield* Effect.fail(
+					new DiscordSyncChannelLinkNotFoundError({
+						syncConnectionId,
+					}),
+				)
+			}
+			const link = linkOption.value
+
+			const messageLinkOption = yield* messageLinkRepo
+				.findByHazelMessage(link.id, hazelMessageId)
+				.pipe(withSystemActor)
+			if (Option.isNone(messageLinkOption)) {
+				yield* writeReceipt({
+					syncConnectionId,
+					channelLinkId: link.id,
+					source: "hazel",
+					dedupeKey,
+					status: "ignored",
+					payload: { hazelMessageId },
+				})
+				return { status: "ignored_missing_link" as const }
+			}
+			const messageLink = messageLinkOption.value
+
+			yield* discordDeleteMessage({
+				externalChannelId: link.externalChannelId,
+				externalMessageId: messageLink.externalMessageId,
+			})
+
+			yield* messageLinkRepo.softDelete(messageLink.id).pipe(withSystemActor)
+			yield* writeReceipt({
+				syncConnectionId,
+				channelLinkId: link.id,
+				source: "hazel",
+				dedupeKey,
+				payload: {
+					hazelMessageId,
+					externalMessageId: messageLink.externalMessageId,
+				},
+			})
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+
+			return { status: "deleted" as const, externalMessageId: messageLink.externalMessageId }
+		})
+
+		const getActiveOutboundTargets = Effect.fn("DiscordSyncWorker.getActiveOutboundTargets")(function* (
+			hazelChannelId: ChannelId,
+		) {
+			const targets = yield* db.execute((client) =>
+				client
+					.select({
+						syncConnectionId: schema.chatSyncConnectionsTable.id,
+						channelLinkId: schema.chatSyncChannelLinksTable.id,
+						direction: schema.chatSyncChannelLinksTable.direction,
+					})
+					.from(schema.chatSyncChannelLinksTable)
+					.innerJoin(
+						schema.chatSyncConnectionsTable,
+						eq(
+							schema.chatSyncConnectionsTable.id,
+							schema.chatSyncChannelLinksTable.syncConnectionId,
+						),
+					)
+					.where(
+						and(
+							eq(schema.chatSyncChannelLinksTable.hazelChannelId, hazelChannelId),
+							eq(schema.chatSyncChannelLinksTable.isActive, true),
+							isNull(schema.chatSyncChannelLinksTable.deletedAt),
+							eq(schema.chatSyncConnectionsTable.provider, "discord"),
+							eq(schema.chatSyncConnectionsTable.status, "active"),
+							isNull(schema.chatSyncConnectionsTable.deletedAt),
+						),
+					),
+			)
+			return targets
+		})
+
+		const syncHazelMessageCreateToAllConnections = Effect.fn(
+			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
+		)(function* (hazelMessageId: MessageId) {
+			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			if (Option.isNone(messageOption)) {
+				return { synced: 0, failed: 0 }
+			}
+			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId)
+			let synced = 0
+			let failed = 0
+
+			for (const target of targets) {
+				if (target.direction === "external_to_hazel") continue
+				const result = yield* syncHazelMessageToDiscord(target.syncConnectionId, hazelMessageId).pipe(
+					Effect.either,
+				)
+				if (result._tag === "Right") {
+					if (result.right.status === "synced" || result.right.status === "already_linked") {
+						synced++
+					}
+				} else {
+					failed++
+					yield* Effect.logWarning("Failed to sync create message to Discord", {
+						hazelMessageId,
+						syncConnectionId: target.syncConnectionId,
+						error: result.left,
+					})
+				}
+			}
+
+			return { synced, failed }
+		})
+
+		const syncHazelMessageUpdateToAllConnections = Effect.fn(
+			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
+		)(function* (hazelMessageId: MessageId) {
+			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			if (Option.isNone(messageOption)) {
+				return { synced: 0, failed: 0 }
+			}
+			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId)
+			let synced = 0
+			let failed = 0
+
+			for (const target of targets) {
+				if (target.direction === "external_to_hazel") continue
+				const result = yield* syncHazelMessageUpdateToDiscord(
+					target.syncConnectionId,
+					hazelMessageId,
+				).pipe(Effect.either)
+				if (result._tag === "Right") {
+					if (result.right.status === "updated") {
+						synced++
+					}
+				} else {
+					failed++
+					yield* Effect.logWarning("Failed to sync update message to Discord", {
+						hazelMessageId,
+						syncConnectionId: target.syncConnectionId,
+						error: result.left,
+					})
+				}
+			}
+
+			return { synced, failed }
+		})
+
+		const syncHazelMessageDeleteToAllConnections = Effect.fn(
+			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
+		)(function* (hazelMessageId: MessageId) {
+			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			if (Option.isNone(messageOption)) {
+				return { synced: 0, failed: 0 }
+			}
+			const targets = yield* getActiveOutboundTargets(messageOption.value.channelId)
+			let synced = 0
+			let failed = 0
+
+			for (const target of targets) {
+				if (target.direction === "external_to_hazel") continue
+				const result = yield* syncHazelMessageDeleteToDiscord(
+					target.syncConnectionId,
+					hazelMessageId,
+				).pipe(Effect.either)
+				if (result._tag === "Right") {
+					if (result.right.status === "deleted") {
+						synced++
+					}
+				} else {
+					failed++
+					yield* Effect.logWarning("Failed to sync delete message to Discord", {
+						hazelMessageId,
+						syncConnectionId: target.syncConnectionId,
+						error: result.left,
+					})
+				}
+			}
+
+			return { synced, failed }
 		})
 
 		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
@@ -383,7 +663,9 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo
+				.findById(payload.syncConnectionId)
+				.pipe(withSystemActor)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -392,6 +674,16 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				)
 			}
 			const connection = connectionOption.value
+			if (connection.provider !== "discord" || connection.status !== "active") {
+				yield* writeReceipt({
+					syncConnectionId: payload.syncConnectionId,
+					source: "external",
+					dedupeKey,
+					status: "ignored",
+					payload,
+				})
+				return { status: "ignored_connection_inactive" as const }
+			}
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
@@ -420,7 +712,10 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				return { status: "already_linked" as const }
 			}
 
-			const botUser = yield* integrationBotService.getOrCreateBotUser("discord", connection.organizationId)
+			const botUser = yield* integrationBotService.getOrCreateBotUser(
+				"discord",
+				connection.organizationId,
+			)
 			const [message] = yield* messageRepo
 				.insert({
 					channelId: link.hazelChannelId,
@@ -470,6 +765,28 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			})
 			if (!claimed) {
 				return { status: "deduped" as const }
+			}
+
+			const connectionOption = yield* connectionRepo
+				.findById(payload.syncConnectionId)
+				.pipe(withSystemActor)
+			if (Option.isNone(connectionOption)) {
+				return yield* Effect.fail(
+					new DiscordSyncConnectionNotFoundError({
+						syncConnectionId: payload.syncConnectionId,
+					}),
+				)
+			}
+			const connection = connectionOption.value
+			if (connection.provider !== "discord" || connection.status !== "active") {
+				yield* writeReceipt({
+					syncConnectionId: payload.syncConnectionId,
+					source: "external",
+					dedupeKey,
+					status: "ignored",
+					payload,
+				})
+				return { status: "ignored_connection_inactive" as const }
 			}
 
 			const linkOption = yield* channelLinkRepo
@@ -535,6 +852,28 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 				return { status: "deduped" as const }
 			}
 
+			const connectionOption = yield* connectionRepo
+				.findById(payload.syncConnectionId)
+				.pipe(withSystemActor)
+			if (Option.isNone(connectionOption)) {
+				return yield* Effect.fail(
+					new DiscordSyncConnectionNotFoundError({
+						syncConnectionId: payload.syncConnectionId,
+					}),
+				)
+			}
+			const connection = connectionOption.value
+			if (connection.provider !== "discord" || connection.status !== "active") {
+				yield* writeReceipt({
+					syncConnectionId: payload.syncConnectionId,
+					source: "external",
+					dedupeKey,
+					status: "ignored",
+					payload,
+				})
+				return { status: "ignored_connection_inactive" as const }
+			}
+
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
 				.pipe(withSystemActor)
@@ -589,6 +928,11 @@ export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("Disc
 			syncConnection,
 			syncAllActiveConnections,
 			syncHazelMessageToDiscord,
+			syncHazelMessageUpdateToDiscord,
+			syncHazelMessageDeleteToDiscord,
+			syncHazelMessageCreateToAllConnections,
+			syncHazelMessageUpdateToAllConnections,
+			syncHazelMessageDeleteToAllConnections,
 			ingestMessageCreate,
 			ingestMessageUpdate,
 			ingestMessageDelete,

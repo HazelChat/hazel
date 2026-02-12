@@ -96,8 +96,11 @@ export const PROVIDER_CONFIGS: Record<
 		provider: "discord",
 		authorizationUrl: "https://discord.com/oauth2/authorize",
 		tokenUrl: "https://discord.com/api/oauth2/token",
-		scopes: ["identify", "bot"],
+		scopes: ["identify", "guilds", "bot"],
 		scopeDelimiter: " ",
+		additionalAuthParams: {
+			permissions: "76800",
+		},
 	},
 }
 

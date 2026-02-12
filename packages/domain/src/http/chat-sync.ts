@@ -65,6 +65,14 @@ export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncCo
 	},
 ) {}
 
+export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<ChatSyncIntegrationNotConnectedError>()(
+	"ChatSyncIntegrationNotConnectedError",
+	{
+		organizationId: OrganizationId,
+		provider: Schema.String,
+	},
+) {}
+
 export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncChannelLinkExistsError>()(
 	"ChatSyncChannelLinkExistsError",
 	{
@@ -102,6 +110,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.setPayload(CreateChatSyncConnectionRequest)
 			.addSuccess(ChatSyncConnectionResponse)
 			.addError(ChatSyncConnectionExistsError)
+			.addError(ChatSyncIntegrationNotConnectedError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.annotateContext(

@@ -104,6 +104,31 @@ export class GitHubRepositoriesResponse extends Schema.Class<GitHubRepositoriesR
 	perPage: Schema.Number,
 }) {}
 
+const DiscordGuild = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	icon: Schema.NullOr(Schema.String),
+	owner: Schema.Boolean,
+})
+
+const DiscordGuildChannel = Schema.Struct({
+	id: Schema.String,
+	guildId: Schema.String,
+	name: Schema.String,
+	type: Schema.Number,
+	parentId: Schema.NullOr(Schema.String),
+})
+
+export class DiscordGuildsResponse extends Schema.Class<DiscordGuildsResponse>("DiscordGuildsResponse")({
+	guilds: Schema.Array(DiscordGuild),
+}) {}
+
+export class DiscordGuildChannelsResponse extends Schema.Class<DiscordGuildChannelsResponse>(
+	"DiscordGuildChannelsResponse",
+)({
+	channels: Schema.Array(DiscordGuildChannel),
+}) {}
+
 // Error when organization doesn't have the integration connected
 export class IntegrationNotConnectedForPreviewError extends Schema.TaggedError<IntegrationNotConnectedForPreviewError>()(
 	"IntegrationNotConnectedForPreviewError",
@@ -207,6 +232,47 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					title: "Get GitHub Repositories",
 					description: "List repositories accessible to the GitHub App installation",
 					summary: "List GitHub repositories",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`)
+			.addSuccess(DiscordGuildsResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Discord Guilds",
+					description: "List Discord guilds visible to the connected Discord account",
+					summary: "List Discord guilds",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`)
+			.addSuccess(DiscordGuildChannelsResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+					guildId: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Discord Guild Channels",
+					description: "List message-capable channels in a Discord guild using the bot token",
+					summary: "List Discord guild channels",
 				}),
 			),
 	)
