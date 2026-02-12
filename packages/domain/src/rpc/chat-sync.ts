@@ -152,4 +152,14 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		}),
 		error: Schema.Union(ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
+
+	Rpc.mutation("chatSync.channelLink.update", {
+		payload: Schema.Struct({
+			syncChannelLinkId: SyncChannelLinkId,
+			direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),
+			isActive: Schema.optional(Schema.Boolean),
+		}),
+		success: ChatSyncChannelLinkResponse,
+		error: Schema.Union(ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError),
+	}).middleware(AuthMiddleware),
 ) {}

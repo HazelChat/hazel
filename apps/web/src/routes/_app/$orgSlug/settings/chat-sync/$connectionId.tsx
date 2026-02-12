@@ -5,8 +5,12 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"
 import { useMemo, useState } from "react"
 import { AddChannelLinkModal } from "~/components/chat-sync/add-channel-link-modal"
+import IconCirclePause from "~/components/icons/icon-circle-pause"
+import IconDotsVertical from "~/components/icons/icon-dots-vertical"
 import IconHashtag from "~/components/icons/icon-hashtag"
+import IconPlay from "~/components/icons/icon-play"
 import IconPlus from "~/components/icons/icon-plus"
+import IconTrash from "~/components/icons/icon-trash"
 import { Button } from "~/components/ui/button"
 import {
 	Dialog,
@@ -17,7 +21,15 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog"
 import { EmptyState } from "~/components/ui/empty-state"
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
+import {
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuLabel,
+	MenuSeparator,
+	MenuSubMenu,
+	MenuTrigger,
+} from "~/components/ui/menu"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { SectionHeader } from "~/components/ui/section-header"
 import { channelCollection } from "~/db/collections"
@@ -129,6 +141,10 @@ function ChatSyncConnectionDetailPage() {
 		mode: "promiseExit",
 	})
 
+	const updateChannelLink = useAtomSet(HazelRpcClient.mutation("chatSync.channelLink.update"), {
+		mode: "promiseExit",
+	})
+
 	// Find the current connection from the list
 	const connection = useMemo(() => {
 		if (!Result.isSuccess(connectionsResult)) return null
@@ -194,6 +210,44 @@ function ChatSyncConnectionDetailPage() {
 			.run()
 
 		setIsDeletingLink(false)
+	}
+
+	const handleToggleLinkActive = async (linkId: SyncChannelLinkId, currentlyActive: boolean) => {
+		const exit = await updateChannelLink({
+			payload: { syncChannelLinkId: linkId, isActive: !currentlyActive },
+			reactivityKeys: [`chatSyncLinks:${connectionId}:${refreshKey}`],
+		})
+
+		exitToast(exit)
+			.onSuccess(() => {
+				setRefreshKey((k) => k + 1)
+			})
+			.successMessage(currentlyActive ? "Channel link paused" : "Channel link resumed")
+			.onErrorTag("ChatSyncChannelLinkNotFoundError", () => ({
+				title: "Link not found",
+				description: "This channel link may have already been removed.",
+				isRetryable: false,
+			}))
+			.run()
+	}
+
+	const handleChangeDirection = async (linkId: SyncChannelLinkId, newDirection: SyncDirection) => {
+		const exit = await updateChannelLink({
+			payload: { syncChannelLinkId: linkId, direction: newDirection },
+			reactivityKeys: [`chatSyncLinks:${connectionId}:${refreshKey}`],
+		})
+
+		exitToast(exit)
+			.onSuccess(() => {
+				setRefreshKey((k) => k + 1)
+			})
+			.successMessage(`Sync direction updated to ${DIRECTION_DISPLAY[newDirection].label}`)
+			.onErrorTag("ChatSyncChannelLinkNotFoundError", () => ({
+				title: "Link not found",
+				description: "This channel link may have already been removed.",
+				isRetryable: false,
+			}))
+			.run()
 	}
 
 	// Loading state
@@ -455,6 +509,18 @@ function ChatSyncConnectionDetailPage() {
 												name: link.externalChannelName || link.externalChannelId,
 											})
 										}
+										onToggleActive={() =>
+											handleToggleLinkActive(
+												link.id as SyncChannelLinkId,
+												link.isActive,
+											)
+										}
+										onChangeDirection={(dir) =>
+											handleChangeDirection(
+												link.id as SyncChannelLinkId,
+												dir,
+											)
+										}
 									/>
 								))}
 							</div>
@@ -612,6 +678,8 @@ function ChatSyncConnectionDetailPage() {
 function ChannelLinkRow({
 	link,
 	onDelete,
+	onToggleActive,
+	onChangeDirection,
 }: {
 	link: {
 		id: string
@@ -622,6 +690,8 @@ function ChannelLinkRow({
 		isActive: boolean
 	}
 	onDelete: () => void
+	onToggleActive: () => void
+	onChangeDirection: (direction: SyncDirection) => void
 }) {
 	const direction = (link.direction as SyncDirection) || "both"
 	const directionDisplay = DIRECTION_DISPLAY[direction]
@@ -638,9 +708,9 @@ function ChannelLinkRow({
 	const hazelChannel = channelData?.[0]
 
 	return (
-		<div className="flex items-center justify-between gap-4 px-5 py-3">
+		<div className="flex items-center gap-4 px-5 py-3">
 			{/* Hazel channel */}
-			<div className="flex min-w-0 items-center gap-2">
+			<div className="flex min-w-0 flex-1 items-center gap-2">
 				<IconHashtag className="size-4 shrink-0 text-muted-fg" />
 				<span className="truncate font-medium text-fg text-sm">
 					{hazelChannel?.name || "Unknown channel"}
@@ -648,12 +718,16 @@ function ChannelLinkRow({
 			</div>
 
 			{/* Direction indicator */}
-			<div className="flex shrink-0 items-center gap-2 text-muted-fg" title={directionDisplay.label}>
+			<div
+				className="flex shrink-0 items-center gap-1.5 rounded-full bg-bg-muted/50 px-2.5 py-1 text-muted-fg"
+				title={directionDisplay.label}
+			>
 				{directionDisplay.icon}
+				<span className="text-xs">{directionDisplay.label}</span>
 			</div>
 
 			{/* Discord channel */}
-			<div className="flex min-w-0 items-center gap-2">
+			<div className="flex min-w-0 flex-1 items-center gap-2">
 				<svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="#5865F2">
 					<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
 				</svg>
@@ -671,48 +745,55 @@ function ChannelLinkRow({
 							: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
 					}`}
 				>
-					{link.isActive ? "Active" : "Inactive"}
+					{link.isActive ? "Active" : "Paused"}
 				</span>
 
-				<MenuTrigger>
-					<button
-						type="button"
-						className="rounded p-1 text-muted-fg transition-colors hover:bg-secondary hover:text-fg"
+				<Menu>
+					<MenuTrigger
+						aria-label="Channel link actions"
+						className="inline-flex size-7 items-center justify-center rounded-lg text-muted-fg hover:bg-secondary hover:text-fg"
 					>
-						<svg
-							className="size-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							strokeWidth={2}
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"
-							/>
-						</svg>
-					</button>
+						<IconDotsVertical className="size-4" />
+					</MenuTrigger>
 					<MenuContent placement="bottom end">
+						<MenuSubMenu>
+							<MenuItem>
+								{directionDisplay.icon}
+								<MenuLabel>Change direction</MenuLabel>
+							</MenuItem>
+							<MenuContent>
+								{(
+									["both", "hazel_to_external", "external_to_hazel"] as const
+								).map((dir) => (
+									<MenuItem
+										key={dir}
+										onAction={() => onChangeDirection(dir)}
+									>
+										{DIRECTION_DISPLAY[dir].icon}
+										<MenuLabel>
+											{DIRECTION_DISPLAY[dir].label}
+										</MenuLabel>
+									</MenuItem>
+								))}
+							</MenuContent>
+						</MenuSubMenu>
+						<MenuItem onAction={onToggleActive}>
+							{link.isActive ? (
+								<IconCirclePause className="size-4" />
+							) : (
+								<IconPlay className="size-4" />
+							)}
+							<MenuLabel>
+								{link.isActive ? "Pause sync" : "Resume sync"}
+							</MenuLabel>
+						</MenuItem>
+						<MenuSeparator />
 						<MenuItem intent="danger" onAction={onDelete}>
-							<svg
-								className="size-4"
-								data-slot="icon"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								strokeWidth={2}
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-								/>
-							</svg>
-							Remove link
+							<IconTrash className="size-4" />
+							<MenuLabel>Remove link</MenuLabel>
 						</MenuItem>
 					</MenuContent>
-				</MenuTrigger>
+				</Menu>
 			</div>
 		</div>
 	)

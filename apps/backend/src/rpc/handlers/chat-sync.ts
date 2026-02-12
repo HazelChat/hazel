@@ -353,6 +353,74 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							),
 						),
 					),
+			"chatSync.channelLink.update": ({ syncChannelLinkId, direction, isActive }) =>
+				db
+					.transaction(
+						Effect.gen(function* () {
+							const linkOption = yield* channelLinkRepo
+								.findById(syncChannelLinkId)
+								.pipe(withSystemActor)
+							if (Option.isNone(linkOption)) {
+								return yield* Effect.fail(
+									new ChatSyncChannelLinkNotFoundError({
+										syncChannelLinkId,
+									}),
+								)
+							}
+							const link = linkOption.value
+
+							const connectionOption = yield* connectionRepo
+								.findById(link.syncConnectionId)
+								.pipe(withSystemActor)
+							if (Option.isNone(connectionOption)) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "Sync connection not found for channel link",
+										detail: `syncConnectionId=${link.syncConnectionId}`,
+									}),
+								)
+							}
+							yield* ensureOrgAccess(connectionOption.value.organizationId)
+
+							if (direction !== undefined) {
+								yield* channelLinkRepo
+									.updateDirection(syncChannelLinkId, direction)
+									.pipe(withSystemActor)
+							}
+							if (isActive !== undefined) {
+								yield* channelLinkRepo
+									.setActive(syncChannelLinkId, isActive)
+									.pipe(withSystemActor)
+							}
+
+							const updatedOption = yield* channelLinkRepo
+								.findById(syncChannelLinkId)
+								.pipe(withSystemActor)
+							if (Option.isNone(updatedOption)) {
+								return yield* Effect.fail(
+									new ChatSyncChannelLinkNotFoundError({
+										syncChannelLinkId,
+									}),
+								)
+							}
+
+							const txid = yield* generateTransactionId()
+							return new ChatSyncChannelLinkResponse({
+								data: updatedOption.value,
+								transactionId: txid,
+							})
+						}),
+					)
+					.pipe(
+						Effect.catchTag("DatabaseError", (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Database error while updating channel link",
+									detail: String(error),
+								}),
+							),
+						),
+					),
 		}
 	}),
 )

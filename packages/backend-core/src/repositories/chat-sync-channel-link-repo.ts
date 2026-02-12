@@ -189,7 +189,27 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 					policyRequire("ChatSyncChannelLink", "update"),
 				)({ id }, tx)
 
-			const softDelete = (id: SyncChannelLinkId, tx?: TxFn) =>
+			const updateDirection = (
+			id: SyncChannelLinkId,
+			direction: ChatSyncChannelLink.ChatSyncDirection,
+			tx?: TxFn,
+		) =>
+			db.makeQuery(
+				(execute, data: { id: SyncChannelLinkId; direction: ChatSyncChannelLink.ChatSyncDirection }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncChannelLinksTable)
+							.set({
+								direction: data.direction,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
+							.returning(),
+					),
+				policyRequire("ChatSyncChannelLink", "update"),
+			)({ id, direction }, tx)
+
+		const softDelete = (id: SyncChannelLinkId, tx?: TxFn) =>
 				db.makeQuery(
 					(execute, data: { id: SyncChannelLinkId }) =>
 						execute((client) =>
@@ -214,6 +234,7 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 				findByExternalChannel,
 				findActiveByExternalChannel,
 				setActive,
+				updateDirection,
 				updateLastSyncedAt,
 				softDelete,
 			}
