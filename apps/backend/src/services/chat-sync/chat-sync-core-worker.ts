@@ -13,6 +13,7 @@ import {
 	UserRepo,
 } from "@hazel/backend-core"
 import { withSystemActor } from "@hazel/domain"
+import { IntegrationConnection } from "@hazel/domain/models"
 import {
 	MessageId,
 	MessageReactionId,
@@ -226,6 +227,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			},
 		)
 
+		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
+
 		const resolveAuthorUserId = Effect.fn("DiscordSyncWorker.resolveAuthorUserId")(function* (params: {
 			provider: string
 			organizationId: OrganizationId
@@ -236,7 +239,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const linkedConnection = yield* integrationConnectionRepo
 				.findActiveUserByExternalAccountId(
 					params.organizationId,
-					params.provider as any,
+					decodeProvider(params.provider),
 					params.externalUserId,
 				)
 				.pipe(withSystemActor)
@@ -1286,7 +1289,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 					})
 				: (yield* integrationBotService.getOrCreateBotUser(
-						connection.provider as any,
+						decodeProvider(connection.provider),
 						connection.organizationId,
 					)).id
 			const replyToMessageId = payload.externalReplyToMessageId

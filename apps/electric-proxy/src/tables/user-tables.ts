@@ -142,8 +142,11 @@ export function getWhereClauseForTable(
 					schema.chatSyncChannelLinksTable.deletedAt,
 				),
 			)
-		case "chat_sync_message_links":
-			return Effect.succeed(buildDeletedAtNullClause(schema.chatSyncMessageLinksTable.deletedAt))
+		case "chat_sync_message_links": {
+			const deletedAtClause = `"${schema.chatSyncMessageLinksTable.deletedAt.name}" IS NULL AND `
+			const whereClause = `${deletedAtClause}"${schema.chatSyncMessageLinksTable.channelLinkId.name}" IN (SELECT "id" FROM chat_sync_channel_links WHERE "deletedAt" IS NULL AND "hazelChannelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))`
+			return Effect.succeed({ whereClause, params: [user.internalUserId] })
+		}
 	}
 
 	return Match.value(table).pipe(
