@@ -47,6 +47,7 @@ import { Route as AppOrgSlugNotificationsGeneralRouteImport } from './routes/_ap
 import { Route as AppOrgSlugNotificationsDmsRouteImport } from './routes/_app/$orgSlug/notifications/dms'
 import { Route as AppOrgSlugMySettingsProfileRouteImport } from './routes/_app/$orgSlug/my-settings/profile'
 import { Route as AppOrgSlugMySettingsNotificationsRouteImport } from './routes/_app/$orgSlug/my-settings/notifications'
+import { Route as AppOrgSlugMySettingsLinkedAccountsRouteImport } from './routes/_app/$orgSlug/my-settings/linked-accounts'
 import { Route as AppOrgSlugMySettingsDesktopRouteImport } from './routes/_app/$orgSlug/my-settings/desktop'
 import { Route as AppOrgSlugChatIdRouteImport } from './routes/_app/$orgSlug/chat/$id'
 import { Route as AppOrgSlugSettingsIntegrationsLayoutRouteImport } from './routes/_app/$orgSlug/settings/integrations/layout'
@@ -269,6 +270,12 @@ const AppOrgSlugMySettingsNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AppOrgSlugMySettingsLayoutRoute,
   } as any)
+const AppOrgSlugMySettingsLinkedAccountsRoute =
+  AppOrgSlugMySettingsLinkedAccountsRouteImport.update({
+    id: '/linked-accounts',
+    path: '/linked-accounts',
+    getParentRoute: () => AppOrgSlugMySettingsLayoutRoute,
+  } as any)
 const AppOrgSlugMySettingsDesktopRoute =
   AppOrgSlugMySettingsDesktopRouteImport.update({
     id: '/desktop',
@@ -402,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
+  '/$orgSlug/my-settings/linked-accounts': typeof AppOrgSlugMySettingsLinkedAccountsRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
@@ -451,6 +459,7 @@ export interface FileRoutesByTo {
   '/select-organization': typeof AppSelectOrganizationIndexRoute
   '/dev/embeds': typeof DevEmbedsIndexRoute
   '/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
+  '/$orgSlug/my-settings/linked-accounts': typeof AppOrgSlugMySettingsLinkedAccountsRoute
   '/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
@@ -509,6 +518,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   '/_app/$orgSlug/chat/$id': typeof AppOrgSlugChatIdRouteWithChildren
   '/_app/$orgSlug/my-settings/desktop': typeof AppOrgSlugMySettingsDesktopRoute
+  '/_app/$orgSlug/my-settings/linked-accounts': typeof AppOrgSlugMySettingsLinkedAccountsRoute
   '/_app/$orgSlug/my-settings/notifications': typeof AppOrgSlugMySettingsNotificationsRoute
   '/_app/$orgSlug/my-settings/profile': typeof AppOrgSlugMySettingsProfileRoute
   '/_app/$orgSlug/notifications/dms': typeof AppOrgSlugNotificationsDmsRoute
@@ -567,6 +577,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/settings/integrations'
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/my-settings/desktop'
+    | '/$orgSlug/my-settings/linked-accounts'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/notifications/dms'
@@ -616,6 +627,7 @@ export interface FileRouteTypes {
     | '/select-organization'
     | '/dev/embeds'
     | '/$orgSlug/my-settings/desktop'
+    | '/$orgSlug/my-settings/linked-accounts'
     | '/$orgSlug/my-settings/notifications'
     | '/$orgSlug/my-settings/profile'
     | '/$orgSlug/notifications/dms'
@@ -673,6 +685,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/settings/integrations'
     | '/_app/$orgSlug/chat/$id'
     | '/_app/$orgSlug/my-settings/desktop'
+    | '/_app/$orgSlug/my-settings/linked-accounts'
     | '/_app/$orgSlug/my-settings/notifications'
     | '/_app/$orgSlug/my-settings/profile'
     | '/_app/$orgSlug/notifications/dms'
@@ -987,6 +1000,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugMySettingsNotificationsRouteImport
       parentRoute: typeof AppOrgSlugMySettingsLayoutRoute
     }
+    '/_app/$orgSlug/my-settings/linked-accounts': {
+      id: '/_app/$orgSlug/my-settings/linked-accounts'
+      path: '/linked-accounts'
+      fullPath: '/$orgSlug/my-settings/linked-accounts'
+      preLoaderRoute: typeof AppOrgSlugMySettingsLinkedAccountsRouteImport
+      parentRoute: typeof AppOrgSlugMySettingsLayoutRoute
+    }
     '/_app/$orgSlug/my-settings/desktop': {
       id: '/_app/$orgSlug/my-settings/desktop'
       path: '/desktop'
@@ -1118,6 +1138,7 @@ declare module '@tanstack/react-router' {
 
 interface AppOrgSlugMySettingsLayoutRouteChildren {
   AppOrgSlugMySettingsDesktopRoute: typeof AppOrgSlugMySettingsDesktopRoute
+  AppOrgSlugMySettingsLinkedAccountsRoute: typeof AppOrgSlugMySettingsLinkedAccountsRoute
   AppOrgSlugMySettingsNotificationsRoute: typeof AppOrgSlugMySettingsNotificationsRoute
   AppOrgSlugMySettingsProfileRoute: typeof AppOrgSlugMySettingsProfileRoute
   AppOrgSlugMySettingsIndexRoute: typeof AppOrgSlugMySettingsIndexRoute
@@ -1126,6 +1147,8 @@ interface AppOrgSlugMySettingsLayoutRouteChildren {
 const AppOrgSlugMySettingsLayoutRouteChildren: AppOrgSlugMySettingsLayoutRouteChildren =
   {
     AppOrgSlugMySettingsDesktopRoute: AppOrgSlugMySettingsDesktopRoute,
+    AppOrgSlugMySettingsLinkedAccountsRoute:
+      AppOrgSlugMySettingsLinkedAccountsRoute,
     AppOrgSlugMySettingsNotificationsRoute:
       AppOrgSlugMySettingsNotificationsRoute,
     AppOrgSlugMySettingsProfileRoute: AppOrgSlugMySettingsProfileRoute,

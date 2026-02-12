@@ -303,7 +303,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (path:
 		level,
 		returnTo:
 			level === "user"
-				? `${frontendUrl}/${org.slug}/my-settings/profile`
+				? `${frontendUrl}/${org.slug}/my-settings/linked-accounts`
 				: `${frontendUrl}/${org.slug}/settings/integrations/${provider}`,
 		environment,
 	}

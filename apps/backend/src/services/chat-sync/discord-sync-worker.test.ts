@@ -20,6 +20,8 @@ import type {
 } from "@hazel/schema"
 import { Effect, Layer, Option } from "effect"
 import { IntegrationBotService } from "../integrations/integration-bot-service.ts"
+import { ChatSyncCoreWorker } from "./chat-sync-core-worker.ts"
+import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry.ts"
 import { DiscordSyncWorker, type DiscordIngressMessageCreate } from "./discord-sync-worker.ts"
 
 const SYNC_CONNECTION_ID = "00000000-0000-0000-0000-000000000001" as SyncConnectionId
@@ -48,16 +50,15 @@ const makeWorkerLayer = (deps: {
 	integrationBotService: IntegrationBotService
 }) =>
 	DiscordSyncWorker.DefaultWithoutDependencies.pipe(
+		Layer.provide(ChatSyncCoreWorker.DefaultWithoutDependencies),
+		Layer.provide(ChatSyncProviderRegistry.Default),
 		Layer.provide(
-			Layer.succeed(
-				Database.Database,
-				{
-					execute: () => Effect.die("not used in this test"),
-					transaction: (effect: any) => effect,
-					makeQuery: () => Effect.die("not used in this test"),
-					makeQueryWithSchema: () => Effect.die("not used in this test"),
-				} as any,
-			),
+			Layer.succeed(Database.Database, {
+				execute: () => Effect.die("not used in this test"),
+				transaction: (effect: any) => effect,
+				makeQuery: () => Effect.die("not used in this test"),
+				makeQueryWithSchema: () => Effect.die("not used in this test"),
+			} as any),
 		),
 		Layer.provide(Layer.succeed(ChatSyncConnectionRepo, deps.connectionRepo)),
 		Layer.provide(Layer.succeed(ChatSyncChannelLinkRepo, deps.channelLinkRepo)),

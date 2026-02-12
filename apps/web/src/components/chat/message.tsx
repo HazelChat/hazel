@@ -7,6 +7,7 @@ import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { isDiscordSyncedMessageAtomFamily, processedReactionsAtomFamily } from "~/atoms/message-atoms"
+import IconDiscord from "~/components/icons/icon-discord"
 import IconPin from "~/components/icons/icon-pin"
 import { extractUrls } from "~/components/link-preview"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
@@ -310,16 +311,20 @@ function MessageHeader() {
 				expiresAt={statusExpiresAt}
 				quietHours={quietHours}
 			/>
-			{user.userType === "machine" && (
+			{user.userType === "machine" && isDiscordSynced ? (
+				<span className="inline-flex items-center gap-1 rounded-sm bg-[#5865F2] px-1.5 py-0.5 text-xs/5 font-medium text-white">
+					<IconDiscord className="size-3" fill="currentColor" />
+					Discord
+				</span>
+			) : user.userType === "machine" ? (
 				<Badge intent="primary" isCircle={false}>
 					APP
 				</Badge>
-			)}
-			{isDiscordSynced && (
+			) : isDiscordSynced ? (
 				<Badge intent="secondary" isCircle={false}>
 					Synced from Discord
 				</Badge>
-			)}
+			) : null}
 			<span className="text-muted-fg text-xs">
 				{format(message.createdAt, "HH:mm")}
 				{isEdited && " (edited)"}

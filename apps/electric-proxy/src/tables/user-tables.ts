@@ -60,6 +60,11 @@ export const ALLOWED_TABLES = [
 	// Integration tables
 	"integration_connections",
 
+	// Chat Sync tables
+	"chat_sync_connections",
+	"chat_sync_channel_links",
+	"chat_sync_message_links",
+
 	// Custom Emoji tables
 	"custom_emojis",
 ] as const
@@ -119,6 +124,28 @@ export function getWhereClauseForTable(
 	table: AllowedTable,
 	user: AuthenticatedUser,
 ): Effect.Effect<WhereClauseResult, TableAccessError> {
+	// Chat Sync tables — handled before Match.pipe to stay within its 20-arg type limit
+	switch (table) {
+		case "chat_sync_connections":
+			return Effect.succeed(
+				buildOrgMembershipClause(
+					user.internalUserId,
+					schema.chatSyncConnectionsTable.organizationId,
+					schema.chatSyncConnectionsTable.deletedAt,
+				),
+			)
+		case "chat_sync_channel_links":
+			return Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					schema.chatSyncChannelLinksTable.hazelChannelId,
+					schema.chatSyncChannelLinksTable.deletedAt,
+				),
+			)
+		case "chat_sync_message_links":
+			return Effect.succeed(buildDeletedAtNullClause(schema.chatSyncMessageLinksTable.deletedAt))
+	}
+
 	return Match.value(table).pipe(
 		// ===========================================
 		// User tables
