@@ -34,6 +34,7 @@ import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
 import { Discord } from "@hazel/integrations"
 import {
+	type ChatSyncAttachmentLink,
 	type ChatSyncOutboundAttachment,
 	formatMessageContentWithAttachments,
 } from "./chat-sync-attachment-content"
@@ -78,6 +79,10 @@ export class DiscordSyncApiError extends Schema.TaggedError<DiscordSyncApiError>
 
 type ChatSyncProvider = ChatSyncConnection.ChatSyncProvider
 
+export interface ChatSyncIngressMessageAttachment extends ChatSyncAttachmentLink {
+	readonly externalAttachmentId?: string
+}
+
 export interface ChatSyncIngressMessageCreate {
 	readonly syncConnectionId: SyncConnectionId
 	readonly externalChannelId: ExternalChannelId
@@ -89,6 +94,7 @@ export interface ChatSyncIngressMessageCreate {
 	readonly externalAuthorAvatarUrl?: string | null
 	readonly externalReplyToMessageId?: ExternalMessageId | null
 	readonly externalThreadId?: ExternalThreadId | null
+	readonly externalAttachments?: ReadonlyArray<ChatSyncIngressMessageAttachment>
 	readonly dedupeKey?: string
 }
 
@@ -1936,6 +1942,23 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						),
 					)
 				: null
+			const normalizedExternalAttachments: Array<ChatSyncIngressMessageAttachment> = []
+			for (const attachment of payload.externalAttachments ?? []) {
+				const fileName = attachment.fileName.trim()
+				const publicUrl = attachment.publicUrl.trim()
+				if (!fileName || !publicUrl) {
+					continue
+				}
+				normalizedExternalAttachments.push({
+					externalAttachmentId: attachment.externalAttachmentId,
+					fileName,
+					fileSize:
+						Number.isFinite(attachment.fileSize) && attachment.fileSize >= 0
+							? attachment.fileSize
+							: 0,
+					publicUrl,
+				})
+			}
 			const [message] = yield* messageRepo
 				.insert({
 					channelId: link.hazelChannelId,
@@ -1947,6 +1970,26 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					deletedAt: null,
 				})
 				.pipe(withSystemActor)
+
+			if (normalizedExternalAttachments.length > 0) {
+				const uploadedAtBase = Date.now()
+				yield* db.execute((client) =>
+					client.insert(schema.attachmentsTable).values(
+						normalizedExternalAttachments.map((attachment, index) => ({
+							organizationId: connection.organizationId,
+							channelId: link.hazelChannelId,
+							messageId: message.id,
+							fileName: attachment.fileName,
+							fileSize: attachment.fileSize,
+							externalUrl: attachment.publicUrl,
+							uploadedBy: authorId,
+							status: "complete" as const,
+							uploadedAt: new Date(uploadedAtBase + index),
+							deletedAt: null,
+						})),
+					),
+				)
+			}
 
 			yield* messageLinkRepo
 				.insert({

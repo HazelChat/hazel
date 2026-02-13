@@ -52,7 +52,7 @@ const makeReactionRecord = (id: string) => ({
 })
 
 const makeEvent = (
-	record: { id: string },
+	record: { id: string } & Record<string, unknown>,
 	table: "messages" | "message_reactions",
 	metadata: {
 		action?: "insert" | "update" | "delete"

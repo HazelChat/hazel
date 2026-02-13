@@ -14,6 +14,7 @@ export const attachmentsTable = pgTable(
 		messageId: uuid().$type<MessageId>(),
 		fileName: varchar({ length: 255 }).notNull(),
 		fileSize: integer().notNull(),
+		externalUrl: varchar({ length: 2048 }),
 		uploadedBy: uuid().notNull().$type<UserId>(),
 		status: attachmentStatusEnum().notNull().default("uploading"),
 		uploadedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),

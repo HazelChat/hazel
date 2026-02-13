@@ -257,6 +257,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 											messageId: null,
 											fileName: req.fileName,
 											fileSize: req.fileSize,
+											externalUrl: null,
 											uploadedAt: new Date(),
 										})
 									}),

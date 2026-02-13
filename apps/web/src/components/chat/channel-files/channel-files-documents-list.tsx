@@ -3,6 +3,7 @@ import { FileIcon } from "@untitledui/file-icons"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 
 type AttachmentWithUser = typeof Attachment.Model.Type & {
@@ -36,11 +37,10 @@ function formatRelativeTime(date: Date): string {
 
 function DocumentItem({ attachment }: { attachment: AttachmentWithUser }) {
 	const fileType = getFileTypeFromName(attachment.fileName)
-	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
 
 	const handleDownload = () => {
 		const link = document.createElement("a")
-		link.href = `${publicUrl}/${attachment.id}`
+		link.href = getAttachmentUrl(attachment)
 		link.download = attachment.fileName
 		link.target = "_blank"
 		document.body.appendChild(link)

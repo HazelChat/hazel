@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import type { AttachmentId } from "@hazel/schema"
 import {
+	type ChatSyncAttachmentLink,
 	formatMessageContentWithAttachments,
 	type ChatSyncOutboundAttachment,
 } from "./chat-sync-attachment-content"
@@ -12,6 +13,16 @@ const makeAttachment = (params: {
 	publicUrl: string
 }): ChatSyncOutboundAttachment => ({
 	id: params.id as AttachmentId,
+	fileName: params.fileName,
+	fileSize: params.fileSize,
+	publicUrl: params.publicUrl,
+})
+
+const makeAttachmentLink = (params: {
+	fileName: string
+	fileSize: number
+	publicUrl: string
+}): ChatSyncAttachmentLink => ({
 	fileName: params.fileName,
 	fileSize: params.fileSize,
 	publicUrl: params.publicUrl,
@@ -95,5 +106,22 @@ describe("formatMessageContentWithAttachments", () => {
 		expect(result.length).toBeLessThanOrEqual(260)
 		expect(result).toContain("Attachments:")
 		expect(result).toContain("...and")
+	})
+
+	it("supports generic attachment links without Hazel attachment ids", () => {
+		const result = formatMessageContentWithAttachments({
+			content: "",
+			attachments: [
+				makeAttachmentLink({
+					fileName: "discord-image.png",
+					fileSize: 512,
+					publicUrl: "https://cdn.discordapp.com/attachments/a.png",
+				}),
+			],
+		})
+
+		expect(result).toContain("Attachments:")
+		expect(result).toContain("discord-image.png")
+		expect(result).toContain("https://cdn.discordapp.com/attachments/a.png")
 	})
 })

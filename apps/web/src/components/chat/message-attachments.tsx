@@ -4,6 +4,7 @@ import { FileIcon } from "@untitledui/file-icons"
 
 import { useState } from "react"
 import { useAttachments, useMessage } from "~/db/hooks"
+import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { IconDownload } from "../icons/icon-download"
 import { Button } from "../ui/button"
@@ -28,8 +29,7 @@ function ImageAttachmentItem({ attachment, imageCount, index, onClick }: ImageAt
 		return null
 	}
 
-	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-	const imageUrl = `${publicUrl}/${attachment.id}`
+	const imageUrl = getAttachmentUrl(attachment)
 
 	return (
 		<>
@@ -60,8 +60,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const handleDownload = () => {
 		// Create a temporary anchor element to trigger download
 		const link = document.createElement("a")
-		const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-		link.href = `${publicUrl}/${attachment.id}`
+		link.href = getAttachmentUrl(attachment)
 		link.download = attachment.fileName
 		link.target = "_blank"
 		document.body.appendChild(link)
@@ -73,8 +72,7 @@ function AttachmentItem({ attachment }: AttachmentItemProps) {
 	const isVideo = ["mp4", "webm"].includes(fileType)
 
 	if (isVideo) {
-		const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-		const videoUrl = `${publicUrl}/${attachment.id}`
+		const videoUrl = getAttachmentUrl(attachment)
 
 		return <VideoPlayerSimple src={videoUrl} fileName={attachment.fileName} onDownload={handleDownload} />
 	}

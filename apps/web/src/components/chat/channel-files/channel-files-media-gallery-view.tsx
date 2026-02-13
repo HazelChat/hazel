@@ -5,6 +5,7 @@ import { useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
 import { useChannelAttachments } from "~/db/hooks"
+import { getAttachmentUrl } from "~/utils/attachment-url"
 import { getFileCategory, getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
 
@@ -26,8 +27,7 @@ function MasonryItem({
 	onClick: () => void
 }) {
 	const [imageError, setImageError] = useState(false)
-	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-	const mediaUrl = `${publicUrl}/${attachment.id}`
+	const mediaUrl = getAttachmentUrl(attachment)
 
 	const handleDownload = (e: React.MouseEvent) => {
 		e.stopPropagation()
@@ -117,8 +117,7 @@ export function MediaGalleryView({ channelId }: MediaGalleryViewProps) {
 
 		if (isVideo) {
 			// For videos, open in new tab
-			const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-			window.open(`${publicUrl}/${attachment.id}`, "_blank")
+			window.open(getAttachmentUrl(attachment), "_blank")
 		} else {
 			// For images, find index in images array and open viewer
 			const imageIndex = images.findIndex((img) => img.id === attachment.id)

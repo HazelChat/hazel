@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
 import { useBreakpoint } from "~/hooks/use-breakpoint"
+import { getAttachmentUrl } from "~/utils/attachment-url"
 import { getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
 
@@ -28,8 +29,7 @@ function MediaItem({
 	onClick: () => void
 }) {
 	const [imageError, setImageError] = useState(false)
-	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-	const mediaUrl = `${publicUrl}/${attachment.id}`
+	const mediaUrl = getAttachmentUrl(attachment)
 
 	const handleDownload = (e: React.MouseEvent) => {
 		e.stopPropagation()
@@ -138,8 +138,7 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 
 		if (isVideo) {
 			// For videos, open in new tab or use video player
-			const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-			window.open(`${publicUrl}/${attachment.id}`, "_blank")
+			window.open(getAttachmentUrl(attachment), "_blank")
 		} else {
 			// For images, open in modal
 			const imageIndex = images.findIndex((img) => img.id === attachment.id)
@@ -168,8 +167,7 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 
 					// Show "See all" link on the last item when there are more
 					if (isLastItem && hasMore) {
-						const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-						const mediaUrl = `${publicUrl}/${attachment.id}`
+						const mediaUrl = getAttachmentUrl(attachment)
 
 						return (
 							<Link

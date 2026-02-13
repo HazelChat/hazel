@@ -333,6 +333,401 @@ describe("DiscordSyncWorker dedupe claim", () => {
 	})
 })
 
+describe("DiscordSyncWorker inbound attachment records", () => {
+	it("creates Hazel attachment rows with external URLs on message create", async () => {
+		let insertedContent: string | null = null
+		let insertedAttachmentRows: Array<any> = []
+
+		const layer = makeWorkerLayer({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByExternalChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByExternalMessage: () => Effect.succeed(Option.none()),
+				insert: () => Effect.succeed([{ id: "message-link-id" } as any]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				insert: (payload: { content: string }) => {
+					insertedContent = payload.content
+					return Effect.succeed([{ id: HAZEL_MESSAGE_ID, threadChannelId: null } as any])
+				},
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						createMessageWithAttachments: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: (query) =>
+				Effect.sync(() => {
+					if (typeof query === "function") {
+						query({
+							insert: () => ({
+								values: (rows: Array<any>) => {
+									insertedAttachmentRows = rows
+									return []
+								},
+							}),
+						} as any)
+					}
+					return []
+				}),
+		})
+
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.ingestMessageCreate({
+				...PAYLOAD,
+				content: "discord text",
+				externalAttachments: [
+					{
+						externalAttachmentId: "att-1",
+						fileName: "diagram.png",
+						fileSize: 2048,
+						publicUrl: "https://cdn.discordapp.com/diagram.png",
+					},
+				],
+			}).pipe(Effect.provide(layer)),
+		)
+
+		expect(result.status).toBe("created")
+		expect(insertedContent).toBe("discord text")
+		expect(insertedAttachmentRows.length).toBe(1)
+		expect(insertedAttachmentRows[0]?.fileName).toBe("diagram.png")
+		expect(insertedAttachmentRows[0]?.externalUrl).toBe("https://cdn.discordapp.com/diagram.png")
+		expect(insertedAttachmentRows[0]?.status).toBe("complete")
+	})
+
+	it("keeps plain content unchanged and does not write attachment rows when there are no attachments", async () => {
+		let insertedContent: string | null = null
+		let databaseExecuteCalls = 0
+
+		const layer = makeWorkerLayer({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByExternalChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByExternalMessage: () => Effect.succeed(Option.none()),
+				insert: () => Effect.succeed([{ id: "message-link-id" } as any]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				insert: (payload: { content: string }) => {
+					insertedContent = payload.content
+					return Effect.succeed([{ id: HAZEL_MESSAGE_ID, threadChannelId: null } as any])
+				},
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						createMessageWithAttachments: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: () =>
+				Effect.sync(() => {
+					databaseExecuteCalls += 1
+					return []
+				}),
+		})
+
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.ingestMessageCreate({
+				...PAYLOAD,
+				content: "plain text from discord",
+			}).pipe(Effect.provide(layer)),
+		)
+
+		expect(result.status).toBe("created")
+		expect(insertedContent).toBe("plain text from discord")
+		expect(databaseExecuteCalls).toBe(0)
+	})
+
+	it("writes only valid attachment rows when payload includes malformed attachment items", async () => {
+		let insertedContent: string | null = null
+		let insertedAttachmentRows: Array<any> = []
+
+		const layer = makeWorkerLayer({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByExternalChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByExternalMessage: () => Effect.succeed(Option.none()),
+				insert: () => Effect.succeed([{ id: "message-link-id" } as any]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				insert: (payload: { content: string }) => {
+					insertedContent = payload.content
+					return Effect.succeed([{ id: HAZEL_MESSAGE_ID, threadChannelId: null } as any])
+				},
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						createMessageWithAttachments: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: (query) =>
+				Effect.sync(() => {
+					if (typeof query === "function") {
+						query({
+							insert: () => ({
+								values: (rows: Array<any>) => {
+									insertedAttachmentRows = rows
+									return []
+								},
+							}),
+						} as any)
+					}
+					return []
+				}),
+		})
+
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.ingestMessageCreate({
+				...PAYLOAD,
+				content: "",
+				externalAttachments: [
+					{
+						externalAttachmentId: "skip-empty-name",
+						fileName: " ",
+						fileSize: 100,
+						publicUrl: "https://cdn.discordapp.com/skip-name",
+					},
+					{
+						externalAttachmentId: "keep-video",
+						fileName: "video.mov",
+						fileSize: -42,
+						publicUrl: "https://cdn.discordapp.com/video.mov",
+					},
+					{
+						externalAttachmentId: "skip-empty-url",
+						fileName: "skip-url.txt",
+						fileSize: 10,
+						publicUrl: " ",
+					},
+					{
+						externalAttachmentId: "keep-log",
+						fileName: "  trace.log  ",
+						fileSize: 9,
+						publicUrl: "  https://cdn.discordapp.com/trace.log  ",
+					},
+				],
+			}).pipe(Effect.provide(layer)),
+		)
+
+		expect(result.status).toBe("created")
+		expect(insertedContent).toBe("")
+		expect(insertedAttachmentRows.length).toBe(2)
+		expect(insertedAttachmentRows[0]?.fileName).toBe("video.mov")
+		expect(insertedAttachmentRows[0]?.fileSize).toBe(0)
+		expect(insertedAttachmentRows[1]?.fileName).toBe("trace.log")
+		expect(insertedAttachmentRows[1]?.externalUrl).toBe("https://cdn.discordapp.com/trace.log")
+	})
+
+	it("keeps update ingestion content-only with no attachment reconciliation", async () => {
+		let updatedContent: string | null = null
+
+		const layer = makeWorkerLayer({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByExternalChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByExternalMessage: () =>
+					Effect.succeed(
+						Option.some({
+							channelLinkId: CHANNEL_LINK_ID,
+							hazelMessageId: HAZEL_MESSAGE_ID,
+							externalMessageId: DISCORD_MESSAGE_ID,
+						}),
+					),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				update: (payload: { content?: string }) => {
+					updatedContent = payload.content ?? null
+					return Effect.succeed([{ id: HAZEL_MESSAGE_ID } as any])
+				},
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						createMessageWithAttachments: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+		})
+
+		const content = "edited text only"
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.ingestMessageUpdate({
+				syncConnectionId: SYNC_CONNECTION_ID,
+				externalChannelId: DISCORD_CHANNEL_ID,
+				externalMessageId: DISCORD_MESSAGE_ID,
+				content,
+			}).pipe(Effect.provide(layer)),
+		)
+
+		expect(result.status).toBe("updated")
+		expect(updatedContent).toBe(content)
+	})
+})
+
 describe("DiscordSyncWorker reaction author enrichment", () => {
 	it("uses external reaction author metadata when creating shadow reaction users", async () => {
 		let upsertPayload: unknown = null

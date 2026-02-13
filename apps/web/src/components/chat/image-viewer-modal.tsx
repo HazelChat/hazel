@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
 import { useEmblaCarouselSync } from "~/hooks/use-embla-carousel-sync"
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
+import { getAttachmentUrl } from "~/utils/attachment-url"
 import { IconDownload } from "../icons/icon-download"
 import { IconExternalLink } from "../icons/icon-link-external"
 
@@ -57,8 +58,6 @@ export function ImageViewerModal({
 		shouldReset: isOpen,
 	})
 
-	const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL || "https://cdn.hazel.sh"
-
 	// Keyboard navigation shortcuts
 	useKeyboardShortcut("Escape", () => onOpenChange(false), { when: isOpen })
 	useKeyboardShortcut("ArrowLeft", scrollPrev, { when: isOpen })
@@ -67,7 +66,7 @@ export function ImageViewerModal({
 	const currentImage = images[selectedIndex]
 	const currentImageUrl = currentImage
 		? currentImage.type === "attachment"
-			? `${publicUrl}/${currentImage.attachment.id}`
+			? getAttachmentUrl(currentImage.attachment)
 			: currentImage.url
 		: ""
 
@@ -183,7 +182,7 @@ export function ImageViewerModal({
 						{images.map((image, index) => {
 							const imageUrl =
 								image.type === "attachment"
-									? `${publicUrl}/${image.attachment.id}`
+									? getAttachmentUrl(image.attachment)
 									: image.url
 							const imageAlt =
 								image.type === "attachment" ? image.attachment.fileName : image.alt
@@ -265,7 +264,7 @@ export function ImageViewerModal({
 							{images.map((image, index) => {
 								const thumbUrl =
 									image.type === "attachment"
-										? `${publicUrl}/${image.attachment.id}`
+										? getAttachmentUrl(image.attachment)
 										: image.url
 								const thumbAlt =
 									image.type === "attachment" ? image.attachment.fileName : image.alt

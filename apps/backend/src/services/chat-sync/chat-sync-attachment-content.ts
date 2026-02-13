@@ -1,15 +1,18 @@
 import { AttachmentId } from "@hazel/schema"
 
-export interface ChatSyncOutboundAttachment {
-	readonly id: AttachmentId
+export interface ChatSyncAttachmentLink {
 	readonly fileName: string
 	readonly fileSize: number
 	readonly publicUrl: string
 }
 
+export interface ChatSyncOutboundAttachment extends ChatSyncAttachmentLink {
+	readonly id: AttachmentId
+}
+
 export interface FormatAttachmentMessageOptions {
 	readonly content: string
-	readonly attachments: ReadonlyArray<ChatSyncOutboundAttachment>
+	readonly attachments: ReadonlyArray<ChatSyncAttachmentLink>
 	readonly maxLength?: number
 	readonly maxAttachments?: number
 }
@@ -44,7 +47,7 @@ const formatAttachmentLabel = (fileName: string): string => {
 	return `${trimmed.slice(0, MAX_FILE_NAME_LENGTH - 3)}...`
 }
 
-const formatAttachmentLine = (attachment: ChatSyncOutboundAttachment, index: number): string => {
+const formatAttachmentLine = (attachment: ChatSyncAttachmentLink, index: number): string => {
 	const label = formatAttachmentLabel(attachment.fileName)
 	return `${index + 1}. ${label} (${formatAttachmentSize(attachment.fileSize)}) - ${attachment.publicUrl}`
 }

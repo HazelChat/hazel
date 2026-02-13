@@ -6,6 +6,7 @@ import {
 	decodeOptionalExternalId,
 	decodeRequiredExternalId,
 	extractReactionAuthor,
+	normalizeDiscordMessageAttachments,
 } from "./discord-gateway-service"
 
 describe("DiscordGatewayService reaction author extraction", () => {
@@ -62,5 +63,71 @@ describe("DiscordGatewayService branded id decode helpers", () => {
 		const result = decodeOptionalExternalId(123, decodeExternalMessageId)
 
 		expect(result).toBeUndefined()
+	})
+})
+
+describe("DiscordGatewayService attachment normalization", () => {
+	it("normalizes valid Discord attachment payloads in deterministic input order", () => {
+		const result = normalizeDiscordMessageAttachments([
+			{
+				id: "attachment-2",
+				filename: "  screenshot.png  ",
+				size: 2048,
+				url: "  https://cdn.discordapp.com/a.png  ",
+			},
+			{
+				id: "attachment-1",
+				filename: "report.pdf",
+				size: -1,
+				url: "https://cdn.discordapp.com/b.pdf",
+			},
+		])
+
+		expect(result).toEqual([
+			{
+				externalAttachmentId: "attachment-2",
+				fileName: "screenshot.png",
+				fileSize: 2048,
+				publicUrl: "https://cdn.discordapp.com/a.png",
+			},
+			{
+				externalAttachmentId: "attachment-1",
+				fileName: "report.pdf",
+				fileSize: 0,
+				publicUrl: "https://cdn.discordapp.com/b.pdf",
+			},
+		])
+	})
+
+	it("drops malformed entries and keeps best-effort valid items", () => {
+		const result = normalizeDiscordMessageAttachments([
+			{
+				id: "missing-name",
+				filename: " ",
+				size: 100,
+				url: "https://cdn.discordapp.com/skip-1",
+			},
+			{
+				id: "good",
+				filename: "capture.jpg",
+				size: Number.NaN,
+				url: "https://cdn.discordapp.com/good.jpg",
+			},
+			{
+				id: "missing-url",
+				filename: "x.txt",
+				size: 50,
+				url: " ",
+			},
+		])
+
+		expect(result).toEqual([
+			{
+				externalAttachmentId: "good",
+				fileName: "capture.jpg",
+				fileSize: 0,
+				publicUrl: "https://cdn.discordapp.com/good.jpg",
+			},
+		])
 	})
 })

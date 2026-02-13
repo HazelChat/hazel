@@ -14,6 +14,7 @@ import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
 import { Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
 import { DiscordSyncWorker } from "./discord-sync-worker"
+import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
 
 interface DiscordMessageAuthor {
 	id?: string
@@ -33,11 +34,19 @@ interface DiscordMessageCreateEvent {
 	channel_id?: string
 	content?: string
 	webhook_id?: string
+	attachments?: ReadonlyArray<DiscordMessageAttachment>
 	author?: DiscordMessageAuthor
 	message_reference?: {
 		message_id?: string
 		channel_id?: string
 	}
+}
+
+interface DiscordMessageAttachment {
+	id?: string
+	filename?: string
+	size?: number
+	url?: string
 }
 
 interface DiscordMessageUpdateEvent {
@@ -101,6 +110,36 @@ const formatDiscordDisplayName = (author?: DiscordMessageAuthor): string => {
 const buildAuthorAvatarUrl = (author?: DiscordMessageAuthor): string | null => {
 	if (!author?.id || !author.avatar) return null
 	return `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png`
+}
+
+export const normalizeDiscordMessageAttachments = (
+	attachments: ReadonlyArray<DiscordMessageAttachment> | undefined,
+): ReadonlyArray<ChatSyncIngressMessageAttachment> => {
+	if (!attachments || attachments.length === 0) {
+		return []
+	}
+
+	const normalized: Array<ChatSyncIngressMessageAttachment> = []
+	for (const attachment of attachments) {
+		const fileName = typeof attachment.filename === "string" ? attachment.filename.trim() : ""
+		const publicUrl = typeof attachment.url === "string" ? attachment.url.trim() : ""
+		if (!fileName || !publicUrl) {
+			continue
+		}
+
+		normalized.push({
+			externalAttachmentId:
+				typeof attachment.id === "string" && attachment.id.trim().length > 0 ? attachment.id : undefined,
+			fileName,
+			fileSize:
+				typeof attachment.size === "number" && Number.isFinite(attachment.size) && attachment.size >= 0
+					? attachment.size
+					: 0,
+			publicUrl,
+		})
+	}
+
+	return normalized
 }
 
 export const extractReactionAuthor = (event: {
@@ -289,6 +328,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 					value: event.webhook_id,
 					decode: decodeExternalWebhookId,
 				})
+				const externalAttachments = normalizeDiscordMessageAttachments(event.attachments)
 
 				const links = yield* channelLinkRepo
 					.findActiveByExternalChannel(externalChannelId)
@@ -306,6 +346,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 						externalAuthorAvatarUrl,
 						externalReplyToMessageId: externalReplyToMessageId ?? null,
 						externalThreadId: null,
+						externalAttachments,
 						externalWebhookId,
 						dedupeKey: `discord:gateway:create:${externalMessageId}`,
 					})
