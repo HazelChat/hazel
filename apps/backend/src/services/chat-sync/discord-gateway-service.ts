@@ -54,6 +54,10 @@ interface DiscordMessageReactionAddEvent {
 	channel_id?: string
 	message_id?: string
 	user_id?: string
+	user?: DiscordMessageAuthor
+	member?: {
+		user?: DiscordMessageAuthor
+	}
 	emoji?: DiscordReactionEmoji
 }
 
@@ -61,6 +65,10 @@ interface DiscordMessageReactionRemoveEvent {
 	channel_id?: string
 	message_id?: string
 	user_id?: string
+	user?: DiscordMessageAuthor
+	member?: {
+		user?: DiscordMessageAuthor
+	}
 	emoji?: DiscordReactionEmoji
 }
 
@@ -83,6 +91,17 @@ const formatDiscordDisplayName = (author?: DiscordMessageAuthor): string => {
 const buildAuthorAvatarUrl = (author?: DiscordMessageAuthor): string | null => {
 	if (!author?.id || !author.avatar) return null
 	return `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png`
+}
+
+export const extractReactionAuthor = (event: {
+	member?: { user?: DiscordMessageAuthor }
+	user?: DiscordMessageAuthor
+}) => {
+	const author = event.member?.user ?? event.user
+	return {
+		externalAuthorDisplayName: author ? formatDiscordDisplayName(author) : undefined,
+		externalAuthorAvatarUrl: author ? buildAuthorAvatarUrl(author) : undefined,
+	}
 }
 
 const formatDiscordEmoji = (emoji?: DiscordReactionEmoji): string | null => {
@@ -232,7 +251,6 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 				}
 			},
 		)
-
 		const ingestMessageReactionAddEvent = Effect.fn(
 			"DiscordGatewayService.ingestMessageReactionAddEvent",
 		)(function* (event: DiscordMessageReactionAddEvent) {
@@ -241,6 +259,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 
 			const emoji = formatDiscordEmoji(event.emoji)
 			if (!emoji) return
+			const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
 
 			const links = yield* channelLinkRepo
 				.findActiveByExternalChannel(event.channel_id)
@@ -253,6 +272,8 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 					externalChannelId: event.channel_id,
 					externalMessageId: event.message_id,
 					externalUserId: event.user_id,
+					externalAuthorDisplayName,
+					externalAuthorAvatarUrl,
 					emoji,
 					dedupeKey: `discord:gateway:reaction:add:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
 				})
@@ -267,6 +288,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 
 			const emoji = formatDiscordEmoji(event.emoji)
 			if (!emoji) return
+			const { externalAuthorDisplayName, externalAuthorAvatarUrl } = extractReactionAuthor(event)
 
 			const links = yield* channelLinkRepo
 				.findActiveByExternalChannel(event.channel_id)
@@ -279,6 +301,8 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 					externalChannelId: event.channel_id,
 					externalMessageId: event.message_id,
 					externalUserId: event.user_id,
+					externalAuthorDisplayName,
+					externalAuthorAvatarUrl,
 					emoji,
 					dedupeKey: `discord:gateway:reaction:remove:${event.channel_id}:${event.message_id}:${event.user_id}:${emoji}`,
 				})

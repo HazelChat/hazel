@@ -100,6 +100,8 @@ export interface ChatSyncIngressReactionAdd {
 	readonly externalMessageId: string
 	readonly externalUserId: string
 	readonly emoji: string
+	readonly externalAuthorDisplayName?: string
+	readonly externalAuthorAvatarUrl?: string | null
 	readonly dedupeKey?: string
 }
 
@@ -109,6 +111,8 @@ export interface ChatSyncIngressReactionRemove {
 	readonly externalMessageId: string
 	readonly externalUserId: string
 	readonly emoji: string
+	readonly externalAuthorDisplayName?: string
+	readonly externalAuthorAvatarUrl?: string | null
 	readonly dedupeKey?: string
 }
 
@@ -194,6 +198,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				externalUserId: string
 				displayName: string
 				avatarUrl: string | null
+				syncAvatarUrl?: boolean
 			}) {
 				const externalId = `${params.provider}-user-${params.externalUserId}`
 				const user = yield* userRepo
@@ -210,7 +215,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							timezone: null,
 							deletedAt: null,
 						},
-						{ syncAvatarUrl: true },
+						{ syncAvatarUrl: params.syncAvatarUrl ?? false },
 					)
 					.pipe(withSystemActor)
 
@@ -232,27 +237,42 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
 
-		const resolveAuthorUserId = Effect.fn("DiscordSyncWorker.resolveAuthorUserId")(function* (params: {
-			provider: string
-			organizationId: OrganizationId
-			externalUserId: string
-			displayName: string
-			avatarUrl: string | null
-		}) {
-			const linkedConnection = yield* integrationConnectionRepo
-				.findActiveUserByExternalAccountId(
-					params.organizationId,
-					decodeProvider(params.provider),
-					params.externalUserId,
-				)
-				.pipe(withSystemActor)
+		const resolveAuthorUserId = Effect.fn("DiscordSyncWorker.resolveAuthorUserId")(
+			function* (params: {
+				provider: string
+				organizationId: OrganizationId
+				externalUserId: string
+				displayName: string
+				avatarUrl: string | null
+				syncAvatarUrl?: boolean
+			}) {
+				const linkedConnection = yield* integrationConnectionRepo
+					.findActiveUserByExternalAccountId(
+						params.organizationId,
+						decodeProvider(params.provider),
+						params.externalUserId,
+					)
+					.pipe(withSystemActor)
 
-			if (Option.isSome(linkedConnection) && linkedConnection.value.userId) {
-				return linkedConnection.value.userId
-			}
+				if (Option.isSome(linkedConnection) && linkedConnection.value.userId) {
+					return linkedConnection.value.userId
+				}
 
-			return yield* getOrCreateShadowUserId(params)
-		})
+				const shouldSyncAvatarUrl =
+					params.syncAvatarUrl !== undefined
+						? params.syncAvatarUrl
+						: !!(params.avatarUrl && params.avatarUrl.trim())
+
+				return yield* getOrCreateShadowUserId({
+					provider: params.provider,
+					organizationId: params.organizationId,
+					externalUserId: params.externalUserId,
+					displayName: params.displayName,
+					avatarUrl: params.avatarUrl,
+					syncAvatarUrl: shouldSyncAvatarUrl,
+				})
+			},
+		)
 
 		const resolveExternalMessageId = Effect.fn("DiscordSyncWorker.resolveExternalMessageId")(function* (
 			params: {
@@ -1591,8 +1611,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				provider: connection.provider,
 				organizationId: connection.organizationId,
 				externalUserId: payload.externalUserId,
-				displayName: "External User",
-				avatarUrl: null,
+				displayName: payload.externalAuthorDisplayName ?? "Discord User",
+				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
 			const existingReaction = yield* messageReactionRepo
@@ -1703,8 +1723,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				provider: connection.provider,
 				organizationId: connection.organizationId,
 				externalUserId: payload.externalUserId,
-				displayName: "External User",
-				avatarUrl: null,
+				displayName: payload.externalAuthorDisplayName ?? "Discord User",
+				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
 			const existingReaction = yield* messageReactionRepo
