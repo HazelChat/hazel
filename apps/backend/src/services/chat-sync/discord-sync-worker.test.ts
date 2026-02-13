@@ -105,6 +105,7 @@ type WorkerLayerDeps = {
 	channelAccessSyncService: unknown
 	providerRegistry?: unknown
 	discordApiClient?: unknown
+	databaseExecute?: (query: unknown) => Effect.Effect<unknown, unknown, never>
 }
 
 const PAYLOAD: DiscordIngressMessageCreate = {
@@ -135,7 +136,8 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 		),
 		Layer.provide(
 			Layer.succeed(Database.Database, {
-				execute: () => Effect.die("not used in this test"),
+				execute: (query: unknown) =>
+					deps.databaseExecute ? deps.databaseExecute(query) : Effect.succeed([]),
 				transaction: (effect: any) => effect,
 				makeQuery: () => Effect.die("not used in this test"),
 				makeQueryWithSchema: () => Effect.die("not used in this test"),
@@ -1726,4 +1728,438 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 				}
 			}
 		})
+})
+
+describe("DiscordSyncWorker outbound attachments primitive", () => {
+	it("uses createMessageWithAttachments when message has completed attachments", async () => {
+		let createMessageCalled = false
+		let createMessageWithAttachmentsCalled = false
+		let receivedAttachmentCount = 0
+
+		const layer = makeWorkerLayerWithOverrides({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByHazelChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByHazelMessage: () => Effect.succeed(Option.none()),
+				insert: () =>
+					Effect.succeed([
+						{ id: "message-link-id", channelLinkId: CHANNEL_LINK_ID, externalMessageId: DISCORD_MESSAGE_ID } as any,
+					]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: HAZEL_MESSAGE_ID,
+							channelId: HAZEL_CHANNEL_ID,
+							authorId: BOT_USER_ID,
+							content: "attachment message",
+							replyToMessageId: null,
+							threadChannelId: null,
+						}),
+					),
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {
+				findById: () => Effect.succeed(Option.none()),
+			} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => {
+							createMessageCalled = true
+							return Effect.succeed(DISCORD_MESSAGE_ID)
+						},
+						createMessageWithAttachments: ({ attachments }: { attachments: ReadonlyArray<unknown> }) => {
+							createMessageWithAttachmentsCalled = true
+							receivedAttachmentCount = attachments.length
+							return Effect.succeed(DISCORD_MESSAGE_ID)
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: () =>
+				Effect.succeed([
+					{
+						id: "00000000-0000-0000-0000-000000000101",
+						fileName: "diagram.png",
+						fileSize: 2048,
+					},
+				]),
+		})
+
+		const originalS3PublicUrl = process.env.S3_PUBLIC_URL
+		process.env.S3_PUBLIC_URL = "https://cdn.example.com"
+		try {
+			const result = await runWorkerEffect(
+				DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+					Effect.provide(layer),
+				),
+			)
+
+			expect(result.status).toBe("synced")
+			expect(createMessageWithAttachmentsCalled).toBe(true)
+			expect(createMessageCalled).toBe(false)
+			expect(receivedAttachmentCount).toBe(1)
+		} finally {
+			if (originalS3PublicUrl === undefined) {
+				delete process.env.S3_PUBLIC_URL
+			} else {
+				process.env.S3_PUBLIC_URL = originalS3PublicUrl
+			}
+		}
+	})
+
+	it("keeps using createMessage when no attachments are present", async () => {
+		let createMessageCalled = false
+		let createMessageWithAttachmentsCalled = false
+
+		const layer = makeWorkerLayerWithOverrides({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByHazelChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByHazelMessage: () => Effect.succeed(Option.none()),
+				insert: () => Effect.succeed([{ id: "message-link-id", channelLinkId: CHANNEL_LINK_ID } as any]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: HAZEL_MESSAGE_ID,
+							channelId: HAZEL_CHANNEL_ID,
+							authorId: BOT_USER_ID,
+							content: "plain text",
+							replyToMessageId: null,
+							threadChannelId: null,
+						}),
+					),
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => {
+							createMessageCalled = true
+							return Effect.succeed(DISCORD_MESSAGE_ID)
+						},
+						createMessageWithAttachments: () => {
+							createMessageWithAttachmentsCalled = true
+							return Effect.succeed(DISCORD_MESSAGE_ID)
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: () => Effect.succeed([]),
+		})
+
+		const result = await runWorkerEffect(
+			DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+				Effect.provide(layer),
+			),
+		)
+
+		expect(result.status).toBe("synced")
+		expect(createMessageCalled).toBe(true)
+		expect(createMessageWithAttachmentsCalled).toBe(false)
+	})
+
+	it("falls back to attachment primitive when webhook send fails in webhook mode", async () => {
+		let createMessageWithAttachmentsCalled = false
+		let firstAttachmentUrl: string | null = null
+
+		const layer = makeWorkerLayerWithOverrides({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByHazelChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: DISCORD_WEBHOOK_IDENTITY_SETTINGS,
+						}),
+					),
+				updateLastSyncedAt: () => Effect.succeed([]),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByHazelMessage: () => Effect.succeed(Option.none()),
+				insert: () =>
+					Effect.succeed([
+						{ id: "message-link-id", channelLinkId: CHANNEL_LINK_ID, externalMessageId: DISCORD_WEBHOOK_MESSAGE_ID } as any,
+					]),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: HAZEL_MESSAGE_ID,
+							channelId: HAZEL_CHANNEL_ID,
+							authorId: BOT_USER_ID,
+							content: "with attachments",
+							replyToMessageId: null,
+							threadChannelId: null,
+						}),
+					),
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: BOT_USER_ID,
+							firstName: "Alex",
+							lastName: "Doe",
+							avatarUrl: "",
+						}),
+					),
+			} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.fail(new Error("should not hit createMessage")),
+						createMessageWithAttachments: ({ attachments }: { attachments: ReadonlyArray<{ publicUrl: string }> }) => {
+							createMessageWithAttachmentsCalled = true
+							firstAttachmentUrl = attachments[0]?.publicUrl ?? null
+							return Effect.succeed(DISCORD_WEBHOOK_MESSAGE_ID)
+						},
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			discordApiClient: {
+				executeWebhookMessage: () => Effect.fail(new Error("webhook send failed")),
+				createWebhook: () => Effect.fail(new Error("not expected")),
+				updateWebhookMessage: () => Effect.succeed(undefined),
+				deleteWebhookMessage: () => Effect.succeed(undefined),
+			} as unknown as Discord.DiscordApiClient,
+			databaseExecute: () =>
+				Effect.succeed([
+					{
+						id: "00000000-0000-0000-0000-000000000201",
+						fileName: "capture.jpg",
+						fileSize: 5120,
+					},
+				]),
+		})
+
+		const originalS3PublicUrl = process.env.S3_PUBLIC_URL
+		process.env.S3_PUBLIC_URL = "https://cdn.example.com"
+		try {
+			const result = await runWorkerEffect(
+				DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
+					Effect.provide(layer),
+				),
+			)
+
+			expect(result.status).toBe("synced")
+			expect(createMessageWithAttachmentsCalled).toBe(true)
+			expect(firstAttachmentUrl).toBe("https://cdn.example.com/00000000-0000-0000-0000-000000000201")
+		} finally {
+			if (originalS3PublicUrl === undefined) {
+				delete process.env.S3_PUBLIC_URL
+			} else {
+				process.env.S3_PUBLIC_URL = originalS3PublicUrl
+			}
+		}
+	})
+
+	it("fails with configuration error when attachments exist and S3_PUBLIC_URL is missing", async () => {
+		const layer = makeWorkerLayerWithOverrides({
+			connectionRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: SYNC_CONNECTION_ID,
+							organizationId: ORGANIZATION_ID,
+							provider: "discord",
+							status: "active",
+						}),
+					),
+			} as unknown as ChatSyncConnectionRepo,
+			channelLinkRepo: {
+				findByHazelChannel: () =>
+					Effect.succeed(
+						Option.some({
+							id: CHANNEL_LINK_ID,
+							externalChannelId: DISCORD_CHANNEL_ID,
+							hazelChannelId: HAZEL_CHANNEL_ID,
+							settings: null,
+						}),
+					),
+			} as unknown as ChatSyncChannelLinkRepo,
+			messageLinkRepo: {
+				findByHazelMessage: () => Effect.succeed(Option.none()),
+			} as unknown as ChatSyncMessageLinkRepo,
+			eventReceiptRepo: {
+				claimByDedupeKey: () => Effect.succeed(true),
+				updateByDedupeKey: () => Effect.succeed([]),
+			} as unknown as ChatSyncEventReceiptRepo,
+			messageRepo: {
+				findById: () =>
+					Effect.succeed(
+						Option.some({
+							id: HAZEL_MESSAGE_ID,
+							channelId: HAZEL_CHANNEL_ID,
+							authorId: BOT_USER_ID,
+							content: "missing env",
+							replyToMessageId: null,
+							threadChannelId: null,
+						}),
+					),
+			} as unknown as MessageRepo,
+			messageReactionRepo: {} as unknown as MessageReactionRepo,
+			channelRepo: {} as unknown as ChannelRepo,
+			integrationConnectionRepo: {} as unknown as IntegrationConnectionRepo,
+			userRepo: {} as unknown as UserRepo,
+			organizationMemberRepo: {} as unknown as OrganizationMemberRepo,
+			integrationBotService: {
+				getOrCreateBotUser: () => Effect.succeed({ id: BOT_USER_ID }),
+			} as unknown as IntegrationBotService,
+			channelAccessSyncService: {} as unknown as ChannelAccessSyncService,
+			providerRegistry: {
+				getAdapter: () =>
+					Effect.succeed({
+						provider: "discord",
+						createMessage: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						createMessageWithAttachments: () => Effect.succeed(DISCORD_MESSAGE_ID),
+						updateMessage: () => Effect.succeed(undefined),
+						deleteMessage: () => Effect.succeed(undefined),
+						addReaction: () => Effect.succeed(undefined),
+						removeReaction: () => Effect.succeed(undefined),
+						createThread: () => Effect.succeed("thread-id"),
+					}),
+			} as unknown as ChatSyncProviderRegistry,
+			databaseExecute: () =>
+				Effect.succeed([
+					{
+						id: "00000000-0000-0000-0000-000000000301",
+						fileName: "missing-env.txt",
+						fileSize: 10,
+					},
+				]),
+		})
+
+		const originalS3PublicUrl = process.env.S3_PUBLIC_URL
+		delete process.env.S3_PUBLIC_URL
+		try {
+			const result = await runWorkerEffect(
+				DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID)
+					.pipe(Effect.provide(layer), Effect.either),
+			)
+
+			expect(result._tag).toBe("Left")
+			if (result._tag === "Left") {
+				expect((result.left as { _tag?: string })._tag).toBe("DiscordSyncConfigurationError")
+			}
+		} finally {
+			if (originalS3PublicUrl === undefined) {
+				delete process.env.S3_PUBLIC_URL
+			} else {
+				process.env.S3_PUBLIC_URL = originalS3PublicUrl
+			}
+		}
+	})
 })

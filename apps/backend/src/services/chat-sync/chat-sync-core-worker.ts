@@ -33,6 +33,10 @@ import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
 import { Discord } from "@hazel/integrations"
+import {
+	type ChatSyncOutboundAttachment,
+	formatMessageContentWithAttachments,
+} from "./chat-sync-attachment-content"
 
 export const DEFAULT_MAX_MESSAGES_PER_CHANNEL = 50
 export const DEFAULT_CHAT_SYNC_CONCURRENCY = 5
@@ -200,6 +204,59 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			provider: ChatSyncProvider,
 		) {
 			return yield* providerRegistry.getAdapter(provider)
+		})
+
+		const buildAttachmentPublicUrl = (baseUrl: string, attachmentId: string): string => {
+			const normalizedBase = baseUrl.replace(/\/+$/, "")
+			return `${normalizedBase}/${attachmentId}`
+		}
+
+		const getAttachmentPublicUrlBase = Effect.fn(
+			"DiscordSyncWorker.getAttachmentPublicUrlBase",
+		)(function* () {
+			const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Effect.option)
+			if (Option.isNone(configuredBaseUrl) || configuredBaseUrl.value.trim().length === 0) {
+				return yield* Effect.fail(
+					new DiscordSyncConfigurationError({
+						message: "S3_PUBLIC_URL is required for syncing message attachments",
+					}),
+				)
+			}
+			return configuredBaseUrl.value.trim()
+		})
+
+		const listMessageAttachmentsForOutboundSync = Effect.fn(
+			"DiscordSyncWorker.listMessageAttachmentsForOutboundSync",
+		)(function* (hazelMessageId: MessageId) {
+			const rows = yield* db.execute((client) =>
+				client
+					.select({
+						id: schema.attachmentsTable.id,
+						fileName: schema.attachmentsTable.fileName,
+						fileSize: schema.attachmentsTable.fileSize,
+					})
+					.from(schema.attachmentsTable)
+					.where(
+						and(
+							eq(schema.attachmentsTable.messageId, hazelMessageId),
+							eq(schema.attachmentsTable.status, "complete"),
+							isNull(schema.attachmentsTable.deletedAt),
+						),
+					)
+					.orderBy(asc(schema.attachmentsTable.uploadedAt), asc(schema.attachmentsTable.id)),
+			)
+
+			if (rows.length === 0) {
+				return []
+			}
+
+			const publicUrlBase = yield* getAttachmentPublicUrlBase()
+			return rows.map((row) => ({
+				id: row.id,
+				fileName: row.fileName,
+				fileSize: row.fileSize,
+				publicUrl: buildAttachmentPublicUrl(publicUrlBase, row.id),
+			}))
 		})
 
 			const getOrCreateShadowUserId = Effect.fn("DiscordSyncWorker.getOrCreateShadowUserId")(
@@ -538,6 +595,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			message: { authorId: UserId }
 			content: string
+			attachments?: ReadonlyArray<ChatSyncOutboundAttachment>
 			replyToExternalMessageId?: ExternalMessageId
 		}) {
 			return yield* Effect.gen(function* () {
@@ -552,10 +610,17 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 
 				const metadata = yield* getDiscordWebhookIdentityMessageMetadata(params.message.authorId)
+				const outboundContent =
+					params.attachments && params.attachments.length > 0
+						? formatMessageContentWithAttachments({
+								content: params.content,
+								attachments: params.attachments,
+							})
+						: params.content
 				const outboundMessageId = yield* Discord.DiscordApiClient.executeWebhookMessage({
 					webhookId: config.value.webhookId,
 					webhookToken: config.value.webhookToken,
-					content: params.content,
+					content: outboundContent,
 					replyToExternalMessageId: params.replyToExternalMessageId,
 					username: metadata.username,
 					avatarUrl: metadata.avatarUrl ?? config.value.defaultAvatarUrl,
@@ -981,6 +1046,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							),
 						)
 					: undefined
+				const attachments = yield* listMessageAttachmentsForOutboundSync(message.id)
 
 				let externalMessageId: ExternalMessageId
 				if (connection.provider === "discord") {
@@ -994,11 +1060,19 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 								authorId: message.authorId,
 							},
 					content: message.content,
+					attachments,
 					replyToExternalMessageId,
 				})
 
 						if (Option.isSome(webhookMessageId)) {
 							externalMessageId = webhookMessageId.value
+						} else if (attachments.length > 0) {
+							externalMessageId = yield* adapter.createMessageWithAttachments({
+								externalChannelId: normalizedLink.externalChannelId,
+								content: message.content,
+								attachments,
+								replyToExternalMessageId,
+							})
 						} else {
 						externalMessageId = yield* adapter.createMessage({
 							externalChannelId: normalizedLink.externalChannelId,
@@ -1006,6 +1080,13 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							replyToExternalMessageId,
 						})
 					}
+			} else if (attachments.length > 0) {
+				externalMessageId = yield* adapter.createMessageWithAttachments({
+					externalChannelId: normalizedLink.externalChannelId,
+					content: message.content,
+					attachments,
+					replyToExternalMessageId,
+				})
 			} else {
 				externalMessageId = yield* adapter.createMessage({
 						externalChannelId: normalizedLink.externalChannelId,

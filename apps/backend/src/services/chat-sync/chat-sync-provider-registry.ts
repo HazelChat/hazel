@@ -1,5 +1,9 @@
 import { Discord } from "@hazel/integrations"
 import { Config, Effect, Option, Redacted, Schema, Schedule } from "effect"
+import {
+	type ChatSyncOutboundAttachment,
+	formatMessageContentWithAttachments,
+} from "./chat-sync-attachment-content"
 
 export class ChatSyncProviderNotSupportedError extends Schema.TaggedError<ChatSyncProviderNotSupportedError>()(
 	"ChatSyncProviderNotSupportedError",
@@ -33,6 +37,12 @@ export interface ChatSyncProviderAdapter {
 	readonly createMessage: (params: {
 		externalChannelId: ExternalChannelId
 		content: string
+		replyToExternalMessageId?: ExternalMessageId
+	}) => Effect.Effect<ExternalMessageId, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
+	readonly createMessageWithAttachments: (params: {
+		externalChannelId: ExternalChannelId
+		content: string
+		attachments: ReadonlyArray<ChatSyncOutboundAttachment>
 		replyToExternalMessageId?: ExternalMessageId
 	}) => Effect.Effect<ExternalMessageId, ChatSyncProviderConfigurationError | ChatSyncProviderApiError>
 	readonly updateMessage: (params: {
@@ -174,6 +184,16 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 				return Effect.void
 			}
 
+			const toDiscordContent = (params: {
+				content: string
+				attachments: ReadonlyArray<ChatSyncOutboundAttachment>
+			}) =>
+				formatMessageContentWithAttachments({
+					content: params.content,
+					attachments: params.attachments,
+					maxLength: DISCORD_MAX_MESSAGE_LENGTH,
+				})
+
 			const discordAdapter: ChatSyncProviderAdapter = {
 				provider: "discord",
 				createMessage: (params) =>
@@ -207,6 +227,41 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 								Effect.map((messageId) => messageId as ExternalMessageId),
 							)
 						}),
+				createMessageWithAttachments: (params) =>
+					Effect.gen(function* () {
+						const token = yield* getDiscordToken()
+						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
+						if (params.replyToExternalMessageId) {
+							yield* validateDiscordId(params.replyToExternalMessageId, "replyToExternalMessageId")
+						}
+						const content = toDiscordContent({
+							content: params.content,
+							attachments: params.attachments,
+						})
+						yield* validateDiscordMessage(content)
+						return yield* Discord.DiscordApiClient.createMessage({
+							channelId: params.externalChannelId,
+							content,
+							replyToMessageId: params.replyToExternalMessageId,
+							botToken: token,
+						}).pipe(
+							Effect.provide(Discord.DiscordApiClient.Default),
+							Effect.retry({
+								while: isRetryableDiscordError,
+								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
+							}),
+							Effect.mapError(
+								(error) =>
+									new ChatSyncProviderApiError({
+										provider: "discord",
+										message: error.message,
+										status: getStatusCode(error),
+										detail: `discord_api_status_${getStatusCode(error) ?? "unknown"}`,
+									}),
+							),
+							Effect.map((messageId) => messageId as ExternalMessageId),
+						)
+					}),
 				updateMessage: (params) =>
 					Effect.gen(function* () {
 						const token = yield* getDiscordToken()

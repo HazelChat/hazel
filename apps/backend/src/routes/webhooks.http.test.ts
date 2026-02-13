@@ -25,6 +25,7 @@ const metadataDefaults = {
 		id: "database",
 		name: "test-db",
 		hostname: "localhost",
+		database: "test-db",
 		annotations: {},
 	},
 }
@@ -79,10 +80,10 @@ describe("sequin webhook payload decoding", () => {
 			data: [
 				{
 					record: {
-						id: "reaction-1",
-						messageId: "message-1",
-						channelId: "channel-1",
-						userId: "user-1",
+						id: "00000000-0000-0000-0000-000000000111",
+						messageId: "00000000-0000-0000-0000-000000000112",
+						channelId: "00000000-0000-0000-0000-000000000113",
+						userId: "00000000-0000-0000-0000-000000000114",
 						emoji: "🔥",
 						createdAt: "2026-02-13T00:48:12.792694Z",
 					},
@@ -91,7 +92,7 @@ describe("sequin webhook payload decoding", () => {
 						idempotency_key: "Njk3MDI2NzYzNTkyOjA=",
 						commit_lsn: 697026763592,
 						commit_idx: 0,
-						record_pks: ["reaction-1"],
+						record_pks: ["00000000-0000-0000-0000-000000000111"],
 						table_name: "message_reactions",
 						commit_timestamp: "2026-02-13T00:48:12.817130Z",
 					},
@@ -271,5 +272,40 @@ describe("sequin webhook processing order", () => {
 		)
 
 		expect(workerCalls).toEqual(["create:msg-good"])
+	})
+
+	it("still routes message insert events that may include attachment-backed messages", async () => {
+		const workerCalls: string[] = []
+		const worker: Parameters<typeof syncSequinWebhookEventToDiscord>[2] = {
+			syncHazelMessageCreateToAllConnections: (messageId: string) =>
+				Effect.sync(() => {
+					workerCalls.push(`create:${messageId}`)
+					return { synced: 1, failed: 0 }
+				}),
+			syncHazelMessageUpdateToAllConnections: () => Effect.succeed({ synced: 1, failed: 0 }),
+			syncHazelMessageDeleteToAllConnections: () => Effect.succeed({ synced: 1, failed: 0 }),
+			syncHazelReactionCreateToAllConnections: () => Effect.succeed({ synced: 1, failed: 0 }),
+			syncHazelReactionDeleteToAllConnections: () => Effect.succeed({ synced: 1, failed: 0 }),
+		}
+
+		const attachmentBackedEvent = makeEvent(
+			{
+				...makeMessageRecord("msg-attachment-backed"),
+				content: "",
+			},
+			"messages",
+			{
+				action: "insert",
+				commit_timestamp: "2026-02-01T12:00:00.000Z",
+				commit_lsn: 3,
+				commit_idx: 0,
+			},
+		)
+
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(attachmentBackedEvent, "integration-bot", worker),
+		)
+
+		expect(workerCalls).toEqual(["create:msg-attachment-backed"])
 	})
 })
