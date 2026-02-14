@@ -7,6 +7,7 @@ import {
 	syncSequinWebhookEventToDiscord,
 } from "./webhooks.http.ts"
 import { SequinWebhookPayload, type SequinWebhookEvent } from "@hazel/domain/http"
+import { recordChatSyncDiagnostic } from "../test/chat-sync-test-diagnostics"
 
 const metadataDefaults = {
 	idempotency_key: "idempotency-default",
@@ -72,6 +73,54 @@ const makeEvent = (
 		action: metadata.action ?? "insert",
 		changes: null,
 	} as unknown as SequinWebhookEvent
+}
+
+const makeWorkerSpy = () => {
+	const calls: Array<{
+		method: string
+		id: string
+		dedupeKey?: string
+	}> = []
+
+	const worker: Parameters<typeof syncSequinWebhookEventToDiscord>[2] = {
+		syncHazelMessageCreateToAllConnections: (messageId: string, dedupeKey?: string) =>
+			Effect.sync(() => {
+				calls.push({ method: "syncHazelMessageCreateToAllConnections", id: messageId, dedupeKey })
+				return { synced: 1, failed: 0 }
+			}),
+		syncHazelMessageUpdateToAllConnections: (messageId: string, dedupeKey?: string) =>
+			Effect.sync(() => {
+				calls.push({ method: "syncHazelMessageUpdateToAllConnections", id: messageId, dedupeKey })
+				return { synced: 1, failed: 0 }
+			}),
+		syncHazelMessageDeleteToAllConnections: (messageId: string, dedupeKey?: string) =>
+			Effect.sync(() => {
+				calls.push({ method: "syncHazelMessageDeleteToAllConnections", id: messageId, dedupeKey })
+				return { synced: 1, failed: 0 }
+			}),
+		syncHazelReactionCreateToAllConnections: (reactionId: string, dedupeKey?: string) =>
+			Effect.sync(() => {
+				calls.push({ method: "syncHazelReactionCreateToAllConnections", id: reactionId, dedupeKey })
+				return { synced: 1, failed: 0 }
+			}),
+		syncHazelReactionDeleteToAllConnections: (
+			payload: { hazelMessageId: string },
+			dedupeKey?: string,
+		) =>
+			Effect.sync(() => {
+				calls.push({
+					method: "syncHazelReactionDeleteToAllConnections",
+					id: payload.hazelMessageId,
+					dedupeKey,
+				})
+				return { synced: 1, failed: 0 }
+			}),
+	}
+
+	return {
+		worker,
+		calls,
+	}
 }
 
 describe("sequin webhook payload decoding", () => {
@@ -307,5 +356,238 @@ describe("sequin webhook processing order", () => {
 		)
 
 		expect(workerCalls).toEqual(["create:msg-attachment-backed"])
+	})
+})
+
+describe("sequin webhook sync routing matrix", () => {
+	it("routes message insert/update/delete and soft-delete update to expected worker methods", async () => {
+		const { worker, calls } = makeWorkerSpy()
+		const messageId = "msg-route-1"
+
+		const insertEvent = makeEvent(makeMessageRecord(messageId), "messages", {
+			action: "insert",
+			commit_timestamp: "2026-02-01T12:00:00.000Z",
+			commit_lsn: 10,
+			commit_idx: 0,
+		})
+		const updateEvent = makeEvent(
+			{
+				...makeMessageRecord(messageId),
+				content: "updated",
+			},
+			"messages",
+			{
+				action: "update",
+				commit_timestamp: "2026-02-01T12:00:01.000Z",
+				commit_lsn: 10,
+				commit_idx: 1,
+			},
+		)
+		const deleteEvent = makeEvent(makeMessageRecord(messageId), "messages", {
+			action: "delete",
+			commit_timestamp: "2026-02-01T12:00:02.000Z",
+			commit_lsn: 10,
+			commit_idx: 2,
+		})
+		const softDeleteUpdateEvent = makeEvent(
+			makeMessageRecord(messageId, "2026-02-01T12:00:03.000Z"),
+			"messages",
+			{
+				action: "update",
+				commit_timestamp: "2026-02-01T12:00:03.000Z",
+				commit_lsn: 10,
+				commit_idx: 3,
+			},
+		)
+
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(insertEvent, "integration-bot", worker),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(updateEvent, "integration-bot", worker),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(deleteEvent, "integration-bot", worker),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(softDeleteUpdateEvent, "integration-bot", worker),
+		)
+
+		recordChatSyncDiagnostic({
+			suite: "webhooks.http",
+			testCase: "message-routing-matrix",
+			workerMethod: calls[0]?.method ?? "unknown",
+			action: "route",
+			dedupeKey: calls[0]?.dedupeKey,
+			expected: "create/update/delete/delete",
+			actual: calls.map((call) => call.method).join("/"),
+			metadata: {
+				messageId,
+			},
+		})
+
+		expect(calls.map((call) => call.method)).toEqual([
+			"syncHazelMessageCreateToAllConnections",
+			"syncHazelMessageUpdateToAllConnections",
+			"syncHazelMessageDeleteToAllConnections",
+			"syncHazelMessageDeleteToAllConnections",
+		])
+		expect(calls.every((call) => call.dedupeKey?.includes("hazel:sequin:messages"))).toBe(true)
+	})
+
+	it("routes reaction insert/delete and ignores reaction update action", async () => {
+		const { worker, calls } = makeWorkerSpy()
+
+		const insertEvent = makeEvent(makeReactionRecord("react-route-1"), "message_reactions", {
+			action: "insert",
+			commit_timestamp: "2026-02-01T12:10:00.000Z",
+			commit_lsn: 20,
+			commit_idx: 0,
+		})
+		const deleteEvent = makeEvent(makeReactionRecord("react-route-2"), "message_reactions", {
+			action: "delete",
+			commit_timestamp: "2026-02-01T12:10:01.000Z",
+			commit_lsn: 20,
+			commit_idx: 1,
+		})
+		const updateEvent = makeEvent(makeReactionRecord("react-route-3"), "message_reactions", {
+			action: "update",
+			commit_timestamp: "2026-02-01T12:10:02.000Z",
+			commit_lsn: 20,
+			commit_idx: 2,
+		})
+
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(insertEvent, "integration-bot", worker),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(deleteEvent, "integration-bot", worker),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(updateEvent, "integration-bot", worker),
+		)
+
+		expect(calls.map((call) => call.method)).toEqual([
+			"syncHazelReactionCreateToAllConnections",
+			"syncHazelReactionDeleteToAllConnections",
+		])
+		expect(calls.every((call) => call.dedupeKey?.includes("hazel:sequin:message_reactions"))).toBe(
+			true,
+		)
+	})
+
+	it("filters integration bot authored message/reaction events to prevent loops", async () => {
+		const { worker, calls } = makeWorkerSpy()
+		const integrationBotUserId = "integration-bot"
+
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(
+				makeEvent(
+					{
+						...makeMessageRecord("msg-loop"),
+						authorId: integrationBotUserId,
+					},
+					"messages",
+					{
+						action: "insert",
+						commit_timestamp: "2026-02-01T12:20:00.000Z",
+						commit_lsn: 30,
+						commit_idx: 0,
+					},
+				),
+				integrationBotUserId,
+				worker,
+			),
+		)
+		await Effect.runPromise(
+			syncSequinWebhookEventToDiscord(
+				makeEvent(
+					{
+						...makeReactionRecord("reaction-loop"),
+						userId: integrationBotUserId,
+					},
+					"message_reactions",
+					{
+						action: "insert",
+						commit_timestamp: "2026-02-01T12:20:01.000Z",
+						commit_lsn: 30,
+						commit_idx: 1,
+					},
+				),
+				integrationBotUserId,
+				worker,
+			),
+		)
+
+		expect(calls).toHaveLength(0)
+	})
+
+	it("isolates per-event failures across message and reaction action types", async () => {
+		const workerCalls: string[] = []
+		const failingWorker: Parameters<typeof syncSequinWebhookEventToDiscord>[2] = {
+			syncHazelMessageCreateToAllConnections: () => Effect.fail(new Error("create failed")),
+			syncHazelMessageUpdateToAllConnections: (messageId: string) =>
+				Effect.sync(() => {
+					workerCalls.push(`update:${messageId}`)
+					return { synced: 1, failed: 0 }
+				}),
+			syncHazelMessageDeleteToAllConnections: () => Effect.fail(new Error("delete failed")),
+			syncHazelReactionCreateToAllConnections: () => Effect.fail(new Error("reaction create failed")),
+			syncHazelReactionDeleteToAllConnections: (payload: { hazelMessageId: string }) =>
+				Effect.sync(() => {
+					workerCalls.push(`reaction-delete:${payload.hazelMessageId}`)
+					return { synced: 1, failed: 0 }
+				}),
+		}
+
+		const events: SequinWebhookEvent[] = [
+			makeEvent(makeMessageRecord("msg-fail-create"), "messages", {
+				action: "insert",
+				commit_timestamp: "2026-02-01T13:00:00.000Z",
+				commit_lsn: 40,
+				commit_idx: 0,
+			}),
+			makeEvent(makeMessageRecord("msg-ok-update"), "messages", {
+				action: "update",
+				commit_timestamp: "2026-02-01T13:00:01.000Z",
+				commit_lsn: 40,
+				commit_idx: 1,
+			}),
+			makeEvent(makeMessageRecord("msg-fail-delete"), "messages", {
+				action: "delete",
+				commit_timestamp: "2026-02-01T13:00:02.000Z",
+				commit_lsn: 40,
+				commit_idx: 2,
+			}),
+			makeEvent(makeReactionRecord("reaction-fail-create"), "message_reactions", {
+				action: "insert",
+				commit_timestamp: "2026-02-01T13:00:03.000Z",
+				commit_lsn: 40,
+				commit_idx: 3,
+			}),
+			makeEvent(makeReactionRecord("reaction-ok-delete"), "message_reactions", {
+				action: "delete",
+				commit_timestamp: "2026-02-01T13:00:04.000Z",
+				commit_lsn: 40,
+				commit_idx: 4,
+			}),
+		]
+
+		await Effect.runPromise(
+			processSequinWebhookEventsInCommitOrder(events, (event) =>
+				syncSequinWebhookEventToDiscord(event, "integration-bot", failingWorker),
+			),
+		)
+
+		recordChatSyncDiagnostic({
+			suite: "webhooks.http",
+			testCase: "failure-isolation",
+			workerMethod: "processSequinWebhookEventsInCommitOrder",
+			action: "continue_on_error",
+			expected: "update:msg-ok-update,reaction-delete:message-1",
+			actual: workerCalls.join(","),
+		})
+
+		expect(workerCalls).toEqual(["update:msg-ok-update", "reaction-delete:message-1"])
 	})
 })

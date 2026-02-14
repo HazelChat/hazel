@@ -163,6 +163,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const integrationBotService = yield* IntegrationBotService
 		const channelAccessSyncService = yield* ChannelAccessSyncService
 		const providerRegistry = yield* ChatSyncProviderRegistry
+		const discordApiClient = yield* Discord.DiscordApiClient
 
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")
@@ -504,10 +505,10 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 				const botToken = Redacted.value(botTokenOption.value)
 
-				const created = yield* Discord.DiscordApiClient.createWebhook({
+				const created = yield* discordApiClient.createWebhook({
 					channelId: params.link.externalChannelId,
 					botToken,
-				}).pipe(Effect.provide(Discord.DiscordApiClient.Default))
+				})
 
 				const nextConfig: ChatSyncChannelLink.DiscordWebhookOutboundIdentityConfig = {
 					kind: "discord.webhook",
@@ -623,14 +624,14 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 								attachments: params.attachments,
 							})
 						: params.content
-				const outboundMessageId = yield* Discord.DiscordApiClient.executeWebhookMessage({
+				const outboundMessageId = yield* discordApiClient.executeWebhookMessage({
 					webhookId: config.value.webhookId,
 					webhookToken: config.value.webhookToken,
 					content: outboundContent,
 					replyToExternalMessageId: params.replyToExternalMessageId,
 					username: metadata.username,
 					avatarUrl: metadata.avatarUrl ?? config.value.defaultAvatarUrl,
-				}).pipe(Effect.provide(Discord.DiscordApiClient.Default))
+				})
 
 				return Option.some(outboundMessageId as ExternalMessageId)
 			}).pipe(
@@ -667,12 +668,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					return false
 				}
 
-				yield* Discord.DiscordApiClient.updateWebhookMessage({
+				yield* discordApiClient.updateWebhookMessage({
 					webhookId: config.value.webhookId,
 					webhookToken: config.value.webhookToken,
 					webhookMessageId: params.externalMessageId,
 					content: params.content,
-				}).pipe(Effect.provide(Discord.DiscordApiClient.Default))
+				})
 
 				return true
 			}).pipe(
@@ -708,11 +709,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					return false
 				}
 
-				yield* Discord.DiscordApiClient.deleteWebhookMessage({
+				yield* discordApiClient.deleteWebhookMessage({
 					webhookId: config.value.webhookId,
 					webhookToken: config.value.webhookToken,
 					webhookMessageId: params.externalMessageId,
-				}).pipe(Effect.provide(Discord.DiscordApiClient.Default))
+				})
 
 				return true
 			}).pipe(
@@ -2590,6 +2591,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		IntegrationBotService.Default,
 		ChannelAccessSyncService.Default,
 		ChatSyncProviderRegistry.Default,
+		Discord.DiscordApiClient.Default,
 	],
 	},
 ) {}

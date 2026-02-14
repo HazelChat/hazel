@@ -90,6 +90,8 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 	{
 		accessors: true,
 		effect: Effect.gen(function* () {
+			const discordApiClient = yield* Discord.DiscordApiClient
+
 			const getDiscordToken = Effect.fn("ChatSyncProviderRegistry.getDiscordToken")(function* () {
 				const discordBotToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
 				if (Option.isNone(discordBotToken)) {
@@ -204,13 +206,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						if (params.replyToExternalMessageId) {
 							yield* validateDiscordId(params.replyToExternalMessageId, "replyToExternalMessageId")
 						}
-							return yield* Discord.DiscordApiClient.createMessage({
+							return yield* discordApiClient.createMessage({
 								channelId: params.externalChannelId,
 								content: params.content,
 								replyToMessageId: params.replyToExternalMessageId,
 								botToken: token,
 							}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -239,13 +240,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							attachments: params.attachments,
 						})
 						yield* validateDiscordMessage(content)
-						return yield* Discord.DiscordApiClient.createMessage({
+						return yield* discordApiClient.createMessage({
 							channelId: params.externalChannelId,
 							content,
 							replyToMessageId: params.replyToExternalMessageId,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -268,13 +268,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 						yield* validateDiscordMessage(params.content)
-						yield* Discord.DiscordApiClient.updateMessage({
+						yield* discordApiClient.updateMessage({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							content: params.content,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -295,12 +294,11 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							const token = yield* getDiscordToken()
 						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
-						yield* Discord.DiscordApiClient.deleteMessage({
+						yield* discordApiClient.deleteMessage({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -322,13 +320,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 						yield* validateDiscordEmoji(params.emoji)
-						yield* Discord.DiscordApiClient.addReaction({
+						yield* discordApiClient.addReaction({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							emoji: params.emoji,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -350,13 +347,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 						yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 						yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 						yield* validateDiscordEmoji(params.emoji)
-						yield* Discord.DiscordApiClient.removeReaction({
+						yield* discordApiClient.removeReaction({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							emoji: params.emoji,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -378,13 +374,12 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 							yield* validateDiscordId(params.externalChannelId, "externalChannelId")
 							yield* validateDiscordId(params.externalMessageId, "externalMessageId")
 							yield* validateDiscordThreadName(params.name)
-						return yield* Discord.DiscordApiClient.createThread({
+						return yield* discordApiClient.createThread({
 							channelId: params.externalChannelId,
 							messageId: params.externalMessageId,
 							name: params.name,
 							botToken: token,
 						}).pipe(
-							Effect.provide(Discord.DiscordApiClient.Default),
 							Effect.retry({
 								while: isRetryableDiscordError,
 								schedule: DISCORD_SYNC_RETRY_SCHEDULE,
@@ -422,5 +417,6 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 
 			return { getAdapter }
 		}),
+		dependencies: [Discord.DiscordApiClient.Default],
 	},
 ) {}
