@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { IntegrationConnectionRepo } from "@hazel/backend-core"
 import { InternalServerError, withSystemActor } from "@hazel/domain"
-import type { OrganizationId } from "@hazel/schema"
+import type { ExternalChannelId, OrganizationId } from "@hazel/schema"
 import {
 	DiscordGuildChannelsResponse,
 	DiscordGuildsResponse,
@@ -486,6 +486,8 @@ const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscor
 			),
 		)
 
-		return new DiscordGuildChannelsResponse({ channels })
+		return new DiscordGuildChannelsResponse({
+			channels: channels.map((c) => ({ ...c, id: c.id as ExternalChannelId })),
+		})
 	},
 )

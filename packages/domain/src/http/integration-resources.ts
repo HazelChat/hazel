@@ -2,7 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
-import { OrganizationId } from "@hazel/schema"
+import { ExternalChannelId, OrganizationId } from "@hazel/schema"
 import { IntegrationConnection } from "../models"
 
 // Provider type from the model
@@ -112,7 +112,7 @@ const DiscordGuild = Schema.Struct({
 })
 
 const DiscordGuildChannel = Schema.Struct({
-	id: Schema.String,
+	id: ExternalChannelId,
 	guildId: Schema.String,
 	name: Schema.String,
 	type: Schema.Number,

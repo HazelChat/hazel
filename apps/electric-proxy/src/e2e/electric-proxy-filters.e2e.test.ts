@@ -159,6 +159,21 @@ type Fixture = {
 			viewer: string
 			other: string
 		}
+		chatSyncConnections: {
+			orgAVisible: string
+			orgBHidden: string
+			orgADeleted: string
+		}
+		chatSyncChannelLinks: {
+			publicAVisible: string
+			privateAHidden: string
+			publicADeleted: string
+		}
+		chatSyncMessageLinks: {
+			publicAVisible: string
+			privateAHidden: string
+			publicADeleted: string
+		}
 	}
 	values: {
 		messages: {
@@ -516,6 +531,21 @@ const createFixture = (): Fixture => {
 			viewer: id(),
 			other: id(),
 		},
+		chatSyncConnections: {
+			orgAVisible: id(),
+			orgBHidden: id(),
+			orgADeleted: id(),
+		},
+		chatSyncChannelLinks: {
+			publicAVisible: id(),
+			privateAHidden: id(),
+			publicADeleted: id(),
+		},
+		chatSyncMessageLinks: {
+			publicAVisible: id(),
+			privateAHidden: id(),
+			publicADeleted: id(),
+		},
 	}
 
 	const values = {
@@ -711,6 +741,27 @@ VALUES
 	('${f.ids.customEmojis.orgBHidden}', '${f.ids.organizations.orgB}', 'hidden_emoji_${f.runId}', 'https://example.test/emoji/hidden.png', '${f.ids.users.otherUser}', NOW(), NULL),
 	('${f.ids.customEmojis.orgADeleted}', '${f.ids.organizations.orgA}', 'deleted_emoji_${f.runId}', 'https://example.test/emoji/deleted.png', '${f.ids.users.viewer}', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO chat_sync_connections (id, "organizationId", provider, "externalWorkspaceId", "externalWorkspaceName", status, "createdBy", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.chatSyncConnections.orgAVisible}', '${f.ids.organizations.orgA}', 'discord', 'guild-a-${f.runId}', 'Visible Guild ${f.runId}', 'active', '${f.ids.users.viewer}', NOW(), NOW(), NULL),
+	('${f.ids.chatSyncConnections.orgBHidden}', '${f.ids.organizations.orgB}', 'discord', 'guild-b-${f.runId}', 'Hidden Guild ${f.runId}', 'active', '${f.ids.users.otherUser}', NOW(), NOW(), NULL),
+	('${f.ids.chatSyncConnections.orgADeleted}', '${f.ids.organizations.orgA}', 'discord', 'guild-del-${f.runId}', 'Deleted Guild ${f.runId}', 'active', '${f.ids.users.viewer}', NOW(), NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO chat_sync_channel_links (id, "syncConnectionId", "hazelChannelId", "externalChannelId", "externalChannelName", direction, "isActive", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.chatSyncChannelLinks.publicAVisible}', '${f.ids.chatSyncConnections.orgAVisible}', '${f.ids.channels.publicA}', 'ext-ch-visible-${f.runId}', 'ext-visible-${f.runId}', 'both', true, NOW(), NOW(), NULL),
+	('${f.ids.chatSyncChannelLinks.privateAHidden}', '${f.ids.chatSyncConnections.orgAVisible}', '${f.ids.channels.privateA}', 'ext-ch-hidden-${f.runId}', 'ext-hidden-${f.runId}', 'both', true, NOW(), NOW(), NULL),
+	('${f.ids.chatSyncChannelLinks.publicADeleted}', '${f.ids.chatSyncConnections.orgAVisible}', '${f.ids.channels.publicA}', 'ext-ch-deleted-${f.runId}', 'ext-deleted-${f.runId}', 'both', true, NOW(), NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO chat_sync_message_links (id, "channelLinkId", "hazelMessageId", "externalMessageId", source, "lastSyncedAt", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.chatSyncMessageLinks.publicAVisible}', '${f.ids.chatSyncChannelLinks.publicAVisible}', '${f.ids.messages.publicAVisible}', 'ext-msg-visible-${f.runId}', 'hazel', NOW(), NOW(), NOW(), NULL),
+	('${f.ids.chatSyncMessageLinks.privateAHidden}', '${f.ids.chatSyncChannelLinks.privateAHidden}', '${f.ids.messages.privateAHidden}', 'ext-msg-hidden-${f.runId}', 'hazel', NOW(), NOW(), NOW(), NULL),
+	('${f.ids.chatSyncMessageLinks.publicADeleted}', '${f.ids.chatSyncChannelLinks.publicAVisible}', '${f.ids.messages.publicAVisible}', 'ext-msg-deleted-${f.runId}', 'hazel', NOW(), NOW(), NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
 `
 
 	runSql(sql)
@@ -901,6 +952,24 @@ const buildUserVisibilitySpecs = (f: Fixture): VisibilitySpec<AllowedTable>[] =>
 		table: "custom_emojis",
 		allowedIds: [f.ids.customEmojis.orgAVisible],
 		blockedIds: [f.ids.customEmojis.orgBHidden, f.ids.customEmojis.orgADeleted],
+		strict: true,
+	},
+	{
+		table: "chat_sync_connections",
+		allowedIds: [f.ids.chatSyncConnections.orgAVisible],
+		blockedIds: [f.ids.chatSyncConnections.orgBHidden, f.ids.chatSyncConnections.orgADeleted],
+		strict: true,
+	},
+	{
+		table: "chat_sync_channel_links",
+		allowedIds: [f.ids.chatSyncChannelLinks.publicAVisible],
+		blockedIds: [f.ids.chatSyncChannelLinks.privateAHidden, f.ids.chatSyncChannelLinks.publicADeleted],
+		strict: true,
+	},
+	{
+		table: "chat_sync_message_links",
+		allowedIds: [f.ids.chatSyncMessageLinks.publicAVisible],
+		blockedIds: [f.ids.chatSyncMessageLinks.privateAHidden, f.ids.chatSyncMessageLinks.publicADeleted],
 		strict: true,
 	},
 ]

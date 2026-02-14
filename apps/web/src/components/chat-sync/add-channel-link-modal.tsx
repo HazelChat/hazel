@@ -1,6 +1,6 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { Channel } from "@hazel/domain/models"
-import type { ChannelId, OrganizationId, SyncConnectionId } from "@hazel/schema"
+import type { ChannelId, ExternalChannelId, OrganizationId, SyncConnectionId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
 import { useMemo, useState } from "react"
 import IconHashtag from "~/components/icons/icon-hashtag"
@@ -25,7 +25,7 @@ type ChannelData = typeof Channel.Model.Type
 type SyncDirection = "both" | "hazel_to_external" | "external_to_hazel"
 
 interface DiscordChannel {
-	id: string
+	id: ExternalChannelId
 	guildId: string
 	name: string
 	type: number
