@@ -14,6 +14,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run src/**/*.test.ts",
 		"test:sync": "vitest run src/services/chat-sync/*.test.ts src/services/chat-sync/*.integration.test.ts src/routes/webhooks.http.test.ts --exclude src/services/chat-sync/*.e2e.test.ts",
+		"test:sync:live": "vitest run src/services/chat-sync/chat-sync-live-discord.e2e.test.ts",
 		"test:watch": "vitest src/**/*.test.ts",
 		"test:policies": "vitest run src/lib/policy-utils.test.ts src/policies/*.test.ts",
 		"setup": "bun run scripts/setup.ts",
