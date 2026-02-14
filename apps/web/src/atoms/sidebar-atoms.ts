@@ -67,27 +67,3 @@ export const setMobileSidebarOpen = (open: boolean) => {
 		return Atom.set(sidebarOpenMobileAtom, open)
 	})
 }
-
-/**
- * Atom family that manages the sidebar keyboard shortcut (Cmd/Ctrl+B)
- * Sets up global keyboard listener and toggles appropriate sidebar based on isMobile
- */
-export const sidebarKeyboardShortcutAtomFamily = Atom.family((isMobile: boolean) =>
-	Atom.make((get) => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "b" && (event.metaKey || event.ctrlKey)) {
-				event.preventDefault()
-				// Toggle the appropriate sidebar based on device type
-				isMobile ? toggleMobileSidebar() : toggleSidebar()
-			}
-		}
-
-		window.addEventListener("keydown", handleKeyDown)
-
-		get.addFinalizer(() => {
-			window.removeEventListener("keydown", handleKeyDown)
-		})
-
-		return isMobile
-	}),
-)

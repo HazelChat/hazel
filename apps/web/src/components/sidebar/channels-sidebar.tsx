@@ -42,6 +42,7 @@ import { channelCollection, channelMemberCollection, channelSectionCollection } 
 import { useActiveThreads } from "~/db/hooks"
 import { useChannelUnreadCountMap } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
+import { useAppHotkeyLabel } from "~/hooks/use-app-hotkey"
 import { useAuth } from "~/lib/auth"
 import IconCirclePlus from "../icons/icon-circle-plus"
 import IconEmoji1 from "../icons/icon-emoji-1"
@@ -227,6 +228,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const { isMobile } = useSidebar()
 	const { organizationId, organization, slug } = useOrganization()
 	const { user } = useAuth()
+	const commandPaletteHotkeyLabel = useAppHotkeyLabel("commandPalette.open")
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
 	const hasTauriTitlebar = isTauriMacOS()
 
@@ -351,7 +353,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 							<IconMagnifier />
 							<SidebarLabel>Browse channels</SidebarLabel>
 							<Keyboard className="absolute top-1/2 right-2 -translate-y-1/2 font-mono text-muted-fg text-xs">
-								⌘K
+								{commandPaletteHotkeyLabel}
 							</Keyboard>
 						</SidebarItem>
 						<SidebarItem>

@@ -28,7 +28,6 @@ import {
 } from "react-aria-components"
 import { twJoin, twMerge } from "tailwind-merge"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
-import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
 import { cx } from "~/lib/primitive"
 import { DropdownKeyboard } from "./dropdown"
 import { Loader } from "./loader"
@@ -65,7 +64,6 @@ const sizes = {
 interface CommandMenuProps extends AutocompleteProps, MenuTriggerProps, CommandMenuProviderProps {
 	isDismissable?: boolean
 	"aria-label"?: string
-	shortcut?: string
 	isBlurred?: boolean
 	className?: string
 	size?: keyof typeof sizes
@@ -85,7 +83,6 @@ const CommandMenu = ({
 	isPending,
 	size = "lg",
 	isBlurred,
-	shortcut,
 	isFormPage = false,
 	isKeyboardDismissDisabled = false,
 	onKeyDown,
@@ -93,13 +90,6 @@ const CommandMenu = ({
 }: CommandMenuProps) => {
 	const { contains } = useFilter({ sensitivity: "base" })
 	const filter = (textValue: string, inputValue: string) => contains(textValue, inputValue)
-
-	// Keyboard shortcut to open command menu (Ctrl/Cmd + shortcut key)
-	useKeyboardShortcut(shortcut || "", () => onOpenChange?.(true), {
-		ctrl: true,
-		meta: true,
-		when: !!shortcut,
-	})
 
 	return (
 		<CommandMenuContext value={{ isPending: isPending, escapeButton: escapeButton, isFormPage }}>

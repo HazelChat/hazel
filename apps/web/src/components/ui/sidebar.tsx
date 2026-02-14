@@ -31,7 +31,7 @@ import {
 import { twJoin, twMerge } from "tailwind-merge"
 import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import { SheetContent } from "~/components/ui/sheet"
-import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
+import { useAppHotkey } from "~/hooks/use-app-hotkey"
 import { useMediaQuery } from "~/hooks/use-media-query"
 import { cx } from "~/lib/primitive"
 import { Button } from "./button"
@@ -67,7 +67,6 @@ const useSidebar = () => {
 interface SidebarProviderProps extends React.ComponentProps<"div"> {
 	defaultOpen?: boolean
 	isOpen?: boolean
-	shortcut?: string
 	onOpenChange?: (open: boolean) => void
 }
 
@@ -78,7 +77,6 @@ const SidebarProvider = ({
 	className,
 	style,
 	children,
-	shortcut = "b",
 	ref,
 	...props
 }: SidebarProviderProps) => {
@@ -107,8 +105,8 @@ const SidebarProvider = ({
 		return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
 	}, [isMobile, setOpen])
 
-	// Keyboard shortcut to toggle sidebar (Ctrl/Cmd + shortcut key)
-	useKeyboardShortcut(shortcut, toggleSidebar, { ctrl: true, meta: true })
+	// Keyboard shortcut to toggle sidebar
+	useAppHotkey("sidebar.toggle", toggleSidebar)
 
 	const state = open ? "expanded" : "collapsed"
 

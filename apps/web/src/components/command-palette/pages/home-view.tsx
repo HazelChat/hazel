@@ -27,6 +27,7 @@ import {
 } from "~/components/ui/command-menu"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { channelMemberWithUserCollection } from "~/db/materialized-collections"
+import { useAppHotkeyLabel } from "~/hooks/use-app-hotkey"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 
@@ -56,6 +57,10 @@ export function HomeView({ navigateToPage, onClose }: HomeViewProps) {
 	// Modal hooks for quick actions (only for those not inline)
 	const createDmModal = useModal("create-dm")
 	const emailInviteModal = useModal("email-invite")
+	const searchHotkeyLabel = useAppHotkeyLabel("search.open")
+	const createChannelHotkeyLabel = useAppHotkeyLabel("channel.create")
+	const createDmHotkeyLabel = useAppHotkeyLabel("dm.create")
+	const inviteHotkeyLabel = useAppHotkeyLabel("invite.email")
 
 	// Get channel data for recent channels (memoized to prevent infinite re-renders)
 	const recentChannelIds = useMemo(() => recentChannels.map((rc) => rc.channelId), [recentChannels])
@@ -246,12 +251,12 @@ export function HomeView({ navigateToPage, onClose }: HomeViewProps) {
 				<CommandMenuItem onAction={() => navigateToPage("search")} textValue="search messages find">
 					<IconMagnifier />
 					<CommandMenuLabel>Search messages</CommandMenuLabel>
-					<CommandMenuShortcut>⌘⇧F</CommandMenuShortcut>
+					<CommandMenuShortcut>{searchHotkeyLabel}</CommandMenuShortcut>
 				</CommandMenuItem>
 				<CommandMenuItem onAction={() => navigateToPage("create-channel")} textValue="create channel">
 					<IconPlus />
 					<CommandMenuLabel>Create channel</CommandMenuLabel>
-					<CommandMenuShortcut>⌘⌥N</CommandMenuShortcut>
+					<CommandMenuShortcut>{createChannelHotkeyLabel}</CommandMenuShortcut>
 				</CommandMenuItem>
 				<CommandMenuItem
 					onAction={() => {
@@ -262,7 +267,7 @@ export function HomeView({ navigateToPage, onClose }: HomeViewProps) {
 				>
 					<IconMsgs />
 					<CommandMenuLabel>Start conversation</CommandMenuLabel>
-					<CommandMenuShortcut>⌘⌥D</CommandMenuShortcut>
+					<CommandMenuShortcut>{createDmHotkeyLabel}</CommandMenuShortcut>
 				</CommandMenuItem>
 				<CommandMenuItem onAction={() => navigateToPage("join-channel")} textValue="join channel">
 					<IconPlus />
@@ -277,7 +282,7 @@ export function HomeView({ navigateToPage, onClose }: HomeViewProps) {
 				>
 					<IconUsersPlus />
 					<CommandMenuLabel>Invite members</CommandMenuLabel>
-					<CommandMenuShortcut>⌘⌥I</CommandMenuShortcut>
+					<CommandMenuShortcut>{inviteHotkeyLabel}</CommandMenuShortcut>
 				</CommandMenuItem>
 			</CommandMenuSection>
 

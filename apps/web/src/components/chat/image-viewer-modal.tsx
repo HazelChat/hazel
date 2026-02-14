@@ -9,8 +9,8 @@ import IconCopy from "~/components/icons/icon-copy"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Button } from "~/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
+import { useAppHotkey } from "~/hooks/use-app-hotkey"
 import { useEmblaCarouselSync } from "~/hooks/use-embla-carousel-sync"
-import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { IconDownload } from "../icons/icon-download"
 import { IconExternalLink } from "../icons/icon-link-external"
@@ -59,9 +59,9 @@ export function ImageViewerModal({
 	})
 
 	// Keyboard navigation shortcuts
-	useKeyboardShortcut("Escape", () => onOpenChange(false), { when: isOpen })
-	useKeyboardShortcut("ArrowLeft", scrollPrev, { when: isOpen })
-	useKeyboardShortcut("ArrowRight", scrollNext, { when: isOpen })
+	useAppHotkey("imageViewer.close", () => onOpenChange(false), { enabled: isOpen })
+	useAppHotkey("imageViewer.prev", scrollPrev, { enabled: isOpen, ignoreInputs: false })
+	useAppHotkey("imageViewer.next", scrollNext, { enabled: isOpen, ignoreInputs: false })
 
 	const currentImage = images[selectedIndex]
 	const currentImageUrl = currentImage

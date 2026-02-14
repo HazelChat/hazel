@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react"
 import type { CommandPalettePageType } from "~/atoms/command-palette-state"
 import { isFormPage } from "~/atoms/command-palette-state"
 import { useCommandPalette } from "~/hooks/use-command-palette"
-import { CommandMenu, CommandMenuList, type CommandMenuProps, CommandMenuSearch } from "../ui/command-menu"
+import { CommandMenu, CommandMenuList, CommandMenuSearch } from "../ui/command-menu"
 import { CommandPaletteContext, type CommandPaletteContextValue } from "./command-palette-context"
 import { AppearanceView, CreateChannelView, HomeView, JoinChannelView, StatusView } from "./pages"
 import { SearchView } from "./search-view"
@@ -95,7 +95,6 @@ export function CommandPalette(props: CommandPaletteProps) {
 	return (
 		<CommandPaletteContext value={contextValue}>
 			<CommandMenu
-				shortcut="k"
 				inputValue={inputValue}
 				onInputChange={commandPalette.updateInputValue}
 				isOpen={isOpen}

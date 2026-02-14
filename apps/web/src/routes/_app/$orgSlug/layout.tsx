@@ -36,7 +36,7 @@ const JoinChannelModal = lazy(() =>
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { TauriMenuListener } from "~/components/tauri-menu-listener"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
-import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut"
+import { useAppHotkey } from "~/hooks/use-app-hotkey"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
@@ -91,28 +91,22 @@ function RouteComponent() {
 		setOpenCmd(true)
 	}
 
+	const openCommandPaletteHome = () => {
+		setInitialPage("home")
+		setOpenCmd(true)
+	}
+
 	const openSearch = () => {
 		setInitialPage("search")
 		setOpenCmd(true)
 	}
 
 	// Global keyboard shortcuts
-	useKeyboardShortcut("n", () => newChannelModal.open(), {
-		meta: true,
-		alt: true,
-	})
-	useKeyboardShortcut("d", () => createDmModal.open(), {
-		meta: true,
-		alt: true,
-	})
-	useKeyboardShortcut("i", () => emailInviteModal.open(), {
-		meta: true,
-		alt: true,
-	})
-	useKeyboardShortcut("f", openSearch, {
-		meta: true,
-		shift: true,
-	})
+	useAppHotkey("commandPalette.open", openCommandPaletteHome)
+	useAppHotkey("search.open", openSearch)
+	useAppHotkey("channel.create", () => newChannelModal.open())
+	useAppHotkey("dm.create", () => createDmModal.open())
+	useAppHotkey("invite.email", () => emailInviteModal.open())
 
 	// Sync organization context to user session
 	// If user's JWT doesn't have org context (or has different org), re-authenticate with correct org

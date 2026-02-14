@@ -5,6 +5,7 @@
  */
 
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
+import { HotkeysProvider } from "@tanstack/react-hotkeys"
 import { StrictMode, useEffect, useState, type ReactNode } from "react"
 import ReactDOM from "react-dom/client"
 
@@ -83,11 +84,13 @@ export const router = createRouter({
 	Wrap: ({ children }) => {
 		return (
 			<DeferredPostHog>
-				<ThemeProvider>
-					<Toast />
-					<TauriUpdateCheck />
-					{children}
-				</ThemeProvider>
+				<HotkeysProvider>
+					<ThemeProvider>
+						<Toast />
+						<TauriUpdateCheck />
+						{children}
+					</ThemeProvider>
+				</HotkeysProvider>
 			</DeferredPostHog>
 		)
 	},
