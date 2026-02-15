@@ -263,7 +263,7 @@ export const attachmentCollection = createEffectCollection({
 
 export const typingIndicatorCollection = createEffectCollection({
 	id: "typing_indicators",
-	syncMode: "on-demand",
+	syncMode: "eager",
 	runtime: runtime,
 	backoff: false,
 	shapeOptions: {

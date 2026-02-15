@@ -19,6 +19,8 @@ import { Modal, ModalContent } from "~/components/ui/modal"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
+import { typingIndicatorCollection } from "~/db/collections"
+import { useCollectionError } from "~/hooks/use-collection-error"
 import { useOrganization } from "~/hooks/use-organization"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import {
@@ -27,6 +29,11 @@ import {
 	notificationOrchestrator,
 	subscribeNotificationDiagnostics,
 } from "~/lib/notifications"
+import {
+	clearTypingDiagnostics,
+	getTypingDiagnostics,
+	subscribeTypingDiagnostics,
+} from "~/lib/typing-diagnostics"
 import { getNativeNotificationPermissionState, testNativeNotification } from "~/lib/native-notifications"
 import { notificationSoundManager } from "~/lib/notification-sound-manager"
 import { exitToastAsync } from "~/lib/toast-exit"
@@ -56,6 +63,9 @@ function DebugSettings() {
 		getNotificationDiagnostics,
 	)
 	const latestDiagnostics = useMemo(() => notificationDiagnostics.slice(0, 10), [notificationDiagnostics])
+	const typingDiagnostics = useSyncExternalStore(subscribeTypingDiagnostics, getTypingDiagnostics)
+	const latestTypingDiagnostics = useMemo(() => typingDiagnostics.slice(0, 20), [typingDiagnostics])
+	const typingCollectionError = useCollectionError(typingIndicatorCollection)
 
 	const reactScanEnabled = useAtomValue(reactScanEnabledAtom)
 	const setReactScanEnabled = useAtomSet(reactScanEnabledAtom)
@@ -336,6 +346,87 @@ function DebugSettings() {
 														</span>
 													))}
 												</div>
+											</div>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+
+					<hr className="h-px w-full border-none bg-border" />
+
+					<div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(200px,280px)_1fr] lg:gap-8">
+						<SectionLabel.Root
+							size="sm"
+							title="Typing Diagnostics"
+							description="Trace typing indicator lifecycle and collection health."
+						/>
+
+						<div className="space-y-4 rounded-lg border border-border bg-secondary/50 p-4">
+							<div className="grid grid-cols-1 gap-2 font-mono text-xs sm:grid-cols-2">
+								<div>
+									<span className="text-muted-fg">Collection status:</span>{" "}
+									<span>{typingCollectionError.status}</span>
+								</div>
+								<div>
+									<span className="text-muted-fg">Collection error:</span>{" "}
+									<span>{typingCollectionError.isError ? "yes" : "no"}</span>
+								</div>
+								<div>
+									<span className="text-muted-fg">Collection errors total:</span>{" "}
+									<span>{typingCollectionError.errorCount}</span>
+								</div>
+								<div>
+									<span className="text-muted-fg">Diagnostics records:</span>{" "}
+									<span>{typingDiagnostics.length}</span>
+								</div>
+							</div>
+
+							<div className="flex flex-wrap gap-2">
+								<Button
+									size="sm"
+									intent="outline"
+									onPress={() => {
+										typingCollectionError.clearError()
+									}}
+								>
+									Clear collection error
+								</Button>
+								<Button
+									size="sm"
+									intent="plain"
+									onPress={() => {
+										clearTypingDiagnostics()
+									}}
+								>
+									Clear diagnostics
+								</Button>
+							</div>
+
+							<div className="max-h-64 overflow-auto rounded border border-border bg-bg p-2">
+								{latestTypingDiagnostics.length === 0 ? (
+									<p className="text-muted-fg text-xs">No typing diagnostics yet.</p>
+								) : (
+									<div className="space-y-2">
+										{latestTypingDiagnostics.map((record) => (
+											<div
+												key={record.id}
+												className="rounded border border-border/60 p-2 text-xs"
+											>
+												<div className="font-mono text-muted-fg">
+													{new Date(record.at).toLocaleTimeString()} · {record.kind}
+												</div>
+												<div className="mt-1 font-mono text-fg">
+													channel={record.channelId ?? "-"} member=
+													{record.memberId ?? "-"}
+													indicator={record.typingIndicatorId ?? "-"}
+												</div>
+												{record.details && (
+													<div className="mt-1 break-all font-mono text-muted-fg">
+														{JSON.stringify(record.details)}
+													</div>
+												)}
 											</div>
 										))}
 									</div>

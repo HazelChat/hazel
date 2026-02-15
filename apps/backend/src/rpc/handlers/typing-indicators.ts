@@ -31,6 +31,12 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							const startedAt = Date.now()
+							yield* Effect.logDebug("typingIndicator.create received", {
+								channelId: payload.channelId,
+								memberId: payload.memberId,
+							})
+
 							// Use upsert to create or update typing indicator
 							const result = yield* TypingIndicatorRepo.upsertByChannelAndMember({
 								channelId: payload.channelId,
@@ -41,6 +47,12 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							const typingIndicator = result[0]!
 
 							const txid = yield* generateTransactionId()
+							yield* Effect.logDebug("typingIndicator.create succeeded", {
+								channelId: payload.channelId,
+								memberId: payload.memberId,
+								typingIndicatorId: typingIndicator.id,
+								durationMs: Date.now() - startedAt,
+							})
 
 							return {
 								data: typingIndicator,
@@ -54,6 +66,11 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							const startedAt = Date.now()
+							yield* Effect.logDebug("typingIndicator.update received", {
+								typingIndicatorId: id,
+							})
+
 							const typingIndicator = yield* TypingIndicatorRepo.update({
 								...payload,
 								id,
@@ -61,6 +78,10 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							}).pipe(policyUse(TypingIndicatorPolicy.canUpdate(id)))
 
 							const txid = yield* generateTransactionId()
+							yield* Effect.logDebug("typingIndicator.update succeeded", {
+								typingIndicatorId: id,
+								durationMs: Date.now() - startedAt,
+							})
 
 							return {
 								data: typingIndicator,
@@ -74,6 +95,11 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							const startedAt = Date.now()
+							yield* Effect.logDebug("typingIndicator.delete received", {
+								typingIndicatorId: id,
+							})
+
 							// First find the typing indicator to return it
 							const existingOption = yield* TypingIndicatorRepo.findById(id).pipe(
 								policyUse(TypingIndicatorPolicy.canRead(id)),
@@ -92,6 +118,12 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							)
 
 							const txid = yield* generateTransactionId()
+							yield* Effect.logDebug("typingIndicator.delete succeeded", {
+								typingIndicatorId: id,
+								memberId: existing.memberId,
+								channelId: existing.channelId,
+								durationMs: Date.now() - startedAt,
+							})
 
 							return { data: existing, transactionId: txid }
 						}),

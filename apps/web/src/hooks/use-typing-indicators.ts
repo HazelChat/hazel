@@ -1,8 +1,10 @@
 import type { ChannelMember, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
+import { useEffect, useRef, useState } from "react"
 import { channelMemberCollection, typingIndicatorCollection, userCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
+import { pushTypingDiagnostics } from "~/lib/typing-diagnostics"
 
 type TypingUser = {
 	user: typeof User.Model.Type
@@ -16,8 +18,10 @@ interface UseTypingIndicatorsOptions {
 	staleThreshold?: number // Milliseconds after which indicators are considered stale
 }
 
-export function useTypingIndicators({ channelId, staleThreshold = 5000 }: UseTypingIndicatorsOptions) {
+export function useTypingIndicators({ channelId, staleThreshold = 6000 }: UseTypingIndicatorsOptions) {
 	const { user: currentUser } = useAuth()
+	const [now, setNow] = useState(() => Date.now())
+	const lastCollectionSnapshotRef = useRef<string | null>(null)
 
 	const { data: typingIndicatorsData } = useLiveQuery(
 		(q) =>
@@ -39,13 +43,49 @@ export function useTypingIndicators({ channelId, staleThreshold = 5000 }: UseTyp
 	)
 
 	const { data: usersData } = useLiveQuery(
-		(q) =>
-			q
-				.from({ user: userCollection })
-				.orderBy(({ user }) => user.createdAt, "desc")
-				.limit(100),
+		(q) => q.from({ user: userCollection }).orderBy(({ user }) => user.createdAt, "desc"),
 		[],
 	)
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setNow(Date.now())
+		}, 1000)
+
+		return () => {
+			clearInterval(interval)
+		}
+	}, [])
+
+	useEffect(() => {
+		const emitCollectionSnapshot = () => {
+			const snapshot = {
+				status: typingIndicatorCollection.utils.status,
+				isError: typingIndicatorCollection.utils.isError,
+				errorCount: typingIndicatorCollection.utils.errorCount,
+				lastError:
+					typingIndicatorCollection.utils.lastError instanceof Error
+						? typingIndicatorCollection.utils.lastError.message
+						: null,
+			}
+			const snapshotKey = `${snapshot.status}|${snapshot.isError ? 1 : 0}|${snapshot.errorCount}|${snapshot.lastError ?? "none"}`
+			if (snapshotKey === lastCollectionSnapshotRef.current) return
+
+			lastCollectionSnapshotRef.current = snapshotKey
+			pushTypingDiagnostics({
+				kind: "collection_state",
+				channelId,
+				details: snapshot,
+			})
+		}
+
+		emitCollectionSnapshot()
+		const interval = setInterval(emitCollectionSnapshot, 2000)
+
+		return () => {
+			clearInterval(interval)
+		}
+	}, [channelId])
 
 	// Calculate during render - React Compiler handles memoization
 	const currentChannelMember = (() => {
@@ -57,7 +97,7 @@ export function useTypingIndicators({ channelId, staleThreshold = 5000 }: UseTyp
 	const typingUsers: TypingUsers = (() => {
 		if (!typingIndicatorsData || !channelMembersData || !usersData) return []
 
-		const threshold = Date.now() - staleThreshold
+		const threshold = now - staleThreshold
 
 		return typingIndicatorsData
 			.filter((indicator) => {
