@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent } from "~/components/ui/tooltip"
 import { channelCollection } from "~/db/collections"
 import { useChannelWithCurrentUser, useParentChannel } from "~/db/hooks"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import IconEye from "../icons/icon-eye"
@@ -44,7 +44,7 @@ function OtherMemberAvatar({ member }: OtherMemberAvatarProps) {
 }
 
 export function ChatHeader() {
-	const { channelId } = useChat()
+	const { channelId } = useChatStable()
 	const { user } = useAuth()
 	const { channel } = useChannelWithCurrentUser(channelId)
 	const { isMobile, setIsOpenOnMobile } = useSidebar()

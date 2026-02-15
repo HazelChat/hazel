@@ -1,5 +1,5 @@
 import { cn } from "~/lib/utils"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft, useChatStable } from "~/providers/chat-provider"
 import { ReplyIndicator } from "../reply-indicator"
 
 interface ComposerReplyIndicatorProps {
@@ -7,7 +7,8 @@ interface ComposerReplyIndicatorProps {
 }
 
 export function ComposerReplyIndicator({ className }: ComposerReplyIndicatorProps) {
-	const { replyToMessageId, setReplyToMessageId, attachmentIds, uploadingFiles } = useChat()
+	const { replyToMessageId, attachmentIds, uploadingFiles } = useChatDraft()
+	const { setReplyToMessageId } = useChatStable()
 
 	if (!replyToMessageId) {
 		return null

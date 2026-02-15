@@ -2,7 +2,7 @@ import IconClose from "~/components/icons/icon-close"
 import IconEdit from "~/components/icons/icon-edit"
 import { Button } from "~/components/ui/button"
 import { cn } from "~/lib/utils"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft, useChatStable } from "~/providers/chat-provider"
 import { useComposerActions } from "./composer-context"
 
 interface ComposerEditIndicatorProps {
@@ -10,7 +10,8 @@ interface ComposerEditIndicatorProps {
 }
 
 export function ComposerEditIndicator({ className }: ComposerEditIndicatorProps) {
-	const { editingMessageId, setEditingMessageId, uploadingFiles, attachmentIds } = useChat()
+	const { editingMessageId, uploadingFiles, attachmentIds } = useChatDraft()
+	const { setEditingMessageId } = useChatStable()
 	const { clear } = useComposerActions()
 
 	if (!editingMessageId) {

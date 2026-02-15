@@ -2,7 +2,7 @@ import type { MessageId, PinnedMessageId } from "@hazel/schema"
 import { useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useAuth } from "~/lib/auth"
 
@@ -20,7 +20,7 @@ export function useMessageActions(message: MessageWithPinned) {
 		unpinMessage,
 		createThread,
 		channel,
-	} = useChat()
+	} = useChatStable()
 	const { topEmojis, trackEmojiUsage } = useEmojiStats()
 	const { user: currentUser } = useAuth()
 

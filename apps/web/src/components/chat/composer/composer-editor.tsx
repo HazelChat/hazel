@@ -5,7 +5,7 @@ import { channelMemberCollection, messageCollection } from "~/db/collections"
 import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { useTyping } from "~/hooks/use-typing"
 import { useAuth } from "~/lib/auth"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft, useChatStable, useChatThread } from "~/providers/chat-provider"
 import { SlateMessageEditor } from "../slate-editor/slate-message-editor"
 import { useComposerContext } from "./composer-context"
 
@@ -20,14 +20,9 @@ export function ComposerEditor({ placeholder, className }: ComposerEditorProps) 
 	const { channelId, organizationId, placeholder: defaultPlaceholder } = state
 	const { editorRef } = meta
 
-	const {
-		sendMessage,
-		editMessage,
-		editingMessageId,
-		setEditingMessageId,
-		attachmentIds,
-		activeThreadChannelId,
-	} = useChat()
+	const { sendMessage, editMessage, setEditingMessageId } = useChatStable()
+	const { editingMessageId, attachmentIds } = useChatDraft()
+	const { activeThreadChannelId } = useChatThread()
 
 	const { handleFilesUpload, isUploading } = useFileUploadHandler({
 		organizationId,

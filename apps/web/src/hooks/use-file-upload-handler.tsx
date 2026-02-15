@@ -1,7 +1,7 @@
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { useCallback } from "react"
 import { useFileUpload } from "~/hooks/use-file-upload"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft, useChatStable } from "~/providers/chat-provider"
 
 interface UseFileUploadHandlerOptions {
 	organizationId: OrganizationId
@@ -30,12 +30,12 @@ interface UseFileUploadHandlerOptions {
 export function useFileUploadHandler({ organizationId, channelId }: UseFileUploadHandlerOptions) {
 	const {
 		addAttachment,
-		isUploading,
 		setIsUploading,
 		addUploadingFile,
 		updateUploadingFileProgress,
 		removeUploadingFile,
-	} = useChat()
+	} = useChatStable()
+	const { isUploading } = useChatDraft()
 
 	const { uploadFile } = useFileUpload({
 		organizationId,

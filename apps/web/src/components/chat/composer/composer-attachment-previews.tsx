@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button"
 import { Loader } from "~/components/ui/loader"
 import { attachmentCollection } from "~/db/collections"
 import { cn } from "~/lib/utils"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft, useChatStable } from "~/providers/chat-provider"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 
 interface ComposerAttachmentPreviewsProps {
@@ -13,7 +13,8 @@ interface ComposerAttachmentPreviewsProps {
 }
 
 export function ComposerAttachmentPreviews({ className }: ComposerAttachmentPreviewsProps) {
-	const { attachmentIds, uploadingFiles, removeAttachment, replyToMessageId } = useChat()
+	const { attachmentIds, uploadingFiles, replyToMessageId } = useChatDraft()
+	const { removeAttachment } = useChatStable()
 
 	const { data: attachments } = useLiveQuery(
 		(q) =>

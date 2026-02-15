@@ -1,9 +1,7 @@
 import { Result, useAtomValue } from "@effect-atom/atom-react"
 import type { MessageId, OrganizationId, UserId } from "@hazel/schema"
-import type { DOMAttributes } from "@react-types/shared"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"
-import { useHover } from "react-aria"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { isDiscordSyncedMessageAtomFamily, processedReactionsAtomFamily } from "~/atoms/message-atoms"
@@ -12,13 +10,12 @@ import IconPin from "~/components/icons/icon-pin"
 import { extractUrls } from "~/components/link-preview"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Badge } from "~/components/ui/badge"
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
 import { useBotName } from "~/db/hooks"
 import { cn } from "~/lib/utils"
-import { useMessageHover } from "~/providers/message-hover-provider"
 import { InlineThreadPreview } from "./inline-thread-preview"
 import { MessageAttachments } from "./message-attachments"
 import { MessageContent } from "./message-content"
@@ -59,7 +56,6 @@ export interface MessageVariants {
 interface MessageContextValue {
 	message: MessageWithPinned
 	messageRef: RefObject<HTMLDivElement | null>
-	hoverProps: DOMAttributes
 	// Derived states
 	groupPosition: MessageGroupPosition
 	highlight: MessageHighlight
@@ -103,9 +99,8 @@ interface MessageProviderProps {
  * All other Message.* components must be rendered within this provider.
  */
 function MessageProvider({ message, variants, children }: MessageProviderProps) {
-	const { addReaction } = useChat()
+	const { addReaction } = useChatStable()
 	const { trackEmojiUsage } = useEmojiStats()
-	const { actions } = useMessageHover()
 	const { user: currentUser } = useAuth()
 	const messageRef = useRef<HTMLDivElement>(null)
 
@@ -139,15 +134,6 @@ function MessageProvider({ message, variants, children }: MessageProviderProps) 
 	// Use atom for reactions - automatically deduplicated and memoized
 	const aggregatedReactions = useAtomValue(processedReactionsAtomFamily(reactionsAtomKey))
 
-	const { hoverProps } = useHover({
-		onHoverStart: () => {
-			actions.setHovered(message.id, messageRef.current)
-		},
-		onHoverEnd: () => {
-			actions.setHovered(null, null)
-		},
-	})
-
 	// Memoize reaction handler to prevent ReactionButton re-renders
 	const handleReaction = useCallback(
 		(emoji: string) => {
@@ -175,7 +161,6 @@ function MessageProvider({ message, variants, children }: MessageProviderProps) 
 		(): MessageContextValue => ({
 			message,
 			messageRef,
-			hoverProps,
 			groupPosition,
 			highlight,
 			isGroupStart,
@@ -194,7 +179,6 @@ function MessageProvider({ message, variants, children }: MessageProviderProps) 
 		}),
 		[
 			message,
-			hoverProps,
 			groupPosition,
 			highlight,
 			isGroupStart,
@@ -223,22 +207,11 @@ interface MessageFrameProps {
  * Container component that handles the message frame styling, hover state, and layout.
  */
 function MessageFrame({ children }: MessageFrameProps) {
-	const {
-		message,
-		messageRef,
-		hoverProps,
-		isGroupStart,
-		isGroupEnd,
-		isPinned,
-		isFirstNewMessage,
-		isHighlighted,
-	} = useMessage()
-	const { editingMessageId } = useChat()
-	const isBeingEdited = editingMessageId === message.id
+	const { message, messageRef, isGroupStart, isGroupEnd, isPinned, isFirstNewMessage, isHighlighted } =
+		useMessage()
 
 	return (
 		<div
-			{...hoverProps}
 			ref={messageRef}
 			id={`message-${message.id}`}
 			className={cn(
@@ -252,8 +225,6 @@ function MessageFrame({ children }: MessageFrameProps) {
 					? "rounded-l-none border-warning border-l-4 bg-warning/10 pl-2 shadow-sm hover:bg-warning/15"
 					: "",
 				isHighlighted && "bg-accent/20 transition-colors duration-300",
-				isBeingEdited &&
-					"rounded-l-none border-primary border-l-4 bg-primary/10 pl-2 shadow-sm hover:bg-primary/15",
 			)}
 			data-id={message.id}
 		>

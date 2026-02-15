@@ -8,7 +8,7 @@ import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { cn } from "~/lib/utils"
-import { useChat } from "~/providers/chat-provider"
+import { useChatStable } from "~/providers/chat-provider"
 import { useComposerContext } from "./composer-context"
 
 interface ComposerActionsProps {
@@ -23,7 +23,7 @@ export function ComposerActions({ className, minimal = false }: ComposerActionsP
 	const { editorRef } = meta
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { trackEmojiUsage } = useEmojiStats()
-	const { sendMessage } = useChat()
+	const { sendMessage } = useChatStable()
 
 	const { handleFileInputChange, isUploading } = useFileUploadHandler({
 		organizationId,

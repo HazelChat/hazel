@@ -42,9 +42,60 @@ interface SendMessageProps {
 	restoreContent?: (content: string) => void
 }
 
-/**
- * Chat state - read-only values representing current state
- */
+// ─── Stable Context ─────────────────────────────────────────────────────────
+// Values and actions that only change when the channel changes.
+// Message components should subscribe to this context.
+
+export interface ChatStableValue {
+	channelId: ChannelId
+	organizationId: OrganizationId
+	channel: typeof Channel.Model.Type | undefined
+	// All actions (sendMessage is stabilized via refs)
+	sendMessage: (props: SendMessageProps) => void
+	editMessage: (messageId: MessageId, content: string) => Promise<void>
+	deleteMessage: (messageId: MessageId) => void
+	addReaction: (messageId: MessageId, channelId: ChannelId, emoji: string) => void
+	/** @deprecated Use addReaction which toggles reactions */
+	removeReaction: (reactionId: MessageReactionId) => void
+	pinMessage: (messageId: MessageId) => void
+	unpinMessage: (pinnedMessageId: PinnedMessageId) => void
+	createThread: (messageId: MessageId, threadChannelId: ChannelId | null) => Promise<void>
+	openThread: (threadChannelId: ChannelId, originalMessageId: MessageId) => void
+	closeThread: () => void
+	setReplyToMessageId: (messageId: MessageId | null) => void
+	setEditingMessageId: (messageId: MessageId | null) => void
+	addAttachment: (attachmentId: AttachmentId) => void
+	removeAttachment: (attachmentId: AttachmentId) => void
+	clearAttachments: () => void
+	setIsUploading: (value: boolean) => void
+	addUploadingFile: (file: Omit<UploadingFile, "progress">) => void
+	updateUploadingFileProgress: (fileId: string, progress: number) => void
+	removeUploadingFile: (fileId: string) => void
+}
+
+// ─── Draft Context ──────────────────────────────────────────────────────────
+// Values that change during message composition (reply, edit, attachments).
+// Composer components should subscribe to this context.
+
+export interface ChatDraftValue {
+	replyToMessageId: MessageId | null
+	editingMessageId: MessageId | null
+	attachmentIds: AttachmentId[]
+	isUploading: boolean
+	uploadingFiles: UploadingFile[]
+}
+
+// ─── Thread Context ─────────────────────────────────────────────────────────
+// Values that change when thread state changes.
+
+export interface ChatThreadValue {
+	activeThreadChannelId: ChannelId | null
+	activeThreadMessageId: MessageId | null
+	isThreadCreating: boolean
+}
+
+// ─── Legacy types (backwards compatibility) ─────────────────────────────────
+
 export interface ChatState {
 	channelId: ChannelId
 	organizationId: OrganizationId
@@ -59,9 +110,6 @@ export interface ChatState {
 	editingMessageId: MessageId | null
 }
 
-/**
- * Chat actions - functions to mutate state or perform side effects
- */
 export interface ChatActions {
 	sendMessage: (props: SendMessageProps) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
@@ -85,90 +133,115 @@ export interface ChatActions {
 	removeUploadingFile: (fileId: string) => void
 }
 
+export interface ChatMeta {}
+
+export type ChatContextValue = ChatState & ChatActions & ChatMeta
+
+// ─── Contexts ───────────────────────────────────────────────────────────────
+
+const ChatStableContext = createContext<ChatStableValue | undefined>(undefined)
+const ChatDraftContext = createContext<ChatDraftValue | undefined>(undefined)
+const ChatThreadContext = createContext<ChatThreadValue | undefined>(undefined)
+
+// ─── Targeted hooks ─────────────────────────────────────────────────────────
+
 /**
- * Chat meta - future: refs, callbacks for imperative operations
+ * Hook for stable channel values and all actions.
+ * Only re-renders when the channel changes. Use this in message components.
  */
-export interface ChatMeta {
-	// Reserved for future use
+export function useChatStable(): ChatStableValue {
+	const context = useContext(ChatStableContext)
+	if (!context) {
+		throw new Error("useChatStable must be used within a ChatProvider")
+	}
+	return context
 }
 
 /**
- * Structured context value with clear separation of concerns
+ * Hook for draft/composition state (reply, edit, attachments, uploads).
+ * Re-renders when composition state changes. Use this in composer components.
  */
+export function useChatDraft(): ChatDraftValue {
+	const context = useContext(ChatDraftContext)
+	if (!context) {
+		throw new Error("useChatDraft must be used within a ChatProvider")
+	}
+	return context
+}
+
+/**
+ * Hook for thread state (active thread, creating state).
+ * Re-renders when thread state changes. Use this in thread panel components.
+ */
+export function useChatThread(): ChatThreadValue {
+	const context = useContext(ChatThreadContext)
+	if (!context) {
+		throw new Error("useChatThread must be used within a ChatProvider")
+	}
+	return context
+}
+
+// ─── Legacy hooks (backwards compatibility) ─────────────────────────────────
+
+/**
+ * @deprecated Use `useChatStable()`, `useChatDraft()`, or `useChatThread()` instead.
+ * Returns flattened context with all state and actions.
+ */
+export function useChat(): ChatContextValue {
+	const stable = useChatStable()
+	const draft = useChatDraft()
+	const thread = useChatThread()
+	return useMemo(
+		() => ({
+			...stable,
+			...draft,
+			...thread,
+		}),
+		[stable, draft, thread],
+	)
+}
+
+/** @deprecated Use targeted hooks instead */
 export interface ChatContextStructured {
 	state: ChatState
 	actions: ChatActions
 	meta: ChatMeta
 }
 
-/**
- * Flat context value for backwards compatibility
- * Contains all state and actions at the top level
- */
-export type ChatContextValue = ChatState & ChatActions & ChatMeta
-
-const ChatContext = createContext<ChatContextStructured | undefined>(undefined)
-
-/**
- * Hook to access the full structured chat context
- * Provides clear separation between state and actions
- *
- * @example
- * ```tsx
- * const { state, actions } = useChatContext()
- * // Read state
- * const { channelId, replyToMessageId } = state
- * // Call actions
- * actions.sendMessage({ content: "Hello" })
- * ```
- */
+/** @deprecated Use targeted hooks instead */
 export function useChatContext(): ChatContextStructured {
-	const context = useContext(ChatContext)
-	if (!context) {
-		throw new Error("useChatContext must be used within a ChatProvider")
-	}
-	return context
-}
-
-/**
- * Hook for backwards compatibility - returns flattened context
- * All state and actions are available at the top level
- *
- * @example
- * ```tsx
- * const { channelId, sendMessage, replyToMessageId } = useChat()
- * sendMessage({ content: "Hello" })
- * ```
- */
-export function useChat(): ChatContextValue {
-	const { state, actions, meta } = useChatContext()
+	const stable = useChatStable()
+	const draft = useChatDraft()
+	const thread = useChatThread()
 	return useMemo(
 		() => ({
-			...state,
-			...actions,
-			...meta,
+			state: {
+				channelId: stable.channelId,
+				organizationId: stable.organizationId,
+				channel: stable.channel,
+				...draft,
+				...thread,
+			},
+			actions: stable,
+			meta: {},
 		}),
-		[state, actions, meta],
+		[stable, draft, thread],
 	)
 }
 
-/**
- * Hook to access only chat state (read-only values)
- * Useful when you only need to read state without actions
- */
+/** @deprecated Use `useChatDraft()` or `useChatStable()` instead */
 export function useChatState(): ChatState {
 	const { state } = useChatContext()
 	return state
 }
 
-/**
- * Hook to access only chat actions
- * Useful when you only need to perform actions
- */
+/** @deprecated Use `useChatStable()` instead */
 export function useChatActions(): ChatActions {
 	const { actions } = useChatContext()
 	return actions
 }
+
+// ─── Provider ───────────────────────────────────────────────────────────────
 
 interface ChatProviderProps {
 	channelId: ChannelId
@@ -276,6 +349,17 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		[setEditingMessageIdRaw, setReplyToMessageIdRaw],
 	)
 
+	// ─── Stabilize sendMessage with refs ────────────────────────────────────
+	// Use refs to capture volatile state (replyToMessageId, attachmentIds)
+	// at call time instead of as closure dependencies. This makes sendMessage
+	// stable and prevents cascading re-renders across all consumers.
+
+	const replyToMessageIdRef = useRef(replyToMessageId)
+	replyToMessageIdRef.current = replyToMessageId
+
+	const attachmentIdsRef = useRef(attachmentIds)
+	attachmentIdsRef.current = attachmentIds
+
 	// Store pending message data for manual retry
 	const pendingMessageRef = useRef<{
 		content: string
@@ -288,10 +372,10 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const sendMessage = useCallback(
 		async ({ content, attachments, clearContent, restoreContent }: SendMessageProps) => {
 			if (!user?.id) return
-			const attachmentsToSend = attachments ?? attachmentIds
+			const attachmentsToSend = attachments ?? attachmentIdsRef.current
 
 			// Save state for potential restore on error
-			const savedReplyToMessageId = replyToMessageId
+			const savedReplyToMessageId = replyToMessageIdRef.current
 			const savedAttachmentIds = [...attachmentsToSend]
 
 			// Store pending message data for manual retry
@@ -358,8 +442,6 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		[
 			channelId,
 			user?.id,
-			replyToMessageId,
-			attachmentIds,
 			sendMessageMutation,
 			setReplyToMessageId,
 			setAttachmentIds,
@@ -429,7 +511,6 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	)
 
 	// Note: removeReaction is deprecated - use addReaction which toggles reactions
-	// Keeping for interface compatibility but this is a no-op since toggleReaction handles removal
 	const removeReaction = useCallback((_reactionId: MessageReactionId) => {
 		console.warn("removeReaction is deprecated - use addReaction to toggle reactions")
 	}, [])
@@ -553,38 +634,13 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		setActiveThreadMessageId(null)
 	}, [setActiveThreadChannelId, setActiveThreadMessageId])
 
-	// Build structured context value
-	const state = useMemo<ChatState>(
-		() => ({
-			channelId,
-			organizationId,
-			channel,
-			replyToMessageId,
-			attachmentIds,
-			isUploading,
-			uploadingFiles,
-			activeThreadChannelId,
-			activeThreadMessageId,
-			isThreadCreating,
-			editingMessageId,
-		}),
-		[
-			channelId,
-			organizationId,
-			channel,
-			replyToMessageId,
-			attachmentIds,
-			isUploading,
-			uploadingFiles,
-			activeThreadChannelId,
-			activeThreadMessageId,
-			isThreadCreating,
-			editingMessageId,
-		],
-	)
+	// ─── Build context values ───────────────────────────────────────────────
 
-	const actions = useMemo<ChatActions>(
+	const stableValue = useMemo<ChatStableValue>(
 		() => ({
+			channelId,
+			organizationId,
+			channel,
 			sendMessage,
 			editMessage,
 			deleteMessage,
@@ -606,6 +662,9 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 			removeUploadingFile,
 		}),
 		[
+			channelId,
+			organizationId,
+			channel,
 			sendMessage,
 			editMessage,
 			deleteMessage,
@@ -628,16 +687,31 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 		],
 	)
 
-	const meta = useMemo<ChatMeta>(() => ({}), [])
-
-	const contextValue = useMemo<ChatContextStructured>(
+	const draftValue = useMemo<ChatDraftValue>(
 		() => ({
-			state,
-			actions,
-			meta,
+			replyToMessageId,
+			editingMessageId,
+			attachmentIds,
+			isUploading,
+			uploadingFiles,
 		}),
-		[state, actions, meta],
+		[replyToMessageId, editingMessageId, attachmentIds, isUploading, uploadingFiles],
 	)
 
-	return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>
+	const threadValue = useMemo<ChatThreadValue>(
+		() => ({
+			activeThreadChannelId,
+			activeThreadMessageId,
+			isThreadCreating,
+		}),
+		[activeThreadChannelId, activeThreadMessageId, isThreadCreating],
+	)
+
+	return (
+		<ChatStableContext.Provider value={stableValue}>
+			<ChatDraftContext.Provider value={draftValue}>
+				<ChatThreadContext.Provider value={threadValue}>{children}</ChatThreadContext.Provider>
+			</ChatDraftContext.Provider>
+		</ChatStableContext.Provider>
+	)
 }

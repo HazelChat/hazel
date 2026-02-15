@@ -4,7 +4,7 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import { useCallback, useMemo } from "react"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import IconClose from "../icons/icon-close"
 import IconPin from "../icons/icon-pin"
 import { Button } from "../ui/button"
@@ -12,7 +12,7 @@ import { Popover, PopoverContent } from "../ui/popover"
 import { UserProfilePopover } from "./user-profile-popover"
 
 export function PinnedMessagesModal() {
-	const { channelId, unpinMessage } = useChat()
+	const { channelId, unpinMessage } = useChatStable()
 	const navigate = useNavigate({
 		from: "/$orgSlug/chat/$id/",
 	})

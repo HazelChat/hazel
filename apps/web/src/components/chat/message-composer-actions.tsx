@@ -6,7 +6,7 @@ import IconPaperclip from "~/components/icons/icon-paperclip2"
 import { useEmojiStats } from "~/hooks/use-emoji-stats"
 import { useFileUploadHandler } from "~/hooks/use-file-upload-handler"
 import { useOrganization } from "~/hooks/use-organization"
-import { useChat } from "~/providers/chat-provider"
+import { useChatStable } from "~/providers/chat-provider"
 
 export interface MessageComposerActionsRef {
 	cleanup: () => void
@@ -22,7 +22,7 @@ export const MessageComposerActions = forwardRef<MessageComposerActionsRef, Mess
 		const { organizationId } = useOrganization()
 		const fileInputRef = useRef<HTMLInputElement>(null)
 		const { trackEmojiUsage } = useEmojiStats()
-		const { channelId } = useChat()
+		const { channelId } = useChatStable()
 
 		// Use consolidated file upload handler
 		const { handleFileInputChange, isUploading } = useFileUploadHandler({

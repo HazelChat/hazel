@@ -1,8 +1,8 @@
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import { useTypingIndicators } from "~/hooks/use-typing-indicators"
 
 export function TypingIndicator() {
-	const { channelId } = useChat()
+	const { channelId } = useChatStable()
 
 	const { typingUsers } = useTypingIndicators({ channelId })
 

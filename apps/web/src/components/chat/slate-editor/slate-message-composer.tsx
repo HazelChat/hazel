@@ -1,4 +1,4 @@
-import { useChat } from "~/providers/chat-provider"
+import { useChatStable } from "~/providers/chat-provider"
 import { Composer } from "../composer"
 
 interface SlateMessageComposerProps {
@@ -35,7 +35,7 @@ interface SlateMessageComposerProps {
  * ```
  */
 export const SlateMessageComposer = ({ placeholder = "Type a message..." }: SlateMessageComposerProps) => {
-	const { channelId, organizationId } = useChat()
+	const { channelId, organizationId } = useChatStable()
 
 	return (
 		<Composer.Provider channelId={channelId} organizationId={organizationId} placeholder={placeholder}>

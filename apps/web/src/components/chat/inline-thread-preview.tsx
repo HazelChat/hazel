@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns"
 import { useMemo } from "react"
 import { threadMessageCountAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
 import { channelCollection, messageCollection } from "~/db/collections"
-import { useChat } from "~/hooks/use-chat"
+import { useChatStable } from "~/hooks/use-chat"
 import { cx } from "~/utils/cx"
 import { useBotName } from "~/db/hooks"
 import { Avatar } from "../ui/avatar"
@@ -21,7 +21,7 @@ export function InlineThreadPreview({
 	messageId,
 	maxPreviewMessages = 3,
 }: InlineThreadPreviewProps) {
-	const { openThread } = useChat()
+	const { openThread } = useChatStable()
 
 	// Fetch thread name
 	const { data: threadData } = useLiveQuery(

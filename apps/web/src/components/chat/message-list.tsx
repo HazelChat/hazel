@@ -1,9 +1,11 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
+import { useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useOverlayPosition } from "react-aria"
 import { createPortal } from "react-dom"
+import { editingMessageAtomFamily } from "~/atoms/chat-atoms"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
 import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-message-notification-cleaner"
 import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
@@ -82,7 +84,8 @@ const MessageVirtualList = memo(
 						fetchNextPage()
 					}
 				}}
-				// recycleItems
+				recycleItems
+				drawDistance={300}
 				estimatedItemSize={80}
 				keyExtractor={(it) => it.id}
 				initialScrollIndex={messageRows.length - 1}
@@ -140,6 +143,9 @@ function MessageListContent({
 	const overlayRef = useRef<HTMLDivElement>(null)
 	const targetRef = useRef<HTMLDivElement | null>(null)
 
+	// Subscribe to editing state directly via atom (avoids ChatProvider dependency)
+	const editingMessageId = useAtomValue(editingMessageAtomFamily(channelId))
+
 	// Keep targetRef in sync with context state
 	if (state.targetRef) {
 		targetRef.current = state.targetRef
@@ -163,10 +169,16 @@ function MessageListContent({
 		[onVisibleMessagesChange],
 	)
 
-	const hoveredMessage = useMemo(
-		() => messages.find((m) => m.id === state.hoveredMessageId) || null,
-		[messages, state.hoveredMessageId],
-	)
+	// O(1) lookup for hovered message instead of O(n) scan
+	const messageMap = useMemo(() => {
+		const map = new Map<string, MessageWithPinned>()
+		for (const m of messages) {
+			map.set(m.id, m)
+		}
+		return map
+	}, [messages])
+
+	const hoveredMessage = state.hoveredMessageId ? (messageMap.get(state.hoveredMessageId) ?? null) : null
 
 	const { overlayProps } = useOverlayPosition({
 		targetRef,
@@ -177,20 +189,29 @@ function MessageListContent({
 		isOpen: state.hoveredMessageId !== null,
 	})
 
+	// Process messages without reversing the array.
+	// `messages` is ordered DESC (newest first), so we iterate backwards for chronological order.
 	const processedMessages = useMemo(() => {
 		const timeThreshold = 3 * 60 * 1000
-		const chronologicalMessages = [...messages].reverse()
+		const len = messages.length
+		const result: ProcessedMessage[] = new Array(len)
 
-		return chronologicalMessages.map((message, index): ProcessedMessage => {
-			const prevMessage = index > 0 ? chronologicalMessages[index - 1] : null
+		for (let i = 0; i < len; i++) {
+			// Map chronological index i -> DESC array index
+			const descIdx = len - 1 - i
+			const message = messages[descIdx]!
+
+			// Previous message in chronological order = descIdx + 1
+			const prevMessage = descIdx < len - 1 ? messages[descIdx + 1]! : null
+			// Next message in chronological order = descIdx - 1
+			const nextMessage = descIdx > 0 ? messages[descIdx - 1]! : null
+
 			const isGroupStart =
 				!prevMessage ||
 				message.authorId !== prevMessage.authorId ||
 				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
 				!!prevMessage.replyToMessageId
 
-			const nextMessage =
-				index < chronologicalMessages.length - 1 ? chronologicalMessages[index + 1] : null
 			const isGroupEnd =
 				!nextMessage ||
 				message.authorId !== nextMessage.authorId ||
@@ -199,14 +220,15 @@ function MessageListContent({
 			const isFirstNewMessage = false
 			const isPinned = !!message.pinnedMessage?.id
 
-			return {
+			result[i] = {
 				message,
 				isGroupStart,
 				isGroupEnd,
 				isFirstNewMessage,
 				isPinned,
 			}
-		})
+		}
+		return result
 	}, [messages])
 
 	const { messageRows, stickyIndices } = useMemo(() => {
@@ -242,6 +264,21 @@ function MessageListContent({
 		[isLoading, messages.length],
 	)
 
+	// Delegated hover handler - single listener instead of per-message useHover
+	const handlePointerOver = useCallback(
+		(e: React.PointerEvent) => {
+			const messageEl = (e.target as HTMLElement).closest("[data-id]") as HTMLDivElement | null
+			if (messageEl) {
+				actions.setHovered(messageEl.dataset.id!, messageEl)
+			}
+		},
+		[actions],
+	)
+
+	const handlePointerLeave = useCallback(() => {
+		actions.setHovered(null, null)
+	}, [actions])
+
 	// Show empty state if no messages (no skeleton loader needed since route loader preloads data)
 	if (messages.length === 0) {
 		return (
@@ -262,9 +299,16 @@ function MessageListContent({
 		<div
 			className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2 transition-opacity duration-200"
 			style={containerStyle}
+			onPointerOver={handlePointerOver}
+			onPointerLeave={handlePointerLeave}
 		>
+			{/* CSS injection for hover highlighting - avoids per-message context subscriptions */}
 			{state.hoveredMessageId && (
 				<style>{`#message-${state.hoveredMessageId} { background-color: var(--color-secondary) !important; }`}</style>
+			)}
+			{/* CSS injection for editing highlight - avoids per-message context subscriptions */}
+			{editingMessageId && (
+				<style>{`#message-${editingMessageId} { border-left: 4px solid var(--color-primary); background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); padding-left: 0.5rem; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: var(--shadow-sm); }`}</style>
 			)}
 			<MessageVirtualList
 				ref={legendListRef}

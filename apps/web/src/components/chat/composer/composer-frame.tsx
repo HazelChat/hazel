@@ -1,5 +1,5 @@
 import { cn } from "~/lib/utils"
-import { useChat } from "~/providers/chat-provider"
+import { useChatDraft } from "~/providers/chat-provider"
 
 interface ComposerFrameProps {
 	children: React.ReactNode
@@ -9,7 +9,7 @@ interface ComposerFrameProps {
 }
 
 export function ComposerFrame({ children, className, compact = false }: ComposerFrameProps) {
-	const { replyToMessageId, editingMessageId, attachmentIds, uploadingFiles } = useChat()
+	const { replyToMessageId, editingMessageId, attachmentIds, uploadingFiles } = useChatDraft()
 
 	const hasTopContent =
 		replyToMessageId || editingMessageId || attachmentIds.length > 0 || uploadingFiles.length > 0
