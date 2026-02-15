@@ -7,7 +7,7 @@ export function TypingIndicator() {
 	const { typingUsers } = useTypingIndicators({ channelId })
 
 	if (typingUsers.length === 0) {
-		return <div className="px-4 py-2" />
+		return null
 	}
 
 	const typingText = () => {
@@ -21,7 +21,7 @@ export function TypingIndicator() {
 	}
 
 	return (
-		<div className="px-4 py-2">
+		<div className="absolute bottom-full left-0 pb-1 pl-1">
 			<div className="flex h-3 items-center gap-2 text-muted-fg text-xs">
 				<div className="flex gap-1">
 					<span className="inline-block size-2 animate-bounce rounded-full bg-muted-fg [animation-delay:-0.3s]" />

@@ -48,11 +48,11 @@ function MessagesRoute() {
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				<MessageList />
 			</div>
-			<div className="shrink-0 px-4 pt-2.5">
+			<div className="relative shrink-0 px-4 pt-2.5">
+				<TypingIndicator />
 				<Suspense fallback={<ComposerSkeleton />}>
 					<SlateMessageComposer />
 				</Suspense>
-				<TypingIndicator />
 			</div>
 		</>
 	)
