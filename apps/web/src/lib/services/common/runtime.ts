@@ -11,7 +11,7 @@ import { TracerLive } from "./telemetry"
  * - ApiClient: HTTP client for REST API calls
  * - RpcClient: RPC client for collection mutations
  * - HazelRpcClient: RPC client for atom mutations
- * - TracerLive: OpenTelemetry tracing (DevTools in dev, SignOZ in production)
+ * - TracerLive: OpenTelemetry tracing (DevTools in dev, Maple in production)
  *
  * All RPC clients share the same WebSocket connection via RpcProtocolLive.
  */

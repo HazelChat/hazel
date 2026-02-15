@@ -9,10 +9,10 @@ import { Effect, Layer } from "effect"
  *
  * Behavior:
  * - Development (import.meta.env.DEV): Uses Effect DevTools WebSocket
- * - Production: Uses OTLP to SignOZ
+ * - Production: Uses OTLP HTTP to Maple ingest
  *
  * Required env vars in production (set in Vite):
- * - VITE_SIGNOZ_INGESTION_KEY
+ * - VITE_MAPLE_PUBLIC_KEY: Maple public ingest key
  * - VITE_OTEL_ENVIRONMENT (optional, defaults based on MODE)
  */
 export const TracerLive = Layer.unwrapEffect(
@@ -27,15 +27,14 @@ export const TracerLive = Layer.unwrapEffect(
 			return Layer.empty
 		}
 
-		const ingestionKey = import.meta.env.VITE_SIGNOZ_INGESTION_KEY
-		if (!ingestionKey) {
-			console.error("VITE_SIGNOZ_INGESTION_KEY is required in production")
-			// Return empty layer to avoid crashing the app
+		const maplePublicKey = import.meta.env.VITE_MAPLE_PUBLIC_KEY
+		if (!maplePublicKey) {
+			console.error("VITE_MAPLE_PUBLIC_KEY is required in production")
 			return Layer.empty
 		}
 
 		return Otlp.layerJson({
-			baseUrl: "https://ingest.eu.signoz.cloud:443",
+			baseUrl: "https://ingest.maple.dev",
 			resource: {
 				serviceName: "hazel-web",
 				serviceVersion: commitSha,
@@ -45,7 +44,7 @@ export const TracerLive = Layer.unwrapEffect(
 				},
 			},
 			headers: {
-				"signoz-ingestion-key": ingestionKey,
+				Authorization: `Bearer ${maplePublicKey}`,
 			},
 		}).pipe(Layer.provide(FetchHttpClient.layer))
 	}),

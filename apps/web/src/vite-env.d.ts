@@ -28,7 +28,7 @@ declare module "prismjs/components/prism-yaml"
 // Vite environment variables
 interface ImportMetaEnv {
 	readonly VITE_BACKEND_URL: string
-	readonly VITE_SIGNOZ_INGESTION_KEY?: string
+	readonly VITE_MAPLE_PUBLIC_KEY?: string
 	readonly VITE_OTEL_ENVIRONMENT?: string
 	readonly VITE_COMMIT_SHA?: string
 }

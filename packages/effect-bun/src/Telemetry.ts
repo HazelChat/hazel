@@ -10,10 +10,11 @@ import { Config, Effect, Layer } from "effect"
  * Environment variables:
  * - OTEL_ENVIRONMENT (default: "local"): Environment (local/staging/production)
  * - RAILWAY_GIT_COMMIT_SHA / COMMIT_SHA (default: "unknown"): Git commit SHA for service version
+ * - OTEL_BASE_URL: OTLP collector endpoint (e.g. "http://otel-collector.railway.internal:4318")
  *
  * Behavior:
  * - local environment: Uses Effect DevTools WebSocket (ws://localhost:34437)
- * - other environments: Uses OTLP to SignOZ (https://signoz.superwall.dev)
+ * - other environments: Uses OTLP HTTP to the configured collector
  *
  * @param otelServiceName - The service name to use for telemetry
  * @returns A Layer that provides tracing, metrics, and logging
@@ -38,9 +39,7 @@ export const createTracingLayer = (otelServiceName: string) =>
 
 			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
 
-			const otelBaseUrl = yield* Config.string("OTEL_BASE_URL").pipe(
-				Config.withDefault("https://ingest.eu.signoz.cloud"),
-			)
+			const otelBaseUrl = yield* Config.string("OTEL_BASE_URL")
 
 			if (environment === "local") {
 				if (nodeEnv === "production") {
@@ -52,8 +51,6 @@ export const createTracingLayer = (otelServiceName: string) =>
 				return DevTools.layerWebSocket().pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
 			}
 
-			const ingestionKey = yield* Config.string("SIGNOZ_INGESTION_KEY").pipe(Config.withDefault(""))
-
 			return Otlp.layerJson({
 				baseUrl: otelBaseUrl,
 				resource: {
@@ -63,9 +60,6 @@ export const createTracingLayer = (otelServiceName: string) =>
 						"deployment.environment": environment,
 						"deployment.commit_sha": commitSha,
 					},
-				},
-				headers: {
-					"signoz-ingestion-key": ingestionKey,
 				},
 			}).pipe(Layer.provide(FetchHttpClient.layer))
 		}),
