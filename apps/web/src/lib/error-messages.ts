@@ -207,8 +207,8 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	},
 	SyncError: {
 		title: "Sync failed",
-		description: "Please try again.",
-		isRetryable: true,
+		description: "Your changes were saved but sync is delayed.",
+		isRetryable: false,
 	},
 	RpcClientError: {
 		title: "Request failed",

@@ -252,7 +252,7 @@ function executeToast<A, E extends { _tag: string }>(
 				toastOptions.description = Cause.pretty(cause)
 			}
 
-			if (state.retryOptions) {
+			if (state.retryOptions && userError.isRetryable) {
 				toastOptions.action = {
 					label: state.retryOptions.label ?? "Retry",
 					onClick: state.retryOptions.onRetry,

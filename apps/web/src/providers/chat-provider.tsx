@@ -421,6 +421,11 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 						description: "This channel may have been deleted.",
 						isRetryable: false,
 					}))
+					.onCommonErrorTag("SyncError", () => ({
+						title: "Message sent",
+						description: "Sync is delayed but your message was delivered.",
+						isRetryable: false,
+					}))
 					.withRetry({
 						label: "Retry",
 						onRetry: () => {
