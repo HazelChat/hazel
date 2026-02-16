@@ -8,6 +8,20 @@
 import { Effect, Schedule } from "effect"
 import { authenticatedFetch } from "./auth-fetch"
 import { runtime } from "./services/common/runtime"
+import { isTauri } from "./tauri"
+
+const ACCESS_TOKEN_KEY = "hazel_auth_access_token"
+
+/**
+ * Synchronous check for auth token availability.
+ * On web, checks localStorage directly. On Tauri, skips the check
+ * since tokens are in an async store handled by authenticatedFetch.
+ */
+const hasAuthToken = (): boolean => {
+	if (isTauri()) return true
+	if (typeof window === "undefined" || !window.localStorage) return false
+	return window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null
+}
 
 /**
  * Retry schedule for Electric fetch:
@@ -37,6 +51,10 @@ export const electricFetchClient = async (
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<Response> => {
+	if (!hasAuthToken()) {
+		return new Response(null, { status: 401 })
+	}
+
 	const fetchEffect = Effect.gen(function* () {
 		const response = yield* Effect.tryPromise({
 			try: () => authenticatedFetch(input, init),

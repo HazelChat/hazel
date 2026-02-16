@@ -171,16 +171,7 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 		return response
 	}
 
-	// No token available - make unauthenticated request
-	// This handles the case where user is not logged in
-	const response = await fetch(input, {
-		...init,
-	})
-
-	// If 401 (requires auth but no token), trigger session expired for redirect to login
-	if (response.status === 401) {
-		window.dispatchEvent(new CustomEvent("auth:session-expired"))
-	}
-
-	return response
+	// No token available - skip the request and trigger login redirect
+	window.dispatchEvent(new CustomEvent("auth:session-expired"))
+	return new Response(null, { status: 401 })
 }
