@@ -18,7 +18,8 @@ import "./styles/styles.css"
 
 // Initialize app registry and mount runtimes
 // Note: RPC devtools are now integrated via Effect layers in rpc-atom-client.ts
-import "./lib/registry.ts"
+import { RegistryContext } from "@effect-atom/atom-react"
+import { appRegistry } from "./lib/registry.ts"
 
 // Initialize Tauri-specific features (no-op in browser)
 import { initTauri } from "./lib/tauri.ts"
@@ -119,7 +120,9 @@ declare module "react-aria-components" {
 		const root = ReactDOM.createRoot(rootElement)
 		root.render(
 			<StrictMode>
-				<RouterProvider router={router} />
+				<RegistryContext.Provider value={appRegistry}>
+					<RouterProvider router={router} />
+				</RegistryContext.Provider>
 			</StrictMode>,
 		)
 	}

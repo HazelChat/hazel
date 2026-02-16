@@ -13,6 +13,7 @@ import { runtime } from "~/lib/services/common/runtime"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
 import { isTauri } from "~/lib/tauri"
 import { forceRefreshEffect } from "~/lib/auth-token"
+import { resetCallbackState } from "~/atoms/web-callback-atoms"
 
 // ============================================================================
 // Types
@@ -121,6 +122,7 @@ export const webLogoutAtom = Atom.fn(
 			get?.set(webTokensAtom, null)
 			get?.set(webAuthStatusAtom, "idle")
 			get?.set(webAuthErrorAtom, null)
+			resetCallbackState()
 
 			const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin
 			const redirectTo = options?.redirectTo || "/"

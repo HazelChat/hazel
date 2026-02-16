@@ -104,20 +104,6 @@ function getErrorInfo(error: CallbackError): {
 }
 
 // ============================================================================
-// Getter Interface
-// ============================================================================
-
-/**
- * Getter interface for atom actions (matches what Atom.make provides)
- */
-interface AtomGetter {
-	<T>(atom: Atom.Atom<T>): T
-	set<T>(atom: Atom.Writable<T>, value: T): void
-	addFinalizer(fn: () => void): void
-	refresh<T>(atom: Atom.Atom<T>): void
-}
-
-// ============================================================================
 // Core Callback Logic
 // ============================================================================
 
@@ -130,19 +116,12 @@ const processedCodes = new Set<string>()
 /**
  * Effect that handles the web callback - exchanges code for tokens and stores them
  */
-const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
+const handleCallback = (params: WebCallbackParams) =>
 	Effect.gen(function* () {
 		// Guard against double-execution (React StrictMode, hot reload)
 		// OAuth codes are one-time use, so we track processed codes
 		if (params.code && processedCodes.has(params.code)) {
 			yield* Effect.log("[web-callback] Code already processed, skipping")
-			return
-		}
-
-		// Also check if we're already in a terminal state
-		const currentStatus = get(webCallbackStatusAtom)
-		if (currentStatus._tag === "exchanging" || currentStatus._tag === "success") {
-			yield* Effect.log(`[web-callback] Already in ${currentStatus._tag} state, skipping`)
 			return
 		}
 
@@ -222,14 +201,15 @@ const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
 			// Store tokens in localStorage
 			yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
 
-			// Update atom state
+			// Update atom state via global registry (not `get.set()` which can be
+			// stale if React StrictMode unmounted the atom that forked this fiber)
 			const expiresAt = Date.now() + tokens.expiresIn * 1000
-			get.set(webTokensAtom, {
+			appRegistry.set(webTokensAtom, {
 				accessToken: tokens.accessToken,
 				refreshToken: tokens.refreshToken,
 				expiresAt,
 			})
-			get.set(webAuthStatusAtom, "authenticated")
+			appRegistry.set(webAuthStatusAtom, "authenticated")
 
 			yield* Effect.log("[web-callback] Token exchange successful")
 
@@ -284,14 +264,31 @@ const handleCallback = (params: WebCallbackParams, get: AtomGetter) =>
  * The atom runs the callback effect when mounted via useAtomValue
  */
 export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
-	Atom.make((get) => {
+	Atom.make(() => {
+		// Reset for fresh login flow (handles re-login after session expiry
+		// where client-side navigation preserves stale atom state)
+		appRegistry.set(webCallbackStatusAtom, { _tag: "idle" })
+
 		// No finalizer — let the OAuth exchange complete even if Strict Mode
 		// unmounts/remounts. processedCodes prevents re-execution on remount.
-		// Status updates use appRegistry.set() so they survive unmount.
-		runtime.runFork(handleCallback(params, get))
+		// All atom updates use appRegistry.set() so they survive unmount.
+		runtime.runFork(handleCallback(params))
 
 		return null
 	})
+
+// ============================================================================
+// State Reset
+// ============================================================================
+
+/**
+ * Reset callback state for a fresh login flow.
+ * Called during logout to clear stale state that survives client-side navigation.
+ */
+export const resetCallbackState = () => {
+	processedCodes.clear()
+	appRegistry.set(webCallbackStatusAtom, { _tag: "idle" })
+}
 
 // ============================================================================
 // Action Atoms
@@ -302,7 +299,7 @@ export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
  * Takes params directly instead of reading from a params atom
  */
 export const retryWebCallbackAtom = Atom.fn(
-	Effect.fnUntraced(function* (params: WebCallbackParams, get) {
-		yield* handleCallback(params, get)
+	Effect.fnUntraced(function* (params: WebCallbackParams) {
+		yield* handleCallback(params)
 	}),
 )
