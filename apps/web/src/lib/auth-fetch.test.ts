@@ -5,21 +5,15 @@ vi.mock("./tauri", () => ({
 	isTauri: vi.fn(),
 }))
 
-vi.mock("~/atoms/desktop-auth", () => ({
+vi.mock("~/lib/auth-token", () => ({
 	forceRefresh: vi.fn(),
 	waitForRefresh: vi.fn(),
-}))
-
-vi.mock("~/atoms/web-auth", () => ({
-	forceWebRefresh: vi.fn(),
-	getWebAccessToken: vi.fn(),
-	waitForWebRefresh: vi.fn(),
+	getAccessToken: vi.fn(),
 }))
 
 // Import after mocks are set up
 import { isTauri } from "./tauri"
-import { forceRefresh, waitForRefresh } from "~/atoms/desktop-auth"
-import { forceWebRefresh, getWebAccessToken, waitForWebRefresh } from "~/atoms/web-auth"
+import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
 
 describe("authenticatedFetch", () => {
 	let mockFetch: Mock
@@ -43,14 +37,10 @@ describe("authenticatedFetch", () => {
 			__TAURI_INTERNALS__: undefined,
 		})
 
-		// Default mock implementations for desktop auth
+		// Default mock implementations
 		;(waitForRefresh as Mock).mockResolvedValue(true)
 		;(forceRefresh as Mock).mockResolvedValue(false)
-
-		// Default mock implementations for web auth
-		;(getWebAccessToken as Mock).mockResolvedValue(null) // No token by default
-		;(waitForWebRefresh as Mock).mockResolvedValue(true)
-		;(forceWebRefresh as Mock).mockResolvedValue(false)
+		;(getAccessToken as Mock).mockResolvedValue(null) // No token by default
 	})
 
 	afterEach(() => {
@@ -62,50 +52,33 @@ describe("authenticatedFetch", () => {
 			;(isTauri as Mock).mockReturnValue(false)
 		})
 
-		it("makes unauthenticated request when no token is available", async () => {
+		it("dispatches session-expired when no token and refresh fails", async () => {
 			const { authenticatedFetch } = await import("./auth-fetch")
-			mockFetch.mockResolvedValue({ status: 200 })
 
 			await authenticatedFetch("https://api.example.com/data")
 
-			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				credentials: "include",
-			})
+			expect(dispatchEventSpy).toHaveBeenCalledTimes(1)
+			expect(dispatchEventSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ type: "auth:session-expired" }),
+			)
 		})
 
 		it("adds Bearer token when token is available", async () => {
-			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
 			await authenticatedFetch("https://api.example.com/data")
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				credentials: "include",
 				headers: {
 					Authorization: "Bearer test-jwt-token",
 				},
-			})
-		})
-
-		it("preserves existing init options without token", async () => {
-			const { authenticatedFetch } = await import("./auth-fetch")
-			mockFetch.mockResolvedValue({ status: 200 })
-
-			await authenticatedFetch("https://api.example.com/data", {
-				method: "POST",
-				body: JSON.stringify({ foo: "bar" }),
-			})
-
-			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				method: "POST",
-				body: JSON.stringify({ foo: "bar" }),
-				credentials: "include",
 			})
 		})
 
 		it("preserves existing init options with token", async () => {
-			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
@@ -117,29 +90,14 @@ describe("authenticatedFetch", () => {
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
 				method: "POST",
 				body: JSON.stringify({ foo: "bar" }),
-				credentials: "include",
 				headers: {
 					Authorization: "Bearer test-jwt-token",
 				},
 			})
 		})
 
-		it("respects explicit credentials option", async () => {
-			const { authenticatedFetch } = await import("./auth-fetch")
-			mockFetch.mockResolvedValue({ status: 200 })
-
-			await authenticatedFetch("https://api.example.com/data", {
-				method: "GET",
-				credentials: "omit",
-			})
-
-			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				method: "GET",
-				credentials: "omit",
-			})
-		})
-
 		it("dispatches session-expired event on 401", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 401 })
 
@@ -152,6 +110,7 @@ describe("authenticatedFetch", () => {
 		})
 
 		it("does not dispatch session-expired on successful response", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
@@ -161,6 +120,7 @@ describe("authenticatedFetch", () => {
 		})
 
 		it("returns the response on success", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			const mockResponse = { status: 200, json: () => Promise.resolve({ data: "test" }) }
 			mockFetch.mockResolvedValue(mockResponse)
@@ -169,6 +129,21 @@ describe("authenticatedFetch", () => {
 
 			expect(response).toBe(mockResponse)
 		})
+
+		it("attempts refresh when no token and succeeds", async () => {
+			;(getAccessToken as Mock)
+				.mockResolvedValueOnce(null) // first call: no token
+				.mockResolvedValueOnce("refreshed-token") // after refresh
+			;(forceRefresh as Mock).mockResolvedValue(true)
+			const { authenticatedFetch } = await import("./auth-fetch")
+			mockFetch.mockResolvedValue({ status: 200 })
+
+			const response = await authenticatedFetch("https://api.example.com/data")
+
+			expect(forceRefresh).toHaveBeenCalled()
+			expect(response.status).toBe(200)
+			expect(dispatchEventSpy).not.toHaveBeenCalled()
+		})
 	})
 
 	describe("401 retry flow", () => {
@@ -176,7 +151,8 @@ describe("authenticatedFetch", () => {
 			;(isTauri as Mock).mockReturnValue(false)
 		})
 
-		it("returns 401 response immediately in web mode", async () => {
+		it("returns 401 response when token present but refresh fails", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			const mockResponse = { status: 401 }
 			mockFetch.mockResolvedValue(mockResponse)
@@ -196,6 +172,7 @@ describe("authenticatedFetch", () => {
 		})
 
 		it("propagates fetch errors", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			const networkError = new Error("Network error")
 			mockFetch.mockRejectedValue(networkError)
@@ -204,6 +181,7 @@ describe("authenticatedFetch", () => {
 		})
 
 		it("handles various HTTP status codes correctly", async () => {
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			// 404 - should return response without dispatching event
 			mockFetch.mockResolvedValue({ status: 404 })
@@ -224,28 +202,8 @@ describe("authenticatedFetch", () => {
 			;(isTauri as Mock).mockReturnValue(false)
 		})
 
-		it("preserves custom headers in web mode without token", async () => {
-			const { authenticatedFetch } = await import("./auth-fetch")
-			mockFetch.mockResolvedValue({ status: 200 })
-
-			await authenticatedFetch("https://api.example.com/data", {
-				headers: {
-					"Content-Type": "application/json",
-					"X-Custom-Header": "custom-value",
-				},
-			})
-
-			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				credentials: "include",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Custom-Header": "custom-value",
-				},
-			})
-		})
-
 		it("merges Authorization header with custom headers when token available", async () => {
-			;(getWebAccessToken as Mock).mockResolvedValue("test-jwt-token")
+			;(getAccessToken as Mock).mockResolvedValue("test-jwt-token")
 			const { authenticatedFetch } = await import("./auth-fetch")
 			mockFetch.mockResolvedValue({ status: 200 })
 
@@ -257,7 +215,6 @@ describe("authenticatedFetch", () => {
 			})
 
 			expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/data", {
-				credentials: "include",
 				headers: {
 					"Content-Type": "application/json",
 					"X-Custom-Header": "custom-value",

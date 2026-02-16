@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+import { forceRefresh } from "~/lib/auth-token"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
 import { IconEnvelope } from "~/components/icons/icon-envelope"
@@ -9,7 +10,8 @@ import { Loader } from "~/components/loader"
 import { Button } from "~/components/ui/button"
 import { Text } from "~/components/ui/text"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
-import { useAuth } from "~/lib/auth"
+import { useAuth, currentUserQueryAtom } from "~/lib/auth"
+import { appRegistry } from "~/lib/registry"
 import { isTauri } from "~/lib/tauri"
 
 export const Route = createFileRoute("/_app")({
@@ -32,33 +34,61 @@ function RouteComponent() {
 	const [copied, setCopied] = useState(false)
 
 	const loginRetry = Number(search.loginRetry) || 0
+	const refreshAttemptedRef = useRef(false)
 
 	// Handle redirect to login - must be in useEffect, not during render
 	useEffect(() => {
 		if (user || isLoading) return // Don't redirect if logged in or still loading
 
-		// Check if there's an auth error that requires login
 		const hasAuthError =
 			Option.isSome(error) && !["SessionLoadError", "WorkOSUserFetchError"].includes(error.value._tag)
 		const needsLogin = !user && (hasAuthError || Option.isNone(error))
 
-		if (needsLogin) {
-			if (isTauri()) {
-				router.navigate({ to: "/auth/desktop-login" })
-			} else {
-				login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
-			}
+		if (!needsLogin) return
+
+		// Attempt refresh for ANY auth error before redirecting (Bug A fix)
+		if (!refreshAttemptedRef.current) {
+			refreshAttemptedRef.current = true
+			forceRefresh().then((refreshed) => {
+				if (refreshed) {
+					appRegistry.refresh(currentUserQueryAtom)
+				} else {
+					if (isTauri()) {
+						router.navigate({ to: "/auth/desktop-login" })
+					} else {
+						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
+					}
+				}
+			})
+			return
+		}
+
+		if (isTauri()) {
+			router.navigate({ to: "/auth/desktop-login" })
+		} else {
+			login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
 		}
 	}, [user, error, isLoading, login, router])
 
 	// Handle session expiry events from token refresh failures (web and desktop)
+	// Attempt refresh before redirecting (Bug B fix)
 	useEffect(() => {
+		let isHandling = false
 		const handleSessionExpired = () => {
-			if (isTauri()) {
-				router.navigate({ to: "/auth/desktop-login" })
-			} else {
-				login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
-			}
+			if (isHandling) return
+			isHandling = true
+			forceRefresh().then((refreshed) => {
+				if (refreshed) {
+					appRegistry.refresh(currentUserQueryAtom)
+					isHandling = false
+				} else {
+					if (isTauri()) {
+						router.navigate({ to: "/auth/desktop-login" })
+					} else {
+						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
+					}
+				}
+			})
 		}
 
 		window.addEventListener("auth:session-expired", handleSessionExpired)

@@ -8,88 +8,29 @@
  * 3. Only clear tokens if retry also fails
  */
 
-import { Effect, Option } from "effect"
-import {
-	forceRefresh as forceDesktopRefresh,
-	waitForRefresh as waitForDesktopRefresh,
-} from "~/atoms/desktop-auth"
-import { forceWebRefresh, getWebAccessToken, waitForWebRefresh } from "~/atoms/web-auth"
+import { Effect } from "effect"
+import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
 import { TokenStorage } from "./services/desktop/token-storage"
 import { WebTokenStorage } from "./services/web/token-storage"
+import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
 const DesktopTokenStorageLive = TokenStorage.Default
 const WebTokenStorageLive = WebTokenStorage.Default
 
 /**
- * Get access token from appropriate storage (desktop or web)
- */
-const getAccessToken = async (): Promise<string | null> => {
-	if (isTauri()) {
-		// Desktop: use Tauri store
-		return Effect.runPromise(
-			Effect.gen(function* () {
-				const tokenStorage = yield* TokenStorage
-				const tokenOpt = yield* tokenStorage.getAccessToken
-				return Option.getOrNull(tokenOpt)
-			}).pipe(
-				Effect.provide(DesktopTokenStorageLive),
-				Effect.catchAll(() => Effect.succeed(null)),
-			),
-		)
-	}
-
-	// Web: use localStorage
-	return getWebAccessToken()
-}
-
-/**
  * Clear tokens from appropriate storage (desktop or web)
  */
 const clearTokens = async (): Promise<void> => {
-	if (isTauri()) {
-		// Desktop: clear Tauri store
-		return Effect.runPromise(
-			Effect.gen(function* () {
-				const tokenStorage = yield* TokenStorage
-				yield* tokenStorage.clearTokens
-			}).pipe(
-				Effect.provide(DesktopTokenStorageLive),
-				Effect.catchAll(() => Effect.void),
-			),
-		)
-	}
-
-	// Web: clear localStorage
-	return Effect.runPromise(
-		Effect.gen(function* () {
-			const tokenStorage = yield* WebTokenStorage
-			yield* tokenStorage.clearTokens
-		}).pipe(
-			Effect.provide(WebTokenStorageLive),
+	const effect = isTauri()
+		? TokenStorage.clearTokens.pipe(Effect.provide(DesktopTokenStorageLive))
+		: WebTokenStorage.clearTokens.pipe(Effect.provide(WebTokenStorageLive))
+	return runtime.runPromise(
+		effect.pipe(
 			Effect.catchAll(() => Effect.void),
+			Effect.withSpan("clearTokens"),
 		),
 	)
-}
-
-/**
- * Wait for any in-progress token refresh to complete
- */
-const waitForRefresh = async (): Promise<boolean> => {
-	if (isTauri()) {
-		return waitForDesktopRefresh()
-	}
-	return waitForWebRefresh()
-}
-
-/**
- * Force an immediate token refresh
- */
-const forceRefresh = async (): Promise<boolean> => {
-	if (isTauri()) {
-		return forceDesktopRefresh()
-	}
-	return forceWebRefresh()
 }
 
 /**
@@ -171,7 +112,18 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init?: Reques
 		return response
 	}
 
-	// No token available - skip the request and trigger login redirect
+	// No token available — attempt refresh first (refresh token might still exist)
+	console.log("[auth-fetch] No access token, attempting refresh...")
+	const refreshed = await forceRefresh()
+	if (refreshed) {
+		const newToken = await getAccessToken()
+		if (newToken) {
+			console.log("[auth-fetch] Token refreshed from no-token state, making request...")
+			return makeAuthenticatedRequest(input, init, newToken)
+		}
+	}
+
+	// Refresh failed or no refresh token — trigger login redirect
 	window.dispatchEvent(new CustomEvent("auth:session-expired"))
 	return new Response(null, { status: 401 })
 }

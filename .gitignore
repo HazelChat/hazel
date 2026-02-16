@@ -21,3 +21,4 @@ opensrc/
 
 # Tauri/Rust build artifacts
 **/target/
+/.artifacts

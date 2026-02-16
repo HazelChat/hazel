@@ -1,10 +1,8 @@
 import { createClient } from "rivetkit/client"
 import type { Registry } from "@hazel/actors"
-import { Effect, Option } from "effect"
-import { TokenStorage } from "./services/desktop/token-storage"
-import { WebTokenStorage } from "./services/web/token-storage"
-import { isTauri } from "./tauri"
-import { getWebAccessToken } from "~/atoms/web-auth"
+import { getAccessToken } from "~/lib/auth-token"
+
+export { getAccessToken }
 
 const RIVET_URL = import.meta.env.VITE_RIVET_URL || "http://localhost:6420"
 
@@ -23,29 +21,6 @@ const RIVET_URL = import.meta.env.VITE_RIVET_URL || "http://localhost:6420"
  * ```
  */
 export const rivetClient = createClient<Registry>(RIVET_URL)
-
-/**
- * Get the current access token from appropriate storage (desktop or web).
- * Returns null if no token is available.
- */
-export async function getAccessToken(): Promise<string | null> {
-	if (isTauri()) {
-		// Desktop: use Tauri store
-		return Effect.runPromise(
-			Effect.gen(function* () {
-				const tokenStorage = yield* TokenStorage
-				const tokenOpt = yield* tokenStorage.getAccessToken
-				return Option.getOrNull(tokenOpt)
-			}).pipe(
-				Effect.provide(TokenStorage.Default),
-				Effect.catchAll(() => Effect.succeed(null)),
-			),
-		)
-	}
-
-	// Web: use localStorage
-	return getWebAccessToken()
-}
 
 /**
  * Get or create a message actor with authentication.

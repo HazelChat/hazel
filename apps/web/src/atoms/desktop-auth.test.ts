@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
-import { isFatalRefreshError, isTransientError } from "./desktop-auth"
+import { isFatalRefreshError, isTransientError } from "~/lib/auth-token"
 
 // ============================================================================
 // Helper Function Tests (Pure Unit Tests)
@@ -151,10 +151,7 @@ describe("isTransientError", () => {
 // ============================================================================
 
 describe("forceRefresh", () => {
-	const originalIsTauri = vi.fn()
-
 	beforeEach(() => {
-		// Mock window for tests
 		vi.stubGlobal("window", {
 			dispatchEvent: vi.fn(),
 			location: { href: "" },
@@ -165,9 +162,9 @@ describe("forceRefresh", () => {
 		vi.unstubAllGlobals()
 	})
 
-	it("returns false when not in Tauri environment", async () => {
-		// isTauri returns false by default since __TAURI_INTERNALS__ is not set
-		const { forceRefresh } = await import("./desktop-auth")
+	it("returns false when no refresh token available", async () => {
+		// Without Tauri or stored tokens, forceRefresh returns false
+		const { forceRefresh } = await import("~/lib/auth-token")
 		const result = await forceRefresh()
 		expect(result).toBe(false)
 	})
@@ -185,8 +182,8 @@ describe("waitForRefresh", () => {
 		vi.unstubAllGlobals()
 	})
 
-	it("returns true immediately when not in Tauri environment", async () => {
-		const { waitForRefresh } = await import("./desktop-auth")
+	it("returns true immediately when no refresh in progress", async () => {
+		const { waitForRefresh } = await import("~/lib/auth-token")
 		const result = await waitForRefresh()
 		expect(result).toBe(true)
 	})
