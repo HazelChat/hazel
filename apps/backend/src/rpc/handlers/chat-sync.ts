@@ -44,6 +44,8 @@ const normalizeChannelLinkSettings = (
 	},
 })
 
+const PROVIDERS_REQUIRING_INTEGRATION_CONNECTION = new Set(["discord", "slack"])
+
 export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
@@ -60,7 +62,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							const integrationConnectionId = yield* Effect.gen(function* () {
-								if (payload.provider !== "discord") {
+								if (!PROVIDERS_REQUIRING_INTEGRATION_CONNECTION.has(payload.provider)) {
 									return payload.integrationConnectionId ?? null
 								}
 
@@ -69,7 +71,10 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								}
 
 								const integrationOption = yield* integrationConnectionRepo
-									.findOrgConnection(payload.organizationId, "discord")
+									.findOrgConnection(
+										payload.organizationId,
+										payload.provider as "discord" | "slack",
+									)
 									.pipe(withSystemActor)
 								if (
 									Option.isNone(integrationOption) ||
@@ -78,7 +83,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									return yield* Effect.fail(
 										new ChatSyncIntegrationNotConnectedError({
 											organizationId: payload.organizationId,
-											provider: "discord",
+											provider: payload.provider,
 										}),
 									)
 								}

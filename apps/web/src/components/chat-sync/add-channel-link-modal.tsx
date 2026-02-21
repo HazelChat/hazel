@@ -2,7 +2,7 @@ import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, OrganizationId, SyncConnectionId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ChangeEvent, type ReactNode } from "react"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import { Button } from "~/components/ui/button"
 import { Description, Label } from "~/components/ui/field"
@@ -23,21 +23,26 @@ import { exitToast } from "~/lib/toast-exit"
 
 type ChannelData = typeof Channel.Model.Type
 type SyncDirection = "both" | "hazel_to_external" | "external_to_hazel"
+type ChatSyncProvider = "discord" | "slack"
 
-interface DiscordChannel {
+interface ExternalWorkspaceChannel {
 	id: ExternalChannelId
-	guildId: string
 	name: string
-	type: number
-	parentId: string | null
 }
 
-const DIRECTION_OPTIONS: {
+const PROVIDER_LABELS: Record<ChatSyncProvider, string> = {
+	discord: "Discord",
+	slack: "Slack",
+}
+
+const DIRECTION_OPTIONS = (
+	providerLabel: string,
+): {
 	value: SyncDirection
 	label: string
 	description: string
-	icon: React.ReactNode
-}[] = [
+	icon: ReactNode
+}[] => [
 	{
 		value: "both",
 		label: "Both directions",
@@ -54,8 +59,8 @@ const DIRECTION_OPTIONS: {
 	},
 	{
 		value: "hazel_to_external",
-		label: "Hazel to Discord",
-		description: "Only send messages to Discord",
+		label: `Hazel to ${providerLabel}`,
+		description: `Only send messages to ${providerLabel}`,
 		icon: (
 			<svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
 				<path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -64,8 +69,8 @@ const DIRECTION_OPTIONS: {
 	},
 	{
 		value: "external_to_hazel",
-		label: "Discord to Hazel",
-		description: "Only receive messages from Discord",
+		label: `${providerLabel} to Hazel`,
+		description: `Only receive messages from ${providerLabel}`,
 		icon: (
 			<svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
 				<path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -78,6 +83,7 @@ interface AddChannelLinkModalProps {
 	syncConnectionId: SyncConnectionId
 	organizationId: OrganizationId
 	externalWorkspaceId: string
+	provider: ChatSyncProvider
 	isOpen: boolean
 	onClose: () => void
 	onSuccess: () => void
@@ -87,15 +93,21 @@ export function AddChannelLinkModal({
 	syncConnectionId,
 	organizationId,
 	externalWorkspaceId,
+	provider,
 	isOpen,
 	onClose,
 	onSuccess,
 }: AddChannelLinkModalProps) {
+	const providerLabel = PROVIDER_LABELS[provider]
+	const directionOptions = DIRECTION_OPTIONS(providerLabel)
+
 	const [selectedChannel, setSelectedChannel] = useState<ChannelData | null>(null)
-	const [selectedDiscordChannel, setSelectedDiscordChannel] = useState<DiscordChannel | null>(null)
+	const [selectedExternalChannel, setSelectedExternalChannel] = useState<ExternalWorkspaceChannel | null>(
+		null,
+	)
 	const [direction, setDirection] = useState<SyncDirection>("both")
 	const [channelSearch, setChannelSearch] = useState("")
-	const [discordChannelSearch, setDiscordChannelSearch] = useState("")
+	const [externalChannelSearch, setExternalChannelSearch] = useState("")
 	const [isCreating, setIsCreating] = useState(false)
 
 	const { data: channelsData } = useLiveQuery(
@@ -115,25 +127,52 @@ export function AddChannelLinkModal({
 		}),
 	)
 
+	const slackChannelsResult = useAtomValue(
+		HazelApiClient.query("integration-resources", "getSlackChannels", {
+			path: { orgId: organizationId, workspaceId: externalWorkspaceId },
+		}),
+	)
+
 	const filteredChannels = useMemo(() => {
 		if (!channelSearch.trim()) return channels
 		const search = channelSearch.toLowerCase()
 		return channels.filter((c) => c.name.toLowerCase().includes(search))
 	}, [channels, channelSearch])
 
-	const discordChannels = useMemo(
-		() =>
-			Result.builder(discordChannelsResult)
-				.onSuccess((data) => data?.channels ?? [])
-				.orElse(() => []),
-		[discordChannelsResult],
-	)
+	const externalChannels = useMemo<ExternalWorkspaceChannel[]>(() => {
+		if (provider === "discord") {
+			return Result.builder(discordChannelsResult)
+				.onSuccess((data) =>
+					(data?.channels ?? []).map((channel) => ({ id: channel.id, name: channel.name })),
+				)
+				.orElse(() => [])
+		}
 
-	const filteredDiscordChannels = useMemo(() => {
-		if (!discordChannelSearch.trim()) return discordChannels
-		const search = discordChannelSearch.toLowerCase()
-		return discordChannels.filter((channel) => channel.name.toLowerCase().includes(search))
-	}, [discordChannels, discordChannelSearch])
+		return Result.builder(slackChannelsResult)
+			.onSuccess((data) =>
+				(data?.channels ?? []).map((channel) => ({ id: channel.id, name: channel.name })),
+			)
+			.orElse(() => [])
+	}, [provider, discordChannelsResult, slackChannelsResult])
+
+	const isExternalChannelsLoading =
+		provider === "discord"
+			? Result.isInitial(discordChannelsResult)
+			: Result.isInitial(slackChannelsResult)
+	const isExternalChannelsFailure =
+		provider === "discord"
+			? Result.isFailure(discordChannelsResult)
+			: Result.isFailure(slackChannelsResult)
+	const isExternalChannelsReady =
+		provider === "discord"
+			? Result.isSuccess(discordChannelsResult)
+			: Result.isSuccess(slackChannelsResult)
+
+	const filteredExternalChannels = useMemo(() => {
+		if (!externalChannelSearch.trim()) return externalChannels
+		const search = externalChannelSearch.toLowerCase()
+		return externalChannels.filter((channel) => channel.name.toLowerCase().includes(search))
+	}, [externalChannels, externalChannelSearch])
 
 	const createChannelLink = useAtomSet(HazelRpcClient.mutation("chatSync.channelLink.create"), {
 		mode: "promiseExit",
@@ -141,23 +180,23 @@ export function AddChannelLinkModal({
 
 	const handleClose = () => {
 		setSelectedChannel(null)
-		setSelectedDiscordChannel(null)
+		setSelectedExternalChannel(null)
 		setDirection("both")
 		setChannelSearch("")
-		setDiscordChannelSearch("")
+		setExternalChannelSearch("")
 		onClose()
 	}
 
 	const handleSubmit = async () => {
-		if (!selectedChannel || !selectedDiscordChannel) return
+		if (!selectedChannel || !selectedExternalChannel) return
 		setIsCreating(true)
 
 		const exit = await createChannelLink({
 			payload: {
 				syncConnectionId,
 				hazelChannelId: selectedChannel.id as ChannelId,
-				externalChannelId: selectedDiscordChannel.id,
-				externalChannelName: selectedDiscordChannel.name,
+				externalChannelId: selectedExternalChannel.id,
+				externalChannelName: selectedExternalChannel.name,
 				direction,
 			},
 		})
@@ -167,7 +206,7 @@ export function AddChannelLinkModal({
 				onSuccess()
 				handleClose()
 			})
-			.successMessage(`Linked #${selectedChannel.name} to #${selectedDiscordChannel.name}`)
+			.successMessage(`Linked #${selectedChannel.name} to #${selectedExternalChannel.name}`)
 			.onErrorTag("ChatSyncConnectionNotFoundError", () => ({
 				title: "Connection not found",
 				description: "This sync connection may have been deleted.",
@@ -183,7 +222,7 @@ export function AddChannelLinkModal({
 		setIsCreating(false)
 	}
 
-	const isValid = !!selectedChannel && !!selectedDiscordChannel
+	const isValid = !!selectedChannel && !!selectedExternalChannel
 
 	return (
 		<Modal>
@@ -217,7 +256,7 @@ export function AddChannelLinkModal({
 									<Input
 										placeholder="Search channels..."
 										value={channelSearch}
-										onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+										onChange={(e: ChangeEvent<HTMLInputElement>) =>
 											setChannelSearch(e.target.value)
 										}
 										autoFocus
@@ -250,36 +289,38 @@ export function AddChannelLinkModal({
 					</div>
 
 					<div className="flex flex-col gap-2">
-						<Label>Discord Channel</Label>
-						{Result.isInitial(discordChannelsResult) && (
+						<Label>{providerLabel} Channel</Label>
+						{isExternalChannelsLoading && (
 							<div className="flex items-center justify-center rounded-lg border border-border p-6">
 								<div className="flex items-center gap-3 text-muted-fg">
 									<div className="size-5 animate-spin rounded-full border-2 border-border border-t-primary" />
-									<span className="text-sm">Loading Discord channels...</span>
+									<span className="text-sm">Loading {providerLabel} channels...</span>
 								</div>
 							</div>
 						)}
-						{Result.isFailure(discordChannelsResult) && (
+						{isExternalChannelsFailure && (
 							<div className="rounded-lg border border-border bg-bg-muted/20 p-4">
-								<p className="font-medium text-fg text-sm">Could not load Discord channels</p>
+								<p className="font-medium text-fg text-sm">
+									Could not load {providerLabel} channels
+								</p>
 								<p className="mt-1 text-muted-fg text-sm">
-									Make sure the bot is installed in this server and has channel access.
+									Make sure this workspace is connected and the bot has channel access.
 								</p>
 							</div>
 						)}
-						{Result.isSuccess(discordChannelsResult) && (
+						{isExternalChannelsReady && (
 							<>
-								{selectedDiscordChannel ? (
+								{selectedExternalChannel ? (
 									<div className="flex items-center justify-between rounded-lg border border-border bg-bg-muted/30 px-3 py-2.5">
 										<div className="flex items-center gap-2">
 											<IconHashtag className="size-4 text-muted-fg" />
 											<span className="font-medium text-fg text-sm">
-												{selectedDiscordChannel.name}
+												{selectedExternalChannel.name}
 											</span>
 										</div>
 										<button
 											type="button"
-											onClick={() => setSelectedDiscordChannel(null)}
+											onClick={() => setSelectedExternalChannel(null)}
 											className="text-muted-fg text-xs transition-colors hover:text-fg"
 										>
 											Change
@@ -289,26 +330,26 @@ export function AddChannelLinkModal({
 									<div className="flex flex-col gap-2">
 										<InputGroup>
 											<Input
-												placeholder="Search Discord channels..."
-												value={discordChannelSearch}
-												onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-													setDiscordChannelSearch(e.target.value)
+												placeholder={`Search ${providerLabel} channels...`}
+												value={externalChannelSearch}
+												onChange={(e: ChangeEvent<HTMLInputElement>) =>
+													setExternalChannelSearch(e.target.value)
 												}
 											/>
 										</InputGroup>
 										<div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-											{filteredDiscordChannels.length === 0 ? (
+											{filteredExternalChannels.length === 0 ? (
 												<div className="px-3 py-6 text-center text-muted-fg text-sm">
-													No Discord channels found
+													No {providerLabel} channels found
 												</div>
 											) : (
-												filteredDiscordChannels.map((channel) => (
+												filteredExternalChannels.map((channel) => (
 													<button
 														key={channel.id}
 														type="button"
 														onClick={() => {
-															setSelectedDiscordChannel(channel)
-															setDiscordChannelSearch("")
+															setSelectedExternalChannel(channel)
+															setExternalChannelSearch("")
 														}}
 														className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/50"
 													>
@@ -323,7 +364,7 @@ export function AddChannelLinkModal({
 									</div>
 								)}
 								<Description>
-									Select the Discord channel from the connected server.
+									Select the {providerLabel} channel from the connected workspace.
 								</Description>
 							</>
 						)}
@@ -332,29 +373,23 @@ export function AddChannelLinkModal({
 					<div className="flex flex-col gap-2">
 						<Label>Sync Direction</Label>
 						<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-							{DIRECTION_OPTIONS.map((option) => (
+							{directionOptions.map((option) => (
 								<button
 									key={option.value}
 									type="button"
 									onClick={() => setDirection(option.value)}
 									className={`flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-all ${
 										direction === option.value
-											? "border-primary bg-primary/5 ring-1 ring-primary"
-											: "border-border hover:border-border-hover hover:bg-secondary/30"
+											? "border-primary bg-primary/5 text-primary"
+											: "border-border text-muted-fg hover:border-border-hover hover:bg-bg-muted/30"
 									}`}
 								>
-									<div
-										className={`${direction === option.value ? "text-primary" : "text-muted-fg"}`}
-									>
-										{option.icon}
-									</div>
-									<div className="flex flex-col gap-0.5">
-										<span
-											className={`font-medium text-xs ${direction === option.value ? "text-primary" : "text-fg"}`}
-										>
-											{option.label}
-										</span>
-										<span className="text-muted-fg text-xs">{option.description}</span>
+									{option.icon}
+									<div className="space-y-0.5">
+										<p className="font-medium text-xs">{option.label}</p>
+										<p className="text-[10px] leading-tight opacity-70">
+											{option.description}
+										</p>
 									</div>
 								</button>
 							))}
@@ -367,7 +402,7 @@ export function AddChannelLinkModal({
 					<Button
 						intent="primary"
 						onPress={handleSubmit}
-						isDisabled={!isValid || isCreating || !Result.isSuccess(discordChannelsResult)}
+						isDisabled={!isValid || isCreating || !isExternalChannelsReady}
 						isPending={isCreating}
 					>
 						{isCreating ? "Linking..." : "Link Channel"}

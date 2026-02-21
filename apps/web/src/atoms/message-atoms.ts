@@ -95,8 +95,35 @@ export const messageWithAuthorAtomFamily = Atom.family((messageId: MessageId) =>
 )
 
 /**
- * Atom family to check whether a Hazel message originated from Discord external->Hazel sync.
+ * Atom family to resolve the external provider for messages that originated from external->Hazel sync.
  */
+export const syncedMessageProviderAtomFamily = Atom.family((messageId: MessageId) =>
+	makeQuery((q) =>
+		q
+			.from({ messageLink: chatSyncMessageLinkCollection })
+			.innerJoin({ channelLink: chatSyncChannelLinkCollection }, ({ messageLink, channelLink }) =>
+				eq(messageLink.channelLinkId, channelLink.id),
+			)
+			.innerJoin({ connection: chatSyncConnectionCollection }, ({ channelLink, connection }) =>
+				eq(channelLink.syncConnectionId, connection.id),
+			)
+			.where(({ messageLink, channelLink, connection }) =>
+				and(
+					eq(messageLink.hazelMessageId, messageId),
+					eq(messageLink.source, "external"),
+					isNull(messageLink.deletedAt),
+					isNull(channelLink.deletedAt),
+					isNull(connection.deletedAt),
+				),
+			)
+			.select(({ connection }) => ({
+				provider: connection.provider,
+			}))
+			.orderBy(({ messageLink }) => messageLink.createdAt, "desc")
+			.limit(1),
+	),
+)
+
 export const isDiscordSyncedMessageAtomFamily = Atom.family((messageId: MessageId) =>
 	makeQuery((q) =>
 		q
@@ -117,7 +144,6 @@ export const isDiscordSyncedMessageAtomFamily = Atom.family((messageId: MessageI
 					isNull(connection.deletedAt),
 				),
 			)
-			.orderBy(({ messageLink }) => messageLink.createdAt, "desc")
 			.limit(1),
 	),
 )

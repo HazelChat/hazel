@@ -11,7 +11,7 @@ export const messageIntegrationLinksTable = pgTable(
 		connectionId: uuid().notNull().$type<IntegrationConnectionId>(),
 		provider: varchar({ length: 50 })
 			.notNull()
-			.$type<"linear" | "github" | "figma" | "notion" | "discord" | "craft">(),
+			.$type<"linear" | "github" | "figma" | "notion" | "discord" | "slack" | "craft">(),
 
 		// External item info
 		externalId: varchar({ length: 255 }).notNull(),

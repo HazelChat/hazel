@@ -1,7 +1,7 @@
 /**
  * Integration provider types for OAuth-based integrations.
  */
-export type IntegrationProvider = "linear" | "github" | "figma" | "notion" | "discord" | "craft"
+export type IntegrationProvider = "linear" | "github" | "figma" | "notion" | "discord" | "slack" | "craft"
 
 /**
  * Bot configuration for integration providers.
@@ -46,6 +46,11 @@ export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBot
 		avatarUrl:
 			"https://cdn.brandfetch.io/discord.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-discord",
+	},
+	slack: {
+		name: "Slack",
+		avatarUrl: "https://cdn.brandfetch.io/slack.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
+		botId: "bot-slack",
 	},
 	craft: {
 		name: "Craft",

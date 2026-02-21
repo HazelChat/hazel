@@ -5,7 +5,7 @@ import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { customEmojiMapAtomFamily } from "~/atoms/custom-emoji-atoms"
 import { emojiUsageAtom } from "~/atoms/emoji-atoms"
-import { isDiscordSyncedMessageAtomFamily, processedReactionsAtomFamily } from "~/atoms/message-atoms"
+import { processedReactionsAtomFamily, syncedMessageProviderAtomFamily } from "~/atoms/message-atoms"
 import IconDiscord from "~/components/icons/icon-discord"
 import IconPin from "~/components/icons/icon-pin"
 import { extractUrls } from "~/components/link-preview"
@@ -257,8 +257,13 @@ const MessageHeader = memo(function MessageHeader() {
 	const { message, showAvatar, isPinned } = useMessage()
 	const user = message.author
 	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserStatus(message.authorId)
-	const isDiscordSyncedResult = useAtomValue(isDiscordSyncedMessageAtomFamily(message.id))
-	const isDiscordSynced = Result.getOrElse(isDiscordSyncedResult, () => []).length > 0
+	const syncedProviderResult = useAtomValue(syncedMessageProviderAtomFamily(message.id))
+	const syncedProvider =
+		Result.getOrElse(syncedProviderResult, () => [])[0]?.provider === "slack"
+			? "slack"
+			: Result.getOrElse(syncedProviderResult, () => [])[0]?.provider === "discord"
+				? "discord"
+				: null
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 
@@ -278,18 +283,32 @@ const MessageHeader = memo(function MessageHeader() {
 				expiresAt={statusExpiresAt}
 				quietHours={quietHours}
 			/>
-			{user.userType === "machine" && isDiscordSynced ? (
+			{user.userType === "machine" && syncedProvider === "discord" ? (
 				<span className="inline-flex items-center gap-1 rounded-sm bg-[#5865F2] px-1.5 py-0.5 text-xs/5 font-medium text-white">
 					<IconDiscord className="size-3" fill="currentColor" />
 					Discord
+				</span>
+			) : user.userType === "machine" && syncedProvider === "slack" ? (
+				<span className="inline-flex items-center gap-1 rounded-sm bg-[#4A154B] px-1.5 py-0.5 text-xs/5 font-medium text-white">
+					<svg viewBox="0 0 127 127" className="size-3" aria-hidden>
+						<path
+							d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z"
+							fill="currentColor"
+						/>
+					</svg>
+					Slack
 				</span>
 			) : user.userType === "machine" ? (
 				<Badge intent="primary" isCircle={false}>
 					APP
 				</Badge>
-			) : isDiscordSynced ? (
+			) : syncedProvider === "discord" ? (
 				<Badge intent="secondary" isCircle={false}>
 					Synced from Discord
+				</Badge>
+			) : syncedProvider === "slack" ? (
+				<Badge intent="secondary" isCircle={false}>
+					Synced from Slack
 				</Badge>
 			) : null}
 			<span className="text-muted-fg text-xs">

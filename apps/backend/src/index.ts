@@ -71,6 +71,7 @@ import { IntegrationTokenService } from "./services/integration-token-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { ChatSyncAttributionReconciler } from "./services/chat-sync/chat-sync-attribution-reconciler"
 import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
+import { SlackSyncWorker } from "./services/chat-sync/slack-sync-worker"
 import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
@@ -195,6 +196,7 @@ const MainLive = Layer.mergeAll(
 	IntegrationBotService.Default,
 	ChatSyncAttributionReconciler.Default,
 	DiscordSyncWorker.Default,
+	SlackSyncWorker.Default,
 	DiscordGatewayService.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,

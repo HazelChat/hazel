@@ -11,6 +11,7 @@ const INTEGRATION_DOMAINS: Record<IntegrationProvider, string> = {
 	figma: "figma.com",
 	notion: "notion.so",
 	discord: "discord.com",
+	slack: "slack.com",
 	craft: "craft.do",
 }
 

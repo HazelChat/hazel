@@ -119,6 +119,18 @@ const DiscordGuildChannel = Schema.Struct({
 	parentId: Schema.NullOr(Schema.String),
 })
 
+const SlackWorkspace = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+})
+
+const SlackChannel = Schema.Struct({
+	id: ExternalChannelId,
+	workspaceId: Schema.String,
+	name: Schema.String,
+	isPrivate: Schema.Boolean,
+})
+
 export class DiscordGuildsResponse extends Schema.Class<DiscordGuildsResponse>("DiscordGuildsResponse")({
 	guilds: Schema.Array(DiscordGuild),
 }) {}
@@ -127,6 +139,16 @@ export class DiscordGuildChannelsResponse extends Schema.Class<DiscordGuildChann
 	"DiscordGuildChannelsResponse",
 )({
 	channels: Schema.Array(DiscordGuildChannel),
+}) {}
+
+export class SlackWorkspacesResponse extends Schema.Class<SlackWorkspacesResponse>("SlackWorkspacesResponse")(
+	{
+		workspaces: Schema.Array(SlackWorkspace),
+	},
+) {}
+
+export class SlackChannelsResponse extends Schema.Class<SlackChannelsResponse>("SlackChannelsResponse")({
+	channels: Schema.Array(SlackChannel),
 }) {}
 
 // Error when organization doesn't have the integration connected
@@ -273,6 +295,48 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					title: "Get Discord Guild Channels",
 					description: "List message-capable channels in a Discord guild using the bot token",
 					summary: "List Discord guild channels",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getSlackWorkspaces", `/:orgId/slack/workspaces`)
+			.addSuccess(SlackWorkspacesResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Slack Workspaces",
+					description:
+						"List Slack workspaces available from the connected organization-level Slack installation",
+					summary: "List Slack workspaces",
+				}),
+			),
+	)
+	.add(
+		HttpApiEndpoint.get("getSlackChannels", `/:orgId/slack/workspaces/:workspaceId/channels`)
+			.addSuccess(SlackChannelsResponse)
+			.addError(IntegrationNotConnectedForPreviewError)
+			.addError(IntegrationResourceError)
+			.addError(UnauthorizedError)
+			.addError(InternalServerError)
+			.setPath(
+				Schema.Struct({
+					orgId: OrganizationId,
+					workspaceId: Schema.String,
+				}),
+			)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Get Slack Channels",
+					description: "List message-capable channels in the selected Slack workspace",
+					summary: "List Slack channels",
 				}),
 			),
 	)

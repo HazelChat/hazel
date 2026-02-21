@@ -8,7 +8,15 @@ import type {
 	OAuthTokens,
 } from "./provider-config"
 
-const IntegrationProviderSchema = Schema.Literal("linear", "github", "figma", "notion", "discord", "craft")
+const IntegrationProviderSchema = Schema.Literal(
+	"linear",
+	"github",
+	"figma",
+	"notion",
+	"discord",
+	"slack",
+	"craft",
+)
 
 /**
  * Error when exchanging authorization code for tokens fails.

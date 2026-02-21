@@ -102,6 +102,22 @@ export const PROVIDER_CONFIGS: Record<
 			permissions: "536947712",
 		},
 	},
+	slack: {
+		provider: "slack",
+		authorizationUrl: "https://slack.com/oauth/v2/authorize",
+		tokenUrl: "https://slack.com/api/oauth.v2.access",
+		scopes: [
+			"channels:read",
+			"groups:read",
+			"channels:history",
+			"groups:history",
+			"chat:write",
+			"reactions:read",
+			"reactions:write",
+			"team:read",
+		],
+		scopeDelimiter: ",",
+	},
 }
 
 /**

@@ -40,6 +40,8 @@ const toInternalServerError = (message: string, error: unknown) =>
 		detail: String(error),
 	})
 
+const PROVIDERS_REQUIRING_INTEGRATION_CONNECTION = new Set(["discord", "slack"])
+
 const normalizeChannelLinkSettings = (
 	settings: Record<string, unknown> | null | undefined,
 ): Record<string, unknown> => ({
@@ -64,7 +66,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					const currentUser = yield* CurrentUser.Context
 
 					const integrationConnectionId = yield* Effect.gen(function* () {
-						if (payload.provider !== "discord") {
+						if (!PROVIDERS_REQUIRING_INTEGRATION_CONNECTION.has(payload.provider)) {
 							return payload.integrationConnectionId ?? null
 						}
 
@@ -73,13 +75,13 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						}
 
 						const integrationOption = yield* integrationConnectionRepo
-							.findOrgConnection(path.orgId, "discord")
+							.findOrgConnection(path.orgId, payload.provider as "discord" | "slack")
 							.pipe(withSystemActor)
 						if (Option.isNone(integrationOption) || integrationOption.value.status !== "active") {
 							return yield* Effect.fail(
 								new ChatSyncIntegrationNotConnectedError({
 									organizationId: path.orgId,
-									provider: "discord",
+									provider: payload.provider,
 								}),
 							)
 						}

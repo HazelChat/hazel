@@ -28,8 +28,10 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
+import type { IntegrationConnectionId } from "@hazel/schema"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
 import { ChannelAccessSyncService } from "../channel-access-sync"
+import { IntegrationTokenService } from "../integration-token-service"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
 import { Discord } from "@hazel/integrations"
@@ -158,6 +160,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const messageReactionRepo = yield* MessageReactionRepo
 		const channelRepo = yield* ChannelRepo
 		const integrationConnectionRepo = yield* IntegrationConnectionRepo
+		const integrationTokenServiceOption = yield* Effect.serviceOption(IntegrationTokenService)
 		const userRepo = yield* UserRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const integrationBotService = yield* IntegrationBotService
@@ -212,6 +215,43 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		) {
 			return yield* providerRegistry.getAdapter(provider)
 		})
+
+		const getProviderAccessToken = Effect.fn("ChatSyncCoreWorker.getProviderAccessToken")(
+			function* (params: { provider: ChatSyncProvider; integrationConnectionId: string | null }) {
+				if (params.provider !== "slack") {
+					return undefined
+				}
+
+				if (!params.integrationConnectionId) {
+					return yield* Effect.fail(
+						new DiscordSyncConfigurationError({
+							message:
+								"Slack chat sync requires an integration connection. Reconnect Slack and recreate this sync connection.",
+						}),
+					)
+				}
+
+				if (Option.isNone(integrationTokenServiceOption)) {
+					return yield* Effect.fail(
+						new DiscordSyncConfigurationError({
+							message:
+								"Slack chat sync requires IntegrationTokenService to be available in the runtime.",
+						}),
+					)
+				}
+
+				return yield* integrationTokenServiceOption.value
+					.getValidAccessToken(params.integrationConnectionId as IntegrationConnectionId)
+					.pipe(
+						Effect.mapError(
+							(error) =>
+								new DiscordSyncConfigurationError({
+									message: `Failed to load Slack access token: ${String(error)}`,
+								}),
+						),
+					)
+			},
+		)
 
 		const buildAttachmentPublicUrl = (baseUrl: string, attachmentId: string): string => {
 			const normalizedBase = baseUrl.replace(/\/+$/, "")
@@ -311,6 +351,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		)
 
 		const decodeProvider = Schema.decodeUnknownSync(IntegrationConnection.IntegrationProvider)
+		const getDefaultExternalDisplayName = (provider: ChatSyncProvider): string =>
+			provider === "discord" ? "Discord User" : "External User"
 
 		type WebhookPermissionStatus = "unknown" | "allowed" | "denied"
 
@@ -895,6 +937,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		)(function* (params: {
 			syncConnectionId: SyncConnectionId
 			provider: ChatSyncProvider
+			integrationConnectionId: string | null
 			hazelChannelId: ChannelId
 		}) {
 			const directLink = yield* channelLinkRepo
@@ -970,11 +1013,16 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 
 			const adapter = yield* getProviderAdapter(params.provider)
+			const providerAccessToken = yield* getProviderAccessToken({
+				provider: params.provider,
+				integrationConnectionId: params.integrationConnectionId,
+			})
 			const externalThreadId = yield* adapter.createThread({
 				externalChannelId: normalizeChannelLinkExternalId(parentLink).externalChannelId,
 				externalMessageId: normalizeMessageLinkExternalId(rootMessageLinkOption.value)
 					.externalMessageId,
 				name: channel.name,
+				accessToken: providerAccessToken,
 			})
 			const externalThreadChannelId = externalThreadId as unknown as ExternalChannelId
 
@@ -1037,9 +1085,14 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 				const message = messageOption.value
 				const adapter = yield* getProviderAdapter(connection.provider)
+				const providerAccessToken = yield* getProviderAccessToken({
+					provider: connection.provider,
+					integrationConnectionId: connection.integrationConnectionId,
+				})
 				const link = yield* resolveOrCreateOutboundLinkForMessage({
 					syncConnectionId,
 					provider: connection.provider,
+					integrationConnectionId: connection.integrationConnectionId,
 					hazelChannelId: message.channelId,
 				})
 				const normalizedLink = normalizeChannelLinkExternalId(link)
@@ -1097,12 +1150,14 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							externalChannelId: normalizedLink.externalChannelId,
 							content: message.content,
 							attachments,
+							accessToken: providerAccessToken,
 							replyToExternalMessageId,
 						})
 					} else {
 						externalMessageId = yield* adapter.createMessage({
 							externalChannelId: normalizedLink.externalChannelId,
 							content: message.content,
+							accessToken: providerAccessToken,
 							replyToExternalMessageId,
 						})
 					}
@@ -1111,12 +1166,14 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						externalChannelId: normalizedLink.externalChannelId,
 						content: message.content,
 						attachments,
+						accessToken: providerAccessToken,
 						replyToExternalMessageId,
 					})
 				} else {
 					externalMessageId = yield* adapter.createMessage({
 						externalChannelId: normalizedLink.externalChannelId,
 						content: message.content,
+						accessToken: providerAccessToken,
 						replyToExternalMessageId,
 					})
 				}
@@ -1252,6 +1309,10 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
+			const providerAccessToken = yield* getProviderAccessToken({
+				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
+			})
 
 			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
 			if (Option.isNone(messageOption)) {
@@ -1262,6 +1323,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const link = yield* resolveOrCreateOutboundLinkForMessage({
 				syncConnectionId,
 				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
 				hazelChannelId: message.channelId,
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
@@ -1288,6 +1350,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					externalChannelId: normalizedLink.externalChannelId,
 					externalMessageId: normalizedMessageLink.externalMessageId,
 					content: message.content,
+					accessToken: providerAccessToken,
 				})
 			} else {
 				const updated = yield* updateDiscordMessageViaWebhook({
@@ -1305,6 +1368,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						externalChannelId: normalizedLink.externalChannelId,
 						externalMessageId: normalizedMessageLink.externalMessageId,
 						content: message.content,
+						accessToken: providerAccessToken,
 					})
 				}
 			}
@@ -1352,6 +1416,10 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
+			const providerAccessToken = yield* getProviderAccessToken({
+				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
+			})
 
 			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
 			if (Option.isNone(messageOption)) {
@@ -1362,6 +1430,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const link = yield* resolveOrCreateOutboundLinkForMessage({
 				syncConnectionId,
 				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
 				hazelChannelId: message.channelId,
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
@@ -1387,6 +1456,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				yield* adapter.deleteMessage({
 					externalChannelId: normalizedLink.externalChannelId,
 					externalMessageId: normalizedMessageLink.externalMessageId,
+					accessToken: providerAccessToken,
 				})
 			} else {
 				const deleted = yield* deleteDiscordMessageViaWebhook({
@@ -1402,6 +1472,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					yield* adapter.deleteMessage({
 						externalChannelId: normalizedLink.externalChannelId,
 						externalMessageId: normalizedMessageLink.externalMessageId,
+						accessToken: providerAccessToken,
 					})
 				}
 			}
@@ -1449,6 +1520,10 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
+			const providerAccessToken = yield* getProviderAccessToken({
+				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
+			})
 
 			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId).pipe(withSystemActor)
 			if (Option.isNone(reactionOption)) {
@@ -1465,6 +1540,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const link = yield* resolveOrCreateOutboundLinkForMessage({
 				syncConnectionId,
 				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
 				hazelChannelId: reaction.channelId,
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
@@ -1492,6 +1568,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				externalChannelId: normalizedLink.externalChannelId,
 				externalMessageId: normalizedMessageLink.externalMessageId,
 				emoji: reaction.emoji,
+				accessToken: providerAccessToken,
 			})
 
 			yield* writeReceipt({
@@ -1544,10 +1621,15 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
+			const providerAccessToken = yield* getProviderAccessToken({
+				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
+			})
 
 			const link = yield* resolveOrCreateOutboundLinkForMessage({
 				syncConnectionId,
 				provider: connection.provider,
+				integrationConnectionId: connection.integrationConnectionId,
 				hazelChannelId: payload.hazelChannelId,
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
@@ -1602,6 +1684,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				externalChannelId: normalizedLink.externalChannelId,
 				externalMessageId: normalizedMessageLink.externalMessageId,
 				emoji: payload.emoji,
+				accessToken: providerAccessToken,
 			})
 
 			yield* writeReceipt({
@@ -1939,7 +2022,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						provider: connection.provider,
 						organizationId: connection.organizationId,
 						externalUserId: payload.externalAuthorId,
-						displayName: payload.externalAuthorDisplayName ?? "External User",
+						displayName:
+							payload.externalAuthorDisplayName ??
+							getDefaultExternalDisplayName(connection.provider),
 						avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 					})
 				: (yield* integrationBotService.getOrCreateBotUser(
@@ -2301,7 +2386,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				provider: connection.provider,
 				organizationId: connection.organizationId,
 				externalUserId: payload.externalUserId,
-				displayName: payload.externalAuthorDisplayName ?? "Discord User",
+				displayName:
+					payload.externalAuthorDisplayName ?? getDefaultExternalDisplayName(connection.provider),
 				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
@@ -2413,7 +2499,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				provider: connection.provider,
 				organizationId: connection.organizationId,
 				externalUserId: payload.externalUserId,
-				displayName: payload.externalAuthorDisplayName ?? "Discord User",
+				displayName:
+					payload.externalAuthorDisplayName ?? getDefaultExternalDisplayName(connection.provider),
 				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
@@ -2603,6 +2690,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		MessageReactionRepo.Default,
 		ChannelRepo.Default,
 		IntegrationConnectionRepo.Default,
+		IntegrationTokenService.Default,
 		UserRepo.Default,
 		OrganizationMemberRepo.Default,
 		IntegrationBotService.Default,

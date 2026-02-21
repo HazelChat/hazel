@@ -41,10 +41,63 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/chat-sync/$connect
 	component: ChatSyncConnectionDetailPage,
 })
 
-const DISCORD_BRAND_COLOR = "#5865F2"
-
+type ChatSyncProvider = "discord" | "slack"
 type ConnectionStatus = "active" | "paused" | "error" | "disabled"
 type SyncDirection = "both" | "hazel_to_external" | "external_to_hazel"
+
+const PROVIDER_META: Record<
+	ChatSyncProvider,
+	{
+		label: string
+		workspaceLabel: string
+		workspaceDefaultName: string
+		brandColor: string
+	}
+> = {
+	discord: {
+		label: "Discord",
+		workspaceLabel: "Guild",
+		workspaceDefaultName: "Discord Server",
+		brandColor: "#5865F2",
+	},
+	slack: {
+		label: "Slack",
+		workspaceLabel: "Workspace",
+		workspaceDefaultName: "Slack Workspace",
+		brandColor: "#4A154B",
+	},
+}
+
+function ProviderGlyph({ provider, className }: { provider: ChatSyncProvider; className: string }) {
+	if (provider === "slack") {
+		return (
+			<svg viewBox="0 0 127 127" className={className} aria-hidden>
+				<path
+					d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z"
+					fill="#E01E5A"
+				/>
+				<path
+					d="M47 27c-7.3 0-13.2-5.9-13.2-13.2C33.8 6.5 39.7.6 47 .6c7.3 0 13.2 5.9 13.2 13.2V27H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H13.9C6.6 60.1.7 54.2.7 46.9c0-7.3 5.9-13.2 13.2-13.2H47z"
+					fill="#36C5F0"
+				/>
+				<path
+					d="M99.9 46.9c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H99.9V46.9zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V13.8C66.9 6.5 72.8.6 80.1.6c7.3 0 13.2 5.9 13.2 13.2v33.1z"
+					fill="#2EB67D"
+				/>
+				<path
+					d="M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2 0-7.3 5.9-13.2 13.2-13.2h33.1c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H80.1z"
+					fill="#ECB22E"
+				/>
+			</svg>
+		)
+	}
+
+	return (
+		<svg viewBox="0 0 24 24" className={className} fill="#5865F2" aria-hidden>
+			<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+		</svg>
+	)
+}
 
 const STATUS_CONFIG: Record<ConnectionStatus, { label: string; badgeClass: string }> = {
 	active: {
@@ -115,20 +168,22 @@ function DirectionIcon({
 	)
 }
 
-const DIRECTION_DISPLAY: Record<SyncDirection, { label: string; icon: React.ReactNode }> = {
+const createDirectionDisplay = (
+	providerLabel: string,
+): Record<SyncDirection, { label: string; icon: React.ReactNode }> => ({
 	both: {
 		label: "Both",
 		icon: <DirectionIcon direction="both" className="size-4" />,
 	},
 	hazel_to_external: {
-		label: "Hazel to Discord",
+		label: `Hazel to ${providerLabel}`,
 		icon: <DirectionIcon direction="hazel_to_external" className="size-4" />,
 	},
 	external_to_hazel: {
-		label: "Discord to Hazel",
+		label: `${providerLabel} to Hazel`,
 		icon: <DirectionIcon direction="external_to_hazel" className="size-4" />,
 	},
-}
+})
 
 const FEATURES = [
 	"Bidirectional message sync",
@@ -194,6 +249,10 @@ function ChatSyncConnectionDetailPage() {
 		if (Option.isNone(data)) return []
 		return data.value.data
 	}, [channelLinksResult])
+
+	const provider: ChatSyncProvider = connection?.provider === "slack" ? "slack" : "discord"
+	const providerMeta = PROVIDER_META[provider]
+	const directionDisplay = createDirectionDisplay(providerMeta.label)
 
 	const handleBack = () => {
 		navigate({ to: "/$orgSlug/settings/chat-sync", params: { orgSlug } })
@@ -275,7 +334,7 @@ function ChatSyncConnectionDetailPage() {
 			.onSuccess(() => {
 				setRefreshKey((k) => k + 1)
 			})
-			.successMessage(`Sync direction updated to ${DIRECTION_DISPLAY[newDirection].label}`)
+			.successMessage(`Sync direction updated to ${directionDisplay[newDirection].label}`)
 			.onErrorTag("ChatSyncChannelLinkNotFoundError", () => ({
 				title: "Link not found",
 				description: "This channel link may have already been removed.",
@@ -331,7 +390,7 @@ function ChatSyncConnectionDetailPage() {
 
 	const status = (connection.status as ConnectionStatus) || "active"
 	const statusConfig = STATUS_CONFIG[status]
-	const displayName = connection.externalWorkspaceName || "Discord Server"
+	const displayName = connection.externalWorkspaceName || providerMeta.workspaceDefaultName
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -353,11 +412,9 @@ function ChatSyncConnectionDetailPage() {
 					<div className="flex items-center gap-4">
 						<div
 							className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-md ring-1 ring-black/8"
-							style={{ backgroundColor: `${DISCORD_BRAND_COLOR}10` }}
+							style={{ backgroundColor: `${providerMeta.brandColor}10` }}
 						>
-							<svg viewBox="0 0 24 24" className="size-10" fill={DISCORD_BRAND_COLOR}>
-								<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-							</svg>
+							<ProviderGlyph provider={provider} className="size-10" />
 						</div>
 						<div className="flex flex-col gap-1">
 							<div className="flex items-center gap-3">
@@ -380,7 +437,7 @@ function ChatSyncConnectionDetailPage() {
 								</span>
 							</div>
 							<SectionHeader.Subheading>
-								Guild ID: {connection.externalWorkspaceId}
+								{providerMeta.workspaceLabel} ID: {connection.externalWorkspaceId}
 							</SectionHeader.Subheading>
 						</div>
 					</div>
@@ -449,7 +506,7 @@ function ChatSyncConnectionDetailPage() {
 										</div>
 										<div className="flex flex-col gap-0.5">
 											<p className="font-medium text-fg text-sm">
-												Connected to Discord
+												Connected to {providerMeta.label}
 											</p>
 											<p className="text-muted-fg text-xs">
 												{connection.lastSyncedAt
@@ -520,7 +577,8 @@ function ChatSyncConnectionDetailPage() {
 								</div>
 								<p className="mb-1 font-medium text-fg text-sm">No channels linked</p>
 								<p className="mb-4 text-muted-fg text-sm">
-									Link a Hazel channel to a Discord channel to start syncing messages.
+									Link a Hazel channel to a {providerMeta.label} channel to start syncing
+									messages.
 								</p>
 								<Button
 									intent="primary"
@@ -552,6 +610,8 @@ function ChatSyncConnectionDetailPage() {
 										onChangeDirection={(dir) =>
 											handleChangeDirection(link.id as SyncChannelLinkId, dir)
 										}
+										provider={provider}
+										directionDisplay={directionDisplay}
 									/>
 								))}
 							</div>
@@ -567,9 +627,9 @@ function ChatSyncConnectionDetailPage() {
 						</div>
 						<div className="p-5">
 							<p className="mb-4 text-muted-fg text-sm leading-relaxed">
-								Chat Sync keeps messages in sync between Hazel and Discord. Messages sent in
-								either platform are automatically mirrored to the linked channel, including
-								edits and deletions.
+								Chat Sync keeps messages in sync between Hazel and {providerMeta.label}.
+								Messages sent in either platform are automatically mirrored to the linked
+								channel, including edits and deletions.
 							</p>
 							<ul className="flex flex-col gap-2.5">
 								{FEATURES.map((feature) => (
@@ -603,6 +663,7 @@ function ChatSyncConnectionDetailPage() {
 				syncConnectionId={connectionId as SyncConnectionId}
 				organizationId={organizationId!}
 				externalWorkspaceId={connection.externalWorkspaceId}
+				provider={provider}
 				isOpen={isAddLinkModalOpen}
 				onClose={() => setIsAddLinkModalOpen(false)}
 				onSuccess={() => setRefreshKey((k) => k + 1)}
@@ -678,7 +739,7 @@ function ChatSyncConnectionDetailPage() {
 									/>
 								</svg>
 							</div>
-							<DialogTitle>Disconnect from Discord</DialogTitle>
+							<DialogTitle>Disconnect from {providerMeta.label}</DialogTitle>
 							<DialogDescription>
 								Are you sure you want to disconnect{" "}
 								<span className="font-medium text-fg">{displayName}</span>? All channel links
@@ -711,6 +772,8 @@ function ChannelLinkRow({
 	onDelete,
 	onToggleActive,
 	onChangeDirection,
+	provider,
+	directionDisplay,
 }: {
 	link: {
 		id: string
@@ -724,9 +787,11 @@ function ChannelLinkRow({
 	onDelete: () => void
 	onToggleActive: () => void
 	onChangeDirection: (direction: SyncDirection) => void
+	provider: ChatSyncProvider
+	directionDisplay: Record<SyncDirection, { label: string; icon: React.ReactNode }>
 }) {
 	const direction = (link.direction as SyncDirection) || "both"
-	const directionDisplay = DIRECTION_DISPLAY[direction]
+	const directionInfo = directionDisplay[direction]
 	const webhookPermissionStatus = getWebhookPermissionFromSettings(link.settings)
 	const webhookPermissionLabel = WEBHOOK_PERMISSION_LABELS[webhookPermissionStatus]
 
@@ -754,17 +819,15 @@ function ChannelLinkRow({
 			{/* Direction indicator */}
 			<div
 				className="flex shrink-0 items-center gap-1.5 rounded-full bg-bg-muted/50 px-2.5 py-1 text-muted-fg"
-				title={directionDisplay.label}
+				title={directionInfo.label}
 			>
-				{directionDisplay.icon}
-				<span className="text-xs">{directionDisplay.label}</span>
+				{directionInfo.icon}
+				<span className="text-xs">{directionInfo.label}</span>
 			</div>
 
-			{/* Discord channel */}
+			{/* External channel */}
 			<div className="flex min-w-0 flex-1 items-center gap-2">
-				<svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="#5865F2">
-					<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-				</svg>
+				<ProviderGlyph provider={provider} className="size-4 shrink-0" />
 				<span className="truncate text-fg text-sm">
 					{link.externalChannelName || link.externalChannelId}
 				</span>
@@ -804,7 +867,7 @@ function ChannelLinkRow({
 								{(["both", "hazel_to_external", "external_to_hazel"] as const).map((dir) => (
 									<MenuItem key={dir} onAction={() => onChangeDirection(dir)}>
 										<DirectionIcon direction={dir} className="size-4" data-slot="icon" />
-										<MenuLabel>{DIRECTION_DISPLAY[dir].label}</MenuLabel>
+										<MenuLabel>{directionDisplay[dir].label}</MenuLabel>
 									</MenuItem>
 								))}
 							</MenuContent>

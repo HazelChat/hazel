@@ -1,8 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { HttpApiBuilder, HttpApiClient, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder, HttpApiClient, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
+import { ChatSyncConnectionRepo } from "@hazel/backend-core"
 import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
+import { Slack } from "@hazel/integrations"
 import type {
 	SequinWebhookEvent,
 	SequinMessageReactionRecord,
@@ -12,10 +14,12 @@ import type {
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
+import type { ExternalChannelId, ExternalMessageId, ExternalThreadId, ExternalUserId } from "@hazel/schema"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
 import { DiscordSyncWorker } from "../services/chat-sync/discord-sync-worker"
+import { SlackSyncWorker } from "../services/chat-sync/slack-sync-worker"
 
 const isSequinMessageRecord = (record: SequinWebhookRecord): record is SequinMessageRecord =>
 	"authorId" in record
@@ -79,16 +83,18 @@ export const processSequinWebhookEventsInCommitOrder = <A, E>(
 	processEvent: (event: SequinWebhookEvent) => Effect.Effect<A, E, never>,
 ) => Effect.forEach(sortSequinWebhookEventsByCommitOrder(events), processEvent, { concurrency: 1 })
 
-export const syncSequinWebhookEventToDiscord = (
+export const syncSequinWebhookEventToProvider = (
 	event: SequinWebhookEvent,
 	integrationBotUserId: string | null,
-	discordSyncWorker: SequinWebhookSyncWorker,
+	syncWorker: SequinWebhookSyncWorker,
+	provider: "discord" | "slack",
 ) =>
 	Effect.gen(function* () {
-		// Drive Hazel -> Discord sync from Sequin events.
+		// Drive Hazel -> provider sync from Sequin events.
 		if (event.metadata.table_name === "messages" && isSequinMessageRecord(event.record)) {
 			if (event.record.authorId === integrationBotUserId) {
 				yield* Effect.logDebug("Skipping Sequin message event from integration bot", {
+					provider,
 					tableName: event.metadata.table_name,
 					messageId: event.record.id,
 					channelId: event.record.channelId,
@@ -99,19 +105,14 @@ export const syncSequinWebhookEventToDiscord = (
 
 				yield* (
 					event.action === "insert"
-						? discordSyncWorker.syncHazelMessageCreateToAllConnections(event.record.id, dedupeKey)
+						? syncWorker.syncHazelMessageCreateToAllConnections(event.record.id, dedupeKey)
 						: event.action === "delete" || isSoftDeleteUpdate
-							? discordSyncWorker.syncHazelMessageDeleteToAllConnections(
-									event.record.id,
-									dedupeKey,
-								)
-							: discordSyncWorker.syncHazelMessageUpdateToAllConnections(
-									event.record.id,
-									dedupeKey,
-								)
+							? syncWorker.syncHazelMessageDeleteToAllConnections(event.record.id, dedupeKey)
+							: syncWorker.syncHazelMessageUpdateToAllConnections(event.record.id, dedupeKey)
 				).pipe(
 					Effect.catchAll((error) =>
-						Effect.logWarning("Failed to sync Sequin message event to Discord", {
+						Effect.logWarning("Failed to sync Sequin message event to provider", {
+							provider,
 							action: event.action,
 							messageId: event.record.id,
 							channelId: event.record.channelId,
@@ -128,6 +129,7 @@ export const syncSequinWebhookEventToDiscord = (
 		) {
 			if (event.record.userId === integrationBotUserId) {
 				yield* Effect.logDebug("Skipping Sequin reaction event from integration bot", {
+					provider,
 					tableName: event.metadata.table_name,
 					reactionId: event.record.id,
 					channelId: event.record.channelId,
@@ -137,12 +139,9 @@ export const syncSequinWebhookEventToDiscord = (
 
 				yield* (
 					event.action === "insert"
-						? discordSyncWorker.syncHazelReactionCreateToAllConnections(
-								event.record.id,
-								dedupeKey,
-							)
+						? syncWorker.syncHazelReactionCreateToAllConnections(event.record.id, dedupeKey)
 						: event.action === "delete"
-							? discordSyncWorker.syncHazelReactionDeleteToAllConnections(
+							? syncWorker.syncHazelReactionDeleteToAllConnections(
 									{
 										hazelChannelId: event.record.channelId,
 										hazelMessageId: event.record.messageId,
@@ -157,7 +156,8 @@ export const syncSequinWebhookEventToDiscord = (
 								})
 				).pipe(
 					Effect.catchAll((error) =>
-						Effect.logWarning("Failed to sync Sequin reaction event to Discord", {
+						Effect.logWarning("Failed to sync Sequin reaction event to provider", {
+							provider,
 							action: event.action,
 							reactionId: event.record.id,
 							channelId: event.record.channelId,
@@ -168,6 +168,12 @@ export const syncSequinWebhookEventToDiscord = (
 			}
 		}
 	})
+
+export const syncSequinWebhookEventToDiscord = (
+	event: SequinWebhookEvent,
+	integrationBotUserId: string | null,
+	discordSyncWorker: SequinWebhookSyncWorker,
+) => syncSequinWebhookEventToProvider(event, integrationBotUserId, discordSyncWorker, "discord")
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
 	handlers
@@ -266,33 +272,38 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				// Get database for channel type lookup
 				const db = yield* Database.Database
 				const discordSyncWorker = yield* DiscordSyncWorker
+				const slackSyncWorker = yield* SlackSyncWorker
 				const sequinDiscordSyncWorker = discordSyncWorker as unknown as SequinWebhookSyncWorker
+				const sequinSlackSyncWorker = slackSyncWorker as unknown as SequinWebhookSyncWorker
 
 				// Get the Cluster API client once for all events
 				const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 					baseUrl: clusterUrl,
 				})
 
-				// Resolve Discord integration bot user once to avoid feedback loops.
-				const integrationBotResult = yield* db
-					.execute((client) =>
-						client
-							.select({ id: schema.usersTable.id })
-							.from(schema.usersTable)
-							.where(
-								and(
-									eq(schema.usersTable.externalId, "integration-bot-discord"),
-									isNull(schema.usersTable.deletedAt),
-								),
-							)
-							.limit(1),
-					)
-					.pipe(
-						Effect.catchTags({
-							DatabaseError: () => Effect.succeed([]),
-						}),
-					)
-				const integrationBotUserId = integrationBotResult[0]?.id ?? null
+				const findIntegrationBotUserId = (provider: "discord" | "slack") =>
+					db
+						.execute((client) =>
+							client
+								.select({ id: schema.usersTable.id })
+								.from(schema.usersTable)
+								.where(
+									and(
+										eq(schema.usersTable.externalId, `integration-bot-${provider}`),
+										isNull(schema.usersTable.deletedAt),
+									),
+								)
+								.limit(1),
+						)
+						.pipe(
+							Effect.map((rows) => rows[0]?.id ?? null),
+							Effect.catchTags({
+								DatabaseError: () => Effect.succeed(null),
+							}),
+						)
+
+				const discordIntegrationBotUserId = yield* findIntegrationBotUserId("discord")
+				const slackIntegrationBotUserId = yield* findIntegrationBotUserId("slack")
 
 				// Process each event in deterministic commit order.
 				yield* processSequinWebhookEventsInCommitOrder(payload.data, (event) =>
@@ -305,10 +316,18 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							channelId: event.record.channelId,
 						})
 
-						yield* syncSequinWebhookEventToDiscord(
+						yield* syncSequinWebhookEventToProvider(
 							event,
-							integrationBotUserId,
+							discordIntegrationBotUserId,
 							sequinDiscordSyncWorker,
+							"discord",
+						)
+
+						yield* syncSequinWebhookEventToProvider(
+							event,
+							slackIntegrationBotUserId,
+							sequinSlackSyncWorker,
+							"slack",
 						)
 
 						// Notification and thread-naming workflows are insert-only.
@@ -497,6 +516,331 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 					eventCount: payload.data.length,
 				})
 			}),
+		)
+		.handle("slackEvents", (_args) =>
+			Effect.gen(function* () {
+				const request = yield* HttpServerRequest.HttpServerRequest
+				const signatureHeader = request.headers["x-slack-signature"]
+				const timestampHeader = request.headers["x-slack-request-timestamp"]
+				if (!signatureHeader || !timestampHeader) {
+					return yield* Effect.fail(
+						new InvalidWebhookSignature({
+							message: "Missing Slack signature headers",
+						}),
+					)
+				}
+
+				const rawBody = yield* pipe(
+					request.text,
+					Effect.orElseFail(
+						() =>
+							new InvalidWebhookSignature({
+								message: "Invalid request body",
+							}),
+					),
+				)
+
+				const signingSecret = yield* Config.redacted("SLACK_SIGNING_SECRET").pipe(
+					Effect.map(Redacted.value),
+					Effect.mapError(
+						() =>
+							new InvalidWebhookSignature({
+								message: "SLACK_SIGNING_SECRET is not configured",
+							}),
+					),
+				)
+
+				const timestampSeconds = Number(timestampHeader)
+				if (!Number.isFinite(timestampSeconds)) {
+					return yield* Effect.fail(
+						new InvalidWebhookSignature({
+							message: "Invalid Slack timestamp",
+						}),
+					)
+				}
+
+				if (Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > 60 * 5) {
+					return yield* Effect.fail(
+						new InvalidWebhookSignature({
+							message: "Slack signature timestamp is outside allowed window",
+						}),
+					)
+				}
+
+				const baseString = `v0:${timestampHeader}:${rawBody}`
+				const computedSignature = `v0=${createHmac("sha256", signingSecret).update(baseString).digest("hex")}`
+
+				if (
+					signatureHeader.length !== computedSignature.length ||
+					!timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(computedSignature))
+				) {
+					return yield* Effect.fail(
+						new InvalidWebhookSignature({
+							message: "Invalid Slack webhook signature",
+						}),
+					)
+				}
+
+				const body = yield* Effect.try({
+					try: () => JSON.parse(rawBody) as Record<string, unknown>,
+					catch: () =>
+						new InvalidWebhookSignature({
+							message: "Slack webhook payload must be valid JSON",
+						}),
+				})
+
+				if (body.type === "url_verification" && typeof body.challenge === "string") {
+					return yield* HttpServerResponse.json({ challenge: body.challenge })
+				}
+
+				if (body.type !== "event_callback") {
+					return new WebhookResponse({
+						success: true,
+						message: "Ignored non-event Slack callback",
+					})
+				}
+
+				const eventId = typeof body.event_id === "string" ? body.event_id : `evt-${Date.now()}`
+				const workspaceId = typeof body.team_id === "string" ? body.team_id : null
+				const event =
+					typeof body.event === "object" && body.event !== null
+						? (body.event as Record<string, unknown>)
+						: null
+				if (!workspaceId || !event) {
+					return new WebhookResponse({
+						success: true,
+						message: "Ignored malformed Slack event callback",
+					})
+				}
+
+				const connectionRepo = yield* ChatSyncConnectionRepo
+				const slackSyncWorker = yield* SlackSyncWorker
+				const connections = yield* connectionRepo.findActiveByProvider("slack").pipe(withSystemActor)
+				const targetConnections = connections.filter(
+					(connection) => connection.externalWorkspaceId === workspaceId,
+				)
+				if (targetConnections.length === 0) {
+					return new WebhookResponse({
+						success: true,
+						message: "No active Slack sync connections for this workspace",
+					})
+				}
+
+				const eventType = typeof event.type === "string" ? event.type : null
+				const isRecord = (value: unknown): value is Record<string, unknown> =>
+					typeof value === "object" && value !== null
+				const asString = (value: unknown): string | undefined =>
+					typeof value === "string" && value.trim().length > 0 ? value : undefined
+				const normalizeSlackAttachments = (value: unknown) => {
+					if (!Array.isArray(value)) {
+						return [] as Array<{
+							externalAttachmentId?: string
+							fileName: string
+							fileSize: number
+							publicUrl: string
+						}>
+					}
+					const attachments: Array<{
+						externalAttachmentId?: string
+						fileName: string
+						fileSize: number
+						publicUrl: string
+					}> = []
+					for (const item of value) {
+						if (!isRecord(item)) continue
+						const fileName = asString(item.name)
+						const publicUrl = asString(item.permalink_public) ?? asString(item.permalink)
+						if (!fileName || !publicUrl) continue
+						const fileSize = typeof item.size === "number" && item.size >= 0 ? item.size : 0
+						const externalAttachmentId = asString(item.id)
+						attachments.push({
+							fileName,
+							fileSize,
+							publicUrl,
+							...(externalAttachmentId ? { externalAttachmentId } : {}),
+						})
+					}
+					return attachments
+				}
+				const toThreadChannelId = (
+					channelId: string,
+					threadTs: string | undefined,
+					messageTs?: string,
+				) =>
+					threadTs && threadTs !== messageTs
+						? Slack.createSlackThreadChannelRef(channelId, threadTs)
+						: channelId
+				const asExternalChannelId = (value: string) => value as ExternalChannelId
+				const asExternalMessageId = (value: string) => value as ExternalMessageId
+				const asExternalThreadId = (value: string) => value as ExternalThreadId
+				const asExternalUserId = (value: string) => value as ExternalUserId
+
+				yield* Effect.forEach(
+					targetConnections,
+					(connection) =>
+						Effect.gen(function* () {
+							if (eventType === "message") {
+								const subtype = asString(event.subtype)
+								const channelId = asString(event.channel)
+								if (!channelId) {
+									return
+								}
+
+								if (subtype === "message_deleted") {
+									const previousMessage = isRecord(event.previous_message)
+										? event.previous_message
+										: undefined
+									const deletedTs =
+										asString(event.deleted_ts) ?? asString(previousMessage?.ts)
+									if (!deletedTs) {
+										return
+									}
+									const threadTs = asString(previousMessage?.thread_ts)
+									yield* slackSyncWorker.ingestMessageDelete({
+										syncConnectionId: connection.id,
+										externalChannelId: asExternalChannelId(
+											toThreadChannelId(channelId, threadTs, deletedTs),
+										),
+										externalMessageId: asExternalMessageId(deletedTs),
+										dedupeKey: `slack:${eventId}:message_deleted:${connection.id}`,
+									})
+									return
+								}
+
+								if (subtype === "message_changed") {
+									const changedMessage = isRecord(event.message) ? event.message : undefined
+									const changedTs = asString(changedMessage?.ts)
+									if (!changedTs) {
+										return
+									}
+									const changedText = asString(changedMessage?.text) ?? ""
+									const threadTs = asString(changedMessage?.thread_ts)
+									const changedBotId = asString(changedMessage?.bot_id)
+									if (changedBotId) {
+										return
+									}
+									yield* slackSyncWorker.ingestMessageUpdate({
+										syncConnectionId: connection.id,
+										externalChannelId: asExternalChannelId(
+											toThreadChannelId(channelId, threadTs, changedTs),
+										),
+										externalMessageId: asExternalMessageId(changedTs),
+										content: changedText,
+										dedupeKey: `slack:${eventId}:message_changed:${connection.id}`,
+									})
+									return
+								}
+
+								if (subtype && subtype !== "thread_broadcast") {
+									return
+								}
+
+								const botId = asString(event.bot_id)
+								if (botId) {
+									return
+								}
+
+								const messageTs = asString(event.ts)
+								if (!messageTs) {
+									return
+								}
+								const threadTs = asString(event.thread_ts)
+								const externalChannelId = toThreadChannelId(channelId, threadTs, messageTs)
+
+								if (threadTs && threadTs !== messageTs) {
+									yield* slackSyncWorker.ingestThreadCreate({
+										syncConnectionId: connection.id,
+										externalParentChannelId: asExternalChannelId(channelId),
+										externalThreadId: asExternalThreadId(
+											Slack.createSlackThreadChannelRef(channelId, threadTs),
+										),
+										externalRootMessageId: asExternalMessageId(threadTs),
+										name: "Thread",
+										dedupeKey: `slack:${eventId}:thread_create:${connection.id}`,
+									})
+								}
+
+								yield* slackSyncWorker.ingestMessageCreate({
+									syncConnectionId: connection.id,
+									externalChannelId: asExternalChannelId(externalChannelId),
+									externalMessageId: asExternalMessageId(messageTs),
+									content: asString(event.text) ?? "",
+									externalAuthorId: asString(event.user)
+										? asExternalUserId(asString(event.user)!)
+										: undefined,
+									externalAuthorDisplayName: asString(event.username),
+									externalReplyToMessageId: null,
+									externalThreadId:
+										threadTs && threadTs !== messageTs
+											? asExternalThreadId(
+													Slack.createSlackThreadChannelRef(channelId, threadTs),
+												)
+											: null,
+									externalAttachments: normalizeSlackAttachments(event.files),
+									dedupeKey: `slack:${eventId}:message_create:${connection.id}`,
+								})
+								return
+							}
+
+							if (eventType === "reaction_added" || eventType === "reaction_removed") {
+								const item = isRecord(event.item) ? event.item : null
+								const channelId = asString(item?.channel)
+								const messageTs = asString(item?.ts)
+								const externalUserId = asString(event.user)
+								const reactionName = asString(event.reaction)
+								if (
+									!item ||
+									asString(item.type) !== "message" ||
+									!channelId ||
+									!messageTs ||
+									!externalUserId ||
+									!reactionName
+								) {
+									return
+								}
+
+								const payload = {
+									syncConnectionId: connection.id,
+									externalChannelId: asExternalChannelId(channelId),
+									externalMessageId: asExternalMessageId(messageTs),
+									externalUserId: asExternalUserId(externalUserId),
+									emoji: `:${reactionName}:`,
+									dedupeKey: `slack:${eventId}:${eventType}:${connection.id}`,
+								}
+
+								if (eventType === "reaction_added") {
+									yield* slackSyncWorker.ingestReactionAdd(payload)
+								} else {
+									yield* slackSyncWorker.ingestReactionRemove(payload)
+								}
+							}
+						}).pipe(
+							Effect.catchAll((error) =>
+								Effect.logWarning("Failed to process Slack event for chat sync connection", {
+									eventId,
+									eventType: eventType ?? "unknown",
+									syncConnectionId: connection.id,
+									error: String(error),
+								}),
+							),
+						),
+					{ concurrency: 1 },
+				)
+
+				return new WebhookResponse({
+					success: true,
+					message: "Slack event processed",
+				})
+			}).pipe(
+				withSystemActor,
+				Effect.mapError((error) =>
+					error instanceof InvalidWebhookSignature
+						? error
+						: new InvalidWebhookSignature({
+								message: `Failed to process Slack event: ${String(error)}`,
+							}),
+				),
+			),
 		)
 		.handle("github", (_args) =>
 			Effect.gen(function* () {

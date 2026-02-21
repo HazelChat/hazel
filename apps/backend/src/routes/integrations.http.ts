@@ -197,7 +197,10 @@ const OAUTH_SESSION_COOKIE_PREFIX = "oauth_session_"
  */
 const OAUTH_SESSION_COOKIE_MAX_AGE = 15 * 60
 
-const CHAT_SYNC_ATTRIBUTION_PROVIDERS = new Set<IntegrationConnection.IntegrationProvider>(["discord"])
+const CHAT_SYNC_ATTRIBUTION_PROVIDERS = new Set<IntegrationConnection.IntegrationProvider>([
+	"discord",
+	"slack",
+])
 
 const getOAuthStateCandidates = (rawState: string): ReadonlyArray<string> => {
 	const candidates: Array<string> = [rawState]

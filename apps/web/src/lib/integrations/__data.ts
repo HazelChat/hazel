@@ -191,6 +191,23 @@ export const integrations: Integration[] = [
 		configOptions: [],
 	},
 	{
+		id: "slack",
+		name: "Slack",
+		description: "Connect Slack workspaces for channel syncing.",
+		fullDescription:
+			"Connect Slack to sync messages between Hazel and Slack channels. Link channels, choose sync direction, and keep conversations aligned in real time.",
+		logoDomain: "slack.com",
+		brandColor: "#4A154B",
+		category: "communication",
+		features: [
+			"OAuth-based Slack connection",
+			"Workspace and channel picker",
+			"Bidirectional channel sync",
+			"Message and reaction sync",
+		],
+		configOptions: [],
+	},
+	{
 		id: "craft",
 		name: "Craft",
 		description: "Connect your Craft workspace for documents, tasks, and notes.",

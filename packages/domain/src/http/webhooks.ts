@@ -163,4 +163,18 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 				}),
 			),
 	)
+	.add(
+		HttpApiEndpoint.post("slackEvents")`/slack/events`
+			.setPayload(Schema.Unknown)
+			.addSuccess(WebhookResponse)
+			.addError(InvalidWebhookSignature)
+			.addError(InternalServerError)
+			.annotateContext(
+				OpenApi.annotations({
+					title: "Slack Events API Webhook",
+					description: "Receive and process Slack Events API callbacks for chat sync",
+					summary: "Process Slack webhook events",
+				}),
+			),
+	)
 	.prefix("/webhooks") {}
