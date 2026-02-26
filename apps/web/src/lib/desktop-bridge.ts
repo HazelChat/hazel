@@ -1,5 +1,4 @@
 import type { DesktopRuntimeRpcSchema, DesktopUpdaterStatusEntry } from "@hazel/domain/desktop-runtime-rpc"
-import { isDesktopRuntime } from "./desktop-runtime"
 
 type BunRequests = DesktopRuntimeRpcSchema["bun"]["requests"]
 type WebviewMessages = DesktopRuntimeRpcSchema["webview"]["messages"]
@@ -24,6 +23,10 @@ type DesktopRpc = {
 
 let bridgePromise: Promise<{ rpc: DesktopRpc } | null> | null = null
 
+const isDesktopRuntimeAvailable = (): boolean => {
+	return typeof window !== "undefined" && "__electrobun" in window
+}
+
 const emitMessage = <Name extends keyof WebviewMessages>(name: Name, payload: WebviewMessages[Name]) => {
 	for (const handler of messageHandlers[name] as Set<MessageHandler<Name>>) {
 		handler(payload)
@@ -31,7 +34,7 @@ const emitMessage = <Name extends keyof WebviewMessages>(name: Name, payload: We
 }
 
 const getBridge = async (): Promise<{ rpc: DesktopRpc } | null> => {
-	if (!isDesktopRuntime()) return null
+	if (!isDesktopRuntimeAvailable()) return null
 
 	if (!bridgePromise) {
 		bridgePromise = (async () => {
@@ -82,7 +85,7 @@ export const onDesktopMessage = <Name extends keyof WebviewMessages>(
 }
 
 export const desktopBridge = {
-	isAvailable: isDesktopRuntime,
+	isAvailable: isDesktopRuntimeAvailable,
 	ensureReady: getBridge,
 	startOAuthServer: () => request("oauth.startServer", undefined),
 	openExternal: (url: string) => request("shell.openExternal", { url }),
