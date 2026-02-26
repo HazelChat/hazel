@@ -15,7 +15,7 @@ const makeHttpLiveWithKV = (env: Env) =>
 		Layer.provideMerge(HttpLive),
 		Layer.provideMerge(
 			HttpApiBuilder.middlewareCors({
-				allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh", "tauri://localhost"],
+				allowedOrigins: ["http://localhost:3000", "https://app.hazel.sh", "views://mainview"],
 				credentials: true,
 			}),
 		),

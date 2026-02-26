@@ -21,12 +21,12 @@ import {
 import { UserMenu } from "~/components/sidebar/user-menu"
 import { useNotifications } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
-import { isTauriMacOS } from "~/lib/tauri"
+import { isDesktopMacOS } from "~/lib/desktop-runtime"
 
 export function NotificationsSidebar() {
 	const { slug } = useOrganization()
 	const matchRoute = useMatchRoute()
-	const hasTauriTitlebar = isTauriMacOS()
+	const hasDesktopTitlebar = isDesktopMacOS()
 	const { unreadCount, markAllAsRead } = useNotifications()
 	const [isMarkingAll, setIsMarkingAll] = useState(false)
 
@@ -53,8 +53,7 @@ export function NotificationsSidebar() {
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
 			<SidebarHeader
-				data-tauri-drag-region
-				className={`border-b py-4 ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
+				className={`electrobun-webkit-app-region-drag border-b py-4 ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
 			>
 				<span className="text-muted-fg text-xs font-medium uppercase tracking-wider">Activity</span>
 			</SidebarHeader>

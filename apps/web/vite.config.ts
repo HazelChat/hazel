@@ -1,5 +1,3 @@
-import { execSync } from "node:child_process"
-import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import localesPlugin from "@react-aria/optimize-locales-plugin"
 import tailwindcss from "@tailwindcss/vite"
@@ -10,14 +8,13 @@ import { visualizer } from "rollup-plugin-visualizer"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 
-const host = process.env.TAURI_DEV_HOST
-const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM
+const host = process.env.ELECTROBUN_DEV_HOST
+const isDesktopBuild = process.env.ELECTROBUN_BUILD === "1"
+const desktopOs = process.env.ELECTROBUN_OS
+const isDebugDesktopBuild = process.env.ELECTROBUN_BUILD_ENV === "dev"
 
-// Read app version from tauri.conf.json (single source of truth)
-const tauriConfig = JSON.parse(readFileSync(resolve(__dirname, "src-tauri/tauri.conf.json"), "utf-8"))
-const appVersion = tauriConfig.version
+const appVersion = process.env.APP_VERSION ?? "0.1.7"
 
-// Resolve git commit SHA from environment (Railway) or git
 const commitSha =
 	process.env.RAILWAY_GIT_COMMIT_SHA ??
 	process.env.COMMIT_SHA ??
@@ -36,38 +33,18 @@ export default defineConfig({
 					port: 1421,
 				}
 			: undefined,
-		watch: {
-			// tell vite to ignore watching `src-tauri`
-			ignored: ["**/src-tauri/**"],
-		},
 	},
-	envPrefix: ["VITE_", "TAURI_ENV_*"],
+	envPrefix: ["VITE_", "ELECTROBUN_"],
 	define: {
 		__APP_VERSION__: JSON.stringify(appVersion),
 		"import.meta.env.VITE_COMMIT_SHA": JSON.stringify(commitSha),
 	},
 	build: {
-		target: process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",
-		minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
-		sourcemap: !!process.env.TAURI_ENV_DEBUG,
+		target: desktopOs === "win" ? "chrome105" : "safari13",
+		minify: !isDebugDesktopBuild ? "esbuild" : false,
+		sourcemap: isDebugDesktopBuild,
 		rollupOptions: {
-			// Web build: externalize all Tauri packages, they don't exist
-			external: isTauriBuild
-				? []
-				: [
-						// Core Tauri API
-						"@tauri-apps/api/core",
-						"@tauri-apps/api/event",
-						// Tauri plugins
-						"@tauri-apps/plugin-autostart",
-						"@tauri-apps/plugin-deep-link",
-						"@tauri-apps/plugin-notification",
-						"@tauri-apps/plugin-opener",
-						"@tauri-apps/plugin-process",
-						"@tauri-apps/plugin-store",
-						"@tauri-apps/plugin-updater",
-						"@tauri-apps/plugin-window-state",
-					],
+			external: isDesktopBuild ? [] : ["electrobun/view"],
 			output: {
 				manualChunks: {
 					"vendor-react": ["react", "react-dom"],
@@ -92,11 +69,10 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		// For Tauri builds, provide a no-op mock for PWA virtual module
-		...(isTauriBuild
+		...(isDesktopBuild
 			? [
 					{
-						name: "mock-pwa-for-tauri",
+						name: "mock-pwa-for-desktop",
 						resolveId(id: string) {
 							if (id === "virtual:pwa-register/react") {
 								return "\0virtual:pwa-noop"
@@ -126,7 +102,6 @@ export default defineConfig({
 			},
 		}),
 		tailwindcss(),
-		// Bundle visualizer - run with ANALYZE=true bun run build
 		...(process.env.ANALYZE
 			? [
 					visualizer({
@@ -137,8 +112,7 @@ export default defineConfig({
 					}),
 				]
 			: []),
-		// Only enable PWA for web builds (not Tauri - it has its own update mechanism)
-		...(isTauriBuild
+		...(isDesktopBuild
 			? []
 			: [
 					VitePWA({
@@ -177,13 +151,10 @@ export default defineConfig({
 							],
 						},
 						workbox: {
-							// Workbox uses Rollup + Terser when mode="production". Under Bun this can
-							// intermittently fail with "Unexpected early exit" in the terser renderChunk hook.
-							// Running in development mode avoids Terser while still generating a valid SW.
 							mode: "development",
 							globPatterns: ["**/*.{js,css,html,svg,ico,woff2}"],
 							globIgnores: ["**/images/onboarding/**"],
-							maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
+							maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
 						},
 					}),
 				]),

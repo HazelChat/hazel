@@ -5,8 +5,8 @@ import {
 	sendNativeNotification,
 } from "./native-notifications"
 
-vi.mock("./tauri", () => ({
-	isTauri: vi.fn(() => false),
+vi.mock("./desktop-runtime", () => ({
+	isDesktopRuntime: vi.fn(() => false),
 }))
 
 describe("native-notifications", () => {

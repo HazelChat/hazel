@@ -5,6 +5,8 @@ import {
 	AIRateLimitError,
 	AIResponseParseError,
 	DesktopConnectionError,
+	DesktopRuntimeCommandError,
+	DesktopRuntimeNotAvailableError,
 	DmChannelAlreadyExistsError,
 	InternalServerError,
 	InvalidBearerTokenError,
@@ -19,8 +21,6 @@ import {
 	SessionLoadError,
 	SessionNotProvidedError,
 	SessionRefreshError,
-	TauriCommandError,
-	TauriNotAvailableError,
 	ThreadChannelNotFoundError,
 	ThreadContextQueryError,
 	ThreadNameUpdateError,
@@ -92,8 +92,8 @@ export const CommonAppErrorSchema = Schema.Union(
 	TransactionStateEffectError,
 	CollectionSyncEffectError,
 	// Desktop auth errors
-	TauriNotAvailableError,
-	TauriCommandError,
+	DesktopRuntimeNotAvailableError,
+	DesktopRuntimeCommandError,
 	OAuthTimeoutError,
 	OAuthCallbackError,
 	MissingAuthCodeError,
@@ -303,12 +303,12 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 	},
 
 	// Desktop auth errors
-	TauriNotAvailableError: {
+	DesktopRuntimeNotAvailableError: {
 		title: "Desktop app not available",
 		description: "Please make sure Hazel is running.",
 		isRetryable: false,
 	},
-	TauriCommandError: {
+	DesktopRuntimeCommandError: {
 		title: "Desktop command failed",
 		description: "Please restart Hazel and try again.",
 		isRetryable: true,

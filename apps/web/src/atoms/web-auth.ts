@@ -11,7 +11,7 @@ import { Atom } from "@effect-atom/atom-react"
 import { Duration, Effect, Option, Schema } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
-import { isTauri } from "~/lib/tauri"
+import { isDesktopRuntime } from "~/lib/desktop-runtime"
 import { forceRefreshEffect } from "~/lib/auth-token"
 import { resetCallbackState } from "~/atoms/web-callback-atoms"
 
@@ -104,11 +104,11 @@ export const isWebAuthenticatedAtom = Atom.make((get) => get(webTokensAtom) !== 
  * Clears tokens from storage, resets atom state, and redirects through WorkOS logout
  */
 export const webLogoutAtom = Atom.fn(
-	Effect.fnUntraced(function* (options?: { redirectTo?: string }, get?) {
-		if (isTauri()) {
-			yield* Effect.log("[web-auth] In Tauri environment, skipping web logout")
-			return
-		}
+		Effect.fnUntraced(function* (options?: { redirectTo?: string }, get?) {
+			if (isDesktopRuntime()) {
+				yield* Effect.log("[web-auth] In desktop runtime environment, skipping web logout")
+				return
+			}
 
 		yield* Effect.gen(function* () {
 			const tokenStorage = yield* WebTokenStorage
@@ -167,7 +167,7 @@ export const webLogoutAtom = Atom.fn(
  */
 export const webForceRefreshAtom = Atom.fn(
 	Effect.fnUntraced(function* (_: void) {
-		if (isTauri()) return false
+		if (isDesktopRuntime()) return false
 		return yield* forceRefreshEffect
 	}),
 )
@@ -177,7 +177,7 @@ export const webForceRefreshAtom = Atom.fn(
 // ============================================================================
 
 export const webInitAtom = Atom.make((get) => {
-	if (isTauri()) return null
+	if (isDesktopRuntime()) return null
 
 	const loadTokens = Effect.gen(function* () {
 		const tokenStorage = yield* WebTokenStorage
@@ -226,7 +226,7 @@ export const webInitAtom = Atom.make((get) => {
 export const webTokenSchedulerAtom = Atom.make((get) => {
 	const tokens = get(webTokensAtom)
 
-	if (!tokens || isTauri()) return null
+	if (!tokens || isDesktopRuntime()) return null
 
 	const timeUntilRefresh = tokens.expiresAt - Date.now() - REFRESH_BUFFER_MS
 

@@ -34,7 +34,7 @@ const JoinChannelModal = lazy(() =>
 	import("~/components/modals/join-channel-modal").then((m) => ({ default: m.JoinChannelModal })),
 )
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
-import { TauriMenuListener } from "~/components/tauri-menu-listener"
+import { DesktopMenuListener } from "~/components/desktop-menu-listener"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useAppHotkey } from "~/hooks/use-app-hotkey"
 import { useOrganization } from "~/hooks/use-organization"
@@ -137,7 +137,7 @@ function RouteComponent() {
 			}
 		>
 			<PresenceProvider>
-				<TauriMenuListener />
+				<DesktopMenuListener />
 				<NotificationSoundProvider>
 					<AppSidebar openChannelsBrowser={openChannelsBrowser} />
 					<SidebarInset className="pb-16 md:pb-0">

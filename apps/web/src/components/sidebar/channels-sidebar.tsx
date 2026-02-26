@@ -52,7 +52,7 @@ import IconIntegratio from "../icons/icon-integratio-"
 import { IconServers } from "../icons/icon-servers"
 import IconUsers from "../icons/icon-users"
 import IconUsersPlus from "../icons/icon-users-plus"
-import { isTauriMacOS } from "~/lib/tauri"
+import { isDesktopMacOS } from "~/lib/desktop-runtime"
 
 interface ChannelSectionProps {
 	organizationId: OrganizationId
@@ -236,7 +236,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const commandPaletteHotkeyLabel = useAppHotkeyLabel("commandPalette.open")
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
 	const { unreadByChannel } = useChannelUnreadCountMap()
-	const hasTauriTitlebar = isTauriMacOS()
+	const hasDesktopTitlebar = isDesktopMacOS()
 
 	// Modal hooks
 	const createOrgModal = useModal("create-organization")
@@ -261,8 +261,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
 			<SidebarHeader
-				data-tauri-drag-region
-				className={`border-b ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
+				className={`electrobun-webkit-app-region-drag border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
 			>
 				<Menu>
 					<PrimitiveButton className="group/switcher relative flex items-center justify-between gap-x-2 font-semibold outline-hidden text-fg/80 hover:text-fg transition-colors focus-visible:ring focus-visible:ring-primary">

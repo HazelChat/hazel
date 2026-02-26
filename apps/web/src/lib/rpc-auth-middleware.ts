@@ -1,7 +1,7 @@
 /**
  * @module RPC Auth Middleware
  * @platform all
- * @description Client-side auth middleware that adds Bearer token from storage (Tauri store or localStorage)
+ * @description Client-side auth middleware that adds Bearer token from storage (desktop store or localStorage)
  */
 
 import { Headers } from "@effect/platform"

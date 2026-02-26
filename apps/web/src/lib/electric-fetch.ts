@@ -1,24 +1,24 @@
 /**
  * Authenticated fetch client for Electric SQL with exponential backoff retry.
  *
- * Handles both Tauri desktop (Bearer token) and web (cookies) authentication.
+ * Handles both desktop runtime (Bearer token) and web (cookies) authentication.
  * Retries 5xx server errors with exponential backoff to prevent overwhelming
  * the Electric proxy during outages.
  */
 import { Effect, Schedule } from "effect"
 import { authenticatedFetch } from "./auth-fetch"
 import { runtime } from "./services/common/runtime"
-import { isTauri } from "./tauri"
+import { isDesktopRuntime } from "./desktop-runtime"
 
 const ACCESS_TOKEN_KEY = "hazel_auth_access_token"
 
 /**
  * Synchronous check for auth token availability.
- * On web, checks localStorage directly. On Tauri, skips the check
+ * On web, checks localStorage directly. On desktop runtime, skips the check
  * since tokens are in an async store handled by authenticatedFetch.
  */
 const hasAuthToken = (): boolean => {
-	if (isTauri()) return true
+	if (isDesktopRuntime()) return true
 	if (typeof window === "undefined" || !window.localStorage) return false
 	return window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null
 }

@@ -6,28 +6,31 @@
 import { Schema } from "effect"
 
 // ============================================================================
-// Tauri Environment Errors
+// Desktop Runtime Errors
 // ============================================================================
 
 /**
- * Tauri API not available in the current environment
+ * Desktop runtime API not available in the current environment
  */
-export class TauriNotAvailableError extends Schema.TaggedError<TauriNotAvailableError>()(
-	"TauriNotAvailableError",
+export class DesktopRuntimeNotAvailableError extends Schema.TaggedError<DesktopRuntimeNotAvailableError>()(
+	"DesktopRuntimeNotAvailableError",
 	{
 		message: Schema.String,
-		component: Schema.Literal("opener", "core", "event", "store"),
+		component: Schema.Literal("bridge", "shell", "store", "updater", "notifications", "oauth"),
 	},
 ) {}
 
 /**
- * A Tauri command invocation failed
+ * A desktop runtime command invocation failed
  */
-export class TauriCommandError extends Schema.TaggedError<TauriCommandError>()("TauriCommandError", {
-	message: Schema.String,
-	command: Schema.String,
-	detail: Schema.optional(Schema.String),
-}) {}
+export class DesktopRuntimeCommandError extends Schema.TaggedError<DesktopRuntimeCommandError>()(
+	"DesktopRuntimeCommandError",
+	{
+		message: Schema.String,
+		command: Schema.String,
+		detail: Schema.optional(Schema.String),
+	},
+) {}
 
 // ============================================================================
 // OAuth Flow Errors

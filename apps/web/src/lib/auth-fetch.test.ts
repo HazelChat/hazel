@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from "vitest"
 
 // Mock modules before importing
-vi.mock("./tauri", () => ({
-	isTauri: vi.fn(),
+vi.mock("./desktop-runtime", () => ({
+	isDesktopRuntime: vi.fn(),
 }))
 
 vi.mock("~/lib/auth-token", () => ({
@@ -12,7 +12,7 @@ vi.mock("~/lib/auth-token", () => ({
 }))
 
 // Import after mocks are set up
-import { isTauri } from "./tauri"
+import { isDesktopRuntime } from "./desktop-runtime"
 import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
 
 describe("authenticatedFetch", () => {
@@ -34,7 +34,6 @@ describe("authenticatedFetch", () => {
 		vi.stubGlobal("window", {
 			dispatchEvent: dispatchEventSpy,
 			location: { href: "" },
-			__TAURI_INTERNALS__: undefined,
 		})
 
 		// Default mock implementations
@@ -47,9 +46,9 @@ describe("authenticatedFetch", () => {
 		vi.unstubAllGlobals()
 	})
 
-	describe("web mode (non-Tauri)", () => {
+	describe("web mode (non-desktop runtime)", () => {
 		beforeEach(() => {
-			;(isTauri as Mock).mockReturnValue(false)
+			;(isDesktopRuntime as Mock).mockReturnValue(false)
 		})
 
 		it("dispatches session-expired when no token and refresh fails", async () => {
@@ -148,7 +147,7 @@ describe("authenticatedFetch", () => {
 
 	describe("401 retry flow", () => {
 		beforeEach(() => {
-			;(isTauri as Mock).mockReturnValue(false)
+			;(isDesktopRuntime as Mock).mockReturnValue(false)
 		})
 
 		it("returns 401 response when token present but refresh fails", async () => {
@@ -168,7 +167,7 @@ describe("authenticatedFetch", () => {
 
 	describe("error handling", () => {
 		beforeEach(() => {
-			;(isTauri as Mock).mockReturnValue(false)
+			;(isDesktopRuntime as Mock).mockReturnValue(false)
 		})
 
 		it("propagates fetch errors", async () => {
@@ -199,7 +198,7 @@ describe("authenticatedFetch", () => {
 
 	describe("request headers", () => {
 		beforeEach(() => {
-			;(isTauri as Mock).mockReturnValue(false)
+			;(isDesktopRuntime as Mock).mockReturnValue(false)
 		})
 
 		it("merges Authorization header with custom headers when token available", async () => {
@@ -226,8 +225,8 @@ describe("authenticatedFetch", () => {
 })
 
 // ============================================================================
-// Desktop Mode Tests (Tauri)
-// These tests require mocking the Tauri store which is complex due to Effect layers.
+// Desktop Mode Tests
+// These tests require mocking the desktop runtime store which is complex due to Effect layers.
 // The desktop auth flow tests are in desktop-auth.test.ts using Effect testing patterns.
 // ============================================================================
 
@@ -235,7 +234,7 @@ describe("authenticatedFetch desktop mode documentation", () => {
 	it("documents the expected behavior for desktop mode", () => {
 		// Desktop mode behavior:
 		// 1. waitForRefresh() is called first to wait for any in-progress refresh
-		// 2. getAccessToken() retrieves the token from Tauri secure storage
+		// 2. getAccessToken() retrieves the token from desktop secure storage
 		// 3. If token exists, request is made with Authorization header
 		// 4. On 401, forceRefresh() is called to refresh the token
 		// 5. If refresh succeeds, request is retried with new token
@@ -244,7 +243,7 @@ describe("authenticatedFetch desktop mode documentation", () => {
 
 		// This behavior is tested through integration testing with the full
 		// Effect layer stack, which is difficult to unit test due to the
-		// Tauri secure storage dependency.
+		// desktop secure storage dependency.
 		expect(true).toBe(true)
 	})
 })

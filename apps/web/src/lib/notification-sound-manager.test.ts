@@ -5,8 +5,8 @@ import {
 	type PlaySoundParams,
 } from "./notification-sound-manager"
 
-vi.mock("./tauri", () => ({
-	isTauri: vi.fn(() => false),
+vi.mock("./desktop-runtime", () => ({
+	isDesktopRuntime: vi.fn(() => false),
 }))
 
 describe("NotificationSoundManager", () => {

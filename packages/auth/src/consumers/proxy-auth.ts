@@ -90,11 +90,11 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			return Option.map(userOption, (user) => user.id)
 		})
 
-		/**
-		 * Validate a Bearer token (JWT) and return user context.
-		 * Used by web and Tauri desktop apps that authenticate via JWT.
-		 * Rejects if user is not found in database.
-		 */
+			/**
+			 * Validate a Bearer token (JWT) and return user context.
+			 * Used by web and desktop runtime apps that authenticate via JWT.
+			 * Rejects if user is not found in database.
+			 */
 		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
 			bearerToken: string,
 		) {

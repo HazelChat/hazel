@@ -60,7 +60,7 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 					form.reset()
 
 					// Redirect to the new organization
-					// Use login() to handle organization switch - Tauri-aware
+					// Use login() to handle organization switch for desktop and web
 					const returnUrl = `/${result.data.slug}`
 					login({ organizationId: result.data.id, returnTo: returnUrl })
 				})

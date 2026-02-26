@@ -19,23 +19,22 @@ import {
 import { useAppVersion } from "~/lib/version"
 import { useUnreadNotificationCount } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
-import { isTauriMacOS } from "~/lib/tauri"
+import { isDesktopMacOS } from "~/lib/desktop-runtime"
 
 export function NavSidebar() {
 	const { isMobile } = useSidebar()
 	const { slug } = useOrganization()
 	const { unreadCount } = useUnreadNotificationCount()
 	const version = useAppVersion()
-	const hasTauriTitlebar = isTauriMacOS()
+	const hasDesktopTitlebar = isDesktopMacOS()
 
 	return (
 		<Sidebar
 			collapsible="none"
-			className={`hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasTauriTitlebar ? "" : "md:border-r"}`}
+			className={`hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasDesktopTitlebar ? "" : "md:border-r"}`}
 		>
 			<SidebarHeader
-				data-tauri-drag-region
-				className={`px-3 py-4  border-b ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}`}
+				className={`electrobun-webkit-app-region-drag px-3 py-4  border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}`}
 			>
 				<Link
 					href={{
@@ -47,7 +46,7 @@ export function NavSidebar() {
 				</Link>
 			</SidebarHeader>
 			<SidebarContent
-				className={`mask-none ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}
+				className={`mask-none ${hasDesktopTitlebar ? "border-r border-sidebar-border" : ""}`}
 			>
 				<SidebarSectionGroup>
 					<SidebarSection className="p-2! *:data-[slot=sidebar-section-inner]:gap-y-2">
@@ -136,7 +135,7 @@ export function NavSidebar() {
 					</SidebarSection>
 				</SidebarSectionGroup>
 			</SidebarContent>
-			<SidebarFooter className={`p-2 ${hasTauriTitlebar ? "border-r border-sidebar-border" : ""}`}>
+			<SidebarFooter className={`p-2 ${hasDesktopTitlebar ? "border-r border-sidebar-border" : ""}`}>
 				{version && (
 					<span className="text-center text-[10px] font-mono text-muted-fg">v{version}</span>
 				)}

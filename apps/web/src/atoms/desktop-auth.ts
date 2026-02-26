@@ -12,10 +12,10 @@ import { Clipboard } from "@effect/platform-browser"
 import type { OrganizationId } from "@hazel/schema"
 import { Duration, Effect, Layer, Option, Schema } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
-import { TauriAuth } from "~/lib/services/desktop/tauri-auth"
+import { DesktopAuth } from "~/lib/services/desktop/desktop-auth"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
 import { TokenStorage } from "~/lib/services/desktop/token-storage"
-import { isTauri } from "~/lib/tauri"
+import { isDesktopRuntime } from "~/lib/desktop-runtime"
 import { forceRefreshEffect, getAccessToken as getAccessTokenPromise } from "~/lib/auth-token"
 
 // ============================================================================
@@ -57,7 +57,7 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000
 
 const TokenStorageLive = TokenStorage.Default
 const TokenExchangeLive = TokenExchange.Default
-const TauriAuthLive = TauriAuth.Default
+const DesktopAuthLive = DesktopAuth.Default
 const ClipboardLive = Clipboard.layer
 
 // ============================================================================
@@ -83,8 +83,8 @@ export const isDesktopAuthenticatedAtom = Atom.make((get) => get(desktopTokensAt
  */
 export const desktopLoginAtom = Atom.fn(
 	Effect.fnUntraced(function* (options: DesktopLoginOptions, get) {
-		if (!isTauri()) {
-			yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop login")
+		if (!isDesktopRuntime()) {
+			yield* Effect.log("[desktop-auth] Not in desktop runtime environment, skipping desktop login")
 			return
 		}
 
@@ -92,7 +92,7 @@ export const desktopLoginAtom = Atom.fn(
 		get.set(desktopAuthErrorAtom, null)
 
 		const result = yield* Effect.gen(function* () {
-			const auth = yield* TauriAuth
+			const auth = yield* DesktopAuth
 			const authResult = yield* auth.initiateAuth(options)
 
 			const accessTokenOpt = yield* TokenStorage.getAccessToken
@@ -114,7 +114,7 @@ export const desktopLoginAtom = Atom.fn(
 
 			return authResult
 		}).pipe(
-			Effect.provide(Layer.mergeAll(TauriAuthLive, TokenStorageLive)),
+			Effect.provide(Layer.mergeAll(DesktopAuthLive, TokenStorageLive)),
 			Effect.catchAll((error) => {
 				console.error("[desktop-auth] Login failed:", error)
 				get.set(desktopAuthStatusAtom, "error")
@@ -136,8 +136,8 @@ export const desktopLoginAtom = Atom.fn(
  */
 export const desktopLogoutAtom = Atom.fn(
 	Effect.fnUntraced(function* (options?: DesktopLogoutOptions, get?) {
-		if (!isTauri()) {
-			yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop logout")
+		if (!isDesktopRuntime()) {
+			yield* Effect.log("[desktop-auth] Not in desktop runtime environment, skipping desktop logout")
 			return
 		}
 
@@ -164,7 +164,7 @@ export const desktopLogoutAtom = Atom.fn(
  */
 export const desktopForceRefreshAtom = Atom.fn(
 	Effect.fnUntraced(function* (_: void) {
-		if (!isTauri()) return false
+		if (!isDesktopRuntime()) return false
 		return yield* forceRefreshEffect
 	}),
 )
@@ -182,7 +182,7 @@ const ClipboardAuthPayload = Schema.Struct({
  */
 export const desktopLoginFromClipboardAtom = Atom.fn(
 	Effect.fnUntraced(function* (_: void, get) {
-		if (!isTauri()) return
+		if (!isDesktopRuntime()) return
 
 		get.set(desktopAuthStatusAtom, "loading")
 		get.set(desktopAuthErrorAtom, null)
@@ -238,7 +238,7 @@ export const desktopLoginFromClipboardAtom = Atom.fn(
 // ============================================================================
 
 export const desktopInitAtom = Atom.make((get) => {
-	if (!isTauri()) return null
+	if (!isDesktopRuntime()) return null
 
 	const loadTokens = Effect.gen(function* () {
 		const accessTokenOpt = yield* TokenStorage.getAccessToken
@@ -286,7 +286,7 @@ export const desktopInitAtom = Atom.make((get) => {
 export const desktopTokenSchedulerAtom = Atom.make((get) => {
 	const tokens = get(desktopTokensAtom)
 
-	if (!tokens || !isTauri()) return null
+	if (!tokens || !isDesktopRuntime()) return null
 
 	const timeUntilRefresh = tokens.expiresAt - Date.now() - REFRESH_BUFFER_MS
 
@@ -324,6 +324,6 @@ export const desktopTokenSchedulerAtom = Atom.make((get) => {
 // ============================================================================
 
 export const getDesktopAccessToken = (): Promise<string | null> => {
-	if (!isTauri()) return Promise.resolve(null)
+	if (!isDesktopRuntime()) return Promise.resolve(null)
 	return getAccessTokenPromise()
 }

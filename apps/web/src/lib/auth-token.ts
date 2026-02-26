@@ -13,7 +13,7 @@ import { TokenExchange } from "~/lib/services/desktop/token-exchange"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
 import { TokenStorage } from "~/lib/services/desktop/token-storage"
 import { runtime } from "~/lib/services/common/runtime"
-import { isTauri } from "~/lib/tauri"
+import { isDesktopRuntime } from "~/lib/desktop-runtime"
 
 // ============================================================================
 // Constants
@@ -69,13 +69,13 @@ export const isTransientError = (error: { _tag?: string; message?: string }): bo
 // Platform helpers (each branch fully provided so R=never)
 // ============================================================================
 
-const tokensAtom = () => (isTauri() ? desktopTokensAtom : webTokensAtom)
-const errorAtom = () => (isTauri() ? desktopAuthErrorAtom : webAuthErrorAtom)
-const platformTag = () => (isTauri() ? "desktop" : "web")
+const tokensAtom = () => (isDesktopRuntime() ? desktopTokensAtom : webTokensAtom)
+const errorAtom = () => (isDesktopRuntime() ? desktopAuthErrorAtom : webAuthErrorAtom)
+const platformTag = () => (isDesktopRuntime() ? "desktop" : "web")
 
 /** Read access token from the correct platform storage */
 const readAccessToken = Effect.fn("readAccessToken")(function* () {
-	if (isTauri()) {
+	if (isDesktopRuntime()) {
 		return Option.getOrNull(yield* TokenStorage.getAccessToken.pipe(Effect.provide(desktopStorageLive)))
 	}
 	return Option.getOrNull(yield* WebTokenStorage.getAccessToken.pipe(Effect.provide(webStorageLive)))
@@ -83,7 +83,7 @@ const readAccessToken = Effect.fn("readAccessToken")(function* () {
 
 /** Read refresh token from the correct platform storage */
 const readRefreshToken = Effect.fn("readRefreshToken")(function* () {
-	if (isTauri()) {
+	if (isDesktopRuntime()) {
 		return yield* TokenStorage.getRefreshToken.pipe(Effect.provide(desktopStorageLive))
 	}
 	return yield* WebTokenStorage.getRefreshToken.pipe(Effect.provide(webStorageLive))
@@ -95,7 +95,7 @@ const storeTokens = Effect.fn("storeTokens")(function* (
 	refreshToken: string,
 	expiresIn: number,
 ) {
-	if (isTauri()) {
+	if (isDesktopRuntime()) {
 		yield* TokenStorage.storeTokens(accessToken, refreshToken, expiresIn).pipe(
 			Effect.provide(desktopStorageLive),
 			Effect.orDie,

@@ -12,7 +12,7 @@ import { Text } from "~/components/ui/text"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { useAuth, currentUserQueryAtom } from "~/lib/auth"
 import { appRegistry } from "~/lib/registry"
-import { isTauri } from "~/lib/tauri"
+import { isDesktopRuntime } from "~/lib/desktop-runtime"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
@@ -53,7 +53,7 @@ function RouteComponent() {
 				if (refreshed) {
 					appRegistry.refresh(currentUserQueryAtom)
 				} else {
-					if (isTauri()) {
+					if (isDesktopRuntime()) {
 						router.navigate({ to: "/auth/desktop-login" })
 					} else {
 						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
@@ -63,7 +63,7 @@ function RouteComponent() {
 			return
 		}
 
-		if (isTauri()) {
+		if (isDesktopRuntime()) {
 			router.navigate({ to: "/auth/desktop-login" })
 		} else {
 			login({ returnTo: `${location.pathname}${location.search}${location.hash}` })
@@ -82,7 +82,7 @@ function RouteComponent() {
 					appRegistry.refresh(currentUserQueryAtom)
 					isHandling = false
 				} else {
-					if (isTauri()) {
+					if (isDesktopRuntime()) {
 						router.navigate({ to: "/auth/desktop-login" })
 					} else {
 						login({ returnTo: `${location.pathname}${location.search}${location.hash}` })

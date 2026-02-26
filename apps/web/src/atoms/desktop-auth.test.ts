@@ -147,7 +147,7 @@ describe("isTransientError", () => {
 
 // ============================================================================
 // Integration Tests for forceRefresh and waitForRefresh
-// These tests require mocking the Tauri environment and would need more setup
+// These tests require mocking the desktop runtime environment and would need more setup
 // ============================================================================
 
 describe("forceRefresh", () => {
@@ -163,7 +163,7 @@ describe("forceRefresh", () => {
 	})
 
 	it("returns false when no refresh token available", async () => {
-		// Without Tauri or stored tokens, forceRefresh returns false
+			// Without desktop runtime or stored tokens, forceRefresh returns false
 		const { forceRefresh } = await import("~/lib/auth-token")
 		const result = await forceRefresh()
 		expect(result).toBe(false)

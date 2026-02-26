@@ -4,9 +4,9 @@
  *
  * Provides a unified KeyValueStore abstraction that works across:
  * - Browser: localStorage
- * - Tauri Desktop: @tauri-apps/plugin-store (settings.json)
+ * - Desktop Runtime: Desktop bridge store (settings.json)
  */
 
 export { layer } from "./platform-key-value-store"
 export { platformStorageRuntime } from "./platform-runtime"
-export { layerTauriStore } from "./tauri-key-value-store"
+export { layerDesktopStore } from "./desktop-key-value-store"

@@ -13,7 +13,7 @@ import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
 import { TokenStorage } from "./services/desktop/token-storage"
 import { WebTokenStorage } from "./services/web/token-storage"
 import { runtime } from "./services/common/runtime"
-import { isTauri } from "./tauri"
+import { isDesktopRuntime } from "./desktop-runtime"
 
 const DesktopTokenStorageLive = TokenStorage.Default
 const WebTokenStorageLive = WebTokenStorage.Default
@@ -22,7 +22,7 @@ const WebTokenStorageLive = WebTokenStorage.Default
  * Clear tokens from appropriate storage (desktop or web)
  */
 const clearTokens = async (): Promise<void> => {
-	const effect = isTauri()
+	const effect = isDesktopRuntime()
 		? TokenStorage.clearTokens.pipe(Effect.provide(DesktopTokenStorageLive))
 		: WebTokenStorage.clearTokens.pipe(Effect.provide(WebTokenStorageLive))
 	return runtime.runPromise(
@@ -51,8 +51,8 @@ const makeAuthenticatedRequest = async (
 }
 
 /**
- * Authenticated fetch that handles both Tauri and web using Bearer tokens
- * - Desktop: Reads access token from Tauri store
+ * Authenticated fetch that handles both desktop runtime and web using Bearer tokens
+ * - Desktop: Reads access token from desktop store
  * - Web: Reads access token from localStorage
  *
  * Both platforms:

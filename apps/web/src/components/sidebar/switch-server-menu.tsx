@@ -47,10 +47,10 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 		const route = getOrganizationRoute(selectedOrg.org)
 		const returnUrl = route.to
 
-		// Use login() to handle organization switch
-		// This is Tauri-aware and will open system browser on desktop
-		login({ organizationId: selectedOrgId, returnTo: returnUrl })
-	}
+			// Use login() to handle organization switch
+			// This opens the system browser automatically on desktop runtime
+			login({ organizationId: selectedOrgId, returnTo: returnUrl })
+		}
 
 	return (
 		<>

@@ -1,7 +1,7 @@
 /**
  * @module Application entry point
  * @platform shared (with platform-specific sections)
- * @description Main entry point with Tauri initialization for desktop
+ * @description Main entry point with desktop runtime initialization
  */
 
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
@@ -21,13 +21,13 @@ import "./styles/styles.css"
 import { RegistryContext } from "@effect-atom/atom-react"
 import { appRegistry } from "./lib/registry.ts"
 
-// Initialize Tauri-specific features (no-op in browser)
-import { initTauri } from "./lib/tauri.ts"
+// Initialize desktop-specific features (no-op in browser)
+import { initDesktopRuntime } from "./lib/desktop-runtime.ts"
 
 import { Loader } from "./components/loader.tsx"
 import { RouteErrorComponent } from "./components/route-error.tsx"
 import { RouteNotFoundComponent } from "./components/route-not-found.tsx"
-import { TauriUpdateCheck } from "./components/tauri-update-check.tsx"
+import { DesktopUpdateCheck } from "./components/desktop-update-check.tsx"
 import { ThemeProvider } from "./components/theme-provider.tsx"
 import { Toast } from "./components/ui/toast.tsx"
 import reportWebVitals from "./reportWebVitals.ts"
@@ -91,7 +91,7 @@ export const router = createRouter({
 				<HotkeysProvider>
 					<ThemeProvider>
 						<Toast />
-						<TauriUpdateCheck />
+						<DesktopUpdateCheck />
 						{children}
 					</ThemeProvider>
 				</HotkeysProvider>
@@ -113,10 +113,10 @@ declare module "react-aria-components" {
 	}
 }
 
-// Initialize Tauri and render app
-// Must await initTauri to ensure tokens are synced before first API call
+// Initialize desktop runtime and render app
+// Must await initDesktopRuntime to ensure tokens are synced before first API call
 ;(async () => {
-	await initTauri()
+	await initDesktopRuntime()
 
 	const rootElement = document.getElementById("app")
 	if (rootElement && !rootElement.innerHTML) {

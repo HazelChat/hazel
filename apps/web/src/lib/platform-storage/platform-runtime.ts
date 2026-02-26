@@ -5,7 +5,7 @@
  * USAGE: Replace `BrowserKeyValueStore.layerLocalStorage` imports with this runtime
  *
  * Uses:
- * - Tauri desktop: @tauri-apps/plugin-store (settings.json)
+ * - Desktop runtime: Desktop bridge store (settings.json)
  * - Browser: localStorage
  *
  * @example

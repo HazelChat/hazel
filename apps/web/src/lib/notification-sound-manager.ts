@@ -3,7 +3,7 @@
  * @description Singleton class for notification sound playback with cooldown and dedupe.
  */
 
-import { isTauri } from "./tauri"
+import { isDesktopRuntime } from "./desktop-runtime"
 import type { NotificationDeliveryReason, NotificationSinkStatus } from "./notifications/types"
 
 export interface NotificationSoundConfig {
@@ -41,7 +41,7 @@ export class NotificationSoundManager {
 			this.audioElement = new Audio()
 			this.audioElement.volume = 0.5
 
-			if (isTauri()) {
+			if (isDesktopRuntime()) {
 				this.isPrimed = true
 			}
 		}

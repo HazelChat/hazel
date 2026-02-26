@@ -4,26 +4,29 @@
  */
 
 import { useEffect, useState } from "react"
-import { isTauri } from "./tauri"
+import { desktopBridge } from "./desktop-bridge"
+import { isDesktopRuntime } from "./desktop-runtime"
 
 /**
  * Hook to get the app version
- * - Web builds: Returns the build-time injected version from tauri.conf.json
- * - Tauri builds: Returns the actual installed app version via Tauri API
+ * - Web builds: Returns build-time injected version
+ * - Desktop builds: Returns the installed app version via desktop bridge
  */
 export function useAppVersion(): string | null {
 	const [version, setVersion] = useState<string | null>(() => {
-		// Web builds can return immediately
 		if (typeof window === "undefined") return null
-		if (!("__TAURI_INTERNALS__" in window)) return __APP_VERSION__
+		if (!isDesktopRuntime()) return __APP_VERSION__
 		return null
 	})
 
 	useEffect(() => {
-		if (isTauri()) {
-			// Get version from Tauri API (actual installed app version)
-			const app = (window as any).__TAURI__?.app
-			app?.getVersion?.().then(setVersion)
+		if (isDesktopRuntime()) {
+			desktopBridge
+				.getVersion()
+				.then((result) => setVersion(result.version))
+				.catch((error) => {
+					console.error("[version] Failed to read desktop app version:", error)
+				})
 		}
 	}, [])
 

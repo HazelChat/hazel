@@ -9,13 +9,13 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import {
 	checkForUpdates,
-	createDownloadEffect,
-	isTauriEnvironment,
-	tauriDownloadStateAtom,
-	tauriUpdateStateAtom,
-	type TauriDownloadState,
-	type TauriUpdateState,
-} from "~/atoms/tauri-update-atoms"
+	runDownloadEffect,
+	isDesktopEnvironment,
+	desktopDownloadStateAtom,
+	desktopUpdateStateAtom,
+	type DesktopDownloadState,
+	type DesktopUpdateState,
+} from "~/atoms/desktop-update-atoms"
 import { IconCheck } from "~/components/icons/icon-check"
 import { IconCube } from "~/components/icons/icon-cube"
 import { IconDownload } from "~/components/icons/icon-download"
@@ -25,8 +25,12 @@ import { ProgressBar, ProgressBarTrack } from "~/components/ui/progress-bar"
 import { SectionHeader } from "~/components/ui/section-header"
 import { SectionLabel } from "~/components/ui/section-label"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
-import { runtime } from "~/lib/services/common/runtime"
-import { disableAutostart, enableAutostart, isAutostartEnabled } from "~/lib/tauri-autostart"
+import {
+	disableAutostart,
+	enableAutostart,
+	isAutostartEnabled,
+	isAutostartSupported,
+} from "~/lib/desktop-autostart"
 import { useAppVersion } from "~/lib/version"
 
 export const Route = createFileRoute("/_app/$orgSlug/my-settings/desktop")({
@@ -35,13 +39,14 @@ export const Route = createFileRoute("/_app/$orgSlug/my-settings/desktop")({
 
 function DesktopSettings() {
 	const [autostartEnabled, setAutostartEnabled] = useState<boolean | null>(null)
+	const autostartSupported = isAutostartSupported()
 
 	// App version and update state
 	const version = useAppVersion()
-	const updateState = useAtomValue(tauriUpdateStateAtom)
-	const downloadState = useAtomValue(tauriDownloadStateAtom)
-	const setUpdateState = useAtomSet(tauriUpdateStateAtom)
-	const setDownloadState = useAtomSet(tauriDownloadStateAtom)
+	const updateState = useAtomValue(desktopUpdateStateAtom)
+	const downloadState = useAtomValue(desktopDownloadStateAtom)
+	const setUpdateState = useAtomSet(desktopUpdateStateAtom)
+	const setDownloadState = useAtomSet(desktopDownloadStateAtom)
 
 	useEffect(() => {
 		isAutostartEnabled()
@@ -58,7 +63,7 @@ function DesktopSettings() {
 
 	const handleInstallUpdate = () => {
 		if (updateState._tag === "available") {
-			runtime.runFork(createDownloadEffect(updateState.update, setDownloadState))
+			void runDownloadEffect(setDownloadState)
 		}
 	}
 
@@ -107,21 +112,22 @@ function DesktopSettings() {
 						<div className="rounded-lg border border-border bg-secondary/50 p-4">
 							<Switch
 								isSelected={autostartEnabled ?? false}
-								isDisabled={autostartEnabled === null}
+								isDisabled={autostartEnabled === null || !autostartSupported}
 								onChange={handleAutostartToggle}
 							>
 								<SwitchLabel>Open at login</SwitchLabel>
 							</Switch>
 							<p className="mt-3 text-muted-fg text-sm">
-								When enabled, the app will automatically launch when you log in to your
-								computer.
+								{autostartSupported
+									? "When enabled, the app will automatically launch when you log in to your computer."
+									: "Launch at startup is not available in this desktop release yet."}
 							</p>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			{isTauriEnvironment && (
+			{isDesktopEnvironment && (
 				<>
 					<hr className="border-border" />
 
@@ -184,8 +190,8 @@ function UpdateStatusDisplay({
 	onCheckForUpdates,
 	onInstallUpdate,
 }: {
-	updateState: TauriUpdateState
-	downloadState: TauriDownloadState
+	updateState: DesktopUpdateState
+	downloadState: DesktopDownloadState
 	onCheckForUpdates: () => void
 	onInstallUpdate: () => void
 }) {

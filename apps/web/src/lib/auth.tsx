@@ -9,7 +9,7 @@ import {
 import { webInitAtom, webLogoutAtom, webTokenSchedulerAtom } from "~/atoms/web-auth"
 import { router } from "~/main"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
-import { isTauri } from "./tauri"
+import { isDesktopRuntime } from "./desktop-runtime"
 
 interface LoginOptions {
 	returnTo?: string
@@ -71,7 +71,7 @@ export function useAuth() {
 
 	// Initialize auth atoms for both platforms
 	// Each atom internally checks platform and returns early if not applicable
-	// Desktop: loads stored tokens from Tauri store, starts refresh scheduler
+	// Desktop: loads stored tokens from desktop store, starts refresh scheduler
 	useAtomValue(desktopInitAtom)
 	useAtomValue(desktopTokenSchedulerAtom)
 	// Web: loads stored tokens from localStorage, starts refresh scheduler
@@ -100,7 +100,7 @@ export function useAuth() {
 		}
 
 		// Desktop auth flow - uses atom-based OAuth flow
-		if (isTauri()) {
+		if (isDesktopRuntime()) {
 			desktopLogin({
 				returnTo,
 				organizationId: options?.organizationId,
@@ -127,7 +127,7 @@ export function useAuth() {
 
 	const logout = async (options?: LogoutOptions) => {
 		// Desktop logout - uses atom-based cleanup
-		if (isTauri()) {
+		if (isDesktopRuntime()) {
 			desktopLogout(options)
 			return
 		}

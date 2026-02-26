@@ -38,13 +38,13 @@ import {
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { useOrganization } from "~/hooks/use-organization"
-import { isTauri, isTauriMacOS } from "~/lib/tauri"
+import { isDesktopRuntime, isDesktopMacOS } from "~/lib/desktop-runtime"
 
 export function MySettingsSidebar() {
 	const { isMobile } = useSidebar()
 	const { organization, slug } = useOrganization()
 	const matchRoute = useMatchRoute()
-	const hasTauriTitlebar = isTauriMacOS()
+	const hasDesktopTitlebar = isDesktopMacOS()
 	const createOrgModal = useModal("create-organization")
 	const emailInviteModal = useModal("email-invite")
 
@@ -59,8 +59,7 @@ export function MySettingsSidebar() {
 	return (
 		<Sidebar collapsible="none" className="flex flex-1">
 			<SidebarHeader
-				data-tauri-drag-region
-				className={`border-b ${hasTauriTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
+				className={`electrobun-webkit-app-region-drag border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:h-px before:bg-sidebar-border" : "h-14"}`}
 			>
 				<Menu>
 					<PrimitiveButton className="group/switcher relative flex items-center justify-between gap-x-2 font-semibold outline-hidden text-fg/80 hover:text-fg transition-colors focus-visible:ring focus-visible:ring-primary">
@@ -185,7 +184,7 @@ export function MySettingsSidebar() {
 								<SidebarLabel>Notifications</SidebarLabel>
 							</SidebarLink>
 						</SidebarItem>
-						{isTauri() && (
+						{isDesktopRuntime() && (
 							<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/my-settings/desktop")}>
 								<SidebarLink
 									to="/$orgSlug/my-settings/desktop"
