@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::io::Read;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
-use tauri::{command, AppHandle, Emitter, Manager};
 #[cfg(desktop)]
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{command, AppHandle, Emitter, Manager};
 use tauri_plugin_decorum::WebviewWindowExt;
 use tiny_http::{Header, Method, Response, Server};
 
@@ -134,11 +133,9 @@ fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
 
                         // Send success response with explicit content length
                         let body = r#"{"success":true}"#;
-                        let response = Response::from_string(body)
-                            .with_header(
-                                Header::from_bytes("Content-Length", body.len().to_string())
-                                    .unwrap(),
-                            );
+                        let response = Response::from_string(body).with_header(
+                            Header::from_bytes("Content-Length", body.len().to_string()).unwrap(),
+                        );
                         let response = cors_headers()
                             .into_iter()
                             .fold(response, |r, h| r.with_header(h));
@@ -212,8 +209,15 @@ pub fn run() {
             // Create native menu
             #[cfg(desktop)]
             {
-                let settings = MenuItem::with_id(app, "settings", "Settings...", true, Some("CmdOrCtrl+,"))?;
-                let check_updates = MenuItem::with_id(app, "check_updates", "Check for Updates...", true, None::<&str>)?;
+                let settings =
+                    MenuItem::with_id(app, "settings", "Settings...", true, Some("CmdOrCtrl+,"))?;
+                let check_updates = MenuItem::with_id(
+                    app,
+                    "check_updates",
+                    "Check for Updates...",
+                    true,
+                    None::<&str>,
+                )?;
 
                 let app_submenu = Submenu::with_items(
                     app,
@@ -222,46 +226,67 @@ pub fn run() {
                     &[
                         &settings,
                         &check_updates,
+                        #[cfg(target_os = "macos")]
+                        &PredefinedMenuItem::separator(app)?,
+                        #[cfg(target_os = "macos")]
+                        &PredefinedMenuItem::hide(app, None::<&str>)?,
                         &PredefinedMenuItem::separator(app)?,
                         &PredefinedMenuItem::quit(app, Some("Quit Hazel"))?,
                     ],
                 )?;
 
-                let new_channel = MenuItem::with_id(app, "new_channel", "New Channel...", true, Some("CmdOrCtrl+Alt+N"))?;
-                let invite = MenuItem::with_id(app, "invite", "Invite People...", true, Some("CmdOrCtrl+Alt+I"))?;
+                let new_channel = MenuItem::with_id(
+                    app,
+                    "new_channel",
+                    "New Channel...",
+                    true,
+                    Some("CmdOrCtrl+Alt+N"),
+                )?;
+                let invite = MenuItem::with_id(
+                    app,
+                    "invite",
+                    "Invite People...",
+                    true,
+                    Some("CmdOrCtrl+Alt+I"),
+                )?;
 
                 let file_submenu = Submenu::with_items(
                     app,
                     "File",
                     true,
-                    &[
-                        &new_channel,
-                        &PredefinedMenuItem::separator(app)?,
-                        &invite,
-                    ],
+                    &[&new_channel, &PredefinedMenuItem::separator(app)?, &invite],
                 )?;
 
+                #[cfg(target_os = "macos")]
+                let window_submenu = Submenu::with_items(
+                    app,
+                    "Window",
+                    true,
+                    &[&PredefinedMenuItem::minimize(app, None::<&str>)?],
+                )?;
+
+                #[cfg(target_os = "macos")]
+                let menu = Menu::with_items(app, &[&app_submenu, &file_submenu, &window_submenu])?;
+                #[cfg(not(target_os = "macos"))]
                 let menu = Menu::with_items(app, &[&app_submenu, &file_submenu])?;
                 app.set_menu(menu)?;
 
                 // Handle menu events
                 let app_handle = app.handle().clone();
-                app.on_menu_event(move |_app, event| {
-                    match event.id().as_ref() {
-                        "settings" => {
-                            let _ = app_handle.emit("menu-open-settings", ());
-                        }
-                        "check_updates" => {
-                            let _ = app_handle.emit("menu-check-updates", ());
-                        }
-                        "new_channel" => {
-                            let _ = app_handle.emit("menu-new-channel", ());
-                        }
-                        "invite" => {
-                            let _ = app_handle.emit("menu-invite", ());
-                        }
-                        _ => {}
+                app.on_menu_event(move |_app, event| match event.id().as_ref() {
+                    "settings" => {
+                        let _ = app_handle.emit("menu-open-settings", ());
                     }
+                    "check_updates" => {
+                        let _ = app_handle.emit("menu-check-updates", ());
+                    }
+                    "new_channel" => {
+                        let _ = app_handle.emit("menu-new-channel", ());
+                    }
+                    "invite" => {
+                        let _ = app_handle.emit("menu-invite", ());
+                    }
+                    _ => {}
                 });
             }
 
