@@ -258,6 +258,36 @@ pub fn run() {
                 )?;
 
                 #[cfg(target_os = "macos")]
+                let edit_submenu = Submenu::with_items(
+                    app,
+                    "Edit",
+                    true,
+                    &[
+                        &PredefinedMenuItem::undo(app, None::<&str>)?,
+                        &PredefinedMenuItem::redo(app, None::<&str>)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::cut(app, None::<&str>)?,
+                        &PredefinedMenuItem::copy(app, None::<&str>)?,
+                        &PredefinedMenuItem::paste(app, None::<&str>)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::select_all(app, None::<&str>)?,
+                    ],
+                )?;
+                #[cfg(not(target_os = "macos"))]
+                let edit_submenu = Submenu::with_items(
+                    app,
+                    "Edit",
+                    true,
+                    &[
+                        &PredefinedMenuItem::cut(app, None::<&str>)?,
+                        &PredefinedMenuItem::copy(app, None::<&str>)?,
+                        &PredefinedMenuItem::paste(app, None::<&str>)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::select_all(app, None::<&str>)?,
+                    ],
+                )?;
+
+                #[cfg(target_os = "macos")]
                 let window_submenu = Submenu::with_items(
                     app,
                     "Window",
@@ -266,9 +296,10 @@ pub fn run() {
                 )?;
 
                 #[cfg(target_os = "macos")]
-                let menu = Menu::with_items(app, &[&app_submenu, &file_submenu, &window_submenu])?;
+                let menu =
+                    Menu::with_items(app, &[&app_submenu, &file_submenu, &edit_submenu, &window_submenu])?;
                 #[cfg(not(target_os = "macos"))]
-                let menu = Menu::with_items(app, &[&app_submenu, &file_submenu])?;
+                let menu = Menu::with_items(app, &[&app_submenu, &file_submenu, &edit_submenu])?;
                 app.set_menu(menu)?;
 
                 // Handle menu events
