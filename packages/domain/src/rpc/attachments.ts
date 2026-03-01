@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { AttachmentId } from "@hazel/schema"
 import { Attachment } from "../models"
@@ -47,7 +46,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("attachment.delete", {
+	Rpc.make("attachment.delete", {
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
@@ -65,7 +64,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user is not the uploader
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("attachment.complete", {
+	Rpc.make("attachment.complete", {
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Attachment.Model,
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
@@ -83,7 +82,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user is not the uploader
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("attachment.fail", {
+	Rpc.make("attachment.fail", {
 		payload: Schema.Struct({
 			id: AttachmentId,
 			reason: Schema.optional(Schema.String),

@@ -1,7 +1,6 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { BotId } from "@hazel/schema"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { Bot, BotCommand } from "../models"
 import { RateLimitExceededError } from "../rate-limit-errors"
@@ -124,7 +123,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @returns Bot data, plain token, and transaction ID
 	 * @throws UnauthorizedError if user is not authenticated
 	 */
-	Rpc.mutation("bot.create", {
+	Rpc.make("bot.create", {
 		payload: Schema.Struct({
 			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
 			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
@@ -144,7 +143,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @returns Array of bots
 	 * @throws UnauthorizedError if user is not authenticated
 	 */
-	Rpc.query("bot.list", {
+	Rpc.make("bot.list", {
 		payload: Schema.Struct({}),
 		success: BotListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -160,7 +159,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not org admin or bot creator
 	 */
-	Rpc.query("bot.get", {
+	Rpc.make("bot.get", {
 		payload: Schema.Struct({ id: BotId }),
 		success: BotResponse,
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
@@ -176,7 +175,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not org admin or bot creator
 	 */
-	Rpc.mutation("bot.update", {
+	Rpc.make("bot.update", {
 		payload: Schema.Struct({
 			id: BotId,
 			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
@@ -199,7 +198,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not org admin or bot creator
 	 */
-	Rpc.mutation("bot.delete", {
+	Rpc.make("bot.delete", {
 		payload: Schema.Struct({ id: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
@@ -216,7 +215,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not org admin or bot creator
 	 */
-	Rpc.mutation("bot.regenerateToken", {
+	Rpc.make("bot.regenerateToken", {
 		payload: Schema.Struct({ id: BotId }),
 		success: BotCreatedResponse,
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
@@ -232,7 +231,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not org admin
 	 */
-	Rpc.query("bot.getCommands", {
+	Rpc.make("bot.getCommands", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: BotCommandListResponse,
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
@@ -250,7 +249,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @returns Array of public bots with install status
 	 * @throws UnauthorizedError if user is not authenticated
 	 */
-	Rpc.query("bot.listPublic", {
+	Rpc.make("bot.listPublic", {
 		payload: Schema.Struct({
 			search: Schema.optional(Schema.String),
 		}),
@@ -266,7 +265,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @returns Array of installed bots
 	 * @throws UnauthorizedError if user is not authenticated
 	 */
-	Rpc.query("bot.listInstalled", {
+	Rpc.make("bot.listInstalled", {
 		payload: Schema.Struct({}),
 		success: BotListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -283,7 +282,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotAlreadyInstalledError if bot is already installed
 	 * @throws UnauthorizedError if user is not org admin
 	 */
-	Rpc.mutation("bot.install", {
+	Rpc.make("bot.install", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(
@@ -305,7 +304,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot is not installed
 	 * @throws UnauthorizedError if user is not org admin
 	 */
-	Rpc.mutation("bot.uninstall", {
+	Rpc.make("bot.uninstall", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
@@ -323,7 +322,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotAlreadyInstalledError if bot is already installed
 	 * @throws UnauthorizedError if user is not org admin
 	 */
-	Rpc.mutation("bot.installById", {
+	Rpc.make("bot.installById", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(
@@ -346,7 +345,7 @@ export class BotRpcs extends RpcGroup.make(
 	 * @throws BotNotFoundError if bot doesn't exist
 	 * @throws UnauthorizedError if user is not bot creator
 	 */
-	Rpc.mutation("bot.updateAvatar", {
+	Rpc.make("bot.updateAvatar", {
 		payload: Schema.Struct({
 			id: BotId,
 			avatarUrl: Schema.String,

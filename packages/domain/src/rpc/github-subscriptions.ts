@@ -1,7 +1,6 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { ChannelId, GitHubSubscriptionId } from "@hazel/schema"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { GitHubSubscription } from "../models"
 import { TransactionId } from "@hazel/schema"
@@ -82,7 +81,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	 * @throws GitHubSubscriptionExistsError if already subscribed
 	 * @throws UnauthorizedError if user is not authorized
 	 */
-	Rpc.mutation("githubSubscription.create", {
+	Rpc.make("githubSubscription.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
 			repositoryId: Schema.Number,
@@ -112,7 +111,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	 * @throws ChannelNotFoundError if channel doesn't exist
 	 * @throws UnauthorizedError if user is not authorized
 	 */
-	Rpc.query("githubSubscription.list", {
+	Rpc.make("githubSubscription.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: GitHubSubscriptionListResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
@@ -127,7 +126,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	 * @returns Array of subscriptions across all channels in the organization
 	 * @throws UnauthorizedError if user is not authenticated
 	 */
-	Rpc.query("githubSubscription.listByOrganization", {
+	Rpc.make("githubSubscription.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: GitHubSubscriptionListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -143,7 +142,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	 * @throws GitHubSubscriptionNotFoundError if subscription doesn't exist
 	 * @throws UnauthorizedError if user is not authorized
 	 */
-	Rpc.mutation("githubSubscription.update", {
+	Rpc.make("githubSubscription.update", {
 		payload: Schema.Struct({
 			id: GitHubSubscriptionId,
 			enabledEvents: Schema.optional(GitHubSubscription.GitHubEventTypes),
@@ -164,7 +163,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	 * @throws GitHubSubscriptionNotFoundError if subscription doesn't exist
 	 * @throws UnauthorizedError if user is not authorized
 	 */
-	Rpc.mutation("githubSubscription.delete", {
+	Rpc.make("githubSubscription.delete", {
 		payload: Schema.Struct({ id: GitHubSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError),

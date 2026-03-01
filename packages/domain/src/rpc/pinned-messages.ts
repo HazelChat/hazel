@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, MessageId, PinnedMessageId } from "@hazel/schema"
 import { PinnedMessage } from "../models"
@@ -71,7 +70,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("pinnedMessage.create", {
+	Rpc.make("pinnedMessage.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
 			messageId: MessageId,
@@ -92,7 +91,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("pinnedMessage.update", {
+	Rpc.make("pinnedMessage.update", {
 		payload: Schema.Struct({
 			id: PinnedMessageId,
 			...PinnedMessage.Model.jsonUpdate.fields,
@@ -113,7 +112,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("pinnedMessage.delete", {
+	Rpc.make("pinnedMessage.delete", {
 		payload: Schema.Struct({ id: PinnedMessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),

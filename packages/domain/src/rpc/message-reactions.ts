@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { MessageReactionId } from "@hazel/schema"
 import { MessageReaction } from "../models"
@@ -44,7 +43,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("messageReaction.toggle", {
+	Rpc.make("messageReaction.toggle", {
 		payload: Schema.Struct({
 			messageId: MessageReaction.Insert.fields.messageId,
 			channelId: MessageReaction.Insert.fields.channelId,
@@ -70,7 +69,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("messageReaction.create", {
+	Rpc.make("messageReaction.create", {
 		payload: MessageReaction.Insert,
 		success: MessageReactionResponse,
 		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
@@ -88,7 +87,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("messageReaction.update", {
+	Rpc.make("messageReaction.update", {
 		payload: Schema.Struct({
 			id: MessageReactionId,
 			...MessageReaction.Model.jsonUpdate.fields,
@@ -109,7 +108,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("messageReaction.delete", {
+	Rpc.make("messageReaction.delete", {
 		payload: Schema.Struct({ id: MessageReactionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(MessageReactionNotFoundError, UnauthorizedError, InternalServerError),

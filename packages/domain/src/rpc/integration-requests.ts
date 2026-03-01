@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { IntegrationRequestId, OrganizationId } from "@hazel/schema"
 import { IntegrationRequest } from "../models"
@@ -35,7 +34,7 @@ export class CreateIntegrationRequestPayload extends Schema.Class<CreateIntegrat
  * Simple RPC for submitting integration requests.
  */
 export class IntegrationRequestRpcs extends RpcGroup.make(
-	Rpc.mutation("integrationRequest.create", {
+	Rpc.make("integrationRequest.create", {
 		payload: CreateIntegrationRequestPayload,
 		success: IntegrationRequestResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),

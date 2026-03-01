@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import {
 	AIProviderUnavailableError,
 	AIRateLimitError,
@@ -88,7 +87,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channel.create", {
+	Rpc.make("channel.create", {
 		payload: CreateChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -106,7 +105,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channel.update", {
+	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
 		}).pipe(Schema.extend(Schema.partial(Channel.Model.jsonUpdate))),
@@ -126,7 +125,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channel.delete", {
+	Rpc.make("channel.delete", {
 		payload: Schema.Struct({ id: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
@@ -145,7 +144,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channel.createDm", {
+	Rpc.make("channel.createDm", {
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError),
@@ -165,7 +164,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channel.createThread", {
+	Rpc.make("channel.createThread", {
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
 		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
@@ -192,7 +191,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	 * @throws AIResponseParseError if AI response cannot be parsed
 	 * @throws ThreadNameUpdateError if database update fails in workflow
 	 */
-	Rpc.mutation("channel.generateName", {
+	Rpc.make("channel.generateName", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ success: Schema.Boolean }),
 		error: Schema.Union(

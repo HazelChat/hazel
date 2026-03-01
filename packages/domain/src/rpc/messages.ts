@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../errors"
 import { MessageId } from "@hazel/schema"
 import { Message } from "../models"
@@ -68,7 +67,7 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("message.create", {
+	Rpc.make("message.create", {
 		payload: Message.Insert,
 		success: MessageResponse,
 		error: Schema.Union(
@@ -92,7 +91,7 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("message.update", {
+	Rpc.make("message.update", {
 		payload: Schema.Struct({
 			id: MessageId,
 		}).pipe(Schema.extend(Message.JsonUpdate)),
@@ -118,7 +117,7 @@ export class MessageRpcs extends RpcGroup.make(
 	 * @throws RateLimitExceededError if rate limit exceeded (60/min)
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("message.delete", {
+	Rpc.make("message.delete", {
 		payload: Schema.Struct({ id: MessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(

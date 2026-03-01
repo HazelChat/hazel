@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { OrganizationMemberId } from "@hazel/schema"
 import { OrganizationMember } from "../models"
@@ -74,7 +73,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("organizationMember.create", {
+	Rpc.make("organizationMember.create", {
 		payload: OrganizationMember.Model.jsonCreate,
 		success: OrganizationMemberResponse,
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
@@ -92,7 +91,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("organizationMember.update", {
+	Rpc.make("organizationMember.update", {
 		payload: Schema.Struct({
 			id: OrganizationMemberId,
 			...OrganizationMember.Model.jsonUpdate.fields,
@@ -113,7 +112,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("organizationMember.updateMetadata", {
+	Rpc.make("organizationMember.updateMetadata", {
 		payload: Schema.Struct({
 			id: OrganizationMemberId,
 			metadata: Schema.Struct({
@@ -137,7 +136,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("organizationMember.delete", {
+	Rpc.make("organizationMember.delete", {
 		payload: Schema.Struct({ id: OrganizationMemberId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),

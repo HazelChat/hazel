@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvitationId, OrganizationId } from "@hazel/schema"
 import { Invitation } from "../models"
@@ -63,7 +62,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("invitation.create", {
+	Rpc.make("invitation.create", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 			invites: Schema.Array(
@@ -89,7 +88,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("invitation.resend", {
+	Rpc.make("invitation.resend", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: InvitationResponse,
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
@@ -107,7 +106,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("invitation.revoke", {
+	Rpc.make("invitation.revoke", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
@@ -125,7 +124,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("invitation.update", {
+	Rpc.make("invitation.update", {
 		payload: Schema.Struct({
 			id: InvitationId,
 			...Invitation.Model.jsonUpdate.fields,
@@ -146,7 +145,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("invitation.delete", {
+	Rpc.make("invitation.delete", {
 		payload: Schema.Struct({ id: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),

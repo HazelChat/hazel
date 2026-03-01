@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, MessageId, NotificationId } from "@hazel/schema"
 import { Notification } from "../models"
@@ -39,7 +38,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("notification.create", {
+	Rpc.make("notification.create", {
 		payload: Notification.Model.jsonCreate,
 		success: NotificationResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -57,7 +56,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("notification.update", {
+	Rpc.make("notification.update", {
 		payload: Schema.Struct({
 			id: NotificationId,
 			...Notification.Model.jsonUpdate.fields,
@@ -78,7 +77,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("notification.delete", {
+	Rpc.make("notification.delete", {
 		payload: Schema.Struct({ id: NotificationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
@@ -95,7 +94,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("notification.deleteByMessageIds", {
+	Rpc.make("notification.deleteByMessageIds", {
 		payload: Schema.Struct({
 			messageIds: Schema.Array(MessageId),
 			channelId: ChannelId,

@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "../models"
@@ -85,7 +84,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("typingIndicator.create", {
+	Rpc.make("typingIndicator.create", {
 		payload: CreateTypingIndicatorPayload,
 		success: TypingIndicatorResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -103,7 +102,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("typingIndicator.update", {
+	Rpc.make("typingIndicator.update", {
 		payload: Schema.Struct({
 			id: TypingIndicatorId,
 			lastTyped: Schema.optional(Schema.Number),
@@ -124,7 +123,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("typingIndicator.delete", {
+	Rpc.make("typingIndicator.delete", {
 		payload: Schema.Struct({ id: TypingIndicatorId }),
 		success: TypingIndicatorResponse,
 		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),

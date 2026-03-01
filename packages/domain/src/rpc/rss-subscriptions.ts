@@ -1,7 +1,6 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { ChannelId, RssSubscriptionId } from "@hazel/schema"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { RssSubscription } from "../models"
 import { TransactionId } from "@hazel/schema"
@@ -45,7 +44,7 @@ export class RssFeedValidationError extends Schema.TaggedError<RssFeedValidation
 ) {}
 
 export class RssSubscriptionRpcs extends RpcGroup.make(
-	Rpc.mutation("rssSubscription.create", {
+	Rpc.make("rssSubscription.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
 			feedUrl: Schema.String,
@@ -61,19 +60,19 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 		),
 	}).middleware(AuthMiddleware),
 
-	Rpc.query("rssSubscription.list", {
+	Rpc.make("rssSubscription.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: RssSubscriptionListResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.query("rssSubscription.listByOrganization", {
+	Rpc.make("rssSubscription.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: RssSubscriptionListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("rssSubscription.update", {
+	Rpc.make("rssSubscription.update", {
 		payload: Schema.Struct({
 			id: RssSubscriptionId,
 			isEnabled: Schema.optional(Schema.Boolean),
@@ -83,7 +82,7 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("rssSubscription.delete", {
+	Rpc.make("rssSubscription.delete", {
 		payload: Schema.Struct({ id: RssSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),

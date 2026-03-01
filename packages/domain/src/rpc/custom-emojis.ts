@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { CustomEmojiId, OrganizationId, TransactionId } from "@hazel/schema"
 import { CustomEmoji } from "../models"
@@ -63,7 +62,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("customEmoji.create", {
+	Rpc.make("customEmoji.create", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 			name: Schema.String,
@@ -90,7 +89,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("customEmoji.update", {
+	Rpc.make("customEmoji.update", {
 		payload: Schema.Struct({
 			id: CustomEmojiId,
 			name: Schema.optional(Schema.String),
@@ -115,7 +114,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("customEmoji.delete", {
+	Rpc.make("customEmoji.delete", {
 		payload: Schema.Struct({ id: CustomEmojiId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(CustomEmojiNotFoundError, UnauthorizedError, InternalServerError),
@@ -133,7 +132,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("customEmoji.restore", {
+	Rpc.make("customEmoji.restore", {
 		payload: Schema.Struct({
 			id: CustomEmojiId,
 			imageUrl: Schema.optional(Schema.String),

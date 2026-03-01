@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { UserPresenceStatusId } from "@hazel/schema"
 import { UserPresenceStatus } from "../models"
@@ -61,7 +60,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("userPresenceStatus.update", {
+	Rpc.make("userPresenceStatus.update", {
 		payload: Schema.Struct({
 			status: Schema.optional(UserPresenceStatus.Model.json.fields.status),
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
@@ -87,7 +86,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if not authenticated
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("userPresenceStatus.heartbeat", {
+	Rpc.make("userPresenceStatus.heartbeat", {
 		payload: Schema.Struct({}),
 		success: Schema.Struct({
 			lastSeenAt: JsonDate,
@@ -105,7 +104,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if not authenticated
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("userPresenceStatus.clearStatus", {
+	Rpc.make("userPresenceStatus.clearStatus", {
 		payload: Schema.Struct({}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),

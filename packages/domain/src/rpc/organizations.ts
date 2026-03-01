@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { OrganizationId } from "@hazel/schema"
 import { Organization } from "../models"
@@ -69,13 +68,13 @@ export class PublicOrganizationInfo extends Schema.Class<PublicOrganizationInfo>
 }) {}
 
 export class OrganizationRpcs extends RpcGroup.make(
-	Rpc.mutation("organization.create", {
+	Rpc.make("organization.create", {
 		payload: Organization.Model.jsonCreate,
 		success: OrganizationResponse,
 		error: Schema.Union(OrganizationSlugAlreadyExistsError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("organization.update", {
+	Rpc.make("organization.update", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 		}).pipe(Schema.extend(Schema.partial(Organization.Model.jsonUpdate))),
@@ -88,13 +87,13 @@ export class OrganizationRpcs extends RpcGroup.make(
 		),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("organization.delete", {
+	Rpc.make("organization.delete", {
 		payload: Schema.Struct({ id: OrganizationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("organization.setSlug", {
+	Rpc.make("organization.setSlug", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 			slug: Schema.String,
@@ -113,7 +112,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * When enabled, anyone with the invite URL can join the workspace.
 	 * Only admins/owners can modify this setting.
 	 */
-	Rpc.mutation("organization.setPublicMode", {
+	Rpc.make("organization.setPublicMode", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 			isPublic: Schema.Boolean,
@@ -127,7 +126,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * Returns limited organization info for the join page.
 	 * No authentication required - only returns data if org has isPublic=true.
 	 */
-	Rpc.query("organization.getBySlugPublic", {
+	Rpc.make("organization.getBySlugPublic", {
 		payload: Schema.Struct({
 			slug: Schema.String,
 		}),
@@ -139,7 +138,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * Join an organization via public invite link.
 	 * Requires authentication. Creates membership with "member" role.
 	 */
-	Rpc.mutation("organization.joinViaPublicInvite", {
+	Rpc.make("organization.joinViaPublicInvite", {
 		payload: Schema.Struct({
 			slug: Schema.String,
 		}),
@@ -158,7 +157,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * Only admins and owners can access the admin portal.
 	 * Supports different intents: sso, domain_verification, dsync, audit_logs, etc.
 	 */
-	Rpc.mutation("organization.getAdminPortalLink", {
+	Rpc.make("organization.getAdminPortalLink", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 			intent: Schema.Literal("sso", "domain_verification", "dsync", "audit_logs", "log_streams"),
@@ -171,7 +170,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * List all domains for an organization.
 	 * Only admins/owners can list domains.
 	 */
-	Rpc.query("organization.listDomains", {
+	Rpc.make("organization.listDomains", {
 		payload: Schema.Struct({ id: OrganizationId }),
 		success: Schema.Array(
 			Schema.Struct({
@@ -188,7 +187,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * Add a domain to an organization.
 	 * Only admins/owners can add domains.
 	 */
-	Rpc.mutation("organization.addDomain", {
+	Rpc.make("organization.addDomain", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 			domain: Schema.String,
@@ -206,7 +205,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	 * Remove a domain from an organization.
 	 * Only admins/owners can remove domains.
 	 */
-	Rpc.mutation("organization.removeDomain", {
+	Rpc.make("organization.removeDomain", {
 		payload: Schema.Struct({
 			id: OrganizationId,
 			domainId: Schema.String,

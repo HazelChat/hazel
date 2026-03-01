@@ -1,4 +1,4 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import {
 	ChannelId,
 	ExternalChannelId,
@@ -9,7 +9,6 @@ import {
 	TransactionId,
 } from "@hazel/schema"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChatSyncChannelLink, ChatSyncConnection } from "../models"
 import { AuthMiddleware } from "./middleware"
@@ -81,7 +80,7 @@ export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncC
 ) {}
 
 export class ChatSyncRpcs extends RpcGroup.make(
-	Rpc.mutation("chatSync.connection.create", {
+	Rpc.make("chatSync.connection.create", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 			provider: ChatSyncConnection.ChatSyncProvider,
@@ -100,7 +99,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		),
 	}).middleware(AuthMiddleware),
 
-	Rpc.query("chatSync.connection.list", {
+	Rpc.make("chatSync.connection.list", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 		}),
@@ -108,7 +107,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		error: Schema.Union(UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("chatSync.connection.delete", {
+	Rpc.make("chatSync.connection.delete", {
 		payload: Schema.Struct({
 			syncConnectionId: SyncConnectionId,
 		}),
@@ -118,7 +117,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		error: Schema.Union(ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("chatSync.channelLink.create", {
+	Rpc.make("chatSync.channelLink.create", {
 		payload: Schema.Struct({
 			syncConnectionId: SyncConnectionId,
 			hazelChannelId: ChannelId,
@@ -136,7 +135,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		),
 	}).middleware(AuthMiddleware),
 
-	Rpc.query("chatSync.channelLink.list", {
+	Rpc.make("chatSync.channelLink.list", {
 		payload: Schema.Struct({
 			syncConnectionId: SyncConnectionId,
 		}),
@@ -144,7 +143,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		error: Schema.Union(ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("chatSync.channelLink.delete", {
+	Rpc.make("chatSync.channelLink.delete", {
 		payload: Schema.Struct({
 			syncChannelLinkId: SyncChannelLinkId,
 		}),
@@ -154,7 +153,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 		error: Schema.Union(ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError),
 	}).middleware(AuthMiddleware),
 
-	Rpc.mutation("chatSync.channelLink.update", {
+	Rpc.make("chatSync.channelLink.update", {
 		payload: Schema.Struct({
 			syncChannelLinkId: SyncChannelLinkId,
 			direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),

@@ -1,6 +1,5 @@
-import { RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "@effect/rpc"
 import { Schema } from "effect"
-import { Rpc } from "effect-rpc-tanstack-devtools"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, ChannelSectionId, OrganizationId } from "@hazel/schema"
 import { ChannelSection } from "../models"
@@ -47,7 +46,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channelSection.create", {
+	Rpc.make("channelSection.create", {
 		payload: CreateChannelSectionRequest,
 		success: ChannelSectionResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -65,7 +64,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channelSection.update", {
+	Rpc.make("channelSection.update", {
 		payload: Schema.Struct({
 			id: ChannelSectionId,
 		}).pipe(Schema.extend(Schema.partial(ChannelSection.Model.jsonUpdate))),
@@ -86,7 +85,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channelSection.delete", {
+	Rpc.make("channelSection.delete", {
 		payload: Schema.Struct({ id: ChannelSectionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
@@ -104,7 +103,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channelSection.reorder", {
+	Rpc.make("channelSection.reorder", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
 			sectionIds: Schema.Array(ChannelSectionId),
@@ -127,7 +126,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	 * @throws UnauthorizedError if user lacks admin permission
 	 * @throws InternalServerError for unexpected errors
 	 */
-	Rpc.mutation("channelSection.moveChannel", {
+	Rpc.make("channelSection.moveChannel", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
 			sectionId: Schema.NullOr(ChannelSectionId),

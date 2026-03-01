@@ -1,7 +1,5 @@
 // Re-export all RPC definitions, errors, and types
 
-// RPC builders with mutation/query type annotations (re-exported from @hazel/rpc-devtools)
-export { Rpc, RpcType } from "effect-rpc-tanstack-devtools"
 export * from "./attachments"
 // Also export as namespaces for convenience
 export * as Attachments from "./attachments"
