@@ -1,6 +1,6 @@
 import { ChannelMemberRepo, ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { ChannelMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -18,6 +18,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
+							yield* ChannelMemberPolicy.canCreate(payload.channelId)
 							const createdChannelMember = yield* ChannelMemberRepo.insert({
 								channelId: payload.channelId,
 								userId: user.id,
@@ -28,14 +29,9 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 								notificationCount: 0,
 								joinedAt: new Date(),
 								deletedAt: null,
-							}).pipe(
-								Effect.map((res) => res[0]!),
-								policyUse(ChannelMemberPolicy.canCreate(payload.channelId)),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
-							const channelOption = yield* ChannelRepo.findById(payload.channelId).pipe(
-								withSystemActor,
-							)
+							const channelOption = yield* ChannelRepo.findById(payload.channelId)
 							if (Option.isSome(channelOption)) {
 								yield* ChannelAccessSyncService.syncUserInOrganization(
 									user.id,
@@ -57,10 +53,11 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* ChannelMemberPolicy.canUpdate(id)
 							const updatedChannelMember = yield* ChannelMemberRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(ChannelMemberPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -76,17 +73,16 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* ChannelMemberPolicy.canDelete(id)
 							const deletedMemberOption =
-								yield* ChannelMemberRepo.findById(id).pipe(withSystemActor)
+								yield* ChannelMemberRepo.findById(id)
 
-							yield* ChannelMemberRepo.deleteById(id).pipe(
-								policyUse(ChannelMemberPolicy.canDelete(id)),
-							)
+							yield* ChannelMemberRepo.deleteById(id)
 
 							if (Option.isSome(deletedMemberOption)) {
 								const channelOption = yield* ChannelRepo.findById(
 									deletedMemberOption.value.channelId,
-								).pipe(withSystemActor)
+								)
 								if (Option.isSome(channelOption)) {
 									yield* ChannelAccessSyncService.syncUserInOrganization(
 										deletedMemberOption.value.userId,
@@ -107,17 +103,14 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 					const user = yield* CurrentUser.Context
 
 					// Find the channel member record for this user and channel
+					yield* ChannelMemberPolicy.canRead(channelId)
 					const memberOption = yield* ChannelMemberRepo.findByChannelAndUser(
 						channelId,
 						user.id,
-					).pipe(
-						policyUse(ChannelMemberPolicy.canRead(channelId)),
-						withRemapDbErrors("ChannelMember", "select"),
-					)
+					).pipe(withRemapDbErrors("ChannelMember", "select"))
 
 					// Get channel to find organizationId
 					const channelOption = yield* ChannelRepo.findById(channelId).pipe(
-						withSystemActor,
 						withRemapDbErrors("Channel", "select"),
 					)
 
@@ -126,7 +119,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 						? yield* OrganizationMemberRepo.findByOrgAndUser(
 								channelOption.value.organizationId,
 								user.id,
-							).pipe(withSystemActor, withRemapDbErrors("OrganizationMember", "select"))
+							).pipe(withRemapDbErrors("OrganizationMember", "select"))
 						: Option.none()
 
 					// Wrap the update and transaction ID generation in a single transaction
@@ -135,10 +128,11 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							Effect.gen(function* () {
 								// If member exists, clear the notification count
 								if (Option.isSome(memberOption)) {
+									yield* ChannelMemberPolicy.canUpdate(memberOption.value.id)
 									yield* ChannelMemberRepo.update({
 										id: memberOption.value.id,
 										notificationCount: 0,
-									}).pipe(policyUse(ChannelMemberPolicy.canUpdate(memberOption.value.id)))
+									})
 								}
 
 								// Delete all notifications for this channel
@@ -146,7 +140,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 									yield* NotificationRepo.deleteByChannelId(
 										channelId,
 										orgMemberOption.value.id,
-									).pipe(withSystemActor)
+									)
 								}
 
 								const txid = yield* generateTransactionId()

@@ -1,5 +1,4 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire, withSystemActor } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
@@ -25,67 +24,59 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 
 		const findBySlug = (slug: string, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, slugValue: string) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.organizationsTable)
-								.where(eq(schema.organizationsTable.slug, slugValue))
-								.limit(1),
-						),
-					policyRequire("Organization", "select"),
+				.makeQuery((execute, slugValue: string) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.organizationsTable)
+							.where(eq(schema.organizationsTable.slug, slugValue))
+							.limit(1),
+					),
 				)(slug, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
 		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, slugValue: string) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.organizationsTable)
-								.where(
-									and(
-										eq(schema.organizationsTable.slug, slugValue),
-										eq(schema.organizationsTable.isPublic, true),
-										isNull(schema.organizationsTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("Organization", "select"),
-				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
-
-		const findAllActive = (tx?: TxFn) =>
-			db.makeQuery(
-				(execute, _data: {}) =>
+				.makeQuery((execute, slugValue: string) =>
 					execute((client) =>
 						client
 							.select()
 							.from(schema.organizationsTable)
-							.where(isNull(schema.organizationsTable.deletedAt)),
+							.where(
+								and(
+									eq(schema.organizationsTable.slug, slugValue),
+									eq(schema.organizationsTable.isPublic, true),
+									isNull(schema.organizationsTable.deletedAt),
+								),
+							)
+							.limit(1),
 					),
-				policyRequire("Organization", "select"),
+				)(slug, tx)
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+		const findAllActive = (tx?: TxFn) =>
+			db.makeQuery((execute, _data: {}) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.organizationsTable)
+						.where(isNull(schema.organizationsTable.deletedAt)),
+				),
 			)({}, tx)
 
 		const softDelete = (id: OrganizationId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, orgId: OrganizationId) =>
-					execute((client) =>
-						client
-							.update(schema.organizationsTable)
-							.set({ deletedAt: new Date() })
-							.where(
-								and(
-									eq(schema.organizationsTable.id, orgId),
-									isNull(schema.organizationsTable.deletedAt),
-								),
+			db.makeQuery((execute, orgId: OrganizationId) =>
+				execute((client) =>
+					client
+						.update(schema.organizationsTable)
+						.set({ deletedAt: new Date() })
+						.where(
+							and(
+								eq(schema.organizationsTable.id, orgId),
+								isNull(schema.organizationsTable.deletedAt),
 							),
-					),
-				policyRequire("Organization", "delete"),
+						),
+				),
 			)(id, tx)
 
 		const setupDefaultChannels = (organizationId: OrganizationId, userId: UserId) =>
@@ -103,7 +94,6 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 					})
 					.pipe(
 						Effect.map((res) => res[0]!),
-						withSystemActor,
 					)
 
 				// Add creator as channel member
@@ -119,8 +109,7 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 						joinedAt: new Date(),
 						deletedAt: null,
 					})
-					.pipe(withSystemActor)
-
+	
 				return defaultChannel
 			})
 

@@ -21,10 +21,7 @@ const OWNER_USER_ID = "00000000-0000-0000-0000-000000000854" as UserId
 
 type MemberData = { userId: UserId; organizationId: OrganizationId; role: string }
 
-const makeOrgMemberRepoLayer = (
-	membersById: Record<string, MemberData>,
-	orgMembers: Record<string, Role>,
-) =>
+const makeOrgMemberRepoLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
 	Layer.succeed(OrganizationMemberRepo, {
 		with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
 			const member = membersById[id]
@@ -37,10 +34,7 @@ const makeOrgMemberRepoLayer = (
 		},
 	} as unknown as OrganizationMemberRepo)
 
-const makePolicyLayer = (
-	membersById: Record<string, MemberData>,
-	orgMembers: Record<string, Role>,
-) =>
+const makePolicyLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
 	OrganizationMemberPolicy.DefaultWithoutDependencies.pipe(
 		Layer.provide(makeOrgMemberRepoLayer(membersById, orgMembers)),
 		Layer.provide(makeOrgResolverLayer(orgMembers)),
@@ -51,26 +45,15 @@ describe("OrganizationMemberPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {})
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canCreate(TEST_ORG_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
 	it("canCreate denies already-existing member", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{},
-			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
-		)
+		const layer = makePolicyLayer({}, { [`${TEST_ORG_ID}:${actor.id}`]: "member" })
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canCreate(TEST_ORG_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
@@ -81,11 +64,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canUpdate(MEMBER_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -96,11 +75,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canUpdate(MEMBER_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -111,11 +86,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${OWNER_USER_ID}`]: "owner" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canUpdate(MEMBER_ID),
-			layer,
-			owner,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, owner)
 		expect(Either.isLeft(result)).toBe(true)
 		if (Either.isLeft(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
@@ -144,11 +115,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canDelete(MEMBER_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -159,11 +126,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canDelete(MEMBER_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -174,11 +137,7 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${OWNER_USER_ID}`]: "owner" },
 		)
 
-		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canDelete(MEMBER_ID),
-			layer,
-			owner,
-		)
+		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, owner)
 		expect(Either.isLeft(result)).toBe(true)
 		if (Either.isLeft(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)

@@ -1,4 +1,3 @@
-import { policyRequire } from "@hazel/domain"
 import type { InferSelectModel, Table } from "drizzle-orm"
 import { eq } from "drizzle-orm"
 import { pipe } from "effect"
@@ -29,18 +28,14 @@ export function makeRepository<
 
 		const insert = (data: S["insert"]["Type"], tx?: TxFn) =>
 			pipe(
-				db.makeQueryWithSchema(
-					schema.insert as Schema.Schema<S["insert"]>,
-					(execute, input) => execute((client) => client.insert(table).values([input]).returning()),
-					policyRequire(options.name, "create"),
+				db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
+					execute((client) => client.insert(table).values([input]).returning()),
 				)(data, tx),
 			) as unknown as Effect.Effect<RecordType[], DatabaseError | ParseError>
 
 		const insertVoid = (data: S["insert"]["Type"], tx?: TxFn) =>
-			db.makeQueryWithSchema(
-				schema.insert as Schema.Schema<S["insert"]>,
-				(execute, input) => execute((client) => client.insert(table).values(input)),
-				policyRequire(options.name, "create"),
+			db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
+				execute((client) => client.insert(table).values(input)),
 			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
 
 		const update = (data: S["update"]["Type"], tx?: TxFn) =>
@@ -61,7 +56,6 @@ export function makeRepository<
 								: Effect.die(new EntityNotFound({ type: options.name, id: input[idColumn] })),
 						),
 					),
-				policyRequire(options.name, "update"),
 			)(data, tx) as Effect.Effect<RecordType, DatabaseError | ParseError>
 
 		const updateVoid = (data: S["update"]["Type"], tx?: TxFn) =>
@@ -75,29 +69,24 @@ export function makeRepository<
 							// @ts-expect-error
 							.where(eq(table[idColumn], input[idColumn])),
 					),
-				policyRequire(options.name, "update"),
 			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
 
 		const findById = (id: Id, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, id: Id) =>
-					execute((client) =>
-						client
-							.select()
-							.from(table as Table<any>)
-							// @ts-expect-error
-							.where(eq(table[idColumn], id))
-							.limit(1),
-					).pipe(Effect.map((results) => Option.fromNullable(results[0] as RecordType))),
-				policyRequire(options.name, "select"),
+			db.makeQuery((execute, id: Id) =>
+				execute((client) =>
+					client
+						.select()
+						.from(table as Table<any>)
+						// @ts-expect-error
+						.where(eq(table[idColumn], id))
+						.limit(1),
+				).pipe(Effect.map((results) => Option.fromNullable(results[0] as RecordType))),
 			)(id, tx) as Effect.Effect<Option.Option<RecordType>, DatabaseError>
 
 		const deleteById = (id: Id, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, id: Id) =>
-					// @ts-expect-error
-					execute((client) => client.delete(table).where(eq(table[idColumn], id))),
-				policyRequire(options.name, "delete"),
+			db.makeQuery((execute, id: Id) =>
+				// @ts-expect-error
+				execute((client) => client.delete(table).where(eq(table[idColumn], id))),
 			)(id, tx) as Effect.Effect<unknown, DatabaseError>
 
 		const with_ = <A, E, R>(

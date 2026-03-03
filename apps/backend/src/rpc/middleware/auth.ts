@@ -4,7 +4,6 @@ import {
 	InvalidBearerTokenError,
 	type CurrentUser,
 	SessionNotProvidedError,
-	withSystemActor,
 } from "@hazel/domain"
 import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
@@ -58,7 +57,6 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					// Find bot by token hash
 					const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(
-						withSystemActor,
 						Effect.catchTag("DatabaseError", () =>
 							Effect.fail(
 								new InvalidBearerTokenError({
@@ -81,7 +79,6 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(
-						withSystemActor,
 						Effect.catchTag("DatabaseError", () =>
 							Effect.fail(
 								new InvalidBearerTokenError({

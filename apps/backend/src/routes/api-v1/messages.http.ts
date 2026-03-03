@@ -7,7 +7,6 @@ import {
 	policyUse,
 	UnauthorizedError,
 	withRemapDbErrors,
-	withSystemActor,
 } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
 import {
@@ -57,7 +56,7 @@ const authenticateBotFromToken = Effect.gen(function* () {
 	const tokenHash = yield* Effect.promise(() => hashToken(token))
 
 	const botRepo = yield* BotRepo
-	const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(withSystemActor)
+	const botOption = yield* botRepo.findByTokenHash(tokenHash)
 
 	if (Option.isNone(botOption)) {
 		return yield* Effect.fail(
@@ -134,7 +133,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const cursorMsg = yield* MessageRepo.findByIdForCursor({
 								id: starting_after,
 								channelId: channel_id,
-							}).pipe(withSystemActor)
+							})
 							if (Option.isNone(cursorMsg)) {
 								return yield* Effect.fail(
 									new InvalidPaginationError({
@@ -150,7 +149,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const cursorMsg = yield* MessageRepo.findByIdForCursor({
 								id: ending_before,
 								channelId: channel_id,
-							}).pipe(withSystemActor)
+							})
 							if (Option.isNone(cursorMsg)) {
 								return yield* Effect.fail(
 									new InvalidPaginationError({
@@ -170,7 +169,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							cursorBefore,
 							cursorAfter,
 							limit: effectiveLimit,
-						}).pipe(withSystemActor)
+						})
 
 						const hasMore = messages.length > effectiveLimit
 						const data = hasMore ? messages.slice(0, effectiveLimit) : messages

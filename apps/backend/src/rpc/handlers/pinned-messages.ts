@@ -1,6 +1,6 @@
 import { PinnedMessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { PinnedMessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -30,15 +30,13 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
+							yield* PinnedMessagePolicy.canCreate(payload.channelId)
 							const createdPinnedMessage = yield* PinnedMessageRepo.insert({
 								channelId: payload.channelId,
 								messageId: payload.messageId,
 								pinnedBy: user.id,
 								pinnedAt: new Date(),
-							}).pipe(
-								Effect.map((res) => res[0]!),
-								policyUse(PinnedMessagePolicy.canCreate(payload.channelId)),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
@@ -54,10 +52,11 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* PinnedMessagePolicy.canUpdate(id)
 							const updatedPinnedMessage = yield* PinnedMessageRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(PinnedMessagePolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -73,9 +72,8 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* PinnedMessageRepo.deleteById(id).pipe(
-								policyUse(PinnedMessagePolicy.canDelete(id)),
-							)
+							yield* PinnedMessagePolicy.canDelete(id)
+							yield* PinnedMessageRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 

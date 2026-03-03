@@ -1,5 +1,4 @@
 import { IntegrationConnectionRepo, IntegrationTokenRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
@@ -84,7 +83,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			const getValidAccessToken = Effect.fn("IntegrationTokenService.getValidAccessToken")(function* (
 				connectionId: IntegrationConnectionId,
 			) {
-				const tokenOption = yield* tokenRepo.findByConnectionId(connectionId).pipe(withSystemActor)
+				const tokenOption = yield* tokenRepo.findByConnectionId(connectionId)
 				const token = yield* Option.match(tokenOption, {
 					onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
 					onSome: Effect.succeed,
@@ -99,7 +98,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					// Get connection to determine provider
 					const connectionOption = yield* connectionRepo
 						.findById(connectionId)
-						.pipe(withSystemActor)
+						
 					const connection = yield* Option.match(connectionOption, {
 						onNone: () => Effect.fail(new ConnectionNotFoundError({ connectionId })),
 						onSome: Effect.succeed,
@@ -120,7 +119,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 								// Re-fetch token to check if it was already refreshed while waiting
 								const freshTokenOption = yield* tokenRepo
 									.findByConnectionId(connectionId)
-									.pipe(withSystemActor)
+									
 								const freshToken = yield* Option.match(freshTokenOption, {
 									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
 									onSome: Effect.succeed,
@@ -158,7 +157,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 								// Re-fetch token to check if it was already refreshed while waiting
 								const freshTokenOption = yield* tokenRepo
 									.findByConnectionId(connectionId)
-									.pipe(withSystemActor)
+									
 								const freshToken = yield* Option.match(freshTokenOption, {
 									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
 									onSome: Effect.succeed,
@@ -205,7 +204,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 				},
 			) {
 				// Get connection to determine provider
-				const connectionOption = yield* connectionRepo.findById(connectionId).pipe(withSystemActor)
+				const connectionOption = yield* connectionRepo.findById(connectionId)
 				const connection = yield* Option.match(connectionOption, {
 					onNone: () => Effect.fail(new ConnectionNotFoundError({ connectionId })),
 					onSome: Effect.succeed,
@@ -270,7 +269,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 						expiresAt: newTokens.expiresAt ?? null,
 						scope: newTokens.scope ?? null,
 					})
-					.pipe(withSystemActor)
+					
 
 				yield* Effect.logInfo("AUDIT: OAuth token refreshed", {
 					event: "token_refresh",
@@ -359,7 +358,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							encryptionKeyVersion: encryptedAccess.keyVersion,
 							expiresAt: installationToken.expiresAt,
 						})
-						.pipe(withSystemActor)
+						
 
 					yield* Effect.logInfo("AUDIT: GitHub App token regenerated", {
 						event: "app_token_regenerate",
@@ -400,7 +399,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					: null
 
 				// Check if token already exists for this connection
-				const existingToken = yield* tokenRepo.findByConnectionId(connectionId).pipe(withSystemActor)
+				const existingToken = yield* tokenRepo.findByConnectionId(connectionId)
 
 				if (Option.isSome(existingToken)) {
 					// Update existing token
@@ -414,7 +413,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							expiresAt: tokens.expiresAt ?? null,
 							scope: tokens.scope ?? null,
 						})
-						.pipe(withSystemActor)
+						
 				} else {
 					// Create new token
 					yield* tokenRepo
@@ -431,7 +430,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 							scope: tokens.scope ?? null,
 							lastRefreshedAt: null,
 						})
-						.pipe(withSystemActor)
+						
 				}
 			})
 
@@ -441,7 +440,7 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 			const deleteTokens = Effect.fn("IntegrationTokenService.deleteTokens")(function* (
 				connectionId: IntegrationConnectionId,
 			) {
-				yield* tokenRepo.deleteByConnectionId(connectionId).pipe(withSystemActor)
+				yield* tokenRepo.deleteByConnectionId(connectionId)
 			})
 
 			return {

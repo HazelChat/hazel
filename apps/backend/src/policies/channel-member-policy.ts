@@ -1,5 +1,5 @@
 import { ChannelMemberRepo, ChannelRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
@@ -40,9 +40,10 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 						policyEntity,
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(channel.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								channel.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -70,18 +71,20 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 						"select",
 						Effect.fn(`${policyEntity}.select`)(function* (actor) {
 							// Check if user is a member of the channel
-							const membership = yield* channelMemberRepo
-								.findByChannelAndUser(channelId, actor.id)
-								.pipe(withSystemActor)
+							const membership = yield* channelMemberRepo.findByChannelAndUser(
+								channelId,
+								actor.id,
+							)
 
 							if (Option.isSome(membership)) {
 								return yield* Effect.succeed(true)
 							}
 
 							// Organization admins can read all channel members
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(channel.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								channel.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -110,9 +113,10 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 								}
 
 								// Organization admins can update any membership
-								const orgMember = yield* organizationMemberRepo
-									.findByOrgAndUser(channel.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+									channel.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 									return yield* Effect.succeed(true)
@@ -142,9 +146,10 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 								}
 
 								// Organization admins can remove members
-								const orgMember = yield* organizationMemberRepo
-									.findByOrgAndUser(channel.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+									channel.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(orgMember) && orgMember.value.role === "admin") {
 									return yield* Effect.succeed(true)

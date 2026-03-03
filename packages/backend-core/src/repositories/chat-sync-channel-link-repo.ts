@@ -1,5 +1,5 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import { ChatSyncChannelLink } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
 import { Effect, Option } from "effect"
@@ -41,21 +41,19 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 
 			const findById = (id: SyncChannelLinkId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { id: SyncChannelLinkId }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(schema.chatSyncChannelLinksTable.id, data.id),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-						policyRequire("ChatSyncChannelLink", "select"),
+					.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncChannelLinksTable)
+								.where(
+									and(
+										eq(schema.chatSyncChannelLinksTable.id, data.id),
+										isNull(schema.chatSyncChannelLinksTable.deletedAt),
+									),
+								)
+								.limit(1),
+						),
 					)({ id }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -65,46 +63,42 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 
 			const findBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { syncConnectionId: SyncConnectionId }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncChannelLinksTable.syncConnectionId,
-												data.syncConnectionId,
-											),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
+					.makeQuery((execute, data: { syncConnectionId: SyncConnectionId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncChannelLinksTable)
+								.where(
+									and(
+										eq(
+											schema.chatSyncChannelLinksTable.syncConnectionId,
+											data.syncConnectionId,
 										),
+										isNull(schema.chatSyncChannelLinksTable.deletedAt),
 									),
-							),
-						policyRequire("ChatSyncChannelLink", "select"),
+								),
+						),
 					)({ syncConnectionId }, tx)
 					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
 
 			const findActiveBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { syncConnectionId: SyncConnectionId }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncChannelLinksTable.syncConnectionId,
-												data.syncConnectionId,
-											),
-											eq(schema.chatSyncChannelLinksTable.isActive, true),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
+					.makeQuery((execute, data: { syncConnectionId: SyncConnectionId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncChannelLinksTable)
+								.where(
+									and(
+										eq(
+											schema.chatSyncChannelLinksTable.syncConnectionId,
+											data.syncConnectionId,
 										),
+										eq(schema.chatSyncChannelLinksTable.isActive, true),
+										isNull(schema.chatSyncChannelLinksTable.deletedAt),
 									),
-							),
-						policyRequire("ChatSyncChannelLink", "select"),
+								),
+						),
 					)({ syncConnectionId }, tx)
 					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
 
@@ -141,7 +135,6 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									)
 									.limit(1),
 							),
-						policyRequire("ChatSyncChannelLink", "select"),
 					)({ syncConnectionId, hazelChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -182,7 +175,6 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 									)
 									.limit(1),
 							),
-						policyRequire("ChatSyncChannelLink", "select"),
 					)({ syncConnectionId, externalChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -192,57 +184,51 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 
 			const findActiveByExternalChannel = (externalChannelId: ExternalChannelId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { externalChannelId: ExternalChannelId }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncChannelLinksTable.externalChannelId,
-												data.externalChannelId,
-											),
-											eq(schema.chatSyncChannelLinksTable.isActive, true),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
+					.makeQuery((execute, data: { externalChannelId: ExternalChannelId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncChannelLinksTable)
+								.where(
+									and(
+										eq(
+											schema.chatSyncChannelLinksTable.externalChannelId,
+											data.externalChannelId,
 										),
+										eq(schema.chatSyncChannelLinksTable.isActive, true),
+										isNull(schema.chatSyncChannelLinksTable.deletedAt),
 									),
-							),
-						policyRequire("ChatSyncChannelLink", "select"),
+								),
+						),
 					)({ externalChannelId }, tx)
 					.pipe(Effect.map((results) => results.map(normalizeExternalChannelId)))
 
 			const setActive = (id: SyncChannelLinkId, isActive: boolean, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncChannelLinkId; isActive: boolean }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncChannelLinksTable)
-								.set({
-									isActive: data.isActive,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncChannelLink", "update"),
+				db.makeQuery((execute, data: { id: SyncChannelLinkId; isActive: boolean }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncChannelLinksTable)
+							.set({
+								isActive: data.isActive,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
+							.returning(),
+					),
 				)({ id, isActive }, tx)
 
 			const updateLastSyncedAt = (id: SyncChannelLinkId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncChannelLinkId }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncChannelLinksTable)
-								.set({
-									lastSyncedAt: new Date(),
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncChannelLink", "update"),
+				db.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncChannelLinksTable)
+							.set({
+								lastSyncedAt: new Date(),
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
+							.returning(),
+					),
 				)({ id }, tx)
 
 			const updateDirection = (
@@ -265,24 +251,21 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
 								.returning(),
 						),
-					policyRequire("ChatSyncChannelLink", "update"),
 				)({ id, direction }, tx)
 
 			const softDelete = (id: SyncChannelLinkId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncChannelLinkId }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncChannelLinksTable)
-								.set({
-									deletedAt: new Date(),
-									isActive: false,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncChannelLink", "delete"),
+				db.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncChannelLinksTable)
+							.set({
+								deletedAt: new Date(),
+								isActive: false,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
+							.returning(),
+					),
 				)({ id }, tx)
 
 			const updateSettings = (
@@ -302,7 +285,6 @@ export class ChatSyncChannelLinkRepo extends Effect.Service<ChatSyncChannelLinkR
 								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
 								.returning(),
 						),
-					policyRequire("ChatSyncChannelLink", "update"),
 				)({ id, settings }, tx)
 
 			return {

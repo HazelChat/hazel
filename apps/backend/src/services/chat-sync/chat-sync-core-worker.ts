@@ -12,7 +12,6 @@ import {
 	OrganizationMemberRepo,
 	UserRepo,
 } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import { ChatSyncChannelLink, ChatSyncConnection, IntegrationConnection } from "@hazel/domain/models"
 import {
 	MessageId,
@@ -181,7 +180,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					source: params.source,
 					dedupeKey: params.dedupeKey,
 				})
-				.pipe(withSystemActor)
+				
 		})
 
 		const writeReceipt = Effect.fn("DiscordSyncWorker.writeReceipt")(function* (params: {
@@ -204,7 +203,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					status: params.status ?? "processed",
 					errorMessage: params.errorMessage ?? null,
 				})
-				.pipe(withSystemActor)
+				
 		})
 
 		const getProviderAdapter = Effect.fn("ChatSyncCoreWorker.getProviderAdapter")(function* (
@@ -292,7 +291,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						},
 						{ syncAvatarUrl: params.syncAvatarUrl ?? false },
 					)
-					.pipe(withSystemActor)
+					
 
 				yield* organizationMemberRepo
 					.upsertByOrgAndUser({
@@ -304,7 +303,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						invitedBy: null,
 						deletedAt: null,
 					})
-					.pipe(withSystemActor)
+					
 
 				return user.id
 			},
@@ -466,7 +465,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				},
 				...(webhookPermissionState ? { webhookPermission: webhookPermissionState } : {}),
 			}
-			yield* channelLinkRepo.updateSettings(link.id, nextSettings).pipe(withSystemActor)
+			yield* channelLinkRepo.updateSettings(link.id, nextSettings)
 		})
 
 		const ensureDiscordWebhookIdentity = Effect.fn("DiscordSyncWorker.ensureDiscordWebhookIdentity")(
@@ -582,7 +581,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const getDiscordWebhookIdentityMessageMetadata = Effect.fn(
 			"DiscordSyncWorker.getDiscordWebhookIdentityMessageMetadata",
 		)(function* (authorId: UserId) {
-			const userOption = yield* userRepo.findById(authorId).pipe(withSystemActor)
+			const userOption = yield* userRepo.findById(authorId)
 			if (Option.isNone(userOption)) {
 				return {
 					username: "Discord User",
@@ -762,7 +761,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					decodeProvider(params.provider),
 					params.externalUserId,
 				)
-				.pipe(withSystemActor)
+				
 
 			if (Option.isSome(linkedConnection) && linkedConnection.value.userId) {
 				return linkedConnection.value.userId
@@ -802,7 +801,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				if (params.preferredChannelLinkId) {
 					const preferred = yield* messageLinkRepo
 						.findByHazelMessage(params.preferredChannelLinkId, params.hazelMessageId)
-						.pipe(withSystemActor)
+						
 					if (Option.isSome(preferred)) {
 						return Option.some(preferred.value.externalMessageId as ExternalMessageId)
 					}
@@ -849,7 +848,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				if (params.preferredChannelLinkId) {
 					const preferred = yield* messageLinkRepo
 						.findByExternalMessage(params.preferredChannelLinkId, params.externalMessageId)
-						.pipe(withSystemActor)
+						
 					if (Option.isSome(preferred)) {
 						return Option.some(preferred.value.hazelMessageId)
 					}
@@ -899,12 +898,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		}) {
 			const directLink = yield* channelLinkRepo
 				.findByHazelChannel(params.syncConnectionId, params.hazelChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isSome(directLink)) {
 				return normalizeChannelLinkExternalId(directLink.value)
 			}
 
-			const channelOption = yield* channelRepo.findById(params.hazelChannelId).pipe(withSystemActor)
+			const channelOption = yield* channelRepo.findById(params.hazelChannelId)
 			if (Option.isNone(channelOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -924,7 +923,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const parentLinkOption = yield* channelLinkRepo
 				.findByHazelChannel(params.syncConnectionId, channel.parentChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(parentLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -960,7 +959,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const rootMessageLinkOption = yield* messageLinkRepo
 				.findByHazelMessage(parentLink.id, rootMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(rootMessageLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -980,7 +979,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const existingThreadLink = yield* channelLinkRepo
 				.findByExternalChannel(params.syncConnectionId, externalThreadChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isSome(existingThreadLink)) {
 				return normalizeChannelLinkExternalId(existingThreadLink.value)
 			}
@@ -997,7 +996,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					lastSyncedAt: null,
 					deletedAt: null,
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* channelAccessSyncService.syncChannel(channel.id)
 			return normalizeChannelLinkExternalId(threadLink)
@@ -1017,7 +1016,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 				const connectionOption = yield* connectionRepo
 					.findById(syncConnectionId)
-					.pipe(withSystemActor)
+					
 				if (Option.isNone(connectionOption)) {
 					return yield* Effect.fail(
 						new DiscordSyncConnectionNotFoundError({
@@ -1027,7 +1026,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 				const connection = connectionOption.value
 
-				const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+				const messageOption = yield* messageRepo.findById(hazelMessageId)
 				if (Option.isNone(messageOption)) {
 					return yield* Effect.fail(
 						new DiscordSyncMessageNotFoundError({
@@ -1046,7 +1045,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 				const existingMessageLink = yield* messageLinkRepo
 					.findByHazelMessage(link.id, hazelMessageId)
-					.pipe(withSystemActor)
+					
 				if (Option.isSome(existingMessageLink)) {
 					yield* writeReceipt({
 						syncConnectionId,
@@ -1133,7 +1132,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						externalThreadId: null,
 						deletedAt: null,
 					})
-					.pipe(withSystemActor)
+					
 
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1145,8 +1144,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 						externalMessageId,
 					},
 				})
-				yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
-				yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+				yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+				yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 				return { status: "synced" as const, externalMessageId }
 			},
@@ -1156,7 +1155,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			syncConnectionId: SyncConnectionId,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1171,7 +1170,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const links = yield* channelLinkRepo
 				.findActiveBySyncConnection(syncConnectionId)
-				.pipe(withSystemActor)
+				
 
 			let sent = 0
 			let skipped = 0
@@ -1242,7 +1241,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1253,7 +1252,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
 
-			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
 				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
 			}
@@ -1268,7 +1267,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByHazelMessage(link.id, hazelMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1309,7 +1308,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 			}
 
-			yield* messageLinkRepo.updateLastSyncedAt(messageLink.id).pipe(withSystemActor)
+			yield* messageLinkRepo.updateLastSyncedAt(messageLink.id)
 			yield* writeReceipt({
 				syncConnectionId,
 				channelLinkId: link.id,
@@ -1320,8 +1319,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					externalMessageId: normalizedMessageLink.externalMessageId,
 				},
 			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return {
 				status: "updated" as const,
@@ -1342,7 +1341,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1353,7 +1352,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
 
-			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
 				return yield* Effect.fail(new DiscordSyncMessageNotFoundError({ messageId: hazelMessageId }))
 			}
@@ -1368,7 +1367,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByHazelMessage(link.id, hazelMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1406,7 +1405,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				}
 			}
 
-			yield* messageLinkRepo.softDelete(messageLink.id).pipe(withSystemActor)
+			yield* messageLinkRepo.softDelete(messageLink.id)
 			yield* writeReceipt({
 				syncConnectionId,
 				channelLinkId: link.id,
@@ -1417,8 +1416,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					externalMessageId: normalizedMessageLink.externalMessageId,
 				},
 			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return {
 				status: "deleted" as const,
@@ -1439,7 +1438,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1450,7 +1449,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const connection = connectionOption.value
 			const adapter = yield* getProviderAdapter(connection.provider)
 
-			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId).pipe(withSystemActor)
+			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
 			if (Option.isNone(reactionOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1471,7 +1470,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByHazelMessage(link.id, reaction.messageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1505,8 +1504,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					emoji: reaction.emoji,
 				},
 			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return {
 				status: "created" as const,
@@ -1534,7 +1533,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo.findById(syncConnectionId).pipe(withSystemActor)
+			const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1554,7 +1553,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByHazelMessage(link.id, payload.hazelMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1614,8 +1613,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					externalMessageId: normalizedMessageLink.externalMessageId,
 				},
 			})
-			yield* connectionRepo.updateLastSyncedAt(syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return {
 				status: "deleted" as const,
@@ -1659,7 +1658,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
-			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
 			}
@@ -1695,7 +1694,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const syncHazelMessageUpdateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
-			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
 			}
@@ -1731,7 +1730,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const syncHazelMessageDeleteToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
-			const messageOption = yield* messageRepo.findById(hazelMessageId).pipe(withSystemActor)
+			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
 				return { synced: 0, failed: 0 }
 			}
@@ -1767,7 +1766,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const syncHazelReactionCreateToAllConnections = Effect.fn(
 			"DiscordSyncWorker.syncHazelReactionCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelReactionId: MessageReactionId, dedupeKey?: string) {
-			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId).pipe(withSystemActor)
+			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
 			if (Option.isNone(reactionOption)) {
 				return { synced: 0, failed: 0 }
 			}
@@ -1846,7 +1845,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			provider: ChatSyncProvider,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
-			const connections = yield* connectionRepo.findActiveByProvider(provider).pipe(withSystemActor)
+			const connections = yield* connectionRepo.findActiveByProvider(provider)
 			return yield* Effect.forEach(
 				connections,
 				(connection) =>
@@ -1875,7 +1874,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1898,7 +1897,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -1922,7 +1921,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const existingMessageLink = yield* messageLinkRepo
 				.findByExternalMessage(link.id, payload.externalMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isSome(existingMessageLink)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -1987,7 +1986,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					threadChannelId: null,
 					deletedAt: null,
 				})
-				.pipe(withSystemActor)
+				
 
 			if (normalizedExternalAttachments.length > 0) {
 				const uploadedAtBase = Date.now()
@@ -2021,7 +2020,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					externalThreadId: payload.externalThreadId ?? null,
 					deletedAt: null,
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2030,8 +2029,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return { status: "created" as const, hazelMessageId: message.id }
 		})
@@ -2051,7 +2050,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2074,7 +2073,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2098,7 +2097,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByExternalMessage(link.id, payload.externalMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2118,7 +2117,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					content: payload.content,
 					updatedAt: new Date(),
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2127,8 +2126,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return { status: "updated" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
@@ -2148,7 +2147,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2171,7 +2170,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2195,7 +2194,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByExternalMessage(link.id, payload.externalMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2215,7 +2214,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					deletedAt: new Date(),
 					updatedAt: new Date(),
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2224,8 +2223,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return { status: "deleted" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
@@ -2247,7 +2246,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2270,7 +2269,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2283,7 +2282,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByExternalMessage(link.id, payload.externalMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2307,7 +2306,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const existingReaction = yield* messageReactionRepo
 				.findByMessageUserEmoji(messageLink.hazelMessageId, userId, payload.emoji)
-				.pipe(withSystemActor)
+				
 			if (Option.isSome(existingReaction)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2327,7 +2326,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					userId,
 					emoji: payload.emoji,
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2336,8 +2335,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return { status: "created" as const, hazelReactionId: reaction.id }
 		})
@@ -2359,7 +2358,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2382,7 +2381,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const linkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2395,7 +2394,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const messageLinkOption = yield* messageLinkRepo
 				.findByExternalMessage(link.id, payload.externalMessageId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2419,7 +2418,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const existingReaction = yield* messageReactionRepo
 				.findByMessageUserEmoji(messageLink.hazelMessageId, userId, payload.emoji)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(existingReaction)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2432,7 +2431,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "already_deleted" as const }
 			}
 
-			yield* messageReactionRepo.deleteById(existingReaction.value.id).pipe(withSystemActor)
+			yield* messageReactionRepo.deleteById(existingReaction.value.id)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2441,8 +2440,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(link.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(link.id)
 
 			return { status: "deleted" as const, hazelReactionId: existingReaction.value.id }
 		})
@@ -2462,7 +2461,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const connectionOption = yield* connectionRepo
 				.findById(payload.syncConnectionId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2485,7 +2484,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const parentLinkOption = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, payload.externalParentChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isNone(parentLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2499,7 +2498,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 			const existingThreadLink = yield* channelLinkRepo
 				.findByExternalChannel(payload.syncConnectionId, externalThreadChannelId)
-				.pipe(withSystemActor)
+				
 			if (Option.isSome(existingThreadLink)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2522,7 +2521,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					sectionId: null,
 					deletedAt: null,
 				})
-				.pipe(withSystemActor)
+				
 
 			yield* channelAccessSyncService.syncChannel(threadChannel.id)
 
@@ -2538,12 +2537,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					lastSyncedAt: null,
 					deletedAt: null,
 				})
-				.pipe(withSystemActor)
+				
 
 			if (payload.externalRootMessageId) {
 				const rootMessageLink = yield* messageLinkRepo
 					.findByExternalMessage(parentLink.id, payload.externalRootMessageId)
-					.pipe(withSystemActor)
+					
 				if (Option.isSome(rootMessageLink)) {
 					yield* messageRepo
 						.update({
@@ -2551,7 +2550,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 							threadChannelId: threadChannel.id,
 							updatedAt: new Date(),
 						})
-						.pipe(withSystemActor)
+						
 				}
 			}
 
@@ -2562,9 +2561,9 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				dedupeKey,
 				payload,
 			})
-			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(threadLink.id).pipe(withSystemActor)
-			yield* channelLinkRepo.updateLastSyncedAt(parentLink.id).pipe(withSystemActor)
+			yield* connectionRepo.updateLastSyncedAt(payload.syncConnectionId)
+			yield* channelLinkRepo.updateLastSyncedAt(threadLink.id)
+			yield* channelLinkRepo.updateLastSyncedAt(parentLink.id)
 
 			return {
 				status: "created" as const,

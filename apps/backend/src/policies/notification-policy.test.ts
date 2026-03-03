@@ -34,10 +34,7 @@ const makeNotificationRepoLayer = (notifications: Record<string, NotificationDat
 		},
 	} as unknown as NotificationRepo)
 
-const makeOrgMemberRepoLayer = (
-	members: Record<string, MemberData>,
-	orgMembers: Record<string, Role>,
-) =>
+const makeOrgMemberRepoLayer = (members: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
 	Layer.succeed(OrganizationMemberRepo, {
 		with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
 			const member = members[id]
@@ -70,11 +67,7 @@ describe("NotificationPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {}, {})
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canCreate(MEMBER_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canCreate(MEMBER_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -86,11 +79,7 @@ describe("NotificationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canView(NOTIFICATION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canView(NOTIFICATION_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -102,11 +91,7 @@ describe("NotificationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canView(NOTIFICATION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canView(NOTIFICATION_ID), layer, actor)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
@@ -118,11 +103,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canUpdate(NOTIFICATION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canUpdate(NOTIFICATION_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -134,11 +115,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canUpdate(NOTIFICATION_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canUpdate(NOTIFICATION_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -146,7 +123,13 @@ describe("NotificationPolicy", () => {
 		const outsider = makeActor({ id: OTHER_USER_ID })
 		const layer = makePolicyLayer(
 			{ [NOTIFICATION_ID]: { memberId: MEMBER_ID } },
-			{ [MEMBER_ID]: { userId: "00000000-0000-0000-0000-000000000849" as UserId, organizationId: TEST_ORG_ID, role: "member" } },
+			{
+				[MEMBER_ID]: {
+					userId: "00000000-0000-0000-0000-000000000849" as UserId,
+					organizationId: TEST_ORG_ID,
+					role: "member",
+				},
+			},
 			{ [`${TEST_ORG_ID}:${OTHER_USER_ID}`]: "member" },
 		)
 
@@ -166,11 +149,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canDelete(NOTIFICATION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canDelete(NOTIFICATION_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -182,11 +161,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canDelete(NOTIFICATION_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canDelete(NOTIFICATION_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -214,11 +189,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canMarkAllAsRead(MEMBER_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canMarkAllAsRead(MEMBER_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -230,11 +201,7 @@ describe("NotificationPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(
-			NotificationPolicy.canMarkAllAsRead(MEMBER_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(NotificationPolicy.canMarkAllAsRead(MEMBER_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -242,7 +209,13 @@ describe("NotificationPolicy", () => {
 		const outsider = makeActor({ id: OTHER_USER_ID })
 		const layer = makePolicyLayer(
 			{},
-			{ [MEMBER_ID]: { userId: "00000000-0000-0000-0000-000000000849" as UserId, organizationId: TEST_ORG_ID, role: "member" } },
+			{
+				[MEMBER_ID]: {
+					userId: "00000000-0000-0000-0000-000000000849" as UserId,
+					organizationId: TEST_ORG_ID,
+					role: "member",
+				},
+			},
 			{},
 		)
 

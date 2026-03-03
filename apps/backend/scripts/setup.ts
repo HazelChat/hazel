@@ -9,7 +9,6 @@ import {
 	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import { Effect, Layer, Logger, LogLevel } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
@@ -53,7 +52,7 @@ const syncWorkOS = Effect.gen(function* () {
 
 	log("blue", "\n  → Syncing WorkOS data to database...")
 
-	const result = yield* workOsSync.syncAll.pipe(withSystemActor)
+	const result = yield* workOsSync.syncAll
 
 	// Display results
 	log("cyan", "\n  Sync Results:")

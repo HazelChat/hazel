@@ -38,9 +38,7 @@ const makeAttachmentRepoLayer = (
 		},
 	} as unknown as AttachmentRepo)
 
-const makeMessageRepoLayer = (
-	messages: Record<string, { authorId: UserId; channelId: ChannelId }>,
-) =>
+const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
 	Layer.succeed(MessageRepo, {
 		with: <A, E, R>(
 			id: MessageId,
@@ -60,7 +58,11 @@ const makeChannelRepoLayer = (
 	Layer.succeed(ChannelRepo, {
 		with: <A, E, R>(
 			id: ChannelId,
-			f: (channel: { organizationId: OrganizationId; type: string; id: ChannelId }) => Effect.Effect<A, E, R>,
+			f: (channel: {
+				organizationId: OrganizationId
+				type: string
+				id: ChannelId
+			}) => Effect.Effect<A, E, R>,
 		) => {
 			const channel = channels[id]
 			if (!channel) {

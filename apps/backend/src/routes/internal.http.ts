@@ -1,6 +1,6 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
 import { BotRepo } from "@hazel/backend-core"
-import { InvalidBearerTokenError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { InvalidBearerTokenError, UnauthorizedError } from "@hazel/domain"
 import { Config, Effect, Option } from "effect"
 import { HazelApi } from "../api"
 
@@ -56,7 +56,6 @@ export const HttpInternalLive = HttpApiBuilder.group(HazelApi, "internal", (hand
 			// Find bot by token hash
 			const botRepo = yield* BotRepo
 			const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(
-				withSystemActor,
 				Effect.catchTag("DatabaseError", () =>
 					Effect.fail(
 						new InvalidBearerTokenError({

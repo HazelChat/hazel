@@ -10,9 +10,7 @@ import { Database } from "@hazel/db"
 import {
 	CurrentUser,
 	InternalServerError,
-	policyUse,
 	withRemapDbErrors,
-	withSystemActor,
 } from "@hazel/domain"
 import {
 	AlreadyMemberError,
@@ -121,7 +119,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 											}),
 										),
 								}),
-								withSystemActor,
 							)
 							if (userOption._tag === "None") {
 								return yield* Effect.fail(
@@ -138,7 +135,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							if (payload.slug) {
 								const existingOrganization = yield* OrganizationRepo.findBySlug(
 									payload.slug,
-								).pipe(withSystemActor)
+								)
 
 								if (Option.isSome(existingOrganization)) {
 									return yield* Effect.fail(
@@ -151,6 +148,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Create organization in local database first
+							yield* OrganizationPolicy.canCreate()
 							const createdOrganization = yield* OrganizationRepo.insert({
 								name: payload.name,
 								slug: payload.slug,
@@ -158,10 +156,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								settings: payload.settings,
 								isPublic: false,
 								deletedAt: null,
-							}).pipe(
-								Effect.map((res) => res[0]!),
-								policyUse(OrganizationPolicy.canCreate()),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
 							// Create organization in WorkOS using our DB ID as externalId
 							const workosOrg = yield* workos
@@ -209,7 +204,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								joinedAt: new Date(),
 								invitedBy: null,
 								deletedAt: null,
-							}).pipe(withSystemActor)
+							})
 
 							// Setup default channels for the organization
 							yield* OrganizationRepo.setupDefaultChannels(
@@ -242,10 +237,11 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* Effect.logInfo("OrganizationRepo.update", payload)
+							yield* OrganizationPolicy.canUpdate(id)
 							const updatedOrganization = yield* OrganizationRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(OrganizationPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -266,9 +262,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationRepo.deleteById(id).pipe(
-								policyUse(OrganizationPolicy.canDelete(id)),
-							)
+							yield* OrganizationPolicy.canDelete(id)
+							yield* OrganizationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -281,10 +276,11 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* OrganizationPolicy.canUpdate(id)
 							const updatedOrganization = yield* OrganizationRepo.update({
 								id,
 								slug,
-							}).pipe(policyUse(OrganizationPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -305,10 +301,11 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* OrganizationPolicy.canUpdate(id)
 							const updatedOrganization = yield* OrganizationRepo.update({
 								id,
 								isPublic,
-							}).pipe(policyUse(OrganizationPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -327,7 +324,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 			"organization.getBySlugPublic": ({ slug }) =>
 				Effect.gen(function* () {
-					const orgOption = yield* OrganizationRepo.findBySlugIfPublic(slug).pipe(withSystemActor)
+					const orgOption = yield* OrganizationRepo.findBySlugIfPublic(slug)
 
 					if (Option.isNone(orgOption)) {
 						return null
@@ -337,7 +334,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 					// Count members for this organization
 					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id).pipe(
-						withSystemActor,
 					)
 
 					return {
@@ -366,7 +362,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Find the organization by slug
-							const orgOption = yield* OrganizationRepo.findBySlug(slug).pipe(withSystemActor)
+							const orgOption = yield* OrganizationRepo.findBySlug(slug)
 
 							if (Option.isNone(orgOption)) {
 								return yield* new OrganizationNotFoundError({
@@ -394,7 +390,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 											}),
 										),
 								}),
-								withSystemActor,
 							)
 
 							if (Option.isNone(userOption)) {
@@ -423,7 +418,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const existingMember = yield* OrganizationMemberRepo.findByOrgAndUser(
 								org.id,
 								currentUser.id,
-							).pipe(withSystemActor)
+							)
 
 							// Check WorkOS membership
 							const workosMembers = yield* workos
@@ -454,7 +449,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								joinedAt: new Date(),
 								invitedBy: null,
 								deletedAt: null,
-							}).pipe(withSystemActor)
+							})
 
 							// Sync to WorkOS - REQUIRED, fails the transaction if it fails
 							if (!hasWorkosMembership) {
@@ -481,7 +476,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const generalChannel = yield* ChannelRepo.findByOrgAndName(
 								org.id,
 								"general",
-							).pipe(withSystemActor)
+							)
 
 							if (Option.isSome(generalChannel)) {
 								yield* ChannelMemberRepo.insert({
@@ -494,7 +489,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									notificationCount: 0,
 									joinedAt: new Date(),
 									deletedAt: null,
-								}).pipe(withSystemActor)
+								})
 							}
 
 							yield* ChannelAccessSyncService.syncUserInOrganization(currentUser.id, org.id)
@@ -517,7 +512,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.getAdminPortalLink": ({ id, intent }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can access admin portal
-					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+					yield* OrganizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -566,7 +561,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.listDomains": ({ id }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can list domains
-					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+					yield* OrganizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -593,7 +588,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.addDomain": ({ id, domain }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can add domains
-					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+					yield* OrganizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -638,7 +633,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.removeDomain": ({ id, domainId }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can remove domains
-					yield* policyUse(OrganizationPolicy.canUpdate(id))(Effect.void)
+					yield* OrganizationPolicy.canUpdate(id)
 
 					// Delete domain from WorkOS
 					yield* workos

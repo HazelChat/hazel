@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder } from "@effect/platform"
 import { ChannelWebhookRepo, MessageRepo } from "@hazel/backend-core"
 import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
-import { InternalServerError, withSystemActor } from "@hazel/domain"
+import { InternalServerError } from "@hazel/domain"
 import {
 	InvalidWebhookTokenError,
 	WebhookDisabledError,
@@ -57,7 +57,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const tokenHash = createHash("sha256").update(token).digest("hex")
 
 				// Find webhook by ID
-				const webhookOption = yield* webhookRepo.findById(webhookId).pipe(withSystemActor)
+				const webhookOption = yield* webhookRepo.findById(webhookId)
 
 				if (Option.isNone(webhookOption)) {
 					yield* Effect.logWarning("Webhook not found", { webhookId })
@@ -109,20 +109,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const dbEmbeds = payload.embeds?.map(convertEmbedToDb) ?? null
 
 				// Create message as the webhook's bot user
-				const [message] = yield* messageRepo
-					.insert({
-						channelId: webhook.channelId,
-						authorId: webhook.botUserId,
-						content: payload.content ?? "",
-						embeds: dbEmbeds,
-						replyToMessageId: null,
-						threadChannelId: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				const [message] = yield* messageRepo.insert({
+					channelId: webhook.channelId,
+					authorId: webhook.botUserId,
+					content: payload.content ?? "",
+					embeds: dbEmbeds,
+					replyToMessageId: null,
+					threadChannelId: null,
+					deletedAt: null,
+				})
 
 				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(withSystemActor, Effect.ignore)
+				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -158,7 +156,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const tokenHash = createHash("sha256").update(token).digest("hex")
 
 				// Find webhook by ID
-				const webhookOption = yield* webhookRepo.findById(webhookId).pipe(withSystemActor)
+				const webhookOption = yield* webhookRepo.findById(webhookId)
 
 				if (Option.isNone(webhookOption)) {
 					yield* Effect.logWarning("Webhook not found", { webhookId })
@@ -196,20 +194,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const embed = buildOpenStatusEmbed(payload)
 
 				// Create message with the OpenStatus bot as author
-				const [message] = yield* messageRepo
-					.insert({
-						channelId: webhook.channelId,
-						authorId: botUser.id,
-						content: "",
-						embeds: [embed],
-						replyToMessageId: null,
-						threadChannelId: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				const [message] = yield* messageRepo.insert({
+					channelId: webhook.channelId,
+					authorId: botUser.id,
+					content: "",
+					embeds: [embed],
+					replyToMessageId: null,
+					threadChannelId: null,
+					deletedAt: null,
+				})
 
 				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(withSystemActor, Effect.ignore)
+				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
 
 				return new WebhookMessageResponse({
 					messageId: message.id,
@@ -245,7 +241,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const tokenHash = createHash("sha256").update(token).digest("hex")
 
 				// Find webhook by ID
-				const webhookOption = yield* webhookRepo.findById(webhookId).pipe(withSystemActor)
+				const webhookOption = yield* webhookRepo.findById(webhookId)
 
 				if (Option.isNone(webhookOption)) {
 					yield* Effect.logWarning("Webhook not found", { webhookId })
@@ -280,20 +276,18 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				const embed = buildRailwayEmbed(payload)
 
 				// Create message with the Railway bot as author
-				const [message] = yield* messageRepo
-					.insert({
-						channelId: webhook.channelId,
-						authorId: botUser.id,
-						content: "",
-						embeds: [embed],
-						replyToMessageId: null,
-						threadChannelId: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				const [message] = yield* messageRepo.insert({
+					channelId: webhook.channelId,
+					authorId: botUser.id,
+					content: "",
+					embeds: [embed],
+					replyToMessageId: null,
+					threadChannelId: null,
+					deletedAt: null,
+				})
 
 				// Update last used timestamp (fire and forget)
-				yield* webhookRepo.updateLastUsed(webhook.id).pipe(withSystemActor, Effect.ignore)
+				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
 
 				return new WebhookMessageResponse({
 					messageId: message.id,

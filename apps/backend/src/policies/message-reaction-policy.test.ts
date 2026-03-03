@@ -1,16 +1,24 @@
 import { describe, expect, it } from "@effect/vitest"
-import { ChannelRepo, MessageReactionRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
+import {
+	ChannelMemberRepo,
+	ChannelRepo,
+	MessageReactionRepo,
+	MessageRepo,
+	OrganizationMemberRepo,
+} from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
-import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
+import type {
+	ChannelId,
+	ChannelMemberId,
+	MessageId,
+	MessageReactionId,
+	OrganizationId,
+	UserId,
+} from "@hazel/schema"
 import { Effect, Either, Layer, Option } from "effect"
 import { MessageReactionPolicy } from "./message-reaction-policy.ts"
-import {
-	makeActor,
-	makeEntityNotFound,
-	makeOrgResolverLayer,
-	runWithActorEither,
-	TEST_ORG_ID,
-} from "./policy-test-helpers.ts"
+import { OrgResolver } from "../services/org-resolver.ts"
+import { makeActor, makeEntityNotFound, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
@@ -25,10 +33,7 @@ type ChannelData = { organizationId: OrganizationId; type: string; id: string }
 
 const makeReactionRepoLayer = (reactions: Record<string, ReactionData>) =>
 	Layer.succeed(MessageReactionRepo, {
-		with: <A, E, R>(
-			id: MessageReactionId,
-			f: (r: ReactionData) => Effect.Effect<A, E, R>,
-		) => {
+		with: <A, E, R>(id: MessageReactionId, f: (r: ReactionData) => Effect.Effect<A, E, R>) => {
 			const reaction = reactions[id]
 			if (!reaction) return Effect.fail(makeEntityNotFound("MessageReaction"))
 			return f(reaction)
@@ -56,6 +61,22 @@ const makeChannelRepoLayer = (channels: Record<string, ChannelData>) =>
 		},
 	} as unknown as ChannelRepo)
 
+const makeOrgMemberRepoLayer = (orgMembers: Record<string, Role>) =>
+	Layer.succeed(OrganizationMemberRepo, {
+		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+			const role = orgMembers[`${organizationId}:${userId}`]
+			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+		},
+	} as unknown as OrganizationMemberRepo)
+
+const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, {
+	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
+} as unknown as ChannelMemberRepo)
+
+const emptyMessageRepoLayer = Layer.succeed(MessageRepo, {
+	findById: (_id: MessageId) => Effect.succeed(Option.none()),
+} as unknown as MessageRepo)
+
 const makePolicyLayer = (
 	orgMembers: Record<string, Role>,
 	reactions: Record<string, ReactionData>,
@@ -64,14 +85,15 @@ const makePolicyLayer = (
 ) => {
 	const channelRepoLayer = makeChannelRepoLayer(channels)
 	const messageRepoLayer = makeMessageRepoLayer(messages)
-	const orgMemberRepoLayer = Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = orgMembers[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	} as unknown as OrganizationMemberRepo)
+	const orgMemberRepoLayer = makeOrgMemberRepoLayer(orgMembers)
 
-	const orgResolverLayer = makeOrgResolverLayer(orgMembers)
+	// Build OrgResolver with actual channel data (not empty stubs)
+	const orgResolverLayer = OrgResolver.DefaultWithoutDependencies.pipe(
+		Layer.provide(orgMemberRepoLayer),
+		Layer.provide(channelRepoLayer),
+		Layer.provide(emptyChannelMemberRepoLayer),
+		Layer.provide(emptyMessageRepoLayer),
+	)
 
 	return MessageReactionPolicy.DefaultWithoutDependencies.pipe(
 		Layer.provide(makeReactionRepoLayer(reactions)),
@@ -85,11 +107,7 @@ describe("MessageReactionPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {}, {}, {})
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canList(MESSAGE_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canList(MESSAGE_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -102,11 +120,7 @@ describe("MessageReactionPolicy", () => {
 			{ [CHANNEL_ID]: { organizationId: TEST_ORG_ID, type: "public", id: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canCreate(MESSAGE_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canCreate(MESSAGE_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -119,79 +133,39 @@ describe("MessageReactionPolicy", () => {
 			{ [CHANNEL_ID]: { organizationId: TEST_ORG_ID, type: "public", id: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canCreate(MESSAGE_ID),
-			layer,
-			outsider,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canCreate(MESSAGE_ID), layer, outsider)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
 	it("canUpdate allows reaction owner", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{},
-			{ [REACTION_ID]: { userId: actor.id } },
-			{},
-			{},
-		)
+		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canUpdate(REACTION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canUpdate(REACTION_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-owner", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{},
-			{ [REACTION_ID]: { userId: OTHER_USER_ID } },
-			{},
-			{},
-		)
+		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canUpdate(REACTION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canUpdate(REACTION_ID), layer, actor)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
 	it("canDelete allows reaction owner", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{},
-			{ [REACTION_ID]: { userId: actor.id } },
-			{},
-			{},
-		)
+		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canDelete(REACTION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canDelete(REACTION_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
 	it("canDelete denies non-owner", async () => {
 		const actor = makeActor()
-		const layer = makePolicyLayer(
-			{},
-			{ [REACTION_ID]: { userId: OTHER_USER_ID } },
-			{},
-			{},
-		)
+		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
-		const result = await runWithActorEither(
-			MessageReactionPolicy.canDelete(REACTION_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(MessageReactionPolicy.canDelete(REACTION_ID), layer, actor)
 		expect(Either.isLeft(result)).toBe(true)
 		if (Either.isLeft(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)

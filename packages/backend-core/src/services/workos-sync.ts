@@ -1,5 +1,4 @@
 import { Database, schema } from "@hazel/db"
-import { withSystemActor } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
 import { Effect, Match, Option, pipe, Schema, Stream } from "effect"
@@ -227,7 +226,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								timezone: null,
 								deletedAt: null,
 							})
-							.pipe(withSystemActor),
+							,
 						() => {
 							if (existingUser) {
 								result.updated++
@@ -312,8 +311,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 										id: orgId,
 										name: workosOrg.name,
 									})
-									.pipe(withSystemActor)
-								result.updated++
+																	result.updated++
 							} else {
 								// Create new organization (edge case: org exists in WorkOS but not in our DB)
 								// Use direct Drizzle insert to manually set the ID to match WorkOS externalId
@@ -425,7 +423,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 								invitedBy: null,
 								deletedAt: null,
 							})
-							.pipe(withSystemActor),
+							,
 						() => {
 							if (existing) {
 								result.updated++
@@ -553,7 +551,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 									: null,
 								acceptedBy: null,
 							})
-							.pipe(withSystemActor),
+							,
 						() => {
 							if (existing) {
 								result.updated++
@@ -570,7 +568,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 			// Mark expired invitations
-			const expiredResult = yield* pipe(invitationRepo.markExpired(), withSystemActor, Effect.either)
+			const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.either)
 
 			if (expiredResult._tag === "Right") {
 				result.expired = expiredResult.right.length
@@ -725,10 +723,9 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = data.externalId as OrganizationId
-				const existingOrg = yield* orgRepo.findById(orgId).pipe(withSystemActor)
-
+				const existingOrg = yield* orgRepo.findById(orgId)
 				yield* Option.match(existingOrg, {
-					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }).pipe(withSystemActor),
+					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }),
 					onNone: () =>
 						orgRepo
 							.insert({
@@ -742,7 +739,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 									.replace(/[^a-z0-9]+/g, "-")
 									.replace(/^-|-$/g, ""),
 							})
-							.pipe(withSystemActor),
+							,
 				})
 			})
 
@@ -754,7 +751,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = data.externalId as OrganizationId
-				yield* orgRepo.softDelete(orgId).pipe(withSystemActor)
+				yield* orgRepo.softDelete(orgId)
 			})
 
 		const handleMembershipUpsert = (data: {
@@ -782,7 +779,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = workosOrg.externalId as OrganizationId
-				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+				const org = yield* orgRepo.findById(orgId)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
@@ -819,7 +816,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = workosOrg.externalId as OrganizationId
-				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+				const org = yield* orgRepo.findById(orgId)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
@@ -871,13 +868,13 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 		return {
-			syncUsers: withSystemActor(syncUsers),
-			syncOrganizations: withSystemActor(syncOrganizations),
+			syncUsers,
+			syncOrganizations,
 			syncOrganizationMemberships: (orgId: OrganizationId) =>
-				withSystemActor(syncOrganizationMemberships(orgId)),
-			syncInvitations: (orgId: OrganizationId) => withSystemActor(syncInvitations(orgId)),
-			syncAll: withSystemActor(syncAll),
-			processWebhookEvent: (event: Event) => withSystemActor(processWebhookEvent(event)),
+				syncOrganizationMemberships(orgId),
+			syncInvitations: (orgId: OrganizationId) => syncInvitations(orgId),
+			syncAll,
+			processWebhookEvent: (event: Event) => processWebhookEvent(event),
 		}
 	}),
 	dependencies: [

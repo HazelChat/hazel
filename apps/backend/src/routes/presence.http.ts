@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { withRemapDbErrors } from "@hazel/domain"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 
@@ -23,7 +23,7 @@ export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePu
 							}),
 						),
 					)
-					.pipe(withSystemActor, withRemapDbErrors("UserPresenceStatus", "update"))
+					.pipe(withRemapDbErrors("UserPresenceStatus", "update"))
 
 				return {
 					success: true,

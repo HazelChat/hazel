@@ -1,5 +1,5 @@
 import { and, Database, eq, inArray, lt, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -17,33 +17,29 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 
 		// Find all commands for a bot
 		const findByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { botId: BotId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botCommandsTable)
-							.where(eq(schema.botCommandsTable.botId, data.botId)),
-					),
-				policyRequire("BotCommand", "select"),
+			db.makeQuery((execute, data: { botId: BotId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.botCommandsTable)
+						.where(eq(schema.botCommandsTable.botId, data.botId)),
+				),
 			)({ botId }, tx)
 
 		// Find enabled commands for a bot
 		const findEnabledByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { botId: BotId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botCommandsTable)
-							.where(
-								and(
-									eq(schema.botCommandsTable.botId, data.botId),
-									eq(schema.botCommandsTable.isEnabled, true),
-								),
+			db.makeQuery((execute, data: { botId: BotId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.botCommandsTable)
+						.where(
+							and(
+								eq(schema.botCommandsTable.botId, data.botId),
+								eq(schema.botCommandsTable.isEnabled, true),
 							),
-					),
-				policyRequire("BotCommand", "select"),
+						),
+				),
 			)({ botId }, tx)
 
 		// Find commands for multiple bots (for getAvailableCommands)
@@ -51,41 +47,37 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			if (botIds.length === 0) {
 				return Effect.succeed([])
 			}
-			return db.makeQuery(
-				(execute, data: { botIds: BotId[] }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botCommandsTable)
-							.where(
-								and(
-									inArray(schema.botCommandsTable.botId, data.botIds),
-									eq(schema.botCommandsTable.isEnabled, true),
-								),
+			return db.makeQuery((execute, data: { botIds: BotId[] }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.botCommandsTable)
+						.where(
+							and(
+								inArray(schema.botCommandsTable.botId, data.botIds),
+								eq(schema.botCommandsTable.isEnabled, true),
 							),
-					),
-				policyRequire("BotCommand", "select"),
+						),
+				),
 			)({ botIds }, tx)
 		}
 
 		// Find a specific command by bot and name
 		const findByBotAndName = (botId: BotId, name: string, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { botId: BotId; name: string }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.botCommandsTable)
-								.where(
-									and(
-										eq(schema.botCommandsTable.botId, data.botId),
-										eq(schema.botCommandsTable.name, data.name),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("BotCommand", "select"),
+				.makeQuery((execute, data: { botId: BotId; name: string }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.botCommandsTable)
+							.where(
+								and(
+									eq(schema.botCommandsTable.botId, data.botId),
+									eq(schema.botCommandsTable.name, data.name),
+								),
+							)
+							.limit(1),
+					),
 				)({ botId, name }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -141,25 +133,22 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 								})
 								.returning()
 						}),
-					policyRequire("BotCommand", "insert"),
 				)(data, tx)
 				.pipe(Effect.map((results) => results[0]))
 
 		// Delete commands not updated since the given timestamp (for bot sync cleanup)
 		const deleteStaleCommands = (botId: BotId, syncStartTime: Date, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { botId: BotId; syncStartTime: Date }) =>
-					execute((client) =>
-						client
-							.delete(schema.botCommandsTable)
-							.where(
-								and(
-									eq(schema.botCommandsTable.botId, data.botId),
-									lt(schema.botCommandsTable.updatedAt, data.syncStartTime),
-								),
+			db.makeQuery((execute, data: { botId: BotId; syncStartTime: Date }) =>
+				execute((client) =>
+					client
+						.delete(schema.botCommandsTable)
+						.where(
+							and(
+								eq(schema.botCommandsTable.botId, data.botId),
+								lt(schema.botCommandsTable.updatedAt, data.syncStartTime),
 							),
-					),
-				policyRequire("BotCommand", "delete"),
+						),
+				),
 			)({ botId, syncStartTime }, tx)
 
 		return {

@@ -1,6 +1,6 @@
 import { MessageReactionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { MessageReactionRpcs } from "@hazel/domain/rpc"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
@@ -20,11 +20,12 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								const user = yield* CurrentUser.Context
 								const { messageId, channelId, emoji } = payload
 
+								yield* MessageReactionPolicy.canList(messageId)
 								const existingReaction = yield* MessageReactionRepo.findByMessageUserEmoji(
 									messageId,
 									user.id,
 									emoji,
-								).pipe(policyUse(MessageReactionPolicy.canList(messageId)))
+								)
 
 								const txid = yield* generateTransactionId()
 
@@ -37,9 +38,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 										emoji: existingReaction.value.emoji,
 										userId: existingReaction.value.userId,
 									} as const
-									yield* MessageReactionRepo.deleteById(existingReaction.value.id).pipe(
-										policyUse(MessageReactionPolicy.canDelete(existingReaction.value.id)),
-									)
+									yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
+									yield* MessageReactionRepo.deleteById(existingReaction.value.id)
 
 									return {
 										wasCreated: false,
@@ -50,15 +50,13 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								}
 
 								// Otherwise, create a new reaction
+								yield* MessageReactionPolicy.canCreate(messageId)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									messageId,
 									channelId,
 									emoji,
 									userId: user.id,
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(MessageReactionPolicy.canCreate(messageId)),
-								)
+								}).pipe(Effect.map((res) => res[0]!))
 
 								return {
 									wasCreated: true,
@@ -84,13 +82,11 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 							Effect.gen(function* () {
 								const user = yield* CurrentUser.Context
 
+								yield* MessageReactionPolicy.canCreate(payload.messageId)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									...payload,
 									userId: user.id,
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(MessageReactionPolicy.canCreate(payload.messageId)),
-								)
+								}).pipe(Effect.map((res) => res[0]!))
 
 								const txid = yield* generateTransactionId()
 
@@ -109,10 +105,11 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* MessageReactionPolicy.canUpdate(id)
 							const updatedMessageReaction = yield* MessageReactionRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(MessageReactionPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -129,7 +126,7 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 					const txResult = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								const existing = yield* MessageReactionRepo.findById(id).pipe(withSystemActor)
+								const existing = yield* MessageReactionRepo.findById(id)
 								const deletedSyncPayload = Option.match(existing, {
 									onNone: () => null as null,
 									onSome: (value) =>
@@ -146,9 +143,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 										},
 								})
 
-								yield* MessageReactionRepo.deleteById(id).pipe(
-									policyUse(MessageReactionPolicy.canDelete(id)),
-								)
+								yield* MessageReactionPolicy.canDelete(id)
+								yield* MessageReactionRepo.deleteById(id)
 
 								const txid = yield* generateTransactionId()
 

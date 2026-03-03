@@ -1,5 +1,5 @@
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
@@ -64,9 +64,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 									return yield* Effect.succeed(true)
 								}
 
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -94,9 +95,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 									return yield* Effect.succeed(true)
 								}
 
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -124,9 +126,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 									return yield* Effect.succeed(true)
 								}
 
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -153,9 +156,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 								return yield* Effect.succeed(true)
 							}
 
-							const actorMember = yield* organizationMemberRepo
-								.findByOrgAndUser(member.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+								member.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(actorMember)) {
 								return yield* Effect.succeed(

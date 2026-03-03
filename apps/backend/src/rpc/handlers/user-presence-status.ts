@@ -1,6 +1,6 @@
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { UserPresenceStatusRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -17,9 +17,8 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id).pipe(
-								policyUse(UserPresenceStatusPolicy.canRead()),
-							)
+							yield* UserPresenceStatusPolicy.canRead()
+							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id)
 
 							const existing = Option.getOrNull(existingOption)
 
@@ -54,7 +53,7 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 										: (existing?.suppressNotifications ?? false),
 								updatedAt: now,
 								lastSeenAt: now, // Update heartbeat on any status change
-							}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -72,9 +71,8 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							const result = yield* UserPresenceStatusRepo.updateHeartbeat(user.id).pipe(
-								policyUse(UserPresenceStatusPolicy.canUpdate()),
-							)
+							yield* UserPresenceStatusPolicy.canUpdate()
+							const result = yield* UserPresenceStatusRepo.updateHeartbeat(user.id)
 
 							// If no record exists, create one with online status
 							if (Option.isNone(result)) {
@@ -89,7 +87,7 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 									suppressNotifications: false,
 									updatedAt: now,
 									lastSeenAt: now,
-								}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
+								})
 
 								return { lastSeenAt: now }
 							}
@@ -105,13 +103,13 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id).pipe(
-								policyUse(UserPresenceStatusPolicy.canRead()),
-							)
+							yield* UserPresenceStatusPolicy.canRead()
+							const existingOption = yield* UserPresenceStatusRepo.findByUserId(user.id)
 
 							const existing = Option.getOrNull(existingOption)
 
 							const now = new Date()
+							yield* UserPresenceStatusPolicy.canCreate()
 							const updatedStatus = yield* UserPresenceStatusRepo.upsertByUserId({
 								userId: user.id,
 								status: existing?.status ?? "online",
@@ -122,7 +120,7 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 								suppressNotifications: false,
 								updatedAt: now,
 								lastSeenAt: now,
-							}).pipe(policyUse(UserPresenceStatusPolicy.canCreate()))
+							})
 
 							const txid = yield* generateTransactionId()
 

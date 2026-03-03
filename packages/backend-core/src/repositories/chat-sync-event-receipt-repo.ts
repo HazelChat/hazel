@@ -1,5 +1,5 @@
 import { and, Database, eq, gte, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
 import { Effect, Option } from "effect"
@@ -53,7 +53,6 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 									)
 									.limit(1),
 							),
-						policyRequire("ChatSyncEventReceipt", "select"),
 					)({ syncConnectionId, source, dedupeKey }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -99,7 +98,6 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 									})
 									.returning({ id: schema.chatSyncEventReceiptsTable.id }),
 							),
-						policyRequire("ChatSyncEventReceipt", "create"),
 					)(params, tx)
 					.pipe(Effect.map((results) => results.length > 0))
 
@@ -166,7 +164,6 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 								)
 								.returning()
 						}),
-					policyRequire("ChatSyncEventReceipt", "update"),
 				)(params, tx)
 
 			const findRecentByConnection = (
@@ -199,23 +196,20 @@ export class ChatSyncEventReceiptRepo extends Effect.Service<ChatSyncEventReceip
 									),
 								),
 						),
-					policyRequire("ChatSyncEventReceipt", "select"),
 				)({ syncConnectionId, processedAfter }, tx)
 
 			const markFailed = (id: SyncEventReceiptId, errorMessage: string, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncEventReceiptId; errorMessage: string }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncEventReceiptsTable)
-								.set({
-									status: "failed",
-									errorMessage: data.errorMessage,
-								})
-								.where(eq(schema.chatSyncEventReceiptsTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncEventReceipt", "update"),
+				db.makeQuery((execute, data: { id: SyncEventReceiptId; errorMessage: string }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncEventReceiptsTable)
+							.set({
+								status: "failed",
+								errorMessage: data.errorMessage,
+							})
+							.where(eq(schema.chatSyncEventReceiptsTable.id, data.id))
+							.returning(),
+					),
 				)({ id, errorMessage }, tx)
 
 			return {

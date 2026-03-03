@@ -1,6 +1,6 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { Database } from "@hazel/db"
-import { CurrentUser, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
@@ -30,7 +30,7 @@ export const HttpMockDataLive = HttpApiBuilder.group(HazelApi, "mockData", (hand
 							return { result, txid }
 						}),
 					)
-					.pipe(withSystemActor, withRemapDbErrors("MockDataGenerator", "create"))
+					.pipe(withRemapDbErrors("MockDataGenerator", "create"))
 
 				return {
 					transactionId: txid,

@@ -1,6 +1,6 @@
 import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import {
 	ChannelNotFoundError,
 	RssFeedValidationError,
@@ -31,9 +31,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							// Get channel to get organization ID
-							const channelOption = yield* channelRepo
-								.findById(payload.channelId)
-								.pipe(withSystemActor)
+							const channelOption = yield* channelRepo.findById(payload.channelId)
 							if (Option.isNone(channelOption)) {
 								return yield* Effect.fail(
 									new ChannelNotFoundError({ channelId: payload.channelId }),
@@ -42,9 +40,10 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 							const channel = channelOption.value
 
 							// Check if already subscribed to this feed URL in this channel
-							const existingOption = yield* subscriptionRepo
-								.findByChannelAndFeedUrl(payload.channelId, payload.feedUrl)
-								.pipe(withSystemActor)
+							const existingOption = yield* subscriptionRepo.findByChannelAndFeedUrl(
+								payload.channelId,
+								payload.feedUrl,
+							)
 							if (Option.isSome(existingOption)) {
 								return yield* Effect.fail(
 									new RssSubscriptionExistsError({
@@ -65,20 +64,20 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 									}),
 							})
 
+							yield* RssSubscriptionPolicy.canCreate(payload.channelId)
+
 							// Create subscription
-							const [subscription] = yield* subscriptionRepo
-								.insert({
-									channelId: payload.channelId,
-									organizationId: channel.organizationId,
-									feedUrl: payload.feedUrl,
-									feedTitle: feedMetadata.title,
-									feedIconUrl: feedMetadata.iconUrl,
-									isEnabled: true,
-									pollingIntervalMinutes: payload.pollingIntervalMinutes ?? 15,
-									createdBy: user.id,
-									deletedAt: null,
-								})
-								.pipe(withSystemActor)
+							const [subscription] = yield* subscriptionRepo.insert({
+								channelId: payload.channelId,
+								organizationId: channel.organizationId,
+								feedUrl: payload.feedUrl,
+								feedTitle: feedMetadata.title,
+								feedIconUrl: feedMetadata.iconUrl,
+								isEnabled: true,
+								pollingIntervalMinutes: payload.pollingIntervalMinutes ?? 15,
+								createdBy: user.id,
+								deletedAt: null,
+							})
 
 							// Ensure RSS bot user exists for this organization
 							yield* integrationBotService.getOrCreateWebhookBotUser(
@@ -92,19 +91,17 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 								data: subscription,
 								transactionId: txid,
 							})
-						}).pipe(policyUse(RssSubscriptionPolicy.canCreate(payload.channelId))),
+						}),
 					)
 					.pipe(withRemapDbErrors("RssSubscription", "create")),
 
 			"rssSubscription.list": ({ channelId }) =>
 				Effect.gen(function* () {
+					yield* RssSubscriptionPolicy.canRead(channelId)
 					const subscriptions = yield* subscriptionRepo.findByChannel(channelId)
 
 					return new RssSubscriptionListResponse({ data: subscriptions })
-				}).pipe(
-					policyUse(RssSubscriptionPolicy.canRead(channelId)),
-					withRemapDbErrors("RssSubscription", "select"),
-				),
+				}).pipe(withRemapDbErrors("RssSubscription", "select")),
 
 			"rssSubscription.listByOrganization": () =>
 				Effect.gen(function* () {
@@ -116,12 +113,8 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 
 					const organizationId = user.organizationId
 
-					const subscriptions = yield* subscriptionRepo
-						.findByOrganization(organizationId)
-						.pipe(
-							withSystemActor,
-							policyUse(RssSubscriptionPolicy.canReadByOrganization(organizationId)),
-						)
+					yield* RssSubscriptionPolicy.canReadByOrganization(organizationId)
+					const subscriptions = yield* subscriptionRepo.findByOrganization(organizationId)
 
 					return new RssSubscriptionListResponse({ data: subscriptions })
 				}).pipe(withRemapDbErrors("RssSubscription", "select")),
@@ -130,21 +123,19 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const subscriptionOption = yield* subscriptionRepo
-								.findById(id)
-								.pipe(withSystemActor)
+							yield* RssSubscriptionPolicy.canUpdate(id)
+
+							const subscriptionOption = yield* subscriptionRepo.findById(id)
 							if (Option.isNone(subscriptionOption)) {
 								return yield* Effect.fail(
 									new RssSubscriptionNotFoundError({ subscriptionId: id }),
 								)
 							}
 
-							const [updatedSubscription] = yield* subscriptionRepo
-								.updateSettings(id, {
-									isEnabled: payload.isEnabled,
-									pollingIntervalMinutes: payload.pollingIntervalMinutes,
-								})
-								.pipe(withSystemActor)
+							const [updatedSubscription] = yield* subscriptionRepo.updateSettings(id, {
+								isEnabled: payload.isEnabled,
+								pollingIntervalMinutes: payload.pollingIntervalMinutes,
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -152,7 +143,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 								data: updatedSubscription,
 								transactionId: txid,
 							})
-						}).pipe(policyUse(RssSubscriptionPolicy.canUpdate(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("RssSubscription", "update")),
 
@@ -160,9 +151,9 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const subscriptionOption = yield* subscriptionRepo
-								.findById(id)
-								.pipe(withSystemActor)
+							yield* RssSubscriptionPolicy.canDelete(id)
+
+							const subscriptionOption = yield* subscriptionRepo.findById(id)
 							if (Option.isNone(subscriptionOption)) {
 								return yield* Effect.fail(
 									new RssSubscriptionNotFoundError({ subscriptionId: id }),
@@ -174,7 +165,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 							const txid = yield* generateTransactionId()
 
 							return { transactionId: txid }
-						}).pipe(policyUse(RssSubscriptionPolicy.canDelete(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("RssSubscription", "delete")),
 		}

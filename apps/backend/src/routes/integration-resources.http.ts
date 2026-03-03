@@ -1,6 +1,6 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { IntegrationConnectionRepo } from "@hazel/backend-core"
-import { InternalServerError, withSystemActor } from "@hazel/domain"
+import { InternalServerError } from "@hazel/domain"
 import type { ExternalChannelId, OrganizationId } from "@hazel/schema"
 import {
 	DiscordGuildChannelsResponse,
@@ -65,9 +65,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 
 					// Check if organization has Linear connected
 					const connectionRepo = yield* IntegrationConnectionRepo
-					const connectionOption = yield* connectionRepo
-						.findByOrgAndProvider(orgId, "linear")
-						.pipe(withSystemActor)
+					const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "linear")
 
 					if (Option.isNone(connectionOption)) {
 						return yield* Effect.fail(
@@ -179,9 +177,10 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					// Phase 1: Try authenticated fetch
 					const authenticatedResult = yield* Effect.gen(function* () {
 						const connectionRepo = yield* IntegrationConnectionRepo
-						const connectionOption = yield* connectionRepo
-							.findByOrgAndProvider(orgId, "github")
-							.pipe(withSystemActor)
+						const connectionOption = yield* connectionRepo.findByOrgAndProvider(
+							orgId,
+							"github",
+						)
 
 						if (Option.isNone(connectionOption)) {
 							return Option.none<GitHub.GitHubPR>()
@@ -364,7 +363,7 @@ const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRe
 	const tokenService = yield* IntegrationTokenService
 
 	// Check if organization has GitHub connected
-	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "github").pipe(withSystemActor)
+	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "github")
 
 	if (Option.isNone(connectionOption)) {
 		return yield* Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "github" }))
@@ -417,9 +416,7 @@ const getActiveDiscordConnection = Effect.fn("integration-resources.getActiveDis
 	orgId: OrganizationId,
 ) {
 	const connectionRepo = yield* IntegrationConnectionRepo
-	const connectionOption = yield* connectionRepo
-		.findByOrgAndProvider(orgId, "discord")
-		.pipe(withSystemActor)
+	const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "discord")
 
 	if (Option.isNone(connectionOption)) {
 		return yield* Effect.fail(new IntegrationNotConnectedForPreviewError({ provider: "discord" }))

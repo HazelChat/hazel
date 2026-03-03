@@ -1,5 +1,4 @@
 import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Effect } from "effect"
@@ -34,35 +33,31 @@ export class ChatSyncAttributionReconciler extends Effect.Service<ChatSyncAttrib
 			}) {
 				const externalId = `${params.provider}-user-${params.externalAccountId}`
 				const displayName = params.displayName?.trim() || defaultShadowDisplayName(params.provider)
-				const user = yield* userRepo
-					.upsertByExternalId(
-						{
-							externalId,
-							email: `${externalId}@${params.provider}.internal`,
-							firstName: displayName,
-							lastName: "",
-							avatarUrl: "",
-							userType: "machine",
-							settings: null,
-							isOnboarded: true,
-							timezone: null,
-							deletedAt: null,
-						},
-						{ syncAvatarUrl: true },
-					)
-					.pipe(withSystemActor)
-
-				yield* organizationMemberRepo
-					.upsertByOrgAndUser({
-						organizationId: params.organizationId,
-						userId: user.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
+				const user = yield* userRepo.upsertByExternalId(
+					{
+						externalId,
+						email: `${externalId}@${params.provider}.internal`,
+						firstName: displayName,
+						lastName: "",
+						avatarUrl: "",
+						userType: "machine",
+						settings: null,
+						isOnboarded: true,
+						timezone: null,
 						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+					},
+					{ syncAvatarUrl: true },
+				)
+
+				yield* organizationMemberRepo.upsertByOrgAndUser({
+					organizationId: params.organizationId,
+					userId: user.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				return user.id
 			})
@@ -77,14 +72,12 @@ export class ChatSyncAttributionReconciler extends Effect.Service<ChatSyncAttrib
 					displayName: params.externalAccountName,
 				})
 
-				const updatedCount = yield* messageRepo
-					.reassignExternalSyncedAuthors({
-						organizationId: params.organizationId,
-						provider: params.provider,
-						fromAuthorId: shadowUserId,
-						toAuthorId: params.userId,
-					})
-					.pipe(withSystemActor)
+				const updatedCount = yield* messageRepo.reassignExternalSyncedAuthors({
+					organizationId: params.organizationId,
+					provider: params.provider,
+					fromAuthorId: shadowUserId,
+					toAuthorId: params.userId,
+				})
 
 				yield* Effect.logInfo("Historical external messages re-attributed to linked user", {
 					event: "chat_sync_attribution_relinked",
@@ -109,14 +102,12 @@ export class ChatSyncAttributionReconciler extends Effect.Service<ChatSyncAttrib
 					displayName: params.externalAccountName,
 				})
 
-				const updatedCount = yield* messageRepo
-					.reassignExternalSyncedAuthors({
-						organizationId: params.organizationId,
-						provider: params.provider,
-						fromAuthorId: params.userId,
-						toAuthorId: shadowUserId,
-					})
-					.pipe(withSystemActor)
+				const updatedCount = yield* messageRepo.reassignExternalSyncedAuthors({
+					organizationId: params.organizationId,
+					provider: params.provider,
+					fromAuthorId: params.userId,
+					toAuthorId: shadowUserId,
+				})
 
 				yield* Effect.logInfo("Historical external messages re-attributed to shadow user", {
 					event: "chat_sync_attribution_unlinked",

@@ -1,7 +1,7 @@
 import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
 import { getJwtExpiry } from "@hazel/auth"
 import { UserRepo } from "@hazel/backend-core"
-import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "@hazel/domain"
 import { Config, Effect, Option, Schema } from "effect"
 import { HazelApi } from "../api"
 import { AuthState, DesktopAuthState, RelativeUrl } from "../lib/schema"
@@ -242,7 +242,6 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 								}),
 							),
 					}),
-					withSystemActor,
 				)
 
 				yield* Option.match(userOption, {
@@ -272,7 +271,6 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 											}),
 										),
 								}),
-								withSystemActor,
 							),
 					onSome: (user) => Effect.succeed(user),
 				})

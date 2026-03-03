@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { AttachmentRepo, BotRepo, OrganizationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import {
 	BotNotFoundForUploadError,
 	OrganizationNotFoundForUploadError,
@@ -80,9 +80,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							const botRepo = yield* BotRepo
 
 							// Check if bot exists
-							const botOption = yield* botRepo
-								.findById(req.botId)
-								.pipe(withSystemActor, Effect.orDie)
+							const botOption = yield* botRepo.findById(req.botId).pipe(Effect.orDie)
 							if (Option.isNone(botOption)) {
 								return yield* Effect.fail(new BotNotFoundForUploadError({ botId: req.botId }))
 							}
@@ -140,9 +138,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							const orgRepo = yield* OrganizationRepo
 
 							// Check if organization exists
-							const orgOption = yield* orgRepo
-								.findById(req.organizationId)
-								.pipe(withSystemActor, Effect.orDie)
+							const orgOption = yield* orgRepo.findById(req.organizationId).pipe(Effect.orDie)
 							if (Option.isNone(orgOption)) {
 								return yield* Effect.fail(
 									new OrganizationNotFoundForUploadError({

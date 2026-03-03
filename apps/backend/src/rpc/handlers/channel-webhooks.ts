@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto"
 import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import type { ChannelWebhookId } from "@hazel/schema"
 import {
 	ChannelNotFoundError,
@@ -53,9 +53,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const integrationBotService = yield* IntegrationBotService
 
 							// Get channel to get organization ID
-							const channelOption = yield* channelRepo
-								.findById(payload.channelId)
-								.pipe(withSystemActor)
+							const channelOption = yield* channelRepo.findById(payload.channelId)
 							if (Option.isNone(channelOption)) {
 								return yield* Effect.fail(
 									new ChannelNotFoundError({ channelId: payload.channelId }),
@@ -86,23 +84,23 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 								}),
 							)
 
+							yield* ChannelWebhookPolicy.canCreate(payload.channelId)
+
 							// Create webhook
-							const [webhook] = yield* webhookRepo
-								.insert({
-									channelId: payload.channelId,
-									organizationId: channel.organizationId,
-									botUserId: botUser.id,
-									name: payload.name,
-									description: payload.description ?? null,
-									avatarUrl: payload.avatarUrl ?? null,
-									tokenHash,
-									tokenSuffix,
-									isEnabled: true,
-									createdBy: user.id,
-									lastUsedAt: null,
-									deletedAt: null,
-								})
-								.pipe(withSystemActor)
+							const [webhook] = yield* webhookRepo.insert({
+								channelId: payload.channelId,
+								organizationId: channel.organizationId,
+								botUserId: botUser.id,
+								name: payload.name,
+								description: payload.description ?? null,
+								avatarUrl: payload.avatarUrl ?? null,
+								tokenHash,
+								tokenSuffix,
+								isEnabled: true,
+								createdBy: user.id,
+								lastUsedAt: null,
+								deletedAt: null,
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -112,7 +110,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 								webhookUrl: buildWebhookUrl(webhook.id, token),
 								transactionId: txid,
 							})
-						}).pipe(policyUse(ChannelWebhookPolicy.canCreate(payload.channelId))),
+						}),
 					)
 					.pipe(withRemapDbErrors("ChannelWebhook", "create")),
 
@@ -120,13 +118,11 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 				Effect.gen(function* () {
 					const webhookRepo = yield* ChannelWebhookRepo
 
+					yield* ChannelWebhookPolicy.canRead(channelId)
 					const webhooks = yield* webhookRepo.findByChannel(channelId)
 
 					return new ChannelWebhookListResponse({ data: webhooks })
-				}).pipe(
-					policyUse(ChannelWebhookPolicy.canRead(channelId)),
-					withRemapDbErrors("ChannelWebhook", "select"),
-				),
+				}).pipe(withRemapDbErrors("ChannelWebhook", "select")),
 
 			"channelWebhook.update": ({ id, ...payload }) =>
 				db
@@ -135,23 +131,23 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const webhookRepo = yield* ChannelWebhookRepo
 							const botService = yield* WebhookBotService
 
+							yield* ChannelWebhookPolicy.canUpdate(id)
+
 							// Get current webhook
-							const webhookOption = yield* webhookRepo.findById(id).pipe(withSystemActor)
+							const webhookOption = yield* webhookRepo.findById(id)
 							if (Option.isNone(webhookOption)) {
 								return yield* Effect.fail(new ChannelWebhookNotFoundError({ webhookId: id }))
 							}
 							const currentWebhook = webhookOption.value
 
 							// Update webhook
-							const updatedWebhook = yield* webhookRepo
-								.update({
-									id,
-									name: payload.name,
-									description: payload.description,
-									avatarUrl: payload.avatarUrl,
-									isEnabled: payload.isEnabled,
-								})
-								.pipe(withSystemActor)
+							const updatedWebhook = yield* webhookRepo.update({
+								id,
+								name: payload.name,
+								description: payload.description,
+								avatarUrl: payload.avatarUrl,
+								isEnabled: payload.isEnabled,
+							})
 
 							// Update bot user if name or avatar changed
 							if (payload.name !== undefined || payload.avatarUrl !== undefined) {
@@ -170,7 +166,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 								data: updatedWebhook,
 								transactionId: txid,
 							})
-						}).pipe(policyUse(ChannelWebhookPolicy.canUpdate(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("ChannelWebhook", "update")),
 
@@ -180,8 +176,10 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						Effect.gen(function* () {
 							const webhookRepo = yield* ChannelWebhookRepo
 
+							yield* ChannelWebhookPolicy.canUpdate(id)
+
 							// Get current webhook
-							const webhookOption = yield* webhookRepo.findById(id).pipe(withSystemActor)
+							const webhookOption = yield* webhookRepo.findById(id)
 							if (Option.isNone(webhookOption)) {
 								return yield* Effect.fail(new ChannelWebhookNotFoundError({ webhookId: id }))
 							}
@@ -204,7 +202,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 								webhookUrl: buildWebhookUrl(id, token),
 								transactionId: txid,
 							})
-						}).pipe(policyUse(ChannelWebhookPolicy.canUpdate(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("ChannelWebhook", "update")),
 
@@ -214,8 +212,10 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						Effect.gen(function* () {
 							const webhookRepo = yield* ChannelWebhookRepo
 
+							yield* ChannelWebhookPolicy.canDelete(id)
+
 							// Check webhook exists
-							const webhookOption = yield* webhookRepo.findById(id).pipe(withSystemActor)
+							const webhookOption = yield* webhookRepo.findById(id)
 							if (Option.isNone(webhookOption)) {
 								return yield* Effect.fail(new ChannelWebhookNotFoundError({ webhookId: id }))
 							}
@@ -228,7 +228,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const txid = yield* generateTransactionId()
 
 							return { transactionId: txid }
-						}).pipe(policyUse(ChannelWebhookPolicy.canDelete(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("ChannelWebhook", "delete")),
 
@@ -242,9 +242,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						return new ChannelWebhookListResponse({ data: [] })
 					}
 
-					const webhooks = yield* webhookRepo
-						.findByOrganization(user.organizationId)
-						.pipe(withSystemActor)
+					const webhooks = yield* webhookRepo.findByOrganization(user.organizationId)
 
 					return new ChannelWebhookListResponse({ data: webhooks })
 				}).pipe(withRemapDbErrors("ChannelWebhook", "select")),

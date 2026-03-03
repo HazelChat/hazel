@@ -12,7 +12,7 @@ import {
 	schema,
 	type TransactionClient,
 } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -100,7 +100,6 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 							.orderBy(desc(schema.messagesTable.createdAt), desc(schema.messagesTable.id))
 							.limit(data.limit + 1)
 					}),
-				policyRequire("Message", "select"),
 			)(params, tx)
 
 		/**
@@ -108,22 +107,20 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 		 */
 		const findByIdForCursor = (params: { id: MessageId; channelId: ChannelId }, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { id: MessageId; channelId: ChannelId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.messagesTable)
-								.where(
-									and(
-										eq(schema.messagesTable.id, data.id),
-										eq(schema.messagesTable.channelId, data.channelId),
-										isNull(schema.messagesTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("Message", "select"),
+				.makeQuery((execute, data: { id: MessageId; channelId: ChannelId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.messagesTable)
+							.where(
+								and(
+									eq(schema.messagesTable.id, data.id),
+									eq(schema.messagesTable.channelId, data.channelId),
+									isNull(schema.messagesTable.deletedAt),
+								),
+							)
+							.limit(1),
+					),
 				)(params, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -206,7 +203,6 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 
 						return updatedMessages.length
 					}),
-				policyRequire("Message", "update"),
 			)(params, tx)
 
 		return {

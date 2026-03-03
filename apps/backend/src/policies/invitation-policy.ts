@@ -1,5 +1,5 @@
 import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { InvitationId, OrganizationId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
@@ -53,9 +53,10 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 							}
 
 							// Org admin/owner can update
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(invitation.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								invitation.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -83,9 +84,10 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 							}
 
 							// Org admin/owner can delete
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(invitation.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								invitation.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -107,7 +109,7 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 						policyEntity,
 						"accept",
 						Effect.fn(`${policyEntity}.accept`)(function* (actor) {
-							const user = yield* userRepo.findById(actor.id).pipe(withSystemActor)
+							const user = yield* userRepo.findById(actor.id)
 
 							if (Option.isNone(user)) {
 								return yield* Effect.succeed(false)

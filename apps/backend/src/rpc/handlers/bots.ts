@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, UserRepo } from "@hazel/backend-core"
 import { and, Database, eq, schema } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import type { BotId, BotInstallationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import {
 	BotAlreadyInstalledError,
@@ -53,6 +53,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canCreate(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
@@ -82,7 +83,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										avatarUrl: "",
 										userType: "machine",
 									}),
-								).pipe(withSystemActor)
+								)
 
 								// 2. Create the bot record
 								const [bot] = yield* transactionAwareExecute((client) =>
@@ -103,7 +104,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											allowedIntegrations: null,
 										})
 										.returning(),
-								).pipe(withSystemActor)
+								)
 
 								// 3. Install the bot in the creator's organization
 								yield* transactionAwareExecute((client) =>
@@ -113,7 +114,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										organizationId,
 										installedBy: currentUser.id,
 									}),
-								).pipe(withSystemActor)
+								)
 
 								// 4. Add bot user to the organization as a member
 								yield* transactionAwareExecute((client) =>
@@ -123,7 +124,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										userId: botUserId,
 										role: "member",
 									}),
-								).pipe(withSystemActor)
+								)
 
 								yield* ChannelAccessSyncService.syncUserInOrganization(
 									botUserId,
@@ -137,7 +138,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									token, // Only returned once
 									transactionId: txid,
 								})
-							}).pipe(policyUse(BotPolicy.canCreate(organizationId))),
+							}),
 						)
 						.pipe(withRemapDbErrors("Bot", "create"))
 				}),
@@ -148,16 +149,17 @@ export const BotRpcLive = BotRpcs.toLayer(
 					const botRepo = yield* BotRepo
 
 					// List bots created by the current user
-					const bots = yield* botRepo.findByCreator(user.id).pipe(withSystemActor)
+					const bots = yield* botRepo.findByCreator(user.id)
 
 					return new BotListResponse({ data: bots })
 				}).pipe(withRemapDbErrors("Bot", "select")),
 
 			"bot.get": ({ id }) =>
 				Effect.gen(function* () {
+					yield* BotPolicy.canRead(id)
 					const botRepo = yield* BotRepo
 
-					const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+					const botOption = yield* botRepo.findById(id)
 					if (Option.isNone(botOption)) {
 						return yield* Effect.fail(new BotNotFoundError({ botId: id }))
 					}
@@ -168,7 +170,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 						data: botOption.value,
 						transactionId: txid,
 					})
-				}).pipe(policyUse(BotPolicy.canRead(id)), withRemapDbErrors("Bot", "select")),
+				}).pipe(withRemapDbErrors("Bot", "select")),
 
 			"bot.update": ({ id, ...payload }) =>
 				Effect.gen(function* () {
@@ -180,10 +182,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canUpdate(id)
 								const botRepo = yield* BotRepo
 
 								// Check bot exists
-								const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+								const botOption = yield* botRepo.findById(id)
 								if (Option.isNone(botOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId: id }))
 								}
@@ -198,7 +201,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										scopes: payload.scopes ? [...payload.scopes] : undefined,
 										isPublic: payload.isPublic,
 									})
-									.pipe(withSystemActor)
+									
 
 								// Keep machine user's firstName in sync with bot name
 								if (payload.name) {
@@ -208,7 +211,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											.update(schema.usersTable)
 											.set({ firstName: payload.name, updatedAt: new Date() })
 											.where(eq(schema.usersTable.id, bot.userId)),
-									).pipe(withSystemActor)
+									)
 								}
 
 								const txid = yield* generateTransactionId()
@@ -217,7 +220,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									data: updatedBot,
 									transactionId: txid,
 								})
-							}).pipe(policyUse(BotPolicy.canUpdate(id))),
+							}),
 						)
 						.pipe(withRemapDbErrors("Bot", "update"))
 				}),
@@ -226,21 +229,22 @@ export const BotRpcLive = BotRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* BotPolicy.canDelete(id)
 							const botRepo = yield* BotRepo
 
 							// Check bot exists
-							const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+							const botOption = yield* botRepo.findById(id)
 							if (Option.isNone(botOption)) {
 								return yield* Effect.fail(new BotNotFoundError({ botId: id }))
 							}
 
 							// Soft delete the bot
-							yield* botRepo.softDelete(id).pipe(withSystemActor)
+							yield* botRepo.softDelete(id)
 
 							const txid = yield* generateTransactionId()
 
 							return { transactionId: txid }
-						}).pipe(policyUse(BotPolicy.canDelete(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("Bot", "delete")),
 
@@ -254,10 +258,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canUpdate(id)
 								const botRepo = yield* BotRepo
 
 								// Check bot exists
-								const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+								const botOption = yield* botRepo.findById(id)
 								if (Option.isNone(botOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId: id }))
 								}
@@ -268,7 +273,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 								// Update token
 								const updatedBot = yield* botRepo
 									.updateTokenHash(id, tokenHash)
-									.pipe(withSystemActor)
+									
 
 								const txid = yield* generateTransactionId()
 
@@ -277,23 +282,24 @@ export const BotRpcLive = BotRpcs.toLayer(
 									token, // Only returned once
 									transactionId: txid,
 								})
-							}).pipe(policyUse(BotPolicy.canUpdate(id))),
+							}),
 						)
 						.pipe(withRemapDbErrors("Bot", "update"))
 				}),
 
 			"bot.getCommands": ({ botId }) =>
 				Effect.gen(function* () {
+					yield* BotPolicy.canRead(botId)
 					const botRepo = yield* BotRepo
 					const commandRepo = yield* BotCommandRepo
 
 					// Check bot exists
-					const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+					const botOption = yield* botRepo.findById(botId)
 					if (Option.isNone(botOption)) {
 						return yield* Effect.fail(new BotNotFoundError({ botId }))
 					}
 
-					const commands = yield* commandRepo.findByBot(botId).pipe(withSystemActor)
+					const commands = yield* commandRepo.findByBot(botId)
 
 					// Map commands to the expected format with null instead of undefined
 					const mappedCommands = commands.map((cmd) => ({
@@ -309,7 +315,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					}))
 
 					return new BotCommandListResponse({ data: mappedCommands })
-				}).pipe(policyUse(BotPolicy.canRead(botId)), withRemapDbErrors("BotCommand", "select")),
+				}).pipe(withRemapDbErrors("BotCommand", "select")),
 
 			// === Bot Marketplace ===
 
@@ -321,11 +327,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 					const userRepo = yield* UserRepo
 
 					// Get all public bots
-					const publicBots = yield* botRepo.findPublic(search).pipe(withSystemActor)
+					const publicBots = yield* botRepo.findPublic(search)
 
 					// Get installed bot IDs for this organization
 					const installedBotIds = user.organizationId
-						? yield* installationRepo.getBotIdsForOrg(user.organizationId).pipe(withSystemActor)
+						? yield* installationRepo.getBotIdsForOrg(user.organizationId)
 						: []
 					const installedSet = new Set(installedBotIds)
 
@@ -333,7 +339,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					const creatorIds = [...new Set(publicBots.map((b) => b.createdBy))]
 					const creators = yield* Effect.forEach(
 						creatorIds,
-						(id) => userRepo.findById(id).pipe(withSystemActor),
+						(id) => userRepo.findById(id),
 						{ concurrency: 10 },
 					)
 					const creatorMap = new Map<string, string>()
@@ -371,10 +377,10 @@ export const BotRpcLive = BotRpcs.toLayer(
 					// Get installed bot IDs for this organization
 					const botIds = yield* installationRepo
 						.getBotIdsForOrg(user.organizationId)
-						.pipe(withSystemActor)
+						
 
 					// Get bot details
-					const bots = yield* botRepo.findByIds(botIds).pipe(withSystemActor)
+					const bots = yield* botRepo.findByIds(botIds)
 
 					return new BotListResponse({ data: bots })
 				}).pipe(withRemapDbErrors("Bot", "select")),
@@ -395,11 +401,12 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canInstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
 								// Check bot exists and is public
-								const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+								const botOption = yield* botRepo.findById(botId)
 								if (Option.isNone(botOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId }))
 								}
@@ -412,7 +419,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 								// Check if already installed
 								const isInstalled = yield* installationRepo
 									.isInstalled(botId, organizationId)
-									.pipe(withSystemActor)
+									
 								if (isInstalled) {
 									return yield* Effect.fail(new BotAlreadyInstalledError({ botId }))
 								}
@@ -426,7 +433,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										organizationId,
 										installedBy: currentUser.id,
 									}),
-								).pipe(withSystemActor)
+								)
 
 								// Add bot user to the organization as a member (reactivate if soft-deleted)
 								const membershipId = randomUUID() as OrganizationMemberId
@@ -446,7 +453,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											],
 											set: { deletedAt: null },
 										}),
-								).pipe(withSystemActor)
+								)
 
 								yield* ChannelAccessSyncService.syncUserInOrganization(
 									bot.userId,
@@ -454,12 +461,12 @@ export const BotRpcLive = BotRpcs.toLayer(
 								)
 
 								// Increment install count
-								yield* botRepo.incrementInstallCount(botId).pipe(withSystemActor)
+								yield* botRepo.incrementInstallCount(botId)
 
 								const txid = yield* generateTransactionId()
 
 								return { transactionId: txid }
-							}).pipe(policyUse(BotPolicy.canInstall(organizationId))),
+							}),
 						)
 						.pipe(withRemapDbErrors("BotInstallation", "create"))
 				}),
@@ -480,13 +487,14 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canUninstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
 								// Check if installed
 								const installationOption = yield* installationRepo
 									.findByBotAndOrg(botId, organizationId)
-									.pipe(withSystemActor)
+									
 								if (Option.isNone(installationOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId }))
 								}
@@ -498,10 +506,10 @@ export const BotRpcLive = BotRpcs.toLayer(
 										.where(
 											eq(schema.botInstallationsTable.id, installationOption.value.id),
 										),
-								).pipe(withSystemActor)
+								)
 
 								// Get bot to remove bot user from org
-								const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+								const botOption = yield* botRepo.findById(botId)
 								if (Option.isSome(botOption)) {
 									// Remove bot user from organization (soft delete)
 									yield* transactionAwareExecute((client) =>
@@ -520,7 +528,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 													),
 												),
 											),
-									).pipe(withSystemActor)
+									)
 
 									yield* ChannelAccessSyncService.syncUserInOrganization(
 										botOption.value.userId,
@@ -528,13 +536,13 @@ export const BotRpcLive = BotRpcs.toLayer(
 									)
 
 									// Decrement install count
-									yield* botRepo.decrementInstallCount(botId).pipe(withSystemActor)
+									yield* botRepo.decrementInstallCount(botId)
 								}
 
 								const txid = yield* generateTransactionId()
 
 								return { transactionId: txid }
-							}).pipe(policyUse(BotPolicy.canUninstall(organizationId))),
+							}),
 						)
 						.pipe(withRemapDbErrors("BotInstallation", "delete"))
 				}),
@@ -555,11 +563,12 @@ export const BotRpcLive = BotRpcs.toLayer(
 					return yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* BotPolicy.canInstall(organizationId)
 								const botRepo = yield* BotRepo
 								const installationRepo = yield* BotInstallationRepo
 
 								// Check bot exists (no public check - allows private bots by ID)
-								const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+								const botOption = yield* botRepo.findById(botId)
 								if (Option.isNone(botOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId }))
 								}
@@ -569,7 +578,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 								// Check if already installed
 								const isInstalled = yield* installationRepo
 									.isInstalled(botId, organizationId)
-									.pipe(withSystemActor)
+									
 								if (isInstalled) {
 									return yield* Effect.fail(new BotAlreadyInstalledError({ botId }))
 								}
@@ -583,7 +592,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										organizationId,
 										installedBy: currentUser.id,
 									}),
-								).pipe(withSystemActor)
+								)
 
 								// Add bot user to the organization as a member (reactivate if soft-deleted)
 								const membershipId = randomUUID() as OrganizationMemberId
@@ -603,7 +612,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											],
 											set: { deletedAt: null },
 										}),
-								).pipe(withSystemActor)
+								)
 
 								yield* ChannelAccessSyncService.syncUserInOrganization(
 									bot.userId,
@@ -611,12 +620,12 @@ export const BotRpcLive = BotRpcs.toLayer(
 								)
 
 								// Increment install count
-								yield* botRepo.incrementInstallCount(botId).pipe(withSystemActor)
+								yield* botRepo.incrementInstallCount(botId)
 
 								const txid = yield* generateTransactionId()
 
 								return { transactionId: txid }
-							}).pipe(policyUse(BotPolicy.canInstall(organizationId))),
+							}),
 						)
 						.pipe(withRemapDbErrors("BotInstallation", "create"))
 				}),
@@ -625,10 +634,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* BotPolicy.canUpdate(id)
 							const botRepo = yield* BotRepo
 
 							// Check bot exists
-							const botOption = yield* botRepo.findById(id).pipe(withSystemActor)
+							const botOption = yield* botRepo.findById(id)
 							if (Option.isNone(botOption)) {
 								return yield* Effect.fail(new BotNotFoundError({ botId: id }))
 							}
@@ -641,7 +651,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									.update(schema.usersTable)
 									.set({ avatarUrl, updatedAt: new Date() })
 									.where(eq(schema.usersTable.id, bot.userId)),
-							).pipe(withSystemActor)
+							)
 
 							// Return the bot data (unchanged, but user avatar is updated)
 							const txid = yield* generateTransactionId()
@@ -650,7 +660,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 								data: bot,
 								transactionId: txid,
 							})
-						}).pipe(policyUse(BotPolicy.canUpdate(id))),
+						}),
 					)
 					.pipe(withRemapDbErrors("Bot", "update")),
 		}

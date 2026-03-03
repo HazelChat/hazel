@@ -1,10 +1,4 @@
-import {
-	CurrentUser,
-	InvalidBearerTokenError,
-	InvalidJwtPayloadError,
-	SessionLoadError,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, InvalidBearerTokenError, InvalidJwtPayloadError, SessionLoadError } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Config, Effect, Layer, Option } from "effect"
@@ -14,7 +8,7 @@ import { WorkOSClient } from "../session/workos-client.ts"
 /**
  * Interface for the user repository methods needed by backend auth.
  * This avoids circular dependencies by not depending on the full UserRepo.
- * The methods accept any context requirement since we wrap them with withSystemActor.
+ * The methods accept any context requirement.
  */
 export interface UserRepoLike {
 	findByExternalId: (externalId: string) => Effect.Effect<
@@ -125,7 +119,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								}),
 							),
 					}),
-					withSystemActor,
 				)
 
 				const user = yield* Option.match(userOption, {
@@ -153,7 +146,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 											}),
 										),
 								}),
-								withSystemActor,
 							),
 					onSome: (existingUser) =>
 						Effect.gen(function* () {
@@ -207,7 +199,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 													}),
 												),
 										}),
-										withSystemActor,
 									)
 								return updated
 							}
@@ -266,7 +257,6 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								}),
 							),
 					}),
-					withSystemActor,
 				)
 
 				const user = yield* Option.match(userOption, {

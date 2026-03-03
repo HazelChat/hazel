@@ -1,5 +1,5 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver"
@@ -23,9 +23,10 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
 							// Check if user is already a member
-							const currentMember = yield* organizationMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
+							const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+								organizationId,
+								actor.id,
+							)
 
 							// If already a member, can't create another membership
 							if (Option.isSome(currentMember)) {
@@ -54,9 +55,10 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 								}
 
 								// Admins can update other members
-								const currentMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)
@@ -84,9 +86,10 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 								}
 
 								// Admins can remove members
-								const currentMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)

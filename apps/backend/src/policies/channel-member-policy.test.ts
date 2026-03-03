@@ -37,10 +37,7 @@ const makeChannelMemberRepoLayer = (
 	membershipsByChannelAndUser: Record<string, ChannelMemberEntry> = {},
 ) =>
 	Layer.succeed(ChannelMemberRepo, {
-		with: <A, E, R>(
-			id: ChannelMemberId,
-			f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>,
-		) => {
+		with: <A, E, R>(id: ChannelMemberId, f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>) => {
 			const member = channelMembers[id]
 			if (!member) {
 				return Effect.fail(makeEntityNotFound("ChannelMember"))
@@ -56,10 +53,7 @@ const makeChannelMemberRepoLayer = (
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelEntry>) =>
 	Layer.succeed(ChannelRepo, {
-		with: <A, E, R>(
-			id: ChannelId,
-			f: (channel: ChannelEntry) => Effect.Effect<A, E, R>,
-		) => {
+		with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
 			const channel = channels[id]
 			if (!channel) {
 				return Effect.fail(makeEntityNotFound("Channel"))
@@ -75,7 +69,9 @@ const makePolicyLayer = (opts: {
 	membershipsByChannelAndUser?: Record<string, ChannelMemberEntry>
 }) =>
 	ChannelMemberPolicy.DefaultWithoutDependencies.pipe(
-		Layer.provide(makeChannelMemberRepoLayer(opts.channelMembers ?? {}, opts.membershipsByChannelAndUser ?? {})),
+		Layer.provide(
+			makeChannelMemberRepoLayer(opts.channelMembers ?? {}, opts.membershipsByChannelAndUser ?? {}),
+		),
 		Layer.provide(makeChannelRepoLayer(opts.channels)),
 		Layer.provide(makeOrganizationMemberRepoLayer(opts.members)),
 		Layer.provide(makeOrgResolverLayer(opts.members)),
@@ -234,7 +230,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			layer,
+			actor,
+		)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -256,8 +256,16 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const adminResult = await runWithActorEither(ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID), layer, admin)
-		const ownerResult = await runWithActorEither(ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID), layer, owner)
+		const adminResult = await runWithActorEither(
+			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			layer,
+			admin,
+		)
+		const ownerResult = await runWithActorEither(
+			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			layer,
+			owner,
+		)
 
 		// Admin is allowed
 		expect(Either.isRight(adminResult)).toBe(true)
@@ -282,7 +290,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			layer,
+			actor,
+		)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -304,8 +316,16 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const adminResult = await runWithActorEither(ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID), layer, admin)
-		const ownerResult = await runWithActorEither(ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID), layer, owner)
+		const adminResult = await runWithActorEither(
+			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			layer,
+			admin,
+		)
+		const ownerResult = await runWithActorEither(
+			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			layer,
+			owner,
+		)
 
 		// Admin is allowed
 		expect(Either.isRight(adminResult)).toBe(true)

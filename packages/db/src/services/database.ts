@@ -1,4 +1,3 @@
-import type { AuthorizedActor, PolicyFn } from "@hazel/domain"
 import type { ExtractTablesWithRelations } from "drizzle-orm"
 import type { PgTransaction } from "drizzle-orm/pg-core"
 import { drizzle, type PostgresJsDatabase, type PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js"
@@ -175,14 +174,7 @@ const makeService = (config: Config) =>
 			),
 		)
 
-		const makeQueryWithSchema = <
-			InputSchema extends Schema.Schema.AnyNoContext,
-			A,
-			E,
-			R,
-			Action extends string,
-			Entity extends string,
-		>(
+		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, R>(
 			inputSchema: InputSchema,
 			queryFn: (
 				execute: <T>(
@@ -191,14 +183,13 @@ const makeService = (config: Config) =>
 				validatedInput: Schema.Schema.Type<InputSchema>,
 				options?: { spanPrefix?: string },
 			) => Effect.Effect<A, E, never>,
-			policy: PolicyFn<AuthorizedActor<Action, Entity>>,
 		) => {
 			return (
 				rawData: unknown,
 				tx?: <T>(
 					fn: (client: TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-			): Effect.Effect<A, E | DatabaseError | ParseError, R | AuthorizedActor<Action, Entity>> => {
+			): Effect.Effect<A, E | DatabaseError | ParseError, R> => {
 				return Effect.gen(function* () {
 					const validatedInput = yield* Schema.decode(inputSchema)(rawData)
 
@@ -213,7 +204,6 @@ const makeService = (config: Config) =>
 
 					return yield* queryFn(execute, validatedInput)
 				}).pipe(
-					policy,
 					Effect.withSpan("queryWithSchema", {
 						attributes: { "input.schema": inputSchema.ast.toString() },
 					}),
@@ -221,19 +211,18 @@ const makeService = (config: Config) =>
 			}
 		}
 
-		const makeQuery = <Input, A, E, R, Action extends string, Entity extends string>(
+		const makeQuery = <Input, A, E, R>(
 			queryFn: (
 				executor: <T>(
 					fn: (client: Client | TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError>,
 				input: Input,
 			) => Effect.Effect<A, E, R>,
-			policy: PolicyFn<AuthorizedActor<Action, Entity>>,
 		) => {
 			return (
 				input: Input,
 				tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-			): Effect.Effect<A, E | DatabaseError, R | AuthorizedActor<Action, Entity>> => {
+			): Effect.Effect<A, E | DatabaseError, R> => {
 				return Effect.gen(function* () {
 					if (tx) {
 						return yield* queryFn(
@@ -255,7 +244,7 @@ const makeService = (config: Config) =>
 					}
 
 					return yield* queryFn(execute, input)
-				}).pipe(policy)
+				})
 			}
 		}
 

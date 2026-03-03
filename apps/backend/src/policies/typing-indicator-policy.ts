@@ -1,5 +1,4 @@
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
@@ -20,7 +19,7 @@ export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>
 				authorize("create", (actor) =>
 					channelMemberRepo
 						.findByChannelAndUser(channelId, actor.id)
-						.pipe(withSystemActor, Effect.map(Option.isSome)),
+						.pipe(Effect.map(Option.isSome)),
 				)
 
 			const canUpdate = (id: TypingIndicatorId) =>

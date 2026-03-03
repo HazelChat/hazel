@@ -1,5 +1,5 @@
 import { BotInstallationRepo, BotRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { Integrations, withSystemActor } from "@hazel/domain"
+import { Integrations } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -31,43 +31,38 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				const externalId = `integration-bot-${provider}`
 
 				// Try to find existing bot user
-				const existing = yield* userRepo.findByExternalId(externalId).pipe(withSystemActor)
-
+				const existing = yield* userRepo.findByExternalId(externalId)
 				const botUser = Option.isSome(existing)
 					? existing.value
 					: yield* Effect.gen(function* () {
 							// Create new machine user for this integration
 							const botConfig = Integrations.getBotConfig(provider)
-							const newUser = yield* userRepo
-								.insert({
-									externalId,
-									email: `${provider}-bot@integrations.internal`,
-									firstName: botConfig.name,
-									lastName: "",
-									avatarUrl: botConfig.avatarUrl,
-									userType: "machine",
-									settings: null,
-									isOnboarded: true,
-									timezone: null,
-									deletedAt: null,
-								})
-								.pipe(withSystemActor)
+							const newUser = yield* userRepo.insert({
+								externalId,
+								email: `${provider}-bot@integrations.internal`,
+								firstName: botConfig.name,
+								lastName: "",
+								avatarUrl: botConfig.avatarUrl,
+								userType: "machine",
+								settings: null,
+								isOnboarded: true,
+								timezone: null,
+								deletedAt: null,
+							})
 
 							return newUser[0]
 						})
 
 				// Ensure bot is a member of this organization (so it shows in Electric sync)
-				yield* orgMemberRepo
-					.upsertByOrgAndUser({
-						organizationId,
-						userId: botUser.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				yield* orgMemberRepo.upsertByOrgAndUser({
+					organizationId,
+					userId: botUser.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				return botUser
 			})
@@ -84,43 +79,38 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				const externalId = `integration-bot-${provider}`
 
 				// Try to find existing bot user
-				const existing = yield* userRepo.findByExternalId(externalId).pipe(withSystemActor)
-
+				const existing = yield* userRepo.findByExternalId(externalId)
 				const botUser = Option.isSome(existing)
 					? existing.value
 					: yield* Effect.gen(function* () {
 							// Create new machine user for this webhook integration
 							const botConfig = Integrations.getWebhookBotConfig(provider)
-							const newUser = yield* userRepo
-								.insert({
-									externalId,
-									email: `${provider}-bot@webhooks.internal`,
-									firstName: botConfig.name,
-									lastName: "",
-									avatarUrl: botConfig.avatarUrl,
-									userType: "machine",
-									settings: null,
-									isOnboarded: true,
-									timezone: null,
-									deletedAt: null,
-								})
-								.pipe(withSystemActor)
+							const newUser = yield* userRepo.insert({
+								externalId,
+								email: `${provider}-bot@webhooks.internal`,
+								firstName: botConfig.name,
+								lastName: "",
+								avatarUrl: botConfig.avatarUrl,
+								userType: "machine",
+								settings: null,
+								isOnboarded: true,
+								timezone: null,
+								deletedAt: null,
+							})
 
 							return newUser[0]
 						})
 
 				// Ensure bot is a member of this organization (so it shows in Electric sync)
-				yield* orgMemberRepo
-					.upsertByOrgAndUser({
-						organizationId,
-						userId: botUser.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				yield* orgMemberRepo.upsertByOrgAndUser({
+					organizationId,
+					userId: botUser.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				return botUser
 			})
@@ -139,8 +129,7 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				const externalId = `internal-bot-${provider}`
 
 				// Find existing bot user (must already exist from seed script)
-				const existingUser = yield* userRepo.findByExternalId(externalId).pipe(withSystemActor)
-
+				const existingUser = yield* userRepo.findByExternalId(externalId)
 				if (Option.isNone(existingUser)) {
 					yield* Effect.logWarning("Bot user not found - has seed script been run?", {
 						provider,
@@ -152,8 +141,7 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				const botUser = existingUser.value
 
 				// Find the bot record
-				const existingBot = yield* botRepo.findByUserId(botUser.id).pipe(withSystemActor)
-
+				const existingBot = yield* botRepo.findByUserId(botUser.id)
 				if (Option.isNone(existingBot)) {
 					yield* Effect.logWarning("Bot record not found for user - has seed script been run?", {
 						provider,
@@ -165,31 +153,28 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 				const bot = existingBot.value
 
 				// Add bot to org membership (so it shows in Electric sync)
-				yield* orgMemberRepo
-					.upsertByOrgAndUser({
-						organizationId,
-						userId: botUser.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				yield* orgMemberRepo.upsertByOrgAndUser({
+					organizationId,
+					userId: botUser.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				// Create bot installation (idempotent - check if exists first)
-				const existingInstallation = yield* botInstallationRepo
-					.findByBotAndOrg(bot.id, organizationId)
-					.pipe(withSystemActor)
+				const existingInstallation = yield* botInstallationRepo.findByBotAndOrg(
+					bot.id,
+					organizationId,
+				)
 
 				if (Option.isNone(existingInstallation)) {
-					yield* botInstallationRepo
-						.insert({
-							botId: bot.id,
-							organizationId,
-							installedBy: botUser.id,
-						})
-						.pipe(withSystemActor)
+					yield* botInstallationRepo.insert({
+						botId: bot.id,
+						organizationId,
+						installedBy: botUser.id,
+					})
 				}
 
 				return Option.some(botUser)

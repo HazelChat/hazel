@@ -24,10 +24,7 @@ type PinnedData = { pinnedBy: UserId; channelId: ChannelId }
 
 const makePinnedMessageRepoLayer = (pinnedMessages: Record<string, PinnedData>) =>
 	Layer.succeed(PinnedMessageRepo, {
-		with: <A, E, R>(
-			id: PinnedMessageId,
-			f: (pm: PinnedData) => Effect.Effect<A, E, R>,
-		) => {
+		with: <A, E, R>(id: PinnedMessageId, f: (pm: PinnedData) => Effect.Effect<A, E, R>) => {
 			const pm = pinnedMessages[id]
 			if (!pm) return Effect.fail(makeEntityNotFound("PinnedMessage"))
 			return f(pm)
@@ -72,11 +69,7 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canCreate(CHANNEL_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -88,11 +81,7 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canCreate(CHANNEL_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -104,11 +93,7 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canCreate(CHANNEL_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
@@ -120,11 +105,7 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canCreate(CHANNEL_ID),
-			layer,
-			outsider,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, outsider)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
@@ -136,11 +117,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: actor.id, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canUpdate(PINNED_MSG_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -152,11 +129,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: OTHER_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canUpdate(PINNED_MSG_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -168,11 +141,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: ADMIN_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canUpdate(PINNED_MSG_ID),
-			layer,
-			outsider,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, outsider)
 		expect(Either.isLeft(result)).toBe(true)
 	})
 
@@ -184,11 +153,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: actor.id, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canDelete(PINNED_MSG_ID),
-			layer,
-			actor,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, actor)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -200,11 +165,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: OTHER_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canDelete(PINNED_MSG_ID),
-			layer,
-			admin,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, admin)
 		expect(Either.isRight(result)).toBe(true)
 	})
 
@@ -216,11 +177,7 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: ADMIN_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(
-			PinnedMessagePolicy.canDelete(PINNED_MSG_ID),
-			layer,
-			outsider,
-		)
+		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, outsider)
 		expect(Either.isLeft(result)).toBe(true)
 		if (Either.isLeft(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)

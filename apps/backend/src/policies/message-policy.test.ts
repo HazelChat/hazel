@@ -24,10 +24,7 @@ const MISSING_MESSAGE_ID = "00000000-0000-0000-0000-000000000899" as MessageId
  * Creates a ChannelRepo mock with both `findById` (for OrgResolver) and `with` (for MessagePolicy).
  */
 const makeChannelRepoLayer = (
-	channels: Record<
-		string,
-		{ organizationId: OrganizationId; type: string; id: ChannelId }
-	>,
+	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
 	Layer.succeed(ChannelRepo, {
 		findById: (id: ChannelId) => {
@@ -36,7 +33,11 @@ const makeChannelRepoLayer = (
 		},
 		with: <A, E, R>(
 			id: ChannelId,
-			f: (channel: { organizationId: OrganizationId; type: string; id: ChannelId }) => Effect.Effect<A, E, R>,
+			f: (channel: {
+				organizationId: OrganizationId
+				type: string
+				id: ChannelId
+			}) => Effect.Effect<A, E, R>,
 		) => {
 			const channel = channels[id]
 			if (!channel) {
@@ -49,9 +50,7 @@ const makeChannelRepoLayer = (
 /**
  * Creates a MessageRepo mock with a `with` method.
  */
-const makeMessageRepoLayer = (
-	messages: Record<string, { authorId: UserId; channelId: ChannelId }>,
-) =>
+const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
 	Layer.succeed(MessageRepo, {
 		findById: (id: MessageId) => {
 			const message = messages[id]
@@ -80,10 +79,7 @@ const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, {
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	messages: Record<string, { authorId: UserId; channelId: ChannelId }>,
-	channels: Record<
-		string,
-		{ organizationId: OrganizationId; type: string; id: ChannelId }
-	>,
+	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) => {
 	const channelRepoLayer = makeChannelRepoLayer(channels)
 	const messageRepoLayer = makeMessageRepoLayer(messages)

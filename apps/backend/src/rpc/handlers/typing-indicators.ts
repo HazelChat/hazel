@@ -1,6 +1,6 @@
 import { TypingIndicatorRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { policyUse, withRemapDbErrors } from "@hazel/domain"
+import { withRemapDbErrors } from "@hazel/domain"
 import { TypingIndicatorNotFoundError, TypingIndicatorRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -38,11 +38,12 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							})
 
 							// Use upsert to create or update typing indicator
+							yield* TypingIndicatorPolicy.canCreate(payload.channelId)
 							const result = yield* TypingIndicatorRepo.upsertByChannelAndMember({
 								channelId: payload.channelId,
 								memberId: payload.memberId,
 								lastTyped: payload.lastTyped ?? Date.now(),
-							}).pipe(policyUse(TypingIndicatorPolicy.canCreate(payload.channelId)))
+							})
 
 							const typingIndicator = result[0]!
 
@@ -71,11 +72,12 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 								typingIndicatorId: id,
 							})
 
+							yield* TypingIndicatorPolicy.canUpdate(id)
 							const typingIndicator = yield* TypingIndicatorRepo.update({
 								...payload,
 								id,
 								lastTyped: Date.now(),
-							}).pipe(policyUse(TypingIndicatorPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 							yield* Effect.logDebug("typingIndicator.update succeeded", {
@@ -101,9 +103,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							})
 
 							// First find the typing indicator to return it
-							const existingOption = yield* TypingIndicatorRepo.findById(id).pipe(
-								policyUse(TypingIndicatorPolicy.canRead(id)),
-							)
+							yield* TypingIndicatorPolicy.canRead(id)
+							const existingOption = yield* TypingIndicatorRepo.findById(id)
 
 							if (Option.isNone(existingOption)) {
 								return yield* Effect.fail(
@@ -113,9 +114,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 
 							const existing = existingOption.value
 
-							yield* TypingIndicatorRepo.deleteById(id).pipe(
-								policyUse(TypingIndicatorPolicy.canDelete({ id })),
-							)
+							yield* TypingIndicatorPolicy.canDelete({ id })
+							yield* TypingIndicatorRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 							yield* Effect.logDebug("typingIndicator.delete succeeded", {

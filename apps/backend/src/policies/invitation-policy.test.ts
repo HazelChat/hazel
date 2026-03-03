@@ -26,7 +26,11 @@ const makeInvitationRepoLayer = (
 	Layer.succeed(InvitationRepo, {
 		with: <A, E, R>(
 			id: InvitationId,
-			f: (inv: { invitedBy: UserId; organizationId: OrganizationId; email: string }) => Effect.Effect<A, E, R>,
+			f: (inv: {
+				invitedBy: UserId
+				organizationId: OrganizationId
+				email: string
+			}) => Effect.Effect<A, E, R>,
 		) => {
 			const invitation = invitations[id]
 			if (!invitation) {
@@ -99,7 +103,11 @@ describe("InvitationPolicy", () => {
 		const layer = makePolicyLayer(
 			{},
 			{
-				[INVITATION_ID]: { invitedBy: actor.id, organizationId: TEST_ORG_ID, email: "invited@example.com" },
+				[INVITATION_ID]: {
+					invitedBy: actor.id,
+					organizationId: TEST_ORG_ID,
+					email: "invited@example.com",
+				},
 			},
 		)
 
@@ -115,7 +123,11 @@ describe("InvitationPolicy", () => {
 				[`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin",
 			},
 			{
-				[INVITATION_ID]: { invitedBy: TEST_USER_ID, organizationId: TEST_ORG_ID, email: "invited@example.com" },
+				[INVITATION_ID]: {
+					invitedBy: TEST_USER_ID,
+					organizationId: TEST_ORG_ID,
+					email: "invited@example.com",
+				},
 			},
 		)
 
@@ -131,7 +143,11 @@ describe("InvitationPolicy", () => {
 				[`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "member",
 			},
 			{
-				[INVITATION_ID]: { invitedBy: TEST_USER_ID, organizationId: TEST_ORG_ID, email: "invited@example.com" },
+				[INVITATION_ID]: {
+					invitedBy: TEST_USER_ID,
+					organizationId: TEST_ORG_ID,
+					email: "invited@example.com",
+				},
 			},
 		)
 
@@ -145,7 +161,11 @@ describe("InvitationPolicy", () => {
 		const layer = makePolicyLayer(
 			{},
 			{
-				[INVITATION_ID]: { invitedBy: actor.id, organizationId: TEST_ORG_ID, email: "invited@example.com" },
+				[INVITATION_ID]: {
+					invitedBy: actor.id,
+					organizationId: TEST_ORG_ID,
+					email: "invited@example.com",
+				},
 			},
 		)
 
@@ -161,7 +181,11 @@ describe("InvitationPolicy", () => {
 				[`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin",
 			},
 			{
-				[INVITATION_ID]: { invitedBy: TEST_USER_ID, organizationId: TEST_ORG_ID, email: "invited@example.com" },
+				[INVITATION_ID]: {
+					invitedBy: TEST_USER_ID,
+					organizationId: TEST_ORG_ID,
+					email: "invited@example.com",
+				},
 			},
 		)
 

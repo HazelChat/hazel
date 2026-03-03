@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder, HttpApiClient, HttpServerRequest } from "@effect/platform"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
-import { Cluster, WorkflowInitializationError, withSystemActor } from "@hazel/domain"
+import { Cluster, WorkflowInitializationError } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type {
 	SequinWebhookEvent,
@@ -251,7 +251,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 							? result.error
 							: "Unknown error",
 				})
-			}).pipe(withSystemActor),
+			}),
 		)
 		.handle("sequinWebhook", ({ payload }) =>
 			Effect.gen(function* () {

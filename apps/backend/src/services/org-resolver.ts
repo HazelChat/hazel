@@ -1,5 +1,5 @@
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { type AuthorizedActor, PermissionError, authorizedActor, withSystemActor } from "@hazel/domain"
+import { type AuthorizedActor, PermissionError, authorizedActor } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
@@ -32,7 +32,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				const actor = yield* CurrentUser.Context
 				const member = yield* organizationMemberRepo
 					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(withSystemActor, Effect.orDie)
+					.pipe(Effect.orDie)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -60,7 +60,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				const actor = yield* CurrentUser.Context
 				const member = yield* organizationMemberRepo
 					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(withSystemActor, Effect.orDie)
+					.pipe(Effect.orDie)
 
 				if (Option.isNone(member)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -86,7 +86,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				const actor = yield* CurrentUser.Context
 				const member = yield* organizationMemberRepo
 					.findByOrgAndUser(organizationId, actor.id)
-					.pipe(withSystemActor, Effect.orDie)
+					.pipe(Effect.orDie)
 
 				if (Option.isNone(member) || member.value.role !== "owner") {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -115,7 +115,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 			action: Action,
 		) =>
 			Effect.gen(function* () {
-				const channel = yield* channelRepo.findById(channelId).pipe(withSystemActor, Effect.orDie)
+				const channel = yield* channelRepo.findById(channelId).pipe(Effect.orDie)
 				if (Option.isNone(channel)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Channel not found: ${channelId}` }),
@@ -136,7 +136,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
-				const channel = yield* channelRepo.findById(channelId).pipe(withSystemActor, Effect.orDie)
+				const channel = yield* channelRepo.findById(channelId).pipe(Effect.orDie)
 				if (Option.isNone(channel)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Channel not found: ${channelId}` }),
@@ -146,7 +146,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				const ch = channel.value
 				const orgMember = yield* organizationMemberRepo
 					.findByOrgAndUser(ch.organizationId, actor.id)
-					.pipe(withSystemActor, Effect.orDie)
+					.pipe(Effect.orDie)
 
 				if (Option.isNone(orgMember)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
@@ -180,7 +180,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 			action: Action,
 		) =>
 			Effect.gen(function* () {
-				const message = yield* messageRepo.findById(messageId).pipe(withSystemActor, Effect.orDie)
+				const message = yield* messageRepo.findById(messageId).pipe(Effect.orDie)
 				if (Option.isNone(message)) {
 					return yield* Effect.fail(
 						new PermissionError({ message: `Message not found: ${messageId}` }),
@@ -209,14 +209,14 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 					}
 					const membership = yield* channelMemberRepo
 						.findByChannelAndUser(channel.id as ChannelId, actor.id)
-						.pipe(withSystemActor, Effect.orDie)
+						.pipe(Effect.orDie)
 					return Option.isSome(membership)
 				}
 
 				if (channel.type === "direct" || channel.type === "single") {
 					const membership = yield* channelMemberRepo
 						.findByChannelAndUser(channel.id as ChannelId, actor.id)
-						.pipe(withSystemActor, Effect.orDie)
+						.pipe(Effect.orDie)
 					return Option.isSome(membership)
 				}
 
@@ -226,7 +226,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 					}
 					const parentChannel = yield* channelRepo
 						.findById(channel.parentChannelId as ChannelId)
-						.pipe(withSystemActor, Effect.orDie)
+						.pipe(Effect.orDie)
 
 					if (Option.isNone(parentChannel)) {
 						return false
