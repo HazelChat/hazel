@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@effect/vitest"
-import { ChannelRepo, OrganizationMemberRepo } from "@hazel/backend-core"
+import { ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
-import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
+import { Effect, Either, Layer } from "effect"
 import { ChannelPolicy } from "./channel-policy.ts"
-import { OrganizationPolicy } from "./organization-policy.ts"
 import {
 	makeActor,
 	makeEntityNotFound,
+	makeOrgResolverLayer,
 	runWithActorEither,
 	TEST_ALT_ORG_ID,
 	TEST_ORG_ID,
@@ -17,14 +17,6 @@ type Role = "admin" | "member" | "owner"
 
 const CHANNEL_ID = "00000000-0000-0000-0000-000000000301" as ChannelId
 const MISSING_CHANNEL_ID = "00000000-0000-0000-0000-000000000399" as ChannelId
-
-const makeOrganizationMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	} as unknown as OrganizationMemberRepo)
 
 const makeChannelRepoLayer = (channels: Record<string, { organizationId: OrganizationId }>) =>
 	Layer.succeed(ChannelRepo, {
@@ -46,11 +38,7 @@ const makePolicyLayer = (
 ) =>
 	ChannelPolicy.DefaultWithoutDependencies.pipe(
 		Layer.provide(makeChannelRepoLayer(channels)),
-		Layer.provide(
-			OrganizationPolicy.DefaultWithoutDependencies.pipe(
-				Layer.provide(makeOrganizationMemberRepoLayer(members)),
-			),
-		),
+		Layer.provide(makeOrgResolverLayer(members)),
 	)
 
 describe("ChannelPolicy", () => {

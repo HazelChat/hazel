@@ -1,33 +1,22 @@
 import { describe, expect, it } from "@effect/vitest"
-import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
-import type { OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import type { UserId } from "@hazel/schema"
+import { Either, Layer } from "effect"
 import { OrganizationPolicy } from "./organization-policy.ts"
-import { makeActor, runWithActorEither, TEST_ALT_ORG_ID, TEST_ORG_ID } from "./policy-test-helpers.ts"
+import {
+	makeActor,
+	makeOrgResolverLayer,
+	makeOrganizationMemberRepoLayer,
+	runWithActorEither,
+	TEST_ALT_ORG_ID,
+	TEST_ORG_ID,
+} from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const makeOrganizationMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			if (!role) {
-				return Effect.succeed(Option.none())
-			}
-
-			return Effect.succeed(
-				Option.some({
-					organizationId,
-					userId,
-					role,
-				}),
-			)
-		},
-	} as unknown as OrganizationMemberRepo)
-
 const makePolicyLayer = (members: Record<string, Role>) =>
 	OrganizationPolicy.DefaultWithoutDependencies.pipe(
+		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 	)
 

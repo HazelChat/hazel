@@ -3,6 +3,7 @@ import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("ChannelMemberPolicy/Policy", {
 	effect: Effect.gen(function* () {
@@ -11,6 +12,7 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 		const channelMemberRepo = yield* ChannelMemberRepo
 		const channelRepo = yield* ChannelRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const orgResolver = yield* OrgResolver
 
 		const isOwner = (id: ChannelMemberId) =>
 			ErrorUtils.refailUnauthorized(
@@ -38,7 +40,6 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 						policyEntity,
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							// Check if user is an admin of the organization
 							const orgMember = yield* organizationMemberRepo
 								.findByOrgAndUser(channel.organizationId, actor.id)
 								.pipe(withSystemActor)
@@ -103,7 +104,7 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 							policyEntity,
 							"update",
 							Effect.fn(`${policyEntity}.update`)(function* (actor) {
-								// Members can update their own membership (e.g., mute, hide, favorite)
+								// Self-update always allowed
 								if (actor.id === member.userId) {
 									return yield* Effect.succeed(true)
 								}
@@ -135,7 +136,7 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								// Members can leave channels themselves
+								// Self-removal always allowed
 								if (actor.id === member.userId) {
 									return yield* Effect.succeed(true)
 								}
@@ -158,6 +159,11 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 
 		return { canCreate, canRead, canUpdate, canDelete, isOwner } as const
 	}),
-	dependencies: [ChannelMemberRepo.Default, ChannelRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [
+		ChannelMemberRepo.Default,
+		ChannelRepo.Default,
+		OrganizationMemberRepo.Default,
+		OrgResolver.Default,
+	],
 	accessors: true,
 }) {}

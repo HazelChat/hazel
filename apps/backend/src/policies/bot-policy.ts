@@ -1,8 +1,8 @@
-import { BotRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
+import { BotRepo } from "@hazel/backend-core"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { BotId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
-import { makeOrganizationScopeChecks, makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
 export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
@@ -10,24 +10,24 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 		const policyEntity = "Bot" as const
 
 		const botRepo = yield* BotRepo
-		const orgMemberRepo = yield* OrganizationMemberRepo
-		const authorize = makePolicy(policyEntity)
-		const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
-			orgMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
-		)
+		const orgResolver = yield* OrgResolver
 
-		// Can create a bot (any authenticated user with an organization)
 		const canCreate = (organizationId: OrganizationId) =>
-			authorize("create", (actor) => orgScope.isMember(organizationId, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"create",
+			)(orgResolver.requireScope(organizationId, "bots:write", policyEntity, "create"))
 
-		// Can read a bot (org admin or bot creator)
 		const canRead = (botId: BotId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"select",
+			)(
 				botRepo.with(botId, (bot) =>
-					authorize("select", (actor) =>
-						Effect.gen(function* () {
+					policy(
+						policyEntity,
+						"select",
+						Effect.fn(`${policyEntity}.select`)(function* (actor) {
 							// Bot creator can always read
 							if (bot.createdBy === actor.id) {
 								return true
@@ -35,7 +35,17 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 
 							// Org admin can read bots in their org if installed
 							if (actor.organizationId) {
-								return yield* orgScope.isAdminOrOwner(actor.organizationId, actor.id)
+								return yield* orgResolver
+									.requireAdminOrOwner(
+										actor.organizationId,
+										"bots:read",
+										policyEntity,
+										"select",
+									)
+									.pipe(
+										Effect.map(() => true),
+										Effect.catchAll(() => Effect.succeed(false)),
+									)
 							}
 
 							return false
@@ -44,36 +54,52 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 				),
 			)
 
-		// Can update a bot (bot creator or org admin in creator's org)
 		const canUpdate = (botId: BotId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"update",
+			)(
 				botRepo.with(botId, (bot) =>
-					authorize("update", (actor) => Effect.succeed(bot.createdBy === actor.id)),
+					policy(
+						policyEntity,
+						"update",
+						Effect.fn(`${policyEntity}.update`)(function* (actor) {
+							return actor.id === bot.createdBy
+						}),
+					),
 				),
 			)
 
-		// Can delete a bot (bot creator only)
 		const canDelete = (botId: BotId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"delete",
+			)(
 				botRepo.with(botId, (bot) =>
-					authorize("delete", (actor) => Effect.succeed(bot.createdBy === actor.id)),
+					policy(
+						policyEntity,
+						"delete",
+						Effect.fn(`${policyEntity}.delete`)(function* (actor) {
+							return actor.id === bot.createdBy
+						}),
+					),
 				),
 			)
 
-		// Can install a bot (org admin only)
 		const canInstall = (organizationId: OrganizationId) =>
-			authorize("install", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"install",
+			)(orgResolver.requireAdminOrOwner(organizationId, "bots:write", policyEntity, "install"))
 
-		// Can uninstall a bot (org admin only)
 		const canUninstall = (organizationId: OrganizationId) =>
-			authorize("uninstall", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"uninstall",
+			)(orgResolver.requireAdminOrOwner(organizationId, "bots:write", policyEntity, "uninstall"))
 
 		return { canCreate, canRead, canUpdate, canDelete, canInstall, canUninstall } as const
 	}),
-	dependencies: [BotRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [BotRepo.Default, OrgResolver.Default],
 	accessors: true,
 }) {}

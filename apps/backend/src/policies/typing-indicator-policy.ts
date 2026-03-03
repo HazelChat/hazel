@@ -29,7 +29,6 @@ export class TypingIndicatorPolicy extends Effect.Service<TypingIndicatorPolicy>
 					"update",
 					typingIndicatorRepo.with(id, (indicator) =>
 						channelMemberRepo.with(indicator.memberId, (member) =>
-							// User can only update their own typing indicator
 							authorize("update", (actor) => Effect.succeed(actor.id === member.userId)),
 						),
 					),

@@ -78,6 +78,7 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
+import { OrgResolver } from "./services/org-resolver"
 import { WorkOSAuth } from "./services/workos-auth"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
@@ -151,6 +152,7 @@ const RepoLive = Layer.mergeAll(
 )
 
 const PolicyLive = Layer.mergeAll(
+	OrgResolver.Default,
 	OrganizationPolicy.Default,
 	ChannelPolicy.Default,
 	ChannelSectionPolicy.Default,

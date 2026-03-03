@@ -11,7 +11,8 @@
 		"./rpc": "./src/rpc/index.ts",
 		"./http": "./src/http/index.ts",
 		"./policy": "./src/policy/index.ts",
-		"./models": "./src/models/index.ts"
+		"./models": "./src/models/index.ts",
+		"./scopes": "./src/scopes/index.ts"
 	},
 	"dependencies": {
 		"@effect/cluster": "catalog:effect",

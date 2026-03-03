@@ -1,12 +1,13 @@
 import { describe, expect, it } from "@effect/vitest"
-import { BotRepo, OrganizationMemberRepo } from "@hazel/backend-core"
+import { BotRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
-import type { BotId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import type { BotId, UserId } from "@hazel/schema"
+import { Effect, Either, Layer } from "effect"
 import { BotPolicy } from "./bot-policy.ts"
 import {
 	makeActor,
 	makeEntityNotFound,
+	makeOrgResolverLayer,
 	runWithActorEither,
 	TEST_ALT_ORG_ID,
 	TEST_ORG_ID,
@@ -16,14 +17,6 @@ type Role = "admin" | "member" | "owner"
 
 const BOT_ID = "00000000-0000-0000-0000-000000000401" as BotId
 const MISSING_BOT_ID = "00000000-0000-0000-0000-000000000499" as BotId
-
-const makeOrganizationMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	} as unknown as OrganizationMemberRepo)
 
 const makeBotRepoLayer = (bots: Record<string, { createdBy: UserId }>) =>
 	Layer.succeed(BotRepo, {
@@ -38,7 +31,7 @@ const makeBotRepoLayer = (bots: Record<string, { createdBy: UserId }>) =>
 
 const makePolicyLayer = (members: Record<string, Role>, bots: Record<string, { createdBy: UserId }>) =>
 	BotPolicy.DefaultWithoutDependencies.pipe(
-		Layer.provide(makeOrganizationMemberRepoLayer(members)),
+		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeBotRepoLayer(bots)),
 	)
 

@@ -174,6 +174,9 @@ const constructDetailMessage = (
 	return `${title} the ${entityType}`
 }
 
+// Re-export permission error for scope-based authorization
+export { PermissionError } from "./scopes/permission-error"
+
 // Re-export session errors for frontend convenience
 export * from "./session-errors"
 

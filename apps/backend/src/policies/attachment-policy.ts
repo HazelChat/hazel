@@ -9,6 +9,7 @@ import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
 import type { AttachmentId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("AttachmentPolicy/Policy", {
 	effect: Effect.gen(function* () {
@@ -19,6 +20,7 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 		const channelRepo = yield* ChannelRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const channelMemberRepo = yield* ChannelMemberRepo
+		const orgResolver = yield* OrgResolver
 
 		const canCreate = () =>
 			ErrorUtils.refailUnauthorized(
@@ -29,8 +31,6 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 					policyEntity,
 					"create",
 					Effect.fn(`${policyEntity}.create`)(function* (_actor) {
-						// Any authenticated user can upload attachments initially
-						// The actual association with messages is controlled by message policies
 						return yield* Effect.succeed(true)
 					}),
 				),
@@ -46,7 +46,6 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 						policyEntity,
 						"update",
 						Effect.fn(`${policyEntity}.update`)(function* (actor) {
-							// Only the uploader can update their attachment metadata
 							return yield* Effect.succeed(actor.id === attachment.uploadedBy)
 						}),
 					),
@@ -59,36 +58,30 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 				"delete",
 			)(
 				attachmentRepo.with(id, (attachment) => {
-					// If attachment is not yet associated with a message
 					if (!attachment.messageId) {
 						return policy(
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								// Only uploader can delete unattached files
 								return yield* Effect.succeed(actor.id === attachment.uploadedBy)
 							}),
 						)
 					}
 
-					// If attachment is associated with a message
 					return messageRepo.with(attachment.messageId, (message) =>
 						channelRepo.with(message.channelId, (channel) =>
 							policy(
 								policyEntity,
 								"delete",
 								Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-									// Uploader can delete their own attachment
 									if (actor.id === attachment.uploadedBy) {
 										return yield* Effect.succeed(true)
 									}
 
-									// Message author can delete attachments on their message
 									if (actor.id === message.authorId) {
 										return yield* Effect.succeed(true)
 									}
 
-									// Organization admins/owners can delete any attachment
 									const orgMember = yield* organizationMemberRepo
 										.findByOrgAndUser(channel.organizationId, actor.id)
 										.pipe(withSystemActor)
@@ -111,26 +104,22 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 				"view",
 			)(
 				attachmentRepo.with(id, (attachment) => {
-					// If attachment is not yet associated with a message
 					if (!attachment.messageId) {
 						return policy(
 							policyEntity,
 							"view",
 							Effect.fn(`${policyEntity}.view`)(function* (actor) {
-								// Only uploader can view unattached files
 								return yield* Effect.succeed(actor.id === attachment.uploadedBy)
 							}),
 						)
 					}
 
-					// If attachment is associated with a message
 					return messageRepo.with(attachment.messageId, (message) =>
 						channelRepo.with(message.channelId, (channel) =>
 							policy(
 								policyEntity,
 								"view",
 								Effect.fn(`${policyEntity}.view`)(function* (actor) {
-									// For public channels, org members can view
 									if (channel.type === "public") {
 										const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
 											channel.organizationId,
@@ -142,17 +131,14 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 										}
 									}
 
-									// For private channels, check if user is a channel member or org admin
 									const orgMember = yield* organizationMemberRepo
 										.findByOrgAndUser(channel.organizationId, actor.id)
 										.pipe(withSystemActor)
 
-									// Organization admins/owners can view all attachments
 									if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 										return yield* Effect.succeed(true)
 									}
 
-									// Check if user is a member of the private channel
 									const channelMembership = yield* channelMemberRepo
 										.findByChannelAndUser(channel.id, actor.id)
 										.pipe(withSystemActor)
@@ -177,6 +163,7 @@ export class AttachmentPolicy extends Effect.Service<AttachmentPolicy>()("Attach
 		ChannelRepo.Default,
 		OrganizationMemberRepo.Default,
 		ChannelMemberRepo.Default,
+		OrgResolver.Default,
 	],
 	accessors: true,
 }) {}

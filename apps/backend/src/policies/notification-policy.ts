@@ -3,6 +3,7 @@ import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("NotificationPolicy/Policy", {
 	effect: Effect.gen(function* () {
@@ -10,6 +11,7 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 
 		const notificationRepo = yield* NotificationRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const orgResolver = yield* OrgResolver
 
 		const canCreate = (_memberId: OrganizationMemberId) =>
 			ErrorUtils.refailUnauthorized(
@@ -20,8 +22,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 					policyEntity,
 					"create",
 					Effect.fn(`${policyEntity}.create`)(function* (_actor) {
-						// Notifications are typically created by the system
-						// This could be restricted to system actors only
 						return yield* Effect.succeed(true)
 					}),
 				),
@@ -37,7 +37,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 						policyEntity,
 						"view",
 						Effect.fn(`${policyEntity}.view`)(function* (actor) {
-							// Get the member for this notification
 							const member = yield* organizationMemberRepo.findById(notification.memberId)
 
 							if (Option.isSome(member) && member.value.userId === actor.id) {
@@ -61,12 +60,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"update",
 							Effect.fn(`${policyEntity}.update`)(function* (actor) {
-								// Users can update their own notifications
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
 								const actorMember = yield* organizationMemberRepo
 									.findByOrgAndUser(member.organizationId, actor.id)
 									.pipe(withSystemActor)
@@ -93,12 +90,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								// Users can delete their own notifications
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
 								const actorMember = yield* organizationMemberRepo
 									.findByOrgAndUser(member.organizationId, actor.id)
 									.pipe(withSystemActor)
@@ -125,12 +120,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"markAsRead",
 							Effect.fn(`${policyEntity}.markAsRead`)(function* (actor) {
-								// Users can mark their own notifications as read
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
 								const actorMember = yield* organizationMemberRepo
 									.findByOrgAndUser(member.organizationId, actor.id)
 									.pipe(withSystemActor)
@@ -156,12 +149,10 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 						policyEntity,
 						"markAllAsRead",
 						Effect.fn(`${policyEntity}.markAllAsRead`)(function* (actor) {
-							// Users can mark all their own notifications as read
 							if (member.userId === actor.id) {
 								return yield* Effect.succeed(true)
 							}
 
-							// Check if actor is an admin/owner in the organization
 							const actorMember = yield* organizationMemberRepo
 								.findByOrgAndUser(member.organizationId, actor.id)
 								.pipe(withSystemActor)
@@ -180,6 +171,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 
 		return { canCreate, canView, canUpdate, canDelete, canMarkAsRead, canMarkAllAsRead } as const
 	}),
-	dependencies: [NotificationRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [NotificationRepo.Default, OrganizationMemberRepo.Default, OrgResolver.Default],
 	accessors: true,
 }) {}
