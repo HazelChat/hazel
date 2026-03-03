@@ -74,8 +74,7 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* ChannelMemberPolicy.canDelete(id)
-							const deletedMemberOption =
-								yield* ChannelMemberRepo.findById(id)
+							const deletedMemberOption = yield* ChannelMemberRepo.findById(id)
 
 							yield* ChannelMemberRepo.deleteById(id)
 

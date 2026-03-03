@@ -1,5 +1,5 @@
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { type AuthorizedActor, PermissionError, authorizedActor } from "@hazel/domain"
+import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
@@ -19,14 +19,13 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 		const messageRepo = yield* MessageRepo
 
 		/**
-		 * Core scope check: looks up the actor's org membership, maps role to scopes,
-		 * and returns AuthorizedActor on success.
+		 * Core scope check: looks up the actor's org membership and maps role to scopes.
 		 */
-		const requireScope = <Entity extends string, Action extends string>(
+		const requireScope = (
 			organizationId: OrganizationId,
 			scope: ApiScope,
-			entity: Entity,
-			action: Action,
+			entity: string,
+			action: string,
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
@@ -42,19 +41,17 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				if (!granted.has(scope)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
-
-				return authorizedActor<Entity, Action>(actor)
 			})
 
 		/**
 		 * Requires admin or owner role in the organization.
 		 * Used for operations like org update, managing integrations, etc.
 		 */
-		const requireAdminOrOwner = <Entity extends string, Action extends string>(
+		const requireAdminOrOwner = (
 			organizationId: OrganizationId,
 			scope: ApiScope,
-			entity: Entity,
-			action: Action,
+			entity: string,
+			action: string,
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
@@ -69,18 +66,16 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				if (!isAdminOrOwner(member.value.role as OrganizationRole)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
-
-				return authorizedActor<Entity, Action>(actor)
 			})
 
 		/**
 		 * Requires owner role in the organization.
 		 */
-		const requireOwner = <Entity extends string, Action extends string>(
+		const requireOwner = (
 			organizationId: OrganizationId,
 			scope: ApiScope,
-			entity: Entity,
-			action: Action,
+			entity: string,
+			action: string,
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
@@ -91,29 +86,22 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 				if (Option.isNone(member) || member.value.role !== "owner") {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
-
-				return authorizedActor<Entity, Action>(actor)
 			})
 
 		/**
 		 * Check scope from an organization ID directly (any org member).
 		 */
-		const fromOrganization = <Entity extends string, Action extends string>(
+		const fromOrganization = (
 			organizationId: OrganizationId,
 			scope: ApiScope,
-			entity: Entity,
-			action: Action,
+			entity: string,
+			action: string,
 		) => requireScope(organizationId, scope, entity, action)
 
 		/**
 		 * Check scope by resolving the channel's organization first.
 		 */
-		const fromChannel = <Entity extends string, Action extends string>(
-			channelId: ChannelId,
-			scope: ApiScope,
-			entity: Entity,
-			action: Action,
-		) =>
+		const fromChannel = (channelId: ChannelId, scope: ApiScope, entity: string, action: string) =>
 			Effect.gen(function* () {
 				const channel = yield* channelRepo.findById(channelId).pipe(Effect.orDie)
 				if (Option.isNone(channel)) {
@@ -128,11 +116,11 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 		 * Check scope + channel-type access (public/private/direct/thread).
 		 * Consolidates the duplicated channel-access logic from MessagePolicy.
 		 */
-		const fromChannelWithAccess = <Entity extends string, Action extends string>(
+		const fromChannelWithAccess = (
 			channelId: ChannelId,
 			scope: ApiScope,
-			entity: Entity,
-			action: Action,
+			entity: string,
+			action: string,
 		) =>
 			Effect.gen(function* () {
 				const actor = yield* CurrentUser.Context
@@ -166,19 +154,12 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 						}),
 					)
 				}
-
-				return authorizedActor<Entity, Action>(actor)
 			})
 
 		/**
 		 * Check scope by resolving message -> channel -> org chain.
 		 */
-		const fromMessage = <Entity extends string, Action extends string>(
-			messageId: MessageId,
-			scope: ApiScope,
-			entity: Entity,
-			action: Action,
-		) =>
+		const fromMessage = (messageId: MessageId, scope: ApiScope, entity: string, action: string) =>
 			Effect.gen(function* () {
 				const message = yield* messageRepo.findById(messageId).pipe(Effect.orDie)
 				if (Option.isNone(message)) {

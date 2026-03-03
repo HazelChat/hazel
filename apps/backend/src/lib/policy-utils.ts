@@ -1,9 +1,9 @@
-import { ErrorUtils, authorizedActor, policy } from "@hazel/domain"
+import { CurrentUser, ErrorUtils, policy } from "@hazel/domain"
 import { Effect } from "effect"
 
 export type OrganizationRole = "admin" | "member" | "owner"
 
-type PolicyActor = Parameters<typeof authorizedActor>[0]
+type PolicyActor = typeof CurrentUser.Schema.Type
 
 /**
  * Check if an organization member role has admin privileges

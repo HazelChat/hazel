@@ -7,11 +7,7 @@ import {
 	UserRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import {
-	CurrentUser,
-	InternalServerError,
-	withRemapDbErrors,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
 	AlreadyMemberError,
 	OrganizationNotFoundError,
@@ -133,9 +129,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							// Check if slug already exists
 							if (payload.slug) {
-								const existingOrganization = yield* OrganizationRepo.findBySlug(
-									payload.slug,
-								)
+								const existingOrganization = yield* OrganizationRepo.findBySlug(payload.slug)
 
 								if (Option.isSome(existingOrganization)) {
 									return yield* Effect.fail(
@@ -333,8 +327,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const org = orgOption.value
 
 					// Count members for this organization
-					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id).pipe(
-					)
+					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id).pipe()
 
 					return {
 						id: org.id,
@@ -473,10 +466,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Add user to the default "general" channel
-							const generalChannel = yield* ChannelRepo.findByOrgAndName(
-								org.id,
-								"general",
-							)
+							const generalChannel = yield* ChannelRepo.findByOrgAndName(org.id, "general")
 
 							if (Option.isSome(generalChannel)) {
 								yield* ChannelMemberRepo.insert({

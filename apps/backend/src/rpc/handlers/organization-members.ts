@@ -1,10 +1,6 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import {
-	CurrentUser,
-	InternalServerError,
-	withRemapDbErrors,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import { OrganizationMemberNotFoundError, OrganizationMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -113,8 +109,7 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* OrganizationMemberPolicy.canDelete(id)
-							const deletedMemberOption =
-								yield* OrganizationMemberRepo.findById(id)
+							const deletedMemberOption = yield* OrganizationMemberRepo.findById(id)
 
 							yield* OrganizationMemberRepo.deleteById(id)
 

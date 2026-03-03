@@ -96,9 +96,8 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 
 				if (needsRefresh) {
 					// Get connection to determine provider
-					const connectionOption = yield* connectionRepo
-						.findById(connectionId)
-						
+					const connectionOption = yield* connectionRepo.findById(connectionId)
+
 					const connection = yield* Option.match(connectionOption, {
 						onNone: () => Effect.fail(new ConnectionNotFoundError({ connectionId })),
 						onSome: Effect.succeed,
@@ -117,9 +116,8 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 						)(
 							Effect.gen(function* () {
 								// Re-fetch token to check if it was already refreshed while waiting
-								const freshTokenOption = yield* tokenRepo
-									.findByConnectionId(connectionId)
-									
+								const freshTokenOption = yield* tokenRepo.findByConnectionId(connectionId)
+
 								const freshToken = yield* Option.match(freshTokenOption, {
 									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
 									onSome: Effect.succeed,
@@ -155,9 +153,8 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 						)(
 							Effect.gen(function* () {
 								// Re-fetch token to check if it was already refreshed while waiting
-								const freshTokenOption = yield* tokenRepo
-									.findByConnectionId(connectionId)
-									
+								const freshTokenOption = yield* tokenRepo.findByConnectionId(connectionId)
+
 								const freshToken = yield* Option.match(freshTokenOption, {
 									onNone: () => Effect.fail(new TokenNotFoundError({ connectionId })),
 									onSome: Effect.succeed,
@@ -259,17 +256,15 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 				const encryptedRefresh = yield* encryption.encrypt(refreshTokenToStore)
 
 				// Update the token in the database
-				yield* tokenRepo
-					.updateToken(token.id, {
-						encryptedAccessToken: encryptedAccess.ciphertext,
-						encryptedRefreshToken: encryptedRefresh.ciphertext,
-						iv: encryptedAccess.iv,
-						refreshTokenIv: encryptedRefresh.iv,
-						encryptionKeyVersion: encryptedAccess.keyVersion,
-						expiresAt: newTokens.expiresAt ?? null,
-						scope: newTokens.scope ?? null,
-					})
-					
+				yield* tokenRepo.updateToken(token.id, {
+					encryptedAccessToken: encryptedAccess.ciphertext,
+					encryptedRefreshToken: encryptedRefresh.ciphertext,
+					iv: encryptedAccess.iv,
+					refreshTokenIv: encryptedRefresh.iv,
+					encryptionKeyVersion: encryptedAccess.keyVersion,
+					expiresAt: newTokens.expiresAt ?? null,
+					scope: newTokens.scope ?? null,
+				})
 
 				yield* Effect.logInfo("AUDIT: OAuth token refreshed", {
 					event: "token_refresh",
@@ -351,14 +346,12 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 					const encryptedAccess = yield* encryption.encrypt(installationToken.token)
 
 					// Update the token in the database (no refresh token for GitHub App)
-					yield* tokenRepo
-						.updateToken(tokenId, {
-							encryptedAccessToken: encryptedAccess.ciphertext,
-							iv: encryptedAccess.iv,
-							encryptionKeyVersion: encryptedAccess.keyVersion,
-							expiresAt: installationToken.expiresAt,
-						})
-						
+					yield* tokenRepo.updateToken(tokenId, {
+						encryptedAccessToken: encryptedAccess.ciphertext,
+						iv: encryptedAccess.iv,
+						encryptionKeyVersion: encryptedAccess.keyVersion,
+						expiresAt: installationToken.expiresAt,
+					})
 
 					yield* Effect.logInfo("AUDIT: GitHub App token regenerated", {
 						event: "app_token_regenerate",
@@ -403,34 +396,30 @@ export class IntegrationTokenService extends Effect.Service<IntegrationTokenServ
 
 				if (Option.isSome(existingToken)) {
 					// Update existing token
-					yield* tokenRepo
-						.updateToken(existingToken.value.id, {
-							encryptedAccessToken: encryptedAccess.ciphertext,
-							encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
-							iv: encryptedAccess.iv,
-							refreshTokenIv: encryptedRefresh?.iv ?? null,
-							encryptionKeyVersion: encryptedAccess.keyVersion,
-							expiresAt: tokens.expiresAt ?? null,
-							scope: tokens.scope ?? null,
-						})
-						
+					yield* tokenRepo.updateToken(existingToken.value.id, {
+						encryptedAccessToken: encryptedAccess.ciphertext,
+						encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
+						iv: encryptedAccess.iv,
+						refreshTokenIv: encryptedRefresh?.iv ?? null,
+						encryptionKeyVersion: encryptedAccess.keyVersion,
+						expiresAt: tokens.expiresAt ?? null,
+						scope: tokens.scope ?? null,
+					})
 				} else {
 					// Create new token
-					yield* tokenRepo
-						.insert({
-							connectionId,
-							encryptedAccessToken: encryptedAccess.ciphertext,
-							encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
-							iv: encryptedAccess.iv,
-							refreshTokenIv: encryptedRefresh?.iv ?? null,
-							encryptionKeyVersion: encryptedAccess.keyVersion,
-							tokenType: "Bearer",
-							expiresAt: tokens.expiresAt ?? null,
-							refreshTokenExpiresAt: null,
-							scope: tokens.scope ?? null,
-							lastRefreshedAt: null,
-						})
-						
+					yield* tokenRepo.insert({
+						connectionId,
+						encryptedAccessToken: encryptedAccess.ciphertext,
+						encryptedRefreshToken: encryptedRefresh?.ciphertext ?? null,
+						iv: encryptedAccess.iv,
+						refreshTokenIv: encryptedRefresh?.iv ?? null,
+						encryptionKeyVersion: encryptedAccess.keyVersion,
+						tokenType: "Bearer",
+						expiresAt: tokens.expiresAt ?? null,
+						refreshTokenExpiresAt: null,
+						scope: tokens.scope ?? null,
+						lastRefreshedAt: null,
+					})
 				}
 			})
 

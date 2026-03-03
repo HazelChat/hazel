@@ -7,15 +7,16 @@ import { CurrentUser } from "@hazel/domain"
 
 describe("policy-utils", () => {
 	describe("makePolicy", () => {
-		it("returns an authorized actor when check passes", async () => {
+		it("succeeds when check passes", async () => {
 			const authorize = makePolicy("Widget")
 			const result = await Effect.runPromise(
 				authorize("read", () => Effect.succeed(true)).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
+					Effect.either,
 				),
 			)
 
-			expect(result.id).toBe(makeActor().id)
+			expect(Either.isRight(result)).toBe(true)
 		})
 
 		it("fails with UnauthorizedError when check denies", async () => {

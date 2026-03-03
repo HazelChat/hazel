@@ -92,24 +92,21 @@ export class OrganizationRepo extends Effect.Service<OrganizationRepo>()("Organi
 						sectionId: null,
 						deletedAt: null,
 					})
-					.pipe(
-						Effect.map((res) => res[0]!),
-					)
+					.pipe(Effect.map((res) => res[0]!))
 
 				// Add creator as channel member
-				yield* channelMemberRepo
-					.insert({
-						channelId: defaultChannel.id,
-						userId,
-						isHidden: false,
-						isMuted: false,
-						isFavorite: false,
-						lastSeenMessageId: null,
-						notificationCount: 0,
-						joinedAt: new Date(),
-						deletedAt: null,
-					})
-	
+				yield* channelMemberRepo.insert({
+					channelId: defaultChannel.id,
+					userId,
+					isHidden: false,
+					isMuted: false,
+					isFavorite: false,
+					lastSeenMessageId: null,
+					notificationCount: 0,
+					joinedAt: new Date(),
+					deletedAt: null,
+				})
+
 				return defaultChannel
 			})
 

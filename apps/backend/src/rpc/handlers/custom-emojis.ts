@@ -58,9 +58,7 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 								name: payload.name,
 								imageUrl: payload.imageUrl,
 								createdBy: user.id,
-							}).pipe(
-								Effect.map((res) => res[0]!),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 

@@ -192,16 +192,14 @@ export const BotRpcLive = BotRpcs.toLayer(
 								}
 
 								// Update bot
-								const updatedBot = yield* botRepo
-									.update({
-										id,
-										name: payload.name,
-										description: payload.description,
-										webhookUrl: payload.webhookUrl,
-										scopes: payload.scopes ? [...payload.scopes] : undefined,
-										isPublic: payload.isPublic,
-									})
-									
+								const updatedBot = yield* botRepo.update({
+									id,
+									name: payload.name,
+									description: payload.description,
+									webhookUrl: payload.webhookUrl,
+									scopes: payload.scopes ? [...payload.scopes] : undefined,
+									isPublic: payload.isPublic,
+								})
 
 								// Keep machine user's firstName in sync with bot name
 								if (payload.name) {
@@ -271,9 +269,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 								const { token, tokenHash } = yield* Effect.promise(generateBotToken)
 
 								// Update token
-								const updatedBot = yield* botRepo
-									.updateTokenHash(id, tokenHash)
-									
+								const updatedBot = yield* botRepo.updateTokenHash(id, tokenHash)
 
 								const txid = yield* generateTransactionId()
 
@@ -337,11 +333,9 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 					// Get creator names
 					const creatorIds = [...new Set(publicBots.map((b) => b.createdBy))]
-					const creators = yield* Effect.forEach(
-						creatorIds,
-						(id) => userRepo.findById(id),
-						{ concurrency: 10 },
-					)
+					const creators = yield* Effect.forEach(creatorIds, (id) => userRepo.findById(id), {
+						concurrency: 10,
+					})
 					const creatorMap = new Map<string, string>()
 					for (let i = 0; i < creatorIds.length; i++) {
 						const creator = creators[i]
@@ -375,9 +369,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 					}
 
 					// Get installed bot IDs for this organization
-					const botIds = yield* installationRepo
-						.getBotIdsForOrg(user.organizationId)
-						
+					const botIds = yield* installationRepo.getBotIdsForOrg(user.organizationId)
 
 					// Get bot details
 					const bots = yield* botRepo.findByIds(botIds)
@@ -417,9 +409,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								}
 
 								// Check if already installed
-								const isInstalled = yield* installationRepo
-									.isInstalled(botId, organizationId)
-									
+								const isInstalled = yield* installationRepo.isInstalled(botId, organizationId)
+
 								if (isInstalled) {
 									return yield* Effect.fail(new BotAlreadyInstalledError({ botId }))
 								}
@@ -492,9 +483,11 @@ export const BotRpcLive = BotRpcs.toLayer(
 								const installationRepo = yield* BotInstallationRepo
 
 								// Check if installed
-								const installationOption = yield* installationRepo
-									.findByBotAndOrg(botId, organizationId)
-									
+								const installationOption = yield* installationRepo.findByBotAndOrg(
+									botId,
+									organizationId,
+								)
+
 								if (Option.isNone(installationOption)) {
 									return yield* Effect.fail(new BotNotFoundError({ botId }))
 								}
@@ -576,9 +569,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								const bot = botOption.value
 
 								// Check if already installed
-								const isInstalled = yield* installationRepo
-									.isInstalled(botId, organizationId)
-									
+								const isInstalled = yield* installationRepo.isInstalled(botId, organizationId)
+
 								if (isInstalled) {
 									return yield* Effect.fail(new BotAlreadyInstalledError({ botId }))
 								}

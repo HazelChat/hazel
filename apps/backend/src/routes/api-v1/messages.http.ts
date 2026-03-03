@@ -1,13 +1,7 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
 import { AttachmentRepo, BotRepo, MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import {
-	CurrentUser,
-	InternalServerError,
-	policyUse,
-	UnauthorizedError,
-	withRemapDbErrors,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
 import {
 	ChannelNotFoundError,
@@ -203,6 +197,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
+									yield* MessagePolicy.canCreate(rest.channelId)
 									const createdMessage = yield* MessageRepo.insert({
 										...rest,
 										embeds: embeds ?? null,
@@ -210,18 +205,18 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										threadChannelId: threadChannelId ?? null,
 										authorId: bot.userId,
 										deletedAt: null,
-									}).pipe(
-										Effect.map((res) => res[0]!),
-										policyUse(MessagePolicy.canCreate(rest.channelId)),
-									)
+									}).pipe(Effect.map((res) => res[0]!))
 
 									// Link attachments if provided
 									if (attachmentIds && attachmentIds.length > 0) {
 										yield* Effect.forEach(attachmentIds, (attachmentId) =>
-											AttachmentRepo.update({
-												id: attachmentId,
-												messageId: createdMessage.id,
-											}).pipe(policyUse(AttachmentPolicy.canUpdate(attachmentId))),
+											Effect.gen(function* () {
+												yield* AttachmentPolicy.canUpdate(attachmentId)
+												yield* AttachmentRepo.update({
+													id: attachmentId,
+													messageId: createdMessage.id,
+												})
+											}),
 										)
 									}
 
@@ -264,11 +259,12 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
+									yield* MessagePolicy.canUpdate(path.id)
 									const updatedMessage = yield* MessageRepo.update({
 										id: path.id,
 										...rest,
 										...(embeds !== undefined ? { embeds } : {}),
-									}).pipe(policyUse(MessagePolicy.canUpdate(path.id)))
+									})
 
 									const txid = yield* generateTransactionId()
 
@@ -307,9 +303,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 						const response = yield* db
 							.transaction(
 								Effect.gen(function* () {
-									yield* MessageRepo.deleteById(path.id).pipe(
-										policyUse(MessagePolicy.canDelete(path.id)),
-									)
+									yield* MessagePolicy.canDelete(path.id)
+									yield* MessageRepo.deleteById(path.id)
 
 									const txid = yield* generateTransactionId()
 
@@ -346,12 +341,13 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 									const { emoji, channelId } = payload
 									const messageId = path.id
 
+									yield* MessageReactionPolicy.canList(messageId)
 									const existingReaction =
 										yield* MessageReactionRepo.findByMessageUserEmoji(
 											messageId,
 											bot.userId,
 											emoji,
-										).pipe(policyUse(MessageReactionPolicy.canList(messageId)))
+										)
 
 									const txid = yield* generateTransactionId()
 
@@ -365,11 +361,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											userId: existingReaction.value.userId,
 										} as const
 
-										yield* MessageReactionRepo.deleteById(existingReaction.value.id).pipe(
-											policyUse(
-												MessageReactionPolicy.canDelete(existingReaction.value.id),
-											),
-										)
+										yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
+										yield* MessageReactionRepo.deleteById(existingReaction.value.id)
 
 										return {
 											wasCreated: false,
@@ -380,15 +373,13 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 									}
 
 									// Otherwise, create a new reaction
+									yield* MessageReactionPolicy.canCreate(messageId)
 									const createdReaction = yield* MessageReactionRepo.insert({
 										messageId,
 										channelId,
 										emoji,
 										userId: bot.userId,
-									}).pipe(
-										Effect.map((res) => res[0]!),
-										policyUse(MessageReactionPolicy.canCreate(messageId)),
-									)
+									}).pipe(Effect.map((res) => res[0]!))
 
 									return {
 										wasCreated: true,

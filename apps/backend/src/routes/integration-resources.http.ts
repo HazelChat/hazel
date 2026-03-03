@@ -177,10 +177,7 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 					// Phase 1: Try authenticated fetch
 					const authenticatedResult = yield* Effect.gen(function* () {
 						const connectionRepo = yield* IntegrationConnectionRepo
-						const connectionOption = yield* connectionRepo.findByOrgAndProvider(
-							orgId,
-							"github",
-						)
+						const connectionOption = yield* connectionRepo.findByOrgAndProvider(orgId, "github")
 
 						if (Option.isNone(connectionOption)) {
 							return Option.none<GitHub.GitHubPR>()

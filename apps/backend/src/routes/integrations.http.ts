@@ -571,9 +571,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		const connection = connections[0]!
 
 		// Get the organization to find its slug
-		const orgOption = yield* orgRepo.findById(connection.organizationId).pipe(
-			Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())),
-		)
+		const orgOption = yield* orgRepo
+			.findById(connection.organizationId)
+			.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
 
 		if (Option.isNone(orgOption)) {
 			yield* Effect.logWarning("GitHub update callback: organization not found", {
@@ -1008,22 +1008,21 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 	const connectionRepo = yield* IntegrationConnectionRepo
 
 	// Upsert connection with settings containing the base URL
-	const connection = yield* connectionRepo
-		.upsertByOrgAndProvider({
-			provider,
-			organizationId: orgId,
-			userId: null,
-			level: "organization",
-			status: "active",
-			externalAccountId: null,
-			externalAccountName,
-			connectedBy: currentUser.id,
-			settings: { baseUrl: validatedBaseUrl },
-			metadata: null,
-			errorMessage: null,
-			lastUsedAt: null,
-			deletedAt: null,
-		})
+	const connection = yield* connectionRepo.upsertByOrgAndProvider({
+		provider,
+		organizationId: orgId,
+		userId: null,
+		level: "organization",
+		status: "active",
+		externalAccountId: null,
+		externalAccountName,
+		connectedBy: currentUser.id,
+		settings: { baseUrl: validatedBaseUrl },
+		metadata: null,
+		errorMessage: null,
+		lastUsedAt: null,
+		deletedAt: null,
+	})
 
 	// Store the encrypted token (no refresh token, no expiry for API keys)
 	const tokenService = yield* IntegrationTokenService
@@ -1084,11 +1083,9 @@ const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(
 		)
 	}
 
-	const connectionOption = yield* (
-		level === "user"
-			? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
-			: connectionRepo.findByOrgAndProvider(orgId, provider)
-	)
+	const connectionOption = yield* level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)
 
 	if (Option.isNone(connectionOption)) {
 		return new ConnectionStatusResponse({
@@ -1138,11 +1135,9 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 		)
 	}
 
-	const connectionOption = yield* (
-		level === "user"
-			? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
-			: connectionRepo.findByOrgAndProvider(orgId, provider)
-	)
+	const connectionOption = yield* level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)
 
 	if (Option.isNone(connectionOption)) {
 		return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))

@@ -135,9 +135,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						withRemapDbErrors("ChannelSection", "update"),
-					),
+					.pipe(withRemapDbErrors("ChannelSection", "update")),
 
 			"channelSection.moveChannel": ({ channelId, sectionId }) =>
 				db
@@ -151,8 +149,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 
 							// Validate target section exists and belongs to same org
 							if (sectionId !== null) {
-								const section =
-									yield* ChannelSectionRepo.findById(sectionId)
+								const section = yield* ChannelSectionRepo.findById(sectionId)
 								if (Option.isNone(section)) {
 									return yield* Effect.fail(new ChannelSectionNotFoundError({ sectionId }))
 								}

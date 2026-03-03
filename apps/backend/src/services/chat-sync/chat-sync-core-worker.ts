@@ -173,14 +173,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			source: "hazel" | "external"
 			dedupeKey: string
 		}) {
-			return yield* eventReceiptRepo
-				.claimByDedupeKey({
-					syncConnectionId: params.syncConnectionId,
-					channelLinkId: params.channelLinkId,
-					source: params.source,
-					dedupeKey: params.dedupeKey,
-				})
-				
+			return yield* eventReceiptRepo.claimByDedupeKey({
+				syncConnectionId: params.syncConnectionId,
+				channelLinkId: params.channelLinkId,
+				source: params.source,
+				dedupeKey: params.dedupeKey,
+			})
 		})
 
 		const writeReceipt = Effect.fn("DiscordSyncWorker.writeReceipt")(function* (params: {
@@ -192,18 +190,16 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			errorMessage?: string
 			payload?: unknown
 		}) {
-			yield* eventReceiptRepo
-				.updateByDedupeKey({
-					syncConnectionId: params.syncConnectionId,
-					source: params.source,
-					dedupeKey: params.dedupeKey,
-					channelLinkId: params.channelLinkId,
-					externalEventId: null,
-					payloadHash: params.payload ? payloadHash(params.payload) : null,
-					status: params.status ?? "processed",
-					errorMessage: params.errorMessage ?? null,
-				})
-				
+			yield* eventReceiptRepo.updateByDedupeKey({
+				syncConnectionId: params.syncConnectionId,
+				source: params.source,
+				dedupeKey: params.dedupeKey,
+				channelLinkId: params.channelLinkId,
+				externalEventId: null,
+				payloadHash: params.payload ? payloadHash(params.payload) : null,
+				status: params.status ?? "processed",
+				errorMessage: params.errorMessage ?? null,
+			})
 		})
 
 		const getProviderAdapter = Effect.fn("ChatSyncCoreWorker.getProviderAdapter")(function* (
@@ -275,35 +271,31 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				syncAvatarUrl?: boolean
 			}) {
 				const externalId = `${params.provider}-user-${params.externalUserId}`
-				const user = yield* userRepo
-					.upsertByExternalId(
-						{
-							externalId,
-							email: `${externalId}@${params.provider}.internal`,
-							firstName: params.displayName,
-							lastName: "",
-							avatarUrl: params.avatarUrl ?? "",
-							userType: "machine",
-							settings: null,
-							isOnboarded: true,
-							timezone: null,
-							deletedAt: null,
-						},
-						{ syncAvatarUrl: params.syncAvatarUrl ?? false },
-					)
-					
-
-				yield* organizationMemberRepo
-					.upsertByOrgAndUser({
-						organizationId: params.organizationId,
-						userId: user.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
+				const user = yield* userRepo.upsertByExternalId(
+					{
+						externalId,
+						email: `${externalId}@${params.provider}.internal`,
+						firstName: params.displayName,
+						lastName: "",
+						avatarUrl: params.avatarUrl ?? "",
+						userType: "machine",
+						settings: null,
+						isOnboarded: true,
+						timezone: null,
 						deletedAt: null,
-					})
-					
+					},
+					{ syncAvatarUrl: params.syncAvatarUrl ?? false },
+				)
+
+				yield* organizationMemberRepo.upsertByOrgAndUser({
+					organizationId: params.organizationId,
+					userId: user.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				return user.id
 			},
@@ -755,13 +747,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			avatarUrl: string | null
 			syncAvatarUrl?: boolean
 		}) {
-			const linkedConnection = yield* integrationConnectionRepo
-				.findActiveUserByExternalAccountId(
-					params.organizationId,
-					decodeProvider(params.provider),
-					params.externalUserId,
-				)
-				
+			const linkedConnection = yield* integrationConnectionRepo.findActiveUserByExternalAccountId(
+				params.organizationId,
+				decodeProvider(params.provider),
+				params.externalUserId,
+			)
 
 			if (Option.isSome(linkedConnection) && linkedConnection.value.userId) {
 				return linkedConnection.value.userId
@@ -799,9 +789,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				preferredChannelLinkId?: SyncChannelLinkId
 			}) {
 				if (params.preferredChannelLinkId) {
-					const preferred = yield* messageLinkRepo
-						.findByHazelMessage(params.preferredChannelLinkId, params.hazelMessageId)
-						
+					const preferred = yield* messageLinkRepo.findByHazelMessage(
+						params.preferredChannelLinkId,
+						params.hazelMessageId,
+					)
+
 					if (Option.isSome(preferred)) {
 						return Option.some(preferred.value.externalMessageId as ExternalMessageId)
 					}
@@ -846,9 +838,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				preferredChannelLinkId?: SyncChannelLinkId
 			}) {
 				if (params.preferredChannelLinkId) {
-					const preferred = yield* messageLinkRepo
-						.findByExternalMessage(params.preferredChannelLinkId, params.externalMessageId)
-						
+					const preferred = yield* messageLinkRepo.findByExternalMessage(
+						params.preferredChannelLinkId,
+						params.externalMessageId,
+					)
+
 					if (Option.isSome(preferred)) {
 						return Option.some(preferred.value.hazelMessageId)
 					}
@@ -896,9 +890,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			provider: ChatSyncProvider
 			hazelChannelId: ChannelId
 		}) {
-			const directLink = yield* channelLinkRepo
-				.findByHazelChannel(params.syncConnectionId, params.hazelChannelId)
-				
+			const directLink = yield* channelLinkRepo.findByHazelChannel(
+				params.syncConnectionId,
+				params.hazelChannelId,
+			)
+
 			if (Option.isSome(directLink)) {
 				return normalizeChannelLinkExternalId(directLink.value)
 			}
@@ -921,9 +917,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				)
 			}
 
-			const parentLinkOption = yield* channelLinkRepo
-				.findByHazelChannel(params.syncConnectionId, channel.parentChannelId)
-				
+			const parentLinkOption = yield* channelLinkRepo.findByHazelChannel(
+				params.syncConnectionId,
+				channel.parentChannelId,
+			)
+
 			if (Option.isNone(parentLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -957,9 +955,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				)
 			}
 
-			const rootMessageLinkOption = yield* messageLinkRepo
-				.findByHazelMessage(parentLink.id, rootMessageId)
-				
+			const rootMessageLinkOption = yield* messageLinkRepo.findByHazelMessage(
+				parentLink.id,
+				rootMessageId,
+			)
+
 			if (Option.isNone(rootMessageLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -977,26 +977,26 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 			const externalThreadChannelId = externalThreadId as unknown as ExternalChannelId
 
-			const existingThreadLink = yield* channelLinkRepo
-				.findByExternalChannel(params.syncConnectionId, externalThreadChannelId)
-				
+			const existingThreadLink = yield* channelLinkRepo.findByExternalChannel(
+				params.syncConnectionId,
+				externalThreadChannelId,
+			)
+
 			if (Option.isSome(existingThreadLink)) {
 				return normalizeChannelLinkExternalId(existingThreadLink.value)
 			}
 
-			const [threadLink] = yield* channelLinkRepo
-				.insert({
-					syncConnectionId: params.syncConnectionId,
-					hazelChannelId: channel.id,
-					externalChannelId: externalThreadChannelId,
-					externalChannelName: channel.name,
-					direction: parentLink.direction,
-					isActive: true,
-					settings: parentLink.settings,
-					lastSyncedAt: null,
-					deletedAt: null,
-				})
-				
+			const [threadLink] = yield* channelLinkRepo.insert({
+				syncConnectionId: params.syncConnectionId,
+				hazelChannelId: channel.id,
+				externalChannelId: externalThreadChannelId,
+				externalChannelName: channel.name,
+				direction: parentLink.direction,
+				isActive: true,
+				settings: parentLink.settings,
+				lastSyncedAt: null,
+				deletedAt: null,
+			})
 
 			yield* channelAccessSyncService.syncChannel(channel.id)
 			return normalizeChannelLinkExternalId(threadLink)
@@ -1014,9 +1014,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					return { status: "deduped" as const }
 				}
 
-				const connectionOption = yield* connectionRepo
-					.findById(syncConnectionId)
-					
+				const connectionOption = yield* connectionRepo.findById(syncConnectionId)
+
 				if (Option.isNone(connectionOption)) {
 					return yield* Effect.fail(
 						new DiscordSyncConnectionNotFoundError({
@@ -1043,9 +1042,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				})
 				const normalizedLink = normalizeChannelLinkExternalId(link)
 
-				const existingMessageLink = yield* messageLinkRepo
-					.findByHazelMessage(link.id, hazelMessageId)
-					
+				const existingMessageLink = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
+
 				if (Option.isSome(existingMessageLink)) {
 					yield* writeReceipt({
 						syncConnectionId,
@@ -1120,19 +1118,17 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					})
 				}
 
-				yield* messageLinkRepo
-					.insert({
-						channelLinkId: link.id,
-						hazelMessageId: message.id,
-						externalMessageId,
-						source: "hazel",
-						rootHazelMessageId: null,
-						rootExternalMessageId: null,
-						hazelThreadChannelId: message.threadChannelId,
-						externalThreadId: null,
-						deletedAt: null,
-					})
-					
+				yield* messageLinkRepo.insert({
+					channelLinkId: link.id,
+					hazelMessageId: message.id,
+					externalMessageId,
+					source: "hazel",
+					rootHazelMessageId: null,
+					rootExternalMessageId: null,
+					hazelThreadChannelId: message.threadChannelId,
+					externalThreadId: null,
+					deletedAt: null,
+				})
 
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1168,9 +1164,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { sent: 0, skipped: 0, failed: 0 }
 			}
 
-			const links = yield* channelLinkRepo
-				.findActiveBySyncConnection(syncConnectionId)
-				
+			const links = yield* channelLinkRepo.findActiveBySyncConnection(syncConnectionId)
 
 			let sent = 0
 			let skipped = 0
@@ -1265,9 +1259,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByHazelMessage(link.id, hazelMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1365,9 +1358,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByHazelMessage(link.id, hazelMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, hazelMessageId)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1468,9 +1460,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByHazelMessage(link.id, reaction.messageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(link.id, reaction.messageId)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1551,9 +1542,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			})
 			const normalizedLink = normalizeChannelLinkExternalId(link)
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByHazelMessage(link.id, payload.hazelMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByHazelMessage(
+				link.id,
+				payload.hazelMessageId,
+			)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId,
@@ -1872,9 +1865,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -1895,9 +1887,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const linkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				
+			const linkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalChannelId,
+			)
+
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -1919,9 +1913,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "ignored_webhook_origin" as const }
 			}
 
-			const existingMessageLink = yield* messageLinkRepo
-				.findByExternalMessage(link.id, payload.externalMessageId)
-				
+			const existingMessageLink = yield* messageLinkRepo.findByExternalMessage(
+				link.id,
+				payload.externalMessageId,
+			)
+
 			if (Option.isSome(existingMessageLink)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -1976,17 +1972,15 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					publicUrl,
 				})
 			}
-			const [message] = yield* messageRepo
-				.insert({
-					channelId: link.hazelChannelId,
-					authorId,
-					content: payload.content,
-					embeds: null,
-					replyToMessageId,
-					threadChannelId: null,
-					deletedAt: null,
-				})
-				
+			const [message] = yield* messageRepo.insert({
+				channelId: link.hazelChannelId,
+				authorId,
+				content: payload.content,
+				embeds: null,
+				replyToMessageId,
+				threadChannelId: null,
+				deletedAt: null,
+			})
 
 			if (normalizedExternalAttachments.length > 0) {
 				const uploadedAtBase = Date.now()
@@ -2008,19 +2002,17 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				)
 			}
 
-			yield* messageLinkRepo
-				.insert({
-					channelLinkId: link.id,
-					hazelMessageId: message.id,
-					externalMessageId: payload.externalMessageId,
-					source: "external",
-					rootHazelMessageId: null,
-					rootExternalMessageId: null,
-					hazelThreadChannelId: message.threadChannelId,
-					externalThreadId: payload.externalThreadId ?? null,
-					deletedAt: null,
-				})
-				
+			yield* messageLinkRepo.insert({
+				channelLinkId: link.id,
+				hazelMessageId: message.id,
+				externalMessageId: payload.externalMessageId,
+				source: "external",
+				rootHazelMessageId: null,
+				rootExternalMessageId: null,
+				hazelThreadChannelId: message.threadChannelId,
+				externalThreadId: payload.externalThreadId ?? null,
+				deletedAt: null,
+			})
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2048,9 +2040,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2071,9 +2062,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const linkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				
+			const linkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalChannelId,
+			)
+
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2095,9 +2088,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "ignored_webhook_origin" as const }
 			}
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByExternalMessage(link.id, payload.externalMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByExternalMessage(
+				link.id,
+				payload.externalMessageId,
+			)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2111,13 +2106,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const messageLink = messageLinkOption.value
 
-			yield* messageRepo
-				.update({
-					id: messageLink.hazelMessageId,
-					content: payload.content,
-					updatedAt: new Date(),
-				})
-				
+			yield* messageRepo.update({
+				id: messageLink.hazelMessageId,
+				content: payload.content,
+				updatedAt: new Date(),
+			})
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2145,9 +2138,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2168,9 +2160,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const linkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				
+			const linkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalChannelId,
+			)
+
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2192,9 +2186,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "ignored_webhook_origin" as const }
 			}
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByExternalMessage(link.id, payload.externalMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByExternalMessage(
+				link.id,
+				payload.externalMessageId,
+			)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2208,13 +2204,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const messageLink = messageLinkOption.value
 
-			yield* messageRepo
-				.update({
-					id: messageLink.hazelMessageId,
-					deletedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				
+			yield* messageRepo.update({
+				id: messageLink.hazelMessageId,
+				deletedAt: new Date(),
+				updatedAt: new Date(),
+			})
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2244,9 +2238,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2267,9 +2260,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const linkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				
+			const linkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalChannelId,
+			)
+
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2280,9 +2275,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const link = linkOption.value
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByExternalMessage(link.id, payload.externalMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByExternalMessage(
+				link.id,
+				payload.externalMessageId,
+			)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2304,9 +2301,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
-			const existingReaction = yield* messageReactionRepo
-				.findByMessageUserEmoji(messageLink.hazelMessageId, userId, payload.emoji)
-				
+			const existingReaction = yield* messageReactionRepo.findByMessageUserEmoji(
+				messageLink.hazelMessageId,
+				userId,
+				payload.emoji,
+			)
+
 			if (Option.isSome(existingReaction)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2319,14 +2319,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "already_exists" as const }
 			}
 
-			const [reaction] = yield* messageReactionRepo
-				.insert({
-					messageId: messageLink.hazelMessageId,
-					channelId: link.hazelChannelId,
-					userId,
-					emoji: payload.emoji,
-				})
-				
+			const [reaction] = yield* messageReactionRepo.insert({
+				messageId: messageLink.hazelMessageId,
+				channelId: link.hazelChannelId,
+				userId,
+				emoji: payload.emoji,
+			})
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2356,9 +2354,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2379,9 +2376,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const linkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
-				
+			const linkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalChannelId,
+			)
+
 			if (Option.isNone(linkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2392,9 +2391,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const link = linkOption.value
 
-			const messageLinkOption = yield* messageLinkRepo
-				.findByExternalMessage(link.id, payload.externalMessageId)
-				
+			const messageLinkOption = yield* messageLinkRepo.findByExternalMessage(
+				link.id,
+				payload.externalMessageId,
+			)
+
 			if (Option.isNone(messageLinkOption)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2416,9 +2417,12 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				avatarUrl: payload.externalAuthorAvatarUrl ?? null,
 			})
 
-			const existingReaction = yield* messageReactionRepo
-				.findByMessageUserEmoji(messageLink.hazelMessageId, userId, payload.emoji)
-				
+			const existingReaction = yield* messageReactionRepo.findByMessageUserEmoji(
+				messageLink.hazelMessageId,
+				userId,
+				payload.emoji,
+			)
+
 			if (Option.isNone(existingReaction)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2459,9 +2463,8 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "deduped" as const }
 			}
 
-			const connectionOption = yield* connectionRepo
-				.findById(payload.syncConnectionId)
-				
+			const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
+
 			if (Option.isNone(connectionOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncConnectionNotFoundError({
@@ -2482,9 +2485,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			yield* getProviderAdapter(connection.provider)
 
-			const parentLinkOption = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, payload.externalParentChannelId)
-				
+			const parentLinkOption = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				payload.externalParentChannelId,
+			)
+
 			if (Option.isNone(parentLinkOption)) {
 				return yield* Effect.fail(
 					new DiscordSyncChannelLinkNotFoundError({
@@ -2496,9 +2501,11 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			const parentLink = parentLinkOption.value
 			const externalThreadChannelId = payload.externalThreadId as unknown as ExternalChannelId
 
-			const existingThreadLink = yield* channelLinkRepo
-				.findByExternalChannel(payload.syncConnectionId, externalThreadChannelId)
-				
+			const existingThreadLink = yield* channelLinkRepo.findByExternalChannel(
+				payload.syncConnectionId,
+				externalThreadChannelId,
+			)
+
 			if (Option.isSome(existingThreadLink)) {
 				yield* writeReceipt({
 					syncConnectionId: payload.syncConnectionId,
@@ -2511,46 +2518,42 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "already_linked" as const }
 			}
 
-			const [threadChannel] = yield* channelRepo
-				.insert({
-					name: payload.name?.trim() || "Thread",
-					icon: null,
-					type: "thread",
-					organizationId: connection.organizationId,
-					parentChannelId: parentLink.hazelChannelId,
-					sectionId: null,
-					deletedAt: null,
-				})
-				
+			const [threadChannel] = yield* channelRepo.insert({
+				name: payload.name?.trim() || "Thread",
+				icon: null,
+				type: "thread",
+				organizationId: connection.organizationId,
+				parentChannelId: parentLink.hazelChannelId,
+				sectionId: null,
+				deletedAt: null,
+			})
 
 			yield* channelAccessSyncService.syncChannel(threadChannel.id)
 
-			const [threadLink] = yield* channelLinkRepo
-				.insert({
-					syncConnectionId: payload.syncConnectionId,
-					hazelChannelId: threadChannel.id,
-					externalChannelId: externalThreadChannelId,
-					externalChannelName: payload.name ?? null,
-					direction: parentLink.direction,
-					isActive: true,
-					settings: parentLink.settings,
-					lastSyncedAt: null,
-					deletedAt: null,
-				})
-				
+			const [threadLink] = yield* channelLinkRepo.insert({
+				syncConnectionId: payload.syncConnectionId,
+				hazelChannelId: threadChannel.id,
+				externalChannelId: externalThreadChannelId,
+				externalChannelName: payload.name ?? null,
+				direction: parentLink.direction,
+				isActive: true,
+				settings: parentLink.settings,
+				lastSyncedAt: null,
+				deletedAt: null,
+			})
 
 			if (payload.externalRootMessageId) {
-				const rootMessageLink = yield* messageLinkRepo
-					.findByExternalMessage(parentLink.id, payload.externalRootMessageId)
-					
+				const rootMessageLink = yield* messageLinkRepo.findByExternalMessage(
+					parentLink.id,
+					payload.externalRootMessageId,
+				)
+
 				if (Option.isSome(rootMessageLink)) {
-					yield* messageRepo
-						.update({
-							id: rootMessageLink.value.hazelMessageId,
-							threadChannelId: threadChannel.id,
-							updatedAt: new Date(),
-						})
-						
+					yield* messageRepo.update({
+						id: rootMessageLink.value.hazelMessageId,
+						threadChannelId: threadChannel.id,
+						updatedAt: new Date(),
+					})
 				}
 			}
 

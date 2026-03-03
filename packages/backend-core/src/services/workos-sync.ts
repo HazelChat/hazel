@@ -213,20 +213,18 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						: workosAvatarUrl
 
 					return collectResult(
-						userRepo
-							.upsertByExternalId({
-								externalId: workosUser.id,
-								email: workosUser.email,
-								firstName,
-								lastName,
-								avatarUrl,
-								userType: "user",
-								settings: null,
-								isOnboarded: false,
-								timezone: null,
-								deletedAt: null,
-							})
-							,
+						userRepo.upsertByExternalId({
+							externalId: workosUser.id,
+							email: workosUser.email,
+							firstName,
+							lastName,
+							avatarUrl,
+							userType: "user",
+							settings: null,
+							isOnboarded: false,
+							timezone: null,
+							deletedAt: null,
+						}),
 						() => {
 							if (existingUser) {
 								result.updated++
@@ -306,12 +304,11 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 							if (existingOrg) {
 								// Update existing organization
-								yield* orgRepo
-									.update({
-										id: orgId,
-										name: workosOrg.name,
-									})
-																	result.updated++
+								yield* orgRepo.update({
+									id: orgId,
+									name: workosOrg.name,
+								})
+								result.updated++
 							} else {
 								// Create new organization (edge case: org exists in WorkOS but not in our DB)
 								// Use direct Drizzle insert to manually set the ID to match WorkOS externalId
@@ -413,17 +410,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					const role = (workosMembership.role?.slug || "member") as "admin" | "member" | "owner"
 
 					return collectResult(
-						orgMemberRepo
-							.upsertByOrgAndUser({
-								organizationId: organizationId,
-								userId: user.id,
-								role,
-								nickname: undefined,
-								joinedAt: new Date(),
-								invitedBy: null,
-								deletedAt: null,
-							})
-							,
+						orgMemberRepo.upsertByOrgAndUser({
+							organizationId: organizationId,
+							userId: user.id,
+							role,
+							nickname: undefined,
+							joinedAt: new Date(),
+							invitedBy: null,
+							deletedAt: null,
+						}),
 						() => {
 							if (existing) {
 								result.updated++
@@ -536,22 +531,20 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					}
 
 					return collectResult(
-						invitationRepo
-							.upsertByWorkosId({
-								workosInvitationId: workosInvitation.id,
-								invitationUrl: workosInvitation.acceptInvitationUrl,
-								organizationId: organizationId,
-								email: workosInvitation.email,
-								invitedBy: invitedBy,
-								invitedAt: new Date(workosInvitation.createdAt),
-								expiresAt: new Date(workosInvitation.expiresAt),
-								status,
-								acceptedAt: workosInvitation.acceptedAt
-									? new Date(workosInvitation.acceptedAt)
-									: null,
-								acceptedBy: null,
-							})
-							,
+						invitationRepo.upsertByWorkosId({
+							workosInvitationId: workosInvitation.id,
+							invitationUrl: workosInvitation.acceptInvitationUrl,
+							organizationId: organizationId,
+							email: workosInvitation.email,
+							invitedBy: invitedBy,
+							invitedAt: new Date(workosInvitation.createdAt),
+							expiresAt: new Date(workosInvitation.expiresAt),
+							status,
+							acceptedAt: workosInvitation.acceptedAt
+								? new Date(workosInvitation.acceptedAt)
+								: null,
+							acceptedBy: null,
+						}),
 						() => {
 							if (existing) {
 								result.updated++
@@ -727,19 +720,17 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				yield* Option.match(existingOrg, {
 					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }),
 					onNone: () =>
-						orgRepo
-							.insert({
-								name: data.name,
-								logoUrl: null,
-								settings: null,
-								isPublic: false,
-								deletedAt: null,
-								slug: data.name
-									.toLowerCase()
-									.replace(/[^a-z0-9]+/g, "-")
-									.replace(/^-|-$/g, ""),
-							})
-							,
+						orgRepo.insert({
+							name: data.name,
+							logoUrl: null,
+							settings: null,
+							isPublic: false,
+							deletedAt: null,
+							slug: data.name
+								.toLowerCase()
+								.replace(/[^a-z0-9]+/g, "-")
+								.replace(/^-|-$/g, ""),
+						}),
 				})
 			})
 
@@ -870,8 +861,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 		return {
 			syncUsers,
 			syncOrganizations,
-			syncOrganizationMemberships: (orgId: OrganizationId) =>
-				syncOrganizationMemberships(orgId),
+			syncOrganizationMemberships: (orgId: OrganizationId) => syncOrganizationMemberships(orgId),
 			syncInvitations: (orgId: OrganizationId) => syncInvitations(orgId),
 			syncAll,
 			processWebhookEvent: (event: Event) => processWebhookEvent(event),

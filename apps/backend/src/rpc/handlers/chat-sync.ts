@@ -68,8 +68,10 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									return payload.integrationConnectionId
 								}
 
-								const integrationOption = yield* integrationConnectionRepo
-									.findOrgConnection(payload.organizationId, "discord")
+								const integrationOption = yield* integrationConnectionRepo.findOrgConnection(
+									payload.organizationId,
+									"discord",
+								)
 								if (
 									Option.isNone(integrationOption) ||
 									integrationOption.value.status !== "active"
@@ -85,12 +87,11 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								return integrationOption.value.id
 							})
 
-							const existing = yield* connectionRepo
-								.findByProviderAndWorkspace(
-									payload.organizationId,
-									payload.provider,
-									payload.externalWorkspaceId,
-								)
+							const existing = yield* connectionRepo.findByProviderAndWorkspace(
+								payload.organizationId,
+								payload.provider,
+								payload.externalWorkspaceId,
+							)
 							if (Option.isSome(existing)) {
 								return yield* Effect.fail(
 									new ChatSyncConnectionExistsError({
@@ -101,21 +102,20 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 
-							const [connection] = yield* connectionRepo
-								.insert({
-									organizationId: payload.organizationId,
-									integrationConnectionId,
-									provider: payload.provider,
-									externalWorkspaceId: payload.externalWorkspaceId,
-									externalWorkspaceName: payload.externalWorkspaceName ?? null,
-									status: "active",
-									settings: payload.settings ?? null,
-									metadata: payload.metadata ?? null,
-									errorMessage: null,
-									lastSyncedAt: null,
-									createdBy: currentUser.id,
-									deletedAt: null,
-								})
+							const [connection] = yield* connectionRepo.insert({
+								organizationId: payload.organizationId,
+								integrationConnectionId,
+								provider: payload.provider,
+								externalWorkspaceId: payload.externalWorkspaceId,
+								externalWorkspaceName: payload.externalWorkspaceName ?? null,
+								status: "active",
+								settings: payload.settings ?? null,
+								metadata: payload.metadata ?? null,
+								errorMessage: null,
+								lastSyncedAt: null,
+								createdBy: currentUser.id,
+								deletedAt: null,
+							})
 
 							const txid = yield* generateTransactionId()
 							return new ChatSyncConnectionResponse({
@@ -146,8 +146,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 			"chatSync.connection.list": ({ organizationId }) =>
 				Effect.gen(function* () {
 					yield* ensureOrgAccess(organizationId)
-					const data = yield* connectionRepo
-						.findByOrganization(organizationId)
+					const data = yield* connectionRepo.findByOrganization(organizationId)
 					return new ChatSyncConnectionListResponse({ data })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
@@ -164,8 +163,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const connectionOption = yield* connectionRepo
-								.findById(syncConnectionId)
+							const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 							if (Option.isNone(connectionOption)) {
 								return yield* Effect.fail(
 									new ChatSyncConnectionNotFoundError({
@@ -177,15 +175,10 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							yield* ensureOrgAccess(connection.organizationId)
 
 							yield* connectionRepo.softDelete(syncConnectionId)
-							const links = yield* channelLinkRepo
-								.findBySyncConnection(syncConnectionId)
-							yield* Effect.forEach(
-								links,
-								(link) => channelLinkRepo.softDelete(link.id),
-								{
-									concurrency: 10,
-								},
-							)
+							const links = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
+							yield* Effect.forEach(links, (link) => channelLinkRepo.softDelete(link.id), {
+								concurrency: 10,
+							})
 
 							const txid = yield* generateTransactionId()
 							return { transactionId: txid }
@@ -206,8 +199,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const connectionOption = yield* connectionRepo
-								.findById(payload.syncConnectionId)
+							const connectionOption = yield* connectionRepo.findById(payload.syncConnectionId)
 							if (Option.isNone(connectionOption)) {
 								return yield* Effect.fail(
 									new ChatSyncConnectionNotFoundError({
@@ -218,8 +210,10 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							const connection = connectionOption.value
 							yield* ensureOrgAccess(connection.organizationId)
 
-							const existingHazel = yield* channelLinkRepo
-								.findByHazelChannel(payload.syncConnectionId, payload.hazelChannelId)
+							const existingHazel = yield* channelLinkRepo.findByHazelChannel(
+								payload.syncConnectionId,
+								payload.hazelChannelId,
+							)
 							if (Option.isSome(existingHazel)) {
 								return yield* Effect.fail(
 									new ChatSyncChannelLinkExistsError({
@@ -230,8 +224,10 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 
-							const existingExternal = yield* channelLinkRepo
-								.findByExternalChannel(payload.syncConnectionId, payload.externalChannelId)
+							const existingExternal = yield* channelLinkRepo.findByExternalChannel(
+								payload.syncConnectionId,
+								payload.externalChannelId,
+							)
 							if (Option.isSome(existingExternal)) {
 								return yield* Effect.fail(
 									new ChatSyncChannelLinkExistsError({
@@ -242,18 +238,17 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 
-							const [link] = yield* channelLinkRepo
-								.insert({
-									syncConnectionId: payload.syncConnectionId,
-									hazelChannelId: payload.hazelChannelId,
-									externalChannelId: payload.externalChannelId,
-									externalChannelName: payload.externalChannelName ?? null,
-									direction: payload.direction ?? "both",
-									isActive: true,
-									settings: normalizeChannelLinkSettings(payload.settings),
-									lastSyncedAt: null,
-									deletedAt: null,
-								})
+							const [link] = yield* channelLinkRepo.insert({
+								syncConnectionId: payload.syncConnectionId,
+								hazelChannelId: payload.hazelChannelId,
+								externalChannelId: payload.externalChannelId,
+								externalChannelName: payload.externalChannelName ?? null,
+								direction: payload.direction ?? "both",
+								isActive: true,
+								settings: normalizeChannelLinkSettings(payload.settings),
+								lastSyncedAt: null,
+								deletedAt: null,
+							})
 
 							const brandedLink = {
 								...link,
@@ -287,8 +282,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 
 			"chatSync.channelLink.list": ({ syncConnectionId }) =>
 				Effect.gen(function* () {
-					const connectionOption = yield* connectionRepo
-						.findById(syncConnectionId)
+					const connectionOption = yield* connectionRepo.findById(syncConnectionId)
 					if (Option.isNone(connectionOption)) {
 						return yield* Effect.fail(
 							new ChatSyncConnectionNotFoundError({
@@ -299,8 +293,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 					const connection = connectionOption.value
 					yield* ensureOrgAccess(connection.organizationId)
 
-					const data = yield* channelLinkRepo
-						.findBySyncConnection(syncConnectionId)
+					const data = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
 					return new ChatSyncChannelLinkListResponse({ data })
 				}).pipe(
 					Effect.catchTag("DatabaseError", (error) =>
@@ -317,8 +310,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const linkOption = yield* channelLinkRepo
-								.findById(syncChannelLinkId)
+							const linkOption = yield* channelLinkRepo.findById(syncChannelLinkId)
 							if (Option.isNone(linkOption)) {
 								return yield* Effect.fail(
 									new ChatSyncChannelLinkNotFoundError({
@@ -328,8 +320,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							}
 							const link = linkOption.value
 
-							const connectionOption = yield* connectionRepo
-								.findById(link.syncConnectionId)
+							const connectionOption = yield* connectionRepo.findById(link.syncConnectionId)
 							if (Option.isNone(connectionOption)) {
 								return yield* Effect.fail(
 									new InternalServerError({
@@ -359,8 +350,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const linkOption = yield* channelLinkRepo
-								.findById(syncChannelLinkId)
+							const linkOption = yield* channelLinkRepo.findById(syncChannelLinkId)
 							if (Option.isNone(linkOption)) {
 								return yield* Effect.fail(
 									new ChatSyncChannelLinkNotFoundError({
@@ -370,8 +360,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							}
 							const link = linkOption.value
 
-							const connectionOption = yield* connectionRepo
-								.findById(link.syncConnectionId)
+							const connectionOption = yield* connectionRepo.findById(link.syncConnectionId)
 							if (Option.isNone(connectionOption)) {
 								return yield* Effect.fail(
 									new InternalServerError({
@@ -383,16 +372,13 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 							yield* ensureOrgAccess(connectionOption.value.organizationId)
 
 							if (direction !== undefined) {
-								yield* channelLinkRepo
-									.updateDirection(syncChannelLinkId, direction)
+								yield* channelLinkRepo.updateDirection(syncChannelLinkId, direction)
 							}
 							if (isActive !== undefined) {
-								yield* channelLinkRepo
-									.setActive(syncChannelLinkId, isActive)
+								yield* channelLinkRepo.setActive(syncChannelLinkId, isActive)
 							}
 
-							const updatedOption = yield* channelLinkRepo
-								.findById(syncChannelLinkId)
+							const updatedOption = yield* channelLinkRepo.findById(syncChannelLinkId)
 							if (Option.isNone(updatedOption)) {
 								return yield* Effect.fail(
 									new ChatSyncChannelLinkNotFoundError({
