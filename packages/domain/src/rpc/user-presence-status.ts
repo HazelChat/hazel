@@ -6,6 +6,7 @@ import { UserPresenceStatus } from "../models"
 import { JsonDate } from "../models/utils"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful user presence status operations.
@@ -73,7 +74,9 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["user-presence-status:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserPresenceStatusHeartbeat
@@ -92,7 +95,9 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 			lastSeenAt: JsonDate,
 		}),
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["user-presence-status:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserPresenceStatusClearStatus
@@ -108,5 +113,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		payload: Schema.Struct({}),
 		success: UserPresenceStatusResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["user-presence-status:write"])
+		.middleware(AuthMiddleware),
 ) {}

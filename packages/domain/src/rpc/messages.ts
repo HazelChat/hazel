@@ -5,6 +5,7 @@ import { MessageId } from "@hazel/schema"
 import { Message } from "../models"
 import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "@hazel/schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
 
@@ -76,7 +77,9 @@ export class MessageRpcs extends RpcGroup.make(
 			InternalServerError,
 			RateLimitExceededError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["messages:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * MessageUpdate
@@ -102,7 +105,9 @@ export class MessageRpcs extends RpcGroup.make(
 			InternalServerError,
 			RateLimitExceededError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["messages:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * MessageDelete
@@ -126,5 +131,7 @@ export class MessageRpcs extends RpcGroup.make(
 			InternalServerError,
 			RateLimitExceededError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["messages:write"])
+		.middleware(AuthMiddleware),
 ) {}

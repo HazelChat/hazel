@@ -6,6 +6,7 @@ import { ChannelMember } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful channel member operations.
@@ -81,7 +82,9 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 		}),
 		success: ChannelMemberResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelMemberUpdate
@@ -102,7 +105,9 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 		}).pipe(Schema.extend(Schema.partial(ChannelMember.Model.jsonUpdate))),
 		success: ChannelMemberResponse,
 		error: Schema.Union(ChannelMemberNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelMemberDelete
@@ -121,7 +126,9 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: ChannelMemberId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelMemberNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelMemberClearNotifications
@@ -139,5 +146,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-members:write"])
+		.middleware(AuthMiddleware),
 ) {}

@@ -4,6 +4,7 @@ import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { OrganizationId } from "@hazel/schema"
 import { IntegrationConnection } from "../models"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
@@ -89,7 +90,8 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 						"Returns the OAuth authorization URL for the provider. The frontend should redirect the user to this URL. Sets a session cookie to preserve context for the callback.",
 					summary: "Get OAuth URL",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	// OAuth callback handler
 	.add(
@@ -124,7 +126,8 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					description: "Handle OAuth callback from integration provider",
 					summary: "Process OAuth callback",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Get connection status
 	.add(
@@ -151,7 +154,8 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					description: "Check the connection status for a provider",
 					summary: "Get integration status",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	// Connect via API key (non-OAuth providers like Craft)
 	.add(
@@ -176,7 +180,8 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 						"Connect an integration using an API key/token instead of OAuth. Validates the credentials against the provider and stores the connection.",
 					summary: "Connect with API key",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	// Disconnect integration
 	.add(
@@ -204,6 +209,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 					summary: "Disconnect provider",
 				}),
 			)
-			.middleware(CurrentUser.Authorization),
+			.middleware(CurrentUser.Authorization)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.prefix("/integrations") {}

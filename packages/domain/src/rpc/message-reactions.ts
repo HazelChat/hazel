@@ -6,6 +6,7 @@ import { MessageReaction } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { MessageNotFoundError } from "./messages"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful message reaction operations.
@@ -55,7 +56,9 @@ export class MessageReactionRpcs extends RpcGroup.make(
 			transactionId: TransactionId,
 		}),
 		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["message-reactions:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * MessageReactionCreate
@@ -73,7 +76,9 @@ export class MessageReactionRpcs extends RpcGroup.make(
 		payload: MessageReaction.Insert,
 		success: MessageReactionResponse,
 		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["message-reactions:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * MessageReactionUpdate
@@ -94,7 +99,9 @@ export class MessageReactionRpcs extends RpcGroup.make(
 		}),
 		success: MessageReactionResponse,
 		error: Schema.Union(MessageReactionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["message-reactions:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * MessageReactionDelete
@@ -112,5 +119,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: MessageReactionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(MessageReactionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["message-reactions:write"])
+		.middleware(AuthMiddleware),
 ) {}

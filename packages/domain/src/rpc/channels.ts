@@ -21,6 +21,7 @@ import { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Channel } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful channel operations.
@@ -91,7 +92,9 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: CreateChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelUpdate
@@ -111,7 +114,9 @@ export class ChannelRpcs extends RpcGroup.make(
 		}).pipe(Schema.extend(Schema.partial(Channel.Model.jsonUpdate))),
 		success: ChannelResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelDelete
@@ -129,7 +134,9 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelCreateDm
@@ -148,7 +155,9 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
 		error: Schema.Union(DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelCreateThread
@@ -168,7 +177,9 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
 		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelGenerateName
@@ -209,5 +220,7 @@ export class ChannelRpcs extends RpcGroup.make(
 			AIResponseParseError,
 			ThreadNameUpdateError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channels:write"])
+		.middleware(AuthMiddleware),
 ) {}

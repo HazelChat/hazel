@@ -5,6 +5,7 @@ import { AttachmentId, ChannelId, MessageId } from "@hazel/schema"
 import { Message, MessageReaction } from "../../models"
 import { MessageEmbeds } from "../../models/message-embed-schema"
 import { RateLimitExceededError } from "../../rate-limit-errors"
+import { RequiredScopes } from "../../scopes/required-scopes"
 import { TransactionId } from "@hazel/schema"
 
 // ============ PAGINATION SCHEMAS (Stripe-style) ============
@@ -105,7 +106,8 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 						"List messages in a channel with Stripe-style cursor-based pagination. Returns messages in reverse chronological order (newest first).",
 					summary: "List messages",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	// Create message
 	.add(
@@ -122,7 +124,8 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 					description: "Create a new message in a channel",
 					summary: "Create message",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["messages:write"]),
 	)
 	// Update message
 	.add(
@@ -140,7 +143,8 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 					description: "Update an existing message",
 					summary: "Update message",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["messages:write"]),
 	)
 	// Delete message
 	.add(
@@ -157,7 +161,8 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 					description: "Delete a message",
 					summary: "Delete message",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["messages:write"]),
 	)
 	// Toggle reaction
 	.add(
@@ -174,6 +179,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 					description: "Toggle a reaction on a message",
 					summary: "Toggle reaction",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["message-reactions:write"]),
 	)
 	.prefix("/api/v1") {}

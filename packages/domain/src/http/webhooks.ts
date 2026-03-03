@@ -2,6 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/p
 import { ChannelId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError, WorkflowInitializationError } from "../errors"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // WorkOS Webhook Types
 export class WorkOSWebhookPayload extends Schema.Class<WorkOSWebhookPayload>("WorkOSWebhookPayload")({
@@ -131,7 +132,8 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 					description: "Receive and process WorkOS webhook events",
 					summary: "Process WorkOS webhook events",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("sequinWebhook")`/sequin/message-notification`
@@ -146,7 +148,8 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 						"Receive message insert events from Sequin Stream to trigger notification workflows",
 					summary: "Process Sequin message insert events",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("github")`/github`
@@ -161,6 +164,7 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 					description: "Receive and process GitHub App webhook events",
 					summary: "Process GitHub App webhook events",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.prefix("/webhooks") {}

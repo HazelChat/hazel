@@ -1,3 +1,8 @@
 export { ApiScope } from "./api-scope"
 export { scopesForRole } from "./role-scopes"
 export { PermissionError } from "./permission-error"
+export { RequiredScopes } from "./required-scopes"
+export { type ScopeMap, scopeMapFromRpcGroup, mergeScopeMaps } from "./scope-map"
+export { validateRpcGroupScopes } from "./validate-scopes"
+export { checkPermission, canPerform } from "./permissions"
+export { RPC_SCOPE_MAP, ALL_SCOPE_MAP } from "./all-scopes-map"

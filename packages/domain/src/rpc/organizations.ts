@@ -5,6 +5,7 @@ import { OrganizationId } from "@hazel/schema"
 import { Organization } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful organization operations.
@@ -72,7 +73,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 		payload: Organization.Model.jsonCreate,
 		success: OrganizationResponse,
 		error: Schema.Union(OrganizationSlugAlreadyExistsError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("organization.update", {
 		payload: Schema.Struct({
@@ -85,13 +88,17 @@ export class OrganizationRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("organization.delete", {
 		payload: Schema.Struct({ id: OrganizationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("organization.setSlug", {
 		payload: Schema.Struct({
@@ -105,7 +112,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * Toggle public invite mode for an organization.
@@ -119,7 +128,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 		}),
 		success: OrganizationResponse,
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * Get public organization info by slug.
@@ -132,7 +143,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 		}),
 		success: Schema.NullOr(PublicOrganizationInfo),
 		error: InternalServerError,
-	}),
+	}).annotate(RequiredScopes, []),
 
 	/**
 	 * Join an organization via public invite link.
@@ -150,7 +161,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * Generate a WorkOS Admin Portal link.
@@ -164,7 +177,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 		}),
 		success: Schema.Struct({ link: Schema.String }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:read"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * List all domains for an organization.
@@ -181,7 +196,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 			}),
 		),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:read"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * Add a domain to an organization.
@@ -199,7 +216,9 @@ export class OrganizationRpcs extends RpcGroup.make(
 			verificationToken: Schema.NullOr(Schema.String),
 		}),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * Remove a domain from an organization.
@@ -212,5 +231,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 		}),
 		success: Schema.Struct({ success: Schema.Boolean }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organizations:write"])
+		.middleware(AuthMiddleware),
 ) {}

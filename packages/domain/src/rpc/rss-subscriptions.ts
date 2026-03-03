@@ -6,6 +6,7 @@ import { RssSubscription } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 export class RssSubscriptionResponse extends Schema.Class<RssSubscriptionResponse>("RssSubscriptionResponse")(
 	{
@@ -58,19 +59,25 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["rss-subscriptions:write"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("rssSubscription.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: RssSubscriptionListResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["rss-subscriptions:read"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("rssSubscription.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: RssSubscriptionListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["rss-subscriptions:read"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("rssSubscription.update", {
 		payload: Schema.Struct({
@@ -80,11 +87,15 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 		}),
 		success: RssSubscriptionResponse,
 		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["rss-subscriptions:write"])
+		.middleware(AuthMiddleware),
 
 	Rpc.make("rssSubscription.delete", {
 		payload: Schema.Struct({ id: RssSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["rss-subscriptions:write"])
+		.middleware(AuthMiddleware),
 ) {}

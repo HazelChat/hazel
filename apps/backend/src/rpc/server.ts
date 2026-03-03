@@ -22,6 +22,7 @@ import {
 	UserPresenceStatusRpcs,
 	UserRpcs,
 } from "@hazel/domain/rpc"
+import { validateRpcGroupScopes } from "@hazel/domain/scopes"
 import { Layer } from "effect"
 import { AttachmentRpcLive } from "./handlers/attachments"
 import { BotRpcLive } from "./handlers/bots"
@@ -85,6 +86,40 @@ const BaseRpcs = MessageRpcs.merge(
 )
 
 export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(RpcLoggingMiddleware)
+
+// Startup validation: ensure all RPCs have RequiredScopes annotations
+const rpcGroups = [
+	["MessageRpcs", MessageRpcs],
+	["MessageReactionRpcs", MessageReactionRpcs],
+	["NotificationRpcs", NotificationRpcs],
+	["InvitationRpcs", InvitationRpcs],
+	["IntegrationRequestRpcs", IntegrationRequestRpcs],
+	["TypingIndicatorRpcs", TypingIndicatorRpcs],
+	["PinnedMessageRpcs", PinnedMessageRpcs],
+	["OrganizationRpcs", OrganizationRpcs],
+	["OrganizationMemberRpcs", OrganizationMemberRpcs],
+	["UserRpcs", UserRpcs],
+	["UserPresenceStatusRpcs", UserPresenceStatusRpcs],
+	["ChannelRpcs", ChannelRpcs],
+	["ChannelMemberRpcs", ChannelMemberRpcs],
+	["ChannelSectionRpcs", ChannelSectionRpcs],
+	["ChannelWebhookRpcs", ChannelWebhookRpcs],
+	["GitHubSubscriptionRpcs", GitHubSubscriptionRpcs],
+	["RssSubscriptionRpcs", RssSubscriptionRpcs],
+	["AttachmentRpcs", AttachmentRpcs],
+	["BotRpcs", BotRpcs],
+	["CustomEmojiRpcs", CustomEmojiRpcs],
+	["ChatSyncRpcs", ChatSyncRpcs],
+] as const
+
+for (const [name, group] of rpcGroups) {
+	const result = validateRpcGroupScopes(group.requests, name)
+	if (!result.valid) {
+		console.warn(
+			`[RPC Scope Validation] Missing RequiredScopes annotation on: ${result.missing.join(", ")}`,
+		)
+	}
+}
 
 export const RpcServerLive = Layer.empty
 	.pipe(

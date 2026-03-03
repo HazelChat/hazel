@@ -5,6 +5,7 @@ import { IntegrationRequestId, OrganizationId } from "@hazel/schema"
 import { IntegrationRequest } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful integration request creation.
@@ -38,5 +39,7 @@ export class IntegrationRequestRpcs extends RpcGroup.make(
 		payload: CreateIntegrationRequestPayload,
 		success: IntegrationRequestResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["integration-connections:write"])
+		.middleware(AuthMiddleware),
 ) {}

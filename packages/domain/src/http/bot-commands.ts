@@ -6,6 +6,7 @@ import { BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "../models"
 import { CommandArgumentValue } from "./integration-commands"
 import { IntegrationNotConnectedError } from "./integrations"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // Re-export IntegrationProvider for convenience
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
@@ -141,7 +142,8 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					description: "SSE stream for receiving bot commands (used by Bot SDK)",
 					summary: "Stream commands via SSE",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Get current bot info (for bot token validation)
 	// This endpoint uses bot token authentication, not user auth
@@ -155,7 +157,8 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					description: "Get current bot info from token (used by Bot SDK for authentication)",
 					summary: "Get bot info",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Sync commands from bot (called by Bot SDK on startup)
 	// This endpoint uses bot token authentication, not user auth
@@ -172,7 +175,8 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					description: "Sync slash commands from a bot (called by Bot SDK on startup)",
 					summary: "Register bot commands",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Execute a bot command (frontend calls this - requires user auth)
 	.add(
@@ -199,6 +203,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 					summary: "Execute bot command",
 				}),
 			)
+			.annotate(RequiredScopes, ["bots:write"])
 			.middleware(CurrentUser.Authorization),
 	)
 	// Get integration token (bot token auth)
@@ -224,7 +229,8 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 						"Get a valid OAuth access token for an integration provider. Bot must have the provider in its allowedIntegrations and be installed in the target org.",
 					summary: "Get integration token",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Get enabled integrations (bot token auth)
 	// Returns the intersection of bot's allowedIntegrations and org's active connections
@@ -246,7 +252,8 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 						"Get the list of integration providers enabled for the bot in the target org. Returns the intersection of the bot's allowedIntegrations and the org's active integration connections.",
 					summary: "Get enabled integrations",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	// Update bot settings (bot token auth)
 	// Allows bots to update their own settings like mentionable flag
@@ -263,6 +270,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 						"Update the bot's settings. Currently supports updating the mentionable flag which controls whether the bot can be @mentioned in messages.",
 					summary: "Update bot settings",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.prefix("/bot-commands") {}

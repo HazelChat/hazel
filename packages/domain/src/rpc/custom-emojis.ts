@@ -4,6 +4,7 @@ import { InternalServerError, UnauthorizedError } from "../errors"
 import { CustomEmojiId, OrganizationId, TransactionId } from "@hazel/schema"
 import { CustomEmoji } from "../models"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful custom emoji operations.
@@ -75,7 +76,9 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["custom-emojis:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * CustomEmojiUpdate
@@ -101,7 +104,9 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["custom-emojis:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * CustomEmojiDelete
@@ -118,7 +123,9 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: CustomEmojiId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(CustomEmojiNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["custom-emojis:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * CustomEmojiRestore
@@ -144,5 +151,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["custom-emojis:write"])
+		.middleware(AuthMiddleware),
 ) {}
