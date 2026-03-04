@@ -1,0 +1,30 @@
+{
+    "name": "hazel-actors",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-01-20",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "migrations": [
+        {
+            "tag": "v1",
+            "new_sqlite_classes": [
+                "ActorHandler"
+            ],
+        },
+    ],
+    "durable_objects": {
+        "bindings": [
+            {
+                "name": "ACTOR_DO",
+                "class_name": "ActorHandler",
+            },
+        ],
+    },
+    "kv_namespaces": [
+        {
+            "binding": "HAZEL_ACTOR_KV",
+            "id": "a4197b6d925d46ad8b6c8822223a36ca",
+        },
+    ],
+}

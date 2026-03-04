@@ -1,0 +1,101 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import FooterSection from "@/components/sections/FooterSection.astro";
+import { PricingSection } from "@/components/react/PricingSection";
+import { siteConfig } from "@/lib/config";
+
+const pricingFaqs = [
+  {
+    question: "Is Hazel really free for small teams?",
+    answer: "Yes! Hazel is completely free for teams of up to 10 members with unlimited channels and messages. No credit card required, no time limits."
+  },
+  {
+    question: "Can I switch plans later?",
+    answer: "Absolutely. You can upgrade or downgrade at any time. When upgrading, you'll be prorated for the remainder of your billing cycle. When downgrading, the change takes effect at the end of your current billing period."
+  },
+  {
+    question: "What payment methods do you accept?",
+    answer: "We accept all major credit cards (Visa, Mastercard, American Express) through Stripe. Enterprise customers can also pay via invoice with NET-30 terms."
+  },
+  {
+    question: "Do you offer discounts for open source projects?",
+    answer: "Yes! Open source projects and non-profits qualify for our free tier regardless of team size. Contact us at support@hazel.sh to get set up."
+  },
+  {
+    question: "What happens if I exceed the free plan limits?",
+    answer: "We'll notify you when you're approaching the 10-member limit. Your existing data and conversations are never affected — you'll just need to upgrade to add more members."
+  },
+  {
+    question: "Can I self-host Hazel for free?",
+    answer: "Hazel is open source and can be self-hosted at no cost. The Enterprise plan adds dedicated support, SAML SSO, and SLA guarantees for self-hosted deployments."
+  },
+];
+---
+
+<Layout
+  title="Pricing | Hazel - Free for Open Source Teams"
+  description="Hazel pricing: free for small teams up to 10 members. Pro plan for growing teams with advanced integrations. Enterprise for self-hosted deployments and compliance."
+  includeFaqSchema={true}
+  faqData={pricingFaqs}
+>
+  <main class="flex flex-col items-center justify-center divide-y divide-border min-h-screen w-full">
+    <!-- Hero -->
+    <section class="w-full py-20 md:py-28 px-6">
+      <div class="max-w-3xl mx-auto text-center">
+        <h1 class="text-4xl md:text-6xl font-medium tracking-tighter text-primary">
+          Simple, transparent pricing
+        </h1>
+        <p class="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
+          Free for open source projects and small teams. Upgrade when you need advanced integrations and unlimited members.
+        </p>
+      </div>
+    </section>
+
+    <PricingSection client:visible />
+
+    <!-- FAQ Section -->
+    <section class="w-full py-20 px-6">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-3xl font-medium tracking-tight text-primary text-center mb-12">
+          Pricing FAQ
+        </h2>
+        <div class="space-y-6">
+          {pricingFaqs.map((faq) => (
+            <div class="border border-border rounded-xl p-6">
+              <h3 class="text-lg font-medium text-primary">{faq.question}</h3>
+              <p class="mt-2 text-muted-foreground">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="w-full py-20 px-6">
+      <div class="max-w-2xl mx-auto text-center">
+        <h2 class="text-3xl font-medium tracking-tight text-primary">
+          Ready to get started?
+        </h2>
+        <p class="mt-4 text-muted-foreground text-lg">
+          Create your workspace in seconds. No credit card required.
+        </p>
+        <div class="mt-8 flex items-center justify-center gap-4">
+          <a
+            href="https://app.hazel.sh"
+            class="bg-secondary text-white font-semibold text-sm h-10 px-6 rounded-full flex items-center justify-center"
+          >
+            Start for free
+          </a>
+          <a
+            href="mailto:sales@hazel.sh"
+            class="border border-border text-primary font-semibold text-sm h-10 px-6 rounded-full flex items-center justify-center"
+          >
+            Contact sales
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <FooterSection />
+  </main>
+</Layout>

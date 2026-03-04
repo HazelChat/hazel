@@ -1,8 +1,6 @@
 import { registry } from "@hazel/actors"
 
-const PORT = Number(process.env.PORT) || 3021
+import { createHandler } from "@rivetkit/cloudflare-workers"
 
-Bun.serve({
-	port: PORT,
-	fetch: (request: Request) => registry.handler(request),
-})
+const { handler, ActorHandler } = createHandler(registry)
+export { handler as default, ActorHandler }

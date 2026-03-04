@@ -4,8 +4,8 @@
 	"type": "module",
 	"module": "src/index.ts",
 	"scripts": {
-		"dev": "NODE_ENV=development bun run src/index.ts --watch",
-		"start": "bun run src/index.ts",
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -15,5 +15,8 @@
 	},
 	"peerDependencies": {
 		"typescript": "5.9.3"
+	},
+	"devDependencies": {
+		"wrangler": "^4.70.0"
 	}
 }

@@ -30,11 +30,12 @@ export const siteConfig = {
 	},
 	nav: {
 		links: [
-			{ id: 1, name: "Home", href: "/" },
-			{ id: 2, name: "Integrations", href: "/integrations" },
-			{ id: 3, name: "Changelog", href: "/changelog" },
-			{ id: 4, name: "Desktop", href: "/download" },
-			{ id: 5, name: "GitHub", href: "https://github.com/hazelchat/hazel" },
+			{ id: 1, name: "Features", href: "/features" },
+			{ id: 2, name: "Pricing", href: "/pricing" },
+			{ id: 3, name: "Integrations", href: "/integrations" },
+			{ id: 4, name: "Changelog", href: "/changelog" },
+			{ id: 5, name: "Desktop", href: "/download" },
+			{ id: 6, name: "GitHub", href: "https://github.com/hazelchat/hazel" },
 		],
 	},
 	hero: {
@@ -72,7 +73,7 @@ export const siteConfig = {
 		companyLogos: [
 			{
 				id: 1,
-				name: "Company 1",
+				name: "OpenAI",
 				href: "/integrations",
 				logo: (
 					<svg
@@ -95,7 +96,7 @@ export const siteConfig = {
 			},
 			{
 				id: 2,
-				name: "Company 2",
+				name: "Retool",
 				href: "/integrations",
 				logo: (
 					<svg
@@ -157,7 +158,7 @@ export const siteConfig = {
 			},
 			{
 				id: 5,
-				name: "Company 5",
+				name: "Coolify",
 				href: "/integrations",
 				logo: (
 					<svg
@@ -636,60 +637,62 @@ export const siteConfig = {
 	},
 	pricing: {
 		title: "Pricing that scales with you",
-		description: "Whichever plan you pick, it's free until you love your docs. That's our promise.",
+		description: "Free for open source projects and small teams. Upgrade when you're ready.",
 		pricingItems: [
 			{
 				name: "Free",
-				href: "#",
+				href: "https://app.hazel.sh",
 				price: "$0",
 				period: "month",
 				yearlyPrice: "$0",
 				features: [
-					"Custom domain",
-					"SEO-optimizations",
-					"Auto-generated API docs",
-					"Built-in components library",
+					"Up to 10 team members",
+					"Unlimited channels & messages",
+					"GitHub integration",
+					"Desktop & web app",
+					"Full-text message search",
+					"Community support",
 				],
-				description: "Perfect for individual users",
+				description: "Perfect for small teams and open source projects",
 				buttonText: "Start Free",
 				buttonColor: "bg-accent text-primary",
 				isPopular: false,
 			},
 			{
-				name: "Startup",
-				href: "#",
-				price: "$12",
+				name: "Pro",
+				href: "https://app.hazel.sh",
+				price: "$8",
 				period: "month",
-				yearlyPrice: "$120",
+				yearlyPrice: "$80",
 				features: [
-					"Custom domain",
-					"SEO-optimizations",
-					"Auto-generated API docs",
-					"Built-in components library",
-					"E-commerce integration",
-					"User authentication system",
-					"Multi-language support",
-					"Real-time collaboration tools",
+					"Unlimited team members",
+					"All Free features",
+					"Linear & GitHub integrations",
+					"Custom bots & webhooks",
+					"AI-powered search & summaries",
+					"SSO authentication",
+					"Priority support",
+					"Advanced admin controls",
 				],
-				description: "Ideal for professionals and small teams",
+				description: "For growing teams that need advanced integrations",
 				buttonText: "Upgrade to Pro",
 				buttonColor: "bg-secondary text-white",
 				isPopular: true,
 			},
 			{
 				name: "Enterprise",
-				href: "#",
-				price: "$24",
+				href: "mailto:sales@hazel.sh",
+				price: "Custom",
 				period: "month",
-				yearlyPrice: "$240",
+				yearlyPrice: "Custom",
 				features: [
-					"Custom domain",
-					"SEO-optimizations",
-					"Auto-generated API docs",
-					"Built-in components librarys",
-					"Real-time collaboration tools",
+					"Everything in Pro",
+					"Self-hosted deployment",
+					"SAML SSO & SCIM provisioning",
+					"Audit logs & compliance",
+					"Dedicated support & SLA",
 				],
-				description: "Best for large teams and enterprise-level organizations",
+				description: "For organizations that need full control and compliance",
 				buttonText: "Contact Sales",
 				buttonColor: "bg-primary text-primary-foreground",
 				isPopular: false,
@@ -700,184 +703,182 @@ export const siteConfig = {
 		{
 			id: "1",
 			name: "Alex Rivera",
-			role: "CTO at InnovateTech",
+			role: "Engineering Lead at Nextera",
 			img: "https://randomuser.me/api/portraits/men/91.jpg",
 			description: (
 				<p>
-					The AI-driven analytics from #QuantumInsights have revolutionized our product development
-					cycle.
-					<Highlight>Insights are now more accurate and faster than ever.</Highlight> A game-changer
-					for tech companies.
+					We switched from Slack to Hazel and never looked back. The GitHub integration is native,
+					not bolted on.
+					<Highlight>PR reviews happen right in our team channels now.</Highlight> Exactly what a dev
+					team needs.
 				</p>
 			),
 		},
 		{
 			id: "2",
 			name: "Samantha Lee",
-			role: "Marketing Director at NextGen Solutions",
+			role: "Product Manager at Foldwise",
 			img: "https://randomuser.me/api/portraits/women/12.jpg",
 			description: (
 				<p>
-					Implementing #AIStream&apos;s customer prediction model has drastically improved our
-					targeting strategy.
-					<Highlight>Seeing a 50% increase in conversion rates!</Highlight> Highly recommend their
-					solutions.
+					Hazel&apos;s keyboard-first design means I barely touch my mouse anymore. The command
+					palette is incredible.
+					<Highlight>I can jump to any channel or person in under a second.</Highlight> My team is
+					noticeably faster.
 				</p>
 			),
 		},
 		{
 			id: "3",
 			name: "Raj Patel",
-			role: "Founder & CEO at StartUp Grid",
+			role: "Founder & CTO at Layerform",
 			img: "https://randomuser.me/api/portraits/men/45.jpg",
 			description: (
 				<p>
-					As a startup, we need to move fast and stay ahead. #CodeAI&apos;s automated coding
-					assistant helps us do just that.
-					<Highlight>Our development speed has doubled.</Highlight> Essential tool for any startup.
+					As a startup, we needed a chat tool that wouldn&apos;t slow us down or drain our budget.
+					Hazel is free, open source, and fast.
+					<Highlight>Our team onboarded in minutes.</Highlight> Essential for any early-stage team.
 				</p>
 			),
 		},
 		{
 			id: "4",
 			name: "Emily Chen",
-			role: "Product Manager at Digital Wave",
+			role: "DevOps Engineer at Infrastack",
 			img: "https://randomuser.me/api/portraits/women/83.jpg",
 			description: (
 				<p>
-					#VoiceGen&apos;s AI-driven voice synthesis has made creating global products a breeze.
-					<Highlight>Localization is now seamless and efficient.</Highlight> A must-have for global
-					product teams.
+					The Railway and deployment integrations mean I see build statuses right in Hazel.
+					<Highlight>No more context-switching between dashboards.</Highlight> It&apos;s like having
+					a command center for our infrastructure.
 				</p>
 			),
 		},
 		{
 			id: "5",
 			name: "Michael Brown",
-			role: "Data Scientist at FinTech Innovations",
+			role: "Senior Developer at Quantbase",
 			img: "https://randomuser.me/api/portraits/men/1.jpg",
 			description: (
 				<p>
-					Leveraging #DataCrunch&apos;s AI for our financial models has given us an edge in
-					predictive accuracy.
+					The inline code highlighting and markdown support make technical discussions so much
+					better.
 					<Highlight>
-						Our investment strategies are now powered by real-time data analytics.
+						Sharing code snippets in Hazel feels natural, not like a workaround.
 					</Highlight>{" "}
-					Transformative for the finance industry.
+					Finally, a chat built for developers.
 				</p>
 			),
 		},
 		{
 			id: "6",
 			name: "Linda Wu",
-			role: "VP of Operations at LogiChain Solutions",
+			role: "VP of Engineering at Corelight",
 			img: "https://randomuser.me/api/portraits/women/5.jpg",
 			description: (
 				<p>
-					#LogiTech&apos;s supply chain optimization tools have drastically reduced our operational
-					costs.
-					<Highlight>Efficiency and accuracy in logistics have never been better.</Highlight>{" "}
+					We manage 40+ engineers across 3 time zones. Hazel&apos;s real-time presence and fast
+					search keep everyone in sync.
+					<Highlight>It scales beautifully without the Slack pricing shock.</Highlight>
 				</p>
 			),
 		},
 		{
 			id: "7",
 			name: "Carlos Gomez",
-			role: "Head of R&D at EcoInnovate",
+			role: "Head of Platform at Greenfield Labs",
 			img: "https://randomuser.me/api/portraits/men/14.jpg",
 			description: (
 				<p>
-					By integrating #GreenTech&apos;s sustainable energy solutions, we&apos;ve seen a
-					significant reduction in carbon footprint.
-					<Highlight>Leading the way in eco-friendly business practices.</Highlight> Pioneering
-					change in the industry.
+					The fact that Hazel is open source means we can audit the code and contribute back. That
+					trust factor is huge for us.
+					<Highlight>Transparency isn&apos;t just a feature, it&apos;s the foundation.</Highlight>{" "}
+					Love what this team is building.
 				</p>
 			),
 		},
 		{
 			id: "8",
 			name: "Aisha Khan",
-			role: "Chief Marketing Officer at Fashion Forward",
+			role: "Design Lead at Motionkit",
 			img: "https://randomuser.me/api/portraits/women/56.jpg",
 			description: (
 				<p>
-					#TrendSetter&apos;s market analysis AI has transformed how we approach fashion trends.
-					<Highlight>
-						Our campaigns are now data-driven with higher customer engagement.
-					</Highlight>{" "}
-					Revolutionizing fashion marketing.
+					As a designer, I care about the small details. Hazel&apos;s UI is clean, fast, and
+					doesn&apos;t get in the way.
+					<Highlight>It&apos;s the first chat app that feels thoughtfully designed.</Highlight>{" "}
+					Even file sharing and media previews are polished.
 				</p>
 			),
 		},
 		{
 			id: "9",
 			name: "Tom Chen",
-			role: "Director of IT at HealthTech Solutions",
+			role: "Director of Engineering at Healthpilot",
 			img: "https://randomuser.me/api/portraits/men/18.jpg",
 			description: (
 				<p>
-					Implementing #MediCareAI in our patient care systems has improved patient outcomes
-					significantly.
+					We needed a solution with strong security and SSO support. Hazel delivered with WorkOS
+					integration out of the box.
 					<Highlight>
-						Technology and healthcare working hand in hand for better health.
-					</Highlight> A
-					milestone in medical technology.
+						Enterprise-grade auth without enterprise-grade complexity.
+					</Highlight>{" "}
+					Perfect for regulated industries.
 				</p>
 			),
 		},
 		{
 			id: "10",
 			name: "Sofia Patel",
-			role: "CEO at EduTech Innovations",
+			role: "CEO at DevRel Studio",
 			img: "https://randomuser.me/api/portraits/women/73.jpg",
 			description: (
 				<p>
-					#LearnSmart&apos;s AI-driven personalized learning plans have doubled student performance
-					metrics.
-					<Highlight>Education tailored to every learner&apos;s needs.</Highlight> Transforming the
-					educational landscape.
+					Hazel&apos;s Linear integration shows issue previews right in chat. Our sprint planning
+					conversations are so much richer now.
+					<Highlight>Context without context-switching.</Highlight> It&apos;s changed how our team
+					coordinates.
 				</p>
 			),
 		},
 		{
 			id: "11",
 			name: "Jake Morrison",
-			role: "CTO at SecureNet Tech",
+			role: "CTO at Stackpulse",
 			img: "https://randomuser.me/api/portraits/men/25.jpg",
 			description: (
 				<p>
-					With #CyberShield&apos;s AI-powered security systems, our data protection levels are
-					unmatched.
-					<Highlight>Ensuring safety and trust in digital spaces.</Highlight> Redefining
-					cybersecurity standards.
+					The desktop app with auto-updates and native notifications is a game-changer. It feels
+					like a first-class citizen, not an Electron afterthought.
+					<Highlight>Fast, reliable, and always up to date.</Highlight> Our devs love it.
 				</p>
 			),
 		},
 		{
 			id: "12",
 			name: "Nadia Ali",
-			role: "Product Manager at Creative Solutions",
+			role: "Engineering Manager at Createflow",
 			img: "https://randomuser.me/api/portraits/women/78.jpg",
 			description: (
 				<p>
-					#DesignPro&apos;s AI has streamlined our creative process, enhancing productivity and
-					innovation.
-					<Highlight>Bringing creativity and technology together.</Highlight> A game-changer for
-					creative industries.
+					We built custom bots using Hazel&apos;s webhook API to automate our release notes and
+					deploy notifications.
+					<Highlight>The extensibility is exactly what power users want.</Highlight> It fits our
+					workflow like a glove.
 				</p>
 			),
 		},
 		{
 			id: "13",
 			name: "Omar Farooq",
-			role: "Founder at Startup Hub",
+			role: "Founder at Launchpad",
 			img: "https://randomuser.me/api/portraits/men/54.jpg",
 			description: (
 				<p>
-					#VentureAI&apos;s insights into startup ecosystems have been invaluable for our growth and
-					funding strategies.
-					<Highlight>Empowering startups with data-driven decisions.</Highlight> A catalyst for
-					startup success.
+					Moving from Discord to Hazel gave us a professional team space without losing the
+					developer-friendly vibe.
+					<Highlight>It&apos;s the sweet spot between Slack and Discord.</Highlight> Exactly what
+					our open source community needed.
 				</p>
 			),
 		},
@@ -917,6 +918,26 @@ export const siteConfig = {
 				question: "Can I search messages in Hazel?",
 				answer: "Yes! Hazel has full-text message search with filters for keywords, users, and channels. You can quickly find any conversation across your entire workspace.",
 			},
+			{
+				id: 7,
+				question: "Can I self-host Hazel?",
+				answer: "Yes! Hazel is fully open source and can be self-hosted on your own infrastructure. Our Enterprise plan includes dedicated support for self-hosted deployments, including help with Docker, Kubernetes, and custom configurations.",
+			},
+			{
+				id: 8,
+				question: "Does Hazel support threads and message replies?",
+				answer: "Yes, Hazel supports threaded conversations so you can keep discussions organized. Reply to any message to start a thread without cluttering the main channel.",
+			},
+			{
+				id: 9,
+				question: "How does Hazel compare to Microsoft Teams?",
+				answer: "Hazel is lighter, faster, and built specifically for developer workflows. Unlike Teams, Hazel offers native GitHub/Linear integrations, inline code highlighting, a keyboard-first interface, and the transparency of open source. No Microsoft 365 subscription required.",
+			},
+			{
+				id: 10,
+				question: "Is Hazel GDPR compliant?",
+				answer: "Yes, Hazel is designed with privacy in mind and is GDPR compliant. Your data is encrypted in transit and at rest. Self-hosted deployments give you full control over where your data lives.",
+			},
 		],
 	},
 	ctaSection: {
@@ -931,29 +952,36 @@ export const siteConfig = {
 	},
 	footerLinks: [
 		{
-			title: "Resources",
+			title: "Product",
 			links: [
-				{ id: 1, title: "Documentation", url: "#" },
-				{ id: 2, title: "GitHub Repository", url: "https://github.com/hazelchat/hazel" },
-				{ id: 3, title: "API Reference", url: "/api-reference" },
+				{ id: 1, title: "Features", url: "/features" },
+				{ id: 2, title: "Pricing", url: "/pricing" },
+				{ id: 3, title: "Desktop App", url: "/download" },
+				{ id: 4, title: "Integrations", url: "/integrations" },
 			],
 		},
 		{
-			title: "Community",
-			links: [{ id: 5, title: "Changelog", url: "/changelog" }],
+			title: "Resources",
+			links: [
+				{ id: 5, title: "GitHub Repository", url: "https://github.com/hazelchat/hazel" },
+				{ id: 6, title: "API Reference", url: "/api-reference" },
+				{ id: 7, title: "Changelog", url: "/changelog" },
+			],
+		},
+		{
+			title: "Compare",
+			links: [
+				{ id: 8, title: "Hazel vs Slack", url: "/vs/slack" },
+				{ id: 9, title: "Hazel vs Discord", url: "/vs/discord" },
+			],
 		},
 		{
 			title: "Company",
 			links: [
-				{ id: 6, title: "About", url: "#" },
-				{ id: 7, title: "Contact", url: "mailto:support@hazel.sh" },
-			],
-		},
-		{
-			title: "Legal",
-			links: [
-				{ id: 8, title: "Privacy Policy", url: "/privacy" },
-				{ id: 9, title: "Terms of Service", url: "/terms" },
+				{ id: 10, title: "About", url: "/about" },
+				{ id: 11, title: "Contact", url: "mailto:support@hazel.sh" },
+				{ id: 12, title: "Privacy Policy", url: "/privacy" },
+				{ id: 13, title: "Terms of Service", url: "/terms" },
 			],
 		},
 	],
