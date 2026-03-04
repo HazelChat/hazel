@@ -1,13 +1,13 @@
 import { ChannelRepo, ChannelSectionRepo } from "@hazel/backend-core"
 import { Database, schema } from "@hazel/db"
-import { withRemapDbErrors } from "@hazel/domain"
+import { ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
-import { ChannelPolicy } from "../../policies/channel-policy"
 import { ChannelSectionPolicy } from "../../policies/channel-section-policy"
+import { OrgResolver } from "../../services/org-resolver"
 
 export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 	Effect.gen(function* () {
@@ -158,7 +158,21 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 								}
 							}
 
-							yield* ChannelPolicy.canUpdate(channelId)
+							if (sectionId !== null) {
+								yield* ChannelSectionPolicy.canUpdate(sectionId)
+							} else {
+								yield* ErrorUtils.refailUnauthorized(
+									"ChannelSection",
+									"moveChannel",
+								)(
+									OrgResolver.requireAdminOrOwner(
+										channel.value.organizationId,
+										"channel-sections:write",
+										"ChannelSection",
+										"moveChannel",
+									),
+								)
+							}
 							// Update the channel's sectionId
 							yield* ChannelRepo.update({
 								id: channelId,

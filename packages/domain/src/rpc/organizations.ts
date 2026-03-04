@@ -178,7 +178,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 		success: Schema.Struct({ link: Schema.String }),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
 	})
-		.annotate(RequiredScopes, ["organizations:read"])
+		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
 
 	/**
@@ -197,7 +197,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 		),
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
 	})
-		.annotate(RequiredScopes, ["organizations:read"])
+		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
 
 	/**

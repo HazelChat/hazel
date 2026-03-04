@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto"
 import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import type { ChannelWebhookId } from "@hazel/schema"
 import {
 	ChannelNotFoundError,
@@ -14,6 +14,7 @@ import {
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelWebhookPolicy } from "../../policies/channel-webhook-policy"
+import { OrgResolver } from "../../services/org-resolver"
 import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
 import { WebhookBotService } from "../../services/webhook-bot-service"
 
@@ -241,6 +242,18 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 					if (!user.organizationId) {
 						return new ChannelWebhookListResponse({ data: [] })
 					}
+
+					yield* ErrorUtils.refailUnauthorized(
+						"ChannelWebhook",
+						"list",
+					)(
+						OrgResolver.requireScope(
+							user.organizationId,
+							"channel-webhooks:read",
+							"ChannelWebhook",
+							"list",
+						),
+					)
 
 					const webhooks = yield* webhookRepo.findByOrganization(user.organizationId)
 

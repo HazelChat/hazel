@@ -369,6 +369,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 			"channel.generateName": ({ channelId }) =>
 				Effect.gen(function* () {
+					yield* ChannelPolicy.canUpdate(channelId)
+
 					const channel = yield* ChannelRepo.findById(channelId).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(

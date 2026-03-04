@@ -1,19 +1,20 @@
 import { Database, schema } from "@hazel/db"
-import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import { IntegrationRequestRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
+import { OrgResolver } from "../../services/org-resolver"
 
 /**
  * Integration Request RPC Handlers
  *
  * Simple handler for creating integration requests.
- * Uses direct database access (no repository/policies needed for this one-off feature).
  */
 export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const orgResolver = yield* OrgResolver
 
 		return {
 			"integrationRequest.create": (payload) =>
@@ -21,6 +22,18 @@ export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
+
+							yield* ErrorUtils.refailUnauthorized(
+								"IntegrationRequest",
+								"create",
+							)(
+								orgResolver.requireScope(
+									payload.organizationId,
+									"integration-connections:write",
+									"IntegrationRequest",
+									"create",
+								),
+							)
 
 							// Direct database insert
 							const [result] = yield* transactionAwareExecute((client) =>

@@ -5,7 +5,7 @@ import {
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { ExternalChannelId } from "@hazel/schema"
-import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
+import { CurrentUser, InternalServerError } from "@hazel/domain"
 import {
 	ChatSyncChannelLinkExistsError,
 	ChatSyncChannelLinkListResponse,
@@ -20,18 +20,7 @@ import {
 } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
-
-const ensureOrgAccess = Effect.fn("chatSyncRpc.ensureOrgAccess")(function* (organizationId: string) {
-	const currentUser = yield* CurrentUser.Context
-	if (!currentUser.organizationId || currentUser.organizationId !== organizationId) {
-		return yield* Effect.fail(
-			new UnauthorizedError({
-				message: "You are not authorized to access this organization",
-				detail: `organizationId=${organizationId}`,
-			}),
-		)
-	}
-})
+import { IntegrationConnectionPolicy } from "../../policies/integration-connection-policy"
 
 const normalizeChannelLinkSettings = (
 	settings: Record<string, unknown> | null | undefined,
@@ -56,7 +45,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ensureOrgAccess(payload.organizationId)
+							yield* IntegrationConnectionPolicy.canInsert(payload.organizationId)
 							const currentUser = yield* CurrentUser.Context
 
 							const integrationConnectionId = yield* Effect.gen(function* () {
@@ -145,7 +134,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 
 			"chatSync.connection.list": ({ organizationId }) =>
 				Effect.gen(function* () {
-					yield* ensureOrgAccess(organizationId)
+					yield* IntegrationConnectionPolicy.canSelect(organizationId)
 					const data = yield* connectionRepo.findByOrganization(organizationId)
 					return new ChatSyncConnectionListResponse({ data })
 				}).pipe(
@@ -172,7 +161,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 							const connection = connectionOption.value
-							yield* ensureOrgAccess(connection.organizationId)
+							yield* IntegrationConnectionPolicy.canDelete(connection.organizationId)
 
 							yield* connectionRepo.softDelete(syncConnectionId)
 							const links = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
@@ -208,7 +197,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 							const connection = connectionOption.value
-							yield* ensureOrgAccess(connection.organizationId)
+							yield* IntegrationConnectionPolicy.canInsert(connection.organizationId)
 
 							const existingHazel = yield* channelLinkRepo.findByHazelChannel(
 								payload.syncConnectionId,
@@ -291,7 +280,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						)
 					}
 					const connection = connectionOption.value
-					yield* ensureOrgAccess(connection.organizationId)
+					yield* IntegrationConnectionPolicy.canSelect(connection.organizationId)
 
 					const data = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
 					return new ChatSyncChannelLinkListResponse({ data })
@@ -329,7 +318,9 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									}),
 								)
 							}
-							yield* ensureOrgAccess(connectionOption.value.organizationId)
+							yield* IntegrationConnectionPolicy.canDelete(
+								connectionOption.value.organizationId,
+							)
 
 							yield* channelLinkRepo.softDelete(syncChannelLinkId)
 							const txid = yield* generateTransactionId()
@@ -369,7 +360,9 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									}),
 								)
 							}
-							yield* ensureOrgAccess(connectionOption.value.organizationId)
+							yield* IntegrationConnectionPolicy.canUpdate(
+								connectionOption.value.organizationId,
+							)
 
 							if (direction !== undefined) {
 								yield* channelLinkRepo.updateDirection(syncChannelLinkId, direction)

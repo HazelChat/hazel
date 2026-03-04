@@ -1,24 +1,28 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
 import { canPerform, RPC_SCOPE_MAP } from "@hazel/domain/scopes"
+import type { OrganizationMember } from "@hazel/domain/models"
 import { organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
 import { useOrganization } from "./use-organization"
 
 /**
- * Hook that provides permission checking based on declared RPC scopes.
+ * Hook that provides permission checking for the current user
+ * in the current organization.
  *
- * Replaces ad-hoc `role === "owner" || role === "admin"` checks with
- * a declarative `can("message.create")` API backed by the scope map.
+ * Provides role-based helpers (isAdmin, isOwner) and
+ * scope-based `can()` for RPC action checks.
  *
  * @example
  * ```tsx
- * function CreateChannelButton() {
- *   const { can, isLoading } = usePermission()
+ * function SettingsPage() {
+ *   const { isAdmin, isOwner, isLoading } = usePermission()
  *   return (
- *     <Button isDisabled={!can("channel.create") || isLoading}>
- *       Create Channel
- *     </Button>
+ *     <>
+ *       {isAdmin && <AdminSection />}
+ *       {isOwner && <DangerZone />}
+ *       <Button isDisabled={!isAdmin || isLoading}>Save</Button>
+ *     </>
  *   )
  * }
  * ```
@@ -27,19 +31,23 @@ export function usePermission() {
 	const { user, isLoading: isAuthLoading } = useAuth()
 	const { organizationId } = useOrganization()
 
-	const { data: members, isLoading: isMembersLoading } = useLiveQuery(
+	const { data: member, isLoading: isMemberLoading } = useLiveQuery(
 		(q) =>
-			organizationId
+			organizationId && user?.id
 				? q
 						.from({ m: organizationMemberCollection })
 						.where(({ m }) => eq(m.organizationId, organizationId))
-						.where(({ m }) => eq(m.userId, user?.id))
+						.where(({ m }) => eq(m.userId, user.id))
 						.findOne()
 				: null,
 		[organizationId, user?.id],
 	)
 
-	const role = members?.role as "owner" | "admin" | "member" | undefined
+	const role = member?.role as OrganizationMember.OrganizationRole | undefined
+
+	const isOwner = role === "owner"
+	const isAdmin = role === "owner" || role === "admin"
+	const isMember = role !== undefined
 
 	const can = useMemo(() => {
 		if (!role) {
@@ -49,8 +57,11 @@ export function usePermission() {
 	}, [role])
 
 	return {
-		can,
 		role,
-		isLoading: isAuthLoading || isMembersLoading,
+		isOwner,
+		isAdmin,
+		isMember,
+		can,
+		isLoading: isAuthLoading || isMemberLoading,
 	}
 }

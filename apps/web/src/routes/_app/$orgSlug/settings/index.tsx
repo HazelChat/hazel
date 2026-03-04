@@ -1,5 +1,4 @@
 import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
-import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
@@ -16,9 +15,9 @@ import { Input } from "~/components/ui/input"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
 import { TextField } from "~/components/ui/text-field"
 import { setPublicModeAction, updateOrganizationAction } from "~/db/actions"
-import { organizationMemberCollection, userCollection } from "~/db/collections"
 import { useOrganizationAvatarUpload } from "~/hooks/use-organization-avatar-upload"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePermission } from "~/hooks/use-permission"
 import { useAuth } from "~/lib/auth"
 import { exitToastAsync } from "~/lib/toast-exit"
 
@@ -29,7 +28,8 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/")({
 function GeneralSettings() {
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { organizationId, organization } = useOrganization()
-	const { user, isLoading: isAuthLoading } = useAuth()
+	const { user } = useAuth()
+	const { isAdmin, isOwner, isLoading: isPermissionsLoading } = usePermission()
 	const navigate = useNavigate()
 
 	const [name, setName] = useState(organization?.name ?? "")
@@ -62,26 +62,6 @@ function GeneralSettings() {
 	// Derive loading states from Result.waiting
 	const isSavingName = updateOrganizationResult.waiting
 	const isTogglingPublic = setPublicModeResult.waiting
-
-	// Get team members to check permissions
-	const { data: teamMembers, isLoading: isLoadingMembers } = useLiveQuery(
-		(q) =>
-			q
-				.from({ members: organizationMemberCollection })
-				.where(({ members }) => eq(members.organizationId, organizationId))
-				.innerJoin({ user: userCollection }, ({ members, user }) => eq(members.userId, user.id))
-				.where(({ user }) => eq(user.userType, "user"))
-				.select(({ members }) => ({ ...members })),
-		[organizationId],
-	)
-
-	// Check if user is admin or owner
-	const currentUserMember = teamMembers?.find((m) => m.userId === user?.id)
-	const isAdmin = currentUserMember?.role === "owner" || currentUserMember?.role === "admin"
-	const isOwner = currentUserMember?.role === "owner"
-
-	// While loading, don't hide UI elements - just disable them
-	const isPermissionsLoading = isAuthLoading || isLoadingMembers
 
 	const getInitials = (orgName: string) => {
 		const words = orgName.trim().split(/\s+/)
