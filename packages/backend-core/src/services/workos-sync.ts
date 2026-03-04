@@ -1,5 +1,4 @@
 import { Database, schema } from "@hazel/db"
-import { withSystemActor } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
 import { Effect, Match, Option, pipe, Schema, Stream } from "effect"
@@ -214,20 +213,18 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 						: workosAvatarUrl
 
 					return collectResult(
-						userRepo
-							.upsertByExternalId({
-								externalId: workosUser.id,
-								email: workosUser.email,
-								firstName,
-								lastName,
-								avatarUrl,
-								userType: "user",
-								settings: null,
-								isOnboarded: false,
-								timezone: null,
-								deletedAt: null,
-							})
-							.pipe(withSystemActor),
+						userRepo.upsertByExternalId({
+							externalId: workosUser.id,
+							email: workosUser.email,
+							firstName,
+							lastName,
+							avatarUrl,
+							userType: "user",
+							settings: null,
+							isOnboarded: false,
+							timezone: null,
+							deletedAt: null,
+						}),
 						() => {
 							if (existingUser) {
 								result.updated++
@@ -307,12 +304,10 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 
 							if (existingOrg) {
 								// Update existing organization
-								yield* orgRepo
-									.update({
-										id: orgId,
-										name: workosOrg.name,
-									})
-									.pipe(withSystemActor)
+								yield* orgRepo.update({
+									id: orgId,
+									name: workosOrg.name,
+								})
 								result.updated++
 							} else {
 								// Create new organization (edge case: org exists in WorkOS but not in our DB)
@@ -415,17 +410,15 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					const role = (workosMembership.role?.slug || "member") as "admin" | "member" | "owner"
 
 					return collectResult(
-						orgMemberRepo
-							.upsertByOrgAndUser({
-								organizationId: organizationId,
-								userId: user.id,
-								role,
-								nickname: undefined,
-								joinedAt: new Date(),
-								invitedBy: null,
-								deletedAt: null,
-							})
-							.pipe(withSystemActor),
+						orgMemberRepo.upsertByOrgAndUser({
+							organizationId: organizationId,
+							userId: user.id,
+							role,
+							nickname: undefined,
+							joinedAt: new Date(),
+							invitedBy: null,
+							deletedAt: null,
+						}),
 						() => {
 							if (existing) {
 								result.updated++
@@ -538,22 +531,20 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 					}
 
 					return collectResult(
-						invitationRepo
-							.upsertByWorkosId({
-								workosInvitationId: workosInvitation.id,
-								invitationUrl: workosInvitation.acceptInvitationUrl,
-								organizationId: organizationId,
-								email: workosInvitation.email,
-								invitedBy: invitedBy,
-								invitedAt: new Date(workosInvitation.createdAt),
-								expiresAt: new Date(workosInvitation.expiresAt),
-								status,
-								acceptedAt: workosInvitation.acceptedAt
-									? new Date(workosInvitation.acceptedAt)
-									: null,
-								acceptedBy: null,
-							})
-							.pipe(withSystemActor),
+						invitationRepo.upsertByWorkosId({
+							workosInvitationId: workosInvitation.id,
+							invitationUrl: workosInvitation.acceptInvitationUrl,
+							organizationId: organizationId,
+							email: workosInvitation.email,
+							invitedBy: invitedBy,
+							invitedAt: new Date(workosInvitation.createdAt),
+							expiresAt: new Date(workosInvitation.expiresAt),
+							status,
+							acceptedAt: workosInvitation.acceptedAt
+								? new Date(workosInvitation.acceptedAt)
+								: null,
+							acceptedBy: null,
+						}),
 						() => {
 							if (existing) {
 								result.updated++
@@ -570,7 +561,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 			// Mark expired invitations
-			const expiredResult = yield* pipe(invitationRepo.markExpired(), withSystemActor, Effect.either)
+			const expiredResult = yield* pipe(invitationRepo.markExpired(), Effect.either)
 
 			if (expiredResult._tag === "Right") {
 				result.expired = expiredResult.right.length
@@ -725,24 +716,21 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = data.externalId as OrganizationId
-				const existingOrg = yield* orgRepo.findById(orgId).pipe(withSystemActor)
-
+				const existingOrg = yield* orgRepo.findById(orgId)
 				yield* Option.match(existingOrg, {
-					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }).pipe(withSystemActor),
+					onSome: (org) => orgRepo.update({ id: org.id, name: data.name }),
 					onNone: () =>
-						orgRepo
-							.insert({
-								name: data.name,
-								logoUrl: null,
-								settings: null,
-								isPublic: false,
-								deletedAt: null,
-								slug: data.name
-									.toLowerCase()
-									.replace(/[^a-z0-9]+/g, "-")
-									.replace(/^-|-$/g, ""),
-							})
-							.pipe(withSystemActor),
+						orgRepo.insert({
+							name: data.name,
+							logoUrl: null,
+							settings: null,
+							isPublic: false,
+							deletedAt: null,
+							slug: data.name
+								.toLowerCase()
+								.replace(/[^a-z0-9]+/g, "-")
+								.replace(/^-|-$/g, ""),
+						}),
 				})
 			})
 
@@ -754,7 +742,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = data.externalId as OrganizationId
-				yield* orgRepo.softDelete(orgId).pipe(withSystemActor)
+				yield* orgRepo.softDelete(orgId)
 			})
 
 		const handleMembershipUpsert = (data: {
@@ -782,7 +770,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = workosOrg.externalId as OrganizationId
-				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+				const org = yield* orgRepo.findById(orgId)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
@@ -819,7 +807,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				}
 
 				const orgId = workosOrg.externalId as OrganizationId
-				const org = yield* orgRepo.findById(orgId).pipe(withSystemActor)
+				const org = yield* orgRepo.findById(orgId)
 				const user = yield* userRepo.findByExternalId(data.userId)
 
 				if (Option.isSome(org) && Option.isSome(user)) {
@@ -871,13 +859,12 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 			)
 
 		return {
-			syncUsers: withSystemActor(syncUsers),
-			syncOrganizations: withSystemActor(syncOrganizations),
-			syncOrganizationMemberships: (orgId: OrganizationId) =>
-				withSystemActor(syncOrganizationMemberships(orgId)),
-			syncInvitations: (orgId: OrganizationId) => withSystemActor(syncInvitations(orgId)),
-			syncAll: withSystemActor(syncAll),
-			processWebhookEvent: (event: Event) => withSystemActor(processWebhookEvent(event)),
+			syncUsers,
+			syncOrganizations,
+			syncOrganizationMemberships: (orgId: OrganizationId) => syncOrganizationMemberships(orgId),
+			syncInvitations: (orgId: OrganizationId) => syncInvitations(orgId),
+			syncAll,
+			processWebhookEvent: (event: Event) => processWebhookEvent(event),
 		}
 	}),
 	dependencies: [

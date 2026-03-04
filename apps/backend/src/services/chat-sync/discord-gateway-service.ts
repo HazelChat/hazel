@@ -2,7 +2,6 @@ import { createHash } from "node:crypto"
 import { FetchHttpClient } from "@effect/platform"
 import { BunSocket } from "@effect/platform-bun"
 import { ChatSyncChannelLinkRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import {
 	ExternalChannelId,
 	ExternalMessageId,
@@ -637,7 +636,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 		const dispatchHandlers = createDiscordGatewayDispatchHandlers({
 			discordSyncWorker,
 			findActiveLinksByExternalChannel: (externalChannelId) =>
-				channelLinkRepo.findActiveByExternalChannel(externalChannelId).pipe(withSystemActor),
+				channelLinkRepo.findActiveByExternalChannel(externalChannelId),
 			isCurrentBotAuthor,
 		})
 

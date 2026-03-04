@@ -1,5 +1,5 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import { ChatSyncMessageLink } from "@hazel/domain/models"
 import type {
 	ExternalMessageId,
@@ -73,23 +73,21 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 
 			const findByChannelLink = (channelLinkId: SyncChannelLinkId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { channelLinkId: SyncChannelLinkId }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncMessageLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncMessageLinksTable.channelLinkId,
-												data.channelLinkId,
-											),
-											isNull(schema.chatSyncMessageLinksTable.deletedAt),
+					.makeQuery((execute, data: { channelLinkId: SyncChannelLinkId }) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.chatSyncMessageLinksTable)
+								.where(
+									and(
+										eq(
+											schema.chatSyncMessageLinksTable.channelLinkId,
+											data.channelLinkId,
 										),
+										isNull(schema.chatSyncMessageLinksTable.deletedAt),
 									),
-							),
-						policyRequire("ChatSyncMessageLink", "select"),
+								),
+						),
 					)({ channelLinkId }, tx)
 					.pipe(Effect.map((results) => normalizeMessageLinkRows(results)))
 
@@ -126,7 +124,6 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									)
 									.limit(1),
 							),
-						policyRequire("ChatSyncMessageLink", "select"),
 					)({ channelLinkId, hazelMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -167,7 +164,6 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 									)
 									.limit(1),
 							),
-						policyRequire("ChatSyncMessageLink", "select"),
 					)({ channelLinkId, externalMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -207,7 +203,6 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 										),
 									),
 							),
-						policyRequire("ChatSyncMessageLink", "select"),
 					)({ channelLinkId, rootHazelMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
@@ -216,35 +211,31 @@ export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkR
 					)
 
 			const updateLastSyncedAt = (id: SyncMessageLinkId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncMessageLinkId }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncMessageLinksTable)
-								.set({
-									lastSyncedAt: new Date(),
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncMessageLink", "update"),
+				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncMessageLinksTable)
+							.set({
+								lastSyncedAt: new Date(),
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
+							.returning(),
+					),
 				)({ id }, tx)
 
 			const softDelete = (id: SyncMessageLinkId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { id: SyncMessageLinkId }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncMessageLinksTable)
-								.set({
-									deletedAt: new Date(),
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
-								.returning(),
-						),
-					policyRequire("ChatSyncMessageLink", "delete"),
+				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>
+					execute((client) =>
+						client
+							.update(schema.chatSyncMessageLinksTable)
+							.set({
+								deletedAt: new Date(),
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
+							.returning(),
+					),
 				)({ id }, tx)
 
 			return {

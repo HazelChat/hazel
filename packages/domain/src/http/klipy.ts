@@ -1,6 +1,7 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 import { CurrentUser } from "../"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // ============ Response Schemas ============
 
@@ -78,7 +79,8 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 				}),
 			)
 			.addSuccess(KlipySearchResponse)
-			.addError(KlipyApiError),
+			.addError(KlipyApiError)
+			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("search", "/search")
@@ -90,12 +92,14 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 				}),
 			)
 			.addSuccess(KlipySearchResponse)
-			.addError(KlipyApiError),
+			.addError(KlipyApiError)
+			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("categories", "/categories")
 			.addSuccess(KlipyCategoriesResponse)
-			.addError(KlipyApiError),
+			.addError(KlipyApiError)
+			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.prefix("/klipy")
 	.middleware(CurrentUser.Authorization) {}

@@ -1,5 +1,4 @@
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import type { ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 
@@ -29,33 +28,29 @@ export class WebhookBotService extends Effect.Service<WebhookBotService>()("Webh
 				const externalId = `webhook-bot-${webhookId}`
 
 				// Create machine user for this webhook
-				const [botUser] = yield* userRepo
-					.insert({
-						externalId,
-						email: `webhook-${webhookId}@webhooks.internal`,
-						firstName: name,
-						lastName: "",
-						avatarUrl: avatarUrl ?? "",
-						userType: "machine",
-						settings: null,
-						isOnboarded: true,
-						timezone: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				const [botUser] = yield* userRepo.insert({
+					externalId,
+					email: `webhook-${webhookId}@webhooks.internal`,
+					firstName: name,
+					lastName: "",
+					avatarUrl: avatarUrl ?? "",
+					userType: "machine",
+					settings: null,
+					isOnboarded: true,
+					timezone: null,
+					deletedAt: null,
+				})
 
 				// Add bot to organization so it shows in Electric sync
-				yield* orgMemberRepo
-					.upsertByOrgAndUser({
-						organizationId,
-						userId: botUser.id,
-						role: "member",
-						nickname: null,
-						joinedAt: new Date(),
-						invitedBy: null,
-						deletedAt: null,
-					})
-					.pipe(withSystemActor)
+				yield* orgMemberRepo.upsertByOrgAndUser({
+					organizationId,
+					userId: botUser.id,
+					role: "member",
+					nickname: null,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
 
 				return botUser
 			})
@@ -64,13 +59,11 @@ export class WebhookBotService extends Effect.Service<WebhookBotService>()("Webh
 		 * Update webhook bot's display info (name, avatar).
 		 */
 		const updateWebhookBot = (userId: UserId, name: string, avatarUrl: string | null) =>
-			userRepo
-				.update({
-					id: userId,
-					firstName: name,
-					avatarUrl: avatarUrl ?? "",
-				})
-				.pipe(withSystemActor)
+			userRepo.update({
+				id: userId,
+				firstName: name,
+				avatarUrl: avatarUrl ?? "",
+			})
 
 		return { createWebhookBot, updateWebhookBot }
 	}),

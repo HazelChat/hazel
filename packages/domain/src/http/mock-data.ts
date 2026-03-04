@@ -3,6 +3,7 @@ import { Schema } from "effect"
 import * as CurrentUser from "../current-user.ts"
 import { InternalServerError, UnauthorizedError } from "../errors.ts"
 import { TransactionId } from "@hazel/schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 export class GenerateMockDataRequest extends Schema.Class<GenerateMockDataRequest>("GenerateMockDataRequest")(
 	{
@@ -38,7 +39,8 @@ export class MockDataGroup extends HttpApiGroup.make("mockData")
 					description: "Generate mock data for an organization",
 					summary: "Generate test data",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["organizations:write"]),
 	)
 	.prefix("/mock-data")
 	.middleware(CurrentUser.Authorization) {}

@@ -1,5 +1,5 @@
 import { and, Database, eq, isNull, ModelRepository, schema, sql, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -54,7 +54,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									)
 									.limit(1),
 							),
-						policyRequire("IntegrationConnection", "select"),
 					)({ organizationId, provider }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -93,7 +92,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									)
 									.limit(1),
 							),
-						policyRequire("IntegrationConnection", "select"),
 					)({ organizationId, userId, provider }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -132,7 +130,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									)
 									.limit(1),
 							),
-						policyRequire("IntegrationConnection", "select"),
 					)({ organizationId, userId, provider }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -175,53 +172,48 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 									)
 									.limit(1),
 							),
-						policyRequire("IntegrationConnection", "select"),
 					)({ organizationId, provider, externalAccountId }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
 			// Get all connections for an organization (both org-level and user-level)
 			const findAllForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { organizationId: OrganizationId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.integrationConnectionsTable)
-								.where(
-									and(
-										eq(
-											schema.integrationConnectionsTable.organizationId,
-											data.organizationId,
-										),
-										isNull(schema.integrationConnectionsTable.deletedAt),
+				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.integrationConnectionsTable)
+							.where(
+								and(
+									eq(
+										schema.integrationConnectionsTable.organizationId,
+										data.organizationId,
 									),
+									isNull(schema.integrationConnectionsTable.deletedAt),
 								),
-						),
-					policyRequire("IntegrationConnection", "select"),
+							),
+					),
 				)({ organizationId }, tx)
 
 			// Get all active org-level connections for an organization
 			const findActiveOrgConnections = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { organizationId: OrganizationId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.integrationConnectionsTable)
-								.where(
-									and(
-										eq(
-											schema.integrationConnectionsTable.organizationId,
-											data.organizationId,
-										),
-										eq(schema.integrationConnectionsTable.level, "organization"),
-										eq(schema.integrationConnectionsTable.status, "active"),
-										isNull(schema.integrationConnectionsTable.userId),
-										isNull(schema.integrationConnectionsTable.deletedAt),
+				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.integrationConnectionsTable)
+							.where(
+								and(
+									eq(
+										schema.integrationConnectionsTable.organizationId,
+										data.organizationId,
 									),
+									eq(schema.integrationConnectionsTable.level, "organization"),
+									eq(schema.integrationConnectionsTable.status, "active"),
+									isNull(schema.integrationConnectionsTable.userId),
+									isNull(schema.integrationConnectionsTable.deletedAt),
 								),
-						),
-					policyRequire("IntegrationConnection", "select"),
+							),
+					),
 				)({ organizationId }, tx)
 
 			// Update connection status
@@ -251,53 +243,28 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 								.where(eq(schema.integrationConnectionsTable.id, data.connectionId))
 								.returning(),
 						),
-					policyRequire("IntegrationConnection", "update"),
 				)({ connectionId, status, errorMessage }, tx)
 
 			// Soft delete connection
 			const softDelete = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { connectionId: IntegrationConnectionId }) =>
-						execute((client) =>
-							client
-								.update(schema.integrationConnectionsTable)
-								.set({
-									deletedAt: new Date(),
-									status: "revoked",
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.integrationConnectionsTable.id, data.connectionId))
-								.returning(),
-						),
-					policyRequire("IntegrationConnection", "delete"),
+				db.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
+					execute((client) =>
+						client
+							.update(schema.integrationConnectionsTable)
+							.set({
+								deletedAt: new Date(),
+								status: "revoked",
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.integrationConnectionsTable.id, data.connectionId))
+							.returning(),
+					),
 				)({ connectionId }, tx)
 
 			// Find connection by GitHub installation ID (stored in metadata JSONB)
 			const findByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, data: { installationId: string }) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.integrationConnectionsTable)
-									.where(
-										and(
-											eq(schema.integrationConnectionsTable.provider, "github"),
-											sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
-											isNull(schema.integrationConnectionsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-						policyRequire("IntegrationConnection", "select"),
-					)({ installationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
-
-			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
-			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
-				db.makeQuery(
-					(execute, data: { installationId: string }) =>
+					.makeQuery((execute, data: { installationId: string }) =>
 						execute((client) =>
 							client
 								.select()
@@ -308,9 +275,27 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 										sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
 										isNull(schema.integrationConnectionsTable.deletedAt),
 									),
-								),
+								)
+								.limit(1),
 						),
-					policyRequire("IntegrationConnection", "select"),
+					)({ installationId }, tx)
+					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
+			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
+				db.makeQuery((execute, data: { installationId: string }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.integrationConnectionsTable)
+							.where(
+								and(
+									eq(schema.integrationConnectionsTable.provider, "github"),
+									sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
+									isNull(schema.integrationConnectionsTable.deletedAt),
+								),
+							),
+					),
 				)({ installationId }, tx)
 
 			// Upsert org-level connection for a provider
@@ -345,7 +330,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
-							policyRequire("IntegrationConnection", "update"),
 						)({ id: existing.value.id, data: insertData }, tx)
 						return results[0]!
 					}
@@ -393,7 +377,6 @@ export class IntegrationConnectionRepo extends Effect.Service<IntegrationConnect
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
-							policyRequire("IntegrationConnection", "update"),
 						)({ id: existing.value.id, data: insertData }, tx)
 						return results[0]!
 					}

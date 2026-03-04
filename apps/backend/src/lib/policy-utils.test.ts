@@ -1,56 +1,22 @@
 import { describe, expect, it } from "@effect/vitest"
 import { UnauthorizedError } from "@hazel/domain"
-import type { OrganizationId } from "@hazel/schema"
-import { Effect, Either, Option } from "effect"
-import {
-	makeOrganizationScopeChecks,
-	makePolicy,
-	remapPolicyScope,
-	withPolicyUnauthorized,
-} from "./policy-utils.ts"
-import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers.ts"
-import { policy } from "@hazel/domain"
+import { Effect, Either } from "effect"
+import { makePolicy, withPolicyUnauthorized } from "./policy-utils.ts"
+import { makeActor } from "../policies/policy-test-helpers.ts"
 import { CurrentUser } from "@hazel/domain"
 
 describe("policy-utils", () => {
-	describe("makeOrganizationScopeChecks", () => {
-		it("evaluates member/admin/owner scopes correctly", async () => {
-			const checks = makeOrganizationScopeChecks((organizationId, actorId) => {
-				if (organizationId !== TEST_ORG_ID) {
-					return Effect.succeed(Option.none())
-				}
-
-				if (actorId === makeActor().id) {
-					return Effect.succeed(Option.some({ role: "admin" as const }))
-				}
-
-				return Effect.succeed(Option.none())
-			})
-
-			const isMember = await Effect.runPromise(checks.isMember(TEST_ORG_ID, makeActor().id))
-			const isAdmin = await Effect.runPromise(checks.isAdmin(TEST_ORG_ID, makeActor().id))
-			const isOwner = await Effect.runPromise(checks.isOwner(TEST_ORG_ID, makeActor().id))
-			const isMissing = await Effect.runPromise(
-				checks.isMember("00000000-0000-0000-0000-000000000099" as OrganizationId, makeActor().id),
-			)
-
-			expect(isMember).toBe(true)
-			expect(isAdmin).toBe(true)
-			expect(isOwner).toBe(false)
-			expect(isMissing).toBe(false)
-		})
-	})
-
 	describe("makePolicy", () => {
-		it("returns an authorized actor when check passes", async () => {
+		it("succeeds when check passes", async () => {
 			const authorize = makePolicy("Widget")
 			const result = await Effect.runPromise(
 				authorize("read", () => Effect.succeed(true)).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
+					Effect.either,
 				),
 			)
 
-			expect(result.id).toBe(makeActor().id)
+			expect(Either.isRight(result)).toBe(true)
 		})
 
 		it("fails with UnauthorizedError when check denies", async () => {
@@ -102,20 +68,6 @@ describe("policy-utils", () => {
 			if (Either.isLeft(result)) {
 				expect(result.left).toBe(existing)
 			}
-		})
-	})
-
-	describe("remapPolicyScope", () => {
-		it("keeps runtime actor value while remapping scope phantom type", async () => {
-			const source = policy("Organization", "isMember", () => Effect.succeed(true))
-			const result = await Effect.runPromise(
-				source.pipe(
-					remapPolicyScope("Channel", "create"),
-					Effect.provideService(CurrentUser.Context, makeActor()),
-				),
-			)
-
-			expect(result.id).toBe(makeActor().id)
 		})
 	})
 })

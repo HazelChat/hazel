@@ -1,7 +1,7 @@
 import { HttpApiBuilder } from "@effect/platform"
 import { AttachmentRepo, BotRepo, OrganizationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import {
 	BotNotFoundForUploadError,
 	OrganizationNotFoundForUploadError,
@@ -80,9 +80,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							const botRepo = yield* BotRepo
 
 							// Check if bot exists
-							const botOption = yield* botRepo
-								.findById(req.botId)
-								.pipe(withSystemActor, Effect.orDie)
+							const botOption = yield* botRepo.findById(req.botId).pipe(Effect.orDie)
 							if (Option.isNone(botOption)) {
 								return yield* Effect.fail(new BotNotFoundForUploadError({ botId: req.botId }))
 							}
@@ -140,9 +138,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							const orgRepo = yield* OrganizationRepo
 
 							// Check if organization exists
-							const orgOption = yield* orgRepo
-								.findById(req.organizationId)
-								.pipe(withSystemActor, Effect.orDie)
+							const orgOption = yield* orgRepo.findById(req.organizationId).pipe(Effect.orDie)
 							if (Option.isNone(orgOption)) {
 								return yield* Effect.fail(
 									new OrganizationNotFoundForUploadError({
@@ -152,9 +148,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							}
 
 							// Check if user is an admin or owner of the organization
-							yield* Effect.void.pipe(
-								policyUse(OrganizationPolicy.canUpdate(req.organizationId)),
-							)
+							yield* OrganizationPolicy.canUpdate(req.organizationId)
 
 							// Check rate limit (5 per hour)
 							yield* checkAvatarRateLimit(user.id)
@@ -195,9 +189,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					Match.when({ type: "custom-emoji" }, (req) =>
 						Effect.gen(function* () {
 							// Check if user is admin/owner of the org
-							yield* Effect.void.pipe(
-								policyUse(OrganizationPolicy.canUpdate(req.organizationId)),
-							)
+							yield* OrganizationPolicy.canUpdate(req.organizationId)
 
 							// Check rate limit (reuse avatar rate limit)
 							yield* checkAvatarRateLimit(user.id)
@@ -245,6 +237,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							// Create attachment record with "uploading" status
 							// Validates user has permission to upload to the specified channel/org
+							yield* AttachmentPolicy.canCreate()
 							yield* db
 								.transaction(
 									Effect.gen(function* () {
@@ -262,10 +255,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 										})
 									}),
 								)
-								.pipe(
-									withRemapDbErrors("AttachmentRepo", "create"),
-									policyUse(AttachmentPolicy.canCreate()),
-								)
+								.pipe(withRemapDbErrors("AttachmentRepo", "create"))
 
 							// Generate presigned URL
 							const uploadUrl = yield* s3

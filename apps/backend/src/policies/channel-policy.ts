@@ -1,44 +1,63 @@
 import { ChannelRepo } from "@hazel/backend-core"
+import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
-import { remapPolicyScope, withPolicyUnauthorized } from "../lib/policy-utils"
-import { OrganizationPolicy } from "./organization-policy"
+import { withAnnotatedScope } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolicy/Policy", {
 	effect: Effect.gen(function* () {
 		const policyEntity = "Channel" as const
 
-		const organizationPolicy = yield* OrganizationPolicy
-
+		const orgResolver = yield* OrgResolver
 		const channelRepo = yield* ChannelRepo
 
 		const canCreate = (organizationId: OrganizationId) =>
-			organizationPolicy.isMember(organizationId).pipe(remapPolicyScope(policyEntity, "create"))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"create",
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireScope(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canUpdate = (id: ChannelId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"update",
+			)(
 				channelRepo.with(id, (channel) =>
-					organizationPolicy
-						.canUpdate(channel.organizationId)
-						.pipe(remapPolicyScope(policyEntity, "update")),
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(
+							channel.organizationId,
+							scope,
+							policyEntity,
+							"update",
+						),
+					),
 				),
 			)
 
 		const canDelete = (id: ChannelId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"delete",
+			)(
 				channelRepo.with(id, (channel) =>
-					organizationPolicy
-						.canUpdate(channel.organizationId)
-						.pipe(remapPolicyScope(policyEntity, "delete")),
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(
+							channel.organizationId,
+							scope,
+							policyEntity,
+							"delete",
+						),
+					),
 				),
 			)
 
 		return { canUpdate, canDelete, canCreate } as const
 	}),
-	dependencies: [ChannelRepo.Default, OrganizationPolicy.Default],
+	dependencies: [ChannelRepo.Default, OrgResolver.Default],
 	accessors: true,
 }) {}

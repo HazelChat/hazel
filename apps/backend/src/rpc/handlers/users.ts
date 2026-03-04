@@ -1,6 +1,6 @@
 import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import { UserNotFoundError, UserRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -19,10 +19,11 @@ export const UserRpcLive = UserRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* UserPolicy.canUpdate(id)
 							const updatedUser = yield* UserRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(UserPolicy.canUpdate(id)))
+							})
 
 							yield* workos
 								.call((client) =>
@@ -57,16 +58,16 @@ export const UserRpcLive = UserRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const userOption = yield* UserRepo.findById(id).pipe(
-								policyUse(UserPolicy.canRead(id)),
-							)
+							yield* UserPolicy.canRead(id)
+							const userOption = yield* UserRepo.findById(id)
 
 							const user = yield* Option.match(userOption, {
 								onNone: () => Effect.fail(new UserNotFoundError({ userId: id })),
 								onSome: (user) => Effect.succeed(user),
 							})
 
-							yield* UserRepo.deleteById(id).pipe(policyUse(UserPolicy.canDelete(id)))
+							yield* UserPolicy.canDelete(id)
+							yield* UserRepo.deleteById(id)
 
 							yield* workos
 								.call((client) => client.userManagement.deleteUser(user.externalId))
@@ -95,10 +96,11 @@ export const UserRpcLive = UserRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Update the current user's isOnboarded flag
+							yield* UserPolicy.canUpdate(currentUser.id)
 							const updatedUser = yield* UserRepo.update({
 								id: currentUser.id,
 								isOnboarded: true,
-							}).pipe(policyUse(UserPolicy.canUpdate(currentUser.id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -117,9 +119,8 @@ export const UserRpcLive = UserRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Fetch user from database to get externalId
-							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
-								policyUse(UserPolicy.canRead(currentUser.id)),
-							)
+							yield* UserPolicy.canRead(currentUser.id)
+							const userOption = yield* UserRepo.findById(currentUser.id)
 
 							const user = yield* Option.match(userOption, {
 								onNone: () =>
@@ -152,10 +153,11 @@ export const UserRpcLive = UserRpcs.toLayer(
 								: null
 
 							// Update user's avatar in our database
+							yield* UserPolicy.canUpdate(currentUser.id)
 							const updatedUser = yield* UserRepo.update({
 								id: currentUser.id,
 								avatarUrl,
-							}).pipe(policyUse(UserPolicy.canUpdate(currentUser.id)))
+							})
 
 							const txid = yield* generateTransactionId()
 

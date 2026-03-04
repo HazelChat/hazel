@@ -5,6 +5,7 @@ import { OrganizationMemberId } from "@hazel/schema"
 import { OrganizationMember } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 import { OrganizationNotFoundError } from "./organizations"
 
 /**
@@ -77,7 +78,9 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 		payload: OrganizationMember.Model.jsonCreate,
 		success: OrganizationMemberResponse,
 		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organization-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * OrganizationMemberUpdate
@@ -98,7 +101,9 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 		}),
 		success: OrganizationMemberResponse,
 		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organization-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * OrganizationMemberUpdateMetadata
@@ -122,7 +127,9 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 		}),
 		success: OrganizationMemberResponse,
 		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organization-members:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * OrganizationMemberDelete
@@ -140,5 +147,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: OrganizationMemberId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["organization-members:write"])
+		.middleware(AuthMiddleware),
 ) {}

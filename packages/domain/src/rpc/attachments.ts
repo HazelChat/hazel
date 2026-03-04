@@ -5,6 +5,7 @@ import { AttachmentId } from "@hazel/schema"
 import { Attachment } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Error thrown when an attachment is not found.
@@ -50,7 +51,9 @@ export class AttachmentRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["attachments:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * AttachmentComplete
@@ -68,7 +71,9 @@ export class AttachmentRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Attachment.Model,
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["attachments:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * AttachmentFail
@@ -89,5 +94,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 		}),
 		success: Schema.Void,
 		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["attachments:write"])
+		.middleware(AuthMiddleware),
 ) {}

@@ -1,8 +1,9 @@
 import { ChannelRepo, OrganizationMemberRepo, PinnedMessageRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, PinnedMessageId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("PinnedMessagePolicy/Policy", {
 	effect: Effect.gen(function* () {
@@ -11,6 +12,7 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 		const pinnedMessageRepo = yield* PinnedMessageRepo
 		const channelRepo = yield* ChannelRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const orgResolver = yield* OrgResolver
 
 		const canUpdate = (id: PinnedMessageId) =>
 			ErrorUtils.refailUnauthorized(
@@ -23,15 +25,14 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 							policyEntity,
 							"update",
 							Effect.fn(`${policyEntity}.update`)(function* (actor) {
-								// User who pinned can update
 								if (actor.id === pinnedMessage.pinnedBy) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Organization admins can update any message
-								const orgMember = yield* organizationMemberRepo
-									.findByOrgAndUser(channel.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+									channel.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 									return yield* Effect.succeed(true)
@@ -54,16 +55,15 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 						policyEntity,
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							// Check if user is an org member
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(channel.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								channel.organizationId,
+								actor.id,
+							)
 
 							if (Option.isNone(orgMember)) {
 								return yield* Effect.succeed(false)
 							}
 
-							// Org admins/owners can pin messages in any channel
 							if (isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
 							}
@@ -73,7 +73,6 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 								return yield* Effect.succeed(true)
 							}
 
-							// In private channels, restrict pinning to admins only
 							return yield* Effect.succeed(false)
 						}),
 					),
@@ -91,15 +90,14 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								// User who pinned can unpin
 								if (actor.id === pinnedMessage.pinnedBy) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Organization admins/owners can unpin any message
-								const orgMember = yield* organizationMemberRepo
-									.findByOrgAndUser(channel.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+									channel.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 									return yield* Effect.succeed(true)
@@ -114,6 +112,11 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 
 		return { canCreate, canDelete, canUpdate } as const
 	}),
-	dependencies: [PinnedMessageRepo.Default, ChannelRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [
+		PinnedMessageRepo.Default,
+		ChannelRepo.Default,
+		OrganizationMemberRepo.Default,
+		OrgResolver.Default,
+	],
 	accessors: true,
 }) {}

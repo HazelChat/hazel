@@ -1,6 +1,6 @@
 import { ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, UnauthorizedError, withRemapDbErrors, withSystemActor } from "@hazel/domain"
+import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import { NotificationRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -28,12 +28,10 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* NotificationPolicy.canCreate(payload.memberId)
 							const createdNotification = yield* NotificationRepo.insert({
 								...payload,
-							}).pipe(
-								Effect.map((res) => res[0]!),
-								policyUse(NotificationPolicy.canCreate(payload.memberId)),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
@@ -49,10 +47,11 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* NotificationPolicy.canUpdate(id)
 							const updatedNotification = yield* NotificationRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(NotificationPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -68,9 +67,8 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationRepo.deleteById(id).pipe(
-								policyUse(NotificationPolicy.canDelete(id)),
-							)
+							yield* NotificationPolicy.canDelete(id)
+							yield* NotificationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -91,7 +89,6 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 
 					// Get the channel to find the organization (system operation)
 					const channelOption = yield* ChannelRepo.findById(channelId).pipe(
-						withSystemActor,
 						withRemapDbErrors("Channel", "select"),
 					)
 
@@ -110,7 +107,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const memberOption = yield* OrganizationMemberRepo.findByOrgAndUser(
 						channel.organizationId,
 						user.id,
-					).pipe(withSystemActor, withRemapDbErrors("OrganizationMember", "select"))
+					).pipe(withRemapDbErrors("OrganizationMember", "select"))
 
 					if (Option.isNone(memberOption)) {
 						return yield* Effect.fail(
@@ -131,7 +128,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 								const deleted = yield* NotificationRepo.deleteByMessageIds(
 									messageIds,
 									member.id,
-								).pipe(withSystemActor)
+								)
 
 								const txid = yield* generateTransactionId()
 

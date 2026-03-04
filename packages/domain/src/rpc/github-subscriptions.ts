@@ -6,6 +6,7 @@ import { GitHubSubscription } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for GitHub subscription operations.
@@ -99,7 +100,9 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["github-subscriptions:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * githubSubscription.list
@@ -115,7 +118,9 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: GitHubSubscriptionListResponse,
 		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["github-subscriptions:read"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * githubSubscription.listByOrganization
@@ -130,7 +135,9 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 		payload: Schema.Struct({}),
 		success: GitHubSubscriptionListResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["github-subscriptions:read"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * githubSubscription.update
@@ -151,7 +158,9 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 		}),
 		success: GitHubSubscriptionResponse,
 		error: Schema.Union(GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["github-subscriptions:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * githubSubscription.delete
@@ -167,5 +176,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: GitHubSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["github-subscriptions:write"])
+		.middleware(AuthMiddleware),
 ) {}

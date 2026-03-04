@@ -5,6 +5,7 @@ import { ChannelId, MessageId, NotificationId } from "@hazel/schema"
 import { Notification } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful notification operations.
@@ -42,7 +43,9 @@ export class NotificationRpcs extends RpcGroup.make(
 		payload: Notification.Model.jsonCreate,
 		success: NotificationResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["notifications:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * NotificationUpdate
@@ -63,7 +66,9 @@ export class NotificationRpcs extends RpcGroup.make(
 		}),
 		success: NotificationResponse,
 		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["notifications:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * NotificationDelete
@@ -81,7 +86,9 @@ export class NotificationRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: NotificationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["notifications:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * NotificationDeleteByMessageIds
@@ -104,5 +111,7 @@ export class NotificationRpcs extends RpcGroup.make(
 			transactionId: TransactionId,
 		}),
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["notifications:write"])
+		.middleware(AuthMiddleware),
 ) {}

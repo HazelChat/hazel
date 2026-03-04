@@ -1,5 +1,5 @@
 import { Database, eq, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -22,16 +22,14 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 		// Find token by connection ID
 		const findByConnectionId = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { connectionId: IntegrationConnectionId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.integrationTokensTable)
-								.where(eq(schema.integrationTokensTable.connectionId, data.connectionId))
-								.limit(1),
-						),
-					policyRequire("IntegrationToken", "select"),
+				.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.integrationTokensTable)
+							.where(eq(schema.integrationTokensTable.connectionId, data.connectionId))
+							.limit(1),
+					),
 				)({ connectionId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -80,19 +78,16 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 							.where(eq(schema.integrationTokensTable.id, params.tokenId))
 							.returning(),
 					),
-				policyRequire("IntegrationToken", "update"),
 			)({ tokenId, ...data }, tx)
 
 		// Delete token (hard delete for security)
 		const deleteByConnectionId = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { connectionId: IntegrationConnectionId }) =>
-					execute((client) =>
-						client
-							.delete(schema.integrationTokensTable)
-							.where(eq(schema.integrationTokensTable.connectionId, data.connectionId)),
-					),
-				policyRequire("IntegrationToken", "delete"),
+			db.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
+				execute((client) =>
+					client
+						.delete(schema.integrationTokensTable)
+						.where(eq(schema.integrationTokensTable.connectionId, data.connectionId)),
+				),
 			)({ connectionId }, tx)
 
 		return {

@@ -1,35 +1,52 @@
-import { OrganizationMemberRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
+import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
-import { makeOrganizationScopeChecks, makePolicy } from "../lib/policy-utils"
+import { makePolicy, withAnnotatedScope } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("OrganizationPolicy/Policy", {
 	effect: Effect.gen(function* () {
 		const policyEntity = "Organization" as const
-
-		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const authorize = makePolicy(policyEntity)
-		const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
-			organizationMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
-		)
+
+		const orgResolver = yield* OrgResolver
 
 		const canCreate = () => authorize("create", (_actor) => Effect.succeed(true))
 
 		const canUpdate = (id: OrganizationId) =>
-			authorize("update", (actor) => orgScope.isAdminOrOwner(id, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"update",
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(id, scope, policyEntity, "update"),
+				),
+			)
 
 		const isMember = (id: OrganizationId) =>
-			authorize("isMember", (actor) => orgScope.isMember(id, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"isMember",
+			)(withAnnotatedScope((scope) => orgResolver.requireScope(id, scope, policyEntity, "isMember")))
 
 		const canDelete = (id: OrganizationId) =>
-			authorize("delete", (actor) => orgScope.isOwner(id, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"delete",
+			)(withAnnotatedScope((scope) => orgResolver.requireOwner(id, scope, policyEntity, "delete")))
 
 		const canManagePublicInvite = (id: OrganizationId) =>
-			authorize("managePublicInvite", (actor) => orgScope.isAdminOrOwner(id, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"managePublicInvite",
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(id, scope, policyEntity, "managePublicInvite"),
+				),
+			)
 
 		return { canUpdate, canDelete, canCreate, isMember, canManagePublicInvite } as const
 	}),
-	dependencies: [OrganizationMemberRepo.Default],
+	dependencies: [OrgResolver.Default],
 	accessors: true,
 }) {}

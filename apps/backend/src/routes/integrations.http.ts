@@ -1,7 +1,7 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import * as Cookies from "@effect/platform/Cookies"
 import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import {
 	ConnectApiKeyResponse,
@@ -314,7 +314,6 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 	// Get org slug for redirect URL
 	const orgRepo = yield* OrganizationRepo
 	const orgOption = yield* orgRepo.findById(orgId).pipe(
-		withSystemActor,
 		Effect.mapError(
 			(error) =>
 				new InternalServerError({
@@ -549,9 +548,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		})
 
 		// Look up all connections by installation ID
-		const connections = yield* connectionRepo
-			.findAllByGitHubInstallationId(installation_id)
-			.pipe(withSystemActor)
+		const connections = yield* connectionRepo.findAllByGitHubInstallationId(installation_id)
 
 		if (connections.length === 0) {
 			// No connection found - redirect to root
@@ -574,10 +571,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		const connection = connections[0]!
 
 		// Get the organization to find its slug
-		const orgOption = yield* orgRepo.findById(connection.organizationId).pipe(
-			withSystemActor,
-			Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())),
-		)
+		const orgOption = yield* orgRepo
+			.findById(connection.organizationId)
+			.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
 
 		if (Option.isNone(orgOption)) {
 			yield* Effect.logWarning("GitHub update callback: organization not found", {
@@ -816,7 +812,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 					lastUsedAt: null,
 					deletedAt: null,
 				})
-	).pipe(withSystemActor, Effect.either)
+	).pipe(Effect.either)
 
 	if (connectionResult._tag === "Left") {
 		yield* Effect.logError("OAuth database upsert failed", {
@@ -1012,23 +1008,21 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 	const connectionRepo = yield* IntegrationConnectionRepo
 
 	// Upsert connection with settings containing the base URL
-	const connection = yield* connectionRepo
-		.upsertByOrgAndProvider({
-			provider,
-			organizationId: orgId,
-			userId: null,
-			level: "organization",
-			status: "active",
-			externalAccountId: null,
-			externalAccountName,
-			connectedBy: currentUser.id,
-			settings: { baseUrl: validatedBaseUrl },
-			metadata: null,
-			errorMessage: null,
-			lastUsedAt: null,
-			deletedAt: null,
-		})
-		.pipe(withSystemActor)
+	const connection = yield* connectionRepo.upsertByOrgAndProvider({
+		provider,
+		organizationId: orgId,
+		userId: null,
+		level: "organization",
+		status: "active",
+		externalAccountId: null,
+		externalAccountName,
+		connectedBy: currentUser.id,
+		settings: { baseUrl: validatedBaseUrl },
+		metadata: null,
+		errorMessage: null,
+		lastUsedAt: null,
+		deletedAt: null,
+	})
 
 	// Store the encrypted token (no refresh token, no expiry for API keys)
 	const tokenService = yield* IntegrationTokenService
@@ -1089,11 +1083,9 @@ const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(
 		)
 	}
 
-	const connectionOption = yield* (
-		level === "user"
-			? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
-			: connectionRepo.findByOrgAndProvider(orgId, provider)
-	).pipe(withSystemActor)
+	const connectionOption = yield* level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)
 
 	if (Option.isNone(connectionOption)) {
 		return new ConnectionStatusResponse({
@@ -1143,11 +1135,9 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 		)
 	}
 
-	const connectionOption = yield* (
-		level === "user"
-			? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
-			: connectionRepo.findByOrgAndProvider(orgId, provider)
-	).pipe(withSystemActor)
+	const connectionOption = yield* level === "user"
+		? connectionRepo.findUserConnection(orgId, currentUser.id, provider)
+		: connectionRepo.findByOrgAndProvider(orgId, provider)
 
 	if (Option.isNone(connectionOption)) {
 		return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))
@@ -1191,7 +1181,7 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 	yield* tokenService.deleteTokens(connection.id)
 
 	// Soft delete the connection
-	yield* connectionRepo.softDelete(connection.id).pipe(withSystemActor)
+	yield* connectionRepo.softDelete(connection.id)
 
 	yield* Effect.logInfo("AUDIT: Integration disconnected", {
 		event: "integration_disconnected",

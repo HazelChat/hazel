@@ -6,6 +6,7 @@ import { UserId } from "@hazel/schema"
 import { User } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful user operations.
@@ -38,7 +39,9 @@ export class UserRpcs extends RpcGroup.make(
 		payload: Schema.Void,
 		success: CurrentUser.Schema,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["users:read"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserUpdate
@@ -58,7 +61,9 @@ export class UserRpcs extends RpcGroup.make(
 		}).pipe(Schema.extend(Schema.partial(User.Model.jsonUpdate))),
 		success: UserResponse,
 		error: Schema.Union(UserNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["users:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserDelete
@@ -76,7 +81,9 @@ export class UserRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: UserId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(UserNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["users:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserFinalizeOnboarding
@@ -92,7 +99,9 @@ export class UserRpcs extends RpcGroup.make(
 		payload: Schema.Void,
 		success: UserResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["users:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * UserResetAvatar
@@ -109,5 +118,7 @@ export class UserRpcs extends RpcGroup.make(
 		payload: Schema.Void,
 		success: UserResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["users:write"])
+		.middleware(AuthMiddleware),
 ) {}

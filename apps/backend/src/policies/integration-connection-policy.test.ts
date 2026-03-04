@@ -1,25 +1,13 @@
 import { describe, expect, it } from "@effect/vitest"
-import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
-import type { OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Either, Layer } from "effect"
 import { IntegrationConnectionPolicy } from "./integration-connection-policy.ts"
-import { makeActor, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
+import { makeActor, makeOrgResolverLayer, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const makeOrganizationMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	} as unknown as OrganizationMemberRepo)
-
 const makePolicyLayer = (members: Record<string, Role>) =>
-	IntegrationConnectionPolicy.DefaultWithoutDependencies.pipe(
-		Layer.provide(makeOrganizationMemberRepoLayer(members)),
-	)
+	IntegrationConnectionPolicy.DefaultWithoutDependencies.pipe(Layer.provide(makeOrgResolverLayer(members)))
 
 describe("IntegrationConnectionPolicy", () => {
 	it("allows select for any org member", async () => {

@@ -4,6 +4,7 @@ import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ExternalChannelId, OrganizationId } from "@hazel/schema"
 import { IntegrationConnection } from "../models"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // Provider type from the model
 const IntegrationProvider = IntegrationConnection.IntegrationProvider
@@ -182,7 +183,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					description: "Fetch Linear issue details for embedding in chat messages",
 					summary: "Get Linear issue preview data",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`)
@@ -208,7 +210,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					description: "Fetch GitHub pull request details for embedding in chat messages",
 					summary: "Get GitHub PR preview data",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
@@ -233,7 +236,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					description: "List repositories accessible to the GitHub App installation",
 					summary: "List GitHub repositories",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`)
@@ -253,7 +257,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					description: "List Discord guilds visible to the connected Discord account",
 					summary: "List Discord guilds",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`)
@@ -274,7 +279,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 					description: "List message-capable channels in a Discord guild using the bot token",
 					summary: "List Discord guild channels",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.prefix("/integrations/resources")
 	.middleware(CurrentUser.Authorization) {}

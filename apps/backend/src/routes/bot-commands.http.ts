@@ -1,7 +1,7 @@
 import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
 import { Sse } from "@effect/experimental"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, IntegrationConnectionRepo } from "@hazel/backend-core"
-import { CurrentUser, InternalServerError, UnauthorizedError, withSystemActor } from "@hazel/domain"
+import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import {
 	BotCommandExecutionAccepted,
 	BotCommandExecutionError,
@@ -52,7 +52,7 @@ const validateBotToken = Effect.gen(function* () {
 	const tokenHash = yield* Effect.promise(() => hashToken(token))
 
 	const botRepo = yield* BotRepo
-	const botOption = yield* botRepo.findByTokenHash(tokenHash).pipe(withSystemActor)
+	const botOption = yield* botRepo.findByTokenHash(tokenHash)
 
 	if (Option.isNone(botOption)) {
 		return yield* Effect.fail(
@@ -228,26 +228,24 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				// Upsert each command (updates updatedAt to now)
 				let syncedCount = 0
 				for (const cmd of payload.commands) {
-					yield* commandRepo
-						.upsert({
-							botId: bot.id,
-							name: cmd.name,
-							description: cmd.description,
-							arguments: cmd.arguments.map((arg) => ({
-								name: arg.name,
-								description: arg.description ?? null,
-								required: arg.required,
-								placeholder: arg.placeholder ?? null,
-								type: arg.type,
-							})),
-							usageExample: cmd.usageExample ?? null,
-						})
-						.pipe(withSystemActor)
+					yield* commandRepo.upsert({
+						botId: bot.id,
+						name: cmd.name,
+						description: cmd.description,
+						arguments: cmd.arguments.map((arg) => ({
+							name: arg.name,
+							description: arg.description ?? null,
+							required: arg.required,
+							placeholder: arg.placeholder ?? null,
+							type: arg.type,
+						})),
+						usageExample: cmd.usageExample ?? null,
+					})
 					syncedCount++
 				}
 
 				// Delete commands not touched by this sync (stale commands)
-				yield* commandRepo.deleteStaleCommands(bot.id, syncStartTime).pipe(withSystemActor)
+				yield* commandRepo.deleteStaleCommands(bot.id, syncStartTime)
 
 				return new SyncBotCommandsResponse({ syncedCount })
 			}).pipe(
@@ -274,7 +272,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				const redis = yield* Redis
 
 				// Verify bot exists
-				const botOption = yield* botRepo.findById(botId).pipe(withSystemActor)
+				const botOption = yield* botRepo.findById(botId)
 				if (Option.isNone(botOption)) {
 					return yield* Effect.fail(new BotNotFoundError({ botId }))
 				}
@@ -282,15 +280,13 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				const bot = botOption.value
 
 				// Verify bot is installed in this org
-				const isInstalled = yield* installationRepo.isInstalled(botId, orgId).pipe(withSystemActor)
+				const isInstalled = yield* installationRepo.isInstalled(botId, orgId)
 				if (!isInstalled) {
 					return yield* Effect.fail(new BotNotInstalledError({ botId, orgId }))
 				}
 
 				// Find the command
-				const commandOption = yield* commandRepo
-					.findByBotAndName(botId, commandName)
-					.pipe(withSystemActor)
+				const commandOption = yield* commandRepo.findByBotAndName(botId, commandName)
 				if (Option.isNone(commandOption)) {
 					return yield* Effect.fail(new BotCommandNotFoundError({ botId, commandName }))
 				}
@@ -388,16 +384,14 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				// Verify bot is installed in this org
 				const installationRepo = yield* BotInstallationRepo
-				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId).pipe(withSystemActor)
+				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId)
 				if (!isInstalled) {
 					return yield* Effect.fail(new BotNotInstalledError({ botId: bot.id, orgId }))
 				}
 
 				// Find active integration connection for the org
 				const connectionRepo = yield* IntegrationConnectionRepo
-				const connectionOption = yield* connectionRepo
-					.findOrgConnection(orgId, provider)
-					.pipe(withSystemActor)
+				const connectionOption = yield* connectionRepo.findOrgConnection(orgId, provider)
 
 				if (Option.isNone(connectionOption)) {
 					return yield* Effect.fail(new IntegrationNotConnectedError({ provider }))
@@ -476,7 +470,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				// Verify bot is installed in this org
 				const installationRepo = yield* BotInstallationRepo
-				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId).pipe(withSystemActor)
+				const isInstalled = yield* installationRepo.isInstalled(bot.id, orgId)
 				if (!isInstalled) {
 					return yield* Effect.fail(new BotNotInstalledError({ botId: bot.id, orgId }))
 				}
@@ -489,9 +483,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				// Find active integration connections for the org
 				const connectionRepo = yield* IntegrationConnectionRepo
-				const activeConnections = yield* connectionRepo
-					.findActiveOrgConnections(orgId)
-					.pipe(withSystemActor)
+				const activeConnections = yield* connectionRepo.findActiveOrgConnections(orgId)
 
 				// Compute intersection: providers that are both allowed AND connected
 				const activeProviders = new Set(activeConnections.map((c) => c.provider))
@@ -526,7 +518,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 
 				// Only update if there are fields to update
 				if (Object.keys(updates).length > 1) {
-					yield* botRepo.update(updates).pipe(withSystemActor)
+					yield* botRepo.update(updates)
 					yield* Effect.logDebug(`Updated bot ${bot.id} settings`, { updates })
 				}
 

@@ -1,5 +1,5 @@
 import { and, Database, eq, ModelRepository, schema } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { MessageId, UserId } from "@hazel/schema"
 import { MessageReaction } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -20,22 +20,20 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 
 		const findByMessageUserEmoji = (messageId: MessageId, userId: UserId, emoji: string) =>
 			db
-				.makeQuery(
-					(execute, data: { messageId: MessageId; userId: UserId; emoji: string }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.messageReactionsTable)
-								.where(
-									and(
-										eq(schema.messageReactionsTable.messageId, data.messageId),
-										eq(schema.messageReactionsTable.userId, data.userId),
-										eq(schema.messageReactionsTable.emoji, data.emoji),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("MessageReaction", "select"),
+				.makeQuery((execute, data: { messageId: MessageId; userId: UserId; emoji: string }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.messageReactionsTable)
+							.where(
+								and(
+									eq(schema.messageReactionsTable.messageId, data.messageId),
+									eq(schema.messageReactionsTable.userId, data.userId),
+									eq(schema.messageReactionsTable.emoji, data.emoji),
+								),
+							)
+							.limit(1),
+					),
 				)({ messageId, userId, emoji })
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 

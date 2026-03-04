@@ -1,6 +1,5 @@
 import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { OrganizationId } from "@hazel/schema"
-import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import {
@@ -20,9 +19,8 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Loader } from "~/components/ui/loader"
 import { TextField } from "~/components/ui/text-field"
-import { organizationMemberCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
-import { useAuth } from "~/lib/auth"
+import { usePermission } from "~/hooks/use-permission"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/authentication")({
@@ -282,7 +280,7 @@ function DomainManagement({
 
 function AuthenticationSettings() {
 	const { organizationId } = useOrganization()
-	const { user, isLoading: isAuthLoading } = useAuth()
+	const { isAdmin, isLoading: isPermissionsLoading } = usePermission()
 
 	const [loadingIntent, setLoadingIntent] = useState<string | null>(null)
 
@@ -292,25 +290,6 @@ function AuthenticationSettings() {
 	})
 
 	const isLoadingPortalLink = getAdminPortalLinkResult.waiting
-
-	// Get team members to check permissions
-	const { data: teamMembers, isLoading: isLoadingMembers } = useLiveQuery(
-		(q) =>
-			q
-				.from({ members: organizationMemberCollection })
-				.where(({ members }) => eq(members.organizationId, organizationId))
-				.innerJoin({ user: userCollection }, ({ members, user }) => eq(members.userId, user.id))
-				.where(({ user }) => eq(user.userType, "user"))
-				.select(({ members }) => ({ ...members })),
-		[organizationId],
-	)
-
-	// Check if user is admin or owner
-	const currentUserMember = teamMembers?.find((m) => m.userId === user?.id)
-	const isAdmin = currentUserMember?.role === "owner" || currentUserMember?.role === "admin"
-
-	// While loading, don't hide UI elements - just disable them
-	const isPermissionsLoading = isAuthLoading || isLoadingMembers
 
 	const handleOpenPortal = async (intent: "sso" | "domain_verification") => {
 		if (!organizationId) return

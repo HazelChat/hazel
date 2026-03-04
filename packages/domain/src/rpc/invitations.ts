@@ -5,6 +5,7 @@ import { InvitationId, OrganizationId } from "@hazel/schema"
 import { Invitation } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful invitation operations.
@@ -74,7 +75,9 @@ export class InvitationRpcs extends RpcGroup.make(
 		}),
 		success: InvitationBatchResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["invitations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * InvitationResend
@@ -92,7 +95,9 @@ export class InvitationRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: InvitationResponse,
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["invitations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * InvitationRevoke
@@ -110,7 +115,9 @@ export class InvitationRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["invitations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * InvitationUpdate
@@ -131,7 +138,9 @@ export class InvitationRpcs extends RpcGroup.make(
 		}),
 		success: InvitationResponse,
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["invitations:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * InvitationDelete
@@ -149,5 +158,7 @@ export class InvitationRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["invitations:write"])
+		.middleware(AuthMiddleware),
 ) {}

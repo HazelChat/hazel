@@ -5,7 +5,6 @@ import * as Model from "@hazel/domain/models"
 
 export * from "@hazel/domain/models"
 
-import type { AuthorizedActor } from "@hazel/domain"
 import type { EntitySchema } from "@hazel/domain/models"
 import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
@@ -29,22 +28,22 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 	readonly insert: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<RecordType[], DatabaseError | ParseError, AuthorizedActor<Name, "create">>
+	) => Effect.Effect<RecordType[], DatabaseError | ParseError>
 
 	readonly insertVoid: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError | ParseError, AuthorizedActor<Name, "create">>
+	) => Effect.Effect<void, DatabaseError | ParseError>
 
 	readonly update: (
 		update: PartialExcept<S["update"]["Type"], Col>,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<RecordType, DatabaseError | ParseError, AuthorizedActor<Name, "update">>
+	) => Effect.Effect<RecordType, DatabaseError | ParseError>
 
 	readonly updateVoid: (
 		update: PartialExcept<S["update"]["Type"], Col>,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError | ParseError, AuthorizedActor<Name, "update">>
+	) => Effect.Effect<void, DatabaseError | ParseError>
 
 	// readonly updateManyVoid: (
 	//   update: PartialExcept<S["update"]["Type"], Col>[]
@@ -53,7 +52,7 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 	readonly findById: (
 		id: Id,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<Option.Option<RecordType>, DatabaseError, AuthorizedActor<Name, "select">>
+	) => Effect.Effect<Option.Option<RecordType>, DatabaseError>
 
 	readonly with: <A, E, R>(
 		id: Id,
@@ -63,5 +62,5 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 	readonly deleteById: (
 		id: Id,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError, AuthorizedActor<Name, "delete">>
+	) => Effect.Effect<void, DatabaseError>
 }

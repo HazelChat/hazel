@@ -1,43 +1,53 @@
-import { CustomEmojiRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
+import { CustomEmojiRepo } from "@hazel/backend-core"
+import { ErrorUtils } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
-import { makeOrganizationScopeChecks, makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
+import { withAnnotatedScope } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
 	effect: Effect.gen(function* () {
 		const policyEntity = "CustomEmoji" as const
 
+		const orgResolver = yield* OrgResolver
 		const customEmojiRepo = yield* CustomEmojiRepo
-		const organizationMemberRepo = yield* OrganizationMemberRepo
-		const authorize = makePolicy(policyEntity)
-		const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
-			organizationMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
-		)
 
 		const canCreate = (organizationId: OrganizationId) =>
-			authorize("create", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
+			ErrorUtils.refailUnauthorized(
+				policyEntity,
+				"create",
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canUpdate = (id: CustomEmojiId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"update",
+			)(
 				customEmojiRepo.with(id, (emoji) =>
-					authorize("update", (actor) => orgScope.isAdminOrOwner(emoji.organizationId, actor.id)),
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(emoji.organizationId, scope, policyEntity, "update"),
+					),
 				),
 			)
 
 		const canDelete = (id: CustomEmojiId) =>
-			withPolicyUnauthorized(
+			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"delete",
+			)(
 				customEmojiRepo.with(id, (emoji) =>
-					authorize("delete", (actor) => orgScope.isAdminOrOwner(emoji.organizationId, actor.id)),
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(emoji.organizationId, scope, policyEntity, "delete"),
+					),
 				),
 			)
 
 		return { canCreate, canUpdate, canDelete } as const
 	}),
-	dependencies: [CustomEmojiRepo.Default, OrganizationMemberRepo.Default],
+	dependencies: [CustomEmojiRepo.Default, OrgResolver.Default],
 	accessors: true,
 }) {}

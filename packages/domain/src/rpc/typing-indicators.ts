@@ -5,6 +5,7 @@ import { TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful typing indicator operations.
@@ -88,7 +89,9 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 		payload: CreateTypingIndicatorPayload,
 		success: TypingIndicatorResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["typing-indicators:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * TypingIndicatorUpdate
@@ -109,7 +112,9 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 		}),
 		success: TypingIndicatorResponse,
 		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["typing-indicators:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * TypingIndicatorDelete
@@ -127,5 +132,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: TypingIndicatorId }),
 		success: TypingIndicatorResponse,
 		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["typing-indicators:write"])
+		.middleware(AuthMiddleware),
 ) {}

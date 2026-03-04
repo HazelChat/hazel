@@ -3,6 +3,7 @@ import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { OrganizationId } from "@hazel/schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // Provider type for bot commands
 export const CommandProvider = Schema.Literal("bot")
@@ -74,7 +75,8 @@ export class IntegrationCommandGroup extends HttpApiGroup.make("integration-comm
 					description: "Get all slash commands available from installed bots",
 					summary: "List bot commands",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["bots:read"]),
 	)
 	.prefix("/integrations")
 	.middleware(CurrentUser.Authorization) {}

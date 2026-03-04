@@ -1,5 +1,5 @@
 import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -21,48 +21,42 @@ export class BotInstallationRepo extends Effect.Service<BotInstallationRepo>()("
 
 		// Find all installations for an organization
 		const findByOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botInstallationsTable)
-							.where(eq(schema.botInstallationsTable.organizationId, data.organizationId)),
-					),
-				policyRequire("BotInstallation", "select"),
+			db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.botInstallationsTable)
+						.where(eq(schema.botInstallationsTable.organizationId, data.organizationId)),
+				),
 			)({ organizationId }, tx)
 
 		// Find all installations for a bot
 		const findByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { botId: BotId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botInstallationsTable)
-							.where(eq(schema.botInstallationsTable.botId, data.botId)),
-					),
-				policyRequire("BotInstallation", "select"),
+			db.makeQuery((execute, data: { botId: BotId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.botInstallationsTable)
+						.where(eq(schema.botInstallationsTable.botId, data.botId)),
+				),
 			)({ botId }, tx)
 
 		// Find a specific installation
 		const findByBotAndOrg = (botId: BotId, organizationId: OrganizationId, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { botId: BotId; organizationId: OrganizationId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.botInstallationsTable)
-								.where(
-									and(
-										eq(schema.botInstallationsTable.botId, data.botId),
-										eq(schema.botInstallationsTable.organizationId, data.organizationId),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("BotInstallation", "select"),
+				.makeQuery((execute, data: { botId: BotId; organizationId: OrganizationId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.botInstallationsTable)
+							.where(
+								and(
+									eq(schema.botInstallationsTable.botId, data.botId),
+									eq(schema.botInstallationsTable.organizationId, data.organizationId),
+								),
+							)
+							.limit(1),
+					),
 				)({ botId, organizationId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 

@@ -1,6 +1,6 @@
 import { InvitationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, InternalServerError, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
 	InvitationBatchResponse,
 	InvitationBatchResult,
@@ -59,6 +59,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 										expiresAt.setDate(expiresAt.getDate() + 7)
 
 										// Store invitation in local database
+										yield* InvitationPolicy.canCreate(payload.organizationId)
 										const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
 											workosInvitationId: workosInvitation.id,
 											organizationId: payload.organizationId,
@@ -70,7 +71,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 											status: "pending",
 											acceptedAt: null,
 											acceptedBy: null,
-										}).pipe(policyUse(InvitationPolicy.canCreate(payload.organizationId)))
+										})
 
 										const txid = yield* generateTransactionId()
 
@@ -113,9 +114,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
-								policyUse(InvitationPolicy.canRead(invitationId)),
-							)
+							yield* InvitationPolicy.canRead(invitationId)
+							const invitationOption = yield* InvitationRepo.findById(invitationId)
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
 							}
@@ -123,6 +123,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 							const invitation = invitationOption.value
 
 							// Resend invitation via WorkOS (send new invitation to same email)
+							yield* InvitationPolicy.canUpdate(invitationId)
 							yield* workos
 								.call((client) =>
 									client.userManagement.sendInvitation({
@@ -147,7 +148,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canUpdate(invitationId)),
 						withRemapDbErrors("Invitation", "update"),
 						Effect.map(({ invitation, txid }) => ({
 							data: invitation,
@@ -159,9 +159,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const invitationOption = yield* InvitationRepo.findById(invitationId).pipe(
-								policyUse(InvitationPolicy.canRead(invitationId)),
-							)
+							yield* InvitationPolicy.canRead(invitationId)
+							const invitationOption = yield* InvitationRepo.findById(invitationId)
 
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
@@ -185,9 +184,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 									),
 								)
 
-							yield* InvitationRepo.updateStatus(invitationId, "revoked").pipe(
-								policyUse(InvitationPolicy.canUpdate(invitationId)),
-							)
+							yield* InvitationPolicy.canUpdate(invitationId)
+							yield* InvitationRepo.updateStatus(invitationId, "revoked")
 
 							const txid = yield* generateTransactionId()
 
@@ -203,6 +201,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* InvitationPolicy.canUpdate(id)
 							const updatedInvitation = yield* InvitationRepo.update({
 								id,
 								...payload,
@@ -214,7 +213,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canUpdate(id)),
 						withRemapDbErrors("Invitation", "update"),
 						Effect.map(({ updatedInvitation, txid }) => ({
 							data: updatedInvitation,
@@ -226,6 +224,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* InvitationPolicy.canDelete(id)
 							yield* InvitationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
@@ -234,7 +233,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						policyUse(InvitationPolicy.canDelete(id)),
 						withRemapDbErrors("Invitation", "delete"),
 						Effect.map(({ txid }) => ({ transactionId: txid })),
 					),

@@ -6,6 +6,7 @@ import { PinnedMessage } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { MessageNotFoundError } from "./messages"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful pinned message operations.
@@ -77,7 +78,9 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 		}),
 		success: PinnedMessageResponse,
 		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["pinned-messages:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * PinnedMessageUpdate
@@ -98,7 +101,9 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 		}),
 		success: PinnedMessageResponse,
 		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["pinned-messages:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * PinnedMessageDelete
@@ -116,5 +121,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: PinnedMessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["pinned-messages:write"])
+		.middleware(AuthMiddleware),
 ) {}

@@ -1,8 +1,9 @@
-import { ChannelRepo, OrganizationMemberRepo, RssSubscriptionRepo } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
+import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
+import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { Effect } from "effect"
-import { makeOrganizationScopeChecks, makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
+import { withAnnotatedScope } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
 export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>()(
@@ -13,67 +14,89 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 
 			const channelRepo = yield* ChannelRepo
 			const subscriptionRepo = yield* RssSubscriptionRepo
-			const orgMemberRepo = yield* OrganizationMemberRepo
-			const authorize = makePolicy(policyEntity)
-			const orgScope = makeOrganizationScopeChecks((organizationId, actorId) =>
-				orgMemberRepo.findByOrgAndUser(organizationId, actorId).pipe(withSystemActor),
-			)
+			const orgResolver = yield* OrgResolver
 
-			// Can create subscription on a channel (org admin only)
 			const canCreate = (channelId: ChannelId) =>
-				withPolicyUnauthorized(
+				ErrorUtils.refailUnauthorized(
 					policyEntity,
 					"create",
+				)(
 					channelRepo.with(channelId, (channel) =>
-						authorize("create", (actor) =>
-							orgScope.isAdminOrOwner(channel.organizationId, actor.id),
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"create",
+							),
 						),
 					),
 				)
 
-			// Can read subscriptions for a channel (org admin only)
 			const canRead = (channelId: ChannelId) =>
-				withPolicyUnauthorized(
+				ErrorUtils.refailUnauthorized(
 					policyEntity,
 					"select",
+				)(
 					channelRepo.with(channelId, (channel) =>
-						authorize("select", (actor) =>
-							orgScope.isAdminOrOwner(channel.organizationId, actor.id),
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"select",
+							),
 						),
 					),
 				)
 
-			// Can update a subscription (org admin only)
 			const canUpdate = (subscriptionId: RssSubscriptionId) =>
-				withPolicyUnauthorized(
+				ErrorUtils.refailUnauthorized(
 					policyEntity,
 					"update",
+				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						authorize("update", (actor) =>
-							orgScope.isAdminOrOwner(subscription.organizationId, actor.id),
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"update",
+							),
 						),
 					),
 				)
 
-			// Can delete a subscription (org admin only)
 			const canDelete = (subscriptionId: RssSubscriptionId) =>
-				withPolicyUnauthorized(
+				ErrorUtils.refailUnauthorized(
 					policyEntity,
 					"delete",
+				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						authorize("delete", (actor) =>
-							orgScope.isAdminOrOwner(subscription.organizationId, actor.id),
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"delete",
+							),
 						),
 					),
 				)
 
-			// Can read subscriptions for an organization (org admin only)
 			const canReadByOrganization = (organizationId: OrganizationId) =>
-				authorize("select", (actor) => orgScope.isAdminOrOwner(organizationId, actor.id))
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"select",
+				)(
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "select"),
+					),
+				)
 
 			return { canCreate, canRead, canReadByOrganization, canUpdate, canDelete } as const
 		}),
-		dependencies: [ChannelRepo.Default, RssSubscriptionRepo.Default, OrganizationMemberRepo.Default],
+		dependencies: [ChannelRepo.Default, RssSubscriptionRepo.Default, OrgResolver.Default],
 		accessors: true,
 	},
 ) {}

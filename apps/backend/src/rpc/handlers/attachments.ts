@@ -1,6 +1,6 @@
 import { AttachmentRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { policyUse, withRemapDbErrors } from "@hazel/domain"
+import { withRemapDbErrors } from "@hazel/domain"
 import { AttachmentRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -15,6 +15,7 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* AttachmentPolicy.canDelete(id)
 							yield* AttachmentRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
@@ -22,18 +23,14 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 							return { transactionId: txid }
 						}),
 					)
-					.pipe(
-						policyUse(AttachmentPolicy.canDelete(id)),
-						withRemapDbErrors("Attachment", "delete"),
-					),
+					.pipe(withRemapDbErrors("Attachment", "delete")),
 
 			"attachment.complete": ({ id }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const attachment = yield* AttachmentRepo.update({ id, status: "complete" }).pipe(
-								policyUse(AttachmentPolicy.canUpdate(id)),
-							)
+							yield* AttachmentPolicy.canUpdate(id)
+							const attachment = yield* AttachmentRepo.update({ id, status: "complete" })
 
 							return attachment
 						}),
@@ -48,9 +45,8 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 								`Marking attachment ${id} as failed${reason ? `: ${reason}` : ""}`,
 							)
 
-							yield* AttachmentRepo.update({ id, status: "failed" }).pipe(
-								policyUse(AttachmentPolicy.canUpdate(id)),
-							)
+							yield* AttachmentPolicy.canUpdate(id)
+							yield* AttachmentRepo.update({ id, status: "failed" })
 						}),
 					)
 					.pipe(withRemapDbErrors("Attachment", "update")),

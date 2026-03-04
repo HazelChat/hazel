@@ -1,5 +1,5 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { ChannelWebhook } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -21,108 +21,96 @@ export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("Ch
 
 		// Find all webhooks for a channel
 		const findByChannel = (channelId: ChannelId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { channelId: ChannelId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.channelWebhooksTable)
-							.where(
-								and(
-									eq(schema.channelWebhooksTable.channelId, data.channelId),
-									isNull(schema.channelWebhooksTable.deletedAt),
-								),
+			db.makeQuery((execute, data: { channelId: ChannelId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.channelWebhooksTable)
+						.where(
+							and(
+								eq(schema.channelWebhooksTable.channelId, data.channelId),
+								isNull(schema.channelWebhooksTable.deletedAt),
 							),
-					),
-				policyRequire("ChannelWebhook", "select"),
+						),
+				),
 			)({ channelId }, tx)
 
 		// Find webhook by token hash (for authentication)
 		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { tokenHash: string }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.channelWebhooksTable)
-								.where(
-									and(
-										eq(schema.channelWebhooksTable.tokenHash, data.tokenHash),
-										isNull(schema.channelWebhooksTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("ChannelWebhook", "select"),
-				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
-
-		// Update last used timestamp
-		const updateLastUsed = (id: ChannelWebhookId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { id: ChannelWebhookId }) =>
-					execute((client) =>
-						client
-							.update(schema.channelWebhooksTable)
-							.set({ lastUsedAt: new Date(), updatedAt: new Date() })
-							.where(eq(schema.channelWebhooksTable.id, data.id))
-							.returning(),
-					),
-				policyRequire("ChannelWebhook", "update"),
-			)({ id }, tx)
-
-		// Update token hash (for token regeneration)
-		const updateToken = (id: ChannelWebhookId, tokenHash: string, tokenSuffix: string, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { id: ChannelWebhookId; tokenHash: string; tokenSuffix: string }) =>
-					execute((client) =>
-						client
-							.update(schema.channelWebhooksTable)
-							.set({
-								tokenHash: data.tokenHash,
-								tokenSuffix: data.tokenSuffix,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.channelWebhooksTable.id, data.id))
-							.returning(),
-					),
-				policyRequire("ChannelWebhook", "update"),
-			)({ id, tokenHash, tokenSuffix }, tx)
-
-		// Soft delete webhook
-		const softDelete = (id: ChannelWebhookId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { id: ChannelWebhookId }) =>
-					execute((client) =>
-						client
-							.update(schema.channelWebhooksTable)
-							.set({
-								deletedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.channelWebhooksTable.id, data.id))
-							.returning(),
-					),
-				policyRequire("ChannelWebhook", "delete"),
-			)({ id }, tx)
-
-		// Find all webhooks for an organization
-		const findByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { organizationId: OrganizationId }) =>
+				.makeQuery((execute, data: { tokenHash: string }) =>
 					execute((client) =>
 						client
 							.select()
 							.from(schema.channelWebhooksTable)
 							.where(
 								and(
-									eq(schema.channelWebhooksTable.organizationId, data.organizationId),
+									eq(schema.channelWebhooksTable.tokenHash, data.tokenHash),
 									isNull(schema.channelWebhooksTable.deletedAt),
 								),
-							),
+							)
+							.limit(1),
 					),
-				policyRequire("ChannelWebhook", "select"),
+				)({ tokenHash }, tx)
+				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+		// Update last used timestamp
+		const updateLastUsed = (id: ChannelWebhookId, tx?: TxFn) =>
+			db.makeQuery((execute, data: { id: ChannelWebhookId }) =>
+				execute((client) =>
+					client
+						.update(schema.channelWebhooksTable)
+						.set({ lastUsedAt: new Date(), updatedAt: new Date() })
+						.where(eq(schema.channelWebhooksTable.id, data.id))
+						.returning(),
+				),
+			)({ id }, tx)
+
+		// Update token hash (for token regeneration)
+		const updateToken = (id: ChannelWebhookId, tokenHash: string, tokenSuffix: string, tx?: TxFn) =>
+			db.makeQuery((execute, data: { id: ChannelWebhookId; tokenHash: string; tokenSuffix: string }) =>
+				execute((client) =>
+					client
+						.update(schema.channelWebhooksTable)
+						.set({
+							tokenHash: data.tokenHash,
+							tokenSuffix: data.tokenSuffix,
+							updatedAt: new Date(),
+						})
+						.where(eq(schema.channelWebhooksTable.id, data.id))
+						.returning(),
+				),
+			)({ id, tokenHash, tokenSuffix }, tx)
+
+		// Soft delete webhook
+		const softDelete = (id: ChannelWebhookId, tx?: TxFn) =>
+			db.makeQuery((execute, data: { id: ChannelWebhookId }) =>
+				execute((client) =>
+					client
+						.update(schema.channelWebhooksTable)
+						.set({
+							deletedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(eq(schema.channelWebhooksTable.id, data.id))
+						.returning(),
+				),
+			)({ id }, tx)
+
+		// Find all webhooks for an organization
+		const findByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
+			db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.channelWebhooksTable)
+						.where(
+							and(
+								eq(schema.channelWebhooksTable.organizationId, data.organizationId),
+								isNull(schema.channelWebhooksTable.deletedAt),
+							),
+						),
+				),
 			)({ organizationId }, tx)
 
 		return {

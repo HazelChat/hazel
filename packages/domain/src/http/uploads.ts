@@ -3,6 +3,7 @@ import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
 import { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { RateLimitExceededError } from "../rate-limit-errors"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // ============ Constants ============
 
@@ -212,7 +213,8 @@ export class UploadsGroup extends HttpApiGroup.make("uploads")
 			.addError(OrganizationNotFoundForUploadError)
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
-			.addError(RateLimitExceededError),
+			.addError(RateLimitExceededError)
+			.annotate(RequiredScopes, ["attachments:write"]),
 	)
 	.prefix("/uploads")
 	.middleware(CurrentUser.Authorization) {}

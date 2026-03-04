@@ -6,6 +6,7 @@ import { ChannelSection } from "../models"
 import { TransactionId } from "@hazel/schema"
 import { ChannelNotFoundError } from "./channels"
 import { AuthMiddleware } from "./middleware"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 /**
  * Response schema for successful channel section operations.
@@ -50,7 +51,9 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 		payload: CreateChannelSectionRequest,
 		success: ChannelSectionResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-sections:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelSectionUpdate
@@ -70,7 +73,9 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 		}).pipe(Schema.extend(Schema.partial(ChannelSection.Model.jsonUpdate))),
 		success: ChannelSectionResponse,
 		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-sections:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelSectionDelete
@@ -89,7 +94,9 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 		payload: Schema.Struct({ id: ChannelSectionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-sections:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelSectionReorder
@@ -110,7 +117,9 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union(UnauthorizedError, InternalServerError),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-sections:write"])
+		.middleware(AuthMiddleware),
 
 	/**
 	 * ChannelSectionMoveChannel
@@ -138,5 +147,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			UnauthorizedError,
 			InternalServerError,
 		),
-	}).middleware(AuthMiddleware),
+	})
+		.annotate(RequiredScopes, ["channel-sections:write"])
+		.middleware(AuthMiddleware),
 ) {}

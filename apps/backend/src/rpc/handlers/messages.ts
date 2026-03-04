@@ -1,6 +1,6 @@
 import { AttachmentRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, policyUse, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { MessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -37,22 +37,23 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* MessagePolicy.canCreate(messageData.channelId)
 								const createdMessage = yield* MessageRepo.insert({
 									...messageData,
 									authorId: user.id,
 									deletedAt: null,
-								}).pipe(
-									Effect.map((res) => res[0]!),
-									policyUse(MessagePolicy.canCreate(messageData.channelId)),
-								)
+								}).pipe(Effect.map((res) => res[0]!))
 
 								// Update attachments with messageId if provided
 								if (attachmentIds && attachmentIds.length > 0) {
 									yield* Effect.forEach(attachmentIds, (attachmentId) =>
-										AttachmentRepo.update({
-											id: attachmentId,
-											messageId: createdMessage.id,
-										}).pipe(policyUse(AttachmentPolicy.canUpdate(attachmentId))),
+										Effect.gen(function* () {
+											yield* AttachmentPolicy.canUpdate(attachmentId)
+											yield* AttachmentRepo.update({
+												id: attachmentId,
+												messageId: createdMessage.id,
+											})
+										}),
 									)
 								}
 
@@ -79,10 +80,11 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
+								yield* MessagePolicy.canUpdate(id)
 								const updatedMessage = yield* MessageRepo.update({
 									id,
 									...payload,
-								}).pipe(policyUse(MessagePolicy.canUpdate(id)))
+								})
 
 								const txid = yield* generateTransactionId()
 
@@ -107,7 +109,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessageRepo.deleteById(id).pipe(policyUse(MessagePolicy.canDelete(id)))
+								yield* MessagePolicy.canDelete(id)
+								yield* MessageRepo.deleteById(id)
 
 								const txid = yield* generateTransactionId()
 

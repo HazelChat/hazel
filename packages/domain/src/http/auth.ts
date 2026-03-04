@@ -2,6 +2,7 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
 import { Schema } from "effect"
 import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "../errors"
 import { OrganizationId } from "@hazel/schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 export class AuthCallbackRequest extends Schema.Class<AuthCallbackRequest>("AuthCallbackRequest")({
 	code: Schema.String,
@@ -73,7 +74,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Get WorkOS authorization URL for authentication",
 					summary: "Initiate login flow",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.get("callback")`/callback`
@@ -92,7 +94,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Handle OAuth callback from WorkOS and set session cookie",
 					summary: "Process OAuth callback",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.get("logout")`/logout`
@@ -109,7 +112,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Clear session and logout user",
 					summary: "End user session",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.get("loginDesktop")`/login/desktop`
@@ -130,7 +134,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Initiate OAuth flow for desktop apps with web callback",
 					summary: "Desktop login flow",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("token")`/token`
@@ -145,7 +150,8 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Exchange authorization code for access token (desktop apps)",
 					summary: "Exchange code for token",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("refresh")`/refresh`
@@ -159,6 +165,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 					description: "Exchange refresh token for new access token (desktop apps)",
 					summary: "Refresh access token",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.prefix("/auth") {}

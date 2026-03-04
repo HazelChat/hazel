@@ -1,5 +1,5 @@
 import { and, Database, eq, inArray, ModelRepository, schema, type TransactionClient } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
 import { Effect } from "effect"
@@ -26,7 +26,7 @@ export class NotificationRepo extends Effect.Service<NotificationRepo>()("Notifi
 		 * Note: Authorization is handled at the handler level by verifying
 		 * the user is a member of the organization. The memberId parameter
 		 * ensures users can only delete their own notifications.
-		 * The caller must use withSystemActor to satisfy the policy requirement.
+		 * The caller is responsible for authorization.
 		 */
 		const deleteByMessageIds = (
 			messageIds: readonly MessageId[],
@@ -47,7 +47,6 @@ export class NotificationRepo extends Effect.Service<NotificationRepo>()("Notifi
 							)
 							.returning(),
 					),
-				policyRequire("Notification", "delete"),
 			)({ messageIds, memberId }, tx)
 
 		/**
@@ -57,24 +56,22 @@ export class NotificationRepo extends Effect.Service<NotificationRepo>()("Notifi
 		 * Note: Authorization is handled at the handler level by verifying
 		 * the user is a member of the channel. The memberId parameter
 		 * ensures users can only delete their own notifications.
-		 * The caller must use withSystemActor to satisfy the policy requirement.
+		 * The caller is responsible for authorization.
 		 */
 		const deleteByChannelId = (channelId: ChannelId, memberId: OrganizationMemberId, tx?: TxFn) =>
-			db.makeQuery(
-				(execute, data: { channelId: ChannelId; memberId: OrganizationMemberId }) =>
-					execute((client) =>
-						client
-							.delete(schema.notificationsTable)
-							.where(
-								and(
-									eq(schema.notificationsTable.targetedResourceId, data.channelId),
-									eq(schema.notificationsTable.targetedResourceType, "channel"),
-									eq(schema.notificationsTable.memberId, data.memberId),
-								),
-							)
-							.returning(),
-					),
-				policyRequire("Notification", "delete"),
+			db.makeQuery((execute, data: { channelId: ChannelId; memberId: OrganizationMemberId }) =>
+				execute((client) =>
+					client
+						.delete(schema.notificationsTable)
+						.where(
+							and(
+								eq(schema.notificationsTable.targetedResourceId, data.channelId),
+								eq(schema.notificationsTable.targetedResourceType, "channel"),
+								eq(schema.notificationsTable.memberId, data.memberId),
+							),
+						)
+						.returning(),
+				),
 			)({ channelId, memberId }, tx)
 
 		return {

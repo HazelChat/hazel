@@ -1,5 +1,5 @@
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, withSystemActor } from "@hazel/domain"
+import { ErrorUtils, policy } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
@@ -20,8 +20,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 					policyEntity,
 					"create",
 					Effect.fn(`${policyEntity}.create`)(function* (_actor) {
-						// Notifications are typically created by the system
-						// This could be restricted to system actors only
 						return yield* Effect.succeed(true)
 					}),
 				),
@@ -37,7 +35,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 						policyEntity,
 						"view",
 						Effect.fn(`${policyEntity}.view`)(function* (actor) {
-							// Get the member for this notification
 							const member = yield* organizationMemberRepo.findById(notification.memberId)
 
 							if (Option.isSome(member) && member.value.userId === actor.id) {
@@ -61,15 +58,14 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"update",
 							Effect.fn(`${policyEntity}.update`)(function* (actor) {
-								// Users can update their own notifications
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -93,15 +89,14 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								// Users can delete their own notifications
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -125,15 +120,14 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 							policyEntity,
 							"markAsRead",
 							Effect.fn(`${policyEntity}.markAsRead`)(function* (actor) {
-								// Users can mark their own notifications as read
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
 
-								// Check if actor is an admin/owner in the organization
-								const actorMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isSome(actorMember)) {
 									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
@@ -156,15 +150,14 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 						policyEntity,
 						"markAllAsRead",
 						Effect.fn(`${policyEntity}.markAllAsRead`)(function* (actor) {
-							// Users can mark all their own notifications as read
 							if (member.userId === actor.id) {
 								return yield* Effect.succeed(true)
 							}
 
-							// Check if actor is an admin/owner in the organization
-							const actorMember = yield* organizationMemberRepo
-								.findByOrgAndUser(member.organizationId, actor.id)
-								.pipe(withSystemActor)
+							const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+								member.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(actorMember)) {
 								return yield* Effect.succeed(

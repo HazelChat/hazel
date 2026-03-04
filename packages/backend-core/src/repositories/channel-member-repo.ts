@@ -9,7 +9,7 @@ import {
 	sql,
 	type TransactionClient,
 } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { ChannelMember } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
@@ -32,22 +32,20 @@ export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("Chan
 		// Extended method to find channel member by channel and user
 		const findByChannelAndUser = (channelId: ChannelId, userId: UserId, tx?: TxFn) =>
 			db
-				.makeQuery(
-					(execute, data: { channelId: ChannelId; userId: UserId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.channelMembersTable)
-								.where(
-									and(
-										eq(schema.channelMembersTable.channelId, data.channelId),
-										eq(schema.channelMembersTable.userId, data.userId),
-										isNull(schema.channelMembersTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					policyRequire("ChannelMember", "select"),
+				.makeQuery((execute, data: { channelId: ChannelId; userId: UserId }) =>
+					execute((client) =>
+						client
+							.select()
+							.from(schema.channelMembersTable)
+							.where(
+								and(
+									eq(schema.channelMembersTable.channelId, data.channelId),
+									eq(schema.channelMembersTable.userId, data.userId),
+									isNull(schema.channelMembersTable.deletedAt),
+								),
+							)
+							.limit(1),
+					),
 				)({ channelId, userId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
@@ -92,7 +90,6 @@ export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("Chan
 								)
 								.limit(1),
 						),
-					policyRequire("ChannelMember", "select"),
 				)({ userId1, userId2, organizationId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0]?.channel)))
 

@@ -22,6 +22,7 @@ import {
 	UserPresenceStatusRpcs,
 	UserRpcs,
 } from "@hazel/domain/rpc"
+import { validateRpcGroupScopes } from "@hazel/domain/scopes"
 import { Layer } from "effect"
 import { AttachmentRpcLive } from "./handlers/attachments"
 import { BotRpcLive } from "./handlers/bots"
@@ -47,6 +48,8 @@ import { UserRpcLive } from "./handlers/users"
 import { AuthMiddlewareLive } from "./middleware/auth"
 import { RpcLoggingMiddlewareLive } from "./middleware/logging"
 import { RpcLoggingMiddleware } from "./middleware/logging-class"
+import { ScopeInjectionMiddlewareLive } from "./middleware/scope-injection"
+import { ScopeInjectionMiddleware } from "@hazel/domain/rpc"
 
 /**
  * RPC Server Configuration
@@ -84,7 +87,43 @@ const BaseRpcs = MessageRpcs.merge(
 	CustomEmojiRpcs,
 )
 
-export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(RpcLoggingMiddleware)
+export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs)
+	.middleware(RpcLoggingMiddleware)
+	.middleware(ScopeInjectionMiddleware)
+
+// Startup validation: ensure all RPCs have RequiredScopes annotations
+const rpcGroups = [
+	["MessageRpcs", MessageRpcs],
+	["MessageReactionRpcs", MessageReactionRpcs],
+	["NotificationRpcs", NotificationRpcs],
+	["InvitationRpcs", InvitationRpcs],
+	["IntegrationRequestRpcs", IntegrationRequestRpcs],
+	["TypingIndicatorRpcs", TypingIndicatorRpcs],
+	["PinnedMessageRpcs", PinnedMessageRpcs],
+	["OrganizationRpcs", OrganizationRpcs],
+	["OrganizationMemberRpcs", OrganizationMemberRpcs],
+	["UserRpcs", UserRpcs],
+	["UserPresenceStatusRpcs", UserPresenceStatusRpcs],
+	["ChannelRpcs", ChannelRpcs],
+	["ChannelMemberRpcs", ChannelMemberRpcs],
+	["ChannelSectionRpcs", ChannelSectionRpcs],
+	["ChannelWebhookRpcs", ChannelWebhookRpcs],
+	["GitHubSubscriptionRpcs", GitHubSubscriptionRpcs],
+	["RssSubscriptionRpcs", RssSubscriptionRpcs],
+	["AttachmentRpcs", AttachmentRpcs],
+	["BotRpcs", BotRpcs],
+	["CustomEmojiRpcs", CustomEmojiRpcs],
+	["ChatSyncRpcs", ChatSyncRpcs],
+] as const
+
+for (const [name, group] of rpcGroups) {
+	const result = validateRpcGroupScopes(group.requests, name)
+	if (!result.valid) {
+		throw new Error(
+			`[RPC Scope Validation] Missing RequiredScopes annotation on: ${result.missing.join(", ")}`,
+		)
+	}
+}
 
 export const RpcServerLive = Layer.empty
 	.pipe(
@@ -112,4 +151,8 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(BotRpcLive),
 		Layer.provideMerge(CustomEmojiRpcLive),
 	)
-	.pipe(Layer.provideMerge(AuthMiddlewareLive), Layer.provideMerge(RpcLoggingMiddlewareLive))
+	.pipe(
+		Layer.provideMerge(AuthMiddlewareLive),
+		Layer.provideMerge(RpcLoggingMiddlewareLive),
+		Layer.provideMerge(ScopeInjectionMiddlewareLive),
+	)

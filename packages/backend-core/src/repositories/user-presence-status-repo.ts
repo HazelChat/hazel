@@ -9,7 +9,7 @@ import {
 	schema,
 	type TransactionClient,
 } from "@hazel/db"
-import { policyRequire } from "@hazel/domain"
+
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
 import { Effect, Option, type Schema } from "effect"
@@ -34,43 +34,39 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 			// Find status by user ID
 			const findByUserId = (userId: UserId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, _data) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.userPresenceStatusTable)
-									.where(eq(schema.userPresenceStatusTable.userId, userId))
-									.limit(1),
-							),
-						policyRequire("UserPresenceStatus", "select"),
+					.makeQuery((execute, _data) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.userPresenceStatusTable)
+								.where(eq(schema.userPresenceStatusTable.userId, userId))
+								.limit(1),
+						),
 					)({ userId }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
 			// Upsert user presence status
 			const upsertByUserId = (data: Schema.Schema.Type<typeof UserPresenceStatus.Insert>, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, input: typeof data) =>
-							execute((client) =>
-								client
-									.insert(schema.userPresenceStatusTable)
-									.values(input)
-									.onConflictDoUpdate({
-										target: schema.userPresenceStatusTable.userId,
-										set: {
-											status: input.status,
-											customMessage: input.customMessage,
-											statusEmoji: input.statusEmoji,
-											statusExpiresAt: input.statusExpiresAt,
-											activeChannelId: input.activeChannelId,
-											updatedAt: new Date(),
-											lastSeenAt: new Date(),
-										},
-									})
-									.returning(),
-							),
-						policyRequire("UserPresenceStatus", "create"),
+					.makeQuery((execute, input: typeof data) =>
+						execute((client) =>
+							client
+								.insert(schema.userPresenceStatusTable)
+								.values(input)
+								.onConflictDoUpdate({
+									target: schema.userPresenceStatusTable.userId,
+									set: {
+										status: input.status,
+										customMessage: input.customMessage,
+										statusEmoji: input.statusEmoji,
+										statusExpiresAt: input.statusExpiresAt,
+										activeChannelId: input.activeChannelId,
+										updatedAt: new Date(),
+										lastSeenAt: new Date(),
+									},
+								})
+								.returning(),
+						),
 					)(data, tx)
 					.pipe(Effect.map((results) => results[0]))
 
@@ -82,19 +78,17 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 				},
 				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(execute, _data) =>
-						execute((client) =>
-							client
-								.update(schema.userPresenceStatusTable)
-								.set({
-									activeChannelId: params.activeChannelId,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.userPresenceStatusTable.userId, params.userId))
-								.returning(),
-						),
-					policyRequire("UserPresenceStatus", "update"),
+				db.makeQuery((execute, _data) =>
+					execute((client) =>
+						client
+							.update(schema.userPresenceStatusTable)
+							.set({
+								activeChannelId: params.activeChannelId,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.userPresenceStatusTable.userId, params.userId))
+							.returning(),
+					),
 				)(params, tx)
 
 			// Update user status
@@ -106,37 +100,33 @@ export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRep
 				},
 				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(execute, _data) =>
-						execute((client) =>
-							client
-								.update(schema.userPresenceStatusTable)
-								.set({
-									status: params.status,
-									customMessage: params.customMessage,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.userPresenceStatusTable.userId, params.userId))
-								.returning(),
-						),
-					policyRequire("UserPresenceStatus", "update"),
+				db.makeQuery((execute, _data) =>
+					execute((client) =>
+						client
+							.update(schema.userPresenceStatusTable)
+							.set({
+								status: params.status,
+								customMessage: params.customMessage,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.userPresenceStatusTable.userId, params.userId))
+							.returning(),
+					),
 				)(params, tx)
 
 			// Update heartbeat timestamp (lightweight operation for presence tracking)
 			const updateHeartbeat = (userId: UserId, tx?: TxFn) =>
 				db
-					.makeQuery(
-						(execute, _data) =>
-							execute((client) =>
-								client
-									.update(schema.userPresenceStatusTable)
-									.set({
-										lastSeenAt: new Date(),
-									})
-									.where(eq(schema.userPresenceStatusTable.userId, userId))
-									.returning(),
-							),
-						policyRequire("UserPresenceStatus", "update"),
+					.makeQuery((execute, _data) =>
+						execute((client) =>
+							client
+								.update(schema.userPresenceStatusTable)
+								.set({
+									lastSeenAt: new Date(),
+								})
+								.where(eq(schema.userPresenceStatusTable.userId, userId))
+								.returning(),
+						),
 					)({ userId }, tx)
 					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 

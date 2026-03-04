@@ -26,8 +26,9 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { createCustomEmojiAction, deleteCustomEmojiAction, restoreCustomEmojiAction } from "~/db/actions"
-import { customEmojiCollection, organizationMemberCollection, userCollection } from "~/db/collections"
+import { customEmojiCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePermission } from "~/hooks/use-permission"
 import { ALLOWED_EMOJI_TYPES, MAX_EMOJI_SIZE, useUpload } from "~/hooks/use-upload"
 import { useAuth } from "~/lib/auth"
 import { cx } from "~/utils/cx"
@@ -58,7 +59,8 @@ function validateEmojiName(name: string): string | null {
 
 function CustomEmojisSettings() {
 	const { organizationId, organization } = useOrganization()
-	const { user, isLoading: isAuthLoading } = useAuth()
+	const { user } = useAuth()
+	const { isAdmin, isLoading: isPermissionsLoading } = usePermission()
 
 	const [deleteTarget, setDeleteTarget] = useState<{ id: CustomEmojiId; name: string } | null>(null)
 	const [restoreTarget, setRestoreTarget] = useState<{
@@ -106,22 +108,6 @@ function CustomEmojisSettings() {
 				})),
 		[organizationId],
 	)
-
-	// Check permissions
-	const { data: teamMembers, isLoading: isLoadingMembers } = useLiveQuery(
-		(q) =>
-			q
-				.from({ members: organizationMemberCollection })
-				.where(({ members }) => eq(members.organizationId, organizationId))
-				.innerJoin({ user: userCollection }, ({ members, user }) => eq(members.userId, user.id))
-				.where(({ user }) => eq(user.userType, "user"))
-				.select(({ members }) => ({ ...members })),
-		[organizationId],
-	)
-
-	const currentUserMember = teamMembers?.find((m) => m.userId === user?.id)
-	const isAdmin = currentUserMember?.role === "owner" || currentUserMember?.role === "admin"
-	const isPermissionsLoading = isAuthLoading || isLoadingMembers
 
 	// File selection handler (shared by FileTrigger and DropZone)
 	const processFile = useCallback((file: File) => {

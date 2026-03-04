@@ -12,6 +12,7 @@ import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChatSyncChannelLink, ChatSyncConnection } from "../models"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 export class ChatSyncConnectionResponse extends Schema.Class<ChatSyncConnectionResponse>(
 	"ChatSyncConnectionResponse",
@@ -120,7 +121,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "Create a provider-agnostic chat sync connection (Discord, Slack, etc.)",
 					summary: "Create sync connection",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
 		HttpApiEndpoint.get("listConnections", `/:orgId/connections`)
@@ -134,7 +136,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "List chat sync connections for an organization",
 					summary: "List sync connections",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.del("deleteConnection", `/connections/:syncConnectionId`)
@@ -149,7 +152,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "Soft-delete a chat sync connection",
 					summary: "Delete sync connection",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
 		HttpApiEndpoint.post("createChannelLink", `/connections/:syncConnectionId/channel-links`)
@@ -166,7 +170,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "Link a Hazel channel to an external provider channel",
 					summary: "Create channel link",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
 		HttpApiEndpoint.get("listChannelLinks", `/connections/:syncConnectionId/channel-links`)
@@ -181,7 +186,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "List channel links for a sync connection",
 					summary: "List channel links",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
 		HttpApiEndpoint.del("deleteChannelLink", `/channel-links/:syncChannelLinkId`)
@@ -196,7 +202,8 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 					description: "Soft-delete a chat sync channel link",
 					summary: "Delete channel link",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.prefix("/chat-sync")
 	.middleware(CurrentUser.Authorization) {}

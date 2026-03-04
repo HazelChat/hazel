@@ -1,8 +1,9 @@
 import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, policyCompose, withSystemActor } from "@hazel/domain"
-import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option, pipe } from "effect"
-import { isAdminOrOwner } from "../lib/policy-utils"
+import { ErrorUtils, policy } from "@hazel/domain"
+import type { InvitationId, OrganizationId } from "@hazel/schema"
+import { Effect, Option } from "effect"
+import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
+import { OrgResolver } from "../services/org-resolver"
 
 /**
  * @effect-leakable-service
@@ -14,6 +15,7 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 		const invitationRepo = yield* InvitationRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const userRepo = yield* UserRepo
+		const orgResolver = yield* OrgResolver
 
 		const canRead = (_invitationId: InvitationId) =>
 			ErrorUtils.refailUnauthorized(
@@ -34,21 +36,8 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 				policyEntity,
 				"create",
 			)(
-				policy(
-					policyEntity,
-					"create",
-					Effect.fn(`${policyEntity}.create`)(function* (actor) {
-						// Only organization admins can create invitations
-						const orgMember = yield* organizationMemberRepo
-							.findByOrgAndUser(organizationId, actor.id)
-							.pipe(withSystemActor)
-
-						if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
-							return yield* Effect.succeed(true)
-						}
-
-						return yield* Effect.succeed(false)
-					}),
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "create"),
 				),
 			)
 
@@ -62,15 +51,16 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 						policyEntity,
 						"update",
 						Effect.fn(`${policyEntity}.update`)(function* (actor) {
-							// Invitation creator can update it
+							// Creator can update
 							if (actor.id === invitation.invitedBy) {
 								return yield* Effect.succeed(true)
 							}
 
-							// Organization admins and owners can update any invitation
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(invitation.organizationId, actor.id)
-								.pipe(withSystemActor)
+							// Org admin/owner can update
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								invitation.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -92,15 +82,16 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 						policyEntity,
 						"delete",
 						Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-							// Invitation creator can delete it
+							// Creator can delete
 							if (actor.id === invitation.invitedBy) {
 								return yield* Effect.succeed(true)
 							}
 
-							// Organization admins and owners can delete any invitation
-							const orgMember = yield* organizationMemberRepo
-								.findByOrgAndUser(invitation.organizationId, actor.id)
-								.pipe(withSystemActor)
+							// Org admin/owner can delete
+							const orgMember = yield* organizationMemberRepo.findByOrgAndUser(
+								invitation.organizationId,
+								actor.id,
+							)
 
 							if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
 								return yield* Effect.succeed(true)
@@ -122,15 +113,12 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 						policyEntity,
 						"accept",
 						Effect.fn(`${policyEntity}.accept`)(function* (actor) {
-							// Only the invited user can accept the invitation
-							// Check if the actor's email matches the invitation email
-							const user = yield* userRepo.findById(actor.id).pipe(withSystemActor)
+							const user = yield* userRepo.findById(actor.id)
 
 							if (Option.isNone(user)) {
 								return yield* Effect.succeed(false)
 							}
 
-							// Check if user's email matches the invitation email
 							if (user.value.email === invitation.email) {
 								return yield* Effect.succeed(true)
 							}
@@ -146,26 +134,18 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 				policyEntity,
 				"list",
 			)(
-				policy(
-					policyEntity,
-					"list",
-					Effect.fn(`${policyEntity}.list`)(function* (actor) {
-						// Organization admins and owners can list invitations
-						const orgMember = yield* organizationMemberRepo
-							.findByOrgAndUser(organizationId, actor.id)
-							.pipe(withSystemActor)
-
-						if (Option.isSome(orgMember) && isAdminOrOwner(orgMember.value.role)) {
-							return yield* Effect.succeed(true)
-						}
-
-						return yield* Effect.succeed(false)
-					}),
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "list"),
 				),
 			)
 
 		return { canRead, canCreate, canUpdate, canDelete, canAccept, canList } as const
 	}),
-	dependencies: [InvitationRepo.Default, OrganizationMemberRepo.Default, UserRepo.Default],
+	dependencies: [
+		InvitationRepo.Default,
+		OrganizationMemberRepo.Default,
+		UserRepo.Default,
+		OrgResolver.Default,
+	],
 	accessors: true,
 }) {}

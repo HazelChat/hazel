@@ -6,7 +6,6 @@ import {
 	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
-import { withSystemActor } from "@hazel/domain"
 import { Effect, Layer, Logger } from "effect"
 import { DatabaseLive } from "../services/database"
 
@@ -25,7 +24,7 @@ const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOSClient.Default).pipe(
 const syncWorkos = Effect.gen(function* () {
 	const workOsSync = yield* WorkOSSync
 
-	yield* workOsSync.syncAll.pipe(withSystemActor)
+	yield* workOsSync.syncAll
 }).pipe(Effect.provide(MainLive), Effect.provide(Logger.pretty))
 
 Effect.runPromise(syncWorkos)

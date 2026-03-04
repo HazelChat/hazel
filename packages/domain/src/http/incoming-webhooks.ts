@@ -3,6 +3,7 @@ import { ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError } from "../errors"
 import { MessageEmbed } from "../models/message-embed-schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // Incoming webhook payload (Discord-style)
 export class IncomingWebhookPayload extends Schema.Class<IncomingWebhookPayload>("IncomingWebhookPayload")({
@@ -148,7 +149,8 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 						"Post a message to a channel via webhook. Supports plain text content and Discord-style embeds.",
 					summary: "Execute webhook to create message",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("executeOpenStatus", `/:webhookId/:token/openstatus`)
@@ -171,7 +173,8 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 						"Receive status alerts from OpenStatus and post them as rich embeds to a channel.",
 					summary: "Process OpenStatus alert",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.add(
 		HttpApiEndpoint.post("executeRailway", `/:webhookId/:token/railway`)
@@ -194,6 +197,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",
 					summary: "Process Railway event",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.prefix("/webhooks/incoming") {}

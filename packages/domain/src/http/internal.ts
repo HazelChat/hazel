@@ -3,6 +3,7 @@ import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvalidBearerTokenError } from "../session-errors"
 import { BotId, OrganizationId, UserId } from "@hazel/schema"
+import { RequiredScopes } from "../scopes/required-scopes"
 
 // ============================================================================
 // Bot Token Validation (for Actor authentication)
@@ -38,6 +39,7 @@ export class InternalApiGroup extends HttpApiGroup.make("internal")
 						"Validate a bot token and return the bot identity. Used by actors for authentication.",
 					summary: "Validate bot token for actors",
 				}),
-			),
+			)
+			.annotate(RequiredScopes, []),
 	)
 	.prefix("/internal") {}

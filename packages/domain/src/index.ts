@@ -13,6 +13,8 @@ export * as Http from "./http"
 export * as Integrations from "./integrations"
 // Policy utilities
 export * from "./policy"
+// Scope-based authorization
+export * as Scopes from "./scopes"
 export * from "./rate-limit-errors"
 // RPC contracts
 export * as Rpc from "./rpc"

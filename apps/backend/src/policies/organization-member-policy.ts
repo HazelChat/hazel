@@ -1,14 +1,17 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy, policyCompose, withSystemActor } from "@hazel/domain"
-import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Effect, Option, pipe } from "effect"
+import { ErrorUtils, policy } from "@hazel/domain"
+import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
+import { Effect, Option } from "effect"
+import { OrgResolver } from "../services/org-resolver"
 
 export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberPolicy>()(
 	"OrganizationMemberPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
-			const organizationMemberRepo = yield* OrganizationMemberRepo
 			const policyEntity = "OrganizationMember" as const
+
+			const organizationMemberRepo = yield* OrganizationMemberRepo
+			const orgResolver = yield* OrgResolver
 
 			const canCreate = (organizationId: OrganizationId) =>
 				ErrorUtils.refailUnauthorized(
@@ -19,18 +22,18 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 						policyEntity,
 						"create",
 						Effect.fn(`${policyEntity}.create`)(function* (actor) {
-							// Check if user is already a member or admin of the organization
-							const currentMember = yield* organizationMemberRepo
-								.findByOrgAndUser(organizationId, actor.id)
-								.pipe(withSystemActor)
+							// Check if user is already a member
+							const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+								organizationId,
+								actor.id,
+							)
 
-							// If user is already a member, they can't create another membership
+							// If already a member, can't create another membership
 							if (Option.isSome(currentMember)) {
 								return yield* Effect.succeed(false)
 							}
 
-							// For now, allow users to join organizations
-							// This might be restricted to invitation-based flow later
+							// Allow users to join organizations
 							return yield* Effect.succeed(true)
 						}),
 					),
@@ -46,21 +49,22 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 							policyEntity,
 							"update",
 							Effect.fn(`${policyEntity}.update`)(function* (actor) {
+								// Self-update always allowed
 								if (actor.id === member.userId) {
 									return yield* Effect.succeed(true)
 								}
 
-								const currentMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								// Admins can update other members
+								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)
 								}
 
-								const currentMemberValue = currentMember.value
-
-								return yield* Effect.succeed(currentMemberValue.role === "admin")
+								return yield* Effect.succeed(currentMember.value.role === "admin")
 							}),
 						),
 					),
@@ -76,21 +80,22 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 							policyEntity,
 							"delete",
 							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
+								// Self-removal always allowed
 								if (actor.id === member.userId) {
 									return yield* Effect.succeed(true)
 								}
 
-								const currentMember = yield* organizationMemberRepo
-									.findByOrgAndUser(member.organizationId, actor.id)
-									.pipe(withSystemActor)
+								// Admins can remove members
+								const currentMember = yield* organizationMemberRepo.findByOrgAndUser(
+									member.organizationId,
+									actor.id,
+								)
 
 								if (Option.isNone(currentMember)) {
 									return yield* Effect.succeed(false)
 								}
 
-								const currentMemberValue = currentMember.value
-
-								return yield* Effect.succeed(currentMemberValue.role === "admin")
+								return yield* Effect.succeed(currentMember.value.role === "admin")
 							}),
 						),
 					),
@@ -98,7 +103,7 @@ export class OrganizationMemberPolicy extends Effect.Service<OrganizationMemberP
 
 			return { canCreate, canUpdate, canDelete } as const
 		}),
-		dependencies: [OrganizationMemberRepo.Default],
+		dependencies: [OrganizationMemberRepo.Default, OrgResolver.Default],
 		accessors: true,
 	},
 ) {}

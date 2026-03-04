@@ -1,12 +1,6 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import {
-	CurrentUser,
-	InternalServerError,
-	policyUse,
-	withRemapDbErrors,
-	withSystemActor,
-} from "@hazel/domain"
+import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import { OrganizationMemberNotFoundError, OrganizationMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -37,14 +31,12 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
+							yield* OrganizationMemberPolicy.canCreate(payload.organizationId)
 							const createdOrganizationMember = yield* OrganizationMemberRepo.insert({
 								...payload,
 								userId: user.id,
 								deletedAt: null,
-							}).pipe(
-								Effect.map((res) => res[0]!),
-								policyUse(OrganizationMemberPolicy.canCreate(payload.organizationId)),
-							)
+							}).pipe(Effect.map((res) => res[0]!))
 
 							yield* ChannelAccessSyncService.syncUserInOrganization(
 								createdOrganizationMember.userId,
@@ -65,10 +57,11 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* OrganizationMemberPolicy.canUpdate(id)
 							const updatedOrganizationMember = yield* OrganizationMemberRepo.update({
 								id,
 								...payload,
-							}).pipe(policyUse(OrganizationMemberPolicy.canUpdate(id)))
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -84,10 +77,9 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
+							yield* OrganizationMemberPolicy.canUpdate(id)
 							const updatedOrganizationMemberOption =
-								yield* OrganizationMemberRepo.updateMetadata(id, metadata).pipe(
-									policyUse(OrganizationMemberPolicy.canUpdate(id)),
-								)
+								yield* OrganizationMemberRepo.updateMetadata(id, metadata)
 
 							const updatedOrganizationMember = yield* Option.match(
 								updatedOrganizationMemberOption,
@@ -116,12 +108,10 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							const deletedMemberOption =
-								yield* OrganizationMemberRepo.findById(id).pipe(withSystemActor)
+							yield* OrganizationMemberPolicy.canDelete(id)
+							const deletedMemberOption = yield* OrganizationMemberRepo.findById(id)
 
-							yield* OrganizationMemberRepo.deleteById(id).pipe(
-								policyUse(OrganizationMemberPolicy.canDelete(id)),
-							)
+							yield* OrganizationMemberRepo.deleteById(id)
 
 							if (Option.isSome(deletedMemberOption)) {
 								yield* ChannelAccessSyncService.syncUserInOrganization(
