@@ -13,6 +13,7 @@ import {
 } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { withAnnotatedScope } from "../../lib/policy-utils"
 import { ChannelWebhookPolicy } from "../../policies/channel-webhook-policy"
 import { OrgResolver } from "../../services/org-resolver"
 import { IntegrationBotService } from "../../services/integrations/integration-bot-service"
@@ -215,12 +216,6 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 
 							yield* ChannelWebhookPolicy.canDelete(id)
 
-							// Check webhook exists
-							const webhookOption = yield* webhookRepo.findById(id)
-							if (Option.isNone(webhookOption)) {
-								return yield* Effect.fail(new ChannelWebhookNotFoundError({ webhookId: id }))
-							}
-
 							// Soft delete webhook only - bot user cleanup can be handled separately
 							// (e.g., by admin or background job) since integrations may create webhooks
 							// and users shouldn't need permission to delete integration-created bot users
@@ -243,19 +238,18 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						return new ChannelWebhookListResponse({ data: [] })
 					}
 
+					const organizationId = user.organizationId
+
 					yield* ErrorUtils.refailUnauthorized(
 						"ChannelWebhook",
 						"list",
 					)(
-						OrgResolver.requireScope(
-							user.organizationId,
-							"channel-webhooks:read",
-							"ChannelWebhook",
-							"list",
+						withAnnotatedScope((scope) =>
+							OrgResolver.requireScope(organizationId, scope, "ChannelWebhook", "list"),
 						),
 					)
 
-					const webhooks = yield* webhookRepo.findByOrganization(user.organizationId)
+					const webhooks = yield* webhookRepo.findByOrganization(organizationId)
 
 					return new ChannelWebhookListResponse({ data: webhooks })
 				}).pipe(withRemapDbErrors("ChannelWebhook", "select")),

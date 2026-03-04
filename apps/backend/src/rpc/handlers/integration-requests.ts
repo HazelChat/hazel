@@ -3,6 +3,7 @@ import { CurrentUser, ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import { IntegrationRequestRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
+import { withAnnotatedScope } from "../../lib/policy-utils"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { OrgResolver } from "../../services/org-resolver"
 
@@ -27,11 +28,13 @@ export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 								"IntegrationRequest",
 								"create",
 							)(
-								orgResolver.requireScope(
-									payload.organizationId,
-									"integration-connections:write",
-									"IntegrationRequest",
-									"create",
+								withAnnotatedScope((scope) =>
+									orgResolver.requireScope(
+										payload.organizationId,
+										scope,
+										"IntegrationRequest",
+										"create",
+									),
 								),
 							)
 

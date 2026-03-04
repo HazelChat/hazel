@@ -123,14 +123,14 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* RssSubscriptionPolicy.canUpdate(id)
-
 							const subscriptionOption = yield* subscriptionRepo.findById(id)
 							if (Option.isNone(subscriptionOption)) {
 								return yield* Effect.fail(
 									new RssSubscriptionNotFoundError({ subscriptionId: id }),
 								)
 							}
+
+							yield* RssSubscriptionPolicy.canUpdate(id)
 
 							const [updatedSubscription] = yield* subscriptionRepo.updateSettings(id, {
 								isEnabled: payload.isEnabled,
@@ -151,14 +151,14 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* RssSubscriptionPolicy.canDelete(id)
-
 							const subscriptionOption = yield* subscriptionRepo.findById(id)
 							if (Option.isNone(subscriptionOption)) {
 								return yield* Effect.fail(
 									new RssSubscriptionNotFoundError({ subscriptionId: id }),
 								)
 							}
+
+							yield* RssSubscriptionPolicy.canDelete(id)
 
 							yield* subscriptionRepo.softDelete(id)
 

@@ -3,7 +3,6 @@ import { ErrorUtils, policy } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
-import { OrgResolver } from "../services/org-resolver"
 
 export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("NotificationPolicy/Policy", {
 	effect: Effect.gen(function* () {
@@ -11,7 +10,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 
 		const notificationRepo = yield* NotificationRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
-		const orgResolver = yield* OrgResolver
 
 		const canCreate = (_memberId: OrganizationMemberId) =>
 			ErrorUtils.refailUnauthorized(
@@ -175,6 +173,6 @@ export class NotificationPolicy extends Effect.Service<NotificationPolicy>()("No
 
 		return { canCreate, canView, canUpdate, canDelete, canMarkAsRead, canMarkAllAsRead } as const
 	}),
-	dependencies: [NotificationRepo.Default, OrganizationMemberRepo.Default, OrgResolver.Default],
+	dependencies: [NotificationRepo.Default, OrganizationMemberRepo.Default],
 	accessors: true,
 }) {}

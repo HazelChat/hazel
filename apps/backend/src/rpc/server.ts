@@ -119,7 +119,7 @@ const rpcGroups = [
 for (const [name, group] of rpcGroups) {
 	const result = validateRpcGroupScopes(group.requests, name)
 	if (!result.valid) {
-		console.warn(
+		throw new Error(
 			`[RPC Scope Validation] Missing RequiredScopes annotation on: ${result.missing.join(", ")}`,
 		)
 	}

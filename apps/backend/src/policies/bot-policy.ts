@@ -45,7 +45,7 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 									orgResolver.requireAdminOrOwner(orgId, scope, policyEntity, "select"),
 								).pipe(
 									Effect.map(() => true),
-									Effect.catchAll(() => Effect.succeed(false)),
+									Effect.catchTag("PermissionError", () => Effect.succeed(false)),
 								)
 							}
 

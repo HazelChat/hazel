@@ -327,7 +327,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const org = orgOption.value
 
 					// Count members for this organization
-					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id).pipe()
+					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id)
 
 					return {
 						id: org.id,

@@ -6,6 +6,7 @@ import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
+import { withAnnotatedScope } from "../../lib/policy-utils"
 import { ChannelSectionPolicy } from "../../policies/channel-section-policy"
 import { OrgResolver } from "../../services/org-resolver"
 
@@ -165,11 +166,13 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 									"ChannelSection",
 									"moveChannel",
 								)(
-									OrgResolver.requireAdminOrOwner(
-										channel.value.organizationId,
-										"channel-sections:write",
-										"ChannelSection",
-										"moveChannel",
+									withAnnotatedScope((scope) =>
+										OrgResolver.requireAdminOrOwner(
+											channel.value.organizationId,
+											scope,
+											"ChannelSection",
+											"moveChannel",
+										),
 									),
 								)
 							}
