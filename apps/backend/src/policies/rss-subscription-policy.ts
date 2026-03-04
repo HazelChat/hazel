@@ -2,6 +2,7 @@ import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
@@ -21,11 +22,13 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 					"create",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"rss-subscriptions:write",
-							policyEntity,
-							"create",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"create",
+							),
 						),
 					),
 				)
@@ -36,11 +39,13 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 					"select",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"rss-subscriptions:read",
-							policyEntity,
-							"select",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"select",
+							),
 						),
 					),
 				)
@@ -51,11 +56,13 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 					"update",
 				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						orgResolver.requireAdminOrOwner(
-							subscription.organizationId,
-							"rss-subscriptions:write",
-							policyEntity,
-							"update",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"update",
+							),
 						),
 					),
 				)
@@ -66,11 +73,13 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 					"delete",
 				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						orgResolver.requireAdminOrOwner(
-							subscription.organizationId,
-							"rss-subscriptions:write",
-							policyEntity,
-							"delete",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"delete",
+							),
 						),
 					),
 				)
@@ -80,11 +89,8 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 					policyEntity,
 					"select",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"rss-subscriptions:read",
-						policyEntity,
-						"select",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "select"),
 					),
 				)
 

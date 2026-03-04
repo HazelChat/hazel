@@ -2,6 +2,7 @@ import { ChannelRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolicy/Policy", {
@@ -15,7 +16,11 @@ export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolic
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"create",
-			)(orgResolver.requireScope(organizationId, "channels:write", policyEntity, "create"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireScope(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canUpdate = (id: ChannelId) =>
 			ErrorUtils.refailUnauthorized(
@@ -23,11 +28,13 @@ export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolic
 				"update",
 			)(
 				channelRepo.with(id, (channel) =>
-					orgResolver.requireAdminOrOwner(
-						channel.organizationId,
-						"channels:write",
-						policyEntity,
-						"update",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(
+							channel.organizationId,
+							scope,
+							policyEntity,
+							"update",
+						),
 					),
 				),
 			)
@@ -38,11 +45,13 @@ export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolic
 				"delete",
 			)(
 				channelRepo.with(id, (channel) =>
-					orgResolver.requireAdminOrOwner(
-						channel.organizationId,
-						"channels:write",
-						policyEntity,
-						"delete",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(
+							channel.organizationId,
+							scope,
+							policyEntity,
+							"delete",
+						),
 					),
 				),
 			)

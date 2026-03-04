@@ -2,7 +2,7 @@ import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { InvitationId, OrganizationId } from "@hazel/schema"
 import { Effect, Option } from "effect"
-import { isAdminOrOwner } from "../lib/policy-utils"
+import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /**
@@ -35,7 +35,11 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"create",
-			)(orgResolver.requireAdminOrOwner(organizationId, "invitations:write", policyEntity, "create"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canUpdate = (id: InvitationId) =>
 			ErrorUtils.refailUnauthorized(
@@ -129,7 +133,11 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"list",
-			)(orgResolver.requireAdminOrOwner(organizationId, "invitations:read", policyEntity, "list"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "list"),
+				),
+			)
 
 		return { canRead, canCreate, canUpdate, canDelete, canAccept, canList } as const
 	}),

@@ -2,7 +2,7 @@ import { ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, MessageId } from "@hazel/schema"
 import { Effect, Option } from "effect"
-import { isAdminOrOwner } from "../lib/policy-utils"
+import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolicy/Policy", {
@@ -18,13 +18,21 @@ export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolic
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"create",
-			)(orgResolver.fromChannelWithAccess(channelId, "messages:write", policyEntity, "create"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.fromChannelWithAccess(channelId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canRead = (channelId: ChannelId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"read",
-			)(orgResolver.fromChannelWithAccess(channelId, "messages:read", policyEntity, "read"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.fromChannelWithAccess(channelId, scope, policyEntity, "read"),
+				),
+			)
 
 		const canUpdate = (id: MessageId) =>
 			ErrorUtils.refailUnauthorized(

@@ -1,5 +1,7 @@
 import { CurrentUser, ErrorUtils, policy } from "@hazel/domain"
-import { Effect } from "effect"
+import type { ApiScope } from "@hazel/domain/scopes"
+import { CurrentRpcScopes } from "@hazel/domain/scopes"
+import { Effect, FiberRef } from "effect"
 
 export type OrganizationRole = "admin" | "member" | "owner"
 
@@ -27,3 +29,32 @@ export const withPolicyUnauthorized = <A, E, R>(
 	action: string,
 	effect: Effect.Effect<A, E, R>,
 ) => ErrorUtils.refailUnauthorized(entity, action)(effect)
+
+/**
+ * Reads the annotated scope from CurrentRpcScopes (injected by ScopeInjectionMiddleware)
+ * and passes it to the given function. This bridges the RPC annotation to OrgResolver calls,
+ * ensuring the enforced scope always matches the declared annotation.
+ *
+ * Usage:
+ * ```typescript
+ * withAnnotatedScope((scope) =>
+ *   orgResolver.requireScope(organizationId, scope, entity, action)
+ * )
+ * ```
+ */
+export const withAnnotatedScope = <A, E, R>(
+	fn: (scope: ApiScope) => Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> =>
+	Effect.flatMap(FiberRef.get(CurrentRpcScopes), (scopes) => {
+		if (scopes.length === 0) {
+			return Effect.die(
+				new Error("No RequiredScopes annotation on this RPC — cannot resolve annotated scope"),
+			)
+		}
+		if (scopes.length > 1) {
+			return Effect.die(
+				new Error(`withAnnotatedScope only supports single-scope RPCs; got [${scopes.join(", ")}]`),
+			)
+		}
+		return fn(scopes[0]!)
+	})

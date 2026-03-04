@@ -1,6 +1,6 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"
-import { canPerform, RPC_SCOPE_MAP } from "@hazel/domain/scopes"
+import { canPerform, RPC_SCOPE_MAP, type RpcActionName } from "@hazel/domain/scopes"
 import type { OrganizationMember } from "@hazel/domain/models"
 import { organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
@@ -51,9 +51,9 @@ export function usePermission() {
 
 	const can = useMemo(() => {
 		if (!role) {
-			return (_action: string) => false
+			return (_action: RpcActionName) => false
 		}
-		return (action: string) => canPerform(RPC_SCOPE_MAP, role, action)
+		return (action: RpcActionName) => canPerform(RPC_SCOPE_MAP, role, action)
 	}, [role])
 
 	return {

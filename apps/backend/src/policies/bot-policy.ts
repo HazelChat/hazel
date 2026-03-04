@@ -2,6 +2,7 @@ import { BotRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { BotId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
@@ -16,7 +17,11 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"create",
-			)(orgResolver.requireScope(organizationId, "bots:write", policyEntity, "create"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireScope(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canRead = (botId: BotId) =>
 			ErrorUtils.refailUnauthorized(
@@ -34,18 +39,14 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 							}
 
 							// Org admin can read bots in their org if installed
-							if (actor.organizationId) {
-								return yield* orgResolver
-									.requireAdminOrOwner(
-										actor.organizationId,
-										"bots:read",
-										policyEntity,
-										"select",
-									)
-									.pipe(
-										Effect.map(() => true),
-										Effect.catchAll(() => Effect.succeed(false)),
-									)
+							const orgId = actor.organizationId
+							if (orgId) {
+								return yield* withAnnotatedScope((scope) =>
+									orgResolver.requireAdminOrOwner(orgId, scope, policyEntity, "select"),
+								).pipe(
+									Effect.map(() => true),
+									Effect.catchAll(() => Effect.succeed(false)),
+								)
 							}
 
 							return false
@@ -90,13 +91,21 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"install",
-			)(orgResolver.requireAdminOrOwner(organizationId, "bots:write", policyEntity, "install"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "install"),
+				),
+			)
 
 		const canUninstall = (organizationId: OrganizationId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"uninstall",
-			)(orgResolver.requireAdminOrOwner(organizationId, "bots:write", policyEntity, "uninstall"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "uninstall"),
+				),
+			)
 
 		return { canCreate, canRead, canUpdate, canDelete, canInstall, canUninstall } as const
 	}),

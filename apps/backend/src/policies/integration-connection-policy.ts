@@ -1,6 +1,7 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConnectionPolicy>()(
@@ -16,11 +17,8 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 					policyEntity,
 					"select",
 				)(
-					orgResolver.requireScope(
-						organizationId,
-						"integration-connections:read",
-						policyEntity,
-						"select",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireScope(organizationId, scope, policyEntity, "select"),
 					),
 				)
 
@@ -29,11 +27,8 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 					policyEntity,
 					"insert",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"integration-connections:write",
-						policyEntity,
-						"insert",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "insert"),
 					),
 				)
 
@@ -42,11 +37,8 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 					policyEntity,
 					"update",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"integration-connections:write",
-						policyEntity,
-						"update",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "update"),
 					),
 				)
 
@@ -55,11 +47,8 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 					policyEntity,
 					"delete",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"integration-connections:write",
-						policyEntity,
-						"delete",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "delete"),
 					),
 				)
 

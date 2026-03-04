@@ -2,6 +2,7 @@ import { ChannelRepo, GitHubSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
@@ -21,11 +22,13 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 					"create",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"github-subscriptions:write",
-							policyEntity,
-							"create",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"create",
+							),
 						),
 					),
 				)
@@ -36,11 +39,13 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 					"select",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"github-subscriptions:read",
-							policyEntity,
-							"select",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"select",
+							),
 						),
 					),
 				)
@@ -51,11 +56,13 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 					"update",
 				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						orgResolver.requireAdminOrOwner(
-							subscription.organizationId,
-							"github-subscriptions:write",
-							policyEntity,
-							"update",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"update",
+							),
 						),
 					),
 				)
@@ -66,11 +73,13 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 					"delete",
 				)(
 					subscriptionRepo.with(subscriptionId, (subscription) =>
-						orgResolver.requireAdminOrOwner(
-							subscription.organizationId,
-							"github-subscriptions:write",
-							policyEntity,
-							"delete",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								subscription.organizationId,
+								scope,
+								policyEntity,
+								"delete",
+							),
 						),
 					),
 				)
@@ -80,11 +89,8 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 					policyEntity,
 					"select",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"github-subscriptions:read",
-						policyEntity,
-						"select",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "select"),
 					),
 				)
 

@@ -1,3 +1,4 @@
+import type { RpcActionName } from "./action-names"
 import type { ApiScope } from "./api-scope"
 import { scopesForRole } from "./role-scopes"
 import type { ScopeMap } from "./scope-map"
@@ -14,7 +15,7 @@ import type { ScopeMap } from "./scope-map"
 export const checkPermission = (
 	scopeMap: ScopeMap,
 	role: "owner" | "admin" | "member",
-	action: string,
+	action: RpcActionName,
 ): { allowed: boolean; missingScopes: ReadonlyArray<ApiScope> } => {
 	const requiredScopes = scopeMap[action]
 	if (requiredScopes === undefined) {
@@ -33,5 +34,8 @@ export const checkPermission = (
 /**
  * Convenience function: returns true if the role can perform the action.
  */
-export const canPerform = (scopeMap: ScopeMap, role: "owner" | "admin" | "member", action: string): boolean =>
-	checkPermission(scopeMap, role, action).allowed
+export const canPerform = (
+	scopeMap: ScopeMap,
+	role: "owner" | "admin" | "member",
+	action: RpcActionName,
+): boolean => checkPermission(scopeMap, role, action).allowed

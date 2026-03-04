@@ -2,6 +2,7 @@ import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
@@ -21,11 +22,13 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 					"create",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"channel-webhooks:write",
-							policyEntity,
-							"create",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"create",
+							),
 						),
 					),
 				)
@@ -36,11 +39,13 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 					"select",
 				)(
 					channelRepo.with(channelId, (channel) =>
-						orgResolver.requireAdminOrOwner(
-							channel.organizationId,
-							"channel-webhooks:read",
-							policyEntity,
-							"select",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								channel.organizationId,
+								scope,
+								policyEntity,
+								"select",
+							),
 						),
 					),
 				)
@@ -51,11 +56,13 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 					"update",
 				)(
 					webhookRepo.with(webhookId, (webhook) =>
-						orgResolver.requireAdminOrOwner(
-							webhook.organizationId,
-							"channel-webhooks:write",
-							policyEntity,
-							"update",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								webhook.organizationId,
+								scope,
+								policyEntity,
+								"update",
+							),
 						),
 					),
 				)
@@ -66,11 +73,13 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 					"delete",
 				)(
 					webhookRepo.with(webhookId, (webhook) =>
-						orgResolver.requireAdminOrOwner(
-							webhook.organizationId,
-							"channel-webhooks:write",
-							policyEntity,
-							"delete",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								webhook.organizationId,
+								scope,
+								policyEntity,
+								"delete",
+							),
 						),
 					),
 				)

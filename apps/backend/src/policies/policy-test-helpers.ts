@@ -1,7 +1,9 @@
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { CurrentUser } from "@hazel/domain"
+import type { ApiScope } from "@hazel/domain/scopes"
+import { CurrentRpcScopes } from "@hazel/domain/scopes"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, Option } from "effect"
+import { Effect, FiberRef, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver"
 
 export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
@@ -26,9 +28,15 @@ export const runWithActorEither = <A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 	layer: Layer.Layer<any, any, never>,
 	actor: CurrentUser.Schema = makeActor(),
+	scopes: ReadonlyArray<ApiScope> = ["messages:read"],
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.either),
+		effect.pipe(
+			Effect.locally(CurrentRpcScopes, scopes),
+			Effect.provide(layer),
+			Effect.provideService(CurrentUser.Context, actor),
+			Effect.either,
+		),
 	)
 
 export const makeEntityNotFound = (entity = "Entity") =>

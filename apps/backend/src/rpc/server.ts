@@ -48,6 +48,8 @@ import { UserRpcLive } from "./handlers/users"
 import { AuthMiddlewareLive } from "./middleware/auth"
 import { RpcLoggingMiddlewareLive } from "./middleware/logging"
 import { RpcLoggingMiddleware } from "./middleware/logging-class"
+import { ScopeInjectionMiddlewareLive } from "./middleware/scope-injection"
+import { ScopeInjectionMiddleware } from "@hazel/domain/rpc"
 
 /**
  * RPC Server Configuration
@@ -85,7 +87,9 @@ const BaseRpcs = MessageRpcs.merge(
 	CustomEmojiRpcs,
 )
 
-export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(RpcLoggingMiddleware)
+export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs)
+	.middleware(RpcLoggingMiddleware)
+	.middleware(ScopeInjectionMiddleware)
 
 // Startup validation: ensure all RPCs have RequiredScopes annotations
 const rpcGroups = [
@@ -147,4 +151,8 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(BotRpcLive),
 		Layer.provideMerge(CustomEmojiRpcLive),
 	)
-	.pipe(Layer.provideMerge(AuthMiddlewareLive), Layer.provideMerge(RpcLoggingMiddlewareLive))
+	.pipe(
+		Layer.provideMerge(AuthMiddlewareLive),
+		Layer.provideMerge(RpcLoggingMiddlewareLive),
+		Layer.provideMerge(ScopeInjectionMiddlewareLive),
+	)

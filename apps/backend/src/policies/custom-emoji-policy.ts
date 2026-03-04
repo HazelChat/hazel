@@ -2,6 +2,7 @@ import { CustomEmojiRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
@@ -15,7 +16,11 @@ export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("Cust
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"create",
-			)(orgResolver.requireAdminOrOwner(organizationId, "custom-emojis:write", policyEntity, "create"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "create"),
+				),
+			)
 
 		const canUpdate = (id: CustomEmojiId) =>
 			ErrorUtils.refailUnauthorized(
@@ -23,11 +28,8 @@ export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("Cust
 				"update",
 			)(
 				customEmojiRepo.with(id, (emoji) =>
-					orgResolver.requireAdminOrOwner(
-						emoji.organizationId,
-						"custom-emojis:write",
-						policyEntity,
-						"update",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(emoji.organizationId, scope, policyEntity, "update"),
 					),
 				),
 			)
@@ -38,11 +40,8 @@ export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("Cust
 				"delete",
 			)(
 				customEmojiRepo.with(id, (emoji) =>
-					orgResolver.requireAdminOrOwner(
-						emoji.organizationId,
-						"custom-emojis:write",
-						policyEntity,
-						"delete",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(emoji.organizationId, scope, policyEntity, "delete"),
 					),
 				),
 			)

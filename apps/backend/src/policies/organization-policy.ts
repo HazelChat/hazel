@@ -1,7 +1,7 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
-import { makePolicy } from "../lib/policy-utils"
+import { makePolicy, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("OrganizationPolicy/Policy", {
@@ -17,25 +17,33 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"update",
-			)(orgResolver.requireAdminOrOwner(id, "organizations:write", policyEntity, "update"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(id, scope, policyEntity, "update"),
+				),
+			)
 
 		const isMember = (id: OrganizationId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"isMember",
-			)(orgResolver.requireScope(id, "organizations:read", policyEntity, "isMember"))
+			)(withAnnotatedScope((scope) => orgResolver.requireScope(id, scope, policyEntity, "isMember")))
 
 		const canDelete = (id: OrganizationId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"delete",
-			)(orgResolver.requireOwner(id, "organizations:write", policyEntity, "delete"))
+			)(withAnnotatedScope((scope) => orgResolver.requireOwner(id, scope, policyEntity, "delete")))
 
 		const canManagePublicInvite = (id: OrganizationId) =>
 			ErrorUtils.refailUnauthorized(
 				policyEntity,
 				"managePublicInvite",
-			)(orgResolver.requireAdminOrOwner(id, "organizations:write", policyEntity, "managePublicInvite"))
+			)(
+				withAnnotatedScope((scope) =>
+					orgResolver.requireAdminOrOwner(id, scope, policyEntity, "managePublicInvite"),
+				),
+			)
 
 		return { canUpdate, canDelete, canCreate, isMember, canManagePublicInvite } as const
 	}),

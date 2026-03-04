@@ -2,6 +2,7 @@ import { MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { MessageId, MessageReactionId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>()(
@@ -50,11 +51,13 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 					"create",
 				)(
 					messageRepo.with(messageId, (message) =>
-						orgResolver.fromChannelWithAccess(
-							message.channelId,
-							"message-reactions:write",
-							policyEntity,
-							"create",
+						withAnnotatedScope((scope) =>
+							orgResolver.fromChannelWithAccess(
+								message.channelId,
+								scope,
+								policyEntity,
+								"create",
+							),
 						),
 					),
 				)

@@ -28,8 +28,7 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/")({
 function GeneralSettings() {
 	const { orgSlug } = useParams({ from: "/_app/$orgSlug" })
 	const { organizationId, organization } = useOrganization()
-	const { user } = useAuth()
-	const { isAdmin, isOwner, isLoading: isPermissionsLoading } = usePermission()
+	const { isAdmin, isOwner, isLoading: isPermissionsLoading, can } = usePermission()
 	const navigate = useNavigate()
 
 	const [name, setName] = useState(organization?.name ?? "")

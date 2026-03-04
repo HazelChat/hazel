@@ -2,6 +2,7 @@ import { ChannelSectionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelSectionId, OrganizationId } from "@hazel/schema"
 import { Effect } from "effect"
+import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()(
@@ -18,11 +19,8 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 					policyEntity,
 					"create",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"channel-sections:write",
-						policyEntity,
-						"create",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "create"),
 					),
 				)
 
@@ -32,11 +30,13 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 					"update",
 				)(
 					channelSectionRepo.with(id, (section) =>
-						orgResolver.requireAdminOrOwner(
-							section.organizationId,
-							"channel-sections:write",
-							policyEntity,
-							"update",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								section.organizationId,
+								scope,
+								policyEntity,
+								"update",
+							),
 						),
 					),
 				)
@@ -47,11 +47,13 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 					"delete",
 				)(
 					channelSectionRepo.with(id, (section) =>
-						orgResolver.requireAdminOrOwner(
-							section.organizationId,
-							"channel-sections:write",
-							policyEntity,
-							"delete",
+						withAnnotatedScope((scope) =>
+							orgResolver.requireAdminOrOwner(
+								section.organizationId,
+								scope,
+								policyEntity,
+								"delete",
+							),
 						),
 					),
 				)
@@ -61,11 +63,8 @@ export class ChannelSectionPolicy extends Effect.Service<ChannelSectionPolicy>()
 					policyEntity,
 					"reorder",
 				)(
-					orgResolver.requireAdminOrOwner(
-						organizationId,
-						"channel-sections:write",
-						policyEntity,
-						"reorder",
+					withAnnotatedScope((scope) =>
+						orgResolver.requireAdminOrOwner(organizationId, scope, policyEntity, "reorder"),
 					),
 				)
 
