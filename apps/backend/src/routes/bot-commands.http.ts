@@ -19,6 +19,7 @@ import {
 import { Redis } from "@hazel/effect-bun"
 import { Context, Duration, Effect, Option, Schedule, Stream } from "effect"
 import { HazelApi } from "../api.ts"
+import { BotGatewayService } from "../services/bot-gateway-service.ts"
 import { IntegrationTokenService } from "../services/integration-token-service.ts"
 
 /**
@@ -269,7 +270,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				const botRepo = yield* BotRepo
 				const commandRepo = yield* BotCommandRepo
 				const installationRepo = yield* BotInstallationRepo
-				const redis = yield* Redis
+				const botGateway = yield* BotGatewayService
 
 				// Verify bot exists
 				const botOption = yield* botRepo.findById(botId)
@@ -304,7 +305,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					argsMap[arg.name] = arg.value
 				}
 
-				// Publish command event to Redis pub/sub
+				// Append command event to the durable bot gateway stream
 				const commandEvent = {
 					type: "command" as const,
 					commandName,
@@ -315,10 +316,16 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					timestamp: Date.now(),
 				}
 
-				const channel = `bot:${botId}:commands`
-				yield* redis.publish(channel, JSON.stringify(commandEvent))
+				yield* botGateway.publishCommand(botId, {
+					commandName: commandEvent.commandName,
+					channelId: commandEvent.channelId,
+					userId: commandEvent.userId,
+					orgId: commandEvent.orgId,
+					arguments: commandEvent.arguments,
+					timestamp: commandEvent.timestamp,
+				})
 
-				yield* Effect.logDebug(`Published command ${commandName} to Redis for bot ${botId}`)
+				yield* Effect.logDebug(`Appended command ${commandName} to durable gateway for bot ${botId}`)
 
 				return new BotCommandExecutionAccepted({
 					message: "Command sent to bot",
@@ -332,38 +339,11 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 						}),
 					),
 				),
-				Effect.catchTag("RedisError", (error) =>
+				Effect.catchTag("DurableStreamRequestError", (error) =>
 					Effect.fail(
 						new BotCommandExecutionError({
 							commandName: path.commandName,
-							message: "Failed to publish command to bot",
-							details: String(error.message),
-						}),
-					),
-				),
-				Effect.catchTag("RedisConnectionClosedError", (error) =>
-					Effect.fail(
-						new BotCommandExecutionError({
-							commandName: path.commandName,
-							message: "Failed to publish command to bot",
-							details: String(error.message),
-						}),
-					),
-				),
-				Effect.catchTag("RedisAuthenticationError", (error) =>
-					Effect.fail(
-						new BotCommandExecutionError({
-							commandName: path.commandName,
-							message: "Failed to publish command to bot",
-							details: String(error.message),
-						}),
-					),
-				),
-				Effect.catchTag("RedisInvalidResponseError", (error) =>
-					Effect.fail(
-						new BotCommandExecutionError({
-							commandName: path.commandName,
-							message: "Failed to publish command to bot",
+							message: "Failed to append command to bot gateway",
 							details: String(error.message),
 						}),
 					),

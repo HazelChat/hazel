@@ -7,6 +7,7 @@ export * as CurrentUser from "./current-user"
 export * from "./desktop-auth-errors"
 export * as ErrorUtils from "./error-utils"
 export * from "./errors"
+export * from "./bot-gateway"
 // HTTP API contracts
 export * as Http from "./http"
 // Integration utilities

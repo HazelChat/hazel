@@ -26,7 +26,12 @@ export const BotEnvConfig = Config.all({
 	),
 	backendUrl: Config.string("BACKEND_URL").pipe(
 		Config.withDefault("https://api.hazel.sh"),
-		Config.withDescription("Backend API URL (also used for SSE command streaming)"),
+		Config.withDescription("Backend API URL"),
+	),
+	gatewayUrl: Config.string("GATEWAY_URL").pipe(
+		Config.orElse(() => Config.string("BACKEND_URL")),
+		Config.withDefault("https://api.hazel.sh"),
+		Config.withDescription("Gateway API URL for durable bot event delivery"),
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
 		Config.orElse(() => Config.string("RIVET_PUBLIC_ENDPOINT")),

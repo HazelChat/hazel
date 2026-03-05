@@ -4,7 +4,7 @@ import { Effect } from "effect"
 import { LinearApiClient } from "@hazel/integrations/linear"
 import { CraftApiClient } from "@hazel/integrations/craft"
 
-import { commands, AskCommand } from "./commands.ts"
+import { commands, AskCommand, TestCommand } from "./commands.ts"
 import { handleAIRequest } from "./handler.ts"
 
 const MAX_ACTIVE_THREADS = 1000
@@ -39,6 +39,18 @@ runHazelBot({
 						channelId: ctx.channelId,
 						orgId: ctx.orgId,
 					})
+				}),
+			)
+
+			// /test command handler
+			yield* bot.onCommand(TestCommand, (ctx) =>
+				Effect.gen(function* () {
+					const now = new Date(ctx.timestamp).toISOString()
+					yield* Effect.log(`Received /test in ${ctx.channelId}`)
+					yield* bot.message.send(
+						ctx.channelId,
+						`Hazel Bot gateway test OK.\nchannel=${ctx.channelId}\norg=${ctx.orgId}\ntimestamp=${now}`,
+					)
 				}),
 			)
 

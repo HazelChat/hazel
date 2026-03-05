@@ -3,6 +3,7 @@ import { ChatSyncGroup } from "./chat-sync"
 import { MessagesApiGroup } from "./api-v1/messages"
 import { AuthGroup } from "./auth"
 import { BotCommandsApiGroup } from "./bot-commands"
+import { BotGatewayApiGroup } from "./bot-gateway"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
 import { IntegrationResourceGroup } from "./integration-resources"
@@ -18,6 +19,7 @@ import { WebhookGroup } from "./webhooks"
 export class HazelApi extends HttpApi.make("HazelApp")
 	.add(MessagesApiGroup)
 	.add(BotCommandsApiGroup)
+	.add(BotGatewayApiGroup)
 	.add(PresencePublicGroup)
 	.add(RootGroup)
 	.add(AuthGroup)

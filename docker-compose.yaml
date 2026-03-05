@@ -81,6 +81,32 @@ services:
                 condition: service_healthy
         restart: always
 
+    # Durable Streams - durable event log for bot gateway delivery
+    durable_streams:
+        build:
+            context: .
+            dockerfile: ./docker/durable-streams/Dockerfile
+        ports:
+            - "4437:4437"
+        environment:
+            DURABLE_STREAMS_PORT: "4437"
+            DURABLE_STREAMS_HOST: "0.0.0.0"
+            DURABLE_STREAMS_DATA_PATH: "/data/streams"
+        volumes:
+            - durable_streams_data:/data
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://127.0.0.1:4437').then(() => process.exit(0)).catch(() => process.exit(1))",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        restart: always
+
     # Redis for electric-proxy caching
     cache_redis:
         image: redis:7
@@ -147,6 +173,8 @@ volumes:
     cache_redis_data:
         driver: local
     minio_data:
+        driver: local
+    durable_streams_data:
         driver: local
     caddy_data:
         driver: local

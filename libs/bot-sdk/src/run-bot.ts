@@ -103,6 +103,7 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			botToken: Redacted.value(envConfig.botToken),
 			electricUrl: options.config?.electricUrl ?? envConfig.electricUrl,
 			backendUrl: options.config?.backendUrl ?? envConfig.backendUrl,
+			gatewayUrl: options.config?.gatewayUrl ?? envConfig.gatewayUrl,
 			actorsEndpoint: options.config?.actorsEndpoint ?? envConfig.actorsUrl,
 			commands: options.commands,
 			mentionable: options.mentionable,
@@ -110,6 +111,10 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			serviceName: options.serviceName ?? "hazel-bot",
 			queueConfig: options.config?.queueConfig,
 			dispatcherConfig: options.config?.dispatcherConfig,
+			gatewayTransport: options.config?.gatewayTransport,
+			resumeOffset: options.config?.resumeOffset,
+			sessionStore: options.config?.sessionStore,
+			maxConcurrentPartitions: options.config?.maxConcurrentPartitions,
 		}
 
 		// Create the bot runtime

@@ -77,6 +77,7 @@ import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
+import { BotGatewayService } from "./services/bot-gateway-service"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { OrgResolver } from "./services/org-resolver"
 import { WorkOSAuth } from "./services/workos-auth"
@@ -198,6 +199,7 @@ const MainLive = Layer.mergeAll(
 	ChatSyncAttributionReconciler.Default,
 	DiscordSyncWorker.Default,
 	DiscordGatewayService.Default,
+	BotGatewayService.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,
 	RateLimiter.Default,

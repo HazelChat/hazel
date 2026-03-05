@@ -148,6 +148,25 @@ export class MentionableSyncError extends Schema.TaggedError<MentionableSyncErro
 	cause: Schema.Unknown,
 }) {}
 
+export class GatewayReadError extends Schema.TaggedError<GatewayReadError>()("GatewayReadError", {
+	message: Schema.String,
+	cause: Schema.Unknown,
+}) {}
+
+export class GatewayDecodeError extends Schema.TaggedError<GatewayDecodeError>()("GatewayDecodeError", {
+	message: Schema.String,
+	payload: Schema.String,
+	cause: Schema.Unknown,
+}) {}
+
+export class GatewaySessionStoreError extends Schema.TaggedError<GatewaySessionStoreError>()(
+	"GatewaySessionStoreError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
+
 /**
  * Error thrown when sending a message fails.
  */
@@ -257,6 +276,8 @@ export const retryPolicyForTag = (tag: string): RetryPolicyClass => {
 		case "EventDispatchError":
 		case "CommandSyncError":
 		case "MentionableSyncError":
+		case "GatewayReadError":
+		case "GatewaySessionStoreError":
 		case "MessageSendError":
 		case "MessageReplyError":
 		case "MessageUpdateError":
@@ -264,6 +285,8 @@ export const retryPolicyForTag = (tag: string): RetryPolicyClass => {
 		case "MessageReactError":
 		case "MessageListError":
 			return "transient"
+		case "GatewayDecodeError":
+			return "none"
 		default:
 			return "none"
 	}

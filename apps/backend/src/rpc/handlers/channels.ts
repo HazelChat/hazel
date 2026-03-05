@@ -23,11 +23,13 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
+import { BotGatewayService } from "../../services/bot-gateway-service"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 
 export const ChannelRpcLive = ChannelRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const botGateway = yield* BotGatewayService
 
 		return {
 			"channel.create": ({ id, addAllMembers, ...payload }) =>
@@ -36,7 +38,6 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							// Use client-provided id for optimistic updates, or let DB generate one
 							const insertData = id
 								? { id, ...payload, deletedAt: null }
 								: { ...payload, deletedAt: null }
@@ -58,7 +59,6 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								deletedAt: null,
 							})
 
-							// Add all organization members if requested
 							if (addAllMembers) {
 								const orgMembers = yield* OrganizationMemberRepo.findAllByOrganization(
 									payload.organizationId,
@@ -92,7 +92,19 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(withRemapDbErrors("Channel", "create")),
+					.pipe(
+						withRemapDbErrors("Channel", "create"),
+						Effect.tap((response) =>
+							botGateway.publishChannelEvent("channel.create", response.data).pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish channel.create to bot gateway", {
+										error,
+										channelId: response.data.id,
+									}),
+								),
+							),
+						),
+					),
 
 			"channel.update": ({ id, ...payload }) =>
 				db
@@ -115,23 +127,55 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(withRemapDbErrors("Channel", "update")),
+					.pipe(
+						withRemapDbErrors("Channel", "update"),
+						Effect.tap((response) =>
+							botGateway.publishChannelEvent("channel.update", response.data).pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish channel.update to bot gateway", {
+										error,
+										channelId: response.data.id,
+									}),
+								),
+							),
+						),
+					),
 
 			"channel.delete": ({ id }) =>
-				db
-					.transaction(
-						Effect.gen(function* () {
-							yield* ChannelPolicy.canDelete(id)
-							yield* ChannelRepo.deleteById(id)
-							yield* ChannelAccessSyncService.removeChannel(id)
-							yield* ChannelAccessSyncService.syncChildThreads(id)
-
-							const txid = yield* generateTransactionId()
-
-							return { transactionId: txid }
-						}),
+				Effect.gen(function* () {
+					const existingChannel = yield* ChannelRepo.findById(id).pipe(
+						withRemapDbErrors("Channel", "select"),
 					)
-					.pipe(withRemapDbErrors("Channel", "delete")),
+					const response = yield* db
+						.transaction(
+							Effect.gen(function* () {
+								yield* ChannelPolicy.canDelete(id)
+								yield* ChannelRepo.deleteById(id)
+								yield* ChannelAccessSyncService.removeChannel(id)
+								yield* ChannelAccessSyncService.syncChildThreads(id)
+
+								const txid = yield* generateTransactionId()
+
+								return { transactionId: txid }
+							}),
+						)
+						.pipe(withRemapDbErrors("Channel", "delete"))
+
+					if (Option.isSome(existingChannel)) {
+						yield* botGateway
+							.publishChannelEvent("channel.delete", existingChannel.value)
+							.pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish channel.delete to bot gateway", {
+										error,
+										channelId: existingChannel.value.id,
+									}),
+								),
+							)
+					}
+
+					return response
+				}),
 
 			"channel.createDm": (payload) =>
 				db
@@ -235,7 +279,19 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 						}),
 					)
-					.pipe(withRemapDbErrors("Channel", "create")),
+					.pipe(
+						withRemapDbErrors("Channel", "create"),
+						Effect.tap((response) =>
+							botGateway.publishChannelEvent("channel.create", response.data).pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish channel.create DM to bot gateway", {
+										error,
+										channelId: response.data.id,
+									}),
+								),
+							),
+						),
+					),
 
 			"channel.createThread": ({ id, messageId, organizationId: requestedOrganizationId }) =>
 				db
