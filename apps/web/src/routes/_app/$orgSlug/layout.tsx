@@ -36,12 +36,16 @@ const JoinChannelModal = lazy(() =>
 import { AppSidebar } from "~/components/sidebar/app-sidebar"
 import { TauriMenuListener } from "~/components/tauri-menu-listener"
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
-import { useAppHotkey } from "~/hooks/use-app-hotkey"
+import { useAppHotkey, useAppHotkeyLabel } from "~/hooks/use-app-hotkey"
 import { useOrganization } from "~/hooks/use-organization"
 import { usePermission } from "~/hooks/use-permission"
 import { useAuth } from "~/lib/auth"
 import { NotificationSoundProvider } from "~/providers/notification-sound-provider"
 import { PresenceProvider } from "~/providers/presence-provider"
+import { useFeatureHint } from "~/atoms/feature-discovery-atoms"
+import IconClose from "~/components/icons/icon-close"
+import { Button } from "~/components/ui/button"
+import { Keyboard } from "~/components/ui/keyboard"
 
 export const Route = createFileRoute("/_app/$orgSlug")({
 	component: RouteComponent,
@@ -145,6 +149,7 @@ function RouteComponent() {
 				<NotificationSoundProvider>
 					<AppSidebar openChannelsBrowser={openChannelsBrowser} />
 					<SidebarInset className="pb-16 md:pb-0">
+						<CommandPaletteHint />
 						<Outlet />
 						<MobileNav />
 						<Suspense fallback={null}>
@@ -194,5 +199,37 @@ function RouteComponent() {
 				</NotificationSoundProvider>
 			</PresenceProvider>
 		</SidebarProvider>
+	)
+}
+
+function CommandPaletteHint() {
+	const { shouldShow, dismiss } = useFeatureHint("command-palette")
+	const shortcutLabel = useAppHotkeyLabel("commandPalette.open")
+	const [visible, setVisible] = useState(false)
+
+	useEffect(() => {
+		if (!shouldShow) return
+		const timer = setTimeout(() => setVisible(true), 2000)
+		return () => clearTimeout(timer)
+	}, [shouldShow])
+
+	if (!visible) return null
+
+	return (
+		<div className="mx-4 mt-3 flex items-center gap-3 rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+			<p className="flex-1 text-muted-fg">
+				Press <Keyboard className="text-xs">{shortcutLabel}</Keyboard> to open the command palette
+			</p>
+			<Button
+				intent="plain"
+				size="sq-xs"
+				onPress={() => {
+					dismiss()
+					setVisible(false)
+				}}
+			>
+				<IconClose data-slot="icon" />
+			</Button>
+		</div>
 	)
 }

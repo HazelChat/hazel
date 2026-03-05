@@ -512,3 +512,38 @@ yield *
 		}),
 	})
 ```
+
+## Design Context
+
+### Users
+
+Hazel Chat serves startup teams, developer teams, and enterprise teams who need focused, reliable team communication. Users are technical and design-conscious — they expect a fast, well-crafted tool that stays out of their way and lets them focus on work.
+
+### Brand Personality
+
+**Calm, polished, reliable.** The interface should feel like a precision instrument — confident and trustworthy without being cold. Every interaction should reinforce that this is a tool built with care.
+
+**Emotional goals:** Confidence & clarity (users always know where they are), calm & focus (a quiet space for conversations), speed & efficiency (everything feels instant).
+
+### Aesthetic Direction
+
+**Reference:** Linear / Raycast — clean, fast, keyboard-first with a refined developer-tools aesthetic. Crisp typography, restrained color, purposeful motion.
+
+**Anti-references:** Discord (too noisy/gaming), Microsoft Teams (too corporate/cluttered), old-school Slack (too colorful/dated). Avoid visual noise, excessive color variety, and playful/whimsical elements.
+
+**Theme:** Light and dark mode supported. Default brand purple (`#6938EF`) with customizable presets. Inter font family. OKLch-based color system with neutral gray defaults.
+
+**Key design files:**
+
+- Theme tokens: `apps/web/src/styles/theme.css`
+- Tailwind config & animations: `apps/web/src/styles/styles.css`
+- Theme presets: `apps/web/src/lib/theme/presets.ts`
+- Component library: `apps/web/src/components/ui/`
+
+### Design Principles
+
+1. **Clarity over cleverness** — Every element should have a clear purpose. Prefer obvious UI patterns over novel ones. Information hierarchy should be immediately readable.
+2. **Quiet confidence** — Use restraint with color, motion, and decoration. Let whitespace, typography, and alignment do the heavy lifting. The interface should feel calm, not sterile.
+3. **Speed is a feature** — Perceived and actual performance matter equally. Transitions should be fast (100-200ms). Keyboard shortcuts for power users. No unnecessary loading states or animations.
+4. **Consistency compounds** — Use the existing design token system (`theme.css`, `tailwind-variants`). Reuse component patterns from `components/ui/`. Match spacing, radius, and color scales across features.
+5. **Accessible by default** — Follow React Aria patterns. Respect `prefers-reduced-motion`. Ensure keyboard navigability. WCAG AA contrast minimums. Touch targets at 44x44px minimum.

@@ -10,6 +10,7 @@ import IconClose from "~/components/icons/icon-close"
 import IconCopy from "~/components/icons/icon-copy"
 import IconDots from "~/components/icons/icon-dots"
 import IconPlus from "~/components/icons/icon-plus"
+import IconUsersPlus from "~/components/icons/icon-users-plus"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
@@ -164,8 +165,15 @@ function InvitationsSettings() {
 
 					{pendingInvitations.length === 0 ? (
 						<EmptyState
+							icon={IconUsersPlus}
 							title="No pending invitations"
 							description="Invite team members to join your organization."
+							action={
+								<Button intent="secondary" size="sm" onPress={() => setShowInviteModal(true)}>
+									<IconPlus data-slot="icon" />
+									Invite a team member
+								</Button>
+							}
 							className="h-64"
 						/>
 					) : (

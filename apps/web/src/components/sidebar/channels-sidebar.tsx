@@ -54,6 +54,10 @@ import { IconServers } from "../icons/icon-servers"
 import IconUsers from "../icons/icon-users"
 import IconUsersPlus from "../icons/icon-users-plus"
 import { isTauriMacOS } from "~/lib/tauri"
+import { useFeatureHint } from "~/atoms/feature-discovery-atoms"
+import IconClose from "../icons/icon-close"
+import IconLightbulb from "../icons/icon-lightbulb"
+import { Button } from "../ui/button"
 
 interface ChannelSectionProps {
 	organizationId: OrganizationId
@@ -179,7 +183,10 @@ const ChannelSection = ({
 				))}
 			</SectionGroup>
 			{sectionId === null && (
-				<DiscoverableChannels organizationId={organizationId} onBrowseAll={onJoinChannel} />
+				<>
+					<DiscoverableChannels organizationId={organizationId} onBrowseAll={onJoinChannel} />
+					{channels.length === 0 && <CreateChannelHint />}
+				</>
 			)}
 		</>
 	)
@@ -436,5 +443,25 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 				<UserMenu />
 			</SidebarFooter>
 		</Sidebar>
+	)
+}
+
+function CreateChannelHint() {
+	const { shouldShow, dismiss } = useFeatureHint("create-channel")
+	const shortcutLabel = useAppHotkeyLabel("channel.create")
+	const { can } = usePermission()
+
+	if (!shouldShow || !can("channel.create")) return null
+
+	return (
+		<div className="mx-2 mb-1 flex items-center gap-2 rounded-md bg-secondary/50 px-2.5 py-1.5 text-xs text-muted-fg">
+			<IconLightbulb className="size-3.5 shrink-0" />
+			<span className="flex-1">
+				Create your first channel with <Keyboard className="text-[10px]">{shortcutLabel}</Keyboard>
+			</span>
+			<Button intent="plain" size="sq-xs" onPress={dismiss} className="size-5">
+				<IconClose className="size-3" />
+			</Button>
+		</div>
 	)
 }

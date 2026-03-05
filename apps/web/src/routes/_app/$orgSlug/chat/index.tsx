@@ -1,18 +1,22 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { useMemo } from "react"
+import { useModal } from "~/atoms/modal-atoms"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconLock from "~/components/icons/icon-lock"
 import IconMsgs from "~/components/icons/icon-msgs"
+import IconPlus from "~/components/icons/icon-plus"
 import { IconUsers } from "~/components/icons/icon-users"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { Avatar } from "~/components/ui/avatar"
+import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { Loader } from "~/components/ui/loader"
 import { SectionHeader } from "~/components/ui/section-header"
 import { Tab, TabList, TabPanel, Tabs } from "~/components/ui/tabs"
 import { channelCollection, channelMemberCollection, userCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
+import { usePermission } from "~/hooks/use-permission"
 import { useUserPresence } from "~/hooks/use-presence"
 import { useAuth } from "~/lib/auth"
 import { cn } from "~/lib/utils"
@@ -24,6 +28,9 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/")({
 function RouteComponent() {
 	const { organizationId } = useOrganization()
 	const { user: me } = useAuth()
+	const { can } = usePermission()
+	const newChannelModal = useModal("new-channel")
+	const createDmModal = useModal("create-dm")
 
 	// Get all channels with members and users in a single query
 	const { data: channelsData, isLoading: channelsLoading } = useLiveQuery(
@@ -157,6 +164,18 @@ function RouteComponent() {
 							icon={IconHashtag}
 							title="No public channels"
 							description="Public channels are open for everyone in the organization to join."
+							action={
+								can("channel.create") ? (
+									<Button
+										intent="secondary"
+										size="sm"
+										onPress={() => newChannelModal.open()}
+									>
+										<IconPlus data-slot="icon" />
+										Create a channel
+									</Button>
+								) : undefined
+							}
 						/>
 					)}
 				</TabPanel>
@@ -176,6 +195,18 @@ function RouteComponent() {
 							icon={IconLock}
 							title="No private channels"
 							description="Private channels are invite-only spaces for focused discussions."
+							action={
+								can("channel.create") ? (
+									<Button
+										intent="secondary"
+										size="sm"
+										onPress={() => newChannelModal.open()}
+									>
+										<IconPlus data-slot="icon" />
+										Create a private channel
+									</Button>
+								) : undefined
+							}
 						/>
 					)}
 				</TabPanel>
@@ -195,6 +226,12 @@ function RouteComponent() {
 							icon={IconMsgs}
 							title="No direct messages"
 							description="Start a conversation with someone in your organization."
+							action={
+								<Button intent="secondary" size="sm" onPress={() => createDmModal.open()}>
+									<IconPlus data-slot="icon" />
+									Start a conversation
+								</Button>
+							}
 						/>
 					)}
 				</TabPanel>
