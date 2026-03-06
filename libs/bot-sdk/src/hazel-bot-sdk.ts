@@ -535,10 +535,11 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 		const encodeGatewayFrame = (frame: BotGatewayClientFrame): string => JSON.stringify(frame)
 
-			const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
-				Effect.gen(function* () {
-					const runtime = yield* Effect.runtime<any>()
+		const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
+			Effect.gen(function* () {
+				const runtime = yield* Effect.runtime<any>()
 				let nextResumeOffset = yield* loadResumeOffset(runtimeConfig)
+				let hasConnected = false
 
 				const connectOnce = Effect.tryPromise({
 					try: () =>
@@ -606,6 +607,20 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 									}
 									case "READY": {
 										sessionId = frame.sessionId
+										Runtime.runPromise(runtime)(
+											Effect.logInfo(
+												hasConnected || frame.resumed
+													? "Bot gateway websocket reconnected"
+													: "Bot gateway websocket connected",
+												{
+													botId: authContext.botId,
+													sessionId: frame.sessionId,
+													resumed: frame.resumed,
+													offset: currentResumeOffset,
+												},
+											),
+										).catch(() => undefined)
+										hasConnected = true
 										return
 									}
 									case "DISPATCH": {
