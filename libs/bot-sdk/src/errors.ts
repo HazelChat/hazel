@@ -1,115 +1,12 @@
 import { Schema } from "effect"
 
 /**
- * Error thrown when creating an event queue fails.
- */
-export class QueueCreateError extends Schema.TaggedError<QueueCreateError>()("QueueCreateError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when offering an event to a queue fails.
- */
-export class QueueOfferError extends Schema.TaggedError<QueueOfferError>()("QueueOfferError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when taking an event from a queue fails.
- */
-export class QueueTakeError extends Schema.TaggedError<QueueTakeError>()("QueueTakeError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when polling an event from a queue fails.
- */
-export class QueuePollError extends Schema.TaggedError<QueuePollError>()("QueuePollError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when reading queue size fails.
- */
-export class QueueSizeError extends Schema.TaggedError<QueueSizeError>()("QueueSizeError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when creating an Electric shape stream fails.
- */
-export class ShapeStreamCreateError extends Schema.TaggedError<ShapeStreamCreateError>()(
-	"ShapeStreamCreateError",
-	{
-		message: Schema.String,
-		table: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
-
-/**
- * Error thrown when an active Electric shape stream emits an error.
- */
-export class ShapeStreamSubscribeError extends Schema.TaggedError<ShapeStreamSubscribeError>()(
-	"ShapeStreamSubscribeError",
-	{
-		message: Schema.String,
-		table: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
-
-/**
- * Error thrown when decoding a shape stream payload fails.
- */
-export class ShapeStreamDecodeError extends Schema.TaggedError<ShapeStreamDecodeError>()(
-	"ShapeStreamDecodeError",
-	{
-		message: Schema.String,
-		table: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
-
-/**
  * Error thrown when bot authentication fails.
  */
 export class AuthenticationError extends Schema.TaggedError<AuthenticationError>()("AuthenticationError", {
 	message: Schema.String,
 	cause: Schema.Unknown,
 }) {}
-
-/**
- * Error thrown when bot startup fails while starting shape streams.
- */
-export class ShapeStreamStartupError extends Schema.TaggedError<ShapeStreamStartupError>()(
-	"ShapeStreamStartupError",
-	{
-		message: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
-
-/**
- * Error thrown when bot startup fails while starting the dispatcher.
- */
-export class EventDispatcherStartupError extends Schema.TaggedError<EventDispatcherStartupError>()(
-	"EventDispatcherStartupError",
-	{
-		message: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
 
 /**
  * Error thrown when a command payload cannot be decoded.
@@ -224,27 +121,6 @@ export class MessageListError extends Schema.TaggedError<MessageListError>()("Me
 }) {}
 
 /**
- * Error thrown when event dispatching fails.
- */
-export class EventDispatchError extends Schema.TaggedError<EventDispatchError>()("EventDispatchError", {
-	message: Schema.String,
-	eventType: Schema.String,
-	cause: Schema.Unknown,
-}) {}
-
-/**
- * Error thrown when retries are exhausted for a handler.
- */
-export class HandlerRetryExhaustedError extends Schema.TaggedError<HandlerRetryExhaustedError>()(
-	"HandlerRetryExhaustedError",
-	{
-		message: Schema.String,
-		eventType: Schema.String,
-		cause: Schema.Unknown,
-	},
-) {}
-
-/**
  * Error thrown when an event handler execution fails.
  */
 export class EventHandlerError extends Schema.TaggedError<EventHandlerError>()("EventHandlerError", {
@@ -263,17 +139,8 @@ export type RetryPolicyClass = "none" | "quick" | "transient" | "connection"
  */
 export const retryPolicyForTag = (tag: string): RetryPolicyClass => {
 	switch (tag) {
-		case "QueueOfferError":
-		case "QueueTakeError":
-		case "QueuePollError":
-		case "QueueSizeError":
-		case "ShapeStreamCreateError":
-		case "ShapeStreamSubscribeError":
-		case "ShapeStreamStartupError":
-		case "EventDispatcherStartupError":
+		case "AuthenticationError":
 			return "connection"
-		case "HandlerRetryExhaustedError":
-		case "EventDispatchError":
 		case "CommandSyncError":
 		case "MentionableSyncError":
 		case "GatewayReadError":

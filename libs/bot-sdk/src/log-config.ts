@@ -23,13 +23,9 @@ export interface BotLogConfig {
 	 *
 	 * DEBUG (internal SDK plumbing - use LOG_LEVEL=debug to see):
 	 * - Handler start/complete with timing
-	 * - Queue operations (create, size updates)
-	 * - Shape stream events (table, operation, eventId)
-	 * - Shape stream subscription lifecycle (active, starting, skipped)
+	 * - Gateway websocket session lifecycle
+	 * - Gateway dispatch and ACK details
 	 * - Internal state changes
-	 * - SSE event parsing details
-	 * - SSE stream connected / listening
-	 * - Event dispatcher starting
 	 * - Health server listening
 	 *
 	 * INFO (business-relevant events only):
@@ -37,11 +33,9 @@ export interface BotLogConfig {
 	 * - Command received (name only)
 	 *
 	 * WARNING:
-	 * - Queue full (dropping events)
-	 * - Schema validation failed
 	 * - No handler for command
 	 * - Retry attempts
-	 * - Shape stream reconnecting
+	 * - Gateway reconnects
 	 *
 	 * ERROR:
 	 * - Handler failed after retries
@@ -49,7 +43,7 @@ export interface BotLogConfig {
 	 * - Authentication failed
 	 *
 	 * Note:
-	 * - SSE retry exhaustion per cycle is logged at WARNING with metrics.
+	 * - Gateway reconnect loops are logged at WARNING.
 	 *   This indicates degraded connectivity, not a terminal bot failure.
 	 * - Set LOG_LEVEL=debug env var to see all startup/lifecycle logs.
 	 */
@@ -66,7 +60,7 @@ export interface BotLogConfig {
 	/**
 	 * Services to enable DEBUG level for (overrides global level)
 	 * Useful for debugging specific services while keeping others at INFO
-	 * @example ["EventDispatcher", "SseCommandListener"]
+	 * @example ["HazelBotClient", "BotHealthServer"]
 	 */
 	readonly debugServices?: readonly string[]
 }

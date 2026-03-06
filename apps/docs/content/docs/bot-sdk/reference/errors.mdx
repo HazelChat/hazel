@@ -1,14 +1,13 @@
 ---
 title: Errors
-description: Specific tagged error types and handling in the Bot SDK
+description: Tagged error types exposed by the websocket-based bot SDK
 icon: AlertTriangle
 ---
 
-The Bot SDK uses **specific Effect tagged errors** for each operation.
+The Bot SDK uses specific Effect tagged errors for authentication, gateway
+delivery, command handling, message APIs, and AI streaming.
 
-## Core Errors
-
-### Authentication
+## Core errors
 
 ```typescript
 class AuthenticationError {
@@ -16,89 +15,28 @@ class AuthenticationError {
 	readonly message: string
 	readonly cause: unknown
 }
-```
 
-### Startup
-
-```typescript
-class ShapeStreamStartupError {
-	readonly _tag = "ShapeStreamStartupError"
+class GatewayReadError {
+	readonly _tag = "GatewayReadError"
 	readonly message: string
 	readonly cause: unknown
 }
 
-class EventDispatcherStartupError {
-	readonly _tag = "EventDispatcherStartupError"
+class GatewayDecodeError {
+	readonly _tag = "GatewayDecodeError"
 	readonly message: string
-	readonly cause: unknown
-}
-```
-
-## Queue Errors
-
-```typescript
-class QueueCreateError {
-	readonly _tag = "QueueCreateError"
-	readonly message: string
-	readonly eventType: string
+	readonly payload: string
 	readonly cause: unknown
 }
 
-class QueueOfferError {
-	readonly _tag = "QueueOfferError"
+class GatewaySessionStoreError {
+	readonly _tag = "GatewaySessionStoreError"
 	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-
-class QueueTakeError {
-	readonly _tag = "QueueTakeError"
-	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-
-class QueuePollError {
-	readonly _tag = "QueuePollError"
-	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-
-class QueueSizeError {
-	readonly _tag = "QueueSizeError"
-	readonly message: string
-	readonly eventType: string
 	readonly cause: unknown
 }
 ```
 
-## Shape Stream Errors
-
-```typescript
-class ShapeStreamCreateError {
-	readonly _tag = "ShapeStreamCreateError"
-	readonly message: string
-	readonly table: string
-	readonly cause: unknown
-}
-
-class ShapeStreamSubscribeError {
-	readonly _tag = "ShapeStreamSubscribeError"
-	readonly message: string
-	readonly table: string
-	readonly cause: unknown
-}
-
-class ShapeStreamDecodeError {
-	readonly _tag = "ShapeStreamDecodeError"
-	readonly message: string
-	readonly table: string
-	readonly cause: unknown
-}
-```
-
-## Command and Message Errors
+## Command and event errors
 
 ```typescript
 class CommandArgsDecodeError {
@@ -126,7 +64,16 @@ class MentionableSyncError {
 	readonly message: string
 	readonly cause: unknown
 }
+
+class EventHandlerError {
+	readonly _tag = "EventHandlerError"
+	readonly message: string
+	readonly eventType: string
+	readonly cause: unknown
+}
 ```
+
+## Message errors
 
 ```typescript
 class MessageSendError {
@@ -174,78 +121,9 @@ class MessageListError {
 }
 ```
 
-## Dispatch Errors
+## Streaming errors
 
-```typescript
-class EventDispatchError {
-	readonly _tag = "EventDispatchError"
-	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-
-class HandlerRetryExhaustedError {
-	readonly _tag = "HandlerRetryExhaustedError"
-	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-
-class EventHandlerError {
-	readonly _tag = "EventHandlerError"
-	readonly message: string
-	readonly eventType: string
-	readonly cause: unknown
-}
-```
-
-## SSE Errors
-
-```typescript
-class SseRequestError {
-	readonly _tag = "SseRequestError"
-	readonly message: string
-	readonly cause: unknown
-}
-
-class SseResponseError {
-	readonly _tag = "SseResponseError"
-	readonly message: string
-	readonly status?: number
-	readonly cause?: unknown
-}
-
-class SsePayloadParseError {
-	readonly _tag = "SsePayloadParseError"
-	readonly message: string
-	readonly payload: string
-	readonly cause: unknown
-}
-
-class SseCommandDecodeError {
-	readonly _tag = "SseCommandDecodeError"
-	readonly message: string
-	readonly payload: string
-	readonly cause: unknown
-}
-
-class SseReconnectExhaustedError {
-	readonly _tag = "SseReconnectExhaustedError"
-	readonly message: string
-	readonly retryCycle: number
-	readonly cause: unknown
-}
-
-class SseUnexpectedError {
-	readonly _tag = "SseUnexpectedError"
-	readonly message: string
-	readonly cause: unknown
-}
-```
-
-## Streaming Errors
-
-These are specific to AI streaming:
+Streaming and AI helpers may also fail with:
 
 - `ActorConnectionError`
 - `MessageCreateError`
@@ -254,44 +132,27 @@ These are specific to AI streaming:
 - `MessagePersistError`
 - `BotNotConfiguredError`
 
-## Handling Patterns
+## Handling patterns
 
-### Catch specific tags
+Catch specific tags when you want tailored recovery:
 
 ```typescript
 yield *
-	bot.message.send(channelId, content).pipe(
+	bot.start.pipe(
 		Effect.catchTags({
-			MessageSendError: (error) => Effect.logError("Send failed", { error }),
-			MessageReplyError: (error) => Effect.logError("Reply failed", { error }),
+			AuthenticationError: (error) => Effect.logError("Auth failed", { error }),
+			GatewayReadError: (error) => Effect.logError("Gateway failed", { error }),
 		}),
 	)
 ```
 
-### Handle command failures explicitly
-
-```typescript
-yield *
-	myCommandEffect.pipe(
-		Effect.catchTag("CommandArgsDecodeError", (error) =>
-			Effect.logWarning("Invalid command arguments", { error }),
-		),
-		Effect.catchTag("CommandHandlerError", (error) =>
-			Effect.logError("Command execution failed", { error }),
-		),
-	)
-```
-
-## Retry Classification
-
-Retry behavior is tag-based.
+For retry classification, use the exported helpers:
 
 ```typescript
 import { getErrorTag, retryPolicyForTag } from "@hazel/bot-sdk"
 
 const tag = getErrorTag(error)
-if (tag) {
-	const policy = retryPolicyForTag(tag)
-	// "none" | "quick" | "transient" | "connection"
+if (tag && retryPolicyForTag(tag) === "transient") {
+	// retry
 }
 ```

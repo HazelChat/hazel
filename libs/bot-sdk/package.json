@@ -7,7 +7,6 @@
 		"chat",
 		"effect",
 		"effect-ts",
-		"electric-sql",
 		"hazel",
 		"sdk"
 	],
@@ -26,12 +25,6 @@
 				"default": "./src/index.ts"
 			}
 		},
-		"./bot-client": {
-			"import": {
-				"types": "./src/bot-client.ts",
-				"default": "./src/bot-client.ts"
-			}
-		},
 		"./config": {
 			"import": {
 				"types": "./src/config.ts",
@@ -44,28 +37,10 @@
 				"default": "./src/auth.ts"
 			}
 		},
-		"./types": {
-			"import": {
-				"types": "./src/types/index.ts",
-				"default": "./src/types/index.ts"
-			}
-		},
 		"./errors": {
 			"import": {
 				"types": "./src/errors.ts",
 				"default": "./src/errors.ts"
-			}
-		},
-		"./services": {
-			"import": {
-				"types": "./src/services/index.ts",
-				"default": "./src/services/index.ts"
-			}
-		},
-		"./layers": {
-			"import": {
-				"types": "./src/layers.ts",
-				"default": "./src/layers.ts"
 			}
 		}
 	},
@@ -75,13 +50,11 @@
 		"prepublishOnly": "GENERATE_DTS=1 bun run build"
 	},
 	"devDependencies": {
-		"@effect/experimental": "catalog:effect",
 		"@effect/language-service": "catalog:effect",
 		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/rpc": "catalog:effect",
-		"@electric-sql/client": "1.5.10",
 		"@hazel/actors": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",
@@ -95,13 +68,11 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"@effect/experimental": ">=0.58.0",
 		"@effect/opentelemetry": ">=0.61.0",
 		"@effect/platform": ">=0.94.0",
 		"@effect/platform-bun": ">=0.87.0",
 		"@effect/rpc": ">=0.73.0",
 		"@effect/workflow": ">=0.16.0",
-		"@electric-sql/client": ">=1.5.0",
 		"effect": ">=3.19.0",
 		"jose": ">=6.0.0",
 		"rivetkit": ">=2.0.0"

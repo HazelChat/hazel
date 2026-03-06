@@ -15,15 +15,11 @@ const DEFAULT_ACTORS_URL =
  *
  * Reads and validates the following environment variables:
  * - BOT_TOKEN (required) - Bot authentication token
- * - ELECTRIC_URL (optional) - Electric SQL proxy URL
- * - BACKEND_URL (optional) - Backend API URL (also used for SSE command streaming)
+ * - BACKEND_URL (optional) - Backend API URL for short request/response bot APIs
+ * - GATEWAY_URL (optional) - Gateway URL for inbound bot websocket delivery
  */
 export const BotEnvConfig = Config.all({
 	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
-	electricUrl: Config.string("ELECTRIC_URL").pipe(
-		Config.withDefault("https://electric.hazel.sh/bot/v1/shape"),
-		Config.withDescription("Electric SQL proxy URL"),
-	),
 	backendUrl: Config.string("BACKEND_URL").pipe(
 		Config.withDefault("https://api.hazel.sh"),
 		Config.withDescription("Backend API URL"),
@@ -31,7 +27,7 @@ export const BotEnvConfig = Config.all({
 	gatewayUrl: Config.string("GATEWAY_URL").pipe(
 		Config.orElse(() => Config.string("BACKEND_URL")),
 		Config.withDefault("https://api.hazel.sh"),
-		Config.withDescription("Gateway API URL for durable bot event delivery"),
+		Config.withDescription("Gateway API URL for inbound bot websocket delivery"),
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
 		Config.orElse(() => Config.string("RIVET_PUBLIC_ENDPOINT")),

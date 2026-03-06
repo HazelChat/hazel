@@ -8,7 +8,7 @@
  *
  * Features demonstrated:
  * - Bot authentication
- * - Connecting to Electric SQL for real-time events
+ * - Connecting to the Hazel bot gateway for real-time events
  * - Listening for message events
  * - Sending messages via RPC
  * - Typesafe slash commands with /echo
@@ -52,19 +52,19 @@ const commands = CommandGroup.make(EchoCommand, PingCommand)
 /**
  * Create a Hazel bot runtime
  * All Hazel domain schemas are pre-configured automatically!
- * No need to define subscriptions - they're baked into HazelBotSDK
+ * No need to define subscriptions - inbound events arrive over the gateway websocket.
  *
  * Configuration options:
- * - electricUrl: Electric SQL proxy URL (defaults to https://electric.hazel.sh/v1/shape)
- * - backendUrl: Backend API URL for RPC calls and SSE command streaming (defaults to https://api.hazel.sh)
+ * - backendUrl: Backend API URL for short request/response bot APIs (defaults to https://api.hazel.sh)
+ * - gatewayUrl: Gateway URL for inbound websocket delivery (defaults to backendUrl)
  * - botToken: Your bot's authentication token (required)
  * - commands: Typesafe CommandGroup for slash commands (optional)
  */
 const runtime = createHazelBot({
 	botToken,
 	// For local development, override the URLs:
-	electricUrl: process.env.ELECTRIC_URL ?? "http://localhost:8787/v1/shape",
 	backendUrl: process.env.BACKEND_URL ?? "http://localhost:3003",
+	gatewayUrl: process.env.GATEWAY_URL ?? "http://localhost:3034",
 	actorsEndpoint: process.env.ACTORS_URL ?? "http://localhost:6420",
 	// Pass the typesafe command group
 	commands,

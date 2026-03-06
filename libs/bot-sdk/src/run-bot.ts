@@ -101,7 +101,6 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 		// Create runtime configuration
 		const botConfig: HazelBotConfig<Commands> = {
 			botToken: Redacted.value(envConfig.botToken),
-			electricUrl: options.config?.electricUrl ?? envConfig.electricUrl,
 			backendUrl: options.config?.backendUrl ?? envConfig.backendUrl,
 			gatewayUrl: options.config?.gatewayUrl ?? envConfig.gatewayUrl,
 			actorsEndpoint: options.config?.actorsEndpoint ?? envConfig.actorsUrl,
@@ -109,12 +108,11 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			mentionable: options.mentionable,
 			healthPort: options.healthPort ?? envConfig.healthPort,
 			serviceName: options.serviceName ?? "hazel-bot",
-			queueConfig: options.config?.queueConfig,
-			dispatcherConfig: options.config?.dispatcherConfig,
-			gatewayTransport: options.config?.gatewayTransport,
 			resumeOffset: options.config?.resumeOffset,
 			sessionStore: options.config?.sessionStore,
+			stateStore: options.config?.stateStore,
 			maxConcurrentPartitions: options.config?.maxConcurrentPartitions,
+			heartbeatIntervalMs: options.config?.heartbeatIntervalMs,
 		}
 
 		// Create the bot runtime

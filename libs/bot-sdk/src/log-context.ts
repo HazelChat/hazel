@@ -7,7 +7,9 @@
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, FiberRef, type Tracer } from "effect"
-import type { EventOperation, EventType } from "./types/events.ts"
+
+type GatewayEventType = string
+type GatewayEventOperation = string
 
 /**
  * Unique identifier for correlating logs across a single request/event flow
@@ -29,14 +31,14 @@ export interface LogContext {
 	readonly botId: string
 	/** Human-readable bot name */
 	readonly botName: string
-	/** Unique event identifier (for Electric events) */
+	/** Unique event identifier for traced inbound events */
 	readonly eventId?: EventId
-	/** Event type (e.g., "messages.insert", "channels.update") */
-	readonly eventType?: EventType
-	/** Table name for Electric events */
+	/** Event type */
+	readonly eventType?: GatewayEventType
+	/** Optional event source grouping */
 	readonly table?: string
-	/** Operation type (insert, update, delete) */
-	readonly operation?: EventOperation
+	/** Optional operation name */
+	readonly operation?: GatewayEventOperation
 	/** Command name (for slash commands) */
 	readonly commandName?: string
 	/** Channel where event/command originated */
@@ -98,13 +100,13 @@ export const createBaseLogContext = (identity: BotIdentity): LogContext => ({
  */
 export interface EventLogContextOptions extends BotIdentity {
 	readonly eventId?: EventId
-	readonly eventType: EventType
+	readonly eventType: GatewayEventType
 	readonly table: string
-	readonly operation: EventOperation
+	readonly operation: GatewayEventOperation
 }
 
 /**
- * Create a log context for Electric events
+ * Create a log context for a generic inbound event.
  */
 export const createEventLogContext = (options: EventLogContextOptions): LogContext => ({
 	correlationId: generateCorrelationId(),

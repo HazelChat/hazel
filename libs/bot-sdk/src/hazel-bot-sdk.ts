@@ -1,8 +1,8 @@
 /**
  * Hazel Bot SDK - Convenience layer for Hazel chat app integrations
  *
- * This module provides a simplified, Hazel-specific API on top of the generic bot-sdk.
- * All Hazel domain schemas are pre-configured, making it trivial to build integrations.
+ * This module provides a simplified, Hazel-specific API on top of the websocket gateway runtime.
+ * Hazel message, channel, membership, and command events are pre-configured.
  */
 
 import { FetchHttpClient, HttpApiClient } from "@effect/platform"
@@ -51,7 +51,6 @@ import {
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createLoggerLayer, logLevelFromString, type BotLogConfig, type LogFormat } from "./log-config.ts"
 import { createCommandLogContext, withLogContext, type BotIdentity } from "./log-context.ts"
-import { createBotClientTag } from "./bot-client.ts"
 import {
 	CommandGroup,
 	EmptyCommandGroup,
@@ -80,18 +79,10 @@ import {
 	InMemoryBotStateStoreLive,
 	InMemoryGatewaySessionStoreLive,
 	GatewaySessionStoreTag,
-	type GatewayTransport,
 	createGatewayWebSocketUrl,
-	readGatewayBatch,
 } from "./gateway.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
-import type { EventQueueConfig } from "./services/index.ts"
-import {
-	ElectricEventQueue,
-	EventDispatcher,
-	ShapeStreamSubscriber,
-	BotHealthServerLive,
-} from "./services/index.ts"
+import { BotHealthServerLive } from "./services/health-server.ts"
 import { createActorsClient } from "@hazel/actors/client"
 import {
 	BotNotConfiguredError,
@@ -103,7 +94,6 @@ import {
 	type CreateStreamOptions,
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
-import { extractTablesFromEventTypes } from "./types/events.ts"
 
 const DEFAULT_ACTORS_ENDPOINT =
 	"https://hazel-d9c8-production-e8b3:pk_UecfBPkebh46hBcaDkKrAWD6ot3SPvDsB4ybSlOVtf3p8z6EKQiyaOWPLkUqUBBT@api.rivet.dev"
@@ -119,7 +109,6 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly commands: Commands
 	readonly mentionable: boolean
 	readonly actorsEndpoint: string
-	readonly gatewayTransport: GatewayTransport
 	readonly resumeOffset: string
 	readonly maxConcurrentPartitions: number
 	readonly heartbeatIntervalMs?: number
@@ -129,28 +118,6 @@ export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelB
 	HazelBotRuntimeConfigTag,
 	HazelBotRuntimeConfig
 >() {}
-
-/**
- * Pre-configured Hazel domain subscriptions
- * Includes: messages, channels, channel_members with their schemas
- */
-export const HAZEL_SUBSCRIPTIONS = [
-	{
-		table: "messages",
-		schema: Message.Model.json,
-		startFromNow: true,
-	},
-	{
-		table: "channels",
-		schema: Channel.Model.json,
-		startFromNow: false,
-	},
-	{
-		table: "channel_members",
-		schema: ChannelMember.Model.json,
-		startFromNow: true,
-	},
-] as const
 
 /**
  * Hazel-specific type aliases for convenience
@@ -216,8 +183,7 @@ export interface SendMessageOptions {
 export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotClient", {
 	accessors: true,
 	scoped: Effect.gen(function* () {
-		// Get the typed BotClient for Hazel subscriptions
-		const bot = yield* createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
+		const auth = yield* BotAuth
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
 		// Get the RPC client config (for HTTP API calls)
@@ -237,7 +203,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			),
 		)
 		// Get auth context (contains botId, botName, userId for message authoring)
-		const authContext = yield* bot.getAuthContext
+		const authContext = yield* auth.getContext.pipe(Effect.orDie)
 
 		// Create bot identity for log context
 		const botIdentity: BotIdentity = {
@@ -569,71 +535,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 		const encodeGatewayFrame = (frame: BotGatewayClientFrame): string => JSON.stringify(frame)
 
-		const startPullGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
-			Effect.gen(function* () {
-				let currentOffset = yield* loadResumeOffset(runtimeConfig)
-
-				yield* Effect.forkScoped(
-					Effect.forever(
-						Effect.gen(function* () {
-							const batch = yield* readGatewayBatch({
-								gatewayUrl: runtimeConfig.gatewayUrl,
-								botToken: runtimeConfig.botToken,
-								offset: currentOffset,
-								transport: "pull",
-							}).pipe(
-								Effect.catchTags({
-									GatewayReadError: (error) =>
-										Effect.logWarning("Bot gateway read failed, retrying", {
-											error,
-											botId: authContext.botId,
-										}).pipe(Effect.zipRight(Effect.sleep(Duration.seconds(1))), Effect.as(null)),
-									GatewayDecodeError: (error) =>
-										Effect.logWarning("Bot gateway payload decode failed, retrying", {
-											error,
-											botId: authContext.botId,
-										}).pipe(Effect.zipRight(Effect.sleep(Duration.seconds(1))), Effect.as(null)),
-								}),
-							)
-
-							if (!batch) {
-								return
-							}
-
-							if (batch.events.length === 0) {
-								currentOffset = batch.nextOffset
-								return
-							}
-
-							yield* processGatewayBatch(batch.events)
-							yield* gatewaySessionStore.save(authContext.botId as BotId, batch.nextOffset)
-							currentOffset = batch.nextOffset
-						}).pipe(
-							Effect.catchTags({
-								CommandHandlerError: (error) =>
-									Effect.logWarning("Bot gateway command handler failed, retrying batch", {
-										error,
-										botId: authContext.botId,
-										offset: currentOffset,
-									}).pipe(Effect.zipRight(Effect.sleep(Duration.seconds(1))), Effect.asVoid),
-								EventHandlerError: (error) =>
-									Effect.logWarning("Bot gateway event handler failed, retrying batch", {
-										error,
-										botId: authContext.botId,
-										offset: currentOffset,
-									}).pipe(Effect.zipRight(Effect.sleep(Duration.seconds(1))), Effect.asVoid),
-								GatewaySessionStoreError: (error) =>
-									Effect.logWarning("Failed to persist gateway session offset, retrying", {
-										error,
-										botId: authContext.botId,
-										offset: currentOffset,
-									}).pipe(Effect.zipRight(Effect.sleep(Duration.seconds(1))), Effect.asVoid),
-							}),
-						),
-					),
-				)
-			})
-
 			const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
 				Effect.gen(function* () {
 					const runtime = yield* Effect.runtime<any>()
@@ -793,11 +694,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			Effect.gen(function* () {
 				const runtimeConfig = getGatewayRuntimeConfig()
 				if (!runtimeConfig) {
-					return
-				}
-
-				if (runtimeConfig.gatewayTransport === "pull") {
-					yield* startPullGatewayLoop(runtimeConfig)
 					return
 				}
 
@@ -1573,7 +1469,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			/**
 			 * Get bot authentication context
 			 */
-			getAuthContext: bot.getAuthContext,
+			getAuthContext: auth.getContext.pipe(Effect.orDie),
 
 			state: {
 				get: (key: string) => botStateStore.get(authContext.botId as BotId, key),
@@ -1741,13 +1637,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
  */
 export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyCommands> {
 	/**
-	 * Electric proxy URL
-	 * @default "https://electric.hazel.sh/v1/shape"
-	 * @example "http://localhost:8787/v1/shape" // For local development
-	 */
-	readonly electricUrl?: string
-
-	/**
 	 * Backend URL for RPC API calls
 	 * @default "https://api.hazel.sh"
 	 * @example "http://localhost:3003" // For local development
@@ -1796,13 +1685,6 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly mentionable?: boolean
 
 	/**
-	 * Gateway transport mode.
-	 * `auto` and `live` use the websocket gateway. `pull` is the explicit HTTP fallback.
-	 * @default "auto"
-	 */
-	readonly gatewayTransport?: GatewayTransport
-
-	/**
 	 * Offset to start from when no saved session offset exists.
 	 * Use `"now"` to tail only new events or `"-1"` to replay from the beginning.
 	 * @default "now"
@@ -1832,16 +1714,6 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	 * Override websocket heartbeat cadence when the gateway HELLO frame should be ignored.
 	 */
 	readonly heartbeatIntervalMs?: number
-
-	/**
-	 * Event queue configuration (optional)
-	 */
-	readonly queueConfig?: EventQueueConfig
-
-	/**
-	 * Event dispatcher configuration (optional)
-	 */
-	readonly dispatcherConfig?: import("./services/event-dispatcher.ts").EventDispatcherConfig
 
 	/**
 	 * Service name for tracing (optional)
@@ -1883,43 +1755,11 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	}
 }
 
-type EventPipelineDispatcher = Pick<
-	Context.Tag.Service<typeof EventDispatcher>,
-	"registeredEventTypes" | "start"
->
-
-type EventPipelineSubscriber = Pick<Context.Tag.Service<typeof ShapeStreamSubscriber>, "start">
-
 /**
- * Start the DB event pipeline (shape streams + dispatcher) only when DB event handlers exist.
- * Command-only bots intentionally skip this pipeline to avoid unnecessary startup warnings.
- */
-export const startBotEventPipeline = (
-	dispatcher: EventPipelineDispatcher,
-	subscriber: EventPipelineSubscriber,
-) =>
-	Effect.gen(function* () {
-		// Derive required tables from registered event handlers
-		const eventTypes = yield* dispatcher.registeredEventTypes
-		if (eventTypes.length === 0) {
-			yield* Effect.logDebug(
-				"No DB event handlers registered; skipping shape streams and dispatcher startup",
-			).pipe(Effect.annotateLogs("service", "BotClient"))
-			return
-		}
-
-		const requiredTables = extractTablesFromEventTypes(eventTypes)
-
-		// Start shape stream subscriptions (only for tables with handlers)
-		yield* subscriber.start(requiredTables)
-		yield* dispatcher.start
-	})
-
-/**
- * Create a Hazel bot runtime with pre-configured subscriptions
+ * Create a Hazel bot runtime with pre-configured Hazel gateway events
  *
  * This is the simplest way to create a bot for Hazel integrations.
- * All Hazel domain schemas (messages, channels, channel_members) are pre-configured.
+ * All inbound Hazel events are delivered over the gateway websocket.
  *
  * @example
  * ```typescript
@@ -1990,7 +1830,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		commands: config.commands ?? EmptyCommandGroup,
 		mentionable: config.mentionable ?? false,
 		actorsEndpoint,
-		gatewayTransport: config.gatewayTransport ?? "auto",
 		resumeOffset: config.resumeOffset ?? "now",
 		maxConcurrentPartitions: config.maxConcurrentPartitions ?? 8,
 		heartbeatIntervalMs: config.heartbeatIntervalMs,
@@ -2003,21 +1842,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	const BotStateStoreLayer = config.stateStore
 		? Layer.succeed(BotStateStoreTag, config.stateStore)
 		: InMemoryBotStateStoreLive
-
-	// Create the typed BotClient layer for Hazel auth context.
-	const BotClientTag = createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
-	const BotClientLayer = Layer.effect(
-		BotClientTag,
-		Effect.gen(function* () {
-			const auth = yield* BotAuth
-
-			return {
-				on: () => Effect.void,
-				start: Effect.void,
-				getAuthContext: auth.getContext.pipe(Effect.orDie),
-			}
-		}),
-	)
 
 	// Create logger layer with configurable level and format
 	// Defaults: INFO level, format based on NODE_ENV
@@ -2052,7 +1876,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Compose all layers with proper dependency order
 	const AllLayers = Layer.mergeAll(
 		HazelBotClient.Default.pipe(
-			Layer.provide(BotClientLayer),
 			Layer.provide(RpcClientLayer),
 			Layer.provide(RpcClientConfigLayer),
 			Layer.provide(BotStateStoreLayer),

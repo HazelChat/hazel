@@ -1,15 +1,17 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Ref, Scope } from "effect"
+import { Duration, Effect, Layer, Ref } from "effect"
 import { delay, http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
-import { createBotClientTag } from "./bot-client.ts"
-import { Command, CommandGroup, EmptyCommandGroup } from "./command.ts"
 import {
-	HAZEL_SUBSCRIPTIONS,
-	HazelBotClient,
-	HazelBotRuntimeConfigTag,
-	startBotEventPipeline,
-} from "./hazel-bot-sdk.ts"
+	BotGatewayAckFrame,
+	BotGatewayClientFrame,
+	BotGatewayDispatchFrame,
+	BotGatewayHelloFrame,
+	BotGatewayReadyFrame,
+} from "@hazel/domain"
+import { BotAuth } from "./auth.ts"
+import { Command, CommandGroup, EmptyCommandGroup } from "./command.ts"
+import { HazelBotClient, HazelBotRuntimeConfigTag } from "./hazel-bot-sdk.ts"
 import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
 import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { Schema } from "effect"
@@ -45,33 +47,83 @@ const commandEnvelope = {
 
 const server = setupServer()
 
-const makeBotClientLayer = () => {
-	const BotClientTag = createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
-	return {
-		BotClientTag,
-		layer: Layer.succeed(BotClientTag, {
-			on: () => Effect.void,
-			start: Effect.void as Effect.Effect<void, never, Scope.Scope>,
-			getAuthContext: Effect.succeed({
-				botId: BOT_ID,
-				botName: "Test Bot",
-				userId: USER_ID,
-				channelIds: [] as readonly string[],
-				token: BOT_TOKEN,
-			}),
-		}),
+class FakeWebSocket {
+	static readonly CONNECTING = 0
+	static readonly OPEN = 1
+	static readonly CLOSING = 2
+	static readonly CLOSED = 3
+	static onSend:
+		| ((socket: FakeWebSocket, frame: Schema.Schema.Type<typeof BotGatewayClientFrame>) => void)
+		| null = null
+	static onCreate: ((socket: FakeWebSocket) => void) | null = null
+	static instances: Array<FakeWebSocket> = []
+
+	readonly listeners = new Map<string, Array<(event: any) => void>>()
+	readyState = FakeWebSocket.OPEN
+
+	constructor(readonly url: string) {
+		FakeWebSocket.instances.push(this)
+		queueMicrotask(() => {
+			this.emit("open", {})
+			FakeWebSocket.onCreate?.(this)
+		})
+	}
+
+	addEventListener(type: string, listener: (event: any) => void) {
+		const existing = this.listeners.get(type) ?? []
+		existing.push(listener)
+		this.listeners.set(type, existing)
+	}
+
+	send(data: string) {
+		const frame = JSON.parse(data) as Schema.Schema.Type<typeof BotGatewayClientFrame>
+		FakeWebSocket.onSend?.(this, frame)
+	}
+
+	close(code = 1000, reason = "") {
+		if (this.readyState === FakeWebSocket.CLOSED) {
+			return
+		}
+		this.readyState = FakeWebSocket.CLOSED
+		this.emit("close", { code, reason })
+	}
+
+	emitServerFrame(
+		frame:
+			| Schema.Schema.Type<typeof BotGatewayHelloFrame>
+			| Schema.Schema.Type<typeof BotGatewayReadyFrame>
+			| Schema.Schema.Type<typeof BotGatewayDispatchFrame>,
+	) {
+		this.emit("message", { data: JSON.stringify(frame) })
+	}
+
+	private emit(type: string, event: any) {
+		for (const listener of this.listeners.get(type) ?? []) {
+			listener(event)
+		}
+	}
+
+	static reset() {
+		FakeWebSocket.onSend = null
+		FakeWebSocket.onCreate = null
+		FakeWebSocket.instances = []
 	}
 }
 
 const makeHazelBotLayer = (options: {
 	sessionStore: any
 	commands?: CommandGroup<any>
-	gatewayTransport?: "auto" | "live" | "pull"
 }) => {
-	const { layer: botClientLayer } = makeBotClientLayer()
-
 	return HazelBotClient.Default.pipe(
-		Layer.provide(botClientLayer),
+		Layer.provide(
+			BotAuth.Default({
+				botId: BOT_ID,
+				botName: "Test Bot",
+				userId: USER_ID,
+				channelIds: [] as readonly string[],
+				token: BOT_TOKEN,
+			}),
+		),
 		Layer.provide(Layer.succeed(BotRpcClient, {} as any)),
 		Layer.provide(
 			Layer.succeed(BotRpcClientConfigTag, {
@@ -87,7 +139,6 @@ const makeHazelBotLayer = (options: {
 				commands: options.commands ?? EmptyCommandGroup,
 				mentionable: false,
 				actorsEndpoint: "http://localhost:6420",
-				gatewayTransport: options.gatewayTransport ?? "auto",
 				resumeOffset: "now",
 				maxConcurrentPartitions: 2,
 			}),
@@ -110,6 +161,7 @@ describe("HazelBotClient durable gateway", () => {
 
 	afterEach(() => {
 		server.resetHandlers()
+		FakeWebSocket.reset()
 	})
 
 	afterAll(() => {
@@ -121,7 +173,8 @@ describe("HazelBotClient durable gateway", () => {
 			Effect.gen(function* () {
 				const handledArgsRef = yield* Ref.make<Array<string>>([])
 				const savedOffsetsRef = yield* Ref.make<Array<string>>([])
-				const queryModes: Array<string | null> = []
+				const sentFramesRef = yield* Ref.make<Array<string>>([])
+				const originalWebSocket = globalThis.WebSocket
 
 				server.use(
 					http.post(`${BACKEND_URL}/bot-commands/sync`, async () =>
@@ -130,27 +183,38 @@ describe("HazelBotClient durable gateway", () => {
 					http.patch(`${BACKEND_URL}/bot-commands/settings`, async () =>
 						HttpResponse.json({ success: true }),
 					),
-					http.get(`${BACKEND_URL}/bot-gateway/stream`, async ({ request }) => {
-						const url = new URL(request.url)
-						const offset = url.searchParams.get("offset")
-						queryModes.push(url.searchParams.get("live"))
-
-						if (offset === "now") {
-							return HttpResponse.json([commandEnvelope], {
-								headers: { "Stream-Next-Offset": "1" },
-							})
-						}
-
-						await delay(250)
-						return HttpResponse.json([], {
-							headers: { "Stream-Next-Offset": "1" },
-						})
-					}),
 				)
+
+				globalThis.WebSocket = FakeWebSocket as any
+				FakeWebSocket.onCreate = (socket) => {
+					socket.emitServerFrame({
+						op: "HELLO",
+						heartbeatIntervalMs: 60_000,
+					})
+				}
+				FakeWebSocket.onSend = (socket, frame) => {
+					Ref.update(sentFramesRef, (frames) => [...frames, frame.op]).pipe(Effect.runSync)
+					if (frame.op === "IDENTIFY") {
+						socket.emitServerFrame({
+							op: "READY",
+							sessionId: "session-1",
+							resumed: false,
+							resumeOffset: "now",
+						})
+						socket.emitServerFrame({
+							op: "DISPATCH",
+							sessionId: "session-1",
+							events: [commandEnvelope],
+							nextOffset: "1",
+						})
+					}
+					if (frame.op === "ACK") {
+						socket.close()
+					}
+				}
 
 				const TestLayer = makeHazelBotLayer({
 					commands: CommandGroup.make(EchoCommand),
-					gatewayTransport: "pull",
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>
@@ -168,8 +232,16 @@ describe("HazelBotClient durable gateway", () => {
 
 					expect(yield* Ref.get(handledArgsRef)).toEqual(["hello"])
 					expect(yield* Ref.get(savedOffsetsRef)).toEqual(["1"])
-					expect(queryModes).not.toContain("long-poll")
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
+					expect(yield* Ref.get(sentFramesRef)).toContain("ACK")
+				}).pipe(
+					Effect.scoped,
+					Effect.provide(TestLayer),
+					Effect.ensuring(
+						Effect.sync(() => {
+							globalThis.WebSocket = originalWebSocket
+						}),
+					),
+				)
 			}),
 		))
 
@@ -178,6 +250,8 @@ describe("HazelBotClient durable gateway", () => {
 			Effect.gen(function* () {
 				const attemptsRef = yield* Ref.make(0)
 				const savedOffsetsRef = yield* Ref.make<Array<string>>([])
+				const sentFramesRef = yield* Ref.make<Array<string>>([])
+				const originalWebSocket = globalThis.WebSocket
 
 				server.use(
 					http.post(`${BACKEND_URL}/bot-commands/sync`, async () =>
@@ -186,16 +260,36 @@ describe("HazelBotClient durable gateway", () => {
 					http.patch(`${BACKEND_URL}/bot-commands/settings`, async () =>
 						HttpResponse.json({ success: true }),
 					),
-					http.get(`${BACKEND_URL}/bot-gateway/stream`, async () =>
-						HttpResponse.json([commandEnvelope], {
-							headers: { "Stream-Next-Offset": "1" },
-						}),
-					),
 				)
+
+				globalThis.WebSocket = FakeWebSocket as any
+				FakeWebSocket.onCreate = (socket) => {
+					socket.emitServerFrame({
+						op: "HELLO",
+						heartbeatIntervalMs: 60_000,
+					})
+				}
+				FakeWebSocket.onSend = (socket, frame) => {
+					Ref.update(sentFramesRef, (frames) => [...frames, frame.op]).pipe(Effect.runSync)
+					if (frame.op === "IDENTIFY") {
+						socket.emitServerFrame({
+							op: "READY",
+							sessionId: "session-1",
+							resumed: false,
+							resumeOffset: "now",
+						})
+						socket.emitServerFrame({
+							op: "DISPATCH",
+							sessionId: "session-1",
+							events: [commandEnvelope],
+							nextOffset: "1",
+						})
+						setTimeout(() => socket.close(1011, "test-finished"), 50)
+					}
+				}
 
 				const TestLayer = makeHazelBotLayer({
 					commands: CommandGroup.make(EchoCommand),
-					gatewayTransport: "pull",
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>
@@ -215,64 +309,16 @@ describe("HazelBotClient durable gateway", () => {
 
 					expect(yield* Ref.get(attemptsRef)).toBe(1)
 					expect(yield* Ref.get(savedOffsetsRef)).toEqual([])
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
+					expect(yield* Ref.get(sentFramesRef)).not.toContain("ACK")
+				}).pipe(
+					Effect.scoped,
+					Effect.provide(TestLayer),
+					Effect.ensuring(
+						Effect.sync(() => {
+							globalThis.WebSocket = originalWebSocket
+						}),
+					),
+				)
 			}),
-		))
-})
-
-describe("startBotEventPipeline", () => {
-	it("skips shape stream and dispatcher startup when no DB handlers are registered", () =>
-		Effect.runPromise(
-			Effect.scoped(
-				Effect.gen(function* () {
-					const shapeStreamStarts = yield* Ref.make(0)
-					const dispatcherStarts = yield* Ref.make(0)
-
-					const dispatcher = {
-						registeredEventTypes: Effect.succeed([] as string[]),
-						start: Ref.update(dispatcherStarts, (n) => n + 1).pipe(Effect.asVoid),
-					}
-
-					const subscriber = {
-						start: (_tables?: ReadonlySet<string>) =>
-							Ref.update(shapeStreamStarts, (n) => n + 1).pipe(Effect.asVoid),
-					}
-
-					yield* startBotEventPipeline(dispatcher as any, subscriber as any)
-
-					expect(yield* Ref.get(shapeStreamStarts)).toBe(0)
-					expect(yield* Ref.get(dispatcherStarts)).toBe(0)
-				}),
-			),
-		))
-
-	it("starts shape streams and dispatcher when DB handlers exist", () =>
-		Effect.runPromise(
-			Effect.scoped(
-				Effect.gen(function* () {
-					const requiredTablesRef = yield* Ref.make<ReadonlySet<string> | undefined>(undefined)
-					const dispatcherStarts = yield* Ref.make(0)
-
-					const dispatcher = {
-						registeredEventTypes: Effect.succeed([
-							"messages.insert",
-							"channels.update",
-						] as string[]),
-						start: Ref.update(dispatcherStarts, (n) => n + 1).pipe(Effect.asVoid),
-					}
-
-					const subscriber = {
-						start: (tables?: ReadonlySet<string>) =>
-							Ref.set(requiredTablesRef, tables).pipe(Effect.asVoid),
-					}
-
-					yield* startBotEventPipeline(dispatcher as any, subscriber as any)
-
-					const requiredTables = yield* Ref.get(requiredTablesRef)
-					expect(requiredTables).toBeDefined()
-					expect(Array.from(requiredTables ?? []).sort()).toEqual(["channels", "messages"])
-					expect(yield* Ref.get(dispatcherStarts)).toBe(1)
-				}),
-			),
 		))
 })

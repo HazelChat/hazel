@@ -1,7 +1,7 @@
 /**
  * @hazel/bot-sdk
  *
- * Effect-based SDK for building bots that interact with the application via Electric SQL streams
+ * Effect-based SDK for building bots that interact with Hazel over the bot gateway websocket
  *
  * ## Quick Start (Hazel Integrations)
  *
@@ -11,8 +11,8 @@
  * import { createHazelBot, HazelBotClient } from "@hazel/bot-sdk"
  *
  * const runtime = createHazelBot({
- *   electricUrl: process.env.ELECTRIC_URL!,
  *   botToken: process.env.BOT_TOKEN!,
+ *   gatewayUrl: process.env.GATEWAY_URL!,
  * })
  *
  * const program = Effect.gen(function* () {
@@ -24,25 +24,8 @@
  * })
  * ```
  *
- * ## Advanced Usage (Custom Schemas)
- *
- * For generic Electric SQL integrations with custom schemas:
- *
- * ```typescript
- * import { makeBotRuntime, createBotClientTag } from "@hazel/bot-sdk"
- *
- * const subscriptions = [
- *   { table: "users", schema: UserSchema, startFromNow: true },
- * ] as const
- *
- * const runtime = makeBotRuntime({ electricUrl, botToken, subscriptions })
- * const BotClient = createBotClientTag<typeof subscriptions>()
- * ```
  */
-
-// Generic bot SDK (for custom schemas and advanced use cases)
 export * from "./auth.ts"
-export * from "./bot-client.ts"
 export * from "./command.ts"
 export * from "./config.ts"
 export * from "./errors.ts"
@@ -56,11 +39,8 @@ export * from "./hazel-bot-sdk.ts"
 // Bot runner helper (simplified entry point)
 export * from "./bot-config.ts"
 export * from "./run-bot.ts"
-export * from "./layers.ts"
 // RPC client for API calls
 export * from "./rpc/index.ts"
-export * from "./services/index.ts"
-export * from "./types/index.ts"
 // Streaming for real-time message updates and AI streaming
 export * from "./streaming/index.ts"
 // Integration tools for dynamic tool building based on enabled integrations

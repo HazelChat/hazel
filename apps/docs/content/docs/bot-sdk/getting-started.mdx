@@ -36,9 +36,8 @@ For local development, you may also need:
 
 ```bash
 # Optional: Override for local development
-ELECTRIC_URL=http://localhost:8787/v1/shape
 BACKEND_URL=http://localhost:3003
-REDIS_URL=redis://localhost:6379
+GATEWAY_URL=http://localhost:3034
 ```
 
 ## Your First Bot
@@ -91,7 +90,7 @@ Send a message in any channel the bot has access to, and it will echo it back!
 The main entry point for creating bots. It handles:
 
 - Loading configuration from environment variables
-- Connecting to the Hazel real-time event stream
+- Connecting to the Hazel bot gateway websocket
 - Graceful shutdown on SIGINT/SIGTERM
 - Error logging and recovery
 
