@@ -114,10 +114,23 @@ Hazel Chat is a full-stack chat application featuring:
     bun run dev
     ```
 
-    This starts all apps via Turborepo:
+    This starts the core development stack via Turborepo:
     - Web: http://localhost:3000
     - Backend: http://localhost:3003
     - Cluster: http://localhost:3020
+    - Bot gateway: http://localhost:3034
+
+    To start local bot apps alongside the shared gateway, run:
+
+    ```bash
+    bun run dev:bots
+    ```
+
+    To start everything at once, run:
+
+    ```bash
+    bun run dev:withBots
+    ```
 
 ## WorkOS Configuration
 
@@ -152,7 +165,9 @@ The application uses custom roles for organization members. Go to **Roles** and 
 
 | Command                 | Description                                 |
 | ----------------------- | ------------------------------------------- |
-| `bun run dev`           | Start all apps in development mode          |
+| `bun run dev`           | Start core apps and the bot gateway         |
+| `bun run dev:bots`      | Start the bot gateway and local bot apps    |
+| `bun run dev:withBots`  | Start everything in development mode        |
 | `bun run build`         | Build all apps and packages                 |
 | `bun run typecheck`     | Run TypeScript checking across all packages |
 | `bun run format`        | Format and lint code with OXC               |

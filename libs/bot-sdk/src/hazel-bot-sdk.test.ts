@@ -17,6 +17,7 @@ import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { Schema } from "effect"
 
 const BACKEND_URL = "http://localhost:3070"
+const GATEWAY_URL = "http://localhost:3034"
 const BOT_ID = "00000000-0000-0000-0000-000000000111"
 const USER_ID = "00000000-0000-0000-0000-000000000222"
 const ORG_ID = "00000000-0000-0000-0000-000000000333"
@@ -110,10 +111,7 @@ class FakeWebSocket {
 	}
 }
 
-const makeHazelBotLayer = (options: {
-	sessionStore: any
-	commands?: CommandGroup<any>
-}) => {
+const makeHazelBotLayer = (options: { sessionStore: any; commands?: CommandGroup<any> }) => {
 	return HazelBotClient.Default.pipe(
 		Layer.provide(
 			BotAuth.Default({
@@ -134,7 +132,7 @@ const makeHazelBotLayer = (options: {
 		Layer.provide(
 			Layer.succeed(HazelBotRuntimeConfigTag, {
 				backendUrl: BACKEND_URL,
-				gatewayUrl: BACKEND_URL,
+				gatewayUrl: GATEWAY_URL,
 				botToken: BOT_TOKEN,
 				commands: options.commands ?? EmptyCommandGroup,
 				mentionable: false,
@@ -218,14 +216,18 @@ describe("HazelBotClient durable gateway", () => {
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>
-							Ref.update(savedOffsetsRef, (offsets) => [...offsets, offset]).pipe(Effect.asVoid),
+							Ref.update(savedOffsetsRef, (offsets) => [...offsets, offset]).pipe(
+								Effect.asVoid,
+							),
 					},
 				})
 
 				yield* Effect.gen(function* () {
 					const bot = yield* HazelBotClient
 					yield* bot.onCommand(EchoCommand, (ctx) =>
-						Ref.update(handledArgsRef, (handled) => [...handled, ctx.args.text]).pipe(Effect.asVoid),
+						Ref.update(handledArgsRef, (handled) => [...handled, ctx.args.text]).pipe(
+							Effect.asVoid,
+						),
 					)
 					yield* bot.start
 					yield* Effect.sleep(Duration.millis(100))
@@ -293,7 +295,9 @@ describe("HazelBotClient durable gateway", () => {
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>
-							Ref.update(savedOffsetsRef, (offsets) => [...offsets, offset]).pipe(Effect.asVoid),
+							Ref.update(savedOffsetsRef, (offsets) => [...offsets, offset]).pipe(
+								Effect.asVoid,
+							),
 					},
 				})
 

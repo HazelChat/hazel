@@ -54,13 +54,10 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 						Effect.tap((response) =>
 							botGateway.publishChannelMemberEvent("channel_member.add", response.data).pipe(
 								Effect.catchTag("DurableStreamRequestError", (error) =>
-									Effect.logWarning(
-										"Failed to publish channel_member.add to bot gateway",
-										{
-											error,
-											channelMemberId: response.data.id,
-										},
-									),
+									Effect.logWarning("Failed to publish channel_member.add to bot gateway", {
+										error,
+										channelMemberId: response.data.id,
+									}),
 								),
 							),
 						),

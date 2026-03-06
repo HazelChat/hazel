@@ -544,8 +544,13 @@ export const setupCommand = Command.make(
 				}
 
 				yield* Console.log(pc.green("\n\u2705 Setup complete!"))
-				yield* Console.log(pc.bold("Next step:"))
-				yield* Console.log(`  Run ${pc.cyan("`bun run dev`")} to start developing\n`)
+				yield* Console.log(pc.bold("Next steps:"))
+				yield* Console.log(
+					`  1. Run ${pc.cyan("`bun run dev`")} to start the core apps and bot gateway`,
+				)
+				yield* Console.log(
+					`  2. Optional: Run ${pc.cyan("`bun run dev:bots`")} to start local bot apps\n`,
+				)
 			}
 		}),
 )

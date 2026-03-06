@@ -46,11 +46,12 @@ export class BotHealthServer extends Effect.Service<BotHealthServer>()("BotHealt
 					fetch(req) {
 						const url = new URL(req.url)
 						if (req.method === "GET" && url.pathname === "/health") {
-							return Runtime.runPromise(runtime)(collectHealth).then((health) =>
-								new Response(JSON.stringify(health), {
-									status: 200,
-									headers: { "Content-Type": "application/json" },
-								}),
+							return Runtime.runPromise(runtime)(collectHealth).then(
+								(health) =>
+									new Response(JSON.stringify(health), {
+										status: 200,
+										headers: { "Content-Type": "application/json" },
+									}),
 							)
 						}
 

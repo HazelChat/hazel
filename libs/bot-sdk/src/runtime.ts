@@ -15,8 +15,10 @@ export const defineBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 	definition: BotDefinition<Commands>,
 ): BotDefinition<Commands> => definition
 
-export interface RunNodeBotOptions<Commands extends CommandGroup<any> = EmptyCommands>
-	extends Omit<RunBotConfig<Commands>, "commands" | "mentionable" | "layers" | "setup"> {}
+export interface RunNodeBotOptions<Commands extends CommandGroup<any> = EmptyCommands> extends Omit<
+	RunBotConfig<Commands>,
+	"commands" | "mentionable" | "layers" | "setup"
+> {}
 
 export const runNodeBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 	definition: BotDefinition<Commands>,

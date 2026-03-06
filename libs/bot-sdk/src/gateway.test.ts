@@ -29,8 +29,8 @@ describe("InMemoryBotStateStoreLive", () => {
 			Effect.gen(function* () {
 				const store = yield* BotStateStoreTag
 				expect(yield* store.get(BOT_ID, "threads")).toBe(null)
-				yield* store.set(BOT_ID, "threads", "{\"count\":1}")
-				expect(yield* store.get(BOT_ID, "threads")).toBe("{\"count\":1}")
+				yield* store.set(BOT_ID, "threads", '{"count":1}')
+				expect(yield* store.get(BOT_ID, "threads")).toBe('{"count":1}')
 				yield* store.delete(BOT_ID, "threads")
 				expect(yield* store.get(BOT_ID, "threads")).toBe(null)
 			}).pipe(Effect.provide(InMemoryBotStateStoreLive)),

@@ -162,16 +162,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						.pipe(withRemapDbErrors("Channel", "delete"))
 
 					if (Option.isSome(existingChannel)) {
-						yield* botGateway
-							.publishChannelEvent("channel.delete", existingChannel.value)
-							.pipe(
-								Effect.catchTag("DurableStreamRequestError", (error) =>
-									Effect.logWarning("Failed to publish channel.delete to bot gateway", {
-										error,
-										channelId: existingChannel.value.id,
-									}),
-								),
-							)
+						yield* botGateway.publishChannelEvent("channel.delete", existingChannel.value).pipe(
+							Effect.catchTag("DurableStreamRequestError", (error) =>
+								Effect.logWarning("Failed to publish channel.delete to bot gateway", {
+									error,
+									channelId: existingChannel.value.id,
+								}),
+							),
+						)
 					}
 
 					return response

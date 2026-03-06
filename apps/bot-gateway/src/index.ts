@@ -138,10 +138,7 @@ class DurableStreamClient extends Effect.Service<DurableStreamClient>()("Durable
 			})
 		})
 
-		const proxyRead = Effect.fn("BotGateway.proxyRead")(function* (
-			botId: BotId,
-			query: URLSearchParams,
-		) {
+		const proxyRead = Effect.fn("BotGateway.proxyRead")(function* (botId: BotId, query: URLSearchParams) {
 			yield* ensureStream(botId)
 			const url = new URL(buildStreamPath(config.durableStreamsUrl, botId))
 			for (const [key, value] of query.entries()) {
@@ -239,7 +236,10 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 		const runtime = (yield* Effect.runtime<any>()) as Runtime.Runtime<never>
 		const sessionsRef = yield* Ref.make(new Map<string, GatewaySession>())
 
-		const sendFrame = (socket: ServerWebSocket<{ sessionId: string | null }>, frame: BotGatewayServerFrame) =>
+		const sendFrame = (
+			socket: ServerWebSocket<{ sessionId: string | null }>,
+			frame: BotGatewayServerFrame,
+		) =>
 			Effect.sync(() => {
 				socket.send(JSON.stringify(frame))
 			})
@@ -247,10 +247,7 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 		const getSession = (id: string) =>
 			Ref.get(sessionsRef).pipe(Effect.map((sessions) => sessions.get(id) ?? null))
 
-		const updateSession = (
-			id: string,
-			update: (session: GatewaySession) => GatewaySession,
-		) =>
+		const updateSession = (id: string, update: (session: GatewaySession) => GatewaySession) =>
 			Ref.update(sessionsRef, (sessions) => {
 				const existing = sessions.get(id)
 				if (!existing) {
@@ -271,10 +268,7 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 				return next
 			})
 
-		const tryClaimLease = Effect.fn("BotGateway.tryClaimLease")(function* (
-			botId: BotId,
-			id: string,
-		) {
+		const tryClaimLease = Effect.fn("BotGateway.tryClaimLease")(function* (botId: BotId, id: string) {
 			const key = leaseKeyForBot(botId)
 			const existing = yield* redis.get(key)
 			if (existing === id) {
@@ -331,17 +325,17 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 					}),
 			})
 
-			const decodePayload = (payload: string | BufferSource) => {
-				if (typeof payload === "string") {
-					return payload
-				}
-				if (payload instanceof ArrayBuffer) {
-					return new TextDecoder().decode(new Uint8Array(payload))
-				}
-				return new TextDecoder().decode(
-					new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength),
-				)
+		const decodePayload = (payload: string | BufferSource) => {
+			if (typeof payload === "string") {
+				return payload
 			}
+			if (payload instanceof ArrayBuffer) {
+				return new TextDecoder().decode(new Uint8Array(payload))
+			}
+			return new TextDecoder().decode(
+				new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength),
+			)
+		}
 
 		const startDeliveryLoop = (id: string) =>
 			Effect.gen(function* () {
@@ -399,13 +393,18 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 											op: "RECONNECT",
 											reason: "durable_stream_unavailable",
 										})
-										yield* Effect.sync(() => session.socket.close(1012, "durable_stream_unavailable"))
+										yield* Effect.sync(() =>
+											session.socket.close(1012, "durable_stream_unavailable"),
+										)
 									}
 								}),
 							),
 						),
 					GatewayProtocolError: (error: GatewayProtocolError) =>
-						Effect.logWarning("Gateway delivery loop protocol failure", { error, sessionId: id }).pipe(
+						Effect.logWarning("Gateway delivery loop protocol failure", {
+							error,
+							sessionId: id,
+						}).pipe(
 							Effect.zipRight(
 								Effect.gen(function* () {
 									const session = yield* getSession(id)
@@ -539,9 +538,7 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						sendFrame(socket, {
 							op: "INVALID_SESSION",
 							reason: error.message,
-						}).pipe(
-							Effect.zipRight(Effect.sync(() => socket.close(1008, error.message))),
-						),
+						}).pipe(Effect.zipRight(Effect.sync(() => socket.close(1008, error.message)))),
 				}),
 			)
 

@@ -220,9 +220,7 @@ export class BotGatewayService extends Effect.Service<BotGatewayService>()("BotG
 			}))
 		})
 
-		const publishChannelMemberEvent = Effect.fn(
-			"BotGatewayService.publishChannelMemberEvent",
-		)(function* (
+		const publishChannelMemberEvent = Effect.fn("BotGatewayService.publishChannelMemberEvent")(function* (
 			eventType: "channel_member.add" | "channel_member.remove",
 			member: Schema.Schema.Type<typeof ChannelMember.Model.json>,
 		) {
@@ -231,8 +229,7 @@ export class BotGatewayService extends Effect.Service<BotGatewayService>()("BotG
 				return
 			}
 
-			const eventTimestamp =
-				member.createdAt?.getTime?.() ?? member.joinedAt?.getTime?.() ?? Date.now()
+			const eventTimestamp = member.createdAt?.getTime?.() ?? member.joinedAt?.getTime?.() ?? Date.now()
 
 			yield* publishToInstalledBots(organizationId, () => ({
 				schemaVersion: 1,

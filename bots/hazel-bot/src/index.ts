@@ -35,27 +35,27 @@ const bot = defineBot({
 			const saveActiveThreads = (state: Schema.Schema.Type<typeof ActiveThreadsState>) =>
 				bot.state.setJson(ACTIVE_THREADS_KEY, ActiveThreadsState, state)
 
-				const trackThread = (channelId: string, orgId: OrganizationId) =>
-					Effect.gen(function* () {
-						const current = yield* loadActiveThreads()
-						const nextOrder = current.order.filter((id) => id !== channelId)
-						const nextByChannel = { ...current.byChannel }
-						nextOrder.push(channelId)
+			const trackThread = (channelId: string, orgId: OrganizationId) =>
+				Effect.gen(function* () {
+					const current = yield* loadActiveThreads()
+					const nextOrder = current.order.filter((id) => id !== channelId)
+					const nextByChannel = { ...current.byChannel }
+					nextOrder.push(channelId)
 
-						while (nextOrder.length > MAX_ACTIVE_THREADS) {
-							const oldest = nextOrder.shift()
-							if (oldest) {
-								delete nextByChannel[oldest]
-							}
+					while (nextOrder.length > MAX_ACTIVE_THREADS) {
+						const oldest = nextOrder.shift()
+						if (oldest) {
+							delete nextByChannel[oldest]
 						}
+					}
 
-						const nextState = {
-							order: nextOrder,
-							byChannel: {
-								...nextByChannel,
-								[channelId]: orgId,
-							},
-						}
+					const nextState = {
+						order: nextOrder,
+						byChannel: {
+							...nextByChannel,
+							[channelId]: orgId,
+						},
+					}
 
 					yield* saveActiveThreads(nextState)
 				})

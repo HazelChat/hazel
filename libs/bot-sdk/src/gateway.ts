@@ -7,8 +7,9 @@ export interface GatewaySessionStore {
 	save(botId: BotId, offset: string): Effect.Effect<void, GatewaySessionStoreError>
 }
 
-export const GatewaySessionStoreTag =
-	Context.GenericTag<GatewaySessionStore>("@hazel/bot-sdk/GatewaySessionStore")
+export const GatewaySessionStoreTag = Context.GenericTag<GatewaySessionStore>(
+	"@hazel/bot-sdk/GatewaySessionStore",
+)
 
 export const InMemoryGatewaySessionStoreLive = Layer.effect(
 	GatewaySessionStoreTag,
@@ -52,8 +53,7 @@ export interface BotStateStore {
 	delete(botId: BotId, key: string): Effect.Effect<void, GatewaySessionStoreError>
 }
 
-export const BotStateStoreTag =
-	Context.GenericTag<BotStateStore>("@hazel/bot-sdk/BotStateStore")
+export const BotStateStoreTag = Context.GenericTag<BotStateStore>("@hazel/bot-sdk/BotStateStore")
 
 export const InMemoryBotStateStoreLive = Layer.effect(
 	BotStateStoreTag,

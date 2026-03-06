@@ -69,16 +69,14 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 						)
 						.pipe(withRemapDbErrors("Message", "create"))
 
-					yield* botGateway
-						.publishMessageEvent("message.create", response.data)
-						.pipe(
-							Effect.catchTag("DurableStreamRequestError", (error) =>
-								Effect.logWarning("Failed to publish message.create to bot gateway", {
-									error,
-									messageId: response.data.id,
-								}),
-							),
-						)
+					yield* botGateway.publishMessageEvent("message.create", response.data).pipe(
+						Effect.catchTag("DurableStreamRequestError", (error) =>
+							Effect.logWarning("Failed to publish message.create to bot gateway", {
+								error,
+								messageId: response.data.id,
+							}),
+						),
+					)
 
 					return response
 				}),
@@ -109,16 +107,14 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 						)
 						.pipe(withRemapDbErrors("Message", "update"))
 
-					yield* botGateway
-						.publishMessageEvent("message.update", response.data)
-						.pipe(
-							Effect.catchTag("DurableStreamRequestError", (error) =>
-								Effect.logWarning("Failed to publish message.update to bot gateway", {
-									error,
-									messageId: response.data.id,
-								}),
-							),
-						)
+					yield* botGateway.publishMessageEvent("message.update", response.data).pipe(
+						Effect.catchTag("DurableStreamRequestError", (error) =>
+							Effect.logWarning("Failed to publish message.update to bot gateway", {
+								error,
+								messageId: response.data.id,
+							}),
+						),
+					)
 
 					return response
 				}),
@@ -147,16 +143,14 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 						.pipe(withRemapDbErrors("Message", "delete"))
 
 					if (Option.isSome(existingMessage)) {
-						yield* botGateway
-							.publishMessageEvent("message.delete", existingMessage.value)
-							.pipe(
-								Effect.catchTag("DurableStreamRequestError", (error) =>
-									Effect.logWarning("Failed to publish message.delete to bot gateway", {
-										error,
-										messageId: existingMessage.value.id,
-									}),
-								),
-							)
+						yield* botGateway.publishMessageEvent("message.delete", existingMessage.value).pipe(
+							Effect.catchTag("DurableStreamRequestError", (error) =>
+								Effect.logWarning("Failed to publish message.delete to bot gateway", {
+									error,
+									messageId: existingMessage.value.id,
+								}),
+							),
+						)
 					}
 
 					return response

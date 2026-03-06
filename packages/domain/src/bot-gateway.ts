@@ -12,9 +12,7 @@ export const BotGatewayCommandInvokePayload = Schema.Struct({
 	arguments: Schema.Record({ key: Schema.String, value: Schema.String }),
 	timestamp: Schema.Number,
 })
-export type BotGatewayCommandInvokePayload = Schema.Schema.Type<
-	typeof BotGatewayCommandInvokePayload
->
+export type BotGatewayCommandInvokePayload = Schema.Schema.Type<typeof BotGatewayCommandInvokePayload>
 
 const BaseGatewayEnvelope = {
 	schemaVersion: Schema.Literal(1),

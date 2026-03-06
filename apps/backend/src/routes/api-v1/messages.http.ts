@@ -241,22 +241,20 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											transactionId: txid,
 										})
 									}),
-							)
+								)
 								.pipe(
 									withRemapDbErrors("Message", "create"),
 									Effect.provideService(CurrentUser.Context, currentUser),
 								)
 
-							yield* botGateway
-								.publishMessageEvent("message.create", response.data)
-								.pipe(
-									Effect.catchTag("DurableStreamRequestError", (error) =>
-										Effect.logWarning("Failed to publish API message.create to bot gateway", {
-											error,
-											messageId: response.data.id,
-										}),
-									),
-								)
+							yield* botGateway.publishMessageEvent("message.create", response.data).pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish API message.create to bot gateway", {
+										error,
+										messageId: response.data.id,
+									}),
+								),
+							)
 
 							return response
 						}).pipe(
@@ -301,22 +299,20 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											transactionId: txid,
 										})
 									}),
-							)
+								)
 								.pipe(
 									withRemapDbErrors("Message", "update"),
 									Effect.provideService(CurrentUser.Context, currentUser),
 								)
 
-							yield* botGateway
-								.publishMessageEvent("message.update", response.data)
-								.pipe(
-									Effect.catchTag("DurableStreamRequestError", (error) =>
-										Effect.logWarning("Failed to publish API message.update to bot gateway", {
-											error,
-											messageId: response.data.id,
-										}),
-									),
-								)
+							yield* botGateway.publishMessageEvent("message.update", response.data).pipe(
+								Effect.catchTag("DurableStreamRequestError", (error) =>
+									Effect.logWarning("Failed to publish API message.update to bot gateway", {
+										error,
+										messageId: response.data.id,
+									}),
+								),
+							)
 
 							return response
 						}).pipe(
@@ -353,7 +349,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 										return new DeleteMessageResponse({ transactionId: txid })
 									}),
-							)
+								)
 								.pipe(
 									withRemapDbErrors("Message", "delete"),
 									Effect.provideService(CurrentUser.Context, currentUser),

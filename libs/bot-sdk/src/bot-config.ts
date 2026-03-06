@@ -15,7 +15,7 @@ const DEFAULT_ACTORS_URL =
  *
  * Reads and validates the following environment variables:
  * - BOT_TOKEN (required) - Bot authentication token
- * - BACKEND_URL (optional) - Backend API URL for short request/response bot APIs
+ * - BACKEND_URL (optional) - Backend API URL for command sync and bot settings
  * - GATEWAY_URL (optional) - Gateway URL for inbound bot websocket delivery
  */
 export const BotEnvConfig = Config.all({
@@ -25,8 +25,7 @@ export const BotEnvConfig = Config.all({
 		Config.withDescription("Backend API URL"),
 	),
 	gatewayUrl: Config.string("GATEWAY_URL").pipe(
-		Config.orElse(() => Config.string("BACKEND_URL")),
-		Config.withDefault("https://api.hazel.sh"),
+		Config.withDefault("https://gateway.hazel.sh"),
 		Config.withDescription("Gateway API URL for inbound bot websocket delivery"),
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
