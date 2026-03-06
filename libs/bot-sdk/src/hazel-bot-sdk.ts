@@ -1820,7 +1820,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	config: HazelBotConfig<Commands>,
 ): ManagedRuntime.ManagedRuntime<HazelBotClient, unknown> => {
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
-	const gatewayUrl = config.gatewayUrl ?? backendUrl
+	const gatewayUrl = config.gatewayUrl ?? "https://bot-gateway.hazel.sh"
 	const actorsEndpoint =
 		config.actorsEndpoint ??
 		process.env.ACTORS_URL ??

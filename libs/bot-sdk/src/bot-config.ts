@@ -25,7 +25,7 @@ export const BotEnvConfig = Config.all({
 		Config.withDescription("Backend API URL"),
 	),
 	gatewayUrl: Config.string("GATEWAY_URL").pipe(
-		Config.withDefault("https://gateway.hazel.sh"),
+		Config.withDefault("https://bot-gateway.hazel.sh"),
 		Config.withDescription("Gateway API URL for inbound bot websocket delivery"),
 	),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
