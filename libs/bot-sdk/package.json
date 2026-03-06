@@ -13,58 +13,59 @@
 	],
 	"files": [
 		"dist",
+		"src",
 		"README.md"
 	],
 	"type": "module",
-	"main": "./dist/index.mjs",
-	"types": "./dist/index.d.mts",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
 	"exports": {
 		".": {
 			"import": {
-				"types": "./dist/index.d.mts",
-				"default": "./dist/index.mjs"
+				"types": "./src/index.ts",
+				"default": "./src/index.ts"
 			}
 		},
 		"./bot-client": {
 			"import": {
-				"types": "./dist/bot-client.d.mts",
-				"default": "./dist/bot-client.mjs"
+				"types": "./src/bot-client.ts",
+				"default": "./src/bot-client.ts"
 			}
 		},
 		"./config": {
 			"import": {
-				"types": "./dist/config.d.mts",
-				"default": "./dist/config.mjs"
+				"types": "./src/config.ts",
+				"default": "./src/config.ts"
 			}
 		},
 		"./auth": {
 			"import": {
-				"types": "./dist/auth.d.mts",
-				"default": "./dist/auth.mjs"
+				"types": "./src/auth.ts",
+				"default": "./src/auth.ts"
 			}
 		},
 		"./types": {
 			"import": {
-				"types": "./dist/types/index.d.mts",
-				"default": "./dist/types/index.mjs"
+				"types": "./src/types/index.ts",
+				"default": "./src/types/index.ts"
 			}
 		},
 		"./errors": {
 			"import": {
-				"types": "./dist/errors.d.mts",
-				"default": "./dist/errors.mjs"
+				"types": "./src/errors.ts",
+				"default": "./src/errors.ts"
 			}
 		},
 		"./services": {
 			"import": {
-				"types": "./dist/services/index.d.mts",
-				"default": "./dist/services/index.mjs"
+				"types": "./src/services/index.ts",
+				"default": "./src/services/index.ts"
 			}
 		},
 		"./layers": {
 			"import": {
-				"types": "./dist/layers.d.mts",
-				"default": "./dist/layers.mjs"
+				"types": "./src/layers.ts",
+				"default": "./src/layers.ts"
 			}
 		}
 	},

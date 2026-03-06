@@ -11,7 +11,7 @@ import {
 	startBotEventPipeline,
 } from "./hazel-bot-sdk.ts"
 import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
-import { GatewaySessionStoreTag } from "./gateway.ts"
+import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { Schema } from "effect"
 
 const BACKEND_URL = "http://localhost:3070"
@@ -93,6 +93,13 @@ const makeHazelBotLayer = (options: {
 			}),
 		),
 		Layer.provide(Layer.succeed(GatewaySessionStoreTag, options.sessionStore)),
+		Layer.provide(
+			Layer.succeed(BotStateStoreTag, {
+				get: () => Effect.succeed(null),
+				set: () => Effect.void,
+				delete: () => Effect.void,
+			}),
+		),
 	)
 }
 
@@ -143,6 +150,7 @@ describe("HazelBotClient durable gateway", () => {
 
 				const TestLayer = makeHazelBotLayer({
 					commands: CommandGroup.make(EchoCommand),
+					gatewayTransport: "pull",
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>
@@ -160,7 +168,7 @@ describe("HazelBotClient durable gateway", () => {
 
 					expect(yield* Ref.get(handledArgsRef)).toEqual(["hello"])
 					expect(yield* Ref.get(savedOffsetsRef)).toEqual(["1"])
-					expect(queryModes).toContain("long-poll")
+					expect(queryModes).not.toContain("long-poll")
 				}).pipe(Effect.scoped, Effect.provide(TestLayer))
 			}),
 		))
@@ -187,6 +195,7 @@ describe("HazelBotClient durable gateway", () => {
 
 				const TestLayer = makeHazelBotLayer({
 					commands: CommandGroup.make(EchoCommand),
+					gatewayTransport: "pull",
 					sessionStore: {
 						load: () => Effect.succeed(null),
 						save: (_botId, offset) =>

@@ -103,3 +103,83 @@ export const createBotGatewayPartitionKey = (params: {
 		: params.botId
 			? `bot:${params.botId}`
 			: `org:${params.organizationId}`
+
+export const BotGatewayOffset = Schema.String
+
+export const BotGatewayIdentifyFrame = Schema.Struct({
+	op: Schema.Literal("IDENTIFY"),
+	botToken: Schema.String,
+	resumeOffset: BotGatewayOffset,
+})
+
+export const BotGatewayResumeFrame = Schema.Struct({
+	op: Schema.Literal("RESUME"),
+	botToken: Schema.String,
+	sessionId: Schema.String,
+	resumeOffset: BotGatewayOffset,
+})
+
+export const BotGatewayAckFrame = Schema.Struct({
+	op: Schema.Literal("ACK"),
+	sessionId: Schema.String,
+	nextOffset: BotGatewayOffset,
+})
+
+export const BotGatewayHeartbeatFrame = Schema.Struct({
+	op: Schema.Literal("HEARTBEAT"),
+	sessionId: Schema.optional(Schema.String),
+})
+
+export const BotGatewayClientFrame = Schema.Union(
+	BotGatewayIdentifyFrame,
+	BotGatewayResumeFrame,
+	BotGatewayAckFrame,
+	BotGatewayHeartbeatFrame,
+)
+
+export type BotGatewayClientFrame = Schema.Schema.Type<typeof BotGatewayClientFrame>
+
+export const BotGatewayHelloFrame = Schema.Struct({
+	op: Schema.Literal("HELLO"),
+	heartbeatIntervalMs: Schema.Number,
+})
+
+export const BotGatewayReadyFrame = Schema.Struct({
+	op: Schema.Literal("READY"),
+	sessionId: Schema.String,
+	resumed: Schema.Boolean,
+	resumeOffset: BotGatewayOffset,
+})
+
+export const BotGatewayDispatchFrame = Schema.Struct({
+	op: Schema.Literal("DISPATCH"),
+	sessionId: Schema.String,
+	events: Schema.Array(BotGatewayEnvelope),
+	nextOffset: BotGatewayOffset,
+})
+
+export const BotGatewayHeartbeatAckFrame = Schema.Struct({
+	op: Schema.Literal("HEARTBEAT_ACK"),
+	sessionId: Schema.optional(Schema.String),
+})
+
+export const BotGatewayReconnectFrame = Schema.Struct({
+	op: Schema.Literal("RECONNECT"),
+	reason: Schema.String,
+})
+
+export const BotGatewayInvalidSessionFrame = Schema.Struct({
+	op: Schema.Literal("INVALID_SESSION"),
+	reason: Schema.String,
+})
+
+export const BotGatewayServerFrame = Schema.Union(
+	BotGatewayHelloFrame,
+	BotGatewayReadyFrame,
+	BotGatewayDispatchFrame,
+	BotGatewayHeartbeatAckFrame,
+	BotGatewayReconnectFrame,
+	BotGatewayInvalidSessionFrame,
+)
+
+export type BotGatewayServerFrame = Schema.Schema.Type<typeof BotGatewayServerFrame>

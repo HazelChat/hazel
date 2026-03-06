@@ -64,6 +64,23 @@
         "typescript": "^5.9.3",
       },
     },
+    "apps/bot-gateway": {
+      "name": "@hazel/bot-gateway",
+      "dependencies": {
+        "@effect/platform-bun": "catalog:effect",
+        "@hazel/backend-core": "workspace:*",
+        "@hazel/db": "workspace:*",
+        "@hazel/domain": "workspace:*",
+        "@hazel/effect-bun": "workspace:*",
+        "@hazel/schema": "workspace:*",
+        "effect": "catalog:effect",
+      },
+      "devDependencies": {
+        "@effect/language-service": "catalog:effect",
+        "@types/bun": "1.3.9",
+        "typescript": "^5.9.3",
+      },
+    },
     "apps/cluster": {
       "name": "cluster",
       "dependencies": {
@@ -1097,6 +1114,8 @@
     "@hazel/backend": ["@hazel/backend@workspace:apps/backend"],
 
     "@hazel/backend-core": ["@hazel/backend-core@workspace:packages/backend-core"],
+
+    "@hazel/bot-gateway": ["@hazel/bot-gateway@workspace:apps/bot-gateway"],
 
     "@hazel/db": ["@hazel/db@workspace:packages/db"],
 

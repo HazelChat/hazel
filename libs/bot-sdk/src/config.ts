@@ -1,5 +1,5 @@
 import type { EventDispatcherConfig, EventQueueConfig, ShapeSubscriptionConfig } from "./services/index.ts"
-import type { GatewaySessionStore, GatewayTransport } from "./gateway.ts"
+import type { BotStateStore, GatewaySessionStore, GatewayTransport } from "./gateway.ts"
 
 /**
  * Bot client runtime configuration
@@ -16,7 +16,9 @@ export interface BotConfig {
 	readonly gatewayTransport?: GatewayTransport
 	readonly resumeOffset?: string
 	readonly sessionStore?: GatewaySessionStore
+	readonly stateStore?: BotStateStore
 	readonly maxConcurrentPartitions?: number
+	readonly heartbeatIntervalMs?: number
 	/** Service name for tracing (defaults to "bot") */
 	readonly serviceName?: string
 }

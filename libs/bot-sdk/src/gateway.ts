@@ -49,9 +49,90 @@ export const InMemoryGatewaySessionStoreLive = Layer.effect(
 	}),
 )
 
+export interface BotStateStore {
+	get(botId: BotId, key: string): Effect.Effect<string | null, GatewaySessionStoreError>
+	set(botId: BotId, key: string, value: string): Effect.Effect<void, GatewaySessionStoreError>
+	delete(botId: BotId, key: string): Effect.Effect<void, GatewaySessionStoreError>
+}
+
+export const BotStateStoreTag =
+	Context.GenericTag<BotStateStore>("@hazel/bot-sdk/BotStateStore")
+
+export const InMemoryBotStateStoreLive = Layer.effect(
+	BotStateStoreTag,
+	Effect.gen(function* () {
+		const stateRef = yield* Ref.make(new Map<BotId, Map<string, string>>())
+
+		const getBotState = (state: Map<BotId, Map<string, string>>, botId: BotId) =>
+			state.get(botId) ?? new Map<string, string>()
+
+		return {
+			get: (botId, key) =>
+				Ref.get(stateRef).pipe(
+					Effect.map((state) => getBotState(state, botId).get(key) ?? null),
+					Effect.mapError(
+						(cause) =>
+							new GatewaySessionStoreError({
+								message: `Failed to read bot state for bot ${botId} and key ${key}`,
+								cause,
+							}),
+					),
+				),
+
+			set: (botId, key, value) =>
+				Ref.update(stateRef, (state) => {
+					const next = new Map(state)
+					const botState = new Map(getBotState(state, botId))
+					botState.set(key, value)
+					next.set(botId, botState)
+					return next
+				}).pipe(
+					Effect.mapError(
+						(cause) =>
+							new GatewaySessionStoreError({
+								message: `Failed to persist bot state for bot ${botId} and key ${key}`,
+								cause,
+							}),
+					),
+				),
+
+			delete: (botId, key) =>
+				Ref.update(stateRef, (state) => {
+					const existing = state.get(botId)
+					if (!existing) {
+						return state
+					}
+					const next = new Map(state)
+					const botState = new Map(existing)
+					botState.delete(key)
+					if (botState.size === 0) {
+						next.delete(botId)
+					} else {
+						next.set(botId, botState)
+					}
+					return next
+				}).pipe(
+					Effect.mapError(
+						(cause) =>
+							new GatewaySessionStoreError({
+								message: `Failed to delete bot state for bot ${botId} and key ${key}`,
+								cause,
+							}),
+					),
+				),
+		} satisfies BotStateStore
+	}),
+)
+
 export interface GatewayBatch {
 	readonly events: ReadonlyArray<Schema.Schema.Type<typeof BotGatewayEnvelope>>
 	readonly nextOffset: string
+}
+
+export const createGatewayWebSocketUrl = (gatewayUrl: string): URL => {
+	const url = new URL("/bot-gateway/ws", gatewayUrl)
+	url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+	return url
 }
 
 export const readGatewayBatch = Effect.fn("Gateway.readBatch")(function* (params: {

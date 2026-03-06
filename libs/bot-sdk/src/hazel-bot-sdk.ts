@@ -16,7 +16,18 @@ import type {
 	TypingIndicatorId,
 	UserId,
 } from "@hazel/schema"
-import { BotGatewayEnvelope } from "@hazel/domain"
+import {
+	BotGatewayAckFrame,
+	BotGatewayClientFrame,
+	BotGatewayDispatchFrame,
+	BotGatewayEnvelope,
+	BotGatewayHeartbeatFrame,
+	BotGatewayHelloFrame,
+	BotGatewayInvalidSessionFrame,
+	BotGatewayReadyFrame,
+	BotGatewayReconnectFrame,
+	BotGatewayServerFrame,
+} from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { HazelApi } from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
@@ -34,6 +45,7 @@ import {
 	RateLimiter,
 	Redacted,
 	Ref,
+	Runtime,
 	Schema,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
@@ -64,9 +76,12 @@ import {
 	MessageUpdateError,
 } from "./errors.ts"
 import {
+	BotStateStoreTag,
+	InMemoryBotStateStoreLive,
 	InMemoryGatewaySessionStoreLive,
 	GatewaySessionStoreTag,
 	type GatewayTransport,
+	createGatewayWebSocketUrl,
 	readGatewayBatch,
 } from "./gateway.ts"
 import { BotRpcClient, BotRpcClientConfigTag, BotRpcClientLive } from "./rpc/client.ts"
@@ -107,6 +122,7 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly gatewayTransport: GatewayTransport
 	readonly resumeOffset: string
 	readonly maxConcurrentPartitions: number
+	readonly heartbeatIntervalMs?: number
 }
 
 export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
@@ -239,6 +255,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
 		const gatewaySessionStore = yield* GatewaySessionStoreTag
+		const botStateStore = yield* BotStateStoreTag
 
 		// Command handler registry - stores handlers keyed by command name
 		// biome-ignore lint/suspicious/noExplicitAny: handlers are typed at registration, stored loosely
@@ -292,6 +309,44 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				onNone: () => null,
 				onSome: (config) => config,
 			})
+
+		const getBotState = <A>(key: string, schema: Schema.Schema<A>) =>
+			botStateStore.get(authContext.botId as BotId, key).pipe(
+				Effect.flatMap((value) =>
+					value === null
+						? Effect.succeed(null)
+						: Effect.try({
+								try: () => JSON.parse(value) as unknown,
+								catch: (cause) =>
+									new GatewayDecodeError({
+										message: `Failed to parse bot state for key ${key}`,
+										payload: value,
+										cause,
+									}),
+							}).pipe(
+								Effect.flatMap((parsed) =>
+									Schema.decodeUnknown(schema)(parsed).pipe(
+										Effect.mapError(
+											(cause) =>
+												new GatewayDecodeError({
+													message: `Failed to decode bot state for key ${key}`,
+													payload: value,
+													cause,
+												}),
+										),
+									),
+								),
+								Effect.map((decoded) => decoded as A | null),
+							),
+				),
+			)
+
+		const setBotState = <A>(key: string, schema: Schema.Schema<A>, value: A) =>
+			Schema.encode(schema)(value).pipe(
+				Effect.flatMap((encoded) =>
+					botStateStore.set(authContext.botId as BotId, key, JSON.stringify(encoded)),
+				),
+			)
 
 		const mapCommandHandlerError = (
 			commandName: string,
@@ -486,22 +541,37 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				)
 			})
 
-		const startGatewayLoop = () =>
-			Effect.gen(function* () {
-				const runtimeConfig = getGatewayRuntimeConfig()
-				if (!runtimeConfig) {
-					return
-				}
+		const loadResumeOffset = (runtimeConfig: HazelBotRuntimeConfig) =>
+			gatewaySessionStore.load(authContext.botId as BotId).pipe(
+				Effect.catchTag("GatewaySessionStoreError", (error) =>
+					Effect.logWarning("Failed to load saved gateway offset, using configured default", {
+						error,
+						botId: authContext.botId,
+					}).pipe(Effect.as(null)),
+				),
+				Effect.map((storedOffset) => storedOffset ?? runtimeConfig.resumeOffset),
+			)
 
-				const storedOffset = yield* gatewaySessionStore.load(authContext.botId as BotId).pipe(
-					Effect.catchTag("GatewaySessionStoreError", (error) =>
-						Effect.logWarning("Failed to load saved gateway offset, using configured default", {
-							error,
-							botId: authContext.botId,
-						}).pipe(Effect.as(null)),
-					),
-				)
-				let currentOffset = storedOffset ?? runtimeConfig.resumeOffset
+			const normalizeSocketPayload = (payload: unknown): string => {
+				if (typeof payload === "string") {
+					return payload
+				}
+				if (payload instanceof ArrayBuffer) {
+					return new TextDecoder().decode(new Uint8Array(payload))
+				}
+				if (ArrayBuffer.isView(payload)) {
+					return new TextDecoder().decode(
+						new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength),
+					)
+				}
+				return String(payload)
+			}
+
+		const encodeGatewayFrame = (frame: BotGatewayClientFrame): string => JSON.stringify(frame)
+
+		const startPullGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
+			Effect.gen(function* () {
+				let currentOffset = yield* loadResumeOffset(runtimeConfig)
 
 				yield* Effect.forkScoped(
 					Effect.forever(
@@ -510,7 +580,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 								gatewayUrl: runtimeConfig.gatewayUrl,
 								botToken: runtimeConfig.botToken,
 								offset: currentOffset,
-								transport: runtimeConfig.gatewayTransport,
+								transport: "pull",
 							}).pipe(
 								Effect.catchTags({
 									GatewayReadError: (error) =>
@@ -531,9 +601,6 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 							}
 
 							if (batch.events.length === 0) {
-								if (batch.nextOffset !== currentOffset) {
-									yield* gatewaySessionStore.save(authContext.botId as BotId, batch.nextOffset)
-								}
 								currentOffset = batch.nextOffset
 								return
 							}
@@ -565,6 +632,176 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 						),
 					),
 				)
+			})
+
+			const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
+				Effect.gen(function* () {
+					const runtime = yield* Effect.runtime<any>()
+				let nextResumeOffset = yield* loadResumeOffset(runtimeConfig)
+
+				const connectOnce = Effect.tryPromise({
+					try: () =>
+						new Promise<string>((resolve, reject) => {
+							const socket = new WebSocket(createGatewayWebSocketUrl(runtimeConfig.gatewayUrl).toString())
+							let finished = false
+							let sessionId: string | null = null
+							let currentResumeOffset = nextResumeOffset
+							let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+
+							const finish = (resumeOffset: string, error?: unknown) => {
+								if (finished) {
+									return
+								}
+								finished = true
+								if (heartbeatTimer) {
+									clearInterval(heartbeatTimer)
+								}
+								if (error) {
+									reject(error)
+									return
+								}
+								resolve(resumeOffset)
+							}
+
+							const sendFrame = (frame: BotGatewayClientFrame) => {
+								if (socket.readyState === WebSocket.OPEN) {
+									socket.send(encodeGatewayFrame(frame))
+								}
+							}
+
+							const startHeartbeat = (hello: Schema.Schema.Type<typeof BotGatewayHelloFrame>) => {
+								const intervalMs = runtimeConfig.heartbeatIntervalMs ?? hello.heartbeatIntervalMs
+								if (heartbeatTimer) {
+									clearInterval(heartbeatTimer)
+								}
+									heartbeatTimer = setInterval(() => {
+										sendFrame({
+											op: "HEARTBEAT",
+											sessionId: sessionId ?? undefined,
+										} satisfies Schema.Schema.Type<typeof BotGatewayHeartbeatFrame>)
+									}, intervalMs)
+								}
+
+							socket.addEventListener("message", (event) => {
+								const payload = normalizeSocketPayload(event.data)
+								let frame: Schema.Schema.Type<typeof BotGatewayServerFrame>
+								try {
+									frame = Schema.decodeUnknownSync(BotGatewayServerFrame)(JSON.parse(payload))
+								} catch (error) {
+									socket.close(1011, "invalid_gateway_frame")
+									finish(currentResumeOffset, error)
+									return
+								}
+
+								switch (frame.op) {
+									case "HELLO": {
+										startHeartbeat(frame)
+										sendFrame({
+											op: "IDENTIFY",
+											botToken: runtimeConfig.botToken,
+											resumeOffset: currentResumeOffset,
+										})
+										return
+									}
+									case "READY": {
+										sessionId = frame.sessionId
+										return
+									}
+									case "DISPATCH": {
+										Runtime.runPromise(runtime)(
+											Effect.gen(function* () {
+												yield* processGatewayBatch(frame.events)
+												yield* gatewaySessionStore.save(authContext.botId as BotId, frame.nextOffset)
+											}),
+										)
+											.then(() => {
+												currentResumeOffset = frame.nextOffset
+												sendFrame({
+													op: "ACK",
+													sessionId: frame.sessionId,
+													nextOffset: frame.nextOffset,
+												} satisfies Schema.Schema.Type<typeof BotGatewayAckFrame>)
+											})
+											.catch((error) => {
+												socket.close(1011, "dispatch_failed")
+												finish(currentResumeOffset, error)
+											})
+										return
+									}
+									case "HEARTBEAT_ACK": {
+										return
+									}
+									case "RECONNECT": {
+										socket.close(1012, frame.reason)
+										finish(currentResumeOffset)
+										return
+									}
+									case "INVALID_SESSION": {
+										Runtime.runPromise(runtime)(
+											gatewaySessionStore.save(
+												authContext.botId as BotId,
+												runtimeConfig.resumeOffset,
+											),
+										)
+											.catch(() => undefined)
+											.finally(() => {
+												currentResumeOffset = runtimeConfig.resumeOffset
+												socket.close(1008, frame.reason)
+												finish(currentResumeOffset)
+											})
+										return
+									}
+								}
+							})
+
+							socket.addEventListener("error", () => {
+								finish(currentResumeOffset, new Error("Gateway websocket connection failed"))
+							})
+
+							socket.addEventListener("close", () => {
+								finish(currentResumeOffset)
+							})
+						}),
+					catch: (cause) =>
+						new GatewayReadError({
+							message: "Failed to connect to bot gateway websocket",
+							cause,
+						}),
+				})
+
+					yield* Effect.forkScoped(
+						Effect.forever(
+							Effect.gen(function* () {
+								nextResumeOffset = yield* connectOnce.pipe(
+									Effect.catchAll((error) =>
+										Effect.logWarning("Bot gateway websocket failed, retrying", {
+											error,
+											botId: authContext.botId,
+											offset: nextResumeOffset,
+										}).pipe(
+											Effect.zipRight(Effect.sleep(Duration.seconds(1))),
+											Effect.as(nextResumeOffset),
+										),
+									),
+								)
+							}).pipe(Effect.zipRight(Effect.sleep(Duration.millis(250)))),
+						),
+				)
+			})
+
+		const startGatewayLoop = () =>
+			Effect.gen(function* () {
+				const runtimeConfig = getGatewayRuntimeConfig()
+				if (!runtimeConfig) {
+					return
+				}
+
+				if (runtimeConfig.gatewayTransport === "pull") {
+					yield* startPullGatewayLoop(runtimeConfig)
+					return
+				}
+
+				yield* startWebSocketGatewayLoop(runtimeConfig)
 			})
 
 		// Get command group from runtime config for schema decoding
@@ -1338,6 +1575,16 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			 */
 			getAuthContext: bot.getAuthContext,
 
+			state: {
+				get: (key: string) => botStateStore.get(authContext.botId as BotId, key),
+				set: (key: string, value: string) =>
+					botStateStore.set(authContext.botId as BotId, key, value),
+				delete: (key: string) => botStateStore.delete(authContext.botId as BotId, key),
+				getJson: <A>(key: string, schema: Schema.Schema<A>) => getBotState(key, schema),
+				setJson: <A>(key: string, schema: Schema.Schema<A>, value: A) =>
+					setBotState(key, schema, value),
+			},
+
 			/**
 			 * Helper to create actors service from runtime config.
 			 * Uses Option.match for explicit handling of missing config.
@@ -1550,7 +1797,7 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 
 	/**
 	 * Gateway transport mode.
-	 * `auto` currently uses long-poll reads for maximum runtime compatibility.
+	 * `auto` and `live` use the websocket gateway. `pull` is the explicit HTTP fallback.
 	 * @default "auto"
 	 */
 	readonly gatewayTransport?: GatewayTransport
@@ -1569,11 +1816,22 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
 	readonly sessionStore?: import("./gateway.ts").GatewaySessionStore
 
 	/**
+	 * Optional bot-local state store for durable bot state like tracked thread mappings.
+	 * Defaults to an in-memory store.
+	 */
+	readonly stateStore?: import("./gateway.ts").BotStateStore
+
+	/**
 	 * Maximum number of gateway partitions to process concurrently.
 	 * Ordering is still preserved within each partition.
 	 * @default 8
 	 */
 	readonly maxConcurrentPartitions?: number
+
+	/**
+	 * Override websocket heartbeat cadence when the gateway HELLO frame should be ignored.
+	 */
+	readonly heartbeatIntervalMs?: number
 
 	/**
 	 * Event queue configuration (optional)
@@ -1700,8 +1958,6 @@ export const startBotEventPipeline = (
 export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 	config: HazelBotConfig<Commands>,
 ): ManagedRuntime.ManagedRuntime<HazelBotClient, unknown> => {
-	// Apply defaults for URLs
-	const electricUrl = config.electricUrl ?? "https://electric.hazel.sh/v1/shape"
 	const backendUrl = config.backendUrl ?? "https://api.hazel.sh"
 	const gatewayUrl = config.gatewayUrl ?? backendUrl
 	const actorsEndpoint =
@@ -1710,33 +1966,6 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		process.env.RIVET_PUBLIC_ENDPOINT ??
 		process.env.RIVET_URL ??
 		DEFAULT_ACTORS_ENDPOINT
-
-	// Create all the required layers using layerConfig pattern
-	const EventQueueLayer = ElectricEventQueue.layerConfig(
-		Config.succeed(
-			config.queueConfig ?? {
-				capacity: 1000,
-				backpressureStrategy: "sliding" as const,
-			},
-		),
-	)
-
-	const ShapeSubscriberLayer = ShapeStreamSubscriber.layerConfig(
-		Config.succeed({
-			electricUrl,
-			botToken: config.botToken,
-			subscriptions: HAZEL_SUBSCRIPTIONS,
-		}),
-	)
-
-	const EventDispatcherLayer = EventDispatcher.layerConfig(
-		Config.succeed(
-			config.dispatcherConfig ?? {
-				maxRetries: 3,
-				retryBaseDelay: 100,
-			},
-		),
-	)
 
 	const AuthLayer = Layer.unwrapEffect(
 		createAuthContextFromToken(config.botToken, backendUrl).pipe(
@@ -1764,28 +1993,27 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		gatewayTransport: config.gatewayTransport ?? "auto",
 		resumeOffset: config.resumeOffset ?? "now",
 		maxConcurrentPartitions: config.maxConcurrentPartitions ?? 8,
+		heartbeatIntervalMs: config.heartbeatIntervalMs,
 	})
 
 	const GatewaySessionStoreLayer = config.sessionStore
 		? Layer.succeed(GatewaySessionStoreTag, config.sessionStore)
 		: InMemoryGatewaySessionStoreLive
 
-	// Create the typed BotClient layer for Hazel subscriptions
+	const BotStateStoreLayer = config.stateStore
+		? Layer.succeed(BotStateStoreTag, config.stateStore)
+		: InMemoryBotStateStoreLive
+
+	// Create the typed BotClient layer for Hazel auth context.
 	const BotClientTag = createBotClientTag<typeof HAZEL_SUBSCRIPTIONS>()
 	const BotClientLayer = Layer.effect(
 		BotClientTag,
 		Effect.gen(function* () {
-			const dispatcher = yield* EventDispatcher
-			const subscriber = yield* ShapeStreamSubscriber
 			const auth = yield* BotAuth
 
 			return {
-				on: (eventType, handler) => dispatcher.on(eventType, handler),
-				start: Effect.gen(function* () {
-					yield* Effect.logDebug("Starting bot client...")
-					yield* startBotEventPipeline(dispatcher, subscriber)
-					yield* Effect.logDebug("Bot client started successfully")
-				}),
+				on: () => Effect.void,
+				start: Effect.void,
 				getAuthContext: auth.getContext.pipe(Effect.orDie),
 			}
 		}),
@@ -1827,18 +2055,13 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 			Layer.provide(BotClientLayer),
 			Layer.provide(RpcClientLayer),
 			Layer.provide(RpcClientConfigLayer),
+			Layer.provide(BotStateStoreLayer),
 			Layer.provide(GatewaySessionStoreLayer),
 			Layer.provide(RuntimeConfigLayer),
 		),
 		HealthServerLayer,
 	).pipe(
-		Layer.provide(
-			Layer.mergeAll(
-				Layer.provide(EventDispatcherLayer, EventQueueLayer),
-				Layer.provide(ShapeSubscriberLayer, EventQueueLayer),
-				AuthLayer,
-			),
-		),
+		Layer.provide(AuthLayer),
 		Layer.provide(LoggerLayer),
 		Layer.provide(TracingLayer),
 	)

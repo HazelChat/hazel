@@ -50,6 +50,7 @@ export * from "./log-config.ts"
 export * from "./log-context.ts"
 export * from "./retry.ts"
 export * from "./gateway.ts"
+export * from "./runtime.ts"
 // Hazel-specific convenience layer (recommended for Hazel integrations)
 export * from "./hazel-bot-sdk.ts"
 // Bot runner helper (simplified entry point)

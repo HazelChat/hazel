@@ -1,6 +1,6 @@
-import { runHazelBot } from "@hazel-chat/bot-sdk"
+import { defineBot, runNodeBot } from "@hazel-chat/bot-sdk"
 import type { OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { LinearApiClient } from "@hazel/integrations/linear"
 import { CraftApiClient } from "@hazel/integrations/craft"
 
@@ -8,26 +8,57 @@ import { commands, AskCommand, TestCommand } from "./commands.ts"
 import { handleAIRequest } from "./handler.ts"
 
 const MAX_ACTIVE_THREADS = 1000
+const ACTIVE_THREADS_KEY = "hazel-bot:active-threads"
 
-runHazelBot({
+const ActiveThreadsState = Schema.Struct({
+	order: Schema.Array(Schema.String),
+	byChannel: Schema.Record({ key: Schema.String, value: Schema.String }),
+})
+
+const defaultActiveThreadsState = () => ({
+	order: [] as string[],
+	byChannel: {} as Record<string, string>,
+})
+
+const bot = defineBot({
 	serviceName: "hazel-bot",
 	commands,
 	mentionable: true,
 	layers: [LinearApiClient.Default, CraftApiClient.Default],
 	setup: (bot) =>
 		Effect.gen(function* () {
-			// Track thread channelId -> orgId for threads where the bot should respond
-			const activeThreads = new Map<string, OrganizationId>()
+			const loadActiveThreads = () =>
+				bot.state
+					.getJson(ACTIVE_THREADS_KEY, ActiveThreadsState)
+					.pipe(Effect.map((state) => state ?? defaultActiveThreadsState()))
 
-			// Evict oldest entry when the map exceeds the limit
-			const trackThread = (channelId: string, orgId: OrganizationId) => {
-				if (activeThreads.size >= MAX_ACTIVE_THREADS) {
-					// Map iterates in insertion order — first key is the oldest
-					const oldest = activeThreads.keys().next().value
-					if (oldest !== undefined) activeThreads.delete(oldest)
-				}
-				activeThreads.set(channelId, orgId)
-			}
+			const saveActiveThreads = (state: Schema.Schema.Type<typeof ActiveThreadsState>) =>
+				bot.state.setJson(ACTIVE_THREADS_KEY, ActiveThreadsState, state)
+
+				const trackThread = (channelId: string, orgId: OrganizationId) =>
+					Effect.gen(function* () {
+						const current = yield* loadActiveThreads()
+						const nextOrder = current.order.filter((id) => id !== channelId)
+						const nextByChannel = { ...current.byChannel }
+						nextOrder.push(channelId)
+
+						while (nextOrder.length > MAX_ACTIVE_THREADS) {
+							const oldest = nextOrder.shift()
+							if (oldest) {
+								delete nextByChannel[oldest]
+							}
+						}
+
+						const nextState = {
+							order: nextOrder,
+							byChannel: {
+								...nextByChannel,
+								[channelId]: orgId,
+							},
+						}
+
+					yield* saveActiveThreads(nextState)
+				})
 
 			// /ask command handler
 			yield* bot.onCommand(AskCommand, (ctx) =>
@@ -63,7 +94,8 @@ runHazelBot({
 					if (message.authorId === authContext.userId) return
 
 					// Only respond in threads we're actively tracking
-					const orgId = activeThreads.get(message.channelId)
+					const activeThreads = yield* loadActiveThreads()
+					const orgId = activeThreads.byChannel[message.channelId] as OrganizationId | undefined
 					if (!orgId) return
 
 					yield* Effect.log(`Thread follow-up in ${message.channelId}: ${message.content}`)
@@ -115,7 +147,7 @@ runHazelBot({
 					yield* Effect.log(`Created thread: ${thread.id}`)
 
 					// Track this thread so we respond to follow-up messages
-					trackThread(thread.id, thread.organizationId)
+					yield* trackThread(thread.id, thread.organizationId)
 
 					// Run AI pipeline in the thread
 					yield* handleAIRequest({
@@ -128,3 +160,5 @@ runHazelBot({
 			)
 		}),
 })
+
+runNodeBot(bot)
