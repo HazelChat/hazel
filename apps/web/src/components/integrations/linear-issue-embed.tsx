@@ -15,10 +15,10 @@ interface LinearIssueEmbedProps {
 // Linear's priority colors - matches their design system
 const PRIORITY_CONFIG = {
 	0: { label: "No priority", color: "text-fg/40", bg: "bg-fg/5" },
-	1: { label: "Urgent", color: "text-red-600", bg: "bg-red-500/10" },
-	2: { label: "High", color: "text-orange-600", bg: "bg-orange-500/10" },
-	3: { label: "Medium", color: "text-yellow-600", bg: "bg-yellow-500/10" },
-	4: { label: "Low", color: "text-blue-600", bg: "bg-blue-500/10" },
+	1: { label: "Urgent", color: "text-danger-subtle-fg", bg: "bg-danger-subtle" },
+	2: { label: "High", color: "text-warning-subtle-fg", bg: "bg-warning-subtle" },
+	3: { label: "Medium", color: "text-warning-subtle-fg", bg: "bg-warning-subtle" },
+	4: { label: "Low", color: "text-info-subtle-fg", bg: "bg-info-subtle" },
 } as const
 
 // Priority icon SVG
@@ -62,26 +62,13 @@ function StatusBadge({ name, color }: { name: string; color: string }) {
 }
 
 // Assignee avatar component
-function AssigneeAvatar({
-	name,
-	avatarUrl,
-	accentColor,
-}: {
-	name: string
-	avatarUrl?: string | null
-	accentColor: string
-}) {
+function AssigneeAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
 	return (
 		<div className="flex items-center gap-1.5">
 			{avatarUrl ? (
 				<img src={avatarUrl} alt="" className="size-5 rounded-full ring-1 ring-border/50" />
 			) : (
-				<div
-					className="flex size-5 items-center justify-center rounded-full font-medium text-[10px] text-white"
-					style={{
-						background: `linear-gradient(to bottom right, ${accentColor}, #7C3AED)`,
-					}}
-				>
+				<div className="flex size-5 items-center justify-center rounded-full bg-primary font-medium text-[10px] text-primary-fg">
 					{name.charAt(0).toUpperCase()}
 				</div>
 			)}
@@ -232,11 +219,7 @@ export function LinearIssueEmbed({ url, orgId }: LinearIssueEmbedProps) {
 					{fields.length > 0 && <Embed.Fields fields={fields} />}
 					{issue.assignee && (
 						<div className={cn(embedSectionStyles({ position: "bottom" }), "bg-muted/20")}>
-							<AssigneeAvatar
-								name={issue.assignee.name}
-								avatarUrl={issue.assignee.avatarUrl}
-								accentColor={theme.color}
-							/>
+							<AssigneeAvatar name={issue.assignee.name} avatarUrl={issue.assignee.avatarUrl} />
 						</div>
 					)}
 				</Embed>

@@ -396,9 +396,9 @@ function IntegrationConfigPage() {
 							<ul className="flex flex-col gap-2.5">
 								{integration.features.map((feature) => (
 									<li key={feature} className="flex items-center gap-2.5 text-sm">
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+										<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success-subtle">
 											<svg
-												className="size-3 text-emerald-600 dark:text-emerald-400"
+												className="size-3 text-success-subtle-fg"
 												fill="none"
 												viewBox="0 0 24 24"
 												stroke="currentColor"
@@ -427,12 +427,10 @@ function ConnectionBadge({ connected }: { connected: boolean }) {
 	return (
 		<span
 			className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium text-xs ${
-				connected
-					? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-					: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
+				connected ? "bg-success-subtle text-success-subtle-fg" : "bg-muted text-muted-fg"
 			}`}
 		>
-			<span className={`size-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-zinc-400"}`} />
+			<span className={`size-1.5 rounded-full ${connected ? "bg-success" : "bg-muted-fg"}`} />
 			{connected ? "Connected" : "Not connected"}
 		</span>
 	)
@@ -568,9 +566,9 @@ function ConnectedState({
 	return (
 		<div className="flex items-center justify-between gap-4">
 			<div className="flex items-center gap-3">
-				<div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10">
+				<div className="flex size-10 items-center justify-center rounded-full bg-success-subtle">
 					<svg
-						className="size-5 text-emerald-600 dark:text-emerald-400"
+						className="size-5 text-success-subtle-fg"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -895,8 +893,8 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 									<span
 										className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
 											repo.private
-												? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-												: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+												? "bg-warning-subtle text-warning-subtle-fg"
+												: "bg-success-subtle text-success-subtle-fg"
 										}`}
 									>
 										{repo.private ? (

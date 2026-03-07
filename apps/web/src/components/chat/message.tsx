@@ -278,7 +278,7 @@ const MessageHeader = memo(function MessageHeader() {
 				quietHours={quietHours}
 			/>
 			{user.userType === "machine" && isDiscordSynced ? (
-				<span className="inline-flex items-center gap-1 rounded-sm bg-[#5865F2] px-1.5 py-0.5 text-xs/5 font-medium text-white">
+				<span className="inline-flex items-center gap-1 rounded-sm bg-primary px-1.5 py-0.5 text-xs/5 font-medium text-primary-fg">
 					<IconDiscord className="size-3" fill="currentColor" />
 					Discord
 				</span>

@@ -212,9 +212,9 @@ export function RssSubscriptionsSection({ organizationId }: RssSubscriptionsSect
 
 				{groupedSubscriptions.length === 0 ? (
 					<div className="flex flex-col items-center justify-center px-5 py-12 text-center">
-						<div className="mb-4 flex size-16 items-center justify-center rounded-lg bg-[#F26522]/10">
+						<div className="mb-4 flex size-16 items-center justify-center rounded-lg bg-warning-subtle">
 							<svg
-								className="size-8 text-[#F26522]"
+								className="size-8 text-warning-subtle-fg"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -251,9 +251,9 @@ export function RssSubscriptionsSection({ organizationId }: RssSubscriptionsSect
 							<div key={group.feedUrl}>
 								{/* Feed header */}
 								<div className="flex items-center gap-3 bg-bg-muted/20 px-5 py-2.5">
-									<div className="flex size-6 items-center justify-center rounded bg-[#F26522]/10">
+									<div className="flex size-6 items-center justify-center rounded bg-warning-subtle">
 										<svg
-											className="size-3.5 text-[#F26522]"
+											className="size-3.5 text-warning-subtle-fg"
 											fill="none"
 											viewBox="0 0 24 24"
 											stroke="currentColor"

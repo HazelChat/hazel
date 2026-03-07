@@ -177,11 +177,11 @@ export function IntegrationCard({ provider, channelId, webhook, onWebhookChange 
 						<p className="text-muted-fg text-sm">{config.description}</p>
 					</div>
 				</div>
-				<div className="bg-amber-500/5 p-4">
+				<div className="bg-warning-subtle/30 p-4">
 					<div className="mb-3 flex items-start gap-2">
-						<div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+						<div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-warning-subtle">
 							<svg
-								className="size-3 text-amber-600 dark:text-amber-400"
+								className="size-3 text-warning-subtle-fg"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -190,7 +190,7 @@ export function IntegrationCard({ provider, channelId, webhook, onWebhookChange 
 								<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01" />
 							</svg>
 						</div>
-						<p className="text-amber-700 text-sm dark:text-amber-300">
+						<p className="text-warning-subtle-fg text-sm">
 							Copy this URL now. The token won't be shown again.
 						</p>
 					</div>

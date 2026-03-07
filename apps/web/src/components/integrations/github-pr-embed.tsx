@@ -88,8 +88,8 @@ function AuthorAvatar({ login, avatarUrl }: { login: string; avatarUrl?: string 
 function DiffStats({ additions, deletions }: { additions: number; deletions: number }) {
 	return (
 		<div className="flex items-center gap-1.5 font-medium text-[10px]">
-			<span className="text-green-600">+{additions}</span>
-			<span className="text-red-600">-{deletions}</span>
+			<span className="text-success-subtle-fg">+{additions}</span>
+			<span className="text-danger-subtle-fg">-{deletions}</span>
 		</div>
 	)
 }

@@ -145,11 +145,11 @@ export function RailwaySection({
 	// Show token after creation
 	if (showToken && displayToken && webhookUrl) {
 		return (
-			<div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+			<div className="rounded-xl border border-warning/30 bg-warning-subtle/30 p-4">
 				<div className="flex items-start gap-3">
-					<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+					<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-warning-subtle">
 						<svg
-							className="size-4 text-amber-600 dark:text-amber-400"
+							className="size-4 text-warning-subtle-fg"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -164,10 +164,10 @@ export function RailwaySection({
 					</div>
 					<div className="flex-1 space-y-4">
 						<div>
-							<p className="font-medium text-amber-700 text-sm dark:text-amber-300">
+							<p className="font-medium text-warning-subtle-fg text-sm">
 								Copy the webhook URL below and add it to your Railway project settings
 							</p>
-							<p className="mt-1 text-amber-600/80 text-xs dark:text-amber-400/80">
+							<p className="mt-1 text-warning-subtle-fg/80 text-xs">
 								The full URL includes your secret token. Keep it safe!
 							</p>
 						</div>
@@ -191,7 +191,7 @@ export function RailwaySection({
 										}
 									>
 										{copied === "url" ? (
-											<IconCheck className="size-4 text-emerald-500" />
+											<IconCheck className="size-4 text-success" />
 										) : (
 											<IconCopy className="size-4" />
 										)}

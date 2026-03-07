@@ -311,7 +311,7 @@ export function AddGitHubSubscriptionModal({
 																		{repo.fullName}
 																	</span>
 																	{repo.private && (
-																		<span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-amber-600 text-xs group-hover:bg-accent-fg/10 group-hover:text-accent-fg dark:text-amber-400 dark:group-hover:text-accent-fg">
+																		<span className="shrink-0 rounded-full bg-warning-subtle px-1.5 py-0.5 text-warning-subtle-fg text-xs group-hover:bg-accent-fg/10 group-hover:text-accent-fg">
 																			Private
 																		</span>
 																	)}

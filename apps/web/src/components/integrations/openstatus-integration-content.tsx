@@ -213,11 +213,11 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 				) : (
 					<div className="divide-y divide-border">
 						{newlyCreatedWebhook && (
-							<div className="border-amber-500/30 border-b bg-amber-500/5 px-5 py-4">
+							<div className="border-warning/30 border-b bg-warning-subtle/30 px-5 py-4">
 								<div className="flex items-start gap-3">
-									<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+									<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-warning-subtle">
 										<svg
-											className="size-4 text-amber-600 dark:text-amber-400"
+											className="size-4 text-warning-subtle-fg"
 											fill="none"
 											viewBox="0 0 24 24"
 											stroke="currentColor"
@@ -232,11 +232,11 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 									</div>
 									<div className="flex-1 space-y-3">
 										<div>
-											<p className="font-medium text-amber-700 text-sm dark:text-amber-300">
+											<p className="font-medium text-warning-subtle-fg text-sm">
 												Copy the webhook URL and add it to your OpenStatus
 												notification settings
 											</p>
-											<p className="mt-1 text-amber-600/80 text-xs dark:text-amber-400/80">
+											<p className="mt-1 text-warning-subtle-fg/80 text-xs">
 												#
 												{channels.find((c) => c.id === newlyCreatedWebhook.channelId)
 													?.name ?? "channel"}{" "}
@@ -251,7 +251,7 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 											/>
 											<Button intent="outline" size="sq-sm" onPress={handleCopyUrl}>
 												{copied ? (
-													<IconCheck className="size-4 text-emerald-500" />
+													<IconCheck className="size-4 text-success" />
 												) : (
 													<IconCopy className="size-4" />
 												)}
