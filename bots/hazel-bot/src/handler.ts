@@ -146,7 +146,7 @@ export const handleAIRequest = (params: {
 		Effect.provideServiceEffect(
 			LanguageModel.LanguageModel,
 			Config.string("AI_MODEL").pipe(
-				Config.withDefault("moonshotai/kimi-k2.5:nitro"),
+				Config.withDefault("google/gemini-3-flash-preview"),
 				Effect.flatMap((model) => makeOpenRouterModel(model)),
 			),
 		),

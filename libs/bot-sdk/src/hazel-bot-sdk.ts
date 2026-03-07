@@ -492,9 +492,22 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 				yield* Effect.forEach(
 					Array.from(partitions.values()),
 					(partitionEvents) =>
-						Effect.forEach(partitionEvents, (envelope) => dispatchGatewayEvent(envelope), {
-							discard: true,
-						}),
+						Effect.forEach(
+							partitionEvents,
+							(envelope) =>
+								dispatchGatewayEvent(envelope).pipe(
+									Effect.catchAllCause((cause) =>
+										Effect.logError("Gateway event handler failed", {
+											eventType: envelope.eventType,
+											partitionKey: envelope.partitionKey,
+											cause,
+										}),
+									),
+								),
+							{
+								discard: true,
+							},
+						),
 					{
 						concurrency: getGatewayRuntimeConfig()?.maxConcurrentPartitions ?? 8,
 						discard: true,

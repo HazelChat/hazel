@@ -15,7 +15,7 @@ const OpenRouterClientLayer = OpenRouterClient.layerConfig({
 }).pipe(Layer.provide(FetchHttpClient.layer))
 
 const OpenRouterModelLayer = OpenRouterLanguageModel.layer({
-	model: "moonshotai/kimi-k2.5:nitro",
+	model: "google/gemini-3-flash-preview",
 }).pipe(Layer.provide(OpenRouterClientLayer))
 
 // ============================================================================

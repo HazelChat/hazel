@@ -19,7 +19,7 @@
 	},
 	"kv_namespaces": [
 		{
-			"binding": "HAZEL_ACTOR_KV",
+			"binding": "ACTOR_KV",
 			"id": "a4197b6d925d46ad8b6c8822223a36ca",
 		},
 	],
