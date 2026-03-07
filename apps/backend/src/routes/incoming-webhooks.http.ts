@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto"
 import { HttpApiBuilder } from "@effect/platform"
-import { ChannelWebhookRepo, MessageRepo } from "@hazel/backend-core"
+import { ChannelWebhookRepo, MessageOutboxRepo, MessageRepo } from "@hazel/backend-core"
+import { Database } from "@hazel/db"
 import type { MessageEmbed as DbMessageEmbed } from "@hazel/db"
 import { InternalServerError } from "@hazel/domain"
 import {
@@ -50,8 +51,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 		.handle("execute", ({ path, payload }) =>
 			Effect.gen(function* () {
 				const { webhookId, token } = path
+				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
+				const outboxRepo = yield* MessageOutboxRepo
 
 				// Hash the provided token
 				const tokenHash = createHash("sha256").update(token).digest("hex")
@@ -108,16 +111,32 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				// Convert embeds to database format
 				const dbEmbeds = payload.embeds?.map(convertEmbedToDb) ?? null
 
-				// Create message as the webhook's bot user
-				const [message] = yield* messageRepo.insert({
-					channelId: webhook.channelId,
-					authorId: webhook.botUserId,
-					content: payload.content ?? "",
-					embeds: dbEmbeds,
-					replyToMessageId: null,
-					threadChannelId: null,
-					deletedAt: null,
-				})
+				const message = yield* db.transaction(
+					Effect.gen(function* () {
+						const [createdMessage] = yield* messageRepo.insert({
+							channelId: webhook.channelId,
+							authorId: webhook.botUserId,
+							content: payload.content ?? "",
+							embeds: dbEmbeds,
+							replyToMessageId: null,
+							threadChannelId: null,
+							deletedAt: null,
+						})
+						yield* outboxRepo.insert({
+							eventType: "message_created",
+							aggregateId: createdMessage.id,
+							channelId: createdMessage.channelId,
+							payload: {
+								messageId: createdMessage.id,
+								channelId: createdMessage.channelId,
+								authorId: createdMessage.authorId,
+								content: createdMessage.content,
+								replyToMessageId: createdMessage.replyToMessageId,
+							},
+						})
+						return createdMessage
+					}),
+				)
 
 				// Update last used timestamp (fire and forget)
 				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
@@ -148,8 +167,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 		.handle("executeOpenStatus", ({ path, payload }) =>
 			Effect.gen(function* () {
 				const { webhookId, token } = path
+				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
+				const outboxRepo = yield* MessageOutboxRepo
 				const botService = yield* IntegrationBotService
 
 				// Hash the provided token
@@ -193,16 +214,32 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				// Build the embed based on status
 				const embed = buildOpenStatusEmbed(payload)
 
-				// Create message with the OpenStatus bot as author
-				const [message] = yield* messageRepo.insert({
-					channelId: webhook.channelId,
-					authorId: botUser.id,
-					content: "",
-					embeds: [embed],
-					replyToMessageId: null,
-					threadChannelId: null,
-					deletedAt: null,
-				})
+				const message = yield* db.transaction(
+					Effect.gen(function* () {
+						const [createdMessage] = yield* messageRepo.insert({
+							channelId: webhook.channelId,
+							authorId: botUser.id,
+							content: "",
+							embeds: [embed],
+							replyToMessageId: null,
+							threadChannelId: null,
+							deletedAt: null,
+						})
+						yield* outboxRepo.insert({
+							eventType: "message_created",
+							aggregateId: createdMessage.id,
+							channelId: createdMessage.channelId,
+							payload: {
+								messageId: createdMessage.id,
+								channelId: createdMessage.channelId,
+								authorId: createdMessage.authorId,
+								content: createdMessage.content,
+								replyToMessageId: createdMessage.replyToMessageId,
+							},
+						})
+						return createdMessage
+					}),
+				)
 
 				// Update last used timestamp (fire and forget)
 				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
@@ -233,8 +270,10 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 		.handle("executeRailway", ({ path, payload }) =>
 			Effect.gen(function* () {
 				const { webhookId, token } = path
+				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
+				const outboxRepo = yield* MessageOutboxRepo
 				const botService = yield* IntegrationBotService
 
 				// Hash the provided token
@@ -275,16 +314,32 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				// Build the embed based on the event
 				const embed = buildRailwayEmbed(payload)
 
-				// Create message with the Railway bot as author
-				const [message] = yield* messageRepo.insert({
-					channelId: webhook.channelId,
-					authorId: botUser.id,
-					content: "",
-					embeds: [embed],
-					replyToMessageId: null,
-					threadChannelId: null,
-					deletedAt: null,
-				})
+				const message = yield* db.transaction(
+					Effect.gen(function* () {
+						const [createdMessage] = yield* messageRepo.insert({
+							channelId: webhook.channelId,
+							authorId: botUser.id,
+							content: "",
+							embeds: [embed],
+							replyToMessageId: null,
+							threadChannelId: null,
+							deletedAt: null,
+						})
+						yield* outboxRepo.insert({
+							eventType: "message_created",
+							aggregateId: createdMessage.id,
+							channelId: createdMessage.channelId,
+							payload: {
+								messageId: createdMessage.id,
+								channelId: createdMessage.channelId,
+								authorId: createdMessage.authorId,
+								content: createdMessage.content,
+								replyToMessageId: createdMessage.replyToMessageId,
+							},
+						})
+						return createdMessage
+					}),
+				)
 
 				// Update last used timestamp (fire and forget)
 				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)

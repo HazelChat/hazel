@@ -7,6 +7,7 @@ import {
 	ChatSyncEventReceiptRepo,
 	ChatSyncMessageLinkRepo,
 	IntegrationConnectionRepo,
+	MessageOutboxRepo,
 	MessageReactionRepo,
 	MessageRepo,
 	OrganizationMemberRepo,
@@ -28,6 +29,7 @@ import {
 	ExternalThreadId,
 } from "@hazel/schema"
 import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
@@ -154,6 +156,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		const messageLinkRepo = yield* ChatSyncMessageLinkRepo
 		const eventReceiptRepo = yield* ChatSyncEventReceiptRepo
 		const messageRepo = yield* MessageRepo
+		const outboxRepo = yield* MessageOutboxRepo
 		const messageReactionRepo = yield* MessageReactionRepo
 		const channelRepo = yield* ChannelRepo
 		const integrationConnectionRepo = yield* IntegrationConnectionRepo
@@ -1972,47 +1975,66 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					publicUrl,
 				})
 			}
-			const [message] = yield* messageRepo.insert({
-				channelId: link.hazelChannelId,
-				authorId,
-				content: payload.content,
-				embeds: null,
-				replyToMessageId,
-				threadChannelId: null,
-				deletedAt: null,
-			})
+			const message = yield* db.transaction(
+				Effect.gen(function* () {
+					const [createdMessage] = yield* messageRepo.insert({
+						channelId: link.hazelChannelId,
+						authorId,
+						content: payload.content,
+						embeds: null,
+						replyToMessageId,
+						threadChannelId: null,
+						deletedAt: null,
+					})
 
-			if (normalizedExternalAttachments.length > 0) {
-				const uploadedAtBase = Date.now()
-				yield* db.execute((client) =>
-					client.insert(schema.attachmentsTable).values(
-						normalizedExternalAttachments.map((attachment, index) => ({
-							organizationId: connection.organizationId,
-							channelId: link.hazelChannelId,
-							messageId: message.id,
-							fileName: attachment.fileName,
-							fileSize: attachment.fileSize,
-							externalUrl: attachment.publicUrl,
-							uploadedBy: authorId,
-							status: "complete" as const,
-							uploadedAt: new Date(uploadedAtBase + index),
-							deletedAt: null,
-						})),
-					),
-				)
-			}
+					yield* outboxRepo.insert({
+						eventType: "message_created",
+						aggregateId: createdMessage.id,
+						channelId: createdMessage.channelId,
+						payload: {
+							messageId: createdMessage.id,
+							channelId: createdMessage.channelId,
+							authorId: createdMessage.authorId,
+							content: createdMessage.content,
+							replyToMessageId: createdMessage.replyToMessageId,
+						},
+					})
 
-			yield* messageLinkRepo.insert({
-				channelLinkId: link.id,
-				hazelMessageId: message.id,
-				externalMessageId: payload.externalMessageId,
-				source: "external",
-				rootHazelMessageId: null,
-				rootExternalMessageId: null,
-				hazelThreadChannelId: message.threadChannelId,
-				externalThreadId: payload.externalThreadId ?? null,
-				deletedAt: null,
-			})
+					if (normalizedExternalAttachments.length > 0) {
+						const uploadedAtBase = Date.now()
+						yield* transactionAwareExecute((client) =>
+							client.insert(schema.attachmentsTable).values(
+								normalizedExternalAttachments.map((attachment, index) => ({
+									organizationId: connection.organizationId,
+									channelId: link.hazelChannelId,
+									messageId: createdMessage.id,
+									fileName: attachment.fileName,
+									fileSize: attachment.fileSize,
+									externalUrl: attachment.publicUrl,
+									uploadedBy: authorId,
+									status: "complete" as const,
+									uploadedAt: new Date(uploadedAtBase + index),
+									deletedAt: null,
+								})),
+							),
+						)
+					}
+
+					yield* messageLinkRepo.insert({
+						channelLinkId: link.id,
+						hazelMessageId: createdMessage.id,
+						externalMessageId: payload.externalMessageId,
+						source: "external",
+						rootHazelMessageId: null,
+						rootExternalMessageId: null,
+						hazelThreadChannelId: createdMessage.threadChannelId,
+						externalThreadId: payload.externalThreadId ?? null,
+						deletedAt: null,
+					})
+
+					return createdMessage
+				}),
+			)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2106,11 +2128,23 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const messageLink = messageLinkOption.value
 
-			yield* messageRepo.update({
-				id: messageLink.hazelMessageId,
-				content: payload.content,
-				updatedAt: new Date(),
-			})
+			yield* db.transaction(
+				Effect.gen(function* () {
+					const updatedMessage = yield* messageRepo.update({
+						id: messageLink.hazelMessageId,
+						content: payload.content,
+						updatedAt: new Date(),
+					})
+					yield* outboxRepo.insert({
+						eventType: "message_updated",
+						aggregateId: updatedMessage.id,
+						channelId: updatedMessage.channelId,
+						payload: {
+							messageId: updatedMessage.id,
+						},
+					})
+				}),
+			)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2204,11 +2238,24 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 			}
 			const messageLink = messageLinkOption.value
 
-			yield* messageRepo.update({
-				id: messageLink.hazelMessageId,
-				deletedAt: new Date(),
-				updatedAt: new Date(),
-			})
+			yield* db.transaction(
+				Effect.gen(function* () {
+					const deletedMessage = yield* messageRepo.update({
+						id: messageLink.hazelMessageId,
+						deletedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					yield* outboxRepo.insert({
+						eventType: "message_deleted",
+						aggregateId: deletedMessage.id,
+						channelId: deletedMessage.channelId,
+						payload: {
+							messageId: deletedMessage.id,
+							channelId: deletedMessage.channelId,
+						},
+					})
+				}),
+			)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2319,12 +2366,25 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "already_exists" as const }
 			}
 
-			const [reaction] = yield* messageReactionRepo.insert({
-				messageId: messageLink.hazelMessageId,
-				channelId: link.hazelChannelId,
-				userId,
-				emoji: payload.emoji,
-			})
+			const reaction = yield* db.transaction(
+				Effect.gen(function* () {
+					const [createdReaction] = yield* messageReactionRepo.insert({
+						messageId: messageLink.hazelMessageId,
+						channelId: link.hazelChannelId,
+						userId,
+						emoji: payload.emoji,
+					})
+					yield* outboxRepo.insert({
+						eventType: "reaction_created",
+						aggregateId: createdReaction.id,
+						channelId: createdReaction.channelId,
+						payload: {
+							reactionId: createdReaction.id,
+						},
+					})
+					return createdReaction
+				}),
+			)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2435,7 +2495,22 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				return { status: "already_deleted" as const }
 			}
 
-			yield* messageReactionRepo.deleteById(existingReaction.value.id)
+			yield* db.transaction(
+				Effect.gen(function* () {
+					yield* messageReactionRepo.deleteById(existingReaction.value.id)
+					yield* outboxRepo.insert({
+						eventType: "reaction_deleted",
+						aggregateId: existingReaction.value.id,
+						channelId: link.hazelChannelId,
+						payload: {
+							hazelChannelId: link.hazelChannelId,
+							hazelMessageId: messageLink.hazelMessageId,
+							emoji: payload.emoji,
+							userId,
+						},
+					})
+				}),
+			)
 
 			yield* writeReceipt({
 				syncConnectionId: payload.syncConnectionId,
@@ -2549,11 +2624,23 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 				)
 
 				if (Option.isSome(rootMessageLink)) {
-					yield* messageRepo.update({
-						id: rootMessageLink.value.hazelMessageId,
-						threadChannelId: threadChannel.id,
-						updatedAt: new Date(),
-					})
+					yield* db.transaction(
+						Effect.gen(function* () {
+							const updatedMessage = yield* messageRepo.update({
+								id: rootMessageLink.value.hazelMessageId,
+								threadChannelId: threadChannel.id,
+								updatedAt: new Date(),
+							})
+							yield* outboxRepo.insert({
+								eventType: "message_updated",
+								aggregateId: updatedMessage.id,
+								channelId: updatedMessage.channelId,
+								payload: {
+									messageId: updatedMessage.id,
+								},
+							})
+						}),
+					)
 				}
 			}
 
@@ -2602,6 +2689,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 		ChatSyncMessageLinkRepo.Default,
 		ChatSyncEventReceiptRepo.Default,
 		MessageRepo.Default,
+		MessageOutboxRepo.Default,
 		MessageReactionRepo.Default,
 		ChannelRepo.Default,
 		IntegrationConnectionRepo.Default,

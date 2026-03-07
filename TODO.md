@@ -14,7 +14,5 @@
 # Later
 
 - voice to text
-- setup sequin locally with config as code
-
 - Connect with Google Calendar and auto set status when in meeting OOO etc.
 - add server side cache layer for integration data (linear issues etc.)

@@ -396,7 +396,7 @@ Or from backend code (typically in message creation handler):
 ```typescript
 import { WorkflowClient } from "@hazel/cluster"
 
-// After creating a message, trigger the notification workflow
+// After creating a message, enqueue an outbox event and let the backend dispatcher trigger workflows
 yield *
 	WorkflowClient.pipe(
 		Effect.flatMap((client) =>

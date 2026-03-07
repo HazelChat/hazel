@@ -1,4 +1,4 @@
-import { AttachmentRepo, MessageRepo } from "@hazel/backend-core"
+import { AttachmentRepo, MessageOutboxRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { MessageRpcs } from "@hazel/domain/rpc"
@@ -27,6 +27,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const botGateway = yield* BotGatewayService
+		const outboxRepo = yield* MessageOutboxRepo
 
 		return {
 			"message.create": ({ attachmentIds, ...messageData }) =>
@@ -58,6 +59,19 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 										}),
 									)
 								}
+
+								yield* outboxRepo.insert({
+									eventType: "message_created",
+									aggregateId: createdMessage.id,
+									channelId: createdMessage.channelId,
+									payload: {
+										messageId: createdMessage.id,
+										channelId: createdMessage.channelId,
+										authorId: createdMessage.authorId,
+										content: createdMessage.content,
+										replyToMessageId: createdMessage.replyToMessageId,
+									},
+								})
 
 								const txid = yield* generateTransactionId()
 
@@ -97,6 +111,15 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 									...payload,
 								})
 
+								yield* outboxRepo.insert({
+									eventType: "message_updated",
+									aggregateId: updatedMessage.id,
+									channelId: updatedMessage.channelId,
+									payload: {
+										messageId: updatedMessage.id,
+									},
+								})
+
 								const txid = yield* generateTransactionId()
 
 								return {
@@ -134,6 +157,18 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 							Effect.gen(function* () {
 								yield* MessagePolicy.canDelete(id)
 								yield* MessageRepo.deleteById(id)
+
+								if (Option.isSome(existingMessage)) {
+									yield* outboxRepo.insert({
+										eventType: "message_deleted",
+										aggregateId: existingMessage.value.id,
+										channelId: existingMessage.value.channelId,
+										payload: {
+											messageId: existingMessage.value.id,
+											channelId: existingMessage.value.channelId,
+										},
+									})
+								}
 
 								const txid = yield* generateTransactionId()
 

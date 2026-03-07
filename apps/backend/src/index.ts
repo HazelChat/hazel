@@ -26,6 +26,7 @@ import {
 	IntegrationTokenRepo,
 	InvitationRepo,
 	MessageReactionRepo,
+	MessageOutboxRepo,
 	MessageRepo,
 	NotificationRepo,
 	OrganizationMemberRepo,
@@ -41,7 +42,7 @@ import {
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
-import { Config, ConfigProvider, Effect, Layer } from "effect"
+import { Config, ConfigProvider, Effect, Layer, Scope } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -72,6 +73,8 @@ import { IntegrationBotService } from "./services/integrations/integration-bot-s
 import { ChatSyncAttributionReconciler } from "./services/chat-sync/chat-sync-attribution-reconciler"
 import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
 import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-service"
+import { MessageOutboxDispatcher } from "./services/message-outbox-dispatcher"
+import { MessageSideEffectService } from "./services/message-side-effect-service"
 import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthProviderRegistry } from "./services/oauth"
 import { RateLimiter } from "./services/rate-limiter"
@@ -140,6 +143,7 @@ const RepoLive = Layer.mergeAll(
 	NotificationRepo.Default,
 	TypingIndicatorRepo.Default,
 	MessageReactionRepo.Default,
+	MessageOutboxRepo.Default,
 	UserPresenceStatusRepo.Default,
 	IntegrationConnectionRepo.Default,
 	IntegrationTokenRepo.Default,
@@ -199,6 +203,8 @@ const MainLive = Layer.mergeAll(
 	ChatSyncAttributionReconciler.Default,
 	DiscordSyncWorker.Default,
 	DiscordGatewayService.Default,
+	MessageSideEffectService.Default,
+	MessageOutboxDispatcher.Default,
 	BotGatewayService.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,
@@ -210,7 +216,7 @@ const MainLive = Layer.mergeAll(
 	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
 )
 
-HttpLayerRouter.serve(AllRoutes).pipe(
+const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
 		(request) => request.url === "/health" || request.method === "OPTIONS",
 	),
@@ -234,7 +240,10 @@ HttpLayerRouter.serve(AllRoutes).pipe(
 			}),
 		),
 	),
-	Layer.launch,
-	Effect.scoped,
-	BunRuntime.runMain,
 )
+
+const ServerProgram = Effect.scoped(
+	ServerLayer.pipe(Layer.launch) as unknown as Effect.Effect<never, never, Scope.Scope>,
+)
+
+BunRuntime.runMain(ServerProgram)

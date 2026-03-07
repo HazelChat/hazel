@@ -1,4 +1,4 @@
-import { MessageReactionRepo } from "@hazel/backend-core"
+import { MessageOutboxRepo, MessageReactionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import { MessageReactionRpcs } from "@hazel/domain/rpc"
@@ -10,6 +10,7 @@ import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
 export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const outboxRepo = yield* MessageOutboxRepo
 
 		return {
 			"messageReaction.toggle": (payload) =>
@@ -40,6 +41,17 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 									} as const
 									yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
 									yield* MessageReactionRepo.deleteById(existingReaction.value.id)
+									yield* outboxRepo.insert({
+										eventType: "reaction_deleted",
+										aggregateId: existingReaction.value.id,
+										channelId: existingReaction.value.channelId,
+										payload: {
+											hazelChannelId: existingReaction.value.channelId,
+											hazelMessageId: existingReaction.value.messageId,
+											emoji: existingReaction.value.emoji,
+											userId: existingReaction.value.userId,
+										},
+									})
 
 									return {
 										wasCreated: false,
@@ -57,6 +69,15 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 									emoji,
 									userId: user.id,
 								}).pipe(Effect.map((res) => res[0]!))
+
+								yield* outboxRepo.insert({
+									eventType: "reaction_created",
+									aggregateId: createdMessageReaction.id,
+									channelId: createdMessageReaction.channelId,
+									payload: {
+										reactionId: createdMessageReaction.id,
+									},
+								})
 
 								return {
 									wasCreated: true,
@@ -87,6 +108,15 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 									...payload,
 									userId: user.id,
 								}).pipe(Effect.map((res) => res[0]!))
+
+								yield* outboxRepo.insert({
+									eventType: "reaction_created",
+									aggregateId: createdMessageReaction.id,
+									channelId: createdMessageReaction.channelId,
+									payload: {
+										reactionId: createdMessageReaction.id,
+									},
+								})
 
 								const txid = yield* generateTransactionId()
 
@@ -145,6 +175,15 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 
 								yield* MessageReactionPolicy.canDelete(id)
 								yield* MessageReactionRepo.deleteById(id)
+
+								if (deletedSyncPayload !== null && Option.isSome(existing)) {
+									yield* outboxRepo.insert({
+										eventType: "reaction_deleted",
+										aggregateId: existing.value.id,
+										channelId: existing.value.channelId,
+										payload: deletedSyncPayload,
+									})
+								}
 
 								const txid = yield* generateTransactionId()
 

@@ -12,6 +12,7 @@ TRUNCATE TABLE
 	chat_sync_message_links,
 	chat_sync_channel_links,
 	chat_sync_connections,
+	message_outbox_events,
 	message_reactions,
 	messages,
 	channels,

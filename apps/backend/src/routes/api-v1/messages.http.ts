@@ -1,5 +1,11 @@
 import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
-import { AttachmentRepo, BotRepo, MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
+import {
+	AttachmentRepo,
+	BotRepo,
+	MessageOutboxRepo,
+	MessageReactionRepo,
+	MessageRepo,
+} from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import { CurrentRpcScopes, type ApiScope } from "@hazel/domain/scopes"
@@ -90,6 +96,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const botGateway = yield* BotGatewayService
+		const outboxRepo = yield* MessageOutboxRepo
 
 		return (
 			handlers
@@ -234,6 +241,19 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											)
 										}
 
+										yield* outboxRepo.insert({
+											eventType: "message_created",
+											aggregateId: createdMessage.id,
+											channelId: createdMessage.channelId,
+											payload: {
+												messageId: createdMessage.id,
+												channelId: createdMessage.channelId,
+												authorId: createdMessage.authorId,
+												content: createdMessage.content,
+												replyToMessageId: createdMessage.replyToMessageId,
+											},
+										})
+
 										const txid = yield* generateTransactionId()
 
 										return new MessageResponse({
@@ -292,6 +312,15 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											...(embeds !== undefined ? { embeds } : {}),
 										})
 
+										yield* outboxRepo.insert({
+											eventType: "message_updated",
+											aggregateId: updatedMessage.id,
+											channelId: updatedMessage.channelId,
+											payload: {
+												messageId: updatedMessage.id,
+											},
+										})
+
 										const txid = yield* generateTransactionId()
 
 										return new MessageResponse({
@@ -344,6 +373,18 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 									Effect.gen(function* () {
 										yield* MessagePolicy.canDelete(path.id)
 										yield* MessageRepo.deleteById(path.id)
+
+										if (Option.isSome(existingMessage)) {
+											yield* outboxRepo.insert({
+												eventType: "message_deleted",
+												aggregateId: existingMessage.value.id,
+												channelId: existingMessage.value.channelId,
+												payload: {
+													messageId: existingMessage.value.id,
+													channelId: existingMessage.value.channelId,
+												},
+											})
+										}
 
 										const txid = yield* generateTransactionId()
 
@@ -421,6 +462,17 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 											yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
 											yield* MessageReactionRepo.deleteById(existingReaction.value.id)
+											yield* outboxRepo.insert({
+												eventType: "reaction_deleted",
+												aggregateId: existingReaction.value.id,
+												channelId: existingReaction.value.channelId,
+												payload: {
+													hazelChannelId: existingReaction.value.channelId,
+													hazelMessageId: existingReaction.value.messageId,
+													emoji: existingReaction.value.emoji,
+													userId: existingReaction.value.userId,
+												},
+											})
 
 											return {
 												wasCreated: false,
@@ -438,6 +490,15 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 											emoji,
 											userId: bot.userId,
 										}).pipe(Effect.map((res) => res[0]!))
+
+										yield* outboxRepo.insert({
+											eventType: "reaction_created",
+											aggregateId: createdReaction.id,
+											channelId: createdReaction.channelId,
+											payload: {
+												reactionId: createdReaction.id,
+											},
+										})
 
 										return {
 											wasCreated: true,

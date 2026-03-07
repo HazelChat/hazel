@@ -239,3 +239,11 @@ export const CustomEmojiId = Schema.UUID.pipe(Schema.brand("@HazelChat/CustomEmo
 	title: "Custom Emoji ID",
 })
 export type CustomEmojiId = Schema.Schema.Type<typeof CustomEmojiId>
+
+export const MessageOutboxEventId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/MessageOutboxEventId"),
+).annotations({
+	description: "The ID of a message outbox event",
+	title: "Message Outbox Event ID",
+})
+export type MessageOutboxEventId = Schema.Schema.Type<typeof MessageOutboxEventId>

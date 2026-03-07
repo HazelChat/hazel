@@ -154,7 +154,9 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
 
-				const granted = yield* resolveGrantedScopes(orgMember.value.role as "owner" | "admin" | "member")
+				const granted = yield* resolveGrantedScopes(
+					orgMember.value.role as "owner" | "admin" | "member",
+				)
 				if (!granted.has(scope)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
