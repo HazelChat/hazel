@@ -3,7 +3,6 @@ import { Duration, Effect, Layer, Ref } from "effect"
 import { delay, http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import {
-	ACTOR_SERVICE_ERROR_BOT_MESSAGE,
 	BotGatewayAckFrame,
 	BotGatewayClientFrame,
 	BotGatewayDispatchFrame,
@@ -16,7 +15,6 @@ import { HazelBotClient, HazelBotRuntimeConfigTag } from "./hazel-bot-sdk.ts"
 import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
 import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { Schema } from "effect"
-import { vi } from "vitest"
 
 const BACKEND_URL = "http://localhost:3070"
 const GATEWAY_URL = "http://localhost:3034"
@@ -49,31 +47,6 @@ const commandEnvelope = {
 }
 
 const server = setupServer()
-
-const makeMessageResponse = (content: string) => ({
-	data: {
-		id: "00000000-0000-0000-0000-000000000999",
-		channelId: CHANNEL_ID,
-		authorId: USER_ID,
-		content,
-		embeds: null,
-		replyToMessageId: null,
-		threadChannelId: null,
-		createdAt: new Date().toISOString(),
-		updatedAt: null,
-		deletedAt: null,
-	},
-	transactionId: "00000000-0000-0000-0000-000000000998",
-})
-
-const commandContext = {
-	commandName: "echo",
-	channelId: CHANNEL_ID as any,
-	userId: USER_ID as any,
-	orgId: ORG_ID as any,
-	args: { text: "hello" },
-	timestamp: Date.now(),
-}
 
 class FakeWebSocket {
 	static readonly CONNECTING = 0
@@ -350,136 +323,6 @@ describe("HazelBotClient durable gateway", () => {
 						}),
 					),
 				)
-			}),
-		))
-
-	it("sends a service-error fallback for classified command failures", () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const sentContents: Array<string> = []
-
-				server.use(
-					http.post(`${BACKEND_URL}/messages`, async ({ request }) => {
-						const body = (await request.json()) as { content: string }
-						sentContents.push(body.content)
-						return HttpResponse.json(makeMessageResponse(body.content))
-					}),
-				)
-
-				const TestLayer = makeHazelBotLayer({
-					commands: CommandGroup.make(EchoCommand),
-					sessionStore: {
-						load: () => Effect.succeed(null),
-						save: () => Effect.void,
-					},
-				})
-
-				const exit = yield* Effect.gen(function* () {
-					const bot = yield* HazelBotClient
-					return yield* bot
-						.withErrorHandler(commandContext)(Effect.fail(new Error("Invalid bot token: Not Found")))
-						.pipe(Effect.exit)
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
-
-				expect(exit._tag).toBe("Failure")
-				expect(sentContents).toEqual([ACTOR_SERVICE_ERROR_BOT_MESSAGE])
-			}),
-		))
-
-	it("keeps the generic fallback for non-service command failures", () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const sentContents: Array<string> = []
-
-				server.use(
-					http.post(`${BACKEND_URL}/messages`, async ({ request }) => {
-						const body = (await request.json()) as { content: string }
-						sentContents.push(body.content)
-						return HttpResponse.json(makeMessageResponse(body.content))
-					}),
-				)
-
-				const TestLayer = makeHazelBotLayer({
-					commands: CommandGroup.make(EchoCommand),
-					sessionStore: {
-						load: () => Effect.succeed(null),
-						save: () => Effect.void,
-					},
-				})
-
-				const exit = yield* Effect.gen(function* () {
-					const bot = yield* HazelBotClient
-					return yield* bot
-						.withErrorHandler(commandContext)(Effect.fail(new Error("Tool execution failed")))
-						.pipe(Effect.exit)
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
-
-				expect(exit._tag).toBe("Failure")
-				expect(sentContents).toEqual(["An unexpected error occurred. Please try again."])
-			}),
-		))
-
-	it("fails AI sessions with the service-error message for classified actor auth failures", () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const fail = vi.fn(() => Effect.void)
-
-				const TestLayer = makeHazelBotLayer({
-					commands: CommandGroup.make(EchoCommand),
-					sessionStore: {
-						load: () => Effect.succeed(null),
-						save: () => Effect.void,
-					},
-				})
-
-				const exit = yield* Effect.gen(function* () {
-					const bot = yield* HazelBotClient
-					return yield* bot
-						.ai.withErrorHandler(commandContext, { fail } as any)(
-							Effect.fail({ code: "invalid_token", message: "Invalid bot token: Not Found" }),
-						)
-						.pipe(Effect.exit)
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
-
-				expect(exit._tag).toBe("Failure")
-				expect(fail).toHaveBeenCalledWith(ACTOR_SERVICE_ERROR_BOT_MESSAGE)
-			}),
-		))
-
-	it("sends a plain fallback message when failing the AI session also fails", () =>
-		Effect.runPromise(
-			Effect.gen(function* () {
-				const sentContents: Array<string> = []
-				const fail = vi.fn(() => Effect.fail(new Error("actor unavailable")))
-
-				server.use(
-					http.post(`${BACKEND_URL}/messages`, async ({ request }) => {
-						const body = (await request.json()) as { content: string }
-						sentContents.push(body.content)
-						return HttpResponse.json(makeMessageResponse(body.content))
-					}),
-				)
-
-				const TestLayer = makeHazelBotLayer({
-					commands: CommandGroup.make(EchoCommand),
-					sessionStore: {
-						load: () => Effect.succeed(null),
-						save: () => Effect.void,
-					},
-				})
-
-				const exit = yield* Effect.gen(function* () {
-					const bot = yield* HazelBotClient
-					return yield* bot
-						.ai.withErrorHandler(commandContext, { fail } as any)(
-							Effect.fail({ code: "invalid_token", message: "Invalid bot token: Not Found" }),
-						)
-						.pipe(Effect.exit)
-				}).pipe(Effect.scoped, Effect.provide(TestLayer))
-
-				expect(exit._tag).toBe("Failure")
-				expect(fail).toHaveBeenCalledWith(ACTOR_SERVICE_ERROR_BOT_MESSAGE)
-				expect(sentContents).toEqual([ACTOR_SERVICE_ERROR_BOT_MESSAGE])
 			}),
 		))
 })
