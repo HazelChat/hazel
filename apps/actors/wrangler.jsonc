@@ -2,12 +2,27 @@
 	"name": "hazel-actors",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-01-20",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"NODE_ENV": "production",
+		"RIVET_PUBLIC_ENDPOINT": "https://rivet.hazel.sh",
+	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["ActorHandler"],
+			"new_sqlite_classes": [
+				"ActorHandler"
+			],
 		},
+	],
+	"routes": [
+		{
+			"pattern": "rivet.hazel.sh",
+			"zone_name": "hazel.sh",
+			"custom_domain": true
+		}
 	],
 	"durable_objects": {
 		"bindings": [
