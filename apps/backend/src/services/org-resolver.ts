@@ -1,9 +1,9 @@
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
-import { type ApiScope, scopesForRole } from "@hazel/domain/scopes"
+import { type ApiScope, CurrentBotScopes, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { Effect, FiberRef, Option } from "effect"
 import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
 
 /**
@@ -17,6 +17,20 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 		const channelRepo = yield* ChannelRepo
 		const channelMemberRepo = yield* ChannelMemberRepo
 		const messageRepo = yield* MessageRepo
+
+		/**
+		 * Resolves granted scopes for the current actor.
+		 * For bots, uses the bot's declared scopes (mapped to ApiScope).
+		 * For human users, uses role-based scopes.
+		 */
+		const resolveGrantedScopes = (role: "owner" | "admin" | "member") =>
+			Effect.gen(function* () {
+				const botScopes = yield* FiberRef.get(CurrentBotScopes)
+				if (Option.isSome(botScopes)) {
+					return botScopes.value
+				}
+				return scopesForRole(role)
+			})
 
 		/**
 		 * Core scope check: looks up the actor's org membership and maps role to scopes.
@@ -37,7 +51,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
 
-				const granted = scopesForRole(member.value.role as "owner" | "admin" | "member")
+				const granted = yield* resolveGrantedScopes(member.value.role as "owner" | "admin" | "member")
 				if (!granted.has(scope)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
@@ -140,7 +154,7 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}
 
-				const granted = scopesForRole(orgMember.value.role as "owner" | "admin" | "member")
+				const granted = yield* resolveGrantedScopes(orgMember.value.role as "owner" | "admin" | "member")
 				if (!granted.has(scope)) {
 					return yield* Effect.fail(PermissionError.insufficientScope(scope))
 				}

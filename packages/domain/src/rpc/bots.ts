@@ -7,20 +7,7 @@ import { RateLimitExceededError } from "../rate-limit-errors"
 import { TransactionId } from "@hazel/schema"
 import { AuthMiddleware } from "./middleware"
 import { RequiredScopes } from "../scopes/required-scopes"
-
-/**
- * Bot Scopes - what the bot is allowed to do
- */
-export const BotScope = Schema.Literal(
-	"messages:read",
-	"messages:write",
-	"channels:read",
-	"channels:write",
-	"users:read",
-	"reactions:write",
-	"commands:register",
-)
-export type BotScope = typeof BotScope.Type
+import { ApiScope } from "../scopes/api-scope"
 
 /**
  * Response schema for bot operations.
@@ -129,7 +116,7 @@ export class BotRpcs extends RpcGroup.make(
 			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
 			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
 			webhookUrl: Schema.optional(Schema.String),
-			scopes: Schema.Array(BotScope),
+			scopes: Schema.Array(ApiScope),
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotCreatedResponse,
@@ -188,7 +175,7 @@ export class BotRpcs extends RpcGroup.make(
 			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
 			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
 			webhookUrl: Schema.optional(Schema.NullOr(Schema.String)),
-			scopes: Schema.optional(Schema.Array(BotScope)),
+			scopes: Schema.optional(Schema.Array(ApiScope)),
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotResponse,

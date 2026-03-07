@@ -1,8 +1,9 @@
 import { Headers } from "@effect/platform"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError } from "@hazel/domain"
-import { Effect, Layer, Option } from "effect"
+import { Effect, FiberRef, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
+import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
 import { SessionManager } from "../../services/session-manager"
 
 export { AuthMiddleware } from "@hazel/domain/rpc"
@@ -72,6 +73,10 @@ export const AuthMiddlewareLive = Layer.effect(
 					}
 
 					const bot = botOption.value
+
+					// Set the bot's declared scopes for authorization
+					const botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
+					yield* FiberRef.set(CurrentBotScopes, Option.some(botApiScopes))
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(

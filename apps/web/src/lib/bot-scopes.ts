@@ -1,4 +1,4 @@
-import type { BotScope } from "@hazel/domain/rpc"
+import type { ApiScope } from "@hazel/domain/scopes"
 import type { IntegrationConnection } from "@hazel/domain/models"
 
 type IntegrationProvider = IntegrationConnection.IntegrationProvider
@@ -7,7 +7,7 @@ type IntegrationProvider = IntegrationConnection.IntegrationProvider
  * Scope definitions for bot permissions UI.
  * Shared between create and edit bot modals.
  */
-export const BOT_SCOPES: Array<{ id: BotScope; label: string; shortLabel: string; description: string }> = [
+export const BOT_SCOPES: Array<{ id: ApiScope; label: string; shortLabel: string; description: string }> = [
 	{
 		id: "messages:read",
 		label: "Read Messages",
@@ -33,12 +33,11 @@ export const BOT_SCOPES: Array<{ id: BotScope; label: string; shortLabel: string
 		description: "Create and modify channels",
 	},
 	{ id: "users:read", label: "Read Users", shortLabel: "Read", description: "View user profiles" },
-	{ id: "reactions:write", label: "Add Reactions", shortLabel: "React", description: "React to messages" },
 	{
-		id: "commands:register",
-		label: "Register Commands",
-		shortLabel: "Commands",
-		description: "Create slash commands",
+		id: "message-reactions:write",
+		label: "Add Reactions",
+		shortLabel: "React",
+		description: "React to messages",
 	},
 ]
 

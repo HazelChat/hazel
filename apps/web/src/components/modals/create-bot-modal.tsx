@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { BotScope } from "@hazel/domain/rpc"
+import type { ApiScope } from "@hazel/domain/scopes"
 import { type } from "arktype"
 import { useState } from "react"
 import { createBotMutation } from "~/atoms/bot-atoms"
@@ -64,7 +64,7 @@ export function CreateBotModal({ isOpen, onOpenChange, onSuccess, reactivityKeys
 					payload: {
 						name: value.name,
 						description: value.description || undefined,
-						scopes: value.scopes as BotScope[],
+						scopes: value.scopes as ApiScope[],
 						isPublic: value.isPublic,
 					},
 					reactivityKeys,

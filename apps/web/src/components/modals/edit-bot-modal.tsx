@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { BotScope } from "@hazel/domain/rpc"
+import type { ApiScope } from "@hazel/domain/scopes"
 import { type } from "arktype"
 import { useEffect } from "react"
 import { updateBotMutation } from "~/atoms/bot-atoms"
@@ -47,7 +47,7 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 		defaultValues: {
 			name: bot.name,
 			description: bot.description ?? "",
-			scopes: (bot.scopes ?? []) as string[],
+			scopes: (bot.scopes ?? []).filter((s) => BOT_SCOPES.some((bs) => bs.id === s)),
 			isPublic: bot.isPublic ?? false,
 		},
 		validators: {
@@ -64,7 +64,7 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 						id: bot.id,
 						name: value.name,
 						description: value.description || null,
-						scopes: value.scopes as BotScope[],
+						scopes: value.scopes as ApiScope[],
 						isPublic: value.isPublic,
 					},
 					reactivityKeys,
@@ -96,7 +96,7 @@ export function EditBotModal({ isOpen, onOpenChange, bot, onSuccess, reactivityK
 			form.reset({
 				name: bot.name,
 				description: bot.description ?? "",
-				scopes: (bot.scopes ?? []) as string[],
+				scopes: (bot.scopes ?? []).filter((s) => BOT_SCOPES.some((bs) => bs.id === s)),
 				isPublic: bot.isPublic ?? false,
 			})
 		}
