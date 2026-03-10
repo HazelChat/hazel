@@ -38,6 +38,14 @@ async function hashToken(token: string): Promise<string> {
 const responseText = (response: Response): Promise<string> =>
 	response.text().catch(() => `${response.status} ${response.statusText}`)
 
+const getWebSocketRequestMetadata = (request: Request) => ({
+	host: request.headers.get("host") ?? undefined,
+	origin: request.headers.get("origin") ?? undefined,
+	userAgent: request.headers.get("user-agent") ?? undefined,
+	forwardedFor: request.headers.get("x-forwarded-for") ?? undefined,
+	forwardedProto: request.headers.get("x-forwarded-proto") ?? undefined,
+})
+
 const annotateResponseStatus = (status: number) =>
 	Effect.all([
 		Effect.annotateCurrentSpan("http.status_code", status),
@@ -541,6 +549,13 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 			const leaseClaimed = yield* tryClaimLease(bot.id, id)
 			if (!leaseClaimed) {
 				yield* annotateErrorType("GatewayProtocolError")
+				yield* Effect.logWarning("Bot gateway identify rejected", {
+					reason: "lease_already_claimed",
+					botId: bot.id,
+					botName: bot.name,
+					sessionId: id,
+					resumed,
+				})
 				yield* sendFrame(socket, {
 					op: "INVALID_SESSION",
 					reason: "another active session already owns this bot token",
@@ -571,15 +586,25 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 				resumed,
 				resumeOffset: frame.resumeOffset,
 			})
+			yield* Effect.logInfo("Bot gateway session ready", {
+				sessionId: id,
+				botId: bot.id,
+				botName: bot.name,
+				resumed,
+				resumeOffset: frame.resumeOffset,
+			})
 
 			Runtime.runFork(runtime)(startDeliveryLoop(id))
 		})
 
 		const onOpen = (socket: ServerWebSocket<{ sessionId: string | null }>) =>
-			sendFrame(socket, {
-				op: "HELLO",
-				heartbeatIntervalMs: config.heartbeatIntervalMs,
-			} satisfies Schema.Schema.Type<typeof BotGatewayHelloFrame>)
+			Effect.gen(function* () {
+				yield* Effect.logInfo("Bot gateway websocket opened")
+				yield* sendFrame(socket, {
+					op: "HELLO",
+					heartbeatIntervalMs: config.heartbeatIntervalMs,
+				} satisfies Schema.Schema.Type<typeof BotGatewayHelloFrame>)
+			})
 
 		const onMessage = (
 			socket: ServerWebSocket<{ sessionId: string | null }>,
@@ -657,6 +682,10 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 					GatewayAuthError: (error) =>
 						Effect.gen(function* () {
 							yield* annotateErrorType("GatewayAuthError")
+							yield* Effect.logWarning("Bot gateway auth rejected", {
+								reason: error.message,
+								sessionId: socket.data.sessionId ?? undefined,
+							})
 							yield* sendFrame(socket, {
 								op: "INVALID_SESSION",
 								reason: error.message,
@@ -665,6 +694,10 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 					GatewayProtocolError: (error) =>
 						Effect.gen(function* () {
 							yield* annotateErrorType("GatewayProtocolError")
+							yield* Effect.logWarning("Bot gateway protocol rejected", {
+								reason: error.message,
+								sessionId: socket.data.sessionId ?? undefined,
+							})
 							yield* sendFrame(socket, {
 								op: "INVALID_SESSION",
 								reason: error.message,
@@ -686,6 +719,11 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 				}
 
 				yield* annotateSessionContext({
+					sessionId: id,
+					botId: session.botId,
+					botName: session.botName,
+				})
+				yield* Effect.logInfo("Bot gateway websocket closed", {
 					sessionId: id,
 					botId: session.botId,
 					botName: session.botName,
@@ -899,10 +937,19 @@ export const createGatewayServer = (options: {
 								return Runtime.runPromise(runtime)(
 									Effect.gen(function* () {
 										yield* annotateHttpRequest("/bot-gateway/ws", request.method)
+										yield* Effect.logInfo(
+											"Bot gateway websocket upgrade requested",
+											getWebSocketRequestMetadata(request),
+										)
 										if (server.upgrade(request, { data: { sessionId: null } })) {
+											yield* Effect.logInfo("Bot gateway websocket upgrade accepted")
 											return undefined
 										}
 										yield* annotateErrorType("WebSocketUpgradeError")
+										yield* Effect.logWarning(
+											"Bot gateway websocket upgrade failed",
+											getWebSocketRequestMetadata(request),
+										)
 										yield* annotateResponseStatus(400)
 										return new Response("Failed to upgrade websocket", { status: 400 })
 									}).pipe(

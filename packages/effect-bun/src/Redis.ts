@@ -69,6 +69,8 @@ const mapRedisError = (error: unknown): RedisErrors => {
 	)
 }
 
+const sanitizeRedisUrl = (url: string): string => url.replace(/\/\/.*@/, "//***@")
+
 // ============ Service ============
 
 /**
@@ -239,12 +241,12 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 						duration: Duration.seconds(10),
 						onTimeout: () =>
 							new RedisError({
-								message: `Redis connection timed out after 10s (url: ${url.replace(/\/\/.*@/, "//***@")})`,
+								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
 							}),
 					}),
 				)
 
-				yield* Effect.log(`Redis connected: ${url}`)
+				yield* Effect.log(`Redis connected: ${sanitizeRedisUrl(url)}`)
 
 				yield* Effect.addFinalizer(() =>
 					Effect.sync(() => {
@@ -269,16 +271,16 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 				try: () => client.connect(),
 				catch: mapRedisError,
 			}).pipe(
-				Effect.timeoutFail({
-					duration: Duration.seconds(10),
-					onTimeout: () =>
-						new RedisError({
-							message: `Redis connection timed out after 10s (url: ${url.replace(/\/\/.*@/, "//***@")})`,
-						}),
-				}),
-			)
+					Effect.timeoutFail({
+						duration: Duration.seconds(10),
+						onTimeout: () =>
+							new RedisError({
+								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
+							}),
+					}),
+				)
 
-			yield* Effect.log(`Redis connected: ${url}`)
+			yield* Effect.log(`Redis connected: ${sanitizeRedisUrl(url)}`)
 
 			yield* Effect.addFinalizer(() =>
 				Effect.sync(() => {
