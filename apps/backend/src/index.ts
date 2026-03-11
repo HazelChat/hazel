@@ -19,6 +19,10 @@ import {
 	ChatSyncConnectionRepo,
 	ChatSyncEventReceiptRepo,
 	ChatSyncMessageLinkRepo,
+	ConnectConversationChannelRepo,
+	ConnectConversationRepo,
+	ConnectInviteRepo,
+	ConnectParticipantRepo,
 	CustomEmojiRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
@@ -82,6 +86,7 @@ import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
+import { ConnectConversationService } from "./services/connect-conversation-service"
 import { OrgResolver } from "./services/org-resolver"
 import { WorkOSAuth } from "./services/workos-auth"
 import { WorkOSWebhookVerifier } from "./services/workos-webhook"
@@ -134,6 +139,10 @@ const RepoLive = Layer.mergeAll(
 	ChatSyncChannelLinkRepo.Default,
 	ChatSyncMessageLinkRepo.Default,
 	ChatSyncEventReceiptRepo.Default,
+	ConnectConversationRepo.Default,
+	ConnectConversationChannelRepo.Default,
+	ConnectInviteRepo.Default,
+	ConnectParticipantRepo.Default,
 	UserRepo.Default,
 	OrganizationRepo.Default,
 	OrganizationMemberRepo.Default,
@@ -208,6 +217,7 @@ const MainLive = Layer.mergeAll(
 	BotGatewayService.Default,
 	WebhookBotService.Default,
 	ChannelAccessSyncService.Default,
+	ConnectConversationService.Default,
 	RateLimiter.Default,
 	// SessionManager.Default includes BackendAuth.Default via dependencies
 	SessionManager.Default,

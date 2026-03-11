@@ -10,15 +10,17 @@ import {
 	lt,
 	ModelRepository,
 	schema,
+	sql,
 	type TxFn,
 } from "@hazel/db"
 
-import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
+import type { ChannelId, ConnectConversationId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 
 export interface ListByChannelParams {
 	channelId: ChannelId
+	conversationId?: ConnectConversationId
 	/** Cursor tuple for older messages (fetch messages after this row in DESC order) */
 	cursorBefore?: {
 		id: MessageId
@@ -51,6 +53,7 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 					execute,
 					data: {
 						channelId: ChannelId
+						conversationId?: ConnectConversationId
 						limit: number
 						cursorBefore?: {
 							id: MessageId
@@ -64,10 +67,12 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 				) =>
 					execute((client) => {
 						// Build the WHERE conditions
-						const conditions = [
-							eq(schema.messagesTable.channelId, data.channelId),
-							isNull(schema.messagesTable.deletedAt),
-						]
+						const conditions = [isNull(schema.messagesTable.deletedAt)]
+						conditions.push(
+							data.conversationId
+								? eq(schema.messagesTable.conversationId, data.conversationId)
+								: eq(schema.messagesTable.channelId, data.channelId),
+						)
 						if (data.cursorBefore) {
 							conditions.push(
 								or(
@@ -103,24 +108,56 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 		/**
 		 * Find a message by ID scoped to a channel for cursor resolution.
 		 */
-		const findByIdForCursor = (params: { id: MessageId; channelId: ChannelId }, tx?: TxFn) =>
+		const findByIdForCursor = (
+			params: { id: MessageId; channelId: ChannelId; conversationId?: ConnectConversationId },
+			tx?: TxFn,
+		) =>
 			db
-				.makeQuery((execute, data: { id: MessageId; channelId: ChannelId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.messagesTable)
-							.where(
-								and(
-									eq(schema.messagesTable.id, data.id),
-									eq(schema.messagesTable.channelId, data.channelId),
-									isNull(schema.messagesTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
+				.makeQuery(
+					(
+						execute,
+						data: { id: MessageId; channelId: ChannelId; conversationId?: ConnectConversationId },
+					) =>
+						execute((client) =>
+							client
+								.select()
+								.from(schema.messagesTable)
+								.where(
+									and(
+										eq(schema.messagesTable.id, data.id),
+										data.conversationId
+											? eq(schema.messagesTable.conversationId, data.conversationId)
+											: eq(schema.messagesTable.channelId, data.channelId),
+										isNull(schema.messagesTable.deletedAt),
+									),
+								)
+								.limit(1),
+						),
 				)(params, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+
+		const backfillConversationIdForChannel = (
+			channelId: ChannelId,
+			conversationId: ConnectConversationId,
+			tx?: TxFn,
+		) =>
+			db.makeQuery((execute, input: { channelId: ChannelId; conversationId: ConnectConversationId }) =>
+				execute((client) =>
+					client
+						.update(schema.messagesTable)
+						.set({
+							conversationId: input.conversationId,
+							updatedAt: sql`COALESCE(${schema.messagesTable.updatedAt}, NOW())`,
+						})
+						.where(
+							and(
+								eq(schema.messagesTable.channelId, input.channelId),
+								isNull(schema.messagesTable.deletedAt),
+								isNull(schema.messagesTable.conversationId),
+							),
+						),
+				),
+			)({ channelId, conversationId }, tx)
 
 		/**
 		 * Reassign message authors for external chat-synced messages scoped to a provider + org.
@@ -208,6 +245,7 @@ export class MessageRepo extends Effect.Service<MessageRepo>()("MessageRepo", {
 			listByChannel,
 			findByIdForCursor,
 			reassignExternalSyncedAuthors,
+			backfillConversationIdForChannel,
 		}
 	}),
 }) {}

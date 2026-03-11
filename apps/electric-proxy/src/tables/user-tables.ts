@@ -38,6 +38,10 @@ export const ALLOWED_TABLES = [
 	"channels",
 	"channel_members",
 	"channel_sections",
+	"connect_conversations",
+	"connect_conversation_channels",
+	"connect_invites",
+	"connect_participants",
 
 	// Message tables
 	"messages",
@@ -147,6 +151,31 @@ export function getWhereClauseForTable(
 			const whereClause = `${deletedAtClause}"${schema.chatSyncMessageLinksTable.channelLinkId.name}" IN (SELECT "id" FROM chat_sync_channel_links WHERE "deletedAt" IS NULL AND "hazelChannelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))`
 			return Effect.succeed({ whereClause, params: [user.internalUserId] })
 		}
+		case "connect_conversations": {
+			const whereClause = `"${schema.connectConversationsTable.deletedAt.name}" IS NULL AND "${schema.connectConversationsTable.id.name}" IN (SELECT "conversationId" FROM connect_conversation_channels WHERE "deletedAt" IS NULL AND "channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))`
+			return Effect.succeed({ whereClause, params: [user.internalUserId] })
+		}
+		case "connect_conversation_channels":
+			return Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					schema.connectConversationChannelsTable.channelId,
+					schema.connectConversationChannelsTable.deletedAt,
+				),
+			)
+		case "connect_participants":
+			return Effect.succeed(
+				buildChannelAccessClause(
+					user.internalUserId,
+					schema.connectParticipantsTable.channelId,
+					schema.connectParticipantsTable.deletedAt,
+				),
+			)
+		case "connect_invites": {
+			const deletedAtClause = `"${schema.connectInvitesTable.deletedAt.name}" IS NULL AND `
+			const whereClause = `${deletedAtClause}EXISTS (SELECT 1 FROM organization_members om WHERE om."userId" = $1 AND om."deletedAt" IS NULL AND (om."organizationId" = "${schema.connectInvitesTable.hostOrganizationId.name}" OR om."organizationId" = "${schema.connectInvitesTable.guestOrganizationId.name}"))`
+			return Effect.succeed({ whereClause, params: [user.internalUserId] })
+		}
 	}
 
 	return Match.value(table).pipe(
@@ -227,21 +256,17 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("messages", () =>
-			// Messages: only in channels user has access to
-			Effect.succeed(
-				buildChannelAccessClause(
-					user.internalUserId,
-					schema.messagesTable.channelId,
-					schema.messagesTable.deletedAt,
-				),
-			),
+			Effect.succeed({
+				whereClause: `"${schema.messagesTable.deletedAt.name}" IS NULL AND EXISTS (SELECT 1 FROM channel_access ca LEFT JOIN connect_conversation_channels ccc ON ccc."channelId" = ca."channelId" AND ccc."deletedAt" IS NULL WHERE ca."userId" = $1 AND (("messages"."${schema.messagesTable.conversationId.name}" IS NOT NULL AND ccc."conversationId" = "messages"."${schema.messagesTable.conversationId.name}") OR ("messages"."${schema.messagesTable.conversationId.name}" IS NULL AND ca."channelId" = "messages"."${schema.messagesTable.channelId.name}")))`,
+				params: [user.internalUserId],
+			}),
 		),
 
 		Match.when("message_reactions", () =>
-			// Message reactions: only in channels user has access to
-			Effect.succeed(
-				buildChannelAccessClause(user.internalUserId, schema.messageReactionsTable.channelId),
-			),
+			Effect.succeed({
+				whereClause: `EXISTS (SELECT 1 FROM channel_access ca LEFT JOIN connect_conversation_channels ccc ON ccc."channelId" = ca."channelId" AND ccc."deletedAt" IS NULL WHERE ca."userId" = $1 AND (("message_reactions"."${schema.messageReactionsTable.conversationId.name}" IS NOT NULL AND ccc."conversationId" = "message_reactions"."${schema.messageReactionsTable.conversationId.name}") OR ("message_reactions"."${schema.messageReactionsTable.conversationId.name}" IS NULL AND ca."channelId" = "message_reactions"."${schema.messageReactionsTable.channelId.name}")))`,
+				params: [user.internalUserId],
+			}),
 		),
 
 		Match.when("attachments", () =>
@@ -345,8 +370,8 @@ export function getWhereClauseForTable(
 			Effect.fail(
 				new TableAccessError({
 					message: "Table not handled in where clause system",
-					detail: `Missing where clause implementation for table: ${table}`,
-					table,
+					detail: `Missing where clause implementation for table: ${String(table)}`,
+					table: String(table),
 				}),
 			),
 		),

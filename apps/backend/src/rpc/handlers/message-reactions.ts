@@ -6,11 +6,13 @@ import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { MessageReactionPolicy } from "../../policies/message-reaction-policy"
+import { ConnectConversationService } from "../../services/connect-conversation-service"
 
 export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const outboxRepo = yield* MessageOutboxRepo
+		const connectConversationService = yield* ConnectConversationService
 
 		return {
 			"messageReaction.toggle": (payload) =>
@@ -63,9 +65,15 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 
 								// Otherwise, create a new reaction
 								yield* MessageReactionPolicy.canCreate(messageId)
+								const conversationId =
+									yield* connectConversationService.getConversationIdForChannel(
+										channelId,
+										user.id,
+									)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									messageId,
 									channelId,
+									conversationId,
 									emoji,
 									userId: user.id,
 								}).pipe(Effect.map((res) => res[0]!))
@@ -104,8 +112,14 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								const user = yield* CurrentUser.Context
 
 								yield* MessageReactionPolicy.canCreate(payload.messageId)
+								const conversationId =
+									yield* connectConversationService.getConversationIdForChannel(
+										payload.channelId,
+										user.id,
+									)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									...payload,
+									conversationId,
 									userId: user.id,
 								}).pipe(Effect.map((res) => res[0]!))
 

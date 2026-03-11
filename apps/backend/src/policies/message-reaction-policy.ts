@@ -1,8 +1,9 @@
 import { MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
-import { ErrorUtils, policy } from "@hazel/domain"
+import { ErrorUtils, PermissionError, policy } from "@hazel/domain"
 import type { MessageId, MessageReactionId } from "@hazel/schema"
 import { Effect } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
+import { ConnectConversationService } from "../services/connect-conversation-service"
 import { OrgResolver } from "../services/org-resolver"
 
 export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>()(
@@ -14,6 +15,7 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 			const messageReactionRepo = yield* MessageReactionRepo
 			const messageRepo = yield* MessageRepo
 			const orgResolver = yield* OrgResolver
+			const connectConversationService = yield* ConnectConversationService
 
 			const canList = (_id: MessageId) =>
 				ErrorUtils.refailUnauthorized(
@@ -52,12 +54,29 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 				)(
 					messageRepo.with(messageId, (message) =>
 						withAnnotatedScope((scope) =>
-							orgResolver.fromChannelWithAccess(
-								message.channelId,
-								scope,
-								policyEntity,
-								"create",
-							),
+							Effect.gen(function* () {
+								if (message.conversationId) {
+									const hasAccess = yield* connectConversationService.canAccessConversation(
+										message.conversationId,
+										scope,
+									)
+									if (!hasAccess) {
+										return yield* Effect.fail(
+											new PermissionError({
+												message: "You don't have access to this conversation",
+												requiredScope: scope,
+											}),
+										)
+									}
+									return
+								}
+								return yield* orgResolver.fromChannelWithAccess(
+									message.channelId,
+									scope,
+									policyEntity,
+									"create",
+								)
+							}),
 						),
 					),
 				)
@@ -80,7 +99,12 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 
 			return { canCreate, canDelete, canUpdate, canList } as const
 		}),
-		dependencies: [MessageReactionRepo.Default, MessageRepo.Default, OrgResolver.Default],
+		dependencies: [
+			MessageReactionRepo.Default,
+			MessageRepo.Default,
+			OrgResolver.Default,
+			ConnectConversationService.Default,
+		],
 		accessors: true,
 	},
 ) {}

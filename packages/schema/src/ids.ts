@@ -6,6 +6,36 @@ export const ChannelId = Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelId")).
 })
 export type ChannelId = Schema.Schema.Type<typeof ChannelId>
 
+export const ConnectConversationId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/ConnectConversationId"),
+).annotations({
+	description: "The ID of a Hazel Connect conversation",
+	title: "Connect Conversation ID",
+})
+export type ConnectConversationId = Schema.Schema.Type<typeof ConnectConversationId>
+
+export const ConnectConversationChannelId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/ConnectConversationChannelId"),
+).annotations({
+	description: "The ID of a Hazel Connect conversation channel mount",
+	title: "Connect Conversation Channel ID",
+})
+export type ConnectConversationChannelId = Schema.Schema.Type<typeof ConnectConversationChannelId>
+
+export const ConnectInviteId = Schema.UUID.pipe(Schema.brand("@HazelChat/ConnectInviteId")).annotations({
+	description: "The ID of a Hazel Connect invite",
+	title: "Connect Invite ID",
+})
+export type ConnectInviteId = Schema.Schema.Type<typeof ConnectInviteId>
+
+export const ConnectParticipantId = Schema.UUID.pipe(
+	Schema.brand("@HazelChat/ConnectParticipantId"),
+).annotations({
+	description: "The ID of a Hazel Connect participant projection",
+	title: "Connect Participant ID",
+})
+export type ConnectParticipantId = Schema.Schema.Type<typeof ConnectParticipantId>
+
 export const UserId = Schema.UUID.pipe(Schema.brand("@HazelChat/UserId")).annotations({
 	description: "The ID of a user",
 	title: "UserId ID",

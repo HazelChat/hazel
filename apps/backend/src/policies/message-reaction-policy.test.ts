@@ -17,6 +17,7 @@ import type {
 } from "@hazel/schema"
 import { Effect, Either, Layer, Option } from "effect"
 import { MessageReactionPolicy } from "./message-reaction-policy.ts"
+import { ConnectConversationService } from "../services/connect-conversation-service.ts"
 import { OrgResolver } from "../services/org-resolver.ts"
 import { makeActor, makeEntityNotFound, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
 
@@ -77,6 +78,10 @@ const emptyMessageRepoLayer = Layer.succeed(MessageRepo, {
 	findById: (_id: MessageId) => Effect.succeed(Option.none()),
 } as unknown as MessageRepo)
 
+const connectConversationServiceLayer = Layer.succeed(ConnectConversationService, {
+	canAccessConversation: () => Effect.succeed(false),
+} as unknown as ConnectConversationService)
+
 const makePolicyLayer = (
 	orgMembers: Record<string, Role>,
 	reactions: Record<string, ReactionData>,
@@ -99,6 +104,7 @@ const makePolicyLayer = (
 		Layer.provide(makeReactionRepoLayer(reactions)),
 		Layer.provide(messageRepoLayer),
 		Layer.provide(orgResolverLayer),
+		Layer.provide(connectConversationServiceLayer),
 	)
 }
 

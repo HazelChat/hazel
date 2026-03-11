@@ -1,4 +1,4 @@
-import { AttachmentId, ChannelId, MessageId, UserId } from "@hazel/schema"
+import { AttachmentId, ChannelId, ConnectConversationId, MessageId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { MessageEmbeds } from "./message-embed-schema"
 import * as M from "./utils"
@@ -7,6 +7,7 @@ import { baseFields } from "./utils"
 export class Model extends M.Class<Model>("Message")({
 	id: M.Generated(MessageId),
 	channelId: ChannelId,
+	conversationId: M.GeneratedOptional(Schema.NullOr(ConnectConversationId)),
 	authorId: M.GeneratedByApp(UserId),
 	content: Schema.String,
 	embeds: Schema.NullOr(MessageEmbeds),
@@ -18,6 +19,7 @@ export class Model extends M.Class<Model>("Message")({
 // Custom insert schema that includes attachmentIds for linking
 export const Insert = Schema.Struct({
 	...Model.insert.fields,
+	conversationId: Schema.optional(Schema.NullOr(ConnectConversationId)),
 	attachmentIds: Schema.optional(Schema.Array(AttachmentId)),
 })
 

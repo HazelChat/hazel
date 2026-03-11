@@ -7,6 +7,7 @@ import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
 import { MessagePolicy } from "../../policies/message-policy"
 import { BotGatewayService } from "../../services/bot-gateway-service"
+import { ConnectConversationService } from "../../services/connect-conversation-service"
 import { checkMessageRateLimit } from "../../services/rate-limit-helpers"
 
 /**
@@ -28,6 +29,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 		const db = yield* Database.Database
 		const botGateway = yield* BotGatewayService
 		const outboxRepo = yield* MessageOutboxRepo
+		const connectConversationService = yield* ConnectConversationService
 
 		return {
 			"message.create": ({ attachmentIds, ...messageData }) =>
@@ -41,8 +43,14 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 						.transaction(
 							Effect.gen(function* () {
 								yield* MessagePolicy.canCreate(messageData.channelId)
+								const conversationId =
+									yield* connectConversationService.getConversationIdForChannel(
+										messageData.channelId,
+										user.id,
+									)
 								const createdMessage = yield* MessageRepo.insert({
 									...messageData,
+									conversationId,
 									authorId: user.id,
 									deletedAt: null,
 								}).pipe(Effect.map((res) => res[0]!))

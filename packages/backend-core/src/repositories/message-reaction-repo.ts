@@ -1,6 +1,6 @@
-import { and, Database, eq, ModelRepository, schema } from "@hazel/db"
+import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 
-import type { MessageId, UserId } from "@hazel/schema"
+import type { ChannelId, ConnectConversationId, MessageId, UserId } from "@hazel/schema"
 import { MessageReaction } from "@hazel/domain/models"
 import { Effect, Option } from "effect"
 
@@ -37,9 +37,29 @@ export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("
 				)({ messageId, userId, emoji })
 				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
 
+		const backfillConversationIdForChannel = (
+			channelId: ChannelId,
+			conversationId: ConnectConversationId,
+			tx?: TxFn,
+		) =>
+			db.makeQuery((execute, input: { channelId: ChannelId; conversationId: ConnectConversationId }) =>
+				execute((client) =>
+					client
+						.update(schema.messageReactionsTable)
+						.set({ conversationId: input.conversationId })
+						.where(
+							and(
+								eq(schema.messageReactionsTable.channelId, input.channelId),
+								isNull(schema.messageReactionsTable.conversationId),
+							),
+						),
+				),
+			)({ channelId, conversationId }, tx)
+
 		return {
 			...baseRepo,
 			findByMessageUserEmoji,
+			backfillConversationIdForChannel,
 		}
 	}),
 }) {}

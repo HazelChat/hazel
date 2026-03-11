@@ -1,4 +1,4 @@
-import type { ChannelId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
+import type { ChannelId, ConnectConversationId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import { index, jsonb, pgTable, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core"
 
 // Embed types for JSONB column
@@ -68,6 +68,7 @@ export const messagesTable = pgTable(
 	{
 		id: uuid().primaryKey().defaultRandom().$type<MessageId>(),
 		channelId: uuid().notNull().$type<ChannelId>(),
+		conversationId: uuid().$type<ConnectConversationId>(),
 		authorId: uuid().notNull().$type<UserId>(),
 		content: text().notNull(),
 		// Rich embeds for webhook messages (Discord-style)
@@ -82,6 +83,7 @@ export const messagesTable = pgTable(
 	},
 	(table) => [
 		index("messages_channel_id_idx").on(table.channelId),
+		index("messages_conversation_id_idx").on(table.conversationId),
 		index("messages_author_id_idx").on(table.authorId),
 		index("messages_reply_to_idx").on(table.replyToMessageId),
 		index("messages_thread_channel_idx").on(table.threadChannelId),
@@ -97,12 +99,14 @@ export const messageReactionsTable = pgTable(
 		id: uuid().primaryKey().defaultRandom().$type<MessageReactionId>(),
 		messageId: uuid().notNull().$type<MessageId>(),
 		channelId: uuid().notNull().$type<ChannelId>(),
+		conversationId: uuid().$type<ConnectConversationId>(),
 		userId: uuid().notNull().$type<UserId>(),
 		emoji: varchar({ length: 50 }).notNull(),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 	},
 	(table) => [
 		index("reactions_channel_id_idx").on(table.channelId),
+		index("reactions_conversation_id_idx").on(table.conversationId),
 		index("reactions_message_id_idx").on(table.messageId),
 		index("reactions_user_id_idx").on(table.userId),
 		index("reactions_message_user_emoji_idx").on(table.messageId, table.userId, table.emoji),

@@ -6,6 +6,7 @@ import type {
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
 	ChatSyncRpcs,
+	ConnectShareRpcs,
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
@@ -39,6 +40,7 @@ export type RpcActionName =
 	| ActionOf<ChannelSectionRpcs>
 	| ActionOf<ChannelWebhookRpcs>
 	| ActionOf<ChatSyncRpcs>
+	| ActionOf<ConnectShareRpcs>
 	| ActionOf<CustomEmojiRpcs>
 	| ActionOf<GitHubSubscriptionRpcs>
 	| ActionOf<IntegrationRequestRpcs>

@@ -96,16 +96,37 @@ type Fixture = {
 			orgBHidden: string
 			orgADeleted: string
 		}
+		connectConversations: {
+			visible: string
+			hidden: string
+		}
+		connectConversationChannels: {
+			visibleHost: string
+			visibleGuestHidden: string
+			hiddenHost: string
+		}
+		connectInvites: {
+			visible: string
+			hidden: string
+		}
+		connectParticipants: {
+			visible: string
+			hidden: string
+		}
 		messages: {
 			publicAVisible: string
 			privateMemberAVisible: string
 			privateAHidden: string
 			publicBHidden: string
 			publicADeleted: string
+			connectConversationVisible: string
+			connectConversationBlocked: string
 		}
 		messageReactions: {
 			publicAVisible: string
 			privateAHidden: string
+			connectConversationVisible: string
+			connectConversationBlocked: string
 		}
 		attachments: {
 			orgAVisible: string
@@ -182,6 +203,8 @@ type Fixture = {
 			privateAHidden: string
 			publicBHidden: string
 			publicADeleted: string
+			connectConversationVisible: string
+			connectConversationBlocked: string
 		}
 	}
 }
@@ -467,16 +490,37 @@ const createFixture = (): Fixture => {
 			orgBHidden: id(),
 			orgADeleted: id(),
 		},
+		connectConversations: {
+			visible: id(),
+			hidden: id(),
+		},
+		connectConversationChannels: {
+			visibleHost: id(),
+			visibleGuestHidden: id(),
+			hiddenHost: id(),
+		},
+		connectInvites: {
+			visible: id(),
+			hidden: id(),
+		},
+		connectParticipants: {
+			visible: id(),
+			hidden: id(),
+		},
 		messages: {
 			publicAVisible: id(),
 			privateMemberAVisible: id(),
 			privateAHidden: id(),
 			publicBHidden: id(),
 			publicADeleted: id(),
+			connectConversationVisible: id(),
+			connectConversationBlocked: id(),
 		},
 		messageReactions: {
 			publicAVisible: id(),
 			privateAHidden: id(),
+			connectConversationVisible: id(),
+			connectConversationBlocked: id(),
 		},
 		attachments: {
 			orgAVisible: id(),
@@ -554,6 +598,8 @@ const createFixture = (): Fixture => {
 			privateAHidden: `HIDDEN_PRIVATE_A_${runId}`,
 			publicBHidden: `HIDDEN_PUBLIC_B_${runId}`,
 			publicADeleted: `HIDDEN_DELETED_PUBLIC_A_${runId}`,
+			connectConversationVisible: `VISIBLE_CONNECT_CONVERSATION_${runId}`,
+			connectConversationBlocked: `HIDDEN_CONNECT_CONVERSATION_${runId}`,
 		},
 	}
 
@@ -637,19 +683,48 @@ VALUES
 	('${f.ids.users.viewer}', '${f.ids.channels.deletedAccessibleA}', '${f.ids.organizations.orgA}', NOW(), NOW())
 ON CONFLICT ("userId", "channelId") DO NOTHING;
 
-INSERT INTO messages (id, "channelId", "authorId", content, "createdAt", "updatedAt", "deletedAt")
+INSERT INTO connect_conversations (id, "hostOrganizationId", "hostChannelId", status, settings, "createdBy", "createdAt", "updatedAt", "deletedAt")
 VALUES
-	('${f.ids.messages.publicAVisible}', '${f.ids.channels.publicA}', '${f.ids.users.otherUser}', '${f.values.messages.publicAVisible}', NOW(), NOW(), NULL),
-	('${f.ids.messages.privateMemberAVisible}', '${f.ids.channels.privateMemberA}', '${f.ids.users.otherUser}', '${f.values.messages.privateMemberAVisible}', NOW(), NOW(), NULL),
-	('${f.ids.messages.privateAHidden}', '${f.ids.channels.privateA}', '${f.ids.users.otherUser}', '${f.values.messages.privateAHidden}', NOW(), NOW(), NULL),
-	('${f.ids.messages.publicBHidden}', '${f.ids.channels.publicB}', '${f.ids.users.otherUser}', '${f.values.messages.publicBHidden}', NOW(), NOW(), NULL),
-	('${f.ids.messages.publicADeleted}', '${f.ids.channels.publicA}', '${f.ids.users.otherUser}', '${f.values.messages.publicADeleted}', NOW(), NOW(), NOW())
+	('${f.ids.connectConversations.visible}', '${f.ids.organizations.orgA}', '${f.ids.channels.publicA}', 'active', '{}'::jsonb, '${f.ids.users.viewer}', NOW(), NOW(), NULL),
+	('${f.ids.connectConversations.hidden}', '${f.ids.organizations.orgB}', '${f.ids.channels.publicB}', 'active', '{}'::jsonb, '${f.ids.users.otherUser}', NOW(), NOW(), NULL)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO message_reactions (id, "messageId", "channelId", "userId", emoji, "createdAt")
+INSERT INTO connect_conversation_channels (id, "conversationId", "organizationId", "channelId", role, "isActive", "createdAt", "updatedAt", "deletedAt")
 VALUES
-	('${f.ids.messageReactions.publicAVisible}', '${f.ids.messages.publicAVisible}', '${f.ids.channels.publicA}', '${f.ids.users.viewer}', ':thumbsup:', NOW()),
-	('${f.ids.messageReactions.privateAHidden}', '${f.ids.messages.privateAHidden}', '${f.ids.channels.privateA}', '${f.ids.users.otherUser}', ':x:', NOW())
+	('${f.ids.connectConversationChannels.visibleHost}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgA}', '${f.ids.channels.publicA}', 'host', true, NOW(), NOW(), NULL),
+	('${f.ids.connectConversationChannels.visibleGuestHidden}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgB}', '${f.ids.channels.publicB}', 'guest', true, NOW(), NOW(), NULL),
+	('${f.ids.connectConversationChannels.hiddenHost}', '${f.ids.connectConversations.hidden}', '${f.ids.organizations.orgA}', '${f.ids.channels.privateA}', 'host', true, NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO connect_invites (id, "conversationId", "hostOrganizationId", "hostChannelId", "targetKind", "targetValue", "guestOrganizationId", status, "allowGuestMemberAdds", "invitedBy", "acceptedBy", "acceptedAt", "expiresAt", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.connectInvites.visible}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgA}', '${f.ids.channels.publicA}', 'slug', 'visible-connect-${f.runId}', '${f.ids.organizations.orgB}', 'pending', false, '${f.ids.users.viewer}', NULL, NULL, NOW() + INTERVAL '7 day', NOW(), NOW(), NULL),
+	('${f.ids.connectInvites.hidden}', '${f.ids.connectConversations.hidden}', '${f.ids.organizations.orgB}', '${f.ids.channels.publicB}', 'slug', 'hidden-connect-${f.runId}', '${f.ids.organizations.orgB}', 'pending', false, '${f.ids.users.otherUser}', NULL, NULL, NOW() + INTERVAL '7 day', NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO connect_participants (id, "conversationId", "channelId", "userId", "homeOrganizationId", "isExternal", "addedBy", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.connectParticipants.visible}', '${f.ids.connectConversations.visible}', '${f.ids.channels.publicA}', '${f.ids.users.otherUser}', '${f.ids.organizations.orgB}', true, '${f.ids.users.viewer}', NOW(), NOW(), NULL),
+	('${f.ids.connectParticipants.hidden}', '${f.ids.connectConversations.hidden}', '${f.ids.channels.privateA}', '${f.ids.users.otherUser}', '${f.ids.organizations.orgB}', true, '${f.ids.users.otherUser}', NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO messages (id, "channelId", "conversationId", "authorId", content, "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${f.ids.messages.publicAVisible}', '${f.ids.channels.publicA}', NULL, '${f.ids.users.otherUser}', '${f.values.messages.publicAVisible}', NOW(), NOW(), NULL),
+	('${f.ids.messages.privateMemberAVisible}', '${f.ids.channels.privateMemberA}', NULL, '${f.ids.users.otherUser}', '${f.values.messages.privateMemberAVisible}', NOW(), NOW(), NULL),
+	('${f.ids.messages.privateAHidden}', '${f.ids.channels.privateA}', NULL, '${f.ids.users.otherUser}', '${f.values.messages.privateAHidden}', NOW(), NOW(), NULL),
+	('${f.ids.messages.publicBHidden}', '${f.ids.channels.publicB}', NULL, '${f.ids.users.otherUser}', '${f.values.messages.publicBHidden}', NOW(), NOW(), NULL),
+	('${f.ids.messages.publicADeleted}', '${f.ids.channels.publicA}', NULL, '${f.ids.users.otherUser}', '${f.values.messages.publicADeleted}', NOW(), NOW(), NOW()),
+	('${f.ids.messages.connectConversationVisible}', '${f.ids.channels.privateA}', '${f.ids.connectConversations.visible}', '${f.ids.users.otherUser}', '${f.values.messages.connectConversationVisible}', NOW(), NOW(), NULL),
+	('${f.ids.messages.connectConversationBlocked}', '${f.ids.channels.publicA}', '${f.ids.connectConversations.hidden}', '${f.ids.users.otherUser}', '${f.values.messages.connectConversationBlocked}', NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO message_reactions (id, "messageId", "channelId", "conversationId", "userId", emoji, "createdAt")
+VALUES
+	('${f.ids.messageReactions.publicAVisible}', '${f.ids.messages.publicAVisible}', '${f.ids.channels.publicA}', NULL, '${f.ids.users.viewer}', ':thumbsup:', NOW()),
+	('${f.ids.messageReactions.privateAHidden}', '${f.ids.messages.privateAHidden}', '${f.ids.channels.privateA}', NULL, '${f.ids.users.otherUser}', ':x:', NOW()),
+	('${f.ids.messageReactions.connectConversationVisible}', '${f.ids.messages.connectConversationVisible}', '${f.ids.channels.privateA}', '${f.ids.connectConversations.visible}', '${f.ids.users.viewer}', ':sparkles:', NOW()),
+	('${f.ids.messageReactions.connectConversationBlocked}', '${f.ids.messages.connectConversationBlocked}', '${f.ids.channels.publicA}', '${f.ids.connectConversations.hidden}', '${f.ids.users.otherUser}', ':lock:', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO attachments (id, "organizationId", "channelId", "messageId", "fileName", "fileSize", "uploadedBy", status, "uploadedAt", "deletedAt")
@@ -874,19 +949,57 @@ const buildUserVisibilitySpecs = (f: Fixture): VisibilitySpec<AllowedTable>[] =>
 		strict: true,
 	},
 	{
+		table: "connect_conversations",
+		allowedIds: [f.ids.connectConversations.visible],
+		blockedIds: [f.ids.connectConversations.hidden],
+		strict: true,
+	},
+	{
+		table: "connect_conversation_channels",
+		allowedIds: [f.ids.connectConversationChannels.visibleHost],
+		blockedIds: [
+			f.ids.connectConversationChannels.visibleGuestHidden,
+			f.ids.connectConversationChannels.hiddenHost,
+		],
+		strict: true,
+	},
+	{
+		table: "connect_invites",
+		allowedIds: [f.ids.connectInvites.visible],
+		blockedIds: [f.ids.connectInvites.hidden],
+		strict: true,
+	},
+	{
+		table: "connect_participants",
+		allowedIds: [f.ids.connectParticipants.visible],
+		blockedIds: [f.ids.connectParticipants.hidden],
+		strict: true,
+	},
+	{
 		table: "messages",
-		allowedIds: [f.ids.messages.publicAVisible, f.ids.messages.privateMemberAVisible],
+		allowedIds: [
+			f.ids.messages.publicAVisible,
+			f.ids.messages.privateMemberAVisible,
+			f.ids.messages.connectConversationVisible,
+		],
 		blockedIds: [
 			f.ids.messages.privateAHidden,
 			f.ids.messages.publicBHidden,
 			f.ids.messages.publicADeleted,
+			f.ids.messages.connectConversationBlocked,
 		],
 		strict: true,
 	},
 	{
 		table: "message_reactions",
-		allowedIds: [f.ids.messageReactions.publicAVisible],
-		blockedIds: [f.ids.messageReactions.privateAHidden],
+		allowedIds: [
+			f.ids.messageReactions.publicAVisible,
+			f.ids.messageReactions.connectConversationVisible,
+		],
+		blockedIds: [
+			f.ids.messageReactions.privateAHidden,
+			f.ids.messageReactions.connectConversationBlocked,
+		],
 		strict: true,
 	},
 	{
@@ -1083,7 +1196,11 @@ describe("electric-proxy filter E2E (real Electric)", () => {
 		expect(result.status).toBe(200)
 		expectOnlyValues(
 			result.rows,
-			[fixture.values.messages.publicAVisible, fixture.values.messages.privateMemberAVisible],
+			[
+				fixture.values.messages.publicAVisible,
+				fixture.values.messages.privateMemberAVisible,
+				fixture.values.messages.connectConversationVisible,
+			],
 			"content",
 		)
 	})
@@ -1196,6 +1313,109 @@ ON CONFLICT (id) DO NOTHING;
 				const blockedOps = getOperationsForId(step.result.rawMessages, blockedId)
 				const allowedVisible = ids.has(allowedId)
 				const blockedVisible = ids.has(blockedId)
+				const sawAllowedOp = allowedOps.some((op) => op === "insert" || op === "update")
+				const sawBlockedOp = blockedOps.some((op) => op === "insert" || op === "update")
+				const ok = step.didRefetch
+					? allowedVisible && !blockedVisible
+					: allowedVisible && !blockedVisible && sawAllowedOp && !sawBlockedOp
+
+				return {
+					ok,
+					context: `status=${step.result.status} handle=${cursor.handle} offset=${cursor.offset} refetch=${String(step.didRefetch)} ids=${summarizeRowsById(step.result.rows)} allowedOps=${allowedOps.join(",")} blockedOps=${blockedOps.join(",")}`,
+				}
+			},
+		})
+	}, 60000)
+
+	it("syncs canonical conversation message inserts by conversation access", async () => {
+		const allowedId = crypto.randomUUID()
+		const blockedId = crypto.randomUUID()
+		const allowedContent = `SYNC_CONNECT_ALLOWED_${fixture.runId}_${crypto.randomUUID().slice(0, 6)}`
+		const blockedContent = `SYNC_CONNECT_BLOCKED_${fixture.runId}_${crypto.randomUUID().slice(0, 6)}`
+		let cursor = await fetchInitialCursor("messages")
+
+		runSql(`
+INSERT INTO messages (id, "channelId", "conversationId", "authorId", content, "createdAt", "updatedAt")
+VALUES
+	('${allowedId}', '${fixture.ids.channels.privateA}', '${fixture.ids.connectConversations.visible}', '${fixture.ids.users.viewer}', '${allowedContent}', NOW(), NOW()),
+	('${blockedId}', '${fixture.ids.channels.publicA}', '${fixture.ids.connectConversations.hidden}', '${fixture.ids.users.viewer}', '${blockedContent}', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+`)
+
+		await waitForSyncCheck({
+			table: "messages",
+			name: "canonical conversation insert visibility",
+			timeoutMs: 60000,
+			check: async () => {
+				const step = await fetchUserDeltaWithRefetch("messages", cursor)
+				cursor = step.cursor
+
+				const ids = new Set(collectIds(step.result.rows))
+				const allowedOps = getOperationsForId(step.result.rawMessages, allowedId)
+				const blockedOps = getOperationsForId(step.result.rawMessages, blockedId)
+				const allowedVisible = ids.has(allowedId)
+				const blockedVisible = ids.has(blockedId)
+				const sawAllowedOp = allowedOps.some((op) => op === "insert" || op === "update")
+				const sawBlockedOp = blockedOps.some((op) => op === "insert" || op === "update")
+				const ok = step.didRefetch
+					? allowedVisible && !blockedVisible
+					: allowedVisible && !blockedVisible && sawAllowedOp && !sawBlockedOp
+
+				return {
+					ok,
+					context: `status=${step.result.status} handle=${cursor.handle} offset=${cursor.offset} refetch=${String(step.didRefetch)} ids=${summarizeRowsById(step.result.rows)} allowedOps=${allowedOps.join(",")} blockedOps=${blockedOps.join(",")}`,
+				}
+			},
+		})
+	}, 60000)
+
+	it("syncs connect conversation channel mounts by channel access", async () => {
+		const allowedConversationId = crypto.randomUUID()
+		const blockedConversationId = crypto.randomUUID()
+		const allowedChannelId = crypto.randomUUID()
+		const blockedChannelId = crypto.randomUUID()
+		const allowedMountId = crypto.randomUUID()
+		const blockedMountId = crypto.randomUUID()
+		let cursor = await fetchInitialCursor("connect_conversation_channels")
+
+		runSql(`
+INSERT INTO channels (id, name, type, "organizationId", "sectionId", "createdAt", "updatedAt")
+VALUES
+	('${allowedChannelId}', 'connect-visible-${fixture.runId}', 'public', '${fixture.ids.organizations.orgA}', '${fixture.ids.channelSections.orgAVisible}', NOW(), NOW()),
+	('${blockedChannelId}', 'connect-hidden-${fixture.runId}', 'public', '${fixture.ids.organizations.orgA}', '${fixture.ids.channelSections.orgAVisible}', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO channel_access ("userId", "channelId", "organizationId", "createdAt", "updatedAt")
+VALUES
+	('${fixture.ids.users.viewer}', '${allowedChannelId}', '${fixture.ids.organizations.orgA}', NOW(), NOW())
+ON CONFLICT ("userId", "channelId") DO NOTHING;
+
+INSERT INTO connect_conversations (id, "hostOrganizationId", "hostChannelId", status, settings, "createdBy", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${allowedConversationId}', '${fixture.ids.organizations.orgA}', '${allowedChannelId}', 'active', '{}'::jsonb, '${fixture.ids.users.viewer}', NOW(), NOW(), NULL),
+	('${blockedConversationId}', '${fixture.ids.organizations.orgA}', '${blockedChannelId}', 'active', '{}'::jsonb, '${fixture.ids.users.viewer}', NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO connect_conversation_channels (id, "conversationId", "organizationId", "channelId", role, "isActive", "createdAt", "updatedAt", "deletedAt")
+VALUES
+	('${allowedMountId}', '${allowedConversationId}', '${fixture.ids.organizations.orgA}', '${allowedChannelId}', 'host', true, NOW(), NOW(), NULL),
+	('${blockedMountId}', '${blockedConversationId}', '${fixture.ids.organizations.orgA}', '${blockedChannelId}', 'host', true, NOW(), NOW(), NULL)
+ON CONFLICT (id) DO NOTHING;
+`)
+
+		await waitForSyncCheck({
+			table: "connect_conversation_channels",
+			name: "connect conversation channel mount visibility",
+			timeoutMs: 60000,
+			check: async () => {
+				const step = await fetchUserDeltaWithRefetch("connect_conversation_channels", cursor)
+				cursor = step.cursor
+
+				const ids = new Set(collectIds(step.result.rows))
+				const allowedOps = getOperationsForId(step.result.rawMessages, allowedMountId)
+				const blockedOps = getOperationsForId(step.result.rawMessages, blockedMountId)
+				const allowedVisible = ids.has(allowedMountId)
+				const blockedVisible = ids.has(blockedMountId)
 				const sawAllowedOp = allowedOps.some((op) => op === "insert" || op === "update")
 				const sawBlockedOp = blockedOps.some((op) => op === "insert" || op === "update")
 				const ok = step.didRefetch
