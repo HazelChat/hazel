@@ -91,7 +91,10 @@ function ConnectPage() {
 							<div className="flex items-center gap-2">
 								<h3 className="font-semibold text-fg text-sm">Active connections</h3>
 								<Badge intent="success" size="sm">
-									{sharedConnections.filter((c) => c.organizationId !== organizationId).length}
+									{
+										sharedConnections.filter((c) => c.organizationId !== organizationId)
+											.length
+									}
 								</Badge>
 							</div>
 						</div>
