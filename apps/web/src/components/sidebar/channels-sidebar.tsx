@@ -42,6 +42,7 @@ import { channelCollection, channelMemberCollection, channelSectionCollection } 
 import { useActiveThreads } from "~/db/hooks"
 import { useChannelUnreadCountMap } from "~/hooks/use-notifications"
 import { useOrganization } from "~/hooks/use-organization"
+import { useSharedChannels } from "~/hooks/use-shared-channels"
 import { useAppHotkeyLabel } from "~/hooks/use-app-hotkey"
 import { usePermission } from "~/hooks/use-permission"
 import { useAuth } from "~/lib/auth"
@@ -79,6 +80,8 @@ interface ChannelSectionProps {
 	sections?: Array<{ id: ChannelSectionId; name: string }>
 	/** Map of channel IDs to their unread notification counts */
 	unreadByChannel: Map<string, number>
+	/** Map of channel IDs to partner org info for shared channels */
+	sharedChannels: Map<string, import("~/hooks/use-shared-channels").PartnerOrgInfo[]>
 }
 
 const ChannelSection = ({
@@ -92,6 +95,7 @@ const ChannelSection = ({
 	threadsByParent,
 	sections,
 	unreadByChannel,
+	sharedChannels,
 }: ChannelSectionProps) => {
 	const { user } = useAuth()
 
@@ -179,6 +183,7 @@ const ChannelSection = ({
 						notificationCount={unreadByChannel.get(channel.id) ?? member.notificationCount}
 						threads={threadsByParent?.get(channel.id)}
 						sections={sections}
+						partnerOrgs={sharedChannels.get(channel.id)}
 					/>
 				))}
 			</SectionGroup>
@@ -244,6 +249,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 	const commandPaletteHotkeyLabel = useAppHotkeyLabel("commandPalette.open")
 	const { threadsByParent } = useActiveThreads(organizationId ?? null, user?.id as UserId | undefined)
 	const { unreadByChannel } = useChannelUnreadCountMap()
+	const sharedChannels = useSharedChannels(organizationId)
 	const hasTauriTitlebar = isTauriMacOS()
 	const { can } = usePermission()
 	const canCreateChannel = can("channel.create")
@@ -409,6 +415,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 								threadsByParent={threadsByParent}
 								sections={sections ?? []}
 								unreadByChannel={unreadByChannel}
+								sharedChannels={sharedChannels}
 							/>
 
 							{/* Custom sections */}
@@ -427,6 +434,7 @@ export function ChannelsSidebar(props: { openChannelsBrowser: () => void }) {
 									threadsByParent={threadsByParent}
 									sections={sections ?? []}
 									unreadByChannel={unreadByChannel}
+									sharedChannels={sharedChannels}
 								/>
 							))}
 

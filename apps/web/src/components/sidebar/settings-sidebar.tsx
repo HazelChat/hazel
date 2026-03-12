@@ -269,6 +269,22 @@ export function SettingsSidebar() {
 						</SidebarItem>
 					</SidebarSection>
 
+					{/* Hazel Connect Section */}
+					<SidebarSection label="Hazel Connect">
+						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/connect-invites")}>
+							<SidebarLink
+								to="/$orgSlug/settings/connect-invites"
+								params={{ orgSlug: slug }}
+								activeProps={{
+									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
+								}}
+							>
+								<IconArrowPath data-slot="icon" />
+								<SidebarLabel>Connect Invites</SidebarLabel>
+							</SidebarLink>
+						</SidebarItem>
+					</SidebarSection>
+
 					{/* Chat Sync Section */}
 					<SidebarSection label="Chat Sync">
 						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/chat-sync")}>

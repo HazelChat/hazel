@@ -5,6 +5,8 @@ import { useNavigate } from "@tanstack/react-router"
 import { memo } from "react"
 import { useModal } from "~/atoms/modal-atoms"
 import { ChannelIcon } from "~/components/channel-icon"
+import { Avatar } from "~/components/ui/avatar"
+import type { PartnerOrgInfo } from "~/hooks/use-shared-channels"
 import IconDots from "~/components/icons/icon-dots"
 import { IconFolderPlus } from "~/components/icons/icon-folder-plus"
 import IconGear from "~/components/icons/icon-gear"
@@ -34,6 +36,8 @@ interface ChannelItemProps {
 	}>
 	/** Available sections for "move to section" menu */
 	sections?: Array<{ id: ChannelSectionId; name: string }>
+	/** Partner orgs this channel is shared with via Hazel Connect */
+	partnerOrgs?: PartnerOrgInfo[]
 }
 
 export const CHANNEL_DRAG_TYPE = "application/x-hazel-channel"
@@ -44,6 +48,7 @@ export const ChannelItem = memo(function ChannelItem({
 	notificationCount,
 	threads,
 	sections = [],
+	partnerOrgs,
 }: ChannelItemProps) {
 	const deleteChannelModal = useModal("delete-channel")
 	const { can } = usePermission()
@@ -107,7 +112,19 @@ export const ChannelItem = memo(function ChannelItem({
 								className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
 							}}
 						>
-							<ChannelIcon icon={channel.icon} />
+							<span className="relative shrink-0">
+								<ChannelIcon icon={channel.icon} />
+								{partnerOrgs && partnerOrgs.length > 0 && partnerOrgs[0] && (
+									<span className="absolute -right-1 -bottom-1">
+										<Avatar
+											size="xxs"
+											isSquare
+											src={partnerOrgs[0].logoUrl}
+											seed={partnerOrgs[0].name}
+										/>
+									</span>
+								)}
+							</span>
 							<SidebarLabel>{channel.name}</SidebarLabel>
 						</SidebarLink>
 						<Menu>

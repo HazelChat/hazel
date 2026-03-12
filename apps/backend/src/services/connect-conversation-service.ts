@@ -79,16 +79,12 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 
 			const getConversationIdForChannel = Effect.fn(
 				"ConnectConversationService.getConversationIdForChannel",
-			)(function* (channelId: ChannelId, createdBy?: UserId) {
+			)(function* (channelId: ChannelId) {
 				const mount = yield* connectConversationChannelRepo.findByChannelId(channelId)
 				if (Option.isSome(mount)) {
 					return mount.value.conversationId
 				}
-				if (!createdBy) {
-					return yield* Effect.succeed(null as ConnectConversationId | null)
-				}
-				const createdMount = yield* ensureChannelConversation(channelId, createdBy)
-				return createdMount.conversationId
+				return yield* Effect.succeed(null as ConnectConversationId | null)
 			})
 
 			const listMountedChannels = Effect.fn("ConnectConversationService.listMountedChannels")(

@@ -25,6 +25,7 @@ const isErrorRetryable = (error: unknown): boolean => {
 }
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { runtime } from "~/lib/services/common/runtime"
+import { getSharedConversationIdForChannel } from "~/lib/connect-shared-channels"
 import { optimisticAction } from "../../../../libs/effect-electric-db-collection/src"
 import {
 	attachmentCollection,
@@ -41,9 +42,10 @@ import {
 } from "./collections"
 
 const getMountedConversationId = (channelId: ChannelId) =>
-	Array.from(connectConversationChannelCollection.state.values()).find(
-		(mount) => mount.channelId === channelId && mount.isActive && mount.deletedAt === null,
-	)?.conversationId ?? null
+	getSharedConversationIdForChannel(
+		channelId,
+		Array.from(connectConversationChannelCollection.state.values()),
+	)
 
 /**
  * Retry schedule for message sending:

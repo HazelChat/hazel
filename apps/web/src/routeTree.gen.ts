@@ -40,6 +40,7 @@ import { Route as AppOrgSlugSettingsTeamRouteImport } from './routes/_app/$orgSl
 import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app/$orgSlug/settings/invitations'
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
 import { Route as AppOrgSlugSettingsCustomEmojisRouteImport } from './routes/_app/$orgSlug/settings/custom-emojis'
+import { Route as AppOrgSlugSettingsConnectInvitesRouteImport } from './routes/_app/$orgSlug/settings/connect-invites'
 import { Route as AppOrgSlugSettingsAuthenticationRouteImport } from './routes/_app/$orgSlug/settings/authentication'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugNotificationsThreadsRouteImport } from './routes/_app/$orgSlug/notifications/threads'
@@ -66,6 +67,7 @@ import { Route as AppOrgSlugChannelsChannelIdSettingsIndexRouteImport } from './
 import { Route as AppOrgSlugChatIdFilesMediaRouteImport } from './routes/_app/$orgSlug/chat/$id/files/media'
 import { Route as AppOrgSlugChannelsChannelIdSettingsOverviewRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/overview'
 import { Route as AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/integrations'
+import { Route as AppOrgSlugChannelsChannelIdSettingsConnectRouteImport } from './routes/_app/$orgSlug/channels/$channelId/settings/connect'
 
 const DevLayoutRoute = DevLayoutRouteImport.update({
   id: '/_dev',
@@ -229,6 +231,12 @@ const AppOrgSlugSettingsCustomEmojisRoute =
     path: '/custom-emojis',
     getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
   } as any)
+const AppOrgSlugSettingsConnectInvitesRoute =
+  AppOrgSlugSettingsConnectInvitesRouteImport.update({
+    id: '/connect-invites',
+    path: '/connect-invites',
+    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
+  } as any)
 const AppOrgSlugSettingsAuthenticationRoute =
   AppOrgSlugSettingsAuthenticationRouteImport.update({
     id: '/authentication',
@@ -382,6 +390,12 @@ const AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute =
     path: '/integrations',
     getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
   } as any)
+const AppOrgSlugChannelsChannelIdSettingsConnectRoute =
+  AppOrgSlugChannelsChannelIdSettingsConnectRouteImport.update({
+    id: '/connect',
+    path: '/connect',
+    getParentRoute: () => AppOrgSlugChannelsChannelIdSettingsLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -417,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
+  '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
@@ -434,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/chat/$id/': typeof AppOrgSlugChatIdIndexRoute
   '/$orgSlug/settings/chat-sync/': typeof AppOrgSlugSettingsChatSyncIndexRoute
   '/$orgSlug/settings/integrations/': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/$orgSlug/channels/$channelId/settings/connect': typeof AppOrgSlugChannelsChannelIdSettingsConnectRoute
   '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   '/$orgSlug/chat/$id/files/media': typeof AppOrgSlugChatIdFilesMediaRoute
@@ -467,6 +483,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
+  '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
@@ -483,6 +500,7 @@ export interface FileRoutesByTo {
   '/$orgSlug/chat/$id': typeof AppOrgSlugChatIdIndexRoute
   '/$orgSlug/settings/chat-sync': typeof AppOrgSlugSettingsChatSyncIndexRoute
   '/$orgSlug/settings/integrations': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/$orgSlug/channels/$channelId/settings/connect': typeof AppOrgSlugChannelsChannelIdSettingsConnectRoute
   '/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   '/$orgSlug/chat/$id/files/media': typeof AppOrgSlugChatIdFilesMediaRoute
@@ -526,6 +544,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
   '/_app/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
+  '/_app/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/_app/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
   '/_app/$orgSlug/settings/invitations': typeof AppOrgSlugSettingsInvitationsRoute
@@ -543,6 +562,7 @@ export interface FileRoutesById {
   '/_app/$orgSlug/chat/$id/': typeof AppOrgSlugChatIdIndexRoute
   '/_app/$orgSlug/settings/chat-sync/': typeof AppOrgSlugSettingsChatSyncIndexRoute
   '/_app/$orgSlug/settings/integrations/': typeof AppOrgSlugSettingsIntegrationsIndexRoute
+  '/_app/$orgSlug/channels/$channelId/settings/connect': typeof AppOrgSlugChannelsChannelIdSettingsConnectRoute
   '/_app/$orgSlug/channels/$channelId/settings/integrations': typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   '/_app/$orgSlug/channels/$channelId/settings/overview': typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   '/_app/$orgSlug/chat/$id/files/media': typeof AppOrgSlugChatIdFilesMediaRoute
@@ -585,6 +605,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
     | '/$orgSlug/settings/authentication'
+    | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
@@ -602,6 +623,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/chat/$id/'
     | '/$orgSlug/settings/chat-sync/'
     | '/$orgSlug/settings/integrations/'
+    | '/$orgSlug/channels/$channelId/settings/connect'
     | '/$orgSlug/channels/$channelId/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/overview'
     | '/$orgSlug/chat/$id/files/media'
@@ -635,6 +657,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
     | '/$orgSlug/settings/authentication'
+    | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
     | '/$orgSlug/settings/invitations'
@@ -651,6 +674,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/chat/$id'
     | '/$orgSlug/settings/chat-sync'
     | '/$orgSlug/settings/integrations'
+    | '/$orgSlug/channels/$channelId/settings/connect'
     | '/$orgSlug/channels/$channelId/settings/integrations'
     | '/$orgSlug/channels/$channelId/settings/overview'
     | '/$orgSlug/chat/$id/files/media'
@@ -693,6 +717,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/notifications/threads'
     | '/_app/$orgSlug/profile/$userId'
     | '/_app/$orgSlug/settings/authentication'
+    | '/_app/$orgSlug/settings/connect-invites'
     | '/_app/$orgSlug/settings/custom-emojis'
     | '/_app/$orgSlug/settings/debug'
     | '/_app/$orgSlug/settings/invitations'
@@ -710,6 +735,7 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/chat/$id/'
     | '/_app/$orgSlug/settings/chat-sync/'
     | '/_app/$orgSlug/settings/integrations/'
+    | '/_app/$orgSlug/channels/$channelId/settings/connect'
     | '/_app/$orgSlug/channels/$channelId/settings/integrations'
     | '/_app/$orgSlug/channels/$channelId/settings/overview'
     | '/_app/$orgSlug/chat/$id/files/media'
@@ -951,6 +977,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugSettingsCustomEmojisRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
+    '/_app/$orgSlug/settings/connect-invites': {
+      id: '/_app/$orgSlug/settings/connect-invites'
+      path: '/connect-invites'
+      fullPath: '/$orgSlug/settings/connect-invites'
+      preLoaderRoute: typeof AppOrgSlugSettingsConnectInvitesRouteImport
+      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
+    }
     '/_app/$orgSlug/settings/authentication': {
       id: '/_app/$orgSlug/settings/authentication'
       path: '/authentication'
@@ -1133,6 +1166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRouteImport
       parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
     }
+    '/_app/$orgSlug/channels/$channelId/settings/connect': {
+      id: '/_app/$orgSlug/channels/$channelId/settings/connect'
+      path: '/connect'
+      fullPath: '/$orgSlug/channels/$channelId/settings/connect'
+      preLoaderRoute: typeof AppOrgSlugChannelsChannelIdSettingsConnectRouteImport
+      parentRoute: typeof AppOrgSlugChannelsChannelIdSettingsLayoutRoute
+    }
   }
 }
 
@@ -1228,6 +1268,7 @@ interface AppOrgSlugSettingsLayoutRouteChildren {
   AppOrgSlugSettingsChatSyncLayoutRoute: typeof AppOrgSlugSettingsChatSyncLayoutRouteWithChildren
   AppOrgSlugSettingsIntegrationsLayoutRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
   AppOrgSlugSettingsAuthenticationRoute: typeof AppOrgSlugSettingsAuthenticationRoute
+  AppOrgSlugSettingsConnectInvitesRoute: typeof AppOrgSlugSettingsConnectInvitesRoute
   AppOrgSlugSettingsCustomEmojisRoute: typeof AppOrgSlugSettingsCustomEmojisRoute
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
   AppOrgSlugSettingsInvitationsRoute: typeof AppOrgSlugSettingsInvitationsRoute
@@ -1243,6 +1284,8 @@ const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildr
       AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren,
     AppOrgSlugSettingsAuthenticationRoute:
       AppOrgSlugSettingsAuthenticationRoute,
+    AppOrgSlugSettingsConnectInvitesRoute:
+      AppOrgSlugSettingsConnectInvitesRoute,
     AppOrgSlugSettingsCustomEmojisRoute: AppOrgSlugSettingsCustomEmojisRoute,
     AppOrgSlugSettingsDebugRoute: AppOrgSlugSettingsDebugRoute,
     AppOrgSlugSettingsInvitationsRoute: AppOrgSlugSettingsInvitationsRoute,
@@ -1271,6 +1314,7 @@ const AppOrgSlugChatIdRouteWithChildren =
   AppOrgSlugChatIdRoute._addFileChildren(AppOrgSlugChatIdRouteChildren)
 
 interface AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren {
+  AppOrgSlugChannelsChannelIdSettingsConnectRoute: typeof AppOrgSlugChannelsChannelIdSettingsConnectRoute
   AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute: typeof AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute
   AppOrgSlugChannelsChannelIdSettingsOverviewRoute: typeof AppOrgSlugChannelsChannelIdSettingsOverviewRoute
   AppOrgSlugChannelsChannelIdSettingsIndexRoute: typeof AppOrgSlugChannelsChannelIdSettingsIndexRoute
@@ -1278,6 +1322,8 @@ interface AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren {
 
 const AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren: AppOrgSlugChannelsChannelIdSettingsLayoutRouteChildren =
   {
+    AppOrgSlugChannelsChannelIdSettingsConnectRoute:
+      AppOrgSlugChannelsChannelIdSettingsConnectRoute,
     AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute:
       AppOrgSlugChannelsChannelIdSettingsIntegrationsRoute,
     AppOrgSlugChannelsChannelIdSettingsOverviewRoute:

@@ -20,6 +20,7 @@ import {
 } from "~/db/collections"
 import { useChatStable, useChatThread } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
+import { getSharedConversationIdForChannel } from "~/lib/connect-shared-channels"
 import { ChatProvider } from "~/providers/chat-provider"
 
 const searchSchema = type({
@@ -31,10 +32,10 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 	validateSearch: searchSchema,
 	loader: async ({ params }) => {
 		const channelId = params.id as ChannelId
-		const conversationId =
-			Array.from(connectConversationChannelCollection.state.values()).find(
-				(mount) => mount.channelId === channelId && mount.isActive && mount.deletedAt === null,
-			)?.conversationId ?? null
+		const conversationId = getSharedConversationIdForChannel(
+			channelId,
+			Array.from(connectConversationChannelCollection.state.values()),
+		)
 
 		// Create infinite query collection for messages
 		// This replaces the simple messageCollection.preload() with pagination support

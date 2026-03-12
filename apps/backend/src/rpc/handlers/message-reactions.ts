@@ -66,10 +66,7 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								// Otherwise, create a new reaction
 								yield* MessageReactionPolicy.canCreate(messageId)
 								const conversationId =
-									yield* connectConversationService.getConversationIdForChannel(
-										channelId,
-										user.id,
-									)
+									yield* connectConversationService.getConversationIdForChannel(channelId)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									messageId,
 									channelId,
@@ -115,7 +112,6 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(
 										payload.channelId,
-										user.id,
 									)
 								const createdMessageReaction = yield* MessageReactionRepo.insert({
 									...payload,

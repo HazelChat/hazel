@@ -531,10 +531,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							)
 
 							const conversationId =
-								yield* connectConversationService.getConversationIdForChannel(
-									channelId,
-									currentUser.id,
-								)
+								yield* connectConversationService.getConversationIdForChannel(channelId)
 							if (!conversationId) {
 								return yield* Effect.fail(
 									new InternalServerError({

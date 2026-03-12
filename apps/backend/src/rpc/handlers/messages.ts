@@ -46,7 +46,6 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(
 										messageData.channelId,
-										user.id,
 									)
 								const createdMessage = yield* MessageRepo.insert({
 									...messageData,

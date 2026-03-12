@@ -16,6 +16,11 @@ const tabs = [
 		label: "Integrations",
 		to: "/$orgSlug/channels/$channelId/settings/integrations" as const,
 	},
+	{
+		id: "connect",
+		label: "Connect",
+		to: "/$orgSlug/channels/$channelId/settings/connect" as const,
+	},
 ]
 
 function RouteComponent() {

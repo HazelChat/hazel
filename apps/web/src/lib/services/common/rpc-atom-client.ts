@@ -11,6 +11,7 @@ import {
 	ChannelSectionRpcs,
 	ChannelWebhookRpcs,
 	ChatSyncRpcs,
+	ConnectShareRpcs,
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
@@ -67,6 +68,7 @@ const AllRpcs = MessageRpcs.merge(
 	UserPresenceStatusRpcs,
 	BotRpcs,
 	ChatSyncRpcs,
+	ConnectShareRpcs,
 )
 
 // Configure RPC type resolver for devtools (only in dev mode)
