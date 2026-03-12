@@ -1,14 +1,19 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
+import { Option } from "effect"
 import { createFileRoute } from "@tanstack/react-router"
-import { useState } from "react"
-import { acceptConnectInviteMutation, declineConnectInviteMutation } from "~/atoms/connect-share-atoms"
+import { useMemo, useState } from "react"
+import {
+	acceptConnectInviteMutation,
+	declineConnectInviteMutation,
+	listIncomingInvitesQuery,
+} from "~/atoms/connect-share-atoms"
 import { IconConnect } from "~/components/icons/icon-connect"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
-import { connectInviteCollection, organizationCollection } from "~/db/collections"
+import { organizationCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { exitToastAsync } from "~/lib/toast-exit"
 
@@ -17,40 +22,16 @@ export const Route = createFileRoute("/_app/$orgSlug/settings/connect-invites")(
 })
 
 function ConnectInvitesPage() {
-	const { organizationId, organization } = useOrganization()
+	const { organizationId } = useOrganization()
 
-	// Get incoming invites - where this org is the target
-	// Match by slug (targetKind=slug, targetValue=orgSlug) or by guestOrganizationId
-	const { data: incomingInvites } = useLiveQuery(
-		(q) =>
-			q
-				.from({ invite: connectInviteCollection })
-				.where(({ invite }) =>
-					// Show invites that target this org (either by guestOrganizationId or by slug)
-					eq(invite.guestOrganizationId, organizationId),
-				)
-				.select(({ invite }) => ({ ...invite })),
-		[organizationId],
-	)
+	const invitesResult = useAtomValue(listIncomingInvitesQuery(organizationId!))
 
-	// Also check for slug-based invites targeting this org
-	const { data: slugInvites } = useLiveQuery(
-		(q) =>
-			q
-				.from({ invite: connectInviteCollection })
-				.where(({ invite }) => eq(invite.targetKind, "slug"))
-				.where(({ invite }) => eq(invite.targetValue, organization?.slug ?? ""))
-				.select(({ invite }) => ({ ...invite })),
-		[organization?.slug],
-	)
-
-	// Merge and deduplicate
-	const allInvites = (() => {
-		const map = new Map<string, typeof incomingInvites extends Array<infer T> ? T : never>()
-		for (const inv of incomingInvites ?? []) map.set(inv.id, inv)
-		for (const inv of slugInvites ?? []) map.set(inv.id, inv)
-		return Array.from(map.values())
-	})()
+	const allInvites = useMemo(() => {
+		if (!Result.isSuccess(invitesResult)) return []
+		const data = Result.value(invitesResult)
+		if (Option.isNone(data)) return []
+		return data.value.data
+	}, [invitesResult])
 
 	const pendingInvites = allInvites.filter((inv) => inv.status === "pending")
 	const otherInvites = allInvites.filter((inv) => inv.status !== "pending")
@@ -172,6 +153,7 @@ function IncomingInviteRow({
 						inviteId: invite.id as ConnectInviteId,
 						guestOrganizationId: organizationId,
 					},
+					reactivityKeys: [`connectInvites:incoming:${organizationId}`],
 				}),
 			)
 				.loading("Accepting invite...")
@@ -205,6 +187,7 @@ function IncomingInviteRow({
 					payload: {
 						inviteId: invite.id as ConnectInviteId,
 					},
+					reactivityKeys: [`connectInvites:incoming:${organizationId}`],
 				}),
 			)
 				.loading("Declining invite...")

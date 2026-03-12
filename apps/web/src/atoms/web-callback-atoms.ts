@@ -265,10 +265,6 @@ const handleCallback = (params: WebCallbackParams) =>
  */
 export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
 	Atom.make(() => {
-		// Reset for fresh login flow (handles re-login after session expiry
-		// where client-side navigation preserves stale atom state)
-		appRegistry.set(webCallbackStatusAtom, { _tag: "idle" })
-
 		// No finalizer — let the OAuth exchange complete even if Strict Mode
 		// unmounts/remounts. processedCodes prevents re-execution on remount.
 		// All atom updates use appRegistry.set() so they survive unmount.

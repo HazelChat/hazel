@@ -1,5 +1,5 @@
 import { useAtomSet } from "@effect-atom/atom-react"
-import type { ChannelId } from "@hazel/schema"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createConnectInviteMutation, workspaceSearchMutation } from "~/atoms/connect-share-atoms"
 import { IconClose } from "~/components/icons/icon-close"
@@ -18,6 +18,7 @@ interface ShareChannelModalProps {
 	onOpenChange: (open: boolean) => void
 	channelId: ChannelId
 	channelName: string
+	organizationId: OrganizationId
 }
 
 interface WorkspaceResult {
@@ -29,7 +30,13 @@ interface WorkspaceResult {
 
 type TargetKind = "slug" | "email"
 
-export function ShareChannelModal({ isOpen, onOpenChange, channelId, channelName }: ShareChannelModalProps) {
+export function ShareChannelModal({
+	isOpen,
+	onOpenChange,
+	channelId,
+	channelName,
+	organizationId,
+}: ShareChannelModalProps) {
 	const [targetKind, setTargetKind] = useState<TargetKind>("slug")
 	const [searchQuery, setSearchQuery] = useState("")
 	const [searchResults, setSearchResults] = useState<WorkspaceResult[]>([])
@@ -65,7 +72,7 @@ export function ShareChannelModal({ isOpen, onOpenChange, channelId, channelName
 			setIsSearching(true)
 			debounceRef.current = setTimeout(async () => {
 				try {
-					const exit = await searchWorkspaces({ payload: { query } })
+					const exit = await searchWorkspaces({ payload: { query, organizationId } })
 					if (exit._tag === "Success") {
 						setSearchResults(
 							exit.value.data.map((r) => ({
@@ -76,6 +83,7 @@ export function ShareChannelModal({ isOpen, onOpenChange, channelId, channelName
 							})),
 						)
 					} else {
+						console.error("[ShareChannel] workspace search failed:", exit)
 						setSearchResults([])
 					}
 				} finally {
@@ -83,44 +91,44 @@ export function ShareChannelModal({ isOpen, onOpenChange, channelId, channelName
 				}
 			}, 300)
 		},
-		[searchWorkspaces],
+		[searchWorkspaces, organizationId],
 	)
 
 	const handleSubmit = async () => {
-		const targetValue = targetKind === "slug" ? (selectedWorkspace?.slug ?? "") : email
+		const targetValue =
+			targetKind === "slug" ? (selectedWorkspace?.slug ?? selectedWorkspace?.name ?? "") : email
 		if (!targetValue) return
 
 		setIsSubmitting(true)
-		try {
-			await exitToastAsync(
-				createInvite({
-					payload: {
-						channelId,
-						target: { kind: targetKind, value: targetValue },
-						allowGuestMemberAdds,
-					},
-				}),
-			)
-				.loading("Sending invite...")
-				.onSuccess(() => {
-					onOpenChange(false)
-					resetState()
-				})
-				.successMessage("Invite sent")
-				.onErrorTag("ConnectWorkspaceNotFoundError", () => ({
-					title: "Workspace not found",
-					description: "No workspace matches that name or slug.",
-					isRetryable: false,
-				}))
-				.onErrorTag("ConnectChannelAlreadySharedError", () => ({
-					title: "Already shared",
-					description: "This channel is already shared with that organization.",
-					isRetryable: false,
-				}))
-				.run()
-		} finally {
-			setIsSubmitting(false)
-		}
+		await exitToastAsync(
+			createInvite({
+				payload: {
+					channelId,
+					guestOrganizationId: selectedWorkspace?.id as OrganizationId | undefined,
+					target: { kind: targetKind, value: targetValue },
+					allowGuestMemberAdds,
+				},
+				reactivityKeys: [`connectInvites:outgoing:${organizationId}`],
+			}),
+		)
+			.loading("Sending invite...")
+			.onSuccess(() => {
+				onOpenChange(false)
+				resetState()
+			})
+			.successMessage("Invite sent")
+			.onErrorTag("ConnectWorkspaceNotFoundError", () => ({
+				title: "Workspace not found",
+				description: "No workspace matches that name or slug.",
+				isRetryable: false,
+			}))
+			.onErrorTag("ConnectChannelAlreadySharedError", () => ({
+				title: "Already shared",
+				description: "This channel is already shared with that organization.",
+				isRetryable: false,
+			}))
+			.run()
+		setIsSubmitting(false)
 	}
 
 	const resetState = () => {

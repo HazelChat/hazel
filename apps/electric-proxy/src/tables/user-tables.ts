@@ -40,7 +40,6 @@ export const ALLOWED_TABLES = [
 	"channel_sections",
 	"connect_conversations",
 	"connect_conversation_channels",
-	"connect_invites",
 	"connect_participants",
 
 	// Message tables
@@ -169,14 +168,6 @@ export function getWhereClauseForTable(
 					user.internalUserId,
 					schema.connectParticipantsTable.channelId,
 					schema.connectParticipantsTable.deletedAt,
-				),
-			)
-		case "connect_invites":
-			return Effect.succeed(
-				buildOrgMembershipClause(
-					user.internalUserId,
-					schema.connectInvitesTable.hostOrganizationId,
-					schema.connectInvitesTable.deletedAt,
 				),
 			)
 	}

@@ -11,7 +11,6 @@ import {
 	ChatSyncMessageLink,
 	ConnectConversation,
 	ConnectConversationChannel,
-	ConnectInvite,
 	ConnectParticipant,
 	CustomEmoji,
 	IntegrationConnection,
@@ -241,24 +240,6 @@ export const connectConversationChannelCollection = createEffectCollection({
 		fetchClient: electricFetchClient,
 	},
 	schema: ConnectConversationChannel.Model.json,
-	getKey: (item) => item.id,
-})
-
-export const connectInviteCollection = createEffectCollection({
-	id: "connect_invites",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "connect_invites",
-		},
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-	},
-	schema: ConnectInvite.Model.json,
 	getKey: (item) => item.id,
 })
 

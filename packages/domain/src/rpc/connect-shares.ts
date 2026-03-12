@@ -90,6 +90,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 	Rpc.make("connectShare.workspace.search", {
 		payload: Schema.Struct({
 			query: Schema.String,
+			organizationId: OrganizationId,
 		}),
 		success: ConnectWorkspaceSearchResponse,
 		error: Schema.Union(UnauthorizedError, InternalServerError),
@@ -100,6 +101,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 	Rpc.make("connectShare.invite.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
+			guestOrganizationId: Schema.optional(OrganizationId),
 			target: Schema.Struct({
 				kind: ConnectInvite.ConnectInviteTargetKind,
 				value: Schema.String,

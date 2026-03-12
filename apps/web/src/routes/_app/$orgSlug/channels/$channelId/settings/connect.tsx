@@ -1,9 +1,14 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
 import type { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
+import { Option } from "effect"
 import { createFileRoute } from "@tanstack/react-router"
-import { useState } from "react"
-import { disconnectConnectOrgMutation, revokeConnectInviteMutation } from "~/atoms/connect-share-atoms"
+import { useMemo, useState } from "react"
+import {
+	disconnectConnectOrgMutation,
+	listOutgoingInvitesQuery,
+	revokeConnectInviteMutation,
+} from "~/atoms/connect-share-atoms"
 import { ShareChannelModal } from "~/components/connect/share-channel-modal"
 import { IconConnect } from "~/components/icons/icon-connect"
 import IconPlus from "~/components/icons/icon-plus"
@@ -15,7 +20,6 @@ import { SectionHeader } from "~/components/ui/section-header"
 import {
 	channelCollection,
 	connectConversationChannelCollection,
-	connectInviteCollection,
 	organizationCollection,
 } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
@@ -51,15 +55,14 @@ function ConnectPage() {
 		[],
 	)
 
-	// Get outgoing invites for this channel
-	const { data: outgoingInvites } = useLiveQuery(
-		(q) =>
-			q
-				.from({ invite: connectInviteCollection })
-				.where(({ invite }) => eq(invite.hostChannelId, channelId as ChannelId))
-				.select(({ invite }) => ({ ...invite })),
-		[channelId],
-	)
+	// Get outgoing invites for this channel (RPC returns all org invites, filter by channelId)
+	const outgoingResult = useAtomValue(listOutgoingInvitesQuery(organizationId!))
+	const outgoingInvites = useMemo(() => {
+		if (!Result.isSuccess(outgoingResult)) return []
+		const data = Result.value(outgoingResult)
+		if (Option.isNone(data)) return []
+		return data.value.data.filter((inv) => inv.hostChannelId === channelId)
+	}, [outgoingResult, channelId])
 
 	const sharedConnections = getSharedConversationMountsForChannel(channelId as ChannelId, connections ?? [])
 	const isConnected = sharedConnections.length > 0
@@ -137,7 +140,11 @@ function ConnectPage() {
 								</thead>
 								<tbody className="divide-y divide-border">
 									{outgoingInvites.map((invite) => (
-										<InviteRow key={invite.id} invite={invite} />
+										<InviteRow
+											key={invite.id}
+											invite={invite}
+											organizationId={organizationId}
+										/>
 									))}
 								</tbody>
 							</table>
@@ -166,6 +173,7 @@ function ConnectPage() {
 					onOpenChange={setShowShareModal}
 					channelId={channelId as ChannelId}
 					channelName={channel.name}
+					organizationId={organizationId!}
 				/>
 			)}
 		</>
@@ -236,6 +244,7 @@ function ConnectionRow({
 
 function InviteRow({
 	invite,
+	organizationId,
 }: {
 	invite: {
 		id: string
@@ -244,6 +253,7 @@ function InviteRow({
 		status: string
 		createdAt: Date
 	}
+	organizationId: OrganizationId | undefined
 }) {
 	const [isRevoking, setIsRevoking] = useState(false)
 	const revokeInvite = useAtomSet(revokeConnectInviteMutation, { mode: "promiseExit" })
@@ -262,6 +272,7 @@ function InviteRow({
 			await exitToastAsync(
 				revokeInvite({
 					payload: { inviteId: invite.id as ConnectInviteId },
+					reactivityKeys: [`connectInvites:outgoing:${organizationId}`],
 				}),
 			)
 				.loading("Revoking invite...")

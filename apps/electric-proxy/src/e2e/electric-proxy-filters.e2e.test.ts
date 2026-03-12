@@ -105,10 +105,6 @@ type Fixture = {
 			visibleGuestHidden: string
 			hiddenHost: string
 		}
-		connectInvites: {
-			visible: string
-			hidden: string
-		}
 		connectParticipants: {
 			visible: string
 			hidden: string
@@ -499,10 +495,6 @@ const createFixture = (): Fixture => {
 			visibleGuestHidden: id(),
 			hiddenHost: id(),
 		},
-		connectInvites: {
-			visible: id(),
-			hidden: id(),
-		},
 		connectParticipants: {
 			visible: id(),
 			hidden: id(),
@@ -694,12 +686,6 @@ VALUES
 	('${f.ids.connectConversationChannels.visibleHost}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgA}', '${f.ids.channels.publicA}', 'host', true, NOW(), NOW(), NULL),
 	('${f.ids.connectConversationChannels.visibleGuestHidden}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgB}', '${f.ids.channels.publicB}', 'guest', true, NOW(), NOW(), NULL),
 	('${f.ids.connectConversationChannels.hiddenHost}', '${f.ids.connectConversations.hidden}', '${f.ids.organizations.orgA}', '${f.ids.channels.privateA}', 'host', true, NOW(), NOW(), NULL)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO connect_invites (id, "conversationId", "hostOrganizationId", "hostChannelId", "targetKind", "targetValue", "guestOrganizationId", status, "allowGuestMemberAdds", "invitedBy", "acceptedBy", "acceptedAt", "expiresAt", "createdAt", "updatedAt", "deletedAt")
-VALUES
-	('${f.ids.connectInvites.visible}', '${f.ids.connectConversations.visible}', '${f.ids.organizations.orgA}', '${f.ids.channels.publicA}', 'slug', 'visible-connect-${f.runId}', '${f.ids.organizations.orgB}', 'pending', false, '${f.ids.users.viewer}', NULL, NULL, NOW() + INTERVAL '7 day', NOW(), NOW(), NULL),
-	('${f.ids.connectInvites.hidden}', '${f.ids.connectConversations.hidden}', '${f.ids.organizations.orgB}', '${f.ids.channels.publicB}', 'slug', 'hidden-connect-${f.runId}', '${f.ids.organizations.orgB}', 'pending', false, '${f.ids.users.otherUser}', NULL, NULL, NOW() + INTERVAL '7 day', NOW(), NOW(), NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO connect_participants (id, "conversationId", "channelId", "userId", "homeOrganizationId", "isExternal", "addedBy", "createdAt", "updatedAt", "deletedAt")
@@ -961,12 +947,6 @@ const buildUserVisibilitySpecs = (f: Fixture): VisibilitySpec<AllowedTable>[] =>
 			f.ids.connectConversationChannels.visibleGuestHidden,
 			f.ids.connectConversationChannels.hiddenHost,
 		],
-		strict: true,
-	},
-	{
-		table: "connect_invites",
-		allowedIds: [f.ids.connectInvites.visible],
-		blockedIds: [f.ids.connectInvites.hidden],
 		strict: true,
 	},
 	{

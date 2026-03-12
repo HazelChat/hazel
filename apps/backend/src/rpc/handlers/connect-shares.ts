@@ -20,6 +20,7 @@ import {
 	ConnectShareRpcs,
 	ConnectWorkspaceNotFoundError,
 	ConnectWorkspaceSearchResponse,
+	ConnectWorkspaceSearchResult,
 	ConnectParticipantResponse,
 } from "@hazel/domain/rpc"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
@@ -103,27 +104,9 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 			)
 
 		return {
-			"connectShare.workspace.search": ({ query }) =>
+			"connectShare.workspace.search": ({ query, organizationId }) =>
 				remapConnectErrors(
 					Effect.gen(function* () {
-						const currentUser = yield* CurrentUser.Context
-						const myOrgMemberships = yield* db.makeQuery((execute, userId: UserId) =>
-							execute((client) =>
-								client
-									.select({
-										organizationId: schema.organizationMembersTable.organizationId,
-									})
-									.from(schema.organizationMembersTable)
-									.where(
-										and(
-											eq(schema.organizationMembersTable.userId, userId),
-											isNull(schema.organizationMembersTable.deletedAt),
-										),
-									),
-							),
-						)(currentUser.id)
-						const myOrgIds = new Set(myOrgMemberships.map((m) => m.organizationId))
-
 						const results = yield* db.makeQuery((execute, input: string) =>
 							execute((client) =>
 								client
@@ -147,14 +130,21 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							),
 						)(query)
 
+						const filtered = results.filter((result) => result.id !== organizationId)
+
 						return new ConnectWorkspaceSearchResponse({
-							data: results.filter((result) => !myOrgIds.has(result.id)),
+							data: filtered.map((r) => new ConnectWorkspaceSearchResult(r)),
 						})
 					}),
 					"Database error while searching workspaces",
 				),
 
-			"connectShare.invite.create": ({ channelId, target, allowGuestMemberAdds }) =>
+			"connectShare.invite.create": ({
+				channelId,
+				guestOrganizationId: providedOrgId,
+				target,
+				allowGuestMemberAdds,
+			}) =>
 				remapConnectErrors(
 					db.transaction(
 						Effect.gen(function* () {
@@ -177,6 +167,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							)
 
 							const guestOrganization = yield* Effect.gen(function* () {
+								if (providedOrgId) return providedOrgId
 								if (target.kind !== "slug") {
 									return null as OrganizationId | null
 								}
@@ -471,7 +462,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 			"connectShare.invite.listIncoming": ({ organizationId }) =>
 				remapConnectErrors(
 					Effect.gen(function* () {
-						yield* requireAdminOrOwner(organizationId)
+						yield* orgResolver.requireScope(
+							organizationId,
+							"organizations:read",
+							"ConnectShare",
+							"listIncoming",
+						)
 						const invites = yield* connectInviteRepo.listIncomingForOrganization(organizationId)
 						return new ConnectInviteListResponse({ data: invites })
 					}),
@@ -481,7 +477,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 			"connectShare.invite.listOutgoing": ({ organizationId }) =>
 				remapConnectErrors(
 					Effect.gen(function* () {
-						yield* requireAdminOrOwner(organizationId)
+						yield* orgResolver.requireScope(
+							organizationId,
+							"organizations:read",
+							"ConnectShare",
+							"listOutgoing",
+						)
 						const invites = yield* connectInviteRepo.listOutgoingForOrganization(organizationId)
 						return new ConnectInviteListResponse({ data: invites })
 					}),
