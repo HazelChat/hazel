@@ -107,12 +107,22 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 				remapConnectErrors(
 					Effect.gen(function* () {
 						const currentUser = yield* CurrentUser.Context
-						const memberships = yield* orgMemberRepo.findAllActive()
-						const myOrgIds = new Set(
-							memberships
-								.filter((member) => member.userId === currentUser.id)
-								.map((member) => member.organizationId),
-						)
+						const myOrgMemberships = yield* db.makeQuery((execute, userId: UserId) =>
+							execute((client) =>
+								client
+									.select({
+										organizationId: schema.organizationMembersTable.organizationId,
+									})
+									.from(schema.organizationMembersTable)
+									.where(
+										and(
+											eq(schema.organizationMembersTable.userId, userId),
+											isNull(schema.organizationMembersTable.deletedAt),
+										),
+									),
+							),
+						)(currentUser.id)
+						const myOrgIds = new Set(myOrgMemberships.map((m) => m.organizationId))
 
 						const results = yield* db.makeQuery((execute, input: string) =>
 							execute((client) =>
@@ -311,8 +321,6 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								joinedAt: new Date(),
 								deletedAt: null,
 							})
-							yield* channelAccessSync.syncChannel(guestChannel.id)
-
 							yield* connectConversationChannelRepo.insert({
 								conversationId: invite.conversationId,
 								organizationId: guestOrganizationId,
@@ -369,6 +377,9 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								guestOrganizationId,
 								currentUser.id,
 							)
+
+							// Sync all channels in the conversation so cross-org users get access
+							yield* channelAccessSync.syncConversation(invite.conversationId)
 
 							const conversation = yield* connectConversationRepo
 								.findById(invite.conversationId)
@@ -566,6 +577,10 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								channel.organizationId,
 								currentUser.id,
 							)
+
+							// Sync all channels so the new participant gets access across the conversation
+							yield* channelAccessSync.syncConversation(conversationId)
+
 							const participant = yield* connectParticipantRepo
 								.findByChannelAndUser(channelId, userId)
 								.pipe(

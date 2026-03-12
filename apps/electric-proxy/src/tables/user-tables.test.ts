@@ -41,38 +41,32 @@ describe("user table where clauses", () => {
 		)
 	})
 
-	it("filters connect invites by host or guest organization membership", async () => {
+	it("filters connect invites by host organization membership", async () => {
 		const result = await Effect.runPromise(getWhereClauseForTable("connect_invites", testUser))
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL AND`)
-		expect(result.whereClause).toContain(`EXISTS (SELECT 1 FROM organization_members om`)
-		expect(result.whereClause).toContain(`om."organizationId" = "hostOrganizationId"`)
-		expect(result.whereClause).toContain(` OR om."organizationId" = "guestOrganizationId"`)
+		expect(result.whereClause).toContain(
+			`"hostOrganizationId" IN (SELECT "organizationId" FROM organization_members WHERE "userId" = $1`,
+		)
 	})
 
-	it("uses conversation and legacy channel branches for messages", async () => {
+	it("filters messages by channel access", async () => {
 		const result = await Effect.runPromise(getWhereClauseForTable("messages", testUser))
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL AND`)
-		expect(result.whereClause).toContain(`EXISTS (SELECT 1 FROM channel_access ca`)
-		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toContain(`LEFT JOIN connect_conversation_channels ccc`)
 		expect(result.whereClause).toContain(
-			`"messages"."conversationId" IS NULL AND ca."channelId" = "messages"."channelId"`,
+			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
 		)
 	})
 
-	it("uses conversation and legacy channel branches for message reactions", async () => {
+	it("filters message reactions by channel access", async () => {
 		const result = await Effect.runPromise(getWhereClauseForTable("message_reactions", testUser))
 
 		expect(result.params).toEqual([testUser.internalUserId])
-		expect(result.whereClause).toContain(`EXISTS (SELECT 1 FROM channel_access ca`)
-		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toContain(`LEFT JOIN connect_conversation_channels ccc`)
 		expect(result.whereClause).toContain(
-			`"message_reactions"."conversationId" IS NULL AND ca."channelId" = "message_reactions"."channelId"`,
+			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
 		)
 	})
 })

@@ -75,6 +75,8 @@ export function ShareChannelModal({ isOpen, onOpenChange, channelId, channelName
 								logoUrl: r.logoUrl,
 							})),
 						)
+					} else {
+						setSearchResults([])
 					}
 				} finally {
 					setIsSearching(false)

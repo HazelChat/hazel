@@ -36,6 +36,7 @@ services:
             # See https://electric-sql.com/docs/guides/security
             ELECTRIC_INSECURE: "true"
             ELECTRIC_FEATURE_FLAGS: "allow_subqueries,tagged_subqueries"
+            ELECTRIC_LOG_LEVEL: "debug"
         depends_on:
             postgres:
                 condition: service_healthy

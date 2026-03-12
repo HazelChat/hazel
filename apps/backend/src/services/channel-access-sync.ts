@@ -1,5 +1,5 @@
 import { and, eq, isNull, notInArray, schema } from "@hazel/db"
-import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
+import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import { transactionAwareExecute } from "../lib/transaction-aware-execute"
 
@@ -175,7 +175,61 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 					userIds = parentAccess.map((row) => row.userId)
 				}
 
+				// If channel is part of a connect conversation, add cross-org participants
+				const connectMount = yield* transactionAwareExecute((client) =>
+					client
+						.select({
+							conversationId: schema.connectConversationChannelsTable.conversationId,
+						})
+						.from(schema.connectConversationChannelsTable)
+						.where(
+							and(
+								eq(schema.connectConversationChannelsTable.channelId, channelId),
+								isNull(schema.connectConversationChannelsTable.deletedAt),
+							),
+						)
+						.limit(1),
+				)
+
+				if (connectMount[0]) {
+					const participants = yield* transactionAwareExecute((client) =>
+						client
+							.select({ userId: schema.connectParticipantsTable.userId })
+							.from(schema.connectParticipantsTable)
+							.where(
+								and(
+									eq(
+										schema.connectParticipantsTable.conversationId,
+										connectMount[0].conversationId,
+									),
+									isNull(schema.connectParticipantsTable.deletedAt),
+								),
+							),
+					)
+					userIds = [...userIds, ...participants.map((p) => p.userId)]
+				}
+
 				yield* upsertChannelUsers(channel.id, channel.organizationId, userIds)
+			})
+
+			const syncConversation = Effect.fn("ChannelAccessSyncService.syncConversation")(function* (
+				conversationId: ConnectConversationId,
+			) {
+				const mounts = yield* transactionAwareExecute((client) =>
+					client
+						.select({ channelId: schema.connectConversationChannelsTable.channelId })
+						.from(schema.connectConversationChannelsTable)
+						.where(
+							and(
+								eq(schema.connectConversationChannelsTable.conversationId, conversationId),
+								isNull(schema.connectConversationChannelsTable.deletedAt),
+							),
+						),
+				)
+
+				yield* Effect.forEach(mounts, (mount) => syncChannel(mount.channelId), {
+					concurrency: 10,
+				})
 			})
 
 			const syncChildThreads = Effect.fn("ChannelAccessSyncService.syncChildThreads")(function* (
@@ -333,6 +387,7 @@ export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncSe
 
 			return {
 				syncChannel,
+				syncConversation,
 				syncChildThreads,
 				syncUserInOrganization,
 				removeChannel,
