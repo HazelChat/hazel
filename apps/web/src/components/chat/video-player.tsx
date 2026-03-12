@@ -1,716 +1,590 @@
 import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	type ReactNode,
-} from "react"
-import { IconCirclePause } from "../icons/icon-circle-pause"
-import { IconDownload } from "../icons/icon-download"
-import { IconLoader } from "../icons/icon-loader"
-import { IconPlay } from "../icons/icon-play"
-import IconVolume from "../icons/icon-volume"
-import IconVolumeMute from "../icons/icon-volume-mute"
-
-// ============================================================================
-// Context and Types
-// ============================================================================
-
-interface VideoPlayerState {
-	isPlaying: boolean
-	isMuted: boolean
-	isLoading: boolean
-	isBuffering: boolean
-	showControls: boolean
-	isDragging: boolean
-	isFullscreen: boolean
-	currentTime: number
-	duration: number
-	progress: number
-	buffered: number
-	hoverTime: number | null
-	hoverPosition: number | null
-}
-
-interface VideoPlayerActions {
-	togglePlay: () => void
-	toggleMute: () => void
-	toggleFullscreen: () => void
-	seek: (time: number) => void
-	setIsDragging: (dragging: boolean) => void
-	setHoverInfo: (time: number | null, position: number | null) => void
-	resetHideControlsTimer: () => void
-}
-
-interface VideoPlayerRefs {
-	videoRef: React.RefObject<HTMLVideoElement | null>
-	progressRef: React.RefObject<HTMLDivElement | null>
-	containerRef: React.RefObject<HTMLDivElement | null>
-}
-
-interface VideoPlayerContextValue {
-	state: VideoPlayerState
-	actions: VideoPlayerActions
-	refs: VideoPlayerRefs
-	src: string
-}
-
-const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null)
-
-function useVideoPlayer() {
-	const context = useContext(VideoPlayerContext)
-	if (!context) {
-		throw new Error("VideoPlayer compound components must be used within VideoPlayer.Provider")
-	}
-	return context
-}
-
-// ============================================================================
-// Provider Component
-// ============================================================================
-
-interface VideoPlayerProviderProps {
-	src: string
-	children: ReactNode
-	/**
-	 * Time in ms before controls auto-hide during playback
-	 * @default 3000
-	 */
-	controlsHideDelay?: number
-}
-
-function VideoPlayerProvider({ src, children, controlsHideDelay = 3000 }: VideoPlayerProviderProps) {
-	const videoRef = useRef<HTMLVideoElement>(null)
-	const progressRef = useRef<HTMLDivElement>(null)
-	const containerRef = useRef<HTMLDivElement>(null)
-	const hideControlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-	const [isPlaying, setIsPlaying] = useState(false)
-	const [currentTime, setCurrentTime] = useState(0)
-	const [duration, setDuration] = useState(0)
-	const [isMuted, setIsMuted] = useState(false)
-	const [isLoading, setIsLoading] = useState(true)
-	const [isBuffering, setIsBuffering] = useState(false)
-	const [showControls, setShowControls] = useState(true)
-	const [isDragging, setIsDragging] = useState(false)
-	const [isFullscreen, setIsFullscreen] = useState(false)
-	const [buffered, setBuffered] = useState(0)
-	const [hoverTime, setHoverTime] = useState<number | null>(null)
-	const [hoverPosition, setHoverPosition] = useState<number | null>(null)
-
-	const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-
-	// Hide controls after inactivity while playing
-	const resetHideControlsTimer = useCallback(() => {
-		if (hideControlsTimeoutRef.current) {
-			clearTimeout(hideControlsTimeoutRef.current)
-		}
-		setShowControls(true)
-
-		if (isPlaying && !isDragging) {
-			hideControlsTimeoutRef.current = setTimeout(() => {
-				setShowControls(false)
-			}, controlsHideDelay)
-		}
-	}, [isPlaying, isDragging, controlsHideDelay])
-
-	// Show controls when play/drag state changes
-	const prevIsPlayingRef = useRef(isPlaying)
-	const prevIsDraggingRef = useRef(isDragging)
-	useEffect(() => {
-		if (isPlaying !== prevIsPlayingRef.current || isDragging !== prevIsDraggingRef.current) {
-			setShowControls(true)
-			prevIsPlayingRef.current = isPlaying
-			prevIsDraggingRef.current = isDragging
-		}
-	}, [isPlaying, isDragging])
-
-	// Auto-hide controls after delay during playback
-	useEffect(() => {
-		if (isPlaying && !isDragging) {
-			const timeout = setTimeout(() => setShowControls(false), controlsHideDelay)
-			return () => clearTimeout(timeout)
-		}
-	}, [isPlaying, isDragging, controlsHideDelay])
-
-	// Video event handlers
-	useEffect(() => {
-		const video = videoRef.current
-		if (!video) return
-
-		const handleLoadedMetadata = () => {
-			setDuration(video.duration)
-			setIsLoading(false)
-		}
-
-		const handleTimeUpdate = () => {
-			if (!isDragging) {
-				setCurrentTime(video.currentTime)
-			}
-		}
-
-		const handleEnded = () => {
-			setIsPlaying(false)
-			setShowControls(true)
-		}
-
-		const handleWaiting = () => setIsBuffering(true)
-		const handleCanPlay = () => setIsBuffering(false)
-
-		const handleProgress = () => {
-			if (video.buffered.length > 0 && video.duration > 0) {
-				const bufferedEnd = video.buffered.end(video.buffered.length - 1)
-				setBuffered((bufferedEnd / video.duration) * 100)
-			}
-		}
-
-		video.addEventListener("loadedmetadata", handleLoadedMetadata)
-		video.addEventListener("timeupdate", handleTimeUpdate)
-		video.addEventListener("ended", handleEnded)
-		video.addEventListener("waiting", handleWaiting)
-		video.addEventListener("canplay", handleCanPlay)
-		video.addEventListener("progress", handleProgress)
-
-		return () => {
-			video.removeEventListener("loadedmetadata", handleLoadedMetadata)
-			video.removeEventListener("timeupdate", handleTimeUpdate)
-			video.removeEventListener("ended", handleEnded)
-			video.removeEventListener("waiting", handleWaiting)
-			video.removeEventListener("canplay", handleCanPlay)
-			video.removeEventListener("progress", handleProgress)
-		}
-	}, [isDragging])
-
-	// Sync fullscreen state with browser
-	useEffect(() => {
-		const handler = () => setIsFullscreen(!!document.fullscreenElement)
-		document.addEventListener("fullscreenchange", handler)
-		return () => document.removeEventListener("fullscreenchange", handler)
-	}, [])
-
-	const togglePlay = useCallback(() => {
-		const video = videoRef.current
-		if (!video) return
-
-		if (isPlaying) {
-			video.pause()
-			setIsPlaying(false)
-		} else {
-			video.play()
-			setIsPlaying(true)
-		}
-	}, [isPlaying])
-
-	const toggleMute = useCallback(() => {
-		const video = videoRef.current
-		if (!video) return
-
-		video.muted = !video.muted
-		setIsMuted(video.muted)
-	}, [])
-
-	const seek = useCallback((time: number) => {
-		const video = videoRef.current
-		if (!video) return
-
-		video.currentTime = time
-		setCurrentTime(time)
-	}, [])
-
-	const toggleFullscreen = useCallback(() => {
-		const container = containerRef.current
-		if (!container) return
-
-		if (document.fullscreenElement) {
-			document.exitFullscreen()
-		} else {
-			container.requestFullscreen()
-		}
-	}, [])
-
-	const setHoverInfo = useCallback((time: number | null, position: number | null) => {
-		setHoverTime(time)
-		setHoverPosition(position)
-	}, [])
-
-	const contextValue = useMemo<VideoPlayerContextValue>(
-		() => ({
-			state: {
-				isPlaying,
-				isMuted,
-				isLoading,
-				isBuffering,
-				showControls,
-				isDragging,
-				isFullscreen,
-				currentTime,
-				duration,
-				progress,
-				buffered,
-				hoverTime,
-				hoverPosition,
-			},
-			actions: {
-				togglePlay,
-				toggleMute,
-				toggleFullscreen,
-				seek,
-				setIsDragging,
-				setHoverInfo,
-				resetHideControlsTimer,
-			},
-			refs: {
-				videoRef,
-				progressRef,
-				containerRef,
-			},
-			src,
-		}),
-		[
-			isPlaying,
-			isMuted,
-			isLoading,
-			isBuffering,
-			showControls,
-			isDragging,
-			isFullscreen,
-			currentTime,
-			duration,
-			progress,
-			buffered,
-			hoverTime,
-			hoverPosition,
-			togglePlay,
-			toggleMute,
-			toggleFullscreen,
-			seek,
-			setHoverInfo,
-			resetHideControlsTimer,
-			src,
-		],
-	)
-
-	return <VideoPlayerContext.Provider value={contextValue}>{children}</VideoPlayerContext.Provider>
-}
-
-// ============================================================================
-// Sub-Components
-// ============================================================================
-
-function formatTime(seconds: number): string {
-	if (!Number.isFinite(seconds) || seconds < 0) return "0:00"
-	const mins = Math.floor(seconds / 60)
-	const secs = Math.floor(seconds % 60)
-	return `${mins}:${secs.toString().padStart(2, "0")}`
-}
-
-interface ContainerProps {
-	children: ReactNode
-}
-
-function Container({ children }: ContainerProps) {
-	const { state, actions, refs } = useVideoPlayer()
-
-	const handleKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
-			switch (e.key) {
-				case " ":
-					e.preventDefault()
-					actions.togglePlay()
-					break
-				case "f":
-					e.preventDefault()
-					actions.toggleFullscreen()
-					break
-				case "m":
-					e.preventDefault()
-					actions.toggleMute()
-					break
-				case "ArrowLeft":
-					e.preventDefault()
-					actions.seek(Math.max(0, state.currentTime - 5))
-					break
-				case "ArrowRight":
-					e.preventDefault()
-					actions.seek(Math.min(state.duration, state.currentTime + 5))
-					break
-			}
-		},
-		[actions, state.currentTime, state.duration],
-	)
-
-	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: container for mouse tracking and keyboard shortcuts
-		<div
-			ref={refs.containerRef}
-			className="relative overflow-hidden rounded-lg border border-border bg-black shadow-sm focus:outline-none"
-			onMouseMove={actions.resetHideControlsTimer}
-			onMouseLeave={() => state.isPlaying && actions.resetHideControlsTimer()}
-			onKeyDown={handleKeyDown}
-			tabIndex={0}
-		>
-			{children}
-		</div>
-	)
-}
-
-function Video() {
-	"use no memo"
-	const { refs, src, actions } = useVideoPlayer()
-
-	const videoSrc = src.includes("#") ? src : `${src}#t=0.1`
-
-	return (
-		// biome-ignore lint/a11y/useMediaCaption: video caption not required for chat attachments
-		<video
-			ref={refs.videoRef}
-			src={videoSrc}
-			className="block max-h-80 w-full"
-			preload="metadata"
-			playsInline
-			onClick={actions.togglePlay}
-		/>
-	)
-}
-
-function LoadingOverlay() {
-	const { state } = useVideoPlayer()
-
-	if (!state.isLoading) return null
-
-	return (
-		<div className="absolute inset-0 flex items-center justify-center bg-black/20">
-			<IconLoader className="size-6 animate-spin text-white" />
-		</div>
-	)
-}
-
-function BufferingOverlay() {
-	const { state } = useVideoPlayer()
-
-	if (!state.isBuffering || state.isLoading) return null
-
-	return (
-		<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-			<IconLoader className="size-6 animate-spin text-white/80" />
-		</div>
-	)
-}
-
-function PlayOverlay() {
-	const { state, actions } = useVideoPlayer()
-
-	if (state.isPlaying || state.isLoading) return null
-
-	return (
-		<button
-			type="button"
-			onClick={actions.togglePlay}
-			className="absolute inset-0 flex cursor-pointer items-center justify-center"
-			aria-label="Play video"
-		>
-			<div className="flex size-11 items-center justify-center rounded-full border border-white/20 bg-white/15 shadow-lg backdrop-blur-md transition-transform ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:scale-110 active:scale-95">
-				<IconPlay className="ml-0.5 size-5 text-white drop-shadow-md" secondaryfill="transparent" />
-			</div>
-		</button>
-	)
-}
-
-interface ControlsProps {
-	children: ReactNode
-}
-
-function Controls({ children }: ControlsProps) {
-	const { state } = useVideoPlayer()
-
-	return (
-		<div
-			className={`absolute right-0 bottom-0 left-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent px-3 pt-6 pb-2 transition-opacity duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] ${
-				state.showControls || !state.isPlaying ? "opacity-100" : "pointer-events-none opacity-0"
-			}`}
-		>
-			{children}
-		</div>
-	)
-}
-
-function ProgressBar() {
-	"use no memo"
-	const { state, actions, refs } = useVideoPlayer()
-
-	const handleProgressClick = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
-			const progressBar = refs.progressRef.current
-			if (!progressBar) return
-
-			const rect = progressBar.getBoundingClientRect()
-			const clickX = e.clientX - rect.left
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
-			const newTime = percentage * state.duration
-
-			actions.seek(newTime)
-		},
-		[state.duration, actions, refs],
-	)
-
-	const handleProgressDragStart = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
-			e.preventDefault()
-			actions.setIsDragging(true)
-			handleProgressClick(e)
-		},
-		[handleProgressClick, actions],
-	)
-
-	const handleMouseMove = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
-			const progressBar = refs.progressRef.current
-			if (!progressBar || state.duration <= 0) return
-
-			const rect = progressBar.getBoundingClientRect()
-			const hoverX = e.clientX - rect.left
-			const percentage = Math.max(0, Math.min(1, hoverX / rect.width))
-			actions.setHoverInfo(percentage * state.duration, percentage * 100)
-		},
-		[state.duration, actions, refs],
-	)
-
-	const handleMouseLeave = useCallback(() => {
-		actions.setHoverInfo(null, null)
-	}, [actions])
-
-	// Drag handling effect
-	useEffect(() => {
-		if (!state.isDragging) return
-
-		const handleMouseMove = (e: MouseEvent) => {
-			const progressBar = refs.progressRef.current
-			if (!progressBar) return
-
-			const rect = progressBar.getBoundingClientRect()
-			const clickX = e.clientX - rect.left
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
-			const newTime = percentage * state.duration
-
-			actions.seek(newTime)
-		}
-
-		const handleMouseUp = (e: MouseEvent) => {
-			const progressBar = refs.progressRef.current
-			if (!progressBar) return
-
-			const rect = progressBar.getBoundingClientRect()
-			const clickX = e.clientX - rect.left
-			const percentage = Math.max(0, Math.min(1, clickX / rect.width))
-			actions.seek(percentage * state.duration)
-
-			actions.setIsDragging(false)
-		}
-
-		document.addEventListener("mousemove", handleMouseMove)
-		document.addEventListener("mouseup", handleMouseUp)
-
-		return () => {
-			document.removeEventListener("mousemove", handleMouseMove)
-			document.removeEventListener("mouseup", handleMouseUp)
-		}
-	}, [state.isDragging, state.duration, actions, refs])
-
-	const handleProgressKeyDown = useCallback(
-		(e: React.KeyboardEvent<HTMLDivElement>) => {
-			const step = state.duration * 0.05
-			if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-				e.preventDefault()
-				actions.seek(Math.min(state.duration, state.currentTime + step))
-			} else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-				e.preventDefault()
-				actions.seek(Math.max(0, state.currentTime - step))
-			}
-		},
-		[state.duration, state.currentTime, actions],
-	)
-
-	return (
-		<div className="py-2 -my-2 mb-0">
-			<div
-				ref={refs.progressRef}
-				className="group/progress relative h-1 cursor-pointer rounded-full bg-white/20 transition-[height] duration-150 ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:h-1.5"
-				onClick={handleProgressClick}
-				onMouseDown={handleProgressDragStart}
-				onMouseMove={handleMouseMove}
-				onMouseLeave={handleMouseLeave}
-				onKeyDown={handleProgressKeyDown}
-				role="slider"
-				aria-label="Video progress"
-				aria-valuenow={state.currentTime}
-				aria-valuemin={0}
-				aria-valuemax={state.duration}
-				tabIndex={0}
-			>
-				{/* Buffered indicator */}
-				<div
-					className="absolute inset-y-0 left-0 rounded-full bg-white/20"
-					style={{ width: `${state.buffered}%` }}
-				/>
-
-				{/* Progress fill */}
-				<div
-					className="relative h-full rounded-full bg-white transition-none"
-					style={{ width: `${state.progress}%` }}
-				>
-					{/* Thumb indicator */}
-					<div className="absolute top-1/2 right-0 size-3.5 -translate-y-1/2 translate-x-1/2 scale-0 rounded-full bg-white shadow-sm ring-2 ring-white/30 transition-transform group-hover/progress:scale-100" />
-				</div>
-
-				{/* Hover time tooltip */}
-				{state.hoverTime !== null && state.hoverPosition !== null && (
-					<div
-						className="pointer-events-none absolute bottom-full mb-2 -translate-x-1/2 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-white"
-						style={{ left: `${state.hoverPosition}%` }}
-					>
-						{formatTime(state.hoverTime)}
-					</div>
-				)}
-			</div>
-		</div>
-	)
-}
-
-function ControlsRow({ children }: { children: ReactNode }) {
-	return <div className="flex items-center gap-2">{children}</div>
-}
-
-function PlayPauseButton() {
-	const { state, actions } = useVideoPlayer()
-
-	return (
-		<button
-			type="button"
-			onClick={actions.togglePlay}
-			className="flex size-7 items-center justify-center rounded text-white transition-colors hover:bg-white/20"
-			aria-label={state.isPlaying ? "Pause" : "Play"}
-		>
-			{state.isPlaying ? <IconCirclePause className="size-4" /> : <IconPlay className="size-4" />}
-		</button>
-	)
-}
-
-function TimeDisplay() {
-	const { state } = useVideoPlayer()
-
-	return (
-		<span className="whitespace-nowrap font-mono tabular-nums text-white/80 text-xs">
-			{formatTime(state.currentTime)} / {formatTime(state.duration)}
-		</span>
-	)
-}
-
-function Spacer() {
-	return <div className="flex-1" />
-}
-
-function MuteButton() {
-	const { state, actions } = useVideoPlayer()
-
-	return (
-		<button
-			type="button"
-			onClick={actions.toggleMute}
-			className="flex size-7 items-center justify-center rounded text-white transition-colors hover:bg-white/20"
-			aria-label={state.isMuted ? "Unmute" : "Mute"}
-		>
-			{state.isMuted ? <IconVolumeMute className="size-4" /> : <IconVolume className="size-4" />}
-		</button>
-	)
-}
-
-function FullscreenButton() {
-	const { state, actions } = useVideoPlayer()
-
-	return (
-		<button
-			type="button"
-			onClick={actions.toggleFullscreen}
-			className="flex size-7 items-center justify-center rounded text-white transition-colors hover:bg-white/20"
-			aria-label={state.isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-		>
-			{state.isFullscreen ? <CollapseIcon className="size-4" /> : <ExpandIcon className="size-4" />}
-		</button>
-	)
-}
-
-interface DownloadButtonProps {
-	onClick: () => void
-}
-
-function DownloadButton({ onClick }: DownloadButtonProps) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className="flex size-7 items-center justify-center rounded text-white transition-colors hover:bg-white/20"
-			aria-label="Download video"
-		>
-			<IconDownload className="size-4" />
-		</button>
-	)
-}
-
-interface FileNameProps {
-	children: ReactNode
-}
-
-function FileName({ children }: FileNameProps) {
-	return <div className="mt-1.5 truncate font-medium text-muted-fg text-xs">{children}</div>
-}
-
-// Inline fullscreen icons
-function ExpandIcon({ className }: { className?: string }) {
-	return (
-		<svg viewBox="0 0 18 18" fill="currentColor" className={className} aria-hidden="true">
-			<title>Fullscreen</title>
-			<path d="M3 3h4.5v1.5H4.5V7.5H3V3ZM10.5 3H15v4.5h-1.5V4.5H10.5V3ZM3 10.5h1.5v3H7.5V15H3v-4.5ZM13.5 13.5V10.5H15V15h-4.5v-1.5h3Z" />
-		</svg>
-	)
-}
-
-function CollapseIcon({ className }: { className?: string }) {
-	return (
-		<svg viewBox="0 0 18 18" fill="currentColor" className={className} aria-hidden="true">
-			<title>Exit fullscreen</title>
-			<path d="M7.5 3v3H4.5v1.5h4.5V3H7.5ZM10.5 7.5H15V6h-3V3h-1.5v4.5ZM4.5 12h3v3H9v-4.5H4.5V12ZM10.5 10.5V15H12v-3h3v-1.5h-4.5Z" />
-		</svg>
-	)
-}
-
-// ============================================================================
-// Compound Component Export
-// ============================================================================
-
-export const VideoPlayer = {
-	Provider: VideoPlayerProvider,
+	BufferingIndicator,
 	Container,
-	Video,
-	LoadingOverlay,
-	BufferingOverlay,
-	PlayOverlay,
 	Controls,
-	ProgressBar,
-	ControlsRow,
-	PlayPauseButton,
-	TimeDisplay,
-	Spacer,
-	MuteButton,
 	FullscreenButton,
-	DownloadButton,
-	FileName,
+	MuteButton,
+	PlayButton,
+	Popover,
+	Time,
+	TimeSlider,
+	Tooltip,
+	VolumeSlider,
+	createPlayer,
+	usePlayer,
+} from "@videojs/react"
+import { Video, videoFeatures } from "@videojs/react/video"
+import type { ReactNode } from "react"
+import { IconDownload } from "../icons/icon-download"
+
+const Player = createPlayer({ features: videoFeatures })
+
+// ============================================================================
+// Icon State Classes (from Video.js minimal skin)
+// These use data-* attributes set by Video.js primitives to toggle icon visibility
+// ============================================================================
+
+const iconCls =
+	"block [grid-area:1/1] size-4.5 drop-shadow-[0_1px_0_oklch(0_0_0/0.25)] transition-discrete transition-[display,opacity] duration-150 ease-out"
+
+const iconState = {
+	play: {
+		button: "group",
+		restart: "hidden opacity-0 group-data-ended:block group-data-ended:opacity-100",
+		play: "hidden opacity-0 group-not-data-ended:group-data-paused:block group-not-data-ended:group-data-paused:opacity-100",
+		pause: "hidden opacity-0 group-not-data-paused:group-not-data-ended:block group-not-data-paused:group-not-data-ended:opacity-100",
+	},
+	mute: {
+		button: "group",
+		volumeOff: "hidden opacity-0 group-data-muted:block group-data-muted:opacity-100",
+		volumeLow:
+			"hidden opacity-0 group-not-data-muted:group-data-[volume-level=low]:block group-not-data-muted:group-data-[volume-level=low]:opacity-100",
+		volumeHigh:
+			"hidden opacity-0 group-not-data-muted:group-not-data-[volume-level=low]:block group-not-data-muted:group-not-data-[volume-level=low]:opacity-100",
+	},
+	fullscreen: {
+		button: "group",
+		enter: "hidden opacity-0 group-not-data-fullscreen:block group-not-data-fullscreen:opacity-100",
+		exit: "hidden opacity-0 group-data-fullscreen:block group-data-fullscreen:opacity-100",
+	},
 }
 
 // ============================================================================
-// Convenience Component (backwards-compatible API)
+// Tailwind Skin Classes (from Video.js minimal tailwind skin)
+// ============================================================================
+
+const btnCls =
+	"grid w-[2.375rem] aspect-square bg-transparent rounded-lg items-center justify-center shrink-0 border-none cursor-pointer select-none text-center outline-2 outline-transparent -outline-offset-2 font-medium transition-[background-color,color,outline-offset,scale] duration-150 ease-out focus-visible:outline-current focus-visible:outline-offset-2 text-inherit hover:text-current/80 active:scale-90"
+
+const sliderCls = {
+	root: "group/slider relative flex flex-1 items-center justify-center rounded-full outline-none data-[orientation=horizontal]:min-w-20 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:h-5 data-[orientation=vertical]:w-5 data-[orientation=vertical]:h-[4.5rem]",
+	track: "relative isolate overflow-hidden bg-current/20 rounded-[inherit] select-none shadow-[0_0_0_1px_oklch(0_0_0/0.05)] data-[orientation=horizontal]:w-full data-[orientation=horizontal]:h-0.75 data-[orientation=vertical]:w-0.75 data-[orientation=vertical]:h-full",
+	fill: "absolute rounded-[inherit] pointer-events-none bg-current data-[orientation=horizontal]:inset-y-0 data-[orientation=horizontal]:left-0 data-[orientation=horizontal]:w-(--media-slider-fill,0) data-[orientation=vertical]:inset-x-0 data-[orientation=vertical]:bottom-0 data-[orientation=vertical]:h-(--media-slider-fill,0)",
+	buffer: "absolute rounded-[inherit] pointer-events-none bg-current/20 duration-250 ease-out data-[orientation=horizontal]:inset-y-0 data-[orientation=horizontal]:left-0 data-[orientation=horizontal]:transition-[width] data-[orientation=horizontal]:w-(--media-slider-buffer,0) data-[orientation=vertical]:inset-x-0 data-[orientation=vertical]:bottom-0 data-[orientation=vertical]:transition-[height] data-[orientation=vertical]:h-(--media-slider-buffer)",
+	thumb: "z-10 absolute size-3 -translate-x-1/2 -translate-y-1/2 bg-current rounded-full shadow-[0_0_0_1px_oklch(0_0_0/0.1),0_1px_3px_0_oklch(0_0_0/0.15),0_1px_2px_-1px_oklch(0_0_0/0.15)] transition-[opacity,scale,outline-offset] duration-150 ease-out select-none outline-2 outline-transparent -outline-offset-2 focus-visible:outline-current focus-visible:outline-offset-2 data-[orientation=horizontal]:top-1/2 data-[orientation=horizontal]:left-(--media-slider-fill,0) data-[orientation=vertical]:left-1/2 data-[orientation=vertical]:top-[calc(100%-var(--media-slider-fill,0))] opacity-0 scale-70 origin-center group-hover/slider:opacity-100 group-hover/slider:scale-100 group-focus-within/slider:opacity-100 group-focus-within/slider:scale-100",
+}
+
+const timeCls = {
+	group: "flex items-center gap-1",
+	current: "hidden tabular-nums @md/media-controls:inline",
+	separator: "hidden @md/media-controls:inline @md/media-controls:text-white/50",
+	duration: "tabular-nums @md/media-controls:text-current/60",
+	controls: "flex flex-row-reverse items-center flex-1 gap-3 @md/media-controls:flex-row",
+}
+
+const controlsCls =
+	"peer/controls @container/media-controls flex items-center [--media-controls-current-shadow-color:oklch(from_currentColor_0_0_0/clamp(0,calc((l-0.5)*0.5),0.25))] text-shadow-[0_0_1px_var(--media-controls-current-shadow-color)] absolute bottom-0 inset-x-0 pt-8 px-1.5 pb-1.5 gap-2 text-white z-10 will-change-[translate,filter,opacity] transition-[translate,filter,opacity] ease-out delay-0 duration-75 not-data-visible:opacity-0 not-data-visible:translate-y-full not-data-visible:blur-sm not-data-visible:pointer-events-none not-data-visible:delay-500 not-data-visible:duration-500 motion-reduce:not-data-visible:duration-100 motion-reduce:not-data-visible:translate-y-0 motion-reduce:not-data-visible:blur-none @sm/media-root:pt-10 @sm/media-root:px-3 @sm/media-root:pb-3 @sm/media-root:gap-3.5"
+
+const rootCls =
+	"block relative isolate @container/media-root rounded-(--media-border-radius,0.75rem) font-[Inter_Variable,Inter,ui-sans-serif,system-ui,sans-serif] text-[0.8125rem] leading-normal subpixel-antialiased **:box-border **:m-0 [&_button]:font-[inherit] motion-safe:[interpolate-size:allow-keywords] bg-black after:absolute after:pointer-events-none after:rounded-[inherit] after:z-10 after:inset-0 after:ring-1 after:ring-inset after:ring-black/15 dark:after:ring-white/15 [&_video]:block [&_video]:w-full [&_video]:h-full [&_video]:rounded-[inherit] [&:fullscreen]:rounded-none"
+
+const overlayCls =
+	"absolute inset-0 flex flex-col items-start pointer-events-none rounded-[inherit] opacity-0 bg-linear-to-t from-black/70 via-black/50 via-[7.5rem] to-transparent backdrop-blur-none backdrop-saturate-120 backdrop-brightness-90 transition-[opacity,backdrop-filter] ease-out duration-500 delay-500 peer-data-visible/controls:opacity-100 peer-data-visible/controls:duration-150 peer-data-visible/controls:delay-0 motion-reduce:duration-100"
+
+const bufferingCls =
+	"absolute inset-0 hidden items-center justify-center pointer-events-none text-white data-visible:flex"
+
+const tooltipCls =
+	"m-0 border-0 text-inherit overflow-visible transition-[transform,scale,opacity,filter] duration-200 data-starting-style:opacity-0 data-starting-style:scale-0 data-starting-style:blur-sm data-ending-style:opacity-0 data-ending-style:scale-0 data-ending-style:blur-sm data-[side=top]:origin-bottom px-2 py-1 rounded-sm shadow-md shadow-black/10 bg-white/10 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-90 text-[0.75rem] whitespace-nowrap [--media-tooltip-side-offset:0.5rem]"
+
+const volumePopupCls =
+	"m-0 border-0 text-inherit overflow-visible transition-[transform,scale,opacity,filter] duration-200 data-starting-style:opacity-0 data-starting-style:scale-0 data-starting-style:blur-sm data-ending-style:opacity-0 data-ending-style:scale-0 data-ending-style:blur-sm data-[side=top]:origin-bottom [--media-popover-side-offset:0.5rem] p-1 bg-transparent"
+
+const buttonGroupCls = "flex items-center gap-[0.075rem] @2xl/media-root:gap-0.5"
+
+// ============================================================================
+// Minimal Icons (inline SVGs matching Video.js minimal icon set)
+// ============================================================================
+
+function PlayIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="m13.473 10.476-6.845 4.256a1.697 1.697 0 0 1-2.364-.547 1.77 1.77 0 0 1-.264-.93v-8.51C4 3.78 4.768 3 5.714 3c.324 0 .64.093.914.268l6.845 4.255a1.763 1.763 0 0 1 0 2.953"
+			/>
+		</svg>
+	)
+}
+
+function PauseIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<rect width={4} height={12} x={3} y={3} fill="currentColor" rx={1.75} />
+			<rect width={4} height={12} x={11} y={3} fill="currentColor" rx={1.75} />
+		</svg>
+	)
+}
+
+function RestartIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M9 17a8 8 0 0 1-8-8h1.5a6.5 6.5 0 1 0 1.43-4.07l1.643 1.643A.25.25 0 0 1 5.396 7H1.25A.25.25 0 0 1 1 6.75V2.604a.25.25 0 0 1 .427-.177l1.438 1.438A8 8 0 1 1 9 17"
+			/>
+			<path
+				fill="currentColor"
+				d="m11.61 9.639-3.331 2.07a.826.826 0 0 1-1.15-.266.86.86 0 0 1-.129-.452V6.849C7 6.38 7.374 6 7.834 6c.158 0 .312.045.445.13l3.331 2.071a.858.858 0 0 1 0 1.438"
+			/>
+		</svg>
+	)
+}
+
+function VolumeHighIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M15.6 3.3c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4C15.4 5.9 16 7.4 16 9s-.6 3.1-1.8 4.3c-.4.4-.4 1 0 1.4.2.2.5.3.7.3.3 0 .5-.1.7-.3C17.1 13.2 18 11.2 18 9s-.9-4.2-2.4-5.7"
+			/>
+			<path
+				fill="currentColor"
+				d="M.714 6.008h3.072l4.071-3.857c.5-.376 1.143 0 1.143.601V15.28c0 .602-.643.903-1.143.602l-4.071-3.858H.714c-.428 0-.714-.3-.714-.752V6.76c0-.451.286-.752.714-.752m10.568.59a.91.91 0 0 1 0-1.316.91.91 0 0 1 1.316 0c1.203 1.203 1.47 2.216 1.522 3.208q.012.255.011.51c0 1.16-.358 2.733-1.533 3.803a.7.7 0 0 1-.298.156c-.382.106-.873-.011-1.018-.156a.91.91 0 0 1 0-1.316c.57-.57.995-1.551.995-2.487 0-.944-.26-1.667-.995-2.402"
+			/>
+		</svg>
+	)
+}
+
+function VolumeLowIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M.714 6.008h3.072l4.071-3.857c.5-.376 1.143 0 1.143.601V15.28c0 .602-.643.903-1.143.602l-4.071-3.858H.714c-.428 0-.714-.3-.714-.752V6.76c0-.451.286-.752.714-.752m10.568.59a.91.91 0 0 1 0-1.316.91.91 0 0 1 1.316 0c1.203 1.203 1.47 2.216 1.522 3.208q.012.255.011.51c0 1.16-.358 2.733-1.533 3.803a.7.7 0 0 1-.298.156c-.382.106-.873-.011-1.018-.156a.91.91 0 0 1 0-1.316c.57-.57.995-1.551.995-2.487 0-.944-.26-1.667-.995-2.402"
+			/>
+		</svg>
+	)
+}
+
+function VolumeOffIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M.714 6.008h3.072l4.071-3.857c.5-.376 1.143 0 1.143.601V15.28c0 .602-.643.903-1.143.602l-4.071-3.858H.714c-.428 0-.714-.3-.714-.752V6.76c0-.451.286-.752.714-.752M14.5 7.586l-1.768-1.768a1 1 0 1 0-1.414 1.414L13.085 9l-1.767 1.768a1 1 0 0 0 1.414 1.414l1.768-1.768 1.768 1.768a1 1 0 0 0 1.414-1.414L15.914 9l1.768-1.768a1 1 0 0 0-1.414-1.414z"
+			/>
+		</svg>
+	)
+}
+
+function FullscreenEnterIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M15.25 2a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V3.5h-3.75a.75.75 0 0 1-.743-.648L10 2.75a.75.75 0 0 1 .75-.75z"
+			/>
+			<path
+				fill="currentColor"
+				d="M14.72 2.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 1 1-1.06-1.06zM2.75 10a.75.75 0 0 1 .75.75v3.75h3.75a.75.75 0 0 1 .743.648L8 15.25a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 1 .75-.75"
+			/>
+			<path
+				fill="currentColor"
+				d="M6.72 10.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06-1.06z"
+			/>
+		</svg>
+	)
+}
+
+function FullscreenExitIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="none"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<path
+				fill="currentColor"
+				d="M10.75 2a.75.75 0 0 1 .75.75V6.5h3.75a.75.75 0 0 1 .743.648L16 7.25a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 1 .75-.75"
+			/>
+			<path
+				fill="currentColor"
+				d="M14.72 2.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 1 1-1.06-1.06zM7.25 10a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V11.5H2.75a.75.75 0 0 1-.743-.648L2 10.75a.75.75 0 0 1 .75-.75z"
+			/>
+			<path
+				fill="currentColor"
+				d="M6.72 10.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06-1.06z"
+			/>
+		</svg>
+	)
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width={18}
+			height={18}
+			fill="currentColor"
+			viewBox="0 0 18 18"
+			aria-hidden="true"
+			className={className}
+		>
+			<rect width={2} height={5} x={8} y={0.5} opacity={0.5} rx={1}>
+				<animate
+					attributeName="opacity"
+					begin="0s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect
+				width={2}
+				height={5}
+				x={12.243}
+				y={2.257}
+				opacity={0.45}
+				rx={1}
+				transform="rotate(45 13.243 4.757)"
+			>
+				<animate
+					attributeName="opacity"
+					begin="0.125s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect width={5} height={2} x={12.5} y={8} opacity={0.4} rx={1}>
+				<animate
+					attributeName="opacity"
+					begin="0.25s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect
+				width={5}
+				height={2}
+				x={10.743}
+				y={12.243}
+				opacity={0.35}
+				rx={1}
+				transform="rotate(45 13.243 13.243)"
+			>
+				<animate
+					attributeName="opacity"
+					begin="0.375s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect width={2} height={5} x={8} y={12.5} opacity={0.3} rx={1}>
+				<animate
+					attributeName="opacity"
+					begin="0.5s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect
+				width={2}
+				height={5}
+				x={3.757}
+				y={10.743}
+				opacity={0.25}
+				rx={1}
+				transform="rotate(45 4.757 13.243)"
+			>
+				<animate
+					attributeName="opacity"
+					begin="0.625s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect width={5} height={2} x={0.5} y={8} opacity={0.15} rx={1}>
+				<animate
+					attributeName="opacity"
+					begin="0.75s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+			<rect
+				width={5}
+				height={2}
+				x={2.257}
+				y={3.757}
+				opacity={0.1}
+				rx={1}
+				transform="rotate(45 4.757 4.757)"
+			>
+				<animate
+					attributeName="opacity"
+					begin="0.875s"
+					calcMode="linear"
+					dur="1s"
+					repeatCount="indefinite"
+					values="1;0"
+				/>
+			</rect>
+		</svg>
+	)
+}
+
+// ============================================================================
+// Dynamic Labels (state-aware text for tooltips)
+// ============================================================================
+
+function PlayLabel() {
+	const paused = usePlayer((s) => Boolean(s.paused))
+	if (usePlayer((s) => Boolean(s.ended))) return <>Replay</>
+	return paused ? <>Play</> : <>Pause</>
+}
+
+function FullscreenLabel() {
+	return usePlayer((s) => Boolean(s.fullscreen)) ? <>Exit fullscreen</> : <>Enter fullscreen</>
+}
+
+// ============================================================================
+// Custom Chat Video Skin
+// ============================================================================
+
+function ChatVideoSkin({ children, onDownload }: { children: ReactNode; onDownload: () => void }) {
+	return (
+		<Container className={rootCls}>
+			{children}
+
+			{/* Buffering spinner */}
+			<BufferingIndicator className={bufferingCls}>
+				<SpinnerIcon className={iconCls} />
+			</BufferingIndicator>
+
+			{/* Controls bar */}
+			<Controls.Root data-controls="" className={controlsCls}>
+				{/* Play button */}
+				<span className={buttonGroupCls}>
+					<Tooltip.Root side="top">
+						<Tooltip.Trigger
+							render={
+								<PlayButton
+									render={(props) => (
+										<button
+											type="button"
+											{...props}
+											className={`${btnCls} ${iconState.play.button}`}
+										>
+											<RestartIcon className={`${iconCls} ${iconState.play.restart}`} />
+											<PlayIcon className={`${iconCls} ${iconState.play.play}`} />
+											<PauseIcon className={`${iconCls} ${iconState.play.pause}`} />
+										</button>
+									)}
+								/>
+							}
+						/>
+						<Tooltip.Popup className={tooltipCls}>
+							<PlayLabel />
+						</Tooltip.Popup>
+					</Tooltip.Root>
+				</span>
+
+				{/* Time display + slider */}
+				<span className={timeCls.controls}>
+					<Time.Group className={timeCls.group}>
+						<Time.Value type="current" className={timeCls.current} />
+						<Time.Separator className={timeCls.separator} />
+						<Time.Value type="duration" className={timeCls.duration} />
+					</Time.Group>
+
+					<TimeSlider.Root render={(props) => <div {...props} className={sliderCls.root} />}>
+						<TimeSlider.Track render={(props) => <div {...props} className={sliderCls.track} />}>
+							<TimeSlider.Fill
+								render={(props) => <div {...props} className={sliderCls.fill} />}
+							/>
+							<TimeSlider.Buffer
+								render={(props) => <div {...props} className={sliderCls.buffer} />}
+							/>
+						</TimeSlider.Track>
+						<TimeSlider.Thumb
+							render={(props) => <div {...props} className={sliderCls.thumb} />}
+						/>
+					</TimeSlider.Root>
+				</span>
+
+				{/* Right controls: mute, fullscreen, download */}
+				<span className={buttonGroupCls}>
+					{/* Mute button with volume popup */}
+					<Popover.Root openOnHover delay={200} closeDelay={100} side="top">
+						<Popover.Trigger
+							render={
+								<MuteButton
+									render={(props) => (
+										<button
+											type="button"
+											{...props}
+											className={`${btnCls} ${iconState.mute.button}`}
+										>
+											<VolumeOffIcon
+												className={`${iconCls} ${iconState.mute.volumeOff}`}
+											/>
+											<VolumeLowIcon
+												className={`${iconCls} ${iconState.mute.volumeLow}`}
+											/>
+											<VolumeHighIcon
+												className={`${iconCls} ${iconState.mute.volumeHigh}`}
+											/>
+										</button>
+									)}
+								/>
+							}
+						/>
+						<Popover.Popup className={volumePopupCls}>
+							<VolumeSlider.Root
+								orientation="vertical"
+								thumbAlignment="edge"
+								render={(props) => <div {...props} className={sliderCls.root} />}
+							>
+								<VolumeSlider.Track
+									render={(props) => <div {...props} className={sliderCls.track} />}
+								>
+									<VolumeSlider.Fill
+										render={(props) => <div {...props} className={sliderCls.fill} />}
+									/>
+								</VolumeSlider.Track>
+								<VolumeSlider.Thumb
+									render={(props) => (
+										<div
+											{...props}
+											className="z-10 absolute size-3 -translate-x-1/2 -translate-y-1/2 bg-current rounded-full shadow-[0_0_0_1px_oklch(0_0_0/0.1),0_1px_3px_0_oklch(0_0_0/0.15),0_1px_2px_-1px_oklch(0_0_0/0.15)] transition-[opacity,scale,outline-offset] duration-150 ease-out select-none outline-2 outline-transparent -outline-offset-2 focus-visible:outline-current focus-visible:outline-offset-2 data-[orientation=horizontal]:top-1/2 data-[orientation=horizontal]:left-(--media-slider-fill,0) data-[orientation=vertical]:left-1/2 data-[orientation=vertical]:top-[calc(100%-var(--media-slider-fill,0))]"
+										/>
+									)}
+								/>
+							</VolumeSlider.Root>
+						</Popover.Popup>
+					</Popover.Root>
+
+					{/* Fullscreen button */}
+					<Tooltip.Root side="top">
+						<Tooltip.Trigger
+							render={
+								<FullscreenButton
+									render={(props) => (
+										<button
+											type="button"
+											{...props}
+											className={`${btnCls} ${iconState.fullscreen.button}`}
+										>
+											<FullscreenEnterIcon
+												className={`${iconCls} ${iconState.fullscreen.enter}`}
+											/>
+											<FullscreenExitIcon
+												className={`${iconCls} ${iconState.fullscreen.exit}`}
+											/>
+										</button>
+									)}
+								/>
+							}
+						/>
+						<Tooltip.Popup className={tooltipCls}>
+							<FullscreenLabel />
+						</Tooltip.Popup>
+					</Tooltip.Root>
+
+					{/* Download button */}
+					<Tooltip.Root side="top">
+						<Tooltip.Trigger
+							render={
+								<button
+									type="button"
+									onClick={(e) => {
+										e.stopPropagation()
+										onDownload()
+									}}
+									className={btnCls}
+									aria-label="Download video"
+								>
+									<IconDownload className={iconCls} />
+								</button>
+							}
+						/>
+						<Tooltip.Popup className={tooltipCls}>Download</Tooltip.Popup>
+					</Tooltip.Root>
+				</span>
+			</Controls.Root>
+
+			{/* Gradient overlay behind controls */}
+			<div className={overlayCls} />
+		</Container>
+	)
+}
+
+// ============================================================================
+// Public API
 // ============================================================================
 
 interface VideoPlayerSimpleProps {
@@ -722,26 +596,12 @@ interface VideoPlayerSimpleProps {
 export function VideoPlayerSimple({ src, fileName, onDownload }: VideoPlayerSimpleProps) {
 	return (
 		<div className="group relative inline-block max-w-md">
-			<VideoPlayer.Provider src={src}>
-				<VideoPlayer.Container>
-					<VideoPlayer.Video />
-					<VideoPlayer.LoadingOverlay />
-					<VideoPlayer.BufferingOverlay />
-					<VideoPlayer.PlayOverlay />
-					<VideoPlayer.Controls>
-						<VideoPlayer.ProgressBar />
-						<VideoPlayer.ControlsRow>
-							<VideoPlayer.PlayPauseButton />
-							<VideoPlayer.TimeDisplay />
-							<VideoPlayer.Spacer />
-							<VideoPlayer.MuteButton />
-							<VideoPlayer.FullscreenButton />
-							<VideoPlayer.DownloadButton onClick={onDownload} />
-						</VideoPlayer.ControlsRow>
-					</VideoPlayer.Controls>
-				</VideoPlayer.Container>
-				<VideoPlayer.FileName>{fileName}</VideoPlayer.FileName>
-			</VideoPlayer.Provider>
+			<Player.Provider>
+				<ChatVideoSkin onDownload={onDownload}>
+					<Video src={src} className="block max-h-80 w-full" playsInline />
+				</ChatVideoSkin>
+			</Player.Provider>
+			<div className="mt-1.5 truncate font-medium text-muted-fg text-xs">{fileName}</div>
 		</div>
 	)
 }

@@ -3,6 +3,8 @@
 
 @import "./theme.css";
 
+@source "../../../node_modules/@videojs/react/dist";
+
 @plugin 'tailwindcss-react-aria-components';
 
 /*

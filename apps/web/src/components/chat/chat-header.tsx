@@ -1,5 +1,5 @@
 import type { User } from "@hazel/domain/models"
-import type { UserId } from "@hazel/schema"
+import type { ChannelId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Link } from "@tanstack/react-router"
 import { ChannelIcon } from "~/components/channel-icon"
@@ -51,7 +51,7 @@ export function ChatHeader() {
 	const { user } = useAuth()
 	const { channel } = useChannelWithCurrentUser(channelId)
 	const { isMobile, setIsOpenOnMobile } = useSidebar()
-	const { slug } = useOrganization()
+	const { slug, organizationId } = useOrganization()
 
 	const { handleToggleHidden } = useChannelMemberActions(channel?.currentUser, "conversation")
 
@@ -160,7 +160,7 @@ export function ChatHeader() {
 				) : (
 					<>
 						<ChannelIcon icon={channel.icon} className="size-5 text-muted-fg" />
-						<div>
+						<div className="flex items-center gap-2">
 							<h2 className="font-semibold text-fg text-sm">{channel.name}</h2>
 						</div>
 					</>
