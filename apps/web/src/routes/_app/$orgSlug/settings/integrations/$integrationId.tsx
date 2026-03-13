@@ -396,7 +396,7 @@ function IntegrationConfigPage() {
 							<ul className="flex flex-col gap-2.5">
 								{integration.features.map((feature) => (
 									<li key={feature} className="flex items-center gap-2.5 text-sm">
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success-subtle">
+										<div className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-success-subtle">
 											<svg
 												className="size-3 text-success-subtle-fg"
 												fill="none"
@@ -426,7 +426,7 @@ function IntegrationConfigPage() {
 function ConnectionBadge({ connected }: { connected: boolean }) {
 	return (
 		<span
-			className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium text-xs ${
+			className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-0.5 font-medium text-xs ${
 				connected ? "bg-success-subtle text-success-subtle-fg" : "bg-muted text-muted-fg"
 			}`}
 		>
@@ -447,7 +447,7 @@ function DisconnectedState({
 }) {
 	return (
 		<div className="flex flex-col items-center gap-4 py-4 text-center">
-			<div className="flex size-14 items-center justify-center rounded-full bg-bg-muted">
+			<div className="flex size-14 items-center justify-center rounded-xl bg-bg-muted">
 				<svg
 					className="size-6 text-muted-fg"
 					fill="none"
@@ -516,7 +516,7 @@ function DisconnectedState({
 function VerifyingState({ integration }: { integration: Integration }) {
 	return (
 		<div className="flex flex-col items-center gap-4 py-4 text-center">
-			<div className="flex size-14 items-center justify-center rounded-full bg-bg-muted">
+			<div className="flex size-14 items-center justify-center rounded-xl bg-bg-muted">
 				<svg className="size-6 animate-spin text-muted-fg" fill="none" viewBox="0 0 24 24">
 					<circle
 						className="opacity-25"
@@ -566,7 +566,7 @@ function ConnectedState({
 	return (
 		<div className="flex items-center justify-between gap-4">
 			<div className="flex items-center gap-3">
-				<div className="flex size-10 items-center justify-center rounded-full bg-success-subtle">
+				<div className="flex size-10 items-center justify-center rounded-xl bg-success-subtle">
 					<svg
 						className="size-5 text-success-subtle-fg"
 						fill="none"
@@ -824,7 +824,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 			<div className="flex items-center justify-between border-border border-b bg-bg-muted/30 px-5 py-3">
 				<div className="flex items-center gap-2">
 					<h3 className="font-semibold text-fg text-sm">Repository Access</h3>
-					<span className="rounded-full bg-secondary px-2 py-0.5 text-muted-fg text-xs">
+					<span className="rounded-sm bg-secondary px-2 py-0.5 text-muted-fg text-xs">
 						{totalCount}
 					</span>
 				</div>
@@ -840,7 +840,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 
 			{repositories.length === 0 ? (
 				<div className="flex flex-col items-center justify-center px-5 py-12 text-center">
-					<div className="mb-4 flex size-12 items-center justify-center rounded-full bg-bg-muted">
+					<div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-bg-muted">
 						<svg
 							className="size-6 text-muted-fg"
 							fill="none"
@@ -891,7 +891,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 								</div>
 								<div className="flex shrink-0 items-center gap-3">
 									<span
-										className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
+										className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs ${
 											repo.private
 												? "bg-warning-subtle text-warning-subtle-fg"
 												: "bg-success-subtle text-success-subtle-fg"

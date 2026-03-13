@@ -24,7 +24,7 @@ export function AvatarImage({ src, alt, className }: AvatarImageProps) {
 	return (
 		<img
 			data-avatar-img
-			className={cx("size-full object-cover", isSquare ? "rounded-xl" : "rounded-full", className)}
+			className={cx("size-full object-cover", isSquare ? "rounded-xl" : "rounded-3xl", className)}
 			style={{
 				// @ts-expect-error cornerShape is a non-standard CSS property
 				cornerShape: "squircle",

@@ -1,4 +1,4 @@
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
 interface WelcomeStepProps {
@@ -10,7 +10,7 @@ interface WelcomeStepProps {
 export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: WelcomeStepProps) {
 	return (
 		<div data-testid="onboarding-step-welcome" className="space-y-4 sm:space-y-6">
-			<CardHeader className="text-center">
+			<div className="flex flex-col space-y-1.5 text-center">
 				<CardTitle className="text-2xl sm:text-3xl">
 					{isCreatingOrg ? "Welcome to Hazel!" : `Welcome to ${organizationName}!`}
 				</CardTitle>
@@ -19,7 +19,7 @@ export function WelcomeStep({ onContinue, isCreatingOrg, organizationName }: Wel
 						? "Let's set up your workspace in just a few quick steps. This will only take a minute."
 						: "Let's get you set up with your workspace. We just need a few details to personalize your experience."}
 				</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4 sm:space-y-4 sm:p-6">
 				<h3 className="font-medium text-fg">What's next:</h3>

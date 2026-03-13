@@ -16,6 +16,7 @@ import IconPlus from "~/components/icons/icon-plus"
 import IconTrash from "~/components/icons/icon-trash"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardBody, CardHeader } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Loader } from "~/components/ui/loader"
 import { TextField } from "~/components/ui/text-field"
@@ -323,8 +324,8 @@ function AuthenticationSettings() {
 	if (!isPermissionsLoading && !isAdmin) {
 		return (
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
-				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+				<Card>
+					<CardHeader>
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
 								<IconLock className="size-5 text-muted-fg" />
@@ -334,14 +335,14 @@ function AuthenticationSettings() {
 								Configure SSO and domain verification for your organization.
 							</p>
 						</div>
-					</div>
-					<div className="p-4 md:p-6">
+					</CardHeader>
+					<CardBody>
 						<p className="text-muted-fg text-sm">
 							You don't have permission to access authentication settings. Please contact an
 							admin or owner.
 						</p>
-					</div>
-				</div>
+					</CardBody>
+				</Card>
 			</div>
 		)
 	}
@@ -349,8 +350,8 @@ function AuthenticationSettings() {
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">
 			{/* Domain Verification Section */}
-			<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-				<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+			<Card>
+				<CardHeader>
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-2">
 							<IconLock className="size-5 text-muted-fg" />
@@ -361,19 +362,19 @@ function AuthenticationSettings() {
 							matching email address will automatically join your organization.
 						</p>
 					</div>
-				</div>
+				</CardHeader>
 
-				<div className="p-4 md:p-6">
+				<CardBody>
 					<DomainManagement
 						organizationId={organizationId}
 						isPermissionsLoading={isPermissionsLoading}
 					/>
-				</div>
-			</div>
+				</CardBody>
+			</Card>
 
 			{/* SSO Section - Greyed out */}
-			<div className="overflow-hidden rounded-xl border border-border bg-bg opacity-50 shadow-sm">
-				<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+			<Card className="opacity-50">
+				<CardHeader>
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-2">
 							<IconLock className="size-5 text-muted-fg" />
@@ -383,9 +384,9 @@ function AuthenticationSettings() {
 							Configure SAML or OIDC-based single sign-on for your organization.
 						</p>
 					</div>
-				</div>
+				</CardHeader>
 
-				<div className="p-4 md:p-6">
+				<CardBody>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex flex-col gap-1">
 							<p className="font-medium text-fg text-sm">SSO Configuration</p>
@@ -403,8 +404,8 @@ function AuthenticationSettings() {
 							{loadingIntent === "sso" ? "Opening..." : "Configure SSO"}
 						</Button>
 					</div>
-				</div>
-			</div>
+				</CardBody>
+			</Card>
 		</div>
 	)
 }

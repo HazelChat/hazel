@@ -100,18 +100,14 @@ function IntegrationsSettings() {
 			{/* Category filter pills */}
 			<div className="flex flex-wrap gap-2">
 				{categories.map((category) => (
-					<button
+					<Button
 						key={category.id}
-						type="button"
-						onClick={() => setSelectedCategory(category.id)}
-						className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-							selectedCategory === category.id
-								? "bg-primary text-primary-fg"
-								: "bg-secondary text-secondary-fg hover:bg-secondary/80"
-						}`}
+						intent={selectedCategory === category.id ? "primary" : "secondary"}
+						size="sm"
+						onPress={() => setSelectedCategory(category.id)}
 					>
 						{category.label}
-					</button>
+					</Button>
 				))}
 			</div>
 

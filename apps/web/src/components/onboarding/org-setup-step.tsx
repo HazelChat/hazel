@@ -2,7 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { type } from "arktype"
 import { Exit } from "effect"
 import { createOrganizationMutation } from "~/atoms/organization-atoms"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
@@ -91,12 +91,12 @@ export function OrgSetupStep({
 
 	return (
 		<div data-testid="onboarding-step-org" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>Set up your workspace</CardTitle>
 				<CardDescription>
 					Choose a name and URL for your organization. You can change these later.
 				</CardDescription>
-			</CardHeader>
+			</div>
 
 			{error && (
 				<div className="rounded-lg border border-danger bg-danger/10 p-3">

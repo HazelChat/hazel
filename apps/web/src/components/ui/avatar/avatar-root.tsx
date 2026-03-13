@@ -40,7 +40,7 @@ export function AvatarRoot({
 				data-slot="avatar"
 				className={cx(
 					"relative inline-flex shrink-0 items-center justify-center overflow-visible bg-muted outline-transparent",
-					isSquare ? "rounded-xl" : "rounded-full",
+					isSquare ? "rounded-xl" : "rounded-3xl",
 					focusable &&
 						"ring-ring group-focus-visible:outline-2 group-focus-visible:outline-offset-2",
 					contrastBorder && "outline outline-border",

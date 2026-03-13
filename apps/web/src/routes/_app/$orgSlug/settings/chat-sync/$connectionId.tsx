@@ -363,7 +363,7 @@ function ChatSyncConnectionDetailPage() {
 							<div className="flex items-center gap-3">
 								<SectionHeader.Heading>{displayName}</SectionHeader.Heading>
 								<span
-									className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium text-xs ${statusConfig.badgeClass}`}
+									className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-0.5 font-medium text-xs ${statusConfig.badgeClass}`}
 								>
 									<span
 										className={`size-1.5 rounded-full ${
@@ -399,7 +399,7 @@ function ChatSyncConnectionDetailPage() {
 						<div className="p-5">
 							{status === "error" ? (
 								<div className="flex items-start gap-3">
-									<div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-danger-subtle">
+									<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-danger-subtle">
 										<svg
 											className="size-5 text-danger-subtle-fg"
 											fill="none"
@@ -432,7 +432,7 @@ function ChatSyncConnectionDetailPage() {
 							) : (
 								<div className="flex items-center justify-between gap-4">
 									<div className="flex items-center gap-3">
-										<div className="flex size-10 items-center justify-center rounded-full bg-success-subtle">
+										<div className="flex size-10 items-center justify-center rounded-xl bg-success-subtle">
 											<svg
 												className="size-5 text-success-subtle-fg"
 												fill="none"
@@ -483,7 +483,7 @@ function ChatSyncConnectionDetailPage() {
 							<div className="flex items-center gap-2">
 								<h3 className="font-semibold text-fg text-sm">Channel Links</h3>
 								{channelLinks.length > 0 && (
-									<span className="rounded-full bg-secondary px-2 py-0.5 text-muted-fg text-xs">
+									<span className="rounded-sm bg-secondary px-2 py-0.5 text-muted-fg text-xs">
 										{channelLinks.length}
 									</span>
 								)}
@@ -503,7 +503,7 @@ function ChatSyncConnectionDetailPage() {
 							</div>
 						) : channelLinks.length === 0 ? (
 							<div className="flex flex-col items-center justify-center px-5 py-12 text-center">
-								<div className="mb-4 flex size-12 items-center justify-center rounded-full bg-bg-muted">
+								<div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-bg-muted">
 									<svg
 										className="size-6 text-muted-fg"
 										fill="none"
@@ -574,7 +574,7 @@ function ChatSyncConnectionDetailPage() {
 							<ul className="flex flex-col gap-2.5">
 								{FEATURES.map((feature) => (
 									<li key={feature} className="flex items-center gap-2.5 text-sm">
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success-subtle">
+										<div className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-success-subtle">
 											<svg
 												className="size-3 text-success-subtle-fg"
 												fill="none"
@@ -753,7 +753,7 @@ function ChannelLinkRow({
 
 			{/* Direction indicator */}
 			<div
-				className="flex shrink-0 items-center gap-1.5 rounded-full bg-bg-muted/50 px-2.5 py-1 text-muted-fg"
+				className="flex shrink-0 items-center gap-1.5 rounded-sm bg-bg-muted/50 px-2.5 py-1 text-muted-fg"
 				title={directionDisplay.label}
 			>
 				{directionDisplay.icon}
@@ -773,12 +773,12 @@ function ChannelLinkRow({
 			{/* Status + Actions */}
 			<div className="flex shrink-0 items-center gap-2">
 				<span
-					className={`inline-flex rounded-full px-2 py-0.5 text-xs ${webhookPermissionLabel.badgeClass}`}
+					className={`inline-flex rounded-sm px-2 py-0.5 text-xs ${webhookPermissionLabel.badgeClass}`}
 				>
 					{webhookPermissionLabel.label}
 				</span>
 				<span
-					className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+					className={`inline-flex rounded-sm px-2 py-0.5 text-xs ${
 						link.isActive
 							? "bg-success-subtle font-medium text-success-subtle-fg"
 							: "bg-muted text-muted-fg"

@@ -93,7 +93,7 @@ export function ChatHeader() {
 						<h2 className="font-semibold text-fg text-sm">{channelFallback.name}</h2>
 					</div>
 				) : (
-					<div className="h-4 w-32 animate-pulse rounded bg-secondary" />
+					<div className="h-4 w-32 animate-pulse rounded-sm bg-secondary" />
 				)}
 			</div>
 		)

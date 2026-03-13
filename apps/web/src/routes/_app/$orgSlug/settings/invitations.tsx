@@ -14,7 +14,7 @@ import IconUsersPlus from "~/components/icons/icon-users-plus"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
+import { Card, CardHeader, CardHeaderGroup } from "~/components/ui/card"
 import { EmptyState } from "~/components/ui/empty-state"
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
 import { invitationCollection, userCollection } from "~/db/collections"
@@ -141,8 +141,8 @@ function InvitationsSettings() {
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
 				<Card>
-					<div className="border-border border-b bg-bg px-4 py-5 md:px-6">
-						<div className="flex flex-col items-start gap-4 md:flex-row">
+					<CardHeader>
+						<CardHeaderGroup>
 							<div className="flex flex-1 flex-col gap-0.5">
 								<div className="flex items-center gap-2">
 									<h2 className="font-semibold text-fg text-lg">Pending invitations</h2>
@@ -160,8 +160,8 @@ function InvitationsSettings() {
 									Invite user
 								</Button>
 							</div>
-						</div>
-					</div>
+						</CardHeaderGroup>
+					</CardHeader>
 
 					{pendingInvitations.length === 0 ? (
 						<EmptyState
@@ -254,7 +254,7 @@ function InvitationsSettings() {
 																revokingId === invitation.id
 															}
 														>
-															<IconCopy className="mr-2 size-4" />
+															<IconCopy data-slot="icon" />
 															Copy Invitation URL
 														</MenuItem>
 														<MenuItem
@@ -266,7 +266,7 @@ function InvitationsSettings() {
 																revokingId === invitation.id
 															}
 														>
-															<IconArrowPath className="mr-2 size-4" />
+															<IconArrowPath data-slot="icon" />
 															{resendingId === invitation.id
 																? "Resending..."
 																: "Resend Invitation"}
@@ -281,7 +281,7 @@ function InvitationsSettings() {
 																revokingId === invitation.id
 															}
 														>
-															<IconClose className="mr-2 size-4" />
+															<IconClose data-slot="icon" />
 															{revokingId === invitation.id
 																? "Revoking..."
 																: "Revoke Invitation"}

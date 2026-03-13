@@ -3,7 +3,7 @@ import type { Color } from "react-aria-components"
 import { ColorSwatch, parseColor, Radio, RadioGroup } from "react-aria-components"
 import { Dark, Light, System } from "~/components/modals/appearances"
 import { type Theme, useTheme } from "~/components/theme-provider"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
@@ -78,10 +78,10 @@ export function ThemeSelectionStep({
 
 	return (
 		<div data-testid="onboarding-step-theme" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>Choose your theme</CardTitle>
 				<CardDescription>Customize how Hazel looks and feels for you</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div className="space-y-4 sm:space-y-6">
 				{/* Brand Color Selection */}

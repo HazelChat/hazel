@@ -142,12 +142,7 @@ function DesktopSettings() {
 											</div>
 											<div className="flex flex-1 flex-col gap-0.5">
 												<span className="text-sm text-muted-fg">Current version</span>
-												<Badge
-													intent="secondary"
-													size="md"
-													isCircle={false}
-													className="self-start"
-												>
+												<Badge intent="secondary" size="md" className="self-start">
 													<span className="font-mono">
 														{version ? `v${version}` : "..."}
 													</span>

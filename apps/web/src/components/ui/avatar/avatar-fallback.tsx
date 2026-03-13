@@ -34,7 +34,7 @@ export function AvatarFallback({ children, icon: Icon, className }: AvatarFallba
 			<div
 				className={cx(
 					"absolute inset-0 overflow-hidden",
-					isSquare ? "rounded-xl" : "rounded-full",
+					isSquare ? "rounded-xl" : "rounded-3xl",
 					className,
 				)}
 				style={{

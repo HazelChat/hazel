@@ -40,7 +40,7 @@ function DateDivider({ date, isStuck }: { date: string; isStuck: boolean }) {
 	return (
 		<div className="sticky top-0 z-0 my-2 flex items-center justify-center">
 			{!isStuck && <div className="absolute inset-x-4 border-t border-border" />}
-			<span className="relative rounded-full bg-secondary px-3 py-1 font-mono text-muted-fg text-xs shadow-sm">
+			<span className="relative rounded-lg bg-secondary px-3 py-1 font-mono text-muted-fg text-xs shadow-sm">
 				{date}
 			</span>
 		</div>

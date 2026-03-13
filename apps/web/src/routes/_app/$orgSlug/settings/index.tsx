@@ -10,6 +10,7 @@ import IconWarning from "~/components/icons/icon-warning"
 import { DeleteWorkspaceModal } from "~/components/modals/delete-workspace-modal"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import { Card, CardBody, CardHeader } from "~/components/ui/card"
 import { Description, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { Switch, SwitchLabel } from "~/components/ui/switch"
@@ -158,8 +159,8 @@ function GeneralSettings() {
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">
 			{/* Organization Profile Section */}
-			<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-				<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+			<Card>
+				<CardHeader>
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-2">
 							<IconCompany className="size-5 text-muted-fg" />
@@ -169,9 +170,9 @@ function GeneralSettings() {
 							Manage your organization's name and appearance.
 						</p>
 					</div>
-				</div>
+				</CardHeader>
 
-				<div className="p-4 md:p-6">
+				<CardBody>
 					<div className="flex flex-col gap-6">
 						{/* Avatar Upload */}
 						<div className="flex flex-col gap-2">
@@ -268,13 +269,13 @@ function GeneralSettings() {
 							</Description>
 						</div>
 					</div>
-				</div>
-			</div>
+				</CardBody>
+			</Card>
 
 			{/* Public Invite Link Section - Only visible to admins/owners */}
 			{(isAdmin || isPermissionsLoading) && (
-				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+				<Card>
+					<CardHeader>
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
 								<IconShare className="size-5 text-muted-fg" />
@@ -284,9 +285,9 @@ function GeneralSettings() {
 								Allow anyone with the link to join your workspace.
 							</p>
 						</div>
-					</div>
+					</CardHeader>
 
-					<div className="p-4 md:p-6">
+					<CardBody>
 						<div className="flex flex-col gap-4">
 							<Switch
 								isSelected={organization?.isPublic ?? false}
@@ -315,14 +316,14 @@ function GeneralSettings() {
 								</div>
 							)}
 						</div>
-					</div>
-				</div>
+					</CardBody>
+				</Card>
 			)}
 
 			{/* Danger Zone - Only visible to owners */}
 			{(isOwner || isPermissionsLoading) && (
-				<div className="overflow-hidden rounded-xl border border-danger/20 bg-danger/5 shadow-sm">
-					<div className="border-danger/20 border-b bg-danger/5 px-4 py-5 md:px-6">
+				<Card variant="danger">
+					<CardHeader className="border-danger/20 bg-danger/5">
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
 								<IconWarning className="size-5 text-danger" />
@@ -332,9 +333,9 @@ function GeneralSettings() {
 								Irreversible and destructive actions for this workspace.
 							</p>
 						</div>
-					</div>
+					</CardHeader>
 
-					<div className="p-4 md:p-6">
+					<CardBody>
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 							<div className="flex flex-col gap-1">
 								<p className="font-medium text-fg text-sm">Delete this workspace</p>
@@ -352,8 +353,8 @@ function GeneralSettings() {
 								Delete workspace
 							</Button>
 						</div>
-					</div>
-				</div>
+					</CardBody>
+				</Card>
 			)}
 
 			{/* Delete Workspace Modal */}

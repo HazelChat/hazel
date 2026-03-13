@@ -18,7 +18,7 @@ import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { Avatar } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
+import { Card, CardHeader, CardHeaderGroup } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogClose,
@@ -28,7 +28,7 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog"
 import { DropdownLabel, DropdownSeparator } from "~/components/ui/dropdown"
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
+import { Menu, MenuContent, MenuItem } from "~/components/ui/menu"
 import { Modal, ModalContent } from "~/components/ui/modal"
 import { organizationMemberCollection, userCollection, userPresenceStatusCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
@@ -149,8 +149,8 @@ function TeamSettings() {
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
 				<Card>
-					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
-						<div className="flex flex-col items-start gap-4 md:flex-row">
+					<CardHeader>
+						<CardHeaderGroup>
 							<div className="flex flex-1 flex-col gap-0.5">
 								<div className="flex items-center gap-2">
 									<h2 className="font-semibold text-fg text-lg">Team members</h2>
@@ -166,8 +166,8 @@ function TeamSettings() {
 									Invite user
 								</Button>
 							</div>
-						</div>
-					</div>
+						</CardHeaderGroup>
+					</CardHeader>
 
 					<div className="overflow-x-auto">
 						<table className="w-full min-w-full">
@@ -236,12 +236,13 @@ function TeamSettings() {
 													canManageUser(member.role) && (
 														<div className="flex justify-end">
 															<Menu>
-																<MenuTrigger
+																<Button
+																	intent="plain"
+																	size="sq-xs"
 																	aria-label="Actions"
-																	className="inline-flex size-8 items-center justify-center rounded-lg hover:bg-secondary"
 																>
 																	<IconDotsVertical className="size-5 text-muted-fg" />
-																</MenuTrigger>
+																</Button>
 																<MenuContent placement="bottom end">
 																	<MenuItem
 																		onAction={() =>

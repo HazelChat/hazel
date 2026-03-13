@@ -283,13 +283,9 @@ const MessageHeader = memo(function MessageHeader() {
 					Discord
 				</span>
 			) : user.userType === "machine" ? (
-				<Badge intent="primary" isCircle={false}>
-					APP
-				</Badge>
+				<Badge intent="primary">APP</Badge>
 			) : isDiscordSynced ? (
-				<Badge intent="secondary" isCircle={false}>
-					Synced from Discord
-				</Badge>
+				<Badge intent="secondary">Synced from Discord</Badge>
 			) : null}
 			<span className="text-muted-fg text-xs">
 				{format(message.createdAt, "HH:mm")}

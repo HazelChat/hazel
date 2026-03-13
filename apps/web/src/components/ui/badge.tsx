@@ -28,21 +28,21 @@ const badgeStyles = tv({
 			sm: "gap-x-1 py-px text-[10px]/4 *:data-[slot=icon]:size-2.5",
 			md: "gap-x-1.5 py-0.5 text-xs/5 *:data-[slot=icon]:size-3",
 		},
-		isCircle: {
-			true: "rounded-full",
+		isPill: {
+			true: "rounded-lg",
 			false: "rounded-sm",
 		},
 	},
 	compoundVariants: [
-		{ size: "sm", isCircle: true, className: "px-1.5" },
-		{ size: "sm", isCircle: false, className: "px-1" },
-		{ size: "md", isCircle: true, className: "px-2" },
-		{ size: "md", isCircle: false, className: "px-1.5" },
+		{ size: "sm", isPill: true, className: "px-1.5" },
+		{ size: "sm", isPill: false, className: "px-1" },
+		{ size: "md", isPill: true, className: "px-2" },
+		{ size: "md", isPill: false, className: "px-1.5" },
 	],
 	defaultVariants: {
 		intent: "primary",
 		size: "md",
-		isCircle: false,
+		isPill: false,
 	},
 })
 
@@ -51,9 +51,9 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<
 	children: React.ReactNode
 }
 
-const Badge = ({ children, intent, size, isCircle = false, className, ...props }: BadgeProps) => {
+const Badge = ({ children, intent, size, isPill = false, className, ...props }: BadgeProps) => {
 	return (
-		<span {...props} className={badgeStyles({ intent, size, isCircle, className })}>
+		<span {...props} className={badgeStyles({ intent, size, isPill, className })}>
 			{children}
 		</span>
 	)

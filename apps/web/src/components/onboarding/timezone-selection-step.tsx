@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Exit } from "effect"
 import { updateUserMutation } from "~/atoms/user-atoms"
 import { Button } from "~/components/ui/button"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Input, InputGroup } from "~/components/ui/input"
 import { useAuth } from "~/lib/auth"
 import { exitToast } from "~/lib/toast-exit"
@@ -178,12 +178,12 @@ export function TimezoneSelectionStep({ onBack, onContinue, defaultTimezone }: T
 
 	return (
 		<div data-testid="onboarding-step-timezone" className="space-y-4 sm:space-y-6 pb-16 sm:pb-0">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>Where are you located?</CardTitle>
 				<CardDescription>
 					Your teammates will see your local time, making it easier to communicate across time zones
 				</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div className="rounded-2xl overflow-hidden">
 				{/* Globe and Time Ribbon Section */}

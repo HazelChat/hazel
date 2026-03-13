@@ -52,7 +52,7 @@ export function EmbedFields({ fields, className }: EmbedFieldsProps) {
 					className={cn("flex items-center gap-1.5", !field.inline && "w-full")}
 				>
 					{field.type === "badge" && typeof field.value === "string" ? (
-						<Badge intent={field.options?.intent ?? "secondary"} size="sm" isCircle>
+						<Badge intent={field.options?.intent ?? "secondary"} size="sm" isPill>
 							{field.value}
 						</Badge>
 					) : typeof field.value === "string" ? (

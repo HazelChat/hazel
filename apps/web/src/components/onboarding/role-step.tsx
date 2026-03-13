@@ -8,7 +8,7 @@ import { IconPresentationChart } from "~/components/icons/icon-presentation-char
 import { IconRocket } from "~/components/icons/icon-rocket"
 import { IconUser } from "~/components/icons/icon-user"
 import { useState } from "react"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { ChoiceBox, ChoiceBoxDescription, ChoiceBoxItem, ChoiceBoxLabel } from "~/components/ui/choice-box"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
@@ -86,12 +86,12 @@ export function RoleStep({ onBack, onContinue, defaultSelection }: RoleStepProps
 
 	return (
 		<div data-testid="onboarding-step-role" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>What's your role?</CardTitle>
 				<CardDescription>
 					Help us tailor Hazel to your needs by selecting your primary role.
 				</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div>
 				<ChoiceBox

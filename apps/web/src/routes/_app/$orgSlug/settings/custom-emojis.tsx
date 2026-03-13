@@ -13,7 +13,7 @@ import IconTrash from "~/components/icons/icon-trash"
 import { IconWarning } from "~/components/icons/icon-warning"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
+import { Card, CardHeader } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogClose,
@@ -284,8 +284,7 @@ function CustomEmojisSettings() {
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
 				<Card>
-					{/* Header */}
-					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
+					<CardHeader>
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
 								<IconEmoji1 className="size-5 text-muted-fg" />
@@ -299,7 +298,7 @@ function CustomEmojisSettings() {
 								Upload and manage custom emojis for your workspace.
 							</p>
 						</div>
-					</div>
+					</CardHeader>
 
 					{/* Upload Zone — admin only */}
 					{(isAdmin || isPermissionsLoading) && (
@@ -447,19 +446,19 @@ function CustomEmojisSettings() {
 									{Array.from({ length: 5 }).map((_, i) => (
 										<tr key={i}>
 											<td className="px-4 py-4">
-												<div className="size-8 animate-pulse rounded bg-secondary" />
+												<div className="size-8 animate-pulse rounded-sm bg-secondary" />
 											</td>
 											<td className="px-4 py-4">
-												<div className="h-4 w-24 animate-pulse rounded bg-secondary" />
+												<div className="h-4 w-24 animate-pulse rounded-sm bg-secondary" />
 											</td>
 											<td className="px-4 py-4">
-												<div className="h-4 w-28 animate-pulse rounded bg-secondary" />
+												<div className="h-4 w-28 animate-pulse rounded-sm bg-secondary" />
 											</td>
 											<td className="px-4 py-4">
-												<div className="h-4 w-20 animate-pulse rounded bg-secondary" />
+												<div className="h-4 w-20 animate-pulse rounded-sm bg-secondary" />
 											</td>
 											<td className="px-4 py-4 text-right">
-												<div className="size-8 animate-pulse rounded bg-secondary" />
+												<div className="size-8 animate-pulse rounded-sm bg-secondary" />
 											</td>
 										</tr>
 									))}

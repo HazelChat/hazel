@@ -12,6 +12,7 @@ import {
 import { IconConnect } from "~/components/icons/icon-connect"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardHeader } from "~/components/ui/card"
 import { EmptyState } from "~/components/ui/empty-state"
 import { organizationCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
@@ -40,22 +41,20 @@ function ConnectInvitesPage() {
 	return (
 		<div className="flex flex-col gap-6 px-4 lg:px-8">
 			{/* Pending invites */}
-			<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
-				<div className="border-border border-b bg-bg px-4 py-5 md:px-6">
+			<Card>
+				<CardHeader>
 					<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-2">
 							<h2 className="font-semibold text-fg text-lg">Connect invitations</h2>
 							{pendingInvites.length > 0 && (
-								<span className="rounded-sm bg-secondary px-2 py-0.5 font-medium text-xs">
-									{pendingInvites.length} pending
-								</span>
+								<Badge intent="secondary">{pendingInvites.length} pending</Badge>
 							)}
 						</div>
 						<p className="text-muted-fg text-sm">
 							Invitations from other organizations to share channels.
 						</p>
 					</div>
-				</div>
+				</CardHeader>
 
 				{pendingInvites.length === 0 && otherInvites.length === 0 ? (
 					<EmptyState
@@ -102,7 +101,7 @@ function ConnectInvitesPage() {
 						</table>
 					</div>
 				)}
-			</div>
+			</Card>
 		</div>
 	)
 }

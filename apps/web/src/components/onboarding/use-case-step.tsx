@@ -3,7 +3,7 @@ import { IconCircleDottedUser } from "~/components/icons/icon-circle-dotted-user
 import { IconOffice } from "~/components/icons/icon-company"
 import { IconUsers } from "~/components/icons/icon-users"
 import { IconUsersPlus } from "~/components/icons/icon-users-plus"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { ChoiceBox, ChoiceBoxDescription, ChoiceBoxItem, ChoiceBoxLabel } from "~/components/ui/choice-box"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
@@ -63,10 +63,10 @@ export function UseCaseStep({ onBack, onContinue, defaultSelection = [] }: UseCa
 
 	return (
 		<div data-testid="onboarding-step-team-size" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>How big is your team?</CardTitle>
 				<CardDescription>This helps us optimize Hazel for your team size.</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div>
 				<ChoiceBox

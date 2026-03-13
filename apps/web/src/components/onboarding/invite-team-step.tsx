@@ -6,7 +6,7 @@ import { Exit } from "effect"
 import { useState } from "react"
 import { createInvitationMutation } from "~/atoms/invitation-atoms"
 import { Button } from "~/components/ui/button"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
@@ -110,13 +110,13 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 
 	return (
 		<div data-testid="onboarding-step-invite" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>Invite your team</CardTitle>
 				<CardDescription>
 					Collaboration is better together. Invite teammates to join your workspace (you can also do
 					this later).
 				</CardDescription>
-			</CardHeader>
+			</div>
 
 			<div className="space-y-3">
 				{emails.map((email, index) => (

@@ -192,7 +192,7 @@ function renderSegments(segments: ParsedSegment[]): ReactNode[] {
 			case "badge": {
 				const intent = (segment.color as BadgeProps["intent"]) ?? "secondary"
 				return (
-					<Badge key={key} intent={intent} size="sm" isCircle>
+					<Badge key={key} intent={intent} size="sm" isPill>
 						{segment.content}
 					</Badge>
 				)

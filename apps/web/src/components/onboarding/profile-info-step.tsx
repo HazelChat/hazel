@@ -2,7 +2,7 @@ import { useAtomSet } from "@effect-atom/atom-react"
 import { type } from "arktype"
 import { Exit } from "effect"
 import { updateUserMutation } from "~/atoms/user-atoms"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
@@ -71,10 +71,10 @@ export function ProfileInfoStep({
 
 	return (
 		<div data-testid="onboarding-step-profile" className="space-y-4 sm:space-y-6">
-			<CardHeader>
+			<div className="flex flex-col space-y-1.5">
 				<CardTitle>Set up your profile</CardTitle>
 				<CardDescription>Tell us a bit about yourself to personalize your experience</CardDescription>
-			</CardHeader>
+			</div>
 
 			<form
 				onSubmit={(e) => {

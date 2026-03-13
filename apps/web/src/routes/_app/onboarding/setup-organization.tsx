@@ -5,7 +5,7 @@ import { type } from "arktype"
 import { Exit } from "effect"
 import { setOrganizationSlugMutation } from "~/atoms/organization-atoms"
 import { Button } from "~/components/ui/button"
-import { CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { Loader } from "~/components/ui/loader"
@@ -146,12 +146,12 @@ function RouteComponent() {
 		<div className="flex min-h-screen items-center justify-center bg-bg p-4">
 			<div className="w-full max-w-md">
 				<div className="space-y-6 rounded-xl border border-border bg-overlay p-6 shadow-lg">
-					<CardHeader className="p-0">
+					<div className="flex flex-col space-y-1.5">
 						<CardTitle>Set up your workspace URL</CardTitle>
 						<CardDescription>
 							Choose a URL for your organization. This will be used to access your workspace.
 						</CardDescription>
-					</CardHeader>
+					</div>
 
 					<form
 						onSubmit={(e) => {

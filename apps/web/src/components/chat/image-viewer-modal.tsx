@@ -168,9 +168,7 @@ export function ImageViewerModal({
 					/>
 					<div className="flex flex-col">
 						<span className="text-sm text-white">{authorIdentity.displayName}</span>
-						<span className="text-muted-foreground text-xs">
-							{new Date(createdAt).toLocaleString()}
-						</span>
+						<span className="text-muted-fg text-xs">{new Date(createdAt).toLocaleString()}</span>
 					</div>
 				</div>
 			)}

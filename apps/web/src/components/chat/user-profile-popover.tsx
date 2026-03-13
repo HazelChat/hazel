@@ -191,7 +191,7 @@ function PopoverBody({ userId }: { userId: UserId }) {
 					<div className="flex items-center gap-2">
 						<span className="text-lg font-semibold text-fg">{fullName}</span>
 						{isBot && (
-							<Badge intent="primary" size="sm" isCircle={false}>
+							<Badge intent="primary" size="sm">
 								APP
 							</Badge>
 						)}

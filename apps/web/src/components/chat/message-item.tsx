@@ -99,11 +99,7 @@ export const MessageAuthorHeader = ({
 				expiresAt={statusExpiresAt}
 				quietHours={quietHours}
 			/>
-			{user.userType === "machine" && (
-				<Badge intent="primary" isCircle={false}>
-					APP
-				</Badge>
-			)}
+			{user.userType === "machine" && <Badge intent="primary">APP</Badge>}
 			<span className="text-muted-fg text-xs">
 				{format(message.createdAt, "HH:mm")}
 				{isEdited && " (edited)"}
