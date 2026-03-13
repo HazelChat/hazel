@@ -1,6 +1,7 @@
-import Prism from "prismjs"
-// Only import common languages by default (js, ts, json, bash, python)
-// These cover ~80% of code blocks and reduce initial bundle by ~40KB
+// IMPORTANT: prism-setup must be imported before any prismjs/components/*
+// modules.  The language components are IIFEs that reference a bare `Prism`
+// global; prism-setup ensures that global exists in production bundles.
+import Prism from "./prism-setup"
 import "prismjs/components/prism-bash"
 import "prismjs/components/prism-javascript"
 import "prismjs/components/prism-json"
