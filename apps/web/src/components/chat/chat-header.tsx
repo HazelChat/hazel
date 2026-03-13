@@ -78,13 +78,14 @@ export function ChatHeader() {
 		return (
 			<div className="flex h-14 shrink-0 items-center border-border border-b bg-bg px-4">
 				{isMobile && (
-					<button
-						type="button"
-						onClick={() => setIsOpenOnMobile(true)}
-						className="mr-3 -ml-1 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+					<Button
+						intent="plain"
+						size="sq-xs"
+						onPress={() => setIsOpenOnMobile(true)}
+						className="mr-3 -ml-1"
 					>
 						<IconMenu className="size-5" />
-					</button>
+					</Button>
 				)}
 				{channelFallback ? (
 					<div className="flex items-center gap-3">
@@ -105,13 +106,14 @@ export function ChatHeader() {
 		<div className="flex h-14 shrink-0 items-center justify-between border-border border-b bg-bg px-4">
 			<div className="flex items-center gap-3">
 				{isMobile && (
-					<button
-						type="button"
-						onClick={() => setIsOpenOnMobile(true)}
-						className="-ml-1 rounded-md p-1.5 text-muted-fg hover:bg-secondary hover:text-fg"
+					<Button
+						intent="plain"
+						size="sq-xs"
+						onPress={() => setIsOpenOnMobile(true)}
+						className="-ml-1"
 					>
 						<IconMenu className="size-5" />
-					</button>
+					</Button>
 				)}
 				{isThread ? (
 					<div className="flex items-center gap-2">

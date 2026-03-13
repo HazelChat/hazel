@@ -143,10 +143,11 @@ function RouteComponent() {
 						<div className="flex items-center gap-2 rounded-lg border border-border bg-overlay px-3 py-2">
 							<IconEnvelope className="size-4 text-muted-fg" />
 							<span className="font-mono text-sm">support@hazel.com</span>
-							<button
-								type="button"
-								onClick={handleCopyEmail}
-								className="ml-1 rounded p-1 text-muted-fg transition-colors hover:bg-secondary hover:text-fg"
+							<Button
+								intent="plain"
+								size="sq-xs"
+								onPress={handleCopyEmail}
+								className="ml-1"
 								aria-label="Copy email address"
 							>
 								{copied ? (
@@ -154,7 +155,7 @@ function RouteComponent() {
 								) : (
 									<IconCopy className="size-4" />
 								)}
-							</button>
+							</Button>
 						</div>
 						<div className="flex gap-3">
 							<Button

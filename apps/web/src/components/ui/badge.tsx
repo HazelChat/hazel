@@ -42,7 +42,7 @@ const badgeStyles = tv({
 	defaultVariants: {
 		intent: "primary",
 		size: "md",
-		isCircle: true,
+		isCircle: false,
 	},
 })
 
@@ -51,7 +51,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<
 	children: React.ReactNode
 }
 
-const Badge = ({ children, intent, size, isCircle = true, className, ...props }: BadgeProps) => {
+const Badge = ({ children, intent, size, isCircle = false, className, ...props }: BadgeProps) => {
 	return (
 		<span {...props} className={badgeStyles({ intent, size, isCircle, className })}>
 			{children}

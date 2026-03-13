@@ -7,7 +7,8 @@ import { AddConnectionModal } from "~/components/chat-sync/add-connection-modal"
 import IconArrowPath from "~/components/icons/icon-arrow-path"
 import { IconChevronDown } from "~/components/icons/icon-chevron-down"
 import IconPlus from "~/components/icons/icon-plus"
-import { Button } from "~/components/ui/button"
+import { Badge } from "~/components/ui/badge"
+import { Button, buttonStyles } from "~/components/ui/button"
 import {
 	Dialog,
 	DialogClose,
@@ -43,7 +44,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, { label: string; dotClass: string;
 function AddConnectionDropdown({ onSelectDiscord }: { onSelectDiscord: () => void }) {
 	return (
 		<Menu>
-			<MenuTrigger className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2 font-medium text-primary-fg text-sm shadow-xs transition-colors hover:bg-primary/90 pressed:bg-primary/80">
+			<MenuTrigger className={buttonStyles({ intent: "primary", size: "md" })}>
 				<IconPlus className="size-4" />
 				Add Third Party Connection
 				<IconChevronDown className="size-3.5 opacity-70" />
@@ -77,9 +78,9 @@ function AddConnectionDropdown({ onSelectDiscord }: { onSelectDiscord: () => voi
 					</svg>
 					<span className="flex items-center gap-2">
 						Slack
-						<span className="rounded-full bg-muted px-2 py-0.5 font-normal text-muted-fg text-[10px]">
+						<Badge intent="secondary" size="sm">
 							Coming Soon
-						</span>
+						</Badge>
 					</span>
 				</MenuItem>
 			</MenuContent>

@@ -9,7 +9,9 @@ import IconPlus from "~/components/icons/icon-plus"
 import { IconUsers } from "~/components/icons/icon-users"
 import IconVolumeMute from "~/components/icons/icon-volume-mute"
 import { Avatar } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card } from "~/components/ui/card"
 import { EmptyState } from "~/components/ui/empty-state"
 import { Loader } from "~/components/ui/loader"
 import { SectionHeader } from "~/components/ui/section-header"
@@ -121,9 +123,7 @@ function RouteComponent() {
 						<span className="flex items-center gap-2">
 							Public
 							{publicChannels.length > 0 && (
-								<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-muted-fg text-xs">
-									{publicChannels.length}
-								</span>
+								<Badge intent="secondary">{publicChannels.length}</Badge>
 							)}
 						</span>
 					</Tab>
@@ -131,34 +131,28 @@ function RouteComponent() {
 						<span className="flex items-center gap-2">
 							Private
 							{privateChannels.length > 0 && (
-								<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-muted-fg text-xs">
-									{privateChannels.length}
-								</span>
+								<Badge intent="secondary">{privateChannels.length}</Badge>
 							)}
 						</span>
 					</Tab>
 					<Tab id="dms">
 						<span className="flex items-center gap-2">
 							Direct messages
-							{dmChannels.length > 0 && (
-								<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-muted-fg text-xs">
-									{dmChannels.length}
-								</span>
-							)}
+							{dmChannels.length > 0 && <Badge intent="secondary">{dmChannels.length}</Badge>}
 						</span>
 					</Tab>
 				</TabList>
 
 				<TabPanel id="public">
 					{publicChannels.length > 0 ? (
-						<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+						<Card>
 							<h2 className="sr-only">Public Channels</h2>
 							<div className="divide-y divide-border">
 								{publicChannels.map((channel) => (
 									<ChannelCard key={channel._id} channel={channel} />
 								))}
 							</div>
-						</div>
+						</Card>
 					) : (
 						<EmptyState
 							icon={IconHashtag}
@@ -182,14 +176,14 @@ function RouteComponent() {
 
 				<TabPanel id="private">
 					{privateChannels.length > 0 ? (
-						<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+						<Card>
 							<h2 className="sr-only">Private Channels</h2>
 							<div className="divide-y divide-border">
 								{privateChannels.map((channel) => (
 									<ChannelCard key={channel._id} channel={channel} isPrivate />
 								))}
 							</div>
-						</div>
+						</Card>
 					) : (
 						<EmptyState
 							icon={IconLock}
@@ -213,14 +207,14 @@ function RouteComponent() {
 
 				<TabPanel id="dms">
 					{dmChannels.length > 0 ? (
-						<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+						<Card>
 							<h2 className="sr-only">Direct Messages</h2>
 							<div className="divide-y divide-border">
 								{dmChannels.map((channel) => (
 									<DmCard key={channel._id} channel={channel} currentUserId={me?.id} />
 								))}
 							</div>
-						</div>
+						</Card>
 					) : (
 						<EmptyState
 							icon={IconMsgs}
@@ -243,9 +237,9 @@ function RouteComponent() {
 function NotificationBadge({ count }: { count: number }) {
 	if (count <= 0) return null
 	return (
-		<span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 font-medium text-danger-fg text-xs">
+		<Badge intent="danger" className="min-w-5 justify-center">
 			{count > 99 ? "99+" : count}
-		</span>
+		</Badge>
 	)
 }
 

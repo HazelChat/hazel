@@ -16,7 +16,9 @@ import { IconWarning } from "~/components/icons/icon-warning"
 import { ChangeRoleModal } from "~/components/modals/change-role-modal"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
 import { Avatar } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogClose,
@@ -33,9 +35,8 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useAuth } from "~/lib/auth"
 import { findExistingDmChannel } from "~/lib/channels"
 import { exitToastAsync } from "~/lib/toast-exit"
-import { cn } from "~/lib/utils"
 import { getEffectivePresenceStatus } from "~/utils/presence"
-import { getStatusBadgeColor, getStatusLabel } from "~/utils/status"
+import { getStatusBadgeIntent, getStatusLabel } from "~/utils/status"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/team")({
 	component: TeamSettings,
@@ -70,12 +71,6 @@ function TeamSettings() {
 				.select(({ members, user, presence }) => ({ ...members, user, presence })),
 		[organizationId],
 	)
-
-	const roleToBadgeColors = {
-		owner: "bg-primary text-primary-fg",
-		admin: "bg-primary text-primary-fg",
-		member: "bg-secondary text-fg",
-	}
 
 	const getInitials = (name: string) => {
 		const [firstName, lastName] = name.split(" ")
@@ -153,15 +148,13 @@ function TeamSettings() {
 	return (
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
-				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+				<Card>
 					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
 						<div className="flex flex-col items-start gap-4 md:flex-row">
 							<div className="flex flex-1 flex-col gap-0.5">
 								<div className="flex items-center gap-2">
 									<h2 className="font-semibold text-fg text-lg">Team members</h2>
-									<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
-										{teamMembers?.length || 0} users
-									</span>
+									<Badge intent="secondary">{teamMembers?.length || 0} users</Badge>
 								</div>
 								<p className="text-muted-fg text-sm">
 									Manage your team members and their account permissions here.
@@ -220,28 +213,22 @@ function TeamSettings() {
 												</div>
 											</td>
 											<td className="px-4 py-4">
-												<span
-													className={cn(
-														"inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium text-xs",
-														getStatusBadgeColor(status),
-													)}
-												>
+												<Badge intent={getStatusBadgeIntent(status)}>
 													<span className="size-1.5 rounded-full bg-current" />
 													{getStatusLabel(status)}
-												</span>
+												</Badge>
 											</td>
 											<td className="px-4 py-4">
-												<span
-													className={cn(
-														"inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs",
-														roleToBadgeColors[
-															member.role as keyof typeof roleToBadgeColors
-														] || "bg-secondary text-fg",
-													)}
+												<Badge
+													intent={
+														member.role === "owner" || member.role === "admin"
+															? "primary"
+															: "secondary"
+													}
 												>
 													{member.role.charAt(0).toUpperCase() +
 														member.role.slice(1)}
-												</span>
+												</Badge>
 											</td>
 											<td className="px-4 py-4 text-right">
 												{user &&
@@ -316,7 +303,7 @@ function TeamSettings() {
 							</tbody>
 						</table>
 					</div>
-				</div>
+				</Card>
 			</div>
 
 			{/* Remove Member Confirmation Modal */}

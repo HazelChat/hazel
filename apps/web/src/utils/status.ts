@@ -18,7 +18,27 @@ export function getStatusDotColor(status?: PresenceStatus | string): string {
 }
 
 /**
+ * Returns the Badge component intent for a given presence status
+ */
+export function getStatusBadgeIntent(
+	status?: PresenceStatus | string,
+): "success" | "warning" | "danger" | "secondary" {
+	switch (status) {
+		case "online":
+			return "success"
+		case "away":
+		case "busy":
+			return "warning"
+		case "dnd":
+			return "danger"
+		default:
+			return "secondary"
+	}
+}
+
+/**
  * Returns text + opacity background classes for status badges
+ * @deprecated Use `getStatusBadgeIntent` with the Badge component instead
  */
 export function getStatusBadgeColor(status?: PresenceStatus | string): string {
 	switch (status) {

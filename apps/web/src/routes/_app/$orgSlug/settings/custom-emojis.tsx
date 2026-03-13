@@ -11,7 +11,9 @@ import IconEmoji1 from "~/components/icons/icon-emoji-1"
 import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconTrash from "~/components/icons/icon-trash"
 import { IconWarning } from "~/components/icons/icon-warning"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogClose,
@@ -281,17 +283,17 @@ function CustomEmojisSettings() {
 	return (
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
-				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+				<Card>
 					{/* Header */}
 					<div className="border-border border-b bg-bg-muted/30 px-4 py-5 md:px-6">
 						<div className="flex flex-col gap-0.5">
 							<div className="flex items-center gap-2">
 								<IconEmoji1 className="size-5 text-muted-fg" />
 								<h2 className="font-semibold text-fg text-lg">Custom Emojis</h2>
-								<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
+								<Badge intent="secondary">
 									{customEmojis?.length ?? 0} emoji
 									{(customEmojis?.length ?? 0) !== 1 ? "s" : ""}
-								</span>
+								</Badge>
 							</div>
 							<p className="text-muted-fg text-sm">
 								Upload and manage custom emojis for your workspace.
@@ -557,7 +559,7 @@ function CustomEmojisSettings() {
 							</table>
 						</div>
 					)}
-				</div>
+				</Card>
 			</div>
 
 			{/* Delete Confirmation Modal */}

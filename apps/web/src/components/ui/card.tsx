@@ -1,6 +1,17 @@
 import type { HTMLAttributes } from "react"
 import { twMerge } from "tailwind-merge"
 
+interface CardProps extends HTMLAttributes<HTMLDivElement> {}
+
+const Card = ({ className, ...props }: CardProps) => {
+	return (
+		<div
+			className={twMerge("overflow-hidden rounded-xl border border-border bg-bg shadow-sm", className)}
+			{...props}
+		/>
+	)
+}
+
 interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 
 const CardHeader = ({ className, ...props }: CardHeaderProps) => {
@@ -21,4 +32,4 @@ const CardDescription = ({ className, ...props }: CardDescriptionProps) => {
 	return <p className={twMerge("text-muted-fg text-sm", className)} {...props} />
 }
 
-export { CardHeader, CardTitle, CardDescription }
+export { Card, CardHeader, CardTitle, CardDescription }

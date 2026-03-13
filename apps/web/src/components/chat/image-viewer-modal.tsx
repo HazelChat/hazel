@@ -208,22 +208,26 @@ export function ImageViewerModal({
 				{/* Navigation arrows - only show if more than 1 image */}
 				{images.length > 1 && (
 					<>
-						<button
-							type="button"
-							onClick={scrollPrev}
-							className="absolute top-1/2 left-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
+						<Button
+							intent="plain"
+							size="sq-md"
+							isCircle
+							onPress={scrollPrev}
+							className="absolute top-1/2 left-4 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
 							aria-label="Previous image"
 						>
 							<IconChevronLeft className="size-6" />
-						</button>
-						<button
-							type="button"
-							onClick={scrollNext}
-							className="absolute top-1/2 right-4 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-all hover:bg-black/70"
+						</Button>
+						<Button
+							intent="plain"
+							size="sq-md"
+							isCircle
+							onPress={scrollNext}
+							className="absolute top-1/2 right-4 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
 							aria-label="Next image"
 						>
 							<IconChevronRight className="size-6" />
-						</button>
+						</Button>
 					</>
 				)}
 			</div>
@@ -272,11 +276,11 @@ export function ImageViewerModal({
 										: `${image.url}-${index}`
 
 								return (
-									<button
+									<Button
 										key={thumbKey}
-										type="button"
-										onClick={() => scrollTo(index)}
-										className={`relative min-w-0 flex-[0_0_80px] cursor-pointer overflow-hidden rounded border-2 transition-all ${
+										intent="plain"
+										onPress={() => scrollTo(index)}
+										className={`relative min-w-0 flex-[0_0_80px] overflow-hidden rounded border-2 p-0 transition-all ${
 											index === selectedIndex
 												? "border-white opacity-100"
 												: "border-transparent opacity-50 hover:opacity-75"
@@ -287,7 +291,7 @@ export function ImageViewerModal({
 											alt={thumbAlt}
 											className="h-16 w-20 object-cover"
 										/>
-									</button>
+									</Button>
 								)
 							})}
 						</div>

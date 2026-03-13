@@ -12,7 +12,9 @@ import IconDots from "~/components/icons/icon-dots"
 import IconPlus from "~/components/icons/icon-plus"
 import IconUsersPlus from "~/components/icons/icon-users-plus"
 import { EmailInviteModal } from "~/components/modals/email-invite-modal"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card } from "~/components/ui/card"
 import { EmptyState } from "~/components/ui/empty-state"
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
 import { invitationCollection, userCollection } from "~/db/collections"
@@ -138,16 +140,14 @@ function InvitationsSettings() {
 	return (
 		<>
 			<div className="flex flex-col gap-6 px-4 lg:px-8">
-				<div className="overflow-hidden rounded-xl border border-border bg-bg shadow-sm">
+				<Card>
 					<div className="border-border border-b bg-bg px-4 py-5 md:px-6">
 						<div className="flex flex-col items-start gap-4 md:flex-row">
 							<div className="flex flex-1 flex-col gap-0.5">
 								<div className="flex items-center gap-2">
 									<h2 className="font-semibold text-fg text-lg">Pending invitations</h2>
 									{pendingInvitations.length > 0 && (
-										<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
-											{pendingInvitations.length} pending
-										</span>
+										<Badge intent="secondary">{pendingInvitations.length} pending</Badge>
 									)}
 								</div>
 								<p className="text-muted-fg text-sm">
@@ -214,10 +214,10 @@ function InvitationsSettings() {
 												</p>
 											</td>
 											<td className="px-4 py-4">
-												<span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-2 py-0.5 font-medium text-warning text-xs">
+												<Badge intent="warning">
 													<span className="size-1.5 rounded-full bg-current" />
 													Pending
-												</span>
+												</Badge>
 											</td>
 											<td className="px-4 py-4">
 												<p className="text-muted-fg text-sm">
@@ -295,7 +295,7 @@ function InvitationsSettings() {
 							</table>
 						</div>
 					)}
-				</div>
+				</Card>
 			</div>
 
 			{/* Email Invite Modal */}
