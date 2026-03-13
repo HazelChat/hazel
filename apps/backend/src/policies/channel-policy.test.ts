@@ -53,13 +53,25 @@ describe("ChannelPolicy", () => {
 			ChannelPolicy.canCreate(TEST_ORG_ID),
 			memberLayer,
 			actor,
+			["channels:write"],
 		)
-		const adminResult = await runWithActorEither(ChannelPolicy.canCreate(TEST_ORG_ID), adminLayer, actor)
-		const ownerResult = await runWithActorEither(ChannelPolicy.canCreate(TEST_ORG_ID), ownerLayer, actor)
+		const adminResult = await runWithActorEither(
+			ChannelPolicy.canCreate(TEST_ORG_ID),
+			adminLayer,
+			actor,
+			["channels:write"],
+		)
+		const ownerResult = await runWithActorEither(
+			ChannelPolicy.canCreate(TEST_ORG_ID),
+			ownerLayer,
+			actor,
+			["channels:write"],
+		)
 		const noMembership = await runWithActorEither(
 			ChannelPolicy.canCreate(TEST_ALT_ORG_ID),
 			memberLayer,
 			actor,
+			["channels:write"],
 		)
 
 		expect(Either.isLeft(memberResult)).toBe(true)

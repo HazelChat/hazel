@@ -180,11 +180,11 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									}),
 								)
 							}
-								const channel = channelOption.value
-								yield* requireAdminOrOwner(channel.organizationId)
+							const channel = channelOption.value
+							yield* requireAdminOrOwner(channel.organizationId)
 
-								const mount = yield* connectConversationService.ensureChannelConversation(
-									channel.id,
+							const mount = yield* connectConversationService.ensureChannelConversation(
+								channel.id,
 								currentUser.id,
 							)
 
@@ -519,10 +519,10 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 
 			"connectShare.settings.update": ({ conversationId, allowGuestMemberAdds, status }) =>
 				remapConnectErrors(
-						db.transaction(
-							Effect.gen(function* () {
-								const conversationOption = yield* connectConversationRepo.findById(conversationId)
-								if (Option.isNone(conversationOption)) {
+					db.transaction(
+						Effect.gen(function* () {
+							const conversationOption = yield* connectConversationRepo.findById(conversationId)
+							if (Option.isNone(conversationOption)) {
 								return yield* Effect.fail(
 									new InternalServerError({
 										message: "Hazel Connect conversation not found",
@@ -660,37 +660,37 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 
 			"connectShare.member.remove": ({ channelId, userId }) =>
 				remapConnectErrors(
-						db.transaction(
-							Effect.gen(function* () {
-								const channelOption = yield* channelRepo.findById(channelId)
-								if (Option.isNone(channelOption)) {
-									return yield* Effect.fail(
-										new InternalServerError({
-											message: "Channel not found while removing connect participant",
-											detail: `channelId=${channelId}`,
-										}),
-									)
-								}
-								const channel = channelOption.value
-								yield* orgResolver.fromChannel(
-									channelId,
-									"channel-members:write",
-									"ConnectShare",
-									"member.remove",
+					db.transaction(
+						Effect.gen(function* () {
+							const channelOption = yield* channelRepo.findById(channelId)
+							if (Option.isNone(channelOption)) {
+								return yield* Effect.fail(
+									new InternalServerError({
+										message: "Channel not found while removing connect participant",
+										detail: `channelId=${channelId}`,
+									}),
 								)
-								const userOrgMembership = yield* orgMemberRepo.findByOrgAndUser(
-									channel.organizationId,
-									userId,
+							}
+							const channel = channelOption.value
+							yield* orgResolver.fromChannel(
+								channelId,
+								"channel-members:write",
+								"ConnectShare",
+								"member.remove",
+							)
+							const userOrgMembership = yield* orgMemberRepo.findByOrgAndUser(
+								channel.organizationId,
+								userId,
+							)
+							if (Option.isNone(userOrgMembership)) {
+								return yield* Effect.fail(
+									new ConnectWorkspaceNotFoundError({
+										message: "Only members of the current workspace can be removed here",
+									}),
 								)
-								if (Option.isNone(userOrgMembership)) {
-									return yield* Effect.fail(
-										new ConnectWorkspaceNotFoundError({
-											message: "Only members of the current workspace can be removed here",
-										}),
-									)
-								}
-								const conversationId =
-									yield* connectConversationService.getConversationIdForChannel(channelId)
+							}
+							const conversationId =
+								yield* connectConversationService.getConversationIdForChannel(channelId)
 							const membership = yield* channelMemberRepo.findByChannelAndUser(
 								channelId,
 								userId,

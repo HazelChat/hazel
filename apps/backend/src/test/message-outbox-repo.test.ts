@@ -28,7 +28,7 @@ describe("MessageOutboxRepo", () => {
 
 	beforeAll(async () => {
 		harness = await createChatSyncDbHarness()
-	})
+	}, 120_000)
 
 	beforeEach(async () => {
 		await harness.reset()
@@ -36,7 +36,7 @@ describe("MessageOutboxRepo", () => {
 
 	afterAll(async () => {
 		await harness.stop()
-	})
+	}, 60_000)
 
 	it("claims rows in sequence order", async () => {
 		const claimed = await runRepoEffect(

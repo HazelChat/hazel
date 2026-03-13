@@ -101,19 +101,19 @@ function ConnectPage() {
 									}
 								</Badge>
 							</div>
-							</div>
-							<div className="divide-y divide-border">
-								{sharedConnections.map((conn) => (
-									<ConnectionRow
-										key={conn.id}
-										conversationId={conn.conversationId}
-										organizationId={conn.organizationId}
-										role={conn.role}
-										viewerRole={viewerMount?.role}
-										currentOrgId={organizationId}
-									/>
-								))}
-							</div>
+						</div>
+						<div className="divide-y divide-border">
+							{sharedConnections.map((conn) => (
+								<ConnectionRow
+									key={conn.id}
+									conversationId={conn.conversationId}
+									organizationId={conn.organizationId}
+									role={conn.role}
+									viewerRole={viewerMount?.role}
+									currentOrgId={organizationId}
+								/>
+							))}
+						</div>
 					</div>
 				)}
 
@@ -212,9 +212,8 @@ function ConnectionRow({
 
 	const isOwnOrg = organizationId === currentOrgId
 	const isGuestLeavingConversation = viewerRole === "guest" && role === "host"
-	const disconnectTargetOrganizationId = (
-		isGuestLeavingConversation ? currentOrgId : (organizationId as OrganizationId)
-	) ?? null
+	const disconnectTargetOrganizationId =
+		(isGuestLeavingConversation ? currentOrgId : (organizationId as OrganizationId)) ?? null
 	const canDisconnect = viewerRole === "host" || isGuestLeavingConversation
 
 	const handleDisconnect = async () => {
@@ -322,10 +321,10 @@ function InviteRow({
 		<tr className="hover:bg-secondary/50">
 			<td className="px-4 py-4">
 				<div className="flex flex-col">
-						<span className="font-medium text-fg text-sm">{invite.targetValue}</span>
-						<span className="text-muted-fg text-xs">Workspace</span>
-					</div>
-				</td>
+					<span className="font-medium text-fg text-sm">{invite.targetValue}</span>
+					<span className="text-muted-fg text-xs">Workspace</span>
+				</div>
+			</td>
 			<td className="px-4 py-4">
 				<Badge intent={statusBadge.intent} size="sm">
 					{statusBadge.label}

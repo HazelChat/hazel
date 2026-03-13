@@ -139,7 +139,7 @@ describe("MessageOutboxDispatcher", () => {
 
 	beforeAll(async () => {
 		harness = await createChatSyncDbHarness()
-	})
+	}, 120_000)
 
 	beforeEach(async () => {
 		await harness.reset()
@@ -147,7 +147,7 @@ describe("MessageOutboxDispatcher", () => {
 
 	afterAll(async () => {
 		await harness.stop()
-	})
+	}, 60_000)
 
 	it("processes events in sequence order", async () => {
 		const calls: SideEffectCall[] = []

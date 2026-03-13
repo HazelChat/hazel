@@ -242,12 +242,12 @@ describe("ConnectConversationService", () => {
 		]
 
 		await Effect.runPromise(
-			(useService((service) =>
+			useService((service) =>
 				service.removeParticipantFromConversation(CONVERSATION_ID, GUEST_USER_ID),
 			).pipe(
 				Effect.provide(makeServiceLayer({ conversation, mounts, participants, syncedChannels })),
 				Effect.orDie,
-			) as Effect.Effect<void, never, never>),
+			) as Effect.Effect<void, never, never>,
 		)
 
 		expect(participants.every((participant) => participant.deletedAt instanceof Date)).toBe(true)
@@ -334,10 +334,10 @@ describe("ConnectConversationService", () => {
 		]
 
 		await Effect.runPromise(
-			(useService((service) => service.disconnectOrganization(CONVERSATION_ID, GUEST_ORG_ID)).pipe(
+			useService((service) => service.disconnectOrganization(CONVERSATION_ID, GUEST_ORG_ID)).pipe(
 				Effect.provide(makeServiceLayer({ conversation, mounts, participants, syncedChannels })),
 				Effect.orDie,
-			) as Effect.Effect<void, never, never>),
+			) as Effect.Effect<void, never, never>,
 		)
 
 		expect(mounts[1]?.deletedAt instanceof Date).toBe(true)
@@ -418,13 +418,15 @@ describe("ConnectConversationService", () => {
 		]
 
 		await Effect.runPromise(
-			(useService((service) => service.disconnectOrganization(CONVERSATION_ID, HOST_ORG_ID)).pipe(
+			useService((service) => service.disconnectOrganization(CONVERSATION_ID, HOST_ORG_ID)).pipe(
 				Effect.provide(makeServiceLayer({ conversation, mounts, participants, syncedChannels })),
 				Effect.orDie,
-			) as Effect.Effect<void, never, never>),
+			) as Effect.Effect<void, never, never>,
 		)
 
-		expect(mounts.every((mount) => mount.deletedAt instanceof Date && mount.isActive === false)).toBe(true)
+		expect(mounts.every((mount) => mount.deletedAt instanceof Date && mount.isActive === false)).toBe(
+			true,
+		)
 		expect(participants.every((participant) => participant.deletedAt instanceof Date)).toBe(true)
 		expect(conversation.status).toBe("disconnected")
 		expect(conversation.deletedAt instanceof Date).toBe(true)

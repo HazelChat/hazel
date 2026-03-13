@@ -5,7 +5,8 @@ import localesPlugin from "@react-aria/optimize-locales-plugin"
 import tailwindcss from "@tailwindcss/vite"
 import { devtools } from "@tanstack/devtools-vite"
 import tanstackRouter from "@tanstack/router-plugin/vite"
-import viteReact from "@vitejs/plugin-react"
+import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react"
+import babel from "@rolldown/plugin-babel"
 import { visualizer } from "rollup-plugin-visualizer"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
@@ -71,24 +72,42 @@ export default defineConfig({
 						"@tauri-apps/plugin-window-state",
 					],
 			output: {
-				manualChunks: {
-					"vendor-react": ["react", "react-dom"],
-					"vendor-effect": [
-						"effect",
-						"@effect/platform",
-						"@effect/platform-browser",
-						"@effect/rpc",
-						"@effect/experimental",
-					],
-					"vendor-react-aria": ["react-aria", "react-aria-components", "react-stately"],
-					"vendor-slate": ["slate", "slate-react", "slate-history", "prismjs"],
-					"vendor-tanstack": [
-						"@tanstack/react-query",
-						"@tanstack/react-router",
-						"@tanstack/react-form",
-						"@tanstack/react-db",
-						"@tanstack/db",
-					],
+				manualChunks(id: string) {
+					if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) {
+						return "vendor-react"
+					}
+					if (
+						id.includes("node_modules/effect/") ||
+						id.includes("node_modules/@effect/platform") ||
+						id.includes("node_modules/@effect/rpc") ||
+						id.includes("node_modules/@effect/experimental")
+					) {
+						return "vendor-effect"
+					}
+					if (
+						id.includes("node_modules/react-aria/") ||
+						id.includes("node_modules/react-aria-components/") ||
+						id.includes("node_modules/react-stately/")
+					) {
+						return "vendor-react-aria"
+					}
+					if (
+						id.includes("node_modules/slate/") ||
+						id.includes("node_modules/slate-react/") ||
+						id.includes("node_modules/slate-history/") ||
+						id.includes("node_modules/prismjs/")
+					) {
+						return "vendor-slate"
+					}
+					if (
+						id.includes("node_modules/@tanstack/react-query/") ||
+						id.includes("node_modules/@tanstack/react-router/") ||
+						id.includes("node_modules/@tanstack/react-form/") ||
+						id.includes("node_modules/@tanstack/react-db/") ||
+						id.includes("node_modules/@tanstack/db/")
+					) {
+						return "vendor-tanstack"
+					}
 				},
 			},
 		},
@@ -122,10 +141,9 @@ export default defineConfig({
 			enforce: "pre",
 		},
 
-		viteReact({
-			babel: {
-				plugins: ["babel-plugin-react-compiler"],
-			},
+		viteReact(),
+		babel({
+			presets: [reactCompilerPreset()],
 		}),
 		tailwindcss(),
 		// Bundle visualizer - run with ANALYZE=true bun run build

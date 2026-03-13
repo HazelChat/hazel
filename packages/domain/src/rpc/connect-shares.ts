@@ -98,21 +98,21 @@ export class ConnectShareRpcs extends RpcGroup.make(
 		.annotate(RequiredScopes, ["channels:read"])
 		.middleware(AuthMiddleware),
 
-		Rpc.make("connectShare.invite.create", {
-			payload: Schema.Struct({
-				channelId: ChannelId,
-				guestOrganizationId: Schema.optional(OrganizationId),
-				target: Schema.Struct({
-					kind: Schema.Literal("slug"),
-					value: Schema.String,
-				}),
-				allowGuestMemberAdds: Schema.Boolean,
+	Rpc.make("connectShare.invite.create", {
+		payload: Schema.Struct({
+			channelId: ChannelId,
+			guestOrganizationId: Schema.optional(OrganizationId),
+			target: Schema.Struct({
+				kind: Schema.Literal("slug"),
+				value: Schema.String,
 			}),
-			success: ConnectInviteResponse,
-			error: Schema.Union(
-				ConnectWorkspaceNotFoundError,
-				ConnectChannelAlreadySharedError,
-				UnauthorizedError,
+			allowGuestMemberAdds: Schema.Boolean,
+		}),
+		success: ConnectInviteResponse,
+		error: Schema.Union(
+			ConnectWorkspaceNotFoundError,
+			ConnectChannelAlreadySharedError,
+			UnauthorizedError,
 			InternalServerError,
 		),
 	})

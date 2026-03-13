@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it } from "vitest"
 import { ConfigProvider, Effect, Either, Layer, Option, Redacted, Runtime } from "effect"
 import {
 	createGatewayServer,
