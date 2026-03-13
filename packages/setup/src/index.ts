@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "@effect/cli"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
-import { Database } from "@hazel/db"
-import { Config, Effect, Layer, Redacted } from "effect"
+import { Effect, Layer } from "effect"
 import { existsSync, readFileSync } from "fs"
 import { resolve } from "path"
 import { setupCommand } from "./commands/setup.ts"
@@ -60,30 +59,4 @@ const ServicesLive = Layer.mergeAll(
 	CertManager.Default,
 )
 
-// Database layer for bot creation (reads DATABASE_URL from env)
-// Creates database layer if DATABASE_URL is set, otherwise creates an effect layer that will fail when used
-const DatabaseLive = Layer.unwrapEffect(
-	Effect.gen(function* () {
-		const url = yield* Config.redacted("DATABASE_URL").pipe(Config.withDefault(Redacted.make("")))
-		const urlValue = Redacted.value(url)
-
-		if (urlValue.length === 0) {
-			// Return a layer that fails when Database is accessed
-			return Layer.fail(
-				new Error("DATABASE_URL not set. Run the 'bots' command with DATABASE_URL set."),
-			)
-		}
-
-		return Database.layer({
-			url,
-			ssl: !urlValue.includes("localhost"),
-		})
-	}),
-)
-
-cli(process.argv).pipe(
-	Effect.provide(ServicesLive),
-	Effect.provide(DatabaseLive),
-	Effect.provide(BunContext.layer),
-	BunRuntime.runMain,
-)
+cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

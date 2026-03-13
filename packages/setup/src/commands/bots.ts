@@ -1,7 +1,7 @@
 import { Command, Options, Prompt } from "@effect/cli"
 import { Database, schema, isNull } from "@hazel/db"
 import type { BotId, BotInstallationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Console, Effect, Option } from "effect"
+import { Console, Effect, Option, Redacted } from "effect"
 import { randomUUID } from "crypto"
 import pc from "picocolors"
 
@@ -28,6 +28,14 @@ const hashToken = (token: string) =>
 export const botsCommand = Command.make("bots", { name: nameOption, org: orgOption }, ({ name, org }) =>
 	Effect.gen(function* () {
 		yield* Console.log(`\n${pc.bold("Bot Creation Setup")}\n`)
+
+		const dbUrl = process.env.DATABASE_URL
+		if (!dbUrl) {
+			yield* Console.log(
+				pc.red("DATABASE_URL not set. Run 'bun run setup' first to create .env files."),
+			)
+			return
+		}
 
 		const db = yield* Database.Database
 
@@ -153,6 +161,12 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 	}).pipe(
 		Effect.catchTag("DatabaseError", (error: Database.DatabaseError) =>
 			Console.log(pc.red(`\nDatabase error: ${error.message}`)),
+		),
+		Effect.provide(
+			Database.layer({
+				url: Redacted.make(process.env.DATABASE_URL ?? ""),
+				ssl: !(process.env.DATABASE_URL ?? "").includes("localhost"),
+			}),
 		),
 	),
 )
