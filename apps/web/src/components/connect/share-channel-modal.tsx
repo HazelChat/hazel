@@ -91,7 +91,7 @@ export function ShareChannelModal({
 	)
 
 	const handleSubmit = async () => {
-		const targetValue = selectedWorkspace?.slug ?? selectedWorkspace?.name ?? ""
+		const targetValue = selectedWorkspace?.slug ?? ""
 		if (!targetValue) return
 
 		setIsSubmitting(true)
@@ -133,7 +133,8 @@ export function ShareChannelModal({
 		setAllowGuestMemberAdds(false)
 	}
 
-	const canSubmit = !!selectedWorkspace
+	const canSelectWorkspace = (workspace: WorkspaceResult) => !!workspace.slug
+	const canSubmit = !!selectedWorkspace?.slug
 
 	return (
 		<Modal
@@ -177,35 +178,45 @@ export function ShareChannelModal({
 									</div>
 								) : (
 									<div className="divide-y divide-border">
-										{searchResults.map((workspace) => (
-											<button
-												key={workspace.id}
-												type="button"
-												onClick={() => {
-													setSelectedWorkspace(workspace)
-													setSearchQuery("")
-													setSearchResults([])
-												}}
-												className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/50"
-											>
-												<Avatar
-													size="sm"
-													isSquare
-													src={workspace.logoUrl}
-													seed={workspace.name}
-												/>
-												<div className="flex flex-col">
-													<span className="font-medium text-fg text-sm">
-														{workspace.name}
-													</span>
-													{workspace.slug && (
-														<span className="text-muted-fg text-xs">
-															{workspace.slug}
+										{searchResults.map((workspace) => {
+											const isShareable = canSelectWorkspace(workspace)
+
+											return (
+												<button
+													key={workspace.id}
+													type="button"
+													disabled={!isShareable}
+													onClick={() => {
+														if (!isShareable) return
+														setSelectedWorkspace(workspace)
+														setSearchQuery("")
+														setSearchResults([])
+													}}
+													className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+												>
+													<Avatar
+														size="sm"
+														isSquare
+														src={workspace.logoUrl}
+														seed={workspace.name}
+													/>
+													<div className="flex flex-1 flex-col">
+														<span className="font-medium text-fg text-sm">
+															{workspace.name}
 														</span>
-													)}
-												</div>
-											</button>
-										))}
+														{workspace.slug ? (
+															<span className="text-muted-fg text-xs">
+																{workspace.slug}
+															</span>
+														) : (
+															<span className="text-danger text-xs">
+																Shareable slug required
+															</span>
+														)}
+													</div>
+												</button>
+											)
+										})}
 									</div>
 								)}
 							</div>

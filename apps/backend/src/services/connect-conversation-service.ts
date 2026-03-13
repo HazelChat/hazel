@@ -36,6 +36,41 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 			const channelAccessSync = yield* ChannelAccessSyncService
 			const orgResolver = yield* OrgResolver
 
+			const isUniqueViolation = (error: any, constraintName: string) =>
+				error?.type === "unique_violation" && error?.cause?.constraint_name === constraintName
+
+			const getHostConversationOrFail = (channelId: ChannelId) =>
+				connectConversationRepo.findByHostChannel(channelId).pipe(
+					Effect.flatMap(
+						Option.match({
+							onNone: () =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Hazel Connect conversation missing after unique conflict",
+										detail: `channelId=${channelId}`,
+									}),
+								),
+							onSome: Effect.succeed,
+						}),
+					),
+				)
+
+			const getMountOrFail = (channelId: ChannelId) =>
+				connectConversationChannelRepo.findByChannelId(channelId).pipe(
+					Effect.flatMap(
+						Option.match({
+							onNone: () =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Hazel Connect mount missing after unique conflict",
+										detail: `channelId=${channelId}`,
+									}),
+								),
+							onSome: Effect.succeed,
+						}),
+					),
+				)
+
 			const ensureChannelConversation = Effect.fn(
 				"ConnectConversationService.ensureChannelConversation",
 			)(function* (channelId: ChannelId, createdBy: UserId) {
@@ -64,7 +99,15 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 						createdBy,
 						deletedAt: null,
 					})
-					.pipe(Effect.map((results) => results[0]!))
+					.pipe(
+						Effect.map((results) => results[0]!),
+						Effect.catchTag("DatabaseError", (error) => {
+							if (!isUniqueViolation(error, "connect_conversations_host_channel_unique")) {
+								return Effect.fail(error)
+							}
+							return getHostConversationOrFail(channel.id)
+						}),
+					)
 
 				const mount = yield* connectConversationChannelRepo
 					.insert({
@@ -76,7 +119,18 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 						isActive: true,
 						deletedAt: null,
 					})
-					.pipe(Effect.map((results) => results[0]!))
+					.pipe(
+						Effect.map((results) => results[0]!),
+						Effect.catchTag("DatabaseError", (error) => {
+							if (
+								!isUniqueViolation(error, "connect_conv_channels_channel_unique") &&
+								!isUniqueViolation(error, "connect_conv_channels_conversation_org_unique")
+							) {
+								return Effect.fail(error)
+							}
+							return getMountOrFail(channel.id)
+						}),
+					)
 
 				yield* messageRepo.backfillConversationIdForChannel(channel.id, conversation.id)
 				yield* messageReactionRepo.backfillConversationIdForChannel(channel.id, conversation.id)
@@ -132,37 +186,39 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 				homeOrganizationId: OrganizationId,
 				addedBy: UserId,
 			) {
-				const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
-				yield* Effect.forEach(
-					mounts,
-					(mount) =>
-						Effect.gen(function* () {
-							const existing = yield* connectParticipantRepo.findByChannelAndUser(
-								mount.channelId,
-								userId,
-							)
-							if (Option.isSome(existing)) {
-								yield* connectParticipantRepo.update({
-									id: existing.value.id,
-									homeOrganizationId,
-									isExternal: mount.organizationId !== homeOrganizationId,
-									addedBy,
-									deletedAt: null,
-								})
-								return
-							}
-							yield* connectParticipantRepo.insert({
-								conversationId,
-								channelId: mount.channelId,
-								userId,
-								homeOrganizationId,
-								isExternal: mount.organizationId !== homeOrganizationId,
-								addedBy,
-								deletedAt: null,
-							})
-						}),
-					{ concurrency: 10 },
+				yield* addParticipantsToConversation(
+					conversationId,
+					[{ userId, homeOrganizationId }],
+					addedBy,
 				)
+			})
+
+			const addParticipantsToConversation = Effect.fn(
+				"ConnectConversationService.addParticipantsToConversation",
+			)(function* (
+				conversationId: ConnectConversationId,
+				participants: ReadonlyArray<{
+					userId: UserId
+					homeOrganizationId: OrganizationId
+				}>,
+				addedBy: UserId,
+			) {
+				const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
+				const rows = mounts.flatMap((mount) =>
+					participants.map((participant) => ({
+						conversationId,
+						channelId: mount.channelId,
+						userId: participant.userId,
+						homeOrganizationId: participant.homeOrganizationId,
+						isExternal: mount.organizationId !== participant.homeOrganizationId,
+						addedBy,
+						deletedAt: null as Date | null,
+					})),
+				)
+
+				yield* Effect.forEach(rows, (row) => connectParticipantRepo.upsertByChannelAndUser(row), {
+					concurrency: 10,
+				})
 			})
 
 			const removeParticipantFromConversation = Effect.fn(
@@ -270,6 +326,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 				listMountedChannels,
 				canAccessConversation,
 				addParticipantToConversation,
+				addParticipantsToConversation,
 				removeParticipantFromConversation,
 				disconnectOrganization,
 			} as const

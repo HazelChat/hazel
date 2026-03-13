@@ -1,7 +1,7 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, UserId } from "@hazel/schema"
 import { ConnectParticipant } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { Effect, Option, type Schema as EffectSchema } from "effect"
 
 export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRepo>()(
 	"ConnectParticipantRepo",
@@ -67,11 +67,49 @@ export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRep
 					),
 				)(conversationId, tx)
 
+			const upsertByChannelAndUser = (
+				data: EffectSchema.Schema.Type<typeof ConnectParticipant.Insert>,
+				tx?: TxFn,
+			) =>
+				baseRepo.insert(data, tx).pipe(
+					Effect.map((results) => results[0]!),
+					Effect.catchTag("DatabaseError", (error) => {
+						if (
+							error.type !== "unique_violation" ||
+							(error.cause as { constraint_name?: string } | undefined)?.constraint_name !==
+								"connect_participants_channel_user_unique"
+						) {
+							return Effect.fail(error)
+						}
+
+						return findByChannelAndUser(data.channelId, data.userId, tx).pipe(
+							Effect.flatMap(
+								Option.match({
+									onNone: () => Effect.fail(error),
+									onSome: (existing) =>
+										baseRepo.update(
+											{
+												id: existing.id,
+												conversationId: data.conversationId,
+												homeOrganizationId: data.homeOrganizationId,
+												isExternal: data.isExternal,
+												addedBy: data.addedBy,
+												deletedAt: data.deletedAt,
+											},
+											tx,
+										),
+								}),
+							),
+						)
+					}),
+				)
+
 			return {
 				...baseRepo,
 				findByChannelAndUser,
 				listByChannel,
 				listByConversation,
+				upsertByChannelAndUser,
 			}
 		}),
 	},

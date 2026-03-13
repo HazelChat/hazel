@@ -29,12 +29,138 @@ import {
 	ConnectWorkspaceSearchResult,
 	ConnectParticipantResponse,
 } from "@hazel/domain/rpc"
-import type { OrganizationId, UserId } from "@hazel/schema"
+import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { ConnectConversationService } from "../../services/connect-conversation-service"
 import { OrgResolver } from "../../services/org-resolver"
+
+const isUniqueViolation = (error: any, constraintName: string) =>
+	error?.type === "unique_violation" && error?.cause?.constraint_name === constraintName
+
+export const resolveGuestOrganizationForInviteCreate = ({
+	providedOrgId,
+	target,
+	findBySlug,
+}: {
+	providedOrgId: OrganizationId | undefined
+	target: { kind: "slug"; value: string }
+	findBySlug: (slug: string) => Effect.Effect<Option.Option<{ id: OrganizationId }>, any, any>
+}) =>
+	Effect.gen(function* () {
+		if (target.kind !== "slug") {
+			return providedOrgId ?? null
+		}
+
+		const orgOption = yield* findBySlug(target.value)
+		if (Option.isNone(orgOption)) {
+			return yield* Effect.fail(
+				new ConnectWorkspaceNotFoundError({
+					message: `No workspace found for slug '${target.value}'`,
+				}),
+			)
+		}
+
+		const resolvedOrganizationId = orgOption.value.id
+		if (providedOrgId && providedOrgId !== resolvedOrganizationId) {
+			return yield* Effect.fail(
+				new ConnectWorkspaceNotFoundError({
+					message: "The selected workspace does not match the invite target",
+				}),
+			)
+		}
+
+		return resolvedOrganizationId
+	})
+
+export const validateInviteAcceptanceTarget = ({
+	invite,
+	guestOrganizationId,
+	findBySlug,
+}: {
+	invite: {
+		targetKind: "slug" | "email"
+		targetValue: string
+		guestOrganizationId: OrganizationId | null
+	}
+	guestOrganizationId: OrganizationId
+	findBySlug: (slug: string) => Effect.Effect<Option.Option<{ id: OrganizationId }>, any, any>
+}) =>
+	Effect.gen(function* () {
+		if (invite.guestOrganizationId && invite.guestOrganizationId !== guestOrganizationId) {
+			return yield* Effect.fail(
+				new ConnectWorkspaceNotFoundError({
+					message: "This invite targets a different workspace",
+				}),
+			)
+		}
+
+		if (invite.targetKind === "email") {
+			if (!invite.guestOrganizationId) {
+				return yield* Effect.fail(
+					new ConnectWorkspaceNotFoundError({
+						message: "This invite is not bound to a workspace",
+					}),
+				)
+			}
+			return
+		}
+
+		const orgOption = yield* findBySlug(invite.targetValue)
+		if (Option.isNone(orgOption) || orgOption.value.id !== guestOrganizationId) {
+			return yield* Effect.fail(
+				new ConnectWorkspaceNotFoundError({
+					message: "This invite targets a different workspace",
+				}),
+			)
+		}
+	})
+
+export const assertGuestMemberAddsAllowed = (
+	mount: {
+		role: "host" | "guest"
+		allowGuestMemberAdds: boolean
+	} | null,
+) =>
+	mount?.role === "guest" && !mount.allowGuestMemberAdds
+		? Effect.fail(
+				new PermissionError({
+					message: "This guest workspace cannot add members to the shared channel",
+					requiredScope: "channel-members:write",
+				}),
+			)
+		: Effect.void
+
+export const remapGuestMountInsertConflict = ({
+	error,
+	guestOrganizationId,
+	findExistingMount,
+}: {
+	error: any
+	guestOrganizationId: OrganizationId
+	findExistingMount: () => Effect.Effect<Option.Option<{ channelId: ChannelId }>, any, any>
+}) => {
+	if (!isUniqueViolation(error, "connect_conv_channels_conversation_org_unique")) {
+		return Effect.fail(error)
+	}
+
+	return findExistingMount().pipe(
+		Effect.flatMap(
+			Option.match({
+				onNone: () => Effect.fail(error),
+				onSome: (existingMount) =>
+					Effect.fail(
+						new ConnectChannelAlreadySharedError({
+							channelId: existingMount.channelId,
+							organizationId: guestOrganizationId,
+							message: "This workspace is already connected to the conversation",
+						}),
+					),
+			}),
+		),
+	)
+}
 
 function remapPermissionError<A, E, R>(
 	effect: Effect.Effect<A, E, R>,
@@ -149,20 +275,10 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								currentUser.id,
 							)
 
-							const guestOrganization = yield* Effect.gen(function* () {
-								if (providedOrgId) return providedOrgId
-								if (target.kind !== "slug") {
-									return null as OrganizationId | null
-								}
-								const orgOption = yield* orgRepo.findBySlug(target.value)
-								if (Option.isNone(orgOption)) {
-									return yield* Effect.fail(
-										new ConnectWorkspaceNotFoundError({
-											message: `No workspace found for slug '${target.value}'`,
-										}),
-									)
-								}
-								return orgOption.value.id
+							const guestOrganization = yield* resolveGuestOrganizationForInviteCreate({
+								providedOrgId,
+								target,
+								findBySlug: orgRepo.findBySlug,
 							})
 
 							if (guestOrganization) {
@@ -234,16 +350,11 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								)
 							}
 
-							if (
-								invite.guestOrganizationId &&
-								invite.guestOrganizationId !== guestOrganizationId
-							) {
-								return yield* Effect.fail(
-									new ConnectWorkspaceNotFoundError({
-										message: "This invite targets a different workspace",
-									}),
-								)
-							}
+							yield* validateInviteAcceptanceTarget({
+								invite,
+								guestOrganizationId,
+								findBySlug: orgRepo.findBySlug,
+							})
 
 							const hostChannelOption = yield* channelRepo.findById(invite.hostChannelId)
 							if (Option.isNone(hostChannelOption)) {
@@ -294,15 +405,29 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								joinedAt: new Date(),
 								deletedAt: null,
 							})
-							yield* connectConversationChannelRepo.insert({
-								conversationId: invite.conversationId,
-								organizationId: guestOrganizationId,
-								channelId: guestChannel.id,
-								role: "guest",
-								allowGuestMemberAdds: invite.allowGuestMemberAdds,
-								isActive: true,
-								deletedAt: null,
-							})
+							yield* connectConversationChannelRepo
+								.insert({
+									conversationId: invite.conversationId,
+									organizationId: guestOrganizationId,
+									channelId: guestChannel.id,
+									role: "guest",
+									allowGuestMemberAdds: invite.allowGuestMemberAdds,
+									isActive: true,
+									deletedAt: null,
+								})
+								.pipe(
+									Effect.catchTag("DatabaseError", (error) =>
+										remapGuestMountInsertConflict({
+											error,
+											guestOrganizationId,
+											findExistingMount: () =>
+												connectConversationChannelRepo.findByConversationAndOrganization(
+													invite.conversationId,
+													guestOrganizationId,
+												),
+										}),
+									),
+								)
 
 							yield* connectInviteRepo.update({
 								id: invite.id,
@@ -319,22 +444,18 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 
 							const hostMembers = yield* channelMemberRepo.listByChannel(hostChannel.id)
 
-							yield* Effect.forEach(
-								hostMembers,
-								(hostMember) =>
-									connectConversationService.addParticipantToConversation(
-										invite.conversationId,
-										hostMember.userId,
-										hostChannel.organizationId,
-										currentUser.id,
-									),
-								{ concurrency: 10 },
-							)
-
-							yield* connectConversationService.addParticipantToConversation(
+							yield* connectConversationService.addParticipantsToConversation(
 								invite.conversationId,
-								currentUser.id,
-								guestOrganizationId,
+								[
+									...hostMembers.map((hostMember) => ({
+										userId: hostMember.userId,
+										homeOrganizationId: hostChannel.organizationId,
+									})),
+									{
+										userId: currentUser.id,
+										homeOrganizationId: guestOrganizationId,
+									},
+								],
 								currentUser.id,
 							)
 
@@ -531,15 +652,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const mountOption =
 								yield* connectConversationService.getMountForChannel(channelId)
 							const mount = Option.getOrNull(mountOption)
-							if (mount?.role === "guest" && !mount.allowGuestMemberAdds) {
-								return yield* Effect.fail(
-									new PermissionError({
-										message:
-											"This guest workspace cannot add members to the shared channel",
-										requiredScope: "channel-members:write",
-									}),
-								)
-							}
+							yield* assertGuestMemberAddsAllowed(mount)
 							const userOrgMembership = yield* orgMemberRepo.findByOrgAndUser(
 								channel.organizationId,
 								userId,
