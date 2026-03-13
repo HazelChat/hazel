@@ -28,8 +28,6 @@ interface WorkspaceResult {
 	logoUrl: string | null
 }
 
-type TargetKind = "slug" | "email"
-
 export function ShareChannelModal({
 	isOpen,
 	onOpenChange,
@@ -37,12 +35,10 @@ export function ShareChannelModal({
 	channelName,
 	organizationId,
 }: ShareChannelModalProps) {
-	const [targetKind, setTargetKind] = useState<TargetKind>("slug")
 	const [searchQuery, setSearchQuery] = useState("")
 	const [searchResults, setSearchResults] = useState<WorkspaceResult[]>([])
 	const [isSearching, setIsSearching] = useState(false)
 	const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceResult | null>(null)
-	const [email, setEmail] = useState("")
 	const [allowGuestMemberAdds, setAllowGuestMemberAdds] = useState(false)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -95,8 +91,7 @@ export function ShareChannelModal({
 	)
 
 	const handleSubmit = async () => {
-		const targetValue =
-			targetKind === "slug" ? (selectedWorkspace?.slug ?? selectedWorkspace?.name ?? "") : email
+		const targetValue = selectedWorkspace?.slug ?? selectedWorkspace?.name ?? ""
 		if (!targetValue) return
 
 		setIsSubmitting(true)
@@ -105,7 +100,7 @@ export function ShareChannelModal({
 				payload: {
 					channelId,
 					guestOrganizationId: selectedWorkspace?.id as OrganizationId | undefined,
-					target: { kind: targetKind, value: targetValue },
+					target: { kind: "slug", value: targetValue },
 					allowGuestMemberAdds,
 				},
 				reactivityKeys: [`connectInvites:outgoing:${organizationId}`],
@@ -132,15 +127,13 @@ export function ShareChannelModal({
 	}
 
 	const resetState = () => {
-		setTargetKind("slug")
 		setSearchQuery("")
 		setSearchResults([])
 		setSelectedWorkspace(null)
-		setEmail("")
 		setAllowGuestMemberAdds(false)
 	}
 
-	const canSubmit = targetKind === "slug" ? !!selectedWorkspace : email.length > 0 && email.includes("@")
+	const canSubmit = !!selectedWorkspace
 
 	return (
 		<Modal
@@ -157,140 +150,86 @@ export function ShareChannelModal({
 				</ModalHeader>
 
 				<ModalBody className="flex flex-col gap-5">
-					{/* Target type selector */}
-					<div className="flex gap-0.5 rounded-lg bg-secondary p-0.5">
-						<button
-							type="button"
-							onClick={() => {
-								setTargetKind("slug")
-								setEmail("")
-							}}
-							className={`flex-1 rounded-md px-3 py-1 text-sm font-medium transition-colors duration-150 ${
-								targetKind === "slug"
-									? "bg-bg text-fg shadow-sm"
-									: "text-muted-fg hover:text-fg"
-							}`}
-						>
-							Search workspace
-						</button>
-						<button
-							type="button"
-							onClick={() => {
-								setTargetKind("email")
-								setSearchQuery("")
-								setSearchResults([])
-								setSelectedWorkspace(null)
-							}}
-							className={`flex-1 rounded-md px-3 py-1 text-sm font-medium transition-colors duration-150 ${
-								targetKind === "email"
-									? "bg-bg text-fg shadow-sm"
-									: "text-muted-fg hover:text-fg"
-							}`}
-						>
-							Invite by email
-						</button>
-					</div>
-
-					{/* Workspace search */}
-					{targetKind === "slug" && (
-						<div className="flex flex-col gap-2">
-							<TextField>
-								<Label>Workspace</Label>
-								<Input
-									placeholder="Search by name or slug..."
-									value={selectedWorkspace ? selectedWorkspace.name : searchQuery}
-									onChange={(e) => {
-										if (selectedWorkspace) {
-											setSelectedWorkspace(null)
-										}
-										handleSearch(e.target.value)
-									}}
-								/>
-							</TextField>
-
-							{/* Search results */}
-							{!selectedWorkspace && searchQuery.length >= 2 && (
-								<div className="rounded-lg border border-border bg-bg">
-									{isSearching ? (
-										<div className="flex items-center justify-center py-6">
-											<Loader />
-										</div>
-									) : searchResults.length === 0 ? (
-										<div className="px-4 py-6 text-center text-muted-fg text-sm">
-											No workspaces found
-										</div>
-									) : (
-										<div className="divide-y divide-border">
-											{searchResults.map((workspace) => (
-												<button
-													key={workspace.id}
-													type="button"
-													onClick={() => {
-														setSelectedWorkspace(workspace)
-														setSearchQuery("")
-														setSearchResults([])
-													}}
-													className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/50"
-												>
-													<Avatar
-														size="sm"
-														isSquare
-														src={workspace.logoUrl}
-														seed={workspace.name}
-													/>
-													<div className="flex flex-col">
-														<span className="font-medium text-fg text-sm">
-															{workspace.name}
-														</span>
-														{workspace.slug && (
-															<span className="text-muted-fg text-xs">
-																{workspace.slug}
-															</span>
-														)}
-													</div>
-												</button>
-											))}
-										</div>
-									)}
-								</div>
-							)}
-
-							{/* Selected workspace pill */}
-							{selectedWorkspace && (
-								<div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 px-2.5 py-1.5">
-									<Avatar
-										size="xxs"
-										isSquare
-										src={selectedWorkspace.logoUrl}
-										seed={selectedWorkspace.name}
-									/>
-									<span className="font-medium text-fg text-sm">
-										{selectedWorkspace.name}
-									</span>
-									<button
-										type="button"
-										onClick={() => setSelectedWorkspace(null)}
-										className="ml-auto text-muted-fg hover:text-fg"
-									>
-										<IconClose className="size-4" />
-									</button>
-								</div>
-							)}
-						</div>
-					)}
-
-					{/* Email input */}
-					{targetKind === "email" && (
+					<div className="flex flex-col gap-2">
 						<TextField>
-							<Label>Email address</Label>
+							<Label>Workspace</Label>
 							<Input
-								type="email"
-								placeholder="team@company.com"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								placeholder="Search public workspaces by name or slug..."
+								value={selectedWorkspace ? selectedWorkspace.name : searchQuery}
+								onChange={(e) => {
+									if (selectedWorkspace) {
+										setSelectedWorkspace(null)
+									}
+									handleSearch(e.target.value)
+								}}
 							/>
 						</TextField>
-					)}
+
+						{!selectedWorkspace && searchQuery.length >= 2 && (
+							<div className="rounded-lg border border-border bg-bg">
+								{isSearching ? (
+									<div className="flex items-center justify-center py-6">
+										<Loader />
+									</div>
+								) : searchResults.length === 0 ? (
+									<div className="px-4 py-6 text-center text-muted-fg text-sm">
+										No public workspaces found
+									</div>
+								) : (
+									<div className="divide-y divide-border">
+										{searchResults.map((workspace) => (
+											<button
+												key={workspace.id}
+												type="button"
+												onClick={() => {
+													setSelectedWorkspace(workspace)
+													setSearchQuery("")
+													setSearchResults([])
+												}}
+												className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-secondary/50"
+											>
+												<Avatar
+													size="sm"
+													isSquare
+													src={workspace.logoUrl}
+													seed={workspace.name}
+												/>
+												<div className="flex flex-col">
+													<span className="font-medium text-fg text-sm">
+														{workspace.name}
+													</span>
+													{workspace.slug && (
+														<span className="text-muted-fg text-xs">
+															{workspace.slug}
+														</span>
+													)}
+												</div>
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						)}
+
+						{selectedWorkspace && (
+							<div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/50 px-2.5 py-1.5">
+								<Avatar
+									size="xxs"
+									isSquare
+									src={selectedWorkspace.logoUrl}
+									seed={selectedWorkspace.name}
+								/>
+								<span className="font-medium text-fg text-sm">{selectedWorkspace.name}</span>
+								<button
+									type="button"
+									onClick={() => setSelectedWorkspace(null)}
+									className="ml-auto text-muted-fg hover:text-fg"
+								>
+									<IconClose className="size-4" />
+								</button>
+							</div>
+						)}
+					</div>
 
 					{/* Permissions */}
 					<div className="rounded-lg border border-border px-4 py-3">

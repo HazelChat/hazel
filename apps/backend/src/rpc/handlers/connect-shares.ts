@@ -17,6 +17,7 @@ import {
 	ConnectInviteListResponse,
 	ConnectInviteNotFoundError,
 	ConnectInviteResponse,
+	ConnectInviteUnsupportedTargetError,
 	ConnectShareRpcs,
 	ConnectWorkspaceNotFoundError,
 	ConnectWorkspaceSearchResponse,
@@ -47,6 +48,21 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 
 		const requireAdminOrOwner = (organizationId: OrganizationId) =>
 			orgResolver.requireAdminOrOwner(organizationId, "organizations:write", "ConnectShare", "manage")
+
+		const requireDisconnectAuthority = Effect.fn("ConnectShare.requireDisconnectAuthority")(function* (
+			hostOrganizationId: OrganizationId,
+			targetOrganizationId: OrganizationId,
+		) {
+			if (targetOrganizationId === hostOrganizationId) {
+				yield* requireAdminOrOwner(hostOrganizationId)
+				return
+			}
+
+			const hostAttempt = yield* requireAdminOrOwner(hostOrganizationId).pipe(Effect.either)
+			if (hostAttempt._tag === "Right") return
+
+			yield* requireAdminOrOwner(targetOrganizationId)
+		})
 
 		const upsertParticipantProjection = Effect.fn("ConnectShare.upsertParticipantProjection")(function* (
 			conversationId: ConnectConversationId,
@@ -107,6 +123,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 			"connectShare.workspace.search": ({ query, organizationId }) =>
 				remapConnectErrors(
 					Effect.gen(function* () {
+						yield* orgResolver.requireScope(
+							organizationId,
+							"organizations:read",
+							"ConnectShare",
+							"workspace.search",
+						)
 						const results = yield* db.makeQuery((execute, input: string) =>
 							execute((client) =>
 								client
@@ -120,6 +142,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									.where(
 										and(
 											isNull(schema.organizationsTable.deletedAt),
+											eq(schema.organizationsTable.isPublic, true),
 											or(
 												ilike(schema.organizationsTable.name, `%${input}%`),
 												ilike(schema.organizationsTable.slug, `%${input}%`),
@@ -160,6 +183,14 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							}
 							const channel = channelOption.value
 							yield* requireAdminOrOwner(channel.organizationId)
+
+							if (target.kind === "email") {
+								return yield* Effect.fail(
+									new ConnectInviteUnsupportedTargetError({
+										message: "Email invites are not supported yet",
+									}),
+								)
+							}
 
 							const mount = yield* connectConversationService.ensureChannelConversation(
 								channel.id,
@@ -317,6 +348,7 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								organizationId: guestOrganizationId,
 								channelId: guestChannel.id,
 								role: "guest",
+								allowGuestMemberAdds: invite.allowGuestMemberAdds,
 								isActive: true,
 								deletedAt: null,
 							})
@@ -332,9 +364,6 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							yield* connectConversationRepo.update({
 								id: invite.conversationId,
 								status: "active",
-								settings: {
-									allowGuestMemberAdds: invite.allowGuestMemberAdds,
-								},
 							})
 
 							const hostMemberRows = yield* db.makeQuery((execute, input: ChannelId) =>
@@ -415,6 +444,14 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									}),
 								)
 							}
+							if (!inviteOption.value.guestOrganizationId) {
+								return yield* Effect.fail(
+									new ConnectWorkspaceNotFoundError({
+										message: "This invite is not bound to a workspace",
+									}),
+								)
+							}
+							yield* requireAdminOrOwner(inviteOption.value.guestOrganizationId)
 							yield* connectInviteRepo.update({
 								id: inviteId,
 								status: "declined",
@@ -508,11 +545,21 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const updated = yield* connectConversationRepo.update({
 								id: conversationId,
 								status: status ?? conversation.status,
-								settings: {
-									...(conversation.settings ?? {}),
-									...(allowGuestMemberAdds === undefined ? {} : { allowGuestMemberAdds }),
-								},
+								settings: conversation.settings ?? null,
 							})
+							if (allowGuestMemberAdds !== undefined) {
+								const mounts =
+									yield* connectConversationChannelRepo.findByConversationId(conversationId)
+								yield* Effect.forEach(
+									mounts.filter((mount) => mount.role === "guest"),
+									(mount) =>
+										connectConversationChannelRepo.update({
+											id: mount.id,
+											allowGuestMemberAdds,
+										}),
+									{ concurrency: 10 },
+								)
+							}
 							const txid = yield* generateTransactionId()
 							return new ConnectConversationResponse({ data: updated, transactionId: txid })
 						}),
@@ -549,6 +596,29 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									new InternalServerError({
 										message: "No conversation available for channel",
 										detail: `channelId=${channelId}`,
+									}),
+								)
+							}
+							const mountOption =
+								yield* connectConversationService.getMountForChannel(channelId)
+							const mount = Option.getOrNull(mountOption)
+							if (mount?.role === "guest" && !mount.allowGuestMemberAdds) {
+								return yield* Effect.fail(
+									new PermissionError({
+										message:
+											"This guest workspace cannot add members to the shared channel",
+										requiredScope: "channel-members:write",
+									}),
+								)
+							}
+							const userOrgMembership = yield* orgMemberRepo.findByOrgAndUser(
+								channel.organizationId,
+								userId,
+							)
+							if (Option.isNone(userOrgMembership)) {
+								return yield* Effect.fail(
+									new ConnectWorkspaceNotFoundError({
+										message: "Only members of the current workspace can be added here",
 									}),
 								)
 							}
@@ -608,23 +678,22 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								"ConnectShare",
 								"member.remove",
 							)
+							const conversationId =
+								yield* connectConversationService.getConversationIdForChannel(channelId)
 							const membership = yield* channelMemberRepo.findByChannelAndUser(
 								channelId,
 								userId,
 							)
 							if (Option.isSome(membership)) {
 								yield* channelMemberRepo.deleteById(membership.value.id)
-								yield* channelAccessSync.syncChannel(channelId)
 							}
-							const participant = yield* connectParticipantRepo.findByChannelAndUser(
-								channelId,
-								userId,
-							)
-							if (Option.isSome(participant)) {
-								yield* connectParticipantRepo.update({
-									id: participant.value.id,
-									deletedAt: new Date(),
-								})
+							if (conversationId) {
+								yield* connectConversationService.removeParticipantFromConversation(
+									conversationId,
+									userId,
+								)
+							} else {
+								yield* channelAccessSync.syncChannel(channelId)
 							}
 							return { transactionId: yield* generateTransactionId() }
 						}),
@@ -645,26 +714,14 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									}),
 								)
 							}
-							const conversation = conversationOption.value
-							yield* requireAdminOrOwner(conversation.hostOrganizationId)
-							const mount =
-								yield* connectConversationChannelRepo.findByConversationAndOrganization(
-									conversationId,
-									organizationId,
-								)
-							if (Option.isSome(mount)) {
-								yield* connectConversationChannelRepo.update({
-									id: mount.value.id,
-									isActive: false,
-									deletedAt: new Date(),
-								})
-							}
-							if (organizationId === conversation.hostOrganizationId) {
-								yield* connectConversationRepo.update({
-									id: conversationId,
-									status: "disconnected",
-								})
-							}
+							yield* requireDisconnectAuthority(
+								conversationOption.value.hostOrganizationId,
+								organizationId,
+							)
+							yield* connectConversationService.disconnectOrganization(
+								conversationId,
+								organizationId,
+							)
 							return { transactionId: yield* generateTransactionId() }
 						}),
 					),

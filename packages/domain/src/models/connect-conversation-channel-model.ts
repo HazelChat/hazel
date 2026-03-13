@@ -12,6 +12,7 @@ export class Model extends M.Class<Model>("ConnectConversationChannel")({
 	organizationId: OrganizationId,
 	channelId: ChannelId,
 	role: ConnectConversationChannelRole,
+	allowGuestMemberAdds: Schema.Boolean,
 	isActive: Schema.Boolean,
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(Schema.NullOr(JsonDate)),

@@ -69,6 +69,7 @@ export const connectConversationChannelsTable = pgTable(
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		channelId: uuid().notNull().$type<ChannelId>(),
 		role: connectConversationChannelRoleEnum().notNull(),
+		allowGuestMemberAdds: boolean().notNull().default(false),
 		isActive: boolean().notNull().default(true),
 		createdAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp({ mode: "date", withTimezone: true }).notNull().defaultNow(),

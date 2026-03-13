@@ -77,6 +77,13 @@ export class ConnectWorkspaceNotFoundError extends Schema.TaggedError<ConnectWor
 	},
 ) {}
 
+export class ConnectInviteUnsupportedTargetError extends Schema.TaggedError<ConnectInviteUnsupportedTargetError>()(
+	"ConnectInviteUnsupportedTargetError",
+	{
+		message: Schema.String,
+	},
+) {}
+
 export class ConnectChannelAlreadySharedError extends Schema.TaggedError<ConnectChannelAlreadySharedError>()(
 	"ConnectChannelAlreadySharedError",
 	{
@@ -110,6 +117,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 		}),
 		success: ConnectInviteResponse,
 		error: Schema.Union(
+			ConnectInviteUnsupportedTargetError,
 			ConnectWorkspaceNotFoundError,
 			ConnectChannelAlreadySharedError,
 			UnauthorizedError,

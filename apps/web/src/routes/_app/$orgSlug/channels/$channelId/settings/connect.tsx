@@ -66,6 +66,7 @@ function ConnectPage() {
 
 	const sharedConnections = getSharedConversationMountsForChannel(channelId as ChannelId, connections ?? [])
 	const isConnected = sharedConnections.length > 0
+	const viewerMount = sharedConnections.find((connection) => connection.organizationId === organizationId)
 
 	return (
 		<>
@@ -102,14 +103,16 @@ function ConnectPage() {
 							</div>
 						</div>
 						<div className="divide-y divide-border">
-							{sharedConnections.map((conn) => (
-								<ConnectionRow
-									key={conn.id}
-									conversationId={conn.conversationId}
-									organizationId={conn.organizationId}
-									currentOrgId={organizationId}
-								/>
-							))}
+								{sharedConnections.map((conn) => (
+									<ConnectionRow
+										key={conn.id}
+										conversationId={conn.conversationId}
+										organizationId={conn.organizationId}
+										role={conn.role}
+										viewerRole={viewerMount?.role}
+										currentOrgId={organizationId}
+									/>
+								))}
 						</div>
 					</div>
 				)}
@@ -183,10 +186,14 @@ function ConnectPage() {
 function ConnectionRow({
 	conversationId,
 	organizationId,
+	role,
+	viewerRole,
 	currentOrgId,
 }: {
 	conversationId: string
 	organizationId: string
+	role: "host" | "guest"
+	viewerRole: "host" | "guest" | undefined
 	currentOrgId: OrganizationId | undefined
 }) {
 	const [isDisconnecting, setIsDisconnecting] = useState(false)
@@ -204,20 +211,26 @@ function ConnectionRow({
 	)
 
 	const isOwnOrg = organizationId === currentOrgId
+	const isGuestLeavingConversation = viewerRole === "guest" && role === "host"
+	const disconnectTargetOrganizationId = isGuestLeavingConversation ? currentOrgId : organizationId
+	const canDisconnect = viewerRole === "host" || isGuestLeavingConversation
 
 	const handleDisconnect = async () => {
+		if (!disconnectTargetOrganizationId) return
 		setIsDisconnecting(true)
 		try {
 			await exitToastAsync(
 				disconnect({
 					payload: {
 						conversationId: conversationId as ConnectConversationId,
-						organizationId: organizationId as OrganizationId,
+						organizationId: disconnectTargetOrganizationId,
 					},
 				}),
 			)
-				.loading("Disconnecting...")
-				.successMessage("Organization disconnected")
+				.loading(isGuestLeavingConversation ? "Leaving shared channel..." : "Disconnecting...")
+				.successMessage(
+					isGuestLeavingConversation ? "Left shared channel" : "Organization disconnected",
+				)
 				.run()
 		} finally {
 			setIsDisconnecting(false)
@@ -235,9 +248,19 @@ function ConnectionRow({
 					{org?.slug && <span className="text-muted-fg text-xs">{org.slug}</span>}
 				</div>
 			</div>
-			<Button intent="outline" size="sm" onPress={handleDisconnect} isDisabled={isDisconnecting}>
-				{isDisconnecting ? "Disconnecting..." : "Disconnect"}
-			</Button>
+			{canDisconnect ? (
+				<Button intent="outline" size="sm" onPress={handleDisconnect} isDisabled={isDisconnecting}>
+					{isDisconnecting
+						? isGuestLeavingConversation
+							? "Leaving..."
+							: "Disconnecting..."
+						: isGuestLeavingConversation
+							? "Leave shared channel"
+							: "Disconnect"}
+				</Button>
+			) : (
+				<span className="text-muted-fg text-xs">Managed by host workspace</span>
+			)}
 		</div>
 	)
 }
