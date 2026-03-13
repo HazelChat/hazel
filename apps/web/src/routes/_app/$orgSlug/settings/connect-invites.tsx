@@ -168,6 +168,11 @@ function IncomingInviteRow({
 					description: "The target workspace could not be found.",
 					isRetryable: false,
 				}))
+				.onErrorTag("ConnectChannelAlreadySharedError", () => ({
+					title: "Already shared",
+					description: "This channel is already shared with that organization.",
+					isRetryable: false,
+				}))
 				.run()
 		} finally {
 			setIsAccepting(false)
@@ -195,6 +200,11 @@ function IncomingInviteRow({
 				.onErrorTag("ConnectInviteInvalidStateError", () => ({
 					title: "Cannot decline",
 					description: "This invite is no longer in a declinable state.",
+					isRetryable: false,
+				}))
+				.onErrorTag("ConnectWorkspaceNotFoundError", () => ({
+					title: "Workspace not found",
+					description: "This invite is not bound to a workspace.",
 					isRetryable: false,
 				}))
 				.run()

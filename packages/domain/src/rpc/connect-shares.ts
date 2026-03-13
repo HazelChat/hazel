@@ -129,6 +129,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			ConnectInviteNotFoundError,
 			ConnectInviteInvalidStateError,
 			ConnectWorkspaceNotFoundError,
+			ConnectChannelAlreadySharedError,
 			UnauthorizedError,
 			InternalServerError,
 		),
@@ -144,6 +145,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 		error: Schema.Union(
 			ConnectInviteNotFoundError,
 			ConnectInviteInvalidStateError,
+			ConnectWorkspaceNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 		),
@@ -204,7 +206,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			userId: UserId,
 		}),
 		success: ConnectParticipantResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union(ConnectWorkspaceNotFoundError, UnauthorizedError, InternalServerError),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -215,7 +217,7 @@ export class ConnectShareRpcs extends RpcGroup.make(
 			userId: UserId,
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union(ConnectWorkspaceNotFoundError, UnauthorizedError, InternalServerError),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),

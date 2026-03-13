@@ -39,16 +39,13 @@ import { OrgResolver } from "../../services/org-resolver"
 function remapPermissionError<A, E, R>(
 	effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R> {
-	return Effect.catchIf(
-		effect,
-		PermissionError.is,
-		(err) =>
-			Effect.fail(
-				new UnauthorizedError({
-					message: err.message,
-					detail: err.requiredScope ?? "",
-				}),
-			),
+	return Effect.catchIf(effect, PermissionError.is, (err) =>
+		Effect.fail(
+			new UnauthorizedError({
+				message: err.message,
+				detail: err.requiredScope ?? "",
+			}),
+		),
 	) as Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R>
 }
 
