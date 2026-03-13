@@ -13,6 +13,7 @@ import { useChannelWithCurrentUser, useParentChannel } from "~/db/hooks"
 import { useChannelMemberActions } from "~/hooks/use-channel-member-actions"
 import { useChatStable } from "~/hooks/use-chat"
 import { useOrganization } from "~/hooks/use-organization"
+import { useSharedChannels } from "~/hooks/use-shared-channels"
 import { useAuth } from "~/lib/auth"
 import IconEye from "../icons/icon-eye"
 import { IconMenu } from "../icons/icon-menu"
@@ -52,6 +53,9 @@ export function ChatHeader() {
 	const { channel } = useChannelWithCurrentUser(channelId)
 	const { isMobile, setIsOpenOnMobile } = useSidebar()
 	const { slug, organizationId } = useOrganization()
+
+	const sharedChannels = useSharedChannels(organizationId)
+	const partnerOrgs = sharedChannels.get(channelId)
 
 	const { handleToggleHidden } = useChannelMemberActions(channel?.currentUser, "conversation")
 
@@ -163,6 +167,26 @@ export function ChatHeader() {
 						<div className="flex items-center gap-2">
 							<h2 className="font-semibold text-fg text-sm">{channel.name}</h2>
 						</div>
+						{partnerOrgs && partnerOrgs.length > 0 && (
+							<div className="flex items-center gap-1.5 border-border border-l pl-3">
+								{partnerOrgs.map((org) => (
+									<Tooltip key={org.id} delay={100} closeDelay={20}>
+										{org.logoUrl ? (
+											<img
+												src={org.logoUrl}
+												alt={org.name}
+												className="size-4 rounded-sm object-cover"
+											/>
+										) : (
+											<span className="flex size-4 items-center justify-center rounded-sm bg-muted text-[8px] font-semibold">
+												{org.name[0]}
+											</span>
+										)}
+										<TooltipContent>{org.name}</TooltipContent>
+									</Tooltip>
+								))}
+							</div>
+						)}
 					</>
 				)}
 			</div>
