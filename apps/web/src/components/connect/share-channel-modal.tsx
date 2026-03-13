@@ -117,12 +117,12 @@ export function ShareChannelModal({
 				description: "No workspace matches that name or slug.",
 				isRetryable: false,
 			}))
-			.onErrorTag("ConnectChannelAlreadySharedError", () => ({
-				title: "Already shared",
-				description: "This channel is already shared with that organization.",
-				isRetryable: false,
-			}))
-			.run()
+				.onErrorTag("ConnectChannelAlreadySharedError", () => ({
+					title: "Already shared",
+					description: "This channel is already shared with that organization.",
+					isRetryable: false,
+				}))
+				.run()
 		setIsSubmitting(false)
 	}
 

@@ -77,13 +77,6 @@ export class ConnectWorkspaceNotFoundError extends Schema.TaggedError<ConnectWor
 	},
 ) {}
 
-export class ConnectInviteUnsupportedTargetError extends Schema.TaggedError<ConnectInviteUnsupportedTargetError>()(
-	"ConnectInviteUnsupportedTargetError",
-	{
-		message: Schema.String,
-	},
-) {}
-
 export class ConnectChannelAlreadySharedError extends Schema.TaggedError<ConnectChannelAlreadySharedError>()(
 	"ConnectChannelAlreadySharedError",
 	{
@@ -105,22 +98,21 @@ export class ConnectShareRpcs extends RpcGroup.make(
 		.annotate(RequiredScopes, ["channels:read"])
 		.middleware(AuthMiddleware),
 
-	Rpc.make("connectShare.invite.create", {
-		payload: Schema.Struct({
-			channelId: ChannelId,
-			guestOrganizationId: Schema.optional(OrganizationId),
-			target: Schema.Struct({
-				kind: ConnectInvite.ConnectInviteTargetKind,
-				value: Schema.String,
+		Rpc.make("connectShare.invite.create", {
+			payload: Schema.Struct({
+				channelId: ChannelId,
+				guestOrganizationId: Schema.optional(OrganizationId),
+				target: Schema.Struct({
+					kind: Schema.Literal("slug"),
+					value: Schema.String,
+				}),
+				allowGuestMemberAdds: Schema.Boolean,
 			}),
-			allowGuestMemberAdds: Schema.Boolean,
-		}),
-		success: ConnectInviteResponse,
-		error: Schema.Union(
-			ConnectInviteUnsupportedTargetError,
-			ConnectWorkspaceNotFoundError,
-			ConnectChannelAlreadySharedError,
-			UnauthorizedError,
+			success: ConnectInviteResponse,
+			error: Schema.Union(
+				ConnectWorkspaceNotFoundError,
+				ConnectChannelAlreadySharedError,
+				UnauthorizedError,
 			InternalServerError,
 		),
 	})
