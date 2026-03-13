@@ -203,7 +203,7 @@ describe("MessageSideEffectService", () => {
 
 	beforeAll(async () => {
 		harness = await createChatSyncDbHarness()
-	})
+	}, 120_000)
 
 	beforeEach(async () => {
 		await harness.reset()
