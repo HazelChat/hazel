@@ -9,7 +9,13 @@ import {
 	OrganizationRepo,
 } from "@hazel/backend-core"
 import { and, Database, eq, ilike, isNull, or, schema } from "@hazel/db"
-import { CurrentUser, InternalServerError, PermissionError, UnauthorizedError } from "@hazel/domain"
+import {
+	CurrentUser,
+	InternalServerError,
+	PermissionError,
+	UnauthorizedError,
+	withRemapDbErrors,
+} from "@hazel/domain"
 import {
 	ConnectChannelAlreadySharedError,
 	ConnectConversationResponse,
@@ -23,12 +29,28 @@ import {
 	ConnectWorkspaceSearchResult,
 	ConnectParticipantResponse,
 } from "@hazel/domain/rpc"
-import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
+import type { OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { ConnectConversationService } from "../../services/connect-conversation-service"
 import { OrgResolver } from "../../services/org-resolver"
+
+function remapPermissionError<A, E, R>(
+	effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R> {
+	return Effect.catchIf(
+		effect,
+		PermissionError.is,
+		(err) =>
+			Effect.fail(
+				new UnauthorizedError({
+					message: err.message,
+					detail: err.requiredScope ?? "",
+				}),
+			),
+	) as Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R>
+}
 
 export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 	Effect.gen(function* () {
@@ -63,103 +85,45 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 			yield* requireAdminOrOwner(targetOrganizationId)
 		})
 
-		const upsertParticipantProjection = Effect.fn("ConnectShare.upsertParticipantProjection")(function* (
-			conversationId: ConnectConversationId,
-			userId: UserId,
-			homeOrganizationId: OrganizationId,
-			addedBy: UserId,
-		) {
-			const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
-			for (const mount of mounts) {
-				const existing = yield* connectParticipantRepo.findByChannelAndUser(mount.channelId, userId)
-				if (Option.isSome(existing)) {
-					yield* connectParticipantRepo.update({
-						id: existing.value.id,
-						homeOrganizationId,
-						isExternal: mount.organizationId !== homeOrganizationId,
-						addedBy,
-						deletedAt: null,
-					})
-					continue
-				}
-
-				yield* connectParticipantRepo.insert({
-					conversationId,
-					channelId: mount.channelId,
-					userId,
-					homeOrganizationId,
-					isExternal: mount.organizationId !== homeOrganizationId,
-					addedBy,
-					deletedAt: null,
-				})
-			}
-		})
-
-		const remapConnectErrors = (effect: Effect.Effect<any, any, any>, message: string): any =>
-			(effect as any).pipe(
-				Effect.catchAll((error: any) => {
-					if (error?._tag === "PermissionError") {
-						return Effect.fail(
-							new UnauthorizedError({
-								message: error.message,
-								detail: error.requiredScope ?? undefined,
-							}),
-						)
-					}
-					if (error?._tag === "DatabaseError" || error?._tag === "ParseError") {
-						return Effect.fail(
-							new InternalServerError({
-								message,
-								detail: String(error),
-							}),
-						)
-					}
-					return Effect.fail(error)
-				}),
-			)
-
 		return {
 			"connectShare.workspace.search": ({ query, organizationId }) =>
-				remapConnectErrors(
-					Effect.gen(function* () {
-						yield* orgResolver.requireScope(
-							organizationId,
-							"organizations:read",
-							"ConnectShare",
-							"workspace.search",
-						)
-						const results = yield* db.makeQuery((execute, input: string) =>
-							execute((client) =>
-								client
-									.select({
-										id: schema.organizationsTable.id,
-										name: schema.organizationsTable.name,
-										slug: schema.organizationsTable.slug,
-										logoUrl: schema.organizationsTable.logoUrl,
-									})
-									.from(schema.organizationsTable)
-									.where(
-										and(
-											isNull(schema.organizationsTable.deletedAt),
-											eq(schema.organizationsTable.isPublic, true),
-											or(
-												ilike(schema.organizationsTable.name, `%${input}%`),
-												ilike(schema.organizationsTable.slug, `%${input}%`),
-											),
+				Effect.gen(function* () {
+					yield* orgResolver.requireScope(
+						organizationId,
+						"organizations:read",
+						"ConnectShare",
+						"workspace.search",
+					)
+					const results = yield* db.makeQuery((execute, input: string) =>
+						execute((client) =>
+							client
+								.select({
+									id: schema.organizationsTable.id,
+									name: schema.organizationsTable.name,
+									slug: schema.organizationsTable.slug,
+									logoUrl: schema.organizationsTable.logoUrl,
+								})
+								.from(schema.organizationsTable)
+								.where(
+									and(
+										isNull(schema.organizationsTable.deletedAt),
+										eq(schema.organizationsTable.isPublic, true),
+										or(
+											ilike(schema.organizationsTable.name, `%${input}%`),
+											ilike(schema.organizationsTable.slug, `%${input}%`),
 										),
-									)
-									.limit(10),
-							),
-						)(query)
+									),
+								)
+								.limit(10),
+						),
+					)(query)
 
-						const filtered = results.filter((result) => result.id !== organizationId)
+					const filtered = results.filter((result) => result.id !== organizationId)
 
-						return new ConnectWorkspaceSearchResponse({
-							data: filtered.map((r) => new ConnectWorkspaceSearchResult(r)),
-						})
-					}),
-					"Database error while searching workspaces",
-				),
+					return new ConnectWorkspaceSearchResponse({
+						data: filtered.map((r) => new ConnectWorkspaceSearchResult(r)),
+					})
+				}).pipe(withRemapDbErrors("ConnectShare", "select"), remapPermissionError),
 
 			"connectShare.invite.create": ({
 				channelId,
@@ -167,8 +131,8 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 				target,
 				allowGuestMemberAdds,
 			}) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 							const channelOption = yield* channelRepo.findById(channelId)
@@ -242,13 +206,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const txid = yield* generateTransactionId()
 							return new ConnectInviteResponse({ data: invite, transactionId: txid })
 						}),
-					),
-					"Database error while creating Hazel Connect invite",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "create"), remapPermissionError),
 
 			"connectShare.invite.accept": ({ inviteId, guestOrganizationId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 							yield* requireAdminOrOwner(guestOrganizationId)
@@ -357,32 +320,21 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								status: "active",
 							})
 
-							const hostMemberRows = yield* db.makeQuery((execute, input: ChannelId) =>
-								execute((client) =>
-									client
-										.select({
-											userId: schema.channelMembersTable.userId,
-										})
-										.from(schema.channelMembersTable)
-										.where(
-											and(
-												eq(schema.channelMembersTable.channelId, input),
-												isNull(schema.channelMembersTable.deletedAt),
-											),
-										),
-								),
-							)(hostChannel.id)
+							const hostMembers = yield* channelMemberRepo.listByChannel(hostChannel.id)
 
-							for (const hostMember of hostMemberRows) {
-								yield* upsertParticipantProjection(
-									invite.conversationId,
-									hostMember.userId,
-									hostChannel.organizationId,
-									currentUser.id,
-								)
-							}
+							yield* Effect.forEach(
+								hostMembers,
+								(hostMember) =>
+									connectConversationService.addParticipantToConversation(
+										invite.conversationId,
+										hostMember.userId,
+										hostChannel.organizationId,
+										currentUser.id,
+									),
+								{ concurrency: 10 },
+							)
 
-							yield* upsertParticipantProjection(
+							yield* connectConversationService.addParticipantToConversation(
 								invite.conversationId,
 								currentUser.id,
 								guestOrganizationId,
@@ -409,13 +361,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								transactionId: txid,
 							})
 						}),
-					),
-					"Database error while accepting Hazel Connect invite",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "create"), remapPermissionError),
 
 			"connectShare.invite.decline": ({ inviteId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const inviteOption = yield* connectInviteRepo.findActiveById(inviteId)
 							if (Option.isNone(inviteOption)) {
@@ -449,13 +400,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							})
 							return { transactionId: yield* generateTransactionId() }
 						}),
-					),
-					"Database error while declining Hazel Connect invite",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "update"), remapPermissionError),
 
 			"connectShare.invite.revoke": ({ inviteId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const inviteOption = yield* connectInviteRepo.findActiveById(inviteId)
 							if (Option.isNone(inviteOption)) {
@@ -483,43 +433,36 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							})
 							return { transactionId: yield* generateTransactionId() }
 						}),
-					),
-					"Database error while revoking Hazel Connect invite",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "update"), remapPermissionError),
 
 			"connectShare.invite.listIncoming": ({ organizationId }) =>
-				remapConnectErrors(
-					Effect.gen(function* () {
-						yield* orgResolver.requireScope(
-							organizationId,
-							"organizations:read",
-							"ConnectShare",
-							"listIncoming",
-						)
-						const invites = yield* connectInviteRepo.listIncomingForOrganization(organizationId)
-						return new ConnectInviteListResponse({ data: invites })
-					}),
-					"Database error while listing incoming Hazel Connect invites",
-				),
+				Effect.gen(function* () {
+					yield* orgResolver.requireScope(
+						organizationId,
+						"organizations:read",
+						"ConnectShare",
+						"listIncoming",
+					)
+					const invites = yield* connectInviteRepo.listIncomingForOrganization(organizationId)
+					return new ConnectInviteListResponse({ data: invites })
+				}).pipe(withRemapDbErrors("ConnectShare", "select"), remapPermissionError),
 
 			"connectShare.invite.listOutgoing": ({ organizationId }) =>
-				remapConnectErrors(
-					Effect.gen(function* () {
-						yield* orgResolver.requireScope(
-							organizationId,
-							"organizations:read",
-							"ConnectShare",
-							"listOutgoing",
-						)
-						const invites = yield* connectInviteRepo.listOutgoingForOrganization(organizationId)
-						return new ConnectInviteListResponse({ data: invites })
-					}),
-					"Database error while listing outgoing Hazel Connect invites",
-				),
+				Effect.gen(function* () {
+					yield* orgResolver.requireScope(
+						organizationId,
+						"organizations:read",
+						"ConnectShare",
+						"listOutgoing",
+					)
+					const invites = yield* connectInviteRepo.listOutgoingForOrganization(organizationId)
+					return new ConnectInviteListResponse({ data: invites })
+				}).pipe(withRemapDbErrors("ConnectShare", "select"), remapPermissionError),
 
 			"connectShare.settings.update": ({ conversationId, allowGuestMemberAdds, status }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const conversationOption = yield* connectConversationRepo.findById(conversationId)
 							if (Option.isNone(conversationOption)) {
@@ -553,13 +496,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const txid = yield* generateTransactionId()
 							return new ConnectConversationResponse({ data: updated, transactionId: txid })
 						}),
-					),
-					"Database error while updating Hazel Connect settings",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "update"), remapPermissionError),
 
 			"connectShare.member.add": ({ channelId, userId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 							const channelOption = yield* channelRepo.findById(channelId)
@@ -629,10 +571,9 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 									joinedAt: new Date(),
 									deletedAt: null,
 								})
-								yield* channelAccessSync.syncChannel(channelId)
 							}
 
-							yield* upsertParticipantProjection(
+							yield* connectConversationService.addParticipantToConversation(
 								conversationId,
 								userId,
 								channel.organizationId,
@@ -654,13 +595,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							const txid = yield* generateTransactionId()
 							return new ConnectParticipantResponse({ data: participant, transactionId: txid })
 						}),
-					),
-					"Database error while adding Hazel Connect participant",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "create"), remapPermissionError),
 
 			"connectShare.member.remove": ({ channelId, userId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const channelOption = yield* channelRepo.findById(channelId)
 							if (Option.isNone(channelOption)) {
@@ -708,13 +648,12 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							}
 							return { transactionId: yield* generateTransactionId() }
 						}),
-					),
-					"Database error while removing Hazel Connect participant",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "delete"), remapPermissionError),
 
 			"connectShare.organization.disconnect": ({ conversationId, organizationId }) =>
-				remapConnectErrors(
-					db.transaction(
+				db
+					.transaction(
 						Effect.gen(function* () {
 							const conversationOption = yield* connectConversationRepo.findById(conversationId)
 							if (Option.isNone(conversationOption)) {
@@ -735,9 +674,8 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 							)
 							return { transactionId: yield* generateTransactionId() }
 						}),
-					),
-					"Database error while disconnecting Hazel Connect organization",
-				),
+					)
+					.pipe(withRemapDbErrors("ConnectShare", "delete"), remapPermissionError),
 		}
 	}),
 )

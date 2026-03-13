@@ -15,6 +15,7 @@ import { Button } from "~/components/ui/button"
 import { EmptyState } from "~/components/ui/empty-state"
 import { organizationCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
+import { getConnectInviteStatusBadge } from "~/lib/connect-shared-channels"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/connect-invites")({
@@ -45,7 +46,7 @@ function ConnectInvitesPage() {
 						<div className="flex items-center gap-2">
 							<h2 className="font-semibold text-fg text-lg">Connect invitations</h2>
 							{pendingInvites.length > 0 && (
-								<span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-xs">
+								<span className="rounded-sm bg-secondary px-2 py-0.5 font-medium text-xs">
 									{pendingInvites.length} pending
 								</span>
 							)}
@@ -111,8 +112,8 @@ function IncomingInviteRow({
 	organizationId,
 }: {
 	invite: {
-		id: string
-		hostOrganizationId: string
+		id: ConnectInviteId
+		hostOrganizationId: OrganizationId
 		status: string
 		createdAt: Date
 	}
@@ -129,19 +130,13 @@ function IncomingInviteRow({
 		(q) =>
 			q
 				.from({ org: organizationCollection })
-				.where(({ org }) => eq(org.id, invite.hostOrganizationId as OrganizationId))
+				.where(({ org }) => eq(org.id, invite.hostOrganizationId))
 				.findOne()
 				.select(({ org }) => ({ name: org.name, slug: org.slug, logoUrl: org.logoUrl })),
 		[invite.hostOrganizationId],
 	)
 
-	const statusBadge = {
-		pending: { intent: "warning" as const, label: "Pending" },
-		accepted: { intent: "success" as const, label: "Accepted" },
-		declined: { intent: "secondary" as const, label: "Declined" },
-		revoked: { intent: "secondary" as const, label: "Revoked" },
-		expired: { intent: "secondary" as const, label: "Expired" },
-	}[invite.status] ?? { intent: "secondary" as const, label: invite.status }
+	const statusBadge = getConnectInviteStatusBadge(invite.status)
 
 	const handleAccept = async () => {
 		if (!organizationId) return
@@ -150,7 +145,7 @@ function IncomingInviteRow({
 			await exitToastAsync(
 				acceptInvite({
 					payload: {
-						inviteId: invite.id as ConnectInviteId,
+						inviteId: invite.id,
 						guestOrganizationId: organizationId,
 					},
 					reactivityKeys: [`connectInvites:incoming:${organizationId}`],
@@ -185,7 +180,7 @@ function IncomingInviteRow({
 			await exitToastAsync(
 				declineInvite({
 					payload: {
-						inviteId: invite.id as ConnectInviteId,
+						inviteId: invite.id,
 					},
 					reactivityKeys: [`connectInvites:incoming:${organizationId}`],
 				}),

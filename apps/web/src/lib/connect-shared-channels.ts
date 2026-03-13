@@ -9,7 +9,7 @@ type ConnectMountLike = {
 
 const isActiveMount = (mount: ConnectMountLike) => mount.isActive && mount.deletedAt === null
 
-const getSharedConversationIds = (mounts: readonly ConnectMountLike[]) => {
+const getSharedConversationIds = (mounts: Iterable<ConnectMountLike>) => {
 	const counts = new Map<ConnectConversationId, number>()
 
 	for (const mount of mounts) {
@@ -26,7 +26,7 @@ const getSharedConversationIds = (mounts: readonly ConnectMountLike[]) => {
 
 export const getSharedConversationIdForChannel = (
 	channelId: ChannelId,
-	mounts: readonly ConnectMountLike[],
+	mounts: Iterable<ConnectMountLike>,
 ): ConnectConversationId | null => {
 	const sharedConversationIds = getSharedConversationIds(mounts)
 
@@ -40,14 +40,17 @@ export const getSharedConversationIdForChannel = (
 	return null
 }
 
-export const getSharedChannelIds = (mounts: readonly ConnectMountLike[]) => {
+export const getSharedChannelIds = (mounts: Iterable<ConnectMountLike>) => {
 	const sharedConversationIds = getSharedConversationIds(mounts)
+	const result = new Set<ChannelId>()
 
-	return new Set<ChannelId>(
-		mounts
-			.filter((mount) => isActiveMount(mount) && sharedConversationIds.has(mount.conversationId))
-			.map((mount) => mount.channelId),
-	)
+	for (const mount of mounts) {
+		if (isActiveMount(mount) && sharedConversationIds.has(mount.conversationId)) {
+			result.add(mount.channelId)
+		}
+	}
+
+	return result
 }
 
 export const getSharedConversationMountsForChannel = <TMount extends ConnectMountLike>(
@@ -59,3 +62,17 @@ export const getSharedConversationMountsForChannel = <TMount extends ConnectMoun
 
 	return mounts.filter((mount) => isActiveMount(mount) && mount.conversationId === conversationId)
 }
+
+export const connectInviteStatusBadge = {
+	pending: { intent: "warning" as const, label: "Pending" },
+	accepted: { intent: "success" as const, label: "Accepted" },
+	declined: { intent: "secondary" as const, label: "Declined" },
+	revoked: { intent: "secondary" as const, label: "Revoked" },
+	expired: { intent: "secondary" as const, label: "Expired" },
+} as const
+
+export const getConnectInviteStatusBadge = (status: string) =>
+	connectInviteStatusBadge[status as keyof typeof connectInviteStatusBadge] ?? {
+		intent: "secondary" as const,
+		label: status,
+	}

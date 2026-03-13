@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_app/$orgSlug/chat/$id")({
 		const channelId = params.id as ChannelId
 		const conversationId = getSharedConversationIdForChannel(
 			channelId,
-			Array.from(connectConversationChannelCollection.state.values()),
+			connectConversationChannelCollection.state.values(),
 		)
 
 		// Create infinite query collection for messages

@@ -42,10 +42,7 @@ import {
 } from "./collections"
 
 const getMountedConversationId = (channelId: ChannelId) =>
-	getSharedConversationIdForChannel(
-		channelId,
-		Array.from(connectConversationChannelCollection.state.values()),
-	)
+	getSharedConversationIdForChannel(channelId, connectConversationChannelCollection.state.values())
 
 /**
  * Retry schedule for message sending:

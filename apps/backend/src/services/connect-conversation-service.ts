@@ -124,22 +124,45 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 				},
 			)
 
-			const getOrganizationIdForChannel = Effect.fn(
-				"ConnectConversationService.getOrganizationIdForChannel",
-			)(function* (channelId: ChannelId) {
-				const channelOption = yield* channelRepo.findById(channelId)
-				if (Option.isNone(channelOption)) {
-					return yield* Effect.succeed(null as OrganizationId | null)
-				}
-				return channelOption.value.organizationId
-			})
-
-			const syncMountChannels = Effect.fn("ConnectConversationService.syncMountChannels")(function* (
-				mounts: ReadonlyArray<{ channelId: ChannelId }>,
+			const addParticipantToConversation = Effect.fn(
+				"ConnectConversationService.addParticipantToConversation",
+			)(function* (
+				conversationId: ConnectConversationId,
+				userId: UserId,
+				homeOrganizationId: OrganizationId,
+				addedBy: UserId,
 			) {
-				yield* Effect.forEach(mounts, (mount) => channelAccessSync.syncChannel(mount.channelId), {
-					concurrency: 10,
-				})
+				const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
+				yield* Effect.forEach(
+					mounts,
+					(mount) =>
+						Effect.gen(function* () {
+							const existing = yield* connectParticipantRepo.findByChannelAndUser(
+								mount.channelId,
+								userId,
+							)
+							if (Option.isSome(existing)) {
+								yield* connectParticipantRepo.update({
+									id: existing.value.id,
+									homeOrganizationId,
+									isExternal: mount.organizationId !== homeOrganizationId,
+									addedBy,
+									deletedAt: null,
+								})
+								return
+							}
+							yield* connectParticipantRepo.insert({
+								conversationId,
+								channelId: mount.channelId,
+								userId,
+								homeOrganizationId,
+								isExternal: mount.organizationId !== homeOrganizationId,
+								addedBy,
+								deletedAt: null,
+							})
+						}),
+					{ concurrency: 10 },
+				)
 			})
 
 			const removeParticipantFromConversation = Effect.fn(
@@ -158,7 +181,9 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 					{ concurrency: 10 },
 				)
 
-				yield* syncMountChannels(mounts)
+				yield* Effect.forEach(mounts, (mount) => channelAccessSync.syncChannel(mount.channelId), {
+					concurrency: 10,
+				})
 			})
 
 			const disconnectOrganization = Effect.fn("ConnectConversationService.disconnectOrganization")(
@@ -204,7 +229,11 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 							status: "disconnected",
 							deletedAt: new Date(),
 						})
-						yield* syncMountChannels(mounts)
+						yield* Effect.forEach(
+							mounts,
+							(mount) => channelAccessSync.syncChannel(mount.channelId),
+							{ concurrency: 10 },
+						)
 						return
 					}
 
@@ -228,7 +257,9 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 						{ concurrency: 10 },
 					)
 
-					yield* syncMountChannels(mounts)
+					yield* Effect.forEach(mounts, (mount) => channelAccessSync.syncChannel(mount.channelId), {
+						concurrency: 10,
+					})
 				},
 			)
 
@@ -238,7 +269,7 @@ export class ConnectConversationService extends Effect.Service<ConnectConversati
 				getMountForChannel,
 				listMountedChannels,
 				canAccessConversation,
-				getOrganizationIdForChannel,
+				addParticipantToConversation,
 				removeParticipantFromConversation,
 				disconnectOrganization,
 			} as const

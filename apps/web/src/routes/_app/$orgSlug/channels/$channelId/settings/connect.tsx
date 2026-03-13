@@ -23,7 +23,10 @@ import {
 	organizationCollection,
 } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
-import { getSharedConversationMountsForChannel } from "~/lib/connect-shared-channels"
+import {
+	getConnectInviteStatusBadge,
+	getSharedConversationMountsForChannel,
+} from "~/lib/connect-shared-channels"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/settings/connect")({
@@ -282,13 +285,7 @@ function InviteRow({
 	const [isRevoking, setIsRevoking] = useState(false)
 	const revokeInvite = useAtomSet(revokeConnectInviteMutation, { mode: "promiseExit" })
 
-	const statusBadge = {
-		pending: { intent: "warning" as const, label: "Pending" },
-		accepted: { intent: "success" as const, label: "Accepted" },
-		declined: { intent: "secondary" as const, label: "Declined" },
-		revoked: { intent: "secondary" as const, label: "Revoked" },
-		expired: { intent: "secondary" as const, label: "Expired" },
-	}[invite.status] ?? { intent: "secondary" as const, label: invite.status }
+	const statusBadge = getConnectInviteStatusBadge(invite.status)
 
 	const handleRevoke = async () => {
 		setIsRevoking(true)

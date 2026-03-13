@@ -22,7 +22,7 @@ interface ShareChannelModalProps {
 }
 
 interface WorkspaceResult {
-	id: string
+	id: OrganizationId
 	name: string
 	slug: string | null
 	logoUrl: string | null
@@ -99,7 +99,7 @@ export function ShareChannelModal({
 			createInvite({
 				payload: {
 					channelId,
-					guestOrganizationId: selectedWorkspace?.id as OrganizationId | undefined,
+					guestOrganizationId: selectedWorkspace?.id,
 					target: { kind: "slug", value: targetValue },
 					allowGuestMemberAdds,
 				},

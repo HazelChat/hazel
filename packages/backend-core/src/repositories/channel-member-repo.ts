@@ -81,10 +81,26 @@ export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("Chan
 				)({ userId1, userId2, organizationId }, tx)
 				.pipe(Effect.map((results) => Option.fromNullable(results[0]?.channel)))
 
+		const listByChannel = (channelId: ChannelId, tx?: TxFn) =>
+			db.makeQuery((execute, input: ChannelId) =>
+				execute((client) =>
+					client
+						.select()
+						.from(schema.channelMembersTable)
+						.where(
+							and(
+								eq(schema.channelMembersTable.channelId, input),
+								isNull(schema.channelMembersTable.deletedAt),
+							),
+						),
+				),
+			)(channelId, tx)
+
 		return {
 			...baseRepo,
 			findByChannelAndUser,
 			findExistingSingleDmChannel,
+			listByChannel,
 		}
 	}),
 }) {}
