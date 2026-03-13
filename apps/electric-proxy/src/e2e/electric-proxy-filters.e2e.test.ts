@@ -1073,6 +1073,8 @@ const buildBotVisibilitySpecs = (f: Fixture): VisibilitySpec<BotAllowedTable>[] 
 			f.ids.messages.publicAVisible,
 			f.ids.messages.privateAHidden,
 			f.ids.messages.privateMemberAVisible,
+			f.ids.messages.connectConversationVisible,
+			f.ids.messages.connectConversationBlocked,
 		],
 		blockedIds: [f.ids.messages.publicBHidden, f.ids.messages.publicADeleted],
 		strict: true,

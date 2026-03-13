@@ -250,19 +250,17 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("messages", () =>
-			Effect.succeed(
-				buildChannelAccessClause(
-					user.internalUserId,
-					schema.messagesTable.channelId,
-					schema.messagesTable.deletedAt,
-				),
-			),
+			Effect.succeed({
+				whereClause: `"${schema.messagesTable.deletedAt.name}" IS NULL AND EXISTS (SELECT 1 FROM channel_access ca LEFT JOIN connect_conversation_channels ccc ON ccc."channelId" = ca."channelId" AND ccc."deletedAt" IS NULL WHERE ca."userId" = $1 AND (("messages"."${schema.messagesTable.conversationId.name}" IS NOT NULL AND ccc."conversationId" = "messages"."${schema.messagesTable.conversationId.name}") OR ("messages"."${schema.messagesTable.conversationId.name}" IS NULL AND ca."channelId" = "messages"."${schema.messagesTable.channelId.name}")))`,
+				params: [user.internalUserId],
+			}),
 		),
 
 		Match.when("message_reactions", () =>
-			Effect.succeed(
-				buildChannelAccessClause(user.internalUserId, schema.messageReactionsTable.channelId),
-			),
+			Effect.succeed({
+				whereClause: `EXISTS (SELECT 1 FROM channel_access ca LEFT JOIN connect_conversation_channels ccc ON ccc."channelId" = ca."channelId" AND ccc."deletedAt" IS NULL WHERE ca."userId" = $1 AND (("message_reactions"."${schema.messageReactionsTable.conversationId.name}" IS NOT NULL AND ccc."conversationId" = "message_reactions"."${schema.messageReactionsTable.conversationId.name}") OR ("message_reactions"."${schema.messageReactionsTable.conversationId.name}" IS NULL AND ca."channelId" = "message_reactions"."${schema.messageReactionsTable.channelId.name}")))`,
+				params: [user.internalUserId],
+			}),
 		),
 
 		Match.when("attachments", () =>
