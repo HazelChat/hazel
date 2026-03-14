@@ -238,4 +238,10 @@ export const ENV_TEMPLATES = {
 		IS_DEV: "true",
 		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
 	}),
+
+	botGateway: () => ({
+		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+		REDIS_URL: "redis://localhost:6380",
+		IS_DEV: "true",
+	}),
 }
