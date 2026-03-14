@@ -486,6 +486,7 @@ export const setupCommand = Command.make(
 
 			yield* envWriter.writeEnvFile("apps/web/.env", ENV_TEMPLATES.web(config), dryRun)
 			yield* envWriter.writeEnvFile("apps/backend/.env", ENV_TEMPLATES.backend(config), dryRun)
+			yield* envWriter.writeEnvFile("apps/bot-gateway/.env", ENV_TEMPLATES.botGateway(), dryRun)
 			yield* envWriter.writeEnvFile("apps/cluster/.env", ENV_TEMPLATES.cluster(config), dryRun)
 			yield* envWriter.writeEnvFile(
 				"apps/electric-proxy/.env",
