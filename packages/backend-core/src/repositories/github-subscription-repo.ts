@@ -2,12 +2,11 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class GitHubSubscriptionRepo extends Effect.Service<GitHubSubscriptionRepo>()(
+export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.githubSubscriptionsTable,

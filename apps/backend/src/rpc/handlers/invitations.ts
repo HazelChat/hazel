@@ -87,7 +87,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 									}).pipe(
 										// Note: catchAll is intentional here for batch processing -
 										// we want to convert ALL errors to InvitationBatchResult entries
-										Effect.catchAll((error) =>
+										Effect.catch((error) =>
 											Effect.succeed(
 												new InvitationBatchResult({
 													email: invite.email,

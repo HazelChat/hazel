@@ -1,4 +1,4 @@
-import { FetchHttpClient } from "@effect/platform"
+import { FetchHttpClient } from "effect/unstable/http"
 import { randomUUID } from "node:crypto"
 import { Database, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
@@ -36,7 +36,7 @@ type WorkerOptions = {
 const runServiceEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
 	worker: DiscordSyncWorker,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ) =>
 	Effect.runPromise(
 		Effect.scoped(

@@ -2,18 +2,17 @@
  * @since 1.0.0
  */
 import type { HttpClient } from "@effect/platform/HttpClient"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import * as ServiceMap from "effect/ServiceMap"
 
 /**
  * @since 1.0.0
  * @category Context
  */
-export class OpenRouterConfig extends Context.Tag("@effect/ai-openrouter/OpenRouterConfig")<
-	OpenRouterConfig,
+export class OpenRouterConfig extends ServiceMap.Service<OpenRouterConfig,
 	OpenRouterConfig.Service
->() {
+>()("@effect/ai-openrouter/OpenRouterConfig") {
 	/**
 	 * @since 1.0.0
 	 */

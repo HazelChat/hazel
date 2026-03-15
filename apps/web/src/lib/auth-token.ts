@@ -33,9 +33,9 @@ const refreshDeferredRef = Ref.unsafeMake<Deferred.Deferred<boolean> | null>(nul
 // Platform-specific layers
 // ============================================================================
 
-const webStorageLive = WebTokenStorage.Default
-const desktopStorageLive = TokenStorage.Default
-const tokenExchangeLive = TokenExchange.Default
+const webStorageLive = WebTokenStorage.layer
+const desktopStorageLive = TokenStorage.layer
+const tokenExchangeLive = TokenExchange.layer
 
 // ============================================================================
 // Error Classification
@@ -117,7 +117,7 @@ const storeTokens = Effect.fn("storeTokens")(function* (
  * Returns null if not authenticated.
  */
 const getAccessTokenEffect: Effect.Effect<string | null> = readAccessToken().pipe(
-	Effect.catchAll(() => Effect.succeed(null)),
+	Effect.catch(() => Effect.succeed(null)),
 	Effect.withSpan("getAccessToken"),
 )
 
@@ -133,7 +133,7 @@ const waitForRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	}
 	return true
 }).pipe(
-	Effect.catchAll(() => Effect.succeed(true)),
+	Effect.catch(() => Effect.succeed(true)),
 	Effect.withSpan("waitForRefresh"),
 )
 
@@ -157,7 +157,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 
 	// Get refresh token to check if we can refresh
 	const refreshTokenOpt = yield* readRefreshToken().pipe(
-		Effect.catchAll(() => Effect.succeed(Option.none<string>())),
+		Effect.catch(() => Effect.succeed(Option.none<string>())),
 	)
 
 	if (Option.isNone(refreshTokenOpt)) {
@@ -179,7 +179,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 
 			const refreshResult = yield* tokenExchange.refreshToken(refreshTokenOpt.value).pipe(
 				Effect.map((tokens) => ({ success: true as const, tokens })),
-				Effect.catchAll((error) => Effect.succeed({ success: false as const, error })),
+				Effect.catch((error) => Effect.succeed({ success: false as const, error })),
 			)
 
 			if (refreshResult.success) {
@@ -247,7 +247,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	yield* attemptRefresh(1).pipe(
 		Effect.provide(tokenExchangeLive),
 		Effect.tap((result) => Ref.set(resultRef, result)),
-		Effect.catchAll((error) => {
+		Effect.catch((error) => {
 			console.error(`[auth-token:${tag}] Unexpected error during refresh:`, error)
 			return Effect.void
 		}),
@@ -263,7 +263,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 
 	return yield* Ref.get(resultRef)
 }).pipe(
-	Effect.catchAll(() => Effect.succeed(false)),
+	Effect.catch(() => Effect.succeed(false)),
 	Effect.withSpan("forceRefresh"),
 )
 

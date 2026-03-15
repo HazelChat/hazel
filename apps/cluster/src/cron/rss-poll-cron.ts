@@ -1,5 +1,5 @@
-import * as ClusterCron from "@effect/cluster/ClusterCron"
-import { WorkflowEngine } from "@effect/workflow"
+import * as ClusterCron from "effect/unstable/cluster/ClusterCron"
+import { WorkflowEngine } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, lt, schema, sql } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import * as Cron from "effect/Cron"
@@ -81,7 +81,7 @@ export const RssPollCronLayer = ClusterCron.make({
 						discard: true,
 					})
 					.pipe(
-						Effect.catchAll((err) =>
+						Effect.catch((err) =>
 							Effect.gen(function* () {
 								yield* Effect.logWarning(
 									`Failed to execute RssFeedPollWorkflow for subscription ${sub.id}`,
@@ -104,7 +104,7 @@ export const RssPollCronLayer = ClusterCron.make({
 											.where(eq(schema.rssSubscriptionsTable.id, sub.id)),
 									)
 									.pipe(
-										Effect.catchAll((dbErr) =>
+										Effect.catch((dbErr) =>
 											Effect.logWarning("Failed to increment RSS error counter", {
 												subscriptionId: sub.id,
 												error: String(dbErr),

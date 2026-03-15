@@ -2,11 +2,10 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { OrganizationId } from "@hazel/schema"
 import { Channel } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class ChannelRepo extends ServiceMap.Service<ChannelRepo>()("ChannelRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.channelsTable, Channel.Model, {
 			idColumn: "id",
 			name: "Channel",
@@ -37,4 +36,6 @@ export class ChannelRepo extends Effect.Service<ChannelRepo>()("ChannelRepo", {
 			findByOrgAndName,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

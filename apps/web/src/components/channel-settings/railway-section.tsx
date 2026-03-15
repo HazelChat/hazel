@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { formatDistanceToNow } from "date-fns"
 import { Exit } from "effect"

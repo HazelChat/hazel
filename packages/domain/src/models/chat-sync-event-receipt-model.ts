@@ -3,10 +3,10 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncReceiptSource = Schema.Literal("hazel", "external")
+export const ChatSyncReceiptSource = Schema.Literals(["hazel", "external"])
 export type ChatSyncReceiptSource = Schema.Schema.Type<typeof ChatSyncReceiptSource>
 
-export const ChatSyncReceiptStatus = Schema.Literal("processed", "ignored", "failed")
+export const ChatSyncReceiptStatus = Schema.Literals(["processed", "ignored", "failed"])
 export type ChatSyncReceiptStatus = Schema.Schema.Type<typeof ChatSyncReceiptStatus>
 
 export class Model extends M.Class<Model>("ChatSyncEventReceipt")({

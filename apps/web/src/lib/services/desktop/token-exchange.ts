@@ -4,17 +4,15 @@
  * @description HTTP client for token exchange using Effect HttpClient with Schema validation
  */
 
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain/errors"
 import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
-import { Duration, Effect, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 
-export class TokenExchange extends Effect.Service<TokenExchange>()("TokenExchange", {
-	accessors: true,
-	dependencies: [FetchHttpClient.layer],
-	effect: Effect.gen(function* () {
+export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExchange", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 		const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -173,6 +171,10 @@ export class TokenExchange extends Effect.Service<TokenExchange>()("TokenExchang
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+
 	/**
 	 * Mock token response for testing
 	 */

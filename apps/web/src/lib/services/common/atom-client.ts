@@ -1,4 +1,4 @@
-import { AtomHttpApi } from "@effect-atom/atom-react"
+import { AtomHttpApi } from "@effect/atom-react"
 import { HazelApi } from "@hazel/domain/http"
 import { CustomFetchLive } from "./api-client"
 

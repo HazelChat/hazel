@@ -76,7 +76,7 @@ export const electricFetchClient = async (
 			while: (error) => error instanceof Response && shouldRetry(error),
 		}),
 		// If all retries exhausted, return the last failed response
-		Effect.catchAll((error) => (error instanceof Response ? Effect.succeed(error) : Effect.fail(error))),
+		Effect.catch((error) => (error instanceof Response ? Effect.succeed(error) : Effect.fail(error))),
 	)
 
 	return runtime.runPromise(withRetry)

@@ -1,12 +1,12 @@
 import { MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { ErrorUtils, PermissionError, policy } from "@hazel/domain"
 import type { MessageId, MessageReactionId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { ConnectConversationService } from "../services/connect-conversation-service"
 import { OrgResolver } from "../services/org-resolver"
 
-export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>()(
+export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPolicy>()(
 	"MessageReactionPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -99,12 +99,12 @@ export class MessageReactionPolicy extends Effect.Service<MessageReactionPolicy>
 
 			return { canCreate, canDelete, canUpdate, canList } as const
 		}),
-		dependencies: [
-			MessageReactionRepo.Default,
-			MessageRepo.Default,
-			OrgResolver.Default,
-			ConnectConversationService.Default,
-		],
-		accessors: true,
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(MessageReactionRepo.layer),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(OrgResolver.layer),
+		Layer.provide(ConnectConversationService.layer),
+	)
+}

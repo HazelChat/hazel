@@ -1,4 +1,4 @@
-import { Workflow } from "@effect/workflow"
+import { Workflow } from "effect/unstable/workflow"
 import { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { ChannelType } from "../../models/channel-model.ts"

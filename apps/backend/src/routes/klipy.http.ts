@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpClient } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpClient } from "effect/unstable/http"
 import { KlipyApiError } from "@hazel/domain/http"
 import { Config, Effect, Redacted, Schema } from "effect"
 import { HazelApi } from "../api"

@@ -2,7 +2,7 @@ import { BotInstallationRepo, BotRepo, OrganizationMemberRepo, UserRepo } from "
 import { Integrations } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 /**
  * Integration Bot Service
@@ -10,9 +10,8 @@ import { Effect, Option } from "effect"
  * Manages global bot users for integration providers.
  * Each provider has a single shared bot user across all organizations.
  */
-export class IntegrationBotService extends Effect.Service<IntegrationBotService>()("IntegrationBotService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class IntegrationBotService extends ServiceMap.Service<IntegrationBotService>()("IntegrationBotService", {
+	make: Effect.gen(function* () {
 		const userRepo = yield* UserRepo
 		const orgMemberRepo = yield* OrganizationMemberRepo
 		const botRepo = yield* BotRepo
@@ -182,10 +181,11 @@ export class IntegrationBotService extends Effect.Service<IntegrationBotService>
 
 		return { getOrCreateBotUser, getOrCreateWebhookBotUser, addBotToOrg }
 	}),
-	dependencies: [
-		UserRepo.Default,
-		OrganizationMemberRepo.Default,
-		BotRepo.Default,
-		BotInstallationRepo.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(BotRepo.layer),
+		Layer.provide(BotInstallationRepo.layer),
+	)
+}

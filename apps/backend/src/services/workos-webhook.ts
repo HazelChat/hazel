@@ -1,14 +1,14 @@
 import * as crypto from "node:crypto"
-import { Config, DateTime, Duration, Effect, Schema } from "effect"
+import { ServiceMap, Config, DateTime, Duration, Effect, Schema } from "effect"
 
 // Error types
-export class WebhookVerificationError extends Schema.TaggedError<WebhookVerificationError>(
+export class WebhookVerificationError extends Schema.TaggedErrorClass<WebhookVerificationError>(
 	"WebhookVerificationError",
 )("WebhookVerificationError", {
 	message: Schema.String,
 }) {}
 
-export class WebhookTimestampError extends Schema.TaggedError<WebhookTimestampError>("WebhookTimestampError")(
+export class WebhookTimestampError extends Schema.TaggedErrorClass<WebhookTimestampError>("WebhookTimestampError")(
 	"WebhookTimestampError",
 	{
 		message: Schema.String,
@@ -24,9 +24,8 @@ export interface WorkOSWebhookSignature {
 
 const DEFAULT_TIMESTAMP_TOLERANCE = Duration.minutes(5)
 
-export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>()("WorkOSWebhookVerifier", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class WorkOSWebhookVerifier extends ServiceMap.Service<WorkOSWebhookVerifier>()("WorkOSWebhookVerifier", {
+	make: Effect.gen(function* () {
 		// Get webhook secret from config
 		const webhookSecret = yield* Config.string("WORKOS_WEBHOOK_SECRET")
 
@@ -159,4 +158,6 @@ export class WorkOSWebhookVerifier extends Effect.Service<WorkOSWebhookVerifier>
 			computeSignature,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

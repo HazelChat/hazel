@@ -4,7 +4,7 @@
  * @description Effect Atom-based state management for web OAuth callback handling (JWT flow)
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import {
 	MissingAuthCodeError,
 	OAuthCallbackError,
@@ -62,8 +62,8 @@ export const webCallbackStatusAtom = Atom.make<WebCallbackStatus>({ _tag: "idle"
 // Layers
 // ============================================================================
 
-const WebTokenStorageLive = WebTokenStorage.Default
-const TokenExchangeLive = TokenExchange.Default
+const WebTokenStorageLive = WebTokenStorage.layer
+const TokenExchangeLive = TokenExchange.layer
 
 // ============================================================================
 // Error Handling
@@ -231,7 +231,7 @@ const handleCallback = (params: WebCallbackParams) =>
 					error,
 				})
 			}),
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				console.error("[web-callback] Token exchange failed:", error)
 				return Effect.succeed({
 					success: false as const,

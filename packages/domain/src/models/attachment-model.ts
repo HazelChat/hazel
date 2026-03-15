@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const AttachmentStatus = Schema.Literal("uploading", "complete", "failed")
+export const AttachmentStatus = Schema.Literals(["uploading", "complete", "failed"])
 export type AttachmentStatus = Schema.Schema.Type<typeof AttachmentStatus>
 
 export class Model extends M.Class<Model>("Attachment")({

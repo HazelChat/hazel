@@ -1,4 +1,4 @@
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { getBrandfetchIcon } from "~/lib/integrations/__data"
 import { resolvedThemeAtom } from "../theme-provider"
 

@@ -3,17 +3,15 @@ import { WorkOSClientId, WorkOSOrganizationId, WorkOSUserId } from "@hazel/schem
 import type { Organization, User as WorkOSUser } from "@workos-inc/node"
 import { OrganizationFetchError } from "../errors.ts"
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
-import { Effect, Layer, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 import { AuthConfig } from "../config.ts"
 
 /**
  * WorkOS client wrapper with Effect integration.
  * Provides type-safe access to WorkOS SDK operations.
  */
-export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/WorkOSClient", {
-	accessors: true,
-	dependencies: [AuthConfig.Default],
-	effect: Effect.gen(function* () {
+export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/auth/WorkOSClient", {
+	make: Effect.gen(function* () {
 		const config = yield* AuthConfig
 		const client = new WorkOSNodeAPI(config.workosApiKey, {
 			clientId: config.workosClientId,
@@ -56,6 +54,10 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("@hazel/auth/Wo
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(AuthConfig.layer),
+	)
+
 	/** Default mock user for tests */
 	static readonly mockUser: WorkOSUser = {
 		id: Schema.decodeUnknownSync(WorkOSUserId)("user_01ABC123"),

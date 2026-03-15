@@ -1,4 +1,4 @@
-import { Workflow } from "@effect/workflow"
+import { Workflow } from "effect/unstable/workflow"
 import { Schema } from "effect"
 import { GitHubInstallationWorkflowError } from "../activities/github-installation-activities.ts"
 
@@ -17,12 +17,12 @@ export const GitHubInstallationWorkflow = Workflow.make({
 		// GitHub delivery ID (unique per webhook delivery) - used for idempotency
 		deliveryId: Schema.String,
 		// Installation action type
-		action: Schema.Literal("created", "deleted", "suspend", "unsuspend"),
+		action: Schema.Literals(["created", "deleted", "suspend", "unsuspend"]),
 		// GitHub App installation ID - used to find the connection
 		installationId: Schema.Number,
 		// Account where the app is installed
 		accountLogin: Schema.String,
-		accountType: Schema.Literal("User", "Organization"),
+		accountType: Schema.Literals(["User", "Organization"]),
 		// User who performed the action
 		senderLogin: Schema.String,
 	},

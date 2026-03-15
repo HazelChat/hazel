@@ -4,7 +4,7 @@
  * @description Receives OAuth callback from WorkOS and forwards to desktop app's local server
  */
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { DesktopAuthState } from "@hazel/domain/http"
 import { createFileRoute } from "@tanstack/react-router"
 import { Schema } from "effect"

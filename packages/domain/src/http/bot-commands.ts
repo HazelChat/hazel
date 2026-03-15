@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -18,7 +18,7 @@ export const BotCommandArgumentSchema = Schema.Struct({
 	description: Schema.NullishOr(Schema.String),
 	required: Schema.Boolean,
 	placeholder: Schema.NullishOr(Schema.String),
-	type: Schema.Literal("string", "number", "user", "channel"),
+	type: Schema.Literals(["string", "number", "user", "channel"]),
 })
 export type BotCommandArgumentSchema = typeof BotCommandArgumentSchema.Type
 
@@ -65,16 +65,16 @@ export class BotMeResponse extends Schema.Class<BotMeResponse>("BotMeResponse")(
 
 // ============ ERROR TYPES ============
 
-export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("BotNotFoundError", {
+export class BotNotFoundError extends Schema.TaggedErrorClass<BotNotFoundError>()("BotNotFoundError", {
 	botId: BotId,
 }) {}
 
-export class BotNotInstalledError extends Schema.TaggedError<BotNotInstalledError>()("BotNotInstalledError", {
+export class BotNotInstalledError extends Schema.TaggedErrorClass<BotNotInstalledError>()("BotNotInstalledError", {
 	botId: BotId,
 	orgId: OrganizationId,
 }) {}
 
-export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFoundError>()(
+export class BotCommandNotFoundError extends Schema.TaggedErrorClass<BotCommandNotFoundError>()(
 	"BotCommandNotFoundError",
 	{
 		botId: BotId,
@@ -82,7 +82,7 @@ export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFou
 	},
 ) {}
 
-export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecutionError>()(
+export class BotCommandExecutionError extends Schema.TaggedErrorClass<BotCommandExecutionError>()(
 	"BotCommandExecutionError",
 	{
 		commandName: Schema.String,
@@ -99,7 +99,7 @@ export class IntegrationTokenResponse extends Schema.Class<IntegrationTokenRespo
 	accessToken: Schema.String,
 	provider: IntegrationProvider,
 	expiresAt: Schema.NullOr(Schema.String),
-	settings: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+	settings: Schema.optional(Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown))),
 }) {}
 
 export class EnabledIntegrationsResponse extends Schema.Class<EnabledIntegrationsResponse>(
@@ -120,7 +120,7 @@ export class UpdateBotSettingsResponse extends Schema.Class<UpdateBotSettingsRes
 	success: Schema.Boolean,
 }) {}
 
-export class IntegrationNotAllowedError extends Schema.TaggedError<IntegrationNotAllowedError>()(
+export class IntegrationNotAllowedError extends Schema.TaggedErrorClass<IntegrationNotAllowedError>()(
 	"IntegrationNotAllowedError",
 	{
 		botId: BotId,
@@ -134,9 +134,10 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// SSE stream for bot commands (bot token auth)
 	// This endpoint uses bot token authentication, not user auth
 	.add(
-		HttpApiEndpoint.get("streamCommands", `/stream`)
-			.addError(UnauthorizedError)
-			.annotateContext(
+		HttpApiEndpoint.get("streamCommands", `/stream`, {
+			error: UnauthorizedError,
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Stream Bot Commands",
 					description: "SSE stream for receiving bot commands (used by Bot SDK)",
@@ -148,10 +149,11 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// Get current bot info (for bot token validation)
 	// This endpoint uses bot token authentication, not user auth
 	.add(
-		HttpApiEndpoint.get("getBotMe", `/me`)
-			.addSuccess(BotMeResponse)
-			.addError(UnauthorizedError)
-			.annotateContext(
+		HttpApiEndpoint.get("getBotMe", `/me`, {
+			success: BotMeResponse,
+			error: UnauthorizedError,
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get Bot Info",
 					description: "Get current bot info from token (used by Bot SDK for authentication)",
@@ -163,13 +165,12 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// Sync commands from bot (called by Bot SDK on startup)
 	// This endpoint uses bot token authentication, not user auth
 	.add(
-		HttpApiEndpoint.post("syncCommands", `/sync`)
-			.addSuccess(SyncBotCommandsResponse)
-			.addError(BotNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPayload(SyncBotCommandsRequest)
-			.annotateContext(
+		HttpApiEndpoint.post("syncCommands", `/sync`, {
+			payload: SyncBotCommandsRequest,
+			success: SyncBotCommandsResponse,
+			error: [BotNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Sync Bot Commands",
 					description: "Sync slash commands from a bot (called by Bot SDK on startup)",
@@ -180,23 +181,24 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	)
 	// Execute a bot command (frontend calls this - requires user auth)
 	.add(
-		HttpApiEndpoint.post("executeBotCommand", `/:orgId/bots/:botId/commands/:commandName/execute`)
-			.addSuccess(BotCommandExecutionAccepted)
-			.addError(BotNotFoundError)
-			.addError(BotNotInstalledError)
-			.addError(BotCommandNotFoundError)
-			.addError(BotCommandExecutionError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-					botId: BotId,
-					commandName: Schema.String,
-				}),
-			)
-			.setPayload(ExecuteBotCommandRequest)
-			.annotateContext(
+		HttpApiEndpoint.post("executeBotCommand", `/:orgId/bots/:botId/commands/:commandName/execute`, {
+			params: {
+				orgId: OrganizationId,
+				botId: BotId,
+				commandName: Schema.String,
+			},
+			payload: ExecuteBotCommandRequest,
+			success: BotCommandExecutionAccepted,
+			error: [
+				BotNotFoundError,
+				BotNotInstalledError,
+				BotCommandNotFoundError,
+				BotCommandExecutionError,
+				UnauthorizedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Execute Bot Command",
 					description: "Execute a slash command for a bot",
@@ -209,20 +211,21 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// Get integration token (bot token auth)
 	// Bot must have the provider in its allowedIntegrations and be installed in the org
 	.add(
-		HttpApiEndpoint.get("getIntegrationToken", `/integrations/:orgId/:provider/token`)
-			.addSuccess(IntegrationTokenResponse)
-			.addError(UnauthorizedError)
-			.addError(BotNotInstalledError)
-			.addError(IntegrationNotConnectedError)
-			.addError(IntegrationNotAllowedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-					provider: IntegrationProvider,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("getIntegrationToken", `/integrations/:orgId/:provider/token`, {
+			params: {
+				orgId: OrganizationId,
+				provider: IntegrationProvider,
+			},
+			success: IntegrationTokenResponse,
+			error: [
+				UnauthorizedError,
+				BotNotInstalledError,
+				IntegrationNotConnectedError,
+				IntegrationNotAllowedError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get Integration Token",
 					description:
@@ -235,17 +238,14 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// Get enabled integrations (bot token auth)
 	// Returns the intersection of bot's allowedIntegrations and org's active connections
 	.add(
-		HttpApiEndpoint.get("getEnabledIntegrations", `/integrations/:orgId/enabled`)
-			.addSuccess(EnabledIntegrationsResponse)
-			.addError(UnauthorizedError)
-			.addError(BotNotInstalledError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.annotateContext(
+		HttpApiEndpoint.get("getEnabledIntegrations", `/integrations/:orgId/enabled`, {
+			params: {
+				orgId: OrganizationId,
+			},
+			success: EnabledIntegrationsResponse,
+			error: [UnauthorizedError, BotNotInstalledError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Get Enabled Integrations",
 					description:
@@ -258,12 +258,12 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 	// Update bot settings (bot token auth)
 	// Allows bots to update their own settings like mentionable flag
 	.add(
-		HttpApiEndpoint.patch("updateBotSettings", `/settings`)
-			.addSuccess(UpdateBotSettingsResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPayload(UpdateBotSettingsRequest)
-			.annotateContext(
+		HttpApiEndpoint.patch("updateBotSettings", `/settings`, {
+			payload: UpdateBotSettingsRequest,
+			success: UpdateBotSettingsResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Update Bot Settings",
 					description:

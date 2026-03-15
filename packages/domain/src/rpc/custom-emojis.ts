@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { CustomEmojiId, OrganizationId, TransactionId } from "@hazel/schema"
@@ -18,7 +18,7 @@ export class CustomEmojiResponse extends Schema.Class<CustomEmojiResponse>("Cust
 /**
  * Error thrown when a custom emoji is not found.
  */
-export class CustomEmojiNotFoundError extends Schema.TaggedError<CustomEmojiNotFoundError>()(
+export class CustomEmojiNotFoundError extends Schema.TaggedErrorClass<CustomEmojiNotFoundError>()(
 	"CustomEmojiNotFoundError",
 	{
 		customEmojiId: CustomEmojiId,
@@ -28,7 +28,7 @@ export class CustomEmojiNotFoundError extends Schema.TaggedError<CustomEmojiNotF
 /**
  * Error thrown when a custom emoji name conflicts with an existing one in the same org.
  */
-export class CustomEmojiNameConflictError extends Schema.TaggedError<CustomEmojiNameConflictError>()(
+export class CustomEmojiNameConflictError extends Schema.TaggedErrorClass<CustomEmojiNameConflictError>()(
 	"CustomEmojiNameConflictError",
 	{
 		name: Schema.String,
@@ -40,7 +40,7 @@ export class CustomEmojiNameConflictError extends Schema.TaggedError<CustomEmoji
  * Error thrown when a custom emoji with the same name exists but was soft-deleted.
  * Contains the deleted emoji's info so the frontend can offer to restore it.
  */
-export class CustomEmojiDeletedExistsError extends Schema.TaggedError<CustomEmojiDeletedExistsError>()(
+export class CustomEmojiDeletedExistsError extends Schema.TaggedErrorClass<CustomEmojiDeletedExistsError>()(
 	"CustomEmojiDeletedExistsError",
 	{
 		customEmojiId: CustomEmojiId,
@@ -70,12 +70,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			imageUrl: Schema.String,
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNameConflictError,
 			CustomEmojiDeletedExistsError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -98,12 +98,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			name: Schema.optional(Schema.String),
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNotFoundError,
 			CustomEmojiNameConflictError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -122,7 +122,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	Rpc.make("customEmoji.delete", {
 		payload: Schema.Struct({ id: CustomEmojiId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(CustomEmojiNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([CustomEmojiNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -145,12 +145,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			imageUrl: Schema.optional(Schema.String),
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNotFoundError,
 			CustomEmojiNameConflictError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),

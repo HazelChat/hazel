@@ -23,13 +23,13 @@ export type BotAccessContext = {
 /**
  * Cache lookup error - when we fail to fetch from database
  */
-export class AccessContextLookupError extends Schema.TaggedError<AccessContextLookupError>()(
+export class AccessContextLookupError extends Schema.TaggedErrorClass<AccessContextLookupError>()(
 	"AccessContextLookupError",
 	{
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 		entityId: Schema.String,
-		entityType: Schema.Literal("user", "bot"),
+		entityType: Schema.Literals(["user", "bot"]),
 	},
 ) {}
 

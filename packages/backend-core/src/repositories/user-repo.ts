@@ -2,11 +2,10 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { UserId, WorkOSUserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Option, type Schema } from "effect"
 
-export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.usersTable, User.Model, {
 			idColumn: "id",
 			name: "User",
@@ -119,4 +118,6 @@ export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 			bulkUpsertByExternalId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

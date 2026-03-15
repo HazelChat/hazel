@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Command } from "@effect/cli"
+import { Command } from "effect/unstable/cli"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
 import { existsSync, readFileSync } from "fs"
@@ -52,11 +52,11 @@ const cli = Command.run(rootCommand, {
 })
 
 const ServicesLive = Layer.mergeAll(
-	SecretGenerator.Default,
-	CredentialValidator.Default,
-	EnvWriter.Default,
-	Doctor.Default,
-	CertManager.Default,
+	SecretGenerator.layer,
+	CredentialValidator.layer,
+	EnvWriter.layer,
+	Doctor.layer,
+	CertManager.layer,
 )
 
 cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

@@ -1,4 +1,4 @@
-import { Atom, Result } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { and, count, eq, isNull } from "@tanstack/db"
 import {

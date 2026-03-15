@@ -12,7 +12,6 @@
 		"test": "npx vitest --run"
 	},
 	"dependencies": {
-		"@effect-atom/atom": "catalog:effect",
 		"@electric-sql/client": "1.5.12",
 		"@standard-schema/spec": "^1.1.0",
 		"@tanstack/db": "0.5.31",
@@ -22,7 +21,6 @@
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
 		"@vitest/coverage-istanbul": "^4.0.17",
 		"typescript": "^5.9.3"
 	}

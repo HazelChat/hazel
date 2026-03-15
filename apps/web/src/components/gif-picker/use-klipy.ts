@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { KlipyCategory, KlipyGif, KlipySearchResponse } from "@hazel/domain/http"
 import { Exit } from "effect"
 import { useCallback, useMemo, useRef, useState } from "react"

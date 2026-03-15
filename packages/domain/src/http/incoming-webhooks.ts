@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError } from "../errors"
@@ -20,7 +20,7 @@ export const OpenStatusMonitor = Schema.Struct({
 export type OpenStatusMonitor = Schema.Schema.Type<typeof OpenStatusMonitor>
 
 // OpenStatus status type
-export const OpenStatusStatus = Schema.Literal("degraded", "error", "recovered")
+export const OpenStatusStatus = Schema.Literals(["degraded", "error", "recovered"])
 export type OpenStatusStatus = Schema.Schema.Type<typeof OpenStatusStatus>
 
 // OpenStatus webhook payload
@@ -100,50 +100,46 @@ export class WebhookMessageResponse extends Schema.Class<WebhookMessageResponse>
 }) {}
 
 // Error: Webhook not found
-export class WebhookNotFoundError extends Schema.TaggedError<WebhookNotFoundError>()(
+export class WebhookNotFoundError extends Schema.TaggedErrorClass<WebhookNotFoundError>()(
 	"WebhookNotFoundError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 404 }),
+	{ httpApiStatus: 404 },
 ) {}
 
 // Error: Webhook is disabled
-export class WebhookDisabledError extends Schema.TaggedError<WebhookDisabledError>()(
+export class WebhookDisabledError extends Schema.TaggedErrorClass<WebhookDisabledError>()(
 	"WebhookDisabledError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 403 }),
+	{ httpApiStatus: 403 },
 ) {}
 
 // Error: Invalid webhook token
-export class InvalidWebhookTokenError extends Schema.TaggedError<InvalidWebhookTokenError>()(
+export class InvalidWebhookTokenError extends Schema.TaggedErrorClass<InvalidWebhookTokenError>()(
 	"InvalidWebhookTokenError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 401 }),
+	{ httpApiStatus: 401 },
 ) {}
 
 // Public endpoint - no auth middleware, uses webhook token in URL
 export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 	.add(
-		HttpApiEndpoint.post("execute", `/:webhookId/:token`)
-			.setPayload(IncomingWebhookPayload)
-			.addSuccess(WebhookMessageResponse)
-			.addError(WebhookNotFoundError)
-			.addError(WebhookDisabledError)
-			.addError(InvalidWebhookTokenError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					webhookId: ChannelWebhookId,
-					token: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("execute", `/:webhookId/:token`, {
+			params: {
+				webhookId: ChannelWebhookId,
+				token: Schema.String,
+			},
+			payload: IncomingWebhookPayload,
+			success: WebhookMessageResponse,
+			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Execute Incoming Webhook",
 					description:
 						"Post a message to a channel via webhook. Supports plain text content and Discord-style embeds.",
@@ -153,21 +149,17 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("executeOpenStatus", `/:webhookId/:token/openstatus`)
-			.setPayload(OpenStatusPayload)
-			.addSuccess(WebhookMessageResponse)
-			.addError(WebhookNotFoundError)
-			.addError(WebhookDisabledError)
-			.addError(InvalidWebhookTokenError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					webhookId: ChannelWebhookId,
-					token: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("executeOpenStatus", `/:webhookId/:token/openstatus`, {
+			params: {
+				webhookId: ChannelWebhookId,
+				token: Schema.String,
+			},
+			payload: OpenStatusPayload,
+			success: WebhookMessageResponse,
+			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Execute OpenStatus Webhook",
 					description:
 						"Receive status alerts from OpenStatus and post them as rich embeds to a channel.",
@@ -177,21 +169,17 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("executeRailway", `/:webhookId/:token/railway`)
-			.setPayload(RailwayPayload)
-			.addSuccess(WebhookMessageResponse)
-			.addError(WebhookNotFoundError)
-			.addError(WebhookDisabledError)
-			.addError(InvalidWebhookTokenError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					webhookId: ChannelWebhookId,
-					token: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("executeRailway", `/:webhookId/:token/railway`, {
+			params: {
+				webhookId: ChannelWebhookId,
+				token: Schema.String,
+			},
+			payload: RailwayPayload,
+			success: WebhookMessageResponse,
+			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Execute Railway Webhook",
 					description:
 						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",

@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user.ts"
 import { InternalServerError, UnauthorizedError } from "../errors.ts"
@@ -7,7 +7,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 
 export class GenerateMockDataRequest extends Schema.Class<GenerateMockDataRequest>("GenerateMockDataRequest")(
 	{
-		organizationId: Schema.UUID,
+		organizationId: Schema.String.check(Schema.isUUID()),
 	},
 ) {}
 
@@ -28,12 +28,12 @@ export class GenerateMockDataResponse extends Schema.Class<GenerateMockDataRespo
 
 export class MockDataGroup extends HttpApiGroup.make("mockData")
 	.add(
-		HttpApiEndpoint.post("generate")`/generate`
-			.setPayload(GenerateMockDataRequest)
-			.addSuccess(GenerateMockDataResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.post("generate", "/generate", {
+			payload: GenerateMockDataRequest,
+			success: GenerateMockDataResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Generate Mock Data",
 					description: "Generate mock data for an organization",

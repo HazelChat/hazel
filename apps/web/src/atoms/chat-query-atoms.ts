@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import type { Message, PinnedMessage, User } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"
 import { eq } from "@tanstack/db"

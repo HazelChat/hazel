@@ -5,7 +5,7 @@
  * in browser code. Server-side implementations live in the backend package.
  */
 
-import { RpcMiddleware } from "@effect/rpc"
+import { RpcMiddleware } from "effect/unstable/rpc"
 import { Schema as S } from "effect"
 import * as CurrentUser from "../current-user"
 import { UnauthorizedError } from "../errors"
@@ -42,7 +42,7 @@ import {
  *   })
  * ```
  */
-const AuthFailure = S.Union(
+const AuthFailure = S.Union([
 	UnauthorizedError,
 	SessionLoadError,
 	SessionAuthenticationError,
@@ -52,10 +52,11 @@ const AuthFailure = S.Union(
 	SessionExpiredError,
 	InvalidBearerTokenError,
 	WorkOSUserFetchError,
-)
+])
 
-export class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-	provides: CurrentUser.Context,
-	failure: AuthFailure,
+export class AuthMiddleware extends RpcMiddleware.Service<AuthMiddleware, {
+	provides: CurrentUser.Context
+}>()("AuthMiddleware", {
+	error: AuthFailure,
 	requiredForClient: true,
 }) {}

@@ -1,16 +1,13 @@
-import { HttpApiSchema } from "@effect/platform"
 import { Effect, Predicate, Schema } from "effect"
 import { ChannelId, MessageId } from "@hazel/schema"
 
-export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("UnauthorizedError")(
+export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError>("UnauthorizedError")(
 	"UnauthorizedError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is UnauthorizedError {
 		return Predicate.isTagged(u, "UnauthorizedError")
@@ -21,33 +18,29 @@ export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>("Un
  * Error thrown when an OAuth authorization code has expired or has already been used.
  * This is a specific 401 error that indicates the user must restart the OAuth flow.
  */
-export class OAuthCodeExpiredError extends Schema.TaggedError<OAuthCodeExpiredError>("OAuthCodeExpiredError")(
+export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpiredError>("OAuthCodeExpiredError")(
 	"OAuthCodeExpiredError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is OAuthCodeExpiredError {
 		return Predicate.isTagged(u, "OAuthCodeExpiredError")
 	}
 }
 
-export class InternalServerError extends Schema.TaggedError<InternalServerError>("InternalServerError")(
+export class InternalServerError extends Schema.TaggedErrorClass<InternalServerError>("InternalServerError")(
 	"InternalServerError",
 	{
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.annotations({
-		status: 500,
-	}),
+	{ httpApiStatus: 500 },
 ) {}
 
-export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInitializationError>(
+export class WorkflowInitializationError extends Schema.TaggedErrorClass<WorkflowInitializationError>(
 	"WorkflowInitializationError",
 )(
 	"WorkflowInitializationError",
@@ -55,12 +48,10 @@ export class WorkflowInitializationError extends Schema.TaggedError<WorkflowInit
 		message: Schema.String,
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.annotations({
-		status: 500,
-	}),
+	{ httpApiStatus: 500 },
 ) {}
 
-export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlreadyExistsError>(
+export class DmChannelAlreadyExistsError extends Schema.TaggedErrorClass<DmChannelAlreadyExistsError>(
 	"DmChannelAlreadyExistsError",
 )(
 	"DmChannelAlreadyExistsError",
@@ -68,54 +59,46 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedError<DmChannelAlr
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 	},
-	HttpApiSchema.annotations({
-		status: 409,
-	}),
+	{ httpApiStatus: 409 },
 ) {}
 
 /**
  * Error thrown when a message is not found.
  * Used in update, delete, and thread creation operations.
  */
-export class MessageNotFoundError extends Schema.TaggedError<MessageNotFoundError>("MessageNotFoundError")(
+export class MessageNotFoundError extends Schema.TaggedErrorClass<MessageNotFoundError>("MessageNotFoundError")(
 	"MessageNotFoundError",
 	{
 		messageId: MessageId,
 	},
-	HttpApiSchema.annotations({
-		status: 404,
-	}),
+	{ httpApiStatus: 404 },
 ) {}
 
 /**
  * Error thrown when attempting to create a thread within a thread.
  * Nested threads are not supported.
  */
-export class NestedThreadError extends Schema.TaggedError<NestedThreadError>("NestedThreadError")(
+export class NestedThreadError extends Schema.TaggedErrorClass<NestedThreadError>("NestedThreadError")(
 	"NestedThreadError",
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.annotations({
-		status: 400,
-	}),
+	{ httpApiStatus: 400 },
 ) {}
 
 /**
  * Error thrown when the workflow service is unreachable or unavailable.
  * Used when the cluster service cannot be contacted.
  */
-export class WorkflowServiceUnavailableError extends Schema.TaggedError<WorkflowServiceUnavailableError>(
+export class WorkflowServiceUnavailableError extends Schema.TaggedErrorClass<WorkflowServiceUnavailableError>(
 	"WorkflowServiceUnavailableError",
 )(
 	"WorkflowServiceUnavailableError",
 	{
 		message: Schema.String,
-		cause: Schema.optionalWith(Schema.String, { nullable: true }),
+		cause: Schema.optional(Schema.NullOr(Schema.String)),
 	},
-	HttpApiSchema.annotations({
-		status: 503,
-	}),
+	{ httpApiStatus: 503 },
 ) {}
 
 export function withRemapDbErrors<R, E extends { _tag: string }, A>(

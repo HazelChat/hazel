@@ -180,7 +180,7 @@ const handleUserRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -373,7 +373,7 @@ const handleBotRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -435,25 +435,25 @@ const LoggerLive = Layer.unwrapEffect(
 		const config = yield* ProxyConfigService
 		return config.isDev ? Logger.pretty : Logger.structured
 	}),
-).pipe(Layer.provide(ProxyConfigService.Default))
+).pipe(Layer.provide(ProxyConfigService.layer))
 
 // Cache layer: AccessContextCache requires ResultPersistence and Database
-const CacheLive = AccessContextCache.Default.pipe(
+const CacheLive = AccessContextCache.layer.pipe(
 	Layer.provide(RedisPersistenceLive),
 	Layer.provide(DatabaseLive),
-	Layer.provide(ProxyConfigService.Default),
+	Layer.provide(ProxyConfigService.layer),
 )
 
 // ProxyAuth layer requires ResultPersistence for session caching and Database for user lookup
-// ProxyAuth.Default includes SessionValidator.Default via dependencies
-const ProxyAuthLive = ProxyAuth.Default.pipe(
+// ProxyAuth.layer includes SessionValidator.layer via dependencies
+const ProxyAuthLive = ProxyAuth.layer.pipe(
 	Layer.provide(RedisPersistenceLive),
 	Layer.provide(DatabaseLive),
-	Layer.provide(ProxyConfigService.Default),
+	Layer.provide(ProxyConfigService.layer),
 )
 
 const MainLive = DatabaseLive.pipe(
-	Layer.provideMerge(ProxyConfigService.Default),
+	Layer.provideMerge(ProxyConfigService.layer),
 	Layer.provideMerge(LoggerLive),
 	Layer.provideMerge(CacheLive),
 	Layer.provideMerge(TracerLive),

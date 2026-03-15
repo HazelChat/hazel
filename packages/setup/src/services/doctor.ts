@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
 export interface CheckResult {
 	name: string
@@ -29,14 +29,13 @@ const checkContainer = (containerName: string, displayName: string): Effect.Effe
 		},
 		catch: () => new Error("Check failed"),
 	}).pipe(
-		Effect.catchAll(() =>
+		Effect.catch(() =>
 			Effect.succeed({ name: displayName, status: "fail" as const, message: "Not running" }),
 		),
 	)
 
-export class Doctor extends Effect.Service<Doctor>()("Doctor", {
-	accessors: true,
-	effect: Effect.succeed({
+export class Doctor extends ServiceMap.Service<Doctor>()("Doctor", {
+	make: Effect.succeed({
 		checkBun: (): Effect.Effect<CheckResult> =>
 			Effect.tryPromise({
 				try: async () => {
@@ -47,7 +46,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				},
 				catch: () => new Error("Bun not found"),
 			}).pipe(
-				Effect.catchAll(() =>
+				Effect.catch(() =>
 					Effect.succeed({
 						name: "Bun",
 						status: "fail" as const,
@@ -66,7 +65,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				},
 				catch: () => new Error("Docker not running"),
 			}).pipe(
-				Effect.catchAll(() =>
+				Effect.catch(() =>
 					Effect.succeed({
 						name: "Docker",
 						status: "fail" as const,
@@ -97,7 +96,7 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				},
 				catch: () => new Error("Could not check containers"),
 			}).pipe(
-				Effect.catchAll(() =>
+				Effect.catch(() =>
 					Effect.succeed({
 						name: "Docker Compose",
 						status: "warn" as const,
@@ -130,4 +129,6 @@ export class Doctor extends Effect.Service<Doctor>()("Doctor", {
 				return { environment, services }
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

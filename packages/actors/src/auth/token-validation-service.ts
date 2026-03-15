@@ -1,6 +1,6 @@
-import { HttpClient, HttpClientRequest } from "@effect/platform"
+import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { WorkOSJwtClaims, WorkOSRole } from "@hazel/schema"
-import { Either, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Either, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type { JWTPayload } from "jose"
 import { jwtVerify } from "jose"
@@ -39,11 +39,9 @@ function isBotToken(token: string): boolean {
  *
  * Provides Effect-native token validation with proper error types.
  */
-export class TokenValidationService extends Effect.Service<TokenValidationService>()(
+export class TokenValidationService extends ServiceMap.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
-		accessors: true,
-		dependencies: [TokenValidationConfigService.Default, JwksService.Default],
 		effect: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
 			const jwksService = yield* JwksService
@@ -177,7 +175,7 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 
 					if (response.status >= 400) {
 						const errorText = yield* response.text.pipe(
-							Effect.catchAll(() => Effect.succeed("Unknown error")),
+							Effect.catch(() => Effect.succeed("Unknown error")),
 						)
 
 						return yield* Effect.fail(
@@ -243,10 +241,15 @@ export class TokenValidationService extends Effect.Service<TokenValidationServic
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(TokenValidationConfigService.layer),
+		Layer.provide(JwksService.layer),
+	)
+}
 
 /**
  * Live layer for TokenValidationService with all dependencies.
  * Includes FetchHttpClient for bot token validation.
  */
-export const TokenValidationLive = TokenValidationService.Default
+export const TokenValidationLive = TokenValidationService.layer

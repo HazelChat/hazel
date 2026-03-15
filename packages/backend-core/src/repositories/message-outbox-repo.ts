@@ -1,7 +1,7 @@
 import { Database, and, asc, eq, inArray, or, schema, sql } from "@hazel/db"
 import type { DatabaseError, TxFn } from "@hazel/db"
 import { ChannelId, MessageId, MessageOutboxEventId, MessageReactionId, UserId } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Option, Schema } from "effect"
 
 export const MessageCreatedPayloadSchema = Schema.Struct({
 	messageId: MessageId,
@@ -31,25 +31,25 @@ export const ReactionDeletedPayloadSchema = Schema.Struct({
 	userId: Schema.optional(UserId),
 })
 
-export const MessageOutboxEventType = Schema.Literal(
+export const MessageOutboxEventType = Schema.Literals([
 	"message_created",
 	"message_updated",
 	"message_deleted",
 	"reaction_created",
 	"reaction_deleted",
-)
+])
 export type MessageOutboxEventType = Schema.Schema.Type<typeof MessageOutboxEventType>
 
-export const MessageOutboxEventStatus = Schema.Literal("pending", "processing", "processed", "failed")
+export const MessageOutboxEventStatus = Schema.Literals(["pending", "processing", "processed", "failed"])
 export type MessageOutboxEventStatus = Schema.Schema.Type<typeof MessageOutboxEventStatus>
 
-export const MessageOutboxEventPayloadSchema = Schema.Union(
+export const MessageOutboxEventPayloadSchema = Schema.Union([
 	MessageCreatedPayloadSchema,
 	MessageUpdatedPayloadSchema,
 	MessageDeletedPayloadSchema,
 	ReactionCreatedPayloadSchema,
 	ReactionDeletedPayloadSchema,
-)
+])
 export type MessageOutboxEventPayload = Schema.Schema.Type<typeof MessageOutboxEventPayloadSchema>
 
 export type MessageCreatedPayload = Schema.Schema.Type<typeof MessageCreatedPayloadSchema>
@@ -84,16 +84,15 @@ export type MessageOutboxEventRecord = typeof schema.messageOutboxEventsTable.$i
 
 const InsertMessageOutboxEventSchema = Schema.Struct({
 	eventType: MessageOutboxEventType,
-	aggregateId: Schema.UUID,
+	aggregateId: Schema.String.check(Schema.isUUID()),
 	channelId: ChannelId,
 	payload: MessageOutboxEventPayloadSchema,
 })
 
 const InsertMessageOutboxEventArraySchema = Schema.Array(InsertMessageOutboxEventSchema)
 
-export class MessageOutboxRepo extends Effect.Service<MessageOutboxRepo>()("MessageOutboxRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("MessageOutboxRepo", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 
 		const insert = (data: InsertMessageOutboxEvent, tx?: TxFn) =>
@@ -268,4 +267,6 @@ export class MessageOutboxRepo extends Effect.Service<MessageOutboxRepo>()("Mess
 			markFailed,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

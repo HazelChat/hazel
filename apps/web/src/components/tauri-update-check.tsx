@@ -4,7 +4,7 @@
  * @description Check for app updates and prompt user to install (no-op in browser)
  */
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {

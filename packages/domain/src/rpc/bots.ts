@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { BotId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -61,14 +61,14 @@ export class PublicBotListResponse extends Schema.Class<PublicBotListResponse>("
 /**
  * Error thrown when a bot is not found.
  */
-export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("BotNotFoundError", {
+export class BotNotFoundError extends Schema.TaggedErrorClass<BotNotFoundError>()("BotNotFoundError", {
 	botId: BotId,
 }) {}
 
 /**
  * Error thrown when a bot is already installed in the organization.
  */
-export class BotAlreadyInstalledError extends Schema.TaggedError<BotAlreadyInstalledError>()(
+export class BotAlreadyInstalledError extends Schema.TaggedErrorClass<BotAlreadyInstalledError>()(
 	"BotAlreadyInstalledError",
 	{
 		botId: BotId,
@@ -113,14 +113,14 @@ export class BotRpcs extends RpcGroup.make(
 	 */
 	Rpc.make("bot.create", {
 		payload: Schema.Struct({
-			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
+			name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
+			description: Schema.optional(Schema.String.check(Schema.isMaxLength(500))),
 			webhookUrl: Schema.optional(Schema.String),
 			scopes: Schema.Array(ApiScope),
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotCreatedResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError, RateLimitExceededError),
+		error: Schema.Union([UnauthorizedError, InternalServerError, RateLimitExceededError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -136,7 +136,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.list", {
 		payload: Schema.Struct({}),
 		success: BotListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:read"])
 		.middleware(AuthMiddleware),
@@ -154,7 +154,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.get", {
 		payload: Schema.Struct({ id: BotId }),
 		success: BotResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:read"])
 		.middleware(AuthMiddleware),
@@ -172,14 +172,14 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.update", {
 		payload: Schema.Struct({
 			id: BotId,
-			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
-			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
+			name: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100))),
+			description: Schema.optional(Schema.NullOr(Schema.String.check(Schema.isMaxLength(500)))),
 			webhookUrl: Schema.optional(Schema.NullOr(Schema.String)),
 			scopes: Schema.optional(Schema.Array(ApiScope)),
 			isPublic: Schema.optional(Schema.Boolean),
 		}),
 		success: BotResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -197,7 +197,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.delete", {
 		payload: Schema.Struct({ id: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -216,7 +216,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.regenerateToken", {
 		payload: Schema.Struct({ id: BotId }),
 		success: BotCreatedResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -234,7 +234,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.getCommands", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: BotCommandListResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:read"])
 		.middleware(AuthMiddleware),
@@ -256,7 +256,7 @@ export class BotRpcs extends RpcGroup.make(
 			search: Schema.optional(Schema.String),
 		}),
 		success: PublicBotListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:read"])
 		.middleware(AuthMiddleware),
@@ -272,7 +272,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.listInstalled", {
 		payload: Schema.Struct({}),
 		success: BotListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:read"])
 		.middleware(AuthMiddleware),
@@ -291,13 +291,13 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.install", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			BotNotFoundError,
 			BotAlreadyInstalledError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -315,7 +315,7 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.uninstall", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError, RateLimitExceededError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -335,13 +335,13 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.installById", {
 		payload: Schema.Struct({ botId: BotId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			BotNotFoundError,
 			BotAlreadyInstalledError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),
@@ -363,7 +363,7 @@ export class BotRpcs extends RpcGroup.make(
 			avatarUrl: Schema.String,
 		}),
 		success: BotResponse,
-		error: Schema.Union(BotNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([BotNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["bots:write"])
 		.middleware(AuthMiddleware),

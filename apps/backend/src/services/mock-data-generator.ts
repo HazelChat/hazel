@@ -14,7 +14,7 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { DatabaseLive } from "./database"
 
 // Professional team members for a tech startup
@@ -178,8 +178,8 @@ interface MockDataConfig {
 	currentUserId: UserId
 }
 
-export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("MockDataGenerator", {
-	effect: Effect.gen(function* () {
+export class MockDataGenerator extends ServiceMap.Service<MockDataGenerator>()("MockDataGenerator", {
+	make: Effect.gen(function* () {
 		const generateForMarketingScreenshots = (config: MockDataConfig) =>
 			Effect.gen(function* () {
 				const userRepo = yield* UserRepo
@@ -487,5 +487,8 @@ export class MockDataGenerator extends Effect.Service<MockDataGenerator>()("Mock
 			generateForMarketingScreenshots,
 		}
 	}),
-	dependencies: [DatabaseLive],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
+	)
+}

@@ -1,4 +1,4 @@
-import { Toolkit } from "@effect/ai"
+import { Toolkit } from "effect/unstable/ai"
 import { LinearApiClient, makeLinearSdkClient } from "@hazel/integrations/linear"
 import { CraftApiClient } from "@hazel/integrations/craft"
 import type { IntegrationConnection } from "@hazel/domain/models"

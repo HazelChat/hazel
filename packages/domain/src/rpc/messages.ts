@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../errors"
 import { MessageId } from "@hazel/schema"
@@ -71,12 +71,12 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.create", {
 		payload: Message.Insert,
 		success: MessageResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),
@@ -97,14 +97,14 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.update", {
 		payload: Schema.Struct({
 			id: MessageId,
-		}).pipe(Schema.extend(Message.JsonUpdate)),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Message.JsonUpdate as any).fields }) as any),
 		success: MessageResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			MessageNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),
@@ -125,12 +125,12 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.delete", {
 		payload: Schema.Struct({ id: MessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			MessageNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),

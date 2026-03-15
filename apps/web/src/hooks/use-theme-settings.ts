@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { type Theme } from "@hazel/domain/models"
 import type { UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"

@@ -3,7 +3,7 @@ import { Schema } from "effect"
 /**
  * Error thrown when session cache operations fail
  */
-export class SessionCacheError extends Schema.TaggedError<SessionCacheError>()("SessionCacheError", {
+export class SessionCacheError extends Schema.TaggedErrorClass<SessionCacheError>()("SessionCacheError", {
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -11,7 +11,7 @@ export class SessionCacheError extends Schema.TaggedError<SessionCacheError>()("
 /**
  * Error thrown when user lookup cache operations fail
  */
-export class UserLookupCacheError extends Schema.TaggedError<UserLookupCacheError>()("UserLookupCacheError", {
+export class UserLookupCacheError extends Schema.TaggedErrorClass<UserLookupCacheError>()("UserLookupCacheError", {
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -19,7 +19,7 @@ export class UserLookupCacheError extends Schema.TaggedError<UserLookupCacheErro
 /**
  * Error thrown when fetching organization from WorkOS fails
  */
-export class OrganizationFetchError extends Schema.TaggedError<OrganizationFetchError>()(
+export class OrganizationFetchError extends Schema.TaggedErrorClass<OrganizationFetchError>()(
 	"OrganizationFetchError",
 	{
 		message: Schema.String,

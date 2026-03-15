@@ -32,7 +32,7 @@ describe("JwksService", () => {
 			Effect.gen(function* () {
 				const service = yield* JwksService
 				return yield* service.getJwks()
-			}).pipe(Effect.provide(JwksService.Default), Effect.either),
+			}).pipe(Effect.provide(JwksService.layer), Effect.either),
 		)
 
 		expect(Either.isLeft(result)).toBe(true)
@@ -50,7 +50,7 @@ describe("JwksService", () => {
 				const firstJwks = yield* service.getJwks()
 				const secondJwks = yield* service.getJwks()
 				return [firstJwks, secondJwks] as const
-			}).pipe(Effect.provide(JwksService.Default)),
+			}).pipe(Effect.provide(JwksService.layer)),
 		)
 
 		expect(typeof first).toBe("function")

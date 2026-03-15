@@ -11,7 +11,7 @@ export const BotCommandArgument = Schema.Struct({
 	description: Schema.NullOr(Schema.String),
 	required: Schema.Boolean,
 	placeholder: Schema.NullOr(Schema.String),
-	type: Schema.Literal("string", "number", "user", "channel"),
+	type: Schema.Literals(["string", "number", "user", "channel"]),
 })
 export type BotCommandArgument = typeof BotCommandArgument.Type
 

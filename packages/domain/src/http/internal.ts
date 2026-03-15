@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvalidBearerTokenError } from "../session-errors"
@@ -26,13 +26,12 @@ export class ValidateBotTokenResponse extends Schema.Class<ValidateBotTokenRespo
 
 export class InternalApiGroup extends HttpApiGroup.make("internal")
 	.add(
-		HttpApiEndpoint.post("validateBotToken")`/actors/validate-bot-token`
-			.addSuccess(ValidateBotTokenResponse)
-			.addError(InvalidBearerTokenError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPayload(ValidateBotTokenRequest)
-			.annotateContext(
+		HttpApiEndpoint.post("validateBotToken", "/actors/validate-bot-token", {
+			payload: ValidateBotTokenRequest,
+			success: ValidateBotTokenResponse,
+			error: [InvalidBearerTokenError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Validate Bot Token",
 					description:

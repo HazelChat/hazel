@@ -1,18 +1,18 @@
 import { Discord } from "@hazel/integrations"
-import { Config, Effect, Option, Redacted, Schema, Schedule } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema, Schedule } from "effect"
 import {
 	type ChatSyncOutboundAttachment,
 	formatMessageContentWithAttachments,
 } from "./chat-sync-attachment-content"
 
-export class ChatSyncProviderNotSupportedError extends Schema.TaggedError<ChatSyncProviderNotSupportedError>()(
+export class ChatSyncProviderNotSupportedError extends Schema.TaggedErrorClass<ChatSyncProviderNotSupportedError>()(
 	"ChatSyncProviderNotSupportedError",
 	{
 		provider: Schema.String,
 	},
 ) {}
 
-export class ChatSyncProviderConfigurationError extends Schema.TaggedError<ChatSyncProviderConfigurationError>()(
+export class ChatSyncProviderConfigurationError extends Schema.TaggedErrorClass<ChatSyncProviderConfigurationError>()(
 	"ChatSyncProviderConfigurationError",
 	{
 		provider: Schema.String,
@@ -20,7 +20,7 @@ export class ChatSyncProviderConfigurationError extends Schema.TaggedError<ChatS
 	},
 ) {}
 
-export class ChatSyncProviderApiError extends Schema.TaggedError<ChatSyncProviderApiError>()(
+export class ChatSyncProviderApiError extends Schema.TaggedErrorClass<ChatSyncProviderApiError>()(
 	"ChatSyncProviderApiError",
 	{
 		provider: Schema.String,
@@ -85,10 +85,9 @@ const isDiscordSnowflake = (value: string): boolean =>
 	value.length >= DISCORD_SNOWFLAKE_MIN_LENGTH &&
 	value.length <= DISCORD_SNOWFLAKE_MAX_LENGTH
 
-export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderRegistry>()(
+export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProviderRegistry>()(
 	"ChatSyncProviderRegistry",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const discordApiClient = yield* Discord.DiscordApiClient
 
@@ -437,6 +436,9 @@ export class ChatSyncProviderRegistry extends Effect.Service<ChatSyncProviderReg
 
 			return { getAdapter }
 		}),
-		dependencies: [Discord.DiscordApiClient.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(Discord.DiscordApiClient.layer),
+	)
+}

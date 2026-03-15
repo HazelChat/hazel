@@ -6,9 +6,9 @@ import { JsonDate } from "./utils"
 export class Model extends M.Class<Model>("Notification")({
 	id: M.Generated(NotificationId),
 	memberId: OrganizationMemberId,
-	targetedResourceId: Schema.NullOr(Schema.UUID),
+	targetedResourceId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
 	targetedResourceType: Schema.NullOr(Schema.String),
-	resourceId: Schema.NullOr(Schema.UUID),
+	resourceId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
 	resourceType: Schema.NullOr(Schema.String),
 	createdAt: M.Generated(JsonDate),
 	readAt: Schema.NullOr(JsonDate),

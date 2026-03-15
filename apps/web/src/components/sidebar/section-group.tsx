@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, ChannelSectionId } from "@hazel/schema"
 import type { ReactNode } from "react"
 import { useDragAndDrop } from "react-aria-components"

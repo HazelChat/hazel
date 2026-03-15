@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest } from "effect/unstable/http"
 import {
 	AttachmentRepo,
 	BotRepo,
@@ -89,7 +90,7 @@ const createBotUserContext = (bot: { userId: typeof import("@hazel/schema").User
 
 const withHttpScopes = <A, E, R>(
 	scopes: ReadonlyArray<ApiScope>,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> => Effect.locally(CurrentRpcScopes, scopes)(effect)
 
 export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messages", (handlers) =>

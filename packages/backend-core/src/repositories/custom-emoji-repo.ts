@@ -2,11 +2,10 @@ import { and, Database, eq, isNotNull, isNull, ModelRepository, schema } from "@
 
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { CustomEmoji } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.customEmojisTable, CustomEmoji.Model, {
 			idColumn: "id",
 			name: "CustomEmoji",
@@ -99,4 +98,6 @@ export class CustomEmojiRepo extends Effect.Service<CustomEmojiRepo>()("CustomEm
 			restore,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

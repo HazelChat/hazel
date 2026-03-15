@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"

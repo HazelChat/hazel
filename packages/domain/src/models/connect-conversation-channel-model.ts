@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ConnectConversationChannelRole = Schema.Literal("host", "guest")
+export const ConnectConversationChannelRole = Schema.Literals(["host", "guest"])
 export type ConnectConversationChannelRole = Schema.Schema.Type<typeof ConnectConversationChannelRole>
 
 export class Model extends M.Class<Model>("ConnectConversationChannel")({

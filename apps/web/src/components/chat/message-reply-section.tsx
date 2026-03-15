@@ -1,4 +1,4 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { Message, User } from "@hazel/domain/models"
 import type { MessageId } from "@hazel/schema"
 import { messageWithAuthorAtomFamily } from "~/atoms/message-atoms"

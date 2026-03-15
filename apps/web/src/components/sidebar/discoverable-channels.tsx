@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { and, eq, inArray, isNull, not, or, useLiveQuery } from "@tanstack/react-db"
 import { sectionCollapsedAtomFamily } from "~/atoms/section-collapse-atoms"

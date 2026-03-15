@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { type } from "arktype"
 import { Button } from "~/components/ui/button"
 import { FieldError, Label } from "~/components/ui/field"

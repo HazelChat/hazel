@@ -69,7 +69,7 @@ const makeResolverLayer = (opts: {
 	)
 
 const runEither = <A, E>(
-	effect: Effect.Effect<A, E, OrgResolver | CurrentUser.Context>,
+	make: Effect.Effect<A, E, OrgResolver | CurrentUser.Context>,
 	layer: Layer.Layer<OrgResolver, any, never>,
 	actor: CurrentUser.Schema = makeActor(),
 ) =>

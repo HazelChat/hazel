@@ -1,4 +1,4 @@
-import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Theme as ThemeModel } from "@hazel/domain/models"
 import { Schema } from "effect"
 import { applyBrandColor, applyGrayPalette, applyRadius } from "~/lib/theme/apply"

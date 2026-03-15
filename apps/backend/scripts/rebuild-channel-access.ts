@@ -46,7 +46,7 @@ const rebuildChannelAccess = Effect.gen(function* () {
 	)
 })
 
-const ChannelAccessSyncLive = ChannelAccessSyncService.Default.pipe(Layer.provideMerge(DatabaseLive))
+const ChannelAccessSyncLive = ChannelAccessSyncService.layer.pipe(Layer.provideMerge(DatabaseLive))
 
 Effect.runPromise(
 	rebuildChannelAccess.pipe(

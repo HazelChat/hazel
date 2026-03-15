@@ -33,7 +33,7 @@ export const CreateGitHubMessagesResult = Schema.Struct({
 export type CreateGitHubMessagesResult = Schema.Schema.Type<typeof CreateGitHubMessagesResult>
 
 // Error types for GitHub activities
-export class GetGitHubSubscriptionsError extends Schema.TaggedError<GetGitHubSubscriptionsError>()(
+export class GetGitHubSubscriptionsError extends Schema.TaggedErrorClass<GetGitHubSubscriptionsError>()(
 	"GetGitHubSubscriptionsError",
 	{
 		repositoryId: Schema.Number,
@@ -44,7 +44,7 @@ export class GetGitHubSubscriptionsError extends Schema.TaggedError<GetGitHubSub
 	readonly retryable = true // Database errors are transient
 }
 
-export class CreateGitHubMessageError extends Schema.TaggedError<CreateGitHubMessageError>()(
+export class CreateGitHubMessageError extends Schema.TaggedErrorClass<CreateGitHubMessageError>()(
 	"CreateGitHubMessageError",
 	{
 		channelId: ChannelId,
@@ -59,8 +59,8 @@ export class CreateGitHubMessageError extends Schema.TaggedError<CreateGitHubMes
 // Workflow Error Union
 // ============================================================================
 
-export const GitHubWebhookWorkflowError = Schema.Union(
+export const GitHubWebhookWorkflowError = Schema.Union([
 	GetGitHubSubscriptionsError,
 	CreateGitHubMessageError,
 	BotUserQueryError,
-)
+])

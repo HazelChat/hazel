@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, MessageId, NotificationId } from "@hazel/schema"
@@ -20,7 +20,7 @@ export class NotificationResponse extends Schema.Class<NotificationResponse>("No
  * Error thrown when a notification is not found.
  * Used in update and delete operations.
  */
-export class NotificationNotFoundError extends Schema.TaggedError<NotificationNotFoundError>()(
+export class NotificationNotFoundError extends Schema.TaggedErrorClass<NotificationNotFoundError>()(
 	"NotificationNotFoundError",
 	{
 		notificationId: NotificationId,
@@ -42,7 +42,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.create", {
 		payload: Notification.Model.jsonCreate,
 		success: NotificationResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -65,7 +65,7 @@ export class NotificationRpcs extends RpcGroup.make(
 			...Notification.Model.jsonUpdate.fields,
 		}),
 		success: NotificationResponse,
-		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -85,7 +85,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.delete", {
 		payload: Schema.Struct({ id: NotificationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -110,7 +110,7 @@ export class NotificationRpcs extends RpcGroup.make(
 			deletedCount: Schema.Number,
 			transactionId: TransactionId,
 		}),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),

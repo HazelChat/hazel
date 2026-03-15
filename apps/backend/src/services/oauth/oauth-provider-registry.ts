@@ -1,6 +1,6 @@
 import { UnsupportedProviderError } from "@hazel/domain/http"
 import { GitHub } from "@hazel/integrations"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthIntegrationProvider, OAuthProviderConfig } from "./provider-config"
@@ -64,9 +64,8 @@ const SUPPORTED_PROVIDERS: readonly OAuthIntegrationProvider[] = ["linear", "git
  * 3. Add provider to SUPPORTED_PROVIDERS array
  * 4. Set environment variables: {PROVIDER}_CLIENT_ID, {PROVIDER}_CLIENT_SECRET, {PROVIDER}_REDIRECT_URI
  */
-export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>()("OAuthProviderRegistry", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class OAuthProviderRegistry extends ServiceMap.Service<OAuthProviderRegistry>()("OAuthProviderRegistry", {
+	make: Effect.gen(function* () {
 		// Cache for loaded providers
 		const providerCache = new Map<OAuthIntegrationProvider, OAuthProvider>()
 
@@ -158,5 +157,9 @@ export class OAuthProviderRegistry extends Effect.Service<OAuthProviderRegistry>
 			isProviderSupported,
 		}
 	}),
-	dependencies: [GitHub.GitHubAppJWTService.Default, GitHub.GitHubApiClient.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(GitHub.GitHubAppJWTService.layer),
+		Layer.provide(GitHub.GitHubApiClient.layer),
+	)
+}

@@ -3,7 +3,7 @@
  * @description Atoms for notification sound system state management
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
@@ -26,7 +26,7 @@ export interface NotificationSoundSettings {
 const NotificationSoundSettingsSchema = Schema.Struct({
 	enabled: Schema.Boolean,
 	volume: Schema.Number,
-	soundFile: Schema.Literal("notification01", "notification03"),
+	soundFile: Schema.Literals(["notification01", "notification03"]),
 	cooldownMs: Schema.Number,
 })
 

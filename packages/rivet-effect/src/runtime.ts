@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Layer, ManagedRuntime, Option } from "effect"
+import { Cause, Effect, Exit, Layer, ManagedRuntime, Option, Result } from "effect"
 import { RuntimeExecutionError } from "./errors.ts"
 
 export type AnyManagedRuntime = ManagedRuntime.ManagedRuntime<any, any>
@@ -77,14 +77,14 @@ const runExitWithCurrentRuntime = <A, E>(effect: Effect.Effect<A, E, never>): Pr
 	)
 
 const throwFromCause = <E>(cause: Cause.Cause<E>): never => {
-	const failure = Cause.failureOption(cause)
+	const failure = Cause.findErrorOption(cause)
 	if (Option.isSome(failure)) {
 		throw failure.value
 	}
 
-	const defect = Cause.dieOption(cause)
-	if (Option.isSome(defect)) {
-		throw defect.value instanceof Error ? defect.value : new Error(String(defect.value))
+	const defect = Cause.findDefect(cause)
+	if (Result.isSuccess(defect)) {
+		throw defect.success instanceof Error ? defect.success : new Error(String(defect.success))
 	}
 
 	throw new Error(Cause.pretty(cause))
@@ -99,13 +99,13 @@ export const runPromise = <A, E, R>(effect: Effect.Effect<A, E, R>, context?: un
 	})
 
 export const runPromiseExit = <A, E, R>(
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 	context?: unknown,
 ): Promise<Exit.Exit<A, E>> => {
 	const runtime = getManagedRuntime(context)
 	const execution: Promise<Exit.Exit<A, E>> = runtime
-		? runtime.runPromiseExit(effect as Effect.Effect<A, E, never>)
-		: runExitWithCurrentRuntime(effect as Effect.Effect<A, E, never>)
+		? runtime.runPromiseExit(make as Effect.Effect<A, E, never>)
+		: runExitWithCurrentRuntime(make as Effect.Effect<A, E, never>)
 
 	return execution.catch((error) =>
 		Exit.die(

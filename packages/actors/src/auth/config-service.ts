@@ -1,5 +1,5 @@
 import type { WorkOSClientId } from "@hazel/schema"
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
 import { WorkOSClientId as WorkOSClientIdSchema } from "@hazel/schema"
 
 /**
@@ -21,10 +21,9 @@ const optionalValue = <A>(effect: Effect.Effect<A, any, never>) => effect.pipe(E
  *
  * Uses Effect.Config to load from environment variables with proper fallbacks.
  */
-export class TokenValidationConfigService extends Effect.Service<TokenValidationConfigService>()(
+export class TokenValidationConfigService extends ServiceMap.Service<TokenValidationConfigService>()(
 	"TokenValidationConfigService",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const workosClientId = yield* optionalValue(
 				Config.string("WORKOS_CLIENT_ID").pipe(

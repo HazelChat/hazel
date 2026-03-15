@@ -1,4 +1,4 @@
-import { Config, Effect, Layer } from "effect"
+import { ServiceMap, Config, Effect, Layer } from "effect"
 
 /**
  * Configuration for auth services.
@@ -15,9 +15,8 @@ export interface AuthConfigShape {
  * Auth configuration service.
  * Provides WorkOS credentials from environment variables.
  */
-export class AuthConfig extends Effect.Service<AuthConfig>()("@hazel/auth/AuthConfig", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class AuthConfig extends ServiceMap.Service<AuthConfig>()("@hazel/auth/AuthConfig", {
+	make: Effect.gen(function* () {
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
 

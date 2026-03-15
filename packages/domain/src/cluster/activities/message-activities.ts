@@ -45,7 +45,7 @@ export const CreateNotificationsResult = Schema.Struct({
 export type CreateNotificationsResult = typeof CreateNotificationsResult.Type
 
 // Error types for message activities
-export class GetChannelMembersError extends Schema.TaggedError<GetChannelMembersError>()(
+export class GetChannelMembersError extends Schema.TaggedErrorClass<GetChannelMembersError>()(
 	"GetChannelMembersError",
 	{
 		channelId: ChannelId,
@@ -56,7 +56,7 @@ export class GetChannelMembersError extends Schema.TaggedError<GetChannelMembers
 	readonly retryable = true // Database errors are transient
 }
 
-export class CreateNotificationError extends Schema.TaggedError<CreateNotificationError>()(
+export class CreateNotificationError extends Schema.TaggedErrorClass<CreateNotificationError>()(
 	"CreateNotificationError",
 	{
 		messageId: MessageId,
@@ -73,4 +73,4 @@ export class CreateNotificationError extends Schema.TaggedError<CreateNotificati
 // Workflow Error Union
 // ============================================================================
 
-export const MessageNotificationWorkflowError = Schema.Union(GetChannelMembersError, CreateNotificationError)
+export const MessageNotificationWorkflowError = Schema.Union([GetChannelMembersError, CreateNotificationError])

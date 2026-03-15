@@ -7,9 +7,9 @@ This directory contains git subtrees of library documentation and examples for r
 The following repositories are included as git subtrees:
 
 - **Effect** (`.context/effect/`)
-  - Repository: https://github.com/Effect-TS/effect
+  - Repository: https://github.com/Effect-TS/effect-smol
   - Branch: main
-  - Purpose: Effect-TS functional programming library documentation and examples
+  - Purpose: Effect v4 (effect-smol) functional programming library documentation and examples
 
 - **Effect Atom** (`.context/effect-atom/`)
   - Repository: https://github.com/tim-smart/effect-atom
@@ -39,7 +39,7 @@ git subtree pull --prefix=.context/tanstack-db tanstack-db-subtree main --squash
 Note: The git remotes should already be configured. If not, add them first:
 
 ```bash
-git remote add effect-subtree https://github.com/Effect-TS/effect
+git remote add effect-subtree https://github.com/Effect-TS/effect-smol
 git remote add effect-atom-subtree https://github.com/tim-smart/effect-atom
 git remote add tanstack-db-subtree https://github.com/TanStack/db
 ```

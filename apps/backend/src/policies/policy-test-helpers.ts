@@ -25,7 +25,7 @@ export const makeActor = (overrides?: Partial<CurrentUser.Schema>): CurrentUser.
 })
 
 export const runWithActorEither = <A, E, R>(
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 	layer: Layer.Layer<any, any, never>,
 	actor: CurrentUser.Schema = makeActor(),
 	scopes: ReadonlyArray<ApiScope> = ["messages:read"],

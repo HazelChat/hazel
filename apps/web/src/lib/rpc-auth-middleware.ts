@@ -4,8 +4,8 @@
  * @description Client-side auth middleware that adds Bearer token from storage (Tauri store or localStorage)
  */
 
-import { Headers } from "@effect/platform"
-import { RpcMiddleware } from "@effect/rpc"
+import { Headers } from "effect/unstable/http"
+import { RpcMiddleware } from "effect/unstable/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { waitForRefreshEffect, getAccessTokenEffect } from "~/lib/auth-token"

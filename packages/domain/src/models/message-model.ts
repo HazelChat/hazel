@@ -30,4 +30,7 @@ export const Update = Model.update
  * Excludes immutable relationship fields (channelId, replyToMessageId, threadChannelId)
  * to prevent users from moving messages between channels or fabricating conversation context.
  */
-export const JsonUpdate = Model.jsonUpdate.pipe(Schema.pick("content", "embeds"), Schema.partial)
+export const JsonUpdate = Schema.Struct({
+	content: Schema.optionalKey((Model.jsonUpdate as any).fields.content),
+	embeds: Schema.optionalKey((Model.jsonUpdate as any).fields.embeds),
+})

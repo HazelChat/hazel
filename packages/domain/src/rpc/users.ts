@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -21,7 +21,7 @@ export class UserResponse extends Schema.Class<UserResponse>("UserResponse")({
  * Error thrown when a user is not found.
  * Used in update and delete operations.
  */
-export class UserNotFoundError extends Schema.TaggedError<UserNotFoundError>()("UserNotFoundError", {
+export class UserNotFoundError extends Schema.TaggedErrorClass<UserNotFoundError>()("UserNotFoundError", {
 	userId: UserId,
 }) {}
 
@@ -38,7 +38,7 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.me", {
 		payload: Schema.Void,
 		success: CurrentUser.Schema,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:read"])
 		.middleware(AuthMiddleware),
@@ -58,9 +58,9 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.update", {
 		payload: Schema.Struct({
 			id: UserId,
-		}).pipe(Schema.extend(Schema.partial(User.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(User.Model.jsonUpdate as any).fields }) as any),
 		success: UserResponse,
-		error: Schema.Union(UserNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([UserNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:write"])
 		.middleware(AuthMiddleware),
@@ -80,7 +80,7 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.delete", {
 		payload: Schema.Struct({ id: UserId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(UserNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([UserNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:write"])
 		.middleware(AuthMiddleware),
@@ -98,7 +98,7 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.finalizeOnboarding", {
 		payload: Schema.Void,
 		success: UserResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:write"])
 		.middleware(AuthMiddleware),
@@ -117,7 +117,7 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.resetAvatar", {
 		payload: Schema.Void,
 		success: UserResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:write"])
 		.middleware(AuthMiddleware),

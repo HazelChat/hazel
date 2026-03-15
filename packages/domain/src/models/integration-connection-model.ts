@@ -3,13 +3,13 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const IntegrationProvider = Schema.Literal("linear", "github", "figma", "notion", "discord", "craft")
+export const IntegrationProvider = Schema.Literals(["linear", "github", "figma", "notion", "discord", "craft"])
 export type IntegrationProvider = Schema.Schema.Type<typeof IntegrationProvider>
 
-export const ConnectionLevel = Schema.Literal("organization", "user")
+export const ConnectionLevel = Schema.Literals(["organization", "user"])
 export type ConnectionLevel = Schema.Schema.Type<typeof ConnectionLevel>
 
-export const ConnectionStatus = Schema.Literal("active", "expired", "revoked", "error", "suspended")
+export const ConnectionStatus = Schema.Literals(["active", "expired", "revoked", "error", "suspended"])
 export type ConnectionStatus = Schema.Schema.Type<typeof ConnectionStatus>
 
 export class Model extends M.Class<Model>("IntegrationConnection")({
@@ -22,8 +22,8 @@ export class Model extends M.Class<Model>("IntegrationConnection")({
 	externalAccountId: Schema.NullOr(Schema.String),
 	externalAccountName: Schema.NullOr(Schema.String),
 	connectedBy: UserId,
-	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
-	metadata: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
+	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	errorMessage: Schema.NullOr(Schema.String),
 	lastUsedAt: Schema.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),

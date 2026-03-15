@@ -95,7 +95,7 @@ const program = Effect.gen(function* () {
 			// ctx.args.text is typed as string!
 			yield* bot.message.send(ctx.channelId, `Echo: ${ctx.args.text}`).pipe(
 				Effect.tap((msg) => Effect.log(`✅ Sent echo response: ${msg.id}`)),
-				Effect.catchAll((error) => Effect.logError(`Failed to send echo: ${error}`)),
+				Effect.catch((error) => Effect.logError(`Failed to send echo: ${error}`)),
 			)
 		}),
 	)
@@ -106,7 +106,7 @@ const program = Effect.gen(function* () {
 			// ctx.args is typed as {} (empty object) since PingCommand has no args
 			yield* bot.message.send(ctx.channelId, "Pong! 🏓").pipe(
 				Effect.tap(() => Effect.log("✅ Sent pong response")),
-				Effect.catchAll((error) => Effect.logError(`Failed to send pong: ${error}`)),
+				Effect.catch((error) => Effect.logError(`Failed to send pong: ${error}`)),
 			)
 		}),
 	)
@@ -131,7 +131,7 @@ const program = Effect.gen(function* () {
 			// Echo the message back using bot.message.reply
 			yield* bot.message.reply(message, `Echo: ${message.content}`).pipe(
 				Effect.tap((sentMessage) => Effect.log(`✅ Echoed message: ${sentMessage.id}`)),
-				Effect.catchAll((error) => Effect.logError(`Failed to send echo: ${error}`)),
+				Effect.catch((error) => Effect.logError(`Failed to send echo: ${error}`)),
 			)
 		}),
 	)
@@ -142,7 +142,7 @@ const program = Effect.gen(function* () {
 			if (message.content.toLowerCase().includes("hello")) {
 				yield* bot.message.react(message, "👋").pipe(
 					Effect.tap(() => Effect.log("👋 Waved at hello message")),
-					Effect.catchAll((error) => Effect.logError(`Failed to react: ${error}`)),
+					Effect.catch((error) => Effect.logError(`Failed to react: ${error}`)),
 				)
 			}
 		}),

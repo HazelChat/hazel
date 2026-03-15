@@ -1,4 +1,4 @@
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { Avatar, type AvatarProps } from "~/components/ui/avatar"
 import { resolveBotAvatarUrl } from "~/lib/bot-avatar"

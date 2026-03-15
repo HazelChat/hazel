@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { useState } from "react"
 import { deleteOrganizationMutation } from "~/atoms/organization-atoms"

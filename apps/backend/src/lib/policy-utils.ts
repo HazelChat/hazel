@@ -27,7 +27,7 @@ export const makePolicy =
 export const withPolicyUnauthorized = <A, E, R>(
 	entity: string,
 	action: string,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ) => ErrorUtils.refailUnauthorized(entity, action)(effect)
 
 /**

@@ -1,11 +1,11 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { makePolicy, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("OrganizationPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class OrganizationPolicy extends ServiceMap.Service<OrganizationPolicy>()("OrganizationPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "Organization" as const
 		const authorize = makePolicy(policyEntity)
 
@@ -47,6 +47,8 @@ export class OrganizationPolicy extends Effect.Service<OrganizationPolicy>()("Or
 
 		return { canUpdate, canDelete, canCreate, isMember, canManagePublicInvite } as const
 	}),
-	dependencies: [OrgResolver.Default],
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(OrgResolver.layer),
+	)
+}

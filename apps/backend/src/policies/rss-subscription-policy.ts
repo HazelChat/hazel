@@ -1,12 +1,12 @@
 import { ChannelRepo, RssSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>()(
+export class RssSubscriptionPolicy extends ServiceMap.Service<RssSubscriptionPolicy>()(
 	"RssSubscriptionPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -96,7 +96,11 @@ export class RssSubscriptionPolicy extends Effect.Service<RssSubscriptionPolicy>
 
 			return { canCreate, canRead, canReadByOrganization, canUpdate, canDelete } as const
 		}),
-		dependencies: [ChannelRepo.Default, RssSubscriptionRepo.Default, OrgResolver.Default],
-		accessors: true,
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(RssSubscriptionRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

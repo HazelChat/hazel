@@ -1,12 +1,12 @@
 import { ChannelRepo, ChannelWebhookRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()(
+export class ChannelWebhookPolicy extends ServiceMap.Service<ChannelWebhookPolicy>()(
 	"ChannelWebhookPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -86,7 +86,11 @@ export class ChannelWebhookPolicy extends Effect.Service<ChannelWebhookPolicy>()
 
 			return { canCreate, canRead, canUpdate, canDelete } as const
 		}),
-		dependencies: [ChannelRepo.Default, ChannelWebhookRepo.Default, OrgResolver.Default],
-		accessors: true,
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ChannelWebhookRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

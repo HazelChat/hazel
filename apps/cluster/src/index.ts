@@ -1,8 +1,9 @@
-import { ClusterWorkflowEngine } from "@effect/cluster"
-import { HttpApiBuilder, HttpMiddleware, HttpServer } from "@effect/platform"
+import { ClusterWorkflowEngine } from "effect/unstable/cluster"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpMiddleware, HttpServer } from "effect/unstable/http"
 import { BunClusterSocket, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { PgClient } from "@effect/sql-pg"
-import { WorkflowProxyServer } from "@effect/workflow"
+import { WorkflowProxyServer } from "effect/unstable/workflow"
 import {
 	InvitationRepo,
 	OrganizationMemberRepo,
@@ -67,12 +68,12 @@ const AllWorkflows = Layer.mergeAll(
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps
-const WorkOSSyncLive = WorkOSSync.Default.pipe(
-	Layer.provide(WorkOSClient.Default),
-	Layer.provide(UserRepo.Default),
-	Layer.provide(OrganizationRepo.Default),
-	Layer.provide(OrganizationMemberRepo.Default),
-	Layer.provide(InvitationRepo.Default),
+const WorkOSSyncLive = WorkOSSync.layer.pipe(
+	Layer.provide(WorkOSClient.layer),
+	Layer.provide(UserRepo.layer),
+	Layer.provide(OrganizationRepo.layer),
+	Layer.provide(OrganizationMemberRepo.layer),
+	Layer.provide(InvitationRepo.layer),
 	Layer.provide(DatabaseLayer),
 )
 

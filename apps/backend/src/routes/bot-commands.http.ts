@@ -1,5 +1,6 @@
-import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
-import { Sse } from "@effect/experimental"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
+import { Sse } from "effect/unstable/encoding"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, IntegrationConnectionRepo } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import {
@@ -130,7 +131,7 @@ export const createCommandSseStream = ({
 					Effect.tap(() =>
 						Effect.logDebug(`Bot ${botId} (${botName}) disconnected from SSE stream`),
 					),
-					Effect.catchAll(() => Effect.void),
+					Effect.catch(() => Effect.void),
 				),
 			)
 
@@ -138,7 +139,7 @@ export const createCommandSseStream = ({
 			yield* Effect.never
 		}).pipe(
 			Effect.scoped,
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				// Log the error but don't fail the stream - end it gracefully
 				Effect.runFork(Effect.logError("Redis subscription error", { error, botId, botName }))
 				emit.end()

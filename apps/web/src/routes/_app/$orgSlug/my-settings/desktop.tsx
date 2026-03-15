@@ -4,7 +4,7 @@
  * @description User settings specific to the desktop application (autostart, etc.)
  */
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import {

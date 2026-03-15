@@ -2,12 +2,11 @@ import { and, Database, eq, inArray, lt, ModelRepository, ne, schema, type TxFn 
 
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Option, type Schema } from "effect"
 
-export class UserPresenceStatusRepo extends Effect.Service<UserPresenceStatusRepo>()(
+export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatusRepo>()(
 	"UserPresenceStatusRepo",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const db = yield* Database.Database
 			const baseRepo = yield* ModelRepository.makeRepository(

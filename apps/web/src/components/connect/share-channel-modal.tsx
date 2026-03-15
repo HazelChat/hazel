@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createConnectInviteMutation, workspaceSearchMutation } from "~/atoms/connect-share-atoms"

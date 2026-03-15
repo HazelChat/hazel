@@ -5,8 +5,8 @@
  * Uses HttpClient with proper schema validation and error handling.
  */
 
-import { FetchHttpClient, HttpBody, HttpClient } from "@effect/platform"
-import { Duration, Effect, Schema } from "effect"
+import { FetchHttpClient, HttpBody, HttpClient } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type { OAuthIntegrationProvider } from "./provider-config"
 
@@ -25,14 +25,14 @@ const OAuthTokenApiResponse = Schema.Struct({
 	refresh_token: Schema.optional(Schema.String),
 	expires_in: Schema.optional(Schema.Number),
 	scope: Schema.optional(Schema.String),
-	token_type: Schema.optionalWith(Schema.String, { default: () => "Bearer" }),
+	token_type: Schema.optional(Schema.String, { default: () => "Bearer" }),
 })
 
 // ============================================================================
 // Error Types
 // ============================================================================
 
-export class OAuthHttpError extends Schema.TaggedError<OAuthHttpError>()("OAuthHttpError", {
+export class OAuthHttpError extends Schema.TaggedErrorClass<OAuthHttpError>()("OAuthHttpError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
@@ -81,9 +81,8 @@ const encodeFormData = (params: Record<string, string>): string =>
  * Provides Effect-based HTTP methods for OAuth token operations using HttpClient
  * with proper schema validation and error handling.
  */
-export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHttpClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAuthHttpClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		/**
@@ -278,5 +277,8 @@ export class OAuthHttpClient extends Effect.Service<OAuthHttpClient>()("OAuthHtt
 			refreshToken: wrappedRefreshToken,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

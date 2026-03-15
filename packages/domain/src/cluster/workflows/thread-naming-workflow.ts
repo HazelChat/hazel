@@ -1,4 +1,4 @@
-import { Workflow } from "@effect/workflow"
+import { Workflow } from "effect/unstable/workflow"
 import { ChannelId, MessageId } from "@hazel/schema"
 import { ThreadNamingWorkflowError } from "../activities/thread-naming-activities"
 

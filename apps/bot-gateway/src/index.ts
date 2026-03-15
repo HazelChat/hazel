@@ -24,6 +24,7 @@ import {
 	Ref,
 	Runtime,
 	Schema,
+	ServiceMap,
 } from "effect"
 import { TracerLive } from "./observability/tracer"
 
@@ -120,9 +121,8 @@ const extractGatewayOp = (payload: string | BufferSource): string | undefined =>
 	}
 }
 
-export class GatewayConfig extends Effect.Service<GatewayConfig>()("GatewayConfig", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class GatewayConfig extends ServiceMap.Service<GatewayConfig>()("GatewayConfig", {
+	make: Effect.gen(function* () {
 		const config = {
 			port: yield* Config.integer("PORT").pipe(Config.withDefault(DEFAULT_PORT)),
 			isDev: yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false)),
@@ -147,23 +147,25 @@ export class GatewayConfig extends Effect.Service<GatewayConfig>()("GatewayConfi
 		})
 		return config
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
-class GatewayAuthError extends Schema.TaggedError<GatewayAuthError>()("GatewayAuthError", {
+class GatewayAuthError extends Schema.TaggedErrorClass<GatewayAuthError>()("GatewayAuthError", {
 	message: Schema.String,
 }) {}
 
-class GatewayProtocolError extends Schema.TaggedError<GatewayProtocolError>()("GatewayProtocolError", {
+class GatewayProtocolError extends Schema.TaggedErrorClass<GatewayProtocolError>()("GatewayProtocolError", {
 	message: Schema.String,
 }) {}
 
-export class GatewayStartupError extends Schema.TaggedError<GatewayStartupError>()("GatewayStartupError", {
-	dependency: Schema.Literal("config", "database", "redis", "tracer", "server"),
+export class GatewayStartupError extends Schema.TaggedErrorClass<GatewayStartupError>()("GatewayStartupError", {
+	dependency: Schema.Literals(["config", "database", "redis", "tracer", "server"]),
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class DurableStreamGatewayError extends Schema.TaggedError<DurableStreamGatewayError>()(
+class DurableStreamGatewayError extends Schema.TaggedErrorClass<DurableStreamGatewayError>()(
 	"DurableStreamGatewayError",
 	{
 		message: Schema.String,
@@ -191,9 +193,8 @@ interface GatewaySession {
 	closed: boolean
 }
 
-class DurableStreamClient extends Effect.Service<DurableStreamClient>()("DurableStreamClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("DurableStreamClient", {
+	make: Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		const ensuredStreamsRef = yield* Ref.make(new Set<string>())
 		const authHeaders: Record<string, string> = Option.isSome(config.durableStreamsToken)
@@ -322,11 +323,12 @@ class DurableStreamClient extends Effect.Service<DurableStreamClient>()("Durable
 			readBatch,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
-class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub", {
+	make: Effect.gen(function* () {
 		const botRepo = yield* BotRepo
 		const redis = yield* Redis
 		const durableStreams = yield* DurableStreamClient
@@ -473,11 +475,11 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						})
 
 						const ackResult = yield* Deferred.await(ackDeferred).pipe(
-							Effect.timeoutFail({
+							Effect.timeoutOrElse({
 								onTimeout: () =>
-									new GatewayProtocolError({
+									Effect.fail(new GatewayProtocolError({
 										message: `Timed out waiting for ACK from session ${id}`,
-									}),
+									})),
 								duration: config.batchAckTimeoutMs,
 							}),
 						)
@@ -747,9 +749,9 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						new GatewayProtocolError({
 							message: `Session ${id} closed before ACK`,
 						}),
-					).pipe(Effect.catchAll(() => Effect.void))
+					).pipe(Effect.catch(() => Effect.void))
 				}
-				yield* releaseLease(session.botId, id).pipe(Effect.catchAll(() => Effect.void))
+				yield* releaseLease(session.botId, id).pipe(Effect.catch(() => Effect.void))
 				yield* deleteSession(id)
 			})
 
@@ -761,7 +763,9 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 			proxyRead: durableStreams.proxyRead,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 const DatabaseLive = Layer.unwrapEffect(
 	Effect.gen(function* () {
@@ -818,7 +822,7 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 		),
 	)
 
-export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.Default, {
+export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.layer, {
 	dependency: "config",
 	startMessage: "Loading gateway startup config...",
 	successMessage: "Gateway startup config loaded",
@@ -843,7 +847,7 @@ export const InstrumentedDatabaseLive = instrumentStartupLayer(
 	},
 )
 
-export const InstrumentedRedisLive = instrumentStartupLayer(Redis.Default, {
+export const InstrumentedRedisLive = instrumentStartupLayer(Redis.layer, {
 	dependency: "redis",
 	startMessage: "Initializing bot gateway Redis layer...",
 	successMessage: "Bot gateway Redis layer initialized",
@@ -857,9 +861,9 @@ export const InstrumentedTracerLive = instrumentStartupLayer(TracerLive, {
 	failureMessage: "Bot gateway tracer layer initialization failed",
 })
 
-const RepoLive = Layer.mergeAll(BotRepo.Default).pipe(Layer.provide(InstrumentedDatabaseLive))
-const DurableStreamClientLive = DurableStreamClient.Default.pipe(Layer.provide(InstrumentedConfigLive))
-const BotGatewayHubLive = BotGatewayHub.Default.pipe(
+const RepoLive = Layer.mergeAll(BotRepo.layer).pipe(Layer.provide(InstrumentedDatabaseLive))
+const DurableStreamClientLive = DurableStreamClient.layer.pipe(Layer.provide(InstrumentedConfigLive))
+const BotGatewayHubLive = BotGatewayHub.layer.pipe(
 	Layer.provideMerge(InstrumentedConfigLive),
 	Layer.provideMerge(InstrumentedRedisLive),
 	Layer.provideMerge(RepoLive),

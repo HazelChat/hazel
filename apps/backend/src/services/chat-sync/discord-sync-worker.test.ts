@@ -143,7 +143,7 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 								ChatSyncProviderRegistry,
 								deps.providerRegistry as ChatSyncProviderRegistry,
 							)
-						: ChatSyncProviderRegistry.Default,
+						: ChatSyncProviderRegistry.layer,
 				),
 				Layer.provide(
 					deps.discordApiClient
@@ -151,7 +151,7 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 								Discord.DiscordApiClient,
 								deps.discordApiClient as Discord.DiscordApiClient,
 							)
-						: Discord.DiscordApiClient.Default,
+						: Discord.DiscordApiClient.layer,
 				),
 			),
 		),

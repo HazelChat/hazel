@@ -1,5 +1,5 @@
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Schema } from "effect"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 
 export const DiscordAccountInfo = Schema.Struct({
 	externalAccountId: Schema.String,
@@ -31,14 +31,14 @@ const DiscordUserApiResponse = Schema.Struct({
 	id: Schema.String,
 	username: Schema.String,
 	global_name: Schema.optional(Schema.NullOr(Schema.String)),
-	discriminator: Schema.optionalWith(Schema.String, { default: () => "0" }),
+	discriminator: Schema.optional(Schema.String, { default: () => "0" }),
 })
 
 const DiscordGuildApiResponse = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	icon: Schema.optional(Schema.NullOr(Schema.String)),
-	owner: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+	owner: Schema.optional(Schema.Boolean, { default: () => false }),
 })
 
 const DiscordWebhookCreateResponse = Schema.Struct({
@@ -59,10 +59,10 @@ const DiscordMessageCreateResponse = Schema.Struct({
 })
 
 const DiscordErrorApiResponse = Schema.Struct({
-	message: Schema.optionalWith(Schema.String, { default: () => "Unknown Discord error" }),
+	message: Schema.optional(Schema.String, { default: () => "Unknown Discord error" }),
 })
 
-export class DiscordApiError extends Schema.TaggedError<DiscordApiError>()("DiscordApiError", {
+export class DiscordApiError extends Schema.TaggedErrorClass<DiscordApiError>()("DiscordApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
@@ -87,9 +87,8 @@ const parseDiscordErrorMessage = (status: number, message: string): string => {
 const channelTypeIsMessageCapable = (type: number): boolean =>
 	type === 0 || type === 5 || type === 10 || type === 11 || type === 12
 
-export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("DiscordApiClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("DiscordApiClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		const makeBearerClient = (token: string) =>
@@ -548,5 +547,8 @@ export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("Discor
 			createThread,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

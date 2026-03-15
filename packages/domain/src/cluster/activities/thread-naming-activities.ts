@@ -43,7 +43,7 @@ export type UpdateThreadNameResult = typeof UpdateThreadNameResult.Type
 // ============================================================================
 
 /** Thread channel does not exist */
-export class ThreadChannelNotFoundError extends Schema.TaggedError<ThreadChannelNotFoundError>()(
+export class ThreadChannelNotFoundError extends Schema.TaggedErrorClass<ThreadChannelNotFoundError>()(
 	"ThreadChannelNotFoundError",
 	{ threadChannelId: ChannelId },
 ) {
@@ -51,7 +51,7 @@ export class ThreadChannelNotFoundError extends Schema.TaggedError<ThreadChannel
 }
 
 /** Original message that started the thread was not found */
-export class OriginalMessageNotFoundError extends Schema.TaggedError<OriginalMessageNotFoundError>()(
+export class OriginalMessageNotFoundError extends Schema.TaggedErrorClass<OriginalMessageNotFoundError>()(
 	"OriginalMessageNotFoundError",
 	{ threadChannelId: ChannelId, messageId: MessageId },
 ) {
@@ -59,11 +59,11 @@ export class OriginalMessageNotFoundError extends Schema.TaggedError<OriginalMes
 }
 
 /** Database query failed during context gathering */
-export class ThreadContextQueryError extends Schema.TaggedError<ThreadContextQueryError>()(
+export class ThreadContextQueryError extends Schema.TaggedErrorClass<ThreadContextQueryError>()(
 	"ThreadContextQueryError",
 	{
 		threadChannelId: ChannelId,
-		operation: Schema.Literal("thread", "originalMessage", "threadMessages"),
+		operation: Schema.Literals(["thread", "originalMessage", "threadMessages"]),
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
 ) {
@@ -75,7 +75,7 @@ export class ThreadContextQueryError extends Schema.TaggedError<ThreadContextQue
 // ============================================================================
 
 /** AI provider is unreachable or returned an error */
-export class AIProviderUnavailableError extends Schema.TaggedError<AIProviderUnavailableError>()(
+export class AIProviderUnavailableError extends Schema.TaggedErrorClass<AIProviderUnavailableError>()(
 	"AIProviderUnavailableError",
 	{ provider: Schema.String, cause: Schema.Unknown.pipe(Schema.optional) },
 ) {
@@ -83,7 +83,7 @@ export class AIProviderUnavailableError extends Schema.TaggedError<AIProviderUna
 }
 
 /** AI provider rate limited the request */
-export class AIRateLimitError extends Schema.TaggedError<AIRateLimitError>()("AIRateLimitError", {
+export class AIRateLimitError extends Schema.TaggedErrorClass<AIRateLimitError>()("AIRateLimitError", {
 	provider: Schema.String,
 	retryAfter: Schema.Number.pipe(Schema.optional),
 }) {
@@ -91,7 +91,7 @@ export class AIRateLimitError extends Schema.TaggedError<AIRateLimitError>()("AI
 }
 
 /** AI response could not be parsed or was empty */
-export class AIResponseParseError extends Schema.TaggedError<AIResponseParseError>()("AIResponseParseError", {
+export class AIResponseParseError extends Schema.TaggedErrorClass<AIResponseParseError>()("AIResponseParseError", {
 	threadChannelId: ChannelId,
 	rawResponse: Schema.String.pipe(Schema.optional),
 }) {
@@ -103,7 +103,7 @@ export class AIResponseParseError extends Schema.TaggedError<AIResponseParseErro
 // ============================================================================
 
 /** Database update for thread name failed */
-export class ThreadNameUpdateError extends Schema.TaggedError<ThreadNameUpdateError>()(
+export class ThreadNameUpdateError extends Schema.TaggedErrorClass<ThreadNameUpdateError>()(
 	"ThreadNameUpdateError",
 	{ threadChannelId: ChannelId, newName: Schema.String, cause: Schema.Unknown.pipe(Schema.optional) },
 ) {
@@ -114,7 +114,7 @@ export class ThreadNameUpdateError extends Schema.TaggedError<ThreadNameUpdateEr
 // Union of all workflow errors (for RPC exposure)
 // ============================================================================
 
-export const ThreadNamingWorkflowError = Schema.Union(
+export const ThreadNamingWorkflowError = Schema.Union([
 	ThreadChannelNotFoundError,
 	OriginalMessageNotFoundError,
 	ThreadContextQueryError,
@@ -122,6 +122,6 @@ export const ThreadNamingWorkflowError = Schema.Union(
 	AIRateLimitError,
 	AIResponseParseError,
 	ThreadNameUpdateError,
-)
+])
 
 export type ThreadNamingWorkflowError = typeof ThreadNamingWorkflowError.Type

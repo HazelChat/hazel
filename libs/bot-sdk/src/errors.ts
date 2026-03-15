@@ -3,7 +3,7 @@ import { Schema } from "effect"
 /**
  * Error thrown when bot authentication fails.
  */
-export class AuthenticationError extends Schema.TaggedError<AuthenticationError>()("AuthenticationError", {
+export class AuthenticationError extends Schema.TaggedErrorClass<AuthenticationError>()("AuthenticationError", {
 	message: Schema.String,
 	cause: Schema.Unknown,
 }) {}
@@ -11,7 +11,7 @@ export class AuthenticationError extends Schema.TaggedError<AuthenticationError>
 /**
  * Error thrown when a command payload cannot be decoded.
  */
-export class CommandArgsDecodeError extends Schema.TaggedError<CommandArgsDecodeError>()(
+export class CommandArgsDecodeError extends Schema.TaggedErrorClass<CommandArgsDecodeError>()(
 	"CommandArgsDecodeError",
 	{
 		message: Schema.String,
@@ -23,7 +23,7 @@ export class CommandArgsDecodeError extends Schema.TaggedError<CommandArgsDecode
 /**
  * Error thrown when a command handler fails.
  */
-export class CommandHandlerError extends Schema.TaggedError<CommandHandlerError>()("CommandHandlerError", {
+export class CommandHandlerError extends Schema.TaggedErrorClass<CommandHandlerError>()("CommandHandlerError", {
 	message: Schema.String,
 	commandName: Schema.String,
 	cause: Schema.Unknown,
@@ -32,7 +32,7 @@ export class CommandHandlerError extends Schema.TaggedError<CommandHandlerError>
 /**
  * Error thrown when syncing slash commands with the backend fails.
  */
-export class CommandSyncError extends Schema.TaggedError<CommandSyncError>()("CommandSyncError", {
+export class CommandSyncError extends Schema.TaggedErrorClass<CommandSyncError>()("CommandSyncError", {
 	message: Schema.String,
 	cause: Schema.Unknown,
 }) {}
@@ -40,23 +40,23 @@ export class CommandSyncError extends Schema.TaggedError<CommandSyncError>()("Co
 /**
  * Error thrown when syncing mentionable settings fails.
  */
-export class MentionableSyncError extends Schema.TaggedError<MentionableSyncError>()("MentionableSyncError", {
+export class MentionableSyncError extends Schema.TaggedErrorClass<MentionableSyncError>()("MentionableSyncError", {
 	message: Schema.String,
 	cause: Schema.Unknown,
 }) {}
 
-export class GatewayReadError extends Schema.TaggedError<GatewayReadError>()("GatewayReadError", {
+export class GatewayReadError extends Schema.TaggedErrorClass<GatewayReadError>()("GatewayReadError", {
 	message: Schema.String,
 	cause: Schema.Unknown,
 }) {}
 
-export class GatewayDecodeError extends Schema.TaggedError<GatewayDecodeError>()("GatewayDecodeError", {
+export class GatewayDecodeError extends Schema.TaggedErrorClass<GatewayDecodeError>()("GatewayDecodeError", {
 	message: Schema.String,
 	payload: Schema.String,
 	cause: Schema.Unknown,
 }) {}
 
-export class GatewaySessionStoreError extends Schema.TaggedError<GatewaySessionStoreError>()(
+export class GatewaySessionStoreError extends Schema.TaggedErrorClass<GatewaySessionStoreError>()(
 	"GatewaySessionStoreError",
 	{
 		message: Schema.String,
@@ -67,7 +67,7 @@ export class GatewaySessionStoreError extends Schema.TaggedError<GatewaySessionS
 /**
  * Error thrown when sending a message fails.
  */
-export class MessageSendError extends Schema.TaggedError<MessageSendError>()("MessageSendError", {
+export class MessageSendError extends Schema.TaggedErrorClass<MessageSendError>()("MessageSendError", {
 	message: Schema.String,
 	channelId: Schema.String,
 	cause: Schema.Unknown,
@@ -76,7 +76,7 @@ export class MessageSendError extends Schema.TaggedError<MessageSendError>()("Me
 /**
  * Error thrown when replying to a message fails.
  */
-export class MessageReplyError extends Schema.TaggedError<MessageReplyError>()("MessageReplyError", {
+export class MessageReplyError extends Schema.TaggedErrorClass<MessageReplyError>()("MessageReplyError", {
 	message: Schema.String,
 	channelId: Schema.String,
 	replyToMessageId: Schema.String,
@@ -86,7 +86,7 @@ export class MessageReplyError extends Schema.TaggedError<MessageReplyError>()("
 /**
  * Error thrown when updating a message fails.
  */
-export class MessageUpdateError extends Schema.TaggedError<MessageUpdateError>()("MessageUpdateError", {
+export class MessageUpdateError extends Schema.TaggedErrorClass<MessageUpdateError>()("MessageUpdateError", {
 	message: Schema.String,
 	messageId: Schema.String,
 	cause: Schema.Unknown,
@@ -95,7 +95,7 @@ export class MessageUpdateError extends Schema.TaggedError<MessageUpdateError>()
 /**
  * Error thrown when deleting a message fails.
  */
-export class MessageDeleteError extends Schema.TaggedError<MessageDeleteError>()("MessageDeleteError", {
+export class MessageDeleteError extends Schema.TaggedErrorClass<MessageDeleteError>()("MessageDeleteError", {
 	message: Schema.String,
 	messageId: Schema.String,
 	cause: Schema.Unknown,
@@ -104,7 +104,7 @@ export class MessageDeleteError extends Schema.TaggedError<MessageDeleteError>()
 /**
  * Error thrown when toggling a reaction fails.
  */
-export class MessageReactError extends Schema.TaggedError<MessageReactError>()("MessageReactError", {
+export class MessageReactError extends Schema.TaggedErrorClass<MessageReactError>()("MessageReactError", {
 	message: Schema.String,
 	messageId: Schema.String,
 	emoji: Schema.String,
@@ -114,7 +114,7 @@ export class MessageReactError extends Schema.TaggedError<MessageReactError>()("
 /**
  * Error thrown when listing messages fails.
  */
-export class MessageListError extends Schema.TaggedError<MessageListError>()("MessageListError", {
+export class MessageListError extends Schema.TaggedErrorClass<MessageListError>()("MessageListError", {
 	message: Schema.String,
 	channelId: Schema.String,
 	cause: Schema.Unknown,
@@ -123,7 +123,7 @@ export class MessageListError extends Schema.TaggedError<MessageListError>()("Me
 /**
  * Error thrown when an event handler execution fails.
  */
-export class EventHandlerError extends Schema.TaggedError<EventHandlerError>()("EventHandlerError", {
+export class EventHandlerError extends Schema.TaggedErrorClass<EventHandlerError>()("EventHandlerError", {
 	message: Schema.String,
 	eventType: Schema.String,
 	cause: Schema.Unknown,

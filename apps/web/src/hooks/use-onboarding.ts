@@ -1,4 +1,4 @@
-import { useAtom, useAtomSet } from "@effect-atom/atom-react"
+import { useAtom, useAtomSet } from "@effect/atom-react"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { usePostHog } from "posthog-js/react"

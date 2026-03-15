@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Match } from "effect"
 import { motion } from "motion/react"

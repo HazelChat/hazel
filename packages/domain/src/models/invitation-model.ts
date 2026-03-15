@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const InvitationStatus = Schema.Literal("pending", "accepted", "expired", "revoked")
+export const InvitationStatus = Schema.Literals(["pending", "accepted", "expired", "revoked"])
 export type InvitationStatus = Schema.Schema.Type<typeof InvitationStatus>
 
 export class Model extends M.Class<Model>("Invitation")({

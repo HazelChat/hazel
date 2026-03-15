@@ -1,12 +1,12 @@
 import { ChannelRepo, OrganizationMemberRepo, PinnedMessageRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, PinnedMessageId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("PinnedMessagePolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class PinnedMessagePolicy extends ServiceMap.Service<PinnedMessagePolicy>()("PinnedMessagePolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "PinnedMessage" as const
 
 		const pinnedMessageRepo = yield* PinnedMessageRepo
@@ -112,11 +112,11 @@ export class PinnedMessagePolicy extends Effect.Service<PinnedMessagePolicy>()("
 
 		return { canCreate, canDelete, canUpdate } as const
 	}),
-	dependencies: [
-		PinnedMessageRepo.Default,
-		ChannelRepo.Default,
-		OrganizationMemberRepo.Default,
-		OrgResolver.Default,
-	],
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(PinnedMessageRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

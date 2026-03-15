@@ -1,12 +1,12 @@
 import { ChannelMemberRepo, ChannelRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("ChannelMemberPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class ChannelMemberPolicy extends ServiceMap.Service<ChannelMemberPolicy>()("ChannelMemberPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "ChannelMember" as const
 
 		const channelMemberRepo = yield* ChannelMemberRepo
@@ -164,11 +164,11 @@ export class ChannelMemberPolicy extends Effect.Service<ChannelMemberPolicy>()("
 
 		return { canCreate, canRead, canUpdate, canDelete, isOwner } as const
 	}),
-	dependencies: [
-		ChannelMemberRepo.Default,
-		ChannelRepo.Default,
-		OrganizationMemberRepo.Default,
-		OrgResolver.Default,
-	],
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(ChannelMemberRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

@@ -2,11 +2,10 @@ import { Database, eq, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class IntegrationTokenRepo extends ServiceMap.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.integrationTokensTable,
 			IntegrationToken.Model,
@@ -95,4 +94,6 @@ export class IntegrationTokenRepo extends Effect.Service<IntegrationTokenRepo>()
 			deleteByConnectionId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

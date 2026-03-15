@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useCallback } from "react"

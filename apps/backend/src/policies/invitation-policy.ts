@@ -1,15 +1,15 @@
 import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { InvitationId, OrganizationId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /**
  * @effect-leakable-service
  */
-export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("InvitationPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class InvitationPolicy extends ServiceMap.Service<InvitationPolicy>()("InvitationPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "Invitation" as const
 
 		const invitationRepo = yield* InvitationRepo
@@ -141,11 +141,11 @@ export class InvitationPolicy extends Effect.Service<InvitationPolicy>()("Invita
 
 		return { canRead, canCreate, canUpdate, canDelete, canAccept, canList } as const
 	}),
-	dependencies: [
-		InvitationRepo.Default,
-		OrganizationMemberRepo.Default,
-		UserRepo.Default,
-		OrgResolver.Default,
-	],
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(InvitationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

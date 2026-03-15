@@ -7,7 +7,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { Config, Effect, Layer, Option, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -89,10 +89,8 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
  *
  * This is used by the backend HTTP API and WebSocket RPC handlers.
  */
-export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
-	accessors: true,
-	dependencies: [WorkOSClient.Default],
-	effect: Effect.gen(function* () {
+export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
+	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 		const decodeClaims = decodeWorkOSJwtClaims
@@ -123,7 +121,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
 								decodeInternalOrganizationIdFromWorkOS(externalId).pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
 											{
@@ -353,6 +351,10 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(WorkOSClient.layer),
+	)
+
 	/** Mock user ID - a valid UUID */
 	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
 
@@ -424,7 +426,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 /**
  * Layer that provides BackendAuth with all its dependencies.
  *
- * With Effect.Service dependencies, BackendAuth.Default automatically includes:
- * - WorkOSClient.Default (which includes AuthConfig.Default)
+ * With Effect.Service dependencies, BackendAuth.layer automatically includes:
+ * - WorkOSClient.layer (which includes AuthConfig.layer)
  */
-export const BackendAuthLive = BackendAuth.Default
+export const BackendAuthLive = BackendAuth.layer

@@ -351,17 +351,17 @@ const makeWorkerLayer = (
 	},
 ) => {
 	const repoLayer = Layer.mergeAll(
-		ChatSyncConnectionRepo.Default,
-		ChatSyncChannelLinkRepo.Default,
-		ChatSyncMessageLinkRepo.Default,
-		ChatSyncEventReceiptRepo.Default,
-		MessageRepo.Default,
-		MessageOutboxRepo.Default,
-		MessageReactionRepo.Default,
-		ChannelRepo.Default,
-		IntegrationConnectionRepo.Default,
-		UserRepo.Default,
-		OrganizationMemberRepo.Default,
+		ChatSyncConnectionRepo.layer,
+		ChatSyncChannelLinkRepo.layer,
+		ChatSyncMessageLinkRepo.layer,
+		ChatSyncEventReceiptRepo.layer,
+		MessageRepo.layer,
+		MessageOutboxRepo.layer,
+		MessageReactionRepo.layer,
+		ChannelRepo.layer,
+		IntegrationConnectionRepo.layer,
+		UserRepo.layer,
+		OrganizationMemberRepo.layer,
 	).pipe(Layer.provide(harness.dbLayer))
 
 	const deps = Layer.mergeAll(

@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ConnectConversationStatus = Schema.Literal("active", "disconnected")
+export const ConnectConversationStatus = Schema.Literals(["active", "disconnected"])
 export type ConnectConversationStatus = Schema.Schema.Type<typeof ConnectConversationStatus>
 
 export class Model extends M.Class<Model>("ConnectConversation")({
@@ -11,7 +11,7 @@ export class Model extends M.Class<Model>("ConnectConversation")({
 	hostOrganizationId: OrganizationId,
 	hostChannelId: ChannelId,
 	status: ConnectConversationStatus,
-	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	createdBy: UserId,
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(Schema.NullOr(JsonDate)),

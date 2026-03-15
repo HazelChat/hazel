@@ -1,10 +1,10 @@
-import { FetchHttpClient, HttpClient } from "@effect/platform"
-import { Effect, Schema } from "effect"
+import { FetchHttpClient, HttpClient } from "effect/unstable/http"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 
 const SYNDICATION_URL = "https://cdn.syndication.twimg.com"
 const TWEET_ID_REGEX = /^[0-9]+$/
 
-export class TwitterApiError extends Schema.TaggedError<TwitterApiError>("TwitterApiError")(
+export class TwitterApiError extends Schema.TaggedErrorClass<TwitterApiError>("TwitterApiError")(
 	"TwitterApiError",
 	{
 		message: Schema.String,
@@ -72,8 +72,8 @@ function buildTweetUrl(id: string): string {
  * Twitter API Service
  * Provides methods to interact with Twitter's syndication API
  */
-export class TwitterApi extends Effect.Service<TwitterApi>()("TwitterApi", {
-	effect: Effect.gen(function* () {
+export class TwitterApi extends ServiceMap.Service<TwitterApi>()("TwitterApi", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		return {
@@ -109,7 +109,7 @@ export class TwitterApi extends Effect.Service<TwitterApi>()("TwitterApi", {
 
 					// Parse JSON response
 					const data: any = yield* response.json.pipe(
-						Effect.catchAll(() => Effect.succeed(undefined)),
+						Effect.catch(() => Effect.succeed(undefined)),
 					)
 
 					// Handle successful response
@@ -167,5 +167,8 @@ export class TwitterApi extends Effect.Service<TwitterApi>()("TwitterApi", {
 				}),
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

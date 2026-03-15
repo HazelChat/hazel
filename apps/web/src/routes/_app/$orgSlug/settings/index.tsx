@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { toast } from "sonner"

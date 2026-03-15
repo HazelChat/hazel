@@ -26,7 +26,7 @@ export const refailUnauthorized = (entity: string, action: string) => {
 			effect,
 			(e) => !UnauthorizedError.is(e),
 			(e) =>
-				Effect.flatMap(CurrentUser.Context, (actor) => {
+				CurrentUser.Context.use((actor) => {
 					// Convert PermissionError to UnauthorizedError with scope info
 					if (PermissionError.is(e)) {
 						return Effect.fail(

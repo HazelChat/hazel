@@ -5,7 +5,8 @@
  * Hazel message, channel, membership, and command events are pre-configured.
  */
 
-import { FetchHttpClient, HttpApiClient } from "@effect/platform"
+import { HttpApiClient } from "effect/unstable/httpapi"
+import { FetchHttpClient } from "effect/unstable/http"
 import type {
 	AttachmentId,
 	BotId,
@@ -38,7 +39,6 @@ import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import {
 	Cache,
 	Config,
-	Context,
 	Duration,
 	Effect,
 	Layer,
@@ -50,6 +50,7 @@ import {
 	Ref,
 	Runtime,
 	Schema,
+	ServiceMap,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createLoggerLayer, logLevelFromString, type BotLogConfig, type LogFormat } from "./log-config.ts"
@@ -118,10 +119,9 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly heartbeatIntervalMs?: number
 }
 
-export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
-	HazelBotRuntimeConfigTag,
+export class HazelBotRuntimeConfigTag extends ServiceMap.Service<HazelBotRuntimeConfigTag,
 	HazelBotRuntimeConfig
->() {}
+>()("@hazel/bot-sdk/HazelBotRuntimeConfig") {}
 
 /**
  * Hazel-specific type aliases for convenience
@@ -184,9 +184,8 @@ export interface SendMessageOptions {
  * Hazel Bot Client - Effect Service with typed convenience methods
  * Uses scoped: since it manages scoped resources (RateLimiter)
  */
-export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotClient", {
-	accessors: true,
-	scoped: Effect.gen(function* () {
+export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelBotClient", {
+	make: Effect.gen(function* () {
 		const auth = yield* BotAuth
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
@@ -312,7 +311,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			)
 
 		const setBotState = <A>(key: string, schema: Schema.Schema<A>, value: A) =>
-			Schema.encode(schema)(value).pipe(
+			Schema.encodeEffect(schema)(value).pipe(
 				Effect.flatMap((encoded) =>
 					botStateStore.set(authContext.botId as BotId, key, JSON.stringify(encoded)),
 				),
@@ -807,7 +806,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					Effect.forever(
 						Effect.gen(function* () {
 							const nextState = yield* connectOnce.pipe(
-								Effect.catchAll((error) =>
+								Effect.catch((error) =>
 									Effect.logWarning("Bot gateway websocket failed, retrying", {
 										error,
 										botId: authContext.botId,
@@ -1751,13 +1750,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 									// Mark the session as failed - this updates the existing message
 									yield* session.fail(userMessage).pipe(
-										Effect.catchAllCause((cause) =>
+										Effect.catchCause((cause) =>
 											Effect.gen(function* () {
 												yield* Effect.logError("Failed to mark AI stream as failed", {
 													cause,
 												})
 												yield* sendCommandErrorMessage(ctx, userMessage).pipe(
-													Effect.catchAllCause((messageCause) =>
+													Effect.catchCause((messageCause) =>
 														Effect.logError(
 															"Failed to send AI fallback error message",
 															{
@@ -1777,7 +1776,9 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 			},
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 /**
  * Configuration for creating a Hazel bot
@@ -1911,7 +1912,7 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
  * @example
  * ```typescript
  * import { createHazelBot, HazelBotClient, Command, CommandGroup } from "@hazel/bot-sdk"
- * import { Schema } from "effect"
+ * import { ServiceMap, Schema } from "effect"
  *
  * // Define typesafe commands
  * const EchoCommand = Command.make("echo", {
@@ -1956,7 +1957,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 
 	const AuthLayer = Layer.unwrapEffect(
 		createAuthContextFromToken(config.botToken, backendUrl).pipe(
-			Effect.map((context) => BotAuth.Default(context)),
+			Effect.map((context) => BotAuth.layer(context)),
 		),
 	)
 
@@ -2022,7 +2023,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 
 	// Compose all layers with proper dependency order
 	const AllLayers = Layer.mergeAll(
-		HazelBotClient.Default.pipe(
+		HazelBotClient.layer.pipe(
 			Layer.provide(RpcClientLayer),
 			Layer.provide(RpcClientConfigLayer),
 			Layer.provide(BotStateStoreLayer),

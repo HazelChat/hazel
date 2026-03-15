@@ -24,7 +24,7 @@ const bot = defineBot({
 	serviceName: "hazel-bot",
 	commands,
 	mentionable: true,
-	layers: [LinearApiClient.Default, CraftApiClient.Default],
+	layers: [LinearApiClient.layer, CraftApiClient.layer],
 	setup: (bot) =>
 		Effect.gen(function* () {
 			const loadActiveThreads = () =>

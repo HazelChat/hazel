@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../../errors"
 import { AttachmentId, ChannelId, MessageId } from "@hazel/schema"
@@ -18,16 +18,16 @@ export class ListMessagesQuery extends Schema.Class<ListMessagesQuery>("ListMess
 	ending_before: Schema.optional(MessageId),
 	/** Maximum number of messages to return (1-100, default 25) */
 	limit: Schema.optional(
-		Schema.NumberFromString.pipe(
-			Schema.int(),
-			Schema.greaterThanOrEqualTo(1),
-			Schema.lessThanOrEqualTo(100),
+		Schema.NumberFromString.check(
+			Schema.isInt(),
+			Schema.isGreaterThanOrEqualTo(1),
+			Schema.isLessThanOrEqualTo(100),
 		),
 	),
 }) {}
 
 export class ListMessagesResponse extends Schema.Class<ListMessagesResponse>("ListMessagesResponse")({
-	data: Schema.Array(Message.Model.json),
+	data: Schema.Array(Message.Model.json as any),
 	has_more: Schema.Boolean,
 }) {}
 
@@ -55,7 +55,7 @@ export class ToggleReactionRequest extends Schema.Class<ToggleReactionRequest>("
 // ============ RESPONSE SCHEMAS ============
 
 export class MessageResponse extends Schema.Class<MessageResponse>("MessageResponse")({
-	data: Message.Model.json,
+	data: Message.Model.json as any,
 	transactionId: TransactionId,
 }) {}
 
@@ -65,26 +65,26 @@ export class DeleteMessageResponse extends Schema.Class<DeleteMessageResponse>("
 
 export class ToggleReactionResponse extends Schema.Class<ToggleReactionResponse>("ToggleReactionResponse")({
 	wasCreated: Schema.Boolean,
-	data: Schema.optional(MessageReaction.Model.json),
+	data: Schema.optional(MessageReaction.Model.json as any),
 	transactionId: TransactionId,
 }) {}
 
 // ============ ERROR TYPES ============
 
-export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundError>()(
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()(
 	"ChannelNotFoundError",
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.annotations({ status: 404 }),
+	{ httpApiStatus: 404 },
 ) {}
 
-export class InvalidPaginationError extends Schema.TaggedError<InvalidPaginationError>()(
+export class InvalidPaginationError extends Schema.TaggedErrorClass<InvalidPaginationError>()(
 	"InvalidPaginationError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 400 }),
+	{ httpApiStatus: 400 },
 ) {}
 
 // ============ API GROUP ============
@@ -92,14 +92,12 @@ export class InvalidPaginationError extends Schema.TaggedError<InvalidPagination
 export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 	// List messages (with cursor-based pagination)
 	.add(
-		HttpApiEndpoint.get("listMessages", `/messages`)
-			.setUrlParams(ListMessagesQuery)
-			.addSuccess(ListMessagesResponse)
-			.addError(ChannelNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InvalidPaginationError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.get("listMessages", `/messages`, {
+			query: ListMessagesQuery,
+			success: ListMessagesResponse,
+			error: [ChannelNotFoundError, UnauthorizedError, InvalidPaginationError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "List Messages",
 					description:
@@ -111,14 +109,12 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 	)
 	// Create message
 	.add(
-		HttpApiEndpoint.post("createMessage", `/messages`)
-			.setPayload(CreateMessageRequest)
-			.addSuccess(MessageResponse)
-			.addError(ChannelNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(RateLimitExceededError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.post("createMessage", `/messages`, {
+			payload: CreateMessageRequest,
+			success: MessageResponse,
+			error: [ChannelNotFoundError, UnauthorizedError, RateLimitExceededError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Create Message",
 					description: "Create a new message in a channel",
@@ -129,15 +125,13 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 	)
 	// Update message
 	.add(
-		HttpApiEndpoint.patch("updateMessage", `/messages/:id`)
-			.setPath(Schema.Struct({ id: MessageId }))
-			.setPayload(UpdateMessageRequest)
-			.addSuccess(MessageResponse)
-			.addError(MessageNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(RateLimitExceededError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.patch("updateMessage", `/messages/:id`, {
+			params: { id: MessageId },
+			payload: UpdateMessageRequest,
+			success: MessageResponse,
+			error: [MessageNotFoundError, UnauthorizedError, RateLimitExceededError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Update Message",
 					description: "Update an existing message",
@@ -148,14 +142,12 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 	)
 	// Delete message
 	.add(
-		HttpApiEndpoint.del("deleteMessage", `/messages/:id`)
-			.setPath(Schema.Struct({ id: MessageId }))
-			.addSuccess(DeleteMessageResponse)
-			.addError(MessageNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(RateLimitExceededError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.delete("deleteMessage", `/messages/:id`, {
+			params: { id: MessageId },
+			success: DeleteMessageResponse,
+			error: [MessageNotFoundError, UnauthorizedError, RateLimitExceededError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Delete Message",
 					description: "Delete a message",
@@ -166,14 +158,13 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 	)
 	// Toggle reaction
 	.add(
-		HttpApiEndpoint.post("toggleReaction", `/messages/:id/reactions`)
-			.setPath(Schema.Struct({ id: MessageId }))
-			.setPayload(ToggleReactionRequest)
-			.addSuccess(ToggleReactionResponse)
-			.addError(MessageNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
+		HttpApiEndpoint.post("toggleReaction", `/messages/:id/reactions`, {
+			params: { id: MessageId },
+			payload: ToggleReactionRequest,
+			success: ToggleReactionResponse,
+			error: [MessageNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
 				OpenApi.annotations({
 					title: "Toggle Reaction",
 					description: "Toggle a reaction on a message",

@@ -1,6 +1,6 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { memo } from "react"
 import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"

@@ -16,7 +16,7 @@
  * @since 1.0.0
  */
 
-import { Registry, Result } from "@effect-atom/atom-react"
+import { Registry, Result } from "@effect/atom-react"
 import { type Collection, createCollection, eq, type NonSingleResult, type SingleResult } from "@tanstack/db"
 import { describe, expect, it } from "vitest"
 import {

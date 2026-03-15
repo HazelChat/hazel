@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError, WorkflowInitializationError } from "../errors"
 import { RequiredScopes } from "../scopes/required-scopes"
@@ -16,16 +16,14 @@ export class WebhookResponse extends Schema.Class<WebhookResponse>("WebhookRespo
 	message: Schema.optional(Schema.String),
 }) {}
 
-export class InvalidWebhookSignature extends Schema.TaggedError<InvalidWebhookSignature>(
+export class InvalidWebhookSignature extends Schema.TaggedErrorClass<InvalidWebhookSignature>(
 	"InvalidWebhookSignature",
 )(
 	"InvalidWebhookSignature",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {}
 
 // GitHub Webhook Types
@@ -34,27 +32,25 @@ export class GitHubWebhookResponse extends Schema.Class<GitHubWebhookResponse>("
 	messagesCreated: Schema.optional(Schema.Number),
 }) {}
 
-export class InvalidGitHubWebhookSignature extends Schema.TaggedError<InvalidGitHubWebhookSignature>(
+export class InvalidGitHubWebhookSignature extends Schema.TaggedErrorClass<InvalidGitHubWebhookSignature>(
 	"InvalidGitHubWebhookSignature",
 )(
 	"InvalidGitHubWebhookSignature",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
 	.add(
-		HttpApiEndpoint.post("workos")`/workos`
-			.setPayload(Schema.Unknown)
-			.addSuccess(WebhookResponse)
-			.addError(InvalidWebhookSignature)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("workos", "/workos", {
+			payload: Schema.Unknown,
+			success: WebhookResponse,
+			error: [InvalidWebhookSignature, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "WorkOS Webhook",
 					description: "Receive and process WorkOS webhook events",
 					summary: "Process WorkOS webhook events",
@@ -63,14 +59,13 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("github")`/github`
-			.setPayload(Schema.Unknown)
-			.addSuccess(GitHubWebhookResponse)
-			.addError(InvalidGitHubWebhookSignature)
-			.addError(InternalServerError)
-			.addError(WorkflowInitializationError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("github", "/github", {
+			payload: Schema.Unknown,
+			success: GitHubWebhookResponse,
+			error: [InvalidGitHubWebhookSignature, InternalServerError, WorkflowInitializationError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "GitHub App Webhook",
 					description: "Receive and process GitHub App webhook events",
 					summary: "Process GitHub App webhook events",

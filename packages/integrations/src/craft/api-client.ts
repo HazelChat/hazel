@@ -8,8 +8,8 @@
  * and Bearer tokens instead of a single OAuth endpoint.
  */
 
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Schedule, Schema } from "effect"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Layer, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration
@@ -21,7 +21,7 @@ const DEFAULT_TIMEOUT = Duration.seconds(30)
 // Domain Schemas (exported for consumers)
 // ============================================================================
 
-export const CraftBlockType = Schema.Literal(
+export const CraftBlockType = Schema.Literals([
 	"text",
 	"line",
 	"page",
@@ -42,7 +42,7 @@ export const CraftBlockType = Schema.Literal(
 	"urlBlock",
 	"videoBlock",
 	"cardBlock",
-)
+])
 export type CraftBlockType = typeof CraftBlockType.Type
 
 export const CraftBlock = Schema.Struct({
@@ -116,18 +116,18 @@ export type CraftSpaceInfo = typeof CraftSpaceInfo.Type
 // Error Types
 // ============================================================================
 
-export class CraftApiError extends Schema.TaggedError<CraftApiError>()("CraftApiError", {
+export class CraftApiError extends Schema.TaggedErrorClass<CraftApiError>()("CraftApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
-export class CraftNotFoundError extends Schema.TaggedError<CraftNotFoundError>()("CraftNotFoundError", {
+export class CraftNotFoundError extends Schema.TaggedErrorClass<CraftNotFoundError>()("CraftNotFoundError", {
 	resourceType: Schema.String,
 	resourceId: Schema.String,
 }) {}
 
-export class CraftRateLimitError extends Schema.TaggedError<CraftRateLimitError>()("CraftRateLimitError", {
+export class CraftRateLimitError extends Schema.TaggedErrorClass<CraftRateLimitError>()("CraftRateLimitError", {
 	message: Schema.String,
 	retryAfter: Schema.optional(Schema.Number),
 }) {}
@@ -224,9 +224,8 @@ const isRetryableError = (error: CraftApiError | CraftNotFoundError | CraftRateL
  * const documents = yield* CraftApiClient.listDocuments(baseUrl, accessToken)
  * ```
  */
-export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftApiClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		/**
@@ -368,7 +367,7 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedBlocks = normalizeCraftItemsResponse(raw)
 				return yield* Schema.decodeUnknown(Schema.Array(CraftBlock))(normalizedBlocks).pipe(
-					Effect.catchAll(() =>
+					Effect.catch(() =>
 						Effect.succeed(
 							normalizedBlocks.length > 0
 								? (normalizedBlocks as CraftBlock[])
@@ -496,7 +495,7 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedDocuments = normalizeCraftItemsResponse(raw)
 				return yield* Schema.decodeUnknown(Schema.Array(CraftDocument))(normalizedDocuments).pipe(
-					Effect.catchAll(() => Effect.succeed(normalizedDocuments as CraftDocument[])),
+					Effect.catch(() => Effect.succeed(normalizedDocuments as CraftDocument[])),
 				)
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
@@ -598,7 +597,7 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 				const raw = yield* executeRequest(client, "GET", "/folders")
 				const normalizedFolders = normalizeCraftItemsResponse(raw)
 				return yield* Schema.decodeUnknown(Schema.Array(CraftFolder))(normalizedFolders).pipe(
-					Effect.catchAll(() => Effect.succeed(normalizedFolders as CraftFolder[])),
+					Effect.catch(() => Effect.succeed(normalizedFolders as CraftFolder[])),
 				)
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
@@ -667,7 +666,7 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedTasks = normalizeCraftItemsResponse(raw)
 				return yield* Schema.decodeUnknown(Schema.Array(CraftTask))(normalizedTasks).pipe(
-					Effect.catchAll(() => Effect.succeed(normalizedTasks as CraftTask[])),
+					Effect.catch(() => Effect.succeed(normalizedTasks as CraftTask[])),
 				)
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
@@ -737,7 +736,7 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 				const raw = yield* executeRequest(client, "GET", "/collections")
 				const normalizedCollections = normalizeCraftItemsResponse(raw)
 				return yield* Schema.decodeUnknown(Schema.Array(CraftCollection))(normalizedCollections).pipe(
-					Effect.catchAll(() => Effect.succeed(normalizedCollections as CraftCollection[])),
+					Effect.catch(() => Effect.succeed(normalizedCollections as CraftCollection[])),
 				)
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
@@ -870,5 +869,8 @@ export class CraftApiClient extends Effect.Service<CraftApiClient>()("CraftApiCl
 			addComments,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

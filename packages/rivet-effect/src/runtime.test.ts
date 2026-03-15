@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Option } from "effect"
+import { Cause, Effect, Exit, Result } from "effect"
 import { describe, expect, it, vi } from "@effect/vitest"
 import type { AnyManagedRuntime } from "./runtime.ts"
 import { runPromise, runPromiseExit, setManagedRuntime } from "./runtime.ts"
@@ -22,11 +22,11 @@ describe("@hazel/rivet-effect runtime", () => {
 		expect(Exit.isFailure(exit)).toBe(true)
 
 		if (Exit.isFailure(exit)) {
-			const defect = Cause.dieOption(exit.cause)
-			expect(Option.isSome(defect)).toBe(true)
-			if (Option.isSome(defect)) {
-				expect((defect.value as any)?._tag).toBe("RuntimeExecutionError")
-				expect((defect.value as any)?.operation).toBe("runPromiseExit")
+			const defect = Cause.findDefect(exit.cause)
+			expect(Result.isSuccess(defect)).toBe(true)
+			if (Result.isSuccess(defect)) {
+				expect((defect.success as any)?._tag).toBe("RuntimeExecutionError")
+				expect((defect.success as any)?.operation).toBe("runPromiseExit")
 			}
 		}
 	})

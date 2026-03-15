@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServer } from "effect/unstable/http"
 import { Layer, Logger, pipe } from "effect"
 import { LinkPreviewApi } from "./api"
 import { makeKVCacheLayer } from "./cache"
@@ -21,7 +22,7 @@ const makeHttpLiveWithKV = (env: Env) =>
 		),
 		Layer.provideMerge(HttpServer.layerContext),
 		Layer.provide(makeKVCacheLayer(env.LINK_CACHE)),
-		Layer.provide(TwitterApi.Default),
+		Layer.provide(TwitterApi.layer),
 		Layer.provide(Logger.pretty),
 	)
 

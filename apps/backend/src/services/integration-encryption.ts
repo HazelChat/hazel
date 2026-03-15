@@ -1,4 +1,4 @@
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
 
 export interface EncryptedToken {
 	ciphertext: string // Base64 encoded
@@ -6,9 +6,9 @@ export interface EncryptedToken {
 	keyVersion: number
 }
 
-const EncryptionOperation = Schema.Literal("encrypt", "decrypt", "importKey")
+const EncryptionOperation = Schema.Literals(["encrypt", "decrypt", "importKey"])
 
-export class IntegrationEncryptionError extends Schema.TaggedError<IntegrationEncryptionError>()(
+export class IntegrationEncryptionError extends Schema.TaggedErrorClass<IntegrationEncryptionError>()(
 	"IntegrationEncryptionError",
 	{
 		cause: Schema.Unknown,
@@ -16,16 +16,15 @@ export class IntegrationEncryptionError extends Schema.TaggedError<IntegrationEn
 	},
 ) {}
 
-export class KeyVersionNotFoundError extends Schema.TaggedError<KeyVersionNotFoundError>()(
+export class KeyVersionNotFoundError extends Schema.TaggedErrorClass<KeyVersionNotFoundError>()(
 	"KeyVersionNotFoundError",
 	{
 		keyVersion: Schema.Number,
 	},
 ) {}
 
-export class IntegrationEncryption extends Effect.Service<IntegrationEncryption>()("IntegrationEncryption", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class IntegrationEncryption extends ServiceMap.Service<IntegrationEncryption>()("IntegrationEncryption", {
+	make: Effect.gen(function* () {
 		// Load encryption keys from config (support key rotation)
 		const currentKey = yield* Config.redacted("INTEGRATION_ENCRYPTION_KEY")
 		const currentKeyVersion = yield* Config.number("INTEGRATION_ENCRYPTION_KEY_VERSION").pipe(
@@ -146,4 +145,6 @@ export class IntegrationEncryption extends Effect.Service<IntegrationEncryption>
 			currentKeyVersion,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

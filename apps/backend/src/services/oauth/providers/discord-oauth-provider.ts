@@ -19,7 +19,7 @@ export const createDiscordOAuthProvider = (config: OAuthProviderConfig): OAuthPr
 
 	getAccountInfo: (accessToken: string) =>
 		Discord.DiscordApiClient.getAccountInfo(accessToken).pipe(
-			Effect.provide(Discord.DiscordApiClient.Default),
+			Effect.provide(Discord.DiscordApiClient.layer),
 			Effect.mapError(
 				(error) =>
 					new AccountInfoError({

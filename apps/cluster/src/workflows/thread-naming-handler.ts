@@ -1,5 +1,5 @@
-import { LanguageModel } from "@effect/ai"
-import { Activity } from "@effect/workflow"
+import { LanguageModel } from "effect/unstable/ai"
+import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"

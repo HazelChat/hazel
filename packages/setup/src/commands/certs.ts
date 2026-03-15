@@ -1,4 +1,4 @@
-import { Command, Prompt } from "@effect/cli"
+import { Command, Prompt } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import pc from "picocolors"
 import { CertManager } from "../services/cert-manager.ts"

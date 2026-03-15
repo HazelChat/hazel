@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { and, eq, inArray, or, useLiveQuery } from "@tanstack/react-db"
 import { useNavigate } from "@tanstack/react-router"
 import { useCallback, useMemo } from "react"

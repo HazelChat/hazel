@@ -8,7 +8,7 @@
  * when frontend imports RPC group definitions that reference this middleware.
  */
 
-import { RpcMiddleware } from "@effect/rpc"
+import { RpcMiddleware } from "effect/unstable/rpc"
 import {
 	CurrentUser,
 	InvalidBearerTokenError,
@@ -45,7 +45,7 @@ import { Schema as S } from "effect"
  *   })
  * ```
  */
-const AuthFailure = S.Union(
+const AuthFailure = S.Union([
 	UnauthorizedError,
 	SessionLoadError,
 	SessionAuthenticationError,
@@ -55,10 +55,11 @@ const AuthFailure = S.Union(
 	SessionExpiredError,
 	InvalidBearerTokenError,
 	WorkOSUserFetchError,
-)
+])
 
-export class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-	provides: CurrentUser.Context,
-	failure: AuthFailure,
+export class AuthMiddleware extends RpcMiddleware.Service<AuthMiddleware, {
+	provides: CurrentUser.Context
+}>()("AuthMiddleware", {
+	error: AuthFailure,
 	requiredForClient: true,
 }) {}

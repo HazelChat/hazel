@@ -1,12 +1,7 @@
-import {
-	FetchHttpClient,
-	HttpApiScalar,
-	HttpLayerRouter,
-	HttpMiddleware,
-	HttpServerResponse,
-} from "@effect/platform"
+import { HttpApiScalar } from "effect/unstable/httpapi"
+import { FetchHttpClient, HttpRouter, HttpMiddleware, HttpServerResponse } from "effect/unstable/http"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { RpcSerialization, RpcServer } from "@effect/rpc"
+import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import {
 	AttachmentRepo,
 	BotCommandRepo,
@@ -96,11 +91,11 @@ export { HazelApi }
 // Export RPC groups for frontend consumption
 export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
-const HealthRouter = HttpLayerRouter.use((router) =>
+const HealthRouter = HttpRouter.use((router) =>
 	router.add("GET", "/health", HttpServerResponse.text("OK")),
 )
 
-const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
+const DocsRoute = HttpApiScalar.layerHttpRouter({
 	api: HazelApi,
 	path: "/docs",
 })
@@ -114,7 +109,7 @@ const RpcRoute = RpcServer.layerHttpRouter({
 
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
 	Layer.provide(
-		HttpLayerRouter.cors({
+		HttpRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
 				"http://localhost:5173",
@@ -131,102 +126,102 @@ const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRout
 const TracerLive = createTracingLayer("api")
 
 const RepoLive = Layer.mergeAll(
-	MessageRepo.Default,
-	ChannelRepo.Default,
-	ChannelMemberRepo.Default,
-	ChannelSectionRepo.Default,
-	ChatSyncConnectionRepo.Default,
-	ChatSyncChannelLinkRepo.Default,
-	ChatSyncMessageLinkRepo.Default,
-	ChatSyncEventReceiptRepo.Default,
-	ConnectConversationRepo.Default,
-	ConnectConversationChannelRepo.Default,
-	ConnectInviteRepo.Default,
-	ConnectParticipantRepo.Default,
-	UserRepo.Default,
-	OrganizationRepo.Default,
-	OrganizationMemberRepo.Default,
-	InvitationRepo.Default,
-	PinnedMessageRepo.Default,
-	AttachmentRepo.Default,
-	NotificationRepo.Default,
-	TypingIndicatorRepo.Default,
-	MessageReactionRepo.Default,
-	MessageOutboxRepo.Default,
-	UserPresenceStatusRepo.Default,
-	IntegrationConnectionRepo.Default,
-	IntegrationTokenRepo.Default,
-	ChannelWebhookRepo.Default,
-	GitHubSubscriptionRepo.Default,
-	RssSubscriptionRepo.Default,
-	BotRepo.Default,
-	BotCommandRepo.Default,
-	BotInstallationRepo.Default,
-	CustomEmojiRepo.Default,
+	MessageRepo.layer,
+	ChannelRepo.layer,
+	ChannelMemberRepo.layer,
+	ChannelSectionRepo.layer,
+	ChatSyncConnectionRepo.layer,
+	ChatSyncChannelLinkRepo.layer,
+	ChatSyncMessageLinkRepo.layer,
+	ChatSyncEventReceiptRepo.layer,
+	ConnectConversationRepo.layer,
+	ConnectConversationChannelRepo.layer,
+	ConnectInviteRepo.layer,
+	ConnectParticipantRepo.layer,
+	UserRepo.layer,
+	OrganizationRepo.layer,
+	OrganizationMemberRepo.layer,
+	InvitationRepo.layer,
+	PinnedMessageRepo.layer,
+	AttachmentRepo.layer,
+	NotificationRepo.layer,
+	TypingIndicatorRepo.layer,
+	MessageReactionRepo.layer,
+	MessageOutboxRepo.layer,
+	UserPresenceStatusRepo.layer,
+	IntegrationConnectionRepo.layer,
+	IntegrationTokenRepo.layer,
+	ChannelWebhookRepo.layer,
+	GitHubSubscriptionRepo.layer,
+	RssSubscriptionRepo.layer,
+	BotRepo.layer,
+	BotCommandRepo.layer,
+	BotInstallationRepo.layer,
+	CustomEmojiRepo.layer,
 )
 
 const PolicyLive = Layer.mergeAll(
-	OrgResolver.Default,
-	OrganizationPolicy.Default,
-	ChannelPolicy.Default,
-	ChannelSectionPolicy.Default,
-	MessagePolicy.Default,
-	InvitationPolicy.Default,
-	OrganizationMemberPolicy.Default,
-	ChannelMemberPolicy.Default,
-	MessageReactionPolicy.Default,
-	UserPolicy.Default,
-	AttachmentPolicy.Default,
-	PinnedMessagePolicy.Default,
-	TypingIndicatorPolicy.Default,
-	NotificationPolicy.Default,
-	UserPresenceStatusPolicy.Default,
-	IntegrationConnectionPolicy.Default,
-	ChannelWebhookPolicy.Default,
-	GitHubSubscriptionPolicy.Default,
-	RssSubscriptionPolicy.Default,
-	BotPolicy.Default,
-	CustomEmojiPolicy.Default,
+	OrgResolver.layer,
+	OrganizationPolicy.layer,
+	ChannelPolicy.layer,
+	ChannelSectionPolicy.layer,
+	MessagePolicy.layer,
+	InvitationPolicy.layer,
+	OrganizationMemberPolicy.layer,
+	ChannelMemberPolicy.layer,
+	MessageReactionPolicy.layer,
+	UserPolicy.layer,
+	AttachmentPolicy.layer,
+	PinnedMessagePolicy.layer,
+	TypingIndicatorPolicy.layer,
+	NotificationPolicy.layer,
+	UserPresenceStatusPolicy.layer,
+	IntegrationConnectionPolicy.layer,
+	ChannelWebhookPolicy.layer,
+	GitHubSubscriptionPolicy.layer,
+	RssSubscriptionPolicy.layer,
+	BotPolicy.layer,
+	CustomEmojiPolicy.layer,
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)
-const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.Default))
+const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.layer))
 
 const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
-	MockDataGenerator.Default,
-	WorkOSAuth.Default,
-	WorkOSClient.Default,
-	WorkOSSync.Default,
-	WorkOSWebhookVerifier.Default,
+	MockDataGenerator.layer,
+	WorkOSAuth.layer,
+	WorkOSClient.layer,
+	WorkOSSync.layer,
+	WorkOSWebhookVerifier.layer,
 	DatabaseLive,
-	S3.Default,
-	Redis.Default,
+	S3.layer,
+	Redis.layer,
 	PersistenceLive,
-	GitHub.GitHubAppJWTService.Default,
-	GitHub.GitHubApiClient.Default,
-	IntegrationTokenService.Default,
-	OAuthProviderRegistry.Default,
-	IntegrationBotService.Default,
-	ChatSyncAttributionReconciler.Default,
-	DiscordSyncWorker.Default,
-	DiscordGatewayService.Default,
-	MessageSideEffectService.Default,
-	MessageOutboxDispatcher.Default,
-	BotGatewayService.Default,
-	WebhookBotService.Default,
-	ChannelAccessSyncService.Default,
-	ConnectConversationService.Default,
-	RateLimiter.Default,
-	// SessionManager.Default includes BackendAuth.Default via dependencies
-	SessionManager.Default,
+	GitHub.GitHubAppJWTService.layer,
+	GitHub.GitHubApiClient.layer,
+	IntegrationTokenService.layer,
+	OAuthProviderRegistry.layer,
+	IntegrationBotService.layer,
+	ChatSyncAttributionReconciler.layer,
+	DiscordSyncWorker.layer,
+	DiscordGatewayService.layer,
+	MessageSideEffectService.layer,
+	MessageOutboxDispatcher.layer,
+	BotGatewayService.layer,
+	WebhookBotService.layer,
+	ChannelAccessSyncService.layer,
+	ConnectConversationService.layer,
+	RateLimiter.layer,
+	// SessionManager.layer includes BackendAuth.layer via dependencies
+	SessionManager.layer,
 ).pipe(
 	Layer.provideMerge(FetchHttpClient.layer),
 	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
 )
 
-const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
+const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
 		(request) => request.url === "/health" || request.method === "OPTIONS",
 	),
@@ -234,11 +229,11 @@ const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
 	Layer.provide(TracerLive),
 	Layer.provide(
 		AuthorizationLive.pipe(
-			// SessionManager.Default includes BackendAuth and UserRepo via dependencies
-			Layer.provideMerge(SessionManager.Default),
-			Layer.provideMerge(WorkOSAuth.Default),
+			// SessionManager.layer includes BackendAuth and UserRepo via dependencies
+			Layer.provideMerge(SessionManager.layer),
+			Layer.provideMerge(WorkOSAuth.layer),
 			Layer.provideMerge(PersistenceLive),
-			Layer.provideMerge(Redis.Default),
+			Layer.provideMerge(Redis.layer),
 			Layer.provideMerge(DatabaseLive),
 		),
 	),

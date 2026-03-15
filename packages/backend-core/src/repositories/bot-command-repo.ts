@@ -2,11 +2,10 @@ import { and, Database, eq, inArray, lt, ModelRepository, schema, type TxFn } fr
 
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommandRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCommandRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.botCommandsTable, BotCommand.Model, {
 			idColumn: "id",
 			name: "BotCommand",
@@ -159,4 +158,6 @@ export class BotCommandRepo extends Effect.Service<BotCommandRepo>()("BotCommand
 			deleteStaleCommands,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import type { GitHubSubscription } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"

@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { MessageId, OrganizationId } from "@hazel/schema"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"

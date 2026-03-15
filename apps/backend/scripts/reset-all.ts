@@ -257,7 +257,7 @@ const resetScript = Effect.gen(function* () {
 // Run the script with proper Effect runtime
 const runnable = resetScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(WorkOSClient.Default),
+	Effect.provide(WorkOSClient.layer),
 	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
 )
 

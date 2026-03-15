@@ -1,6 +1,6 @@
 import IconMagnifier3 from "~/components/icons/icon-magnifier-3"
 import { IconMapPin } from "~/components/icons/icon-map-pin"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { useEffect, useMemo, useState } from "react"
 import { Exit } from "effect"
 import { updateUserMutation } from "~/atoms/user-atoms"

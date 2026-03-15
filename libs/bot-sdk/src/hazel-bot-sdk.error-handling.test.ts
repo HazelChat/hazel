@@ -52,9 +52,9 @@ const makeMessageResponse = (content: string) => ({
 })
 
 const makeHazelBotLayer = () =>
-	HazelBotClient.Default.pipe(
+	HazelBotClient.layer.pipe(
 		Layer.provide(
-			BotAuth.Default({
+			BotAuth.layer({
 				botId: BOT_ID,
 				botName: "Test Bot",
 				userId: USER_ID,

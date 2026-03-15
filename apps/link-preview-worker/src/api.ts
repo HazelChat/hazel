@@ -1,4 +1,4 @@
-import { HttpApi, OpenApi } from "@effect/platform"
+import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { AppApi, LinkPreviewGroup, TweetGroup } from "./declare"
 
 export class LinkPreviewApi extends HttpApi.make("api")
@@ -6,7 +6,7 @@ export class LinkPreviewApi extends HttpApi.make("api")
 	.add(LinkPreviewGroup)
 	.add(TweetGroup)
 	.annotateContext(
-		OpenApi.annotations({
+		OpenApi.annotate({
 			title: "Link Preview Worker API",
 			description: "API for fetching link previews and tweet data",
 		}),

@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError } from "../errors"
 import { UserId } from "@hazel/schema"
@@ -16,12 +16,13 @@ export class MarkOfflineResponse extends Schema.Class<MarkOfflineResponse>("Mark
 
 export class PresencePublicGroup extends HttpApiGroup.make("presencePublic")
 	.add(
-		HttpApiEndpoint.post("markOffline")`/offline`
-			.setPayload(MarkOfflinePayload)
-			.addSuccess(MarkOfflineResponse)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("markOffline", "/offline", {
+			payload: MarkOfflinePayload,
+			success: MarkOfflineResponse,
+			error: InternalServerError,
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Mark User Offline",
 					description: "Mark a user as offline when they close their tab (no auth required)",
 					summary: "Mark offline",

@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { GitHubSubscriptionId } from "@hazel/schema"
 import { useState } from "react"
 import {

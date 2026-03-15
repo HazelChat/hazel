@@ -21,7 +21,7 @@ const SECOND_AUTHOR_ID = "00000000-0000-0000-0000-000000000110" as UserId
 const uuid = () => randomUUID()
 
 const runRepoEffect = <A, E, R>(harness: ChatSyncDbHarness, effect: Effect.Effect<A, E, R>) =>
-	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.Default)))
+	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.layer)))
 
 describe("MessageOutboxRepo", () => {
 	let harness: ChatSyncDbHarness

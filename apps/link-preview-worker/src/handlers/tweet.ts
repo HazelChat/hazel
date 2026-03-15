@@ -1,4 +1,4 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Effect } from "effect"
 import { LinkPreviewApi } from "../api"
 import { KVCache } from "../cache"
@@ -17,7 +17,7 @@ export const HttpTweetLive = HttpApiBuilder.group(LinkPreviewApi, "tweet", (hand
 			// Check cache first
 			const cachedData = yield* cache
 				.get<any>(cacheKey)
-				.pipe(Effect.catchAll(() => Effect.succeed(null)))
+				.pipe(Effect.catch(() => Effect.succeed(null)))
 
 			if (cachedData) {
 				yield* Effect.logDebug(`Cache hit for tweet: ${tweetId}`)
@@ -45,7 +45,7 @@ export const HttpTweetLive = HttpApiBuilder.group(LinkPreviewApi, "tweet", (hand
 
 			// Store in cache (don't fail request if caching fails)
 			yield* cache.set(cacheKey, tweet).pipe(
-				Effect.catchAll((error) => {
+				Effect.catch((error) => {
 					const errorMessage = error instanceof Error ? error.message : String(error)
 					return Effect.logDebug(`Failed to cache tweet: ${errorMessage}`).pipe(
 						Effect.andThen(Effect.succeed(undefined)),

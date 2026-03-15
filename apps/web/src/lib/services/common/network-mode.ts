@@ -1,10 +1,11 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as ServiceMap from "effect/ServiceMap"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 
-export class NetworkMonitor extends Effect.Service<NetworkMonitor>()("NetworkMonitor", {
-	scoped: Effect.gen(function* () {
+export class NetworkMonitor extends ServiceMap.Service<NetworkMonitor>()("NetworkMonitor", {
+	make: Effect.gen(function* () {
 		const latch = yield* Effect.makeLatch(true)
 
 		const ref = yield* SubscriptionRef.make<boolean>(window.navigator.onLine)
@@ -25,5 +26,6 @@ export class NetworkMonitor extends Effect.Service<NetworkMonitor>()("NetworkMon
 
 		return { latch, ref }
 	}),
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

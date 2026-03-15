@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServerResponse } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerResponse } from "effect/unstable/http"
 import { getJwtExpiry } from "@hazel/auth"
 import { UserRepo } from "@hazel/backend-core"
 import { WorkOSUserId } from "@hazel/schema"

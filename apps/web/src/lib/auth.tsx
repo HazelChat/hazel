@@ -1,4 +1,4 @@
-import { Atom, Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import {
 	desktopInitAtom,

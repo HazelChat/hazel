@@ -8,7 +8,7 @@
  */
 
 import { createActorsClient } from "@hazel/actors/client"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
 // biome-ignore lint/suspicious/noExplicitAny: Opaque type to avoid non-portable DTS references to @hazel/actors internals
 export type MessageActor = any
@@ -60,7 +60,7 @@ export interface ActorsClientConfig {
  * @example
  * ```typescript
  * // Create layer with config
- * const layer = ActorsClient.Default({
+ * const layer = ActorsClient.layer({
  *   botToken: "hzl_bot_xxx",
  *   endpoint: "http://localhost:6420"
  * })
@@ -72,9 +72,8 @@ export interface ActorsClientConfig {
  * }).pipe(Effect.provide(layer))
  * ```
  */
-export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
-	accessors: true,
-	effect: Effect.fn("ActorsClient.create")(function* (config: ActorsClientConfig) {
+export class ActorsClient extends ServiceMap.Service<ActorsClient>()("@hazel/bot-sdk/ActorsClient", {
+	make: Effect.fn("ActorsClient.create")(function* (config: ActorsClientConfig) {
 		const endpoint = config.endpoint ?? "https://rivet.hazel.sh"
 		const client = createActorsClient(endpoint)
 
@@ -94,4 +93,6 @@ export class ActorsClient extends Effect.Service<ActorsClient>()("@hazel/bot-sdk
 			botToken: config.botToken,
 		} as ActorsClientService
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "@effect/cli"
+import { Command, Options, Prompt } from "effect/unstable/cli"
 import { Console, Effect, Redacted } from "effect"
 import pc from "picocolors"
 import { SecretGenerator } from "../services/secrets.ts"
@@ -70,7 +70,7 @@ export const setupCommand = Command.make(
 					error: undefined,
 				}
 			}).pipe(
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					Effect.succeed({
 						ok: false,
 						exitCode: null,
@@ -569,7 +569,7 @@ export const setupCommand = Command.make(
 						return proc.exitCode === 0
 					},
 					catch: () => false,
-				}).pipe(Effect.catchAll(() => Effect.succeed(false)))
+				}).pipe(Effect.catch(() => Effect.succeed(false)))
 
 				if (dbPushResult) {
 					yield* Console.log(pc.green("\n\u2713") + " Database schema pushed")

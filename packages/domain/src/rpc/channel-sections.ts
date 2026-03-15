@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { ChannelId, ChannelSectionId, OrganizationId } from "@hazel/schema"
@@ -21,7 +21,7 @@ export class ChannelSectionResponse extends Schema.Class<ChannelSectionResponse>
  * Error thrown when a channel section is not found.
  * Used in update and delete operations.
  */
-export class ChannelSectionNotFoundError extends Schema.TaggedError<ChannelSectionNotFoundError>()(
+export class ChannelSectionNotFoundError extends Schema.TaggedErrorClass<ChannelSectionNotFoundError>()(
 	"ChannelSectionNotFoundError",
 	{
 		sectionId: ChannelSectionId,
@@ -50,7 +50,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.create", {
 		payload: CreateChannelSectionRequest,
 		success: ChannelSectionResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -70,9 +70,9 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.update", {
 		payload: Schema.Struct({
 			id: ChannelSectionId,
-		}).pipe(Schema.extend(Schema.partial(ChannelSection.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(ChannelSection.Model.jsonUpdate as any).fields }) as any),
 		success: ChannelSectionResponse,
-		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -93,7 +93,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.delete", {
 		payload: Schema.Struct({ id: ChannelSectionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -116,7 +116,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			sectionIds: Schema.Array(ChannelSectionId),
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -141,12 +141,12 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			sectionId: Schema.NullOr(ChannelSectionId),
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			ChannelSectionNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),

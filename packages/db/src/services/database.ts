@@ -43,7 +43,7 @@ const DatabaseErrorType = Schema.Literal(
 	"query_error",
 )
 
-export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
+export class DatabaseError extends Schema.TaggedErrorClass<DatabaseError>()("DatabaseError", {
 	type: DatabaseErrorType,
 	cause: Schema.Unknown,
 }) {
@@ -72,7 +72,7 @@ const matchPgError = (error: unknown) => {
 	return null
 }
 
-export class DatabaseConnectionLostError extends Schema.TaggedError<DatabaseConnectionLostError>()(
+export class DatabaseConnectionLostError extends Schema.TaggedErrorClass<DatabaseConnectionLostError>()(
 	"DatabaseConnectionLostError",
 	{
 		cause: Schema.Unknown,
@@ -192,7 +192,7 @@ const makeService = (config: Config) =>
 				) => Effect.Effect<T, DatabaseError, never>,
 			): Effect.Effect<A, E | DatabaseError | ParseError, R> => {
 				return Effect.gen(function* () {
-					const validatedInput = yield* Schema.decode(inputSchema)(rawData)
+					const validatedInput = yield* Schema.decodeEffect(inputSchema)(rawData)
 
 					if (tx) {
 						return yield* queryFn(tx, validatedInput)
@@ -261,4 +261,4 @@ type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
 
 export class Database extends Effect.Tag("Database")<Database, Shape>() {}
 
-export const layer = (config: Config) => Layer.scoped(Database, makeService(config))
+export const layer = (config: Config) => Layer.effect(Database, makeService(config))

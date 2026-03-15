@@ -1,12 +1,12 @@
 import { ChannelRepo, GitHubSubscriptionRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionPolicy>()(
+export class GitHubSubscriptionPolicy extends ServiceMap.Service<GitHubSubscriptionPolicy>()(
 	"GitHubSubscriptionPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -96,7 +96,11 @@ export class GitHubSubscriptionPolicy extends Effect.Service<GitHubSubscriptionP
 
 			return { canCreate, canRead, canReadByOrganization, canUpdate, canDelete } as const
 		}),
-		dependencies: [ChannelRepo.Default, GitHubSubscriptionRepo.Default, OrgResolver.Default],
-		accessors: true,
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(GitHubSubscriptionRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

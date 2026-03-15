@@ -1,4 +1,4 @@
-import { AiError, LanguageModel, Prompt, type Response, type Toolkit } from "@effect/ai"
+import { AiError, LanguageModel, Prompt, type Response, type Toolkit } from "effect/unstable/ai"
 import { Duration, Effect, Mailbox, Stream } from "effect"
 
 import { withDegenerationDetection } from "./degeneration-detector.ts"
@@ -64,11 +64,11 @@ export const streamAgentLoop = (options: {
 						return mailbox.offer(part as Response.AnyPart)
 					}),
 					// Iteration timeout: wall-clock limit per LLM call
-					Effect.timeoutFail({
+					Effect.timeoutOrElse({
 						onTimeout: () =>
-							new IterationTimeoutError({
+							Effect.fail(new IterationTimeoutError({
 								message: "Single LLM call exceeded 2 minute time limit",
-							}),
+							})),
 						duration: ITERATION_TIMEOUT,
 					}),
 				)

@@ -1,4 +1,4 @@
-import { Workflow } from "@effect/workflow"
+import { Workflow } from "effect/unstable/workflow"
 import { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { Schema } from "effect"
 import { RssFeedPollWorkflowError } from "../activities/rss-activities.ts"

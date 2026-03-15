@@ -1,4 +1,4 @@
-import { Activity } from "@effect/workflow"
+import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
@@ -111,7 +111,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 		const postResult = yield* Activity.make({
 			name: "FilterAndPostItems",
 			success: Cluster.PostRssItemsResult,
-			error: Schema.Union(Cluster.PostRssItemsError, Cluster.BotUserQueryError),
+			error: Schema.Union([Cluster.PostRssItemsError, Cluster.BotUserQueryError]),
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 				const botUserService = yield* BotUserService
@@ -239,7 +239,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 								}),
 							)
 							.pipe(
-								Effect.catchAll((err) =>
+								Effect.catch((err) =>
 									Effect.logWarning(
 										"Failed to record posted item (may cause duplicate on next poll)",
 										{ error: err, itemGuid: item.guid },

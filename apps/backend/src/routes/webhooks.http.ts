@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest } from "effect/unstable/http"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"

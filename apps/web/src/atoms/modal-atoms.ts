@@ -1,4 +1,4 @@
-import { Atom, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Atom, useAtomSet, useAtomValue } from "@effect/atom-react"
 import { useCallback } from "react"
 
 /**

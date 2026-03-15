@@ -1,6 +1,6 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import { useMemo } from "react"
 import { LinkPreviewClient } from "~/lib/services/common/link-preview-client"
 

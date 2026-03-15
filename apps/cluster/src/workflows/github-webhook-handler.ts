@@ -1,4 +1,4 @@
-import { Activity } from "@effect/workflow"
+import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
@@ -127,7 +127,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 		const messagesResult = yield* Activity.make({
 			name: "CreateGitHubMessages",
 			success: Cluster.CreateGitHubMessagesResult,
-			error: Schema.Union(Cluster.CreateGitHubMessageError, Cluster.BotUserQueryError),
+			error: Schema.Union([Cluster.CreateGitHubMessageError, Cluster.BotUserQueryError]),
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 				const botUserService = yield* BotUserService

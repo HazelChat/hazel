@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { MessageReactionId } from "@hazel/schema"
@@ -23,7 +23,7 @@ export class MessageReactionResponse extends Schema.Class<MessageReactionRespons
  * Error thrown when a message reaction is not found.
  * Used in update and delete operations.
  */
-export class MessageReactionNotFoundError extends Schema.TaggedError<MessageReactionNotFoundError>()(
+export class MessageReactionNotFoundError extends Schema.TaggedErrorClass<MessageReactionNotFoundError>()(
 	"MessageReactionNotFoundError",
 	{
 		messageReactionId: MessageReactionId,
@@ -55,7 +55,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 			data: Schema.optional(MessageReaction.Model.json),
 			transactionId: TransactionId,
 		}),
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["message-reactions:write"])
 		.middleware(AuthMiddleware),
@@ -75,7 +75,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	Rpc.make("messageReaction.create", {
 		payload: MessageReaction.Insert,
 		success: MessageReactionResponse,
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["message-reactions:write"])
 		.middleware(AuthMiddleware),
@@ -98,7 +98,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 			...MessageReaction.Model.jsonUpdate.fields,
 		}),
 		success: MessageReactionResponse,
-		error: Schema.Union(MessageReactionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageReactionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["message-reactions:write"])
 		.middleware(AuthMiddleware),
@@ -118,7 +118,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	Rpc.make("messageReaction.delete", {
 		payload: Schema.Struct({ id: MessageReactionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(MessageReactionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageReactionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["message-reactions:write"])
 		.middleware(AuthMiddleware),

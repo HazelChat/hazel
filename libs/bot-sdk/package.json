@@ -50,11 +50,8 @@
 		"prepublishOnly": "GENERATE_DTS=1 bun run build"
 	},
 	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
 		"@effect/opentelemetry": "catalog:effect",
-		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
-		"@effect/rpc": "catalog:effect",
 		"@hazel/actors": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",
@@ -68,12 +65,9 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"@effect/opentelemetry": ">=0.61.0",
-		"@effect/platform": ">=0.94.0",
-		"@effect/platform-bun": ">=0.87.0",
-		"@effect/rpc": ">=0.73.0",
-		"@effect/workflow": ">=0.16.0",
-		"effect": ">=3.19.0",
+		"@effect/opentelemetry": ">=4.0.0-beta.0",
+		"@effect/platform-bun": ">=4.0.0-beta.0",
+		"effect": ">=4.0.0-beta.0",
 		"jose": ">=6.0.0",
 		"rivetkit": ">=2.0.0"
 	},
@@ -85,9 +79,6 @@
 			"optional": true
 		},
 		"rivetkit": {
-			"optional": true
-		},
-		"@effect/workflow": {
 			"optional": true
 		}
 	},

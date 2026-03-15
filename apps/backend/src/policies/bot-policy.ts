@@ -1,13 +1,13 @@
 import { BotRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { BotId, OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
 /** @effect-leakable-service */
-export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class BotPolicy extends ServiceMap.Service<BotPolicy>()("BotPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "Bot" as const
 
 		const botRepo = yield* BotRepo
@@ -109,6 +109,9 @@ export class BotPolicy extends Effect.Service<BotPolicy>()("BotPolicy/Policy", {
 
 		return { canCreate, canRead, canUpdate, canDelete, canInstall, canUninstall } as const
 	}),
-	dependencies: [BotRepo.Default, OrgResolver.Default],
-	accessors: true,
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(BotRepo.layer),
+		Layer.provide(OrgResolver.layer),
+	)
+}

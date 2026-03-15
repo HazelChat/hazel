@@ -1,13 +1,12 @@
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
-import { Config, Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Redacted, Schema } from "effect"
 
-export class WorkOSApiError extends Schema.TaggedError<WorkOSApiError>()("WorkOSApiError", {
+export class WorkOSApiError extends Schema.TaggedErrorClass<WorkOSApiError>()("WorkOSApiError", {
 	cause: Schema.Unknown,
 }) {}
 
-export class WorkOSClient extends Effect.Service<WorkOSClient>()("WorkOSClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("WorkOSClient", {
+	make: Effect.gen(function* () {
 		const apiKey = yield* Config.redacted("WORKOS_API_KEY")
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID")
 
@@ -25,4 +24,6 @@ export class WorkOSClient extends Effect.Service<WorkOSClient>()("WorkOSClient",
 			call,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

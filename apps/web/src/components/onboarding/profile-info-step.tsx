@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { type } from "arktype"
 import { Exit } from "effect"
 import { updateUserMutation } from "~/atoms/user-atoms"

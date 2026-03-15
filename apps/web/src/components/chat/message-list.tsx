@@ -1,5 +1,5 @@
 import { LegendList, type LegendListRef, type ViewToken } from "@legendapp/list"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { useLiveInfiniteQuery } from "@tanstack/react-db"
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react"

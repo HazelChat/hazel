@@ -203,7 +203,7 @@ const contextToSpanAttributes = (ctx: LogContext): Record<string, unknown> => {
 export const withLogContext = <A, E, R>(
 	ctx: LogContext,
 	spanName: string,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 	options?: { readonly parent?: Tracer.AnySpan },
 ): Effect.Effect<A, E, R> =>
 	effect.pipe(

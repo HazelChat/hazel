@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"

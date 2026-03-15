@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { useRouter } from "@tanstack/react-router"
 import { memo, useCallback } from "react"

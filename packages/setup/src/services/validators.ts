@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect"
+import { ServiceMap, Data, Effect } from "effect"
 import { WorkOS } from "@workos-inc/node"
 import { SQL } from "bun"
 
@@ -7,9 +7,8 @@ export class ValidationError extends Data.TaggedError("ValidationError")<{
 	message: string
 }> {}
 
-export class CredentialValidator extends Effect.Service<CredentialValidator>()("CredentialValidator", {
-	accessors: true,
-	effect: Effect.succeed({
+export class CredentialValidator extends ServiceMap.Service<CredentialValidator>()("CredentialValidator", {
+	make: Effect.succeed({
 		validateWorkOS: (apiKey: string, _clientId: string) =>
 			Effect.tryPromise({
 				try: async () => {
@@ -56,4 +55,6 @@ export class CredentialValidator extends Effect.Service<CredentialValidator>()("
 					}),
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

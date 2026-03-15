@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import {
 	ChannelId,
 	ExternalChannelId,
@@ -17,48 +17,48 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class ChatSyncConnectionResponse extends Schema.Class<ChatSyncConnectionResponse>(
 	"ChatSyncConnectionResponse",
 )({
-	data: ChatSyncConnection.Model.json,
+	data: ChatSyncConnection.Model.json as any,
 	transactionId: TransactionId,
 }) {}
 
 export class ChatSyncConnectionListResponse extends Schema.Class<ChatSyncConnectionListResponse>(
 	"ChatSyncConnectionListResponse",
 )({
-	data: Schema.Array(ChatSyncConnection.Model.json),
+	data: Schema.Array(ChatSyncConnection.Model.json as any),
 }) {}
 
 export class ChatSyncChannelLinkResponse extends Schema.Class<ChatSyncChannelLinkResponse>(
 	"ChatSyncChannelLinkResponse",
 )({
-	data: ChatSyncChannelLink.Model.json,
+	data: ChatSyncChannelLink.Model.json as any,
 	transactionId: TransactionId,
 }) {}
 
 export class ChatSyncChannelLinkListResponse extends Schema.Class<ChatSyncChannelLinkListResponse>(
 	"ChatSyncChannelLinkListResponse",
 )({
-	data: Schema.Array(ChatSyncChannelLink.Model.json),
+	data: Schema.Array(ChatSyncChannelLink.Model.json as any),
 }) {}
 
 export class ChatSyncDeleteResponse extends Schema.Class<ChatSyncDeleteResponse>("ChatSyncDeleteResponse")({
 	transactionId: TransactionId,
 }) {}
 
-export class ChatSyncConnectionNotFoundError extends Schema.TaggedError<ChatSyncConnectionNotFoundError>()(
+export class ChatSyncConnectionNotFoundError extends Schema.TaggedErrorClass<ChatSyncConnectionNotFoundError>()(
 	"ChatSyncConnectionNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
 	},
 ) {}
 
-export class ChatSyncChannelLinkNotFoundError extends Schema.TaggedError<ChatSyncChannelLinkNotFoundError>()(
+export class ChatSyncChannelLinkNotFoundError extends Schema.TaggedErrorClass<ChatSyncChannelLinkNotFoundError>()(
 	"ChatSyncChannelLinkNotFoundError",
 	{
 		syncChannelLinkId: SyncChannelLinkId,
 	},
 ) {}
 
-export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncConnectionExistsError>()(
+export class ChatSyncConnectionExistsError extends Schema.TaggedErrorClass<ChatSyncConnectionExistsError>()(
 	"ChatSyncConnectionExistsError",
 	{
 		organizationId: OrganizationId,
@@ -67,7 +67,7 @@ export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncCo
 	},
 ) {}
 
-export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<ChatSyncIntegrationNotConnectedError>()(
+export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedErrorClass<ChatSyncIntegrationNotConnectedError>()(
 	"ChatSyncIntegrationNotConnectedError",
 	{
 		organizationId: OrganizationId,
@@ -75,7 +75,7 @@ export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<Cha
 	},
 ) {}
 
-export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncChannelLinkExistsError>()(
+export class ChatSyncChannelLinkExistsError extends Schema.TaggedErrorClass<ChatSyncChannelLinkExistsError>()(
 	"ChatSyncChannelLinkExistsError",
 	{
 		syncConnectionId: SyncConnectionId,
@@ -91,8 +91,8 @@ export class CreateChatSyncConnectionRequest extends Schema.Class<CreateChatSync
 	externalWorkspaceId: Schema.String,
 	externalWorkspaceName: Schema.NullishOr(Schema.String),
 	integrationConnectionId: Schema.NullishOr(IntegrationConnectionId),
-	settings: Schema.NullishOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
-	metadata: Schema.NullishOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullishOr(Schema.Record(Schema.String, Schema.Unknown)),
+	metadata: Schema.NullishOr(Schema.Record(Schema.String, Schema.Unknown)),
 }) {}
 
 export class CreateChatSyncChannelLinkRequest extends Schema.Class<CreateChatSyncChannelLinkRequest>(
@@ -102,21 +102,19 @@ export class CreateChatSyncChannelLinkRequest extends Schema.Class<CreateChatSyn
 	externalChannelId: ExternalChannelId,
 	externalChannelName: Schema.NullishOr(Schema.String),
 	direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),
-	settings: Schema.NullishOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullishOr(Schema.Record(Schema.String, Schema.Unknown)),
 }) {}
 
 export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 	.add(
-		HttpApiEndpoint.post("createConnection", `/:orgId/connections`)
-			.setPath(Schema.Struct({ orgId: OrganizationId }))
-			.setPayload(CreateChatSyncConnectionRequest)
-			.addSuccess(ChatSyncConnectionResponse)
-			.addError(ChatSyncConnectionExistsError)
-			.addError(ChatSyncIntegrationNotConnectedError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("createConnection", `/:orgId/connections`, {
+			params: { orgId: OrganizationId },
+			payload: CreateChatSyncConnectionRequest,
+			success: ChatSyncConnectionResponse,
+			error: [ChatSyncConnectionExistsError, ChatSyncIntegrationNotConnectedError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Create Chat Sync Connection",
 					description: "Create a provider-agnostic chat sync connection (Discord, Slack, etc.)",
 					summary: "Create sync connection",
@@ -125,13 +123,13 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
-		HttpApiEndpoint.get("listConnections", `/:orgId/connections`)
-			.setPath(Schema.Struct({ orgId: OrganizationId }))
-			.addSuccess(ChatSyncConnectionListResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.get("listConnections", `/:orgId/connections`, {
+			params: { orgId: OrganizationId },
+			success: ChatSyncConnectionListResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "List Chat Sync Connections",
 					description: "List chat sync connections for an organization",
 					summary: "List sync connections",
@@ -140,14 +138,13 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.del("deleteConnection", `/connections/:syncConnectionId`)
-			.setPath(Schema.Struct({ syncConnectionId: SyncConnectionId }))
-			.addSuccess(ChatSyncDeleteResponse)
-			.addError(ChatSyncConnectionNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.delete("deleteConnection", `/connections/:syncConnectionId`, {
+			params: { syncConnectionId: SyncConnectionId },
+			success: ChatSyncDeleteResponse,
+			error: [ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Delete Chat Sync Connection",
 					description: "Soft-delete a chat sync connection",
 					summary: "Delete sync connection",
@@ -156,16 +153,14 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
-		HttpApiEndpoint.post("createChannelLink", `/connections/:syncConnectionId/channel-links`)
-			.setPath(Schema.Struct({ syncConnectionId: SyncConnectionId }))
-			.setPayload(CreateChatSyncChannelLinkRequest)
-			.addSuccess(ChatSyncChannelLinkResponse)
-			.addError(ChatSyncConnectionNotFoundError)
-			.addError(ChatSyncChannelLinkExistsError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.post("createChannelLink", `/connections/:syncConnectionId/channel-links`, {
+			params: { syncConnectionId: SyncConnectionId },
+			payload: CreateChatSyncChannelLinkRequest,
+			success: ChatSyncChannelLinkResponse,
+			error: [ChatSyncConnectionNotFoundError, ChatSyncChannelLinkExistsError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Create Chat Sync Channel Link",
 					description: "Link a Hazel channel to an external provider channel",
 					summary: "Create channel link",
@@ -174,14 +169,13 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.annotate(RequiredScopes, ["integration-connections:write"]),
 	)
 	.add(
-		HttpApiEndpoint.get("listChannelLinks", `/connections/:syncConnectionId/channel-links`)
-			.setPath(Schema.Struct({ syncConnectionId: SyncConnectionId }))
-			.addSuccess(ChatSyncChannelLinkListResponse)
-			.addError(ChatSyncConnectionNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.get("listChannelLinks", `/connections/:syncConnectionId/channel-links`, {
+			params: { syncConnectionId: SyncConnectionId },
+			success: ChatSyncChannelLinkListResponse,
+			error: [ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "List Chat Sync Channel Links",
 					description: "List channel links for a sync connection",
 					summary: "List channel links",
@@ -190,14 +184,13 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.del("deleteChannelLink", `/channel-links/:syncChannelLinkId`)
-			.setPath(Schema.Struct({ syncChannelLinkId: SyncChannelLinkId }))
-			.addSuccess(ChatSyncDeleteResponse)
-			.addError(ChatSyncChannelLinkNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotations({
+		HttpApiEndpoint.delete("deleteChannelLink", `/channel-links/:syncChannelLinkId`, {
+			params: { syncChannelLinkId: SyncChannelLinkId },
+			success: ChatSyncDeleteResponse,
+			error: [ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotate({
 					title: "Delete Chat Sync Channel Link",
 					description: "Soft-delete a chat sync channel link",
 					summary: "Delete channel link",

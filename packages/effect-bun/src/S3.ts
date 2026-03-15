@@ -1,13 +1,13 @@
 import type { BunFile, S3File, S3FilePresignOptions } from "bun"
 import { s3 as bunS3 } from "bun"
-import { Context, Effect, Layer, Match, Schema } from "effect"
+import { Effect, Layer, Match, Schema, ServiceMap } from "effect"
 
 // ============ Error Types ============
 
 /**
  * Base S3 error - used for S3 server errors and unknown error codes
  */
-export class S3Error extends Schema.TaggedError<S3Error>()("S3Error", {
+export class S3Error extends Schema.TaggedErrorClass<S3Error>()("S3Error", {
 	message: Schema.String,
 	code: Schema.optional(Schema.String),
 	cause: Schema.optional(Schema.Unknown),
@@ -17,7 +17,7 @@ export class S3Error extends Schema.TaggedError<S3Error>()("S3Error", {
  * Missing S3 credentials (access key or secret)
  * Bun error code: ERR_S3_MISSING_CREDENTIALS
  */
-export class S3MissingCredentialsError extends Schema.TaggedError<S3MissingCredentialsError>()(
+export class S3MissingCredentialsError extends Schema.TaggedErrorClass<S3MissingCredentialsError>()(
 	"S3MissingCredentialsError",
 	{
 		message: Schema.String,
@@ -28,7 +28,7 @@ export class S3MissingCredentialsError extends Schema.TaggedError<S3MissingCrede
  * Invalid HTTP method for S3 operation
  * Bun error code: ERR_S3_INVALID_METHOD
  */
-export class S3InvalidMethodError extends Schema.TaggedError<S3InvalidMethodError>()("S3InvalidMethodError", {
+export class S3InvalidMethodError extends Schema.TaggedErrorClass<S3InvalidMethodError>()("S3InvalidMethodError", {
 	message: Schema.String,
 }) {}
 
@@ -36,7 +36,7 @@ export class S3InvalidMethodError extends Schema.TaggedError<S3InvalidMethodErro
  * Invalid S3 path/key
  * Bun error code: ERR_S3_INVALID_PATH
  */
-export class S3InvalidPathError extends Schema.TaggedError<S3InvalidPathError>()("S3InvalidPathError", {
+export class S3InvalidPathError extends Schema.TaggedErrorClass<S3InvalidPathError>()("S3InvalidPathError", {
 	message: Schema.String,
 }) {}
 
@@ -44,7 +44,7 @@ export class S3InvalidPathError extends Schema.TaggedError<S3InvalidPathError>()
  * Invalid S3 endpoint URL
  * Bun error code: ERR_S3_INVALID_ENDPOINT
  */
-export class S3InvalidEndpointError extends Schema.TaggedError<S3InvalidEndpointError>()(
+export class S3InvalidEndpointError extends Schema.TaggedErrorClass<S3InvalidEndpointError>()(
 	"S3InvalidEndpointError",
 	{
 		message: Schema.String,
@@ -55,7 +55,7 @@ export class S3InvalidEndpointError extends Schema.TaggedError<S3InvalidEndpoint
  * Invalid signature calculation
  * Bun error code: ERR_S3_INVALID_SIGNATURE
  */
-export class S3InvalidSignatureError extends Schema.TaggedError<S3InvalidSignatureError>()(
+export class S3InvalidSignatureError extends Schema.TaggedErrorClass<S3InvalidSignatureError>()(
 	"S3InvalidSignatureError",
 	{
 		message: Schema.String,
@@ -66,7 +66,7 @@ export class S3InvalidSignatureError extends Schema.TaggedError<S3InvalidSignatu
  * Invalid session token
  * Bun error code: ERR_S3_INVALID_SESSION_TOKEN
  */
-export class S3InvalidSessionTokenError extends Schema.TaggedError<S3InvalidSessionTokenError>()(
+export class S3InvalidSessionTokenError extends Schema.TaggedErrorClass<S3InvalidSessionTokenError>()(
 	"S3InvalidSessionTokenError",
 	{
 		message: Schema.String,
@@ -138,8 +138,7 @@ export type S3WriteData = string | ArrayBuffer | Uint8Array | Blob | Response | 
  * })
  * ```
  */
-export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
-	S3,
+export class S3 extends ServiceMap.Service<S3,
 	{
 		/**
 		 * Generate a presigned URL for S3 operations
@@ -162,7 +161,7 @@ export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
 		 */
 		readonly exists: (key: string) => Effect.Effect<boolean, S3Errors>
 	}
->() {
+>()("@hazel/effect-bun/S3") {
 	static readonly Default = Layer.sync(S3, () => ({
 		file: (key) =>
 			Effect.try({

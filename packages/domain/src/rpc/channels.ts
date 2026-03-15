@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import {
 	AIProviderUnavailableError,
@@ -36,7 +36,7 @@ export class ChannelResponse extends Schema.Class<ChannelResponse>("ChannelRespo
  * Error thrown when a channel is not found.
  * Used in update and delete operations.
  */
-export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundError>()("ChannelNotFoundError", {
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()("ChannelNotFoundError", {
 	channelId: ChannelId,
 }) {}
 
@@ -46,9 +46,9 @@ export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundErro
  */
 export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>("CreateDmChannelRequest")({
 	participantIds: Schema.Array(UserId),
-	type: Schema.Literal("direct", "single"),
+	type: Schema.Literals(["direct", "single"]),
 	name: Schema.optional(Schema.String),
-	organizationId: Schema.UUID,
+	organizationId: Schema.String.check(Schema.isUUID()),
 }) {}
 
 /**
@@ -68,12 +68,10 @@ export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("Crea
  * Uses jsonCreate which includes optional id for optimistic updates.
  * Extended with addAllMembers option to auto-add all organization members.
  */
-export const CreateChannelRequest = Schema.extend(
-	Channel.Model.jsonCreate,
-	Schema.Struct({
-		addAllMembers: Schema.optional(Schema.Boolean),
-	}),
-)
+export const CreateChannelRequest = Schema.Struct({
+	...(Channel.Model.jsonCreate as any).fields,
+	addAllMembers: Schema.optional(Schema.Boolean),
+})
 
 export class ChannelRpcs extends RpcGroup.make(
 	/**
@@ -91,7 +89,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.create", {
 		payload: CreateChannelRequest,
 		success: ChannelResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -111,9 +109,9 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
-		}).pipe(Schema.extend(Schema.partial(Channel.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Channel.Model.jsonUpdate as any).fields }) as any),
 		success: ChannelResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -133,7 +131,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.delete", {
 		payload: Schema.Struct({ id: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -154,7 +152,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createDm", {
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
-		error: Schema.Union(DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -176,7 +174,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createThread", {
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
-		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -205,7 +203,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.generateName", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ success: Schema.Boolean }),
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			MessageNotFoundError,
 			UnauthorizedError,
@@ -219,7 +217,7 @@ export class ChannelRpcs extends RpcGroup.make(
 			AIRateLimitError,
 			AIResponseParseError,
 			ThreadNameUpdateError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),

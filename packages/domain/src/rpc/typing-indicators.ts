@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { TypingIndicatorId } from "@hazel/schema"
@@ -22,7 +22,7 @@ export class TypingIndicatorResponse extends Schema.Class<TypingIndicatorRespons
  * Error thrown when a typing indicator is not found.
  * Used in update and delete operations.
  */
-export class TypingIndicatorNotFoundError extends Schema.TaggedError<TypingIndicatorNotFoundError>()(
+export class TypingIndicatorNotFoundError extends Schema.TaggedErrorClass<TypingIndicatorNotFoundError>()(
 	"TypingIndicatorNotFoundError",
 	{
 		typingIndicatorId: TypingIndicatorId,
@@ -36,8 +36,8 @@ export class TypingIndicatorNotFoundError extends Schema.TaggedError<TypingIndic
 export class CreateTypingIndicatorPayload extends Schema.Class<CreateTypingIndicatorPayload>(
 	"CreateTypingIndicatorPayload",
 )({
-	channelId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelId")),
-	memberId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelMemberId")),
+	channelId: Schema.String.check(Schema.isUUID()).pipe(Schema.brand("@HazelChat/ChannelId")),
+	memberId: Schema.String.check(Schema.isUUID()).pipe(Schema.brand("@HazelChat/ChannelMemberId")),
 	lastTyped: Schema.optional(Schema.Number),
 }) {}
 
@@ -88,7 +88,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	Rpc.make("typingIndicator.create", {
 		payload: CreateTypingIndicatorPayload,
 		success: TypingIndicatorResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),
@@ -111,7 +111,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 			lastTyped: Schema.optional(Schema.Number),
 		}),
 		success: TypingIndicatorResponse,
-		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),
@@ -131,7 +131,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	Rpc.make("typingIndicator.delete", {
 		payload: Schema.Struct({ id: TypingIndicatorId }),
 		success: TypingIndicatorResponse,
-		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),

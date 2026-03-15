@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const UserPresenceStatusEnum = Schema.Literal("online", "away", "busy", "dnd", "offline")
+export const UserPresenceStatusEnum = Schema.Literals(["online", "away", "busy", "dnd", "offline"])
 export type UserPresenceStatusEnum = Schema.Schema.Type<typeof UserPresenceStatusEnum>
 
 export class Model extends M.Class<Model>("UserPresenceStatus")({

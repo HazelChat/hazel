@@ -1,4 +1,4 @@
-import { LanguageModel } from "@effect/ai"
+import { LanguageModel } from "effect/unstable/ai"
 import {
 	generateIntegrationInstructions,
 	type AIContentChunk,
@@ -113,11 +113,11 @@ export const handleAIRequest = (params: {
 					yield* session.complete()
 					yield* Effect.log(`Agent response complete: ${session.messageId}`)
 				}).pipe(
-					Effect.timeoutFail({
+					Effect.timeoutOrElse({
 						onTimeout: () =>
-							new SessionTimeoutError({
+							Effect.fail(new SessionTimeoutError({
 								message: "Overall AI session exceeded 3 minute time limit",
-							}),
+							})),
 						duration: Duration.minutes(3),
 					}),
 				),

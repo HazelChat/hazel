@@ -8,12 +8,12 @@ import type {
 	OAuthTokens,
 } from "./provider-config"
 
-const IntegrationProviderSchema = Schema.Literal("linear", "github", "figma", "notion", "discord", "craft")
+const IntegrationProviderSchema = Schema.Literals(["linear", "github", "figma", "notion", "discord", "craft"])
 
 /**
  * Error when exchanging authorization code for tokens fails.
  */
-export class TokenExchangeError extends Schema.TaggedError<TokenExchangeError>()("TokenExchangeError", {
+export class TokenExchangeError extends Schema.TaggedErrorClass<TokenExchangeError>()("TokenExchangeError", {
 	provider: IntegrationProviderSchema,
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
@@ -22,7 +22,7 @@ export class TokenExchangeError extends Schema.TaggedError<TokenExchangeError>()
 /**
  * Error when fetching account info from provider fails.
  */
-export class AccountInfoError extends Schema.TaggedError<AccountInfoError>()("AccountInfoError", {
+export class AccountInfoError extends Schema.TaggedErrorClass<AccountInfoError>()("AccountInfoError", {
 	provider: IntegrationProviderSchema,
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
@@ -31,7 +31,7 @@ export class AccountInfoError extends Schema.TaggedError<AccountInfoError>()("Ac
 /**
  * Error when refreshing access token fails.
  */
-export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()("TokenRefreshError", {
+export class TokenRefreshError extends Schema.TaggedErrorClass<TokenRefreshError>()("TokenRefreshError", {
 	provider: IntegrationProviderSchema,
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
@@ -40,7 +40,7 @@ export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()("
 /**
  * Error when provider is not supported or not configured.
  */
-export class ProviderNotConfiguredError extends Schema.TaggedError<ProviderNotConfiguredError>()(
+export class ProviderNotConfiguredError extends Schema.TaggedErrorClass<ProviderNotConfiguredError>()(
 	"ProviderNotConfiguredError",
 	{
 		provider: IntegrationProviderSchema,
@@ -167,7 +167,7 @@ export const makeTokenExchangeRequest = (
 			tokenType: result.tokenType,
 		} satisfies OAuthTokens
 	}).pipe(
-		Effect.provide(OAuthHttpClient.Default),
+		Effect.provide(OAuthHttpClient.layer),
 		Effect.mapError(
 			(error) =>
 				new TokenExchangeError({

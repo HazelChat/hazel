@@ -1,7 +1,7 @@
-import { Reactivity } from "@effect/experimental"
-import { FetchHttpClient } from "@effect/platform"
-import { RpcClient as RpcClientBuilder, RpcSerialization } from "@effect/rpc"
-import { AtomRpc } from "@effect-atom/atom-react"
+import { Reactivity } from "effect/unstable/reactivity"
+import { FetchHttpClient } from "effect/unstable/http"
+import { RpcClient as RpcClientBuilder, RpcSerialization } from "effect/unstable/rpc"
+import { AtomRpc } from "@effect/atom-react"
 import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
 import {
 	AttachmentRpcs,
@@ -82,4 +82,4 @@ export class HazelRpcClient extends AtomRpc.Tag<HazelRpcClient>()("HazelRpcClien
 	protocol: AtomRpcProtocolLive,
 }) {}
 
-export type { RpcClientError } from "@effect/rpc"
+export type { RpcClientError } from "effect/unstable/rpc"

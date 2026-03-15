@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-export const ApiScope = Schema.Literal(
+export const ApiScope = Schema.Literals([
 	"organizations:read",
 	"organizations:write",
 	"channels:read",
@@ -41,6 +41,6 @@ export const ApiScope = Schema.Literal(
 	"user-presence-status:write",
 	"users:read",
 	"users:write",
-)
+])
 
 export type ApiScope = typeof ApiScope.Type

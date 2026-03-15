@@ -1,4 +1,4 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"

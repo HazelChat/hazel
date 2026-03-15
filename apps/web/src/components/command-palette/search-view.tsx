@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
