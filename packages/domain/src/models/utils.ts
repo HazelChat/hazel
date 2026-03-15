@@ -1,10 +1,9 @@
-import * as VariantSchema from "@effect/experimental/VariantSchema"
+import * as VariantSchema from "effect/unstable/schema/VariantSchema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as Option from "effect/Option"
-import * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
+import * as SchemaIssue from "effect/SchemaIssue"
 
 const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve, fieldFromKey } =
 	VariantSchema.make({
@@ -12,22 +11,22 @@ const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolv
 		defaultVariant: "select",
 	})
 
-export type Any = Schema.Schema.Any & {
+export type Any = Schema.Top & {
 	readonly fields: Schema.Struct.Fields
-	readonly insert: Schema.Schema.Any
-	readonly update: Schema.Schema.Any
-	readonly json: Schema.Schema.Any
-	readonly jsonCreate: Schema.Schema.Any
-	readonly jsonUpdate: Schema.Schema.Any
+	readonly insert: Schema.Top
+	readonly update: Schema.Top
+	readonly json: Schema.Top
+	readonly jsonCreate: Schema.Top
+	readonly jsonUpdate: Schema.Top
 }
 
-export type AnyNoContext = Schema.Schema.AnyNoContext & {
+export type AnyNoContext = Schema.Top & {
 	readonly fields: Schema.Struct.Fields
-	readonly insert: Schema.Schema.AnyNoContext
-	readonly update: Schema.Schema.AnyNoContext
-	readonly json: Schema.Schema.AnyNoContext
-	readonly jsonCreate: Schema.Schema.AnyNoContext
-	readonly jsonUpdate: Schema.Schema.AnyNoContext
+	readonly insert: Schema.Top
+	readonly update: Schema.Top
+	readonly json: Schema.Top
+	readonly jsonCreate: Schema.Top
+	readonly jsonUpdate: Schema.Top
 }
 
 export type VariantsDatabase = "select" | "insert" | "update"
@@ -71,7 +70,7 @@ export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[Variant
 export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
 
 export interface Generated<
-	S extends Schema.Schema.All | Schema.PropertySignature.All,
+	S extends Schema.Top,
 > extends VariantSchema.Field<{
 	readonly select: S
 	readonly update: S
@@ -79,7 +78,7 @@ export interface Generated<
 }> {}
 
 /** A field for database-generated columns (available for select and update, not insert). */
-export const Generated = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+export const Generated = <S extends Schema.Top>(
 	schema: S,
 ): Generated<S> =>
 	Field({
@@ -88,12 +87,12 @@ export const Generated = <S extends Schema.Schema.All | Schema.PropertySignature
 		json: schema,
 	})
 
-export interface GeneratedOptional<S extends Schema.Schema.All> extends VariantSchema.Field<{
+export interface GeneratedOptional<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: S
-	readonly insert: Schema.optionalWith<S, { exact: true }>
+	readonly insert: Schema.optionalKey<S>
 	readonly update: S
 	readonly json: S
-	readonly jsonCreate: Schema.optionalWith<S, { exact: true }>
+	readonly jsonCreate: Schema.optionalKey<S>
 }> {}
 
 /**
@@ -102,17 +101,17 @@ export interface GeneratedOptional<S extends Schema.Schema.All> extends VariantS
  * - Required for select, update, and json
  * - Optional for insert and jsonCreate (if not provided, DB generates the value)
  */
-export const GeneratedOptional = <S extends Schema.Schema.All>(schema: S): GeneratedOptional<S> =>
+export const GeneratedOptional = <S extends Schema.Top>(schema: S): GeneratedOptional<S> =>
 	Field({
 		select: schema,
-		insert: Schema.optionalWith(schema, { exact: true }),
+		insert: Schema.optionalKey(schema),
 		update: schema,
 		json: schema,
-		jsonCreate: Schema.optionalWith(schema, { exact: true }),
+		jsonCreate: Schema.optionalKey(schema),
 	})
 
 export interface GeneratedByApp<
-	S extends Schema.Schema.All | Schema.PropertySignature.All,
+	S extends Schema.Top,
 > extends VariantSchema.Field<{
 	readonly select: S
 	readonly insert: S
@@ -121,7 +120,7 @@ export interface GeneratedByApp<
 }> {}
 
 /** A field for application-generated columns (required for DB variants, optional for JSON). */
-export const GeneratedByApp = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+export const GeneratedByApp = <S extends Schema.Top>(
 	schema: S,
 ): GeneratedByApp<S> =>
 	Field({
@@ -132,7 +131,7 @@ export const GeneratedByApp = <S extends Schema.Schema.All | Schema.PropertySign
 	})
 
 export interface Sensitive<
-	S extends Schema.Schema.All | Schema.PropertySignature.All,
+	S extends Schema.Top,
 > extends VariantSchema.Field<{
 	readonly select: S
 	readonly insert: S
@@ -140,7 +139,7 @@ export interface Sensitive<
 }> {}
 
 /** A field for sensitive values hidden from JSON variants. */
-export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+export const Sensitive = <S extends Schema.Top>(
 	schema: S,
 ): Sensitive<S> =>
 	Field({
@@ -149,167 +148,143 @@ export const Sensitive = <S extends Schema.Schema.All | Schema.PropertySignature
 		update: schema,
 	})
 
-export interface FieldOption<S extends Schema.Schema.Any> extends VariantSchema.Field<{
+export interface FieldOption<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: Schema.OptionFromNullOr<S>
 	readonly insert: Schema.OptionFromNullOr<S>
 	readonly update: Schema.OptionFromNullOr<S>
-	readonly json: Schema.optionalWith<S, { as: "Option" }>
-	readonly jsonCreate: Schema.optionalWith<S, { as: "Option"; nullable: true }>
-	readonly jsonUpdate: Schema.optionalWith<S, { as: "Option"; nullable: true }>
+	readonly json: Schema.OptionFromOptionalNullOr<S>
+	readonly jsonCreate: Schema.OptionFromOptionalNullOr<S>
+	readonly jsonUpdate: Schema.OptionFromOptionalNullOr<S>
 }> {}
 
 /** Makes a field optional for all variants (nullable for DB, optional for JSON). */
-export const FieldOption: <Field extends VariantSchema.Field<any> | Schema.Schema.Any>(
+export const FieldOption: <Field extends VariantSchema.Field<any> | Schema.Top>(
 	self: Field,
-) => Field extends Schema.Schema.Any
+) => Field extends Schema.Top
 	? FieldOption<Field>
 	: Field extends VariantSchema.Field<infer S>
 		? VariantSchema.Field<{
-				readonly [K in keyof S]: S[K] extends Schema.Schema.Any
+				readonly [K in keyof S]: S[K] extends Schema.Top
 					? K extends VariantsDatabase
 						? Schema.OptionFromNullOr<S[K]>
-						: Schema.optionalWith<S[K], { as: "Option"; nullable: true }>
+						: Schema.OptionFromOptionalNullOr<S[K]>
 					: never
 			}>
 		: never = fieldEvolve({
 	select: Schema.OptionFromNullOr,
 	insert: Schema.OptionFromNullOr,
 	update: Schema.OptionFromNullOr,
-	json: Schema.optionalWith({ as: "Option" }),
-	jsonCreate: Schema.optionalWith({ as: "Option", nullable: true }),
-	jsonUpdate: Schema.optionalWith({ as: "Option", nullable: true }),
+	json: (s: any) => Schema.OptionFromOptionalNullOr(s),
+	jsonCreate: (s: any) => Schema.OptionFromOptionalNullOr(s),
+	jsonUpdate: (s: any) => Schema.OptionFromOptionalNullOr(s),
 }) as any
 
-export interface DateTimeFromDate extends Schema.transform<
-	typeof Schema.ValidDateFromSelf,
-	typeof Schema.DateTimeUtcFromSelf
-> {}
+export interface DateTimeFromDate extends Schema.DateTimeUtcFromDate {}
 
-export const DateTimeFromDate: DateTimeFromDate = Schema.transform(
-	Schema.ValidDateFromSelf,
-	Schema.DateTimeUtcFromSelf,
-	{
-		decode: DateTime.unsafeFromDate,
-		encode: DateTime.toDateUtc,
-	},
-)
+export const DateTimeFromDate: DateTimeFromDate = Schema.DateTimeUtcFromDate
 
-export interface Date extends Schema.transformOrFail<
-	typeof Schema.String,
-	typeof Schema.DateTimeUtcFromSelf
+export interface Date extends Schema.decodeTo<
+	Schema.DateTimeUtc,
+	Schema.String
 > {}
 
 /** A DateTime.Utc serialized as ISO date string (YYYY-MM-DD). */
-export const Date: Date = Schema.transformOrFail(Schema.String, Schema.DateTimeUtcFromSelf, {
-	decode: (s, _, ast) =>
-		DateTime.make(s).pipe(
-			Option.map(DateTime.removeTime),
-			Option.match({
-				onNone: () => ParseResult.fail(new ParseResult.Type(ast, s)),
-				onSome: (dt) => ParseResult.succeed(dt),
-			}),
-		),
-	encode: (dt) => ParseResult.succeed(DateTime.formatIsoDate(dt)),
+export const Date: Date = Schema.String.pipe(
+	Schema.decodeTo(Schema.DateTimeUtc, {
+		decode: (s, _, ast) =>
+			DateTime.make(s).pipe(
+				(opt) => {
+					if (opt._tag === "Some") {
+						return Effect.succeed(DateTime.removeTime(opt.value))
+					}
+					return Effect.fail(new SchemaIssue.InvalidValue(ast, s))
+				},
+			),
+		encode: (dt) => Effect.succeed(DateTime.formatIsoDate(dt)),
+	}),
+) as any
+
+export const DateWithNow = VariantSchema.Overrideable(Date as any, {
+	defaultValue: Effect.map(DateTime.now, DateTime.removeTime),
 })
 
-export const DateWithNow = VariantSchema.Overrideable(Date, Schema.DateTimeUtcFromSelf, {
-	generate: Option.match({
-		onNone: () => Effect.map(DateTime.now, DateTime.removeTime),
-		onSome: (dt) => Effect.succeed(DateTime.removeTime(dt)),
-	}),
-})
-
-export const DateTimeWithNow = VariantSchema.Overrideable(Schema.String, Schema.DateTimeUtcFromSelf, {
-	generate: Option.match({
-		onNone: () => Effect.map(DateTime.now, DateTime.formatIso),
-		onSome: (dt) => Effect.succeed(DateTime.formatIso(dt)),
-	}),
-	decode: Schema.DateTimeUtc,
+export const DateTimeWithNow = VariantSchema.Overrideable(Schema.DateTimeUtcFromString, {
+	defaultValue: DateTime.now,
 })
 
 export const DateTimeFromDateWithNow = VariantSchema.Overrideable(
-	Schema.DateFromSelf,
-	Schema.DateTimeUtcFromSelf,
+	Schema.DateTimeUtcFromDate,
 	{
-		generate: Option.match({
-			onNone: () => Effect.map(DateTime.now, DateTime.toDateUtc),
-			onSome: (dt) => Effect.succeed(DateTime.toDateUtc(dt)),
-		}),
-		decode: DateTimeFromDate,
+		defaultValue: DateTime.now,
 	},
 )
 
 export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(
-	Schema.Number,
-	Schema.DateTimeUtcFromSelf,
+	Schema.DateTimeUtcFromMillis,
 	{
-		generate: Option.match({
-			onNone: () => Effect.map(DateTime.now, DateTime.toEpochMillis),
-			onSome: (dt) => Effect.succeed(DateTime.toEpochMillis(dt)),
-		}),
-		decode: Schema.DateTimeUtcFromNumber,
+		defaultValue: DateTime.now,
 	},
 )
 
 export interface DateTimeInsert extends VariantSchema.Field<{
-	readonly select: typeof Schema.DateTimeUtc
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, string>
-	readonly json: typeof Schema.DateTimeUtc
+	readonly select: typeof Schema.DateTimeUtcFromString
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromString>
+	readonly json: typeof Schema.DateTimeUtcFromString
 }> {}
 
 /** A DateTime.Utc field set on insert only, serialized as string (createdAt). */
 export const DateTimeInsert: DateTimeInsert = Field({
-	select: Schema.DateTimeUtc,
+	select: Schema.DateTimeUtcFromString,
 	insert: DateTimeWithNow,
-	json: Schema.DateTimeUtc,
+	json: Schema.DateTimeUtcFromString,
 })
 
 export interface DateTimeInsertFromDate extends VariantSchema.Field<{
 	readonly select: DateTimeFromDate
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
-	readonly json: typeof Schema.DateTimeUtc
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromDate>
+	readonly json: typeof Schema.DateTimeUtcFromString
 }> {}
 
 /** A DateTime.Utc field set on insert only, serialized as Date object. */
 export const DateTimeInsertFromDate: DateTimeInsertFromDate = Field({
 	select: DateTimeFromDate,
 	insert: DateTimeFromDateWithNow,
-	json: Schema.DateTimeUtc,
+	json: Schema.DateTimeUtcFromString,
 })
 
 export interface DateTimeInsertFromNumber extends VariantSchema.Field<{
-	readonly select: typeof Schema.DateTimeUtcFromNumber
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, number>
-	readonly json: typeof Schema.DateTimeUtcFromNumber
+	readonly select: typeof Schema.DateTimeUtcFromMillis
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromMillis>
+	readonly json: typeof Schema.DateTimeUtcFromMillis
 }> {}
 
 /** A DateTime.Utc field set on insert only, serialized as epoch milliseconds. */
 export const DateTimeInsertFromNumber: DateTimeInsertFromNumber = Field({
-	select: Schema.DateTimeUtcFromNumber,
+	select: Schema.DateTimeUtcFromMillis,
 	insert: DateTimeFromNumberWithNow,
-	json: Schema.DateTimeUtcFromNumber,
+	json: Schema.DateTimeUtcFromMillis,
 })
 
 export interface DateTimeUpdate extends VariantSchema.Field<{
-	readonly select: typeof Schema.DateTimeUtc
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, string>
-	readonly update: VariantSchema.Overrideable<DateTime.Utc, string>
-	readonly json: typeof Schema.DateTimeUtc
+	readonly select: typeof Schema.DateTimeUtcFromString
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromString>
+	readonly update: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromString>
+	readonly json: typeof Schema.DateTimeUtcFromString
 }> {}
 
 /** A DateTime.Utc field set on insert/update, serialized as string (updatedAt). */
 export const DateTimeUpdate: DateTimeUpdate = Field({
-	select: Schema.DateTimeUtc,
+	select: Schema.DateTimeUtcFromString,
 	insert: DateTimeWithNow,
 	update: DateTimeWithNow,
-	json: Schema.DateTimeUtc,
+	json: Schema.DateTimeUtcFromString,
 })
 
 export interface DateTimeUpdateFromDate extends VariantSchema.Field<{
 	readonly select: DateTimeFromDate
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
-	readonly update: VariantSchema.Overrideable<DateTime.Utc, globalThis.Date>
-	readonly json: typeof Schema.DateTimeUtc
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromDate>
+	readonly update: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromDate>
+	readonly json: typeof Schema.DateTimeUtcFromString
 }> {}
 
 /** A DateTime.Utc field set on insert/update, serialized as Date object. */
@@ -317,40 +292,40 @@ export const DateTimeUpdateFromDate: DateTimeUpdateFromDate = Field({
 	select: DateTimeFromDate,
 	insert: DateTimeFromDateWithNow,
 	update: DateTimeFromDateWithNow,
-	json: Schema.DateTimeUtc,
+	json: Schema.DateTimeUtcFromString,
 })
 
 export interface DateTimeUpdateFromNumber extends VariantSchema.Field<{
-	readonly select: typeof Schema.DateTimeUtcFromNumber
-	readonly insert: VariantSchema.Overrideable<DateTime.Utc, number>
-	readonly update: VariantSchema.Overrideable<DateTime.Utc, number>
-	readonly json: typeof Schema.DateTimeUtcFromNumber
+	readonly select: typeof Schema.DateTimeUtcFromMillis
+	readonly insert: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromMillis>
+	readonly update: VariantSchema.Overrideable<typeof Schema.DateTimeUtcFromMillis>
+	readonly json: typeof Schema.DateTimeUtcFromMillis
 }> {}
 
 /** A DateTime.Utc field set on insert/update, serialized as epoch milliseconds. */
 export const DateTimeUpdateFromNumber: DateTimeUpdateFromNumber = Field({
-	select: Schema.DateTimeUtcFromNumber,
+	select: Schema.DateTimeUtcFromMillis,
 	insert: DateTimeFromNumberWithNow,
 	update: DateTimeFromNumberWithNow,
-	json: Schema.DateTimeUtcFromNumber,
+	json: Schema.DateTimeUtcFromMillis,
 })
 
 export interface JsonFromString<
-	S extends Schema.Schema.All | Schema.PropertySignature.All,
+	S extends Schema.Top,
 > extends VariantSchema.Field<{
-	readonly select: Schema.Schema<Schema.Schema.Type<S>, string, Schema.Schema.Context<S>>
-	readonly insert: Schema.Schema<Schema.Schema.Type<S>, string, Schema.Schema.Context<S>>
-	readonly update: Schema.Schema<Schema.Schema.Type<S>, string, Schema.Schema.Context<S>>
+	readonly select: Schema.fromJsonString<S>
+	readonly insert: Schema.fromJsonString<S>
+	readonly update: Schema.fromJsonString<S>
 	readonly json: S
 	readonly jsonCreate: S
 	readonly jsonUpdate: S
 }> {}
 
 /** A JSON value stored as text in the database, object in JSON variants. */
-export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySignature.All>(
+export const JsonFromString = <S extends Schema.Top>(
 	schema: S,
 ): JsonFromString<S> => {
-	const parsed = Schema.parseJson(schema as any)
+	const parsed = Schema.fromJsonString(schema)
 	return Field({
 		select: parsed,
 		insert: parsed,
@@ -362,27 +337,22 @@ export const JsonFromString = <S extends Schema.Schema.All | Schema.PropertySign
 }
 
 export interface UuidV4Insert<B extends string | symbol> extends VariantSchema.Field<{
-	readonly select: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
-	readonly insert: VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array>
-	readonly update: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
-	readonly json: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>
+	readonly select: Schema.brand<typeof Schema.Uint8Array, B>
+	readonly insert: VariantSchema.Overrideable<Schema.brand<typeof Schema.Uint8Array, B>>
+	readonly update: Schema.brand<typeof Schema.Uint8Array, B>
+	readonly json: Schema.brand<typeof Schema.Uint8Array, B>
 }> {}
 
 export const UuidV4WithGenerate = <B extends string | symbol>(
-	schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>,
-): VariantSchema.Overrideable<Uint8Array & Brand<B>, Uint8Array> =>
-	VariantSchema.Overrideable(Schema.Uint8ArrayFromSelf, schema, {
-		generate: Option.match({
-			onNone: () => Effect.sync(() => crypto.randomUUID()),
-			onSome: (id) => Effect.succeed(id as any),
-		}),
-		decode: Schema.Uint8ArrayFromSelf,
-		constructorDefault: () => crypto.randomUUID() as any,
+	schema: Schema.brand<typeof Schema.Uint8Array, B>,
+): VariantSchema.Overrideable<Schema.brand<typeof Schema.Uint8Array, B>> =>
+	VariantSchema.Overrideable(schema, {
+		defaultValue: Effect.sync(() => crypto.randomUUID() as any),
 	})
 
 /** A UUID v4 field auto-generated on insert. */
 export const UuidV4Insert = <const B extends string | symbol>(
-	schema: Schema.brand<typeof Schema.Uint8ArrayFromSelf, B>,
+	schema: Schema.brand<typeof Schema.Uint8Array, B>,
 ): UuidV4Insert<B> =>
 	Field({
 		select: schema,
@@ -392,22 +362,19 @@ export const UuidV4Insert = <const B extends string | symbol>(
 	})
 
 /** A boolean parsed from 0 or 1. */
-export class BooleanFromNumber extends Schema.transform(Schema.Literals([0, 1]), Schema.Boolean, {
-	decode: (n) => n === 1,
-	encode: (b) => (b ? 1 : 0),
-}) {}
+export const BooleanFromNumber: typeof Schema.BooleanFromBit = Schema.BooleanFromBit
 
-export interface EntitySchema extends Schema.Schema.AnyNoContext {
+export interface EntitySchema extends Schema.Top {
 	readonly fields: Schema.Struct.Fields
-	readonly insert: Schema.Schema.AnyNoContext
-	readonly update: Schema.Schema.AnyNoContext
-	readonly json: Schema.Schema.AnyNoContext
-	readonly jsonCreate: Schema.Schema.AnyNoContext
-	readonly jsonUpdate: Schema.Schema.AnyNoContext
+	readonly insert: Schema.Top
+	readonly update: Schema.Top
+	readonly json: Schema.Top
+	readonly jsonCreate: Schema.Top
+	readonly jsonUpdate: Schema.Top
 }
 
 // Helper utilities for common model fields
-export const JsonDate = Schema.Union([Schema.DateFromString, Schema.DateFromSelf]).pipe(
+export const JsonDate = Schema.Union([Schema.DateTimeUtcFromString, Schema.Date]).pipe(
 	Schema.annotate({
 		jsonSchema: { type: "string", format: "date-time" },
 	}),

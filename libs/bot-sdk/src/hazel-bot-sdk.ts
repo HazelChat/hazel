@@ -311,7 +311,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			)
 
 		const setBotState = <A>(key: string, schema: Schema.Schema<A>, value: A) =>
-			Schema.encode(schema)(value).pipe(
+			Schema.encodeEffect(schema)(value).pipe(
 				Effect.flatMap((encoded) =>
 					botStateStore.set(authContext.botId as BotId, key, JSON.stringify(encoded)),
 				),

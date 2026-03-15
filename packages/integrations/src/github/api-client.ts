@@ -129,16 +129,16 @@ const GitHubPRApiResponse = Schema.Struct({
 	title: Schema.String,
 	body: Schema.NullOr(Schema.String),
 	state: Schema.String,
-	draft: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-	merged: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+	draft: Schema.optional(Schema.Boolean, { default: () => false }),
+	merged: Schema.optional(Schema.Boolean, { default: () => false }),
 	user: Schema.NullOr(
 		Schema.Struct({
 			login: Schema.String,
 			avatar_url: Schema.optional(Schema.NullOr(Schema.String)),
 		}),
 	),
-	additions: Schema.optionalWith(Schema.Number, { default: () => 0 }),
-	deletions: Schema.optionalWith(Schema.Number, { default: () => 0 }),
+	additions: Schema.optional(Schema.Number, { default: () => 0 }),
+	deletions: Schema.optional(Schema.Number, { default: () => 0 }),
 	head: Schema.optional(Schema.Struct({ ref: Schema.String })),
 	updated_at: Schema.optional(Schema.String),
 	labels: Schema.optionalWith(
@@ -178,13 +178,13 @@ const GitHubRepositoriesApiResponse = Schema.Struct({
 
 // GitHub API error response schema
 const GitHubErrorApiResponse = Schema.Struct({
-	message: Schema.optionalWith(Schema.String, { default: () => "Unknown error" }),
+	message: Schema.optional(Schema.String, { default: () => "Unknown error" }),
 })
 
 // GitHub App info response schema
 const GitHubAppApiResponse = Schema.Struct({
 	id: Schema.Number,
-	name: Schema.optionalWith(Schema.String, { default: () => "GitHub App" }),
+	name: Schema.optional(Schema.String, { default: () => "GitHub App" }),
 })
 
 // ============================================================================

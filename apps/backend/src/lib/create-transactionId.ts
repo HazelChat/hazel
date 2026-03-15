@@ -30,7 +30,7 @@ export const generateTransactionId = Effect.fn("generateTransactionId")(function
 		Effect.tap((rawTxid) =>
 			Effect.log(`[txid-debug] Raw PostgreSQL txid string: "${rawTxid}", type: ${typeof rawTxid}`),
 		),
-		Effect.flatMap((txid) => Schema.decode(TransactionIdFromString)(txid)),
+		Effect.flatMap((txid) => Schema.decodeEffect(TransactionIdFromString)(txid)),
 		Effect.tap((decodedTxid) =>
 			Effect.log(`[txid-debug] Decoded transactionId: ${decodedTxid}, type: ${typeof decodedTxid}`),
 		),

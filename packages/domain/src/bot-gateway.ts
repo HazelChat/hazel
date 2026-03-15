@@ -9,7 +9,7 @@ export const BotGatewayCommandInvokePayload = Schema.Struct({
 	channelId: ChannelId,
 	userId: UserId,
 	orgId: OrganizationId,
-	arguments: Schema.Record({ key: Schema.String, value: Schema.String }),
+	arguments: Schema.Record(Schema.String, Schema.String),
 	timestamp: Schema.Number,
 })
 export type BotGatewayCommandInvokePayload = Schema.Schema.Type<typeof BotGatewayCommandInvokePayload>

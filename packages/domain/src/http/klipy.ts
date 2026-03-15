@@ -72,8 +72,8 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 		HttpApiEndpoint.get("trending", "/trending")
 			.setUrlParams(
 				Schema.Struct({
-					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
-					per_page: Schema.optionalWith(Schema.NumberFromString, { default: () => 25 }),
+					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
+					per_page: Schema.optional(Schema.NumberFromString, { default: () => 25 }),
 				}),
 			)
 			.addSuccess(KlipySearchResponse)
@@ -85,8 +85,8 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 			.setUrlParams(
 				Schema.Struct({
 					q: Schema.String,
-					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
-					per_page: Schema.optionalWith(Schema.NumberFromString, { default: () => 25 }),
+					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
+					per_page: Schema.optional(Schema.NumberFromString, { default: () => 25 }),
 				}),
 			)
 			.addSuccess(KlipySearchResponse)

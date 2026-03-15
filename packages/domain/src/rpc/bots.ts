@@ -113,8 +113,8 @@ export class BotRpcs extends RpcGroup.make(
 	 */
 	Rpc.make("bot.create", {
 		payload: Schema.Struct({
-			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
+			name: Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(100)),
+			description: Schema.optional(Schema.String.pipe(Schema.isMaxLength(500))),
 			webhookUrl: Schema.optional(Schema.String),
 			scopes: Schema.Array(ApiScope),
 			isPublic: Schema.optional(Schema.Boolean),
@@ -172,8 +172,8 @@ export class BotRpcs extends RpcGroup.make(
 	Rpc.make("bot.update", {
 		payload: Schema.Struct({
 			id: BotId,
-			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
-			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
+			name: Schema.optional(Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(100))),
+			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.isMaxLength(500)))),
 			webhookUrl: Schema.optional(Schema.NullOr(Schema.String)),
 			scopes: Schema.optional(Schema.Array(ApiScope)),
 			isPublic: Schema.optional(Schema.Boolean),

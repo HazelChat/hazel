@@ -61,7 +61,7 @@ const InstallationTokenApiResponse = Schema.Struct({
 
 // GitHub API error response schema
 const GitHubErrorApiResponse = Schema.Struct({
-	message: Schema.optionalWith(Schema.String, { default: () => "Unknown error" }),
+	message: Schema.optional(Schema.String, { default: () => "Unknown error" }),
 })
 
 // ============================================================================

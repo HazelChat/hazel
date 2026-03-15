@@ -123,7 +123,7 @@ export const make: (options: {
 		request: HttpClientRequest.HttpClientRequest,
 		schema: Schema.Schema<A, I, R>,
 	): Stream.Stream<A, AiError.AiError, R> => {
-		const decodeEvent = Schema.decode(Schema.parseJson(schema))
+		const decodeEvent = Schema.decodeEffect(Schema.parseJson(schema))
 		return httpClientOk.execute(request).pipe(
 			Effect.map((r) => r.stream),
 			Stream.unwrapScoped,
@@ -314,10 +314,10 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
 	"@effect/ai-openrouter/ChatStreamingMessageToolCall",
 )({
 	index: Schema.Number,
-	id: Schema.optionalWith(Schema.String, { nullable: true }),
+	id: Schema.optional(Schema.NullOr(Schema.String)),
 	type: Schema.Literal("function"),
 	function: Schema.Struct({
-		name: Schema.optionalWith(Schema.String, { nullable: true }),
+		name: Schema.optional(Schema.NullOr(Schema.String)),
 		arguments: Schema.String,
 	}),
 }) {}
@@ -329,14 +329,14 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
 export class ChatStreamingMessageChunk extends Schema.Class<ChatStreamingMessageChunk>(
 	"@effect/ai-openrouter/ChatStreamingMessageChunk",
 )({
-	role: Schema.optionalWith(Schema.Literal("assistant"), { nullable: true }),
-	content: Schema.optionalWith(Schema.String, { nullable: true }),
-	reasoning: Schema.optionalWith(Schema.String, { nullable: true }),
-	reasoning_details: Schema.optionalWith(Schema.Array(Generated.ReasoningDetail), { nullable: true }),
-	images: Schema.optionalWith(Schema.Array(Generated.ChatMessageContentItemImage), { nullable: true }),
-	refusal: Schema.optionalWith(Schema.String, { nullable: true }),
-	tool_calls: Schema.optionalWith(Schema.Array(ChatStreamingMessageToolCall), { nullable: true }),
-	annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true }),
+	role: Schema.optional(Schema.NullOr(Schema.Literal("assistant"))),
+	content: Schema.optional(Schema.NullOr(Schema.String)),
+	reasoning: Schema.optional(Schema.NullOr(Schema.String)),
+	reasoning_details: Schema.optional(Schema.NullOr(Schema.Array(Generated.ReasoningDetail))),
+	images: Schema.optional(Schema.NullOr(Schema.Array(Generated.ChatMessageContentItemImage))),
+	refusal: Schema.optional(Schema.NullOr(Schema.String)),
+	tool_calls: Schema.optional(Schema.NullOr(Schema.Array(ChatStreamingMessageToolCall))),
+	annotations: Schema.optional(Schema.NullOr(Schema.Array(Generated.AnnotationDetail))),
 }) {}
 
 /**
@@ -347,10 +347,10 @@ export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
 	"@effect/ai-openrouter/ChatStreamingChoice",
 )({
 	index: Schema.Number,
-	delta: Schema.optionalWith(ChatStreamingMessageChunk, { nullable: true }),
-	finish_reason: Schema.optionalWith(Generated.ChatCompletionFinishReason, { nullable: true }),
-	native_finish_reason: Schema.optionalWith(Schema.String, { nullable: true }),
-	logprobs: Schema.optionalWith(Generated.ChatMessageTokenLogprobs, { nullable: true }),
+	delta: Schema.optional(Schema.NullOr(ChatStreamingMessageChunk)),
+	finish_reason: Schema.optional(Schema.NullOr(Generated.ChatCompletionFinishReason)),
+	native_finish_reason: Schema.optional(Schema.NullOr(Schema.String)),
+	logprobs: Schema.optional(Schema.NullOr(Generated.ChatMessageTokenLogprobs)),
 }) {}
 
 /**
@@ -360,14 +360,14 @@ export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
 export class ChatStreamingResponseChunk extends Schema.Class<ChatStreamingResponseChunk>(
 	"@effect/ai-openrouter/ChatStreamingResponseChunk",
 )({
-	id: Schema.optionalWith(Schema.String, { nullable: true }),
+	id: Schema.optional(Schema.NullOr(Schema.String)),
 	model: Schema.optionalWith(Schema.TemplateLiteral(Schema.String, Schema.Literal("/"), Schema.String), {
 		nullable: true,
 	}),
-	provider: Schema.optionalWith(Schema.String, { nullable: true }),
+	provider: Schema.optional(Schema.NullOr(Schema.String)),
 	created: Schema.DateTimeUtcFromNumber,
 	choices: Schema.Array(ChatStreamingChoice),
-	error: Schema.optionalWith(Generated.ChatError.fields.error, { nullable: true }),
-	system_fingerprint: Schema.optionalWith(Schema.String, { nullable: true }),
-	usage: Schema.optionalWith(Generated.ChatGenerationTokenUsage, { nullable: true }),
+	error: Schema.optional(Schema.NullOr(Generated.ChatError.fields.error)),
+	system_fingerprint: Schema.optional(Schema.NullOr(Schema.String)),
+	usage: Schema.optional(Schema.NullOr(Generated.ChatGenerationTokenUsage)),
 }) {}

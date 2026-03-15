@@ -77,8 +77,8 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.create", {
 		payload: Schema.Struct({
 			channelId: ChannelId,
-			name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
-			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
+			name: Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(100)),
+			description: Schema.optional(Schema.String.pipe(Schema.isMaxLength(500))),
 			avatarUrl: Schema.optional(AvatarUrl),
 			/** When set, uses a global integration bot user instead of creating a unique webhook bot */
 			integrationProvider: Schema.optional(Schema.Literals(["openstatus", "railway"])),
@@ -120,8 +120,8 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.update", {
 		payload: Schema.Struct({
 			id: ChannelWebhookId,
-			name: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100))),
-			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.maxLength(500)))),
+			name: Schema.optional(Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(100))),
+			description: Schema.optional(Schema.NullOr(Schema.String.pipe(Schema.isMaxLength(500)))),
 			avatarUrl: Schema.optional(Schema.NullOr(AvatarUrl)),
 			isEnabled: Schema.optional(Schema.Boolean),
 		}),

@@ -2,16 +2,16 @@ import { Schema } from "effect"
 
 // Embed author section
 export const MessageEmbedAuthor = Schema.Struct({
-	name: Schema.String.pipe(Schema.maxLength(256)),
-	url: Schema.optional(Schema.String.pipe(Schema.maxLength(2048))),
-	iconUrl: Schema.optional(Schema.String.pipe(Schema.maxLength(2048))),
+	name: Schema.String.pipe(Schema.isMaxLength(256)),
+	url: Schema.optional(Schema.String.pipe(Schema.isMaxLength(2048))),
+	iconUrl: Schema.optional(Schema.String.pipe(Schema.isMaxLength(2048))),
 })
 export type MessageEmbedAuthor = Schema.Schema.Type<typeof MessageEmbedAuthor>
 
 // Embed footer section
 export const MessageEmbedFooter = Schema.Struct({
-	text: Schema.String.pipe(Schema.maxLength(2048)),
-	iconUrl: Schema.optional(Schema.String.pipe(Schema.maxLength(2048))),
+	text: Schema.String.pipe(Schema.isMaxLength(2048)),
+	iconUrl: Schema.optional(Schema.String.pipe(Schema.isMaxLength(2048))),
 })
 export type MessageEmbedFooter = Schema.Schema.Type<typeof MessageEmbedFooter>
 
@@ -39,8 +39,8 @@ export type MessageEmbedFieldOptions = Schema.Schema.Type<typeof MessageEmbedFie
 
 // Embed field (for key-value display)
 export const MessageEmbedField = Schema.Struct({
-	name: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(256)),
-	value: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(1024)),
+	name: Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(256)),
+	value: Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(1024)),
 	inline: Schema.optional(Schema.Boolean),
 	type: Schema.optional(MessageEmbedFieldType),
 	options: Schema.optional(MessageEmbedFieldOptions),
@@ -49,8 +49,8 @@ export type MessageEmbedField = Schema.Schema.Type<typeof MessageEmbedField>
 
 // Embed badge (for status indicators)
 export const MessageEmbedBadge = Schema.Struct({
-	text: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(64)),
-	color: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 16777215))), // 0x000000 to 0xFFFFFF
+	text: Schema.String.pipe(Schema.isMinLength(1), Schema.isMaxLength(64)),
+	color: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.isBetween(0, 16777215))), // 0x000000 to 0xFFFFFF
 })
 export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
 
@@ -104,14 +104,14 @@ export type MessageEmbedLiveState = Schema.Schema.Type<typeof MessageEmbedLiveSt
 
 // Full embed schema (Discord-style)
 export const MessageEmbed = Schema.Struct({
-	title: Schema.optional(Schema.String.pipe(Schema.maxLength(256))),
-	description: Schema.optional(Schema.String.pipe(Schema.maxLength(4096))),
-	url: Schema.optional(Schema.String.pipe(Schema.maxLength(2048))),
-	color: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 16777215))), // 0x000000 to 0xFFFFFF
+	title: Schema.optional(Schema.String.pipe(Schema.isMaxLength(256))),
+	description: Schema.optional(Schema.String.pipe(Schema.isMaxLength(4096))),
+	url: Schema.optional(Schema.String.pipe(Schema.isMaxLength(2048))),
+	color: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.isBetween(0, 16777215))), // 0x000000 to 0xFFFFFF
 	author: Schema.optional(MessageEmbedAuthor),
 	footer: Schema.optional(MessageEmbedFooter),
-	image: Schema.optional(Schema.Struct({ url: Schema.String.pipe(Schema.maxLength(2048)) })),
-	thumbnail: Schema.optional(Schema.Struct({ url: Schema.String.pipe(Schema.maxLength(2048)) })),
+	image: Schema.optional(Schema.Struct({ url: Schema.String.pipe(Schema.isMaxLength(2048)) })),
+	thumbnail: Schema.optional(Schema.Struct({ url: Schema.String.pipe(Schema.isMaxLength(2048)) })),
 	fields: Schema.optional(Schema.Array(MessageEmbedField).pipe(Schema.maxItems(25))),
 	timestamp: Schema.optional(Schema.String), // ISO 8601 timestamp
 	badge: Schema.optional(MessageEmbedBadge), // Status badge (e.g., "Deployed", "Failed")

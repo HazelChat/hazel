@@ -70,7 +70,7 @@ export const AvatarUrl = Schema.String.pipe(
 	Schema.pattern(/^https?:\/\/.+/i, {
 		message: () => "Avatar URL must be a valid URL",
 	}),
-	Schema.maxLength(2048),
+	Schema.isMaxLength(2048),
 	Schema.filterEffect((url) =>
 		validateImageUrl(url).pipe(
 			Effect.map(() => true),

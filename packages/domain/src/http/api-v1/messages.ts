@@ -20,8 +20,8 @@ export class ListMessagesQuery extends Schema.Class<ListMessagesQuery>("ListMess
 	limit: Schema.optional(
 		Schema.NumberFromString.pipe(
 			Schema.int(),
-			Schema.greaterThanOrEqualTo(1),
-			Schema.lessThanOrEqualTo(100),
+			Schema.isGreaterThanOrEqualTo(1),
+			Schema.isLessThanOrEqualTo(100),
 		),
 	),
 }) {}

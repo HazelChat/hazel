@@ -17,7 +17,7 @@ import {
 export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	id: UserId,
 	organizationId: S.NullishOr(OrganizationId),
-	role: S.Literal("admin", "member", "owner"),
+	role: S.Literals(["admin", "member", "owner"]),
 	avatarUrl: S.optional(S.String),
 	firstName: S.optional(S.String),
 	lastName: S.optional(S.String),

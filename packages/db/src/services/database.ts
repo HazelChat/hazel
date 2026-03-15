@@ -192,7 +192,7 @@ const makeService = (config: Config) =>
 				) => Effect.Effect<T, DatabaseError, never>,
 			): Effect.Effect<A, E | DatabaseError | ParseError, R> => {
 				return Effect.gen(function* () {
-					const validatedInput = yield* Schema.decode(inputSchema)(rawData)
+					const validatedInput = yield* Schema.decodeEffect(inputSchema)(rawData)
 
 					if (tx) {
 						return yield* queryFn(tx, validatedInput)

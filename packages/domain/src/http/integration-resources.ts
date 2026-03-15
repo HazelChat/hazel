@@ -226,8 +226,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			)
 			.setUrlParams(
 				Schema.Struct({
-					page: Schema.optionalWith(Schema.NumberFromString, { default: () => 1 }),
-					perPage: Schema.optionalWith(Schema.NumberFromString, { default: () => 30 }),
+					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
+					perPage: Schema.optional(Schema.NumberFromString, { default: () => 30 }),
 				}),
 			)
 			.annotateContext(

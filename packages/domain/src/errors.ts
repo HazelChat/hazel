@@ -96,7 +96,7 @@ export class WorkflowServiceUnavailableError extends Schema.TaggedErrorClass<Wor
 	"WorkflowServiceUnavailableError",
 	{
 		message: Schema.String,
-		cause: Schema.optionalWith(Schema.String, { nullable: true }),
+		cause: Schema.optional(Schema.NullOr(Schema.String)),
 	},
 	{ httpApiStatus: 503 },
 ) {}

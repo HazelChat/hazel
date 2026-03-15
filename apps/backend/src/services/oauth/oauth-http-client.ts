@@ -25,7 +25,7 @@ const OAuthTokenApiResponse = Schema.Struct({
 	refresh_token: Schema.optional(Schema.String),
 	expires_in: Schema.optional(Schema.Number),
 	scope: Schema.optional(Schema.String),
-	token_type: Schema.optionalWith(Schema.String, { default: () => "Bearer" }),
+	token_type: Schema.optional(Schema.String, { default: () => "Bearer" }),
 })
 
 // ============================================================================

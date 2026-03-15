@@ -293,7 +293,7 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 						Drizzle.is(column, DrizzleSqlite.SQLiteText)) &&
 					typeof column.length === "number"
 				) {
-					sType = sType.pipe(Schema.maxLength(column.length))
+					sType = sType.pipe(Schema.isMaxLength(column.length))
 				}
 				type = sType
 			}

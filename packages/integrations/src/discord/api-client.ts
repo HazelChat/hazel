@@ -31,14 +31,14 @@ const DiscordUserApiResponse = Schema.Struct({
 	id: Schema.String,
 	username: Schema.String,
 	global_name: Schema.optional(Schema.NullOr(Schema.String)),
-	discriminator: Schema.optionalWith(Schema.String, { default: () => "0" }),
+	discriminator: Schema.optional(Schema.String, { default: () => "0" }),
 })
 
 const DiscordGuildApiResponse = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	icon: Schema.optional(Schema.NullOr(Schema.String)),
-	owner: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+	owner: Schema.optional(Schema.Boolean, { default: () => false }),
 })
 
 const DiscordWebhookCreateResponse = Schema.Struct({
@@ -59,7 +59,7 @@ const DiscordMessageCreateResponse = Schema.Struct({
 })
 
 const DiscordErrorApiResponse = Schema.Struct({
-	message: Schema.optionalWith(Schema.String, { default: () => "Unknown Discord error" }),
+	message: Schema.optional(Schema.String, { default: () => "Unknown Discord error" }),
 })
 
 export class DiscordApiError extends Schema.TaggedErrorClass<DiscordApiError>()("DiscordApiError", {

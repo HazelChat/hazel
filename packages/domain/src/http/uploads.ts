@@ -47,7 +47,7 @@ export class UserAvatarUploadRequest extends Schema.Class<UserAvatarUploadReques
 			}),
 		),
 		fileSize: Schema.Number.pipe(
-			Schema.between(1, MAX_AVATAR_SIZE, {
+			Schema.isBetween(1, MAX_AVATAR_SIZE, {
 				message: () => "File size must be between 1 byte and 5MB",
 			}),
 		),
@@ -66,7 +66,7 @@ export class BotAvatarUploadRequest extends Schema.Class<BotAvatarUploadRequest>
 		}),
 	),
 	fileSize: Schema.Number.pipe(
-		Schema.between(1, MAX_AVATAR_SIZE, {
+		Schema.isBetween(1, MAX_AVATAR_SIZE, {
 			message: () => "File size must be between 1 byte and 5MB",
 		}),
 	),
@@ -86,7 +86,7 @@ export class OrganizationAvatarUploadRequest extends Schema.Class<OrganizationAv
 		}),
 	),
 	fileSize: Schema.Number.pipe(
-		Schema.between(1, MAX_AVATAR_SIZE, {
+		Schema.isBetween(1, MAX_AVATAR_SIZE, {
 			message: () => "File size must be between 1 byte and 5MB",
 		}),
 	),
@@ -101,7 +101,7 @@ export class AttachmentUploadRequest extends Schema.Class<AttachmentUploadReques
 		fileName: Schema.String,
 		contentType: Schema.String,
 		fileSize: Schema.Number.pipe(
-			Schema.between(1, MAX_ATTACHMENT_SIZE, {
+			Schema.isBetween(1, MAX_ATTACHMENT_SIZE, {
 				message: () => "File size must be between 1 byte and 10MB",
 			}),
 		),
@@ -124,7 +124,7 @@ export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequ
 		}),
 	),
 	fileSize: Schema.Number.pipe(
-		Schema.between(1, MAX_EMOJI_SIZE, {
+		Schema.isBetween(1, MAX_EMOJI_SIZE, {
 			message: () => "File size must be between 1 byte and 256KB",
 		}),
 	),
