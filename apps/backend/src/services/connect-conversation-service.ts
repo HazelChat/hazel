@@ -323,13 +323,13 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(ConnectParticipantRepo.Default),
-		Layer.provide(ConnectConversationRepo.Default),
-		Layer.provide(ConnectConversationChannelRepo.Default),
-		Layer.provide(MessageRepo.Default),
-		Layer.provide(MessageReactionRepo.Default),
-		Layer.provide(ChannelAccessSyncService.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ConnectParticipantRepo.layer),
+		Layer.provide(ConnectConversationRepo.layer),
+		Layer.provide(ConnectConversationChannelRepo.layer),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(MessageReactionRepo.layer),
+		Layer.provide(ChannelAccessSyncService.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

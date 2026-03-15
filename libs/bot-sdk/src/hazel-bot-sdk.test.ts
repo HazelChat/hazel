@@ -122,9 +122,9 @@ const makeHazelBotLayer = (options: {
 		delete: (botId: string, key: string) => Effect.Effect<void, any>
 	}
 }) => {
-	return HazelBotClient.Default.pipe(
+	return HazelBotClient.layer.pipe(
 		Layer.provide(
-			BotAuth.Default({
+			BotAuth.layer({
 				botId: BOT_ID,
 				botName: "Test Bot",
 				userId: USER_ID,

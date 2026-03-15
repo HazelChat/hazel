@@ -162,11 +162,11 @@ export class AttachmentPolicy extends ServiceMap.Service<AttachmentPolicy>()("At
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(AttachmentRepo.Default),
-		Layer.provide(MessageRepo.Default),
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(ChannelMemberRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(AttachmentRepo.layer),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(ChannelMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

@@ -60,7 +60,7 @@ export interface ActorsClientConfig {
  * @example
  * ```typescript
  * // Create layer with config
- * const layer = ActorsClient.Default({
+ * const layer = ActorsClient.layer({
  *   botToken: "hzl_bot_xxx",
  *   endpoint: "http://localhost:6420"
  * })

@@ -25,7 +25,7 @@ const OpenRouterModelLayer = OpenRouterLanguageModel.layer({
 runHazelBot({
 	serviceName: "linear-bot",
 	commands,
-	layers: [LinearApiClient.Default],
+	layers: [LinearApiClient.layer],
 	setup: (bot) =>
 		Effect.gen(function* () {
 			yield* bot.onCommand(IssueCommand, (ctx) =>

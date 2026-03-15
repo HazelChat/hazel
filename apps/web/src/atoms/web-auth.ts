@@ -79,7 +79,7 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000
 // Layers
 // ============================================================================
 
-const WebTokenStorageLive = WebTokenStorage.Default
+const WebTokenStorageLive = WebTokenStorage.layer
 
 // ============================================================================
 // Core State Atoms

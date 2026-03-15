@@ -123,4 +123,4 @@ export class BotUserService extends ServiceMap.Service<BotUserService>()("BotUse
 /**
  * Layer that provides BotUserService with Database dependency.
  */
-export const BotUserServiceLive = BotUserService.Default
+export const BotUserServiceLive = BotUserService.layer

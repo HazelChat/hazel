@@ -111,7 +111,7 @@ export class BotPolicy extends ServiceMap.Service<BotPolicy>()("BotPolicy/Policy
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(BotRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(BotRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

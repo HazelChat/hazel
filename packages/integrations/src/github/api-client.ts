@@ -850,4 +850,4 @@ export const fetchGitHubPR = (
 	Effect.gen(function* () {
 		const client = yield* GitHubApiClient
 		return yield* client.fetchPR(owner, repo, prNumber, accessToken)
-	}).pipe(Effect.provide(GitHubApiClient.Default))
+	}).pipe(Effect.provide(GitHubApiClient.layer))

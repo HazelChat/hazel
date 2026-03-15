@@ -143,9 +143,9 @@ export class InvitationPolicy extends ServiceMap.Service<InvitationPolicy>()("In
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(InvitationRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(UserRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(InvitationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

@@ -68,7 +68,7 @@ export class WebhookBotService extends ServiceMap.Service<WebhookBotService>()("
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(UserRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
 	)
 }

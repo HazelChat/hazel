@@ -1261,4 +1261,4 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				),
 			),
 		),
-).pipe(Layer.provide(CraftApiClient.Default), Layer.provide(IntegrationBotService.Default))
+).pipe(Layer.provide(CraftApiClient.layer), Layer.provide(IntegrationBotService.layer))

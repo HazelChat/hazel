@@ -118,7 +118,7 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(ChannelMemberRepo.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ChannelMemberRepo.layer),
 	)
 }

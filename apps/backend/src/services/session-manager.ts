@@ -38,7 +38,7 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(BackendAuth.Default),
-		Layer.provide(UserRepo.Default),
+		Layer.provide(BackendAuth.layer),
+		Layer.provide(UserRepo.layer),
 	)
 }

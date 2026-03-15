@@ -166,9 +166,9 @@ export class ChannelMemberPolicy extends ServiceMap.Service<ChannelMemberPolicy>
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(ChannelMemberRepo.Default),
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelMemberRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

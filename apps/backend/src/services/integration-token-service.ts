@@ -60,7 +60,7 @@ const refreshOAuthToken = (
 			scope: result.scope,
 		}
 	}).pipe(
-		Effect.provide(OAuthHttpClient.Default),
+		Effect.provide(OAuthHttpClient.layer),
 		Effect.mapError((cause) => new TokenRefreshError({ provider, cause })),
 	)
 
@@ -441,9 +441,9 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
 		Layer.provide(DatabaseLive),
-		Layer.provide(IntegrationEncryption.Default),
-		Layer.provide(IntegrationTokenRepo.Default),
-		Layer.provide(IntegrationConnectionRepo.Default),
-		Layer.provide(GitHub.GitHubAppJWTService.Default),
+		Layer.provide(IntegrationEncryption.layer),
+		Layer.provide(IntegrationTokenRepo.layer),
+		Layer.provide(IntegrationConnectionRepo.layer),
+		Layer.provide(GitHub.GitHubAppJWTService.layer),
 	)
 }

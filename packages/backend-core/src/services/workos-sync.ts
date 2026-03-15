@@ -993,10 +993,10 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(WorkOSClient.Default),
-		Layer.provide(UserRepo.Default),
-		Layer.provide(OrganizationRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(InvitationRepo.Default),
+		Layer.provide(WorkOSClient.layer),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(InvitationRepo.layer),
 	)
 }

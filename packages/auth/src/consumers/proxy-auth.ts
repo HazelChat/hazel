@@ -206,8 +206,8 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(UserLookupCache.Default),
-		Layer.provide(WorkOSClient.Default),
+		Layer.provide(UserLookupCache.layer),
+		Layer.provide(WorkOSClient.layer),
 	)
 }
 
@@ -217,4 +217,4 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
  * External dependencies that must be provided:
  * - Database.Database (for user lookup)
  */
-export const ProxyAuthLive = ProxyAuth.Default
+export const ProxyAuthLive = ProxyAuth.layer

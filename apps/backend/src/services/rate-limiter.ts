@@ -99,7 +99,7 @@ export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter"
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(Redis.Default),
+		Layer.provide(Redis.layer),
 	)
 }
 

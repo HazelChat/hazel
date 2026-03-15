@@ -57,6 +57,6 @@ export class IntegrationConnectionPolicy extends ServiceMap.Service<IntegrationC
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(OrgResolver.layer),
 	)
 }

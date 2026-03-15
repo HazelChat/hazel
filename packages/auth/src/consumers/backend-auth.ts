@@ -352,7 +352,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(WorkOSClient.Default),
+		Layer.provide(WorkOSClient.layer),
 	)
 
 	/** Mock user ID - a valid UUID */
@@ -426,7 +426,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 /**
  * Layer that provides BackendAuth with all its dependencies.
  *
- * With Effect.Service dependencies, BackendAuth.Default automatically includes:
- * - WorkOSClient.Default (which includes AuthConfig.Default)
+ * With Effect.Service dependencies, BackendAuth.layer automatically includes:
+ * - WorkOSClient.layer (which includes AuthConfig.layer)
  */
-export const BackendAuthLive = BackendAuth.Default
+export const BackendAuthLive = BackendAuth.layer

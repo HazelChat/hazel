@@ -102,9 +102,9 @@ export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPol
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(MessageReactionRepo.Default),
-		Layer.provide(MessageRepo.Default),
-		Layer.provide(OrgResolver.Default),
-		Layer.provide(ConnectConversationService.Default),
+		Layer.provide(MessageReactionRepo.layer),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(OrgResolver.layer),
+		Layer.provide(ConnectConversationService.layer),
 	)
 }

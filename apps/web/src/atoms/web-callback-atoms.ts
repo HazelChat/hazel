@@ -62,8 +62,8 @@ export const webCallbackStatusAtom = Atom.make<WebCallbackStatus>({ _tag: "idle"
 // Layers
 // ============================================================================
 
-const WebTokenStorageLive = WebTokenStorage.Default
-const TokenExchangeLive = TokenExchange.Default
+const WebTokenStorageLive = WebTokenStorage.layer
+const TokenExchangeLive = TokenExchange.layer
 
 // ============================================================================
 // Error Handling

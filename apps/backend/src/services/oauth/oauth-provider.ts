@@ -167,7 +167,7 @@ export const makeTokenExchangeRequest = (
 			tokenType: result.tokenType,
 		} satisfies OAuthTokens
 	}).pipe(
-		Effect.provide(OAuthHttpClient.Default),
+		Effect.provide(OAuthHttpClient.layer),
 		Effect.mapError(
 			(error) =>
 				new TokenExchangeError({

@@ -55,7 +55,7 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/aut
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(AuthConfig.Default),
+		Layer.provide(AuthConfig.layer),
 	)
 
 	/** Default mock user for tests */

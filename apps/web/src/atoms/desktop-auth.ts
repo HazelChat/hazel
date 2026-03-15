@@ -56,9 +56,9 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000
 // Layers
 // ============================================================================
 
-const TokenStorageLive = TokenStorage.Default
-const TokenExchangeLive = TokenExchange.Default
-const TauriAuthLive = TauriAuth.Default
+const TokenStorageLive = TokenStorage.layer
+const TokenExchangeLive = TokenExchange.layer
+const TauriAuthLive = TauriAuth.layer
 const ClipboardLive = Clipboard.layer
 
 // ============================================================================

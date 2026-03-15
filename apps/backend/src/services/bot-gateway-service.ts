@@ -281,7 +281,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(BotInstallationRepo.Default),
-		Layer.provide(ChannelRepo.Default),
+		Layer.provide(BotInstallationRepo.layer),
+		Layer.provide(ChannelRepo.layer),
 	)
 }

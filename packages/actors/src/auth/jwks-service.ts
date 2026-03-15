@@ -41,6 +41,6 @@ export class JwksService extends ServiceMap.Service<JwksService>()("JwksService"
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(TokenValidationConfigService.Default),
+		Layer.provide(TokenValidationConfigService.layer),
 	)
 }

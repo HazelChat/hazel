@@ -88,9 +88,9 @@ export class MessagePolicy extends ServiceMap.Service<MessagePolicy>()("MessageP
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(MessageRepo.Default),
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

@@ -13,7 +13,7 @@ export const RedisPersistenceLive = Layer.unwrapEffect(
 		yield* Effect.log("Connecting to Redis via @hazel/effect-bun", { url: config.redisUrl })
 		return RedisResultPersistenceLive.pipe(Layer.provide(Redis.layer(Redacted.value(config.redisUrl))))
 	}),
-).pipe(Layer.provide(ProxyConfigService.Default))
+).pipe(Layer.provide(ProxyConfigService.layer))
 
 /**
  * In-memory persistence layer for testing or fallback.

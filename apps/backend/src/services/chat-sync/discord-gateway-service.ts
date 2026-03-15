@@ -745,7 +745,7 @@ export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayServ
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(DiscordSyncWorker.Default),
-		Layer.provide(ChatSyncChannelLinkRepo.Default),
+		Layer.provide(DiscordSyncWorker.layer),
+		Layer.provide(ChatSyncChannelLinkRepo.layer),
 	)
 }

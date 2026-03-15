@@ -77,4 +77,4 @@ export class BotHealthServer extends ServiceMap.Service<BotHealthServer>()("BotH
 }
 
 export const BotHealthServerLive = (port: number) =>
-	Layer.provide(BotHealthServer.Default, Layer.succeed(BotHealthServerConfigTag, { port }))
+	Layer.provide(BotHealthServer.layer, Layer.succeed(BotHealthServerConfigTag, { port }))

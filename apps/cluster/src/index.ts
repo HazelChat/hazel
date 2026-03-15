@@ -68,12 +68,12 @@ const AllWorkflows = Layer.mergeAll(
 
 // WorkOSSync dependencies layer for cron job
 // Build the layer manually to ensure Database is provided to all deps
-const WorkOSSyncLive = WorkOSSync.Default.pipe(
-	Layer.provide(WorkOSClient.Default),
-	Layer.provide(UserRepo.Default),
-	Layer.provide(OrganizationRepo.Default),
-	Layer.provide(OrganizationMemberRepo.Default),
-	Layer.provide(InvitationRepo.Default),
+const WorkOSSyncLive = WorkOSSync.layer.pipe(
+	Layer.provide(WorkOSClient.layer),
+	Layer.provide(UserRepo.layer),
+	Layer.provide(OrganizationRepo.layer),
+	Layer.provide(OrganizationMemberRepo.layer),
+	Layer.provide(InvitationRepo.layer),
 	Layer.provide(DatabaseLayer),
 )
 

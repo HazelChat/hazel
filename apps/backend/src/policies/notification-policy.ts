@@ -175,7 +175,7 @@ export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(NotificationRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(NotificationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
 	)
 }

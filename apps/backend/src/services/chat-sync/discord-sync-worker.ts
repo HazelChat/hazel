@@ -234,6 +234,6 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(ChatSyncCoreWorker.Default),
+		Layer.provide(ChatSyncCoreWorker.layer),
 	)
 }

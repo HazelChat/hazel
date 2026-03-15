@@ -33,7 +33,7 @@ type SideEffectOptions = {
 }
 
 const runRepoEffect = <A, E, R>(harness: ChatSyncDbHarness, effect: Effect.Effect<A, E, R>) =>
-	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.Default)))
+	harness.run(effect.pipe(Effect.provide(MessageOutboxRepo.layer)))
 
 const runDispatcherEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
@@ -45,7 +45,7 @@ const runDispatcherEffect = <A, E, R>(
 			effect.pipe(
 				Effect.provide(MessageOutboxDispatcher.DefaultWithoutDependencies),
 				Effect.provide(Layer.succeed(MessageSideEffectService, sideEffects)),
-				Effect.provide(MessageOutboxRepo.Default),
+				Effect.provide(MessageOutboxRepo.layer),
 				Effect.provide(
 					Layer.succeed(EnvVars, {
 						IS_DEV: true,

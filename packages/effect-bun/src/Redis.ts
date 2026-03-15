@@ -89,7 +89,7 @@ const sanitizeRedisUrl = (url: string): string => url.replace(/\/\/.*@/, "//***@
  *   yield* redis.set("key", "value")
  *   const value = yield* redis.get("key")
  *   return value
- * }).pipe(Effect.provide(Redis.Default))
+ * }).pipe(Effect.provide(Redis.layer))
  * ```
  */
 export class Redis extends ServiceMap.Service<Redis,

@@ -73,7 +73,7 @@ export class ChannelSectionPolicy extends ServiceMap.Service<ChannelSectionPolic
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelSectionRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelSectionRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

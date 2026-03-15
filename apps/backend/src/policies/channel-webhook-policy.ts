@@ -89,8 +89,8 @@ export class ChannelWebhookPolicy extends ServiceMap.Service<ChannelWebhookPolic
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(ChannelWebhookRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(ChannelWebhookRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

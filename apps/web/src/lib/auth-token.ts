@@ -33,9 +33,9 @@ const refreshDeferredRef = Ref.unsafeMake<Deferred.Deferred<boolean> | null>(nul
 // Platform-specific layers
 // ============================================================================
 
-const webStorageLive = WebTokenStorage.Default
-const desktopStorageLive = TokenStorage.Default
-const tokenExchangeLive = TokenExchange.Default
+const webStorageLive = WebTokenStorage.layer
+const desktopStorageLive = TokenStorage.layer
+const tokenExchangeLive = TokenExchange.layer
 
 // ============================================================================
 // Error Classification

@@ -52,11 +52,11 @@ const cli = Command.run(rootCommand, {
 })
 
 const ServicesLive = Layer.mergeAll(
-	SecretGenerator.Default,
-	CredentialValidator.Default,
-	EnvWriter.Default,
-	Doctor.Default,
-	CertManager.Default,
+	SecretGenerator.layer,
+	CredentialValidator.layer,
+	EnvWriter.layer,
+	Doctor.layer,
+	CertManager.layer,
 )
 
 cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)

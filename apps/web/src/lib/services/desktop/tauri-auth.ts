@@ -206,7 +206,7 @@ export class TauriAuth extends ServiceMap.Service<TauriAuth>()("TauriAuth", {
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(TokenStorage.Default),
-		Layer.provide(TokenExchange.Default),
+		Layer.provide(TokenStorage.layer),
+		Layer.provide(TokenExchange.layer),
 	)
 }

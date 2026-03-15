@@ -236,8 +236,8 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(EnvVars.Default),
-		Layer.provide(MessageOutboxRepo.Default),
-		Layer.provide(MessageSideEffectService.Default),
+		Layer.provide(EnvVars.layer),
+		Layer.provide(MessageOutboxRepo.layer),
+		Layer.provide(MessageSideEffectService.layer),
 	)
 }

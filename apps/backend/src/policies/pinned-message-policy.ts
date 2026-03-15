@@ -114,9 +114,9 @@ export class PinnedMessagePolicy extends ServiceMap.Service<PinnedMessagePolicy>
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(PinnedMessageRepo.Default),
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(PinnedMessageRepo.layer),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

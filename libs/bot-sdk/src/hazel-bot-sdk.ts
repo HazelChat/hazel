@@ -1957,7 +1957,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 
 	const AuthLayer = Layer.unwrapEffect(
 		createAuthContextFromToken(config.botToken, backendUrl).pipe(
-			Effect.map((context) => BotAuth.Default(context)),
+			Effect.map((context) => BotAuth.layer(context)),
 		),
 	)
 
@@ -2023,7 +2023,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 
 	// Compose all layers with proper dependency order
 	const AllLayers = Layer.mergeAll(
-		HazelBotClient.Default.pipe(
+		HazelBotClient.layer.pipe(
 			Layer.provide(RpcClientLayer),
 			Layer.provide(RpcClientConfigLayer),
 			Layer.provide(BotStateStoreLayer),

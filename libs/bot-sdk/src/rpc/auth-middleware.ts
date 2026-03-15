@@ -21,7 +21,7 @@ import { Effect } from "effect"
  * ```typescript
  * const BotAuthMiddlewareLive = createBotAuthMiddleware(config.botToken)
  *
- * const RpcClientLayer = BotRpcClient.Default.pipe(
+ * const RpcClientLayer = BotRpcClient.layer.pipe(
  *   Layer.provide(RpcProtocolLive),
  *   Layer.provide(BotAuthMiddlewareLive),
  * )

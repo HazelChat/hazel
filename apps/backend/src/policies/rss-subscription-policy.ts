@@ -99,8 +99,8 @@ export class RssSubscriptionPolicy extends ServiceMap.Service<RssSubscriptionPol
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(RssSubscriptionRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(RssSubscriptionRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

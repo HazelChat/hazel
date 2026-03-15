@@ -55,7 +55,7 @@ export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPol
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelMemberRepo.Default),
-		Layer.provide(TypingIndicatorRepo.Default),
+		Layer.provide(ChannelMemberRepo.layer),
+		Layer.provide(TypingIndicatorRepo.layer),
 	)
 }

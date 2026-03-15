@@ -60,7 +60,7 @@ export class ChannelPolicy extends ServiceMap.Service<ChannelPolicy>()("ChannelP
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

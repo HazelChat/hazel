@@ -183,9 +183,9 @@ export class IntegrationBotService extends ServiceMap.Service<IntegrationBotServ
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(UserRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(BotRepo.Default),
-		Layer.provide(BotInstallationRepo.Default),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(BotRepo.layer),
+		Layer.provide(BotInstallationRepo.layer),
 	)
 }

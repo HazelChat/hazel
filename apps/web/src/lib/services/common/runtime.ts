@@ -15,7 +15,7 @@ import { TracerLive } from "./telemetry"
  *
  * All RPC clients share the same WebSocket connection via RpcProtocolLive.
  */
-export const runtimeLayer = Layer.mergeAll(ApiClient.Default, HazelRpcClient.layer, TracerLive)
+export const runtimeLayer = Layer.mergeAll(ApiClient.layer, HazelRpcClient.layer, TracerLive)
 
 /**
  * Managed runtime for imperative Effect execution

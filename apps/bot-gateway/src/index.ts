@@ -822,7 +822,7 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 		),
 	)
 
-export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.Default, {
+export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.layer, {
 	dependency: "config",
 	startMessage: "Loading gateway startup config...",
 	successMessage: "Gateway startup config loaded",
@@ -847,7 +847,7 @@ export const InstrumentedDatabaseLive = instrumentStartupLayer(
 	},
 )
 
-export const InstrumentedRedisLive = instrumentStartupLayer(Redis.Default, {
+export const InstrumentedRedisLive = instrumentStartupLayer(Redis.layer, {
 	dependency: "redis",
 	startMessage: "Initializing bot gateway Redis layer...",
 	successMessage: "Bot gateway Redis layer initialized",
@@ -861,9 +861,9 @@ export const InstrumentedTracerLive = instrumentStartupLayer(TracerLive, {
 	failureMessage: "Bot gateway tracer layer initialization failed",
 })
 
-const RepoLive = Layer.mergeAll(BotRepo.Default).pipe(Layer.provide(InstrumentedDatabaseLive))
-const DurableStreamClientLive = DurableStreamClient.Default.pipe(Layer.provide(InstrumentedConfigLive))
-const BotGatewayHubLive = BotGatewayHub.Default.pipe(
+const RepoLive = Layer.mergeAll(BotRepo.layer).pipe(Layer.provide(InstrumentedDatabaseLive))
+const DurableStreamClientLive = DurableStreamClient.layer.pipe(Layer.provide(InstrumentedConfigLive))
+const BotGatewayHubLive = BotGatewayHub.layer.pipe(
 	Layer.provideMerge(InstrumentedConfigLive),
 	Layer.provideMerge(InstrumentedRedisLive),
 	Layer.provideMerge(RepoLive),

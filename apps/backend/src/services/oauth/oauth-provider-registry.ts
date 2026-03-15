@@ -159,7 +159,7 @@ export class OAuthProviderRegistry extends ServiceMap.Service<OAuthProviderRegis
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(GitHub.GitHubAppJWTService.Default),
-		Layer.provide(GitHub.GitHubApiClient.Default),
+		Layer.provide(GitHub.GitHubAppJWTService.layer),
+		Layer.provide(GitHub.GitHubApiClient.layer),
 	)
 }

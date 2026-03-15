@@ -49,6 +49,6 @@ export class OrganizationPolicy extends ServiceMap.Service<OrganizationPolicy>()
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(OrgResolver.layer),
 	)
 }

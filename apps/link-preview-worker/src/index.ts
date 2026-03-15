@@ -22,7 +22,7 @@ const makeHttpLiveWithKV = (env: Env) =>
 		),
 		Layer.provideMerge(HttpServer.layerContext),
 		Layer.provide(makeKVCacheLayer(env.LINK_CACHE)),
-		Layer.provide(TwitterApi.Default),
+		Layer.provide(TwitterApi.layer),
 		Layer.provide(Logger.pretty),
 	)
 

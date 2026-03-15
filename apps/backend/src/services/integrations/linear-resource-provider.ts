@@ -35,4 +35,4 @@ export const fetchLinearIssue = (issueKey: string, accessToken: string) =>
 	Effect.gen(function* () {
 		const client = yield* Linear.LinearApiClient
 		return yield* client.fetchIssue(issueKey, accessToken)
-	}).pipe(Effect.provide(Linear.LinearApiClient.Default))
+	}).pipe(Effect.provide(Linear.LinearApiClient.layer))

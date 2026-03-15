@@ -10,13 +10,13 @@ import { Effect, Layer, Logger } from "effect"
 import { DatabaseLive } from "../services/database"
 
 const RepoLive = Layer.mergeAll(
-	UserRepo.Default,
-	OrganizationRepo.Default,
-	OrganizationMemberRepo.Default,
-	InvitationRepo.Default,
+	UserRepo.layer,
+	OrganizationRepo.layer,
+	OrganizationMemberRepo.layer,
+	InvitationRepo.layer,
 ).pipe(Layer.provideMerge(DatabaseLive))
 
-const MainLive = Layer.mergeAll(WorkOSSync.Default, WorkOSClient.Default).pipe(
+const MainLive = Layer.mergeAll(WorkOSSync.layer, WorkOSClient.layer).pipe(
 	Layer.provideMerge(RepoLive),
 	Layer.provideMerge(DatabaseLive),
 )

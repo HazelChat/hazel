@@ -439,6 +439,6 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(Discord.DiscordApiClient.Default),
+		Layer.provide(Discord.DiscordApiClient.layer),
 	)
 }

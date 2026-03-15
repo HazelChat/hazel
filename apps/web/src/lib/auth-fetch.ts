@@ -15,8 +15,8 @@ import { WebTokenStorage } from "./services/web/token-storage"
 import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
-const DesktopTokenStorageLive = TokenStorage.Default
-const WebTokenStorageLive = WebTokenStorage.Default
+const DesktopTokenStorageLive = TokenStorage.layer
+const WebTokenStorageLive = WebTokenStorage.layer
 
 /**
  * Clear tokens from appropriate storage (desktop or web)

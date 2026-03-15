@@ -243,8 +243,8 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(TokenValidationConfigService.Default),
-		Layer.provide(JwksService.Default),
+		Layer.provide(TokenValidationConfigService.layer),
+		Layer.provide(JwksService.layer),
 	)
 }
 
@@ -252,4 +252,4 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
  * Live layer for TokenValidationService with all dependencies.
  * Includes FetchHttpClient for bot token validation.
  */
-export const TokenValidationLive = TokenValidationService.Default
+export const TokenValidationLive = TokenValidationService.layer

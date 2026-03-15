@@ -22,7 +22,7 @@ const resetEnv = () => {
 
 const loadConfig = Effect.gen(function* () {
 	return yield* TokenValidationConfigService
-}).pipe(Effect.provide(TokenValidationConfigService.Default))
+}).pipe(Effect.provide(TokenValidationConfigService.layer))
 
 afterEach(() => {
 	resetEnv()

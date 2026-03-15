@@ -106,7 +106,7 @@ export class OrganizationMemberPolicy extends ServiceMap.Service<OrganizationMem
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(OrganizationMemberRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(OrganizationMemberRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

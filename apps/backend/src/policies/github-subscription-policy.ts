@@ -99,8 +99,8 @@ export class GitHubSubscriptionPolicy extends ServiceMap.Service<GitHubSubscript
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(ChannelRepo.Default),
-		Layer.provide(GitHubSubscriptionRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(ChannelRepo.layer),
+		Layer.provide(GitHubSubscriptionRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }

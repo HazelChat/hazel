@@ -129,8 +129,8 @@ export class ChatSyncAttributionReconciler extends ServiceMap.Service<ChatSyncAt
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(MessageRepo.Default),
-		Layer.provide(UserRepo.Default),
-		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(MessageRepo.layer),
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
 	)
 }

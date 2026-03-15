@@ -50,7 +50,7 @@ export class CustomEmojiPolicy extends ServiceMap.Service<CustomEmojiPolicy>()("
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(CustomEmojiRepo.Default),
-		Layer.provide(OrgResolver.Default),
+		Layer.provide(CustomEmojiRepo.layer),
+		Layer.provide(OrgResolver.layer),
 	)
 }
