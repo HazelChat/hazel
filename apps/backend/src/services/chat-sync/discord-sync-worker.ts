@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { ChannelId, MessageId, MessageReactionId, SyncConnectionId, UserId } from "@hazel/schema"
 import {
 	DEFAULT_MAX_MESSAGES_PER_CHANNEL,
@@ -31,9 +31,8 @@ export {
 	DiscordSyncMessageNotFoundError,
 }
 
-export class DiscordSyncWorker extends Effect.Service<DiscordSyncWorker>()("DiscordSyncWorker", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("DiscordSyncWorker", {
+	make: Effect.gen(function* () {
 		const coreWorker = yield* ChatSyncCoreWorker
 
 		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (

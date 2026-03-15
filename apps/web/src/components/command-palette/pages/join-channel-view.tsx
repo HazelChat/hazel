@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { eq, inArray, not, or, useLiveQuery } from "@tanstack/react-db"
 import { useMemo } from "react"

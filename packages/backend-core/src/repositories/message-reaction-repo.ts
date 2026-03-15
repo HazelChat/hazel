@@ -2,11 +2,10 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { ChannelId, ConnectConversationId, MessageId, UserId } from "@hazel/schema"
 import { MessageReaction } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class MessageReactionRepo extends Effect.Service<MessageReactionRepo>()("MessageReactionRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class MessageReactionRepo extends ServiceMap.Service<MessageReactionRepo>()("MessageReactionRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.messageReactionsTable,
 			MessageReaction.Model,

@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import {
 	AIProviderUnavailableError,
@@ -36,7 +36,7 @@ export class ChannelResponse extends Schema.Class<ChannelResponse>("ChannelRespo
  * Error thrown when a channel is not found.
  * Used in update and delete operations.
  */
-export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundError>()("ChannelNotFoundError", {
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()("ChannelNotFoundError", {
 	channelId: ChannelId,
 }) {}
 

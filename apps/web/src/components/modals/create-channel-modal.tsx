@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useState } from "react"

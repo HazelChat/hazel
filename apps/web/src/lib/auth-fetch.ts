@@ -27,7 +27,7 @@ const clearTokens = async (): Promise<void> => {
 		: WebTokenStorage.clearTokens.pipe(Effect.provide(WebTokenStorageLive))
 	return runtime.runPromise(
 		effect.pipe(
-			Effect.catchAll(() => Effect.void),
+			Effect.catch(() => Effect.void),
 			Effect.withSpan("clearTokens"),
 		),
 	)

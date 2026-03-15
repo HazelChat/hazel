@@ -18,7 +18,7 @@
  * // Then use platformStorageRuntime in Atom.kvs
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { layer } from "./platform-key-value-store"
 
 export const platformStorageRuntime = Atom.runtime(layer)

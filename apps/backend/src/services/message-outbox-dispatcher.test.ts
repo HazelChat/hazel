@@ -38,7 +38,7 @@ const runRepoEffect = <A, E, R>(harness: ChatSyncDbHarness, effect: Effect.Effec
 const runDispatcherEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
 	sideEffects: MessageSideEffectService,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ) =>
 	Effect.runPromise(
 		Effect.scoped(

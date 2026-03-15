@@ -1,11 +1,10 @@
 import { and, Database, eq, isNull, ModelRepository, or, schema, type TxFn } from "@hazel/db"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { ConnectInvite } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class ConnectInviteRepo extends Effect.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class ConnectInviteRepo extends ServiceMap.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.connectInvitesTable,
 			ConnectInvite.Model,

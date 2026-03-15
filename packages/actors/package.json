@@ -13,7 +13,6 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@effect/platform": "catalog:effect",
 		"@hazel/rivet-effect": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"effect": "catalog:effect",

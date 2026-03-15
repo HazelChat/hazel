@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "@effect/cli"
+import { Command, Options, Prompt } from "effect/unstable/cli"
 import { Database, schema, isNull } from "@hazel/db"
 import type { BotId, BotInstallationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Console, Effect, Option, Redacted } from "effect"

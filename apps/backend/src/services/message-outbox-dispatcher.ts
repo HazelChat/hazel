@@ -9,7 +9,7 @@ import {
 	ReactionDeletedPayloadSchema,
 } from "@hazel/backend-core/repositories"
 import { Database } from "@hazel/db"
-import { Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Effect, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
@@ -24,10 +24,9 @@ const OUTBOX_DISPATCHER_LOCK_KEY = 1_046_277_921
 const computeRetryDelayMs = (attempt: number): number =>
 	Math.min(5_000 * 3 ** Math.max(0, attempt - 1), 300_000)
 
-export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatcher>()(
+export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDispatcher>()(
 	"MessageOutboxDispatcher",
 	{
-		accessors: true,
 		dependencies: [EnvVars.Default, MessageOutboxRepo.Default, MessageSideEffectService.Default],
 		effect: Effect.gen(function* () {
 			const envVars = yield* EnvVars
@@ -157,7 +156,7 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 						}
 					}).pipe(
 						Effect.provideService(Database.Database, database),
-						Effect.catchAll((error) =>
+						Effect.catch((error) =>
 							Effect.gen(function* () {
 								yield* Effect.logError("Message outbox batch failed", {
 									workerId,
@@ -217,7 +216,7 @@ export class MessageOutboxDispatcher extends Effect.Service<MessageOutboxDispatc
 
 					yield* runLeaderLoop.pipe(
 						Effect.ensuring(releaseReservedConnection(reserved)),
-						Effect.catchAllCause((cause) =>
+						Effect.catchCause((cause) =>
 							Effect.logError("Message outbox dispatcher leader loop stopped", {
 								workerId,
 								cause: String(cause),

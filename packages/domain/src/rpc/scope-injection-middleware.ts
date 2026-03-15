@@ -1,4 +1,4 @@
-import { RpcMiddleware } from "@effect/rpc"
+import { RpcMiddleware } from "effect/unstable/rpc"
 
 /**
  * Middleware that reads RequiredScopes from the RPC annotation

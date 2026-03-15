@@ -1,4 +1,4 @@
-import { Atom, Registry, scheduleTask } from "@effect-atom/atom-react"
+import { Atom, Registry, scheduleTask } from "@effect/atom-react"
 import { runtimeLayer } from "./services/common/runtime"
 
 export const appRegistry = Registry.make({ scheduleTask })

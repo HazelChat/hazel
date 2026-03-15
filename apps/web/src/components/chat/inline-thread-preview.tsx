@@ -1,4 +1,4 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"

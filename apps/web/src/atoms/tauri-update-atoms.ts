@@ -4,7 +4,7 @@
  * @description Effect Atom-based state management for Tauri app updates
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import {
 	getTauriProcess,
 	getTauriUpdater,

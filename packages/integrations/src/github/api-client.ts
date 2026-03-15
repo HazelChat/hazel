@@ -1,5 +1,5 @@
-import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Schedule, Schema } from "effect"
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Schedule, Schema } from "effect"
 
 /**
  * GitHub PR URL patterns:
@@ -97,14 +97,14 @@ export type GitHubAccountInfo = typeof GitHubAccountInfo.Type
 // ============================================================================
 
 // Error for when GitHub API request fails
-export class GitHubApiError extends Schema.TaggedError<GitHubApiError>()("GitHubApiError", {
+export class GitHubApiError extends Schema.TaggedErrorClass<GitHubApiError>()("GitHubApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
 // Error for when PR is not found
-export class GitHubPRNotFoundError extends Schema.TaggedError<GitHubPRNotFoundError>()(
+export class GitHubPRNotFoundError extends Schema.TaggedErrorClass<GitHubPRNotFoundError>()(
 	"GitHubPRNotFoundError",
 	{
 		owner: Schema.String,
@@ -114,7 +114,7 @@ export class GitHubPRNotFoundError extends Schema.TaggedError<GitHubPRNotFoundEr
 ) {}
 
 // Error for when rate limit is exceeded
-export class GitHubRateLimitError extends Schema.TaggedError<GitHubRateLimitError>()("GitHubRateLimitError", {
+export class GitHubRateLimitError extends Schema.TaggedErrorClass<GitHubRateLimitError>()("GitHubRateLimitError", {
 	message: Schema.String,
 	retryAfter: Schema.optional(Schema.Number), // seconds until rate limit resets
 }) {}
@@ -311,9 +311,8 @@ const isRetryableError = (error: GitHubApiError | GitHubRateLimitError | GitHubP
  * - Rate limit handling with retry-after header support
  * - Distributed tracing via Effect spans
  */
-export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubApiClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class GitHubApiClient extends ServiceMap.Service<GitHubApiClient>()("GitHubApiClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		/**
@@ -378,7 +377,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (response.status >= 400) {
 				const errorBody = yield* response.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
 							Effect.as({ message: "Unknown error" }),
 						),
@@ -463,7 +462,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (response.status === 403) {
 				const errorBody = yield* response.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-					Effect.catchAll(() => Effect.succeed({ message: "" })),
+					Effect.catch(() => Effect.succeed({ message: "" })),
 				)
 				if (errorBody.message.toLowerCase().includes("rate limit")) {
 					return yield* Effect.fail(
@@ -482,7 +481,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (response.status >= 400) {
 				const errorBody = yield* response.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
 							Effect.as({ message: "Unknown error" }),
 						),
@@ -560,7 +559,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (response.status >= 400) {
 				const errorBody = yield* response.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
 							Effect.as({ message: "Unknown error" }),
 						),
@@ -640,7 +639,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (reposResponse.status >= 200 && reposResponse.status < 300) {
 				const data = yield* reposResponse.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubRepositoriesApiResponse)),
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(
 							`Failed to parse GitHub repositories response: ${String(error)}`,
 						).pipe(Effect.as({ total_count: 0, repositories: [] })),
@@ -676,7 +675,7 @@ export class GitHubApiClient extends Effect.Service<GitHubApiClient>()("GitHubAp
 			if (appResponse.status >= 200 && appResponse.status < 300) {
 				const appData = yield* appResponse.json.pipe(
 					Effect.flatMap(Schema.decodeUnknown(GitHubAppApiResponse)),
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(`Failed to parse GitHub App response: ${String(error)}`).pipe(
 							Effect.as({ id: 0, name: "GitHub App" }),
 						),

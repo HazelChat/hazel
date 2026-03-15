@@ -1,12 +1,7 @@
-import {
-	FetchHttpClient,
-	HttpApiScalar,
-	HttpLayerRouter,
-	HttpMiddleware,
-	HttpServerResponse,
-} from "@effect/platform"
+import { HttpApiScalar } from "effect/unstable/httpapi"
+import { FetchHttpClient, HttpRouter, HttpMiddleware, HttpServerResponse } from "effect/unstable/http"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
-import { RpcSerialization, RpcServer } from "@effect/rpc"
+import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
 import {
 	AttachmentRepo,
 	BotCommandRepo,
@@ -96,11 +91,11 @@ export { HazelApi }
 // Export RPC groups for frontend consumption
 export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
-const HealthRouter = HttpLayerRouter.use((router) =>
+const HealthRouter = HttpRouter.use((router) =>
 	router.add("GET", "/health", HttpServerResponse.text("OK")),
 )
 
-const DocsRoute = HttpApiScalar.layerHttpLayerRouter({
+const DocsRoute = HttpApiScalar.layerHttpRouter({
 	api: HazelApi,
 	path: "/docs",
 })
@@ -114,7 +109,7 @@ const RpcRoute = RpcServer.layerHttpRouter({
 
 const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
 	Layer.provide(
-		HttpLayerRouter.cors({
+		HttpRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
 				"http://localhost:5173",
@@ -226,7 +221,7 @@ const MainLive = Layer.mergeAll(
 	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
 )
 
-const ServerLayer = HttpLayerRouter.serve(AllRoutes).pipe(
+const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	HttpMiddleware.withTracerDisabledWhen(
 		(request) => request.url === "/health" || request.method === "OPTIONS",
 	),

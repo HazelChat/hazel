@@ -2,11 +2,10 @@ import { and, Database, eq, inArray, ModelRepository, schema, type TxFn } from "
 
 import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
-export class NotificationRepo extends Effect.Service<NotificationRepo>()("NotificationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class NotificationRepo extends ServiceMap.Service<NotificationRepo>()("NotificationRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.notificationsTable,
 			Notification.Model,

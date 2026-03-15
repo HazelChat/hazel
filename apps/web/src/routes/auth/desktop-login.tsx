@@ -4,7 +4,7 @@
  * @description Login page for desktop app that initiates OAuth flow via system browser
  */
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Navigate, redirect } from "@tanstack/react-router"
 import {
 	desktopAuthErrorAtom,

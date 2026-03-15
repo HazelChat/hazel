@@ -4,7 +4,7 @@
  * @description Effect Atom-based state management for desktop OAuth callback handling
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import {
 	DesktopConnectionError,
 	InvalidDesktopStateError,
@@ -215,7 +215,7 @@ const handleCallback = (params: DesktopCallbackParams, get: AtomGetter) =>
 				schedule: Schedule.exponential("500 millis"),
 			}),
 			Effect.map(() => ({ success: true as const })),
-			Effect.catchAll((e) => {
+			Effect.catch((e) => {
 				const error = new DesktopConnectionError({
 					message: "Could not connect to Hazel",
 					port,

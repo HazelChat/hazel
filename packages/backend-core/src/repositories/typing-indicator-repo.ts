@@ -2,11 +2,10 @@ import { and, Database, eq, lt, ModelRepository, schema, type TxFn } from "@haze
 
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
-export class TypingIndicatorRepo extends Effect.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.typingIndicatorsTable,

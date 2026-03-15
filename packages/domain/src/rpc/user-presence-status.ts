@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { UserPresenceStatusId } from "@hazel/schema"
@@ -23,7 +23,7 @@ export class UserPresenceStatusResponse extends Schema.Class<UserPresenceStatusR
  * Error thrown when a user presence status is not found.
  * Used in update operations.
  */
-export class UserPresenceStatusNotFoundError extends Schema.TaggedError<UserPresenceStatusNotFoundError>()(
+export class UserPresenceStatusNotFoundError extends Schema.TaggedErrorClass<UserPresenceStatusNotFoundError>()(
 	"UserPresenceStatusNotFoundError",
 	{
 		statusId: UserPresenceStatusId,

@@ -1,6 +1,7 @@
-import { FetchHttpClient, HttpApiClient, HttpClient, HttpClientRequest } from "@effect/platform"
+import { HttpApiClient } from "effect/unstable/httpapi"
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { HazelApi } from "@hazel/domain/http"
-import { Duration, Effect, Schedule } from "effect"
+import { ServiceMap, Duration, Effect, Schedule } from "effect"
 import { AuthenticationError } from "./errors.ts"
 
 /**
@@ -36,9 +37,8 @@ export interface BotAuthContext {
 /**
  * Service for bot authentication
  */
-export class BotAuth extends Effect.Service<BotAuth>()("BotAuth", {
-	accessors: true,
-	effect: Effect.fn(function* (context: BotAuthContext) {
+export class BotAuth extends ServiceMap.Service<BotAuth>()("BotAuth", {
+	make: Effect.fn(function* (context: BotAuthContext) {
 		return {
 			getContext: Effect.succeed(context),
 

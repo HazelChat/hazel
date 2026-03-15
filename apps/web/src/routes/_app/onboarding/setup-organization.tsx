@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"

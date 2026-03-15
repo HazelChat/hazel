@@ -120,9 +120,8 @@ const extractGatewayOp = (payload: string | BufferSource): string | undefined =>
 	}
 }
 
-export class GatewayConfig extends Effect.Service<GatewayConfig>()("GatewayConfig", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class GatewayConfig extends ServiceMap.Service<GatewayConfig>()("GatewayConfig", {
+	make: Effect.gen(function* () {
 		const config = {
 			port: yield* Config.integer("PORT").pipe(Config.withDefault(DEFAULT_PORT)),
 			isDev: yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false)),
@@ -149,21 +148,21 @@ export class GatewayConfig extends Effect.Service<GatewayConfig>()("GatewayConfi
 	}),
 }) {}
 
-class GatewayAuthError extends Schema.TaggedError<GatewayAuthError>()("GatewayAuthError", {
+class GatewayAuthError extends Schema.TaggedErrorClass<GatewayAuthError>()("GatewayAuthError", {
 	message: Schema.String,
 }) {}
 
-class GatewayProtocolError extends Schema.TaggedError<GatewayProtocolError>()("GatewayProtocolError", {
+class GatewayProtocolError extends Schema.TaggedErrorClass<GatewayProtocolError>()("GatewayProtocolError", {
 	message: Schema.String,
 }) {}
 
-export class GatewayStartupError extends Schema.TaggedError<GatewayStartupError>()("GatewayStartupError", {
+export class GatewayStartupError extends Schema.TaggedErrorClass<GatewayStartupError>()("GatewayStartupError", {
 	dependency: Schema.Literal("config", "database", "redis", "tracer", "server"),
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class DurableStreamGatewayError extends Schema.TaggedError<DurableStreamGatewayError>()(
+class DurableStreamGatewayError extends Schema.TaggedErrorClass<DurableStreamGatewayError>()(
 	"DurableStreamGatewayError",
 	{
 		message: Schema.String,
@@ -191,9 +190,8 @@ interface GatewaySession {
 	closed: boolean
 }
 
-class DurableStreamClient extends Effect.Service<DurableStreamClient>()("DurableStreamClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("DurableStreamClient", {
+	make: Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		const ensuredStreamsRef = yield* Ref.make(new Set<string>())
 		const authHeaders: Record<string, string> = Option.isSome(config.durableStreamsToken)
@@ -324,9 +322,8 @@ class DurableStreamClient extends Effect.Service<DurableStreamClient>()("Durable
 	}),
 }) {}
 
-class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub", {
+	make: Effect.gen(function* () {
 		const botRepo = yield* BotRepo
 		const redis = yield* Redis
 		const durableStreams = yield* DurableStreamClient
@@ -747,9 +744,9 @@ class BotGatewayHub extends Effect.Service<BotGatewayHub>()("BotGatewayHub", {
 						new GatewayProtocolError({
 							message: `Session ${id} closed before ACK`,
 						}),
-					).pipe(Effect.catchAll(() => Effect.void))
+					).pipe(Effect.catch(() => Effect.void))
 				}
-				yield* releaseLease(session.botId, id).pipe(Effect.catchAll(() => Effect.void))
+				yield* releaseLease(session.botId, id).pipe(Effect.catch(() => Effect.void))
 				yield* deleteSession(id)
 			})
 

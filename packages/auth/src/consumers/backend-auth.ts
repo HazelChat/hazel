@@ -7,7 +7,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { Config, Effect, Layer, Option, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -89,10 +89,9 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
  *
  * This is used by the backend HTTP API and WebSocket RPC handlers.
  */
-export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
-	accessors: true,
+export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
 	dependencies: [WorkOSClient.Default],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
 		const decodeClaims = decodeWorkOSJwtClaims
@@ -123,7 +122,7 @@ export class BackendAuth extends Effect.Service<BackendAuth>()("@hazel/auth/Back
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
 								decodeInternalOrganizationIdFromWorkOS(externalId).pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
 											{

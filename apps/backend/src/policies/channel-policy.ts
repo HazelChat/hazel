@@ -1,12 +1,12 @@
 import { ChannelRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class ChannelPolicy extends ServiceMap.Service<ChannelPolicy>()("ChannelPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "Channel" as const
 
 		const orgResolver = yield* OrgResolver
@@ -59,5 +59,4 @@ export class ChannelPolicy extends Effect.Service<ChannelPolicy>()("ChannelPolic
 		return { canUpdate, canDelete, canCreate } as const
 	}),
 	dependencies: [ChannelRepo.Default, OrgResolver.Default],
-	accessors: true,
 }) {}

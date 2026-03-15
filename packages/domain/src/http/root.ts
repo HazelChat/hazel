@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { RequiredScopes } from "../scopes/required-scopes"
 

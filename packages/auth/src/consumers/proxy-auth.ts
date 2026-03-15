@@ -6,7 +6,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Option, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
@@ -16,7 +16,7 @@ import type { AuthenticatedUserContext } from "../types.ts"
 /**
  * Authentication error for proxy auth.
  */
-export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthenticationError>()(
+export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthenticationError>()(
 	"ProxyAuthenticationError",
 	{
 		message: Schema.String,
@@ -35,10 +35,9 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
-	accessors: true,
+export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	dependencies: [UserLookupCache.Default, WorkOSClient.Default],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
@@ -57,7 +56,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
 								Schema.decodeUnknown(OrganizationId)(externalId).pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
 											{
@@ -86,7 +85,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (workosUserId: WorkOSUserId) {
 			// Check cache first
 			const cached = yield* userLookupCache.get(workosUserId).pipe(
-				Effect.catchAll((error) => {
+				Effect.catch((error) => {
 					// Log cache error but continue with database lookup
 					return Effect.logWarning("User lookup cache error", error).pipe(
 						Effect.map(() => Option.none<{ internalUserId: UserId }>()),
@@ -123,7 +122,7 @@ export class ProxyAuth extends Effect.Service<ProxyAuth>()("@hazel/auth/ProxyAut
 			// Cache successful lookup
 			if (Option.isSome(userOption)) {
 				yield* userLookupCache.set(workosUserId, userOption.value.id).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						// Log cache error but don't fail the request
 						Effect.logWarning("Failed to cache user lookup", error),
 					),

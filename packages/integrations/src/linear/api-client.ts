@@ -5,8 +5,8 @@
  * retries, and proper error handling.
  */
 
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration
@@ -87,25 +87,25 @@ export type LinearAccountInfo = typeof LinearAccountInfo.Type
 // Error Types
 // ============================================================================
 
-export class LinearApiError extends Schema.TaggedError<LinearApiError>()("LinearApiError", {
+export class LinearApiError extends Schema.TaggedErrorClass<LinearApiError>()("LinearApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
 }) {}
 
-export class LinearRateLimitError extends Schema.TaggedError<LinearRateLimitError>()("LinearRateLimitError", {
+export class LinearRateLimitError extends Schema.TaggedErrorClass<LinearRateLimitError>()("LinearRateLimitError", {
 	message: Schema.String,
 	retryAfter: Schema.optional(Schema.Number),
 }) {}
 
-export class LinearIssueNotFoundError extends Schema.TaggedError<LinearIssueNotFoundError>()(
+export class LinearIssueNotFoundError extends Schema.TaggedErrorClass<LinearIssueNotFoundError>()(
 	"LinearIssueNotFoundError",
 	{
 		issueId: Schema.String,
 	},
 ) {}
 
-export class LinearTeamNotFoundError extends Schema.TaggedError<LinearTeamNotFoundError>()(
+export class LinearTeamNotFoundError extends Schema.TaggedErrorClass<LinearTeamNotFoundError>()(
 	"LinearTeamNotFoundError",
 	{
 		message: Schema.String,
@@ -418,9 +418,8 @@ const isRetryableError = (
  * const issue = yield* client.fetchIssue("ENG-123", accessToken)
  * ```
  */
-export class LinearApiClient extends Effect.Service<LinearApiClient>()("LinearApiClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class LinearApiClient extends ServiceMap.Service<LinearApiClient>()("LinearApiClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		/**

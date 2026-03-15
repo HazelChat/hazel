@@ -99,7 +99,7 @@ export const runPromise = <A, E, R>(effect: Effect.Effect<A, E, R>, context?: un
 	})
 
 export const runPromiseExit = <A, E, R>(
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 	context?: unknown,
 ): Promise<Exit.Exit<A, E>> => {
 	const runtime = getManagedRuntime(context)

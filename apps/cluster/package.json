@@ -9,13 +9,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/ai": "catalog:effect",
-		"@effect/cluster": "catalog:effect",
-		"@effect/experimental": "catalog:effect",
-		"@effect/platform": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/sql-pg": "catalog:effect",
-		"@effect/workflow": "catalog:effect",
 		"@hazel/ai-openrouter": "workspace:*",
 		"@hazel/backend-core": "workspace:*",
 		"@hazel/db": "workspace:*",

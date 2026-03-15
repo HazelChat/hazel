@@ -1,4 +1,4 @@
-import { HttpApi, OpenApi } from "@effect/platform"
+import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { AppApi, LinkPreviewGroup, TweetGroup } from "./declare"
 
 export class LinkPreviewApi extends HttpApi.make("api")

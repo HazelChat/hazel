@@ -1,6 +1,6 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { memo, useState } from "react"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"

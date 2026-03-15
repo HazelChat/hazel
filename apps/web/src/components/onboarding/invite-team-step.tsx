@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import IconClose from "~/components/icons/icon-close"
 import IconPlus from "~/components/icons/icon-plus"

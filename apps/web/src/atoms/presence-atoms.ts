@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 
 /**
  * Shared "now" signal used to periodically re-render presence UI.

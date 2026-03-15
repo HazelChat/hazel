@@ -3,7 +3,7 @@
  * @description Atoms for notification sound system state management
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 

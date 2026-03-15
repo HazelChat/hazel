@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServerRequest } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest } from "effect/unstable/http"
 import { BotRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, UnauthorizedError } from "@hazel/domain"
 import { Config, Effect, Option } from "effect"

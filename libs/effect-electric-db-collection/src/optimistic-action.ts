@@ -1,4 +1,4 @@
-import { Atom, type Result } from "@effect-atom/atom"
+import { Atom, type Result } from "effect"
 import type { Collection, Transaction } from "@tanstack/db"
 import { createTransaction } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"

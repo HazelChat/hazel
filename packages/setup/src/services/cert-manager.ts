@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { resolve } from "node:path"
 
 export interface CertPaths {
@@ -16,9 +16,8 @@ const findRepoRoot = (): string => {
 	return process.cwd()
 }
 
-export class CertManager extends Effect.Service<CertManager>()("CertManager", {
-	accessors: true,
-	effect: Effect.succeed({
+export class CertManager extends ServiceMap.Service<CertManager>()("CertManager", {
+	make: Effect.succeed({
 		get certsDir() {
 			return resolve(findRepoRoot(), "certs")
 		},
@@ -51,7 +50,7 @@ export class CertManager extends Effect.Service<CertManager>()("CertManager", {
 					return (await proc.exited) === 0
 				},
 				catch: () => new Error("mkcert check failed"),
-			}).pipe(Effect.catchAll(() => Effect.succeed(false))),
+			}).pipe(Effect.catch(() => Effect.succeed(false))),
 
 		installMkcert: () =>
 			Effect.tryPromise({

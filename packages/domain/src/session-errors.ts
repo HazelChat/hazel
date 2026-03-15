@@ -1,8 +1,8 @@
-import { HttpApiSchema } from "@effect/platform"
+import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 
 // 401 Errors - Client needs to re-authenticate
-export class SessionNotProvidedError extends Schema.TaggedError<SessionNotProvidedError>(
+export class SessionNotProvidedError extends Schema.TaggedErrorClass<SessionNotProvidedError>(
 	"SessionNotProvidedError",
 )(
 	"SessionNotProvidedError",
@@ -10,12 +10,10 @@ export class SessionNotProvidedError extends Schema.TaggedError<SessionNotProvid
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
-export class SessionAuthenticationError extends Schema.TaggedError<SessionAuthenticationError>(
+export class SessionAuthenticationError extends Schema.TaggedErrorClass<SessionAuthenticationError>(
 	"SessionAuthenticationError",
 )(
 	"SessionAuthenticationError",
@@ -23,12 +21,10 @@ export class SessionAuthenticationError extends Schema.TaggedError<SessionAuthen
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
-export class InvalidJwtPayloadError extends Schema.TaggedError<InvalidJwtPayloadError>(
+export class InvalidJwtPayloadError extends Schema.TaggedErrorClass<InvalidJwtPayloadError>(
 	"InvalidJwtPayloadError",
 )(
 	"InvalidJwtPayloadError",
@@ -36,23 +32,19 @@ export class InvalidJwtPayloadError extends Schema.TaggedError<InvalidJwtPayload
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
-export class SessionExpiredError extends Schema.TaggedError<SessionExpiredError>("SessionExpiredError")(
+export class SessionExpiredError extends Schema.TaggedErrorClass<SessionExpiredError>("SessionExpiredError")(
 	"SessionExpiredError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
-export class InvalidBearerTokenError extends Schema.TaggedError<InvalidBearerTokenError>(
+export class InvalidBearerTokenError extends Schema.TaggedErrorClass<InvalidBearerTokenError>(
 	"InvalidBearerTokenError",
 )(
 	"InvalidBearerTokenError",
@@ -60,41 +52,33 @@ export class InvalidBearerTokenError extends Schema.TaggedError<InvalidBearerTok
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
 // 503 Errors - Infrastructure/Service issues (client can retry)
-export class SessionLoadError extends Schema.TaggedError<SessionLoadError>("SessionLoadError")(
+export class SessionLoadError extends Schema.TaggedErrorClass<SessionLoadError>("SessionLoadError")(
 	"SessionLoadError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 503,
-	}),
+	HttpApiSchema.status(503),
 ) {}
 
-export class SessionRefreshError extends Schema.TaggedError<SessionRefreshError>("SessionRefreshError")(
+export class SessionRefreshError extends Schema.TaggedErrorClass<SessionRefreshError>("SessionRefreshError")(
 	"SessionRefreshError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
-export class WorkOSUserFetchError extends Schema.TaggedError<WorkOSUserFetchError>("WorkOSUserFetchError")(
+export class WorkOSUserFetchError extends Schema.TaggedErrorClass<WorkOSUserFetchError>("WorkOSUserFetchError")(
 	"WorkOSUserFetchError",
 	{
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 503,
-	}),
+	HttpApiSchema.status(503),
 ) {}

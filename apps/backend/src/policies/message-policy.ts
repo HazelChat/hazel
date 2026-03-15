@@ -1,12 +1,12 @@
 import { ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, MessageId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class MessagePolicy extends ServiceMap.Service<MessagePolicy>()("MessagePolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "Message" as const
 
 		const messageRepo = yield* MessageRepo
@@ -92,5 +92,4 @@ export class MessagePolicy extends Effect.Service<MessagePolicy>()("MessagePolic
 		OrganizationMemberRepo.Default,
 		OrgResolver.Default,
 	],
-	accessors: true,
 }) {}

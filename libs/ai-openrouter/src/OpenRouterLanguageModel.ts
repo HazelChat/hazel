@@ -1030,7 +1030,7 @@ const makeStreamResponse: (
 								// Coerce invalid tool call parameters to an empty object
 								const params = yield* Effect.try(() =>
 									Tool.unsafeSecureJsonParse(toolCall.params),
-								).pipe(Effect.catchAll(() => Effect.succeed({})))
+								).pipe(Effect.catch(() => Effect.succeed({})))
 								parts.push({
 									type: "tool-params-end",
 									id: toolCall.id,

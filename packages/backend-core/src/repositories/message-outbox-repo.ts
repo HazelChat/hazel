@@ -1,7 +1,7 @@
 import { Database, and, asc, eq, inArray, or, schema, sql } from "@hazel/db"
 import type { DatabaseError, TxFn } from "@hazel/db"
 import { ChannelId, MessageId, MessageOutboxEventId, MessageReactionId, UserId } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Option, Schema } from "effect"
 
 export const MessageCreatedPayloadSchema = Schema.Struct({
 	messageId: MessageId,
@@ -91,9 +91,8 @@ const InsertMessageOutboxEventSchema = Schema.Struct({
 
 const InsertMessageOutboxEventArraySchema = Schema.Array(InsertMessageOutboxEventSchema)
 
-export class MessageOutboxRepo extends Effect.Service<MessageOutboxRepo>()("MessageOutboxRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("MessageOutboxRepo", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 
 		const insert = (data: InsertMessageOutboxEvent, tx?: TxFn) =>

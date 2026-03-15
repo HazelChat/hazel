@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { type } from "arktype"

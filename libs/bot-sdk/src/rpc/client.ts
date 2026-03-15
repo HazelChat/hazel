@@ -5,10 +5,10 @@
  * Uses FetchHttpClient for HTTP transport and NDJSON serialization.
  */
 
-import { FetchHttpClient } from "@effect/platform"
-import { RpcClient, RpcSerialization } from "@effect/rpc"
+import { FetchHttpClient } from "effect/unstable/http"
+import { RpcClient, RpcSerialization } from "effect/unstable/rpc"
 import { ChannelRpcs, MessageReactionRpcs, MessageRpcs, TypingIndicatorRpcs } from "@hazel/domain/rpc"
-import { Context, Effect, Layer } from "effect"
+import { Effect, Layer, ServiceMap } from "effect"
 import { createBotAuthMiddleware } from "./auth-middleware.ts"
 
 /**
@@ -36,19 +36,17 @@ export interface BotRpcClientConfig {
 /**
  * Internal context tag for the RPC client configuration
  */
-export class BotRpcClientConfigTag extends Context.Tag("@hazel/bot-sdk/BotRpcClientConfig")<
-	BotRpcClientConfigTag,
+export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfigTag,
 	BotRpcClientConfig
->() {}
+>()("@hazel/bot-sdk/BotRpcClientConfig") {}
 
 /**
  * Context tag for the RPC client instance
  * Type is inferred from the actual RpcClient.make result
  */
-export class BotRpcClient extends Context.Tag("@hazel/bot-sdk/BotRpcClient")<
-	BotRpcClient,
+export class BotRpcClient extends ServiceMap.Service<BotRpcClient,
 	Effect.Effect.Success<ReturnType<typeof makeBotRpcClient>>
->() {}
+>()("@hazel/bot-sdk/BotRpcClient") {}
 
 /**
  * Create a scoped layer that provides the RPC client

@@ -1,4 +1,4 @@
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { Layer, ManagedRuntime } from "effect"
 import { ApiClient } from "./api-client"
 import { HazelRpcClient } from "./rpc-atom-client"

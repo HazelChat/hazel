@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError, WorkflowInitializationError } from "../errors"
 import { RequiredScopes } from "../scopes/required-scopes"
@@ -16,16 +16,14 @@ export class WebhookResponse extends Schema.Class<WebhookResponse>("WebhookRespo
 	message: Schema.optional(Schema.String),
 }) {}
 
-export class InvalidWebhookSignature extends Schema.TaggedError<InvalidWebhookSignature>(
+export class InvalidWebhookSignature extends Schema.TaggedErrorClass<InvalidWebhookSignature>(
 	"InvalidWebhookSignature",
 )(
 	"InvalidWebhookSignature",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
 // GitHub Webhook Types
@@ -34,16 +32,14 @@ export class GitHubWebhookResponse extends Schema.Class<GitHubWebhookResponse>("
 	messagesCreated: Schema.optional(Schema.Number),
 }) {}
 
-export class InvalidGitHubWebhookSignature extends Schema.TaggedError<InvalidGitHubWebhookSignature>(
+export class InvalidGitHubWebhookSignature extends Schema.TaggedErrorClass<InvalidGitHubWebhookSignature>(
 	"InvalidGitHubWebhookSignature",
 )(
 	"InvalidGitHubWebhookSignature",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 401,
-	}),
+	HttpApiSchema.status(401),
 ) {}
 
 export class WebhookGroup extends HttpApiGroup.make("webhooks")

@@ -1,4 +1,4 @@
-import { Prompt } from "@effect/cli"
+import { Prompt } from "effect/unstable/cli"
 import { Effect, Redacted } from "effect"
 import type { EnvReadResult } from "./services/env-writer.ts"
 import { getEnvValues, maskSecret, type EnvValue } from "./templates.ts"

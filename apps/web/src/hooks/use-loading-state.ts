@@ -1,4 +1,4 @@
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { useCallback, useMemo } from "react"
 import {
 	canLoadBottomAtomFamily,

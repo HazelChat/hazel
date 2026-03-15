@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { FetchHttpClient } from "@effect/platform"
+import { FetchHttpClient } from "effect/unstable/http"
 import { BunSocket } from "@effect/platform-bun"
 import { ChatSyncChannelLinkRepo } from "@hazel/backend-core"
 import {
@@ -12,7 +12,7 @@ import {
 } from "@hazel/schema"
 import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
-import { Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
 import { DiscordSyncWorker } from "./discord-sync-worker"
 import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
 
@@ -571,9 +571,8 @@ export const createDiscordGatewayDispatchHandlers = (deps: {
 	}
 }
 
-export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>()("DiscordGatewayService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayService>()("DiscordGatewayService", {
+	make: Effect.gen(function* () {
 		const discordSyncWorker = yield* DiscordSyncWorker
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
 
@@ -679,29 +678,29 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 					[
 						gateway.handleDispatch("READY", (event) =>
 							onReady(event as DiscordReadyEvent).pipe(
-								Effect.catchAll((error) => onDispatchError("READY", error)),
+								Effect.catch((error) => onDispatchError("READY", error)),
 							),
 						),
 						gateway.handleDispatch("MESSAGE_CREATE", (event) =>
 							dispatchHandlers
 								.ingestMessageCreateEvent(event as DiscordMessageCreateEvent)
-								.pipe(Effect.catchAll((error) => onDispatchError("MESSAGE_CREATE", error))),
+								.pipe(Effect.catch((error) => onDispatchError("MESSAGE_CREATE", error))),
 						),
 						gateway.handleDispatch("MESSAGE_UPDATE", (event) =>
 							dispatchHandlers
 								.ingestMessageUpdateEvent(event as DiscordMessageUpdateEvent)
-								.pipe(Effect.catchAll((error) => onDispatchError("MESSAGE_UPDATE", error))),
+								.pipe(Effect.catch((error) => onDispatchError("MESSAGE_UPDATE", error))),
 						),
 						gateway.handleDispatch("MESSAGE_DELETE", (event) =>
 							dispatchHandlers
 								.ingestMessageDeleteEvent(event as DiscordMessageDeleteEvent)
-								.pipe(Effect.catchAll((error) => onDispatchError("MESSAGE_DELETE", error))),
+								.pipe(Effect.catch((error) => onDispatchError("MESSAGE_DELETE", error))),
 						),
 						gateway.handleDispatch("MESSAGE_REACTION_ADD", (event) =>
 							dispatchHandlers
 								.ingestMessageReactionAddEvent(event as DiscordMessageReactionAddEvent)
 								.pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										onDispatchError("MESSAGE_REACTION_ADD", error),
 									),
 								),
@@ -710,7 +709,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 							dispatchHandlers
 								.ingestMessageReactionRemoveEvent(event as DiscordMessageReactionRemoveEvent)
 								.pipe(
-									Effect.catchAll((error) =>
+									Effect.catch((error) =>
 										onDispatchError("MESSAGE_REACTION_REMOVE", error),
 									),
 								),
@@ -718,7 +717,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 						gateway.handleDispatch("THREAD_CREATE", (event) =>
 							dispatchHandlers
 								.ingestThreadCreateEvent(event as DiscordThreadCreateEvent)
-								.pipe(Effect.catchAll((error) => onDispatchError("THREAD_CREATE", error))),
+								.pipe(Effect.catch((error) => onDispatchError("THREAD_CREATE", error))),
 						),
 					],
 					{
@@ -728,7 +727,7 @@ export class DiscordGatewayService extends Effect.Service<DiscordGatewayService>
 				)
 			}).pipe(
 				Effect.provide(DiscordLayer),
-				Effect.catchAllCause((cause) =>
+				Effect.catchCause((cause) =>
 					Effect.logError("Discord gateway background worker stopped", {
 						cause: String(cause),
 					}),

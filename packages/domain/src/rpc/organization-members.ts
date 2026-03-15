@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { OrganizationMemberId } from "@hazel/schema"
@@ -23,7 +23,7 @@ export class OrganizationMemberResponse extends Schema.Class<OrganizationMemberR
  * Error thrown when an organization member is not found.
  * Used in update and delete operations.
  */
-export class OrganizationMemberNotFoundError extends Schema.TaggedError<OrganizationMemberNotFoundError>()(
+export class OrganizationMemberNotFoundError extends Schema.TaggedErrorClass<OrganizationMemberNotFoundError>()(
 	"OrganizationMemberNotFoundError",
 	{
 		organizationMemberId: OrganizationMemberId,

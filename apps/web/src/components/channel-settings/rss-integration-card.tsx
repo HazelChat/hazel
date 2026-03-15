@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, RssSubscriptionId } from "@hazel/schema"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {

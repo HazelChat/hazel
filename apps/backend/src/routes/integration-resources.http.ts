@@ -1,4 +1,4 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { IntegrationConnectionRepo } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ExternalChannelId, OrganizationId } from "@hazel/schema"

@@ -161,7 +161,7 @@ const createSessionFromActor = (
 						embeds: [{ liveState: { enabled: true, cached } }],
 					})
 					.pipe(
-						Effect.catchAll((error) =>
+						Effect.catch((error) =>
 							Effect.logWarning("Failed to persist streaming message to database", {
 								messageId,
 								error: String(error),
@@ -199,7 +199,7 @@ const createSessionFromActor = (
 						embeds: [{ liveState: { enabled: true, cached } }],
 					})
 					.pipe(
-						Effect.catchAll((persistError) =>
+						Effect.catch((persistError) =>
 							Effect.logWarning("Failed to persist failed streaming state to database", {
 								messageId,
 								error: String(persistError),

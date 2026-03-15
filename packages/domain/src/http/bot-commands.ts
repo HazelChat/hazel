@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -65,16 +65,16 @@ export class BotMeResponse extends Schema.Class<BotMeResponse>("BotMeResponse")(
 
 // ============ ERROR TYPES ============
 
-export class BotNotFoundError extends Schema.TaggedError<BotNotFoundError>()("BotNotFoundError", {
+export class BotNotFoundError extends Schema.TaggedErrorClass<BotNotFoundError>()("BotNotFoundError", {
 	botId: BotId,
 }) {}
 
-export class BotNotInstalledError extends Schema.TaggedError<BotNotInstalledError>()("BotNotInstalledError", {
+export class BotNotInstalledError extends Schema.TaggedErrorClass<BotNotInstalledError>()("BotNotInstalledError", {
 	botId: BotId,
 	orgId: OrganizationId,
 }) {}
 
-export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFoundError>()(
+export class BotCommandNotFoundError extends Schema.TaggedErrorClass<BotCommandNotFoundError>()(
 	"BotCommandNotFoundError",
 	{
 		botId: BotId,
@@ -82,7 +82,7 @@ export class BotCommandNotFoundError extends Schema.TaggedError<BotCommandNotFou
 	},
 ) {}
 
-export class BotCommandExecutionError extends Schema.TaggedError<BotCommandExecutionError>()(
+export class BotCommandExecutionError extends Schema.TaggedErrorClass<BotCommandExecutionError>()(
 	"BotCommandExecutionError",
 	{
 		commandName: Schema.String,
@@ -120,7 +120,7 @@ export class UpdateBotSettingsResponse extends Schema.Class<UpdateBotSettingsRes
 	success: Schema.Boolean,
 }) {}
 
-export class IntegrationNotAllowedError extends Schema.TaggedError<IntegrationNotAllowedError>()(
+export class IntegrationNotAllowedError extends Schema.TaggedErrorClass<IntegrationNotAllowedError>()(
 	"IntegrationNotAllowedError",
 	{
 		botId: BotId,

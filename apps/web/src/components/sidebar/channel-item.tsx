@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import type { ChannelSectionId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"

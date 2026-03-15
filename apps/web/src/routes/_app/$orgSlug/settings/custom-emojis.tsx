@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"

@@ -1,6 +1,6 @@
-import { Persistence } from "@effect/experimental"
+import { Persistence } from "effect/unstable/persistence"
 import type { UserId, WorkOSUserId } from "@hazel/schema"
-import { Duration, Effect, Exit, Layer, Metric, Option } from "effect"
+import { ServiceMap, Duration, Effect, Exit, Layer, Metric, Option } from "effect"
 import { UserLookupCacheError } from "../errors.ts"
 import { userLookupCacheHits, userLookupCacheMisses, userLookupCacheOperationLatency } from "../metrics.ts"
 import { UserLookupCacheRequest, type UserLookupResult } from "./user-lookup-request.ts"
@@ -23,9 +23,8 @@ export const USER_LOOKUP_CACHE_TTL = Duration.minutes(5)
  * Uses ResultPersistence for schema-based serialization and Redis backing.
  * Requires: Persistence.ResultPersistence (provided by RedisResultPersistenceLive or MemoryResultPersistenceLive)
  */
-export class UserLookupCache extends Effect.Service<UserLookupCache>()("@hazel/auth/UserLookupCache", {
-	accessors: true,
-	scoped: Effect.gen(function* () {
+export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@hazel/auth/UserLookupCache", {
+	make: Effect.gen(function* () {
 		const persistence = yield* Persistence.ResultPersistence
 
 		const store = yield* persistence.make({

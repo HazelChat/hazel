@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "../"
 import { AttachmentId, BotId, ChannelId, OrganizationId } from "@hazel/schema"
@@ -161,38 +161,32 @@ export class PresignUploadResponse extends Schema.Class<PresignUploadResponse>("
 
 // ============ Error Schemas ============
 
-export class UploadError extends Schema.TaggedError<UploadError>("UploadError")(
+export class UploadError extends Schema.TaggedErrorClass<UploadError>("UploadError")(
 	"UploadError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({
-		status: 500,
-	}),
+	HttpApiSchema.status(500),
 ) {}
 
-export class BotNotFoundForUploadError extends Schema.TaggedError<BotNotFoundForUploadError>(
+export class BotNotFoundForUploadError extends Schema.TaggedErrorClass<BotNotFoundForUploadError>(
 	"BotNotFoundForUploadError",
 )(
 	"BotNotFoundForUploadError",
 	{
 		botId: BotId,
 	},
-	HttpApiSchema.annotations({
-		status: 404,
-	}),
+	HttpApiSchema.status(404),
 ) {}
 
-export class OrganizationNotFoundForUploadError extends Schema.TaggedError<OrganizationNotFoundForUploadError>(
+export class OrganizationNotFoundForUploadError extends Schema.TaggedErrorClass<OrganizationNotFoundForUploadError>(
 	"OrganizationNotFoundForUploadError",
 )(
 	"OrganizationNotFoundForUploadError",
 	{
 		organizationId: OrganizationId,
 	},
-	HttpApiSchema.annotations({
-		status: 404,
-	}),
+	HttpApiSchema.status(404),
 ) {}
 
 // ============ API Group ============

@@ -1,10 +1,10 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConnectionPolicy>()(
+export class IntegrationConnectionPolicy extends ServiceMap.Service<IntegrationConnectionPolicy>()(
 	"IntegrationConnectionPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -55,6 +55,5 @@ export class IntegrationConnectionPolicy extends Effect.Service<IntegrationConne
 			return { canSelect, canInsert, canUpdate, canDelete } as const
 		}),
 		dependencies: [OrgResolver.Default],
-		accessors: true,
 	},
 ) {}

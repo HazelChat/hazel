@@ -6,7 +6,7 @@ import { Config, Context, Duration, Effect, Layer, Match, Schema } from "effect"
 /**
  * Base Redis error - used for unknown error codes
  */
-export class RedisError extends Schema.TaggedError<RedisError>()("RedisError", {
+export class RedisError extends Schema.TaggedErrorClass<RedisError>()("RedisError", {
 	message: Schema.String,
 	code: Schema.optional(Schema.String),
 	cause: Schema.optional(Schema.Unknown),
@@ -16,7 +16,7 @@ export class RedisError extends Schema.TaggedError<RedisError>()("RedisError", {
  * Connection to Redis server was closed
  * Bun error code: ERR_REDIS_CONNECTION_CLOSED
  */
-export class RedisConnectionClosedError extends Schema.TaggedError<RedisConnectionClosedError>()(
+export class RedisConnectionClosedError extends Schema.TaggedErrorClass<RedisConnectionClosedError>()(
 	"RedisConnectionClosedError",
 	{
 		message: Schema.String,
@@ -27,7 +27,7 @@ export class RedisConnectionClosedError extends Schema.TaggedError<RedisConnecti
  * Failed to authenticate with Redis server
  * Bun error code: ERR_REDIS_AUTHENTICATION_FAILED
  */
-export class RedisAuthenticationError extends Schema.TaggedError<RedisAuthenticationError>()(
+export class RedisAuthenticationError extends Schema.TaggedErrorClass<RedisAuthenticationError>()(
 	"RedisAuthenticationError",
 	{
 		message: Schema.String,
@@ -38,7 +38,7 @@ export class RedisAuthenticationError extends Schema.TaggedError<RedisAuthentica
  * Received an invalid response from Redis server
  * Bun error code: ERR_REDIS_INVALID_RESPONSE
  */
-export class RedisInvalidResponseError extends Schema.TaggedError<RedisInvalidResponseError>()(
+export class RedisInvalidResponseError extends Schema.TaggedErrorClass<RedisInvalidResponseError>()(
 	"RedisInvalidResponseError",
 	{
 		message: Schema.String,

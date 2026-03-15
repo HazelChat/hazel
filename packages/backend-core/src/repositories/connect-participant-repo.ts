@@ -1,12 +1,11 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, UserId } from "@hazel/schema"
 import { ConnectParticipant } from "@hazel/domain/models"
-import { Effect, Option, type Schema as EffectSchema } from "effect"
+import { ServiceMap, Effect, Option, type Schema as EffectSchema } from "effect"
 
-export class ConnectParticipantRepo extends Effect.Service<ConnectParticipantRepo>()(
+export class ConnectParticipantRepo extends ServiceMap.Service<ConnectParticipantRepo>()(
 	"ConnectParticipantRepo",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.connectParticipantsTable,

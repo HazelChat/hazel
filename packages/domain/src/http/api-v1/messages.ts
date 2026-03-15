@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import { InternalServerError, MessageNotFoundError, UnauthorizedError } from "../../errors"
 import { AttachmentId, ChannelId, MessageId } from "@hazel/schema"
@@ -71,20 +71,20 @@ export class ToggleReactionResponse extends Schema.Class<ToggleReactionResponse>
 
 // ============ ERROR TYPES ============
 
-export class ChannelNotFoundError extends Schema.TaggedError<ChannelNotFoundError>()(
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()(
 	"ChannelNotFoundError",
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.annotations({ status: 404 }),
+	HttpApiSchema.status(404),
 ) {}
 
-export class InvalidPaginationError extends Schema.TaggedError<InvalidPaginationError>()(
+export class InvalidPaginationError extends Schema.TaggedErrorClass<InvalidPaginationError>()(
 	"InvalidPaginationError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 400 }),
+	HttpApiSchema.status(400),
 ) {}
 
 // ============ API GROUP ============

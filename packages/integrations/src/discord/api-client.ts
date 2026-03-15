@@ -1,5 +1,5 @@
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform"
-import { Duration, Effect, Schema } from "effect"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { ServiceMap, Duration, Effect, Schema } from "effect"
 
 export const DiscordAccountInfo = Schema.Struct({
 	externalAccountId: Schema.String,
@@ -62,7 +62,7 @@ const DiscordErrorApiResponse = Schema.Struct({
 	message: Schema.optionalWith(Schema.String, { default: () => "Unknown Discord error" }),
 })
 
-export class DiscordApiError extends Schema.TaggedError<DiscordApiError>()("DiscordApiError", {
+export class DiscordApiError extends Schema.TaggedErrorClass<DiscordApiError>()("DiscordApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	cause: Schema.optional(Schema.Unknown),
@@ -87,9 +87,8 @@ const parseDiscordErrorMessage = (status: number, message: string): string => {
 const channelTypeIsMessageCapable = (type: number): boolean =>
 	type === 0 || type === 5 || type === 10 || type === 11 || type === 12
 
-export class DiscordApiClient extends Effect.Service<DiscordApiClient>()("DiscordApiClient", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("DiscordApiClient", {
+	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 
 		const makeBearerClient = (token: string) =>

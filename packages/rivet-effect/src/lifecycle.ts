@@ -25,7 +25,7 @@ const runWithContext = <A, E, R>(context: unknown, effect: Effect.Effect<A, E, R
 
 const runWithContextExit = <A, E, R>(
 	context: unknown,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ): Promise<Exit.Exit<A, E>> => runPromiseExit(provideActorContext(effect, context), context)
 
 const runGeneratorWithContext = <A>(

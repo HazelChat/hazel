@@ -1,5 +1,5 @@
 import { OpenRouterClient, OpenRouterLanguageModel } from "@hazel/ai-openrouter"
-import { FetchHttpClient } from "@effect/platform"
+import { FetchHttpClient } from "effect/unstable/http"
 import { Config, Effect, Layer } from "effect"
 
 const OpenRouterClientLayer = OpenRouterClient.layerConfig({

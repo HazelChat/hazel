@@ -12,7 +12,6 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
-		"@effect/platform": "catalog:effect",
 		"effect": "catalog:effect",
 		"metascraper": "^5.49.5",
 		"metascraper-description": "^5.49.5",
@@ -25,7 +24,6 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"@effect/language-service": "catalog:effect",
 		"typescript": "^5.9.3",
 		"vitest": "^4.1.0",
 		"wrangler": "^4.73.0"

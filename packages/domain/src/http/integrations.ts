@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 import * as CurrentUser from "../current-user"
 import { InternalServerError, UnauthorizedError } from "../errors"
@@ -27,28 +27,28 @@ export class ConnectionStatusResponse extends Schema.Class<ConnectionStatusRespo
 }) {}
 
 // Error types
-export class IntegrationNotConnectedError extends Schema.TaggedError<IntegrationNotConnectedError>()(
+export class IntegrationNotConnectedError extends Schema.TaggedErrorClass<IntegrationNotConnectedError>()(
 	"IntegrationNotConnectedError",
 	{
 		provider: IntegrationProvider,
 	},
 ) {}
 
-export class InvalidOAuthStateError extends Schema.TaggedError<InvalidOAuthStateError>()(
+export class InvalidOAuthStateError extends Schema.TaggedErrorClass<InvalidOAuthStateError>()(
 	"InvalidOAuthStateError",
 	{
 		message: Schema.String,
 	},
 ) {}
 
-export class UnsupportedProviderError extends Schema.TaggedError<UnsupportedProviderError>()(
+export class UnsupportedProviderError extends Schema.TaggedErrorClass<UnsupportedProviderError>()(
 	"UnsupportedProviderError",
 	{
 		provider: Schema.String,
 	},
 ) {}
 
-export class InvalidApiKeyError extends Schema.TaggedError<InvalidApiKeyError>()("InvalidApiKeyError", {
+export class InvalidApiKeyError extends Schema.TaggedErrorClass<InvalidApiKeyError>()("InvalidApiKeyError", {
 	message: Schema.String,
 }) {}
 

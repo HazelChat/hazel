@@ -180,7 +180,7 @@ const handleUserRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -373,7 +373,7 @@ const handleBotRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)

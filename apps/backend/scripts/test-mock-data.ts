@@ -168,7 +168,7 @@ const runTests = Effect.gen(function* () {
 		yield* Console.error("\n⚠️ Some tests failed")
 	}
 }).pipe(
-	Effect.catchAll((error) =>
+	Effect.catch((error) =>
 		Effect.gen(function* () {
 			yield* Console.error("\n❌ Test suite error:", error)
 			yield* Console.error("\n💡 Make sure the backend is running on port 3003")

@@ -1,8 +1,7 @@
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
-export class SecretGenerator extends Effect.Service<SecretGenerator>()("SecretGenerator", {
-	accessors: true,
-	effect: Effect.succeed({
+export class SecretGenerator extends ServiceMap.Service<SecretGenerator>()("SecretGenerator", {
+	make: Effect.succeed({
 		generatePassword: (length: number): string => {
 			const bytes = new Uint8Array(length)
 			crypto.getRandomValues(bytes)

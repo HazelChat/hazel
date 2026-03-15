@@ -1,5 +1,5 @@
 import type { ChannelId, MessageId } from "@hazel/schema"
-import { useAtomValue } from "@effect-atom/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { type ReactNode, useEffect, useMemo, useRef } from "react"
 import {

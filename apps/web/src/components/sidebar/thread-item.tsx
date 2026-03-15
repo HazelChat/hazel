@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { Channel, ChannelMember } from "@hazel/db/schema"
 import type { ChannelId } from "@hazel/schema"
 import { Exit } from "effect"

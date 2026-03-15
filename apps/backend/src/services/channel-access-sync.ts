@@ -1,12 +1,11 @@
 import { and, eq, isNull, notInArray, schema } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { transactionAwareExecute } from "../lib/transaction-aware-execute"
 
-export class ChannelAccessSyncService extends Effect.Service<ChannelAccessSyncService>()(
+export class ChannelAccessSyncService extends ServiceMap.Service<ChannelAccessSyncService>()(
 	"ChannelAccessSyncService",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const upsertChannelUsers = Effect.fn("ChannelAccessSyncService.upsertChannelUsers")(function* (
 				channelId: ChannelId,

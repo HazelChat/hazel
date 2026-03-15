@@ -1,4 +1,4 @@
-import { Cause, Context, Effect, Exit } from "effect"
+import { Cause, Effect, Exit, ServiceMap } from "effect"
 import type { ActorContext } from "rivetkit"
 import type { YieldWrap } from "effect/Utils"
 import { StatePersistenceError } from "./errors.ts"
@@ -7,19 +7,18 @@ import { runPromise, runPromiseExit } from "./runtime.ts"
 type AnyActorContext = ActorContext<any, any, any, any, any, any>
 
 /**
- * Context.Tag for injecting Rivet's ActorContext into Effect pipelines.
+ * ServiceMap.Service for injecting Rivet's ActorContext into Effect pipelines.
  *
- * Uses Context.Tag (not Effect.Service) because the actor context is an
+ * Uses ServiceMap.Service (not Effect.Service) because the actor context is an
  * externally-provided runtime resource injected by the Rivet framework,
  * not a service we construct via layers.
  */
-export class RivetActorContext extends Context.Tag("@hazel/rivet-effect/RivetActorContext")<
-	RivetActorContext,
+export class RivetActorContext extends ServiceMap.Service<RivetActorContext,
 	AnyActorContext
->() {}
+>()("@hazel/rivet-effect/RivetActorContext") {}
 
 export const provideActorContext = <A, E, R>(
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 	context: unknown,
 ): Effect.Effect<A, E, Exclude<R, RivetActorContext>> =>
 	Effect.provideService(
@@ -152,7 +151,7 @@ const runEffectOnActorContext = <A, E, R>(c: unknown, effect: Effect.Effect<A, E
 
 export const waitUntil = <TState, TConnParams, TConnState, TVars, TInput, A = any, E = any, R = never>(
 	c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	effect: Effect.Effect<A, E, R>,
+	make: Effect.Effect<A, E, R>,
 ): Effect.Effect<void, never, never> =>
 	Effect.sync(() => {
 		const promise = runPromiseExit(effect, c).then((exit) => {

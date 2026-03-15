@@ -1,7 +1,7 @@
 import { Database, eq, schema } from "@hazel/db"
 import { Cluster, Integrations } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
-import { Array, Effect, Layer, Option } from "effect"
+import { ServiceMap, Array, Effect, Layer, Option } from "effect"
 
 /**
  * Service for cached bot user lookups.
@@ -10,9 +10,8 @@ import { Array, Effect, Layer, Option } from "effect"
  * This service caches the bot user ID at initialization to avoid
  * repeated database queries on every webhook.
  */
-export class BotUserService extends Effect.Service<BotUserService>()("BotUserService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class BotUserService extends ServiceMap.Service<BotUserService>()("BotUserService", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 
 		// Cache for bot user IDs by external ID

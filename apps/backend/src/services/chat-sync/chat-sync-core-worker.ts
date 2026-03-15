@@ -28,7 +28,7 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
-import { Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
@@ -43,21 +43,21 @@ import {
 export const DEFAULT_MAX_MESSAGES_PER_CHANNEL = 50
 export const DEFAULT_CHAT_SYNC_CONCURRENCY = 5
 
-export class DiscordSyncConfigurationError extends Schema.TaggedError<DiscordSyncConfigurationError>()(
+export class DiscordSyncConfigurationError extends Schema.TaggedErrorClass<DiscordSyncConfigurationError>()(
 	"DiscordSyncConfigurationError",
 	{
 		message: Schema.String,
 	},
 ) {}
 
-export class DiscordSyncConnectionNotFoundError extends Schema.TaggedError<DiscordSyncConnectionNotFoundError>()(
+export class DiscordSyncConnectionNotFoundError extends Schema.TaggedErrorClass<DiscordSyncConnectionNotFoundError>()(
 	"DiscordSyncConnectionNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
 	},
 ) {}
 
-export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedError<DiscordSyncChannelLinkNotFoundError>()(
+export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedErrorClass<DiscordSyncChannelLinkNotFoundError>()(
 	"DiscordSyncChannelLinkNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
@@ -65,14 +65,14 @@ export class DiscordSyncChannelLinkNotFoundError extends Schema.TaggedError<Disc
 	},
 ) {}
 
-export class DiscordSyncMessageNotFoundError extends Schema.TaggedError<DiscordSyncMessageNotFoundError>()(
+export class DiscordSyncMessageNotFoundError extends Schema.TaggedErrorClass<DiscordSyncMessageNotFoundError>()(
 	"DiscordSyncMessageNotFoundError",
 	{
 		messageId: MessageId,
 	},
 ) {}
 
-export class DiscordSyncApiError extends Schema.TaggedError<DiscordSyncApiError>()("DiscordSyncApiError", {
+export class DiscordSyncApiError extends Schema.TaggedErrorClass<DiscordSyncApiError>()("DiscordSyncApiError", {
 	message: Schema.String,
 	status: Schema.optional(Schema.Number),
 	detail: Schema.optional(Schema.String),
@@ -147,9 +147,8 @@ export interface ChatSyncIngressThreadCreate {
 	readonly dedupeKey?: string
 }
 
-export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("ChatSyncCoreWorker", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()("ChatSyncCoreWorker", {
+	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 		const connectionRepo = yield* ChatSyncConnectionRepo
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
@@ -530,7 +529,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 					)
 					return Option.some(nextConfig)
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							if (isDiscordApiError(error) && error.status === 403) {
 								const fallbackOutboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings =
@@ -636,7 +635,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return Option.some(outboundMessageId as ExternalMessageId)
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning("Discord webhook send failed; falling back to bot API", {
 								error: String(error),
@@ -681,7 +680,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return true
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning(
 								"Discord webhook update failed; falling back to bot API",
@@ -727,7 +726,7 @@ export class ChatSyncCoreWorker extends Effect.Service<ChatSyncCoreWorker>()("Ch
 
 					return true
 				}).pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.gen(function* () {
 							yield* Effect.logWarning(
 								"Discord webhook delete failed; falling back to bot API",

@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { createLiveQueryCollection, eq } from "@tanstack/db"
 import { createFileRoute, Outlet } from "@tanstack/react-router"

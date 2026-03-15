@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import {
 	ChannelId,
 	ExternalChannelId,
@@ -40,21 +40,21 @@ export class ChatSyncChannelLinkListResponse extends Schema.Class<ChatSyncChanne
 	data: Schema.Array(ChatSyncChannelLink.Model.json),
 }) {}
 
-export class ChatSyncConnectionNotFoundError extends Schema.TaggedError<ChatSyncConnectionNotFoundError>()(
+export class ChatSyncConnectionNotFoundError extends Schema.TaggedErrorClass<ChatSyncConnectionNotFoundError>()(
 	"ChatSyncConnectionNotFoundError",
 	{
 		syncConnectionId: SyncConnectionId,
 	},
 ) {}
 
-export class ChatSyncChannelLinkNotFoundError extends Schema.TaggedError<ChatSyncChannelLinkNotFoundError>()(
+export class ChatSyncChannelLinkNotFoundError extends Schema.TaggedErrorClass<ChatSyncChannelLinkNotFoundError>()(
 	"ChatSyncChannelLinkNotFoundError",
 	{
 		syncChannelLinkId: SyncChannelLinkId,
 	},
 ) {}
 
-export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncConnectionExistsError>()(
+export class ChatSyncConnectionExistsError extends Schema.TaggedErrorClass<ChatSyncConnectionExistsError>()(
 	"ChatSyncConnectionExistsError",
 	{
 		organizationId: OrganizationId,
@@ -63,7 +63,7 @@ export class ChatSyncConnectionExistsError extends Schema.TaggedError<ChatSyncCo
 	},
 ) {}
 
-export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<ChatSyncIntegrationNotConnectedError>()(
+export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedErrorClass<ChatSyncIntegrationNotConnectedError>()(
 	"ChatSyncIntegrationNotConnectedError",
 	{
 		organizationId: OrganizationId,
@@ -71,7 +71,7 @@ export class ChatSyncIntegrationNotConnectedError extends Schema.TaggedError<Cha
 	},
 ) {}
 
-export class ChatSyncChannelLinkExistsError extends Schema.TaggedError<ChatSyncChannelLinkExistsError>()(
+export class ChatSyncChannelLinkExistsError extends Schema.TaggedErrorClass<ChatSyncChannelLinkExistsError>()(
 	"ChatSyncChannelLinkExistsError",
 	{
 		syncConnectionId: SyncConnectionId,

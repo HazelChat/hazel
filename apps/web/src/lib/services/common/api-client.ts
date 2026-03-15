@@ -8,7 +8,7 @@ import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import * as HttpApiClient from "@effect/platform/HttpApiClient"
 import * as HttpClient from "@effect/platform/HttpClient"
 import { HazelApi } from "@hazel/domain/http"
-import { Layer } from "effect"
+import { ServiceMap, Layer } from "effect"
 import * as Effect from "effect/Effect"
 import { authenticatedFetch } from "../../auth-fetch"
 
@@ -16,10 +16,9 @@ export const CustomFetchLive = FetchHttpClient.layer.pipe(
 	Layer.provideMerge(Layer.succeed(FetchHttpClient.Fetch, authenticatedFetch)),
 )
 
-export class ApiClient extends Effect.Service<ApiClient>()("ApiClient", {
-	accessors: true,
+export class ApiClient extends ServiceMap.Service<ApiClient>()("ApiClient", {
 	dependencies: [CustomFetchLive],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		return yield* HttpApiClient.make(HazelApi, {
 			baseUrl: import.meta.env.VITE_BACKEND_URL,
 			transformClient: (client) =>

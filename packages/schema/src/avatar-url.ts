@@ -1,7 +1,7 @@
-import { HttpClient } from "@effect/platform"
+import { HttpClient } from "effect/unstable/http"
 import { Duration, Effect, Option, Schema } from "effect"
 
-export class InvalidAvatarUrlError extends Schema.TaggedError<InvalidAvatarUrlError>()(
+export class InvalidAvatarUrlError extends Schema.TaggedErrorClass<InvalidAvatarUrlError>()(
 	"InvalidAvatarUrlError",
 	{
 		message: Schema.String,
@@ -74,7 +74,7 @@ export const AvatarUrl = Schema.String.pipe(
 	Schema.filterEffect((url) =>
 		validateImageUrl(url).pipe(
 			Effect.map(() => true),
-			Effect.catchAll((e) => Effect.succeed(e.message)),
+			Effect.catch((e) => Effect.succeed(e.message)),
 		),
 	),
 ).annotations({

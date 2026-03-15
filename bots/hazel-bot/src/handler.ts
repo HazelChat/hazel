@@ -1,4 +1,4 @@
-import { LanguageModel } from "@effect/ai"
+import { LanguageModel } from "effect/unstable/ai"
 import {
 	generateIntegrationInstructions,
 	type AIContentChunk,

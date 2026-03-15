@@ -1,4 +1,5 @@
-import { HttpApiBuilder, HttpServer } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServer } from "effect/unstable/http"
 import { Layer, Logger, pipe } from "effect"
 import { LinkPreviewApi } from "./api"
 import { makeKVCacheLayer } from "./cache"

@@ -7,7 +7,7 @@
  * This module owns atom definitions, init, logout, and the scheduler.
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { Duration, Effect, Option, Schema } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
@@ -36,7 +36,7 @@ export interface WebAuthError {
 // Errors
 // ============================================================================
 
-class JwtDecodeError extends Schema.TaggedError<JwtDecodeError>()("JwtDecodeError", {
+class JwtDecodeError extends Schema.TaggedErrorClass<JwtDecodeError>()("JwtDecodeError", {
 	message: Schema.String,
 }) {}
 
@@ -116,7 +116,7 @@ export const webLogoutAtom = Atom.fn(
 			const accessTokenOption = yield* tokenStorage.getAccessToken
 
 			yield* tokenStorage.clearTokens.pipe(
-				Effect.catchAll((error) => Effect.logError("[web-auth] Failed to clear tokens", error)),
+				Effect.catch((error) => Effect.logError("[web-auth] Failed to clear tokens", error)),
 			)
 
 			get?.set(webTokensAtom, null)
@@ -199,7 +199,7 @@ export const webInitAtom = Atom.make((get) => {
 		}
 	}).pipe(
 		Effect.provide(WebTokenStorageLive),
-		Effect.catchAll((error) => {
+		Effect.catch((error) => {
 			console.error("[web-auth] Failed to load tokens:", error)
 			get.set(webAuthStatusAtom, "error")
 			get.set(webAuthErrorAtom, {

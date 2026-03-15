@@ -8,12 +8,11 @@ import type {
 	SyncChannelLinkId,
 	SyncMessageLinkId,
 } from "@hazel/schema"
-import { Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Option, Schema } from "effect"
 
-export class ChatSyncMessageLinkRepo extends Effect.Service<ChatSyncMessageLinkRepo>()(
+export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageLinkRepo>()(
 	"ChatSyncMessageLinkRepo",
 	{
-		accessors: true,
 		effect: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.chatSyncMessageLinksTable,

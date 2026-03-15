@@ -1,11 +1,11 @@
-import { HttpApiSchema } from "@effect/platform"
+import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 
 /**
  * Error thrown when a user exceeds their rate limit.
  * Contains information about when they can retry.
  */
-export class RateLimitExceededError extends Schema.TaggedError<RateLimitExceededError>()(
+export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExceededError>()(
 	"RateLimitExceededError",
 	{
 		message: Schema.String,
@@ -13,7 +13,5 @@ export class RateLimitExceededError extends Schema.TaggedError<RateLimitExceeded
 		limit: Schema.Number,
 		remaining: Schema.Number,
 	},
-	HttpApiSchema.annotations({
-		status: 429,
-	}),
+	HttpApiSchema.status(429),
 ) {}

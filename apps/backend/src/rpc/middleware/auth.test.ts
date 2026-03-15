@@ -1,5 +1,5 @@
 import { describe, expect, it, layer } from "@effect/vitest"
-import { Headers } from "@effect/platform"
+import { Headers } from "effect/unstable/http"
 import { BotRepo, UserPresenceStatusRepo, UserRepo } from "@hazel/backend-core"
 import { Effect, Exit, Layer, Option, FiberRef } from "effect"
 import { AuthMiddleware } from "./auth-class.ts"
@@ -100,7 +100,7 @@ const makeAuthMiddlewareLayer = (options?: {
 								status: "offline",
 								customMessage: null,
 							}) as unknown as Effect.Effect<void>
-						).pipe(Effect.catchAll(() => Effect.void))
+						).pipe(Effect.catch(() => Effect.void))
 					}
 				}),
 			)

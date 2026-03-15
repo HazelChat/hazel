@@ -5,7 +5,8 @@
  * Hazel message, channel, membership, and command events are pre-configured.
  */
 
-import { FetchHttpClient, HttpApiClient } from "@effect/platform"
+import { HttpApiClient } from "effect/unstable/httpapi"
+import { FetchHttpClient } from "effect/unstable/http"
 import type {
 	AttachmentId,
 	BotId,
@@ -184,9 +185,8 @@ export interface SendMessageOptions {
  * Hazel Bot Client - Effect Service with typed convenience methods
  * Uses scoped: since it manages scoped resources (RateLimiter)
  */
-export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotClient", {
-	accessors: true,
-	scoped: Effect.gen(function* () {
+export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelBotClient", {
+	make: Effect.gen(function* () {
 		const auth = yield* BotAuth
 		// Get the RPC client from context
 		const rpc = yield* BotRpcClient
@@ -807,7 +807,7 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 					Effect.forever(
 						Effect.gen(function* () {
 							const nextState = yield* connectOnce.pipe(
-								Effect.catchAll((error) =>
+								Effect.catch((error) =>
 									Effect.logWarning("Bot gateway websocket failed, retrying", {
 										error,
 										botId: authContext.botId,
@@ -1751,13 +1751,13 @@ export class HazelBotClient extends Effect.Service<HazelBotClient>()("HazelBotCl
 
 									// Mark the session as failed - this updates the existing message
 									yield* session.fail(userMessage).pipe(
-										Effect.catchAllCause((cause) =>
+										Effect.catchCause((cause) =>
 											Effect.gen(function* () {
 												yield* Effect.logError("Failed to mark AI stream as failed", {
 													cause,
 												})
 												yield* sendCommandErrorMessage(ctx, userMessage).pipe(
-													Effect.catchAllCause((messageCause) =>
+													Effect.catchCause((messageCause) =>
 														Effect.logError(
 															"Failed to send AI fallback error message",
 															{
@@ -1911,7 +1911,7 @@ export interface HazelBotConfig<Commands extends CommandGroup<any> = EmptyComman
  * @example
  * ```typescript
  * import { createHazelBot, HazelBotClient, Command, CommandGroup } from "@hazel/bot-sdk"
- * import { Schema } from "effect"
+ * import { ServiceMap, Schema } from "effect"
  *
  * // Define typesafe commands
  * const EchoCommand = Command.make("echo", {

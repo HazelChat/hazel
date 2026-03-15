@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { useMemo, useState } from "react"

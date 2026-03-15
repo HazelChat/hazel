@@ -1,4 +1,4 @@
-import { Workflow } from "@effect/workflow"
+import { Workflow } from "effect/unstable/workflow"
 import { Schema } from "effect"
 import { CleanupUploadsWorkflowError } from "../activities/cleanup-activities.ts"
 

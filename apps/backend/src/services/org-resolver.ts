@@ -3,7 +3,7 @@ import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, CurrentBotScopes, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
-import { Effect, FiberRef, Option } from "effect"
+import { ServiceMap, Effect, FiberRef, Option } from "effect"
 import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
 
 /**
@@ -11,8 +11,8 @@ import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
  * It replaces ad-hoc role checks across individual policy services with a single
  * point of scope resolution.
  */
-export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
-	effect: Effect.gen(function* () {
+export class OrgResolver extends ServiceMap.Service<OrgResolver>()("OrgResolver", {
+	make: Effect.gen(function* () {
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const channelRepo = yield* ChannelRepo
 		const channelMemberRepo = yield* ChannelMemberRepo
@@ -253,5 +253,4 @@ export class OrgResolver extends Effect.Service<OrgResolver>()("OrgResolver", {
 		ChannelMemberRepo.Default,
 		MessageRepo.Default,
 	],
-	accessors: true,
 }) {}

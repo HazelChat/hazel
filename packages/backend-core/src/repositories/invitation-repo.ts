@@ -2,11 +2,10 @@ import { and, Database, eq, lte, ModelRepository, schema, type TxFn } from "@haz
 
 import type { InvitationId, OrganizationId, WorkOSInvitationId } from "@hazel/schema"
 import { Invitation } from "@hazel/domain/models"
-import { Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Option, type Schema } from "effect"
 
-export class InvitationRepo extends Effect.Service<InvitationRepo>()("InvitationRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("InvitationRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(schema.invitationsTable, Invitation.Model, {
 			idColumn: "id",
 			name: "Invitation",

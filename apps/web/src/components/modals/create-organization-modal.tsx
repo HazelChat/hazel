@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { type } from "arktype"
 import { useCallback } from "react"
 import { createOrganizationMutation } from "~/atoms/organization-atoms"

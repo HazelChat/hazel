@@ -43,7 +43,7 @@ const DatabaseErrorType = Schema.Literal(
 	"query_error",
 )
 
-export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
+export class DatabaseError extends Schema.TaggedErrorClass<DatabaseError>()("DatabaseError", {
 	type: DatabaseErrorType,
 	cause: Schema.Unknown,
 }) {
@@ -72,7 +72,7 @@ const matchPgError = (error: unknown) => {
 	return null
 }
 
-export class DatabaseConnectionLostError extends Schema.TaggedError<DatabaseConnectionLostError>()(
+export class DatabaseConnectionLostError extends Schema.TaggedErrorClass<DatabaseConnectionLostError>()(
 	"DatabaseConnectionLostError",
 	{
 		cause: Schema.Unknown,

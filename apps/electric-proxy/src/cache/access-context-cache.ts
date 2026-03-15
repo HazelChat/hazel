@@ -23,7 +23,7 @@ export type BotAccessContext = {
 /**
  * Cache lookup error - when we fail to fetch from database
  */
-export class AccessContextLookupError extends Schema.TaggedError<AccessContextLookupError>()(
+export class AccessContextLookupError extends Schema.TaggedErrorClass<AccessContextLookupError>()(
 	"AccessContextLookupError",
 	{
 		message: Schema.String,

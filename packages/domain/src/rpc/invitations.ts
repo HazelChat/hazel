@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from "@effect/rpc"
+import { Rpc, RpcGroup } from "effect/unstable/rpc"
 import { Schema } from "effect"
 import { InternalServerError, UnauthorizedError } from "../errors"
 import { InvitationId, OrganizationId } from "@hazel/schema"
@@ -44,7 +44,7 @@ export class InvitationBatchResponse extends Schema.Class<InvitationBatchRespons
  * Error thrown when an invitation is not found.
  * Used in update and delete operations.
  */
-export class InvitationNotFoundError extends Schema.TaggedError<InvitationNotFoundError>()(
+export class InvitationNotFoundError extends Schema.TaggedErrorClass<InvitationNotFoundError>()(
 	"InvitationNotFoundError",
 	{
 		invitationId: InvitationId,

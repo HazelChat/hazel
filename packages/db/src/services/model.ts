@@ -19,7 +19,7 @@ export interface RepositoryOptions<Col extends string, Name extends string> {
 
 export type PartialExcept<T, K extends keyof T> = Partial<Omit<T, K>> & Pick<T, K>
 
-export class EntityNotFound extends Schema.TaggedError<EntityNotFound>()("EntityNotFound", {
+export class EntityNotFound extends Schema.TaggedErrorClass<EntityNotFound>()("EntityNotFound", {
 	type: Schema.String,
 	id: Schema.Any,
 }) {}

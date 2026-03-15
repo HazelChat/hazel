@@ -1,4 +1,4 @@
-import { Atom, Result } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { and, eq, isNull } from "@tanstack/db"
 import { customEmojiCollection } from "~/db/collections"

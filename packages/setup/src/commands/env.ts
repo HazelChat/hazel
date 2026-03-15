@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "@effect/cli"
+import { Command, Options, Prompt } from "effect/unstable/cli"
 import { Console, Effect, Redacted } from "effect"
 import pc from "picocolors"
 import { SecretGenerator } from "../services/secrets.ts"

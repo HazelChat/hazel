@@ -4,7 +4,7 @@
  * @since 1.0.0
  */
 
-import { Atom, Result } from "@effect-atom/atom-react"
+import { Atom, Result } from "@effect/atom-react"
 import {
 	type Collection,
 	type Context,

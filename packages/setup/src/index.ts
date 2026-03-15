@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Command } from "@effect/cli"
+import { Command } from "effect/unstable/cli"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
 import { existsSync, readFileSync } from "fs"

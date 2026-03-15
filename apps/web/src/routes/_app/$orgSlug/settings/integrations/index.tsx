@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"

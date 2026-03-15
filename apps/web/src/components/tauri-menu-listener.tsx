@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import { getTauriEvent, type TauriEventApi } from "@hazel/desktop/bridge"
 import { useNavigate } from "@tanstack/react-router"
 import { modalAtomFamily } from "~/atoms/modal-atoms"

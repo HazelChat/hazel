@@ -8,11 +8,9 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@effect/platform": "catalog:effect",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
 		"@types/bun": "1.3.9",
 		"typescript": "^5.9.3"
 	}

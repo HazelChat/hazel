@@ -1,4 +1,4 @@
-import * as ClusterCron from "@effect/cluster/ClusterCron"
+import * as ClusterCron from "effect/unstable/cluster/ClusterCron"
 import { WorkOSSync } from "@hazel/backend-core/services"
 import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"

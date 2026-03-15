@@ -8,14 +8,13 @@ import {
 } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
 import { OrgResolver } from "./org-resolver"
 
-export class ConnectConversationService extends Effect.Service<ConnectConversationService>()(
+export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
 	"ConnectConversationService",
 	{
-		accessors: true,
 		dependencies: [
 			ChannelRepo.Default,
 			ConnectParticipantRepo.Default,

@@ -4,7 +4,7 @@
  * @description Receives OAuth callback from WorkOS, exchanges code for JWT tokens, and stores them in localStorage
  */
 
-import { useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Schema } from "effect"
 import { useEffect, useMemo } from "react"

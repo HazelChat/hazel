@@ -6,7 +6,7 @@ import {
 } from "@hazel/domain"
 import type { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import type { BotId, ChannelId, OrganizationId } from "@hazel/schema"
-import { Config, Effect, Option, Ref, Schema } from "effect"
+import { ServiceMap, Config, Effect, Option, Ref, Schema } from "effect"
 
 const DEFAULT_DURABLE_STREAMS_URL = "http://localhost:4437/v1/stream"
 
@@ -20,7 +20,7 @@ const buildStreamPath = (baseUrl: string, botId: BotId): string =>
 const responseText = (response: Response): Promise<string> =>
 	response.text().catch(() => `${response.status} ${response.statusText}`)
 
-export class DurableStreamRequestError extends Schema.TaggedError<DurableStreamRequestError>()(
+export class DurableStreamRequestError extends Schema.TaggedErrorClass<DurableStreamRequestError>()(
 	"DurableStreamRequestError",
 	{
 		message: Schema.String,
@@ -28,10 +28,9 @@ export class DurableStreamRequestError extends Schema.TaggedError<DurableStreamR
 	},
 ) {}
 
-export class BotGatewayService extends Effect.Service<BotGatewayService>()("BotGatewayService", {
-	accessors: true,
+export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("BotGatewayService", {
 	dependencies: [BotInstallationRepo.Default, ChannelRepo.Default],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		const installationRepo = yield* BotInstallationRepo
 		const channelRepo = yield* ChannelRepo
 		const durableStreamsUrl = yield* Config.string("DURABLE_STREAMS_URL").pipe(

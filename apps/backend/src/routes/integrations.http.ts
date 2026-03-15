@@ -1,5 +1,5 @@
-import { HttpApiBuilder, HttpServerRequest, HttpServerResponse } from "@effect/platform"
-import * as Cookies from "@effect/platform/Cookies"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { HttpServerRequest, HttpServerResponse, Cookies } from "effect/unstable/http"
 import { IntegrationConnectionRepo, OrganizationRepo } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import type { OrganizationId, UserId } from "@hazel/schema"
@@ -923,7 +923,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			),
 			// Note: catchAll is intentional here - this is a best-effort operation
 			// after OAuth success. We catch all errors to prevent disrupting the flow.
-			Effect.catchAll((error) =>
+			Effect.catch((error) =>
 				Effect.logWarning("Failed to add integration bot to org (non-critical)", {
 					event: "integration_bot_add_failed",
 					provider,
@@ -1042,7 +1042,7 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 
 	// Best-effort: add integration bot to org
 	yield* IntegrationBotService.addBotToOrg(provider, orgId).pipe(
-		Effect.catchAll((error) =>
+		Effect.catch((error) =>
 			Effect.logWarning("Failed to add integration bot to org (non-critical)", {
 				event: "integration_bot_add_failed",
 				provider,

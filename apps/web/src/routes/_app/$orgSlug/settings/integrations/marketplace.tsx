@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { BotId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useDeferredValue, useMemo, useState } from "react"

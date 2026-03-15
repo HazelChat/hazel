@@ -1,4 +1,5 @@
-import { FetchHttpClient, HttpApiBuilder, HttpClient } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { Effect } from "effect"
 import metascraper from "metascraper"
 import metascraperDescription from "metascraper-description"
@@ -29,7 +30,7 @@ function validateImageUrl(url: string): Effect.Effect<boolean> {
 			return contentType ? contentType.startsWith("image/") : false
 		}),
 		Effect.timeout("1 seconds"),
-		Effect.catchAll(() => Effect.succeed(false)),
+		Effect.catch(() => Effect.succeed(false)),
 		Effect.provide(FetchHttpClient.layer),
 	)
 }
@@ -86,7 +87,7 @@ export const HttpLinkPreviewLive = HttpApiBuilder.group(LinkPreviewApi, "linkPre
 					logo?: { url: string }
 					publisher?: string
 				}>(cacheKey)
-				.pipe(Effect.catchAll(() => Effect.succeed(null)))
+				.pipe(Effect.catch(() => Effect.succeed(null)))
 
 			if (cachedData) {
 				yield* Effect.logDebug(`Cache hit for: ${targetUrl}`)
@@ -169,7 +170,7 @@ export const HttpLinkPreviewLive = HttpApiBuilder.group(LinkPreviewApi, "linkPre
 			yield* cache
 				.set(cacheKey, result)
 				.pipe(
-					Effect.catchAll((error) =>
+					Effect.catch((error) =>
 						Effect.logDebug(`Failed to cache result: ${error.message}`).pipe(
 							Effect.andThen(Effect.succeed(undefined)),
 						),

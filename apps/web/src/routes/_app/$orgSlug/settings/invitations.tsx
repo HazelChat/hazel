@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { InvitationId } from "@hazel/schema"
 import { IconArrowPath } from "~/components/icons/icon-arrow-path"
 import { eq, useLiveQuery } from "@tanstack/react-db"

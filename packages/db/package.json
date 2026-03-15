@@ -17,7 +17,6 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
-		"@effect/experimental": "catalog:effect",
 		"@hazel/domain": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"drizzle-orm": "^0.45.1",
@@ -25,7 +24,6 @@
 		"postgres": "^3.4.7"
 	},
 	"devDependencies": {
-		"@effect/language-service": "catalog:effect",
 		"@testcontainers/postgresql": "^10.18.0",
 		"@types/bun": "1.3.9",
 		"drizzle-kit": "^0.31.8",

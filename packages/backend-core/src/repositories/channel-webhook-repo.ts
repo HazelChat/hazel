@@ -2,11 +2,10 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { ChannelWebhook } from "@hazel/domain/models"
-import { Effect, Option } from "effect"
+import { ServiceMap, Effect, Option } from "effect"
 
-export class ChannelWebhookRepo extends Effect.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class ChannelWebhookRepo extends ServiceMap.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
+	make: Effect.gen(function* () {
 		const baseRepo = yield* ModelRepository.makeRepository(
 			schema.channelWebhooksTable,
 			ChannelWebhook.Model,

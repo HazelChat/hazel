@@ -7,7 +7,7 @@
  * This module owns atom definitions, init, login, logout, and the scheduler.
  */
 
-import { Atom } from "@effect-atom/atom-react"
+import { Atom } from "@effect/atom-react"
 import { Clipboard } from "@effect/platform-browser"
 import type { OrganizationId } from "@hazel/schema"
 import { Duration, Effect, Layer, Option, Schema } from "effect"
@@ -116,7 +116,7 @@ export const desktopLoginAtom = Atom.fn(
 			return authResult
 		}).pipe(
 			Effect.provide(Layer.mergeAll(TauriAuthLive, TokenStorageLive)),
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				console.error("[desktop-auth] Login failed:", error)
 				get.set(desktopAuthStatusAtom, "error")
 				get.set(desktopAuthErrorAtom, {
@@ -144,7 +144,7 @@ export const desktopLogoutAtom = Atom.fn(
 
 		yield* TokenStorage.clearTokens.pipe(
 			Effect.provide(TokenStorageLive),
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				console.error("[desktop-auth] Failed to clear tokens:", error)
 				return Effect.void
 			}),
@@ -211,7 +211,7 @@ export const desktopLoginFromClipboardAtom = Atom.fn(
 			return tokens
 		}).pipe(
 			Effect.provide(Layer.mergeAll(ClipboardLive, TokenExchangeLive, TokenStorageLive)),
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				console.error("[desktop-auth] Clipboard login failed:", error)
 				get.set(desktopAuthStatusAtom, "error")
 				get.set(desktopAuthErrorAtom, {
@@ -260,7 +260,7 @@ export const desktopInitAtom = Atom.make((get) => {
 		}
 	}).pipe(
 		Effect.provide(TokenStorageLive),
-		Effect.catchAll((error) => {
+		Effect.catch((error) => {
 			console.error("[desktop-auth] Failed to load tokens:", error)
 			get.set(desktopAuthStatusAtom, "error")
 			get.set(desktopAuthErrorAtom, {
@@ -335,7 +335,7 @@ export const clearDesktopTokens = (): Promise<void> => {
 	return runtime.runPromise(
 		TokenStorage.clearTokens.pipe(
 			Effect.provide(TokenStorageLive),
-			Effect.catchAll((error) => {
+			Effect.catch((error) => {
 				console.error("[desktop-auth] Failed to clear tokens during recovery:", error)
 				return Effect.void
 			}),

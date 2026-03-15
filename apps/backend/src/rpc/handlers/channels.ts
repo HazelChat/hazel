@@ -1,4 +1,4 @@
-import { HttpApiClient } from "@effect/platform"
+import { HttpApiClient } from "effect/unstable/httpapi"
 import {
 	ChannelMemberRepo,
 	ChannelRepo,

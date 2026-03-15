@@ -1,7 +1,7 @@
-import { PersistedCache, type Persistence } from "@effect/experimental"
+import { PersistedCache, type Persistence } from "effect/unstable/persistence"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import type { BotId, ChannelId, UserId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import {
 	AccessContextLookupError,
 	type BotAccessContext,
@@ -32,10 +32,9 @@ export interface AccessContextCache {
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class AccessContextCacheService extends Effect.Service<AccessContextCacheService>()(
+export class AccessContextCacheService extends ServiceMap.Service<AccessContextCacheService>()(
 	"AccessContextCacheService",
 	{
-		accessors: true,
 		scoped: Effect.gen(function* () {
 			const db = yield* Database.Database
 

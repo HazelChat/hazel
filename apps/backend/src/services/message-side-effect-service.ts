@@ -1,7 +1,7 @@
-import { HttpApiClient } from "@effect/platform"
+import { HttpApiClient } from "effect/unstable/httpapi"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError } from "@hazel/domain"
-import { Array, Config, Effect, Option } from "effect"
+import { ServiceMap, Array, Config, Effect, Option } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type {
 	MessageCreatedPayload,
@@ -12,10 +12,9 @@ import type {
 } from "@hazel/backend-core"
 import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
 
-export class MessageSideEffectService extends Effect.Service<MessageSideEffectService>()(
+export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
 	{
-		accessors: true,
 		dependencies: [DiscordSyncWorker.Default],
 		effect: Effect.gen(function* () {
 			const db = yield* Database.Database
@@ -56,7 +55,7 @@ export class MessageSideEffectService extends Effect.Service<MessageSideEffectSe
 						yield* discordSyncWorker
 							.syncHazelMessageCreateToAllConnections(payload.messageId, dedupeKey)
 							.pipe(
-								Effect.catchAll((error) =>
+								Effect.catch((error) =>
 									Effect.logWarning("Failed to sync outbox message create to Discord", {
 										messageId: payload.messageId,
 										channelId: payload.channelId,
@@ -216,7 +215,7 @@ export class MessageSideEffectService extends Effect.Service<MessageSideEffectSe
 					yield* discordSyncWorker
 						.syncHazelMessageUpdateToAllConnections(payload.messageId, dedupeKey)
 						.pipe(
-							Effect.catchAll((error) =>
+							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox message update to Discord", {
 									messageId: payload.messageId,
 									error: String(error),
@@ -231,7 +230,7 @@ export class MessageSideEffectService extends Effect.Service<MessageSideEffectSe
 					yield* discordSyncWorker
 						.syncHazelMessageDeleteToAllConnections(payload.messageId, dedupeKey)
 						.pipe(
-							Effect.catchAll((error) =>
+							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox message delete to Discord", {
 									messageId: payload.messageId,
 									error: String(error),
@@ -246,7 +245,7 @@ export class MessageSideEffectService extends Effect.Service<MessageSideEffectSe
 					yield* discordSyncWorker
 						.syncHazelReactionCreateToAllConnections(payload.reactionId, dedupeKey)
 						.pipe(
-							Effect.catchAll((error) =>
+							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox reaction create to Discord", {
 									reactionId: payload.reactionId,
 									error: String(error),
@@ -269,7 +268,7 @@ export class MessageSideEffectService extends Effect.Service<MessageSideEffectSe
 							dedupeKey,
 						)
 						.pipe(
-							Effect.catchAll((error) =>
+							Effect.catch((error) =>
 								Effect.logWarning("Failed to sync outbox reaction delete to Discord", {
 									hazelMessageId: payload.hazelMessageId,
 									error: String(error),

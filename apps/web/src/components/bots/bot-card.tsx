@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { useState } from "react"
 

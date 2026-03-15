@@ -1,12 +1,12 @@
 import { CustomEmojiRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
-export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
-	effect: Effect.gen(function* () {
+export class CustomEmojiPolicy extends ServiceMap.Service<CustomEmojiPolicy>()("CustomEmojiPolicy/Policy", {
+	make: Effect.gen(function* () {
 		const policyEntity = "CustomEmoji" as const
 
 		const orgResolver = yield* OrgResolver
@@ -49,5 +49,4 @@ export class CustomEmojiPolicy extends Effect.Service<CustomEmojiPolicy>()("Cust
 		return { canCreate, canUpdate, canDelete } as const
 	}),
 	dependencies: [CustomEmojiRepo.Default, OrgResolver.Default],
-	accessors: true,
 }) {}

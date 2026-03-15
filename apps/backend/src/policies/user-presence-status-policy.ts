@@ -1,7 +1,7 @@
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 import { makePolicy } from "../lib/policy-utils"
 
-export class UserPresenceStatusPolicy extends Effect.Service<UserPresenceStatusPolicy>()(
+export class UserPresenceStatusPolicy extends ServiceMap.Service<UserPresenceStatusPolicy>()(
 	"UserPresenceStatusPolicy/Policy",
 	{
 		effect: Effect.gen(function* () {
@@ -19,6 +19,5 @@ export class UserPresenceStatusPolicy extends Effect.Service<UserPresenceStatusP
 			return { canUpdate, canDelete, canRead, canCreate } as const
 		}),
 		dependencies: [],
-		accessors: true,
 	},
 ) {}

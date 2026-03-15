@@ -1,4 +1,4 @@
-import { HttpApi, OpenApi } from "@effect/platform"
+import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { ChatSyncGroup } from "./chat-sync"
 import { MessagesApiGroup } from "./api-v1/messages"
 import { AuthGroup } from "./auth"

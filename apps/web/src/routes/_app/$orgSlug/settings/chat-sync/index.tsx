@@ -1,4 +1,4 @@
-import { Result, useAtomSet, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { SyncConnectionId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Option } from "effect"

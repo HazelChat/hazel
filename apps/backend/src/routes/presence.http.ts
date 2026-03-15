@@ -1,4 +1,4 @@
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { withRemapDbErrors } from "@hazel/domain"

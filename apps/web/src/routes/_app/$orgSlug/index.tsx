@@ -1,4 +1,4 @@
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"

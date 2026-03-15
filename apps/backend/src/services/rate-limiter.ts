@@ -1,5 +1,5 @@
 import { Redis, type RedisErrors } from "@hazel/effect-bun"
-import { Effect, Layer, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 
 /**
  * Result of a rate limit check
@@ -15,7 +15,7 @@ export interface RateLimitResult {
 	readonly limit: number
 }
 
-export class RateLimiterError extends Schema.TaggedError<RateLimiterError>()("RateLimiterError", {
+export class RateLimiterError extends Schema.TaggedErrorClass<RateLimiterError>()("RateLimiterError", {
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -58,9 +58,9 @@ end
 /**
  * Rate limiter service backed by Redis via @hazel/effect-bun
  */
-export class RateLimiter extends Effect.Service<RateLimiter>()("RateLimiter", {
+export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter", {
 	dependencies: [Redis.Default],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		const redis = yield* Redis
 
 		return {

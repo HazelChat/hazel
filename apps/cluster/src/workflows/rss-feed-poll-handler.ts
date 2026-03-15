@@ -1,4 +1,4 @@
-import { Activity } from "@effect/workflow"
+import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
@@ -239,7 +239,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 								}),
 							)
 							.pipe(
-								Effect.catchAll((err) =>
+								Effect.catch((err) =>
 									Effect.logWarning(
 										"Failed to record posted item (may cause duplicate on next poll)",
 										{ error: err, itemGuid: item.guid },

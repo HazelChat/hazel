@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { ChannelWebhookId } from "@hazel/schema"
 import { Schema } from "effect"
 import { InternalServerError } from "../errors"
@@ -100,30 +100,30 @@ export class WebhookMessageResponse extends Schema.Class<WebhookMessageResponse>
 }) {}
 
 // Error: Webhook not found
-export class WebhookNotFoundError extends Schema.TaggedError<WebhookNotFoundError>()(
+export class WebhookNotFoundError extends Schema.TaggedErrorClass<WebhookNotFoundError>()(
 	"WebhookNotFoundError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 404 }),
+	HttpApiSchema.status(404),
 ) {}
 
 // Error: Webhook is disabled
-export class WebhookDisabledError extends Schema.TaggedError<WebhookDisabledError>()(
+export class WebhookDisabledError extends Schema.TaggedErrorClass<WebhookDisabledError>()(
 	"WebhookDisabledError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 403 }),
+	HttpApiSchema.status(403),
 ) {}
 
 // Error: Invalid webhook token
-export class InvalidWebhookTokenError extends Schema.TaggedError<InvalidWebhookTokenError>()(
+export class InvalidWebhookTokenError extends Schema.TaggedErrorClass<InvalidWebhookTokenError>()(
 	"InvalidWebhookTokenError",
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.annotations({ status: 401 }),
+	HttpApiSchema.status(401),
 ) {}
 
 // Public endpoint - no auth middleware, uses webhook token in URL

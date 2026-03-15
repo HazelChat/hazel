@@ -1,6 +1,6 @@
 import { IconChatBubble } from "~/components/icons/icon-chat-bubble"
 import { IconClock } from "~/components/icons/icon-clock"
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"

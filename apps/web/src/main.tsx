@@ -18,7 +18,7 @@ import "./styles/styles.css"
 
 // Initialize app registry and mount runtimes
 // Note: RPC devtools are now integrated via Effect layers in rpc-atom-client.ts
-import { RegistryContext } from "@effect-atom/atom-react"
+import { RegistryContext } from "@effect/atom-react"
 import { appRegistry } from "./lib/registry.ts"
 
 // Initialize Tauri-specific features (no-op in browser)

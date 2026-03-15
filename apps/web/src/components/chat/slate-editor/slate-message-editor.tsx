@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomSet } from "@effect-atom/atom-react"
+import { useAtomSet } from "@effect/atom-react"
 import type { BotId, ChannelId, OrganizationId } from "@hazel/schema"
 import { Exit, pipe } from "effect"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"

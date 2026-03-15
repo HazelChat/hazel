@@ -1,4 +1,4 @@
-import { HttpApiMiddleware, HttpApiSecurity } from "@effect/platform"
+import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi"
 import { Context as C, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
 import { OrganizationId, UserId } from "@hazel/schema"

@@ -1,4 +1,4 @@
-import { Result, useAtomValue } from "@effect-atom/atom-react"
+import { Result, useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"

@@ -6,7 +6,7 @@ import {
 	WorkOSUserFetchError,
 } from "@hazel/domain"
 import { UserRepo } from "@hazel/backend-core"
-import { Effect } from "effect"
+import { ServiceMap, Effect } from "effect"
 
 /**
  * Session management service that handles authentication via WorkOS.
@@ -14,10 +14,9 @@ import { Effect } from "effect"
  *
  * This service delegates to @hazel/auth/backend for the actual authentication logic.
  */
-export class SessionManager extends Effect.Service<SessionManager>()("SessionManager", {
-	accessors: true,
+export class SessionManager extends ServiceMap.Service<SessionManager>()("SessionManager", {
 	dependencies: [BackendAuth.Default, UserRepo.Default],
-	effect: Effect.gen(function* () {
+	make: Effect.gen(function* () {
 		const auth = yield* BackendAuth
 		const userRepo = yield* UserRepo
 

@@ -8,7 +8,7 @@ import {
 	type UserId,
 } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
-import { Effect, Match, Option, pipe, Schema, Stream } from "effect"
+import { ServiceMap, Effect, Match, Option, pipe, Schema, Stream } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
@@ -17,7 +17,7 @@ import { UserRepo } from "../repositories/user-repo"
 import { WorkOSClient } from "./workos"
 
 // Error types
-export class WorkOSSyncError extends Schema.TaggedError<WorkOSSyncError>("WorkOSSyncError")(
+export class WorkOSSyncError extends Schema.TaggedErrorClass<WorkOSSyncError>("WorkOSSyncError")(
 	"WorkOSSyncError",
 	{
 		message: Schema.String,
@@ -86,9 +86,8 @@ export const normalizeWorkOSRole = (
 		Effect.orElseSucceed((): Schema.Schema.Type<typeof WorkOSRole> => "member"),
 	)
 
-export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
+	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
 		const userRepo = yield* UserRepo
@@ -976,7 +975,7 @@ export class WorkOSSync extends Effect.Service<WorkOSSync>()("WorkOSSync", {
 				),
 				Effect.tap(() => Effect.logDebug(`Successfully processed: ${event.event}`)),
 				Effect.as({ success: true }),
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					Effect.logError(`Failed to process ${event.event}`, { error }).pipe(
 						Effect.as({ success: false, error: String(error) }),
 					),

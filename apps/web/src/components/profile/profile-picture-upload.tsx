@@ -1,4 +1,4 @@
-import { useAtomRefresh, useAtomSet } from "@effect-atom/atom-react"
+import { useAtomRefresh, useAtomSet } from "@effect/atom-react"
 import { Exit } from "effect"
 import { useState } from "react"
 import { Button, type DropItem, DropZone, FileTrigger } from "react-aria-components"
