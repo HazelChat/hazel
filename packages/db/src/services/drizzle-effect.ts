@@ -260,7 +260,7 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 
 	if (!type) {
 		if (Drizzle.is(column, DrizzlePg.PgUUID)) {
-			type = Schema.UUID
+			type = Schema.String.check(Schema.isUUID())
 		} else if (column.dataType === "custom") {
 			type = Schema.Any
 		} else if (column.dataType === "json") {

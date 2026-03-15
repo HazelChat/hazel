@@ -114,7 +114,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [ChatSyncConnectionExistsError, ChatSyncIntegrationNotConnectedError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Create Chat Sync Connection",
 					description: "Create a provider-agnostic chat sync connection (Discord, Slack, etc.)",
 					summary: "Create sync connection",
@@ -129,7 +129,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "List Chat Sync Connections",
 					description: "List chat sync connections for an organization",
 					summary: "List sync connections",
@@ -144,7 +144,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Delete Chat Sync Connection",
 					description: "Soft-delete a chat sync connection",
 					summary: "Delete sync connection",
@@ -160,7 +160,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [ChatSyncConnectionNotFoundError, ChatSyncChannelLinkExistsError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Create Chat Sync Channel Link",
 					description: "Link a Hazel channel to an external provider channel",
 					summary: "Create channel link",
@@ -175,7 +175,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [ChatSyncConnectionNotFoundError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "List Chat Sync Channel Links",
 					description: "List channel links for a sync connection",
 					summary: "List channel links",
@@ -190,7 +190,7 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			error: [ChatSyncChannelLinkNotFoundError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Delete Chat Sync Channel Link",
 					description: "Soft-delete a chat sync channel link",
 					summary: "Delete channel link",

@@ -1,4 +1,4 @@
-import { Context, Option } from "effect"
+import { ServiceMap, Option } from "effect"
 import type { ApiScope } from "./api-scope"
 import { RequiredScopes } from "./required-scopes"
 
@@ -10,17 +10,17 @@ export type ScopeMap = Record<string, ReadonlyArray<ApiScope>>
 /**
  * Extracts a ScopeMap from an RpcGroup's `requests` map.
  *
- * Each entry in `requests` has an `annotations` field (a `Context.Context<never>`)
+ * Each entry in `requests` has an `annotations` field (a `ServiceMap.ServiceMap<never>`)
  * where we look up the `RequiredScopes` tag.
  */
 export const scopeMapFromRpcGroup = (
-	requests: ReadonlyMap<string, { readonly annotations: Context.Context<never> }>,
+	requests: ReadonlyMap<string, { readonly annotations: ServiceMap.ServiceMap<never> }>,
 ): ScopeMap => {
 	const map: Record<string, ReadonlyArray<ApiScope>> = {}
 	for (const [tag, rpc] of requests) {
-		const scopes = Context.getOption(rpc.annotations, RequiredScopes)
-		if (Option.isSome(scopes)) {
-			map[tag] = scopes.value
+		const scopes = ServiceMap.get(rpc.annotations, RequiredScopes) as ReadonlyArray<ApiScope> | undefined
+		if (scopes) {
+			map[tag] = scopes
 		}
 	}
 	return map

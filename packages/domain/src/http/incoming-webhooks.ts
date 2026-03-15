@@ -139,7 +139,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute Incoming Webhook",
 					description:
 						"Post a message to a channel via webhook. Supports plain text content and Discord-style embeds.",
@@ -159,7 +159,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute OpenStatus Webhook",
 					description:
 						"Receive status alerts from OpenStatus and post them as rich embeds to a channel.",
@@ -179,7 +179,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute Railway Webhook",
 					description:
 						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",

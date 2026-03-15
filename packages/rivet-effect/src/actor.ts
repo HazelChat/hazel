@@ -1,6 +1,5 @@
 import { Cause, Effect, Exit, ServiceMap } from "effect"
 import type { ActorContext } from "rivetkit"
-import type { YieldWrap } from "effect/Utils"
 import { StatePersistenceError } from "./errors.ts"
 import { runPromise, runPromiseExit } from "./runtime.ts"
 
@@ -22,7 +21,7 @@ export const provideActorContext = <A, E, R>(
 	context: unknown,
 ): Effect.Effect<A, E, Exclude<R, RivetActorContext>> =>
 	Effect.provideService(
-		effect as Effect.Effect<A, E, R | RivetActorContext>,
+		make as Effect.Effect<A, E, R | RivetActorContext>,
 		RivetActorContext,
 		context as AnyActorContext,
 	) as Effect.Effect<A, E, Exclude<R, RivetActorContext>>
@@ -154,7 +153,7 @@ export const waitUntil = <TState, TConnParams, TConnState, TVars, TInput, A = an
 	make: Effect.Effect<A, E, R>,
 ): Effect.Effect<void, never, never> =>
 	Effect.sync(() => {
-		const promise = runPromiseExit(effect, c).then((exit) => {
+		const promise = runPromiseExit(make, c).then((exit) => {
 			if (Exit.isFailure(exit)) {
 				c.log.error({
 					msg: "waitUntil effect failed",
@@ -181,11 +180,11 @@ export const destroy = <TState, TConnParams, TConnState, TVars, TInput>(
 export function effect<TState, TConnParams, TConnState, TVars, TInput, AEff = void>(
 	genFn: (
 		c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>,
-	) => Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, never>,
+	) => Generator<Effect.Yieldable.Any, AEff, never>,
 ): (c: ActorContext<TState, TConnParams, TConnState, TVars, TInput, undefined>) => Promise<AEff> {
 	return (c) => {
 		const gen = genFn(c)
-		const eff = Effect.gen<YieldWrap<Effect.Effect<any, any, any>>, AEff>(() => gen)
+		const eff = Effect.gen(() => gen)
 		return runEffectOnActorContext(c, eff)
 	}
 }

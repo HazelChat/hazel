@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as SchemaIssue from "effect/SchemaIssue"
 
-const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve, fieldFromKey } =
+const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve } =
 	VariantSchema.make({
 		variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
 		defaultVariant: "select",
@@ -58,13 +58,12 @@ export {
 	Field,
 	fieldEvolve,
 	FieldExcept,
-	fieldFromKey,
 	FieldOnly,
 	Struct,
 	Union,
 }
 
-export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[VariantSchema.TypeId] =
+export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[typeof VariantSchema.TypeId] =
 	VariantSchema.fields
 
 export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
@@ -190,17 +189,15 @@ export interface Date extends Schema.decodeTo<
 
 /** A DateTime.Utc serialized as ISO date string (YYYY-MM-DD). */
 export const Date: Date = Schema.String.pipe(
-	Schema.decodeTo(Schema.DateTimeUtc, {
-		decode: (s, _, ast) =>
-			DateTime.make(s).pipe(
-				(opt) => {
-					if (opt._tag === "Some") {
-						return Effect.succeed(DateTime.removeTime(opt.value))
-					}
-					return Effect.fail(new SchemaIssue.InvalidValue(ast, s))
-				},
-			),
-		encode: (dt) => Effect.succeed(DateTime.formatIsoDate(dt)),
+	Schema.decode({
+		decode: (s: string) => {
+			const opt = DateTime.make(s)
+			if (opt._tag === "Some") {
+				return Effect.succeed(DateTime.removeTime(opt.value))
+			}
+			return Effect.fail("Invalid date format")
+		},
+		encode: (dt: DateTime.Utc) => Effect.succeed(DateTime.formatIsoDate(dt)),
 	}),
 ) as any
 

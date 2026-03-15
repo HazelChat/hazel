@@ -50,7 +50,7 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			error: [InvalidWebhookSignature, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "WorkOS Webhook",
 					description: "Receive and process WorkOS webhook events",
 					summary: "Process WorkOS webhook events",
@@ -65,7 +65,7 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			error: [InvalidGitHubWebhookSignature, InternalServerError, WorkflowInitializationError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "GitHub App Webhook",
 					description: "Receive and process GitHub App webhook events",
 					summary: "Process GitHub App webhook events",

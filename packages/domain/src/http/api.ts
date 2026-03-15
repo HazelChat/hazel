@@ -32,7 +32,7 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(WebhookGroup)
 	.add(MockDataGroup)
 	.annotateMerge(
-		OpenApi.annotations({
+		OpenApi.annotate({
 			title: "Hazel Chat API",
 			description: "API for the Hazel chat application",
 			version: "1.0.0",

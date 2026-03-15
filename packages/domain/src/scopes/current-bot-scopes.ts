@@ -1,8 +1,8 @@
-import { FiberRef, Option } from "effect"
+import { ServiceMap, Option } from "effect"
 import type { ApiScope } from "./api-scope"
 
 /**
- * FiberRef holding the authenticated bot's granted API scopes.
+ * Service holding the authenticated bot's granted API scopes.
  *
  * Set by the auth middleware when the actor is a bot.
  * When Option.some, OrgResolver uses these scopes instead of role-based
@@ -11,4 +11,7 @@ import type { ApiScope } from "./api-scope"
  * When Option.none (default), OrgResolver falls back to role-based scopes
  * for normal (human) users.
  */
-export const CurrentBotScopes = FiberRef.unsafeMake<Option.Option<ReadonlySet<ApiScope>>>(Option.none())
+export class CurrentBotScopes extends ServiceMap.Service<CurrentBotScopes, Option.Option<ReadonlySet<ApiScope>>>()(
+	"CurrentBotScopes",
+	{ defaultValue: Option.none() },
+) {}

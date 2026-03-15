@@ -84,7 +84,7 @@ export type MessageOutboxEventRecord = typeof schema.messageOutboxEventsTable.$i
 
 const InsertMessageOutboxEventSchema = Schema.Struct({
 	eventType: MessageOutboxEventType,
-	aggregateId: Schema.UUID,
+	aggregateId: Schema.String.check(Schema.isUUID()),
 	channelId: ChannelId,
 	payload: MessageOutboxEventPayloadSchema,
 })

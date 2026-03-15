@@ -167,7 +167,7 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Fetch Linear Issue",
 					description: "Fetch Linear issue details for embedding in chat messages",
 					summary: "Get Linear issue preview data",
@@ -183,7 +183,7 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Fetch GitHub PR",
 					description: "Fetch GitHub pull request details for embedding in chat messages",
 					summary: "Get GitHub PR preview data",
@@ -202,7 +202,7 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			error: [IntegrationNotConnectedForPreviewError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get GitHub Repositories",
 					description: "List repositories accessible to the GitHub App installation",
 					summary: "List GitHub repositories",
@@ -217,7 +217,7 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Discord Guilds",
 					description: "List Discord guilds visible to the connected Discord account",
 					summary: "List Discord guilds",
@@ -235,7 +235,7 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
 		})
 			.annotateMerge(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Discord Guild Channels",
 					description: "List message-capable channels in a Discord guild using the bot token",
 					summary: "List Discord guild channels",
