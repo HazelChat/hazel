@@ -24,11 +24,9 @@ export type RadiusPreset = Schema.Schema.Type<typeof RadiusPreset>
 /**
  * Hex color string branded type (e.g., "#6938EF")
  */
-export const HexColor = Schema.String.pipe(
-	Schema.pattern(/^#[0-9A-Fa-f]{6}$/),
-	Schema.brand("HexColor"),
-	Schema.annotate({ message: () => "Must be a valid hex color (#RRGGBB)" }),
-)
+export const HexColor = Schema.String.check(
+	Schema.isPattern(/^#[0-9A-Fa-f]{6}$/, { message: "Must be a valid hex color (#RRGGBB)" }),
+).pipe(Schema.brand("HexColor"))
 export type HexColor = Schema.Schema.Type<typeof HexColor>
 
 /**

@@ -58,7 +58,7 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.update", {
 		payload: Schema.Struct({
 			id: UserId,
-		}).pipe(Schema.extend(Schema.partial(User.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(User.Model.jsonUpdate as any).fields }) as any),
 		success: UserResponse,
 		error: Schema.Union([UserNotFoundError, UnauthorizedError, InternalServerError]),
 	})

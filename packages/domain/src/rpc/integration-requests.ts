@@ -24,7 +24,7 @@ export class CreateIntegrationRequestPayload extends Schema.Class<CreateIntegrat
 	"CreateIntegrationRequestPayload",
 )({
 	organizationId: OrganizationId,
-	integrationName: Schema.NonEmptyTrimmedString,
+	integrationName: Schema.NonEmptyString,
 	integrationUrl: Schema.optional(Schema.String),
 	description: Schema.optional(Schema.String),
 }) {}

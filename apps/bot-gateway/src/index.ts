@@ -475,11 +475,11 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 						})
 
 						const ackResult = yield* Deferred.await(ackDeferred).pipe(
-							Effect.timeoutFail({
+							Effect.timeoutOrElse({
 								onTimeout: () =>
-									new GatewayProtocolError({
+									Effect.fail(new GatewayProtocolError({
 										message: `Timed out waiting for ACK from session ${id}`,
-									}),
+									})),
 								duration: config.batchAckTimeoutMs,
 							}),
 						)

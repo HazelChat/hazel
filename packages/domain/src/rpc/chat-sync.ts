@@ -88,8 +88,8 @@ export class ChatSyncRpcs extends RpcGroup.make(
 			externalWorkspaceId: Schema.String,
 			externalWorkspaceName: Schema.optional(Schema.String),
 			integrationConnectionId: Schema.optional(IntegrationConnectionId),
-			settings: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
-			metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+			settings: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
+			metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 		}),
 		success: ChatSyncConnectionResponse,
 		error: Schema.Union([
@@ -131,7 +131,7 @@ export class ChatSyncRpcs extends RpcGroup.make(
 			externalChannelId: ExternalChannelId,
 			externalChannelName: Schema.optional(Schema.String),
 			direction: Schema.optional(ChatSyncChannelLink.ChatSyncDirection),
-			settings: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+			settings: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 		}),
 		success: ChatSyncChannelLinkResponse,
 		error: Schema.Union([

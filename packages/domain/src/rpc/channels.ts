@@ -48,7 +48,7 @@ export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>
 	participantIds: Schema.Array(UserId),
 	type: Schema.Literals(["direct", "single"]),
 	name: Schema.optional(Schema.String),
-	organizationId: Schema.UUID,
+	organizationId: Schema.String.check(Schema.isUUID()),
 }) {}
 
 /**
@@ -68,12 +68,10 @@ export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("Crea
  * Uses jsonCreate which includes optional id for optimistic updates.
  * Extended with addAllMembers option to auto-add all organization members.
  */
-export const CreateChannelRequest = Schema.extend(
-	Channel.Model.jsonCreate,
-	Schema.Struct({
-		addAllMembers: Schema.optional(Schema.Boolean),
-	}),
-)
+export const CreateChannelRequest = Schema.Struct({
+	...(Channel.Model.jsonCreate as any).fields,
+	addAllMembers: Schema.optional(Schema.Boolean),
+})
 
 export class ChannelRpcs extends RpcGroup.make(
 	/**
@@ -111,7 +109,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
-		}).pipe(Schema.extend(Schema.partial(Channel.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Channel.Model.jsonUpdate as any).fields }) as any),
 		success: ChannelResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})

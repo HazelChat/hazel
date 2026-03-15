@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncProvider = Schema.NonEmptyTrimmedString
+export const ChatSyncProvider = Schema.NonEmptyString
 export type ChatSyncProvider = Schema.Schema.Type<typeof ChatSyncProvider>
 
 export const ChatSyncConnectionStatus = Schema.Literals(["active", "paused", "error", "disabled"])
@@ -17,8 +17,8 @@ export class Model extends M.Class<Model>("ChatSyncConnection")({
 	externalWorkspaceId: Schema.String,
 	externalWorkspaceName: Schema.NullOr(Schema.String),
 	status: ChatSyncConnectionStatus,
-	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
-	metadata: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
+	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	errorMessage: Schema.NullOr(Schema.String),
 	lastSyncedAt: Schema.NullOr(JsonDate),
 	createdBy: UserId,

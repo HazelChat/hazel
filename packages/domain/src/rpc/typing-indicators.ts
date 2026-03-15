@@ -36,8 +36,8 @@ export class TypingIndicatorNotFoundError extends Schema.TaggedErrorClass<Typing
 export class CreateTypingIndicatorPayload extends Schema.Class<CreateTypingIndicatorPayload>(
 	"CreateTypingIndicatorPayload",
 )({
-	channelId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelId")),
-	memberId: Schema.UUID.pipe(Schema.brand("@HazelChat/ChannelMemberId")),
+	channelId: Schema.String.check(Schema.isUUID()).pipe(Schema.brand("@HazelChat/ChannelId")),
+	memberId: Schema.String.check(Schema.isUUID()).pipe(Schema.brand("@HazelChat/ChannelMemberId")),
 	lastTyped: Schema.optional(Schema.Number),
 }) {}
 

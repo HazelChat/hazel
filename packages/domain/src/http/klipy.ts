@@ -71,8 +71,8 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 	.add(
 		HttpApiEndpoint.get("trending", "/trending", {
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
-				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 25)),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "25")),
 			},
 			success: KlipySearchResponse,
 			error: KlipyApiError,
@@ -83,8 +83,8 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 		HttpApiEndpoint.get("search", "/search", {
 			query: {
 				q: Schema.String,
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
-				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 25)),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "25")),
 			},
 			success: KlipySearchResponse,
 			error: KlipyApiError,

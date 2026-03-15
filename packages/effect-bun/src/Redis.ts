@@ -239,9 +239,9 @@ export class Redis extends ServiceMap.Service<Redis,
 					Effect.timeoutOrElse({
 						duration: Duration.seconds(10),
 						onTimeout: () =>
-							new RedisError({
+							Effect.fail(new RedisError({
 								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
-							}),
+							})),
 					}),
 				)
 
@@ -273,9 +273,9 @@ export class Redis extends ServiceMap.Service<Redis,
 				Effect.timeoutOrElse({
 					duration: Duration.seconds(10),
 					onTimeout: () =>
-						new RedisError({
+						Effect.fail(new RedisError({
 							message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
-						}),
+						})),
 				}),
 			)
 

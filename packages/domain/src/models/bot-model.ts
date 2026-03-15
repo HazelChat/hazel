@@ -14,10 +14,7 @@ export class Model extends M.Class<Model>("Bot")({
 	apiTokenHash: Schema.String,
 	scopes: Schema.NullOr(Schema.Array(Schema.String)),
 	metadata: Schema.NullOr(
-		Schema.Record({
-			key: Schema.String,
-			value: Schema.Unknown,
-		}),
+		Schema.Record(Schema.String, Schema.Unknown),
 	),
 	isPublic: Schema.Boolean,
 	installCount: Schema.Number,

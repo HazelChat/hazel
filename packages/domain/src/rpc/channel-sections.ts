@@ -70,7 +70,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.update", {
 		payload: Schema.Struct({
 			id: ChannelSectionId,
-		}).pipe(Schema.extend(Schema.partial(ChannelSection.Model.jsonUpdate))),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(ChannelSection.Model.jsonUpdate as any).fields }) as any),
 		success: ChannelSectionResponse,
 		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})

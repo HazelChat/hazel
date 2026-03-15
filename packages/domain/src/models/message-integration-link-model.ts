@@ -16,7 +16,7 @@ export class Model extends M.Class<Model>("MessageIntegrationLink")({
 	externalUrl: Schema.String,
 	externalTitle: Schema.NullOr(Schema.String),
 	linkType: LinkType,
-	metadata: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(JsonDate),
 }) {}

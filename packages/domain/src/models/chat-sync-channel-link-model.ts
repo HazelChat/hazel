@@ -11,9 +11,9 @@ export type ChatSyncOutboundIdentityStrategy = Schema.Schema.Type<typeof ChatSyn
 
 export const DiscordWebhookOutboundIdentityConfig = Schema.Struct({
 	kind: Schema.Literal("discord.webhook"),
-	webhookId: Schema.NonEmptyTrimmedString,
-	webhookToken: Schema.NonEmptyTrimmedString,
-	defaultAvatarUrl: Schema.optional(Schema.NonEmptyTrimmedString),
+	webhookId: Schema.NonEmptyString,
+	webhookToken: Schema.NonEmptyString,
+	defaultAvatarUrl: Schema.optional(Schema.NonEmptyString),
 })
 export type DiscordWebhookOutboundIdentityConfig = Schema.Schema.Type<
 	typeof DiscordWebhookOutboundIdentityConfig
@@ -21,8 +21,8 @@ export type DiscordWebhookOutboundIdentityConfig = Schema.Schema.Type<
 
 export const SlackWebhookOutboundIdentityConfig = Schema.Struct({
 	kind: Schema.Literal("slack.webhook"),
-	webhookUrl: Schema.NonEmptyTrimmedString,
-	defaultIconUrl: Schema.optional(Schema.NonEmptyTrimmedString),
+	webhookUrl: Schema.NonEmptyString,
+	defaultIconUrl: Schema.optional(Schema.NonEmptyString),
 })
 export type SlackWebhookOutboundIdentityConfig = Schema.Schema.Type<typeof SlackWebhookOutboundIdentityConfig>
 
@@ -30,15 +30,12 @@ export const ProviderOutboundConfig = Schema.Union([
 	DiscordWebhookOutboundIdentityConfig,
 	SlackWebhookOutboundIdentityConfig,
 	Schema.Struct({
-		kind: Schema.NonEmptyTrimmedString,
+		kind: Schema.NonEmptyString,
 	}),
 ])
 export type ProviderOutboundConfig = Schema.Schema.Type<typeof ProviderOutboundConfig>
 
-export const OutboundIdentityProviders = Schema.Record({
-	key: Schema.String,
-	value: ProviderOutboundConfig,
-})
+export const OutboundIdentityProviders = Schema.Record(Schema.String, ProviderOutboundConfig)
 
 export const OutboundIdentitySettings = Schema.Struct({
 	enabled: Schema.Boolean,
@@ -55,7 +52,7 @@ export class Model extends M.Class<Model>("ChatSyncChannelLink")({
 	externalChannelName: Schema.NullOr(Schema.String),
 	direction: ChatSyncDirection,
 	isActive: Schema.Boolean,
-	settings: Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	lastSyncedAt: Schema.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),
 	updatedAt: M.Generated(Schema.NullOr(JsonDate)),

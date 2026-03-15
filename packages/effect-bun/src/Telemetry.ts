@@ -2,7 +2,7 @@ import { BunSocket } from "@effect/platform-bun"
 import { Config, Effect, Layer } from "effect"
 import { DevTools } from "effect/unstable/devtools"
 import { FetchHttpClient } from "effect/unstable/http"
-import { Otlp } from "effect/unstable/observability"
+import { Otlp, OtlpSerialization } from "effect/unstable/observability"
 
 /**
  * Create an OpenTelemetry tracing layer with a specific service name.
@@ -61,6 +61,9 @@ export const createTracingLayer = (otelServiceName: string) =>
 						"deployment.commit_sha": commitSha,
 					},
 				},
-			}).pipe(Layer.provide(FetchHttpClient.layer))
+			}).pipe(
+				Layer.provide(FetchHttpClient.layer),
+				Layer.provide(OtlpSerialization.layerJson),
+			)
 		}),
 	)

@@ -195,8 +195,8 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`, {
 			params: { orgId: OrganizationId },
 			query: {
-				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
-				perPage: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 30)),
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
+				perPage: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "30")),
 			},
 			success: GitHubRepositoriesResponse,
 			error: [IntegrationNotConnectedForPreviewError, UnauthorizedError, InternalServerError],

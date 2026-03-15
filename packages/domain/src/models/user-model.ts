@@ -10,10 +10,9 @@ export type UserType = Schema.Schema.Type<typeof UserType>
 /**
  * Time in HH:MM format (00:00 - 23:59)
  */
-export const TimeString = Schema.String.pipe(
-	Schema.pattern(/^([01]\d|2[0-3]):([0-5]\d)$/),
-	Schema.brand("TimeString"),
-)
+export const TimeString = Schema.String.check(
+	Schema.isPattern(/^([01]\d|2[0-3]):([0-5]\d)$/),
+).pipe(Schema.brand("TimeString"))
 export type TimeString = Schema.Schema.Type<typeof TimeString>
 
 /**
@@ -34,7 +33,7 @@ export class Model extends M.Class<Model>("User")({
 	email: Schema.String,
 	firstName: Schema.String,
 	lastName: Schema.String,
-	avatarUrl: Schema.NullishOr(Schema.NonEmptyTrimmedString),
+	avatarUrl: Schema.NullishOr(Schema.NonEmptyString),
 	userType: UserType,
 	settings: Schema.NullOr(UserSettingsSchema),
 	isOnboarded: Schema.Boolean,
