@@ -16,12 +16,13 @@ export class MarkOfflineResponse extends Schema.Class<MarkOfflineResponse>("Mark
 
 export class PresencePublicGroup extends HttpApiGroup.make("presencePublic")
 	.add(
-		HttpApiEndpoint.post("markOffline")`/offline`
-			.setPayload(MarkOfflinePayload)
-			.addSuccess(MarkOfflineResponse)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.post("markOffline", "/offline", {
+			payload: MarkOfflinePayload,
+			success: MarkOfflineResponse,
+			error: InternalServerError,
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Mark User Offline",
 					description: "Mark a user as offline when they close their tab (no auth required)",
 					summary: "Mark offline",

@@ -35,19 +35,27 @@ const BaseUploadFields = {
 	fileSize: Schema.Number,
 }
 
+const allowedAvatarTypeFilter = Schema.makeFilter<string>(
+	(s) => ALLOWED_AVATAR_TYPES.includes(s as (typeof ALLOWED_AVATAR_TYPES)[number])
+		? undefined
+		: "Content type must be image/jpeg, image/png, or image/webp",
+)
+
+const allowedEmojiTypeFilter = Schema.makeFilter<string>(
+	(s) => ALLOWED_EMOJI_TYPES.includes(s as (typeof ALLOWED_EMOJI_TYPES)[number])
+		? undefined
+		: "Content type must be image/png, image/gif, or image/webp",
+)
+
 /**
  * User avatar upload request
  */
 export class UserAvatarUploadRequest extends Schema.Class<UserAvatarUploadRequest>("UserAvatarUploadRequest")(
 	{
 		type: Schema.Literal("user-avatar"),
-		contentType: Schema.String.pipe(
-			Schema.filter((s) => ALLOWED_AVATAR_TYPES.includes(s as (typeof ALLOWED_AVATAR_TYPES)[number]), {
-				message: () => "Content type must be image/jpeg, image/png, or image/webp",
-			}),
-		),
-		fileSize: Schema.Number.pipe(
-			Schema.isBetween(1, MAX_AVATAR_SIZE, {
+		contentType: Schema.String.check(allowedAvatarTypeFilter),
+		fileSize: Schema.Number.check(
+			Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
 				message: () => "File size must be between 1 byte and 5MB",
 			}),
 		),
@@ -60,13 +68,9 @@ export class UserAvatarUploadRequest extends Schema.Class<UserAvatarUploadReques
 export class BotAvatarUploadRequest extends Schema.Class<BotAvatarUploadRequest>("BotAvatarUploadRequest")({
 	type: Schema.Literal("bot-avatar"),
 	botId: BotId,
-	contentType: Schema.String.pipe(
-		Schema.filter((s) => ALLOWED_AVATAR_TYPES.includes(s as (typeof ALLOWED_AVATAR_TYPES)[number]), {
-			message: () => "Content type must be image/jpeg, image/png, or image/webp",
-		}),
-	),
-	fileSize: Schema.Number.pipe(
-		Schema.isBetween(1, MAX_AVATAR_SIZE, {
+	contentType: Schema.String.check(allowedAvatarTypeFilter),
+	fileSize: Schema.Number.check(
+		Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
 			message: () => "File size must be between 1 byte and 5MB",
 		}),
 	),
@@ -80,13 +84,9 @@ export class OrganizationAvatarUploadRequest extends Schema.Class<OrganizationAv
 )({
 	type: Schema.Literal("organization-avatar"),
 	organizationId: OrganizationId,
-	contentType: Schema.String.pipe(
-		Schema.filter((s) => ALLOWED_AVATAR_TYPES.includes(s as (typeof ALLOWED_AVATAR_TYPES)[number]), {
-			message: () => "Content type must be image/jpeg, image/png, or image/webp",
-		}),
-	),
-	fileSize: Schema.Number.pipe(
-		Schema.isBetween(1, MAX_AVATAR_SIZE, {
+	contentType: Schema.String.check(allowedAvatarTypeFilter),
+	fileSize: Schema.Number.check(
+		Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
 			message: () => "File size must be between 1 byte and 5MB",
 		}),
 	),
@@ -100,8 +100,8 @@ export class AttachmentUploadRequest extends Schema.Class<AttachmentUploadReques
 		type: Schema.Literal("attachment"),
 		fileName: Schema.String,
 		contentType: Schema.String,
-		fileSize: Schema.Number.pipe(
-			Schema.isBetween(1, MAX_ATTACHMENT_SIZE, {
+		fileSize: Schema.Number.check(
+			Schema.isBetween({ minimum: 1, maximum: MAX_ATTACHMENT_SIZE }, {
 				message: () => "File size must be between 1 byte and 10MB",
 			}),
 		),
@@ -118,13 +118,9 @@ export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequ
 )({
 	type: Schema.Literal("custom-emoji"),
 	organizationId: OrganizationId,
-	contentType: Schema.String.pipe(
-		Schema.filter((s) => ALLOWED_EMOJI_TYPES.includes(s as (typeof ALLOWED_EMOJI_TYPES)[number]), {
-			message: () => "Content type must be image/png, image/gif, or image/webp",
-		}),
-	),
-	fileSize: Schema.Number.pipe(
-		Schema.isBetween(1, MAX_EMOJI_SIZE, {
+	contentType: Schema.String.check(allowedEmojiTypeFilter),
+	fileSize: Schema.Number.check(
+		Schema.isBetween({ minimum: 1, maximum: MAX_EMOJI_SIZE }, {
 			message: () => "File size must be between 1 byte and 256KB",
 		}),
 	),
@@ -199,15 +195,18 @@ export class OrganizationNotFoundForUploadError extends Schema.TaggedErrorClass<
  */
 export class UploadsGroup extends HttpApiGroup.make("uploads")
 	.add(
-		HttpApiEndpoint.post("presign", "/presign")
-			.setPayload(PresignUploadRequest)
-			.addSuccess(PresignUploadResponse)
-			.addError(UploadError)
-			.addError(BotNotFoundForUploadError)
-			.addError(OrganizationNotFoundForUploadError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.addError(RateLimitExceededError)
+		HttpApiEndpoint.post("presign", "/presign", {
+			payload: PresignUploadRequest,
+			success: PresignUploadResponse,
+			error: [
+				UploadError,
+				BotNotFoundForUploadError,
+				OrganizationNotFoundForUploadError,
+				UnauthorizedError,
+				InternalServerError,
+				RateLimitExceededError,
+			],
+		})
 			.annotate(RequiredScopes, ["attachments:write"]),
 	)
 	.prefix("/uploads")

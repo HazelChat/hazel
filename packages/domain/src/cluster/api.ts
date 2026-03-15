@@ -23,4 +23,4 @@ export const workflows = [
 // HTTP API definition for the cluster service
 export class WorkflowApi extends HttpApi.make("api")
 	.add(WorkflowProxy.toHttpApiGroup("workflows", workflows))
-	.add(HttpApiGroup.make("health").add(HttpApiEndpoint.get("ok")`/health`.addSuccess(Schema.String))) {}
+	.add(HttpApiGroup.make("health").add(HttpApiEndpoint.get("ok", "/health", { success: Schema.String }))) {}

@@ -69,34 +69,33 @@ export class KlipyApiError extends Schema.TaggedErrorClass<KlipyApiError>("Klipy
 
 export class KlipyGroup extends HttpApiGroup.make("klipy")
 	.add(
-		HttpApiEndpoint.get("trending", "/trending")
-			.setUrlParams(
-				Schema.Struct({
-					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
-					per_page: Schema.optional(Schema.NumberFromString, { default: () => 25 }),
-				}),
-			)
-			.addSuccess(KlipySearchResponse)
-			.addError(KlipyApiError)
+		HttpApiEndpoint.get("trending", "/trending", {
+			query: {
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 25)),
+			},
+			success: KlipySearchResponse,
+			error: KlipyApiError,
+		})
 			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("search", "/search")
-			.setUrlParams(
-				Schema.Struct({
-					q: Schema.String,
-					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
-					per_page: Schema.optional(Schema.NumberFromString, { default: () => 25 }),
-				}),
-			)
-			.addSuccess(KlipySearchResponse)
-			.addError(KlipyApiError)
+		HttpApiEndpoint.get("search", "/search", {
+			query: {
+				q: Schema.String,
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 25)),
+			},
+			success: KlipySearchResponse,
+			error: KlipyApiError,
+		})
 			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("categories", "/categories")
-			.addSuccess(KlipyCategoriesResponse)
-			.addError(KlipyApiError)
+		HttpApiEndpoint.get("categories", "/categories", {
+			success: KlipyCategoriesResponse,
+			error: KlipyApiError,
+		})
 			.annotate(RequiredScopes, ["messages:read"]),
 	)
 	.prefix("/klipy")

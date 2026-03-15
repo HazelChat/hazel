@@ -44,13 +44,13 @@ export class InvalidGitHubWebhookSignature extends Schema.TaggedErrorClass<Inval
 
 export class WebhookGroup extends HttpApiGroup.make("webhooks")
 	.add(
-		HttpApiEndpoint.post("workos")`/workos`
-			.setPayload(Schema.Unknown)
-			.addSuccess(WebhookResponse)
-			.addError(InvalidWebhookSignature)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.post("workos", "/workos", {
+			payload: Schema.Unknown,
+			success: WebhookResponse,
+			error: [InvalidWebhookSignature, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "WorkOS Webhook",
 					description: "Receive and process WorkOS webhook events",
 					summary: "Process WorkOS webhook events",
@@ -59,14 +59,13 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
-		HttpApiEndpoint.post("github")`/github`
-			.setPayload(Schema.Unknown)
-			.addSuccess(GitHubWebhookResponse)
-			.addError(InvalidGitHubWebhookSignature)
-			.addError(InternalServerError)
-			.addError(WorkflowInitializationError)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.post("github", "/github", {
+			payload: Schema.Unknown,
+			success: GitHubWebhookResponse,
+			error: [InvalidGitHubWebhookSignature, InternalServerError, WorkflowInitializationError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "GitHub App Webhook",
 					description: "Receive and process GitHub App webhook events",
 					summary: "Process GitHub App webhook events",

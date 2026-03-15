@@ -26,14 +26,13 @@ export class ValidateBotTokenResponse extends Schema.Class<ValidateBotTokenRespo
 
 export class InternalApiGroup extends HttpApiGroup.make("internal")
 	.add(
-		HttpApiEndpoint.post("validateBotToken")`/actors/validate-bot-token`
-			.addSuccess(ValidateBotTokenResponse)
-			.addError(InvalidBearerTokenError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPayload(ValidateBotTokenRequest)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.post("validateBotToken", "/actors/validate-bot-token", {
+			payload: ValidateBotTokenRequest,
+			success: ValidateBotTokenResponse,
+			error: [InvalidBearerTokenError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Validate Bot Token",
 					description:
 						"Validate a bot token and return the bot identity. Used by actors for authentication.",

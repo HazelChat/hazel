@@ -28,13 +28,13 @@ export class GenerateMockDataResponse extends Schema.Class<GenerateMockDataRespo
 
 export class MockDataGroup extends HttpApiGroup.make("mockData")
 	.add(
-		HttpApiEndpoint.post("generate")`/generate`
-			.setPayload(GenerateMockDataRequest)
-			.addSuccess(GenerateMockDataResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.post("generate", "/generate", {
+			payload: GenerateMockDataRequest,
+			success: GenerateMockDataResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Generate Mock Data",
 					description: "Generate mock data for an organization",
 					summary: "Generate test data",

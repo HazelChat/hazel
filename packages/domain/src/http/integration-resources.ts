@@ -160,25 +160,14 @@ export class IntegrationResourceError extends Schema.TaggedErrorClass<Integratio
 // API Group for integration resources
 export class IntegrationResourceGroup extends HttpApiGroup.make("integration-resources")
 	.add(
-		HttpApiEndpoint.get("fetchLinearIssue", `/:orgId/linear/issue`)
-			.addSuccess(LinearIssueResourceResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(ResourceNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					url: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("fetchLinearIssue", `/:orgId/linear/issue`, {
+			params: { orgId: OrganizationId },
+			query: { url: Schema.String },
+			success: LinearIssueResourceResponse,
+			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Fetch Linear Issue",
 					description: "Fetch Linear issue details for embedding in chat messages",
 					summary: "Get Linear issue preview data",
@@ -187,25 +176,14 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`)
-			.addSuccess(GitHubPRResourceResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(ResourceNotFoundError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					url: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("fetchGitHubPR", `/:orgId/github/pr`, {
+			params: { orgId: OrganizationId },
+			query: { url: Schema.String },
+			success: GitHubPRResourceResponse,
+			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Fetch GitHub PR",
 					description: "Fetch GitHub pull request details for embedding in chat messages",
 					summary: "Get GitHub PR preview data",
@@ -214,24 +192,17 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`)
-			.addSuccess(GitHubRepositoriesResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.setUrlParams(
-				Schema.Struct({
-					page: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
-					perPage: Schema.optional(Schema.NumberFromString, { default: () => 30 }),
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("getGitHubRepositories", `/:orgId/github/repositories`, {
+			params: { orgId: OrganizationId },
+			query: {
+				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 1)),
+				perPage: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => 30)),
+			},
+			success: GitHubRepositoriesResponse,
+			error: [IntegrationNotConnectedForPreviewError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Get GitHub Repositories",
 					description: "List repositories accessible to the GitHub App installation",
 					summary: "List GitHub repositories",
@@ -240,19 +211,13 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`)
-			.addSuccess(DiscordGuildsResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`, {
+			params: { orgId: OrganizationId },
+			success: DiscordGuildsResponse,
+			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Get Discord Guilds",
 					description: "List Discord guilds visible to the connected Discord account",
 					summary: "List Discord guilds",
@@ -261,20 +226,16 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			.annotate(RequiredScopes, ["integration-connections:read"]),
 	)
 	.add(
-		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`)
-			.addSuccess(DiscordGuildChannelsResponse)
-			.addError(IntegrationNotConnectedForPreviewError)
-			.addError(IntegrationResourceError)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-					guildId: Schema.String,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("getDiscordGuildChannels", `/:orgId/discord/guilds/:guildId/channels`, {
+			params: {
+				orgId: OrganizationId,
+				guildId: Schema.String,
+			},
+			success: DiscordGuildChannelsResponse,
+			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Get Discord Guild Channels",
 					description: "List message-capable channels in a Discord guild using the bot token",
 					summary: "List Discord guild channels",

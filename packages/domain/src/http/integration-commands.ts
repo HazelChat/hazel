@@ -60,17 +60,13 @@ export class AvailableCommandsResponse extends Schema.Class<AvailableCommandsRes
 export class IntegrationCommandGroup extends HttpApiGroup.make("integration-commands")
 	// Get available commands for the current organization
 	.add(
-		HttpApiEndpoint.get("getAvailableCommands", `/:orgId/commands`)
-			.addSuccess(AvailableCommandsResponse)
-			.addError(UnauthorizedError)
-			.addError(InternalServerError)
-			.setPath(
-				Schema.Struct({
-					orgId: OrganizationId,
-				}),
-			)
-			.annotateContext(
-				OpenApi.annotate({
+		HttpApiEndpoint.get("getAvailableCommands", `/:orgId/commands`, {
+			params: { orgId: OrganizationId },
+			success: AvailableCommandsResponse,
+			error: [UnauthorizedError, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
 					title: "Get Available Commands",
 					description: "Get all slash commands available from installed bots",
 					summary: "List bot commands",

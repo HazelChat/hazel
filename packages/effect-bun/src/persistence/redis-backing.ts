@@ -11,7 +11,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 	const redis = yield* Redis
 
 	return Persistence.BackingPersistence.of({
-		[Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
+		[Persistence.BackingPersistence]: Persistence.BackingPersistence,
 		make: (prefix) =>
 			Effect.sync(() => {
 				const prefixed = (key: string) => `${prefix}:${key}`
@@ -20,7 +20,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 					if (str === null) return Effect.succeedNone
 					return Effect.try({
 						try: () => Option.some(JSON.parse(str)),
-						catch: (error) => Persistence.PersistenceBackingError.make(method, error),
+						catch: (error) => Persistence.PersistenceError.make(method, error),
 					})
 				}
 
@@ -31,7 +31,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 								.get(prefixed(key))
 								.pipe(
 									Effect.mapError((error) =>
-										Persistence.PersistenceBackingError.make("get", error),
+										Persistence.PersistenceError.make("get", error),
 									),
 								),
 							parse("get"),
@@ -43,7 +43,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 								.send<(string | null)[]>("MGET", keys.map(prefixed))
 								.pipe(
 									Effect.mapError((error) =>
-										Persistence.PersistenceBackingError.make("getMany", error),
+										Persistence.PersistenceError.make("getMany", error),
 									),
 								),
 							Effect.forEach(parse("getMany")),
@@ -53,7 +53,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 						Effect.gen(function* () {
 							const serialized = yield* Effect.try({
 								try: () => JSON.stringify(value),
-								catch: (error) => Persistence.PersistenceBackingError.make("set", error),
+								catch: (error) => Persistence.PersistenceError.make("set", error),
 							})
 
 							const pkey = prefixed(key)
@@ -68,7 +68,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 									])
 									.pipe(
 										Effect.mapError((error) =>
-											Persistence.PersistenceBackingError.make("set", error),
+											Persistence.PersistenceError.make("set", error),
 										),
 									)
 							} else {
@@ -76,7 +76,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 									.set(pkey, serialized)
 									.pipe(
 										Effect.mapError((error) =>
-											Persistence.PersistenceBackingError.make("set", error),
+											Persistence.PersistenceError.make("set", error),
 										),
 									)
 							}
@@ -97,7 +97,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 										])
 										.pipe(
 											Effect.mapError((error) =>
-												Persistence.PersistenceBackingError.make("setMany", error),
+												Persistence.PersistenceError.make("setMany", error),
 											),
 										)
 								} else {
@@ -105,7 +105,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 										.set(pkey, serialized)
 										.pipe(
 											Effect.mapError((error) =>
-												Persistence.PersistenceBackingError.make("setMany", error),
+												Persistence.PersistenceError.make("setMany", error),
 											),
 										)
 								}
@@ -117,7 +117,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 							.del(prefixed(key))
 							.pipe(
 								Effect.mapError((error) =>
-									Persistence.PersistenceBackingError.make("remove", error),
+									Persistence.PersistenceError.make("remove", error),
 								),
 							),
 
@@ -126,7 +126,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 							.send<string[]>("KEYS", [`${prefix}:*`])
 							.pipe(
 								Effect.mapError((error) =>
-									Persistence.PersistenceBackingError.make("clear", error),
+									Persistence.PersistenceError.make("clear", error),
 								),
 							)
 						if (keys.length > 0) {
@@ -134,7 +134,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 								.send("DEL", keys)
 								.pipe(
 									Effect.mapError((error) =>
-										Persistence.PersistenceBackingError.make("clear", error),
+										Persistence.PersistenceError.make("clear", error),
 									),
 								)
 						}
