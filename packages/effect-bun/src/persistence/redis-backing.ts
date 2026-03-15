@@ -167,4 +167,4 @@ export const RedisResultPersistenceLive = Persistence.layerResult.pipe(
  * In-memory persistence layer for testing or fallback.
  * Provides: Persistence.ResultPersistence
  */
-export const MemoryResultPersistenceLive = Persistence.layerResultMemory
+export const MemoryResultPersistenceLive = Persistence.layerMemory

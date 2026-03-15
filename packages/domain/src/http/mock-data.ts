@@ -7,7 +7,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 
 export class GenerateMockDataRequest extends Schema.Class<GenerateMockDataRequest>("GenerateMockDataRequest")(
 	{
-		organizationId: Schema.UUID,
+		organizationId: Schema.String.check(Schema.isUUID()),
 	},
 ) {}
 

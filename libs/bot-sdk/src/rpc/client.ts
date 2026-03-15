@@ -51,7 +51,7 @@ export class BotRpcClient extends ServiceMap.Service<BotRpcClient,
 /**
  * Create a scoped layer that provides the RPC client
  */
-export const BotRpcClientLive = Layer.scoped(
+export const BotRpcClientLive = Layer.effect(
 	BotRpcClient,
 	Effect.gen(function* () {
 		const config = yield* BotRpcClientConfigTag

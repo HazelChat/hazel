@@ -56,7 +56,7 @@ export class UserAvatarUploadRequest extends Schema.Class<UserAvatarUploadReques
 		contentType: Schema.String.check(allowedAvatarTypeFilter),
 		fileSize: Schema.Number.check(
 			Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
-				message: () => "File size must be between 1 byte and 5MB",
+				message: "File size must be between 1 byte and 5MB",
 			}),
 		),
 	},
@@ -71,7 +71,7 @@ export class BotAvatarUploadRequest extends Schema.Class<BotAvatarUploadRequest>
 	contentType: Schema.String.check(allowedAvatarTypeFilter),
 	fileSize: Schema.Number.check(
 		Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
-			message: () => "File size must be between 1 byte and 5MB",
+			message: "File size must be between 1 byte and 5MB",
 		}),
 	),
 }) {}
@@ -87,7 +87,7 @@ export class OrganizationAvatarUploadRequest extends Schema.Class<OrganizationAv
 	contentType: Schema.String.check(allowedAvatarTypeFilter),
 	fileSize: Schema.Number.check(
 		Schema.isBetween({ minimum: 1, maximum: MAX_AVATAR_SIZE }, {
-			message: () => "File size must be between 1 byte and 5MB",
+			message: "File size must be between 1 byte and 5MB",
 		}),
 	),
 }) {}
@@ -102,7 +102,7 @@ export class AttachmentUploadRequest extends Schema.Class<AttachmentUploadReques
 		contentType: Schema.String,
 		fileSize: Schema.Number.check(
 			Schema.isBetween({ minimum: 1, maximum: MAX_ATTACHMENT_SIZE }, {
-				message: () => "File size must be between 1 byte and 10MB",
+				message: "File size must be between 1 byte and 10MB",
 			}),
 		),
 		organizationId: OrganizationId,
@@ -121,7 +121,7 @@ export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequ
 	contentType: Schema.String.check(allowedEmojiTypeFilter),
 	fileSize: Schema.Number.check(
 		Schema.isBetween({ minimum: 1, maximum: MAX_EMOJI_SIZE }, {
-			message: () => "File size must be between 1 byte and 256KB",
+			message: "File size must be between 1 byte and 256KB",
 		}),
 	),
 }) {}

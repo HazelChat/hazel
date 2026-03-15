@@ -227,7 +227,7 @@ export class Redis extends ServiceMap.Service<Redis,
 	 * Create a Redis layer with a specific URL
 	 */
 	static readonly layer = (url: string) =>
-		Layer.scoped(
+		Layer.effect(
 			Redis,
 			Effect.gen(function* () {
 				const client = new RedisClient(url)
@@ -236,7 +236,7 @@ export class Redis extends ServiceMap.Service<Redis,
 					try: () => client.connect(),
 					catch: mapRedisError,
 				}).pipe(
-					Effect.timeoutFail({
+					Effect.timeoutOrElse({
 						duration: Duration.seconds(10),
 						onTimeout: () =>
 							new RedisError({
@@ -260,7 +260,7 @@ export class Redis extends ServiceMap.Service<Redis,
 	/**
 	 * Default Redis layer using REDIS_URL environment variable
 	 */
-	static readonly Default = Layer.scoped(
+	static readonly Default = Layer.effect(
 		Redis,
 		Effect.gen(function* () {
 			const url = yield* Config.string("REDIS_URL").pipe(Config.withDefault("redis://localhost:6379"))
@@ -270,7 +270,7 @@ export class Redis extends ServiceMap.Service<Redis,
 				try: () => client.connect(),
 				catch: mapRedisError,
 			}).pipe(
-				Effect.timeoutFail({
+				Effect.timeoutOrElse({
 					duration: Duration.seconds(10),
 					onTimeout: () =>
 						new RedisError({

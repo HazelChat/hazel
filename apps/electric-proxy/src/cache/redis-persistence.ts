@@ -18,4 +18,4 @@ export const RedisPersistenceLive = Layer.unwrapEffect(
 /**
  * In-memory persistence layer for testing or fallback.
  */
-export const MemoryPersistenceLive = Persistence.layerResultMemory
+export const MemoryPersistenceLive = Persistence.layerMemory

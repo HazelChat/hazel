@@ -80,7 +80,7 @@ const makeAuthMiddlewareLayer = (options?: {
 	const sessionManagerLayer = options?.sessionManagerLayer ?? createMockSessionManagerLive()
 	const presenceRepoLayer = options?.presenceRepoLayer ?? createMockPresenceRepoLive()
 
-	return Layer.scoped(
+	return Layer.effect(
 		AuthMiddleware,
 		Effect.gen(function* () {
 			const sessionManager = yield* SessionManager
