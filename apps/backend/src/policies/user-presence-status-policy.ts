@@ -1,4 +1,4 @@
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { makePolicy } from "../lib/policy-utils"
 
 export class UserPresenceStatusPolicy extends ServiceMap.Service<UserPresenceStatusPolicy>()(
@@ -18,6 +18,7 @@ export class UserPresenceStatusPolicy extends ServiceMap.Service<UserPresenceSta
 
 			return { canUpdate, canDelete, canRead, canCreate } as const
 		}),
-		dependencies: [],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect)
+}

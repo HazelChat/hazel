@@ -56,7 +56,9 @@ export class BotAuth extends ServiceMap.Service<BotAuth>()("BotAuth", {
 				}),
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 /**
  * Helper to create auth context from bot token by calling the backend API

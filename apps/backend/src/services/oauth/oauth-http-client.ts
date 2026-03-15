@@ -6,7 +6,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type { OAuthIntegrationProvider } from "./provider-config"
 
@@ -277,5 +277,8 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 			refreshToken: wrappedRefreshToken,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

@@ -158,4 +158,6 @@ export class WorkOSWebhookVerifier extends ServiceMap.Service<WorkOSWebhookVerif
 			computeSignature,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

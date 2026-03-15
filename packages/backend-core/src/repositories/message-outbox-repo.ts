@@ -31,25 +31,25 @@ export const ReactionDeletedPayloadSchema = Schema.Struct({
 	userId: Schema.optional(UserId),
 })
 
-export const MessageOutboxEventType = Schema.Literal(
+export const MessageOutboxEventType = Schema.Literals([
 	"message_created",
 	"message_updated",
 	"message_deleted",
 	"reaction_created",
 	"reaction_deleted",
-)
+])
 export type MessageOutboxEventType = Schema.Schema.Type<typeof MessageOutboxEventType>
 
-export const MessageOutboxEventStatus = Schema.Literal("pending", "processing", "processed", "failed")
+export const MessageOutboxEventStatus = Schema.Literals(["pending", "processing", "processed", "failed"])
 export type MessageOutboxEventStatus = Schema.Schema.Type<typeof MessageOutboxEventStatus>
 
-export const MessageOutboxEventPayloadSchema = Schema.Union(
+export const MessageOutboxEventPayloadSchema = Schema.Union([
 	MessageCreatedPayloadSchema,
 	MessageUpdatedPayloadSchema,
 	MessageDeletedPayloadSchema,
 	ReactionCreatedPayloadSchema,
 	ReactionDeletedPayloadSchema,
-)
+])
 export type MessageOutboxEventPayload = Schema.Schema.Type<typeof MessageOutboxEventPayloadSchema>
 
 export type MessageCreatedPayload = Schema.Schema.Type<typeof MessageCreatedPayloadSchema>
@@ -267,4 +267,6 @@ export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("
 			markFailed,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

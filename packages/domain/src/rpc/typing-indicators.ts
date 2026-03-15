@@ -88,7 +88,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	Rpc.make("typingIndicator.create", {
 		payload: CreateTypingIndicatorPayload,
 		success: TypingIndicatorResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),
@@ -111,7 +111,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 			lastTyped: Schema.optional(Schema.Number),
 		}),
 		success: TypingIndicatorResponse,
-		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),
@@ -131,7 +131,7 @@ export class TypingIndicatorRpcs extends RpcGroup.make(
 	Rpc.make("typingIndicator.delete", {
 		payload: Schema.Struct({ id: TypingIndicatorId }),
 		success: TypingIndicatorResponse,
-		error: Schema.Union(TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([TypingIndicatorNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["typing-indicators:write"])
 		.middleware(AuthMiddleware),

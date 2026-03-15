@@ -1,5 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as ServiceMap from "effect/ServiceMap"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 
@@ -25,4 +26,6 @@ export class NetworkMonitor extends ServiceMap.Service<NetworkMonitor>()("Networ
 
 		return { latch, ref }
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

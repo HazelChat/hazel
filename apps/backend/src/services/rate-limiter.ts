@@ -59,7 +59,6 @@ end
  * Rate limiter service backed by Redis via @hazel/effect-bun
  */
 export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter", {
-	dependencies: [Redis.Default],
 	make: Effect.gen(function* () {
 		const redis = yield* Redis
 
@@ -98,7 +97,11 @@ export class RateLimiter extends ServiceMap.Service<RateLimiter>()("RateLimiter"
 					),
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(Redis.Default),
+	)
+}
 
 /**
  * In-memory rate limiter for testing (no Redis required)

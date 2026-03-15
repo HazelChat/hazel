@@ -55,4 +55,6 @@ export class CredentialValidator extends ServiceMap.Service<CredentialValidator>
 					}),
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

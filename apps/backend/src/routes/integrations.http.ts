@@ -33,13 +33,13 @@ import { OAuthProviderRegistry } from "../services/oauth"
 const OAuthState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
-	level: Schema.optionalWith(Schema.Literal("organization", "user"), {
+	level: Schema.optionalWith(Schema.Literals(["organization", "user"]), {
 		default: () => "organization",
 	}),
 	/** Full URL to redirect after OAuth completes (e.g., http://localhost:3000/org/settings/integrations/github) */
 	returnTo: Schema.String,
 	/** Environment that initiated the OAuth flow. Used to redirect back to localhost for local dev. */
-	environment: Schema.optional(Schema.Literal("local", "production")),
+	environment: Schema.optional(Schema.Literals(["local", "production"])),
 })
 
 /**
@@ -414,11 +414,11 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 const OAuthSessionState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
-	level: Schema.optionalWith(Schema.Literal("organization", "user"), {
+	level: Schema.optionalWith(Schema.Literals(["organization", "user"]), {
 		default: () => "organization",
 	}),
 	returnTo: Schema.String,
-	environment: Schema.optional(Schema.Literal("local", "production")),
+	environment: Schema.optional(Schema.Literals(["local", "production"])),
 	createdAt: Schema.Number,
 })
 

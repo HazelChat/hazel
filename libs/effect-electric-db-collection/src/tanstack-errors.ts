@@ -5,7 +5,7 @@ import { Schema } from "effect"
  */
 export const ValidationIssue = Schema.Struct({
 	message: Schema.String,
-	path: Schema.optional(Schema.Array(Schema.Union(Schema.String, Schema.Number))),
+	path: Schema.optional(Schema.Array(Schema.Union([Schema.String, Schema.Number]))),
 })
 
 export type ValidationIssue = typeof ValidationIssue.Type
@@ -25,7 +25,7 @@ export class DuplicateKeyEffectError extends Schema.TaggedErrorClass<DuplicateKe
 	"DuplicateKeyEffectError",
 	{
 		message: Schema.String,
-		key: Schema.Union(Schema.String, Schema.Number),
+		key: Schema.Union([Schema.String, Schema.Number]),
 		collectionId: Schema.optional(Schema.String),
 	},
 ) {}
@@ -40,8 +40,8 @@ export class KeyUpdateNotAllowedEffectError extends Schema.TaggedErrorClass<KeyU
 	"KeyUpdateNotAllowedEffectError",
 	{
 		message: Schema.String,
-		originalKey: Schema.Union(Schema.String, Schema.Number),
-		newKey: Schema.Union(Schema.String, Schema.Number),
+		originalKey: Schema.Union([Schema.String, Schema.Number]),
+		newKey: Schema.Union([Schema.String, Schema.Number]),
 	},
 ) {}
 
@@ -69,7 +69,7 @@ export class SchemaValidationEffectError extends Schema.TaggedErrorClass<SchemaV
 	"SchemaValidationEffectError",
 	{
 		message: Schema.String,
-		operation: Schema.Literal("insert", "update"),
+		operation: Schema.Literals(["insert", "update"]),
 		issues: Schema.Array(ValidationIssue),
 	},
 ) {}
@@ -90,8 +90,8 @@ export class KeyNotFoundEffectError extends Schema.TaggedErrorClass<KeyNotFoundE
 	"KeyNotFoundEffectError",
 	{
 		message: Schema.String,
-		key: Schema.Union(Schema.String, Schema.Number),
-		operation: Schema.Literal("update", "delete"),
+		key: Schema.Union([Schema.String, Schema.Number]),
+		operation: Schema.Literals(["update", "delete"]),
 	},
 ) {}
 
@@ -120,7 +120,7 @@ export class TransactionStateEffectError extends Schema.TaggedErrorClass<Transac
 	"TransactionStateEffectError",
 	{
 		message: Schema.String,
-		state: Schema.Literal("not-pending-mutate", "already-completed-rollback", "not-pending-commit"),
+		state: Schema.Literals(["not-pending-mutate", "already-completed-rollback", "not-pending-commit"]),
 	},
 ) {}
 
@@ -317,7 +317,7 @@ export function wrapTanStackError(
 /**
  * Union schema of all TanStack DB Effect errors for type-safe matching.
  */
-export const TanStackEffectErrorSchema = Schema.Union(
+export const TanStackEffectErrorSchema = Schema.Union([
 	DuplicateKeyEffectError,
 	KeyUpdateNotAllowedEffectError,
 	UndefinedKeyEffectError,
@@ -325,6 +325,6 @@ export const TanStackEffectErrorSchema = Schema.Union(
 	KeyNotFoundEffectError,
 	CollectionInErrorEffectError,
 	TransactionStateEffectError,
-)
+])
 
 export type TanStackEffectError = typeof TanStackEffectErrorSchema.Type

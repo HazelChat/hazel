@@ -118,4 +118,6 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 			bulkUpsertByExternalId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

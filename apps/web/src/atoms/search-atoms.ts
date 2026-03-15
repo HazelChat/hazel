@@ -8,7 +8,7 @@ export const MAX_RECENT_SEARCHES = 10
  * Schema for a resolved search filter
  */
 const SearchFilterSchema = Schema.Struct({
-	type: Schema.Literal("from", "in", "has", "before", "after"),
+	type: Schema.Literals(["from", "in", "has", "before", "after"]),
 	value: Schema.String,
 	displayValue: Schema.String,
 	id: Schema.String,

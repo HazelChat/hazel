@@ -24,4 +24,6 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("WorkOSClie
 			call,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

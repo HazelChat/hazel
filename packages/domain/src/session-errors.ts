@@ -1,4 +1,3 @@
-import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 
 // 401 Errors - Client needs to re-authenticate
@@ -10,7 +9,7 @@ export class SessionNotProvidedError extends Schema.TaggedErrorClass<SessionNotP
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class SessionAuthenticationError extends Schema.TaggedErrorClass<SessionAuthenticationError>(
@@ -21,7 +20,7 @@ export class SessionAuthenticationError extends Schema.TaggedErrorClass<SessionA
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class InvalidJwtPayloadError extends Schema.TaggedErrorClass<InvalidJwtPayloadError>(
@@ -32,7 +31,7 @@ export class InvalidJwtPayloadError extends Schema.TaggedErrorClass<InvalidJwtPa
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class SessionExpiredError extends Schema.TaggedErrorClass<SessionExpiredError>("SessionExpiredError")(
@@ -41,7 +40,7 @@ export class SessionExpiredError extends Schema.TaggedErrorClass<SessionExpiredE
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class InvalidBearerTokenError extends Schema.TaggedErrorClass<InvalidBearerTokenError>(
@@ -52,7 +51,7 @@ export class InvalidBearerTokenError extends Schema.TaggedErrorClass<InvalidBear
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 // 503 Errors - Infrastructure/Service issues (client can retry)
@@ -62,7 +61,7 @@ export class SessionLoadError extends Schema.TaggedErrorClass<SessionLoadError>(
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(503),
+	{ httpApiStatus: 503 },
 ) {}
 
 export class SessionRefreshError extends Schema.TaggedErrorClass<SessionRefreshError>("SessionRefreshError")(
@@ -71,7 +70,7 @@ export class SessionRefreshError extends Schema.TaggedErrorClass<SessionRefreshE
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 export class WorkOSUserFetchError extends Schema.TaggedErrorClass<WorkOSUserFetchError>("WorkOSUserFetchError")(
@@ -80,5 +79,5 @@ export class WorkOSUserFetchError extends Schema.TaggedErrorClass<WorkOSUserFetc
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(503),
+	{ httpApiStatus: 503 },
 ) {}

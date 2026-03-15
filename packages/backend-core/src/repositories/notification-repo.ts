@@ -77,4 +77,6 @@ export class NotificationRepo extends ServiceMap.Service<NotificationRepo>()("No
 			deleteByChannelId,
 		} as const
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

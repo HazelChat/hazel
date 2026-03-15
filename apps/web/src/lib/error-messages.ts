@@ -60,7 +60,7 @@ export interface UserErrorMessage {
  * Schema union for Schema-based common errors.
  * Used for type-safe error matching and runtime validation.
  */
-export const CommonAppErrorSchema = Schema.Union(
+export const CommonAppErrorSchema = Schema.Union([
 	// Auth errors (401)
 	UnauthorizedError,
 	SessionNotProvidedError,
@@ -111,7 +111,7 @@ export const CommonAppErrorSchema = Schema.Union(
 	AIRateLimitError,
 	AIResponseParseError,
 	ThreadNameUpdateError,
-)
+])
 
 /**
  * Union of common application errors that have user-friendly messages.

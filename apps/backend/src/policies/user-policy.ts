@@ -1,5 +1,5 @@
 import type { UserId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { makePolicy } from "../lib/policy-utils"
 
 export class UserPolicy extends ServiceMap.Service<UserPolicy>()("UserPolicy/Policy", {
@@ -17,5 +17,6 @@ export class UserPolicy extends ServiceMap.Service<UserPolicy>()("UserPolicy/Pol
 
 		return { canCreate, canUpdate, canDelete, canRead } as const
 	}),
-	dependencies: [],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

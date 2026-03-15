@@ -1,5 +1,5 @@
 import { Discord } from "@hazel/integrations"
-import { ServiceMap, Config, Effect, Option, Redacted, Schema, Schedule } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema, Schedule } from "effect"
 import {
 	type ChatSyncOutboundAttachment,
 	formatMessageContentWithAttachments,
@@ -436,6 +436,9 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 
 			return { getAdapter }
 		}),
-		dependencies: [Discord.DiscordApiClient.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(Discord.DiscordApiClient.Default),
+	)
+}

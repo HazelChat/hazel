@@ -69,7 +69,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Login",
 					description: "Get WorkOS authorization URL for authentication",
 					summary: "Initiate login flow",
@@ -89,7 +89,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "OAuth Callback",
 					description: "Handle OAuth callback from WorkOS and set session cookie",
 					summary: "Process OAuth callback",
@@ -107,7 +107,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Logout",
 					description: "Clear session and logout user",
 					summary: "End user session",
@@ -129,7 +129,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Desktop Login",
 					description: "Initiate OAuth flow for desktop apps with web callback",
 					summary: "Desktop login flow",
@@ -145,7 +145,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.addError(InternalServerError)
 			.setPayload(TokenRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Token Exchange",
 					description: "Exchange authorization code for access token (desktop apps)",
 					summary: "Exchange code for token",
@@ -160,7 +160,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 			.addError(InternalServerError)
 			.setPayload(RefreshTokenRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Refresh Token",
 					description: "Exchange refresh token for new access token (desktop apps)",
 					summary: "Refresh access token",

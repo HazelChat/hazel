@@ -11,4 +11,6 @@ export class AttachmentRepo extends ServiceMap.Service<AttachmentRepo>()("Attach
 
 		return baseRepo
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

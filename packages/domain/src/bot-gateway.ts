@@ -76,7 +76,7 @@ export const BotGatewayChannelMemberRemoveEnvelope = Schema.Struct({
 	payload: ChannelMember.Model.json,
 })
 
-export const BotGatewayEnvelope = Schema.Union(
+export const BotGatewayEnvelope = Schema.Union([
 	BotGatewayCommandInvokeEnvelope,
 	BotGatewayMessageCreateEnvelope,
 	BotGatewayMessageUpdateEnvelope,
@@ -86,7 +86,7 @@ export const BotGatewayEnvelope = Schema.Union(
 	BotGatewayChannelDeleteEnvelope,
 	BotGatewayChannelMemberAddEnvelope,
 	BotGatewayChannelMemberRemoveEnvelope,
-)
+])
 
 export type BotGatewayEnvelope = Schema.Schema.Type<typeof BotGatewayEnvelope>
 export type BotGatewayEventType = BotGatewayEnvelope["eventType"]
@@ -128,12 +128,12 @@ export const BotGatewayHeartbeatFrame = Schema.Struct({
 	sessionId: Schema.optional(Schema.String),
 })
 
-export const BotGatewayClientFrame = Schema.Union(
+export const BotGatewayClientFrame = Schema.Union([
 	BotGatewayIdentifyFrame,
 	BotGatewayResumeFrame,
 	BotGatewayAckFrame,
 	BotGatewayHeartbeatFrame,
-)
+])
 
 export type BotGatewayClientFrame = Schema.Schema.Type<typeof BotGatewayClientFrame>
 
@@ -171,13 +171,13 @@ export const BotGatewayInvalidSessionFrame = Schema.Struct({
 	reason: Schema.String,
 })
 
-export const BotGatewayServerFrame = Schema.Union(
+export const BotGatewayServerFrame = Schema.Union([
 	BotGatewayHelloFrame,
 	BotGatewayReadyFrame,
 	BotGatewayDispatchFrame,
 	BotGatewayHeartbeatAckFrame,
 	BotGatewayReconnectFrame,
 	BotGatewayInvalidSessionFrame,
-)
+])
 
 export type BotGatewayServerFrame = Schema.Schema.Type<typeof BotGatewayServerFrame>

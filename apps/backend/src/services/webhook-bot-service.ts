@@ -1,6 +1,6 @@
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
 /**
  * Webhook Bot Service
@@ -66,5 +66,9 @@ export class WebhookBotService extends ServiceMap.Service<WebhookBotService>()("
 
 		return { createWebhookBot, updateWebhookBot }
 	}),
-	dependencies: [UserRepo.Default, OrganizationMemberRepo.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+	)
+}

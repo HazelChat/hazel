@@ -6,7 +6,7 @@ import {
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
@@ -36,7 +36,6 @@ export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthe
  * as it's a global infrastructure layer provided at the application root.
  */
 export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
-	dependencies: [UserLookupCache.Default, WorkOSClient.Default],
 	make: Effect.gen(function* () {
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
@@ -205,7 +204,12 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 			validateBearerToken,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserLookupCache.Default),
+		Layer.provide(WorkOSClient.Default),
+	)
+}
 
 /**
  * Layer that provides ProxyAuth with all its dependencies via Effect.Service dependencies.

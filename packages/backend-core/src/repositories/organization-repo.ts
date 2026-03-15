@@ -1,7 +1,7 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 import { ChannelMemberRepo } from "./channel-member-repo"
 import { ChannelRepo } from "./channel-repo"
 
@@ -116,5 +116,9 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 			setupDefaultChannels,
 		}
 	}),
-	dependencies: [ChannelRepo.Default, ChannelMemberRepo.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(ChannelMemberRepo.Default),
+	)
+}

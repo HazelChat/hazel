@@ -6,7 +6,7 @@ export class AppApi extends HttpApiGroup.make("app")
 
 	.add(HttpApiEndpoint.get("health", "/health").addSuccess(Schema.String))
 	.annotateContext(
-		OpenApi.annotations({
+		OpenApi.annotate({
 			title: "App Api",
 			description: "App Api",
 		}),
@@ -41,7 +41,7 @@ export class LinkPreviewGroup extends HttpApiGroup.make("linkPreview")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Link Preview",
 					description: "Fetch metadata for a given URL",
 					summary: "Get link preview metadata",
@@ -70,7 +70,7 @@ export class TweetGroup extends HttpApiGroup.make("tweet")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Tweet",
 					description: "Fetch tweet data by ID",
 					summary: "Get tweet metadata",

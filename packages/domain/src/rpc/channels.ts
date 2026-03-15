@@ -46,7 +46,7 @@ export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoun
  */
 export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>("CreateDmChannelRequest")({
 	participantIds: Schema.Array(UserId),
-	type: Schema.Literal("direct", "single"),
+	type: Schema.Literals(["direct", "single"]),
 	name: Schema.optional(Schema.String),
 	organizationId: Schema.UUID,
 }) {}
@@ -91,7 +91,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.create", {
 		payload: CreateChannelRequest,
 		success: ChannelResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -113,7 +113,7 @@ export class ChannelRpcs extends RpcGroup.make(
 			id: ChannelId,
 		}).pipe(Schema.extend(Schema.partial(Channel.Model.jsonUpdate))),
 		success: ChannelResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -133,7 +133,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.delete", {
 		payload: Schema.Struct({ id: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -154,7 +154,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createDm", {
 		payload: CreateDmChannelRequest,
 		success: ChannelResponse,
-		error: Schema.Union(DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([DmChannelAlreadyExistsError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -176,7 +176,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createThread", {
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
-		error: Schema.Union(MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),
@@ -205,7 +205,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.generateName", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ success: Schema.Boolean }),
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			MessageNotFoundError,
 			UnauthorizedError,
@@ -219,7 +219,7 @@ export class ChannelRpcs extends RpcGroup.make(
 			AIRateLimitError,
 			AIResponseParseError,
 			ThreadNameUpdateError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),

@@ -1,7 +1,7 @@
 import { ChannelRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -58,5 +58,9 @@ export class ChannelPolicy extends ServiceMap.Service<ChannelPolicy>()("ChannelP
 
 		return { canUpdate, canDelete, canCreate } as const
 	}),
-	dependencies: [ChannelRepo.Default, OrgResolver.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

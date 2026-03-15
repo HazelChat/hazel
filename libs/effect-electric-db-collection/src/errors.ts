@@ -52,7 +52,7 @@ export class TxIdTimeoutError extends Schema.TaggedErrorClass<TxIdTimeoutError>(
  */
 export class MissingTxIdError extends Schema.TaggedErrorClass<MissingTxIdError>()("MissingTxIdError", {
 	message: Schema.String,
-	operation: Schema.Literal("insert", "update", "delete"),
+	operation: Schema.Literals(["insert", "update", "delete"]),
 }) {}
 
 /**

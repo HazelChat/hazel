@@ -26,7 +26,7 @@ export interface NotificationSoundSettings {
 const NotificationSoundSettingsSchema = Schema.Struct({
 	enabled: Schema.Boolean,
 	volume: Schema.Number,
-	soundFile: Schema.Literal("notification01", "notification03"),
+	soundFile: Schema.Literals(["notification01", "notification03"]),
 	cooldownMs: Schema.Number,
 })
 

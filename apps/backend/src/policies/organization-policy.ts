@@ -1,6 +1,6 @@
 import { ErrorUtils } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { makePolicy, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -47,5 +47,8 @@ export class OrganizationPolicy extends ServiceMap.Service<OrganizationPolicy>()
 
 		return { canUpdate, canDelete, canCreate, isMember, canManagePublicInvite } as const
 	}),
-	dependencies: [OrgResolver.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(OrgResolver.Default),
+	)
+}

@@ -62,4 +62,6 @@ export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()
 			redisUrl,
 		} satisfies ProxyConfig
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -119,4 +119,6 @@ export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("Invita
 			bulkUpsertByWorkosId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

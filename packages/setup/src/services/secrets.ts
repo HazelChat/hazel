@@ -14,4 +14,6 @@ export class SecretGenerator extends ServiceMap.Service<SecretGenerator>()("Secr
 			return Buffer.from(bytes).toString("base64")
 		},
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

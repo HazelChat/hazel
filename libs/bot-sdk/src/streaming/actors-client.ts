@@ -93,4 +93,6 @@ export class ActorsClient extends ServiceMap.Service<ActorsClient>()("@hazel/bot
 			botToken: config.botToken,
 		} as ActorsClientService
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

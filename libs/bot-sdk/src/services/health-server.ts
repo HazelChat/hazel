@@ -72,7 +72,9 @@ export class BotHealthServer extends ServiceMap.Service<BotHealthServer>()("BotH
 
 		return { port: server.port }
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 export const BotHealthServerLive = (port: number) =>
 	Layer.provide(BotHealthServer.Default, Layer.succeed(BotHealthServerConfigTag, { port }))

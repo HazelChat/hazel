@@ -90,7 +90,6 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
  * This is used by the backend HTTP API and WebSocket RPC handlers.
  */
 export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
-	dependencies: [WorkOSClient.Default],
 	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
@@ -352,6 +351,10 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(WorkOSClient.Default),
+	)
+
 	/** Mock user ID - a valid UUID */
 	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
 

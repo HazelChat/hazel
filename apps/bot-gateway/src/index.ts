@@ -24,6 +24,7 @@ import {
 	Ref,
 	Runtime,
 	Schema,
+	ServiceMap,
 } from "effect"
 import { TracerLive } from "./observability/tracer"
 
@@ -146,7 +147,9 @@ export class GatewayConfig extends ServiceMap.Service<GatewayConfig>()("GatewayC
 		})
 		return config
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 class GatewayAuthError extends Schema.TaggedErrorClass<GatewayAuthError>()("GatewayAuthError", {
 	message: Schema.String,
@@ -157,7 +160,7 @@ class GatewayProtocolError extends Schema.TaggedErrorClass<GatewayProtocolError>
 }) {}
 
 export class GatewayStartupError extends Schema.TaggedErrorClass<GatewayStartupError>()("GatewayStartupError", {
-	dependency: Schema.Literal("config", "database", "redis", "tracer", "server"),
+	dependency: Schema.Literals(["config", "database", "redis", "tracer", "server"]),
 	message: Schema.String,
 	cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -320,7 +323,9 @@ class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("Dur
 			readBatch,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub", {
 	make: Effect.gen(function* () {
@@ -758,7 +763,9 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 			proxyRead: durableStreams.proxyRead,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 const DatabaseLive = Layer.unwrapEffect(
 	Effect.gen(function* () {

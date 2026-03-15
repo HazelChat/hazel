@@ -111,7 +111,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 		const postResult = yield* Activity.make({
 			name: "FilterAndPostItems",
 			success: Cluster.PostRssItemsResult,
-			error: Schema.Union(Cluster.PostRssItemsError, Cluster.BotUserQueryError),
+			error: Schema.Union([Cluster.PostRssItemsError, Cluster.BotUserQueryError]),
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 				const botUserService = yield* BotUserService

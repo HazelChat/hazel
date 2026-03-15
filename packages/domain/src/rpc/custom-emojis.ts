@@ -70,12 +70,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			imageUrl: Schema.String,
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNameConflictError,
 			CustomEmojiDeletedExistsError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -98,12 +98,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			name: Schema.optional(Schema.String),
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNotFoundError,
 			CustomEmojiNameConflictError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -122,7 +122,7 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 	Rpc.make("customEmoji.delete", {
 		payload: Schema.Struct({ id: CustomEmojiId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(CustomEmojiNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([CustomEmojiNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),
@@ -145,12 +145,12 @@ export class CustomEmojiRpcs extends RpcGroup.make(
 			imageUrl: Schema.optional(Schema.String),
 		}),
 		success: CustomEmojiResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			CustomEmojiNotFoundError,
 			CustomEmojiNameConflictError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["custom-emojis:write"])
 		.middleware(AuthMiddleware),

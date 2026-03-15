@@ -93,13 +93,13 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 			branchFilter: Schema.optional(Schema.NullOr(Schema.String)),
 		}),
 		success: GitHubSubscriptionResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			GitHubNotConnectedError,
 			GitHubSubscriptionExistsError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["github-subscriptions:write"])
 		.middleware(AuthMiddleware),
@@ -117,7 +117,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("githubSubscription.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: GitHubSubscriptionListResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["github-subscriptions:read"])
 		.middleware(AuthMiddleware),
@@ -134,7 +134,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("githubSubscription.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: GitHubSubscriptionListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["github-subscriptions:read"])
 		.middleware(AuthMiddleware),
@@ -157,7 +157,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 			isEnabled: Schema.optional(Schema.Boolean),
 		}),
 		success: GitHubSubscriptionResponse,
-		error: Schema.Union(GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["github-subscriptions:write"])
 		.middleware(AuthMiddleware),
@@ -175,7 +175,7 @@ export class GitHubSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("githubSubscription.delete", {
 		payload: Schema.Struct({ id: GitHubSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([GitHubSubscriptionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["github-subscriptions:write"])
 		.middleware(AuthMiddleware),

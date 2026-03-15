@@ -16,7 +16,7 @@ export const MessageEmbedFooter = Schema.Struct({
 export type MessageEmbedFooter = Schema.Schema.Type<typeof MessageEmbedFooter>
 
 // Badge intent for field styling
-export const BadgeIntent = Schema.Literal(
+export const BadgeIntent = Schema.Literals([
 	"primary",
 	"secondary",
 	"success",
@@ -24,11 +24,11 @@ export const BadgeIntent = Schema.Literal(
 	"warning",
 	"danger",
 	"outline",
-)
+])
 export type BadgeIntent = Schema.Schema.Type<typeof BadgeIntent>
 
 // Field type for rendering mode
-export const MessageEmbedFieldType = Schema.Literal("text", "badge")
+export const MessageEmbedFieldType = Schema.Literals(["text", "badge"])
 export type MessageEmbedFieldType = Schema.Schema.Type<typeof MessageEmbedFieldType>
 
 // Field options for type-specific settings
@@ -57,8 +57,8 @@ export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
 // Agent step for cached state (matches actor's AgentStep)
 export const CachedAgentStep = Schema.Struct({
 	id: Schema.String,
-	type: Schema.Literal("thinking", "tool_call", "tool_result", "text", "error"),
-	status: Schema.Literal("pending", "active", "completed", "failed"),
+	type: Schema.Literals(["thinking", "tool_call", "tool_result", "text", "error"]),
+	status: Schema.Literals(["pending", "active", "completed", "failed"]),
 	content: Schema.optional(Schema.String),
 	toolName: Schema.optional(Schema.String),
 	toolInput: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
@@ -71,7 +71,7 @@ export type CachedAgentStep = Schema.Schema.Type<typeof CachedAgentStep>
 
 // Live state cached snapshot for non-realtime clients
 export const MessageEmbedLiveStateCached = Schema.Struct({
-	status: Schema.Literal("idle", "active", "completed", "failed"),
+	status: Schema.Literals(["idle", "active", "completed", "failed"]),
 	data: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
 	text: Schema.optional(Schema.String),
 	progress: Schema.optional(Schema.Number),
@@ -85,7 +85,7 @@ export const MessageEmbedLoadingState = Schema.Struct({
 	/** Text to display while loading (default: "Thinking...") */
 	text: Schema.optional(Schema.String),
 	/** Icon to display: "sparkle" or "brain" (default: "sparkle") */
-	icon: Schema.optional(Schema.Literal("sparkle", "brain")),
+	icon: Schema.optional(Schema.Literals(["sparkle", "brain"])),
 	/** Whether to show spinning animation on the icon (default: true) */
 	showSpinner: Schema.optional(Schema.Boolean),
 	/** Whether to pulse/throb the entire loading indicator (default: false) */

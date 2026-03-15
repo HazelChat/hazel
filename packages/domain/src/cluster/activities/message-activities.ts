@@ -73,4 +73,4 @@ export class CreateNotificationError extends Schema.TaggedErrorClass<CreateNotif
 // Workflow Error Union
 // ============================================================================
 
-export const MessageNotificationWorkflowError = Schema.Union(GetChannelMembersError, CreateNotificationError)
+export const MessageNotificationWorkflowError = Schema.Union([GetChannelMembersError, CreateNotificationError])

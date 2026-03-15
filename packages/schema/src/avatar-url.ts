@@ -77,7 +77,7 @@ export const AvatarUrl = Schema.String.pipe(
 			Effect.catch((e) => Effect.succeed(e.message)),
 		),
 	),
-).annotations({
+).annotate({
 	description: "A validated URL to an avatar image",
 	title: "Avatar URL",
 })

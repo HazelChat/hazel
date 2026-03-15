@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ConnectConversationStatus = Schema.Literal("active", "disconnected")
+export const ConnectConversationStatus = Schema.Literals(["active", "disconnected"])
 export type ConnectConversationStatus = Schema.Schema.Type<typeof ConnectConversationStatus>
 
 export class Model extends M.Class<Model>("ConnectConversation")({

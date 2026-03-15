@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { baseFields, JsonDate } from "./utils"
 
-export const OrganizationRole = Schema.Literal("admin", "member", "owner")
+export const OrganizationRole = Schema.Literals(["admin", "member", "owner"])
 export type OrganizationRole = Schema.Schema.Type<typeof OrganizationRole>
 
 export class Model extends M.Class<Model>("OrganizationMember")({

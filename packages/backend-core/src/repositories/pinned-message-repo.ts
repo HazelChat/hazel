@@ -15,4 +15,6 @@ export class PinnedMessageRepo extends ServiceMap.Service<PinnedMessageRepo>()("
 
 		return baseRepo
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

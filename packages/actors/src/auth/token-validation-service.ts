@@ -1,6 +1,6 @@
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { WorkOSJwtClaims, WorkOSRole } from "@hazel/schema"
-import { ServiceMap, Either, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Either, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type { JWTPayload } from "jose"
 import { jwtVerify } from "jose"
@@ -42,7 +42,6 @@ function isBotToken(token: string): boolean {
 export class TokenValidationService extends ServiceMap.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
-		dependencies: [TokenValidationConfigService.Default, JwksService.Default],
 		effect: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
 			const jwksService = yield* JwksService
@@ -242,7 +241,12 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(TokenValidationConfigService.Default),
+		Layer.provide(JwksService.Default),
+	)
+}
 
 /**
  * Live layer for TokenValidationService with all dependencies.

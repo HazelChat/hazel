@@ -39,7 +39,6 @@ import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import {
 	Cache,
 	Config,
-	Context,
 	Duration,
 	Effect,
 	Layer,
@@ -51,6 +50,7 @@ import {
 	Ref,
 	Runtime,
 	Schema,
+	ServiceMap,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
 import { createLoggerLayer, logLevelFromString, type BotLogConfig, type LogFormat } from "./log-config.ts"
@@ -119,10 +119,9 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly heartbeatIntervalMs?: number
 }
 
-export class HazelBotRuntimeConfigTag extends Context.Tag("@hazel/bot-sdk/HazelBotRuntimeConfig")<
-	HazelBotRuntimeConfigTag,
+export class HazelBotRuntimeConfigTag extends ServiceMap.Service<HazelBotRuntimeConfigTag,
 	HazelBotRuntimeConfig
->() {}
+>()("@hazel/bot-sdk/HazelBotRuntimeConfig") {}
 
 /**
  * Hazel-specific type aliases for convenience
@@ -1777,7 +1776,9 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			},
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 /**
  * Configuration for creating a Hazel bot

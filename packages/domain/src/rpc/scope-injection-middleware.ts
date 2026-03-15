@@ -7,7 +7,7 @@ import { RpcMiddleware } from "effect/unstable/rpc"
  * Uses `wrap: true` so it wraps the handler with Effect.locally
  * to set the FiberRef value.
  */
-export class ScopeInjectionMiddleware extends RpcMiddleware.Tag<ScopeInjectionMiddleware>()(
+export class ScopeInjectionMiddleware extends RpcMiddleware.Service<ScopeInjectionMiddleware>()(
 	"ScopeInjectionMiddleware",
 	{ wrap: true },
 ) {}

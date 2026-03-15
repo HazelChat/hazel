@@ -1,7 +1,7 @@
 import { InvitationRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { InvitationId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -141,10 +141,11 @@ export class InvitationPolicy extends ServiceMap.Service<InvitationPolicy>()("In
 
 		return { canRead, canCreate, canUpdate, canDelete, canAccept, canList } as const
 	}),
-	dependencies: [
-		InvitationRepo.Default,
-		OrganizationMemberRepo.Default,
-		UserRepo.Default,
-		OrgResolver.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(InvitationRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

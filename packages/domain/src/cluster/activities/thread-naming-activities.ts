@@ -63,7 +63,7 @@ export class ThreadContextQueryError extends Schema.TaggedErrorClass<ThreadConte
 	"ThreadContextQueryError",
 	{
 		threadChannelId: ChannelId,
-		operation: Schema.Literal("thread", "originalMessage", "threadMessages"),
+		operation: Schema.Literals(["thread", "originalMessage", "threadMessages"]),
 		cause: Schema.Unknown.pipe(Schema.optional),
 	},
 ) {
@@ -114,7 +114,7 @@ export class ThreadNameUpdateError extends Schema.TaggedErrorClass<ThreadNameUpd
 // Union of all workflow errors (for RPC exposure)
 // ============================================================================
 
-export const ThreadNamingWorkflowError = Schema.Union(
+export const ThreadNamingWorkflowError = Schema.Union([
 	ThreadChannelNotFoundError,
 	OriginalMessageNotFoundError,
 	ThreadContextQueryError,
@@ -122,6 +122,6 @@ export const ThreadNamingWorkflowError = Schema.Union(
 	AIRateLimitError,
 	AIResponseParseError,
 	ThreadNameUpdateError,
-)
+])
 
 export type ThreadNamingWorkflowError = typeof ThreadNamingWorkflowError.Type

@@ -25,7 +25,7 @@ export const CommandArgumentSchema = Schema.Struct({
 	description: Schema.NullishOr(Schema.String),
 	required: Schema.Boolean,
 	placeholder: Schema.NullishOr(Schema.String),
-	type: Schema.Literal("string", "number", "user", "channel"),
+	type: Schema.Literals(["string", "number", "user", "channel"]),
 })
 export type CommandArgumentSchema = typeof CommandArgumentSchema.Type
 
@@ -70,7 +70,7 @@ export class IntegrationCommandGroup extends HttpApiGroup.make("integration-comm
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Available Commands",
 					description: "Get all slash commands available from installed bots",
 					summary: "List bot commands",

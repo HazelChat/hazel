@@ -42,7 +42,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.create", {
 		payload: Notification.Model.jsonCreate,
 		success: NotificationResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -65,7 +65,7 @@ export class NotificationRpcs extends RpcGroup.make(
 			...Notification.Model.jsonUpdate.fields,
 		}),
 		success: NotificationResponse,
-		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -85,7 +85,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.delete", {
 		payload: Schema.Struct({ id: NotificationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(NotificationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),
@@ -110,7 +110,7 @@ export class NotificationRpcs extends RpcGroup.make(
 			deletedCount: Schema.Number,
 			transactionId: TransactionId,
 		}),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["notifications:write"])
 		.middleware(AuthMiddleware),

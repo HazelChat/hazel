@@ -1,7 +1,7 @@
 import { CustomEmojiRepo } from "@hazel/backend-core"
 import { ErrorUtils } from "@hazel/domain"
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -48,5 +48,9 @@ export class CustomEmojiPolicy extends ServiceMap.Service<CustomEmojiPolicy>()("
 
 		return { canCreate, canUpdate, canDelete } as const
 	}),
-	dependencies: [CustomEmojiRepo.Default, OrgResolver.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(CustomEmojiRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

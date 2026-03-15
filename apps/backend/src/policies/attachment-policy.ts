@@ -7,7 +7,7 @@ import {
 } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { AttachmentId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -160,12 +160,13 @@ export class AttachmentPolicy extends ServiceMap.Service<AttachmentPolicy>()("At
 
 		return { canCreate, canUpdate, canDelete, canView } as const
 	}),
-	dependencies: [
-		AttachmentRepo.Default,
-		MessageRepo.Default,
-		ChannelRepo.Default,
-		OrganizationMemberRepo.Default,
-		ChannelMemberRepo.Default,
-		OrgResolver.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(AttachmentRepo.Default),
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(ChannelMemberRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

@@ -3,7 +3,7 @@ import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
 import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
-import { ServiceMap, Effect, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
 import { DatabaseLive } from "./database"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { OAuthHttpClient } from "./oauth/oauth-http-client"
@@ -437,12 +437,13 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 				deleteTokens,
 			}
 		}),
-		dependencies: [
-			DatabaseLive,
-			IntegrationEncryption.Default,
-			IntegrationTokenRepo.Default,
-			IntegrationConnectionRepo.Default,
-			GitHub.GitHubAppJWTService.Default,
-		],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(DatabaseLive),
+		Layer.provide(IntegrationEncryption.Default),
+		Layer.provide(IntegrationTokenRepo.Default),
+		Layer.provide(IntegrationConnectionRepo.Default),
+		Layer.provide(GitHub.GitHubAppJWTService.Default),
+	)
+}

@@ -1,6 +1,6 @@
 import { UnsupportedProviderError } from "@hazel/domain/http"
 import { GitHub } from "@hazel/integrations"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import type { OAuthProvider } from "./oauth-provider"
 import { ProviderNotConfiguredError } from "./oauth-provider"
 import type { IntegrationProvider, OAuthIntegrationProvider, OAuthProviderConfig } from "./provider-config"
@@ -157,5 +157,9 @@ export class OAuthProviderRegistry extends ServiceMap.Service<OAuthProviderRegis
 			isProviderSupported,
 		}
 	}),
-	dependencies: [GitHub.GitHubAppJWTService.Default, GitHub.GitHubApiClient.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(GitHub.GitHubAppJWTService.Default),
+		Layer.provide(GitHub.GitHubApiClient.Default),
+	)
+}

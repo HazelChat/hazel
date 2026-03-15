@@ -1,6 +1,6 @@
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
 
 export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPolicy>()(
@@ -52,6 +52,10 @@ export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPol
 
 			return { canCreate, canUpdate, canDelete, canRead } as const
 		}),
-		dependencies: [ChannelMemberRepo.Default, TypingIndicatorRepo.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChannelMemberRepo.Default),
+		Layer.provide(TypingIndicatorRepo.Default),
+	)
+}

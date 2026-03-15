@@ -24,4 +24,6 @@ export class WorkOSAuth extends ServiceMap.Service<WorkOSAuth>()("WorkOSAuth", {
 			call,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

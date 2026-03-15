@@ -1,4 +1,3 @@
-import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Predicate, Schema } from "effect"
 import type { ApiScope } from "./api-scope"
 
@@ -8,7 +7,7 @@ export class PermissionError extends Schema.TaggedErrorClass<PermissionError>("P
 		message: Schema.String,
 		requiredScope: Schema.optional(Schema.String),
 	},
-	HttpApiSchema.status(403),
+	{ httpApiStatus: 403 },
 ) {
 	static is(u: unknown): u is PermissionError {
 		return Predicate.isTagged(u, "PermissionError")

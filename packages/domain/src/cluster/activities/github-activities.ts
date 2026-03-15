@@ -59,8 +59,8 @@ export class CreateGitHubMessageError extends Schema.TaggedErrorClass<CreateGitH
 // Workflow Error Union
 // ============================================================================
 
-export const GitHubWebhookWorkflowError = Schema.Union(
+export const GitHubWebhookWorkflowError = Schema.Union([
 	GetGitHubSubscriptionsError,
 	CreateGitHubMessageError,
 	BotUserQueryError,
-)
+])

@@ -6,7 +6,7 @@ import {
 } from "@hazel/domain"
 import type { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import type { BotId, ChannelId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Option, Ref, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Ref, Schema } from "effect"
 
 const DEFAULT_DURABLE_STREAMS_URL = "http://localhost:4437/v1/stream"
 
@@ -29,7 +29,6 @@ export class DurableStreamRequestError extends Schema.TaggedErrorClass<DurableSt
 ) {}
 
 export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("BotGatewayService", {
-	dependencies: [BotInstallationRepo.Default, ChannelRepo.Default],
 	make: Effect.gen(function* () {
 		const installationRepo = yield* BotInstallationRepo
 		const channelRepo = yield* ChannelRepo
@@ -280,4 +279,9 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 			proxyRead,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(BotInstallationRepo.Default),
+		Layer.provide(ChannelRepo.Default),
+	)
+}

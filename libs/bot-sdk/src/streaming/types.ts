@@ -168,7 +168,7 @@ export type ToolResultChunk = Schema.Schema.Type<typeof ToolResultChunk>
  * }
  * ```
  */
-export const AIContentChunk = Schema.Union(TextChunk, ThinkingChunk, ToolCallChunk, ToolResultChunk)
+export const AIContentChunk = Schema.Union([TextChunk, ThinkingChunk, ToolCallChunk, ToolResultChunk])
 export type AIContentChunk = Schema.Schema.Type<typeof AIContentChunk>
 
 /**

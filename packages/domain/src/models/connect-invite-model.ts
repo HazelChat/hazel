@@ -3,10 +3,10 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ConnectInviteStatus = Schema.Literal("pending", "accepted", "declined", "revoked", "expired")
+export const ConnectInviteStatus = Schema.Literals(["pending", "accepted", "declined", "revoked", "expired"])
 export type ConnectInviteStatus = Schema.Schema.Type<typeof ConnectInviteStatus>
 
-export const ConnectInviteTargetKind = Schema.Literal("slug", "email")
+export const ConnectInviteTargetKind = Schema.Literals(["slug", "email"])
 export type ConnectInviteTargetKind = Schema.Schema.Type<typeof ConnectInviteTargetKind>
 
 export class Model extends M.Class<Model>("ConnectInvite")({

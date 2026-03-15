@@ -1,4 +1,3 @@
-import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Schema } from "effect"
 
 /**
@@ -13,5 +12,5 @@ export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExc
 		limit: Schema.Number,
 		remaining: Schema.Number,
 	},
-	HttpApiSchema.status(429),
+	{ httpApiStatus: 429 },
 ) {}

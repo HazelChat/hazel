@@ -2,7 +2,7 @@ import { BotInstallationRepo, BotRepo, OrganizationMemberRepo, UserRepo } from "
 import { Integrations } from "@hazel/domain"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 /**
  * Integration Bot Service
@@ -181,10 +181,11 @@ export class IntegrationBotService extends ServiceMap.Service<IntegrationBotServ
 
 		return { getOrCreateBotUser, getOrCreateWebhookBotUser, addBotToOrg }
 	}),
-	dependencies: [
-		UserRepo.Default,
-		OrganizationMemberRepo.Default,
-		BotRepo.Default,
-		BotInstallationRepo.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(BotRepo.Default),
+		Layer.provide(BotInstallationRepo.Default),
+	)
+}

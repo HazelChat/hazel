@@ -129,4 +129,6 @@ export class Doctor extends ServiceMap.Service<Doctor>()("Doctor", {
 				return { environment, services }
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

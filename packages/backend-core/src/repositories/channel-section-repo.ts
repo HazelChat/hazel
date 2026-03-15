@@ -15,4 +15,6 @@ export class ChannelSectionRepo extends ServiceMap.Service<ChannelSectionRepo>()
 
 		return baseRepo
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

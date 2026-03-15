@@ -52,13 +52,13 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 			pollingIntervalMinutes: Schema.optional(Schema.Number),
 		}),
 		success: RssSubscriptionResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			RssSubscriptionExistsError,
 			RssFeedValidationError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["rss-subscriptions:write"])
 		.middleware(AuthMiddleware),
@@ -66,7 +66,7 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("rssSubscription.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: RssSubscriptionListResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["rss-subscriptions:read"])
 		.middleware(AuthMiddleware),
@@ -74,7 +74,7 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("rssSubscription.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: RssSubscriptionListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["rss-subscriptions:read"])
 		.middleware(AuthMiddleware),
@@ -86,7 +86,7 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 			pollingIntervalMinutes: Schema.optional(Schema.Number),
 		}),
 		success: RssSubscriptionResponse,
-		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["rss-subscriptions:write"])
 		.middleware(AuthMiddleware),
@@ -94,7 +94,7 @@ export class RssSubscriptionRpcs extends RpcGroup.make(
 	Rpc.make("rssSubscription.delete", {
 		payload: Schema.Struct({ id: RssSubscriptionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([RssSubscriptionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["rss-subscriptions:write"])
 		.middleware(AuthMiddleware),

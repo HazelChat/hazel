@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Schedule, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schedule, Schema } from "effect"
 
 /**
  * GitHub PR URL patterns:
@@ -38,7 +38,7 @@ export const GitHubPR = Schema.Struct({
 	number: Schema.Number,
 	title: Schema.String,
 	body: Schema.NullOr(Schema.String),
-	state: Schema.Literal("open", "closed"),
+	state: Schema.Literals(["open", "closed"]),
 	draft: Schema.Boolean,
 	merged: Schema.Boolean,
 	author: Schema.NullOr(GitHubPRAuthor),
@@ -825,8 +825,11 @@ export class GitHubApiClient extends ServiceMap.Service<GitHubApiClient>()("GitH
 			getAccountInfo: wrappedGetAccountInfo,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}
 
 // ============================================================================
 // Legacy exports for backwards compatibility

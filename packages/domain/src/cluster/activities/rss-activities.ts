@@ -71,9 +71,9 @@ export class UpdateSubscriptionStateError extends Schema.TaggedErrorClass<Update
 }
 
 // Workflow Error Union
-export const RssFeedPollWorkflowError = Schema.Union(
+export const RssFeedPollWorkflowError = Schema.Union([
 	FetchRssFeedError,
 	PostRssItemsError,
 	BotUserQueryError,
 	UpdateSubscriptionStateError,
-)
+])

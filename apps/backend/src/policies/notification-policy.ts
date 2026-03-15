@@ -1,7 +1,7 @@
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 
 export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()("NotificationPolicy/Policy", {
@@ -173,5 +173,9 @@ export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()
 
 		return { canCreate, canView, canUpdate, canDelete, canMarkAsRead, canMarkAllAsRead } as const
 	}),
-	dependencies: [NotificationRepo.Default, OrganizationMemberRepo.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(NotificationRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+	)
+}

@@ -125,4 +125,6 @@ export class RssSubscriptionRepo extends ServiceMap.Service<RssSubscriptionRepo>
 			softDelete,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

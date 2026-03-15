@@ -29,7 +29,7 @@ export class AccessContextLookupError extends Schema.TaggedErrorClass<AccessCont
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 		entityId: Schema.String,
-		entityType: Schema.Literal("user", "bot"),
+		entityType: Schema.Literals(["user", "bot"]),
 	},
 ) {}
 

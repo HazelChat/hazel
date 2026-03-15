@@ -4,7 +4,7 @@ import { UserThemeSettings } from "./theme-model"
 import * as M from "./utils"
 import { baseFields } from "./utils"
 
-export const UserType = Schema.Literal("user", "machine")
+export const UserType = Schema.Literals(["user", "machine"])
 export type UserType = Schema.Schema.Type<typeof UserType>
 
 /**

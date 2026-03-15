@@ -72,7 +72,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.make("organization.create", {
 		payload: Organization.Model.jsonCreate,
 		success: OrganizationResponse,
-		error: Schema.Union(OrganizationSlugAlreadyExistsError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationSlugAlreadyExistsError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -82,12 +82,12 @@ export class OrganizationRpcs extends RpcGroup.make(
 			id: OrganizationId,
 		}).pipe(Schema.extend(Schema.partial(Organization.Model.jsonUpdate))),
 		success: OrganizationResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			OrganizationNotFoundError,
 			OrganizationSlugAlreadyExistsError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -95,7 +95,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.make("organization.delete", {
 		payload: Schema.Struct({ id: OrganizationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -106,12 +106,12 @@ export class OrganizationRpcs extends RpcGroup.make(
 			slug: Schema.String,
 		}),
 		success: OrganizationResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			OrganizationNotFoundError,
 			OrganizationSlugAlreadyExistsError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -127,7 +127,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 			isPublic: Schema.Boolean,
 		}),
 		success: OrganizationResponse,
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -154,13 +154,13 @@ export class OrganizationRpcs extends RpcGroup.make(
 			slug: Schema.String,
 		}),
 		success: OrganizationResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			OrganizationNotFoundError,
 			PublicInviteDisabledError,
 			AlreadyMemberError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -173,10 +173,10 @@ export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.make("organization.getAdminPortalLink", {
 		payload: Schema.Struct({
 			id: OrganizationId,
-			intent: Schema.Literal("sso", "domain_verification", "dsync", "audit_logs", "log_streams"),
+			intent: Schema.Literals(["sso", "domain_verification", "dsync", "audit_logs", "log_streams"]),
 		}),
 		success: Schema.Struct({ link: Schema.String }),
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -191,11 +191,11 @@ export class OrganizationRpcs extends RpcGroup.make(
 			Schema.Struct({
 				id: Schema.String,
 				domain: Schema.String,
-				state: Schema.Literal("pending", "verified", "failed", "legacy_verified"),
+				state: Schema.Literals(["pending", "verified", "failed", "legacy_verified"]),
 				verificationToken: Schema.NullOr(Schema.String),
 			}),
 		),
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -215,7 +215,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 			state: Schema.String,
 			verificationToken: Schema.NullOr(Schema.String),
 		}),
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),
@@ -230,7 +230,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 			domainId: Schema.String,
 		}),
 		success: Schema.Struct({ success: Schema.Boolean }),
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organizations:write"])
 		.middleware(AuthMiddleware),

@@ -50,7 +50,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	Rpc.make("attachment.delete", {
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([AttachmentNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["attachments:write"])
 		.middleware(AuthMiddleware),
@@ -70,7 +70,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	Rpc.make("attachment.complete", {
 		payload: Schema.Struct({ id: AttachmentId }),
 		success: Attachment.Model,
-		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([AttachmentNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["attachments:write"])
 		.middleware(AuthMiddleware),
@@ -93,7 +93,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 			reason: Schema.optional(Schema.String),
 		}),
 		success: Schema.Void,
-		error: Schema.Union(AttachmentNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([AttachmentNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["attachments:write"])
 		.middleware(AuthMiddleware),

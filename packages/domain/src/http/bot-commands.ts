@@ -18,7 +18,7 @@ export const BotCommandArgumentSchema = Schema.Struct({
 	description: Schema.NullishOr(Schema.String),
 	required: Schema.Boolean,
 	placeholder: Schema.NullishOr(Schema.String),
-	type: Schema.Literal("string", "number", "user", "channel"),
+	type: Schema.Literals(["string", "number", "user", "channel"]),
 })
 export type BotCommandArgumentSchema = typeof BotCommandArgumentSchema.Type
 
@@ -137,7 +137,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 		HttpApiEndpoint.get("streamCommands", `/stream`)
 			.addError(UnauthorizedError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Stream Bot Commands",
 					description: "SSE stream for receiving bot commands (used by Bot SDK)",
 					summary: "Stream commands via SSE",
@@ -152,7 +152,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 			.addSuccess(BotMeResponse)
 			.addError(UnauthorizedError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Bot Info",
 					description: "Get current bot info from token (used by Bot SDK for authentication)",
 					summary: "Get bot info",
@@ -170,7 +170,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 			.addError(InternalServerError)
 			.setPayload(SyncBotCommandsRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Sync Bot Commands",
 					description: "Sync slash commands from a bot (called by Bot SDK on startup)",
 					summary: "Register bot commands",
@@ -197,7 +197,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 			)
 			.setPayload(ExecuteBotCommandRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute Bot Command",
 					description: "Execute a slash command for a bot",
 					summary: "Execute bot command",
@@ -223,7 +223,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Integration Token",
 					description:
 						"Get a valid OAuth access token for an integration provider. Bot must have the provider in its allowedIntegrations and be installed in the target org.",
@@ -246,7 +246,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Enabled Integrations",
 					description:
 						"Get the list of integration providers enabled for the bot in the target org. Returns the intersection of the bot's allowedIntegrations and the org's active integration connections.",
@@ -264,7 +264,7 @@ export class BotCommandsApiGroup extends HttpApiGroup.make("bot-commands")
 			.addError(InternalServerError)
 			.setPayload(UpdateBotSettingsRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Update Bot Settings",
 					description:
 						"Update the bot's settings. Currently supports updating the mentionable flag which controls whether the bot can be @mentioned in messages.",

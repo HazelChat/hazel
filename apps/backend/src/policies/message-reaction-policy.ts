@@ -1,7 +1,7 @@
 import { MessageReactionRepo, MessageRepo } from "@hazel/backend-core"
 import { ErrorUtils, PermissionError, policy } from "@hazel/domain"
 import type { MessageId, MessageReactionId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { ConnectConversationService } from "../services/connect-conversation-service"
 import { OrgResolver } from "../services/org-resolver"
@@ -99,11 +99,12 @@ export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPol
 
 			return { canCreate, canDelete, canUpdate, canList } as const
 		}),
-		dependencies: [
-			MessageReactionRepo.Default,
-			MessageRepo.Default,
-			OrgResolver.Default,
-			ConnectConversationService.Default,
-		],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(MessageReactionRepo.Default),
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(OrgResolver.Default),
+		Layer.provide(ConnectConversationService.Default),
+	)
+}

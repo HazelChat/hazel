@@ -62,7 +62,7 @@ export class KlipyApiError extends Schema.TaggedErrorClass<KlipyApiError>("Klipy
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(502),
+	{ httpApiStatus: 502 },
 ) {}
 
 // ============ API Group ============

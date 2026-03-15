@@ -1,7 +1,7 @@
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError } from "@hazel/domain"
-import { ServiceMap, Array, Config, Effect, Option } from "effect"
+import { ServiceMap, Array, Config, Effect, Layer, Option } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import type {
 	MessageCreatedPayload,
@@ -15,7 +15,6 @@ import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
 export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
 	{
-		dependencies: [DiscordSyncWorker.Default],
 		effect: Effect.gen(function* () {
 			const db = yield* Database.Database
 			const discordSyncWorker = yield* DiscordSyncWorker
@@ -287,4 +286,8 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(DiscordSyncWorker.Default),
+	)
+}

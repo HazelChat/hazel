@@ -50,7 +50,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.create", {
 		payload: CreateChannelSectionRequest,
 		success: ChannelSectionResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -72,7 +72,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			id: ChannelSectionId,
 		}).pipe(Schema.extend(Schema.partial(ChannelSection.Model.jsonUpdate))),
 		success: ChannelSectionResponse,
-		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -93,7 +93,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 	Rpc.make("channelSection.delete", {
 		payload: Schema.Struct({ id: ChannelSectionId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelSectionNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -116,7 +116,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			sectionIds: Schema.Array(ChannelSectionId),
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),
@@ -141,12 +141,12 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			sectionId: Schema.NullOr(ChannelSectionId),
 		}),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			ChannelSectionNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["channel-sections:write"])
 		.middleware(AuthMiddleware),

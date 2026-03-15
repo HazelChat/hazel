@@ -1,6 +1,6 @@
 import type { BunFile, S3File, S3FilePresignOptions } from "bun"
 import { s3 as bunS3 } from "bun"
-import { Context, Effect, Layer, Match, Schema } from "effect"
+import { Effect, Layer, Match, Schema, ServiceMap } from "effect"
 
 // ============ Error Types ============
 
@@ -138,8 +138,7 @@ export type S3WriteData = string | ArrayBuffer | Uint8Array | Blob | Response | 
  * })
  * ```
  */
-export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
-	S3,
+export class S3 extends ServiceMap.Service<S3,
 	{
 		/**
 		 * Generate a presigned URL for S3 operations
@@ -162,7 +161,7 @@ export class S3 extends Context.Tag("@hazel/effect-bun/S3")<
 		 */
 		readonly exists: (key: string) => Effect.Effect<boolean, S3Errors>
 	}
->() {
+>()("@hazel/effect-bun/S3") {
 	static readonly Default = Layer.sync(S3, () => ({
 		file: (key) =>
 			Effect.try({

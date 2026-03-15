@@ -3,7 +3,7 @@ import { Schema } from "effect"
 /**
  * Available gray palette options
  */
-export const GrayPalette = Schema.Literal(
+export const GrayPalette = Schema.Literals([
 	"gray",
 	"gray-blue",
 	"gray-cool",
@@ -12,13 +12,13 @@ export const GrayPalette = Schema.Literal(
 	"gray-iron",
 	"gray-true",
 	"gray-warm",
-)
+])
 export type GrayPalette = Schema.Schema.Type<typeof GrayPalette>
 
 /**
  * Border radius preset options
  */
-export const RadiusPreset = Schema.Literal("tight", "normal", "round", "full")
+export const RadiusPreset = Schema.Literals(["tight", "normal", "round", "full"])
 export type RadiusPreset = Schema.Schema.Type<typeof RadiusPreset>
 
 /**
@@ -27,7 +27,7 @@ export type RadiusPreset = Schema.Schema.Type<typeof RadiusPreset>
 export const HexColor = Schema.String.pipe(
 	Schema.pattern(/^#[0-9A-Fa-f]{6}$/),
 	Schema.brand("HexColor"),
-	Schema.annotations({ message: () => "Must be a valid hex color (#RRGGBB)" }),
+	Schema.annotate({ message: () => "Must be a valid hex color (#RRGGBB)" }),
 )
 export type HexColor = Schema.Schema.Type<typeof HexColor>
 
@@ -91,7 +91,7 @@ export type ThemePreset = Schema.Schema.Type<typeof ThemePreset>
 /**
  * Display mode preference
  */
-export const DisplayMode = Schema.Literal("light", "dark", "system")
+export const DisplayMode = Schema.Literals(["light", "dark", "system"])
 export type DisplayMode = Schema.Schema.Type<typeof DisplayMode>
 
 /**

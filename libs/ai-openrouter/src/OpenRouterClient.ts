@@ -8,12 +8,12 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
+import * as ServiceMap from "effect/ServiceMap"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
 import { OpenRouterConfig } from "./OpenRouterConfig.js"
@@ -22,10 +22,9 @@ import { OpenRouterConfig } from "./OpenRouterConfig.js"
  * @since 1.0.0
  * @category Context
  */
-export class OpenRouterClient extends Context.Tag("@effect/ai-openrouter/OpenRouterClient")<
-	OpenRouterClient,
+export class OpenRouterClient extends ServiceMap.Service<OpenRouterClient,
 	Service
->() {}
+>()("@effect/ai-openrouter/OpenRouterClient") {}
 
 /**
  * @since 1.0.0

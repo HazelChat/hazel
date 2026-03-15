@@ -90,4 +90,6 @@ export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>
 			deleteStale,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

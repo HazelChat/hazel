@@ -14,7 +14,7 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { DatabaseLive } from "./database"
 
 // Professional team members for a tech startup
@@ -487,5 +487,8 @@ export class MockDataGenerator extends ServiceMap.Service<MockDataGenerator>()("
 			generateForMarketingScreenshots,
 		}
 	}),
-	dependencies: [DatabaseLive],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
+	)
+}

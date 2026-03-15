@@ -8,7 +8,7 @@ import {
 	type UserId,
 } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
-import { ServiceMap, Effect, Match, Option, pipe, Schema, Stream } from "effect"
+import { ServiceMap, Effect, Layer, Match, Option, pipe, Schema, Stream } from "effect"
 import { TreeFormatter } from "effect/ParseResult"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
@@ -991,11 +991,12 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 			processWebhookEvent: (event: Event) => processWebhookEvent(event),
 		}
 	}),
-	dependencies: [
-		WorkOSClient.Default,
-		UserRepo.Default,
-		OrganizationRepo.Default,
-		OrganizationMemberRepo.Default,
-		InvitationRepo.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(WorkOSClient.Default),
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrganizationRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(InvitationRepo.Default),
+	)
+}

@@ -9,13 +9,13 @@ import type * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
 import * as Tool from "@effect/ai/Tool"
 import * as Arr from "effect/Array"
-import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as ServiceMap from "effect/ServiceMap"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
@@ -32,10 +32,9 @@ import { OpenRouterClient } from "./OpenRouterClient.js"
  * @since 1.0.0
  * @category Context
  */
-export class Config extends Context.Tag("@effect/ai-openrouter/OpenRouterLanguageModel/Config")<
-	Config,
+export class Config extends ServiceMap.Service<Config,
 	Config.Service
->() {
+>()("@effect/ai-openrouter/OpenRouterLanguageModel/Config") {
 	/**
 	 * @since 1.0.0
 	 */

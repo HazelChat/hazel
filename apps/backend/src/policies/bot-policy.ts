@@ -1,7 +1,7 @@
 import { BotRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { BotId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -109,5 +109,9 @@ export class BotPolicy extends ServiceMap.Service<BotPolicy>()("BotPolicy/Policy
 
 		return { canCreate, canRead, canUpdate, canDelete, canInstall, canUninstall } as const
 	}),
-	dependencies: [BotRepo.Default, OrgResolver.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(BotRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

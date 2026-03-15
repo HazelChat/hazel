@@ -9,7 +9,7 @@
  */
 
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Schedule, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schedule, Schema } from "effect"
 
 // ============================================================================
 // Configuration
@@ -21,7 +21,7 @@ const DEFAULT_TIMEOUT = Duration.seconds(30)
 // Domain Schemas (exported for consumers)
 // ============================================================================
 
-export const CraftBlockType = Schema.Literal(
+export const CraftBlockType = Schema.Literals([
 	"text",
 	"line",
 	"page",
@@ -42,7 +42,7 @@ export const CraftBlockType = Schema.Literal(
 	"urlBlock",
 	"videoBlock",
 	"cardBlock",
-)
+])
 export type CraftBlockType = typeof CraftBlockType.Type
 
 export const CraftBlock = Schema.Struct({
@@ -869,5 +869,8 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 			addComments,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

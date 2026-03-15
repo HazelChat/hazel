@@ -22,7 +22,7 @@ import {
 	TauriCommandError,
 	TauriNotAvailableError,
 } from "@hazel/domain/errors"
-import { ServiceMap, Deferred, Duration, Effect, FiberId } from "effect"
+import { ServiceMap, Deferred, Duration, Effect, FiberId, Layer } from "effect"
 import { TokenExchange } from "./token-exchange"
 import { TokenStorage } from "./token-storage"
 
@@ -83,7 +83,6 @@ const getTauriEvent = Effect.gen(function* () {
 })
 
 export class TauriAuth extends ServiceMap.Service<TauriAuth>()("TauriAuth", {
-	dependencies: [TokenStorage.Default, TokenExchange.Default],
 	make: Effect.gen(function* () {
 		const tokenStorage = yield* TokenStorage
 		const tokenExchange = yield* TokenExchange
@@ -205,4 +204,9 @@ export class TauriAuth extends ServiceMap.Service<TauriAuth>()("TauriAuth", {
 				}).pipe(Effect.withSpan("TauriAuth.initiateAuth")),
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(TokenStorage.Default),
+		Layer.provide(TokenExchange.Default),
+	)
+}

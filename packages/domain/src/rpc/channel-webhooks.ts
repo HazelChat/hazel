@@ -81,10 +81,10 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 			description: Schema.optional(Schema.String.pipe(Schema.maxLength(500))),
 			avatarUrl: Schema.optional(AvatarUrl),
 			/** When set, uses a global integration bot user instead of creating a unique webhook bot */
-			integrationProvider: Schema.optional(Schema.Literal("openstatus", "railway")),
+			integrationProvider: Schema.optional(Schema.Literals(["openstatus", "railway"])),
 		}),
 		success: ChannelWebhookCreatedResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -102,7 +102,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.list", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: ChannelWebhookListResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:read"])
 		.middleware(AuthMiddleware),
@@ -126,7 +126,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 			isEnabled: Schema.optional(Schema.Boolean),
 		}),
 		success: ChannelWebhookResponse,
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -145,7 +145,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.regenerateToken", {
 		payload: Schema.Struct({ id: ChannelWebhookId }),
 		success: ChannelWebhookCreatedResponse,
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -163,7 +163,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.delete", {
 		payload: Schema.Struct({ id: ChannelWebhookId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelWebhookNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:write"])
 		.middleware(AuthMiddleware),
@@ -180,7 +180,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 	Rpc.make("channelWebhook.listByOrganization", {
 		payload: Schema.Struct({}),
 		success: ChannelWebhookListResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-webhooks:read"])
 		.middleware(AuthMiddleware),

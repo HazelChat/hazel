@@ -742,5 +742,8 @@ export class LinearApiClient extends ServiceMap.Service<LinearApiClient>()("Line
 			getAccountInfo,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

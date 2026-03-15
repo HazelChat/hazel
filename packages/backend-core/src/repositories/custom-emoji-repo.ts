@@ -98,4 +98,6 @@ export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("Cust
 			restore,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

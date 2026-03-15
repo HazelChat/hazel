@@ -36,4 +36,6 @@ export class ChannelRepo extends ServiceMap.Service<ChannelRepo>()("ChannelRepo"
 			findByOrgAndName,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

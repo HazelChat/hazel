@@ -94,4 +94,6 @@ export class IntegrationTokenRepo extends ServiceMap.Service<IntegrationTokenRep
 			deleteByConnectionId,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

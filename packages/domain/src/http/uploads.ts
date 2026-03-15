@@ -16,13 +16,13 @@ export const ALLOWED_EMOJI_TYPES = ["image/png", "image/gif", "image/webp"] as c
 
 // ============ Upload Type Schema ============
 
-export const UploadType = Schema.Literal(
+export const UploadType = Schema.Literals([
 	"user-avatar",
 	"bot-avatar",
 	"organization-avatar",
 	"attachment",
 	"custom-emoji",
-)
+])
 export type UploadType = typeof UploadType.Type
 
 // ============ Request Schemas ============
@@ -133,13 +133,13 @@ export class CustomEmojiUploadRequest extends Schema.Class<CustomEmojiUploadRequ
 /**
  * Unified presign upload request - discriminated union of all upload types
  */
-export const PresignUploadRequest = Schema.Union(
+export const PresignUploadRequest = Schema.Union([
 	UserAvatarUploadRequest,
 	BotAvatarUploadRequest,
 	OrganizationAvatarUploadRequest,
 	AttachmentUploadRequest,
 	CustomEmojiUploadRequest,
-)
+])
 export type PresignUploadRequest = typeof PresignUploadRequest.Type
 
 // ============ Response Schema ============
@@ -166,7 +166,7 @@ export class UploadError extends Schema.TaggedErrorClass<UploadError>("UploadErr
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(500),
+	{ httpApiStatus: 500 },
 ) {}
 
 export class BotNotFoundForUploadError extends Schema.TaggedErrorClass<BotNotFoundForUploadError>(
@@ -176,7 +176,7 @@ export class BotNotFoundForUploadError extends Schema.TaggedErrorClass<BotNotFou
 	{
 		botId: BotId,
 	},
-	HttpApiSchema.status(404),
+	{ httpApiStatus: 404 },
 ) {}
 
 export class OrganizationNotFoundForUploadError extends Schema.TaggedErrorClass<OrganizationNotFoundForUploadError>(
@@ -186,7 +186,7 @@ export class OrganizationNotFoundForUploadError extends Schema.TaggedErrorClass<
 	{
 		organizationId: OrganizationId,
 	},
-	HttpApiSchema.status(404),
+	{ httpApiStatus: 404 },
 ) {}
 
 // ============ API Group ============

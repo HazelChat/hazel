@@ -8,23 +8,13 @@ import {
 } from "@hazel/backend-core"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
 import { OrgResolver } from "./org-resolver"
 
 export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
 	"ConnectConversationService",
 	{
-		dependencies: [
-			ChannelRepo.Default,
-			ConnectParticipantRepo.Default,
-			ConnectConversationRepo.Default,
-			ConnectConversationChannelRepo.Default,
-			MessageRepo.Default,
-			MessageReactionRepo.Default,
-			ChannelAccessSyncService.Default,
-			OrgResolver.Default,
-		],
 		effect: Effect.gen(function* () {
 			const channelRepo = yield* ChannelRepo
 			const connectParticipantRepo = yield* ConnectParticipantRepo
@@ -331,4 +321,15 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 			} as const
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(ConnectParticipantRepo.Default),
+		Layer.provide(ConnectConversationRepo.Default),
+		Layer.provide(ConnectConversationChannelRepo.Default),
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(MessageReactionRepo.Default),
+		Layer.provide(ChannelAccessSyncService.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

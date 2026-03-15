@@ -1,5 +1,5 @@
 import { RedisClient } from "bun"
-import { Config, Context, Duration, Effect, Layer, Match, Schema } from "effect"
+import { Config, Duration, Effect, Layer, Match, Schema, ServiceMap } from "effect"
 
 // ============ Error Types ============
 
@@ -92,8 +92,7 @@ const sanitizeRedisUrl = (url: string): string => url.replace(/\/\/.*@/, "//***@
  * }).pipe(Effect.provide(Redis.Default))
  * ```
  */
-export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
-	Redis,
+export class Redis extends ServiceMap.Service<Redis,
 	{
 		// String operations
 		/**
@@ -223,7 +222,7 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 		 */
 		readonly connected: boolean
 	}
->() {
+>()("@hazel/effect-bun/Redis") {
 	/**
 	 * Create a Redis layer with a specific URL
 	 */
@@ -296,7 +295,7 @@ export class Redis extends Context.Tag("@hazel/effect-bun/Redis")<
 /**
  * Create the Redis service implementation from a connected client
  */
-const makeService = (client: RedisClient, url: string): Context.Tag.Service<Redis> => ({
+const makeService = (client: RedisClient, url: string): ServiceMap.Service.Shape<typeof Redis> => ({
 	// String operations
 	get: (key) =>
 		Effect.tryPromise({

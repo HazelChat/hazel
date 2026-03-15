@@ -73,7 +73,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),
 		success: UserPresenceStatusResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),
@@ -94,7 +94,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 		success: Schema.Struct({
 			lastSeenAt: JsonDate,
 		}),
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),
@@ -112,7 +112,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	Rpc.make("userPresenceStatus.clearStatus", {
 		payload: Schema.Struct({}),
 		success: UserPresenceStatusResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["user-presence-status:write"])
 		.middleware(AuthMiddleware),

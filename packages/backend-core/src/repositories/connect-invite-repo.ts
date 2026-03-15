@@ -90,4 +90,6 @@ export class ConnectInviteRepo extends ServiceMap.Service<ConnectInviteRepo>()("
 			findPendingForGuestOrganization,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

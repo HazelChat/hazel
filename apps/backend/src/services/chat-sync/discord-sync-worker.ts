@@ -1,4 +1,4 @@
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { ChannelId, MessageId, MessageReactionId, SyncConnectionId, UserId } from "@hazel/schema"
 import {
 	DEFAULT_MAX_MESSAGES_PER_CHANNEL,
@@ -232,5 +232,8 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 			ingestThreadCreate,
 		}
 	}),
-	dependencies: [ChatSyncCoreWorker.Default],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(ChatSyncCoreWorker.Default),
+	)
+}

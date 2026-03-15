@@ -3,10 +3,10 @@ import { Schema } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncDirection = Schema.Literal("both", "hazel_to_external", "external_to_hazel")
+export const ChatSyncDirection = Schema.Literals(["both", "hazel_to_external", "external_to_hazel"])
 export type ChatSyncDirection = Schema.Schema.Type<typeof ChatSyncDirection>
 
-export const ChatSyncOutboundIdentityStrategy = Schema.Literal("webhook", "fallback_bot")
+export const ChatSyncOutboundIdentityStrategy = Schema.Literals(["webhook", "fallback_bot"])
 export type ChatSyncOutboundIdentityStrategy = Schema.Schema.Type<typeof ChatSyncOutboundIdentityStrategy>
 
 export const DiscordWebhookOutboundIdentityConfig = Schema.Struct({
@@ -26,13 +26,13 @@ export const SlackWebhookOutboundIdentityConfig = Schema.Struct({
 })
 export type SlackWebhookOutboundIdentityConfig = Schema.Schema.Type<typeof SlackWebhookOutboundIdentityConfig>
 
-export const ProviderOutboundConfig = Schema.Union(
+export const ProviderOutboundConfig = Schema.Union([
 	DiscordWebhookOutboundIdentityConfig,
 	SlackWebhookOutboundIdentityConfig,
 	Schema.Struct({
 		kind: Schema.NonEmptyTrimmedString,
 	}),
-)
+])
 export type ProviderOutboundConfig = Schema.Schema.Type<typeof ProviderOutboundConfig>
 
 export const OutboundIdentityProviders = Schema.Record({

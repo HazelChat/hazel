@@ -53,7 +53,7 @@ export class UpdateConnectionStatusError extends Schema.TaggedErrorClass<UpdateC
 // Workflow Error Union
 // ============================================================================
 
-export const GitHubInstallationWorkflowError = Schema.Union(
+export const GitHubInstallationWorkflowError = Schema.Union([
 	FindConnectionByInstallationError,
 	UpdateConnectionStatusError,
-)
+])

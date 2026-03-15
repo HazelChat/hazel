@@ -76,4 +76,6 @@ export class BotInstallationRepo extends ServiceMap.Service<BotInstallationRepo>
 			getBotIdsForOrg,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

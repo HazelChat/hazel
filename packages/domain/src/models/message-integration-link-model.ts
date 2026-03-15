@@ -4,7 +4,7 @@ import { IntegrationProvider } from "./integration-connection-model"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const LinkType = Schema.Literal("created", "mentioned", "resolved", "linked")
+export const LinkType = Schema.Literals(["created", "mentioned", "resolved", "linked"])
 export type LinkType = Schema.Schema.Type<typeof LinkType>
 
 export class Model extends M.Class<Model>("MessageIntegrationLink")({

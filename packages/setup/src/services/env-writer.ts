@@ -134,4 +134,6 @@ export class EnvWriter extends ServiceMap.Service<EnvWriter>()("EnvWriter", {
 				return result
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

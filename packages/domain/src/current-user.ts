@@ -1,5 +1,5 @@
 import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi"
-import { Context as C, Schema as S } from "effect"
+import { ServiceMap, Schema as S } from "effect"
 import { UnauthorizedError } from "./errors"
 import { OrganizationId, UserId } from "@hazel/schema"
 import { User } from "./models"
@@ -27,9 +27,9 @@ export class Schema extends S.Class<Schema>("CurrentUserSchema")({
 	settings: S.NullOr(User.UserSettingsSchema),
 }) {}
 
-export class Context extends C.Tag("CurrentUser")<Context, Schema>() {}
+export class Context extends ServiceMap.Service<Context, Schema>()("CurrentUser") {}
 
-const AuthFailure = S.Union(
+const AuthFailure = S.Union([
 	UnauthorizedError,
 	SessionLoadError,
 	SessionAuthenticationError,
@@ -39,11 +39,12 @@ const AuthFailure = S.Union(
 	SessionExpiredError,
 	InvalidBearerTokenError,
 	WorkOSUserFetchError,
-)
+])
 
-export class Authorization extends HttpApiMiddleware.Tag<Authorization>()("Authorization", {
-	failure: AuthFailure,
-	provides: Context,
+export class Authorization extends HttpApiMiddleware.Service<Authorization, {
+	provides: Context
+}>()("Authorization", {
+	error: AuthFailure,
 	security: {
 		bearer: HttpApiSecurity.bearer,
 	},

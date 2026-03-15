@@ -56,26 +56,26 @@ type StrictJsonArray = readonly StrictJsonValue[]
 type StrictJsonValue = JsonPrimitive | StrictJsonObject | StrictJsonArray
 
 // Non-recursive JSON schema to avoid type inference explosion
-export const JsonValue = Schema.Union(
+export const JsonValue = Schema.Union([
 	Schema.String,
 	Schema.Number,
 	Schema.Boolean,
 	Schema.Null,
 	Schema.Record({ key: Schema.String, value: Schema.Unknown }),
 	Schema.Array(Schema.Unknown),
-) satisfies Schema.Schema<JsonValue>
+]) satisfies Schema.Schema<JsonValue>
 
 // For cases where you need full JSON validation, use this explicit version
 export const StrictJsonValue = Schema.suspend(
 	(): Schema.Schema<StrictJsonValue> =>
-		Schema.Union(
+		Schema.Union([
 			Schema.String,
 			Schema.Number,
 			Schema.Boolean,
 			Schema.Null,
 			Schema.Record({ key: Schema.String, value: StrictJsonValue }),
 			Schema.Array(StrictJsonValue),
-		),
+		]),
 )
 
 // Utility type to prevent unknown keys (similar to drizzle-zod)
@@ -255,7 +255,7 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 	let type: Schema.Schema<any, any> | undefined
 
 	if (isWithEnum(column)) {
-		type = column.enumValues.length > 0 ? Schema.Literal(...column.enumValues) : Schema.String
+		type = column.enumValues.length > 0 ? Schema.Literals(column.enumValues) : Schema.String
 	}
 
 	if (!type) {

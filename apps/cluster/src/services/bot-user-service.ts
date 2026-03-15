@@ -116,7 +116,9 @@ export class BotUserService extends ServiceMap.Service<BotUserService>()("BotUse
 			warmCache,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
 /**
  * Layer that provides BotUserService with Database dependency.

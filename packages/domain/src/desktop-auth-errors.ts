@@ -16,7 +16,7 @@ export class TauriNotAvailableError extends Schema.TaggedErrorClass<TauriNotAvai
 	"TauriNotAvailableError",
 	{
 		message: Schema.String,
-		component: Schema.Literal("opener", "core", "event", "store"),
+		component: Schema.Literals(["opener", "core", "event", "store"]),
 	},
 ) {}
 
@@ -65,7 +65,7 @@ export class MissingAuthCodeError extends Schema.TaggedErrorClass<MissingAuthCod
  */
 export class TokenStoreError extends Schema.TaggedErrorClass<TokenStoreError>()("TokenStoreError", {
 	message: Schema.String,
-	operation: Schema.Literal("load", "get", "set", "delete"),
+	operation: Schema.Literals(["load", "get", "set", "delete"]),
 	detail: Schema.optional(Schema.String),
 }) {}
 
@@ -74,7 +74,7 @@ export class TokenStoreError extends Schema.TaggedErrorClass<TokenStoreError>()(
  */
 export class TokenNotFoundError extends Schema.TaggedErrorClass<TokenNotFoundError>()("TokenNotFoundError", {
 	message: Schema.String,
-	tokenType: Schema.Literal("access", "refresh", "expiresAt"),
+	tokenType: Schema.Literals(["access", "refresh", "expiresAt"]),
 }) {}
 
 // ============================================================================

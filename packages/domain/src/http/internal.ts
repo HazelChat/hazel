@@ -33,7 +33,7 @@ export class InternalApiGroup extends HttpApiGroup.make("internal")
 			.addError(InternalServerError)
 			.setPayload(ValidateBotTokenRequest)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Validate Bot Token",
 					description:
 						"Validate a bot token and return the bot identity. Used by actors for authentication.",

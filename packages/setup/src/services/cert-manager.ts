@@ -105,4 +105,6 @@ export class CertManager extends ServiceMap.Service<CertManager>()("CertManager"
 				catch: (e) => new Error(`Cert generation failed: ${e}`),
 			}),
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

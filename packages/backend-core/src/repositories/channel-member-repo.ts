@@ -102,4 +102,6 @@ export class ChannelMemberRepo extends ServiceMap.Service<ChannelMemberRepo>()("
 			listByChannel,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

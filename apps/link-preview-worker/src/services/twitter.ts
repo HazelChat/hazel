@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
-import { ServiceMap, Effect, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 
 const SYNDICATION_URL = "https://cdn.syndication.twimg.com"
 const TWEET_ID_REGEX = /^[0-9]+$/
@@ -167,5 +167,8 @@ export class TwitterApi extends ServiceMap.Service<TwitterApi>()("TwitterApi", {
 				}),
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

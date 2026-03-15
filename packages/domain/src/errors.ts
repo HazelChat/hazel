@@ -1,4 +1,3 @@
-import { HttpApiSchema } from "effect/unstable/httpapi"
 import { Effect, Predicate, Schema } from "effect"
 import { ChannelId, MessageId } from "@hazel/schema"
 
@@ -8,7 +7,7 @@ export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError
 		message: Schema.String,
 		detail: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is UnauthorizedError {
 		return Predicate.isTagged(u, "UnauthorizedError")
@@ -24,7 +23,7 @@ export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpi
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {
 	static is(u: unknown): u is OAuthCodeExpiredError {
 		return Predicate.isTagged(u, "OAuthCodeExpiredError")
@@ -38,7 +37,7 @@ export class InternalServerError extends Schema.TaggedErrorClass<InternalServerE
 		detail: Schema.optional(Schema.String),
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.status(500),
+	{ httpApiStatus: 500 },
 ) {}
 
 export class WorkflowInitializationError extends Schema.TaggedErrorClass<WorkflowInitializationError>(
@@ -49,7 +48,7 @@ export class WorkflowInitializationError extends Schema.TaggedErrorClass<Workflo
 		message: Schema.String,
 		cause: Schema.optional(Schema.Any),
 	},
-	HttpApiSchema.status(500),
+	{ httpApiStatus: 500 },
 ) {}
 
 export class DmChannelAlreadyExistsError extends Schema.TaggedErrorClass<DmChannelAlreadyExistsError>(
@@ -60,7 +59,7 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedErrorClass<DmChann
 		message: Schema.String,
 		detail: Schema.optional(Schema.String),
 	},
-	HttpApiSchema.status(409),
+	{ httpApiStatus: 409 },
 ) {}
 
 /**
@@ -72,7 +71,7 @@ export class MessageNotFoundError extends Schema.TaggedErrorClass<MessageNotFoun
 	{
 		messageId: MessageId,
 	},
-	HttpApiSchema.status(404),
+	{ httpApiStatus: 404 },
 ) {}
 
 /**
@@ -84,7 +83,7 @@ export class NestedThreadError extends Schema.TaggedErrorClass<NestedThreadError
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.status(400),
+	{ httpApiStatus: 400 },
 ) {}
 
 /**
@@ -99,7 +98,7 @@ export class WorkflowServiceUnavailableError extends Schema.TaggedErrorClass<Wor
 		message: Schema.String,
 		cause: Schema.optionalWith(Schema.String, { nullable: true }),
 	},
-	HttpApiSchema.status(503),
+	{ httpApiStatus: 503 },
 ) {}
 
 export function withRemapDbErrors<R, E extends { _tag: string }, A>(

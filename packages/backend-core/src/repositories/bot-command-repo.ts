@@ -158,4 +158,6 @@ export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCom
 			deleteStaleCommands,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

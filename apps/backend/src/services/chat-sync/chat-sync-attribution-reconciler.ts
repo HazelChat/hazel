@@ -1,7 +1,7 @@
 import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
 interface ReconcileAttributionParams {
 	organizationId: OrganizationId
@@ -126,6 +126,11 @@ export class ChatSyncAttributionReconciler extends ServiceMap.Service<ChatSyncAt
 				unlinkHistoricalProviderMessages,
 			}
 		}),
-		dependencies: [MessageRepo.Default, UserRepo.Default, OrganizationMemberRepo.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+	)
+}

@@ -9,7 +9,7 @@ import {
 	ReactionDeletedPayloadSchema,
 } from "@hazel/backend-core/repositories"
 import { Database } from "@hazel/db"
-import { ServiceMap, Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
@@ -27,7 +27,6 @@ const computeRetryDelayMs = (attempt: number): number =>
 export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDispatcher>()(
 	"MessageOutboxDispatcher",
 	{
-		dependencies: [EnvVars.Default, MessageOutboxRepo.Default, MessageSideEffectService.Default],
 		effect: Effect.gen(function* () {
 			const envVars = yield* EnvVars
 			const database = yield* Database.Database
@@ -235,4 +234,10 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(EnvVars.Default),
+		Layer.provide(MessageOutboxRepo.Default),
+		Layer.provide(MessageSideEffectService.Default),
+	)
+}

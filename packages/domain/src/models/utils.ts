@@ -392,7 +392,7 @@ export const UuidV4Insert = <const B extends string | symbol>(
 	})
 
 /** A boolean parsed from 0 or 1. */
-export class BooleanFromNumber extends Schema.transform(Schema.Literal(0, 1), Schema.Boolean, {
+export class BooleanFromNumber extends Schema.transform(Schema.Literals([0, 1]), Schema.Boolean, {
 	decode: (n) => n === 1,
 	encode: (b) => (b ? 1 : 0),
 }) {}
@@ -407,8 +407,8 @@ export interface EntitySchema extends Schema.Schema.AnyNoContext {
 }
 
 // Helper utilities for common model fields
-export const JsonDate = Schema.Union(Schema.DateFromString, Schema.DateFromSelf).pipe(
-	Schema.annotations({
+export const JsonDate = Schema.Union([Schema.DateFromString, Schema.DateFromSelf]).pipe(
+	Schema.annotate({
 		jsonSchema: { type: "string", format: "date-time" },
 	}),
 )

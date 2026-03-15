@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 
 export const DiscordAccountInfo = Schema.Struct({
 	externalAccountId: Schema.String,
@@ -547,5 +547,8 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			createThread,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}

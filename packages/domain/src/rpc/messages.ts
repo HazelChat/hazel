@@ -71,12 +71,12 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.create", {
 		payload: Message.Insert,
 		success: MessageResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			ChannelNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),
@@ -99,12 +99,12 @@ export class MessageRpcs extends RpcGroup.make(
 			id: MessageId,
 		}).pipe(Schema.extend(Message.JsonUpdate)),
 		success: MessageResponse,
-		error: Schema.Union(
+		error: Schema.Union([
 			MessageNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),
@@ -125,12 +125,12 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.delete", {
 		payload: Schema.Struct({ id: MessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(
+		error: Schema.Union([
 			MessageNotFoundError,
 			UnauthorizedError,
 			InternalServerError,
 			RateLimitExceededError,
-		),
+		]),
 	})
 		.annotate(RequiredScopes, ["messages:write"])
 		.middleware(AuthMiddleware),

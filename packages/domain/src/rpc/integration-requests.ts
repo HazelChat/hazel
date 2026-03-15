@@ -38,7 +38,7 @@ export class IntegrationRequestRpcs extends RpcGroup.make(
 	Rpc.make("integrationRequest.create", {
 		payload: CreateIntegrationRequestPayload,
 		success: IntegrationRequestResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["integration-connections:write"])
 		.middleware(AuthMiddleware),

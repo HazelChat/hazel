@@ -77,7 +77,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 			messageId: MessageId,
 		}),
 		success: PinnedMessageResponse,
-		error: Schema.Union(MessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([MessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),
@@ -100,7 +100,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 			...PinnedMessage.Model.jsonUpdate.fields,
 		}),
 		success: PinnedMessageResponse,
-		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),
@@ -120,7 +120,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	Rpc.make("pinnedMessage.delete", {
 		payload: Schema.Struct({ id: PinnedMessageId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(PinnedMessageNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["pinned-messages:write"])
 		.middleware(AuthMiddleware),

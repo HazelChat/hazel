@@ -300,7 +300,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 		const notificationsResult = yield* Activity.make({
 			name: "CreateNotifications",
 			success: Cluster.CreateNotificationsResult,
-			error: Schema.Union(Cluster.CreateNotificationError),
+			error: Schema.Union([Cluster.CreateNotificationError]),
 			execute: Effect.gen(function* () {
 				const db = yield* Database.Database
 				const startedAt = Date.now()

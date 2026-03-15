@@ -7,12 +7,11 @@
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain/errors"
 import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
-import { ServiceMap, Duration, Effect, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
 
 export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExchange", {
-	dependencies: [FetchHttpClient.layer],
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 		const backendUrl = import.meta.env.VITE_BACKEND_URL
@@ -172,6 +171,10 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+
 	/**
 	 * Mock token response for testing
 	 */

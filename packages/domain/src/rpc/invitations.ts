@@ -69,12 +69,12 @@ export class InvitationRpcs extends RpcGroup.make(
 			invites: Schema.Array(
 				Schema.Struct({
 					email: Schema.String,
-					role: Schema.Literal("member", "admin"),
+					role: Schema.Literals(["member", "admin"]),
 				}),
 			),
 		}),
 		success: InvitationBatchResponse,
-		error: Schema.Union(UnauthorizedError, InternalServerError),
+		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -94,7 +94,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.resend", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: InvitationResponse,
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -114,7 +114,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.revoke", {
 		payload: Schema.Struct({ invitationId: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -137,7 +137,7 @@ export class InvitationRpcs extends RpcGroup.make(
 			...Invitation.Model.jsonUpdate.fields,
 		}),
 		success: InvitationResponse,
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),
@@ -157,7 +157,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.delete", {
 		payload: Schema.Struct({ id: InvitationId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(InvitationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["invitations:write"])
 		.middleware(AuthMiddleware),

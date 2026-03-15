@@ -3,7 +3,7 @@ import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, CurrentBotScopes, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, FiberRef, Option } from "effect"
+import { ServiceMap, Effect, FiberRef, Layer, Option } from "effect"
 import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
 
 /**
@@ -247,10 +247,11 @@ export class OrgResolver extends ServiceMap.Service<OrgResolver>()("OrgResolver"
 			checkChannelAccess,
 		} as const
 	}),
-	dependencies: [
-		OrganizationMemberRepo.Default,
-		ChannelRepo.Default,
-		ChannelMemberRepo.Default,
-		MessageRepo.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(ChannelMemberRepo.Default),
+		Layer.provide(MessageRepo.Default),
+	)
+}

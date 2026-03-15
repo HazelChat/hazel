@@ -20,7 +20,7 @@ export const OpenStatusMonitor = Schema.Struct({
 export type OpenStatusMonitor = Schema.Schema.Type<typeof OpenStatusMonitor>
 
 // OpenStatus status type
-export const OpenStatusStatus = Schema.Literal("degraded", "error", "recovered")
+export const OpenStatusStatus = Schema.Literals(["degraded", "error", "recovered"])
 export type OpenStatusStatus = Schema.Schema.Type<typeof OpenStatusStatus>
 
 // OpenStatus webhook payload
@@ -105,7 +105,7 @@ export class WebhookNotFoundError extends Schema.TaggedErrorClass<WebhookNotFoun
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(404),
+	{ httpApiStatus: 404 },
 ) {}
 
 // Error: Webhook is disabled
@@ -114,7 +114,7 @@ export class WebhookDisabledError extends Schema.TaggedErrorClass<WebhookDisable
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(403),
+	{ httpApiStatus: 403 },
 ) {}
 
 // Error: Invalid webhook token
@@ -123,7 +123,7 @@ export class InvalidWebhookTokenError extends Schema.TaggedErrorClass<InvalidWeb
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(401),
+	{ httpApiStatus: 401 },
 ) {}
 
 // Public endpoint - no auth middleware, uses webhook token in URL
@@ -143,7 +143,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute Incoming Webhook",
 					description:
 						"Post a message to a channel via webhook. Supports plain text content and Discord-style embeds.",
@@ -167,7 +167,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute OpenStatus Webhook",
 					description:
 						"Receive status alerts from OpenStatus and post them as rich embeds to a channel.",
@@ -191,7 +191,7 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Execute Railway Webhook",
 					description:
 						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",

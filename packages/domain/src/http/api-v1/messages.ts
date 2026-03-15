@@ -76,7 +76,7 @@ export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoun
 	{
 		channelId: ChannelId,
 	},
-	HttpApiSchema.status(404),
+	{ httpApiStatus: 404 },
 ) {}
 
 export class InvalidPaginationError extends Schema.TaggedErrorClass<InvalidPaginationError>()(
@@ -84,7 +84,7 @@ export class InvalidPaginationError extends Schema.TaggedErrorClass<InvalidPagin
 	{
 		message: Schema.String,
 	},
-	HttpApiSchema.status(400),
+	{ httpApiStatus: 400 },
 ) {}
 
 // ============ API GROUP ============
@@ -100,7 +100,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 			.addError(InvalidPaginationError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "List Messages",
 					description:
 						"List messages in a channel with Stripe-style cursor-based pagination. Returns messages in reverse chronological order (newest first).",
@@ -119,7 +119,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 			.addError(RateLimitExceededError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Create Message",
 					description: "Create a new message in a channel",
 					summary: "Create message",
@@ -138,7 +138,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 			.addError(RateLimitExceededError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Update Message",
 					description: "Update an existing message",
 					summary: "Update message",
@@ -156,7 +156,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 			.addError(RateLimitExceededError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Delete Message",
 					description: "Delete a message",
 					summary: "Delete message",
@@ -174,7 +174,7 @@ export class MessagesApiGroup extends HttpApiGroup.make("api-v1-messages")
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Toggle Reaction",
 					description: "Toggle a reaction on a message",
 					summary: "Toggle reaction",

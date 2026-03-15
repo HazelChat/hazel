@@ -77,7 +77,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	Rpc.make("organizationMember.create", {
 		payload: OrganizationMember.Model.jsonCreate,
 		success: OrganizationMemberResponse,
-		error: Schema.Union(OrganizationNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organization-members:write"])
 		.middleware(AuthMiddleware),
@@ -100,7 +100,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 			...OrganizationMember.Model.jsonUpdate.fields,
 		}),
 		success: OrganizationMemberResponse,
-		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organization-members:write"])
 		.middleware(AuthMiddleware),
@@ -126,7 +126,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 			}),
 		}),
 		success: OrganizationMemberResponse,
-		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organization-members:write"])
 		.middleware(AuthMiddleware),
@@ -146,7 +146,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	Rpc.make("organizationMember.delete", {
 		payload: Schema.Struct({ id: OrganizationMemberId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["organization-members:write"])
 		.middleware(AuthMiddleware),

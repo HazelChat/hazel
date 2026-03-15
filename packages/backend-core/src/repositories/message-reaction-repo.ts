@@ -61,4 +61,6 @@ export class MessageReactionRepo extends ServiceMap.Service<MessageReactionRepo>
 			backfillConversationIdForChannel,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

@@ -6,7 +6,7 @@ import { JsonDate } from "./utils"
 export const ChatSyncProvider = Schema.NonEmptyTrimmedString
 export type ChatSyncProvider = Schema.Schema.Type<typeof ChatSyncProvider>
 
-export const ChatSyncConnectionStatus = Schema.Literal("active", "paused", "error", "disabled")
+export const ChatSyncConnectionStatus = Schema.Literals(["active", "paused", "error", "disabled"])
 export type ChatSyncConnectionStatus = Schema.Schema.Type<typeof ChatSyncConnectionStatus>
 
 export class Model extends M.Class<Model>("ChatSyncConnection")({

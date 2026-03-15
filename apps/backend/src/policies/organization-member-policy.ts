@@ -1,7 +1,7 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver"
 
 export class OrganizationMemberPolicy extends ServiceMap.Service<OrganizationMemberPolicy>()(
@@ -103,6 +103,10 @@ export class OrganizationMemberPolicy extends ServiceMap.Service<OrganizationMem
 
 			return { canCreate, canUpdate, canDelete } as const
 		}),
-		dependencies: [OrganizationMemberRepo.Default, OrgResolver.Default],
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

@@ -52,4 +52,4 @@ export class MarkUploadsFailedError extends Schema.TaggedErrorClass<MarkUploadsF
 // Workflow Error Union
 // ============================================================================
 
-export const CleanupUploadsWorkflowError = Schema.Union(FindStaleUploadsError, MarkUploadsFailedError)
+export const CleanupUploadsWorkflowError = Schema.Union([FindStaleUploadsError, MarkUploadsFailedError])

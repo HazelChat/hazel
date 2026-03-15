@@ -84,7 +84,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get OAuth Authorization URL",
 					description:
 						"Returns the OAuth authorization URL for the provider. The frontend should redirect the user to this URL. Sets a session cookie to preserve context for the callback.",
@@ -121,7 +121,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "OAuth Callback",
 					description: "Handle OAuth callback from integration provider",
 					summary: "Process OAuth callback",
@@ -149,7 +149,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Get Connection Status",
 					description: "Check the connection status for a provider",
 					summary: "Get integration status",
@@ -174,7 +174,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 			.setPayload(ConnectApiKeyRequest)
 			.middleware(CurrentUser.Authorization)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Connect via API Key",
 					description:
 						"Connect an integration using an API key/token instead of OAuth. Validates the credentials against the provider and stores the connection.",
@@ -203,7 +203,7 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				}),
 			)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Disconnect Integration",
 					description: "Disconnect an integration and revoke tokens",
 					summary: "Disconnect provider",

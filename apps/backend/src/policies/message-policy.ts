@@ -1,7 +1,7 @@
 import { ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { ErrorUtils, policy } from "@hazel/domain"
 import type { ChannelId, MessageId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner, withAnnotatedScope } from "../lib/policy-utils"
 import { OrgResolver } from "../services/org-resolver"
 
@@ -86,10 +86,11 @@ export class MessagePolicy extends ServiceMap.Service<MessagePolicy>()("MessageP
 
 		return { canCreate, canRead, canUpdate, canDelete } as const
 	}),
-	dependencies: [
-		MessageRepo.Default,
-		ChannelRepo.Default,
-		OrganizationMemberRepo.Default,
-		OrgResolver.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(OrgResolver.Default),
+	)
+}

@@ -120,4 +120,6 @@ export class ChannelWebhookRepo extends ServiceMap.Service<ChannelWebhookRepo>()
 			findByOrganization,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

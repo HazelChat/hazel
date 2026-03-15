@@ -81,7 +81,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 			channelId: ChannelId,
 		}),
 		success: ChannelMemberResponse,
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -104,7 +104,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 			id: ChannelMemberId,
 		}).pipe(Schema.extend(Schema.partial(ChannelMember.Model.jsonUpdate))),
 		success: ChannelMemberResponse,
-		error: Schema.Union(ChannelMemberNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -125,7 +125,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 	Rpc.make("channelMember.delete", {
 		payload: Schema.Struct({ id: ChannelMemberId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelMemberNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),
@@ -145,7 +145,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 	Rpc.make("channelMember.clearNotifications", {
 		payload: Schema.Struct({ channelId: ChannelId }),
 		success: Schema.Struct({ transactionId: TransactionId }),
-		error: Schema.Union(ChannelNotFoundError, UnauthorizedError, InternalServerError),
+		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["channel-members:write"])
 		.middleware(AuthMiddleware),

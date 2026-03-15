@@ -17,7 +17,6 @@ export const CustomFetchLive = FetchHttpClient.layer.pipe(
 )
 
 export class ApiClient extends ServiceMap.Service<ApiClient>()("ApiClient", {
-	dependencies: [CustomFetchLive],
 	make: Effect.gen(function* () {
 		return yield* HttpApiClient.make(HazelApi, {
 			baseUrl: import.meta.env.VITE_BACKEND_URL,
@@ -40,4 +39,8 @@ export class ApiClient extends ServiceMap.Service<ApiClient>()("ApiClient", {
 				),
 		})
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(CustomFetchLive),
+	)
+}

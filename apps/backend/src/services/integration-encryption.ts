@@ -6,7 +6,7 @@ export interface EncryptedToken {
 	keyVersion: number
 }
 
-const EncryptionOperation = Schema.Literal("encrypt", "decrypt", "importKey")
+const EncryptionOperation = Schema.Literals(["encrypt", "decrypt", "importKey"])
 
 export class IntegrationEncryptionError extends Schema.TaggedErrorClass<IntegrationEncryptionError>()(
 	"IntegrationEncryptionError",
@@ -145,4 +145,6 @@ export class IntegrationEncryption extends ServiceMap.Service<IntegrationEncrypt
 			currentKeyVersion,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

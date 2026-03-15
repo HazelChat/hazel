@@ -11,7 +11,6 @@ import { AuthConfig } from "../config.ts"
  * Provides type-safe access to WorkOS SDK operations.
  */
 export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/auth/WorkOSClient", {
-	dependencies: [AuthConfig.Default],
 	make: Effect.gen(function* () {
 		const config = yield* AuthConfig
 		const client = new WorkOSNodeAPI(config.workosApiKey, {
@@ -55,6 +54,10 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/aut
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(AuthConfig.Default),
+	)
+
 	/** Default mock user for tests */
 	static readonly mockUser: WorkOSUser = {
 		id: Schema.decodeUnknownSync(WorkOSUserId)("user_01ABC123"),

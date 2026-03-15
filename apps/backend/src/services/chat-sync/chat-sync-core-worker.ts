@@ -28,7 +28,7 @@ import {
 	ExternalWebhookId,
 	ExternalThreadId,
 } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
@@ -2760,21 +2760,22 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			ingestThreadCreate,
 		}
 	}),
-	dependencies: [
-		ChatSyncConnectionRepo.Default,
-		ChatSyncChannelLinkRepo.Default,
-		ChatSyncMessageLinkRepo.Default,
-		ChatSyncEventReceiptRepo.Default,
-		MessageRepo.Default,
-		MessageOutboxRepo.Default,
-		MessageReactionRepo.Default,
-		ChannelRepo.Default,
-		IntegrationConnectionRepo.Default,
-		UserRepo.Default,
-		OrganizationMemberRepo.Default,
-		IntegrationBotService.Default,
-		ChannelAccessSyncService.Default,
-		ChatSyncProviderRegistry.Default,
-		Discord.DiscordApiClient.Default,
-	],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.effect).pipe(
+		Layer.provide(ChatSyncConnectionRepo.Default),
+		Layer.provide(ChatSyncChannelLinkRepo.Default),
+		Layer.provide(ChatSyncMessageLinkRepo.Default),
+		Layer.provide(ChatSyncEventReceiptRepo.Default),
+		Layer.provide(MessageRepo.Default),
+		Layer.provide(MessageOutboxRepo.Default),
+		Layer.provide(MessageReactionRepo.Default),
+		Layer.provide(ChannelRepo.Default),
+		Layer.provide(IntegrationConnectionRepo.Default),
+		Layer.provide(UserRepo.Default),
+		Layer.provide(OrganizationMemberRepo.Default),
+		Layer.provide(IntegrationBotService.Default),
+		Layer.provide(ChannelAccessSyncService.Default),
+		Layer.provide(ChatSyncProviderRegistry.Default),
+		Layer.provide(Discord.DiscordApiClient.Default),
+	)
+}

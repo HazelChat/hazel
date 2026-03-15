@@ -261,4 +261,6 @@ export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 			decrementInstallCount,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}

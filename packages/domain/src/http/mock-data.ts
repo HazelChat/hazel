@@ -34,7 +34,7 @@ export class MockDataGroup extends HttpApiGroup.make("mockData")
 			.addError(UnauthorizedError)
 			.addError(InternalServerError)
 			.annotateContext(
-				OpenApi.annotations({
+				OpenApi.annotate({
 					title: "Generate Mock Data",
 					description: "Generate mock data for an organization",
 					summary: "Generate test data",

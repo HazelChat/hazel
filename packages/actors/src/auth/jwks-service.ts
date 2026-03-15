@@ -1,4 +1,4 @@
-import { ServiceMap, Effect, Option, Ref } from "effect"
+import { ServiceMap, Effect, Layer, Option, Ref } from "effect"
 import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose"
 import { TokenValidationConfigService } from "./config-service"
 import { ConfigError } from "./errors"
@@ -9,7 +9,6 @@ import { ConfigError } from "./errors"
  * The keyset is created lazily the first time JWT validation is requested.
  */
 export class JwksService extends ServiceMap.Service<JwksService>()("JwksService", {
-	dependencies: [TokenValidationConfigService.Default],
 	make: Effect.gen(function* () {
 		const config = yield* TokenValidationConfigService
 		const jwksRef = yield* Ref.make<Option.Option<JWTVerifyGetKey>>(Option.none())
@@ -40,4 +39,8 @@ export class JwksService extends ServiceMap.Service<JwksService>()("JwksService"
 			getJwks,
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(TokenValidationConfigService.Default),
+	)
+}

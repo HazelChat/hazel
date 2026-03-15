@@ -1,6 +1,6 @@
 import { createPrivateKey } from "node:crypto"
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Config, Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Redacted, Schema } from "effect"
 import { SignJWT } from "jose"
 
 // ============================================================================
@@ -287,5 +287,8 @@ export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>
 			getInstallationToken,
 		}
 	}),
-	dependencies: [FetchHttpClient.layer],
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(FetchHttpClient.layer),
+	)
+}
