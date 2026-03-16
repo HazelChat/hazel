@@ -43,6 +43,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const channelWebhookPolicy = yield* ChannelWebhookPolicy
+		const orgResolver = yield* OrgResolver
 
 		return {
 			"channelWebhook.create": (payload) =>
@@ -246,7 +247,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						"list",
 					)(
 						withAnnotatedScope((scope) =>
-							OrgResolver.requireScope(organizationId, scope, "ChannelWebhook", "list"),
+							orgResolver.requireScope(organizationId, scope, "ChannelWebhook", "list"),
 						),
 					)
 

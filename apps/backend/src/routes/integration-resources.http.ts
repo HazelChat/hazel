@@ -351,10 +351,11 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
  */
 const handleGetGitHubRepositories = Effect.fn("integration-resources.getGitHubRepositories")(function* (
 	path: { orgId: OrganizationId },
-	query: { page: number; perPage: number },
+	query: { page?: number; perPage?: number },
 ) {
-	const { orgId } = params
-	const { page, perPage } = query
+	const { orgId } = path
+	const page = query.page ?? 1
+	const perPage = query.perPage ?? 30
 
 	const connectionRepo = yield* IntegrationConnectionRepo
 	const tokenService = yield* IntegrationTokenService
@@ -430,13 +431,13 @@ const getActiveDiscordConnection = Effect.fn("integration-resources.getActiveDis
 const handleGetDiscordGuilds = Effect.fn("integration-resources.getDiscordGuilds")(function* (path: {
 	orgId: OrganizationId
 }) {
-	const { orgId } = params
+	const { orgId } = path
 	const tokenService = yield* IntegrationTokenService
 	const connection = yield* getActiveDiscordConnection(orgId)
 	const accessToken = yield* tokenService.getValidAccessToken(connection.id)
 
-	const guilds = yield* Discord.DiscordApiClient.listGuilds(accessToken).pipe(
-		Effect.provide(Discord.DiscordApiClient.layer),
+	const discordApiClient = yield* Discord.DiscordApiClient
+	const guilds = yield* discordApiClient.listGuilds(accessToken).pipe(
 		Effect.mapError(
 			(error) =>
 				new IntegrationResourceError({
@@ -452,24 +453,12 @@ const handleGetDiscordGuilds = Effect.fn("integration-resources.getDiscordGuilds
 
 const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscordGuildChannels")(
 	function* (path: { orgId: OrganizationId; guildId: string }) {
-		const { orgId, guildId } = params
+		const { orgId, guildId } = path
 		yield* getActiveDiscordConnection(orgId)
 
-		const botToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(
-			Effect.mapError(
-				(error) =>
-					new InternalServerError({
-						message: "Discord bot token is not configured",
-						detail: String(error),
-					}),
-			),
-		)
-
-		const channels = yield* Discord.DiscordApiClient.listGuildChannels(
-			guildId,
-			Redacted.value(botToken),
-		).pipe(
-			Effect.provide(Discord.DiscordApiClient.layer),
+		const botToken = yield* Config.redacted("DISCORD_BOT_TOKEN")
+		const discordApiClient = yield* Discord.DiscordApiClient
+		const channels = yield* discordApiClient.listGuildChannels(guildId, Redacted.value(botToken)).pipe(
 			Effect.mapError(
 				(error) =>
 					new IntegrationResourceError({
@@ -481,7 +470,10 @@ const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscor
 		)
 
 		return new DiscordGuildChannelsResponse({
-			channels: channels.map((c) => ({ ...c, id: c.id as ExternalChannelId })),
+			channels: channels.map((c: { id: string; name: string; type: number }) => ({
+				...c,
+				id: c.id as ExternalChannelId,
+			})),
 		})
 	},
 )

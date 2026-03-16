@@ -35,7 +35,7 @@ import { recordChatSyncDiagnostic } from "../../test/chat-sync-test-diagnostics"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry, type ChatSyncProviderAdapter } from "./chat-sync-provider-registry"
-import { ChatSyncCoreWorker } from "./chat-sync-core-worker"
+import { ChatSyncCoreWorker, ChatSyncCoreWorkerMake } from "./chat-sync-core-worker"
 
 type SeedContext = {
 	organizationId: OrganizationId
@@ -369,16 +369,16 @@ const makeWorkerLayer = (
 		repoLayer,
 		Layer.succeed(ChatSyncProviderRegistry, {
 			getAdapter: () => Effect.succeed(params.providerAdapter),
-		} as unknown as ChatSyncProviderRegistry),
+		} as never),
 		Layer.succeed(IntegrationBotService, {
 			getOrCreateBotUser: () => Effect.succeed({ id: params.botUserId }),
-		} as unknown as IntegrationBotService),
+		} as never),
 		Layer.succeed(ChannelAccessSyncService, {
 			syncChannel: (channelId: ChannelId) =>
 				Effect.sync(() => {
 					params.onSyncChannel?.(channelId)
 				}),
-		} as unknown as ChannelAccessSyncService),
+		} as never),
 		Layer.succeed(Discord.DiscordApiClient, {
 			createWebhook: () => Effect.fail(new Error("not used in deterministic integration tests")),
 			executeWebhookMessage: () =>
@@ -391,10 +391,10 @@ const makeWorkerLayer = (
 			addReaction: () => Effect.fail(new Error("not used in deterministic integration tests")),
 			removeReaction: () => Effect.fail(new Error("not used in deterministic integration tests")),
 			createThread: () => Effect.fail(new Error("not used in deterministic integration tests")),
-		} as unknown as Discord.DiscordApiClient),
+		} as never),
 	)
 
-	return ChatSyncCoreWorker.DefaultWithoutDependencies.pipe(Layer.provide(deps))
+	return Layer.effect(ChatSyncCoreWorker, ChatSyncCoreWorkerMake).pipe(Layer.provide(deps))
 }
 
 describe("ChatSyncCoreWorker integration", () => {
@@ -436,9 +436,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		})
 
 		const createResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageToProvider(syncConnectionId, messageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageToProvider(syncConnectionId, messageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		recordChatSyncDiagnostic({
 			suite: "chat-sync-core-worker.integration",
@@ -453,9 +454,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		expect(recorder.calls.createMessage).toHaveLength(1)
 
 		const dedupedResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageToProvider(syncConnectionId, messageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageToProvider(syncConnectionId, messageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(dedupedResult.status).toBe("deduped")
 
@@ -472,17 +474,19 @@ describe("ChatSyncCoreWorker integration", () => {
 		)
 
 		const updateResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageUpdateToProvider(syncConnectionId, messageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageUpdateToProvider(syncConnectionId, messageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(updateResult.status).toBe("updated")
 		expect(recorder.calls.updateMessage).toHaveLength(1)
 
 		const deleteResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageDeleteToProvider(syncConnectionId, messageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageDeleteToProvider(syncConnectionId, messageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(deleteResult.status).toBe("deleted")
 		expect(recorder.calls.deleteMessage).toHaveLength(1)
@@ -538,9 +542,10 @@ describe("ChatSyncCoreWorker integration", () => {
 			content: "hello",
 		})
 		const createMessageResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageToProvider(syncConnectionId, messageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageToProvider(syncConnectionId, messageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(createMessageResult.status).toBe("synced")
 		const externalMessageId = createMessageResult.externalMessageId
@@ -566,19 +571,23 @@ describe("ChatSyncCoreWorker integration", () => {
 		})
 
 		const createReactionResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelReactionCreateToProvider(syncConnectionId, reactionId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelReactionCreateToProvider(syncConnectionId, reactionId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(createReactionResult.status).toBe("created")
 		expect(recorder.calls.addReaction).toHaveLength(1)
 
 		const ignoredDelete = await runEffect(
-			ChatSyncCoreWorker.syncHazelReactionDeleteToProvider(syncConnectionId, {
-				hazelChannelId: ctx.channelId,
-				hazelMessageId: messageId,
-				emoji: "🔥",
-				userId: ctx.authorUserId,
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelReactionDeleteToProvider(syncConnectionId, {
+					hazelChannelId: ctx.channelId,
+					hazelMessageId: messageId,
+					emoji: "🔥",
+					userId: ctx.authorUserId,
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(ignoredDelete.status).toBe("ignored_remaining_reactions")
@@ -595,16 +604,19 @@ describe("ChatSyncCoreWorker integration", () => {
 		)
 
 		const deleteReactionResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelReactionDeleteToProvider(
-				syncConnectionId,
-				{
-					hazelChannelId: ctx.channelId,
-					hazelMessageId: messageId,
-					emoji: "🔥",
-					userId: ctx.authorUserId,
-				},
-				"hazel:reaction:delete:second-pass",
-			).pipe(Effect.provide(workerLayer)),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelReactionDeleteToProvider(
+					syncConnectionId,
+					{
+						hazelChannelId: ctx.channelId,
+						hazelMessageId: messageId,
+						emoji: "🔥",
+						userId: ctx.authorUserId,
+					},
+					"hazel:reaction:delete:second-pass",
+				)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(deleteReactionResult.status).toBe("deleted")
 		expect(recorder.calls.removeReaction).toHaveLength(1)
@@ -632,14 +644,17 @@ describe("ChatSyncCoreWorker integration", () => {
 		})
 
 		const ingressCreate = await runEffect(
-			ChatSyncCoreWorker.ingestMessageCreate({
-				syncConnectionId,
-				externalChannelId: externalParentChannelId,
-				externalMessageId: "22222222222222221" as ExternalMessageId,
-				externalAuthorId: "ext-user-1" as ExternalUserId,
-				externalAuthorDisplayName: "External User",
-				content: "from discord",
-				dedupeKey: "ext:create:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestMessageCreate({
+					syncConnectionId,
+					externalChannelId: externalParentChannelId,
+					externalMessageId: "22222222222222221" as ExternalMessageId,
+					externalAuthorId: "ext-user-1" as ExternalUserId,
+					externalAuthorDisplayName: "External User",
+					content: "from discord",
+					dedupeKey: "ext:create:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(ingressCreate.status).toBe("created")
@@ -649,62 +664,77 @@ describe("ChatSyncCoreWorker integration", () => {
 		const hazelMessageId = ingressCreate.hazelMessageId
 
 		const ingressUpdate = await runEffect(
-			ChatSyncCoreWorker.ingestMessageUpdate({
-				syncConnectionId,
-				externalChannelId: externalParentChannelId,
-				externalMessageId: "22222222222222221" as ExternalMessageId,
-				content: "from discord updated",
-				dedupeKey: "ext:update:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestMessageUpdate({
+					syncConnectionId,
+					externalChannelId: externalParentChannelId,
+					externalMessageId: "22222222222222221" as ExternalMessageId,
+					content: "from discord updated",
+					dedupeKey: "ext:update:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(ingressUpdate.status).toBe("updated")
 		expect(ingressUpdate.hazelMessageId).toBe(hazelMessageId)
 
 		const reactionAdd = await runEffect(
-			ChatSyncCoreWorker.ingestReactionAdd({
-				syncConnectionId,
-				externalChannelId: externalParentChannelId,
-				externalMessageId: "22222222222222221" as ExternalMessageId,
-				externalUserId: "ext-user-2" as ExternalUserId,
-				externalAuthorDisplayName: "React User",
-				emoji: "🔥",
-				dedupeKey: "ext:reaction:add:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestReactionAdd({
+					syncConnectionId,
+					externalChannelId: externalParentChannelId,
+					externalMessageId: "22222222222222221" as ExternalMessageId,
+					externalUserId: "ext-user-2" as ExternalUserId,
+					externalAuthorDisplayName: "React User",
+					emoji: "🔥",
+					dedupeKey: "ext:reaction:add:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(reactionAdd.status).toBe("created")
 
 		const reactionDelete = await runEffect(
-			ChatSyncCoreWorker.ingestReactionRemove({
-				syncConnectionId,
-				externalChannelId: externalParentChannelId,
-				externalMessageId: "22222222222222221" as ExternalMessageId,
-				externalUserId: "ext-user-2" as ExternalUserId,
-				externalAuthorDisplayName: "React User",
-				emoji: "🔥",
-				dedupeKey: "ext:reaction:remove:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestReactionRemove({
+					syncConnectionId,
+					externalChannelId: externalParentChannelId,
+					externalMessageId: "22222222222222221" as ExternalMessageId,
+					externalUserId: "ext-user-2" as ExternalUserId,
+					externalAuthorDisplayName: "React User",
+					emoji: "🔥",
+					dedupeKey: "ext:reaction:remove:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(reactionDelete.status).toBe("deleted")
 
 		const threadCreate = await runEffect(
-			ChatSyncCoreWorker.ingestThreadCreate({
-				syncConnectionId,
-				externalParentChannelId,
-				externalThreadId: "33333333333333331" as ExternalThreadId,
-				externalRootMessageId: "22222222222222221" as ExternalMessageId,
-				name: "Thread From Discord",
-				dedupeKey: "ext:thread:create:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestThreadCreate({
+					syncConnectionId,
+					externalParentChannelId,
+					externalThreadId: "33333333333333331" as ExternalThreadId,
+					externalRootMessageId: "22222222222222221" as ExternalMessageId,
+					name: "Thread From Discord",
+					dedupeKey: "ext:thread:create:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(threadCreate.status).toBe("created")
 		expect(syncedChannels).toContain(threadCreate.hazelThreadChannelId)
 
 		const ingressDelete = await runEffect(
-			ChatSyncCoreWorker.ingestMessageDelete({
-				syncConnectionId,
-				externalChannelId: externalParentChannelId,
-				externalMessageId: "22222222222222221" as ExternalMessageId,
-				dedupeKey: "ext:delete:1",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestMessageDelete({
+					syncConnectionId,
+					externalChannelId: externalParentChannelId,
+					externalMessageId: "22222222222222221" as ExternalMessageId,
+					dedupeKey: "ext:delete:1",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(ingressDelete.status).toBe("deleted")
@@ -783,9 +813,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		})
 
 		const outboundResult = await runEffect(
-			ChatSyncCoreWorker.syncHazelMessageCreateToAllConnections("discord", outboundMessageId).pipe(
-				Effect.provide(workerLayer),
-			),
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.syncHazelMessageCreateToAllConnections("discord", outboundMessageId)
+			}).pipe(Effect.provide(workerLayer)),
 		)
 		recordChatSyncDiagnostic({
 			suite: "chat-sync-core-worker.integration",
@@ -825,24 +856,30 @@ describe("ChatSyncCoreWorker integration", () => {
 		})
 
 		const webhookIgnored = await runEffect(
-			ChatSyncCoreWorker.ingestMessageCreate({
-				syncConnectionId: guardedLinkConnection,
-				externalChannelId: "11111111111111114" as ExternalChannelId,
-				externalMessageId: "22222222222222224" as ExternalMessageId,
-				externalWebhookId: "99999999999999999" as ExternalWebhookId,
-				content: "from webhook",
-				dedupeKey: "ext:webhook-origin",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestMessageCreate({
+					syncConnectionId: guardedLinkConnection,
+					externalChannelId: "11111111111111114" as ExternalChannelId,
+					externalMessageId: "22222222222222224" as ExternalMessageId,
+					externalWebhookId: "99999999999999999" as ExternalWebhookId,
+					content: "from webhook",
+					dedupeKey: "ext:webhook-origin",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(webhookIgnored.status).toBe("ignored_webhook_origin")
 
 		const inactiveIgnored = await runEffect(
-			ChatSyncCoreWorker.ingestMessageCreate({
-				syncConnectionId: inactiveConnection,
-				externalChannelId: "11111111111111113" as ExternalChannelId,
-				externalMessageId: "22222222222222223" as ExternalMessageId,
-				content: "ignored",
-				dedupeKey: "ext:inactive",
+			Effect.gen(function* () {
+				const w = yield* ChatSyncCoreWorker
+				return yield* w.ingestMessageCreate({
+					syncConnectionId: inactiveConnection,
+					externalChannelId: "11111111111111113" as ExternalChannelId,
+					externalMessageId: "22222222222222223" as ExternalMessageId,
+					content: "ignored",
+					dedupeKey: "ext:inactive",
+				})
 			}).pipe(Effect.provide(workerLayer)),
 		)
 		expect(inactiveIgnored.status).toBe("ignored_connection_inactive")

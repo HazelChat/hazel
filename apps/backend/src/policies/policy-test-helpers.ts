@@ -85,7 +85,7 @@ const emptyMessageRepoLayer = Layer.succeed(MessageRepo, {
  * Provides stub repos for channels, channel members, and messages.
  */
 export const makeOrgResolverLayer = (members: Record<string, Role>) =>
-	OrgResolver.DefaultWithoutDependencies.pipe(
+	OrgResolver.layer.pipe(
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 		Layer.provide(emptyChannelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),

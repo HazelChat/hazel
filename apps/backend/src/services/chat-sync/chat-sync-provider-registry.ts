@@ -91,9 +91,11 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 		make: Effect.gen(function* () {
 			const discordApiClient = yield* Discord.DiscordApiClient
 
+			// Read config once at service initialization to avoid ConfigError leaking into adapter methods
+			const discordBotTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
+
 			const getDiscordToken = Effect.fn("ChatSyncProviderRegistry.getDiscordToken")(function* () {
-				const discordBotToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
-				if (Option.isNone(discordBotToken)) {
+				if (Option.isNone(discordBotTokenOption)) {
 					return yield* Effect.fail(
 						new ChatSyncProviderConfigurationError({
 							provider: "discord",
@@ -101,7 +103,7 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 						}),
 					)
 				}
-				return Redacted.value(discordBotToken.value)
+				return Redacted.value(discordBotTokenOption.value)
 			})
 
 			const getStatusCode = (error: unknown): number | undefined => {

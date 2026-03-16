@@ -9,7 +9,7 @@ import type {
 	ReactionCreatedPayload,
 	ReactionDeletedPayload,
 } from "@hazel/backend-core"
-import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
+import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./chat-sync/discord-sync-worker"
 
 export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
@@ -259,5 +259,5 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(DiscordSyncWorker.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(DiscordSyncWorkerLayer))
 }

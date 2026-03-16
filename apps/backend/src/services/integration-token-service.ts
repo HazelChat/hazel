@@ -223,8 +223,8 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 				})
 
 				// Load provider config to get client credentials
-				const providerConfig = yield* loadProviderConfig(
-					connection.provider as OAuthIntegrationProvider,
+				const providerConfig = yield* Effect.config(
+					loadProviderConfig(connection.provider as OAuthIntegrationProvider),
 				).pipe(
 					Effect.mapError(
 						(cause) =>

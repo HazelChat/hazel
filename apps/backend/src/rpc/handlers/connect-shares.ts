@@ -165,7 +165,7 @@ export const remapGuestMountInsertConflict = ({
 function remapPermissionError<A, E, R>(
 	make: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, Exclude<E, PermissionError> | UnauthorizedError, R> {
-	return Effect.catchIf(effect, PermissionError.is, (err) =>
+	return Effect.catchIf(make, PermissionError.is, (err) =>
 		Effect.fail(
 			new UnauthorizedError({
 				message: err.message,

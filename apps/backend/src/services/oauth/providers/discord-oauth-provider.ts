@@ -18,13 +18,16 @@ export const createDiscordOAuthProvider = (config: OAuthProviderConfig): OAuthPr
 		makeTokenExchangeRequest(config, code, Redacted.value(config.clientSecret)),
 
 	getAccountInfo: (accessToken: string) =>
-		Discord.DiscordApiClient.getAccountInfo(accessToken).pipe(
+		Effect.gen(function* () {
+			const discordApiClient = yield* Discord.DiscordApiClient
+			return yield* discordApiClient.getAccountInfo(accessToken)
+		}).pipe(
 			Effect.provide(Discord.DiscordApiClient.layer),
 			Effect.mapError(
 				(error) =>
 					new AccountInfoError({
 						provider: "discord",
-						message: `Failed to get Discord account info: ${"message" in error ? String(error.message) : String(error)}`,
+						message: `Failed to get Discord account info: ${error instanceof Error ? error.message : String(error)}`,
 						cause: error,
 					}),
 			),

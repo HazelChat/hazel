@@ -3,6 +3,7 @@ import { ChannelId, MessageId, MessageReactionId, SyncConnectionId, UserId } fro
 import {
 	DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 	ChatSyncCoreWorker,
+	ChatSyncCoreWorkerLayer,
 	type ChatSyncIngressMessageCreate,
 	type ChatSyncIngressMessageDelete,
 	type ChatSyncIngressMessageUpdate,
@@ -31,38 +32,38 @@ export {
 	DiscordSyncMessageNotFoundError,
 }
 
-export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("DiscordSyncWorker", {
-	make: Effect.gen(function* () {
-		const coreWorker = yield* ChatSyncCoreWorker
+export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("DiscordSyncWorker") {}
 
-		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
-			syncConnectionId: SyncConnectionId,
-			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
-		) {
-			return yield* coreWorker.syncConnection(syncConnectionId, maxMessagesPerChannel)
-		})
+const DiscordSyncWorkerMake = Effect.gen(function* () {
+	const coreWorker = yield* ChatSyncCoreWorker
 
-		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
-			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
-		) {
-			return yield* coreWorker.syncAllActiveConnections("discord", maxMessagesPerChannel)
-		})
+	const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
+		syncConnectionId: SyncConnectionId,
+		maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
+	) {
+		return yield* coreWorker.syncConnection(syncConnectionId, maxMessagesPerChannel)
+	})
 
-		const syncHazelMessageToDiscord = Effect.fn("DiscordSyncWorker.syncHazelMessageToDiscord")(function* (
-			syncConnectionId: SyncConnectionId,
-			hazelMessageId: MessageId,
-			dedupeKeyOverride?: string,
-		) {
-			return yield* coreWorker.syncHazelMessageToProvider(
-				syncConnectionId,
-				hazelMessageId,
-				dedupeKeyOverride,
-			)
-		})
+	const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
+		maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
+	) {
+		return yield* coreWorker.syncAllActiveConnections("discord", maxMessagesPerChannel)
+	})
 
-		const syncHazelMessageUpdateToDiscord = Effect.fn(
-			"discordSyncWorker.syncHazelMessageUpdateToDiscord",
-		)(function* (
+	const syncHazelMessageToDiscord = Effect.fn("DiscordSyncWorker.syncHazelMessageToDiscord")(function* (
+		syncConnectionId: SyncConnectionId,
+		hazelMessageId: MessageId,
+		dedupeKeyOverride?: string,
+	) {
+		return yield* coreWorker.syncHazelMessageToProvider(
+			syncConnectionId,
+			hazelMessageId,
+			dedupeKeyOverride,
+		)
+	})
+
+	const syncHazelMessageUpdateToDiscord = Effect.fn("discordSyncWorker.syncHazelMessageUpdateToDiscord")(
+		function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
 			dedupeKeyOverride?: string,
@@ -72,11 +73,11 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 				hazelMessageId,
 				dedupeKeyOverride,
 			)
-		})
+		},
+	)
 
-		const syncHazelMessageDeleteToDiscord = Effect.fn(
-			"discordSyncWorker.syncHazelMessageDeleteToDiscord",
-		)(function* (
+	const syncHazelMessageDeleteToDiscord = Effect.fn("discordSyncWorker.syncHazelMessageDeleteToDiscord")(
+		function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
 			dedupeKeyOverride?: string,
@@ -86,11 +87,11 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 				hazelMessageId,
 				dedupeKeyOverride,
 			)
-		})
+		},
+	)
 
-		const syncHazelReactionCreateToDiscord = Effect.fn(
-			"discordSyncWorker.syncHazelReactionCreateToDiscord",
-		)(function* (
+	const syncHazelReactionCreateToDiscord = Effect.fn("discordSyncWorker.syncHazelReactionCreateToDiscord")(
+		function* (
 			syncConnectionId: SyncConnectionId,
 			hazelReactionId: MessageReactionId,
 			dedupeKeyOverride?: string,
@@ -100,11 +101,11 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 				hazelReactionId,
 				dedupeKeyOverride,
 			)
-		})
+		},
+	)
 
-		const syncHazelReactionDeleteToDiscord = Effect.fn(
-			"discordSyncWorker.syncHazelReactionDeleteToDiscord",
-		)(function* (
+	const syncHazelReactionDeleteToDiscord = Effect.fn("discordSyncWorker.syncHazelReactionDeleteToDiscord")(
+		function* (
 			syncConnectionId: SyncConnectionId,
 			payload: {
 				hazelChannelId: ChannelId
@@ -119,119 +120,109 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 				payload,
 				dedupeKeyOverride,
 			)
-		})
+		},
+	)
 
-		const syncHazelMessageCreateToAllConnections = Effect.fn(
-			"discordSyncWorker.syncHazelMessageCreateToAllConnections",
-		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
-			return yield* coreWorker.syncHazelMessageCreateToAllConnections(
-				"discord",
-				hazelMessageId,
-				dedupeKey,
-			)
-		})
+	const syncHazelMessageCreateToAllConnections = Effect.fn(
+		"discordSyncWorker.syncHazelMessageCreateToAllConnections",
+	)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
+		return yield* coreWorker.syncHazelMessageCreateToAllConnections("discord", hazelMessageId, dedupeKey)
+	})
 
-		const syncHazelMessageUpdateToAllConnections = Effect.fn(
-			"discordSyncWorker.syncHazelMessageUpdateToAllConnections",
-		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
-			return yield* coreWorker.syncHazelMessageUpdateToAllConnections(
-				"discord",
-				hazelMessageId,
-				dedupeKey,
-			)
-		})
+	const syncHazelMessageUpdateToAllConnections = Effect.fn(
+		"discordSyncWorker.syncHazelMessageUpdateToAllConnections",
+	)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
+		return yield* coreWorker.syncHazelMessageUpdateToAllConnections("discord", hazelMessageId, dedupeKey)
+	})
 
-		const syncHazelMessageDeleteToAllConnections = Effect.fn(
-			"discordSyncWorker.syncHazelMessageDeleteToAllConnections",
-		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
-			return yield* coreWorker.syncHazelMessageDeleteToAllConnections(
-				"discord",
-				hazelMessageId,
-				dedupeKey,
-			)
-		})
+	const syncHazelMessageDeleteToAllConnections = Effect.fn(
+		"discordSyncWorker.syncHazelMessageDeleteToAllConnections",
+	)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
+		return yield* coreWorker.syncHazelMessageDeleteToAllConnections("discord", hazelMessageId, dedupeKey)
+	})
 
-		const syncHazelReactionCreateToAllConnections = Effect.fn(
-			"discordSyncWorker.syncHazelReactionCreateToAllConnections",
-		)(function* (hazelReactionId: MessageReactionId, dedupeKey?: string) {
-			return yield* coreWorker.syncHazelReactionCreateToAllConnections(
-				"discord",
-				hazelReactionId,
-				dedupeKey,
-			)
-		})
+	const syncHazelReactionCreateToAllConnections = Effect.fn(
+		"discordSyncWorker.syncHazelReactionCreateToAllConnections",
+	)(function* (hazelReactionId: MessageReactionId, dedupeKey?: string) {
+		return yield* coreWorker.syncHazelReactionCreateToAllConnections(
+			"discord",
+			hazelReactionId,
+			dedupeKey,
+		)
+	})
 
-		const syncHazelReactionDeleteToAllConnections = Effect.fn(
-			"discordSyncWorker.syncHazelReactionDeleteToAllConnections",
-		)(function* (
-			payload: {
-				hazelChannelId: ChannelId
-				hazelMessageId: MessageId
-				emoji: string
-				userId?: UserId
-			},
-			dedupeKey?: string,
-		) {
-			return yield* coreWorker.syncHazelReactionDeleteToAllConnections("discord", payload, dedupeKey)
-		})
+	const syncHazelReactionDeleteToAllConnections = Effect.fn(
+		"discordSyncWorker.syncHazelReactionDeleteToAllConnections",
+	)(function* (
+		payload: {
+			hazelChannelId: ChannelId
+			hazelMessageId: MessageId
+			emoji: string
+			userId?: UserId
+		},
+		dedupeKey?: string,
+	) {
+		return yield* coreWorker.syncHazelReactionDeleteToAllConnections("discord", payload, dedupeKey)
+	})
 
-		const ingestMessageCreate = Effect.fn("DiscordSyncWorker.ingestMessageCreate")(function* (
-			payload: DiscordIngressMessageCreate,
-		) {
-			return yield* coreWorker.ingestMessageCreate(payload)
-		})
+	const ingestMessageCreate = Effect.fn("DiscordSyncWorker.ingestMessageCreate")(function* (
+		payload: DiscordIngressMessageCreate,
+	) {
+		return yield* coreWorker.ingestMessageCreate(payload)
+	})
 
-		const ingestMessageUpdate = Effect.fn("DiscordSyncWorker.ingestMessageUpdate")(function* (
-			payload: DiscordIngressMessageUpdate,
-		) {
-			return yield* coreWorker.ingestMessageUpdate(payload)
-		})
+	const ingestMessageUpdate = Effect.fn("DiscordSyncWorker.ingestMessageUpdate")(function* (
+		payload: DiscordIngressMessageUpdate,
+	) {
+		return yield* coreWorker.ingestMessageUpdate(payload)
+	})
 
-		const ingestMessageDelete = Effect.fn("DiscordSyncWorker.ingestMessageDelete")(function* (
-			payload: DiscordIngressMessageDelete,
-		) {
-			return yield* coreWorker.ingestMessageDelete(payload)
-		})
+	const ingestMessageDelete = Effect.fn("DiscordSyncWorker.ingestMessageDelete")(function* (
+		payload: DiscordIngressMessageDelete,
+	) {
+		return yield* coreWorker.ingestMessageDelete(payload)
+	})
 
-		const ingestReactionAdd = Effect.fn("DiscordSyncWorker.ingestReactionAdd")(function* (
-			payload: DiscordIngressReactionAdd,
-		) {
-			return yield* coreWorker.ingestReactionAdd(payload)
-		})
+	const ingestReactionAdd = Effect.fn("DiscordSyncWorker.ingestReactionAdd")(function* (
+		payload: DiscordIngressReactionAdd,
+	) {
+		return yield* coreWorker.ingestReactionAdd(payload)
+	})
 
-		const ingestReactionRemove = Effect.fn("DiscordSyncWorker.ingestReactionRemove")(function* (
-			payload: DiscordIngressReactionRemove,
-		) {
-			return yield* coreWorker.ingestReactionRemove(payload)
-		})
+	const ingestReactionRemove = Effect.fn("DiscordSyncWorker.ingestReactionRemove")(function* (
+		payload: DiscordIngressReactionRemove,
+	) {
+		return yield* coreWorker.ingestReactionRemove(payload)
+	})
 
-		const ingestThreadCreate = Effect.fn("DiscordSyncWorker.ingestThreadCreate")(function* (
-			payload: DiscordIngressThreadCreate,
-		) {
-			return yield* coreWorker.ingestThreadCreate(payload)
-		})
+	const ingestThreadCreate = Effect.fn("DiscordSyncWorker.ingestThreadCreate")(function* (
+		payload: DiscordIngressThreadCreate,
+	) {
+		return yield* coreWorker.ingestThreadCreate(payload)
+	})
 
-		return {
-			syncConnection,
-			syncAllActiveConnections,
-			syncHazelMessageToDiscord,
-			syncHazelMessageUpdateToDiscord,
-			syncHazelMessageDeleteToDiscord,
-			syncHazelReactionCreateToDiscord,
-			syncHazelReactionDeleteToDiscord,
-			syncHazelMessageCreateToAllConnections,
-			syncHazelMessageUpdateToAllConnections,
-			syncHazelMessageDeleteToAllConnections,
-			syncHazelReactionCreateToAllConnections,
-			syncHazelReactionDeleteToAllConnections,
-			ingestMessageCreate,
-			ingestMessageUpdate,
-			ingestMessageDelete,
-			ingestReactionAdd,
-			ingestReactionRemove,
-			ingestThreadCreate,
-		}
-	}),
-}) {
-	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(ChatSyncCoreWorker.layer))
-}
+	return {
+		syncConnection,
+		syncAllActiveConnections,
+		syncHazelMessageToDiscord,
+		syncHazelMessageUpdateToDiscord,
+		syncHazelMessageDeleteToDiscord,
+		syncHazelReactionCreateToDiscord,
+		syncHazelReactionDeleteToDiscord,
+		syncHazelMessageCreateToAllConnections,
+		syncHazelMessageUpdateToAllConnections,
+		syncHazelMessageDeleteToAllConnections,
+		syncHazelReactionCreateToAllConnections,
+		syncHazelReactionDeleteToAllConnections,
+		ingestMessageCreate,
+		ingestMessageUpdate,
+		ingestMessageDelete,
+		ingestReactionAdd,
+		ingestReactionRemove,
+		ingestThreadCreate,
+	}
+})
+
+export const DiscordSyncWorkerLayer = Layer.effect(DiscordSyncWorker, DiscordSyncWorkerMake).pipe(
+	Layer.provide(ChatSyncCoreWorkerLayer),
+)

@@ -13,7 +13,7 @@ import {
 import { DiscordConfig } from "dfx"
 import { DiscordGateway, DiscordLive } from "dfx/gateway"
 import { ServiceMap, Config, Effect, Layer, Option, Redacted, Ref, Schema } from "effect"
-import { DiscordSyncWorker } from "./discord-sync-worker"
+import { DiscordSyncWorker, DiscordSyncWorkerLayer } from "./discord-sync-worker"
 import type { ChatSyncIngressMessageAttachment } from "./chat-sync-core-worker"
 
 export interface DiscordMessageAuthor {
@@ -748,7 +748,7 @@ export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayServ
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(DiscordSyncWorker.layer),
+		Layer.provide(DiscordSyncWorkerLayer),
 		Layer.provide(ChatSyncChannelLinkRepo.layer),
 	)
 }

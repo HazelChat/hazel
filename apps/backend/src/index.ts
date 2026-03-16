@@ -70,7 +70,7 @@ import { DatabaseLive } from "./services/database"
 import { IntegrationTokenService } from "./services/integration-token-service"
 import { IntegrationBotService } from "./services/integrations/integration-bot-service"
 import { ChatSyncAttributionReconciler } from "./services/chat-sync/chat-sync-attribution-reconciler"
-import { DiscordSyncWorker } from "./services/chat-sync/discord-sync-worker"
+import { DiscordSyncWorkerLayer } from "./services/chat-sync/discord-sync-worker"
 import { DiscordGatewayService } from "./services/chat-sync/discord-gateway-service"
 import { MessageOutboxDispatcher } from "./services/message-outbox-dispatcher"
 import { MessageSideEffectService } from "./services/message-side-effect-service"
@@ -202,7 +202,7 @@ const MainLive = Layer.mergeAll(
 	OAuthProviderRegistry.layer,
 	IntegrationBotService.layer,
 	ChatSyncAttributionReconciler.layer,
-	DiscordSyncWorker.layer,
+	DiscordSyncWorkerLayer,
 	DiscordGatewayService.layer,
 	MessageSideEffectService.layer,
 	MessageOutboxDispatcher.layer,

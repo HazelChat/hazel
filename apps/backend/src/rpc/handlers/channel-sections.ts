@@ -16,6 +16,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 		const channelSectionPolicy = yield* ChannelSectionPolicy
 		const channelRepo = yield* ChannelRepo
 		const channelSectionRepo = yield* ChannelSectionRepo
+		const orgResolver = yield* OrgResolver
 
 		return {
 			"channelSection.create": ({ id, ...payload }) =>
@@ -170,7 +171,7 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 									"moveChannel",
 								)(
 									withAnnotatedScope((scope) =>
-										OrgResolver.requireAdminOrOwner(
+										orgResolver.requireAdminOrOwner(
 											channel.value.organizationId,
 											scope,
 											"ChannelSection",

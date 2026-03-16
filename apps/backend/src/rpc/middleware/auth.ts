@@ -1,6 +1,6 @@
 import { Headers } from "effect/unstable/http"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError } from "@hazel/domain"
+import { CurrentUser, InvalidBearerTokenError, SessionNotProvidedError } from "@hazel/domain"
 import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
@@ -34,7 +34,7 @@ export const AuthMiddlewareLive = Layer.effect(
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
 
-		return AuthMiddleware.of(({ headers }) =>
+		return AuthMiddleware.of((effect, { headers }) =>
 			Effect.gen(function* () {
 				// Check for Bearer token first (bot SDK or desktop app authentication)
 				const authHeader = Headers.get(headers, "authorization")
@@ -46,7 +46,7 @@ export const AuthMiddlewareLive = Layer.effect(
 					if (isJwtToken(token)) {
 						// Authenticate using WorkOS JWT
 						const currentUser = yield* sessionManager.authenticateWithBearer(token)
-						return currentUser
+						return yield* Effect.provideService(effect, CurrentUser.Context, currentUser)
 					}
 
 					// Otherwise, treat as bot token (hash-based lookup)
@@ -115,7 +115,7 @@ export const AuthMiddlewareLive = Layer.effect(
 						settings: user.settings,
 					}
 
-					return botUser
+					return yield* Effect.provideService(effect, CurrentUser.Context, botUser)
 				}
 
 				// No valid authentication provided
