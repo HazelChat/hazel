@@ -72,7 +72,7 @@ export interface UserRepoLike {
 			timezone: string | null
 			settings: User.UserSettings | null
 		},
-		{ _tag: "DatabaseError" } | { _tag: "ParseError" },
+		{ _tag: "DatabaseError" } | { _tag: "SchemaError" },
 		any
 	>
 }
@@ -236,7 +236,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 														detail: String(err),
 													}),
 												),
-											ParseError: (err) =>
+											SchemaError: (err) =>
 												Effect.fail(
 													new SessionLoadError({
 														message: "Failed to parse user update response",

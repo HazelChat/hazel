@@ -2,10 +2,11 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { PermissionError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Result, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { OrgResolver } from "./org-resolver"
 import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers"
 import { CurrentUser } from "@hazel/domain"
+import { buildServiceLayer, serviceEffect, serviceShape } from "../test/effect-helpers"
 
 type Role = "admin" | "member" | "owner"
 
@@ -14,12 +15,12 @@ const MESSAGE_ID = "00000000-0000-0000-0000-000000000601" as MessageId
 const CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000701" as ChannelMemberId
 
 const makeOrgMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
+	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
 		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
 			const role = members[`${organizationId}:${userId}`]
 			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
 		},
-	} as unknown as OrganizationMemberRepo)
+	}))
 
 const makeChannelRepoLayer = (
 	channels: Record<
@@ -27,30 +28,30 @@ const makeChannelRepoLayer = (
 		{ organizationId: OrganizationId; type: string; parentChannelId?: string | null; id: string }
 	>,
 ) =>
-	Layer.succeed(ChannelRepo, {
+	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
 		findById: (id: ChannelId) => {
 			const channel = channels[id]
 			return Effect.succeed(channel ? Option.some(channel) : Option.none())
 		},
-	} as unknown as ChannelRepo)
+	}))
 
 const makeChannelMemberRepoLayer = (memberships: Record<string, boolean>) =>
-	Layer.succeed(ChannelMemberRepo, {
+	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
 		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
 			const key = `${channelId}:${userId}`
 			return Effect.succeed(
 				memberships[key] ? Option.some({ id: CHANNEL_MEMBER_ID, channelId, userId }) : Option.none(),
 			)
 		},
-	} as unknown as ChannelMemberRepo)
+	}))
 
 const makeMessageRepoLayer = (messages: Record<string, { channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, {
+	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
 		findById: (id: MessageId) => {
 			const message = messages[id]
 			return Effect.succeed(message ? Option.some(message) : Option.none())
 		},
-	} as unknown as MessageRepo)
+	}))
 
 const makeResolverLayer = (opts: {
 	members?: Record<string, Role>
@@ -61,7 +62,7 @@ const makeResolverLayer = (opts: {
 	channelMembers?: Record<string, boolean>
 	messages?: Record<string, { channelId: ChannelId }>
 }) =>
-	OrgResolver.DefaultWithoutDependencies.pipe(
+	buildServiceLayer(OrgResolver).pipe(
 		Layer.provide(makeOrgMemberRepoLayer(opts.members ?? {})),
 		Layer.provide(makeChannelRepoLayer(opts.channels ?? {})),
 		Layer.provide(makeChannelMemberRepoLayer(opts.channelMembers ?? {})),
@@ -70,18 +71,16 @@ const makeResolverLayer = (opts: {
 
 const runEither = <A, E>(
 	make: Effect.Effect<A, E, OrgResolver | CurrentUser.Context>,
-	layer: Layer.Layer<OrgResolver, any, never>,
+	layer: Layer.Layer<OrgResolver, any, any>,
 	actor: CurrentUser.Schema = makeActor(),
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.result),
+		make.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.result),
 	)
 
-const use = (fn: (resolver: OrgResolver) => Effect.Effect<any, any, any>) =>
-	Effect.gen(function* () {
-		const resolver = yield* OrgResolver
-		return yield* fn(resolver)
-	})
+const use = <A, E, R>(
+	fn: (resolver: ServiceMap.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
+) => serviceEffect(OrgResolver, fn)
 
 describe("OrgResolver", () => {
 	describe("requireScope", () => {

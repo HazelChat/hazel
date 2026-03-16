@@ -1,3 +1,4 @@
+import { toEpochMs } from "~/lib/utils"
 import { pushNotificationDiagnostics } from "./diagnostics-store"
 import type {
 	NotificationDecision,
@@ -37,8 +38,8 @@ export class NotificationOrchestrator {
 		}
 
 		this.queue.sort((a, b) => {
-			const aTime = a.notification.createdAt.getTime()
-			const bTime = b.notification.createdAt.getTime()
+			const aTime = toEpochMs(a.notification.createdAt)
+			const bTime = toEpochMs(b.notification.createdAt)
 			if (aTime !== bTime) return aTime - bTime
 			return a.id.localeCompare(b.id)
 		})

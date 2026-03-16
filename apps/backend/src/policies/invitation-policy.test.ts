@@ -2,14 +2,16 @@ import { describe, expect, it } from "@effect/vitest"
 import { InvitationRepo, UserRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Result, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { InvitationPolicy } from "./invitation-policy.ts"
 import {
+	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceEffect,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
@@ -38,7 +40,7 @@ const makeInvitationRepoLayer = (
 			}
 			return f(invitation)
 		},
-	} as unknown as InvitationRepo)
+	} as ServiceMap.Service.Shape<typeof InvitationRepo>)
 
 const makeUserRepoLayer = (users: Record<string, { email: string }>) =>
 	Layer.succeed(UserRepo, {
@@ -46,14 +48,14 @@ const makeUserRepoLayer = (users: Record<string, { email: string }>) =>
 			const user = users[id]
 			return Effect.succeed(user ? Option.some(user) : Option.none())
 		},
-	} as unknown as UserRepo)
+	} as ServiceMap.Service.Shape<typeof UserRepo>)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	invitations: Record<string, { invitedBy: UserId; organizationId: OrganizationId; email: string }>,
 	users: Record<string, { email: string }> = {},
 ) =>
-	InvitationPolicy.DefaultWithoutDependencies.pipe(
+	buildServiceLayer(InvitationPolicy).pipe(
 		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 		Layer.provide(makeInvitationRepoLayer(invitations)),
@@ -65,7 +67,11 @@ describe("InvitationPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {})
 
-		const result = await runWithActorEither(InvitationPolicy.canRead(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canRead(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -79,7 +85,11 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -93,7 +103,11 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isFailure(result)).toBe(true)
 	})
@@ -111,7 +125,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -131,7 +149,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, admin)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			admin,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -151,7 +173,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, outsider)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			layer,
+			outsider,
+		)
 
 		expect(Result.isFailure(result)).toBe(true)
 	})
@@ -169,7 +195,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canDelete(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -189,7 +219,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, admin)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canDelete(INVITATION_ID)),
+			layer,
+			admin,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -210,7 +244,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -231,7 +269,11 @@ describe("InvitationPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isFailure(result)).toBe(true)
 	})
@@ -250,7 +292,11 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isFailure(result)).toBe(true)
 	})
@@ -264,7 +310,11 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canList(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(result)).toBe(true)
 	})
@@ -278,7 +328,11 @@ describe("InvitationPolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(InvitationPolicy, (policy) => policy.canList(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isFailure(result)).toBe(true)
 	})

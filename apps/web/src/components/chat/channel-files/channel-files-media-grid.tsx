@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Button } from "~/components/ui/button"
 import { useBreakpoint } from "~/hooks/use-breakpoint"
+import { toEpochMs } from "~/lib/utils"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
@@ -217,7 +218,7 @@ export function ChannelFilesMediaGrid({ attachments, channelId }: ChannelFilesMe
 					images={viewerImages}
 					initialIndex={selectedIndex}
 					author={selectedImage?.user ?? undefined}
-					createdAt={selectedImage?.uploadedAt.getTime() ?? 0}
+					createdAt={selectedImage ? toEpochMs(selectedImage.uploadedAt) : 0}
 				/>
 			)}
 		</>

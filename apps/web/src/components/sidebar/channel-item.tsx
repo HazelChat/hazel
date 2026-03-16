@@ -1,5 +1,4 @@
 import { useAtomSet } from "@effect/atom-react"
-import type { Channel, ChannelMember } from "@hazel/db/schema"
 import type { ChannelSectionId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { memo } from "react"
@@ -25,13 +24,18 @@ import { usePermission } from "~/hooks/use-permission"
 import { useScrollIntoViewOnActive } from "~/hooks/use-scroll-into-view-on-active"
 import { exitToastAsync } from "~/lib/toast-exit"
 
+import type { channelCollection, channelMemberCollection } from "~/db/collections"
+
+type ChannelData = (typeof channelCollection)["_type"]
+type ChannelMemberData = (typeof channelMemberCollection)["_type"]
+
 interface ChannelItemProps {
-	channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-	member: ChannelMember
+	channel: ChannelData
+	member: ChannelMemberData
 	notificationCount?: number
 	threads?: Array<{
-		channel: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-		member: ChannelMember
+		channel: ChannelData
+		member: ChannelMemberData
 	}>
 	/** Available sections for "move to section" menu */
 	sections?: Array<{ id: ChannelSectionId; name: string }>

@@ -1,5 +1,6 @@
 import { useAtomSet } from "@effect/atom-react"
 import type { InvitationId } from "@hazel/schema"
+import { toEpochMs } from "~/lib/utils"
 import { IconArrowPath } from "~/components/icons/icon-arrow-path"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
@@ -222,7 +223,7 @@ function InvitationsSettings() {
 											<td className="px-4 py-4">
 												<p className="text-muted-fg text-sm">
 													{formatTimeRemaining(
-														invitation.expiresAt.getTime() - now,
+														toEpochMs(invitation.expiresAt) - now,
 													)}
 												</p>
 											</td>

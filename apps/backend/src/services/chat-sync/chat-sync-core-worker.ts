@@ -151,6 +151,10 @@ export interface ChatSyncIngressThreadCreate {
 	readonly dedupeKey?: string
 }
 
+export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()("ChatSyncCoreWorker", {
+	make: Effect.suspend((): Effect.Effect<Record<string, Function>> => ChatSyncCoreWorkerMake),
+}) {}
+
 /** @internal — exported for integration tests that provide their own deps */
 export const ChatSyncCoreWorkerMake = Effect.gen(function* () {
 	const db = yield* Database.Database
@@ -2734,11 +2738,6 @@ export const ChatSyncCoreWorkerMake = Effect.gen(function* () {
 		ingestThreadCreate,
 	}
 })
-
-export class ChatSyncCoreWorker extends ServiceMap.Service<
-	ChatSyncCoreWorker,
-	Effect.Effect.Success<typeof ChatSyncCoreWorkerMake>
->()("ChatSyncCoreWorker") {}
 
 export const ChatSyncCoreWorkerLayer = Layer.effect(ChatSyncCoreWorker, ChatSyncCoreWorkerMake).pipe(
 	Layer.provide(ChatSyncConnectionRepo.layer),

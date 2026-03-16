@@ -2,6 +2,7 @@ import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
+import { toDate } from "~/lib/utils"
 import { generateThreadNameMutation } from "~/atoms/channel-atoms"
 import { exitToast } from "~/lib/toast-exit"
 import { channelCollection } from "~/db/collections"
@@ -182,7 +183,7 @@ function ThreadContent({
 									{authorIdentity.displayName}
 								</span>
 								<span className="text-muted-fg text-xs">
-									{format(originalMessage.createdAt, "MMM d, HH:mm")}
+									{format(toDate(originalMessage.createdAt), "MMM d, HH:mm")}
 								</span>
 							</div>
 							<div className="mt-1">

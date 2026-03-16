@@ -4,6 +4,7 @@ import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
 import { useMemo } from "react"
+import { toDate } from "~/lib/utils"
 import { threadMessageCountAtomFamily, userWithPresenceAtomFamily } from "~/atoms/message-atoms"
 import { channelCollection, messageCollection } from "~/db/collections"
 import { useChatStable } from "~/hooks/use-chat"
@@ -106,7 +107,7 @@ export function InlineThreadPreview({
 					{lastReplyAt && (
 						<span className="text-muted-fg group-hover/thread:invisible truncate">
 							{totalCount > 1 ? "Last reply " : ""}
-							{formatDistanceToNow(lastReplyAt, { addSuffix: false })} ago
+							{formatDistanceToNow(toDate(lastReplyAt), { addSuffix: false })} ago
 						</span>
 					)}
 					{/* View thread - absolutely positioned on hover */}

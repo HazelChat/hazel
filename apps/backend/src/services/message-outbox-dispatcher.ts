@@ -169,7 +169,7 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 				)
 			})
 
-			const campaignForLeadership = (): Effect.Effect<void> =>
+			const campaignForLeadership = (): Effect.Effect<void, never, unknown> =>
 				Effect.gen(function* () {
 					const reservedResult = yield* Effect.tryPromise({
 						try: (): Promise<PoolClient> => pool.connect(),

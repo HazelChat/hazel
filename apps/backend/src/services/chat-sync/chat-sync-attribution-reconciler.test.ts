@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@effect/vitest"
 import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, ServiceMap } from "effect"
 import { ChatSyncAttributionReconciler } from "./chat-sync-attribution-reconciler.ts"
+import { buildServiceLayer, serviceEffect, serviceShape } from "../../test/effect-helpers"
 
 const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
 const USER_ID = "00000000-0000-0000-0000-000000000002" as UserId
@@ -13,10 +14,15 @@ const makeLayer = (deps: {
 	userRepo: UserRepo
 	organizationMemberRepo: OrganizationMemberRepo
 }) =>
-	ChatSyncAttributionReconciler.DefaultWithoutDependencies.pipe(
-		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),
-		Layer.provide(Layer.succeed(UserRepo, deps.userRepo)),
-		Layer.provide(Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo)),
+	buildServiceLayer(ChatSyncAttributionReconciler).pipe(
+		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo as ServiceMap.Service.Shape<typeof MessageRepo>)),
+		Layer.provide(Layer.succeed(UserRepo, deps.userRepo as ServiceMap.Service.Shape<typeof UserRepo>)),
+		Layer.provide(
+			Layer.succeed(
+				OrganizationMemberRepo,
+				deps.organizationMemberRepo as ServiceMap.Service.Shape<typeof OrganizationMemberRepo>,
+			),
+		),
 	)
 
 describe("ChatSyncAttributionReconciler", () => {
@@ -24,28 +30,30 @@ describe("ChatSyncAttributionReconciler", () => {
 		let reassignParams: unknown = null
 
 		const layer = makeLayer({
-			messageRepo: {
+			messageRepo: serviceShape<typeof MessageRepo>({
 				reassignExternalSyncedAuthors: (params: unknown) => {
 					reassignParams = params
 					return Effect.succeed(4)
 				},
-			} as unknown as MessageRepo,
-			userRepo: {
+			}),
+			userRepo: serviceShape<typeof UserRepo>({
 				upsertByExternalId: () => Effect.succeed({ id: SHADOW_USER_ID }),
-			} as unknown as UserRepo,
-			organizationMemberRepo: {
+			}),
+			organizationMemberRepo: serviceShape<typeof OrganizationMemberRepo>({
 				upsertByOrgAndUser: () => Effect.succeed({}),
-			} as unknown as OrganizationMemberRepo,
+			}),
 		})
 
 		const result = await Effect.runPromise(
-			ChatSyncAttributionReconciler.relinkHistoricalProviderMessages({
+			serviceEffect(ChatSyncAttributionReconciler, (service) =>
+				service.relinkHistoricalProviderMessages({
 				organizationId: ORGANIZATION_ID,
 				provider: "discord",
 				userId: USER_ID,
 				externalAccountId: "123",
 				externalAccountName: "Maki",
-			}).pipe(Effect.provide(layer)),
+				}),
+			).pipe(Effect.provide(layer)),
 		)
 
 		expect(result.updatedCount).toBe(4)
@@ -61,28 +69,30 @@ describe("ChatSyncAttributionReconciler", () => {
 		let reassignParams: unknown = null
 
 		const layer = makeLayer({
-			messageRepo: {
+			messageRepo: serviceShape<typeof MessageRepo>({
 				reassignExternalSyncedAuthors: (params: unknown) => {
 					reassignParams = params
 					return Effect.succeed(2)
 				},
-			} as unknown as MessageRepo,
-			userRepo: {
+			}),
+			userRepo: serviceShape<typeof UserRepo>({
 				upsertByExternalId: () => Effect.succeed({ id: SHADOW_USER_ID }),
-			} as unknown as UserRepo,
-			organizationMemberRepo: {
+			}),
+			organizationMemberRepo: serviceShape<typeof OrganizationMemberRepo>({
 				upsertByOrgAndUser: () => Effect.succeed({}),
-			} as unknown as OrganizationMemberRepo,
+			}),
 		})
 
 		const result = await Effect.runPromise(
-			ChatSyncAttributionReconciler.unlinkHistoricalProviderMessages({
+			serviceEffect(ChatSyncAttributionReconciler, (service) =>
+				service.unlinkHistoricalProviderMessages({
 				organizationId: ORGANIZATION_ID,
 				provider: "discord",
 				userId: USER_ID,
 				externalAccountId: "123",
 				externalAccountName: "Maki",
-			}).pipe(Effect.provide(layer)),
+				}),
+			).pipe(Effect.provide(layer)),
 		)
 
 		expect(result.updatedCount).toBe(2)

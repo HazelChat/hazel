@@ -5,11 +5,14 @@ import type { ChannelId, ChannelMemberId, OrganizationId, UserId } from "@hazel/
 import { Effect, Result, Layer, Option } from "effect"
 import { ChannelMemberPolicy } from "./channel-member-policy.ts"
 import {
+	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceEffect,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
@@ -36,7 +39,7 @@ const makeChannelMemberRepoLayer = (
 	channelMembers: Record<string, ChannelMemberEntry>,
 	membershipsByChannelAndUser: Record<string, ChannelMemberEntry> = {},
 ) =>
-	Layer.succeed(ChannelMemberRepo, {
+	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
 		with: <A, E, R>(id: ChannelMemberId, f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>) => {
 			const member = channelMembers[id]
 			if (!member) {
@@ -49,10 +52,10 @@ const makeChannelMemberRepoLayer = (
 			const entry = membershipsByChannelAndUser[key]
 			return Effect.succeed(entry ? Option.some(entry) : Option.none())
 		},
-	} as unknown as ChannelMemberRepo)
+	}))
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelEntry>) =>
-	Layer.succeed(ChannelRepo, {
+	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
 		with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
 			const channel = channels[id]
 			if (!channel) {
@@ -60,7 +63,7 @@ const makeChannelRepoLayer = (channels: Record<string, ChannelEntry>) =>
 			}
 			return f(channel)
 		},
-	} as unknown as ChannelRepo)
+	}))
 
 const makePolicyLayer = (opts: {
 	members: Record<string, Role>
@@ -68,7 +71,7 @@ const makePolicyLayer = (opts: {
 	channelMembers?: Record<string, ChannelMemberEntry>
 	membershipsByChannelAndUser?: Record<string, ChannelMemberEntry>
 }) =>
-	ChannelMemberPolicy.DefaultWithoutDependencies.pipe(
+	buildServiceLayer(ChannelMemberPolicy).pipe(
 		Layer.provide(
 			makeChannelMemberRepoLayer(opts.channelMembers ?? {}, opts.membershipsByChannelAndUser ?? {}),
 		),
@@ -88,7 +91,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -102,7 +109,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)
@@ -123,8 +134,16 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const adminResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, admin)
-		const ownerResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, owner)
+		const adminResult = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			admin,
+		)
+		const ownerResult = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			owner,
+		)
 
 		expect(Result.isSuccess(adminResult)).toBe(true)
 		expect(Result.isSuccess(ownerResult)).toBe(true)
@@ -141,7 +160,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -156,7 +179,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)
@@ -177,7 +204,11 @@ describe("ChannelMemberPolicy", () => {
 			},
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -193,7 +224,11 @@ describe("ChannelMemberPolicy", () => {
 			// No channel membership for admin
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, admin)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -209,7 +244,11 @@ describe("ChannelMemberPolicy", () => {
 			// No channel membership
 		})
 
-		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)
@@ -231,7 +270,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -257,12 +296,12 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelMemberPolicy.canUpdate(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)
@@ -291,7 +330,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -317,12 +356,12 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelMemberPolicy.canDelete(CHANNEL_MEMBER_ID),
+			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)

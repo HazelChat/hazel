@@ -1,4 +1,4 @@
-import { BackendAuth } from "@hazel/auth/backend"
+import { BackendAuth, type UserRepoLike } from "@hazel/auth/backend"
 import {
 	CurrentUser,
 	InvalidBearerTokenError,
@@ -18,13 +18,18 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 	make: Effect.gen(function* () {
 		const auth = yield* BackendAuth
 		const userRepo = yield* UserRepo
+		const userRepoLike: UserRepoLike = {
+			findByWorkOSUserId: userRepo.findByWorkOSUserId,
+			upsertWorkOSUser: userRepo.upsertWorkOSUser,
+			update: userRepo.update,
+		}
 
 		/**
 		 * Authenticate with a WorkOS bearer token (JWT).
 		 * Verifies the JWT signature and syncs the user to the database.
 		 */
 		const authenticateWithBearer = (bearerToken: string) =>
-			auth.authenticateWithBearer(bearerToken, userRepo)
+			auth.authenticateWithBearer(bearerToken, userRepoLike)
 
 		return {
 			authenticateWithBearer: authenticateWithBearer as (

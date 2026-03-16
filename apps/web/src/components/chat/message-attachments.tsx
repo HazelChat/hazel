@@ -4,6 +4,7 @@ import { FileIcon } from "@untitledui/file-icons"
 
 import { useState } from "react"
 import { useAttachments, useMessage } from "~/db/hooks"
+import { toEpochMs } from "~/lib/utils"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { IconDownload } from "../icons/icon-download"
@@ -198,7 +199,7 @@ export function MessageAttachments({ messageId }: MessageAttachmentsProps) {
 							images={viewerImages}
 							initialIndex={selectedImageIndex}
 							author={message.author}
-							createdAt={message.createdAt.getTime()}
+							createdAt={toEpochMs(message.createdAt)}
 						/>
 					)
 				})()}

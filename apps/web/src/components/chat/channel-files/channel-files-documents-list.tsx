@@ -3,6 +3,7 @@ import { FileIcon } from "@untitledui/file-icons"
 import { IconDownload } from "~/components/icons/icon-download"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import { toDate } from "~/lib/utils"
 import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { useChatAuthorIdentity } from "../author-identity"
@@ -62,7 +63,7 @@ function DocumentItem({ attachment }: { attachment: AttachmentWithUser }) {
 				<div className="flex items-center gap-2 text-muted-fg text-xs">
 					<span>{formatFileSize(attachment.fileSize)}</span>
 					<span aria-hidden="true">·</span>
-					<span>{formatRelativeTime(attachment.uploadedAt)}</span>
+					<span>{formatRelativeTime(toDate(attachment.uploadedAt))}</span>
 				</div>
 			</div>
 

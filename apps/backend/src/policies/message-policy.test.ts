@@ -6,10 +6,13 @@ import { Effect, Result, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver.ts"
 import { MessagePolicy } from "./message-policy.ts"
 import {
+	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	runWithActorEither,
+	serviceEffect,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
@@ -26,7 +29,7 @@ const MISSING_MESSAGE_ID = "00000000-0000-0000-0000-000000000899" as MessageId
 const makeChannelRepoLayer = (
 	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
-	Layer.succeed(ChannelRepo, {
+	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
 		findById: (id: ChannelId) => {
 			const channel = channels[id]
 			return Effect.succeed(channel ? Option.some(channel) : Option.none())
@@ -45,13 +48,13 @@ const makeChannelRepoLayer = (
 			}
 			return f(channel)
 		},
-	} as unknown as ChannelRepo)
+	}))
 
 /**
  * Creates a MessageRepo mock with a `with` method.
  */
 const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, {
+	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
 		findById: (id: MessageId) => {
 			const message = messages[id]
 			return Effect.succeed(message ? Option.some(message) : Option.none())
@@ -66,11 +69,11 @@ const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; chann
 			}
 			return f(message)
 		},
-	} as unknown as MessageRepo)
+	}))
 
-const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, {
+const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
 	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
-} as unknown as ChannelMemberRepo)
+}))
 
 /**
  * Builds the full layer stack for MessagePolicy tests.
@@ -85,14 +88,14 @@ const makePolicyLayer = (
 	const messageRepoLayer = makeMessageRepoLayer(messages)
 	const orgMemberRepoLayer = makeOrganizationMemberRepoLayer(members)
 
-	const orgResolverLayer = OrgResolver.DefaultWithoutDependencies.pipe(
+	const orgResolverLayer = buildServiceLayer(OrgResolver).pipe(
 		Layer.provide(orgMemberRepoLayer),
 		Layer.provide(channelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),
 		Layer.provide(messageRepoLayer),
 	)
 
-	return MessagePolicy.DefaultWithoutDependencies.pipe(
+	return buildServiceLayer(MessagePolicy).pipe(
 		Layer.provide(orgResolverLayer),
 		Layer.provide(messageRepoLayer),
 		Layer.provide(channelRepoLayer),
@@ -113,7 +116,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -129,7 +136,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -145,7 +156,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canRead(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -163,7 +178,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canUpdate(MESSAGE_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -183,7 +202,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, otherUser)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canUpdate(MESSAGE_ID)),
+			layer,
+			otherUser,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -201,7 +224,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -221,7 +248,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, admin)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -241,7 +272,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, member)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			layer,
+			member,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -257,7 +292,11 @@ describe("MessagePolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(MessagePolicy.canDelete(MISSING_MESSAGE_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MISSING_MESSAGE_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)

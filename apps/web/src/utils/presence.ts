@@ -1,10 +1,12 @@
+import type { DateTime } from "effect"
+
 export type PresenceStatus = "online" | "away" | "busy" | "dnd" | "offline"
 
 export const DEFAULT_OFFLINE_THRESHOLD_MS = 45_000
 
 export type PresenceLike = {
 	status?: string | null | undefined
-	lastSeenAt?: Date | null | undefined
+	lastSeenAt?: Date | DateTime.Utc | null | undefined
 } | null
 
 /**
@@ -24,11 +26,16 @@ export function getEffectivePresenceStatus(
 	if (!presence) return "offline"
 
 	const lastSeenAt = presence.lastSeenAt
-	if (!(lastSeenAt instanceof Date) || Number.isNaN(lastSeenAt.getTime())) {
+	if (!lastSeenAt) {
 		return "offline"
 	}
 
-	if (nowMs - lastSeenAt.getTime() > offlineThresholdMs) {
+	const lastSeenMs = lastSeenAt instanceof Date ? lastSeenAt.getTime() : lastSeenAt.epochMilliseconds
+	if (Number.isNaN(lastSeenMs)) {
+		return "offline"
+	}
+
+	if (nowMs - lastSeenMs > offlineThresholdMs) {
 		return "offline"
 	}
 

@@ -5,6 +5,7 @@ import { CurrentRpcScopes } from "@hazel/domain/scopes"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver"
+export { buildServiceLayer, serviceEffect, serviceShape } from "../test/effect-helpers"
 
 export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
 export const TEST_ALT_ORG_ID = "00000000-0000-0000-0000-000000000002" as OrganizationId
@@ -26,7 +27,7 @@ export const makeActor = (overrides?: Partial<CurrentUser.Schema>): CurrentUser.
 
 export const runWithActorEither = <A, E, R>(
 	make: Effect.Effect<A, E, R>,
-	layer: Layer.Layer<any, any, never>,
+	layer: Layer.Layer<any, any, any>,
 	actor: CurrentUser.Schema = makeActor(),
 	scopes: ReadonlyArray<ApiScope> = ["messages:read"],
 ) =>
@@ -85,7 +86,7 @@ const emptyMessageRepoLayer = Layer.succeed(MessageRepo, {
  * Provides stub repos for channels, channel members, and messages.
  */
 export const makeOrgResolverLayer = (members: Record<string, Role>) =>
-	OrgResolver.layer.pipe(
+	buildServiceLayer(OrgResolver).pipe(
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 		Layer.provide(emptyChannelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),

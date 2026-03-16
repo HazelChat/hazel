@@ -1,16 +1,14 @@
 import { ConfigProvider, Effect, Layer, ServiceMap } from "effect"
 
-export const buildServiceLayer = <
-	T extends ServiceMap.Service.Any & {
-		readonly make: Effect.Effect<any, any, any>
+export const buildServiceLayer = <I, S, E, R>(
+	service: ServiceMap.Service<I, S> & {
+		readonly make: Effect.Effect<S, E, R>
 	},
->(
-	service: T,
 ) => Layer.effect(service, service.make)
 
-export const serviceEffect = <T extends ServiceMap.Service.Any, A, E, R>(
-	service: T,
-	f: (implementation: ServiceMap.Service.Shape<T>) => Effect.Effect<A, E, R>,
+export const serviceEffect = <I, S, A, E, R>(
+	service: ServiceMap.Service<I, S>,
+	f: (implementation: S) => Effect.Effect<A, E, R>,
 ) => service.use(f)
 
 export const serviceShape = <T extends ServiceMap.Service.Any>(

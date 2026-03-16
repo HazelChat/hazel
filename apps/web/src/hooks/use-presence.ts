@@ -26,7 +26,7 @@ const ACTIVITY_BROADCAST_THROTTLE_MS = 1_000
  */
 const lastActivityAtom = Atom.make((get) => {
 	let lastActivityMs = Date.now()
-	let lastActivity = DateTime.unsafeMake(new Date(lastActivityMs))
+	let lastActivity = DateTime.makeUnsafe(new Date(lastActivityMs))
 	let lastBroadcastAtMs = 0
 
 	const tabId =
@@ -60,14 +60,14 @@ const lastActivityAtom = Atom.make((get) => {
 	const applyActivity = (at: number) => {
 		if (!Number.isFinite(at) || at <= lastActivityMs) return
 		lastActivityMs = at
-		lastActivity = DateTime.unsafeMake(new Date(at))
+		lastActivity = DateTime.makeUnsafe(new Date(at))
 		get.setSelf(lastActivity)
 	}
 
 	const handleLocalActivity = () => {
 		const at = Date.now()
 		lastActivityMs = at
-		lastActivity = DateTime.unsafeMake(new Date(at))
+		lastActivity = DateTime.makeUnsafe(new Date(at))
 		get.setSelf(lastActivity)
 
 		if (at - lastBroadcastAtMs >= ACTIVITY_BROADCAST_THROTTLE_MS) {

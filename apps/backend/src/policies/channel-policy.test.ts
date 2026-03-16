@@ -2,13 +2,15 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect, Result, Layer } from "effect"
+import { Effect, Result, Layer, ServiceMap } from "effect"
 import { ChannelPolicy } from "./channel-policy.ts"
 import {
+	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceEffect,
 	TEST_ALT_ORG_ID,
 	TEST_ORG_ID,
 } from "./policy-test-helpers.ts"
@@ -30,13 +32,13 @@ const makeChannelRepoLayer = (channels: Record<string, { organizationId: Organiz
 			}
 			return f(channel)
 		},
-	} as unknown as ChannelRepo)
+	} as ServiceMap.Service.Shape<typeof ChannelRepo>)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	channels: Record<string, { organizationId: OrganizationId }>,
 ) =>
-	ChannelPolicy.DefaultWithoutDependencies.pipe(
+	buildServiceLayer(ChannelPolicy).pipe(
 		Layer.provide(makeChannelRepoLayer(channels)),
 		Layer.provide(makeOrgResolverLayer(members)),
 	)
@@ -50,25 +52,25 @@ describe("ChannelPolicy", () => {
 		const ownerLayer = makePolicyLayer({ [`${TEST_ORG_ID}:${actor.id}`]: "owner" }, {})
 
 		const memberResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			serviceEffect(ChannelPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
 			memberLayer,
 			actor,
 			["channels:write"],
 		)
 		const adminResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			serviceEffect(ChannelPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
 			adminLayer,
 			actor,
 			["channels:write"],
 		)
 		const ownerResult = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ORG_ID),
+			serviceEffect(ChannelPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
 			ownerLayer,
 			actor,
 			["channels:write"],
 		)
 		const noMembership = await runWithActorEither(
-			ChannelPolicy.canCreate(TEST_ALT_ORG_ID),
+			serviceEffect(ChannelPolicy, (policy) => policy.canCreate(TEST_ALT_ORG_ID)),
 			memberLayer,
 			actor,
 			["channels:write"],
@@ -91,8 +93,16 @@ describe("ChannelPolicy", () => {
 			},
 		)
 
-		const allowed = await runWithActorEither(ChannelPolicy.canUpdate(CHANNEL_ID), layer, actor)
-		const missing = await runWithActorEither(ChannelPolicy.canUpdate(MISSING_CHANNEL_ID), layer, actor)
+		const allowed = await runWithActorEither(
+			serviceEffect(ChannelPolicy, (policy) => policy.canUpdate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
+		const missing = await runWithActorEither(
+			serviceEffect(ChannelPolicy, (policy) => policy.canUpdate(MISSING_CHANNEL_ID)),
+			layer,
+			actor,
+		)
 
 		expect(Result.isSuccess(allowed)).toBe(true)
 		expect(Result.isFailure(missing)).toBe(true)
@@ -112,7 +122,11 @@ describe("ChannelPolicy", () => {
 			},
 		)
 
-		const result = await runWithActorEither(ChannelPolicy.canDelete(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			serviceEffect(ChannelPolicy, (policy) => policy.canDelete(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 })
