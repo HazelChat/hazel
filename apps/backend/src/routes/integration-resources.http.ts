@@ -341,6 +341,13 @@ export const HttpIntegrationResourceLive = HttpApiBuilder.group(
 									detail: String(error),
 								}),
 							),
+						ConfigError: (error) =>
+							Effect.fail(
+								new InternalServerError({
+									message: "Discord bot token not configured",
+									detail: String(error),
+								}),
+							),
 					}),
 				),
 			),
@@ -470,7 +477,7 @@ const handleGetDiscordGuildChannels = Effect.fn("integration-resources.getDiscor
 		)
 
 		return new DiscordGuildChannelsResponse({
-			channels: channels.map((c: { id: string; name: string; type: number }) => ({
+			channels: channels.map((c) => ({
 				...c,
 				id: c.id as ExternalChannelId,
 			})),

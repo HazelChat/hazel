@@ -28,11 +28,6 @@ import {
 	UserRpcs,
 } from "@hazel/domain/rpc"
 import { Layer } from "effect"
-import {
-	createRpcTypeResolver,
-	DevtoolsProtocolLayer,
-	setRpcTypeResolver,
-} from "effect-rpc-tanstack-devtools"
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
 const httpUrl = `${backendUrl}/rpc`
@@ -47,7 +42,7 @@ export const RpcProtocolLive = BaseProtocolLive
 // Use Layer.mergeAll to make AuthMiddlewareClientLive available alongside the protocol
 const AtomRpcProtocolLive = Layer.mergeAll(RpcProtocolLive, AuthMiddlewareClientLive, Reactivity.layer)
 
-const AllRpcs = MessageRpcs.merge(
+const BaseRpcs = MessageRpcs.merge(
 	NotificationRpcs,
 	InvitationRpcs,
 	IntegrationRequestRpcs,
@@ -67,18 +62,12 @@ const AllRpcs = MessageRpcs.merge(
 	AttachmentRpcs,
 	UserPresenceStatusRpcs,
 	BotRpcs,
-	ChatSyncRpcs,
 	ConnectShareRpcs,
 )
 
-// Configure RPC type resolver for devtools (only in dev mode)
-if (import.meta.env.DEV) {
-	setRpcTypeResolver(createRpcTypeResolver([AllRpcs]))
-}
-
+const AllRpcs = BaseRpcs.merge(ChatSyncRpcs)
 export class HazelRpcClient extends AtomRpc.Service<HazelRpcClient>()("HazelRpcClient", {
 	group: AllRpcs,
-	// @ts-expect-error
 	protocol: AtomRpcProtocolLive,
 }) {}
 

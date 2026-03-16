@@ -4,6 +4,7 @@ import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toDate } from "~/lib/utils"
 import { toast } from "sonner"
 import {
 	deleteChannelWebhookMutation,
@@ -279,7 +280,7 @@ function CompactWebhookItem({ webhook, onDelete }: { webhook: WebhookData; onDel
 						<>
 							<span className="text-muted-fg/50">·</span>
 							<span>
-								{formatDistanceToNow(new Date(webhook.lastUsedAt), { addSuffix: true })}
+								{formatDistanceToNow(toDate(webhook.lastUsedAt), { addSuffix: true })}
 							</span>
 						</>
 					)}

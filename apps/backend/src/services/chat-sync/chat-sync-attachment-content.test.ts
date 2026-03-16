@@ -43,13 +43,13 @@ describe("formatMessageContentWithAttachments", () => {
 			content: "release notes",
 			attachments: [
 				makeAttachment({
-					id: "00000000-0000-0000-0000-000000000001",
+					id: "00000000-0000-4000-8000-000000000001",
 					fileName: "design.png",
 					fileSize: 2048,
 					publicUrl: "https://cdn.example.com/1",
 				}),
 				makeAttachment({
-					id: "00000000-0000-0000-0000-000000000002",
+					id: "00000000-0000-4000-8000-000000000002",
 					fileName: "quarterly-report.pdf",
 					fileSize: 1024 * 1024,
 					publicUrl: "https://cdn.example.com/2",
@@ -66,13 +66,13 @@ describe("formatMessageContentWithAttachments", () => {
 	it("renders deterministically based on provided attachment order", () => {
 		const attachments = [
 			makeAttachment({
-				id: "00000000-0000-0000-0000-0000000000b0",
+				id: "00000000-0000-4000-8000-0000000000b0",
 				fileName: "b.txt",
 				fileSize: 1,
 				publicUrl: "https://cdn.example.com/b",
 			}),
 			makeAttachment({
-				id: "00000000-0000-0000-0000-0000000000a0",
+				id: "00000000-0000-4000-8000-0000000000a0",
 				fileName: "a.txt",
 				fileSize: 1,
 				publicUrl: "https://cdn.example.com/a",
@@ -89,7 +89,7 @@ describe("formatMessageContentWithAttachments", () => {
 	it("caps long attachment lists and includes summary line", () => {
 		const attachments = Array.from({ length: 20 }, (_, index) =>
 			makeAttachment({
-				id: `00000000-0000-0000-0000-0000000000${String(index).padStart(2, "0")}`,
+				id: `00000000-0000-4000-8000-0000000000${String(index).padStart(2, "0")}`,
 				fileName: `file-${index}.txt`,
 				fileSize: 10,
 				publicUrl: `https://cdn.example.com/${index}`,

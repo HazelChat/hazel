@@ -186,9 +186,9 @@ function IntegrationConfigPage() {
 				description: "This integration is already disconnected.",
 				isRetryable: false,
 			}))
-			.onErrorTag("UnsupportedProviderError", (error) => ({
+			.onErrorTag("UnsupportedProviderError", () => ({
 				title: "Unsupported provider",
-				description: `The provider "${error.provider}" is not supported.`,
+				description: "This integration provider is not supported.",
 				isRetryable: false,
 			}))
 			.run()
@@ -216,9 +216,9 @@ function IntegrationConfigPage() {
 					description: error.message,
 					isRetryable: true,
 				}))
-				.onErrorTag("UnsupportedProviderError", (error) => ({
+				.onErrorTag("UnsupportedProviderError", () => ({
 					title: "Unsupported provider",
-					description: `The provider "${error.provider}" does not support API key connections.`,
+					description: "This integration does not support API key connections.",
 					isRetryable: false,
 				}))
 				.onError(() => ({

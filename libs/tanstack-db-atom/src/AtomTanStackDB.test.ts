@@ -16,7 +16,7 @@
  * @since 1.0.0
  */
 
-import { Registry, Result } from "@effect/atom-react"
+import { AsyncResult as Result, AtomRegistry as Registry } from "effect/unstable/reactivity"
 import { type Collection, createCollection, eq, type NonSingleResult, type SingleResult } from "@tanstack/db"
 import { describe, expect, it } from "vitest"
 import {
@@ -205,7 +205,7 @@ describe("makeCollectionAtom", () => {
 		const todosAtom = makeCollectionAtom(collection)
 
 		// Track updates
-		const updates: Array<Result.Result<Array<Todo>, Error>> = []
+		const updates: Array<Result.AsyncResult<Array<Todo>, Error>> = []
 		const unsubscribe = registry.subscribe(todosAtom, (value) => {
 			updates.push(value)
 		})

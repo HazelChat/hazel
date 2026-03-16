@@ -1,4 +1,3 @@
-import { TanStackDevtools } from "@tanstack/react-devtools"
 import {
 	createRootRouteWithContext,
 	type NavigateOptions,
@@ -6,7 +5,6 @@ import {
 	type ToOptions,
 	useRouter,
 } from "@tanstack/react-router"
-import { RpcDevtoolsPanel } from "effect-rpc-tanstack-devtools/components"
 import { lazy, Suspense } from "react"
 import { RouterProvider } from "react-aria-components"
 

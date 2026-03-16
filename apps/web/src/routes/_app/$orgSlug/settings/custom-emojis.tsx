@@ -1,8 +1,10 @@
 import { useAtomSet } from "@effect/atom-react"
+import { CustomEmojiDeletedExistsError } from "@hazel/domain/rpc"
 import { eq, isNull, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
-import { Cause, Chunk, Exit, Option } from "effect"
+import { toDate } from "~/lib/utils"
+import { Cause, Exit } from "effect"
 import { useCallback, useEffect, useState } from "react"
 import { type DropItem, DropZone, FileTrigger, Button as AriaButton } from "react-aria-components"
 import { toast } from "sonner"
@@ -204,27 +206,19 @@ function CustomEmojisSettings() {
 				toast.success(`Emoji :${emojiName}: created`)
 				handleCancel()
 			} else {
-				// Check if the error is a deleted emoji conflict
-				const failures = Cause.failures(createResult.cause)
-				const firstError = Chunk.head(failures)
+				const deletedExistsError = createResult.cause.reasons
+					.filter(Cause.isFailReason)
+					.map((reason) => reason.error)
+					.find((error): error is CustomEmojiDeletedExistsError => error instanceof CustomEmojiDeletedExistsError)
 
-				if (Option.isSome(firstError)) {
-					if ("_tag" in firstError.value) {
-						if (firstError.value._tag === "CustomEmojiDeletedExistsError") {
-							const err = firstError.value as {
-								customEmojiId: CustomEmojiId
-								name: string
-								imageUrl: string
-							}
-							setRestoreTarget({
-								id: err.customEmojiId,
-								name: err.name,
-								imageUrl: err.imageUrl,
-								newImageUrl: publicUrl,
-							})
-							return
-						}
-					}
+				if (deletedExistsError) {
+					setRestoreTarget({
+						id: deletedExistsError.customEmojiId,
+						name: deletedExistsError.name,
+						imageUrl: deletedExistsError.imageUrl,
+						newImageUrl: publicUrl,
+					})
+					return
 				}
 				toast.error("Failed to create emoji", {
 					description: "The name may already be taken. Please try another.",
@@ -528,7 +522,7 @@ function CustomEmojisSettings() {
 											<td className="px-4 py-4">
 												<span className="text-muted-fg text-sm">
 													{emoji.createdAt
-														? formatDistanceToNow(new Date(emoji.createdAt), {
+														? formatDistanceToNow(toDate(emoji.createdAt), {
 																addSuffix: true,
 															})
 														: "—"}

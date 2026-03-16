@@ -11,7 +11,7 @@ import {
 	OAuthCodeExpiredError,
 	TokenExchangeError,
 } from "@hazel/domain/errors"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, type ServiceMap } from "effect"
 import { appRegistry } from "~/lib/registry"
 import { runtime } from "~/lib/services/common/runtime"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
@@ -65,6 +65,9 @@ export const webCallbackStatusAtom = Atom.make<WebCallbackStatus>({ _tag: "idle"
 const WebTokenStorageLive = WebTokenStorage.layer
 const TokenExchangeLive = TokenExchange.layer
 
+type TokenExchangeService = ServiceMap.Service.Shape<typeof TokenExchange>
+type WebTokenStorageService = ServiceMap.Service.Shape<typeof WebTokenStorage>
+
 // ============================================================================
 // Error Handling
 // ============================================================================
@@ -116,7 +119,32 @@ const processedCodes = new Set<string>()
 /**
  * Effect that handles the web callback - exchanges code for tokens and stores them
  */
-const handleCallback = (params: WebCallbackParams) =>
+const exchangeAndStoreTokens = (code: string, stateString: string, returnTo: string) =>
+	Effect.gen(function* () {
+		const tokenExchange: TokenExchangeService = yield* TokenExchange
+		const tokenStorage: WebTokenStorageService = yield* WebTokenStorage
+
+		yield* Effect.log("[web-callback] Exchanging code for tokens...")
+
+		const tokens = yield* tokenExchange.exchangeCode(code, stateString)
+
+		yield* Effect.log("[web-callback] Storing tokens...")
+		yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
+
+		const expiresAt = Date.now() + tokens.expiresIn * 1000
+		appRegistry.set(webTokensAtom, {
+			accessToken: tokens.accessToken,
+			refreshToken: tokens.refreshToken,
+			expiresAt,
+		})
+		appRegistry.set(webAuthStatusAtom, "authenticated")
+
+		yield* Effect.log("[web-callback] Token exchange successful")
+
+		return { success: true as const, returnTo }
+	})
+
+const handleCallback = (params: WebCallbackParams): Effect.Effect<void, never> =>
 	Effect.gen(function* () {
 		// Guard against double-execution (React StrictMode, hot reload)
 		// OAuth codes are one-time use, so we track processed codes
@@ -188,55 +216,34 @@ const handleCallback = (params: WebCallbackParams) =>
 		const returnTo = authState.returnTo || "/"
 
 		// Exchange code for tokens
-		const result = yield* Effect.gen(function* () {
-			const tokenExchange = yield* TokenExchange
-			const tokenStorage = yield* WebTokenStorage
-
-			yield* Effect.log("[web-callback] Exchanging code for tokens...")
-
-			const tokens = yield* tokenExchange.exchangeCode(code, stateString)
-
-			yield* Effect.log("[web-callback] Storing tokens...")
-
-			// Store tokens in localStorage
-			yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
-
-			// Update atom state via global registry (not `get.set()` which can be
-			// stale if React StrictMode unmounted the atom that forked this fiber)
-			const expiresAt = Date.now() + tokens.expiresIn * 1000
-			appRegistry.set(webTokensAtom, {
-				accessToken: tokens.accessToken,
-				refreshToken: tokens.refreshToken,
-				expiresAt,
-			})
-			appRegistry.set(webAuthStatusAtom, "authenticated")
-
-			yield* Effect.log("[web-callback] Token exchange successful")
-
-			return { success: true as const, returnTo }
-		}).pipe(
+		const result = yield* exchangeAndStoreTokens(code, stateString, returnTo).pipe(
 			Effect.provide(Layer.mergeAll(TokenExchangeLive, WebTokenStorageLive)),
-			// Preserve typed errors (OAuthCodeExpiredError, TokenExchangeError, etc.)
-			Effect.catchTag("OAuthCodeExpiredError", (error) => {
-				console.error("[web-callback] OAuth code expired:", error)
-				return Effect.succeed({
-					success: false as const,
-					error,
-				})
+			Effect.catchTags({
+				OAuthCodeExpiredError: (error) => {
+					console.error("[web-callback] OAuth code expired:", error)
+					return Effect.succeed({
+						success: false as const,
+						error,
+					})
+				},
+				TokenExchangeError: (error) => {
+					console.error("[web-callback] Token exchange failed:", error)
+					return Effect.succeed({
+						success: false as const,
+						error,
+					})
+				},
 			}),
-			Effect.catchTag("TokenExchangeError", (error) => {
+			Effect.catch((error: unknown) => {
 				console.error("[web-callback] Token exchange failed:", error)
-				return Effect.succeed({
-					success: false as const,
-					error,
-				})
-			}),
-			Effect.catch((error) => {
-				console.error("[web-callback] Token exchange failed:", error)
+				const msg =
+					error && typeof error === "object" && "message" in error
+						? (error as { message?: string }).message
+						: undefined
 				return Effect.succeed({
 					success: false as const,
 					error: new TokenExchangeError({
-						message: error.message || "Failed to exchange authorization code",
+						message: msg || "Failed to exchange authorization code",
 						detail: String(error),
 					}),
 				})

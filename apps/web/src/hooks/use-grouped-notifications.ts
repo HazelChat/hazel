@@ -1,5 +1,6 @@
 import { isThisWeek, isToday, isYesterday } from "date-fns"
 import { useMemo } from "react"
+import { toDate } from "~/lib/utils"
 import type { NotificationWithDetails } from "./use-notifications"
 import { useNotifications } from "./use-notifications"
 
@@ -20,7 +21,7 @@ function groupNotificationsByTime(notifications: NotificationWithDetails[]): Not
 	const older: NotificationWithDetails[] = []
 
 	for (const notification of notifications) {
-		const createdAt = new Date(notification.notification.createdAt)
+		const createdAt = toDate(notification.notification.createdAt)
 
 		if (isToday(createdAt)) {
 			today.push(notification)

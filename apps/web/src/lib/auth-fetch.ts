@@ -23,8 +23,14 @@ const WebTokenStorageLive = WebTokenStorage.layer
  */
 const clearTokens = async (): Promise<void> => {
 	const effect = isTauri()
-		? TokenStorage.clearTokens.pipe(Effect.provide(DesktopTokenStorageLive))
-		: WebTokenStorage.clearTokens.pipe(Effect.provide(WebTokenStorageLive))
+		? Effect.gen(function* () {
+				const storage = yield* TokenStorage
+				yield* storage.clearTokens
+			}).pipe(Effect.provide(DesktopTokenStorageLive))
+		: Effect.gen(function* () {
+				const storage = yield* WebTokenStorage
+				yield* storage.clearTokens
+			}).pipe(Effect.provide(WebTokenStorageLive))
 	return runtime.runPromise(
 		effect.pipe(
 			Effect.catch(() => Effect.void),

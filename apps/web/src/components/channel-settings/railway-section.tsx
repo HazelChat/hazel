@@ -3,6 +3,7 @@ import type { ChannelId, ChannelWebhookId } from "@hazel/schema"
 import { formatDistanceToNow } from "date-fns"
 import { Exit } from "effect"
 import { useState } from "react"
+import { toDate } from "~/lib/utils"
 import { toast } from "sonner"
 import {
 	createChannelWebhookMutation,
@@ -272,7 +273,7 @@ export function RailwaySection({
 						{webhook.lastUsedAt && (
 							<p className="text-muted-fg text-xs">
 								Last alert{" "}
-								{formatDistanceToNow(new Date(webhook.lastUsedAt), { addSuffix: true })}
+								{formatDistanceToNow(toDate(webhook.lastUsedAt), { addSuffix: true })}
 							</p>
 						)}
 					</div>

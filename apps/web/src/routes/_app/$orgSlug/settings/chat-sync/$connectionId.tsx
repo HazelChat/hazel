@@ -5,6 +5,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"
 import { useMemo, useState } from "react"
+import { toDate } from "~/lib/utils"
 import { AddChannelLinkModal } from "~/components/chat-sync/add-channel-link-modal"
 import IconCirclePause from "~/components/icons/icon-circle-pause"
 import IconDotsVertical from "~/components/icons/icon-dots-vertical"
@@ -454,7 +455,7 @@ function ChatSyncConnectionDetailPage() {
 											</p>
 											<p className="text-muted-fg text-xs">
 												{connection.lastSyncedAt
-													? `Last synced ${new Date(
+													? `Last synced ${toDate(
 															connection.lastSyncedAt,
 														).toLocaleDateString(undefined, {
 															month: "short",

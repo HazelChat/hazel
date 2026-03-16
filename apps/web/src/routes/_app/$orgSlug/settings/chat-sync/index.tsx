@@ -3,6 +3,7 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { SyncConnectionId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Option } from "effect"
+import { toDate } from "~/lib/utils"
 import { useState } from "react"
 import { AddConnectionModal } from "~/components/chat-sync/add-connection-modal"
 import IconArrowPath from "~/components/icons/icon-arrow-path"
@@ -264,7 +265,7 @@ function ChatSyncConnectionsPage() {
 										{connection.lastSyncedAt && (
 											<span>
 												Last synced:{" "}
-												{new Date(connection.lastSyncedAt).toLocaleDateString(
+												{toDate(connection.lastSyncedAt).toLocaleDateString(
 													undefined,
 													{
 														month: "short",

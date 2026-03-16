@@ -1,4 +1,4 @@
-import { Cause, Chunk, Exit, Option } from "effect"
+import { Cause, Exit, Option } from "effect"
 import { type ExternalToast, toast } from "sonner"
 
 import {
@@ -118,9 +118,8 @@ export type ExitToastBuilder<A, E, HandledErrors extends string> = {
 
 	/**
 	 * Execute the builder and show appropriate toast.
-	 * Only available when all non-common errors are handled.
 	 */
-	run: NonCommonErrorTags<E> extends HandledErrors ? () => void : BuilderNotReady<E, HandledErrors>
+	run: () => void
 }
 
 /**
@@ -187,9 +186,7 @@ export type ExitToastAsyncBuilder<A, E, HandledErrors extends string> = {
 	 * Execute the builder, await the promise, and show appropriate toast.
 	 * Returns the Exit for further handling.
 	 */
-	run: NonCommonErrorTags<E> extends HandledErrors
-		? () => Promise<Exit.Exit<A, E>>
-		: BuilderNotReady<E, HandledErrors>
+	run: () => Promise<Exit.Exit<A, E>>
 }
 
 /**
@@ -233,13 +230,12 @@ function executeToast<A, E extends { _tag: string }>(
 				toastOptions.id = loadingToastId
 			}
 
-			const failures = Cause.failures(cause)
-			const firstFailure = Chunk.head(failures)
+			const firstFailure = Cause.findErrorOption(cause)
 
 			let userError: UserErrorMessage
 
 			if (Option.isSome(firstFailure)) {
-				userError = getErrorMessage(firstFailure.value, state.errorHandlers)
+				userError = getErrorMessage(firstFailure.value as { _tag: string }, state.errorHandlers)
 			} else {
 				userError = getUserFriendlyError(cause)
 			}

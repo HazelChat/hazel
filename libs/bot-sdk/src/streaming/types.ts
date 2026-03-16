@@ -65,10 +65,10 @@ export interface StreamSession {
 	): Effect.Effect<void, ActorOperationError>
 
 	/** Mark the stream as completed */
-	complete(finalData?: Record<string, unknown>): Effect.Effect<void, ActorOperationError>
+	complete(finalData?: Record<string, unknown>): Effect.Effect<void, ActorOperationError, unknown>
 
 	/** Mark the stream as failed */
-	fail(error: string): Effect.Effect<void, ActorOperationError>
+	fail(error: string): Effect.Effect<void, ActorOperationError, unknown>
 }
 
 /**

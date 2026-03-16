@@ -14,7 +14,7 @@ export interface TokenValidationConfig {
 	readonly internalSecret: Option.Option<Redacted.Redacted>
 }
 
-const optionalValue = <A>(effect: Effect.Effect<A, any, never>) => effect.pipe(Effect.option)
+const optionalValue = <A, E>(effect: Effect.Effect<A, E, never>) => effect.pipe(Effect.option)
 
 /**
  * Service for loading and providing token validation configuration.

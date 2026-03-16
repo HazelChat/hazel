@@ -1,4 +1,5 @@
 import { GeneratePortalLinkIntent } from "@workos-inc/node"
+import type { OrganizationId } from "@hazel/schema"
 import {
 	ChannelMemberRepo,
 	ChannelRepo,
@@ -21,6 +22,8 @@ import { OrganizationPolicy } from "../../policies/organization-policy"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
+const UNKNOWN_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000000" as OrganizationId
+
 /**
  * Custom error handler for organization database operations that provides
  * specific error handling for duplicate slug violations
@@ -41,7 +44,10 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 		return effect.pipe(
 			Effect.catchIf(
 				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
-				(err) => {
+				(err): Effect.Effect<
+					never,
+					InternalServerError | OrganizationSlugAlreadyExistsError
+				> => {
 					const dbErr = err as unknown as {
 						type: string
 						cause: { constraint_name?: string; detail?: string }
@@ -382,7 +388,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							if (Option.isNone(orgOption)) {
 								return yield* new OrganizationNotFoundError({
-									organizationId: "unknown" as any,
+									organizationId: UNKNOWN_ORGANIZATION_ID,
 								})
 							}
 

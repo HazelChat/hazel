@@ -1,29 +1,31 @@
 import { describe, expect, it } from "@effect/vitest"
 import { BotInstallationRepo, ChannelRepo } from "@hazel/backend-core"
 import { createBotGatewayPartitionKey } from "@hazel/domain"
-import type { BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Layer, Option, ServiceMap } from "effect"
-import { buildServiceLayer, configLayer } from "../test/effect-helpers"
+import { Message } from "@hazel/domain/models"
+import type { BotId, ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
+import { Effect, Layer, Option, Schema } from "effect"
+import { configLayer, serviceShape } from "../test/effect-helpers"
 import { BotGatewayService } from "./bot-gateway-service"
 
 const DURABLE_STREAMS_URL = "http://durable.test/v1/stream"
-const BOT_ID = "00000000-0000-0000-0000-000000000111" as BotId
-const SECOND_BOT_ID = "00000000-0000-0000-0000-000000000112" as BotId
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000444" as ChannelId
-const ORG_ID = "00000000-0000-0000-0000-000000000333" as OrganizationId
-const USER_ID = "00000000-0000-0000-0000-000000000222" as UserId
+const BOT_ID = "00000000-0000-4000-8000-000000000111" as BotId
+const SECOND_BOT_ID = "00000000-0000-4000-8000-000000000112" as BotId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000444" as ChannelId
+const ORG_ID = "00000000-0000-4000-8000-000000000333" as OrganizationId
+const USER_ID = "00000000-0000-4000-8000-000000000222" as UserId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000555" as MessageId
 
 const TestConfigLive = configLayer({
 	DURABLE_STREAMS_URL,
 })
 
 const makeBotInstallationRepoLayer = (botIds: ReadonlyArray<BotId>) =>
-	Layer.succeed(BotInstallationRepo, {
+	Layer.succeed(BotInstallationRepo, serviceShape<typeof BotInstallationRepo>({
 		getBotIdsForOrg: () => Effect.succeed([...botIds]),
-	} as ServiceMap.Service.Shape<typeof BotInstallationRepo>)
+	}))
 
 const makeChannelRepoLayer = (organizationId: OrganizationId) =>
-	Layer.succeed(ChannelRepo, {
+	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
 		findById: (id: ChannelId) =>
 			Effect.succeed(
 				Option.some({
@@ -31,10 +33,10 @@ const makeChannelRepoLayer = (organizationId: OrganizationId) =>
 					organizationId,
 				}),
 			),
-	} as ServiceMap.Service.Shape<typeof ChannelRepo>)
+	}))
 
 const makeServiceLayer = (botIds: ReadonlyArray<BotId>) =>
-	buildServiceLayer(BotGatewayService).pipe(
+	Layer.effect(BotGatewayService, BotGatewayService.make).pipe(
 		Layer.provide(makeBotInstallationRepoLayer(botIds)),
 		Layer.provide(makeChannelRepoLayer(ORG_ID)),
 		Layer.provide(TestConfigLive),
@@ -100,6 +102,19 @@ describe("BotGatewayService", () => {
 	it("fans message events out to every bot installed in the organization", () => {
 		const originalFetch = globalThis.fetch
 		const requests: Array<{ url: string; method: string; body: string | null }> = []
+		const message = {
+			id: MESSAGE_ID,
+			channelId: CHANNEL_ID,
+			conversationId: null,
+			authorId: USER_ID,
+			content: "hello from hazel",
+			embeds: null,
+			replyToMessageId: null,
+			threadChannelId: null,
+			createdAt: new Date("2026-03-05T12:00:00.000Z"),
+			updatedAt: null,
+			deletedAt: null,
+		} satisfies Schema.Schema.Type<typeof Message.Model.json>
 
 		globalThis.fetch = (async (input, init) => {
 			requests.push({
@@ -113,12 +128,7 @@ describe("BotGatewayService", () => {
 		return Effect.runPromise(
 			Effect.gen(function* () {
 				const gateway = yield* BotGatewayService
-				yield* gateway.publishMessageEvent("message.create", {
-					id: "00000000-0000-0000-0000-000000000555",
-					channelId: CHANNEL_ID,
-					createdAt: new Date("2026-03-05T12:00:00.000Z"),
-					updatedAt: null,
-				} as any)
+				yield* gateway.publishMessageEvent("message.create", message)
 
 				const appendRequests = requests.filter((request) => request.method === "POST")
 				expect(appendRequests).toHaveLength(2)

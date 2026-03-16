@@ -4,13 +4,19 @@ import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId, UserId } from "@hazel/schema"
 import { Effect, Result, Layer, Option } from "effect"
 import { TypingIndicatorPolicy } from "./typing-indicator-policy.ts"
-import { makeActor, makeEntityNotFound, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
+import {
+	makeActor,
+	makeEntityNotFound,
+	runWithActorEither,
+	serviceShape,
+	TEST_ORG_ID,
+} from "./policy-test-helpers.ts"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000501" as ChannelId
-const MEMBER_ID = "00000000-0000-0000-0000-000000000601" as ChannelMemberId
-const OTHER_MEMBER_ID = "00000000-0000-0000-0000-000000000602" as ChannelMemberId
-const INDICATOR_ID = "00000000-0000-0000-0000-000000000701" as TypingIndicatorId
-const MISSING_INDICATOR_ID = "00000000-0000-0000-0000-000000000799" as TypingIndicatorId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000501" as ChannelId
+const MEMBER_ID = "00000000-0000-4000-8000-000000000601" as ChannelMemberId
+const OTHER_MEMBER_ID = "00000000-0000-4000-8000-000000000602" as ChannelMemberId
+const INDICATOR_ID = "00000000-0000-4000-8000-000000000701" as TypingIndicatorId
+const MISSING_INDICATOR_ID = "00000000-0000-4000-8000-000000000799" as TypingIndicatorId
 
 type MemberRecord = {
 	id: ChannelMemberId
@@ -24,7 +30,7 @@ const makeChannelMemberRepoLayer = (
 	recordsByMemberId: Record<string, MemberRecord>,
 	recordsByChannelAndUser: Record<string, MemberRecord>,
 ) =>
-	Layer.succeed(ChannelMemberRepo, {
+	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
 		findByChannelAndUser: (channelId: ChannelId, userId: UserId) =>
 			Effect.succeed(Option.fromNullishOr(recordsByChannelAndUser[`${channelId}:${userId}`])),
 		with: <A, E, R>(id: ChannelMemberId, f: (member: MemberRecord) => Effect.Effect<A, E, R>) => {
@@ -34,10 +40,10 @@ const makeChannelMemberRepoLayer = (
 			}
 			return f(member)
 		},
-	} as unknown as ChannelMemberRepo)
+	}))
 
 const makeTypingIndicatorRepoLayer = (recordsById: Record<string, IndicatorRecord>) =>
-	Layer.succeed(TypingIndicatorRepo, {
+	Layer.succeed(TypingIndicatorRepo, serviceShape<typeof TypingIndicatorRepo>({
 		with: <A, E, R>(id: TypingIndicatorId, f: (indicator: IndicatorRecord) => Effect.Effect<A, E, R>) => {
 			const indicator = recordsById[id]
 			if (!indicator) {
@@ -45,14 +51,14 @@ const makeTypingIndicatorRepoLayer = (recordsById: Record<string, IndicatorRecor
 			}
 			return f(indicator)
 		},
-	} as unknown as TypingIndicatorRepo)
+	}))
 
 const makePolicyLayer = (
 	channelMembersById: Record<string, MemberRecord>,
 	channelMembersByChannelAndUser: Record<string, MemberRecord>,
 	indicatorsById: Record<string, IndicatorRecord>,
 ) =>
-	TypingIndicatorPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(TypingIndicatorPolicy, TypingIndicatorPolicy.make).pipe(
 		Layer.provide(makeChannelMemberRepoLayer(channelMembersById, channelMembersByChannelAndUser)),
 		Layer.provide(makeTypingIndicatorRepoLayer(indicatorsById)),
 	)
@@ -60,7 +66,10 @@ const makePolicyLayer = (
 describe("TypingIndicatorPolicy", () => {
 	it("canRead always allows authenticated actors", async () => {
 		const layer = makePolicyLayer({}, {}, {})
-		const result = await runWithActorEither(TypingIndicatorPolicy.canRead(INDICATOR_ID), layer)
+		const result = await runWithActorEither(
+			TypingIndicatorPolicy.use((policy) => policy.canRead(INDICATOR_ID)),
+			layer,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -79,9 +88,15 @@ describe("TypingIndicatorPolicy", () => {
 			{},
 		)
 
-		const allowed = await runWithActorEither(TypingIndicatorPolicy.canCreate(CHANNEL_ID), layer, actor)
+		const allowed = await runWithActorEither(
+			TypingIndicatorPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		const denied = await runWithActorEither(
-			TypingIndicatorPolicy.canCreate("00000000-0000-0000-0000-000000000599" as ChannelId),
+			TypingIndicatorPolicy.use((policy) =>
+				policy.canCreate("00000000-0000-4000-8000-000000000599" as ChannelId),
+			),
 			layer,
 			actor,
 		)
@@ -93,7 +108,7 @@ describe("TypingIndicatorPolicy", () => {
 	it("canUpdate allows only the member owner and maps missing indicator to UnauthorizedError", async () => {
 		const actor = makeActor()
 		const otherActor = makeActor({
-			id: "00000000-0000-0000-0000-000000000103" as UserId,
+			id: "00000000-0000-4000-8000-000000000103" as UserId,
 		})
 
 		const layer = makePolicyLayer(
@@ -116,17 +131,17 @@ describe("TypingIndicatorPolicy", () => {
 		)
 
 		const ownerAllowed = await runWithActorEither(
-			TypingIndicatorPolicy.canUpdate(INDICATOR_ID),
+			TypingIndicatorPolicy.use((policy) => policy.canUpdate(INDICATOR_ID)),
 			layer,
 			actor,
 		)
 		const otherDenied = await runWithActorEither(
-			TypingIndicatorPolicy.canUpdate(INDICATOR_ID),
+			TypingIndicatorPolicy.use((policy) => policy.canUpdate(INDICATOR_ID)),
 			layer,
 			otherActor,
 		)
 		const missingDenied = await runWithActorEither(
-			TypingIndicatorPolicy.canUpdate(MISSING_INDICATOR_ID),
+			TypingIndicatorPolicy.use((policy) => policy.canUpdate(MISSING_INDICATOR_ID)),
 			layer,
 			actor,
 		)
@@ -152,7 +167,7 @@ describe("TypingIndicatorPolicy", () => {
 				[OTHER_MEMBER_ID]: {
 					id: OTHER_MEMBER_ID,
 					channelId: CHANNEL_ID,
-					userId: "00000000-0000-0000-0000-000000000109" as UserId,
+					userId: "00000000-0000-4000-8000-000000000109" as UserId,
 					organizationId: TEST_ORG_ID,
 				},
 			},
@@ -167,17 +182,17 @@ describe("TypingIndicatorPolicy", () => {
 		)
 
 		const byMemberAllowed = await runWithActorEither(
-			TypingIndicatorPolicy.canDelete({ memberId: MEMBER_ID }),
+			TypingIndicatorPolicy.use((policy) => policy.canDelete({ memberId: MEMBER_ID })),
 			layer,
 			actor,
 		)
 		const byIndicatorAllowed = await runWithActorEither(
-			TypingIndicatorPolicy.canDelete({ id: INDICATOR_ID }),
+			TypingIndicatorPolicy.use((policy) => policy.canDelete({ id: INDICATOR_ID })),
 			layer,
 			actor,
 		)
 		const byMemberDenied = await runWithActorEither(
-			TypingIndicatorPolicy.canDelete({ memberId: OTHER_MEMBER_ID }),
+			TypingIndicatorPolicy.use((policy) => policy.canDelete({ memberId: OTHER_MEMBER_ID })),
 			layer,
 			actor,
 		)

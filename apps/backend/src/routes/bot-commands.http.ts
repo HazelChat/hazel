@@ -1,6 +1,5 @@
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
-import { Sse } from "effect/unstable/encoding"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, IntegrationConnectionRepo } from "@hazel/backend-core"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import {
@@ -18,10 +17,11 @@ import {
 	UpdateBotSettingsResponse,
 } from "@hazel/domain/http"
 import { Redis } from "@hazel/effect-bun"
-import { ServiceMap, Cause, Duration, Effect, Option, Queue, Schedule, Stream } from "effect"
+import { Cause, Effect, Option, Stream } from "effect"
 import { HazelApi } from "../api.ts"
 import { BotGatewayService } from "../services/bot-gateway-service.ts"
 import { IntegrationTokenService } from "../services/integration-token-service.ts"
+import { createCommandSseStream } from "./bot-commands.sse.ts"
 
 /**
  * Hash a token using SHA-256 (Web Crypto API)
@@ -67,89 +67,6 @@ const validateBotToken = Effect.gen(function* () {
 
 	return botOption.value
 })
-
-const HEARTBEAT_INTERVAL = "25 seconds" as const
-
-const encodeSseEvent = (event: string, data: string) =>
-	Sse.encoder.write({
-		_tag: "Event",
-		event,
-		id: undefined,
-		data,
-	})
-
-export const createSseHeartbeatStream = (interval: Duration.Input = HEARTBEAT_INTERVAL) =>
-	Stream.make(
-		encodeSseEvent(
-			"heartbeat",
-			JSON.stringify({
-				type: "heartbeat",
-				timestamp: Date.now(),
-			}),
-		),
-	).pipe(
-		Stream.concat(
-			Stream.fromSchedule(Schedule.spaced(interval)).pipe(
-				Stream.map(() =>
-					encodeSseEvent(
-						"heartbeat",
-						JSON.stringify({
-							type: "heartbeat",
-							timestamp: Date.now(),
-						}),
-					),
-				),
-			),
-		),
-	)
-
-interface CommandSseStreamOptions {
-	readonly botId: string
-	readonly botName: string
-	readonly channel: string
-	readonly redis: Pick<ServiceMap.Service.Shape<typeof Redis>, "subscribe">
-	readonly heartbeatInterval?: Duration.Input
-}
-
-export const createCommandSseStream = ({
-	botId,
-	botName,
-	channel,
-	redis,
-	heartbeatInterval = HEARTBEAT_INTERVAL,
-}: CommandSseStreamOptions) => {
-	const commandStream = Stream.callback<string>((queue) =>
-		Effect.gen(function* () {
-			const { unsubscribe } = yield* redis.subscribe(channel, (message) => {
-				// Encode the message as an SSE event
-				Queue.offerUnsafe(queue, encodeSseEvent("command", message))
-			})
-
-			// Add finalizer to unsubscribe when stream closes
-			yield* Effect.addFinalizer(() =>
-				unsubscribe.pipe(
-					Effect.tap(() =>
-						Effect.logDebug(`Bot ${botId} (${botName}) disconnected from SSE stream`),
-					),
-					Effect.catch(() => Effect.void),
-				),
-			)
-
-			// Keep the subscription alive until the stream is closed
-			yield* Effect.never
-		}).pipe(
-			Effect.catch((error) => {
-				// Log the error but don't fail the stream - end it gracefully
-				Effect.runFork(Effect.logError("Redis subscription error", { error, botId, botName }))
-				return Queue.end(queue)
-			}),
-		),
-	)
-
-	return Stream.merge(commandStream, createSseHeartbeatStream(heartbeatInterval), {
-		haltStrategy: "either",
-	})
-}
 
 export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands", (handlers) =>
 	handlers

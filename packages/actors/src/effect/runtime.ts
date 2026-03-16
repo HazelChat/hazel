@@ -1,7 +1,11 @@
 import { FetchHttpClient } from "effect/unstable/http"
-import { Layer, ManagedRuntime } from "effect"
+import { ConfigProvider, Layer, ManagedRuntime } from "effect"
 import { TokenValidationLive } from "../auth"
 
-const MessageActorRuntimeLayer = Layer.mergeAll(TokenValidationLive, FetchHttpClient.layer)
+const MessageActorRuntimeLayer = Layer.mergeAll(
+	TokenValidationLive,
+	FetchHttpClient.layer,
+	ConfigProvider.layer(ConfigProvider.fromEnv()),
+)
 
 export const messageActorRuntime = ManagedRuntime.make(MessageActorRuntimeLayer)

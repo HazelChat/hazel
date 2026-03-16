@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "@effect/vi
 import { Duration, Effect, Layer, Ref } from "effect"
 import { delay, http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
+import { vi } from "vitest"
 import {
 	BotGatewayAckFrame,
 	BotGatewayClientFrame,
@@ -17,12 +18,16 @@ import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
 import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { Schema } from "effect"
 
+vi.mock("@hazel/effect-bun/Telemetry", () => ({
+	createTracingLayer: () => Layer.empty,
+}))
+
 const BACKEND_URL = "http://localhost:3070"
 const GATEWAY_URL = "http://localhost:3034"
-const BOT_ID = "00000000-0000-0000-0000-000000000111"
-const USER_ID = "00000000-0000-0000-0000-000000000222"
-const ORG_ID = "00000000-0000-0000-0000-000000000333"
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000444"
+const BOT_ID = "00000000-0000-4000-8000-000000000111"
+const USER_ID = "00000000-0000-4000-8000-000000000222"
+const ORG_ID = "00000000-0000-4000-8000-000000000333"
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000444"
 const BOT_TOKEN = "test-bot-token"
 
 const EchoCommand = Command.make("echo", {
@@ -316,7 +321,7 @@ describe("HazelBotClient durable gateway", () => {
 					const bot = yield* HazelBotClient
 					yield* bot.onCommand(EchoCommand, () =>
 						Ref.update(attemptsRef, (attempts) => attempts + 1).pipe(
-							Effect.zipRight(Effect.fail(new Error("boom"))),
+							Effect.andThen(Effect.fail(new Error("boom"))),
 						),
 					)
 					yield* bot.start

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Stream } from "effect"
-import { createCommandSseStream, createSseHeartbeatStream } from "./bot-commands.http.ts"
+import {
+	createCommandSseStream,
+	createSseHeartbeatStream,
+	type CommandSseRedis,
+} from "./bot-commands.sse.ts"
 
 describe("bot command SSE streams", () => {
 	it("emits an immediate heartbeat on connect", () =>
@@ -20,10 +24,10 @@ describe("bot command SSE streams", () => {
 			const fiber = yield* createSseHeartbeatStream("5 millis").pipe(
 				Stream.take(3),
 				Stream.runCollect,
-				Effect.fork,
+				Effect.forkDetach,
 			)
 
-			const events = yield* Fiber.join(fiber)
+			const events = Array.from(yield* Fiber.join(fiber)) as string[]
 
 			expect(events).toHaveLength(3)
 			for (const event of events) {
@@ -43,7 +47,7 @@ describe("bot command SSE streams", () => {
 				timestamp: Date.now(),
 			})
 
-			const redisMock = {
+			const redisMock: CommandSseRedis = {
 				subscribe: (channel: string, handler: (message: string, chan: string) => void) =>
 					Effect.sync(() => {
 						queueMicrotask(() => {
@@ -57,14 +61,14 @@ describe("bot command SSE streams", () => {
 				botId: "bot_test",
 				botName: "Test Bot",
 				channel: "bot:bot_test:commands",
-				redis: redisMock as any,
+				redis: redisMock,
 				heartbeatInterval: "1 hour",
 			})
 
-			const collector = yield* stream.pipe(Stream.take(2), Stream.runCollect, Effect.fork)
+			const collector = yield* stream.pipe(Stream.take(2), Stream.runCollect, Effect.forkDetach)
 
-			const events = yield* Fiber.join(collector)
-			const commandEvent = Array.from(events).find((event) => event.includes("event: command"))
+			const events = Array.from(yield* Fiber.join(collector)) as string[]
+			const commandEvent = events.find((event) => event.includes("event: command"))
 
 			expect(commandEvent).toBeDefined()
 			expect(commandEvent).toContain(`data: ${payload}`)

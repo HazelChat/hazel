@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import type { ExternalChannelId, SyncConnectionId } from "@hazel/schema"
-import { Effect } from "effect"
+import { Effect, ServiceMap } from "effect"
 import { recordChatSyncDiagnostic } from "../../test/chat-sync-test-diagnostics"
 import {
 	createDiscordGatewayDispatchHandlers,
@@ -9,7 +9,16 @@ import {
 	type DiscordMessageReactionAddEvent,
 	type DiscordMessageUpdateEvent,
 	type DiscordThreadCreateEvent,
-} from "./discord-gateway-service"
+} from "./discord-gateway-shared"
+import {
+	DiscordSyncWorker,
+	type DiscordIngressMessageCreate,
+	type DiscordIngressMessageDelete,
+	type DiscordIngressMessageUpdate,
+	type DiscordIngressReactionAdd,
+	type DiscordIngressReactionRemove,
+	type DiscordIngressThreadCreate,
+} from "./discord-sync-worker"
 
 const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 	Effect.runPromise(effect as Effect.Effect<A, E, never>)
@@ -19,44 +28,56 @@ type GatewayLink = {
 	direction: "both" | "hazel_to_external" | "external_to_hazel"
 }
 
+type DispatchWorker = Pick<
+	ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
+	| "ingestMessageCreate"
+	| "ingestMessageUpdate"
+	| "ingestMessageDelete"
+	| "ingestReactionAdd"
+	| "ingestReactionRemove"
+	| "ingestThreadCreate"
+>
+
 const makeDispatchHarness = () => {
 	const linksByChannel = new Map<string, ReadonlyArray<GatewayLink>>()
 	const calls = {
-		create: [] as Array<Record<string, unknown>>,
-		update: [] as Array<Record<string, unknown>>,
-		delete: [] as Array<Record<string, unknown>>,
-		reactionAdd: [] as Array<Record<string, unknown>>,
-		reactionRemove: [] as Array<Record<string, unknown>>,
-		threadCreate: [] as Array<Record<string, unknown>>,
+		create: [] as Array<DiscordIngressMessageCreate>,
+		update: [] as Array<DiscordIngressMessageUpdate>,
+		delete: [] as Array<DiscordIngressMessageDelete>,
+		reactionAdd: [] as Array<DiscordIngressReactionAdd>,
+		reactionRemove: [] as Array<DiscordIngressReactionRemove>,
+		threadCreate: [] as Array<DiscordIngressThreadCreate>,
+	}
+
+	const discordSyncWorker: DispatchWorker = {
+			ingestMessageCreate: (payload) =>
+				Effect.sync(() => {
+					calls.create.push(payload)
+				}),
+			ingestMessageUpdate: (payload) =>
+				Effect.sync(() => {
+					calls.update.push(payload)
+				}),
+			ingestMessageDelete: (payload) =>
+				Effect.sync(() => {
+					calls.delete.push(payload)
+				}),
+			ingestReactionAdd: (payload) =>
+				Effect.sync(() => {
+					calls.reactionAdd.push(payload)
+				}),
+			ingestReactionRemove: (payload) =>
+				Effect.sync(() => {
+					calls.reactionRemove.push(payload)
+				}),
+			ingestThreadCreate: (payload) =>
+				Effect.sync(() => {
+					calls.threadCreate.push(payload)
+				}),
 	}
 
 	const handlers = createDiscordGatewayDispatchHandlers({
-		discordSyncWorker: {
-			ingestMessageCreate: (payload: any) =>
-				Effect.sync(() => {
-					calls.create.push(payload as Record<string, unknown>)
-				}),
-			ingestMessageUpdate: (payload: any) =>
-				Effect.sync(() => {
-					calls.update.push(payload as Record<string, unknown>)
-				}),
-			ingestMessageDelete: (payload: any) =>
-				Effect.sync(() => {
-					calls.delete.push(payload as Record<string, unknown>)
-				}),
-			ingestReactionAdd: (payload: any) =>
-				Effect.sync(() => {
-					calls.reactionAdd.push(payload as Record<string, unknown>)
-				}),
-			ingestReactionRemove: (payload: any) =>
-				Effect.sync(() => {
-					calls.reactionRemove.push(payload as Record<string, unknown>)
-				}),
-			ingestThreadCreate: (payload: any) =>
-				Effect.sync(() => {
-					calls.threadCreate.push(payload as Record<string, unknown>)
-				}),
-		} as any,
+		discordSyncWorker,
 		findActiveLinksByExternalChannel: (externalChannelId) =>
 			Effect.succeed(linksByChannel.get(externalChannelId) ?? []),
 		isCurrentBotAuthor: (authorId) => Effect.succeed(authorId === "bot-self"),
@@ -77,11 +98,11 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		const channelId = "123456789012345678" as ExternalChannelId
 		harness.setLinks(channelId, [
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000001" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000001" as SyncConnectionId,
 				direction: "both",
 			},
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000002" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000002" as SyncConnectionId,
 				direction: "hazel_to_external",
 			},
 		])
@@ -109,7 +130,7 @@ describe("DiscordGatewayService dispatch handlers", () => {
 			expected: "one inbound dispatch for both-direction link",
 			actual: `${harness.calls.create.length} dispatches`,
 		})
-		expect(harness.calls.create[0]?.syncConnectionId).toBe("00000000-0000-0000-0000-000000000001")
+		expect(harness.calls.create[0]?.syncConnectionId).toBe("00000000-0000-4000-8000-000000000001")
 		expect(harness.calls.create[0]?.dedupeKey).toBe("discord:gateway:create:223456789012345678")
 	})
 
@@ -131,7 +152,7 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		const channelId = "123456789012345678" as ExternalChannelId
 		harness.setLinks(channelId, [
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000011" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000011" as SyncConnectionId,
 				direction: "both",
 			},
 		])
@@ -161,7 +182,7 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		const channelId = "123456789012345678" as ExternalChannelId
 		harness.setLinks(channelId, [
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000021" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000021" as SyncConnectionId,
 				direction: "external_to_hazel",
 			},
 		])
@@ -187,11 +208,11 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		const channelId = "123456789012345678" as ExternalChannelId
 		harness.setLinks(channelId, [
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000031" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000031" as SyncConnectionId,
 				direction: "both",
 			},
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000032" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000032" as SyncConnectionId,
 				direction: "hazel_to_external",
 			},
 		])
@@ -210,7 +231,7 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		await run(
 			harness.handlers.ingestMessageReactionRemoveEvent({
 				...reactionEvent,
-			} as any),
+			}),
 		)
 
 		expect(harness.calls.reactionAdd).toHaveLength(1)
@@ -226,7 +247,7 @@ describe("DiscordGatewayService dispatch handlers", () => {
 		const parentChannelId = "123456789012345678" as ExternalChannelId
 		harness.setLinks(parentChannelId, [
 			{
-				syncConnectionId: "00000000-0000-0000-0000-000000000041" as SyncConnectionId,
+				syncConnectionId: "00000000-0000-4000-8000-000000000041" as SyncConnectionId,
 				direction: "both",
 			},
 		])

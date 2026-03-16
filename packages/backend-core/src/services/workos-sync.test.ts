@@ -10,11 +10,11 @@ import {
 describe("WorkOSSync helpers", () => {
 	it("decodes valid internal organization IDs from WorkOS external IDs", async () => {
 		const orgId = await Effect.runPromise(
-			decodeInternalOrganizationId("00000000-0000-0000-0000-000000000055"),
+			decodeInternalOrganizationId("00000000-0000-4000-8000-000000000055"),
 		)
 
 		expect(orgId).toBe(
-			"00000000-0000-0000-0000-000000000055" as Schema.Schema.Type<typeof OrganizationId>,
+			"00000000-0000-4000-8000-000000000055" as Schema.Schema.Type<typeof OrganizationId>,
 		)
 	})
 

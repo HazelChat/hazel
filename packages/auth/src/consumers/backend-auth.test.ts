@@ -9,7 +9,7 @@ import {
 } from "./backend-auth.ts"
 import type { UserId, WorkOSUserId } from "@hazel/schema"
 
-const MOCK_USER_ID = "00000000-0000-0000-0000-000000000001" as UserId
+const MOCK_USER_ID = "00000000-0000-4000-8000-000000000001" as UserId
 
 // ===== Mock UserRepo Factory =====
 
@@ -91,10 +91,10 @@ describe("BackendAuth", () => {
 		it.effect("decodes internal organization IDs from WorkOS externalId", () =>
 			Effect.gen(function* () {
 				const orgId = yield* decodeInternalOrganizationIdFromWorkOS(
-					"00000000-0000-0000-0000-000000000099",
+					"00000000-0000-4000-8000-000000000099",
 				)
 
-				expect(orgId).toBe("00000000-0000-0000-0000-000000000099")
+				expect(orgId).toBe("00000000-0000-4000-8000-000000000099")
 			}),
 		)
 

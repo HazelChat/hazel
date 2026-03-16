@@ -9,51 +9,52 @@ import {
 	makeEntityNotFound,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000861" as ChannelId
-const PINNED_MSG_ID = "00000000-0000-0000-0000-000000000862" as PinnedMessageId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000863" as UserId
-const OTHER_USER_ID = "00000000-0000-0000-0000-000000000864" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000861" as ChannelId
+const PINNED_MSG_ID = "00000000-0000-4000-8000-000000000862" as PinnedMessageId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000863" as UserId
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000864" as UserId
 
 type ChannelData = { organizationId: OrganizationId; type: string; id: string }
 type PinnedData = { pinnedBy: UserId; channelId: ChannelId }
 
 const makePinnedMessageRepoLayer = (pinnedMessages: Record<string, PinnedData>) =>
-	Layer.succeed(PinnedMessageRepo, {
+	Layer.succeed(PinnedMessageRepo, serviceShape<typeof PinnedMessageRepo>({
 		with: <A, E, R>(id: PinnedMessageId, f: (pm: PinnedData) => Effect.Effect<A, E, R>) => {
 			const pm = pinnedMessages[id]
 			if (!pm) return Effect.fail(makeEntityNotFound("PinnedMessage"))
 			return f(pm)
 		},
-	} as unknown as PinnedMessageRepo)
+	}))
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelData>) =>
-	Layer.succeed(ChannelRepo, {
+	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
 		with: <A, E, R>(id: ChannelId, f: (ch: ChannelData) => Effect.Effect<A, E, R>) => {
 			const ch = channels[id]
 			if (!ch) return Effect.fail(makeEntityNotFound("Channel"))
 			return f(ch)
 		},
-	} as unknown as ChannelRepo)
+	}))
 
 const makeOrgMemberRepoLayer = (orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
+	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
 		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
 			const role = orgMembers[`${organizationId}:${userId}`]
 			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
 		},
-	} as unknown as OrganizationMemberRepo)
+	}))
 
 const makePolicyLayer = (
 	orgMembers: Record<string, Role>,
 	channels: Record<string, ChannelData>,
 	pinnedMessages: Record<string, PinnedData>,
 ) =>
-	PinnedMessagePolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(PinnedMessagePolicy, PinnedMessagePolicy.make).pipe(
 		Layer.provide(makePinnedMessageRepoLayer(pinnedMessages)),
 		Layer.provide(makeChannelRepoLayer(channels)),
 		Layer.provide(makeOrgMemberRepoLayer(orgMembers)),
@@ -69,7 +70,11 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, admin)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -81,7 +86,11 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -93,7 +102,11 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -105,7 +118,11 @@ describe("PinnedMessagePolicy", () => {
 			{},
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, outsider)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
+			layer,
+			outsider,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -117,7 +134,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: actor.id, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, actor)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canUpdate(PINNED_MSG_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -129,7 +150,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: OTHER_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, admin)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canUpdate(PINNED_MSG_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -141,7 +166,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: ADMIN_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, outsider)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canUpdate(PINNED_MSG_ID)),
+			layer,
+			outsider,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -153,7 +182,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: actor.id, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, actor)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canDelete(PINNED_MSG_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -165,7 +198,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: OTHER_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, admin)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canDelete(PINNED_MSG_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -177,7 +214,11 @@ describe("PinnedMessagePolicy", () => {
 			{ [PINNED_MSG_ID]: { pinnedBy: ADMIN_USER_ID, channelId: CHANNEL_ID } },
 		)
 
-		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, outsider)
+		const result = await runWithActorEither(
+			PinnedMessagePolicy.use((policy) => policy.canDelete(PINNED_MSG_ID)),
+			layer,
+			outsider,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)

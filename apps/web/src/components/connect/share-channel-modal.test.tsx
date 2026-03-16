@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { OrganizationId } from "@hazel/schema"
+import type { ChannelId, OrganizationId } from "@hazel/schema"
 import type { InputHTMLAttributes, ReactNode } from "react"
 
 const { workspaceSearchMutation, createConnectInviteMutation, searchWorkspacesMock, createInviteMock } =
@@ -13,7 +13,7 @@ const { workspaceSearchMutation, createConnectInviteMutation, searchWorkspacesMo
 		createInviteMock: vi.fn(),
 	}))
 
-vi.mock("@effect-atom/atom-react", () => ({
+vi.mock("@effect/atom-react", () => ({
 	useAtomSet: (mutation: symbol) =>
 		mutation === workspaceSearchMutation ? searchWorkspacesMock : createInviteMock,
 }))
@@ -122,7 +122,9 @@ vi.mock("~/components/icons/icon-close", () => ({
 
 import { ShareChannelModal } from "./share-channel-modal"
 
-const ORG_ID = "00000000-0000-0000-0000-000000000101" as OrganizationId
+const ORG_ID = "00000000-0000-4000-8000-000000000101" as OrganizationId
+const GUEST_ORG_ID = "00000000-0000-4000-8000-000000000102" as OrganizationId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000201" as ChannelId
 
 describe("ShareChannelModal", () => {
 	beforeEach(() => {
@@ -142,7 +144,7 @@ describe("ShareChannelModal", () => {
 						logoUrl: null,
 					},
 					{
-						id: "00000000-0000-0000-0000-000000000102" as OrganizationId,
+						id: GUEST_ORG_ID,
 						name: "Guest Workspace",
 						slug: "guest-workspace",
 						logoUrl: null,
@@ -156,7 +158,7 @@ describe("ShareChannelModal", () => {
 			<ShareChannelModal
 				isOpen
 				onOpenChange={() => undefined}
-				channelId={"00000000-0000-0000-0000-000000000201" as any}
+				channelId={CHANNEL_ID}
 				channelName="general"
 				organizationId={ORG_ID}
 			/>,

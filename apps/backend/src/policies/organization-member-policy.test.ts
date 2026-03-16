@@ -9,20 +9,21 @@ import {
 	makeEntityNotFound,
 	makeOrgResolverLayer,
 	runWithActorEither,
+	serviceShape,
 	TEST_ORG_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const MEMBER_ID = "00000000-0000-0000-0000-000000000851" as OrganizationMemberId
-const TARGET_USER_ID = "00000000-0000-0000-0000-000000000852" as UserId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000853" as UserId
-const OWNER_USER_ID = "00000000-0000-0000-0000-000000000854" as UserId
+const MEMBER_ID = "00000000-0000-4000-8000-000000000851" as OrganizationMemberId
+const TARGET_USER_ID = "00000000-0000-4000-8000-000000000852" as UserId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000853" as UserId
+const OWNER_USER_ID = "00000000-0000-4000-8000-000000000854" as UserId
 
 type MemberData = { userId: UserId; organizationId: OrganizationId; role: string }
 
 const makeOrgMemberRepoLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, {
+	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
 		with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
 			const member = membersById[id]
 			if (!member) return Effect.fail(makeEntityNotFound("OrganizationMember"))
@@ -32,10 +33,10 @@ const makeOrgMemberRepoLayer = (membersById: Record<string, MemberData>, orgMemb
 			const role = orgMembers[`${organizationId}:${userId}`]
 			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
 		},
-	} as unknown as OrganizationMemberRepo)
+	}))
 
 const makePolicyLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
-	OrganizationMemberPolicy.DefaultWithoutDependencies.pipe(
+	Layer.effect(OrganizationMemberPolicy, OrganizationMemberPolicy.make).pipe(
 		Layer.provide(makeOrgMemberRepoLayer(membersById, orgMembers)),
 		Layer.provide(makeOrgResolverLayer(orgMembers)),
 	)
@@ -45,7 +46,11 @@ describe("OrganizationMemberPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, {})
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -53,7 +58,11 @@ describe("OrganizationMemberPolicy", () => {
 		const actor = makeActor()
 		const layer = makePolicyLayer({}, { [`${TEST_ORG_ID}:${actor.id}`]: "member" })
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 	})
 
@@ -64,7 +73,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canUpdate(MEMBER_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -75,7 +88,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, admin)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canUpdate(MEMBER_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -86,7 +103,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${OWNER_USER_ID}`]: "owner" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, owner)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canUpdate(MEMBER_ID)),
+			layer,
+			owner,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)
@@ -94,14 +115,14 @@ describe("OrganizationMemberPolicy", () => {
 	})
 
 	it("canUpdate denies outsider", async () => {
-		const outsider = makeActor({ id: "00000000-0000-0000-0000-000000000859" as UserId })
+		const outsider = makeActor({ id: "00000000-0000-4000-8000-000000000859" as UserId })
 		const layer = makePolicyLayer(
 			{ [MEMBER_ID]: { userId: TARGET_USER_ID, organizationId: TEST_ORG_ID, role: "member" } },
 			{},
 		)
 
 		const result = await runWithActorEither(
-			OrganizationMemberPolicy.canUpdate(MEMBER_ID),
+			OrganizationMemberPolicy.use((policy) => policy.canUpdate(MEMBER_ID)),
 			layer,
 			outsider,
 		)
@@ -115,7 +136,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, actor)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canDelete(MEMBER_ID)),
+			layer,
+			actor,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -126,7 +151,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${ADMIN_USER_ID}`]: "admin" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, admin)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canDelete(MEMBER_ID)),
+			layer,
+			admin,
+		)
 		expect(Result.isSuccess(result)).toBe(true)
 	})
 
@@ -137,7 +166,11 @@ describe("OrganizationMemberPolicy", () => {
 			{ [`${TEST_ORG_ID}:${OWNER_USER_ID}`]: "owner" },
 		)
 
-		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, owner)
+		const result = await runWithActorEither(
+			OrganizationMemberPolicy.use((policy) => policy.canDelete(MEMBER_ID)),
+			layer,
+			owner,
+		)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.failure)).toBe(true)

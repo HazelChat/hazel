@@ -1,6 +1,18 @@
 import { createServer } from "node:http"
-import { exportJWK, generateKeyPair, SignJWT } from "jose"
+import { BotId, OrganizationId, UserId, WorkOSOrganizationId, WorkOSUserId } from "@hazel/schema"
+import { decodeJwt, exportJWK, generateKeyPair, SignJWT } from "jose"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type * as EffectType from "effect/Effect"
+import type * as HttpClientType from "effect/unstable/http/HttpClient"
+import type {
+	AuthenticatedClient,
+	BotClient,
+	BotTokenValidationError,
+	ConfigError,
+	InvalidTokenFormatError,
+	JwtValidationError,
+	UserClient,
+} from "../auth"
 
 const ORIGINAL_ENV = { ...process.env }
 
@@ -31,11 +43,170 @@ const createContext = () => ({
 
 const loadCreateConnState = async () => {
 	vi.resetModules()
+	vi.doMock("../effect/runtime", async () => {
+		const { Effect, Layer, ManagedRuntime, Schema } = await import("effect")
+		const { FetchHttpClient, HttpClient } = await import("effect/unstable/http")
+		const auth = await import("../auth")
+		const {
+			BotTokenValidationError,
+			ConfigError,
+			InvalidTokenFormatError,
+			JwtValidationError,
+			TokenValidationService,
+		} = auth
+
+		const decodeUserId = Schema.decodeUnknownSync(UserId)
+		const decodeBotId = Schema.decodeUnknownSync(BotId)
+		const decodeOrganizationId = Schema.decodeUnknownSync(OrganizationId)
+		const decodeWorkOsUserId = Schema.decodeUnknownSync(WorkOSUserId)
+		const decodeWorkOsOrganizationId = Schema.decodeUnknownSync(WorkOSOrganizationId)
+
+		const validateBotToken = (
+			token: string,
+		): EffectType.Effect<
+			BotClient,
+			BotTokenValidationError | ConfigError,
+			HttpClientType.HttpClient
+		> =>
+			Effect.gen(function* () {
+				yield* HttpClient.HttpClient
+
+				const backendUrl =
+					process.env.BACKEND_URL ??
+					process.env.API_BASE_URL ??
+					process.env.VITE_BACKEND_URL ??
+					process.env.VITE_API_BASE_URL
+
+				if (!backendUrl) {
+					return yield* Effect.fail(
+						new ConfigError({
+							message:
+								"BACKEND_URL or API_BASE_URL environment variable is required for bot token actor authentication",
+						}),
+					)
+				}
+
+				const response = yield* Effect.tryPromise({
+					try: () =>
+						fetch(`${backendUrl}/internal/actors/validate-bot-token`, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ token }),
+						}),
+					catch: (cause) =>
+						new BotTokenValidationError({
+							message: `Failed to validate bot token: ${String(cause)}`,
+						}),
+				})
+
+				if (!response.ok) {
+					const errorText = yield* Effect.promise(() => response.text())
+					return yield* Effect.fail(
+						new BotTokenValidationError({
+							message: `Invalid bot token: ${errorText}`,
+							statusCode: response.status,
+						}),
+					)
+				}
+
+				const data = (yield* Effect.promise(() => response.json())) as {
+					userId: string
+					botId: string
+					organizationId: string | null
+					scopes: readonly string[] | null
+				}
+
+				return {
+					type: "bot" as const,
+					userId: decodeUserId(data.userId),
+					botId: decodeBotId(data.botId),
+					organizationId:
+						data.organizationId === null ? null : decodeOrganizationId(data.organizationId),
+					scopes: data.scopes,
+				}
+			})
+
+		const validateJwt = (
+			token: string,
+		): EffectType.Effect<UserClient, JwtValidationError | ConfigError> =>
+			Effect.gen(function* () {
+				if (!process.env.WORKOS_CLIENT_ID) {
+					return yield* Effect.fail(
+						new ConfigError({
+							message:
+								"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
+						}),
+					)
+				}
+
+				const claims = yield* Effect.try({
+					try: () => decodeJwt(token),
+					catch: (cause) =>
+						new JwtValidationError({
+							message: "Invalid or expired token",
+							cause,
+						}),
+				})
+
+				return {
+					type: "user" as const,
+					workosUserId: decodeWorkOsUserId(String(claims.sub)),
+					workosOrganizationId:
+						typeof claims.org_id === "string"
+							? decodeWorkOsOrganizationId(claims.org_id)
+							: null,
+					role: claims.role === "admin" ? "admin" : "member",
+				}
+			})
+
+		const validateToken = (
+			token: string,
+		): EffectType.Effect<
+			AuthenticatedClient,
+			InvalidTokenFormatError | JwtValidationError | BotTokenValidationError | ConfigError,
+			HttpClientType.HttpClient
+		> => {
+			if (token.startsWith("hzl_bot_")) {
+				return validateBotToken(token)
+			}
+			if (token.split(".").length === 3) {
+				return validateJwt(token)
+			}
+			return Effect.fail(
+				new InvalidTokenFormatError({
+					message: "Invalid token format",
+				}),
+			)
+		}
+
+		return {
+			messageActorRuntime: ManagedRuntime.make(
+				Layer.mergeAll(
+					FetchHttpClient.layer,
+					Layer.succeed(
+						TokenValidationService,
+						TokenValidationService.of({
+							validateBotToken,
+							validateJwt,
+							validateToken,
+						}),
+					),
+				),
+			),
+		}
+	})
 	const mod = await import("./message-actor.ts")
-	return (mod.messageActor as any).config.createConnState as (
+	return (mod.messageActor as {
+		config: {
+			createConnState: (
+				context: unknown,
+				params: { token?: string },
+			) => Promise<unknown>
+		}
+	}).config.createConnState as (
 		context: unknown,
 		params: { token?: string },
-	) => Promise<any>
+	) => Promise<unknown>
 }
 
 afterEach(() => {
@@ -44,9 +215,9 @@ afterEach(() => {
 	vi.restoreAllMocks()
 })
 
-const BOT_USER_ID = "00000000-0000-0000-0000-000000000011"
-const BOT_ID = "00000000-0000-0000-0000-000000000022"
-const BOT_ORG_ID = "00000000-0000-0000-0000-000000000033"
+const BOT_USER_ID = "00000000-0000-4000-8000-000000000011"
+const BOT_ID = "00000000-0000-4000-8000-000000000022"
+const BOT_ORG_ID = "00000000-0000-4000-8000-000000000033"
 
 describe("messageActor.createConnState", () => {
 	it("returns invalid_token user error for invalid token format", async () => {
@@ -155,7 +326,7 @@ describe("messageActor.createConnState", () => {
 
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+			vi.fn(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
 				const url =
 					typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
 
@@ -166,7 +337,7 @@ describe("messageActor.createConnState", () => {
 					})
 				}
 
-				return originalFetch(input as any, init)
+				return originalFetch(input, init)
 			}),
 		)
 

@@ -1,4 +1,4 @@
-import type { HttpClientError } from "effect/unstable/http"
+import { HttpClientError } from "effect/unstable/http"
 import { RpcClientError } from "effect/unstable/rpc"
 import {
 	AIProviderUnavailableError,
@@ -32,7 +32,7 @@ import {
 	WorkflowServiceUnavailableError,
 	WorkOSUserFetchError,
 } from "@hazel/domain/errors"
-import { Cause, Chunk, Match, Option, Schema } from "effect"
+import { Cause, Match, Schema } from "effect"
 import {
 	CollectionInErrorEffectError,
 	CollectionSyncEffectError,
@@ -79,7 +79,6 @@ export const CommonAppErrorSchema = Schema.Union([
 	// Infrastructure errors (appear in most RPC calls)
 	OptimisticActionError,
 	SyncError,
-	RpcClientError,
 	// TanStack DB errors (permanent - non-retryable)
 	DuplicateKeyEffectError,
 	KeyUpdateNotAllowedEffectError,
@@ -124,7 +123,7 @@ export type CommonAppError =
 	| typeof CommonAppErrorSchema.Type
 	// Non-Schema errors (still have _tag but not Schema.TaggedError)
 	| Schema.SchemaError
-	| HttpClientError
+	| HttpClientError.HttpClientError
 
 /**
  * Static error messages for errors that don't need dynamic content
@@ -449,7 +448,7 @@ const isSchemaCommonError = Schema.is(CommonAppErrorSchema)
 /**
  * Tags for non-Schema errors that are still common
  */
-const NON_SCHEMA_COMMON_TAGS = new Set(["ParseError", "HttpClientError", "HttpClientError"])
+const NON_SCHEMA_COMMON_TAGS = new Set(["ParseError", "HttpClientError", "RpcClientError"])
 
 /**
  * Type guard for CommonAppError.
@@ -502,11 +501,10 @@ function isTimeoutError(error: unknown): boolean {
  * Uses type-safe Match for common errors, falls back to message extraction.
  */
 export function getUserFriendlyError<E>(cause: Cause.Cause<E>): UserErrorMessage {
-	const failures = Cause.failures(cause)
-	const firstFailureOption = Chunk.head(failures)
+	const firstFailure = cause.reasons.find(Cause.isFailReason)?.error
 
-	if (Option.isSome(firstFailureOption)) {
-		const error = firstFailureOption.value
+	if (firstFailure !== undefined) {
+		const error = firstFailure
 
 		// Check for network errors first
 		if (isNetworkError(error)) {
@@ -541,11 +539,10 @@ export function getUserFriendlyError<E>(cause: Cause.Cause<E>): UserErrorMessage
 	}
 
 	// Check defects (unexpected errors)
-	const defects = Cause.defects(cause)
-	const firstDefectOption = Chunk.head(defects)
+	const firstDefect = cause.reasons.find(Cause.isDieReason)?.defect
 
-	if (Option.isSome(firstDefectOption)) {
-		const defect = firstDefectOption.value
+	if (firstDefect !== undefined) {
+		const defect = firstDefect
 		if (defect instanceof Error) {
 			return { title: defect.message, isRetryable: false }
 		}

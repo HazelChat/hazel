@@ -1,6 +1,7 @@
 import type { NotificationId } from "@hazel/schema"
 import { Link, useParams } from "@tanstack/react-router"
 import { formatDistanceToNow } from "date-fns"
+import { toDate } from "~/lib/utils"
 import IconHashtag from "~/components/icons/icon-hashtag"
 import IconMsgs from "~/components/icons/icon-msgs"
 import { Avatar } from "~/components/ui/avatar"
@@ -118,7 +119,7 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
 						{getMessagePreview(notification)}
 					</p>
 					<span className="shrink-0 text-muted-fg text-xs">
-						{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+						{formatDistanceToNow(toDate(n.createdAt), { addSuffix: true })}
 					</span>
 				</div>
 				<p className="mt-0.5 text-muted-fg text-xs">{getNotificationContext(notification)}</p>

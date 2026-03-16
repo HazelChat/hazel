@@ -2,7 +2,7 @@ import { AsyncResult } from "effect/unstable/reactivity"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { Option } from "effect"
+import { type DateTime, Option } from "effect"
 import { createFileRoute } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import {
@@ -28,6 +28,7 @@ import {
 	getConnectInviteStatusBadge,
 	getSharedConversationMountsForChannel,
 } from "~/lib/connect-shared-channels"
+import { toDate } from "~/lib/utils"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/channels/$channelId/settings/connect")({
@@ -68,7 +69,11 @@ function ConnectPage() {
 		return data.value.data.filter((inv) => inv.hostChannelId === channelId)
 	}, [outgoingResult, channelId])
 
-	const sharedConnections = getSharedConversationMountsForChannel(channelId as ChannelId, connections ?? [])
+	type SharedConnection = NonNullable<typeof connections>[number]
+	const sharedConnections: SharedConnection[] = getSharedConversationMountsForChannel(
+		channelId as ChannelId,
+		connections ?? [],
+	)
 	const isConnected = sharedConnections.length > 0
 	const viewerMount = sharedConnections.find((connection) => connection.organizationId === organizationId)
 
@@ -279,7 +284,7 @@ function InviteRow({
 		targetKind: string
 		targetValue: string
 		status: string
-		createdAt: Date
+		createdAt: Date | DateTime.Utc
 	}
 	organizationId: OrganizationId | undefined
 }) {
@@ -329,7 +334,7 @@ function InviteRow({
 				</Badge>
 			</td>
 			<td className="px-4 py-4">
-				<span className="text-muted-fg text-sm">{invite.createdAt.toLocaleDateString()}</span>
+						<span className="text-muted-fg text-sm">{toDate(invite.createdAt).toLocaleDateString()}</span>
 			</td>
 			<td className="px-4 py-4 text-right">
 				{invite.status === "pending" && (

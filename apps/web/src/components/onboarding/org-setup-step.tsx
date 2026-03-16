@@ -74,12 +74,12 @@ export function OrgSetupStep({
 					isPublic: false,
 				},
 			})
-			exitToast(exit)
-				.onErrorTag("OrganizationSlugAlreadyExistsError", (error) => ({
-					title: "Slug already taken",
-					description: `The slug "${error.slug}" is already in use. Please choose a different one.`,
-					isRetryable: false,
-				}))
+				exitToast(exit)
+					.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({
+						title: "Slug already taken",
+						description: "That workspace URL is already in use. Please choose a different one.",
+						isRetryable: false,
+					}))
 				.run()
 
 			if (Exit.isSuccess(exit)) {

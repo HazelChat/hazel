@@ -51,7 +51,7 @@ export type MessageCreateFn = (
 			  }[]
 			| null
 	},
-) => Effect.Effect<{ id: string }, unknown>
+) => Effect.Effect<{ id: string }, unknown, unknown>
 
 /**
  * Message update function type - matches the message update API
@@ -73,7 +73,7 @@ export type MessageUpdateFn = (
 			}
 		}> | null
 	},
-) => Effect.Effect<{ id: string }, unknown>
+) => Effect.Effect<{ id: string }, unknown, unknown>
 
 /**
  * Wrap an actor method call with Effect, error handling, and tracing.

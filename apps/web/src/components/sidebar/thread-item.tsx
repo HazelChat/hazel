@@ -1,6 +1,5 @@
 import { useAtomSet } from "@effect/atom-react"
-import type { Channel, ChannelMember } from "@hazel/db/schema"
-import type { ChannelId } from "@hazel/schema"
+import type { ChannelId, ChannelMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -21,8 +20,16 @@ import { useOrganization } from "~/hooks/use-organization"
 import { useScrollIntoViewOnActive } from "~/hooks/use-scroll-into-view-on-active"
 
 interface ThreadItemProps {
-	thread: Omit<Channel, "updatedAt"> & { updatedAt: Date | null }
-	member: ChannelMember
+	thread: {
+		readonly id: ChannelId
+		readonly name: string
+	}
+	member: {
+		readonly id: ChannelMemberId
+		readonly isMuted: boolean
+		readonly isFavorite: boolean
+		readonly isHidden: boolean
+	}
 }
 
 export function ThreadItem({ thread, member }: ThreadItemProps) {

@@ -60,6 +60,8 @@ import IconClose from "../icons/icon-close"
 import IconLightbulb from "../icons/icon-lightbulb"
 import { Button } from "../ui/button"
 
+import type { SidebarChannelData, SidebarChannelMemberData } from "~/components/sidebar/channel-item"
+
 interface ChannelSectionProps {
 	organizationId: OrganizationId
 	sectionId: ChannelSectionId | null
@@ -72,8 +74,8 @@ interface ChannelSectionProps {
 	threadsByParent?: Map<
 		string,
 		Array<{
-			channel: Omit<import("@hazel/db/schema").Channel, "updatedAt"> & { updatedAt: Date | null }
-			member: import("@hazel/db/schema").ChannelMember
+			channel: SidebarChannelData
+			member: SidebarChannelMemberData
 		}>
 	>
 	/** Available sections for "move to section" menu */

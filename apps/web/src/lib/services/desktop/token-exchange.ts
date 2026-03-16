@@ -4,12 +4,26 @@
  * @description HTTP client for token exchange using Effect HttpClient with Schema validation
  */
 
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { FetchHttpClient, HttpBody, HttpClient, HttpClientError, HttpClientRequest } from "effect/unstable/http"
 import { OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain/errors"
 import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
 import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
+
+const mapHttpClientError = (context: string) => (error: HttpClientError.HttpClientError) =>
+	Effect.fail(
+		new TokenExchangeError({
+			message:
+				error.response?.status === undefined
+					? `Network error during ${context}`
+					: `Server error during ${context}`,
+			detail:
+				error.response?.status === undefined
+					? String(error)
+					: `HTTP ${error.response.status}`,
+		}),
+	)
 
 export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExchange", {
 	make: Effect.gen(function* () {
@@ -80,7 +94,6 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 						),
 					)
 				}).pipe(
-					// Map HTTP client errors to TokenExchangeError
 					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
@@ -88,22 +101,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchTag("HttpClientError", (error) =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Network error during token exchange",
-								detail: String(error),
-							}),
-						),
-					),
-					Effect.catchTag("HttpClientError", (error) =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Server error during token exchange",
-								detail: `HTTP ${error.response.status}`,
-							}),
-						),
-					),
+					Effect.catchIf(HttpClientError.isHttpClientError, mapHttpClientError("token exchange")),
 				),
 
 			/**
@@ -143,7 +141,6 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 						),
 					)
 				}).pipe(
-					// Map HTTP client errors to TokenExchangeError
 					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
@@ -151,22 +148,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchTag("HttpClientError", (error) =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Network error during token refresh",
-								detail: String(error),
-							}),
-						),
-					),
-					Effect.catchTag("HttpClientError", (error) =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Server error during token refresh",
-								detail: `HTTP ${error.response.status}`,
-							}),
-						),
-					),
+					Effect.catchIf(HttpClientError.isHttpClientError, mapHttpClientError("token refresh")),
 				),
 		}
 	}),

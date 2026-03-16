@@ -1,4 +1,4 @@
-import { Effect, Option, Redacted } from "effect"
+import { ConfigProvider, Effect, Option, Redacted } from "effect"
 import { afterEach, describe, expect, it } from "vitest"
 import { TokenValidationConfigService } from "./config-service"
 
@@ -20,9 +20,13 @@ const resetEnv = () => {
 	}
 }
 
-const loadConfig = Effect.gen(function* () {
-	return yield* TokenValidationConfigService
-}).pipe(Effect.provide(TokenValidationConfigService.layer))
+const loadConfig = () =>
+	Effect.gen(function* () {
+		return yield* TokenValidationConfigService
+	}).pipe(
+		Effect.provide(TokenValidationConfigService.layer),
+		Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(process.env))),
+	)
 
 afterEach(() => {
 	resetEnv()
@@ -37,7 +41,7 @@ describe("TokenValidationConfigService", () => {
 		delete process.env.VITE_API_BASE_URL
 		delete process.env.INTERNAL_SECRET
 
-		const config = await Effect.runPromise(loadConfig)
+		const config = await Effect.runPromise(loadConfig())
 
 		expect(Option.isNone(config.workosClientId)).toBe(true)
 		expect(Option.isNone(config.backendUrl)).toBe(true)
@@ -49,7 +53,7 @@ describe("TokenValidationConfigService", () => {
 		process.env.BACKEND_URL = "https://backend.example.com"
 		process.env.INTERNAL_SECRET = "super-secret"
 
-		const config = await Effect.runPromise(loadConfig)
+		const config = await Effect.runPromise(loadConfig())
 
 		expect(Option.isSome(config.workosClientId)).toBe(true)
 		expect(Option.isSome(config.backendUrl)).toBe(true)

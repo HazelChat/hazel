@@ -11,10 +11,10 @@ import {
 	validateInviteAcceptanceTarget,
 } from "./connect-shares"
 
-const HOST_ORG_ID = "00000000-0000-0000-0000-000000000101" as OrganizationId
-const GUEST_ORG_ID = "00000000-0000-0000-0000-000000000102" as OrganizationId
-const OTHER_GUEST_ORG_ID = "00000000-0000-0000-0000-000000000103" as OrganizationId
-const GUEST_CHANNEL_ID = "00000000-0000-0000-0000-000000000301" as ChannelId
+const HOST_ORG_ID = "00000000-0000-4000-8000-000000000101" as OrganizationId
+const GUEST_ORG_ID = "00000000-0000-4000-8000-000000000102" as OrganizationId
+const OTHER_GUEST_ORG_ID = "00000000-0000-4000-8000-000000000103" as OrganizationId
+const GUEST_CHANNEL_ID = "00000000-0000-4000-8000-000000000301" as ChannelId
 
 describe("connect-shares helpers", () => {
 	it("rejects invite creation when provided org and slug resolve to different workspaces", async () => {

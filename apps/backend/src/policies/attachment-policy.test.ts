@@ -4,13 +4,11 @@ import type { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from 
 import { Effect, Result, Layer, Option } from "effect"
 import { AttachmentPolicy } from "./attachment-policy.ts"
 import {
-	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
-	serviceEffect,
 	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
@@ -18,12 +16,12 @@ import {
 
 type Role = "admin" | "member" | "owner"
 
-const ATTACHMENT_ID = "00000000-0000-0000-0000-000000000831" as AttachmentId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000832" as MessageId
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000833" as ChannelId
-const OTHER_USER_ID = "00000000-0000-0000-0000-000000000834" as UserId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000835" as UserId
-const MESSAGE_AUTHOR_ID = "00000000-0000-0000-0000-000000000836" as UserId
+const ATTACHMENT_ID = "00000000-0000-4000-8000-000000000831" as AttachmentId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000832" as MessageId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000833" as ChannelId
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000834" as UserId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000835" as UserId
+const MESSAGE_AUTHOR_ID = "00000000-0000-4000-8000-000000000836" as UserId
 
 const makeAttachmentRepoLayer = (
 	attachments: Record<string, { uploadedBy: UserId; messageId: MessageId | null }>,
@@ -90,7 +88,7 @@ const makePolicyLayer = (opts: {
 	channels?: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>
 	channelMemberships?: Record<string, boolean>
 }) =>
-	buildServiceLayer(AttachmentPolicy).pipe(
+	Layer.effect(AttachmentPolicy, AttachmentPolicy.make).pipe(
 		Layer.provide(makeAttachmentRepoLayer(opts.attachments ?? {})),
 		Layer.provide(makeMessageRepoLayer(opts.messages ?? {})),
 		Layer.provide(makeChannelRepoLayer(opts.channels ?? {})),
@@ -105,7 +103,7 @@ describe("AttachmentPolicy", () => {
 		const layer = makePolicyLayer({})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canCreate()),
+			AttachmentPolicy.use((policy) => policy.canCreate()),
 			layer,
 			actor,
 		)
@@ -121,7 +119,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canUpdate(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canUpdate(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -137,7 +135,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canUpdate(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canUpdate(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -153,7 +151,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -169,7 +167,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -191,7 +189,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -213,7 +211,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -238,7 +236,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -263,7 +261,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canDelete(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canDelete(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -279,7 +277,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -295,7 +293,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -320,7 +318,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -345,7 +343,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -370,7 +368,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)
@@ -395,7 +393,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(AttachmentPolicy, (policy) => policy.canView(ATTACHMENT_ID)),
+			AttachmentPolicy.use((policy) => policy.canView(ATTACHMENT_ID)),
 			layer,
 			actor,
 		)

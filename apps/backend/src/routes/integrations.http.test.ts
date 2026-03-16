@@ -69,7 +69,7 @@ describe("integration connect API key helpers", () => {
 
 			expect(Result.isSuccess(result)).toBe(true)
 			if (Result.isSuccess(result)) {
-				expect(result.value).toBe("https://connect.craft.do/links/link_123/api/v1")
+				expect(result.success).toBe("https://connect.craft.do/links/link_123/api/v1")
 			}
 		})
 

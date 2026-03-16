@@ -6,12 +6,10 @@ import { Effect, Result, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver.ts"
 import { MessagePolicy } from "./message-policy.ts"
 import {
-	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	runWithActorEither,
-	serviceEffect,
 	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
@@ -19,9 +17,9 @@ import {
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000801" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000802" as MessageId
-const MISSING_MESSAGE_ID = "00000000-0000-0000-0000-000000000899" as MessageId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000801" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000802" as MessageId
+const MISSING_MESSAGE_ID = "00000000-0000-4000-8000-000000000899" as MessageId
 
 /**
  * Creates a ChannelRepo mock with both `findById` (for OrgResolver) and `with` (for MessagePolicy).
@@ -88,14 +86,14 @@ const makePolicyLayer = (
 	const messageRepoLayer = makeMessageRepoLayer(messages)
 	const orgMemberRepoLayer = makeOrganizationMemberRepoLayer(members)
 
-	const orgResolverLayer = buildServiceLayer(OrgResolver).pipe(
+	const orgResolverLayer = Layer.effect(OrgResolver, OrgResolver.make).pipe(
 		Layer.provide(orgMemberRepoLayer),
 		Layer.provide(channelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),
 		Layer.provide(messageRepoLayer),
 	)
 
-	return buildServiceLayer(MessagePolicy).pipe(
+	return Layer.effect(MessagePolicy, MessagePolicy.make).pipe(
 		Layer.provide(orgResolverLayer),
 		Layer.provide(messageRepoLayer),
 		Layer.provide(channelRepoLayer),
@@ -117,7 +115,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			MessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -126,7 +124,7 @@ describe("MessagePolicy", () => {
 
 	it("canCreate denies non-org-member", async () => {
 		const actor = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{},
@@ -137,7 +135,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			MessagePolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -157,7 +155,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			MessagePolicy.use((policy) => policy.canRead(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -179,7 +177,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canUpdate(MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canUpdate(MESSAGE_ID)),
 			layer,
 			actor,
 		)
@@ -188,7 +186,7 @@ describe("MessagePolicy", () => {
 
 	it("canUpdate denies non-author", async () => {
 		const otherUser = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -203,7 +201,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canUpdate(MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canUpdate(MESSAGE_ID)),
 			layer,
 			otherUser,
 		)
@@ -225,7 +223,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
 			layer,
 			actor,
 		)
@@ -234,7 +232,7 @@ describe("MessagePolicy", () => {
 
 	it("canDelete allows org admin who is not author", async () => {
 		const admin = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -249,7 +247,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
 			layer,
 			admin,
 		)
@@ -258,7 +256,7 @@ describe("MessagePolicy", () => {
 
 	it("canDelete denies org member who is not author and not admin", async () => {
 		const member = makeActor({
-			id: "00000000-0000-0000-0000-000000000199" as UserId,
+			id: "00000000-0000-4000-8000-000000000199" as UserId,
 		})
 		const layer = makePolicyLayer(
 			{
@@ -273,7 +271,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canDelete(MESSAGE_ID)),
 			layer,
 			member,
 		)
@@ -293,7 +291,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessagePolicy, (policy) => policy.canDelete(MISSING_MESSAGE_ID)),
+			MessagePolicy.use((policy) => policy.canDelete(MISSING_MESSAGE_ID)),
 			layer,
 			actor,
 		)

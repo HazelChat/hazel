@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto"
-import type { DiscordSyncWorker as DiscordSyncWorkerType } from "./discord-sync-worker"
 import { and, asc, Database, eq, isNull, schema } from "@hazel/db"
 import {
 	ChannelRepo,
@@ -151,12 +150,20 @@ export interface ChatSyncIngressThreadCreate {
 	readonly dedupeKey?: string
 }
 
-export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()("ChatSyncCoreWorker", {
-	make: Effect.suspend((): Effect.Effect<Record<string, Function>> => ChatSyncCoreWorkerMake),
-}) {}
+// Tag-only service: real implementation is provided via ChatSyncCoreWorkerMake + ChatSyncCoreWorkerLayer.
+// Uses two-type-param overload to avoid requiring `make` (which would cause circular inference with DiscordSyncWorker).
+// Shape uses `Record<string, Function>` because the real shape can't be inferred without circular deps.
+// Consumers can access methods via `yield* ChatSyncCoreWorker` — method calls are checked at each call site.
+export class ChatSyncCoreWorker extends ServiceMap.Service<
+	ChatSyncCoreWorker,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+	Record<string, Function>
+>()("ChatSyncCoreWorker") {}
 
 /** @internal — exported for integration tests that provide their own deps */
-export const ChatSyncCoreWorkerMake = Effect.gen(function* () {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unknown, unknown> =
+	Effect.gen(function* () {
 	const db = yield* Database.Database
 	const connectionRepo = yield* ChatSyncConnectionRepo
 	const channelLinkRepo = yield* ChatSyncChannelLinkRepo
@@ -173,8 +180,6 @@ export const ChatSyncCoreWorkerMake = Effect.gen(function* () {
 	const channelAccessSyncService = yield* ChannelAccessSyncService
 	const providerRegistry = yield* ChatSyncProviderRegistry
 	const discordApiClient = yield* Discord.DiscordApiClient
-	const { DiscordSyncWorker } = yield* Effect.promise(() => import("./discord-sync-worker"))
-	const discordSyncWorker = yield* DiscordSyncWorker as typeof DiscordSyncWorkerType
 
 	const payloadHash = (value: unknown): string =>
 		createHash("sha256").update(JSON.stringify(value)).digest("hex")
@@ -365,7 +370,7 @@ export const ChatSyncCoreWorkerMake = Effect.gen(function* () {
 
 	const isWebhookStrategyEnabled = (
 		outboundIdentity: ChatSyncChannelLink.OutboundIdentitySettings,
-	): boolean => outboundIdentity.strategy === "webhook"
+	): boolean => outboundIdentity.enabled && outboundIdentity.strategy === "webhook"
 
 	const defaultOutboundIdentitySettings = (): ChatSyncChannelLink.OutboundIdentitySettings => ({
 		enabled: false,

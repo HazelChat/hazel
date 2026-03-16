@@ -65,9 +65,9 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 					login({ organizationId: result.data.id, returnTo: returnUrl })
 				})
 				.successMessage("Server created successfully")
-				.onErrorTag("OrganizationSlugAlreadyExistsError", (error) => ({
+				.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({
 					title: "Slug already taken",
-					description: `The slug "${error.slug}" is already in use. Please choose a different one.`,
+					description: "That workspace URL is already in use. Please choose a different one.",
 					isRetryable: false,
 				}))
 				.run()

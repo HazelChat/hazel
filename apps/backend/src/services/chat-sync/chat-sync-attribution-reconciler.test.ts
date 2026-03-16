@@ -3,25 +3,22 @@ import { MessageRepo, OrganizationMemberRepo, UserRepo } from "@hazel/backend-co
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, ServiceMap } from "effect"
 import { ChatSyncAttributionReconciler } from "./chat-sync-attribution-reconciler.ts"
-import { buildServiceLayer, serviceEffect, serviceShape } from "../../test/effect-helpers"
+import { serviceShape } from "../../test/effect-helpers"
 
-const ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
-const USER_ID = "00000000-0000-0000-0000-000000000002" as UserId
-const SHADOW_USER_ID = "00000000-0000-0000-0000-000000000003" as UserId
+const ORGANIZATION_ID = "00000000-0000-4000-8000-000000000001" as OrganizationId
+const USER_ID = "00000000-0000-4000-8000-000000000002" as UserId
+const SHADOW_USER_ID = "00000000-0000-4000-8000-000000000003" as UserId
 
 const makeLayer = (deps: {
-	messageRepo: MessageRepo
-	userRepo: UserRepo
-	organizationMemberRepo: OrganizationMemberRepo
+	messageRepo: ServiceMap.Service.Shape<typeof MessageRepo>
+	userRepo: ServiceMap.Service.Shape<typeof UserRepo>
+	organizationMemberRepo: ServiceMap.Service.Shape<typeof OrganizationMemberRepo>
 }) =>
-	buildServiceLayer(ChatSyncAttributionReconciler).pipe(
-		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo as ServiceMap.Service.Shape<typeof MessageRepo>)),
-		Layer.provide(Layer.succeed(UserRepo, deps.userRepo as ServiceMap.Service.Shape<typeof UserRepo>)),
+	Layer.effect(ChatSyncAttributionReconciler, ChatSyncAttributionReconciler.make).pipe(
+		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),
+		Layer.provide(Layer.succeed(UserRepo, deps.userRepo)),
 		Layer.provide(
-			Layer.succeed(
-				OrganizationMemberRepo,
-				deps.organizationMemberRepo as ServiceMap.Service.Shape<typeof OrganizationMemberRepo>,
-			),
+			Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo),
 		),
 	)
 
@@ -45,13 +42,13 @@ describe("ChatSyncAttributionReconciler", () => {
 		})
 
 		const result = await Effect.runPromise(
-			serviceEffect(ChatSyncAttributionReconciler, (service) =>
+			ChatSyncAttributionReconciler.use((service) =>
 				service.relinkHistoricalProviderMessages({
-				organizationId: ORGANIZATION_ID,
-				provider: "discord",
-				userId: USER_ID,
-				externalAccountId: "123",
-				externalAccountName: "Maki",
+					organizationId: ORGANIZATION_ID,
+					provider: "discord",
+					userId: USER_ID,
+					externalAccountId: "123",
+					externalAccountName: "Maki",
 				}),
 			).pipe(Effect.provide(layer)),
 		)
@@ -84,13 +81,13 @@ describe("ChatSyncAttributionReconciler", () => {
 		})
 
 		const result = await Effect.runPromise(
-			serviceEffect(ChatSyncAttributionReconciler, (service) =>
+			ChatSyncAttributionReconciler.use((service) =>
 				service.unlinkHistoricalProviderMessages({
-				organizationId: ORGANIZATION_ID,
-				provider: "discord",
-				userId: USER_ID,
-				externalAccountId: "123",
-				externalAccountName: "Maki",
+					organizationId: ORGANIZATION_ID,
+					provider: "discord",
+					userId: USER_ID,
+					externalAccountId: "123",
+					externalAccountName: "Maki",
 				}),
 			).pipe(Effect.provide(layer)),
 		)

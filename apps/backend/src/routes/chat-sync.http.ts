@@ -172,11 +172,6 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 							toInternalServerError("Database error while deleting sync connection", error),
 						),
 					),
-					Effect.catchTag("SchemaError", (error) =>
-						Effect.fail(
-							toInternalServerError("Schema error while deleting sync connection", error),
-						),
-					),
 				),
 			)
 			.handle("createChannelLink", ({ params, payload }) =>
@@ -302,9 +297,6 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						Effect.fail(
 							toInternalServerError("Database error while deleting channel link", error),
 						),
-					),
-					Effect.catchTag("SchemaError", (error) =>
-						Effect.fail(toInternalServerError("Schema error while deleting channel link", error)),
 					),
 				),
 			)

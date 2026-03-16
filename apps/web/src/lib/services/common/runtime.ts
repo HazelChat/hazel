@@ -28,4 +28,4 @@ export const runtimeLayer = Layer.mergeAll(ApiClient.layer, HazelRpcClient.layer
  *
  * Used by collections.ts and other imperative code that calls runtime.runPromise().
  */
-export const runtime = ManagedRuntime.make(runtimeLayer, Atom.defaultMemoMap)
+export const runtime = ManagedRuntime.make(runtimeLayer, { memoMap: Atom.defaultMemoMap })

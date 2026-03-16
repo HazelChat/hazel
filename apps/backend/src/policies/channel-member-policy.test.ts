@@ -5,13 +5,11 @@ import type { ChannelId, ChannelMemberId, OrganizationId, UserId } from "@hazel/
 import { Effect, Result, Layer, Option } from "effect"
 import { ChannelMemberPolicy } from "./channel-member-policy.ts"
 import {
-	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
-	serviceEffect,
 	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
@@ -19,11 +17,11 @@ import {
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000811" as ChannelId
-const CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000812" as ChannelMemberId
-const MISSING_CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000819" as ChannelMemberId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000813" as UserId
-const OWNER_USER_ID = "00000000-0000-0000-0000-000000000814" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000811" as ChannelId
+const CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000812" as ChannelMemberId
+const MISSING_CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000819" as ChannelMemberId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000813" as UserId
+const OWNER_USER_ID = "00000000-0000-4000-8000-000000000814" as UserId
 
 interface ChannelMemberEntry {
 	userId: UserId
@@ -71,7 +69,7 @@ const makePolicyLayer = (opts: {
 	channelMembers?: Record<string, ChannelMemberEntry>
 	membershipsByChannelAndUser?: Record<string, ChannelMemberEntry>
 }) =>
-	buildServiceLayer(ChannelMemberPolicy).pipe(
+	Layer.effect(ChannelMemberPolicy, ChannelMemberPolicy.make).pipe(
 		Layer.provide(
 			makeChannelMemberRepoLayer(opts.channelMembers ?? {}, opts.membershipsByChannelAndUser ?? {}),
 		),
@@ -92,7 +90,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -110,7 +108,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.isOwner(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -135,12 +133,12 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			owner,
 		)
@@ -161,7 +159,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -180,7 +178,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canCreate(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canCreate(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -205,7 +203,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -225,7 +223,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
 			layer,
 			admin,
 		)
@@ -245,7 +243,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canRead(CHANNEL_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canRead(CHANNEL_ID)),
 			layer,
 			actor,
 		)
@@ -270,7 +268,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -296,12 +294,12 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canUpdate(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)
@@ -330,7 +328,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			actor,
 		)
@@ -356,12 +354,12 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const adminResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			admin,
 		)
 		const ownerResult = await runWithActorEither(
-			serviceEffect(ChannelMemberPolicy, (policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
+			ChannelMemberPolicy.use((policy) => policy.canDelete(CHANNEL_MEMBER_ID)),
 			layer,
 			owner,
 		)

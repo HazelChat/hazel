@@ -3,6 +3,7 @@ import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
+import { toDate } from "~/lib/utils"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { listOrganizationWebhooksMutation, type WebhookData } from "~/atoms/channel-webhook-atoms"
@@ -286,7 +287,7 @@ export function OpenStatusIntegrationContent({ organizationId }: OpenStatusInteg
 										</div>
 										<p className="text-muted-fg text-xs">
 											{webhook.lastUsedAt
-												? `Last alert ${formatDistanceToNow(new Date(webhook.lastUsedAt), { addSuffix: true })}`
+												? `Last alert ${formatDistanceToNow(toDate(webhook.lastUsedAt), { addSuffix: true })}`
 												: "No alerts received yet"}
 										</p>
 									</div>

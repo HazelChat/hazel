@@ -13,13 +13,13 @@ import { Effect, Layer, Redacted, ServiceMap } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { EnvVars } from "../lib/env-vars"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
-import { buildServiceLayer } from "../test/effect-helpers"
+import { serviceShape } from "../test/effect-helpers"
 import { MessageOutboxDispatcher } from "./message-outbox-dispatcher"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000001" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000002" as MessageId
-const AUTHOR_ID = "00000000-0000-0000-0000-000000000003" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000001" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000002" as MessageId
+const AUTHOR_ID = "00000000-0000-4000-8000-000000000003" as UserId
 
 type SideEffectCall =
 	| { eventType: "message_created"; payload: MessageCreatedPayload; dedupeKey: string }
@@ -44,14 +44,14 @@ const runDispatcherEffect = <A, E, R>(
 	Effect.runPromise(
 		Effect.scoped(
 			make.pipe(
-				Effect.provide(buildServiceLayer(MessageOutboxDispatcher)),
+				Effect.provide(Layer.effect(MessageOutboxDispatcher, MessageOutboxDispatcher.make)),
 				Effect.provide(Layer.succeed(MessageSideEffectService, sideEffects)),
 				Effect.provide(MessageOutboxRepo.layer),
 				Effect.provide(
-					Layer.succeed(EnvVars, {
+					Layer.succeed(EnvVars, serviceShape<typeof EnvVars>({
 						IS_DEV: true,
 						DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
-					} as ServiceMap.Service.Shape<typeof EnvVars>),
+					})),
 				),
 				Effect.provide(harness.dbLayer),
 			),
@@ -62,7 +62,7 @@ const makeSideEffectService = (calls: SideEffectCall[], options: SideEffectOptio
 	let messageUpdatedFailures = 0
 	let messageDeletedFailures = 0
 
-	return {
+	return serviceShape<typeof MessageSideEffectService>({
 		handleMessageCreated: (payload: MessageCreatedPayload, dedupeKey: string) =>
 			Effect.sync(() => {
 				calls.push({ eventType: "message_created", payload, dedupeKey })
@@ -93,7 +93,7 @@ const makeSideEffectService = (calls: SideEffectCall[], options: SideEffectOptio
 			Effect.sync(() => {
 				calls.push({ eventType: "reaction_deleted", payload, dedupeKey })
 			}),
-	} as ServiceMap.Service.Shape<typeof MessageSideEffectService>
+	})
 }
 
 const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 8_000) => {

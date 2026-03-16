@@ -1,4 +1,5 @@
 import { renderHook, act } from "@testing-library/react"
+import type { ChannelId, ChannelMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useTyping } from "./use-typing"
@@ -19,7 +20,7 @@ vi.mock("~/lib/typing-diagnostics", () => ({
 	pushTypingDiagnostics: vi.fn(),
 }))
 
-vi.mock("@effect-atom/atom-react", () => ({
+vi.mock("@effect/atom-react", () => ({
 	useAtomSet: vi.fn((mutation: unknown) => {
 		if (mutation === upsertMutationSymbol) return upsertMock
 		if (mutation === deleteMutationSymbol) return deleteMock
@@ -34,6 +35,9 @@ const flushMicrotasks = async () => {
 }
 
 describe("useTyping", () => {
+	const channelId = "00000000-0000-4000-8000-000000000301" as ChannelId
+	const memberId = "00000000-0000-4000-8000-000000000302" as ChannelMemberId
+
 	beforeEach(() => {
 		vi.useFakeTimers()
 		vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"))
@@ -43,13 +47,13 @@ describe("useTyping", () => {
 			Exit.succeed({
 				data: { id: "typing-indicator-1" },
 				transactionId: 1,
-			}) as any,
+			}),
 		)
 		deleteMock.mockResolvedValue(
 			Exit.succeed({
 				data: { id: "typing-indicator-1" },
 				transactionId: 1,
-			}) as any,
+			}),
 		)
 	})
 
@@ -60,8 +64,8 @@ describe("useTyping", () => {
 	it("sends heartbeat immediately on first non-empty content and throttles subsequent heartbeats", async () => {
 		const { result } = renderHook(() =>
 			useTyping({
-				channelId: "channel-1" as any,
-				memberId: "member-1" as any,
+				channelId,
+				memberId,
 				heartbeatInterval: 1500,
 			}),
 		)
@@ -91,8 +95,8 @@ describe("useTyping", () => {
 	it("deletes typing indicator when content becomes empty", async () => {
 		const { result } = renderHook(() =>
 			useTyping({
-				channelId: "channel-1" as any,
-				memberId: "member-1" as any,
+				channelId,
+				memberId,
 			}),
 		)
 
@@ -117,8 +121,8 @@ describe("useTyping", () => {
 	it("auto-stops after typing timeout and deletes indicator", async () => {
 		const { result } = renderHook(() =>
 			useTyping({
-				channelId: "channel-1" as any,
-				memberId: "member-1" as any,
+				channelId,
+				memberId,
 				typingTimeout: 3000,
 			}),
 		)
@@ -140,15 +144,15 @@ describe("useTyping", () => {
 
 	it("cleans up previous indicator when channel/member context changes", async () => {
 		const { result, rerender } = renderHook(
-			(props: { channelId: string; memberId: string }) =>
+			(props: { channelId: ChannelId; memberId: ChannelMemberId }) =>
 				useTyping({
-					channelId: props.channelId as any,
-					memberId: props.memberId as any,
+					channelId: props.channelId,
+					memberId: props.memberId,
 				}),
 			{
 				initialProps: {
-					channelId: "channel-1",
-					memberId: "member-1",
+					channelId,
+					memberId,
 				},
 			},
 		)
@@ -159,8 +163,8 @@ describe("useTyping", () => {
 		await flushMicrotasks()
 
 		rerender({
-			channelId: "channel-2",
-			memberId: "member-2",
+			channelId: "00000000-0000-4000-8000-000000000303" as ChannelId,
+			memberId: "00000000-0000-4000-8000-000000000304" as ChannelMemberId,
 		})
 		await flushMicrotasks()
 

@@ -353,7 +353,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(WorkOSClient.layer))
 
 	/** Mock user ID - a valid UUID */
-	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
+	static readonly mockUserId = "00000000-0000-4000-8000-000000000001" as UserId
 
 	/** Default mock user for tests */
 	static mockUser = () => ({

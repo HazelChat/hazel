@@ -237,7 +237,7 @@ interface TweetEmbedProps {
 }
 
 export function TweetEmbed({ id, author, messageCreatedAt }: TweetEmbedProps) {
-	const tweetResult = useAtomValue(LinkPreviewClient.query("tweet", "get", { query: { id } }))
+	const tweetResult = useAtomValue(LinkPreviewClient.query("tweet", "get", { payload: { id } }))
 	const tweet = AsyncResult.getOrElse(tweetResult, () => null)
 	const isLoading = AsyncResult.isInitial(tweetResult)
 

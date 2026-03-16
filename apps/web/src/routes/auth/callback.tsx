@@ -25,7 +25,7 @@ const AuthStateSchema = Schema.Struct({
 // Schema for search params - state can be string or parsed object (TanStack Router auto-parses JSON)
 const RawSearchParams = Schema.Struct({
 	code: Schema.optional(Schema.String),
-	state: Schema.optional(Schema.Union(Schema.String, AuthStateSchema)),
+	state: Schema.optional(Schema.Union([Schema.String, AuthStateSchema])),
 	error: Schema.optional(Schema.String),
 	error_description: Schema.optional(Schema.String),
 })

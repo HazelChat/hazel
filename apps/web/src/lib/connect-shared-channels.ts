@@ -1,10 +1,11 @@
 import type { ChannelId, ConnectConversationId } from "@hazel/schema"
+import type { DateTime } from "effect"
 
 type ConnectMountLike = {
 	channelId: ChannelId
 	conversationId: ConnectConversationId
 	isActive: boolean
-	deletedAt: Date | null
+	deletedAt: Date | DateTime.Utc | null
 }
 
 const isActiveMount = (mount: ConnectMountLike) => mount.isActive && mount.deletedAt === null

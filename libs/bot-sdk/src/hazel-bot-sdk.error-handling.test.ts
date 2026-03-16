@@ -11,12 +11,16 @@ import { BotStateStoreTag, GatewaySessionStoreTag } from "./gateway.ts"
 import { HazelBotClient, HazelBotRuntimeConfigTag } from "./hazel-bot-sdk.ts"
 import { BotRpcClient, BotRpcClientConfigTag } from "./rpc/client.ts"
 
+vi.mock("@hazel/effect-bun/Telemetry", () => ({
+	createTracingLayer: () => Layer.empty,
+}))
+
 const BACKEND_URL = "http://localhost:3070"
 const GATEWAY_URL = "http://localhost:3034"
-const BOT_ID = "00000000-0000-0000-0000-000000000111"
-const USER_ID = "00000000-0000-0000-0000-000000000222"
-const ORG_ID = "00000000-0000-0000-0000-000000000333"
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000444"
+const BOT_ID = "00000000-0000-4000-8000-000000000111"
+const USER_ID = "00000000-0000-4000-8000-000000000222"
+const ORG_ID = "00000000-0000-4000-8000-000000000333"
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000444"
 const BOT_TOKEN = "test-bot-token"
 
 const EchoCommand = Command.make("echo", {
@@ -37,7 +41,7 @@ const server = setupServer()
 
 const makeMessageResponse = (content: string) => ({
 	data: {
-		id: "00000000-0000-0000-0000-000000000999",
+		id: "00000000-0000-4000-8000-000000000999",
 		channelId: CHANNEL_ID,
 		authorId: USER_ID,
 		content,
@@ -48,7 +52,7 @@ const makeMessageResponse = (content: string) => ({
 		updatedAt: null,
 		deletedAt: null,
 	},
-	transactionId: "00000000-0000-0000-0000-000000000998",
+	transactionId: "00000000-0000-4000-8000-000000000998",
 })
 
 const makeHazelBotLayer = () =>

@@ -20,21 +20,19 @@ import { MessageReactionPolicy } from "./message-reaction-policy.ts"
 import { ConnectConversationService } from "../services/connect-conversation-service.ts"
 import { OrgResolver } from "../services/org-resolver.ts"
 import {
-	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	runWithActorEither,
-	serviceEffect,
 	serviceShape,
 	TEST_ORG_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000871" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000872" as MessageId
-const REACTION_ID = "00000000-0000-0000-0000-000000000873" as MessageReactionId
-const OTHER_USER_ID = "00000000-0000-0000-0000-000000000874" as UserId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000871" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000872" as MessageId
+const REACTION_ID = "00000000-0000-4000-8000-000000000873" as MessageReactionId
+const OTHER_USER_ID = "00000000-0000-4000-8000-000000000874" as UserId
 
 type ReactionData = { userId: UserId }
 type MessageData = { channelId: ChannelId }
@@ -104,14 +102,14 @@ const makePolicyLayer = (
 	const orgMemberRepoLayer = makeOrgMemberRepoLayer(orgMembers)
 
 	// Build OrgResolver with actual channel data (not empty stubs)
-	const orgResolverLayer = buildServiceLayer(OrgResolver).pipe(
+	const orgResolverLayer = Layer.effect(OrgResolver, OrgResolver.make).pipe(
 		Layer.provide(orgMemberRepoLayer),
 		Layer.provide(channelRepoLayer),
 		Layer.provide(emptyChannelMemberRepoLayer),
 		Layer.provide(emptyMessageRepoLayer),
 	)
 
-	return buildServiceLayer(MessageReactionPolicy).pipe(
+	return Layer.effect(MessageReactionPolicy, MessageReactionPolicy.make).pipe(
 		Layer.provide(makeReactionRepoLayer(reactions)),
 		Layer.provide(messageRepoLayer),
 		Layer.provide(orgResolverLayer),
@@ -125,7 +123,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, {}, {}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canList(MESSAGE_ID)),
+			MessageReactionPolicy.use((policy) => policy.canList(MESSAGE_ID)),
 			layer,
 			actor,
 		)
@@ -142,7 +140,7 @@ describe("MessageReactionPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canCreate(MESSAGE_ID)),
+			MessageReactionPolicy.use((policy) => policy.canCreate(MESSAGE_ID)),
 			layer,
 			actor,
 		)
@@ -159,7 +157,7 @@ describe("MessageReactionPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canCreate(MESSAGE_ID)),
+			MessageReactionPolicy.use((policy) => policy.canCreate(MESSAGE_ID)),
 			layer,
 			outsider,
 		)
@@ -171,7 +169,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canUpdate(REACTION_ID)),
+			MessageReactionPolicy.use((policy) => policy.canUpdate(REACTION_ID)),
 			layer,
 			actor,
 		)
@@ -183,7 +181,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canUpdate(REACTION_ID)),
+			MessageReactionPolicy.use((policy) => policy.canUpdate(REACTION_ID)),
 			layer,
 			actor,
 		)
@@ -195,7 +193,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canDelete(REACTION_ID)),
+			MessageReactionPolicy.use((policy) => policy.canDelete(REACTION_ID)),
 			layer,
 			actor,
 		)
@@ -207,7 +205,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(MessageReactionPolicy, (policy) => policy.canDelete(REACTION_ID)),
+			MessageReactionPolicy.use((policy) => policy.canDelete(REACTION_ID)),
 			layer,
 			actor,
 		)

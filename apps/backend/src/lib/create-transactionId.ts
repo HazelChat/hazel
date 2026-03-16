@@ -1,6 +1,6 @@
 import { Database } from "@hazel/db"
 import { TransactionIdFromString } from "@hazel/schema"
-import { Effect, Option, Predicate, Schema, SchemaIssue } from "effect"
+import { Effect, Option, Predicate, Schema } from "effect"
 
 export const generateTransactionId = Effect.fn("generateTransactionId")(function* (
 	tx?: <T>(
@@ -38,7 +38,7 @@ export const generateTransactionId = Effect.fn("generateTransactionId")(function
 			(e): e is Database.DatabaseError => Predicate.isTagged(e, "DatabaseError"),
 			(err) => Effect.die(`Database error generating transaction ID: ${err}`),
 		),
-		Effect.catchIf(SchemaIssue.isIssue, (err) => Effect.die(`Failed to parse transaction ID: ${err}`)),
+		Effect.catchTag("SchemaError", (err) => Effect.die(`Failed to parse transaction ID: ${err}`)),
 	)
 
 	return result

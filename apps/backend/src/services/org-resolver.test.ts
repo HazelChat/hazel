@@ -6,13 +6,13 @@ import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { OrgResolver } from "./org-resolver"
 import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers"
 import { CurrentUser } from "@hazel/domain"
-import { buildServiceLayer, serviceEffect, serviceShape } from "../test/effect-helpers"
+import { serviceShape } from "../test/effect-helpers"
 
 type Role = "admin" | "member" | "owner"
 
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000501" as ChannelId
-const MESSAGE_ID = "00000000-0000-0000-0000-000000000601" as MessageId
-const CHANNEL_MEMBER_ID = "00000000-0000-0000-0000-000000000701" as ChannelMemberId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000501" as ChannelId
+const MESSAGE_ID = "00000000-0000-4000-8000-000000000601" as MessageId
+const CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000701" as ChannelMemberId
 
 const makeOrgMemberRepoLayer = (members: Record<string, Role>) =>
 	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
@@ -62,7 +62,7 @@ const makeResolverLayer = (opts: {
 	channelMembers?: Record<string, boolean>
 	messages?: Record<string, { channelId: ChannelId }>
 }) =>
-	buildServiceLayer(OrgResolver).pipe(
+	Layer.effect(OrgResolver, OrgResolver.make).pipe(
 		Layer.provide(makeOrgMemberRepoLayer(opts.members ?? {})),
 		Layer.provide(makeChannelRepoLayer(opts.channels ?? {})),
 		Layer.provide(makeChannelMemberRepoLayer(opts.channelMembers ?? {})),
@@ -75,12 +75,16 @@ const runEither = <A, E>(
 	actor: CurrentUser.Schema = makeActor(),
 ) =>
 	Effect.runPromise(
-		make.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.result),
+		make.pipe(
+			Effect.provide(layer),
+			Effect.provideService(CurrentUser.Context, actor),
+			Effect.result,
+		) as Effect.Effect<any, never, never>,
 	)
 
 const use = <A, E, R>(
 	fn: (resolver: ServiceMap.Service.Shape<typeof OrgResolver>) => Effect.Effect<A, E, R>,
-) => serviceEffect(OrgResolver, fn)
+) => OrgResolver.use(fn)
 
 describe("OrgResolver", () => {
 	describe("requireScope", () => {
@@ -170,7 +174,7 @@ describe("OrgResolver", () => {
 	describe("requireOwner", () => {
 		it("grants access for owner only", async () => {
 			const actor = makeActor()
-			const adminActor = makeActor({ id: "00000000-0000-0000-0000-000000000502" as UserId })
+			const adminActor = makeActor({ id: "00000000-0000-4000-8000-000000000502" as UserId })
 
 			const layer = makeResolverLayer({
 				members: {
@@ -223,7 +227,7 @@ describe("OrgResolver", () => {
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 			})
 
-			const missingChannelId = "00000000-0000-0000-0000-000000000599" as ChannelId
+			const missingChannelId = "00000000-0000-4000-8000-000000000599" as ChannelId
 			const result = await runEither(
 				use((r) => r.fromChannel(missingChannelId, "channels:read", "Channel", "read")),
 				layer,
@@ -322,7 +326,7 @@ describe("OrgResolver", () => {
 
 		it("allows direct channel only for channel members", async () => {
 			const actor = makeActor()
-			const outsider = makeActor({ id: "00000000-0000-0000-0000-000000000503" as UserId })
+			const outsider = makeActor({ id: "00000000-0000-4000-8000-000000000503" as UserId })
 
 			const layer = makeResolverLayer({
 				members: {
@@ -356,8 +360,8 @@ describe("OrgResolver", () => {
 
 		it("checks parent channel access for threads", async () => {
 			const actor = makeActor()
-			const parentChannelId = "00000000-0000-0000-0000-000000000502" as ChannelId
-			const threadId = "00000000-0000-0000-0000-000000000503" as ChannelId
+			const parentChannelId = "00000000-0000-4000-8000-000000000502" as ChannelId
+			const threadId = "00000000-0000-4000-8000-000000000503" as ChannelId
 
 			const layer = makeResolverLayer({
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
@@ -416,7 +420,7 @@ describe("OrgResolver", () => {
 				members: { [`${TEST_ORG_ID}:${actor.id}`]: "member" },
 			})
 
-			const missingId = "00000000-0000-0000-0000-000000000699" as MessageId
+			const missingId = "00000000-0000-4000-8000-000000000699" as MessageId
 			const result = await runEither(
 				use((r) => r.fromMessage(missingId, "messages:read", "Message", "read")),
 				layer,

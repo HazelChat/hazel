@@ -54,7 +54,7 @@ const getMountedConversationId = (channelId: ChannelId) =>
  */
 const MessageRetrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
 	Schedule.jittered,
-	Schedule.whileInput(isErrorRetryable),
+	Schedule.while((metadata) => isErrorRetryable(metadata.input)),
 	Schedule.both(Schedule.recurs(3)),
 )
 

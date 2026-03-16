@@ -32,9 +32,6 @@ export {
 	DiscordSyncMessageNotFoundError,
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- tag-only service; real make provided via DiscordSyncWorkerMake / DiscordSyncWorkerLayer
-export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker, {}>()("DiscordSyncWorker") {}
-
 const DiscordSyncWorkerMake = Effect.gen(function* () {
 	const coreWorker = yield* ChatSyncCoreWorker
 
@@ -224,6 +221,10 @@ const DiscordSyncWorkerMake = Effect.gen(function* () {
 	}
 })
 
-export const DiscordSyncWorkerLayer = Layer.effect(DiscordSyncWorker, DiscordSyncWorkerMake).pipe(
+export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("DiscordSyncWorker", {
+	make: DiscordSyncWorkerMake,
+}) {}
+
+export const DiscordSyncWorkerLayer = Layer.effect(DiscordSyncWorker, DiscordSyncWorker.make).pipe(
 	Layer.provide(ChatSyncCoreWorkerLayer),
 )

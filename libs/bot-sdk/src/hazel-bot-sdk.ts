@@ -33,7 +33,14 @@ import {
 	isTemporaryActorServiceError,
 } from "@hazel/domain"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { HazelApi } from "@hazel/domain/http"
+import {
+	CreateMessageRequest,
+	HazelApi,
+	SyncBotCommandsRequest,
+	ToggleReactionRequest,
+	UpdateBotSettingsRequest,
+	UpdateMessageRequest,
+} from "@hazel/domain/http"
 import { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import {
@@ -95,6 +102,7 @@ import {
 	type AIStreamOptions,
 	type AIStreamSession,
 	type CreateStreamOptions,
+	type MessageCreateFn,
 	type MessageUpdateFn,
 } from "./streaming/index.ts"
 
@@ -876,14 +884,14 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 
 					// Call the sync endpoint using type-safe HttpApiClient
 					const response = yield* httpApiClient["bot-commands"].syncCommands({
-						payload: {
+						payload: new SyncBotCommandsRequest({
 							commands: cmds.map((cmd: CommandDef) => ({
 								name: cmd.name,
 								description: cmd.description,
 								arguments: schemaFieldsToArgs(cmd.args),
 								usageExample: cmd.usageExample ?? null,
 							})),
-						},
+						}),
 					})
 
 					yield* Effect.logDebug(`Synced ${response.syncedCount} commands successfully`)
@@ -909,7 +917,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					yield* Effect.logDebug(`Syncing mentionable=${config.mentionable} with backend...`)
 
 					yield* httpApiClient["bot-commands"].updateBotSettings({
-						payload: { mentionable: config.mentionable },
+						payload: new UpdateBotSettingsRequest({ mentionable: config.mentionable }),
 					})
 
 					yield* Effect.logDebug("Mentionable flag synced successfully")
@@ -955,7 +963,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 		 * Helper to create the message creation function.
 		 * Shared between stream.create and ai.stream to avoid code duplication.
 		 */
-		const createMessageFnHelper = (
+		const createMessageFnHelper: MessageCreateFn = (
 			chId: ChannelId,
 			content: string,
 			opts?: {
@@ -979,13 +987,13 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			messageLimiter(
 				httpApiClient["api-v1-messages"]
 					.createMessage({
-						payload: {
+						payload: new CreateMessageRequest({
 							channelId: chId,
 							content,
 							replyToMessageId: opts?.replyToMessageId ?? null,
 							threadChannelId: opts?.threadChannelId ?? null,
 							embeds: opts?.embeds ?? null,
-						},
+						}),
 					})
 					.pipe(
 						Effect.map((r) => r.data),
@@ -1030,10 +1038,10 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				httpApiClient["api-v1-messages"]
 					.updateMessage({
 						params: { id: messageId },
-						payload: {
+						payload: new UpdateMessageRequest({
 							content: payload.content,
 							embeds: payload.embeds ?? null,
-						},
+						}),
 					})
 					.pipe(
 						Effect.map((r) => r.data),
@@ -1046,7 +1054,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 								}),
 						),
 					),
-			) as any
+			)
 
 		return {
 			/**
@@ -1150,7 +1158,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					messageLimiter(
 						httpApiClient["api-v1-messages"]
 							.createMessage({
-								payload: {
+								payload: new CreateMessageRequest({
 									channelId,
 									content,
 									replyToMessageId: options?.replyToMessageId ?? null,
@@ -1159,7 +1167,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 										? [...options.attachmentIds]
 										: undefined,
 									embeds: options?.embeds ?? null,
-								},
+								}),
 							})
 							.pipe(
 								Effect.map((r) => r.data),
@@ -1189,7 +1197,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					messageLimiter(
 						httpApiClient["api-v1-messages"]
 							.createMessage({
-								payload: {
+								payload: new CreateMessageRequest({
 									channelId: message.channelId,
 									content,
 									replyToMessageId: message.id,
@@ -1198,7 +1206,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 										? [...options.attachmentIds]
 										: undefined,
 									embeds: null,
-								},
+								}),
 							})
 							.pipe(
 								Effect.map((r) => r.data),
@@ -1230,7 +1238,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						httpApiClient["api-v1-messages"]
 							.updateMessage({
 								params: { id: message.id },
-								payload: { content },
+								payload: new UpdateMessageRequest({ content }),
 							})
 							.pipe(
 								Effect.map((r) => r.data),
@@ -1281,10 +1289,10 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						httpApiClient["api-v1-messages"]
 							.toggleReaction({
 								params: { id: message.id },
-								payload: {
+								payload: new ToggleReactionRequest({
 									emoji,
 									channelId: message.channelId,
-								},
+								}),
 							})
 							.pipe(
 								Effect.mapError(
@@ -1648,7 +1656,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createStreamSessionInternal(
-							createMessageFnHelper as any,
+							createMessageFnHelper,
 							updateMessageFnHelper,
 							actorsService,
 							channelId,
@@ -1683,7 +1691,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createAIStreamSessionInternal(
-							createMessageFnHelper as any,
+							createMessageFnHelper,
 							updateMessageFnHelper,
 							actorsService,
 							channelId,

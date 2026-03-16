@@ -267,7 +267,7 @@ const makeOAuthSessionCookie = (
 	})
 
 const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string; secure: boolean }) =>
-	HttpServerResponse.expireCookie(name, {
+	HttpServerResponse.expireCookieUnsafe(name, {
 		domain: options.cookieDomain,
 		path: "/",
 		httpOnly: true,
@@ -1221,14 +1221,6 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					Effect.fail(
 						new InternalServerError({
 							message: "Database error during OAuth callback",
-							detail: String(error),
-						}),
-					),
-				),
-				Effect.catchTag("SchemaError", (error) =>
-					Effect.fail(
-						new InternalServerError({
-							message: "Schema error during OAuth callback",
 							detail: String(error),
 						}),
 					),

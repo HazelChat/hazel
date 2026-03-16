@@ -9,7 +9,7 @@ import {
 	createGatewayWebSocketUrl,
 } from "./gateway.ts"
 
-const BOT_ID = "00000000-0000-0000-0000-000000000111" as BotId
+const BOT_ID = "00000000-0000-4000-8000-000000000111" as BotId
 
 describe("InMemoryGatewaySessionStoreLive", () => {
 	it("loads and saves offsets per bot", () =>

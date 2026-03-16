@@ -478,7 +478,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 					const originalMessageId = originalMessageResult[0]!.id
 
-					const clusterUrl = yield* Config.string("CLUSTER_URL")
+					const clusterUrl = yield* Config.string("CLUSTER_URL").asEffect().pipe(
+						Effect.mapError(() =>
+							new WorkflowServiceUnavailableError({
+								message: "CLUSTER_URL not configured",
+								cause: "Missing CLUSTER_URL environment variable",
+							}),
+						),
+					)
 					const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 						baseUrl: clusterUrl,
 					})
@@ -504,6 +511,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								Effect.fail(
 									new WorkflowServiceUnavailableError({
 										message: "Cannot connect to workflow service",
+										cause: String(err),
+									}),
+								),
+							),
+							Effect.catchTag("BadRequest", (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to trigger thread naming workflow",
 										cause: String(err),
 									}),
 								),

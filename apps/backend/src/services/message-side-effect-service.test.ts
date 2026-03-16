@@ -1,27 +1,27 @@
-import { FetchHttpClient } from "effect/unstable/http"
+import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/unstable/http"
 import { randomUUID } from "node:crypto"
 import { Database, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, ServiceMap } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
-import { buildServiceLayer, configLayer } from "../test/effect-helpers"
+import { configLayer, serviceShape } from "../test/effect-helpers"
 import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
 const CLUSTER_URL = "http://cluster.test"
-const ORG_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
-const CHANNEL_ID = "00000000-0000-0000-0000-000000000002" as ChannelId
-const THREAD_CHANNEL_ID = "00000000-0000-0000-0000-000000000003" as ChannelId
-const AUTHOR_ID = "00000000-0000-0000-0000-000000000004" as UserId
-const INTEGRATION_BOT_ID = "00000000-0000-0000-0000-000000000005" as UserId
-const ORIGINAL_MESSAGE_ID = "00000000-0000-0000-0000-000000000006" as MessageId
+const ORG_ID = "00000000-0000-4000-8000-000000000001" as OrganizationId
+const CHANNEL_ID = "00000000-0000-4000-8000-000000000002" as ChannelId
+const THREAD_CHANNEL_ID = "00000000-0000-4000-8000-000000000003" as ChannelId
+const AUTHOR_ID = "00000000-0000-4000-8000-000000000004" as UserId
+const INTEGRATION_BOT_ID = "00000000-0000-4000-8000-000000000005" as UserId
+const ORIGINAL_MESSAGE_ID = "00000000-0000-4000-8000-000000000006" as MessageId
 const EXISTING_THREAD_MESSAGE_IDS = [
-	"00000000-0000-0000-0000-000000000007" as MessageId,
-	"00000000-0000-0000-0000-000000000008" as MessageId,
-	"00000000-0000-0000-0000-000000000009" as MessageId,
+	"00000000-0000-4000-8000-000000000007" as MessageId,
+	"00000000-0000-4000-8000-000000000008" as MessageId,
+	"00000000-0000-4000-8000-000000000009" as MessageId,
 ] as const satisfies ReadonlyArray<MessageId>
-const NEW_THREAD_MESSAGE_ID = "00000000-0000-0000-0000-000000000010" as MessageId
+const NEW_THREAD_MESSAGE_ID = "00000000-0000-4000-8000-000000000010" as MessageId
 
 type DiscordCall =
 	| { method: "message_create"; id: string; dedupeKey?: string }
@@ -36,23 +36,24 @@ type WorkerOptions = {
 
 const runServiceEffect = <A, E, R>(
 	harness: ChatSyncDbHarness,
-	worker: DiscordSyncWorker,
+	worker: ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
 	make: Effect.Effect<A, E, R>,
+	httpClientLayer: Layer.Layer<HttpClient.HttpClient> = FetchHttpClient.layer,
 ) =>
 	Effect.runPromise(
 		Effect.scoped(
 			make.pipe(
-				Effect.provide(buildServiceLayer(MessageSideEffectService)),
+				Effect.provide(Layer.effect(MessageSideEffectService, MessageSideEffectService.make)),
 				Effect.provide(Layer.succeed(DiscordSyncWorker, worker)),
 				Effect.provide(configLayer({ CLUSTER_URL })),
-				Effect.provide(FetchHttpClient.layer),
+				Effect.provide(httpClientLayer),
 				Effect.provide(harness.dbLayer),
 			),
 		) as Effect.Effect<A, E, never>,
 	)
 
 const makeDiscordWorker = (calls: DiscordCall[], options: WorkerOptions = {}) =>
-	({
+	serviceShape<typeof DiscordSyncWorker>({
 		syncHazelMessageCreateToAllConnections: (messageId: string, dedupeKey?: string) =>
 			options.failCreate
 				? Effect.fail(new Error("discord create failed"))
@@ -88,7 +89,18 @@ const makeDiscordWorker = (calls: DiscordCall[], options: WorkerOptions = {}) =>
 				calls.push({ method: "reaction_delete", payload, dedupeKey })
 				return { synced: 1, failed: 0 }
 			}),
-	}) as ServiceMap.Service.Shape<typeof DiscordSyncWorker>
+	})
+
+const workflowClientLayer = (requests: Array<{ url: string }>) =>
+	Layer.succeed(
+		HttpClient.HttpClient,
+		HttpClient.make((request, url) =>
+			Effect.sync(() => {
+				requests.push({ url: String(url) })
+				return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+			}),
+		),
+	)
 
 const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 	harness.run(
@@ -215,38 +227,26 @@ describe("MessageSideEffectService", () => {
 
 	it("routes message creates through Discord sync, notifications, and thread naming", async () => {
 		const calls: DiscordCall[] = []
-		const requests: Array<{ url: string; body: string | null }> = []
-		const originalFetch = globalThis.fetch
+		const requests: Array<{ url: string }> = []
 
-		globalThis.fetch = (async (input, init) => {
-			requests.push({
-				url: String(input),
-				body: typeof init?.body === "string" ? init.body : null,
-			})
-			return new Response(null, { status: 204 })
-		}) as typeof fetch
-
-		try {
-			await runServiceEffect(
-				harness,
-				makeDiscordWorker(calls),
-				Effect.gen(function* () {
-					const service = yield* MessageSideEffectService
-					yield* service.handleMessageCreated(
-						{
-							messageId: NEW_THREAD_MESSAGE_ID,
-							channelId: THREAD_CHANNEL_ID,
-							authorId: AUTHOR_ID,
-							content: "Newest thread message",
-							replyToMessageId: null,
-						},
-						"dedupe-1",
-					)
-				}),
-			)
-		} finally {
-			globalThis.fetch = originalFetch
-		}
+		await runServiceEffect(
+			harness,
+			makeDiscordWorker(calls),
+			Effect.gen(function* () {
+				const service = yield* MessageSideEffectService
+				yield* service.handleMessageCreated(
+					{
+						messageId: NEW_THREAD_MESSAGE_ID,
+						channelId: THREAD_CHANNEL_ID,
+						authorId: AUTHOR_ID,
+						content: "Newest thread message",
+						replyToMessageId: null,
+					},
+					"dedupe-1",
+				)
+			}),
+			workflowClientLayer(requests),
+		)
 
 		expect(calls).toEqual([
 			{
@@ -255,85 +255,65 @@ describe("MessageSideEffectService", () => {
 				dedupeKey: "dedupe-1",
 			},
 		])
-		expect(requests).toHaveLength(2)
 		expect(requests.every((request) => request.url.startsWith(CLUSTER_URL))).toBe(true)
 
-		expect(requests.map((request) => request.url).join("\n")).toContain("message-notification-workflow")
-		expect(requests.map((request) => request.url).join("\n")).toContain("thread-naming-workflow")
+		const workflowUrls = requests.map((request) => request.url).join("\n")
+		expect(workflowUrls).toContain("messagenotificationworkflow")
+		expect(workflowUrls).toContain("threadnamingworkflow")
 	})
 
 	it("skips Discord loopback for the integration bot but still runs workflows", async () => {
 		const calls: DiscordCall[] = []
-		const requests: Array<{ url: string; body: string | null }> = []
-		const originalFetch = globalThis.fetch
+		const requests: Array<{ url: string }> = []
 
-		globalThis.fetch = (async (input, init) => {
-			requests.push({
-				url: String(input),
-				body: typeof init?.body === "string" ? init.body : null,
-			})
-			return new Response(null, { status: 204 })
-		}) as typeof fetch
-
-		try {
-			await runServiceEffect(
-				harness,
-				makeDiscordWorker(calls),
-				Effect.gen(function* () {
-					const service = yield* MessageSideEffectService
-					yield* service.handleMessageCreated(
-						{
-							messageId: randomUUID() as MessageId,
-							channelId: CHANNEL_ID,
-							authorId: INTEGRATION_BOT_ID,
-							content: "integration message",
-							replyToMessageId: null,
-						},
-						"dedupe-2",
-					)
-				}),
-			)
-		} finally {
-			globalThis.fetch = originalFetch
-		}
+		await runServiceEffect(
+			harness,
+			makeDiscordWorker(calls),
+			Effect.gen(function* () {
+				const service = yield* MessageSideEffectService
+				yield* service.handleMessageCreated(
+					{
+						messageId: randomUUID() as MessageId,
+						channelId: CHANNEL_ID,
+						authorId: INTEGRATION_BOT_ID,
+						content: "integration message",
+						replyToMessageId: null,
+					},
+					"dedupe-2",
+				)
+			}),
+			workflowClientLayer(requests),
+		)
 
 		expect(calls).toHaveLength(0)
 		expect(requests).toHaveLength(1)
-		expect(requests[0]?.url).toContain("message-notification-workflow")
+		expect(requests[0]?.url).toContain("messagenotificationworkflow")
 	})
 
 	it("continues to workflows when Discord create sync fails", async () => {
-		const requests: Array<string> = []
-		const originalFetch = globalThis.fetch
+		const requests: Array<{ url: string }> = []
 
-		globalThis.fetch = (async (input) => {
-			requests.push(String(input))
-			return new Response(null, { status: 204 })
-		}) as typeof fetch
-
-		try {
-			await runServiceEffect(
-				harness,
-				makeDiscordWorker([], { failCreate: true }),
-				Effect.gen(function* () {
-					const service = yield* MessageSideEffectService
-					yield* service.handleMessageCreated(
-						{
-							messageId: randomUUID() as MessageId,
-							channelId: CHANNEL_ID,
-							authorId: AUTHOR_ID,
-							content: "still notifies",
-							replyToMessageId: null,
-						},
-						"dedupe-3",
-					)
-				}),
-			)
-		} finally {
-			globalThis.fetch = originalFetch
-		}
+		await runServiceEffect(
+			harness,
+			makeDiscordWorker([], { failCreate: true }),
+			Effect.gen(function* () {
+				const service = yield* MessageSideEffectService
+				yield* service.handleMessageCreated(
+					{
+						messageId: randomUUID() as MessageId,
+						channelId: CHANNEL_ID,
+						authorId: AUTHOR_ID,
+						content: "still notifies",
+						replyToMessageId: null,
+					},
+					"dedupe-3",
+				)
+			}),
+			workflowClientLayer(requests),
+		)
 
 		expect(requests).toHaveLength(1)
+		expect(requests[0]?.url).toContain("messagenotificationworkflow")
 	})
 
 	it("routes message updates, deletes, and reactions to the correct Discord worker methods", async () => {
@@ -359,7 +339,7 @@ describe("MessageSideEffectService", () => {
 				)
 				yield* service.handleReactionCreated(
 					{
-						reactionId: "00000000-0000-0000-0000-000000000011" as MessageReactionId,
+						reactionId: "00000000-0000-4000-8000-000000000011" as MessageReactionId,
 					},
 					"dedupe-reaction-create",
 				)
@@ -388,7 +368,7 @@ describe("MessageSideEffectService", () => {
 			},
 			{
 				method: "reaction_create",
-				id: "00000000-0000-0000-0000-000000000011" as MessageReactionId,
+				id: "00000000-0000-4000-8000-000000000011" as MessageReactionId,
 				dedupeKey: "dedupe-reaction-create",
 			},
 			{

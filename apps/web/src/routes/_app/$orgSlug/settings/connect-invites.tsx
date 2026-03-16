@@ -2,7 +2,7 @@ import { AsyncResult } from "effect/unstable/reactivity"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { Option } from "effect"
+import { type DateTime, Option } from "effect"
 import { createFileRoute } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import {
@@ -18,6 +18,7 @@ import { EmptyState } from "~/components/ui/empty-state"
 import { organizationCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
 import { getConnectInviteStatusBadge } from "~/lib/connect-shared-channels"
+import { toDate } from "~/lib/utils"
 import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/connect-invites")({
@@ -115,7 +116,7 @@ function IncomingInviteRow({
 		id: ConnectInviteId
 		hostOrganizationId: OrganizationId
 		status: string
-		createdAt: Date
+		createdAt: Date | DateTime.Utc
 	}
 	organizationId: OrganizationId | undefined
 }) {
@@ -228,7 +229,7 @@ function IncomingInviteRow({
 				</Badge>
 			</td>
 			<td className="px-4 py-4">
-				<span className="text-muted-fg text-sm">{invite.createdAt.toLocaleDateString()}</span>
+				<span className="text-muted-fg text-sm">{toDate(invite.createdAt).toLocaleDateString()}</span>
 			</td>
 			<td className="px-4 py-4 text-right">
 				{invite.status === "pending" && (

@@ -5,22 +5,21 @@ import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Result, Layer, Option, ServiceMap } from "effect"
 import { InvitationPolicy } from "./invitation-policy.ts"
 import {
-	buildServiceLayer,
 	makeActor,
 	makeEntityNotFound,
 	makeOrganizationMemberRepoLayer,
 	makeOrgResolverLayer,
 	runWithActorEither,
-	serviceEffect,
+	serviceShape,
 	TEST_ORG_ID,
 	TEST_USER_ID,
 } from "./policy-test-helpers.ts"
 
 type Role = "admin" | "member" | "owner"
 
-const INVITATION_ID = "00000000-0000-0000-0000-000000000821" as InvitationId
-const MISSING_INVITATION_ID = "00000000-0000-0000-0000-000000000829" as InvitationId
-const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000822" as UserId
+const INVITATION_ID = "00000000-0000-4000-8000-000000000821" as InvitationId
+const MISSING_INVITATION_ID = "00000000-0000-4000-8000-000000000829" as InvitationId
+const ADMIN_USER_ID = "00000000-0000-4000-8000-000000000822" as UserId
 
 const makeInvitationRepoLayer = (
 	invitations: Record<string, { invitedBy: UserId; organizationId: OrganizationId; email: string }>,
@@ -43,19 +42,19 @@ const makeInvitationRepoLayer = (
 	} as ServiceMap.Service.Shape<typeof InvitationRepo>)
 
 const makeUserRepoLayer = (users: Record<string, { email: string }>) =>
-	Layer.succeed(UserRepo, {
+	Layer.succeed(UserRepo, serviceShape<typeof UserRepo>({
 		findById: (id: UserId) => {
 			const user = users[id]
 			return Effect.succeed(user ? Option.some(user) : Option.none())
 		},
-	} as ServiceMap.Service.Shape<typeof UserRepo>)
+	}))
 
 const makePolicyLayer = (
 	members: Record<string, Role>,
 	invitations: Record<string, { invitedBy: UserId; organizationId: OrganizationId; email: string }>,
 	users: Record<string, { email: string }> = {},
 ) =>
-	buildServiceLayer(InvitationPolicy).pipe(
+	Layer.effect(InvitationPolicy, InvitationPolicy.make).pipe(
 		Layer.provide(makeOrgResolverLayer(members)),
 		Layer.provide(makeOrganizationMemberRepoLayer(members)),
 		Layer.provide(makeInvitationRepoLayer(invitations)),
@@ -68,7 +67,7 @@ describe("InvitationPolicy", () => {
 		const layer = makePolicyLayer({}, {})
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canRead(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canRead(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -86,7 +85,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
+			InvitationPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
 			layer,
 			actor,
 		)
@@ -104,7 +103,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canCreate(TEST_ORG_ID)),
+			InvitationPolicy.use((policy) => policy.canCreate(TEST_ORG_ID)),
 			layer,
 			actor,
 		)
@@ -126,7 +125,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -150,7 +149,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
 			layer,
 			admin,
 		)
@@ -174,7 +173,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canUpdate(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canUpdate(INVITATION_ID)),
 			layer,
 			outsider,
 		)
@@ -196,7 +195,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canDelete(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canDelete(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -220,7 +219,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canDelete(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canDelete(INVITATION_ID)),
 			layer,
 			admin,
 		)
@@ -245,7 +244,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -270,7 +269,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -293,7 +292,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canAccept(INVITATION_ID)),
+			InvitationPolicy.use((policy) => policy.canAccept(INVITATION_ID)),
 			layer,
 			actor,
 		)
@@ -311,7 +310,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canList(TEST_ORG_ID)),
+			InvitationPolicy.use((policy) => policy.canList(TEST_ORG_ID)),
 			layer,
 			actor,
 		)
@@ -329,7 +328,7 @@ describe("InvitationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(
-			serviceEffect(InvitationPolicy, (policy) => policy.canList(TEST_ORG_ID)),
+			InvitationPolicy.use((policy) => policy.canList(TEST_ORG_ID)),
 			layer,
 			actor,
 		)

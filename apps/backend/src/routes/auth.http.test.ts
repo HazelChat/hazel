@@ -1,9 +1,11 @@
+import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
 import { describe, expect, it, layer } from "@effect/vitest"
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
+import { OrganizationMember, User } from "@hazel/domain/models"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { AuthState, RelativeUrl } from "../lib/schema.ts"
-import { configLayer } from "../test/effect-helpers"
+import { configLayer, serviceShape } from "../test/effect-helpers"
 import { WorkOSAuth as WorkOS, WorkOSAuthError as WorkOSApiError } from "../services/workos-auth.ts"
 
 // ===== Mock Configuration =====
@@ -14,6 +16,26 @@ const TestConfigLive = configLayer({
 	FRONTEND_URL: "http://localhost:3000",
 	WORKOS_API_KEY: "sk_test_123",
 })
+
+const NOW = new Date("2026-03-05T12:00:00.000Z")
+
+const makeUserRecord = (overrides: Partial<Schema.Schema.Type<typeof User.Model>> = {}) =>
+	({
+		id: "usr_default123" as UserId,
+		externalId: "user_default",
+		email: "test@example.com",
+		firstName: "Test",
+		lastName: "User",
+		avatarUrl: null,
+		userType: "user",
+		settings: null,
+		isOnboarded: false,
+		timezone: null,
+		createdAt: NOW,
+		updatedAt: NOW,
+		deletedAt: null,
+		...overrides,
+	}) satisfies Schema.Schema.Type<typeof User.Model>
 
 // ===== Mock WorkOS Service =====
 
@@ -34,69 +56,73 @@ const createMockWorkOSLive = (options?: {
 	shouldFailLogin?: boolean
 	shouldFailGetOrg?: boolean
 }) =>
-	Layer.succeed(WorkOS, {
-		call: <A>(f: (client: any, signal: AbortSignal) => Promise<A>) =>
-			Effect.tryPromise({
-				try: async () => {
-					const mockClient = {
-						userManagement: {
-							getAuthorizationUrl: (params: any) => {
-								if (options?.shouldFailLogin) {
-									throw new Error("WorkOS API error")
-								}
-								return (
-									options?.authorizationUrl ??
-									`https://workos.com/auth?client_id=${params.clientId}&state=${params.state}`
-								)
+	Layer.succeed(
+		WorkOS,
+		({
+			call: <A>(f: (client: WorkOSNodeAPI, signal: AbortSignal) => Promise<A>) =>
+				Effect.tryPromise({
+					try: async () => {
+						const mockClient = {
+							userManagement: {
+								getAuthorizationUrl: (params: { clientId: string; state?: string }) => {
+									if (options?.shouldFailLogin) {
+										throw new Error("WorkOS API error")
+									}
+									return (
+										options?.authorizationUrl ??
+										`https://workos.com/auth?client_id=${params.clientId}&state=${params.state}`
+									)
+								},
+								authenticateWithCode: async () => {
+									if (options?.shouldFailAuth) {
+										throw new Error("Authentication failed")
+									}
+									return {
+										user: options?.authenticateResponse?.user ?? {
+											id: "user_01ABC123",
+											email: "test@example.com",
+											firstName: "Test",
+											lastName: "User",
+											profilePictureUrl: null,
+										},
+										sealedSession:
+											options?.authenticateResponse?.sealedSession ??
+											"sealed-session-cookie",
+										organizationId: options?.authenticateResponse?.organizationId,
+									}
+								},
+								listOrganizationMemberships: async () => ({
+									data: [{ role: { slug: "member" } }],
+								}),
 							},
-							authenticateWithCode: async () => {
-								if (options?.shouldFailAuth) {
-									throw new Error("Authentication failed")
-								}
-								return {
-									user: options?.authenticateResponse?.user ?? {
-										id: "user_01ABC123",
-										email: "test@example.com",
-										firstName: "Test",
-										lastName: "User",
-										profilePictureUrl: null,
-									},
-									sealedSession:
-										options?.authenticateResponse?.sealedSession ??
-										"sealed-session-cookie",
-									organizationId: options?.authenticateResponse?.organizationId,
-								}
+							organizations: {
+								getOrganization: async (id: string) => {
+									if (options?.shouldFailGetOrg) {
+										throw new Error("Org not found")
+									}
+									return {
+										id,
+										externalId: "org_internal_123",
+									}
+								},
+								getOrganizationByExternalId: async (externalId: string) => {
+									if (options?.shouldFailGetOrg) {
+										throw new Error("Org not found")
+									}
+									return {
+										id: "org_workos_123",
+										externalId,
+									}
+								},
 							},
-							listOrganizationMemberships: async () => ({
-								data: [{ role: { slug: "member" } }],
-							}),
-						},
-						organizations: {
-							getOrganization: async (id: string) => {
-								if (options?.shouldFailGetOrg) {
-									throw new Error("Org not found")
-								}
-								return {
-									id,
-									externalId: "org_internal_123",
-								}
-							},
-							getOrganizationByExternalId: async (externalId: string) => {
-								if (options?.shouldFailGetOrg) {
-									throw new Error("Org not found")
-								}
-								return {
-									id: "org_workos_123",
-									externalId,
-								}
-							},
-						},
-					}
-					return f(mockClient as any, new AbortController().signal)
-				},
-				catch: (cause) => new WorkOSApiError({ cause }),
-			}),
-	} as ServiceMap.Service.Shape<typeof WorkOS>)
+						}
+
+						return f(mockClient as unknown as WorkOSNodeAPI, new AbortController().signal)
+					},
+					catch: (cause) => new WorkOSApiError({ cause }),
+				}),
+		}) satisfies ServiceMap.Service.Shape<typeof WorkOS>,
+	)
 
 // ===== Mock UserRepo =====
 
@@ -114,24 +140,30 @@ const createMockUserRepoLive = (options?: {
 	Layer.succeed(UserRepo, {
 		findByExternalId: (_externalId: string) =>
 			Effect.succeed(options?.existingUser ? Option.some(options.existingUser) : Option.none()),
-		upsertByExternalId: (user: any) =>
-			Effect.succeed({
-				id: "usr_new123" as UserId,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				avatarUrl: user.avatarUrl,
-				isOnboarded: user.isOnboarded,
-				timezone: user.timezone,
-			}),
-	} as unknown as UserRepo)
+		upsertByExternalId: (user: Schema.Schema.Type<typeof User.Insert>) =>
+			Effect.succeed(
+				makeUserRecord({
+					id: "usr_new123" as UserId,
+					externalId: user.externalId,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					avatarUrl: user.avatarUrl ?? null,
+					isOnboarded: user.isOnboarded,
+					timezone: user.timezone,
+				}),
+			),
+	} as unknown as ServiceMap.Service.Shape<typeof UserRepo>)
 
 // ===== Mock OrganizationMemberRepo =====
 
-const MockOrganizationMemberRepoLive = Layer.succeed(OrganizationMemberRepo, {
+const MockOrganizationMemberRepoLive = Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
 	findByOrgAndUser: (_orgId: OrganizationId, _userId: UserId) => Effect.succeed(Option.none()),
-	upsertByOrgAndUser: (_membership: any) => Effect.succeed({}),
-} as unknown as OrganizationMemberRepo)
+	upsertByOrgAndUser: (_membership: Schema.Schema.Type<typeof OrganizationMember.Insert>) =>
+		Effect.succeed({
+			id: "00000000-0000-4000-8000-000000000099",
+		}),
+}))
 
 // ===== Test Layer Factory =====
 
@@ -176,19 +208,19 @@ describe("Auth HTTP Endpoint Logic", () => {
 		})
 	})
 
-	describe("AuthState schema", () => {
-		it("creates valid AuthState", () => {
-			const state = AuthState.make({ returnTo: "/dashboard" })
-			expect(state.returnTo).toBe("/dashboard")
-		})
+		describe("AuthState schema", () => {
+			it("creates valid AuthState", () => {
+				const state = Schema.decodeSync(AuthState)({ returnTo: "/dashboard" })
+				expect(state.returnTo).toBe("/dashboard")
+			})
 
-		it("serializes and deserializes correctly", () => {
-			const state = AuthState.make({ returnTo: "/settings/profile" })
-			const serialized = JSON.stringify(state)
-			const parsed = AuthState.make(JSON.parse(serialized))
-			expect(parsed.returnTo).toBe("/settings/profile")
+			it("serializes and deserializes correctly", () => {
+				const state = Schema.decodeSync(AuthState)({ returnTo: "/settings/profile" })
+				const serialized = JSON.stringify(state)
+				const parsed = Schema.decodeSync(AuthState)(JSON.parse(serialized))
+				expect(parsed.returnTo).toBe("/settings/profile")
+			})
 		})
-	})
 
 	describe("Login flow", () => {
 		layer(TestLayer)("authorization URL generation", (it) => {
@@ -300,9 +332,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 					Effect.gen(function* () {
 						const userRepo = yield* UserRepo
 
-						const existingUser = yield* userRepo.findByExternalId(
-							"user_new",
-						) as Effect.Effect<any>
+						const existingUser = yield* userRepo.findByExternalId("user_new")
 						expect(Option.isNone(existingUser)).toBe(true)
 
 						const createdUser = yield* userRepo.upsertByExternalId({
@@ -316,7 +346,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 							isOnboarded: false,
 							timezone: null,
 							deletedAt: null,
-						}) as Effect.Effect<any>
+						})
 
 						expect(createdUser.id).toBe("usr_new123")
 						expect(createdUser.email).toBe("new@example.com")
@@ -347,7 +377,7 @@ describe("Auth HTTP Endpoint Logic", () => {
 							id: UserId
 							email: string
 							isOnboarded: boolean
-						}> = yield* userRepo.findByExternalId("user_existing") as Effect.Effect<any>
+						}> = yield* userRepo.findByExternalId("user_existing")
 						expect(Option.isSome(existingUser)).toBe(true)
 
 						if (Option.isSome(existingUser)) {
