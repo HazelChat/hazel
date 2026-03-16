@@ -1,5 +1,5 @@
 import * as crypto from "node:crypto"
-import { ServiceMap, Config, DateTime, Duration, Effect, Schema } from "effect"
+import { ServiceMap, Config, DateTime, Duration, Effect, Layer, Schema } from "effect"
 
 // Error types
 export class WebhookVerificationError extends Schema.TaggedErrorClass<WebhookVerificationError>(
@@ -81,11 +81,11 @@ export class WorkOSWebhookVerifier extends ServiceMap.Service<WorkOSWebhookVerif
 				tolerance: Duration.Duration = DEFAULT_TIMESTAMP_TOLERANCE,
 			): Effect.Effect<void, WebhookTimestampError> =>
 				Effect.gen(function* () {
-					const webhookTime = DateTime.unsafeMake(timestamp)
-					const now = DateTime.unsafeNow()
-					const difference = DateTime.distanceDuration(webhookTime, now)
+					const webhookTime = DateTime.makeUnsafe(timestamp)
+					const now = DateTime.nowUnsafe()
+					const difference = DateTime.distance(webhookTime, now)
 
-					if (Duration.greaterThan(difference, tolerance)) {
+					if (Duration.isGreaterThan(difference, tolerance)) {
 						return yield* Effect.fail(
 							new WebhookTimestampError({
 								message: `Webhook timestamp is too old. Difference: ${Duration.format(difference)}, Tolerance: ${Duration.format(tolerance)}`,

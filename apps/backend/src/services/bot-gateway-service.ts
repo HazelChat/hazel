@@ -6,9 +6,13 @@ import {
 } from "@hazel/domain"
 import type { Channel, ChannelMember, Message } from "@hazel/domain/models"
 import type { BotId, ChannelId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Ref, Schema } from "effect"
+import { ServiceMap, Config, DateTime, Effect, Layer, Option, Ref, Schema } from "effect"
 
 const DEFAULT_DURABLE_STREAMS_URL = "http://localhost:4437/v1/stream"
+
+/** Get epoch milliseconds from Date or DateTime.Utc */
+const toEpochMs = (d: Date | DateTime.Utc): number =>
+	d instanceof Date ? d.getTime() : DateTime.toEpochMillis(d)
 
 const normalizeBaseUrl = (value: string): string => value.replace(/\/+$/, "")
 
@@ -187,7 +191,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 			}
 
 			const eventTimestamp =
-				message.updatedAt?.getTime?.() ?? message.createdAt?.getTime?.() ?? Date.now()
+				message.updatedAt ? toEpochMs(message.updatedAt) : message.createdAt ? toEpochMs(message.createdAt) : Date.now()
 
 			yield* publishToInstalledBots(organizationId, () => ({
 				schemaVersion: 1,
@@ -208,7 +212,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 			channel: Schema.Schema.Type<typeof Channel.Model.json>,
 		) {
 			const eventTimestamp =
-				channel.updatedAt?.getTime?.() ?? channel.createdAt?.getTime?.() ?? Date.now()
+				channel.updatedAt ? toEpochMs(channel.updatedAt) : channel.createdAt ? toEpochMs(channel.createdAt) : Date.now()
 
 			yield* publishToInstalledBots(channel.organizationId, () => ({
 				schemaVersion: 1,
@@ -233,7 +237,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 				return
 			}
 
-			const eventTimestamp = member.createdAt?.getTime?.() ?? member.joinedAt?.getTime?.() ?? Date.now()
+			const eventTimestamp = member.createdAt ? toEpochMs(member.createdAt) : member.joinedAt ? toEpochMs(member.joinedAt) : Date.now()
 
 			yield* publishToInstalledBots(organizationId, () => ({
 				schemaVersion: 1,

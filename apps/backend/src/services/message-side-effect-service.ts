@@ -107,36 +107,14 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 							},
 						})
 						.pipe(
-							Effect.catchTags({
-								HttpApiDecodeError: (err) =>
-									Effect.fail(
-										new WorkflowInitializationError({
-											message: "Failed to execute notification workflow",
-											cause: err.message,
-										}),
-									),
-								ParseError: (err) =>
-									Effect.fail(
-										new WorkflowInitializationError({
-											message: "Failed to execute notification workflow",
-											cause: String(err),
-										}),
-									),
-								RequestError: (err) =>
-									Effect.fail(
-										new WorkflowInitializationError({
-											message: "Failed to execute notification workflow",
-											cause: err.message,
-										}),
-									),
-								ResponseError: (err) =>
-									Effect.fail(
-										new WorkflowInitializationError({
-											message: "Failed to execute notification workflow",
-											cause: err.message,
-										}),
-									),
-							}),
+							Effect.catch((err) =>
+								Effect.fail(
+									new WorkflowInitializationError({
+										message: "Failed to execute notification workflow",
+										cause: String(err),
+									}),
+								),
+							),
 						)
 
 					if (channelType !== "thread") {
@@ -198,12 +176,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 									threadChannelId: payload.channelId,
 								}),
 							),
-							Effect.catchTags({
-								HttpApiDecodeError: () => Effect.void,
-								ParseError: () => Effect.void,
-								RequestError: () => Effect.void,
-								ResponseError: () => Effect.void,
-							}),
+							Effect.catch(() => Effect.void),
 						)
 				},
 			)

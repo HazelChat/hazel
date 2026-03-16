@@ -196,7 +196,7 @@ type DiscordGatewayChannelLink = {
 }
 
 type DiscordGatewayDispatchWorker = Pick<
-	DiscordSyncWorker,
+	ServiceMap.Service.Shape<typeof DiscordSyncWorker>,
 	| "ingestMessageCreate"
 	| "ingestMessageUpdate"
 	| "ingestMessageDelete"
@@ -580,12 +580,10 @@ export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayServ
 
 			const gatewayEnabled = yield* Config.boolean("DISCORD_GATEWAY_ENABLED").pipe(
 				Config.withDefault(true),
-				Effect.orDie,
 			)
 			const configuredIntents = yield* Config.number("DISCORD_GATEWAY_INTENTS").pipe(
 				// GUILDS + GUILD_MESSAGES + GUILD_MESSAGE_REACTIONS + MESSAGE_CONTENT
 				Config.withDefault(DISCORD_REQUIRED_GATEWAY_INTENTS),
-				Effect.orDie,
 			)
 			const intents = configuredIntents | DISCORD_REQUIRED_GATEWAY_INTENTS
 			if (intents !== configuredIntents) {
@@ -597,7 +595,7 @@ export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayServ
 					},
 				)
 			}
-			const botTokenOption = yield* Effect.option(Config.redacted("DISCORD_BOT_TOKEN"))
+			const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
 
 			if (!gatewayEnabled) {
 				yield* Effect.logInfo("Discord gateway disabled via DISCORD_GATEWAY_ENABLED=false")

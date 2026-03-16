@@ -124,12 +124,12 @@ export const loadProviderConfig = (provider: OAuthIntegrationProvider) => {
 	const prefix = provider.toUpperCase()
 	const staticConfig = PROVIDER_CONFIGS[provider]
 
-	return Effect.all({
+	return Config.all({
 		apiBaseUrl: Config.string("API_BASE_URL"),
 		clientId: Config.string(`${prefix}_CLIENT_ID`),
 		clientSecret: Config.redacted(`${prefix}_CLIENT_SECRET`),
 	}).pipe(
-		Effect.map(
+		Config.map(
 			(envConfig): OAuthProviderConfig => ({
 				...staticConfig,
 				clientId: envConfig.clientId,

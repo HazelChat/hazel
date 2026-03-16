@@ -92,7 +92,7 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 			const discordApiClient = yield* Discord.DiscordApiClient
 
 			const getDiscordToken = Effect.fn("ChatSyncProviderRegistry.getDiscordToken")(function* () {
-				const discordBotToken = yield* Effect.option(Config.redacted("DISCORD_BOT_TOKEN"))
+				const discordBotToken = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
 				if (Option.isNone(discordBotToken)) {
 					return yield* Effect.fail(
 						new ChatSyncProviderConfigurationError({

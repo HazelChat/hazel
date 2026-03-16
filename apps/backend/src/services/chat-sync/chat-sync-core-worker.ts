@@ -221,7 +221,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 
 		const getAttachmentPublicUrlBase = Effect.fn("discordSyncWorker.getAttachmentPublicUrlBase")(
 			function* () {
-				const configuredBaseUrl = yield* Effect.option(Config.string("S3_PUBLIC_URL"))
+				const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Config.option)
 				if (Option.isNone(configuredBaseUrl) || configuredBaseUrl.value.trim().length === 0) {
 					return yield* Effect.fail(
 						new DiscordSyncConfigurationError({
@@ -500,7 +500,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						return currentConfig
 					}
 
-					const botTokenOption = yield* Effect.option(Config.redacted("DISCORD_BOT_TOKEN"))
+					const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Config.option)
 					if (Option.isNone(botTokenOption)) {
 						return Option.none()
 					}

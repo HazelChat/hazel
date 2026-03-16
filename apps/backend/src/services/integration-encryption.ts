@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 
 export interface EncryptedToken {
 	ciphertext: string // Base64 encoded
@@ -34,10 +34,10 @@ export class IntegrationEncryption extends ServiceMap.Service<IntegrationEncrypt
 			)
 
 			// Optional: Previous key for decryption during rotation
-			const previousKey = yield* Config.redacted("INTEGRATION_ENCRYPTION_KEY_PREV").pipe(
+			const previousKeyOption = yield* Config.redacted("INTEGRATION_ENCRYPTION_KEY_PREV").pipe(
 				Config.option,
-				Effect.map(Option.getOrUndefined),
 			)
+			const previousKey = Option.getOrUndefined(previousKeyOption)
 			const previousKeyVersion = yield* Config.number("INTEGRATION_ENCRYPTION_KEY_VERSION_PREV").pipe(
 				Config.withDefault(0),
 			)

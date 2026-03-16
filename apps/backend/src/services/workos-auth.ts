@@ -1,5 +1,5 @@
 import { WorkOS as WorkOSNodeAPI } from "@workos-inc/node"
-import { ServiceMap, Config, Effect, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Redacted, Schema } from "effect"
 
 export class WorkOSAuthError extends Schema.TaggedErrorClass<WorkOSAuthError>()("WorkOSAuthError", {
 	cause: Schema.Unknown,
