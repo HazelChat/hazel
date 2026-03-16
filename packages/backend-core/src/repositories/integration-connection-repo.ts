@@ -2,7 +2,7 @@ import { and, Database, eq, isNull, ModelRepository, schema, sql, type TxFn } fr
 
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationConnectionRepo>()(
 	"IntegrationConnectionRepo",
@@ -323,7 +323,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 										.set({
 											...updateParams.data,
 											updatedAt: new Date(),
-										})
+										} as any)
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
@@ -370,7 +370,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 										.set({
 											...updateParams.data,
 											updatedAt: new Date(),
-										})
+										} as any)
 										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
 										.returning(),
 								),
@@ -399,4 +399,6 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

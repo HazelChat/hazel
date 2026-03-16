@@ -108,9 +108,7 @@ export class TwitterApi extends ServiceMap.Service<TwitterApi>()("TwitterApi", {
 						)
 
 					// Parse JSON response
-					const data: any = yield* response.json.pipe(
-						Effect.catch(() => Effect.succeed(undefined)),
-					)
+					const data: any = yield* response.json.pipe(Effect.catch(() => Effect.succeed(undefined)))
 
 					// Handle successful response
 					if (response.status >= 200 && response.status < 300) {
@@ -168,7 +166,5 @@ export class TwitterApi extends ServiceMap.Service<TwitterApi>()("TwitterApi", {
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 }

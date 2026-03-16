@@ -2,7 +2,7 @@ import { and, Database, eq, gte, ModelRepository, schema, type TxFn } from "@haz
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventReceiptRepo>()(
 	"ChatSyncEventReceiptRepo",
@@ -219,4 +219,6 @@ export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventRe
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

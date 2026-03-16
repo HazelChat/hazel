@@ -26,18 +26,19 @@ export class TokenValidationConfigService extends ServiceMap.Service<TokenValida
 	{
 		make: Effect.gen(function* () {
 			const workosClientId = yield* optionalValue(
-				Effect.flatMap(
-					Config.string("WORKOS_CLIENT_ID").asEffect(),
-					(value) => Schema.decodeUnknownEffect(WorkOSClientIdSchema)(value),
+				Effect.flatMap(Config.string("WORKOS_CLIENT_ID").asEffect(), (value) =>
+					Schema.decodeUnknownEffect(WorkOSClientIdSchema)(value),
 				),
 			)
 
 			const backendUrl = yield* optionalValue(
-				Config.string("BACKEND_URL").pipe(
-					Config.orElse(() => Config.string("API_BASE_URL")),
-					Config.orElse(() => Config.string("VITE_BACKEND_URL")),
-					Config.orElse(() => Config.string("VITE_API_BASE_URL")),
-				).asEffect(),
+				Config.string("BACKEND_URL")
+					.pipe(
+						Config.orElse(() => Config.string("API_BASE_URL")),
+						Config.orElse(() => Config.string("VITE_BACKEND_URL")),
+						Config.orElse(() => Config.string("VITE_API_BASE_URL")),
+					)
+					.asEffect(),
 			)
 
 			const internalSecret = yield* optionalValue(Config.redacted("INTERNAL_SECRET").asEffect())

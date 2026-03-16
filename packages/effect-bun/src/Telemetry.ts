@@ -61,9 +61,6 @@ export const createTracingLayer = (otelServiceName: string) =>
 						"deployment.commit_sha": commitSha,
 					},
 				},
-			}).pipe(
-				Layer.provide(FetchHttpClient.layer),
-				Layer.provide(OtlpSerialization.layerJson),
-			)
+			}).pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(OtlpSerialization.layerJson))
 		}),
 	)

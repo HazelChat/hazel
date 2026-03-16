@@ -13,7 +13,8 @@ export interface BotHealthServerConfig {
 	readonly port: number
 }
 
-export class BotHealthServerConfigTag extends ServiceMap.Service<BotHealthServerConfigTag,
+export class BotHealthServerConfigTag extends ServiceMap.Service<
+	BotHealthServerConfigTag,
 	BotHealthServerConfig
 >()("@hazel/bot-sdk/BotHealthServerConfig") {}
 

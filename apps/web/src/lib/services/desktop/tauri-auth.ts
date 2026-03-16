@@ -169,7 +169,7 @@ export class TauriAuth extends ServiceMap.Service<TauriAuth>()("TauriAuth", {
 						)
 					}).pipe(
 						Effect.timeout(Duration.minutes(2)),
-						Effect.catchTag("TimeoutException", () =>
+						Effect.catchTag("TimeoutError", () =>
 							Effect.fail(
 								new OAuthTimeoutError({
 									message: "OAuth callback timeout after 2 minutes",

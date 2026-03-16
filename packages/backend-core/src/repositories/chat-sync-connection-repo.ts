@@ -2,7 +2,7 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import { ChatSyncConnection } from "@hazel/domain/models"
 import type { IntegrationConnectionId, OrganizationId, SyncConnectionId } from "@hazel/schema"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ChatSyncConnectionRepo extends ServiceMap.Service<ChatSyncConnectionRepo>()(
 	"ChatSyncConnectionRepo",
@@ -181,4 +181,6 @@ export class ChatSyncConnectionRepo extends ServiceMap.Service<ChatSyncConnectio
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

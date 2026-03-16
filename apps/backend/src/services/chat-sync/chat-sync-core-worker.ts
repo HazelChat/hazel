@@ -72,11 +72,14 @@ export class DiscordSyncMessageNotFoundError extends Schema.TaggedErrorClass<Dis
 	},
 ) {}
 
-export class DiscordSyncApiError extends Schema.TaggedErrorClass<DiscordSyncApiError>()("DiscordSyncApiError", {
-	message: Schema.String,
-	status: Schema.optional(Schema.Number),
-	detail: Schema.optional(Schema.String),
-}) {}
+export class DiscordSyncApiError extends Schema.TaggedErrorClass<DiscordSyncApiError>()(
+	"DiscordSyncApiError",
+	{
+		message: Schema.String,
+		status: Schema.optional(Schema.Number),
+		detail: Schema.optional(Schema.String),
+	},
+) {}
 
 type ChatSyncProvider = ChatSyncConnection.ChatSyncProvider
 

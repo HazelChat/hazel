@@ -11,7 +11,9 @@ export const validateRpcGroupScopes = (
 ): { valid: boolean; missing: string[] } => {
 	const missing: string[] = []
 	for (const [tag, rpc] of requests) {
-		const scopes = ServiceMap.get(rpc.annotations as any, RequiredScopes) as ReadonlyArray<string> | undefined
+		const scopes = ServiceMap.get(rpc.annotations as any, RequiredScopes) as
+			| ReadonlyArray<string>
+			| undefined
 		if (!scopes) {
 			missing.push(`${groupName}.${tag}`)
 		}

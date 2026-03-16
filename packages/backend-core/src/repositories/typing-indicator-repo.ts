@@ -54,7 +54,7 @@ export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>
 					return client
 						.insert(schema.typingIndicatorsTable)
 						.values({
-							id: TypingIndicatorId.make(crypto.randomUUID()),
+							id: TypingIndicatorId.makeUnsafe(crypto.randomUUID()),
 							channelId: params.channelId,
 							memberId: params.memberId,
 							lastTyped: params.lastTyped,

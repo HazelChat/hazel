@@ -28,9 +28,12 @@ export class S3MissingCredentialsError extends Schema.TaggedErrorClass<S3Missing
  * Invalid HTTP method for S3 operation
  * Bun error code: ERR_S3_INVALID_METHOD
  */
-export class S3InvalidMethodError extends Schema.TaggedErrorClass<S3InvalidMethodError>()("S3InvalidMethodError", {
-	message: Schema.String,
-}) {}
+export class S3InvalidMethodError extends Schema.TaggedErrorClass<S3InvalidMethodError>()(
+	"S3InvalidMethodError",
+	{
+		message: Schema.String,
+	},
+) {}
 
 /**
  * Invalid S3 path/key
@@ -138,7 +141,8 @@ export type S3WriteData = string | ArrayBuffer | Uint8Array | Blob | Response | 
  * })
  * ```
  */
-export class S3 extends ServiceMap.Service<S3,
+export class S3 extends ServiceMap.Service<
+	S3,
 	{
 		/**
 		 * Generate a presigned URL for S3 operations

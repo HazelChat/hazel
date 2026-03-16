@@ -36,9 +36,12 @@ export class ChannelResponse extends Schema.Class<ChannelResponse>("ChannelRespo
  * Error thrown when a channel is not found.
  * Used in update and delete operations.
  */
-export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()("ChannelNotFoundError", {
-	channelId: ChannelId,
-}) {}
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()(
+	"ChannelNotFoundError",
+	{
+		channelId: ChannelId,
+	},
+) {}
 
 /**
  * Request schema for creating DM or group channels.
@@ -109,7 +112,9 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
-		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Channel.Model.jsonUpdate as any).fields }) as any),
+		}).pipe(
+			(s: any) => Schema.Struct({ ...s.fields, ...(Channel.Model.jsonUpdate as any).fields }) as any,
+		),
 		success: ChannelResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})
@@ -174,7 +179,12 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.createThread", {
 		payload: CreateThreadRequest,
 		success: ChannelResponse,
-		error: Schema.Union([MessageNotFoundError, NestedThreadError, UnauthorizedError, InternalServerError]),
+		error: Schema.Union([
+			MessageNotFoundError,
+			NestedThreadError,
+			UnauthorizedError,
+			InternalServerError,
+		]),
 	})
 		.annotate(RequiredScopes, ["channels:write"])
 		.middleware(AuthMiddleware),

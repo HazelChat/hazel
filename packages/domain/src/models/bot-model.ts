@@ -13,9 +13,7 @@ export class Model extends M.Class<Model>("Bot")({
 	webhookUrl: Schema.NullOr(Schema.String),
 	apiTokenHash: Schema.String,
 	scopes: Schema.NullOr(Schema.Array(Schema.String)),
-	metadata: Schema.NullOr(
-		Schema.Record(Schema.String, Schema.Unknown),
-	),
+	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	isPublic: Schema.Boolean,
 	installCount: Schema.Number,
 	// List of integration providers this bot is allowed to use (e.g., ["linear", "github"])

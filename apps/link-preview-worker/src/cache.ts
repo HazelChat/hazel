@@ -9,7 +9,8 @@ const CACHE_TTL = 3600
  * KV Cache Service
  * Provides caching functionality using Cloudflare KV
  */
-export class KVCache extends ServiceMap.Service<KVCache,
+export class KVCache extends ServiceMap.Service<
+	KVCache,
 	{
 		get: <T>(key: string) => Effect.Effect<T | null, Error>
 		set: <T>(key: string, value: T) => Effect.Effect<void, Error>

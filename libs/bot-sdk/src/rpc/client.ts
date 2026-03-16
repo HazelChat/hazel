@@ -36,15 +36,16 @@ export interface BotRpcClientConfig {
 /**
  * Internal context tag for the RPC client configuration
  */
-export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfigTag,
-	BotRpcClientConfig
->()("@hazel/bot-sdk/BotRpcClientConfig") {}
+export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfigTag, BotRpcClientConfig>()(
+	"@hazel/bot-sdk/BotRpcClientConfig",
+) {}
 
 /**
  * Context tag for the RPC client instance
  * Type is inferred from the actual RpcClient.make result
  */
-export class BotRpcClient extends ServiceMap.Service<BotRpcClient,
+export class BotRpcClient extends ServiceMap.Service<
+	BotRpcClient,
 	Effect.Effect.Success<ReturnType<typeof makeBotRpcClient>>
 >()("@hazel/bot-sdk/BotRpcClient") {}
 

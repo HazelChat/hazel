@@ -11,6 +11,7 @@ import type { ApiScope } from "./api-scope"
  * When Option.none (default), OrgResolver falls back to role-based scopes
  * for normal (human) users.
  */
-export class CurrentBotScopes extends ServiceMap.Service<CurrentBotScopes, Option.Option<ReadonlySet<ApiScope>>>()(
-	"CurrentBotScopes",
-) {}
+export class CurrentBotScopes extends ServiceMap.Service<
+	CurrentBotScopes,
+	Option.Option<ReadonlySet<ApiScope>>
+>()("CurrentBotScopes") {}

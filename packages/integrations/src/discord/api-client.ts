@@ -1,5 +1,5 @@
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
+import { ServiceMap, Duration, Effect, Layer, Result, Schema } from "effect"
 
 export const DiscordAccountInfo = Schema.Struct({
 	externalAccountId: Schema.String,
@@ -31,14 +31,14 @@ const DiscordUserApiResponse = Schema.Struct({
 	id: Schema.String,
 	username: Schema.String,
 	global_name: Schema.optional(Schema.NullOr(Schema.String)),
-	discriminator: Schema.optional(Schema.String, { default: () => "0" }),
+	discriminator: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "0")),
 })
 
 const DiscordGuildApiResponse = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
 	icon: Schema.optional(Schema.NullOr(Schema.String)),
-	owner: Schema.optional(Schema.Boolean, { default: () => false }),
+	owner: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(() => false)),
 })
 
 const DiscordWebhookCreateResponse = Schema.Struct({
@@ -59,7 +59,7 @@ const DiscordMessageCreateResponse = Schema.Struct({
 })
 
 const DiscordErrorApiResponse = Schema.Struct({
-	message: Schema.optional(Schema.String, { default: () => "Unknown Discord error" }),
+	message: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "Unknown Discord error")),
 })
 
 export class DiscordApiError extends Schema.TaggedErrorClass<DiscordApiError>()("DiscordApiError", {
@@ -115,16 +115,16 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			status: number
 			json: Effect.Effect<unknown, unknown, never>
 		}) {
-			const bodyResult = yield* response.json.pipe(Effect.either)
-			const message =
-				bodyResult._tag === "Right"
-					? (() => {
-							const decoded = Schema.decodeUnknownSync(DiscordErrorApiResponse)(
-								bodyResult.right,
-							)
-							return parseDiscordErrorMessage(response.status, decoded.message)
-						})()
-					: `Discord API request failed with status ${response.status}`
+			const bodyResult = yield* response.json.pipe(Effect.result)
+			const message = Result.isSuccess(bodyResult)
+				? (() => {
+						const decoded = Schema.decodeUnknownSync(DiscordErrorApiResponse)(bodyResult.success)
+						return parseDiscordErrorMessage(
+							response.status,
+							decoded.message ?? "Unknown Discord error",
+						)
+					})()
+				: `Discord API request failed with status ${response.status}`
 
 			return yield* Effect.fail(
 				new DiscordApiError({
@@ -144,7 +144,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(DiscordUserApiResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(DiscordUserApiResponse)),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -174,7 +174,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(Schema.Array(DiscordGuildApiResponse))),
+				Effect.flatMap(Schema.decodeUnknownEffect(Schema.Array(DiscordGuildApiResponse))),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -207,7 +207,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(Schema.Array(DiscordGuildChannelApiResponse))),
+				Effect.flatMap(Schema.decodeUnknownEffect(Schema.Array(DiscordGuildChannelApiResponse))),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -266,7 +266,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(DiscordMessageCreateResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(DiscordMessageCreateResponse)),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -302,7 +302,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(DiscordWebhookCreateResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(DiscordWebhookCreateResponse)),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -365,7 +365,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(DiscordMessageCreateResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(DiscordMessageCreateResponse)),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -518,7 +518,7 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 			}
 
 			const body = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(DiscordMessageCreateResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(DiscordMessageCreateResponse)),
 				Effect.mapError(
 					(cause) =>
 						new DiscordApiError({
@@ -548,7 +548,5 @@ export class DiscordApiClient extends ServiceMap.Service<DiscordApiClient>()("Di
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 }

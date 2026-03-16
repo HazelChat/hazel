@@ -164,7 +164,13 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			params: { orgId: OrganizationId },
 			query: { url: Schema.String },
 			success: LinearIssueResourceResponse,
-			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				ResourceNotFoundError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -180,7 +186,13 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			params: { orgId: OrganizationId },
 			query: { url: Schema.String },
 			success: GitHubPRResourceResponse,
-			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, ResourceNotFoundError, UnauthorizedError, InternalServerError],
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				ResourceNotFoundError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -196,7 +208,9 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 			params: { orgId: OrganizationId },
 			query: {
 				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
-				perPage: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "30")),
+				perPage: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(() => "30"),
+				),
 			},
 			success: GitHubRepositoriesResponse,
 			error: [IntegrationNotConnectedForPreviewError, UnauthorizedError, InternalServerError],
@@ -214,7 +228,12 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 		HttpApiEndpoint.get("getDiscordGuilds", `/:orgId/discord/guilds`, {
 			params: { orgId: OrganizationId },
 			success: DiscordGuildsResponse,
-			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -232,7 +251,12 @@ export class IntegrationResourceGroup extends HttpApiGroup.make("integration-res
 				guildId: Schema.String,
 			},
 			success: DiscordGuildChannelsResponse,
-			error: [IntegrationNotConnectedForPreviewError, IntegrationResourceError, UnauthorizedError, InternalServerError],
+			error: [
+				IntegrationNotConnectedForPreviewError,
+				IntegrationResourceError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({

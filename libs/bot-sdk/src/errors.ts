@@ -3,10 +3,13 @@ import { Schema } from "effect"
 /**
  * Error thrown when bot authentication fails.
  */
-export class AuthenticationError extends Schema.TaggedErrorClass<AuthenticationError>()("AuthenticationError", {
-	message: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class AuthenticationError extends Schema.TaggedErrorClass<AuthenticationError>()(
+	"AuthenticationError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 /**
  * Error thrown when a command payload cannot be decoded.
@@ -23,11 +26,14 @@ export class CommandArgsDecodeError extends Schema.TaggedErrorClass<CommandArgsD
 /**
  * Error thrown when a command handler fails.
  */
-export class CommandHandlerError extends Schema.TaggedErrorClass<CommandHandlerError>()("CommandHandlerError", {
-	message: Schema.String,
-	commandName: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class CommandHandlerError extends Schema.TaggedErrorClass<CommandHandlerError>()(
+	"CommandHandlerError",
+	{
+		message: Schema.String,
+		commandName: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 /**
  * Error thrown when syncing slash commands with the backend fails.
@@ -40,10 +46,13 @@ export class CommandSyncError extends Schema.TaggedErrorClass<CommandSyncError>(
 /**
  * Error thrown when syncing mentionable settings fails.
  */
-export class MentionableSyncError extends Schema.TaggedErrorClass<MentionableSyncError>()("MentionableSyncError", {
-	message: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class MentionableSyncError extends Schema.TaggedErrorClass<MentionableSyncError>()(
+	"MentionableSyncError",
+	{
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 export class GatewayReadError extends Schema.TaggedErrorClass<GatewayReadError>()("GatewayReadError", {
 	message: Schema.String,

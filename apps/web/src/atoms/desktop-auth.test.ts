@@ -35,7 +35,7 @@ describe("isFatalRefreshError", () => {
 
 	it("returns false for timeout errors", () => {
 		const error = {
-			_tag: "TimeoutException",
+			_tag: "TimeoutError",
 			message: "Request timed out",
 		}
 		expect(isFatalRefreshError(error)).toBe(false)
@@ -43,7 +43,7 @@ describe("isFatalRefreshError", () => {
 
 	it("returns false for network errors", () => {
 		const error = {
-			_tag: "RequestError",
+			_tag: "HttpClientError",
 			message: "Network error during token refresh",
 		}
 		expect(isFatalRefreshError(error)).toBe(false)
@@ -65,7 +65,7 @@ describe("isFatalRefreshError", () => {
 describe("isTransientError", () => {
 	it("returns true for TimeoutException tag", () => {
 		const error = {
-			_tag: "TimeoutException",
+			_tag: "TimeoutError",
 			message: "Operation timed out",
 		}
 		expect(isTransientError(error)).toBe(true)
@@ -73,7 +73,7 @@ describe("isTransientError", () => {
 
 	it("returns true for RequestError tag", () => {
 		const error = {
-			_tag: "RequestError",
+			_tag: "HttpClientError",
 			message: "Request failed",
 		}
 		expect(isTransientError(error)).toBe(true)

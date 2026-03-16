@@ -8,7 +8,7 @@ import type {
 	SyncChannelLinkId,
 	SyncMessageLinkId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
 
 export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageLinkRepo>()(
 	"ChatSyncMessageLinkRepo",
@@ -213,4 +213,6 @@ export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageL
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

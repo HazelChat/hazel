@@ -21,39 +21,31 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 			Effect.sync(() => {
 				const prefixed = (key: string) => `${prefix}:${key}`
 
-				const parse = (method: string) => (str: string | null): Effect.Effect<object | undefined, Persistence.PersistenceError> => {
-					if (str === null) return Effect.succeed(undefined)
-					return Effect.try({
-						try: () => JSON.parse(str) as object,
-						catch: (error) => makePersistenceError(method, error),
-					})
-				}
+				const parse =
+					(method: string) =>
+					(str: string | null): Effect.Effect<object | undefined, Persistence.PersistenceError> => {
+						if (str === null) return Effect.succeed(undefined)
+						return Effect.try({
+							try: () => JSON.parse(str) as object,
+							catch: (error) => makePersistenceError(method, error),
+						})
+					}
 
 				return identity<Persistence.BackingPersistenceStore>({
 					get: (key) =>
 						Effect.flatMap(
 							redis
 								.get(prefixed(key))
-								.pipe(
-									Effect.mapError((error) =>
-										makePersistenceError("get", error),
-									),
-								),
+								.pipe(Effect.mapError((error) => makePersistenceError("get", error))),
 							parse("get"),
 						),
 
 					getMany: (keys) =>
-						redis
-							.send<(string | null)[]>("MGET", keys.map(prefixed))
-							.pipe(
-								Effect.mapError((error) =>
-									makePersistenceError("getMany", error),
-								),
-								Effect.flatMap((results) =>
-									Effect.forEach(results, parse("getMany")),
-								),
-								Effect.map((results) => results as any),
-							),
+						redis.send<(string | null)[]>("MGET", keys.map(prefixed)).pipe(
+							Effect.mapError((error) => makePersistenceError("getMany", error)),
+							Effect.flatMap((results) => Effect.forEach(results, parse("getMany"))),
+							Effect.map((results) => results as any),
+						),
 
 					set: (key, value, ttl) =>
 						Effect.gen(function* () {
@@ -66,25 +58,12 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 							if (ttl !== undefined) {
 								// Atomic SET with PX (milliseconds) - sets value and TTL in single command
 								yield* redis
-									.send("SET", [
-										pkey,
-										serialized,
-										"PX",
-										String(Duration.toMillis(ttl)),
-									])
-									.pipe(
-										Effect.mapError((error) =>
-											makePersistenceError("set", error),
-										),
-									)
+									.send("SET", [pkey, serialized, "PX", String(Duration.toMillis(ttl))])
+									.pipe(Effect.mapError((error) => makePersistenceError("set", error)))
 							} else {
 								yield* redis
 									.set(pkey, serialized)
-									.pipe(
-										Effect.mapError((error) =>
-											makePersistenceError("set", error),
-										),
-									)
+									.pipe(Effect.mapError((error) => makePersistenceError("set", error)))
 							}
 						}),
 
@@ -95,12 +74,7 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 								const serialized = JSON.stringify(value)
 								if (ttl !== undefined) {
 									yield* redis
-										.send("SET", [
-											pkey,
-											serialized,
-											"PX",
-											String(Duration.toMillis(ttl)),
-										])
+										.send("SET", [pkey, serialized, "PX", String(Duration.toMillis(ttl))])
 										.pipe(
 											Effect.mapError((error) =>
 												makePersistenceError("setMany", error),
@@ -121,28 +95,16 @@ export const makeRedisBackingPersistence = Effect.gen(function* () {
 					remove: (key) =>
 						redis
 							.del(prefixed(key))
-							.pipe(
-								Effect.mapError((error) =>
-									makePersistenceError("remove", error),
-								),
-							),
+							.pipe(Effect.mapError((error) => makePersistenceError("remove", error))),
 
 					clear: Effect.gen(function* () {
 						const keys = yield* redis
 							.send<string[]>("KEYS", [`${prefix}:*`])
-							.pipe(
-								Effect.mapError((error) =>
-									makePersistenceError("clear", error),
-								),
-							)
+							.pipe(Effect.mapError((error) => makePersistenceError("clear", error)))
 						if (keys.length > 0) {
 							yield* redis
 								.send("DEL", keys)
-								.pipe(
-									Effect.mapError((error) =>
-										makePersistenceError("clear", error),
-									),
-								)
+								.pipe(Effect.mapError((error) => makePersistenceError("clear", error)))
 						}
 					}),
 				})
@@ -165,9 +127,7 @@ export const RedisBackingPersistenceLive = Layer.effect(
  * Requires: Redis
  * Provides: Persistence.Persistence
  */
-export const RedisResultPersistenceLive = Persistence.layer.pipe(
-	Layer.provide(RedisBackingPersistenceLive),
-)
+export const RedisResultPersistenceLive = Persistence.layer.pipe(Layer.provide(RedisBackingPersistenceLive))
 
 /**
  * In-memory persistence layer for testing or fallback.

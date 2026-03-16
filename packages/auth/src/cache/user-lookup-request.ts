@@ -1,5 +1,6 @@
 import { UserId, WorkOSUserId } from "@hazel/schema"
-import { PrimaryKey, Schema } from "effect"
+import { Schema } from "effect"
+import { Persistable } from "effect/unstable/persistence"
 import { UserLookupCacheError } from "../errors.ts"
 
 /**
@@ -14,24 +15,15 @@ export type UserLookupResult = typeof UserLookupResult.Type
 
 /**
  * Request type for user lookup cache operations.
- * Implements TaggedRequest for use with @effect/experimental Persistence.
+ * Implements Persistable.Class for use with Persistence.
  */
-export class UserLookupCacheRequest extends Schema.TaggedRequest<UserLookupCacheRequest>()(
-	"UserLookupCacheRequest",
-	{
-		failure: UserLookupCacheError,
-		success: UserLookupResult,
-		payload: {
-			/** WorkOS user ID (external ID) */
-			workosUserId: WorkOSUserId,
-		},
-	},
-) {
-	/**
-	 * Primary key for cache storage.
-	 * Used by ResultPersistence to generate the cache key.
-	 */
-	[PrimaryKey.symbol]() {
-		return this.workosUserId
+export class UserLookupCacheRequest extends Persistable.Class<{
+	payload: {
+		/** WorkOS user ID (external ID) */
+		workosUserId: typeof WorkOSUserId.Type
 	}
-}
+}>()("UserLookupCacheRequest", {
+	primaryKey: (payload) => payload.workosUserId,
+	success: UserLookupResult,
+	error: UserLookupCacheError,
+}) {}

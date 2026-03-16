@@ -12,9 +12,9 @@ type AnyActorContext = ActorContext<any, any, any, any, any, any>
  * externally-provided runtime resource injected by the Rivet framework,
  * not a service we construct via layers.
  */
-export class RivetActorContext extends ServiceMap.Service<RivetActorContext,
-	AnyActorContext
->()("@hazel/rivet-effect/RivetActorContext") {}
+export class RivetActorContext extends ServiceMap.Service<RivetActorContext, AnyActorContext>()(
+	"@hazel/rivet-effect/RivetActorContext",
+) {}
 
 export const provideActorContext = <A, E, R>(
 	make: Effect.Effect<A, E, R>,

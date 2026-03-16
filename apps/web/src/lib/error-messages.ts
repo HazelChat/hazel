@@ -449,7 +449,7 @@ const isSchemaCommonError = Schema.is(CommonAppErrorSchema)
 /**
  * Tags for non-Schema errors that are still common
  */
-const NON_SCHEMA_COMMON_TAGS = new Set(["ParseError", "RequestError", "ResponseError"])
+const NON_SCHEMA_COMMON_TAGS = new Set(["ParseError", "HttpClientError", "HttpClientError"])
 
 /**
  * Type guard for CommonAppError.
@@ -474,7 +474,7 @@ function isNetworkError(error: unknown): boolean {
 	if (typeof error !== "object" || error === null) return false
 
 	// Effect HttpClientError.RequestError with Transport reason
-	if ("_tag" in error && error._tag === "RequestError" && "reason" in error) {
+	if ("_tag" in error && error._tag === "HttpClientError" && "reason" in error) {
 		return (error as { reason: string }).reason === "Transport"
 	}
 
@@ -492,7 +492,7 @@ function isNetworkError(error: unknown): boolean {
 function isTimeoutError(error: unknown): boolean {
 	if (typeof error !== "object" || error === null) return false
 	if ("_tag" in error) {
-		return (error as { _tag: string })._tag === "TimeoutException"
+		return (error as { _tag: string })._tag === "TimeoutError"
 	}
 	return false
 }

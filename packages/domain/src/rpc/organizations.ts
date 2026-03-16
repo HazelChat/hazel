@@ -80,7 +80,10 @@ export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.make("organization.update", {
 		payload: Schema.Struct({
 			id: OrganizationId,
-		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Organization.Model.jsonUpdate as any).fields }) as any),
+		}).pipe(
+			(s: any) =>
+				Schema.Struct({ ...s.fields, ...(Organization.Model.jsonUpdate as any).fields }) as any,
+		),
 		success: OrganizationResponse,
 		error: Schema.Union([
 			OrganizationNotFoundError,

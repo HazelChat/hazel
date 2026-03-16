@@ -77,10 +77,10 @@ export interface UserRepoLike {
 	>
 }
 
-export const decodeWorkOSJwtClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+export const decodeWorkOSJwtClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
 
 export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
-	Schema.decodeUnknown(OrganizationId)(externalId)
+	Schema.decodeUnknownEffect(OrganizationId)(externalId)
 
 /**
  * Backend authentication service.
@@ -91,7 +91,7 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
 export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
 	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
-		const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+		const clientId = yield* Config.string("WORKOS_CLIENT_ID")
 		const decodeClaims = decodeWorkOSJwtClaims
 
 		/**
@@ -276,7 +276,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 					})
 
 				const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-					Effect.orElse(() =>
+					Effect.catch(() =>
 						verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`),
 					),
 				)
@@ -350,9 +350,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(WorkOSClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(WorkOSClient.layer))
 
 	/** Mock user ID - a valid UUID */
 	static readonly mockUserId = "00000000-0000-0000-0000-000000000001" as UserId
@@ -386,7 +384,6 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 
 	/** Test layer with successful authentication */
 	static Test = Layer.mock(this, {
-		_tag: "@hazel/auth/BackendAuth",
 		authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 			Effect.succeed(BackendAuth.mockCurrentUser()),
 		syncUserFromWorkOS: (
@@ -407,7 +404,6 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		}
 	}) =>
 		Layer.mock(BackendAuth, {
-			_tag: "@hazel/auth/BackendAuth",
 			authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 				options.shouldFail?.authenticateWithBearer ??
 				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),

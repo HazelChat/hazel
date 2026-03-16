@@ -69,10 +69,13 @@ export class BotNotFoundError extends Schema.TaggedErrorClass<BotNotFoundError>(
 	botId: BotId,
 }) {}
 
-export class BotNotInstalledError extends Schema.TaggedErrorClass<BotNotInstalledError>()("BotNotInstalledError", {
-	botId: BotId,
-	orgId: OrganizationId,
-}) {}
+export class BotNotInstalledError extends Schema.TaggedErrorClass<BotNotInstalledError>()(
+	"BotNotInstalledError",
+	{
+		botId: BotId,
+		orgId: OrganizationId,
+	},
+) {}
 
 export class BotCommandNotFoundError extends Schema.TaggedErrorClass<BotCommandNotFoundError>()(
 	"BotCommandNotFoundError",

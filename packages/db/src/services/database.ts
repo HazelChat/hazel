@@ -29,7 +29,9 @@ export interface TransactionService {
 	readonly execute: TxFn
 }
 
-export class TransactionContext extends ServiceMap.Service<TransactionContext, TransactionService>()("TransactionContext") {}
+export class TransactionContext extends ServiceMap.Service<TransactionContext, TransactionService>()(
+	"TransactionContext",
+) {}
 
 const DatabaseErrorType = Schema.Literals([
 	"unique_violation",
@@ -103,7 +105,7 @@ const makeService = (config: Config) =>
 
 		yield* Effect.tryPromise(() => sql`SELECT 1`).pipe(
 			Effect.retry(
-				Schedule.jittered(Schedule.spaced("1.25 seconds"), { min: 0.5, max: 1.5 }).pipe(
+				Schedule.jittered(Schedule.spaced("1.25 seconds")).pipe(
 					Schedule.both(Schedule.recurs(10)),
 					Schedule.tapOutput(([output]) =>
 						Effect.logWarning(
@@ -176,7 +178,7 @@ const makeService = (config: Config) =>
 				execute: <T>(
 					fn: (client: Client | TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-				validatedInput: Schema.Schema.Type<InputSchema>,
+				validatedInput: InputSchema["Type"],
 				options?: { spanPrefix?: string },
 			) => Effect.Effect<A, E, never>,
 		) => {
@@ -203,7 +205,7 @@ const makeService = (config: Config) =>
 					Effect.withSpan("queryWithSchema", {
 						attributes: { "input.schema": inputSchema.ast.toString() },
 					}),
-				)
+				) as Effect.Effect<A, E | DatabaseError | Schema.SchemaError, R>
 			}
 		}
 

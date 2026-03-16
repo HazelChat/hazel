@@ -17,15 +17,15 @@ export const USER_LOOKUP_CACHE_PREFIX = "auth:user-lookup"
 export const USER_LOOKUP_CACHE_TTL = Duration.minutes(5)
 
 /**
- * User lookup cache service using @effect/experimental Persistence.
+ * User lookup cache service using Persistence.
  * Caches the mapping from workosUserId (external ID) to internalUserId.
  *
- * Uses ResultPersistence for schema-based serialization and Redis backing.
- * Requires: Persistence.ResultPersistence (provided by RedisResultPersistenceLive or MemoryResultPersistenceLive)
+ * Uses Persistence for schema-based serialization and Redis backing.
+ * Requires: Persistence.Persistence (provided by Redis or Memory persistence layer)
  */
 export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@hazel/auth/UserLookupCache", {
 	make: Effect.gen(function* () {
-		const persistence = yield* Persistence.ResultPersistence
+		const persistence = yield* Persistence.Persistence
 
 		const store = yield* persistence.make({
 			storeId: USER_LOOKUP_CACHE_PREFIX,
@@ -58,21 +58,21 @@ export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@haz
 				// Record latency
 				yield* Metric.update(userLookupCacheOperationLatency, Date.now() - startTime)
 
-				if (Option.isNone(cached)) {
-					yield* Metric.increment(userLookupCacheMisses)
+				if (cached === undefined) {
+					yield* Metric.update(userLookupCacheMisses, 1)
 					yield* Effect.annotateCurrentSpan("cache.result", "miss")
 					return Option.none<UserLookupResult>()
 				}
 
 				// Exit contains Success or Failure
-				if (cached.value._tag === "Success") {
-					yield* Metric.increment(userLookupCacheHits)
+				if (Exit.isSuccess(cached)) {
+					yield* Metric.update(userLookupCacheHits, 1)
 					yield* Effect.annotateCurrentSpan("cache.result", "hit")
-					return Option.some(cached.value.value)
+					return Option.some(cached.value)
 				}
 
 				// Cached a failure - treat as cache miss
-				yield* Metric.increment(userLookupCacheMisses)
+				yield* Metric.update(userLookupCacheMisses, 1)
 				yield* Effect.annotateCurrentSpan("cache.result", "miss")
 				yield* Effect.annotateCurrentSpan("cache.skip_reason", "failure_cached")
 				return Option.none<UserLookupResult>()
@@ -142,9 +142,10 @@ export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@haz
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	/** Test layer that always returns cache miss */
 	static Test = Layer.mock(this, {
-		_tag: "@hazel/auth/UserLookupCache",
 		get: (_workosUserId: WorkOSUserId) => Effect.succeed(Option.none<UserLookupResult>()),
 		set: (_workosUserId: WorkOSUserId, _internalUserId: UserId) => Effect.void,
 		invalidate: (_workosUserId: WorkOSUserId) => Effect.void,
@@ -153,7 +154,6 @@ export class UserLookupCache extends ServiceMap.Service<UserLookupCache>()("@haz
 	/** Test layer factory for configurable cache behavior */
 	static TestWith = (options: { cachedResult?: UserLookupResult }) =>
 		Layer.mock(UserLookupCache, {
-			_tag: "@hazel/auth/UserLookupCache",
 			get: (_workosUserId: WorkOSUserId) =>
 				Effect.succeed(options.cachedResult ? Option.some(options.cachedResult) : Option.none()),
 			set: (_workosUserId: WorkOSUserId, _internalUserId: UserId) => Effect.void,

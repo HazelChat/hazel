@@ -19,25 +19,21 @@ export const validateImageUrl = Effect.fn("validateImageUrl")(function* (url: st
 		.head(url)
 		.pipe(Effect.scoped, Effect.timeout(Duration.seconds(5)))
 		.pipe(
-			Effect.catchTag(
-				"TimeoutError",
-				() =>
-					Effect.fail(
-						new InvalidAvatarUrlError({
-							message: "Avatar URL took too long to respond",
-							url,
-						}),
-					),
+			Effect.catchTag("TimeoutError", () =>
+				Effect.fail(
+					new InvalidAvatarUrlError({
+						message: "Avatar URL took too long to respond",
+						url,
+					}),
+				),
 			),
-			Effect.catchTag(
-				"HttpClientError",
-				(e) =>
-					Effect.fail(
-						new InvalidAvatarUrlError({
-							message: `Avatar URL request failed: ${e.message}`,
-							url,
-						}),
-					),
+			Effect.catchTag("HttpClientError", (e) =>
+				Effect.fail(
+					new InvalidAvatarUrlError({
+						message: `Avatar URL request failed: ${e.message}`,
+						url,
+					}),
+				),
 			),
 		)
 
@@ -50,10 +46,10 @@ export const validateImageUrl = Effect.fn("validateImageUrl")(function* (url: st
 		)
 	}
 
-	const contentType = Option.fromNullOr(response.headers["content-type"])
+	const contentType = Option.fromNullishOr(response.headers["content-type"])
 	const isImage = Option.match(contentType, {
 		onNone: () => false,
-		onSome: (ct) => ct.startsWith("image/"),
+		onSome: (ct: string) => ct.startsWith("image/"),
 	})
 
 	if (!isImage) {
@@ -66,10 +62,11 @@ export const validateImageUrl = Effect.fn("validateImageUrl")(function* (url: st
 	}
 })
 
-export const AvatarUrl = Schema.String
-	.check(Schema.isPattern(/^https?:\/\/.+/i, {
+export const AvatarUrl = Schema.String.check(
+	Schema.isPattern(/^https?:\/\/.+/i, {
 		message: "Avatar URL must be a valid URL",
-	}))
+	}),
+)
 	.check(Schema.isMaxLength(2048))
 	.pipe(
 		Schema.decode({

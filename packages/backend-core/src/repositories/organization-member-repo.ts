@@ -2,7 +2,7 @@ import { and, count, Database, eq, isNull, ModelRepository, schema, type TxFn } 
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",
@@ -50,7 +50,7 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 						// Atomic upsert using onConflictDoUpdate to avoid race conditions
 						const result = await client
 							.insert(schema.organizationMembersTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: [
 									schema.organizationMembersTable.organizationId,
@@ -175,4 +175,6 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

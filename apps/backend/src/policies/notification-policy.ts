@@ -4,60 +4,154 @@ import type { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner } from "../lib/policy-utils"
 
-export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()("NotificationPolicy/Policy", {
-	make: Effect.gen(function* () {
-		const policyEntity = "Notification" as const
+export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()(
+	"NotificationPolicy/Policy",
+	{
+		make: Effect.gen(function* () {
+			const policyEntity = "Notification" as const
 
-		const notificationRepo = yield* NotificationRepo
-		const organizationMemberRepo = yield* OrganizationMemberRepo
+			const notificationRepo = yield* NotificationRepo
+			const organizationMemberRepo = yield* OrganizationMemberRepo
 
-		const canCreate = (_memberId: OrganizationMemberId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"create",
-			)(
-				policy(
+			const canCreate = (_memberId: OrganizationMemberId) =>
+				ErrorUtils.refailUnauthorized(
 					policyEntity,
 					"create",
-					Effect.fn(`${policyEntity}.create`)(function* (_actor) {
-						return yield* Effect.succeed(true)
-					}),
-				),
-			)
-
-		const canView = (id: NotificationId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"view",
-			)(
-				notificationRepo.with(id, (notification) =>
+				)(
 					policy(
 						policyEntity,
-						"view",
-						Effect.fn(`${policyEntity}.view`)(function* (actor) {
-							const member = yield* organizationMemberRepo.findById(notification.memberId)
-
-							if (Option.isSome(member) && member.value.userId === actor.id) {
-								return yield* Effect.succeed(true)
-							}
-
-							return yield* Effect.succeed(false)
+						"create",
+						Effect.fn(`${policyEntity}.create`)(function* (_actor) {
+							return yield* Effect.succeed(true)
 						}),
 					),
-				),
-			)
+				)
 
-		const canUpdate = (id: NotificationId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"update",
-			)(
-				notificationRepo.with(id, (notification) =>
-					organizationMemberRepo.with(notification.memberId, (member) =>
+			const canView = (id: NotificationId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"view",
+				)(
+					notificationRepo.with(id, (notification) =>
 						policy(
 							policyEntity,
-							"update",
-							Effect.fn(`${policyEntity}.update`)(function* (actor) {
+							"view",
+							Effect.fn(`${policyEntity}.view`)(function* (actor) {
+								const member = yield* organizationMemberRepo.findById(notification.memberId)
+
+								if (Option.isSome(member) && member.value.userId === actor.id) {
+									return yield* Effect.succeed(true)
+								}
+
+								return yield* Effect.succeed(false)
+							}),
+						),
+					),
+				)
+
+			const canUpdate = (id: NotificationId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"update",
+				)(
+					notificationRepo.with(id, (notification) =>
+						organizationMemberRepo.with(notification.memberId, (member) =>
+							policy(
+								policyEntity,
+								"update",
+								Effect.fn(`${policyEntity}.update`)(function* (actor) {
+									if (member.userId === actor.id) {
+										return yield* Effect.succeed(true)
+									}
+
+									const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+										member.organizationId,
+										actor.id,
+									)
+
+									if (Option.isSome(actorMember)) {
+										return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
+									}
+
+									return yield* Effect.succeed(false)
+								}),
+							),
+						),
+					),
+				)
+
+			const canDelete = (id: NotificationId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"delete",
+				)(
+					notificationRepo.with(id, (notification) =>
+						organizationMemberRepo.with(notification.memberId, (member) =>
+							policy(
+								policyEntity,
+								"delete",
+								Effect.fn(`${policyEntity}.delete`)(function* (actor) {
+									if (member.userId === actor.id) {
+										return yield* Effect.succeed(true)
+									}
+
+									const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+										member.organizationId,
+										actor.id,
+									)
+
+									if (Option.isSome(actorMember)) {
+										return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
+									}
+
+									return yield* Effect.succeed(false)
+								}),
+							),
+						),
+					),
+				)
+
+			const canMarkAsRead = (id: NotificationId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"markAsRead",
+				)(
+					notificationRepo.with(id, (notification) =>
+						organizationMemberRepo.with(notification.memberId, (member) =>
+							policy(
+								policyEntity,
+								"markAsRead",
+								Effect.fn(`${policyEntity}.markAsRead`)(function* (actor) {
+									if (member.userId === actor.id) {
+										return yield* Effect.succeed(true)
+									}
+
+									const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
+										member.organizationId,
+										actor.id,
+									)
+
+									if (Option.isSome(actorMember)) {
+										return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
+									}
+
+									return yield* Effect.succeed(false)
+								}),
+							),
+						),
+					),
+				)
+
+			const canMarkAllAsRead = (memberId: OrganizationMemberId) =>
+				ErrorUtils.refailUnauthorized(
+					policyEntity,
+					"markAllAsRead",
+				)(
+					organizationMemberRepo.with(memberId, (member) =>
+						policy(
+							policyEntity,
+							"markAllAsRead",
+							Effect.fn(`${policyEntity}.markAllAsRead`)(function* (actor) {
 								if (member.userId === actor.id) {
 									return yield* Effect.succeed(true)
 								}
@@ -68,112 +162,22 @@ export class NotificationPolicy extends ServiceMap.Service<NotificationPolicy>()
 								)
 
 								if (Option.isSome(actorMember)) {
-									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
+									return yield* Effect.succeed(
+										actorMember.value.role === "admin" ||
+											actorMember.value.role === "owner",
+									)
 								}
 
 								return yield* Effect.succeed(false)
 							}),
 						),
 					),
-				),
-			)
+				)
 
-		const canDelete = (id: NotificationId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"delete",
-			)(
-				notificationRepo.with(id, (notification) =>
-					organizationMemberRepo.with(notification.memberId, (member) =>
-						policy(
-							policyEntity,
-							"delete",
-							Effect.fn(`${policyEntity}.delete`)(function* (actor) {
-								if (member.userId === actor.id) {
-									return yield* Effect.succeed(true)
-								}
-
-								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
-									member.organizationId,
-									actor.id,
-								)
-
-								if (Option.isSome(actorMember)) {
-									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
-								}
-
-								return yield* Effect.succeed(false)
-							}),
-						),
-					),
-				),
-			)
-
-		const canMarkAsRead = (id: NotificationId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"markAsRead",
-			)(
-				notificationRepo.with(id, (notification) =>
-					organizationMemberRepo.with(notification.memberId, (member) =>
-						policy(
-							policyEntity,
-							"markAsRead",
-							Effect.fn(`${policyEntity}.markAsRead`)(function* (actor) {
-								if (member.userId === actor.id) {
-									return yield* Effect.succeed(true)
-								}
-
-								const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
-									member.organizationId,
-									actor.id,
-								)
-
-								if (Option.isSome(actorMember)) {
-									return yield* Effect.succeed(isAdminOrOwner(actorMember.value.role))
-								}
-
-								return yield* Effect.succeed(false)
-							}),
-						),
-					),
-				),
-			)
-
-		const canMarkAllAsRead = (memberId: OrganizationMemberId) =>
-			ErrorUtils.refailUnauthorized(
-				policyEntity,
-				"markAllAsRead",
-			)(
-				organizationMemberRepo.with(memberId, (member) =>
-					policy(
-						policyEntity,
-						"markAllAsRead",
-						Effect.fn(`${policyEntity}.markAllAsRead`)(function* (actor) {
-							if (member.userId === actor.id) {
-								return yield* Effect.succeed(true)
-							}
-
-							const actorMember = yield* organizationMemberRepo.findByOrgAndUser(
-								member.organizationId,
-								actor.id,
-							)
-
-							if (Option.isSome(actorMember)) {
-								return yield* Effect.succeed(
-									actorMember.value.role === "admin" || actorMember.value.role === "owner",
-								)
-							}
-
-							return yield* Effect.succeed(false)
-						}),
-					),
-				),
-			)
-
-		return { canCreate, canView, canUpdate, canDelete, canMarkAsRead, canMarkAllAsRead } as const
-	}),
-}) {
+			return { canCreate, canView, canUpdate, canDelete, canMarkAsRead, canMarkAllAsRead } as const
+		}),
+	},
+) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(NotificationRepo.layer),
 		Layer.provide(OrganizationMemberRepo.layer),

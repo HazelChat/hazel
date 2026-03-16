@@ -91,10 +91,13 @@ export class AIRateLimitError extends Schema.TaggedErrorClass<AIRateLimitError>(
 }
 
 /** AI response could not be parsed or was empty */
-export class AIResponseParseError extends Schema.TaggedErrorClass<AIResponseParseError>()("AIResponseParseError", {
-	threadChannelId: ChannelId,
-	rawResponse: Schema.String.pipe(Schema.optional),
-}) {
+export class AIResponseParseError extends Schema.TaggedErrorClass<AIResponseParseError>()(
+	"AIResponseParseError",
+	{
+		threadChannelId: ChannelId,
+		rawResponse: Schema.String.pipe(Schema.optional),
+	},
+) {
 	readonly retryable = false // Bad data won't fix itself
 }
 

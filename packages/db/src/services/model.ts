@@ -23,7 +23,13 @@ export class EntityNotFound extends Schema.TaggedErrorClass<EntityNotFound>()("E
 	id: Schema.Any,
 }) {}
 
-export interface Repository<RecordType, S extends EntitySchema, Col extends string, Name extends string, Id> {
+export interface Repository<
+	RecordType,
+	S extends EntitySchema,
+	Col extends string & keyof S["update"]["Type"],
+	Name extends string,
+	Id,
+> {
 	readonly insert: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,

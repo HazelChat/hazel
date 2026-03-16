@@ -286,7 +286,5 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
-		Layer.provide(DiscordSyncWorker.layer),
-	)
+	static readonly layer = Layer.effect(this, this.effect).pipe(Layer.provide(DiscordSyncWorker.layer))
 }

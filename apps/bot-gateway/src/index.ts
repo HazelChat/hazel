@@ -159,11 +159,14 @@ class GatewayProtocolError extends Schema.TaggedErrorClass<GatewayProtocolError>
 	message: Schema.String,
 }) {}
 
-export class GatewayStartupError extends Schema.TaggedErrorClass<GatewayStartupError>()("GatewayStartupError", {
-	dependency: Schema.Literals(["config", "database", "redis", "tracer", "server"]),
-	message: Schema.String,
-	cause: Schema.optional(Schema.Unknown),
-}) {}
+export class GatewayStartupError extends Schema.TaggedErrorClass<GatewayStartupError>()(
+	"GatewayStartupError",
+	{
+		dependency: Schema.Literals(["config", "database", "redis", "tracer", "server"]),
+		message: Schema.String,
+		cause: Schema.optional(Schema.Unknown),
+	},
+) {}
 
 class DurableStreamGatewayError extends Schema.TaggedErrorClass<DurableStreamGatewayError>()(
 	"DurableStreamGatewayError",
@@ -477,9 +480,11 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 						const ackResult = yield* Deferred.await(ackDeferred).pipe(
 							Effect.timeoutOrElse({
 								onTimeout: () =>
-									Effect.fail(new GatewayProtocolError({
-										message: `Timed out waiting for ACK from session ${id}`,
-									})),
+									Effect.fail(
+										new GatewayProtocolError({
+											message: `Timed out waiting for ACK from session ${id}`,
+										}),
+									),
 								duration: config.batchAckTimeoutMs,
 							}),
 						)

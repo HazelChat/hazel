@@ -52,9 +52,12 @@ export class OAuthCallbackError extends Schema.TaggedErrorClass<OAuthCallbackErr
 /**
  * No authorization code was received from OAuth callback
  */
-export class MissingAuthCodeError extends Schema.TaggedErrorClass<MissingAuthCodeError>()("MissingAuthCodeError", {
-	message: Schema.String,
-}) {}
+export class MissingAuthCodeError extends Schema.TaggedErrorClass<MissingAuthCodeError>()(
+	"MissingAuthCodeError",
+	{
+		message: Schema.String,
+	},
+) {}
 
 // ============================================================================
 // Token Storage Errors

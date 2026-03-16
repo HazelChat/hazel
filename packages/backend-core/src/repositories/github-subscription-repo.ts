@@ -2,7 +2,7 @@ import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
@@ -133,4 +133,6 @@ export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptio
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

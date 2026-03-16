@@ -61,7 +61,7 @@ const InstallationTokenApiResponse = Schema.Struct({
 
 // GitHub API error response schema
 const GitHubErrorApiResponse = Schema.Struct({
-	message: Schema.optional(Schema.String, { default: () => "Unknown error" }),
+	message: Schema.String.pipe(Schema.withDecodingDefaultKey(() => "Unknown error")),
 })
 
 // ============================================================================
@@ -208,7 +208,7 @@ export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>
 				// Handle error status codes
 				if (response.status >= 400) {
 					const errorBody = yield* response.json.pipe(
-						Effect.flatMap(Schema.decodeUnknown(GitHubErrorApiResponse)),
+						Effect.flatMap(Schema.decodeUnknownEffect(GitHubErrorApiResponse)),
 						Effect.catch((error) =>
 							Effect.logDebug(`Failed to parse GitHub error response: ${String(error)}`).pipe(
 								Effect.as({ message: "Unknown error" }),
@@ -226,7 +226,7 @@ export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>
 
 				// Parse successful response
 				const data = yield* response.json.pipe(
-					Effect.flatMap(Schema.decodeUnknown(InstallationTokenApiResponse)),
+					Effect.flatMap(Schema.decodeUnknownEffect(InstallationTokenApiResponse)),
 					Effect.mapError(
 						(error) =>
 							new GitHubInstallationTokenError({
@@ -242,21 +242,14 @@ export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>
 					expiresAt: new Date(data.expires_at),
 				} satisfies InstallationToken
 			}).pipe(
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new GitHubInstallationTokenError({
 							installationId,
-							message: `Network error: ${String(error)}`,
-							cause: error,
-						}),
-					),
-				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new GitHubInstallationTokenError({
-							installationId,
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
+							message: error.response
+								? `Response error: ${String(error)}`
+								: `Network error: ${String(error)}`,
+							status: error.response?.status,
 							cause: error,
 						}),
 					),
@@ -288,7 +281,5 @@ export class GitHubAppJWTService extends ServiceMap.Service<GitHubAppJWTService>
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 }

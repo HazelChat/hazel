@@ -102,7 +102,10 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 	Rpc.make("channelMember.update", {
 		payload: Schema.Struct({
 			id: ChannelMemberId,
-		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(ChannelMember.Model.jsonUpdate as any).fields }) as any),
+		}).pipe(
+			(s: any) =>
+				Schema.Struct({ ...s.fields, ...(ChannelMember.Model.jsonUpdate as any).fields }) as any,
+		),
 		success: ChannelMemberResponse,
 		error: Schema.Union([ChannelMemberNotFoundError, UnauthorizedError, InternalServerError]),
 	})

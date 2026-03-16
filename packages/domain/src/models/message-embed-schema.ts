@@ -50,7 +50,9 @@ export type MessageEmbedField = Schema.Schema.Type<typeof MessageEmbedField>
 // Embed badge (for status indicators)
 export const MessageEmbedBadge = Schema.Struct({
 	text: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
-	color: Schema.optional(Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 16777215 }))), // 0x000000 to 0xFFFFFF
+	color: Schema.optional(
+		Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 16777215 })),
+	), // 0x000000 to 0xFFFFFF
 })
 export type MessageEmbedBadge = Schema.Schema.Type<typeof MessageEmbedBadge>
 
@@ -107,7 +109,9 @@ export const MessageEmbed = Schema.Struct({
 	title: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
 	description: Schema.optional(Schema.String.check(Schema.isMaxLength(4096))),
 	url: Schema.optional(Schema.String.check(Schema.isMaxLength(2048))),
-	color: Schema.optional(Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 16777215 }))), // 0x000000 to 0xFFFFFF
+	color: Schema.optional(
+		Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 16777215 })),
+	), // 0x000000 to 0xFFFFFF
 	author: Schema.optional(MessageEmbedAuthor),
 	footer: Schema.optional(MessageEmbedFooter),
 	image: Schema.optional(Schema.Struct({ url: Schema.String.check(Schema.isMaxLength(2048)) })),

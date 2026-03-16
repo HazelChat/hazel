@@ -220,10 +220,10 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 			params: { code: string; redirectUri: string; clientId: string; clientSecret: string },
 		) =>
 			exchangeCode(tokenUrl, params).pipe(
-				Effect.catchTag("TimeoutException", () =>
+				Effect.catchTag("TimeoutError", () =>
 					Effect.fail(new OAuthHttpError({ message: "Request timed out" })),
 				),
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Network error: ${String(error)}`,
@@ -231,7 +231,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 						}),
 					),
 				),
-				Effect.catchTag("ResponseError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Response error: ${String(error)}`,
@@ -248,10 +248,10 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 			params: { refreshToken: string; clientId: string; clientSecret: string },
 		) =>
 			refreshToken(provider, params).pipe(
-				Effect.catchTag("TimeoutException", () =>
+				Effect.catchTag("TimeoutError", () =>
 					Effect.fail(new OAuthHttpError({ message: "Request timed out" })),
 				),
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Network error: ${String(error)}`,
@@ -259,7 +259,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 						}),
 					),
 				),
-				Effect.catchTag("ResponseError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new OAuthHttpError({
 							message: `Response error: ${String(error)}`,
@@ -277,7 +277,5 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 }

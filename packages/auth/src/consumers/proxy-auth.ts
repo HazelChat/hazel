@@ -39,7 +39,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 		const userLookupCache = yield* UserLookupCache
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
-		const decodeClaims = Schema.decodeUnknown(WorkOSJwtClaims)
+		const decodeClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
 
 		const resolveInternalOrganizationId = (
 			workosOrgId: WorkOSOrganizationId,
@@ -53,7 +53,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 									workosOrgId,
 								}).pipe(Effect.as(undefined)),
 							onSome: (externalId) =>
-								Schema.decodeUnknown(OrganizationId)(externalId).pipe(
+								Schema.decodeUnknownEffect(OrganizationId)(externalId).pipe(
 									Effect.catch((error) =>
 										Effect.logWarning(
 											"Failed to decode WorkOS external organization ID",
@@ -106,13 +106,13 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 						.limit(1),
 				)
 				.pipe(
-					Effect.catchTag(
-						"DatabaseError",
-						(error) =>
+					Effect.catchTag("DatabaseError", (error) =>
+						Effect.fail(
 							new ProxyAuthenticationError({
 								message: "Failed to lookup user in database",
 								detail: error.message,
 							}),
+						),
 					),
 				)
 			const userOption = Option.fromNullishOr(userResult[0])
@@ -155,7 +155,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 				})
 
 			const { payload } = yield* verifyWithIssuer("https://api.workos.com").pipe(
-				Effect.orElse(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
+				Effect.catch(() => verifyWithIssuer(`https://api.workos.com/user_management/${clientId}`)),
 			)
 
 			const claims = yield* decodeClaims(payload).pipe(

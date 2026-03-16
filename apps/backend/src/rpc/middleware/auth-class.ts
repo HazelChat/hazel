@@ -57,9 +57,12 @@ const AuthFailure = S.Union([
 	WorkOSUserFetchError,
 ])
 
-export class AuthMiddleware extends RpcMiddleware.Service<AuthMiddleware, {
-	provides: CurrentUser.Context
-}>()("AuthMiddleware", {
+export class AuthMiddleware extends RpcMiddleware.Service<
+	AuthMiddleware,
+	{
+		provides: CurrentUser.Context
+	}
+>()("AuthMiddleware", {
 	error: AuthFailure,
 	requiredForClient: true,
 }) {}

@@ -9,8 +9,8 @@
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
-		"@hazel-chat/bot-sdk": "workspace:*",
 		"@effect/ai-openrouter": "catalog:effect",
+		"@hazel-chat/bot-sdk": "workspace:*",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/integrations": "workspace:*",

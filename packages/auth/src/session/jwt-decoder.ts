@@ -9,7 +9,7 @@ export const decodeSessionJwt = (accessToken: string): Effect.Effect<JwtPayload,
 	return Effect.gen(function* () {
 		const rawPayload = decodeJwt(accessToken)
 
-		const payload = yield* Schema.decodeUnknown(JwtPayload)(rawPayload).pipe(
+		const payload = yield* Schema.decodeUnknownEffect(JwtPayload)(rawPayload).pipe(
 			Effect.mapError(
 				(error) =>
 					new InvalidJwtPayloadError({

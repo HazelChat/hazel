@@ -7,11 +7,10 @@ import * as Schema from "effect/Schema"
 import * as SchemaGetter from "effect/SchemaGetter"
 import * as SchemaIssue from "effect/SchemaIssue"
 
-const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve } =
-	VariantSchema.make({
-		variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
-		defaultVariant: "select",
-	})
+const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve } = VariantSchema.make({
+	variants: ["select", "insert", "update", "json", "jsonCreate", "jsonUpdate"],
+	defaultVariant: "select",
+})
 
 export type Any = Schema.Top & {
 	readonly fields: Schema.Struct.Fields
@@ -70,18 +69,14 @@ export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[typeof 
 
 export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
 
-export interface Generated<
-	S extends Schema.Top,
-> extends VariantSchema.Field<{
+export interface Generated<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: S
 	readonly update: S
 	readonly json: S
 }> {}
 
 /** A field for database-generated columns (available for select and update, not insert). */
-export const Generated = <S extends Schema.Top>(
-	schema: S,
-): Generated<S> =>
+export const Generated = <S extends Schema.Top>(schema: S): Generated<S> =>
 	Field({
 		select: schema,
 		update: schema,
@@ -111,9 +106,7 @@ export const GeneratedOptional = <S extends Schema.Top>(schema: S): GeneratedOpt
 		jsonCreate: Schema.optionalKey(schema),
 	})
 
-export interface GeneratedByApp<
-	S extends Schema.Top,
-> extends VariantSchema.Field<{
+export interface GeneratedByApp<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: S
 	readonly insert: S
 	readonly update: S
@@ -121,9 +114,7 @@ export interface GeneratedByApp<
 }> {}
 
 /** A field for application-generated columns (required for DB variants, optional for JSON). */
-export const GeneratedByApp = <S extends Schema.Top>(
-	schema: S,
-): GeneratedByApp<S> =>
+export const GeneratedByApp = <S extends Schema.Top>(schema: S): GeneratedByApp<S> =>
 	Field({
 		select: schema,
 		insert: schema,
@@ -131,18 +122,14 @@ export const GeneratedByApp = <S extends Schema.Top>(
 		json: schema,
 	})
 
-export interface Sensitive<
-	S extends Schema.Top,
-> extends VariantSchema.Field<{
+export interface Sensitive<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: S
 	readonly insert: S
 	readonly update: S
 }> {}
 
 /** A field for sensitive values hidden from JSON variants. */
-export const Sensitive = <S extends Schema.Top>(
-	schema: S,
-): Sensitive<S> =>
+export const Sensitive = <S extends Schema.Top>(schema: S): Sensitive<S> =>
 	Field({
 		select: schema,
 		insert: schema,
@@ -184,10 +171,7 @@ export interface DateTimeFromDate extends Schema.DateTimeUtcFromDate {}
 
 export const DateTimeFromDate: DateTimeFromDate = Schema.DateTimeUtcFromDate
 
-export interface Date extends Schema.decodeTo<
-	Schema.DateTimeUtc,
-	Schema.String
-> {}
+export interface Date extends Schema.decodeTo<Schema.DateTimeUtc, Schema.String> {}
 
 /** A DateTime.Utc serialized as ISO date string (YYYY-MM-DD). */
 export const Date: Date = Schema.String.pipe(
@@ -197,7 +181,9 @@ export const Date: Date = Schema.String.pipe(
 			if (opt._tag === "Some") {
 				return Effect.succeed(DateTime.removeTime(opt.value))
 			}
-			return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: "Invalid date format" }))
+			return Effect.fail(
+				new SchemaIssue.InvalidValue(Option.some(s), { message: "Invalid date format" }),
+			)
 		}),
 		encode: SchemaGetter.transform((dt: DateTime.Utc) => DateTime.formatIsoDate(dt)),
 	}),
@@ -211,19 +197,13 @@ export const DateTimeWithNow = VariantSchema.Overrideable(Schema.DateTimeUtcFrom
 	defaultValue: DateTime.now,
 })
 
-export const DateTimeFromDateWithNow = VariantSchema.Overrideable(
-	Schema.DateTimeUtcFromDate,
-	{
-		defaultValue: DateTime.now,
-	},
-)
+export const DateTimeFromDateWithNow = VariantSchema.Overrideable(Schema.DateTimeUtcFromDate, {
+	defaultValue: DateTime.now,
+})
 
-export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(
-	Schema.DateTimeUtcFromMillis,
-	{
-		defaultValue: DateTime.now,
-	},
-)
+export const DateTimeFromNumberWithNow = VariantSchema.Overrideable(Schema.DateTimeUtcFromMillis, {
+	defaultValue: DateTime.now,
+})
 
 export interface DateTimeInsert extends VariantSchema.Field<{
 	readonly select: typeof Schema.DateTimeUtcFromString
@@ -309,9 +289,7 @@ export const DateTimeUpdateFromNumber: DateTimeUpdateFromNumber = Field({
 	json: Schema.DateTimeUtcFromMillis,
 })
 
-export interface JsonFromString<
-	S extends Schema.Top,
-> extends VariantSchema.Field<{
+export interface JsonFromString<S extends Schema.Top> extends VariantSchema.Field<{
 	readonly select: Schema.fromJsonString<S>
 	readonly insert: Schema.fromJsonString<S>
 	readonly update: Schema.fromJsonString<S>
@@ -321,9 +299,7 @@ export interface JsonFromString<
 }> {}
 
 /** A JSON value stored as text in the database, object in JSON variants. */
-export const JsonFromString = <S extends Schema.Top>(
-	schema: S,
-): JsonFromString<S> => {
+export const JsonFromString = <S extends Schema.Top>(schema: S): JsonFromString<S> => {
 	const parsed = Schema.fromJsonString(schema)
 	return Field({
 		select: parsed,

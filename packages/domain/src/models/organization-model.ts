@@ -8,9 +8,7 @@ export class Model extends M.Class<Model>("Organization")({
 	name: Schema.String,
 	slug: Schema.NullOr(Schema.String),
 	logoUrl: Schema.NullOr(Schema.String),
-	settings: Schema.NullOr(
-		Schema.Record(Schema.String, Schema.Unknown),
-	),
+	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
 	isPublic: Schema.Boolean,
 	...baseFields,
 }) {}

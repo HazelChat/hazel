@@ -41,7 +41,7 @@ describe("Database.transaction", () => {
 							const txCtx = yield* TransactionContext
 
 							// Step 1: Insert a record using the transaction client
-							yield* txCtx.execute((tx) =>
+							yield* txCtx.execute((tx: any) =>
 								tx.execute(`INSERT INTO _test_rollback (id) VALUES ('${testId}')`),
 							)
 
@@ -49,14 +49,15 @@ describe("Database.transaction", () => {
 							return yield* Effect.fail(new Error("Intentional failure"))
 						}),
 					)
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
 				// Verify the transaction failed
-				expect(result._tag).toBe("Left")
+				expect(result._tag).toBe("Failure")
 
 				// Verify the insert was rolled back (query outside transaction)
 				const rows = yield* db.execute(
-					(client) => client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}`,
+					(client: any) =>
+						client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}` as Promise<any[]>,
 				)
 
 				// Should be empty because transaction rolled back
@@ -80,7 +81,7 @@ describe("Database.transaction", () => {
 						// Get the transaction context to execute within the transaction
 						const txCtx = yield* TransactionContext
 
-						yield* txCtx.execute((tx) =>
+						yield* txCtx.execute((tx: any) =>
 							tx.execute(`INSERT INTO _test_rollback (id) VALUES ('${testId}')`),
 						)
 						return "success"
@@ -89,13 +90,16 @@ describe("Database.transaction", () => {
 
 				// Verify the insert persisted (query outside transaction)
 				const rows = yield* db.execute(
-					(client) => client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}`,
+					(client: any) =>
+						client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}` as Promise<any[]>,
 				)
 
 				expect(rows.length).toBe(1)
 
 				// Cleanup
-				yield* db.execute((client) => client.$client`DELETE FROM _test_rollback WHERE id = ${testId}`)
+				yield* db.execute(
+					(client: any) => client.$client`DELETE FROM _test_rollback WHERE id = ${testId}`,
+				)
 			})
 
 			await Effect.runPromise(
@@ -120,25 +124,26 @@ describe("Database.transaction", () => {
 							// Get the transaction context to execute within the transaction
 							const txCtx = yield* TransactionContext
 
-							yield* txCtx.execute((tx) =>
+							yield* txCtx.execute((tx: any) =>
 								tx.execute(`INSERT INTO _test_rollback (id) VALUES ('${testId}')`),
 							)
 							return yield* Effect.fail(new CustomTestError("Custom error message"))
 						}),
 					)
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
 				// Verify the transaction failed with the correct error type
-				expect(result._tag).toBe("Left")
-				if (result._tag === "Left") {
-					const cause = result.left
+				expect(result._tag).toBe("Failure")
+				if (result._tag === "Failure") {
+					const failure = result.failure
 					// The error should be our custom error
-					expect(cause).toBeDefined()
+					expect(failure).toBeDefined()
 				}
 
 				// Verify rollback occurred (query outside transaction)
 				const rows = yield* db.execute(
-					(client) => client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}`,
+					(client: any) =>
+						client.$client`SELECT * FROM _test_rollback WHERE id = ${testId}` as Promise<any[]>,
 				)
 				expect(rows.length).toBe(0)
 			})

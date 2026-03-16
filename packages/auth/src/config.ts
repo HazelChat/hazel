@@ -26,8 +26,9 @@ export class AuthConfig extends ServiceMap.Service<AuthConfig>()("@hazel/auth/Au
 		} satisfies AuthConfigShape
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	static Test = Layer.mock(this, {
-		_tag: "@hazel/auth/AuthConfig",
 		workosApiKey: "sk_test_123",
 		workosClientId: "client_test_123",
 	})

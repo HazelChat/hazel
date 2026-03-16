@@ -490,7 +490,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							),
 							// Workflow errors (ThreadChannelNotFoundError, AIProviderUnavailableError, etc.)
 							// pass through directly since they're in the RPC union - only handle HTTP client errors
-							Effect.catchTag("RequestError", (err) =>
+							Effect.catchTag("HttpClientError", (err) =>
 								Effect.fail(
 									new WorkflowServiceUnavailableError({
 										message: "Cannot connect to workflow service",
@@ -498,7 +498,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									}),
 								),
 							),
-							Effect.catchTag("ResponseError", (err) =>
+							Effect.catchTag("HttpClientError", (err) =>
 								Effect.fail(
 									new InternalServerError({
 										message: `Thread naming failed: ${err.reason}`,

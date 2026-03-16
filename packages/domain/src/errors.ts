@@ -18,7 +18,9 @@ export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError
  * Error thrown when an OAuth authorization code has expired or has already been used.
  * This is a specific 401 error that indicates the user must restart the OAuth flow.
  */
-export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpiredError>("OAuthCodeExpiredError")(
+export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpiredError>(
+	"OAuthCodeExpiredError",
+)(
 	"OAuthCodeExpiredError",
 	{
 		message: Schema.String,
@@ -66,7 +68,9 @@ export class DmChannelAlreadyExistsError extends Schema.TaggedErrorClass<DmChann
  * Error thrown when a message is not found.
  * Used in update, delete, and thread creation operations.
  */
-export class MessageNotFoundError extends Schema.TaggedErrorClass<MessageNotFoundError>("MessageNotFoundError")(
+export class MessageNotFoundError extends Schema.TaggedErrorClass<MessageNotFoundError>(
+	"MessageNotFoundError",
+)(
 	"MessageNotFoundError",
 	{
 		messageId: MessageId,

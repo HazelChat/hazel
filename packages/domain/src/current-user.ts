@@ -41,9 +41,12 @@ const AuthFailure = S.Union([
 	WorkOSUserFetchError,
 ])
 
-export class Authorization extends HttpApiMiddleware.Service<Authorization, {
-	provides: Context
-}>()("Authorization", {
+export class Authorization extends HttpApiMiddleware.Service<
+	Authorization,
+	{
+		provides: Context
+	}
+>()("Authorization", {
 	error: AuthFailure,
 	security: {
 		bearer: HttpApiSecurity.bearer,

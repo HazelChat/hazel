@@ -92,7 +92,8 @@ const sanitizeRedisUrl = (url: string): string => url.replace(/\/\/.*@/, "//***@
  * }).pipe(Effect.provide(Redis.layer))
  * ```
  */
-export class Redis extends ServiceMap.Service<Redis,
+export class Redis extends ServiceMap.Service<
+	Redis,
 	{
 		// String operations
 		/**
@@ -239,9 +240,11 @@ export class Redis extends ServiceMap.Service<Redis,
 					Effect.timeoutOrElse({
 						duration: Duration.seconds(10),
 						onTimeout: () =>
-							Effect.fail(new RedisError({
-								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
-							})),
+							Effect.fail(
+								new RedisError({
+									message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
+								}),
+							),
 					}),
 				)
 
@@ -273,9 +276,11 @@ export class Redis extends ServiceMap.Service<Redis,
 				Effect.timeoutOrElse({
 					duration: Duration.seconds(10),
 					onTimeout: () =>
-						Effect.fail(new RedisError({
-							message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
-						})),
+						Effect.fail(
+							new RedisError({
+								message: `Redis connection timed out after 10s (url: ${sanitizeRedisUrl(url)})`,
+							}),
+						),
 				}),
 			)
 

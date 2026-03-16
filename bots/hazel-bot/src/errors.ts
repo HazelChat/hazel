@@ -23,6 +23,9 @@ export class IterationTimeoutError extends Schema.TaggedErrorClass<IterationTime
 	},
 ) {}
 
-export class SessionTimeoutError extends Schema.TaggedErrorClass<SessionTimeoutError>()("SessionTimeoutError", {
-	message: Schema.String,
-}) {}
+export class SessionTimeoutError extends Schema.TaggedErrorClass<SessionTimeoutError>()(
+	"SessionTimeoutError",
+	{
+		message: Schema.String,
+	},
+) {}

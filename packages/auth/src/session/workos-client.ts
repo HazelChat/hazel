@@ -54,9 +54,7 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/aut
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(AuthConfig.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(AuthConfig.layer))
 
 	/** Default mock user for tests */
 	static readonly mockUser: WorkOSUser = {
@@ -90,7 +88,6 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/aut
 
 	/** Test layer with mock WorkOS responses */
 	static Test = Layer.mock(this, {
-		_tag: "@hazel/auth/WorkOSClient",
 		getUser: (userId: WorkOSUserId) => Effect.succeed({ ...WorkOSClient.mockUser, id: userId }),
 		getOrganization: (orgId: WorkOSOrganizationId) =>
 			Effect.succeed({ ...WorkOSClient.mockOrganization, id: orgId }),
@@ -100,7 +97,6 @@ export class WorkOSClient extends ServiceMap.Service<WorkOSClient>()("@hazel/aut
 	/** Test layer factory for configurable WorkOS behavior */
 	static TestWith = (options: { user?: WorkOSUser; organization?: Organization }) =>
 		Layer.mock(WorkOSClient, {
-			_tag: "@hazel/auth/WorkOSClient",
 			getUser: (userId: WorkOSUserId) =>
 				Effect.succeed({ ...(options.user ?? WorkOSClient.mockUser), id: userId }),
 			getOrganization: (orgId: WorkOSOrganizationId) =>

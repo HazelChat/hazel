@@ -173,7 +173,12 @@ export class IntegrationGroup extends HttpApiGroup.make("integrations")
 				level: Schema.optional(ConnectionLevel),
 			},
 			success: Schema.Void,
-			error: [IntegrationNotConnectedError, UnsupportedProviderError, UnauthorizedError, InternalServerError],
+			error: [
+				IntegrationNotConnectedError,
+				UnsupportedProviderError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({

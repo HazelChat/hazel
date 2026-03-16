@@ -136,7 +136,12 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			},
 			payload: IncomingWebhookPayload,
 			success: WebhookMessageResponse,
-			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+			error: [
+				WebhookNotFoundError,
+				WebhookDisabledError,
+				InvalidWebhookTokenError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -156,7 +161,12 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			},
 			payload: OpenStatusPayload,
 			success: WebhookMessageResponse,
-			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+			error: [
+				WebhookNotFoundError,
+				WebhookDisabledError,
+				InvalidWebhookTokenError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -176,7 +186,12 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 			},
 			payload: RailwayPayload,
 			success: WebhookMessageResponse,
-			error: [WebhookNotFoundError, WebhookDisabledError, InvalidWebhookTokenError, InternalServerError],
+			error: [
+				WebhookNotFoundError,
+				WebhookDisabledError,
+				InvalidWebhookTokenError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({

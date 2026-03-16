@@ -362,17 +362,6 @@
         "@types/bun": "1.3.9",
       },
     },
-    "libs/ai-openrouter": {
-      "name": "@hazel/ai-openrouter",
-      "version": "0.0.1",
-      "dependencies": {
-        "@effect/ai-openrouter": "catalog:effect",
-        "effect": "catalog:effect",
-      },
-      "devDependencies": {
-        "typescript": "^5.9.3",
-      },
-    },
     "libs/bot-sdk": {
       "name": "@hazel-chat/bot-sdk",
       "version": "0.1.0",
@@ -1045,8 +1034,6 @@
     "@hazel-chat/bot-sdk": ["@hazel-chat/bot-sdk@workspace:libs/bot-sdk"],
 
     "@hazel/actors": ["@hazel/actors@workspace:packages/actors"],
-
-    "@hazel/ai-openrouter": ["@hazel/ai-openrouter@workspace:libs/ai-openrouter"],
 
     "@hazel/auth": ["@hazel/auth@workspace:packages/auth"],
 

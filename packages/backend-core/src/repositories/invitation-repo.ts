@@ -31,12 +31,12 @@ export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("Invita
 					execute((client) =>
 						client
 							.insert(schema.invitationsTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: schema.invitationsTable.workosInvitationId,
 								set: {
 									status: input.status,
-									acceptedAt: input.acceptedAt,
+									acceptedAt: input.acceptedAt as any,
 									acceptedBy: input.acceptedBy,
 								},
 							})

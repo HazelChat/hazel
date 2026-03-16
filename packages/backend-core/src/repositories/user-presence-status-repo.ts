@@ -2,12 +2,12 @@ import { and, Database, eq, inArray, lt, ModelRepository, ne, schema, type TxFn 
 
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatusRepo>()(
 	"UserPresenceStatusRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const db = yield* Database.Database
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.userPresenceStatusTable,
@@ -39,14 +39,14 @@ export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatu
 						execute((client) =>
 							client
 								.insert(schema.userPresenceStatusTable)
-								.values(input)
+								.values(input as any)
 								.onConflictDoUpdate({
 									target: schema.userPresenceStatusTable.userId,
 									set: {
 										status: input.status,
 										customMessage: input.customMessage,
 										statusEmoji: input.statusEmoji,
-										statusExpiresAt: input.statusExpiresAt,
+										statusExpiresAt: input.statusExpiresAt as any,
 										activeChannelId: input.activeChannelId,
 										updatedAt: new Date(),
 										lastSeenAt: new Date(),
@@ -160,4 +160,6 @@ export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatu
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

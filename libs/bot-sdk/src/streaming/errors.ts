@@ -10,11 +10,14 @@ import { Schema } from "effect"
 /**
  * Error thrown when connecting to a message actor fails
  */
-export class ActorConnectionError extends Schema.TaggedErrorClass<ActorConnectionError>()("ActorConnectionError", {
-	messageId: Schema.String,
-	message: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class ActorConnectionError extends Schema.TaggedErrorClass<ActorConnectionError>()(
+	"ActorConnectionError",
+	{
+		messageId: Schema.String,
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 /**
  * Error thrown when creating a message with live state fails
@@ -28,11 +31,14 @@ export class MessageCreateError extends Schema.TaggedErrorClass<MessageCreateErr
 /**
  * Error thrown when an actor operation (appendText, complete, etc.) fails
  */
-export class ActorOperationError extends Schema.TaggedErrorClass<ActorOperationError>()("ActorOperationError", {
-	operation: Schema.String,
-	message: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class ActorOperationError extends Schema.TaggedErrorClass<ActorOperationError>()(
+	"ActorOperationError",
+	{
+		operation: Schema.String,
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 /**
  * Error thrown when processing an async stream of chunks fails
@@ -60,11 +66,14 @@ export class BotNotConfiguredError extends Schema.TaggedErrorClass<BotNotConfigu
  * This is a non-fatal error - the stream completed successfully, but the
  * final state wasn't saved to the database.
  */
-export class MessagePersistError extends Schema.TaggedErrorClass<MessagePersistError>()("MessagePersistError", {
-	messageId: Schema.String,
-	message: Schema.String,
-	cause: Schema.Unknown,
-}) {}
+export class MessagePersistError extends Schema.TaggedErrorClass<MessagePersistError>()(
+	"MessagePersistError",
+	{
+		messageId: Schema.String,
+		message: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
 
 /**
  * Union type for all streaming errors.

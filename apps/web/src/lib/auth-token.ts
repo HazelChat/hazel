@@ -60,8 +60,8 @@ export const isTransientError = (error: { _tag?: string; message?: string }): bo
 		message.includes("timed out") ||
 		message.includes("timeout") ||
 		message.includes("network error") ||
-		error._tag === "TimeoutException" ||
-		error._tag === "RequestError"
+		error._tag === "TimeoutError" ||
+		error._tag === "HttpClientError"
 	)
 }
 

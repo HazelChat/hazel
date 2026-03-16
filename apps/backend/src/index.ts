@@ -91,9 +91,7 @@ export { HazelApi }
 // Export RPC groups for frontend consumption
 export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
-const HealthRouter = HttpRouter.use((router) =>
-	router.add("GET", "/health", HttpServerResponse.text("OK")),
-)
+const HealthRouter = HttpRouter.use((router) => router.add("GET", "/health", HttpServerResponse.text("OK")))
 
 const DocsRoute = HttpApiScalar.layerHttpRouter({
 	api: HazelApi,

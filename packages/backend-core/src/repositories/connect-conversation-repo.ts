@@ -1,7 +1,7 @@
 import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
 import type { ChannelId } from "@hazel/schema"
 import { ConnectConversation } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ConnectConversationRepo extends ServiceMap.Service<ConnectConversationRepo>()(
 	"ConnectConversationRepo",
@@ -41,4 +41,6 @@ export class ConnectConversationRepo extends ServiceMap.Service<ConnectConversat
 			}
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

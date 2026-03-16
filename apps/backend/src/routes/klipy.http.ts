@@ -86,10 +86,10 @@ const fetchKlipy = (
 			return response.json
 		}),
 		Effect.scoped,
-		Effect.catchTag("RequestError", (error) =>
+		Effect.catchTag("HttpClientError", (error) =>
 			Effect.fail(new KlipyApiError({ message: `Klipy request failed: ${String(error)}` })),
 		),
-		Effect.catchTag("ResponseError", (error) =>
+		Effect.catchTag("HttpClientError", (error) =>
 			Effect.fail(new KlipyApiError({ message: `Klipy response error: ${String(error)}` })),
 		),
 	)

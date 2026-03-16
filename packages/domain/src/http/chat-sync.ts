@@ -111,7 +111,12 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			params: { orgId: OrganizationId },
 			payload: CreateChatSyncConnectionRequest,
 			success: ChatSyncConnectionResponse,
-			error: [ChatSyncConnectionExistsError, ChatSyncIntegrationNotConnectedError, UnauthorizedError, InternalServerError],
+			error: [
+				ChatSyncConnectionExistsError,
+				ChatSyncIntegrationNotConnectedError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -157,7 +162,12 @@ export class ChatSyncGroup extends HttpApiGroup.make("chat-sync")
 			params: { syncConnectionId: SyncConnectionId },
 			payload: CreateChatSyncChannelLinkRequest,
 			success: ChatSyncChannelLinkResponse,
-			error: [ChatSyncConnectionNotFoundError, ChatSyncChannelLinkExistsError, UnauthorizedError, InternalServerError],
+			error: [
+				ChatSyncConnectionNotFoundError,
+				ChatSyncChannelLinkExistsError,
+				UnauthorizedError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({

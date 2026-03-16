@@ -26,21 +26,19 @@ export class ApiClient extends ServiceMap.Service<ApiClient>()("ApiClient", {
 						times: 3,
 						// Only retry server errors (5xx), not client errors (4xx) like 401/403
 						while: (error) => {
-							if (error._tag === "ResponseError") {
+							if (error._tag === "HttpClientError") {
 								const status = error.response.status
 								// Only retry server errors (500-599) and network errors
 								// Don't retry client errors (400-499) including auth errors
 								return status >= 500 && status < 600
 							}
 							// Retry other transient errors (network issues, etc.)
-							return error._tag === "RequestError"
+							return error._tag === "HttpClientError"
 						},
 					}),
 				),
 		})
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(CustomFetchLive),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(CustomFetchLive))
 }

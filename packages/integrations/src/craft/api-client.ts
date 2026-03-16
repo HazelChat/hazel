@@ -127,10 +127,13 @@ export class CraftNotFoundError extends Schema.TaggedErrorClass<CraftNotFoundErr
 	resourceId: Schema.String,
 }) {}
 
-export class CraftRateLimitError extends Schema.TaggedErrorClass<CraftRateLimitError>()("CraftRateLimitError", {
-	message: Schema.String,
-	retryAfter: Schema.optional(Schema.Number),
-}) {}
+export class CraftRateLimitError extends Schema.TaggedErrorClass<CraftRateLimitError>()(
+	"CraftRateLimitError",
+	{
+		message: Schema.String,
+		retryAfter: Schema.optional(Schema.Number),
+	},
+) {}
 
 // ============================================================================
 // Internal Response Schemas
@@ -307,22 +310,16 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 
 				return yield* response.json
 			}).pipe(
-				Effect.catchTag("TimeoutException", () =>
+				Effect.catchTag("TimeoutError", () =>
 					Effect.fail(new CraftApiError({ message: "Request timed out" })),
 				),
-				Effect.catchTag("RequestError", (error) =>
+				Effect.catchTag("HttpClientError", (error) =>
 					Effect.fail(
 						new CraftApiError({
-							message: `Network error: ${String(error)}`,
-							cause: error,
-						}),
-					),
-				),
-				Effect.catchTag("ResponseError", (error) =>
-					Effect.fail(
-						new CraftApiError({
-							message: `Response error: ${String(error)}`,
-							status: error.response.status,
+							message: error.response
+								? `Response error: ${String(error)}`
+								: `Network error: ${String(error)}`,
+							status: error.response?.status,
 							cause: error,
 						}),
 					),
@@ -338,7 +335,7 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const client = makeClient(baseUrl, accessToken)
 				return yield* executeRequest(client, "GET", "/connection").pipe(
 					Effect.flatMap((raw) =>
-						Schema.decodeUnknown(ConnectionInfoResponse)(raw).pipe(
+						Schema.decodeUnknownEffect(ConnectionInfoResponse)(raw).pipe(
 							Effect.map(normalizeCraftConnectionInfo),
 							Effect.mapError(
 								(e) =>
@@ -366,7 +363,7 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const path = `/blocks?id=${encodeURIComponent(resolvedBlockId)}`
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedBlocks = normalizeCraftItemsResponse(raw)
-				return yield* Schema.decodeUnknown(Schema.Array(CraftBlock))(normalizedBlocks).pipe(
+				return yield* Schema.decodeUnknownEffect(Schema.Array(CraftBlock))(normalizedBlocks).pipe(
 					Effect.catch(() =>
 						Effect.succeed(
 							normalizedBlocks.length > 0
@@ -494,9 +491,9 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const path = folderId ? `/documents?folderId=${encodeURIComponent(folderId)}` : "/documents"
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedDocuments = normalizeCraftItemsResponse(raw)
-				return yield* Schema.decodeUnknown(Schema.Array(CraftDocument))(normalizedDocuments).pipe(
-					Effect.catch(() => Effect.succeed(normalizedDocuments as CraftDocument[])),
-				)
+				return yield* Schema.decodeUnknownEffect(Schema.Array(CraftDocument))(
+					normalizedDocuments,
+				).pipe(Effect.catch(() => Effect.succeed(normalizedDocuments as CraftDocument[])))
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
 				Effect.withSpan("CraftApiClient.listDocuments"),
@@ -596,7 +593,7 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const client = makeClient(baseUrl, accessToken)
 				const raw = yield* executeRequest(client, "GET", "/folders")
 				const normalizedFolders = normalizeCraftItemsResponse(raw)
-				return yield* Schema.decodeUnknown(Schema.Array(CraftFolder))(normalizedFolders).pipe(
+				return yield* Schema.decodeUnknownEffect(Schema.Array(CraftFolder))(normalizedFolders).pipe(
 					Effect.catch(() => Effect.succeed(normalizedFolders as CraftFolder[])),
 				)
 			}).pipe(
@@ -665,7 +662,7 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const path = `/tasks?scope=${resolvedScope}`
 				const raw = yield* executeRequest(client, "GET", path)
 				const normalizedTasks = normalizeCraftItemsResponse(raw)
-				return yield* Schema.decodeUnknown(Schema.Array(CraftTask))(normalizedTasks).pipe(
+				return yield* Schema.decodeUnknownEffect(Schema.Array(CraftTask))(normalizedTasks).pipe(
 					Effect.catch(() => Effect.succeed(normalizedTasks as CraftTask[])),
 				)
 			}).pipe(
@@ -735,9 +732,9 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 				const client = makeClient(baseUrl, accessToken)
 				const raw = yield* executeRequest(client, "GET", "/collections")
 				const normalizedCollections = normalizeCraftItemsResponse(raw)
-				return yield* Schema.decodeUnknown(Schema.Array(CraftCollection))(normalizedCollections).pipe(
-					Effect.catch(() => Effect.succeed(normalizedCollections as CraftCollection[])),
-				)
+				return yield* Schema.decodeUnknownEffect(Schema.Array(CraftCollection))(
+					normalizedCollections,
+				).pipe(Effect.catch(() => Effect.succeed(normalizedCollections as CraftCollection[])))
 			}).pipe(
 				Effect.retry({ schedule: makeRetrySchedule, while: isRetryableError }),
 				Effect.withSpan("CraftApiClient.listCollections"),
@@ -870,7 +867,5 @@ export class CraftApiClient extends ServiceMap.Service<CraftApiClient>()("CraftA
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 }

@@ -14,6 +14,6 @@ import type { ApiScope } from "./api-scope"
  * - Empty array `[]` = public endpoint (no scope needed)
  * - Missing annotation = error (caught by startup validation)
  */
-export class RequiredScopes extends ServiceMap.Service<RequiredScopes,
-	ReadonlyArray<ApiScope>
->()("@hazel/domain/RequiredScopes") {}
+export class RequiredScopes extends ServiceMap.Service<RequiredScopes, ReadonlyArray<ApiScope>>()(
+	"@hazel/domain/RequiredScopes",
+) {}

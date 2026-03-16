@@ -72,31 +72,32 @@ export class KlipyGroup extends HttpApiGroup.make("klipy")
 		HttpApiEndpoint.get("trending", "/trending", {
 			query: {
 				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
-				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "25")),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(() => "25"),
+				),
 			},
 			success: KlipySearchResponse,
 			error: KlipyApiError,
-		})
-			.annotate(RequiredScopes, ["messages:read"]),
+		}).annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("search", "/search", {
 			query: {
 				q: Schema.String,
 				page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "1")),
-				per_page: Schema.optional(Schema.NumberFromString).pipe(Schema.withDecodingDefault(() => "25")),
+				per_page: Schema.optional(Schema.NumberFromString).pipe(
+					Schema.withDecodingDefault(() => "25"),
+				),
 			},
 			success: KlipySearchResponse,
 			error: KlipyApiError,
-		})
-			.annotate(RequiredScopes, ["messages:read"]),
+		}).annotate(RequiredScopes, ["messages:read"]),
 	)
 	.add(
 		HttpApiEndpoint.get("categories", "/categories", {
 			success: KlipyCategoriesResponse,
 			error: KlipyApiError,
-		})
-			.annotate(RequiredScopes, ["messages:read"]),
+		}).annotate(RequiredScopes, ["messages:read"]),
 	)
 	.prefix("/klipy")
 	.middleware(CurrentUser.Authorization) {}

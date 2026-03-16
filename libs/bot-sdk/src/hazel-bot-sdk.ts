@@ -119,7 +119,8 @@ export interface HazelBotRuntimeConfig<Commands extends CommandGroup<any> = Comm
 	readonly heartbeatIntervalMs?: number
 }
 
-export class HazelBotRuntimeConfigTag extends ServiceMap.Service<HazelBotRuntimeConfigTag,
+export class HazelBotRuntimeConfigTag extends ServiceMap.Service<
+	HazelBotRuntimeConfigTag,
 	HazelBotRuntimeConfig
 >()("@hazel/bot-sdk/HazelBotRuntimeConfig") {}
 

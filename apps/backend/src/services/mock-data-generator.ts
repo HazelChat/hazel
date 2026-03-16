@@ -488,7 +488,5 @@ export class MockDataGenerator extends ServiceMap.Service<MockDataGenerator>()("
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(DatabaseLive),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(DatabaseLive))
 }

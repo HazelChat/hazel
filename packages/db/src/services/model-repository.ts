@@ -25,20 +25,20 @@ export function makeRepository<
 
 		const insert = (data: S["insert"]["Type"], tx?: TxFn) =>
 			pipe(
-				db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
+				db.makeQueryWithSchema(schema.insert as Schema.Top, (execute, input: any) =>
 					execute((client) => client.insert(table).values([input]).returning()),
 				)(data, tx),
 			) as unknown as Effect.Effect<RecordType[], DatabaseError | Schema.SchemaError>
 
 		const insertVoid = (data: S["insert"]["Type"], tx?: TxFn) =>
-			db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
+			db.makeQueryWithSchema(schema.insert as Schema.Top, (execute, input: any) =>
 				execute((client) => client.insert(table).values(input)),
 			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 		const update = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
-				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)),
-				(execute, input) =>
+				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)) as Schema.Top,
+				(execute, input: any) =>
 					execute((client) =>
 						client
 							.update(table)
@@ -57,8 +57,8 @@ export function makeRepository<
 
 		const updateVoid = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
-				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)),
-				(execute, input) =>
+				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)) as Schema.Top,
+				(execute, input: any) =>
 					execute((client) =>
 						client
 							.update(table)

@@ -46,7 +46,7 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 					execute((client) =>
 						client
 							.insert(schema.usersTable)
-							.values(input)
+							.values(input as any)
 							.onConflictDoUpdate({
 								target: schema.usersTable.externalId,
 								set: {

@@ -1,43 +1,43 @@
 import { Schema } from "effect"
 
-export const WorkOSUserId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
-	Schema.brand("@HazelChat/WorkOSUserId"),
-).annotate({
-	description: "A WorkOS user identifier",
-	title: "WorkOS User ID",
-})
+export const WorkOSUserId = Schema.Trimmed.check(Schema.isNonEmpty())
+	.pipe(Schema.brand("@HazelChat/WorkOSUserId"))
+	.annotate({
+		description: "A WorkOS user identifier",
+		title: "WorkOS User ID",
+	})
 export type WorkOSUserId = Schema.Schema.Type<typeof WorkOSUserId>
 
-export const WorkOSOrganizationId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
-	Schema.brand("@HazelChat/WorkOSOrganizationId"),
-).annotate({
-	description: "A WorkOS organization identifier",
-	title: "WorkOS Organization ID",
-})
+export const WorkOSOrganizationId = Schema.Trimmed.check(Schema.isNonEmpty())
+	.pipe(Schema.brand("@HazelChat/WorkOSOrganizationId"))
+	.annotate({
+		description: "A WorkOS organization identifier",
+		title: "WorkOS Organization ID",
+	})
 export type WorkOSOrganizationId = Schema.Schema.Type<typeof WorkOSOrganizationId>
 
-export const WorkOSSessionId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
-	Schema.brand("@HazelChat/WorkOSSessionId"),
-).annotate({
-	description: "A WorkOS session identifier",
-	title: "WorkOS Session ID",
-})
+export const WorkOSSessionId = Schema.Trimmed.check(Schema.isNonEmpty())
+	.pipe(Schema.brand("@HazelChat/WorkOSSessionId"))
+	.annotate({
+		description: "A WorkOS session identifier",
+		title: "WorkOS Session ID",
+	})
 export type WorkOSSessionId = Schema.Schema.Type<typeof WorkOSSessionId>
 
-export const WorkOSInvitationId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
-	Schema.brand("@HazelChat/WorkOSInvitationId"),
-).annotate({
-	description: "A WorkOS invitation identifier",
-	title: "WorkOS Invitation ID",
-})
+export const WorkOSInvitationId = Schema.Trimmed.check(Schema.isNonEmpty())
+	.pipe(Schema.brand("@HazelChat/WorkOSInvitationId"))
+	.annotate({
+		description: "A WorkOS invitation identifier",
+		title: "WorkOS Invitation ID",
+	})
 export type WorkOSInvitationId = Schema.Schema.Type<typeof WorkOSInvitationId>
 
-export const WorkOSClientId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
-	Schema.brand("@HazelChat/WorkOSClientId"),
-).annotate({
-	description: "A WorkOS client identifier",
-	title: "WorkOS Client ID",
-})
+export const WorkOSClientId = Schema.Trimmed.check(Schema.isNonEmpty())
+	.pipe(Schema.brand("@HazelChat/WorkOSClientId"))
+	.annotate({
+		description: "A WorkOS client identifier",
+		title: "WorkOS Client ID",
+	})
 export type WorkOSClientId = Schema.Schema.Type<typeof WorkOSClientId>
 
 export const WorkOSRole = Schema.Literals(["admin", "member", "owner"])

@@ -32,7 +32,7 @@ describe("WorkOSSync helpers", () => {
 
 	it("accepts org webhook payloads with missing externalId", async () => {
 		const payload = await Effect.runPromise(
-			Schema.decodeUnknown(WorkOSSyncOrganizationPayload)({
+			Schema.decodeUnknownEffect(WorkOSSyncOrganizationPayload)({
 				id: "org_01ABC123",
 				name: "Acme",
 			}),

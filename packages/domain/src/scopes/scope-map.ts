@@ -18,7 +18,9 @@ export const scopeMapFromRpcGroup = (
 ): ScopeMap => {
 	const map: Record<string, ReadonlyArray<ApiScope>> = {}
 	for (const [tag, rpc] of requests) {
-		const scopes = ServiceMap.get(rpc.annotations as any, RequiredScopes) as ReadonlyArray<ApiScope> | undefined
+		const scopes = ServiceMap.get(rpc.annotations as any, RequiredScopes) as
+			| ReadonlyArray<ApiScope>
+			| undefined
 		if (scopes) {
 			map[tag] = scopes
 		}

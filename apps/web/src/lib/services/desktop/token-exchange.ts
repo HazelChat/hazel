@@ -81,14 +81,14 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 					)
 				}).pipe(
 					// Map HTTP client errors to TokenExchangeError
-					Effect.catchTag("TimeoutException", () =>
+					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Token exchange timed out",
 							}),
 						),
 					),
-					Effect.catchTag("RequestError", (error) =>
+					Effect.catchTag("HttpClientError", (error) =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Network error during token exchange",
@@ -96,7 +96,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchTag("ResponseError", (error) =>
+					Effect.catchTag("HttpClientError", (error) =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Server error during token exchange",
@@ -144,14 +144,14 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 					)
 				}).pipe(
 					// Map HTTP client errors to TokenExchangeError
-					Effect.catchTag("TimeoutException", () =>
+					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Token refresh timed out",
 							}),
 						),
 					),
-					Effect.catchTag("RequestError", (error) =>
+					Effect.catchTag("HttpClientError", (error) =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Network error during token refresh",
@@ -159,7 +159,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchTag("ResponseError", (error) =>
+					Effect.catchTag("HttpClientError", (error) =>
 						Effect.fail(
 							new TokenExchangeError({
 								message: "Server error during token refresh",
@@ -171,9 +171,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(FetchHttpClient.layer),
-	)
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 
 	/**
 	 * Mock token response for testing

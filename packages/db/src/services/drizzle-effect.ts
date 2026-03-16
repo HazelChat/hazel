@@ -66,16 +66,15 @@ export const JsonValue = Schema.Union([
 ]) satisfies Schema.Schema<JsonValue>
 
 // For cases where you need full JSON validation, use this explicit version
-export const StrictJsonValue: Schema.Schema<StrictJsonValue> = Schema.suspend(
-	() =>
-		Schema.Union([
-			Schema.String,
-			Schema.Number,
-			Schema.Boolean,
-			Schema.Null,
-			Schema.Record(Schema.String, StrictJsonValue),
-			Schema.Array(StrictJsonValue),
-		]),
+export const StrictJsonValue: Schema.Schema<StrictJsonValue> = Schema.suspend(() =>
+	Schema.Union([
+		Schema.String,
+		Schema.Number,
+		Schema.Boolean,
+		Schema.Null,
+		Schema.Record(Schema.String, StrictJsonValue),
+		Schema.Array(StrictJsonValue),
+	]),
 )
 
 // Utility type to prevent unknown keys (similar to drizzle-zod)
@@ -157,13 +156,8 @@ export function createInsertSchema<TTable extends Drizzle.Table, TRefine extends
 	if (refine) {
 		const refinedEntries = Object.entries(refine).map(([name, refineColumn]) => [
 			name,
-			typeof refineColumn === "function" &&
-			!Schema.isSchema(refineColumn)
-				? (
-						refineColumn as (
-							schema: Schema.Top,
-						) => Schema.Top
-					)(schemaEntries[name]!)
+			typeof refineColumn === "function" && !Schema.isSchema(refineColumn)
+				? (refineColumn as (schema: Schema.Top) => Schema.Top)(schemaEntries[name]!)
 				: refineColumn,
 		])
 
@@ -204,13 +198,8 @@ export function createSelectSchema<TTable extends Drizzle.Table, TRefine extends
 	if (refine) {
 		const refinedEntries = Object.entries(refine).map(([name, refineColumn]) => [
 			name,
-			typeof refineColumn === "function" &&
-			!Schema.isSchema(refineColumn)
-				? (
-						refineColumn as (
-							schema: Schema.Top,
-						) => Schema.Top
-					)(schemaEntries[name]!)
+			typeof refineColumn === "function" && !Schema.isSchema(refineColumn)
+				? (refineColumn as (schema: Schema.Top) => Schema.Top)(schemaEntries[name]!)
 				: refineColumn,
 		])
 

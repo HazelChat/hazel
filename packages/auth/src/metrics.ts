@@ -3,7 +3,7 @@
  *
  * Provides counters and histograms for monitoring auth performance.
  */
-import { Metric, MetricBoundaries } from "effect"
+import { Metric } from "effect"
 
 // ============================================================================
 // Counters
@@ -20,13 +20,11 @@ export const userLookupCacheMisses = Metric.counter("user_lookup.cache.misses")
 // ============================================================================
 
 /** User lookup cache operation latency (get/set) */
-export const userLookupCacheOperationLatency = Metric.histogram(
-	"user_lookup.cache.operation.latency_ms",
-	MetricBoundaries.fromIterable([1, 2, 5, 10, 25, 50]),
-)
+export const userLookupCacheOperationLatency = Metric.histogram("user_lookup.cache.operation.latency_ms", {
+	boundaries: [1, 2, 5, 10, 25, 50],
+})
 
 /** WorkOS organization lookup latency */
-export const orgLookupLatency = Metric.histogram(
-	"session.org.lookup.latency_ms",
-	MetricBoundaries.fromIterable([5, 10, 25, 50, 100, 250, 500]),
-)
+export const orgLookupLatency = Metric.histogram("session.org.lookup.latency_ms", {
+	boundaries: [5, 10, 25, 50, 100, 250, 500],
+})

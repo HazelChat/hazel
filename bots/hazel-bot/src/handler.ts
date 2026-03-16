@@ -115,9 +115,11 @@ export const handleAIRequest = (params: {
 				}).pipe(
 					Effect.timeoutOrElse({
 						onTimeout: () =>
-							Effect.fail(new SessionTimeoutError({
-								message: "Overall AI session exceeded 3 minute time limit",
-							})),
+							Effect.fail(
+								new SessionTimeoutError({
+									message: "Overall AI session exceeded 3 minute time limit",
+								}),
+							),
 						duration: Duration.minutes(3),
 					}),
 				),
