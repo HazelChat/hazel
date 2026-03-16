@@ -51,7 +51,7 @@ describe("OrganizationPolicy", () => {
 		expect(Result.isSuccess(adminResult)).toBe(true)
 		expect(Result.isFailure(memberResult)).toBe(true)
 		if (Result.isFailure(memberResult)) {
-			expect(UnauthorizedError.is(memberResult.left)).toBe(true)
+			expect(UnauthorizedError.is(memberResult.failure)).toBe(true)
 		}
 	})
 
@@ -90,7 +90,7 @@ describe("OrganizationPolicy", () => {
 		const result = await runWithActorEither(OrganizationPolicy.isMember(TEST_ORG_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 

@@ -1,5 +1,6 @@
 import type { OrganizationId } from "@hazel/schema"
 import { createContext, lazy, Suspense, useMemo } from "react"
+import { toEpochMs } from "~/lib/utils"
 import { Node } from "slate"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { GifEmbed } from "~/components/gif-embed"
@@ -266,7 +267,7 @@ function Embeds() {
 						<TweetEmbed
 							id={tweetId}
 							author={message.author ?? undefined}
-							messageCreatedAt={message.createdAt.getTime()}
+							messageCreatedAt={toEpochMs(message.createdAt)}
 						/>
 					</Suspense>
 				) : null
@@ -284,7 +285,7 @@ function Embeds() {
 					key={url}
 					url={url}
 					author={message.author ?? undefined}
-					createdAt={message.createdAt.getTime()}
+					createdAt={toEpochMs(message.createdAt)}
 				/>
 			))}
 

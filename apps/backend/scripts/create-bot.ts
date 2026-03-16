@@ -15,7 +15,7 @@
 
 import { Database, schema } from "@hazel/db"
 import type { BotId, BotInstallationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Effect, Logger, LogLevel } from "effect"
+import { Effect, References } from "effect"
 import { randomUUID } from "crypto"
 import { DatabaseLive } from "../src/services/database"
 
@@ -138,7 +138,7 @@ const createBotScript = Effect.gen(function* () {
 // Run the script with proper Effect runtime
 const runnable = createBotScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
+	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 
 Effect.runPromise(runnable).catch((error) => {

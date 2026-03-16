@@ -30,7 +30,7 @@ describe("policy-utils", () => {
 
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
-				expect(UnauthorizedError.is(result.left)).toBe(true)
+				expect(UnauthorizedError.is(result.failure)).toBe(true)
 			}
 		})
 
@@ -45,7 +45,7 @@ describe("policy-utils", () => {
 
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
-				expect(UnauthorizedError.is(result.left)).toBe(true)
+				expect(UnauthorizedError.is(result.failure)).toBe(true)
 			}
 		})
 	})
@@ -66,7 +66,7 @@ describe("policy-utils", () => {
 
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
-				expect(result.left).toBe(existing)
+				expect(result.failure).toBe(existing)
 			}
 		})
 	})

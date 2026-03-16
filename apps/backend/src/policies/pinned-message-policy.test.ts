@@ -180,7 +180,7 @@ describe("PinnedMessagePolicy", () => {
 		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, outsider)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 })

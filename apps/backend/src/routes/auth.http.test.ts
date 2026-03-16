@@ -1,22 +1,19 @@
 import { describe, expect, it, layer } from "@effect/vitest"
 import { OrganizationMemberRepo, UserRepo } from "@hazel/backend-core"
 import type { OrganizationId, UserId } from "@hazel/schema"
-import { ConfigProvider, Effect, Layer, Option, Schema } from "effect"
+import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { AuthState, RelativeUrl } from "../lib/schema.ts"
+import { configLayer } from "../test/effect-helpers"
 import { WorkOSAuth as WorkOS, WorkOSAuthError as WorkOSApiError } from "../services/workos-auth.ts"
 
 // ===== Mock Configuration =====
 
-const TestConfigProvider = ConfigProvider.fromMap(
-	new Map([
-		["WORKOS_CLIENT_ID", "client_test_123"],
-		["WORKOS_REDIRECT_URI", "http://localhost:3000/auth/callback"],
-		["FRONTEND_URL", "http://localhost:3000"],
-		["WORKOS_API_KEY", "sk_test_123"],
-	]),
-)
-
-const TestConfigLive = Layer.setConfigProvider(TestConfigProvider)
+const TestConfigLive = configLayer({
+	WORKOS_CLIENT_ID: "client_test_123",
+	WORKOS_REDIRECT_URI: "http://localhost:3000/auth/callback",
+	FRONTEND_URL: "http://localhost:3000",
+	WORKOS_API_KEY: "sk_test_123",
+})
 
 // ===== Mock WorkOS Service =====
 
@@ -99,7 +96,7 @@ const createMockWorkOSLive = (options?: {
 				},
 				catch: (cause) => new WorkOSApiError({ cause }),
 			}),
-	} as unknown as WorkOS)
+	} as ServiceMap.Service.Shape<typeof WorkOS>)
 
 // ===== Mock UserRepo =====
 

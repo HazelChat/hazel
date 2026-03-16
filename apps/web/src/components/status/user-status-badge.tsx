@@ -1,3 +1,4 @@
+import type { DateTime } from "effect"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
 import { cn } from "~/lib/utils"
 import { formatStatusExpiration } from "~/utils/status"
@@ -53,7 +54,7 @@ interface QuietHoursInfo {
 interface StatusEmojiWithTooltipProps {
 	emoji: string | null | undefined
 	message?: string | null
-	expiresAt?: Date | null
+	expiresAt?: Date | DateTime.Utc | null
 	className?: string
 	quietHours?: QuietHoursInfo
 	/** Set to false when inside another interactive element (e.g., MenuTrigger) to avoid nested buttons */

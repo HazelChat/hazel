@@ -2,7 +2,8 @@ import { describe, expect, it } from "@effect/vitest"
 import { BotInstallationRepo, ChannelRepo } from "@hazel/backend-core"
 import { createBotGatewayPartitionKey } from "@hazel/domain"
 import type { BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { ConfigProvider, Effect, Layer, Option } from "effect"
+import { Effect, Layer, Option, ServiceMap } from "effect"
+import { buildServiceLayer, configLayer } from "../test/effect-helpers"
 import { BotGatewayService } from "./bot-gateway-service"
 
 const DURABLE_STREAMS_URL = "http://durable.test/v1/stream"
@@ -12,14 +13,14 @@ const CHANNEL_ID = "00000000-0000-0000-0000-000000000444" as ChannelId
 const ORG_ID = "00000000-0000-0000-0000-000000000333" as OrganizationId
 const USER_ID = "00000000-0000-0000-0000-000000000222" as UserId
 
-const TestConfigLive = Layer.setConfigProvider(
-	ConfigProvider.fromMap(new Map([["DURABLE_STREAMS_URL", DURABLE_STREAMS_URL]])),
-)
+const TestConfigLive = configLayer({
+	DURABLE_STREAMS_URL,
+})
 
 const makeBotInstallationRepoLayer = (botIds: ReadonlyArray<BotId>) =>
 	Layer.succeed(BotInstallationRepo, {
 		getBotIdsForOrg: () => Effect.succeed([...botIds]),
-	} as unknown as BotInstallationRepo)
+	} as ServiceMap.Service.Shape<typeof BotInstallationRepo>)
 
 const makeChannelRepoLayer = (organizationId: OrganizationId) =>
 	Layer.succeed(ChannelRepo, {
@@ -30,10 +31,10 @@ const makeChannelRepoLayer = (organizationId: OrganizationId) =>
 					organizationId,
 				}),
 			),
-	} as unknown as ChannelRepo)
+	} as ServiceMap.Service.Shape<typeof ChannelRepo>)
 
 const makeServiceLayer = (botIds: ReadonlyArray<BotId>) =>
-	BotGatewayService.DefaultWithoutDependencies.pipe(
+	buildServiceLayer(BotGatewayService).pipe(
 		Layer.provide(makeBotInstallationRepoLayer(botIds)),
 		Layer.provide(makeChannelRepoLayer(ORG_ID)),
 		Layer.provide(TestConfigLive),

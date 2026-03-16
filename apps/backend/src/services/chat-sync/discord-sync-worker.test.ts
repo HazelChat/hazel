@@ -3195,7 +3195,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 
 			expect(result._tag).toBe("Failure")
 			if (result._tag === "Failure") {
-				expect((result.left as { _tag?: string })._tag).toBe("DiscordSyncConfigurationError")
+				expect((result.failure as { _tag?: string })._tag).toBe("DiscordSyncConfigurationError")
 			}
 		} finally {
 			if (originalS3PublicUrl === undefined) {

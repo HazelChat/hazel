@@ -174,7 +174,7 @@ describe("MessageReactionPolicy", () => {
 		const result = await runWithActorEither(MessageReactionPolicy.canDelete(REACTION_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 })

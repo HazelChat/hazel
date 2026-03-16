@@ -2,9 +2,10 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { randomUUID } from "node:crypto"
 import { Database, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
-import { ConfigProvider, Effect, Layer } from "effect"
+import { Effect, Layer, ServiceMap } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
+import { buildServiceLayer, configLayer } from "../test/effect-helpers"
 import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
@@ -40,12 +41,10 @@ const runServiceEffect = <A, E, R>(
 ) =>
 	Effect.runPromise(
 		Effect.scoped(
-			effect.pipe(
-				Effect.provide(MessageSideEffectService.DefaultWithoutDependencies),
+			make.pipe(
+				Effect.provide(buildServiceLayer(MessageSideEffectService)),
 				Effect.provide(Layer.succeed(DiscordSyncWorker, worker)),
-				Effect.provide(
-					Layer.setConfigProvider(ConfigProvider.fromMap(new Map([["CLUSTER_URL", CLUSTER_URL]]))),
-				),
+				Effect.provide(configLayer({ CLUSTER_URL })),
 				Effect.provide(FetchHttpClient.layer),
 				Effect.provide(harness.dbLayer),
 			),
@@ -89,7 +88,7 @@ const makeDiscordWorker = (calls: DiscordCall[], options: WorkerOptions = {}) =>
 				calls.push({ method: "reaction_delete", payload, dedupeKey })
 				return { synced: 1, failed: 0 }
 			}),
-	}) as unknown as DiscordSyncWorker
+	}) as ServiceMap.Service.Shape<typeof DiscordSyncWorker>
 
 const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 	harness.run(

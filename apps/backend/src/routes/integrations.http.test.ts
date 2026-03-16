@@ -11,7 +11,7 @@ const expectInvalidBaseUrl = async (url: string) => {
 	const result = await Effect.runPromise(validateCraftBaseUrl(url).pipe(Effect.result))
 	expect(Result.isFailure(result)).toBe(true)
 	if (Result.isFailure(result)) {
-		expect(result.left._tag).toBe("InvalidApiKeyError")
+		expect(result.failure._tag).toBe("InvalidApiKeyError")
 	}
 }
 

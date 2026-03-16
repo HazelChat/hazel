@@ -223,17 +223,19 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 				})
 
 				// Load provider config to get client credentials
-				const providerConfig = yield* Effect.config(
-					loadProviderConfig(connection.provider as OAuthIntegrationProvider),
-				).pipe(
-					Effect.mapError(
-						(cause) =>
-							new TokenRefreshError({
-								provider: connection.provider,
-								cause: `Failed to load provider config: ${cause}`,
-							}),
-					),
+				const providerConfig = yield* loadProviderConfig(
+					connection.provider as OAuthIntegrationProvider,
 				)
+					.asEffect()
+					.pipe(
+						Effect.mapError(
+							(cause) =>
+								new TokenRefreshError({
+									provider: connection.provider,
+									cause: `Failed to load provider config: ${cause}`,
+								}),
+						),
+					)
 
 				yield* Effect.logDebug("Refreshing OAuth token", { provider: connection.provider })
 

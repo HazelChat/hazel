@@ -15,7 +15,7 @@ import { Database, schema } from "@hazel/db"
 import type { BotId, UserId } from "@hazel/schema"
 import { createHash, randomUUID } from "crypto"
 import { eq } from "drizzle-orm"
-import { Effect, Logger, LogLevel } from "effect"
+import { Effect, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
 // Fixed namespace for deterministic UUID generation (DNS namespace UUID)
@@ -217,7 +217,7 @@ const seedInternalBots = Effect.gen(function* () {
 // Run the script
 const runnable = seedInternalBots.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
+	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 
 Effect.runPromise(runnable).catch((error) => {

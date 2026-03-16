@@ -110,7 +110,7 @@ describe("OrgResolver", () => {
 			)
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
-				expect(PermissionError.is(result.left)).toBe(true)
+				expect(PermissionError.is(result.failure)).toBe(true)
 			}
 		})
 	})
@@ -163,7 +163,7 @@ describe("OrgResolver", () => {
 			)
 			expect(Result.isFailure(result)).toBe(true)
 			if (Result.isFailure(result)) {
-				expect(PermissionError.is(result.left)).toBe(true)
+				expect(PermissionError.is(result.failure)).toBe(true)
 			}
 		})
 	})

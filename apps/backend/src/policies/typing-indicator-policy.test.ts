@@ -135,7 +135,7 @@ describe("TypingIndicatorPolicy", () => {
 		expect(Result.isFailure(otherDenied)).toBe(true)
 		expect(Result.isFailure(missingDenied)).toBe(true)
 		if (Result.isFailure(missingDenied)) {
-			expect(UnauthorizedError.is(missingDenied.left)).toBe(true)
+			expect(UnauthorizedError.is(missingDenied.failure)).toBe(true)
 		}
 	})
 

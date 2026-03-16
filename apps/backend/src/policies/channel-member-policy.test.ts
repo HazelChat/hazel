@@ -105,7 +105,7 @@ describe("ChannelMemberPolicy", () => {
 		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -159,7 +159,7 @@ describe("ChannelMemberPolicy", () => {
 		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -212,7 +212,7 @@ describe("ChannelMemberPolicy", () => {
 		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -272,7 +272,7 @@ describe("ChannelMemberPolicy", () => {
 		// Owner is NOT allowed (canUpdate checks role === "admin", not isAdminOrOwner)
 		expect(Result.isFailure(ownerResult)).toBe(true)
 		if (Result.isFailure(ownerResult)) {
-			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
+			expect(UnauthorizedError.is(ownerResult.failure)).toBe(true)
 		}
 	})
 
@@ -332,7 +332,7 @@ describe("ChannelMemberPolicy", () => {
 		// Owner is NOT allowed (canDelete checks role === "admin", not isAdminOrOwner)
 		expect(Result.isFailure(ownerResult)).toBe(true)
 		if (Result.isFailure(ownerResult)) {
-			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
+			expect(UnauthorizedError.is(ownerResult.failure)).toBe(true)
 		}
 	})
 })

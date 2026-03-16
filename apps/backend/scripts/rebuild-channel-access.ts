@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { and, Database, eq, isNull, ne, schema } from "@hazel/db"
-import { Effect, Layer, Logger, LogLevel } from "effect"
+import { Effect, Layer, References } from "effect"
 import { ChannelAccessSyncService } from "../src/services/channel-access-sync"
 import { DatabaseLive } from "../src/services/database"
 
@@ -21,7 +21,7 @@ const rebuildChannelAccess = Effect.gen(function* () {
 
 	yield* Effect.forEach(
 		activeNonThreadChannels,
-		(channel) => ChannelAccessSyncService.syncChannel(channel.id),
+		(channel) => ChannelAccessSyncService.use((service) => service.syncChannel(channel.id)),
 		{ concurrency: 20 },
 	)
 
@@ -32,9 +32,13 @@ const rebuildChannelAccess = Effect.gen(function* () {
 			.where(and(isNull(schema.channelsTable.deletedAt), eq(schema.channelsTable.type, "thread"))),
 	)
 
-	yield* Effect.forEach(threadChannels, (channel) => ChannelAccessSyncService.syncChannel(channel.id), {
-		concurrency: 20,
-	})
+	yield* Effect.forEach(
+		threadChannels,
+		(channel) => ChannelAccessSyncService.use((service) => service.syncChannel(channel.id)),
+		{
+			concurrency: 20,
+		},
+	)
 
 	const countResult = yield* db.execute(
 		(client) => client.$client`SELECT COUNT(*)::int AS count FROM channel_access`,
@@ -52,7 +56,7 @@ Effect.runPromise(
 	rebuildChannelAccess.pipe(
 		Effect.provide(ChannelAccessSyncLive),
 		Effect.provide(DatabaseLive),
-		Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
+		Effect.provideService(References.MinimumLogLevel, "Info"),
 	),
 ).catch((error) => {
 	console.error("Failed to rebuild channel_access", error)

@@ -69,6 +69,7 @@ export const MessageItem = memo(function MessageItem({
 // It's now implemented inside Message.Header but we keep this export
 import { format } from "date-fns"
 import IconPin from "~/components/icons/icon-pin"
+import { toDate, toEpochMs } from "~/lib/utils"
 import { StatusEmojiWithTooltip } from "~/components/status/user-status-badge"
 import { Badge } from "~/components/ui/badge"
 import { useUserStatus } from "~/hooks/use-presence"
@@ -84,7 +85,7 @@ export const MessageAuthorHeader = ({
 	const user = message.author
 	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserStatus(message.authorId)
 
-	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
+	const isEdited = message.updatedAt && toEpochMs(message.updatedAt) > toEpochMs(message.createdAt)
 
 	if (!user) return null
 
@@ -101,7 +102,7 @@ export const MessageAuthorHeader = ({
 			/>
 			{user.userType === "machine" && <Badge intent="primary">APP</Badge>}
 			<span className="text-muted-fg text-xs">
-				{format(message.createdAt, "HH:mm")}
+				{format(toDate(message.createdAt), "HH:mm")}
 				{isEdited && " (edited)"}
 			</span>
 			{isPinned && (

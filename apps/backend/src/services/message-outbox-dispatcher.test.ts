@@ -9,10 +9,11 @@ import {
 } from "@hazel/backend-core"
 import { Database, asc, eq, inArray, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageOutboxEventId, UserId } from "@hazel/schema"
-import { Effect, Layer, Redacted } from "effect"
+import { Effect, Layer, Redacted, ServiceMap } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { EnvVars } from "../lib/env-vars"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
+import { buildServiceLayer } from "../test/effect-helpers"
 import { MessageOutboxDispatcher } from "./message-outbox-dispatcher"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
@@ -42,15 +43,15 @@ const runDispatcherEffect = <A, E, R>(
 ) =>
 	Effect.runPromise(
 		Effect.scoped(
-			effect.pipe(
-				Effect.provide(MessageOutboxDispatcher.DefaultWithoutDependencies),
+			make.pipe(
+				Effect.provide(buildServiceLayer(MessageOutboxDispatcher)),
 				Effect.provide(Layer.succeed(MessageSideEffectService, sideEffects)),
 				Effect.provide(MessageOutboxRepo.layer),
 				Effect.provide(
 					Layer.succeed(EnvVars, {
 						IS_DEV: true,
 						DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
-					} as EnvVars),
+					} as ServiceMap.Service.Shape<typeof EnvVars>),
 				),
 				Effect.provide(harness.dbLayer),
 			),
@@ -92,7 +93,7 @@ const makeSideEffectService = (calls: SideEffectCall[], options: SideEffectOptio
 			Effect.sync(() => {
 				calls.push({ eventType: "reaction_deleted", payload, dedupeKey })
 			}),
-	} as unknown as MessageSideEffectService
+	} as ServiceMap.Service.Shape<typeof MessageSideEffectService>
 }
 
 const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 8_000) => {

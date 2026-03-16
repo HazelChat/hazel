@@ -89,7 +89,7 @@ describe("OrganizationMemberPolicy", () => {
 		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, owner)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 
@@ -140,7 +140,7 @@ describe("OrganizationMemberPolicy", () => {
 		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, owner)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 })

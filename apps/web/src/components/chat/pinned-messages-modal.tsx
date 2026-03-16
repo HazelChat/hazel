@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { format } from "date-fns"
 import { useCallback, useMemo } from "react"
+import { toDate, toEpochMs } from "~/lib/utils"
 import { messageCollection, pinnedMessageCollection, userCollection } from "~/db/collections"
 import { useChatStable } from "~/hooks/use-chat"
 import IconClose from "../icons/icon-close"
@@ -44,7 +45,7 @@ export function PinnedMessagesModal() {
 	const sortedPins = useMemo(
 		() =>
 			[...(pinnedMessages || [])].sort(
-				(a, b) => a.pinned.pinnedAt.getTime() - b.pinned.pinnedAt.getTime(),
+				(a, b) => toEpochMs(a.pinned.pinnedAt) - toEpochMs(b.pinned.pinnedAt),
 			),
 		[pinnedMessages],
 	)
@@ -103,8 +104,8 @@ export function PinnedMessagesModal() {
 									const user = pinnedMessage.message.author
 									const isEdited =
 										pinnedMessage.message.updatedAt &&
-										pinnedMessage.message.updatedAt.getTime() >
-											pinnedMessage.message.createdAt.getTime()
+										toEpochMs(pinnedMessage.message.updatedAt) >
+											toEpochMs(pinnedMessage.message.createdAt)
 
 									return (
 										<button
@@ -146,7 +147,7 @@ export function PinnedMessagesModal() {
 																: "Unknown"}
 														</span>
 														<span className="text-muted-fg text-xs">
-															{format(pinnedMessage.message.createdAt, "HH:mm")}
+															{format(toDate(pinnedMessage.message.createdAt), "HH:mm")}
 															{isEdited && " (edited)"}
 														</span>
 													</div>
@@ -160,7 +161,7 @@ export function PinnedMessagesModal() {
 											{/* Pinned Date */}
 											<div className="mt-2 text-muted-fg text-xs">
 												Pinned{" "}
-												{format(pinnedMessage.pinned.pinnedAt, "MMM d 'at' h:mm a")}
+												{format(toDate(pinnedMessage.pinned.pinnedAt), "MMM d 'at' h:mm a")}
 											</div>
 										</button>
 									)

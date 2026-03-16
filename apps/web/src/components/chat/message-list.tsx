@@ -8,6 +8,7 @@ import { editingMessageAtomFamily } from "~/atoms/chat-atoms"
 import type { MessageWithPinned, ProcessedMessage } from "~/atoms/chat-query-atoms"
 import { useVisibleMessageNotificationCleaner } from "~/hooks/use-visible-message-notification-cleaner"
 import { useMessageToolbarOverlay } from "~/hooks/use-message-toolbar-overlay"
+import { toEpochMs, toDate } from "~/lib/utils"
 import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
 
 import { Route } from "~/routes/_app/$orgSlug/chat/$id"
@@ -193,13 +194,13 @@ function MessageListContent({
 			const isGroupStart =
 				!prevMessage ||
 				message.authorId !== prevMessage.authorId ||
-				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
+				toEpochMs(message.createdAt) - toEpochMs(prevMessage.createdAt) > timeThreshold ||
 				!!prevMessage.replyToMessageId
 
 			const isGroupEnd =
 				!nextMessage ||
 				message.authorId !== nextMessage.authorId ||
-				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
+				toEpochMs(nextMessage.createdAt) - toEpochMs(message.createdAt) > timeThreshold
 
 			const isFirstNewMessage = false
 			const isPinned = !!message.pinnedMessage?.id
@@ -222,7 +223,7 @@ function MessageListContent({
 		let lastDate = ""
 
 		for (const processedMessage of processedMessages) {
-			const date = new Date(processedMessage.message.createdAt).toDateString()
+			const date = toDate(processedMessage.message.createdAt).toDateString()
 			if (date !== lastDate) {
 				rows.push({ id: `header-${date}`, type: "header", date })
 				sticky.push(idx)

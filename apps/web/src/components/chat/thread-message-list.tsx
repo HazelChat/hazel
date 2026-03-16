@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 import type { MessageWithPinned } from "~/atoms/chat-query-atoms"
 import { useMessageToolbarOverlay } from "~/hooks/use-message-toolbar-overlay"
+import { toEpochMs } from "~/lib/utils"
 import { threadMessagesWithAuthorAtomFamily } from "~/atoms/message-atoms"
 import { MessageHoverProvider, useMessageHover } from "~/providers/message-hover-provider"
 import type { MessageGroupPosition } from "./message"
@@ -67,14 +68,14 @@ function ThreadMessageListContent({ threadChannelId }: ThreadMessageListProps) {
 			const isGroupStart =
 				!prevMessage ||
 				message.authorId !== prevMessage.authorId ||
-				message.createdAt.getTime() - prevMessage.createdAt.getTime() > timeThreshold ||
+				toEpochMs(message.createdAt) - toEpochMs(prevMessage.createdAt) > timeThreshold ||
 				!!prevMessage.replyToMessageId
 
 			const nextMessage = index < messages.length - 1 ? messages[index + 1] : null
 			const isGroupEnd =
 				!nextMessage ||
 				message.authorId !== nextMessage.authorId ||
-				nextMessage.createdAt.getTime() - message.createdAt.getTime() > timeThreshold
+				toEpochMs(nextMessage.createdAt) - toEpochMs(message.createdAt) > timeThreshold
 
 			// Determine group position
 			let groupPosition: MessageGroupPosition

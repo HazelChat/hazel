@@ -32,8 +32,6 @@ export {
 	DiscordSyncMessageNotFoundError,
 }
 
-export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("DiscordSyncWorker") {}
-
 const DiscordSyncWorkerMake = Effect.gen(function* () {
 	const coreWorker = yield* ChatSyncCoreWorker
 
@@ -222,6 +220,11 @@ const DiscordSyncWorkerMake = Effect.gen(function* () {
 		ingestThreadCreate,
 	}
 })
+
+export class DiscordSyncWorker extends ServiceMap.Service<
+	DiscordSyncWorker,
+	Effect.Effect.Success<typeof DiscordSyncWorkerMake>
+>()("DiscordSyncWorker") {}
 
 export const DiscordSyncWorkerLayer = Layer.effect(DiscordSyncWorker, DiscordSyncWorkerMake).pipe(
 	Layer.provide(ChatSyncCoreWorkerLayer),

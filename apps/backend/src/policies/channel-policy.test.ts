@@ -97,7 +97,7 @@ describe("ChannelPolicy", () => {
 		expect(Result.isSuccess(allowed)).toBe(true)
 		expect(Result.isFailure(missing)).toBe(true)
 		if (Result.isFailure(missing)) {
-			expect(UnauthorizedError.is(missing.left)).toBe(true)
+			expect(UnauthorizedError.is(missing.failure)).toBe(true)
 		}
 	})
 

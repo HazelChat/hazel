@@ -125,15 +125,17 @@ export class OAuthProviderRegistry extends ServiceMap.Service<OAuthProviderRegis
 					}
 
 					// Load configuration from environment for standard OAuth providers
-					const config = yield* Effect.config(loadProviderConfig(oauthProvider_)).pipe(
-						Effect.mapError(
-							(error) =>
-								new ProviderNotConfiguredError({
-									provider: oauthProvider_,
-									message: `Missing configuration for ${provider}: ${String(error)}`,
-								}),
-						),
-					)
+					const config = yield* loadProviderConfig(oauthProvider_)
+						.asEffect()
+						.pipe(
+							Effect.mapError(
+								(error) =>
+									new ProviderNotConfiguredError({
+										provider: oauthProvider_,
+										message: `Missing configuration for ${provider}: ${String(error)}`,
+									}),
+							),
+						)
 
 					// Create and cache provider
 					const oauthProvider = factory(config)

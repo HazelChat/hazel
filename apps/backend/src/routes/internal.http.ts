@@ -22,8 +22,8 @@ export const HttpInternalLive = HttpApiBuilder.group(HazelApi, "internal", (hand
 			const request = yield* HttpServerRequest.HttpServerRequest
 
 			// Optionally verify internal secret for server-to-server auth
-			const internalSecretOption = yield* Effect.config(
-				Config.string("INTERNAL_SECRET").pipe(Config.option),
+			const internalSecretOption = yield* Effect.orDie(
+				Config.string("INTERNAL_SECRET").pipe(Config.option).asEffect(),
 			)
 			const internalSecret = Option.getOrUndefined(internalSecretOption)
 

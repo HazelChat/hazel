@@ -260,7 +260,7 @@ describe("MessagePolicy", () => {
 		const result = await runWithActorEither(MessagePolicy.canDelete(MISSING_MESSAGE_ID), layer, actor)
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
-			expect(UnauthorizedError.is(result.left)).toBe(true)
+			expect(UnauthorizedError.is(result.failure)).toBe(true)
 		}
 	})
 })

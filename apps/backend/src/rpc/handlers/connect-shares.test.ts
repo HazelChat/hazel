@@ -28,7 +28,7 @@ describe("connect-shares helpers", () => {
 
 		expect(result._tag).toBe("Failure")
 		if (result._tag === "Failure") {
-			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
+			expect(result.failure).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
 
@@ -47,7 +47,7 @@ describe("connect-shares helpers", () => {
 
 		expect(result._tag).toBe("Failure")
 		if (result._tag === "Failure") {
-			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
+			expect(result.failure).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
 
@@ -66,7 +66,7 @@ describe("connect-shares helpers", () => {
 
 		expect(result._tag).toBe("Failure")
 		if (result._tag === "Failure") {
-			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
+			expect(result.failure).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
 
@@ -80,7 +80,7 @@ describe("connect-shares helpers", () => {
 
 		expect(result._tag).toBe("Failure")
 		if (result._tag === "Failure") {
-			expect(result.left).toBeInstanceOf(PermissionError)
+			expect(result.failure).toBeInstanceOf(PermissionError)
 		}
 	})
 
@@ -116,7 +116,7 @@ describe("connect-shares helpers", () => {
 
 		expect(result._tag).toBe("Failure")
 		if (result._tag === "Failure") {
-			expect(result.left).toBeInstanceOf(ConnectChannelAlreadySharedError)
+			expect(result.failure).toBeInstanceOf(ConnectChannelAlreadySharedError)
 		}
 	})
 })

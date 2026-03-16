@@ -47,7 +47,7 @@ describe("IntegrationConnectionPolicy", () => {
 		expect(Result.isFailure(del)).toBe(true)
 
 		if (Result.isFailure(insert)) {
-			expect(UnauthorizedError.is(insert.left)).toBe(true)
+			expect(UnauthorizedError.is(insert.failure)).toBe(true)
 		}
 	})
 })

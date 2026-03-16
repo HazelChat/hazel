@@ -100,7 +100,7 @@ describe("BotPolicy", () => {
 		expect(Result.isFailure(updateOther)).toBe(true)
 		expect(Result.isFailure(deleteMissing)).toBe(true)
 		if (Result.isFailure(deleteMissing)) {
-			expect(UnauthorizedError.is(deleteMissing.left)).toBe(true)
+			expect(UnauthorizedError.is(deleteMissing.failure)).toBe(true)
 		}
 	})
 

@@ -9,7 +9,7 @@ import {
 	WorkOSClient,
 	WorkOSSync,
 } from "@hazel/backend-core"
-import { Effect, Layer, Logger, LogLevel } from "effect"
+import { Effect, Layer, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
 // ANSI color codes
@@ -123,7 +123,7 @@ const MainLive = Layer.mergeAll(WorkOSSync.layer, WorkOSClient.layer).pipe(
 
 const runnable = setupScript.pipe(
 	Effect.provide(MainLive),
-	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
+	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 
 Effect.runPromise(runnable).catch((error) => {

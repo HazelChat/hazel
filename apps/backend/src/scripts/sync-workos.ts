@@ -25,6 +25,6 @@ const syncWorkos = Effect.gen(function* () {
 	const workOsSync = yield* WorkOSSync
 
 	yield* workOsSync.syncAll
-}).pipe(Effect.provide(MainLive), Effect.provide(Logger.prettyLayer()))
+}).pipe(Effect.provide(MainLive), Effect.provide(Logger.layer([Logger.consolePretty()])))
 
-Effect.runPromise(syncWorkos)
+Effect.runPromise(syncWorkos as Effect.Effect<void>)
