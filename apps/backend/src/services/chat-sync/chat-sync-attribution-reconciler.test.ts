@@ -17,9 +17,7 @@ const makeLayer = (deps: {
 	Layer.effect(ChatSyncAttributionReconciler, ChatSyncAttributionReconciler.make).pipe(
 		Layer.provide(Layer.succeed(MessageRepo, deps.messageRepo)),
 		Layer.provide(Layer.succeed(UserRepo, deps.userRepo)),
-		Layer.provide(
-			Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo),
-		),
+		Layer.provide(Layer.succeed(OrganizationMemberRepo, deps.organizationMemberRepo)),
 	)
 
 describe("ChatSyncAttributionReconciler", () => {

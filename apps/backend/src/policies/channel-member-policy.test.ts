@@ -37,31 +37,40 @@ const makeChannelMemberRepoLayer = (
 	channelMembers: Record<string, ChannelMemberEntry>,
 	membershipsByChannelAndUser: Record<string, ChannelMemberEntry> = {},
 ) =>
-	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-		with: <A, E, R>(id: ChannelMemberId, f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>) => {
-			const member = channelMembers[id]
-			if (!member) {
-				return Effect.fail(makeEntityNotFound("ChannelMember"))
-			}
-			return f(member)
-		},
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			const entry = membershipsByChannelAndUser[key]
-			return Effect.succeed(entry ? Option.some(entry) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			with: <A, E, R>(
+				id: ChannelMemberId,
+				f: (member: ChannelMemberEntry) => Effect.Effect<A, E, R>,
+			) => {
+				const member = channelMembers[id]
+				if (!member) {
+					return Effect.fail(makeEntityNotFound("ChannelMember"))
+				}
+				return f(member)
+			},
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				const entry = membershipsByChannelAndUser[key]
+				return Effect.succeed(entry ? Option.some(entry) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelEntry>) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			with: <A, E, R>(id: ChannelId, f: (channel: ChannelEntry) => Effect.Effect<A, E, R>) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 const makePolicyLayer = (opts: {
 	members: Record<string, Role>

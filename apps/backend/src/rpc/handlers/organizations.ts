@@ -44,10 +44,7 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 		return effect.pipe(
 			Effect.catchIf(
 				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
-				(err): Effect.Effect<
-					never,
-					InternalServerError | OrganizationSlugAlreadyExistsError
-				> => {
+				(err): Effect.Effect<never, InternalServerError | OrganizationSlugAlreadyExistsError> => {
 					const dbErr = err as unknown as {
 						type: string
 						cause: { constraint_name?: string; detail?: string }

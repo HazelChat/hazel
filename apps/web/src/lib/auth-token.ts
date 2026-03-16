@@ -197,12 +197,15 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 		Effect.gen(function* () {
 			const tokenExchange: TokenExchangeService = yield* TokenExchange
 
-			const refreshResult: RefreshResult = yield* tokenExchange.refreshToken(refreshTokenOpt.value).pipe(
-				Effect.map((tokens): RefreshResult => ({ success: true, tokens })),
-				Effect.catch((error): Effect.Effect<RefreshResult> =>
-					Effect.succeed({ success: false, error: error as ErrorLike }),
-				),
-			)
+			const refreshResult: RefreshResult = yield* tokenExchange
+				.refreshToken(refreshTokenOpt.value)
+				.pipe(
+					Effect.map((tokens): RefreshResult => ({ success: true, tokens })),
+					Effect.catch(
+						(error): Effect.Effect<RefreshResult> =>
+							Effect.succeed({ success: false, error: error as ErrorLike }),
+					),
+				)
 
 			if (refreshResult.success) {
 				const { tokens } = refreshResult

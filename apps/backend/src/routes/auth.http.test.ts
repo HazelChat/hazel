@@ -56,73 +56,70 @@ const createMockWorkOSLive = (options?: {
 	shouldFailLogin?: boolean
 	shouldFailGetOrg?: boolean
 }) =>
-	Layer.succeed(
-		WorkOS,
-		({
-			call: <A>(f: (client: WorkOSNodeAPI, signal: AbortSignal) => Promise<A>) =>
-				Effect.tryPromise({
-					try: async () => {
-						const mockClient = {
-							userManagement: {
-								getAuthorizationUrl: (params: { clientId: string; state?: string }) => {
-									if (options?.shouldFailLogin) {
-										throw new Error("WorkOS API error")
-									}
-									return (
-										options?.authorizationUrl ??
-										`https://workos.com/auth?client_id=${params.clientId}&state=${params.state}`
-									)
-								},
-								authenticateWithCode: async () => {
-									if (options?.shouldFailAuth) {
-										throw new Error("Authentication failed")
-									}
-									return {
-										user: options?.authenticateResponse?.user ?? {
-											id: "user_01ABC123",
-											email: "test@example.com",
-											firstName: "Test",
-											lastName: "User",
-											profilePictureUrl: null,
-										},
-										sealedSession:
-											options?.authenticateResponse?.sealedSession ??
-											"sealed-session-cookie",
-										organizationId: options?.authenticateResponse?.organizationId,
-									}
-								},
-								listOrganizationMemberships: async () => ({
-									data: [{ role: { slug: "member" } }],
-								}),
+	Layer.succeed(WorkOS, {
+		call: <A>(f: (client: WorkOSNodeAPI, signal: AbortSignal) => Promise<A>) =>
+			Effect.tryPromise({
+				try: async () => {
+					const mockClient = {
+						userManagement: {
+							getAuthorizationUrl: (params: { clientId: string; state?: string }) => {
+								if (options?.shouldFailLogin) {
+									throw new Error("WorkOS API error")
+								}
+								return (
+									options?.authorizationUrl ??
+									`https://workos.com/auth?client_id=${params.clientId}&state=${params.state}`
+								)
 							},
-							organizations: {
-								getOrganization: async (id: string) => {
-									if (options?.shouldFailGetOrg) {
-										throw new Error("Org not found")
-									}
-									return {
-										id,
-										externalId: "org_internal_123",
-									}
-								},
-								getOrganizationByExternalId: async (externalId: string) => {
-									if (options?.shouldFailGetOrg) {
-										throw new Error("Org not found")
-									}
-									return {
-										id: "org_workos_123",
-										externalId,
-									}
-								},
+							authenticateWithCode: async () => {
+								if (options?.shouldFailAuth) {
+									throw new Error("Authentication failed")
+								}
+								return {
+									user: options?.authenticateResponse?.user ?? {
+										id: "user_01ABC123",
+										email: "test@example.com",
+										firstName: "Test",
+										lastName: "User",
+										profilePictureUrl: null,
+									},
+									sealedSession:
+										options?.authenticateResponse?.sealedSession ??
+										"sealed-session-cookie",
+									organizationId: options?.authenticateResponse?.organizationId,
+								}
 							},
-						}
+							listOrganizationMemberships: async () => ({
+								data: [{ role: { slug: "member" } }],
+							}),
+						},
+						organizations: {
+							getOrganization: async (id: string) => {
+								if (options?.shouldFailGetOrg) {
+									throw new Error("Org not found")
+								}
+								return {
+									id,
+									externalId: "org_internal_123",
+								}
+							},
+							getOrganizationByExternalId: async (externalId: string) => {
+								if (options?.shouldFailGetOrg) {
+									throw new Error("Org not found")
+								}
+								return {
+									id: "org_workos_123",
+									externalId,
+								}
+							},
+						},
+					}
 
-						return f(mockClient as unknown as WorkOSNodeAPI, new AbortController().signal)
-					},
-					catch: (cause) => new WorkOSApiError({ cause }),
-				}),
-		}) satisfies ServiceMap.Service.Shape<typeof WorkOS>,
-	)
+					return f(mockClient as unknown as WorkOSNodeAPI, new AbortController().signal)
+				},
+				catch: (cause) => new WorkOSApiError({ cause }),
+			}),
+	} satisfies ServiceMap.Service.Shape<typeof WorkOS>)
 
 // ===== Mock UserRepo =====
 
@@ -157,13 +154,16 @@ const createMockUserRepoLive = (options?: {
 
 // ===== Mock OrganizationMemberRepo =====
 
-const MockOrganizationMemberRepoLive = Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-	findByOrgAndUser: (_orgId: OrganizationId, _userId: UserId) => Effect.succeed(Option.none()),
-	upsertByOrgAndUser: (_membership: Schema.Schema.Type<typeof OrganizationMember.Insert>) =>
-		Effect.succeed({
-			id: "00000000-0000-4000-8000-000000000099",
-		}),
-}))
+const MockOrganizationMemberRepoLive = Layer.succeed(
+	OrganizationMemberRepo,
+	serviceShape<typeof OrganizationMemberRepo>({
+		findByOrgAndUser: (_orgId: OrganizationId, _userId: UserId) => Effect.succeed(Option.none()),
+		upsertByOrgAndUser: (_membership: Schema.Schema.Type<typeof OrganizationMember.Insert>) =>
+			Effect.succeed({
+				id: "00000000-0000-4000-8000-000000000099",
+			}),
+	}),
+)
 
 // ===== Test Layer Factory =====
 
@@ -208,19 +208,19 @@ describe("Auth HTTP Endpoint Logic", () => {
 		})
 	})
 
-		describe("AuthState schema", () => {
-			it("creates valid AuthState", () => {
-				const state = Schema.decodeSync(AuthState)({ returnTo: "/dashboard" })
-				expect(state.returnTo).toBe("/dashboard")
-			})
-
-			it("serializes and deserializes correctly", () => {
-				const state = Schema.decodeSync(AuthState)({ returnTo: "/settings/profile" })
-				const serialized = JSON.stringify(state)
-				const parsed = Schema.decodeSync(AuthState)(JSON.parse(serialized))
-				expect(parsed.returnTo).toBe("/settings/profile")
-			})
+	describe("AuthState schema", () => {
+		it("creates valid AuthState", () => {
+			const state = Schema.decodeSync(AuthState)({ returnTo: "/dashboard" })
+			expect(state.returnTo).toBe("/dashboard")
 		})
+
+		it("serializes and deserializes correctly", () => {
+			const state = Schema.decodeSync(AuthState)({ returnTo: "/settings/profile" })
+			const serialized = JSON.stringify(state)
+			const parsed = Schema.decodeSync(AuthState)(JSON.parse(serialized))
+			expect(parsed.returnTo).toBe("/settings/profile")
+		})
+	})
 
 	describe("Login flow", () => {
 		layer(TestLayer)("authorization URL generation", (it) => {

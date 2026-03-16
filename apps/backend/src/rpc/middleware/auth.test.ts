@@ -2,10 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Headers } from "effect/unstable/http"
 import type { SuccessValue } from "effect/unstable/rpc/RpcMiddleware"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import {
-	CurrentUser,
-	type CurrentUser as CurrentUserNamespace,
-} from "@hazel/domain"
+import { CurrentUser, type CurrentUser as CurrentUserNamespace } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Ref, Result, ServiceMap } from "effect"
 import { AuthMiddleware, AuthMiddlewareLive } from "./auth.ts"
@@ -141,12 +138,10 @@ const runAuth = (
 				Effect.provide(AuthMiddlewareLive),
 				Effect.provide(overrides.sessionManager ?? makeSessionManagerLayer(makeCurrentUser())),
 				Effect.provide(
-					overrides.botRepo ??
-						makeBotRepoLayer(() => Effect.succeed(Option.none<BotRecord>())),
+					overrides.botRepo ?? makeBotRepoLayer(() => Effect.succeed(Option.none<BotRecord>())),
 				),
 				Effect.provide(
-					overrides.userRepo ??
-						makeUserRepoLayer(() => Effect.succeed(Option.none<UserRecord>())),
+					overrides.userRepo ?? makeUserRepoLayer(() => Effect.succeed(Option.none<UserRecord>())),
 				),
 				Effect.result,
 			),
@@ -175,9 +170,7 @@ describe("AuthMiddlewareLive", () => {
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			const failureTag =
-				typeof result.failure === "object" &&
-				result.failure !== null &&
-				"_tag" in result.failure
+				typeof result.failure === "object" && result.failure !== null && "_tag" in result.failure
 					? result.failure._tag
 					: "unhandled"
 			expect(failureTag).toBe("SessionNotProvidedError")
@@ -194,9 +187,7 @@ describe("AuthMiddlewareLive", () => {
 				),
 			),
 			userRepo: makeUserRepoLayer((id) =>
-				Effect.succeed(
-					id === BOT_USER_ID ? Option.some(USER_RECORD) : Option.none<UserRecord>(),
-				),
+				Effect.succeed(id === BOT_USER_ID ? Option.some(USER_RECORD) : Option.none<UserRecord>()),
 			),
 		})
 
@@ -218,9 +209,7 @@ describe("AuthMiddlewareLive", () => {
 		expect(Result.isFailure(result)).toBe(true)
 		if (Result.isFailure(result)) {
 			const failureTag =
-				typeof result.failure === "object" &&
-				result.failure !== null &&
-				"_tag" in result.failure
+				typeof result.failure === "object" && result.failure !== null && "_tag" in result.failure
 					? result.failure._tag
 					: "unhandled"
 			expect(failureTag).toBe("InvalidBearerTokenError")

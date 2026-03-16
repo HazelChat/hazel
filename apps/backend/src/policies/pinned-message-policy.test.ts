@@ -24,30 +24,39 @@ type ChannelData = { organizationId: OrganizationId; type: string; id: string }
 type PinnedData = { pinnedBy: UserId; channelId: ChannelId }
 
 const makePinnedMessageRepoLayer = (pinnedMessages: Record<string, PinnedData>) =>
-	Layer.succeed(PinnedMessageRepo, serviceShape<typeof PinnedMessageRepo>({
-		with: <A, E, R>(id: PinnedMessageId, f: (pm: PinnedData) => Effect.Effect<A, E, R>) => {
-			const pm = pinnedMessages[id]
-			if (!pm) return Effect.fail(makeEntityNotFound("PinnedMessage"))
-			return f(pm)
-		},
-	}))
+	Layer.succeed(
+		PinnedMessageRepo,
+		serviceShape<typeof PinnedMessageRepo>({
+			with: <A, E, R>(id: PinnedMessageId, f: (pm: PinnedData) => Effect.Effect<A, E, R>) => {
+				const pm = pinnedMessages[id]
+				if (!pm) return Effect.fail(makeEntityNotFound("PinnedMessage"))
+				return f(pm)
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelData>) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		with: <A, E, R>(id: ChannelId, f: (ch: ChannelData) => Effect.Effect<A, E, R>) => {
-			const ch = channels[id]
-			if (!ch) return Effect.fail(makeEntityNotFound("Channel"))
-			return f(ch)
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			with: <A, E, R>(id: ChannelId, f: (ch: ChannelData) => Effect.Effect<A, E, R>) => {
+				const ch = channels[id]
+				if (!ch) return Effect.fail(makeEntityNotFound("Channel"))
+				return f(ch)
+			},
+		}),
+	)
 
 const makeOrgMemberRepoLayer = (orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = orgMembers[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = orgMembers[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (
 	orgMembers: Record<string, Role>,

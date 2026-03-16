@@ -20,20 +20,26 @@ const TestConfigLive = configLayer({
 })
 
 const makeBotInstallationRepoLayer = (botIds: ReadonlyArray<BotId>) =>
-	Layer.succeed(BotInstallationRepo, serviceShape<typeof BotInstallationRepo>({
-		getBotIdsForOrg: () => Effect.succeed([...botIds]),
-	}))
+	Layer.succeed(
+		BotInstallationRepo,
+		serviceShape<typeof BotInstallationRepo>({
+			getBotIdsForOrg: () => Effect.succeed([...botIds]),
+		}),
+	)
 
 const makeChannelRepoLayer = (organizationId: OrganizationId) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		findById: (id: ChannelId) =>
-			Effect.succeed(
-				Option.some({
-					id,
-					organizationId,
-				}),
-			),
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) =>
+				Effect.succeed(
+					Option.some({
+						id,
+						organizationId,
+					}),
+				),
+		}),
+	)
 
 const makeServiceLayer = (botIds: ReadonlyArray<BotId>) =>
 	Layer.effect(BotGatewayService, BotGatewayService.make).pipe(

@@ -24,33 +24,39 @@ type NotificationData = { memberId: OrganizationMemberId }
 type MemberData = { userId: UserId; organizationId: OrganizationId; role: string }
 
 const makeNotificationRepoLayer = (notifications: Record<string, NotificationData>) =>
-	Layer.succeed(NotificationRepo, serviceShape<typeof NotificationRepo>({
-		with: <A, E, R>(
-			id: NotificationId,
-			f: (notification: NotificationData) => Effect.Effect<A, E, R>,
-		) => {
-			const notification = notifications[id]
-			if (!notification) return Effect.fail(makeEntityNotFound("Notification"))
-			return f(notification)
-		},
-	}))
+	Layer.succeed(
+		NotificationRepo,
+		serviceShape<typeof NotificationRepo>({
+			with: <A, E, R>(
+				id: NotificationId,
+				f: (notification: NotificationData) => Effect.Effect<A, E, R>,
+			) => {
+				const notification = notifications[id]
+				if (!notification) return Effect.fail(makeEntityNotFound("Notification"))
+				return f(notification)
+			},
+		}),
+	)
 
 const makeOrgMemberRepoLayer = (members: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
-			const member = members[id]
-			if (!member) return Effect.fail(makeEntityNotFound("OrganizationMember"))
-			return f(member)
-		},
-		findById: (id: OrganizationMemberId) => {
-			const member = members[id]
-			return Effect.succeed(member ? Option.some(member) : Option.none())
-		},
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = orgMembers[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
+				const member = members[id]
+				if (!member) return Effect.fail(makeEntityNotFound("OrganizationMember"))
+				return f(member)
+			},
+			findById: (id: OrganizationMemberId) => {
+				const member = members[id]
+				return Effect.succeed(member ? Option.some(member) : Option.none())
+			},
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = orgMembers[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (
 	notifications: Record<string, NotificationData>,

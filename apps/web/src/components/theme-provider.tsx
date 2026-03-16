@@ -16,9 +16,7 @@ type ThemeProviderProps = {
 
 const ThemeSchema = Schema.Literals(["dark", "light", "system"])
 
-const HexColorSchema = Schema.String.pipe(
-	Schema.check(Schema.isPattern(/^#[0-9A-Fa-f]{6}$/)),
-)
+const HexColorSchema = Schema.String.pipe(Schema.check(Schema.isPattern(/^#[0-9A-Fa-f]{6}$/)))
 
 const GrayPaletteSchema = Schema.Literals([
 	"gray",

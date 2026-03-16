@@ -66,7 +66,9 @@ export function getStatusLabel(status?: PresenceStatus | string): string {
 /**
  * Formats the status expiration time in a human-readable way
  */
-export function formatStatusExpiration(expiresAt: Date | { epochMilliseconds: number } | null | undefined): string | null {
+export function formatStatusExpiration(
+	expiresAt: Date | { epochMilliseconds: number } | null | undefined,
+): string | null {
 	if (!expiresAt) return null
 
 	const now = new Date()

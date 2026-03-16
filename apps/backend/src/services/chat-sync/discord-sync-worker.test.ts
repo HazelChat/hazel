@@ -235,9 +235,11 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 		Layer.provide(
 			Layer.succeed(
 				MessageOutboxRepo,
-				serviceShape<typeof MessageOutboxRepo>(deps.messageOutboxRepo ?? {
-					insert: () => Effect.succeed([{ id: "outbox-id" }]),
-				}),
+				serviceShape<typeof MessageOutboxRepo>(
+					deps.messageOutboxRepo ?? {
+						insert: () => Effect.succeed([{ id: "outbox-id" }]),
+					},
+				),
 			),
 		),
 		Layer.provide(
@@ -279,9 +281,8 @@ const makeWorkerLayerWithOverrides = (deps: WorkerLayerDeps) => {
 	return layer
 }
 
-const useWorker = <A, E, R>(
-	fn: (worker: DiscordSyncWorkerShape) => Effect.Effect<A, E, R>,
-) => DiscordSyncWorkerTag.use(fn)
+const useWorker = <A, E, R>(fn: (worker: DiscordSyncWorkerShape) => Effect.Effect<A, E, R>) =>
+	DiscordSyncWorkerTag.use(fn)
 
 const DiscordSyncWorker = {
 	ingestMessageCreate: (payload: DiscordIngressMessageCreate) =>
@@ -308,11 +309,7 @@ const DiscordSyncWorker = {
 		dedupeKeyOverride?: string,
 	) =>
 		useWorker((worker) =>
-			worker.syncHazelMessageUpdateToDiscord(
-				syncConnectionId,
-				hazelMessageId,
-				dedupeKeyOverride,
-			),
+			worker.syncHazelMessageUpdateToDiscord(syncConnectionId, hazelMessageId, dedupeKeyOverride),
 		),
 	syncHazelMessageDeleteToDiscord: (
 		syncConnectionId: SyncConnectionId,
@@ -320,11 +317,7 @@ const DiscordSyncWorker = {
 		dedupeKeyOverride?: string,
 	) =>
 		useWorker((worker) =>
-			worker.syncHazelMessageDeleteToDiscord(
-				syncConnectionId,
-				hazelMessageId,
-				dedupeKeyOverride,
-			),
+			worker.syncHazelMessageDeleteToDiscord(syncConnectionId, hazelMessageId, dedupeKeyOverride),
 		),
 }
 
@@ -1441,9 +1434,7 @@ describe("DiscordSyncWorker outbound webhook dispatch", () => {
 					externalMessageId: ExternalMessageId
 				}) => {
 					insertedExternalMessageId = payload.externalMessageId
-					return Effect.succeed([
-						{ id: "message-link-id", channelLinkId: payload.channelLinkId },
-					])
+					return Effect.succeed([{ id: "message-link-id", channelLinkId: payload.channelLinkId }])
 				},
 			} as unknown as ChatSyncMessageLinkRepo,
 			eventReceiptRepo: {
@@ -3015,8 +3006,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 			} as unknown as ChatSyncChannelLinkRepo,
 			messageLinkRepo: {
 				findByHazelMessage: () => Effect.succeed(Option.none()),
-				insert: () =>
-					Effect.succeed([{ id: "message-link-id", channelLinkId: CHANNEL_LINK_ID }]),
+				insert: () => Effect.succeed([{ id: "message-link-id", channelLinkId: CHANNEL_LINK_ID }]),
 			} as unknown as ChatSyncMessageLinkRepo,
 			eventReceiptRepo: {
 				claimByDedupeKey: () => Effect.succeed(true),
@@ -3199,9 +3189,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 
 		expect(result.status).toBe("synced")
 		expect(createMessageWithAttachmentsCalled).toBe(true)
-		expect(firstAttachmentUrl).toBe(
-			`${ATTACHMENT_PUBLIC_URL}/00000000-0000-4000-8000-000000000201`,
-		)
+		expect(firstAttachmentUrl).toBe(`${ATTACHMENT_PUBLIC_URL}/00000000-0000-4000-8000-000000000201`)
 	})
 
 	it("fails with configuration error when attachments exist and S3_PUBLIC_URL is missing", async () => {

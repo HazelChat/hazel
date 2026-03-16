@@ -63,11 +63,7 @@ const loadCreateConnState = async () => {
 
 		const validateBotToken = (
 			token: string,
-		): EffectType.Effect<
-			BotClient,
-			BotTokenValidationError | ConfigError,
-			HttpClientType.HttpClient
-		> =>
+		): EffectType.Effect<BotClient, BotTokenValidationError | ConfigError, HttpClientType.HttpClient> =>
 			Effect.gen(function* () {
 				yield* HttpClient.HttpClient
 
@@ -152,9 +148,7 @@ const loadCreateConnState = async () => {
 					type: "user" as const,
 					workosUserId: decodeWorkOsUserId(String(claims.sub)),
 					workosOrganizationId:
-						typeof claims.org_id === "string"
-							? decodeWorkOsOrganizationId(claims.org_id)
-							: null,
+						typeof claims.org_id === "string" ? decodeWorkOsOrganizationId(claims.org_id) : null,
 					role: claims.role === "admin" ? "admin" : "member",
 				}
 			})
@@ -196,17 +190,13 @@ const loadCreateConnState = async () => {
 		}
 	})
 	const mod = await import("./message-actor.ts")
-	return (mod.messageActor as {
-		config: {
-			createConnState: (
-				context: unknown,
-				params: { token?: string },
-			) => Promise<unknown>
+	return (
+		mod.messageActor as {
+			config: {
+				createConnState: (context: unknown, params: { token?: string }) => Promise<unknown>
+			}
 		}
-	}).config.createConnState as (
-		context: unknown,
-		params: { token?: string },
-	) => Promise<unknown>
+	).config.createConnState as (context: unknown, params: { token?: string }) => Promise<unknown>
 }
 
 afterEach(() => {

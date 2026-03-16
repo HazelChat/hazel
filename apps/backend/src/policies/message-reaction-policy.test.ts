@@ -39,55 +39,73 @@ type MessageData = { channelId: ChannelId }
 type ChannelData = { organizationId: OrganizationId; type: string; id: string }
 
 const makeReactionRepoLayer = (reactions: Record<string, ReactionData>) =>
-	Layer.succeed(MessageReactionRepo, serviceShape<typeof MessageReactionRepo>({
-		with: <A, E, R>(id: MessageReactionId, f: (r: ReactionData) => Effect.Effect<A, E, R>) => {
-			const reaction = reactions[id]
-			if (!reaction) return Effect.fail(makeEntityNotFound("MessageReaction"))
-			return f(reaction)
-		},
-	}))
+	Layer.succeed(
+		MessageReactionRepo,
+		serviceShape<typeof MessageReactionRepo>({
+			with: <A, E, R>(id: MessageReactionId, f: (r: ReactionData) => Effect.Effect<A, E, R>) => {
+				const reaction = reactions[id]
+				if (!reaction) return Effect.fail(makeEntityNotFound("MessageReaction"))
+				return f(reaction)
+			},
+		}),
+	)
 
 const makeMessageRepoLayer = (messages: Record<string, MessageData>) =>
-	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-		with: <A, E, R>(id: MessageId, f: (m: MessageData) => Effect.Effect<A, E, R>) => {
-			const message = messages[id]
-			if (!message) return Effect.fail(makeEntityNotFound("Message"))
-			return f(message)
-		},
-		findById: (id: MessageId) => {
-			const message = messages[id]
-			return Effect.succeed(message ? Option.some(message) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			with: <A, E, R>(id: MessageId, f: (m: MessageData) => Effect.Effect<A, E, R>) => {
+				const message = messages[id]
+				if (!message) return Effect.fail(makeEntityNotFound("Message"))
+				return f(message)
+			},
+			findById: (id: MessageId) => {
+				const message = messages[id]
+				return Effect.succeed(message ? Option.some(message) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (channels: Record<string, ChannelData>) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		findById: (id: ChannelId) => {
-			const channel = channels[id]
-			return Effect.succeed(channel ? Option.some(channel) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) => {
+				const channel = channels[id]
+				return Effect.succeed(channel ? Option.some(channel) : Option.none())
+			},
+		}),
+	)
 
 const makeOrgMemberRepoLayer = (orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = orgMembers[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = orgMembers[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
-const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
-}))
+const emptyChannelMemberRepoLayer = Layer.succeed(
+	ChannelMemberRepo,
+	serviceShape<typeof ChannelMemberRepo>({
+		findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
+	}),
+)
 
-const emptyMessageRepoLayer = Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-	findById: (_id: MessageId) => Effect.succeed(Option.none()),
-}))
+const emptyMessageRepoLayer = Layer.succeed(
+	MessageRepo,
+	serviceShape<typeof MessageRepo>({
+		findById: (_id: MessageId) => Effect.succeed(Option.none()),
+	}),
+)
 
 const connectConversationServiceLayer = Layer.succeed(
 	ConnectConversationService,
 	serviceShape<typeof ConnectConversationService>({
-	canAccessConversation: () => Effect.succeed(false),
+		canAccessConversation: () => Effect.succeed(false),
 	}),
 )
 

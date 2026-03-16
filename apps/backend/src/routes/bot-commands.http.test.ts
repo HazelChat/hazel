@@ -1,10 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Stream } from "effect"
-import {
-	createCommandSseStream,
-	createSseHeartbeatStream,
-	type CommandSseRedis,
-} from "./bot-commands.sse.ts"
+import { createCommandSseStream, createSseHeartbeatStream, type CommandSseRedis } from "./bot-commands.sse.ts"
 
 describe("bot command SSE streams", () => {
 	it("emits an immediate heartbeat on connect", () =>

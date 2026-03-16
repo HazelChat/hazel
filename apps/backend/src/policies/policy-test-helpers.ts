@@ -53,37 +53,46 @@ type Role = "admin" | "member" | "owner"
  * Creates a mock OrganizationMemberRepo layer for testing.
  */
 export const makeOrganizationMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = members[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 /**
  * Creates a stub repo layer that returns none/empty for all lookups.
  * Used for OrgResolver dependencies that aren't relevant to a specific test.
  */
-const emptyChannelRepoLayer = Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-	findById: (_id: ChannelId) => Effect.succeed(Option.none()),
-	with: <A, E, R>(_id: ChannelId, _f: (c: any) => Effect.Effect<A, E, R>) =>
-		Effect.fail(makeEntityNotFound("Channel")),
-}))
+const emptyChannelRepoLayer = Layer.succeed(
+	ChannelRepo,
+	serviceShape<typeof ChannelRepo>({
+		findById: (_id: ChannelId) => Effect.succeed(Option.none()),
+		with: <A, E, R>(_id: ChannelId, _f: (c: any) => Effect.Effect<A, E, R>) =>
+			Effect.fail(makeEntityNotFound("Channel")),
+	}),
+)
 
 const emptyChannelMemberRepoLayer = Layer.succeed(
 	ChannelMemberRepo,
 	serviceShape<typeof ChannelMemberRepo>({
-	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
-	with: <A, E, R>(_id: ChannelMemberId, _f: (c: any) => Effect.Effect<A, E, R>) =>
-		Effect.fail(makeEntityNotFound("ChannelMember")),
+		findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
+		with: <A, E, R>(_id: ChannelMemberId, _f: (c: any) => Effect.Effect<A, E, R>) =>
+			Effect.fail(makeEntityNotFound("ChannelMember")),
 	}),
 )
 
-const emptyMessageRepoLayer = Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-	findById: (_id: MessageId) => Effect.succeed(Option.none()),
-	with: <A, E, R>(_id: MessageId, _f: (c: any) => Effect.Effect<A, E, R>) =>
-		Effect.fail(makeEntityNotFound("Message")),
-}))
+const emptyMessageRepoLayer = Layer.succeed(
+	MessageRepo,
+	serviceShape<typeof MessageRepo>({
+		findById: (_id: MessageId) => Effect.succeed(Option.none()),
+		with: <A, E, R>(_id: MessageId, _f: (c: any) => Effect.Effect<A, E, R>) =>
+			Effect.fail(makeEntityNotFound("Message")),
+	}),
+)
 
 /**
  * Creates an OrgResolver layer backed by the given member mock.

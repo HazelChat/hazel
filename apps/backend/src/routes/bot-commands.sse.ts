@@ -15,9 +15,12 @@ export type CommandSseRedis = {
 	readonly subscribe: (
 		channel: string,
 		handler: (message: string, channel: string) => void,
-	) => Effect.Effect<{
-		readonly unsubscribe: Effect.Effect<void, unknown>
-	}, unknown>
+	) => Effect.Effect<
+		{
+			readonly unsubscribe: Effect.Effect<void, unknown>
+		},
+		unknown
+	>
 }
 
 export const createSseHeartbeatStream = (interval: Duration.Input = HEARTBEAT_INTERVAL) =>

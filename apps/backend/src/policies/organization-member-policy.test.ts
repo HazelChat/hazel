@@ -23,17 +23,20 @@ const OWNER_USER_ID = "00000000-0000-4000-8000-000000000854" as UserId
 type MemberData = { userId: UserId; organizationId: OrganizationId; role: string }
 
 const makeOrgMemberRepoLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
-			const member = membersById[id]
-			if (!member) return Effect.fail(makeEntityNotFound("OrganizationMember"))
-			return f(member)
-		},
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = orgMembers[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			with: <A, E, R>(id: OrganizationMemberId, f: (m: MemberData) => Effect.Effect<A, E, R>) => {
+				const member = membersById[id]
+				if (!member) return Effect.fail(makeEntityNotFound("OrganizationMember"))
+				return f(member)
+			},
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = orgMembers[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (membersById: Record<string, MemberData>, orgMembers: Record<string, Role>) =>
 	Layer.effect(OrganizationMemberPolicy, OrganizationMemberPolicy.make).pipe(

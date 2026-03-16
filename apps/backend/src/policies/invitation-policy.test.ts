@@ -42,12 +42,15 @@ const makeInvitationRepoLayer = (
 	} as ServiceMap.Service.Shape<typeof InvitationRepo>)
 
 const makeUserRepoLayer = (users: Record<string, { email: string }>) =>
-	Layer.succeed(UserRepo, serviceShape<typeof UserRepo>({
-		findById: (id: UserId) => {
-			const user = users[id]
-			return Effect.succeed(user ? Option.some(user) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		UserRepo,
+		serviceShape<typeof UserRepo>({
+			findById: (id: UserId) => {
+				const user = users[id]
+				return Effect.succeed(user ? Option.some(user) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (
 	members: Record<string, Role>,

@@ -30,28 +30,37 @@ const makeChannelMemberRepoLayer = (
 	recordsByMemberId: Record<string, MemberRecord>,
 	recordsByChannelAndUser: Record<string, MemberRecord>,
 ) =>
-	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) =>
-			Effect.succeed(Option.fromNullishOr(recordsByChannelAndUser[`${channelId}:${userId}`])),
-		with: <A, E, R>(id: ChannelMemberId, f: (member: MemberRecord) => Effect.Effect<A, E, R>) => {
-			const member = recordsByMemberId[id]
-			if (!member) {
-				return Effect.fail(makeEntityNotFound("ChannelMember"))
-			}
-			return f(member)
-		},
-	}))
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) =>
+				Effect.succeed(Option.fromNullishOr(recordsByChannelAndUser[`${channelId}:${userId}`])),
+			with: <A, E, R>(id: ChannelMemberId, f: (member: MemberRecord) => Effect.Effect<A, E, R>) => {
+				const member = recordsByMemberId[id]
+				if (!member) {
+					return Effect.fail(makeEntityNotFound("ChannelMember"))
+				}
+				return f(member)
+			},
+		}),
+	)
 
 const makeTypingIndicatorRepoLayer = (recordsById: Record<string, IndicatorRecord>) =>
-	Layer.succeed(TypingIndicatorRepo, serviceShape<typeof TypingIndicatorRepo>({
-		with: <A, E, R>(id: TypingIndicatorId, f: (indicator: IndicatorRecord) => Effect.Effect<A, E, R>) => {
-			const indicator = recordsById[id]
-			if (!indicator) {
-				return Effect.fail(makeEntityNotFound("TypingIndicator"))
-			}
-			return f(indicator)
-		},
-	}))
+	Layer.succeed(
+		TypingIndicatorRepo,
+		serviceShape<typeof TypingIndicatorRepo>({
+			with: <A, E, R>(
+				id: TypingIndicatorId,
+				f: (indicator: IndicatorRecord) => Effect.Effect<A, E, R>,
+			) => {
+				const indicator = recordsById[id]
+				if (!indicator) {
+					return Effect.fail(makeEntityNotFound("TypingIndicator"))
+				}
+				return f(indicator)
+			},
+		}),
+	)
 
 const makePolicyLayer = (
 	channelMembersById: Record<string, MemberRecord>,

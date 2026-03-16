@@ -15,12 +15,15 @@ const MESSAGE_ID = "00000000-0000-4000-8000-000000000601" as MessageId
 const CHANNEL_MEMBER_ID = "00000000-0000-4000-8000-000000000701" as ChannelMemberId
 
 const makeOrgMemberRepoLayer = (members: Record<string, Role>) =>
-	Layer.succeed(OrganizationMemberRepo, serviceShape<typeof OrganizationMemberRepo>({
-		findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
-			const role = members[`${organizationId}:${userId}`]
-			return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		OrganizationMemberRepo,
+		serviceShape<typeof OrganizationMemberRepo>({
+			findByOrgAndUser: (organizationId: OrganizationId, userId: UserId) => {
+				const role = members[`${organizationId}:${userId}`]
+				return Effect.succeed(role ? Option.some({ organizationId, userId, role }) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (
 	channels: Record<
@@ -28,30 +31,41 @@ const makeChannelRepoLayer = (
 		{ organizationId: OrganizationId; type: string; parentChannelId?: string | null; id: string }
 	>,
 ) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		findById: (id: ChannelId) => {
-			const channel = channels[id]
-			return Effect.succeed(channel ? Option.some(channel) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) => {
+				const channel = channels[id]
+				return Effect.succeed(channel ? Option.some(channel) : Option.none())
+			},
+		}),
+	)
 
 const makeChannelMemberRepoLayer = (memberships: Record<string, boolean>) =>
-	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			return Effect.succeed(
-				memberships[key] ? Option.some({ id: CHANNEL_MEMBER_ID, channelId, userId }) : Option.none(),
-			)
-		},
-	}))
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				return Effect.succeed(
+					memberships[key]
+						? Option.some({ id: CHANNEL_MEMBER_ID, channelId, userId })
+						: Option.none(),
+				)
+			},
+		}),
+	)
 
 const makeMessageRepoLayer = (messages: Record<string, { channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-		findById: (id: MessageId) => {
-			const message = messages[id]
-			return Effect.succeed(message ? Option.some(message) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			findById: (id: MessageId) => {
+				const message = messages[id]
+				return Effect.succeed(message ? Option.some(message) : Option.none())
+			},
+		}),
+	)
 
 const makeResolverLayer = (opts: {
 	members?: Record<string, Role>

@@ -209,7 +209,10 @@ function CustomEmojisSettings() {
 				const deletedExistsError = createResult.cause.reasons
 					.filter(Cause.isFailReason)
 					.map((reason) => reason.error)
-					.find((error): error is CustomEmojiDeletedExistsError => error instanceof CustomEmojiDeletedExistsError)
+					.find(
+						(error): error is CustomEmojiDeletedExistsError =>
+							error instanceof CustomEmojiDeletedExistsError,
+					)
 
 				if (deletedExistsError) {
 					setRestoreTarget({

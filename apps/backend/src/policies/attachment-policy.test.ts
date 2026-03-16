@@ -26,60 +26,75 @@ const MESSAGE_AUTHOR_ID = "00000000-0000-4000-8000-000000000836" as UserId
 const makeAttachmentRepoLayer = (
 	attachments: Record<string, { uploadedBy: UserId; messageId: MessageId | null }>,
 ) =>
-	Layer.succeed(AttachmentRepo, serviceShape<typeof AttachmentRepo>({
-		with: <A, E, R>(
-			id: AttachmentId,
-			f: (attachment: { uploadedBy: UserId; messageId: MessageId | null }) => Effect.Effect<A, E, R>,
-		) => {
-			const attachment = attachments[id]
-			if (!attachment) {
-				return Effect.fail(makeEntityNotFound("Attachment"))
-			}
-			return f(attachment)
-		},
-	}))
+	Layer.succeed(
+		AttachmentRepo,
+		serviceShape<typeof AttachmentRepo>({
+			with: <A, E, R>(
+				id: AttachmentId,
+				f: (attachment: {
+					uploadedBy: UserId
+					messageId: MessageId | null
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const attachment = attachments[id]
+				if (!attachment) {
+					return Effect.fail(makeEntityNotFound("Attachment"))
+				}
+				return f(attachment)
+			},
+		}),
+	)
 
 const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-		with: <A, E, R>(
-			id: MessageId,
-			f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
-		) => {
-			const message = messages[id]
-			if (!message) {
-				return Effect.fail(makeEntityNotFound("Message"))
-			}
-			return f(message)
-		},
-	}))
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			with: <A, E, R>(
+				id: MessageId,
+				f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
+			) => {
+				const message = messages[id]
+				if (!message) {
+					return Effect.fail(makeEntityNotFound("Message"))
+				}
+				return f(message)
+			},
+		}),
+	)
 
 const makeChannelRepoLayer = (
 	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		with: <A, E, R>(
-			id: ChannelId,
-			f: (channel: {
-				organizationId: OrganizationId
-				type: string
-				id: ChannelId
-			}) => Effect.Effect<A, E, R>,
-		) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			with: <A, E, R>(
+				id: ChannelId,
+				f: (channel: {
+					organizationId: OrganizationId
+					type: string
+					id: ChannelId
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 const makeChannelMemberRepoLayer = (memberships: Record<string, boolean>) =>
-	Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-		findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
-			const key = `${channelId}:${userId}`
-			return Effect.succeed(memberships[key] ? Option.some({ channelId, userId }) : Option.none())
-		},
-	}))
+	Layer.succeed(
+		ChannelMemberRepo,
+		serviceShape<typeof ChannelMemberRepo>({
+			findByChannelAndUser: (channelId: ChannelId, userId: UserId) => {
+				const key = `${channelId}:${userId}`
+				return Effect.succeed(memberships[key] ? Option.some({ channelId, userId }) : Option.none())
+			},
+		}),
+	)
 
 const makePolicyLayer = (opts: {
 	members?: Record<string, Role>

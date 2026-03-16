@@ -147,7 +147,10 @@ export function PinnedMessagesModal() {
 																: "Unknown"}
 														</span>
 														<span className="text-muted-fg text-xs">
-															{format(toDate(pinnedMessage.message.createdAt), "HH:mm")}
+															{format(
+																toDate(pinnedMessage.message.createdAt),
+																"HH:mm",
+															)}
 															{isEdited && " (edited)"}
 														</span>
 													</div>
@@ -161,7 +164,10 @@ export function PinnedMessagesModal() {
 											{/* Pinned Date */}
 											<div className="mt-2 text-muted-fg text-xs">
 												Pinned{" "}
-												{format(toDate(pinnedMessage.pinned.pinnedAt), "MMM d 'at' h:mm a")}
+												{format(
+													toDate(pinnedMessage.pinned.pinnedAt),
+													"MMM d 'at' h:mm a",
+												)}
 											</div>
 										</button>
 									)

@@ -50,30 +50,30 @@ const makeDispatchHarness = () => {
 	}
 
 	const discordSyncWorker: DispatchWorker = {
-			ingestMessageCreate: (payload) =>
-				Effect.sync(() => {
-					calls.create.push(payload)
-				}),
-			ingestMessageUpdate: (payload) =>
-				Effect.sync(() => {
-					calls.update.push(payload)
-				}),
-			ingestMessageDelete: (payload) =>
-				Effect.sync(() => {
-					calls.delete.push(payload)
-				}),
-			ingestReactionAdd: (payload) =>
-				Effect.sync(() => {
-					calls.reactionAdd.push(payload)
-				}),
-			ingestReactionRemove: (payload) =>
-				Effect.sync(() => {
-					calls.reactionRemove.push(payload)
-				}),
-			ingestThreadCreate: (payload) =>
-				Effect.sync(() => {
-					calls.threadCreate.push(payload)
-				}),
+		ingestMessageCreate: (payload) =>
+			Effect.sync(() => {
+				calls.create.push(payload)
+			}),
+		ingestMessageUpdate: (payload) =>
+			Effect.sync(() => {
+				calls.update.push(payload)
+			}),
+		ingestMessageDelete: (payload) =>
+			Effect.sync(() => {
+				calls.delete.push(payload)
+			}),
+		ingestReactionAdd: (payload) =>
+			Effect.sync(() => {
+				calls.reactionAdd.push(payload)
+			}),
+		ingestReactionRemove: (payload) =>
+			Effect.sync(() => {
+				calls.reactionRemove.push(payload)
+			}),
+		ingestThreadCreate: (payload) =>
+			Effect.sync(() => {
+				calls.threadCreate.push(payload)
+			}),
 	}
 
 	const handlers = createDiscordGatewayDispatchHandlers({

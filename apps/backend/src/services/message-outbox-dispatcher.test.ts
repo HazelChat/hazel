@@ -48,10 +48,13 @@ const runDispatcherEffect = <A, E, R>(
 				Effect.provide(Layer.succeed(MessageSideEffectService, sideEffects)),
 				Effect.provide(MessageOutboxRepo.layer),
 				Effect.provide(
-					Layer.succeed(EnvVars, serviceShape<typeof EnvVars>({
-						IS_DEV: true,
-						DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
-					})),
+					Layer.succeed(
+						EnvVars,
+						serviceShape<typeof EnvVars>({
+							IS_DEV: true,
+							DATABASE_URL: Redacted.make(harness.container.getConnectionUri()),
+						}),
+					),
 				),
 				Effect.provide(harness.dbLayer),
 			),

@@ -24,26 +24,26 @@ import { forceRefreshEffect, getAccessToken as getAccessTokenPromise } from "~/l
 // ============================================================================
 
 export interface DesktopTokens {
-    accessToken: string
-    refreshToken: string
-    expiresAt: number
+	accessToken: string
+	refreshToken: string
+	expiresAt: number
 }
 
 export type DesktopAuthStatus = "idle" | "loading" | "authenticated" | "error"
 
 export interface DesktopAuthError {
-    _tag: string
-    message: string
+	_tag: string
+	message: string
 }
 
 interface DesktopLoginOptions {
-    returnTo?: string
-    organizationId?: OrganizationId
-    invitationToken?: string
+	returnTo?: string
+	organizationId?: OrganizationId
+	invitationToken?: string
 }
 
 interface DesktopLogoutOptions {
-    redirectTo?: string
+	redirectTo?: string
 }
 
 // ============================================================================
@@ -84,11 +84,11 @@ export const isDesktopAuthenticatedAtom = Atom.make((get) => get(desktopTokensAt
 // ============================================================================
 
 function toErrorInfo(error: unknown): { _tag: string; message: string } {
-    const e = error as { _tag?: string; message?: string } | undefined
-    return {
-        _tag: e?._tag ?? "UnknownError",
-        message: e?.message ?? "Unknown error",
-    }
+	const e = error as { _tag?: string; message?: string } | undefined
+	return {
+		_tag: e?._tag ?? "UnknownError",
+		message: e?.message ?? "Unknown error",
+	}
 }
 
 // ============================================================================
@@ -99,167 +99,163 @@ function toErrorInfo(error: unknown): { _tag: string; message: string } {
  * Action atom that initiates the desktop OAuth flow
  */
 export const desktopLoginAtom = Atom.fn(
-    Effect.fnUntraced(function* (options: DesktopLoginOptions | undefined, get) {
-            if (!isTauri()) {
-                yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop login")
-                return
-            }
+	Effect.fnUntraced(function* (options: DesktopLoginOptions | undefined, get) {
+		if (!isTauri()) {
+			yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop login")
+			return
+		}
 
-            get.set(desktopAuthStatusAtom, "loading")
-            get.set(desktopAuthErrorAtom, null)
+		get.set(desktopAuthStatusAtom, "loading")
+		get.set(desktopAuthErrorAtom, null)
 
-            const loginEffect = Effect.gen(function* () {
-                const auth: TauriAuthService = yield* TauriAuth
-                const authResult = yield* auth.initiateAuth(options)
+		const loginEffect = Effect.gen(function* () {
+			const auth: TauriAuthService = yield* TauriAuth
+			const authResult = yield* auth.initiateAuth(options)
 
-                const tokenStorage: TokenStorageService = yield* TokenStorage
-                const accessTokenOpt = yield* tokenStorage.getAccessToken
-                const refreshTokenOpt = yield* tokenStorage.getRefreshToken
-                const expiresAtOpt = yield* tokenStorage.getExpiresAt
+			const tokenStorage: TokenStorageService = yield* TokenStorage
+			const accessTokenOpt = yield* tokenStorage.getAccessToken
+			const refreshTokenOpt = yield* tokenStorage.getRefreshToken
+			const expiresAtOpt = yield* tokenStorage.getExpiresAt
 
-                if (
-                    Option.isSome(accessTokenOpt) &&
-                    Option.isSome(refreshTokenOpt) &&
-                    Option.isSome(expiresAtOpt)
-                ) {
-                    get.set(desktopTokensAtom, {
-                        accessToken: accessTokenOpt.value,
-                        refreshToken: refreshTokenOpt.value,
-                        expiresAt: expiresAtOpt.value,
-                    })
-                    get.set(desktopAuthStatusAtom, "authenticated")
-                }
+			if (
+				Option.isSome(accessTokenOpt) &&
+				Option.isSome(refreshTokenOpt) &&
+				Option.isSome(expiresAtOpt)
+			) {
+				get.set(desktopTokensAtom, {
+					accessToken: accessTokenOpt.value,
+					refreshToken: refreshTokenOpt.value,
+					expiresAt: expiresAtOpt.value,
+				})
+				get.set(desktopAuthStatusAtom, "authenticated")
+			}
 
-                return authResult
-            }).pipe(Effect.provide(Layer.mergeAll(TauriAuthLive, TokenStorageLive)))
+			return authResult
+		}).pipe(Effect.provide(Layer.mergeAll(TauriAuthLive, TokenStorageLive)))
 
-            const result = yield* loginEffect.pipe(
-                Effect.catch((error) => {
-                    console.error("[desktop-auth] Login failed:", error)
-                    const info = toErrorInfo(error)
-                    get.set(desktopAuthStatusAtom, "error")
-                    get.set(desktopAuthErrorAtom, info)
-                    return Effect.fail(error)
-                }),
-            )
+		const result = yield* loginEffect.pipe(
+			Effect.catch((error) => {
+				console.error("[desktop-auth] Login failed:", error)
+				const info = toErrorInfo(error)
+				get.set(desktopAuthStatusAtom, "error")
+				get.set(desktopAuthErrorAtom, info)
+				return Effect.fail(error)
+			}),
+		)
 
-            yield* Effect.log(`[desktop-auth] Login successful, navigating to: ${result.returnTo}`)
-            window.location.href = result.returnTo
-        }),
+		yield* Effect.log(`[desktop-auth] Login successful, navigating to: ${result.returnTo}`)
+		window.location.href = result.returnTo
+	}),
 )
 
 /**
  * Action atom that performs desktop logout
  */
 export const desktopLogoutAtom = Atom.fn(
-    Effect.fnUntraced(function* (options: DesktopLogoutOptions | undefined, get) {
-            if (!isTauri()) {
-                yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop logout")
-                return
-            }
+	Effect.fnUntraced(function* (options: DesktopLogoutOptions | undefined, get) {
+		if (!isTauri()) {
+			yield* Effect.log("[desktop-auth] Not in Tauri environment, skipping desktop logout")
+			return
+		}
 
-            yield* Effect.gen(function* () {
-                const tokenStorage: TokenStorageService = yield* TokenStorage
-                yield* tokenStorage.clearTokens
-            }).pipe(
-                Effect.provide(TokenStorageLive),
-                Effect.catch(() => {
-                    console.error("[desktop-auth] Failed to clear tokens")
-                    return Effect.void
-                }),
-            )
+		yield* Effect.gen(function* () {
+			const tokenStorage: TokenStorageService = yield* TokenStorage
+			yield* tokenStorage.clearTokens
+		}).pipe(
+			Effect.provide(TokenStorageLive),
+			Effect.catch(() => {
+				console.error("[desktop-auth] Failed to clear tokens")
+				return Effect.void
+			}),
+		)
 
-            get.set(desktopTokensAtom, null)
-            get.set(desktopAuthStatusAtom, "idle")
-            get.set(desktopAuthErrorAtom, null)
+		get.set(desktopTokensAtom, null)
+		get.set(desktopAuthStatusAtom, "idle")
+		get.set(desktopAuthErrorAtom, null)
 
-            const redirectTo = options?.redirectTo || "/"
-            yield* Effect.log(`[desktop-auth] Logout complete, redirecting to: ${redirectTo}`)
-            window.location.href = redirectTo
-        }),
+		const redirectTo = options?.redirectTo || "/"
+		yield* Effect.log(`[desktop-auth] Logout complete, redirecting to: ${redirectTo}`)
+		window.location.href = redirectTo
+	}),
 )
 
 /**
  * Action atom that forces an immediate token refresh via AuthToken
  */
 export const desktopForceRefreshAtom = Atom.fn(
-    Effect.fnUntraced(function* (_: void) {
-        if (!isTauri()) return false
-        return yield* forceRefreshEffect
-    }),
+	Effect.fnUntraced(function* (_: void) {
+		if (!isTauri()) return false
+		return yield* forceRefreshEffect
+	}),
 )
 
 /**
  * Schema for clipboard auth payload
  */
 const ClipboardAuthPayload = Schema.Struct({
-    code: Schema.String,
-    state: Schema.Unknown,
+	code: Schema.String,
+	state: Schema.Unknown,
 })
 
 interface ExchangeResult {
-    accessToken: string
-    refreshToken: string
-    expiresIn: number
+	accessToken: string
+	refreshToken: string
+	expiresIn: number
 }
 
 /**
  * Action atom that authenticates using clipboard data
  */
 export const desktopLoginFromClipboardAtom = Atom.fn(
-    Effect.fnUntraced(function* (_: void, get) {
-            if (!isTauri()) return
+	Effect.fnUntraced(function* (_: void, get) {
+		if (!isTauri()) return
 
-            get.set(desktopAuthStatusAtom, "loading")
-            get.set(desktopAuthErrorAtom, null)
+		get.set(desktopAuthStatusAtom, "loading")
+		get.set(desktopAuthErrorAtom, null)
 
-            const clipboardEffect = Effect.gen(function* () {
-                const clipboard = yield* Clipboard.Clipboard
-                const clipboardText = yield* clipboard.readString
+		const clipboardEffect = Effect.gen(function* () {
+			const clipboard = yield* Clipboard.Clipboard
+			const clipboardText = yield* clipboard.readString
 
-                const rawJson = yield* Effect.try({
-                    try: () => JSON.parse(clipboardText),
-                    catch: () => new Error("Invalid clipboard data - not valid JSON"),
-                })
+			const rawJson = yield* Effect.try({
+				try: () => JSON.parse(clipboardText),
+				catch: () => new Error("Invalid clipboard data - not valid JSON"),
+			})
 
-                const parsed = yield* Schema.decodeUnknownEffect(ClipboardAuthPayload)(rawJson).pipe(
-                    Effect.mapError(() => new Error("Invalid clipboard data - missing code or state")),
-                )
+			const parsed = yield* Schema.decodeUnknownEffect(ClipboardAuthPayload)(rawJson).pipe(
+				Effect.mapError(() => new Error("Invalid clipboard data - missing code or state")),
+			)
 
-                const stateString =
-                    typeof parsed.state === "string" ? parsed.state : JSON.stringify(parsed.state)
+			const stateString = typeof parsed.state === "string" ? parsed.state : JSON.stringify(parsed.state)
 
-                const tokenExchange: TokenExchangeService = yield* TokenExchange
-                const tokens = yield* tokenExchange.exchangeCode(parsed.code, stateString)
+			const tokenExchange: TokenExchangeService = yield* TokenExchange
+			const tokens = yield* tokenExchange.exchangeCode(parsed.code, stateString)
 
-                return tokens as ExchangeResult
-            }).pipe(Effect.provide(Layer.mergeAll(ClipboardLive, TokenExchangeLive, TokenStorageLive)))
+			return tokens as ExchangeResult
+		}).pipe(Effect.provide(Layer.mergeAll(ClipboardLive, TokenExchangeLive, TokenStorageLive)))
 
-            const result: ExchangeResult = yield* clipboardEffect.pipe(
-                Effect.catch((error) => {
-                    console.error("[desktop-auth] Clipboard login failed:", error)
-                    get.set(desktopAuthStatusAtom, "error")
-                    get.set(desktopAuthErrorAtom, {
-                        _tag: "ClipboardAuthError",
-                        message:
-                            error instanceof Error
-                                ? error.message
-                                : "Failed to authenticate from clipboard",
-                    })
-                    return Effect.fail(error)
-                }),
-            )
+		const result: ExchangeResult = yield* clipboardEffect.pipe(
+			Effect.catch((error) => {
+				console.error("[desktop-auth] Clipboard login failed:", error)
+				get.set(desktopAuthStatusAtom, "error")
+				get.set(desktopAuthErrorAtom, {
+					_tag: "ClipboardAuthError",
+					message: error instanceof Error ? error.message : "Failed to authenticate from clipboard",
+				})
+				return Effect.fail(error)
+			}),
+		)
 
-            get.set(desktopTokensAtom, {
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
-                expiresAt: Date.now() + result.expiresIn * 1000,
-            })
-            get.set(desktopAuthStatusAtom, "authenticated")
+		get.set(desktopTokensAtom, {
+			accessToken: result.accessToken,
+			refreshToken: result.refreshToken,
+			expiresAt: Date.now() + result.expiresIn * 1000,
+		})
+		get.set(desktopAuthStatusAtom, "authenticated")
 
-            yield* Effect.log("[desktop-auth] Clipboard login successful")
-            window.location.href = "/"
-        }),
+		yield* Effect.log("[desktop-auth] Clipboard login successful")
+		window.location.href = "/"
+	}),
 )
 
 // ============================================================================
@@ -267,44 +263,44 @@ export const desktopLoginFromClipboardAtom = Atom.fn(
 // ============================================================================
 
 export const desktopInitAtom = Atom.make((get) => {
-    if (!isTauri()) return null
+	if (!isTauri()) return null
 
-    const loadTokens = Effect.gen(function* () {
-        const tokenStorage: TokenStorageService = yield* TokenStorage
-        const accessTokenOpt = yield* tokenStorage.getAccessToken
-        const refreshTokenOpt = yield* tokenStorage.getRefreshToken
-        const expiresAtOpt = yield* tokenStorage.getExpiresAt
+	const loadTokens = Effect.gen(function* () {
+		const tokenStorage: TokenStorageService = yield* TokenStorage
+		const accessTokenOpt = yield* tokenStorage.getAccessToken
+		const refreshTokenOpt = yield* tokenStorage.getRefreshToken
+		const expiresAtOpt = yield* tokenStorage.getExpiresAt
 
-        if (Option.isSome(accessTokenOpt) && Option.isSome(refreshTokenOpt) && Option.isSome(expiresAtOpt)) {
-            get.set(desktopTokensAtom, {
-                accessToken: accessTokenOpt.value,
-                refreshToken: refreshTokenOpt.value,
-                expiresAt: expiresAtOpt.value,
-            })
-            get.set(desktopAuthStatusAtom, "authenticated")
-            yield* Effect.log("[desktop-auth] Loaded tokens from storage")
-        } else {
-            get.set(desktopAuthStatusAtom, "idle")
-            yield* Effect.log("[desktop-auth] No stored tokens found")
-        }
-    }).pipe(
-        Effect.provide(TokenStorageLive),
-        Effect.catch((error) => {
-            console.error("[desktop-auth] Failed to load tokens:", error)
-            const info = toErrorInfo(error)
-            get.set(desktopAuthStatusAtom, "error")
-            get.set(desktopAuthErrorAtom, info)
-            return Effect.void
-        }),
-    )
+		if (Option.isSome(accessTokenOpt) && Option.isSome(refreshTokenOpt) && Option.isSome(expiresAtOpt)) {
+			get.set(desktopTokensAtom, {
+				accessToken: accessTokenOpt.value,
+				refreshToken: refreshTokenOpt.value,
+				expiresAt: expiresAtOpt.value,
+			})
+			get.set(desktopAuthStatusAtom, "authenticated")
+			yield* Effect.log("[desktop-auth] Loaded tokens from storage")
+		} else {
+			get.set(desktopAuthStatusAtom, "idle")
+			yield* Effect.log("[desktop-auth] No stored tokens found")
+		}
+	}).pipe(
+		Effect.provide(TokenStorageLive),
+		Effect.catch((error) => {
+			console.error("[desktop-auth] Failed to load tokens:", error)
+			const info = toErrorInfo(error)
+			get.set(desktopAuthStatusAtom, "error")
+			get.set(desktopAuthErrorAtom, info)
+			return Effect.void
+		}),
+	)
 
-    const fiber = runtime.runFork(loadTokens)
+	const fiber = runtime.runFork(loadTokens)
 
-    get.addFinalizer(() => {
-        fiber.interruptUnsafe()
-    })
+	get.addFinalizer(() => {
+		fiber.interruptUnsafe()
+	})
 
-    return null
+	return null
 }).pipe(Atom.keepAlive)
 
 // ============================================================================
@@ -312,39 +308,39 @@ export const desktopInitAtom = Atom.make((get) => {
 // ============================================================================
 
 export const desktopTokenSchedulerAtom = Atom.make((get) => {
-    const tokens = get(desktopTokensAtom)
+	const tokens = get(desktopTokensAtom)
 
-    if (!tokens || !isTauri()) return null
+	if (!tokens || !isTauri()) return null
 
-    const timeUntilRefresh = tokens.expiresAt - Date.now() - REFRESH_BUFFER_MS
+	const timeUntilRefresh = tokens.expiresAt - Date.now() - REFRESH_BUFFER_MS
 
-    if (timeUntilRefresh <= 0) {
-        runtime.runFork(
-            Effect.gen(function* () {
-                yield* Effect.log("[desktop-auth] Token expired or expiring soon, refreshing now")
-                yield* forceRefreshEffect
-            }),
-        )
-        return { scheduledFor: Date.now(), immediate: true }
-    }
+	if (timeUntilRefresh <= 0) {
+		runtime.runFork(
+			Effect.gen(function* () {
+				yield* Effect.log("[desktop-auth] Token expired or expiring soon, refreshing now")
+				yield* forceRefreshEffect
+			}),
+		)
+		return { scheduledFor: Date.now(), immediate: true }
+	}
 
-    const minutes = Math.round(timeUntilRefresh / 1000 / 60)
-    const scheduledFor = tokens.expiresAt - REFRESH_BUFFER_MS
+	const minutes = Math.round(timeUntilRefresh / 1000 / 60)
+	const scheduledFor = tokens.expiresAt - REFRESH_BUFFER_MS
 
-    const refreshSchedule = Effect.gen(function* () {
-        yield* Effect.log(`[desktop-auth] Scheduling refresh in ${minutes} minutes`)
-        yield* Effect.sleep(Duration.millis(timeUntilRefresh))
-        yield* Effect.log("[desktop-auth] Scheduled refresh triggered")
-        yield* forceRefreshEffect
-    })
+	const refreshSchedule = Effect.gen(function* () {
+		yield* Effect.log(`[desktop-auth] Scheduling refresh in ${minutes} minutes`)
+		yield* Effect.sleep(Duration.millis(timeUntilRefresh))
+		yield* Effect.log("[desktop-auth] Scheduled refresh triggered")
+		yield* forceRefreshEffect
+	})
 
-    const fiber = runtime.runFork(refreshSchedule)
+	const fiber = runtime.runFork(refreshSchedule)
 
-    get.addFinalizer(() => {
-        fiber.interruptUnsafe()
-    })
+	get.addFinalizer(() => {
+		fiber.interruptUnsafe()
+	})
 
-    return { scheduledFor, immediate: false }
+	return { scheduledFor, immediate: false }
 }).pipe(Atom.keepAlive)
 
 // ============================================================================
@@ -352,30 +348,30 @@ export const desktopTokenSchedulerAtom = Atom.make((get) => {
 // ============================================================================
 
 export const getDesktopAccessToken = (): Promise<string | null> => {
-    if (!isTauri()) return Promise.resolve(null)
-    return getAccessTokenPromise()
+	if (!isTauri()) return Promise.resolve(null)
+	return getAccessTokenPromise()
 }
 
 export const clearDesktopTokens = (): Promise<void> => {
-    if (!isTauri()) return Promise.resolve()
+	if (!isTauri()) return Promise.resolve()
 
-    return runtime.runPromise(
-        Effect.gen(function* () {
-            const tokenStorage: TokenStorageService = yield* TokenStorage
-            yield* tokenStorage.clearTokens
-        }).pipe(
-            Effect.provide(TokenStorageLive),
-            Effect.catch(() => {
-                console.error("[desktop-auth] Failed to clear tokens during recovery")
-                return Effect.void
-            }),
-            Effect.ensuring(
-                Effect.sync(() => {
-                    appRegistry.set(desktopTokensAtom, null)
-                    appRegistry.set(desktopAuthStatusAtom, "idle")
-                    appRegistry.set(desktopAuthErrorAtom, null)
-                }),
-            ),
-        ),
-    ) as Promise<void>
+	return runtime.runPromise(
+		Effect.gen(function* () {
+			const tokenStorage: TokenStorageService = yield* TokenStorage
+			yield* tokenStorage.clearTokens
+		}).pipe(
+			Effect.provide(TokenStorageLive),
+			Effect.catch(() => {
+				console.error("[desktop-auth] Failed to clear tokens during recovery")
+				return Effect.void
+			}),
+			Effect.ensuring(
+				Effect.sync(() => {
+					appRegistry.set(desktopTokensAtom, null)
+					appRegistry.set(desktopAuthStatusAtom, "idle")
+					appRegistry.set(desktopAuthErrorAtom, null)
+				}),
+			),
+		),
+	) as Promise<void>
 }

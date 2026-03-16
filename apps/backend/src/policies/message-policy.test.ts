@@ -27,51 +27,60 @@ const MISSING_MESSAGE_ID = "00000000-0000-4000-8000-000000000899" as MessageId
 const makeChannelRepoLayer = (
 	channels: Record<string, { organizationId: OrganizationId; type: string; id: ChannelId }>,
 ) =>
-	Layer.succeed(ChannelRepo, serviceShape<typeof ChannelRepo>({
-		findById: (id: ChannelId) => {
-			const channel = channels[id]
-			return Effect.succeed(channel ? Option.some(channel) : Option.none())
-		},
-		with: <A, E, R>(
-			id: ChannelId,
-			f: (channel: {
-				organizationId: OrganizationId
-				type: string
-				id: ChannelId
-			}) => Effect.Effect<A, E, R>,
-		) => {
-			const channel = channels[id]
-			if (!channel) {
-				return Effect.fail(makeEntityNotFound("Channel"))
-			}
-			return f(channel)
-		},
-	}))
+	Layer.succeed(
+		ChannelRepo,
+		serviceShape<typeof ChannelRepo>({
+			findById: (id: ChannelId) => {
+				const channel = channels[id]
+				return Effect.succeed(channel ? Option.some(channel) : Option.none())
+			},
+			with: <A, E, R>(
+				id: ChannelId,
+				f: (channel: {
+					organizationId: OrganizationId
+					type: string
+					id: ChannelId
+				}) => Effect.Effect<A, E, R>,
+			) => {
+				const channel = channels[id]
+				if (!channel) {
+					return Effect.fail(makeEntityNotFound("Channel"))
+				}
+				return f(channel)
+			},
+		}),
+	)
 
 /**
  * Creates a MessageRepo mock with a `with` method.
  */
 const makeMessageRepoLayer = (messages: Record<string, { authorId: UserId; channelId: ChannelId }>) =>
-	Layer.succeed(MessageRepo, serviceShape<typeof MessageRepo>({
-		findById: (id: MessageId) => {
-			const message = messages[id]
-			return Effect.succeed(message ? Option.some(message) : Option.none())
-		},
-		with: <A, E, R>(
-			id: MessageId,
-			f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
-		) => {
-			const message = messages[id]
-			if (!message) {
-				return Effect.fail(makeEntityNotFound("Message"))
-			}
-			return f(message)
-		},
-	}))
+	Layer.succeed(
+		MessageRepo,
+		serviceShape<typeof MessageRepo>({
+			findById: (id: MessageId) => {
+				const message = messages[id]
+				return Effect.succeed(message ? Option.some(message) : Option.none())
+			},
+			with: <A, E, R>(
+				id: MessageId,
+				f: (message: { authorId: UserId; channelId: ChannelId }) => Effect.Effect<A, E, R>,
+			) => {
+				const message = messages[id]
+				if (!message) {
+					return Effect.fail(makeEntityNotFound("Message"))
+				}
+				return f(message)
+			},
+		}),
+	)
 
-const emptyChannelMemberRepoLayer = Layer.succeed(ChannelMemberRepo, serviceShape<typeof ChannelMemberRepo>({
-	findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
-}))
+const emptyChannelMemberRepoLayer = Layer.succeed(
+	ChannelMemberRepo,
+	serviceShape<typeof ChannelMemberRepo>({
+		findByChannelAndUser: (_channelId: ChannelId, _userId: UserId) => Effect.succeed(Option.none()),
+	}),
+)
 
 /**
  * Builds the full layer stack for MessagePolicy tests.

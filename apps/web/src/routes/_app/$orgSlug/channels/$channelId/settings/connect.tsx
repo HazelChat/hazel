@@ -334,7 +334,7 @@ function InviteRow({
 				</Badge>
 			</td>
 			<td className="px-4 py-4">
-						<span className="text-muted-fg text-sm">{toDate(invite.createdAt).toLocaleDateString()}</span>
+				<span className="text-muted-fg text-sm">{toDate(invite.createdAt).toLocaleDateString()}</span>
 			</td>
 			<td className="px-4 py-4 text-right">
 				{invite.status === "pending" && (
