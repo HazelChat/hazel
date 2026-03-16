@@ -41,7 +41,7 @@ import {
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
-import { Config, ConfigProvider, Effect, Layer, Scope, ServiceMap } from "effect"
+import { Config, ConfigProvider, Effect, Layer, ServiceMap } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -222,7 +222,7 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	Layer.provide(
 		Layer.succeed(
 			HttpMiddleware.TracerDisabledWhen,
-			(request: any) => request.url === "/health" || request.method === "OPTIONS",
+			(request) => request.url === "/health" || request.method === "OPTIONS",
 		),
 	),
 	Layer.provide(MainLive),
@@ -247,8 +247,4 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	),
 )
 
-const ServerProgram = Effect.scoped(
-	ServerLayer.pipe(Layer.launch) as unknown as Effect.Effect<never, never, Scope.Scope>,
-)
-
-BunRuntime.runMain(ServerProgram)
+ServerLayer.pipe(Layer.launch).pipe(BunRuntime.runMain)

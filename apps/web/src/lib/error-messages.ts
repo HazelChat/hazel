@@ -1,4 +1,3 @@
-import { Schema } from "effect"
 import type { HttpClientError } from "effect/unstable/http"
 import { RpcClientError } from "effect/unstable/rpc"
 import {

@@ -91,7 +91,8 @@ const createBotUserContext = (bot: { userId: typeof import("@hazel/schema").User
 const withHttpScopes = <A, E, R>(
 	scopes: ReadonlyArray<ApiScope>,
 	make: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> => Effect.provideService(make, CurrentRpcScopes, scopes as any)
+): Effect.Effect<A, E, R> =>
+	Effect.provideService(make, CurrentRpcScopes, scopes) as Effect.Effect<A, E, R>
 
 export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messages", (handlers) =>
 	Effect.gen(function* () {
