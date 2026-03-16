@@ -45,11 +45,10 @@ import {
 	LogLevel,
 	ManagedRuntime,
 	Option,
-	RateLimiter,
 	Redacted,
 	Ref,
-	Runtime,
 	Schema,
+	Semaphore,
 	ServiceMap,
 } from "effect"
 import { BotAuth, createAuthContextFromToken } from "./auth.ts"
@@ -215,12 +214,11 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			botName: authContext.botName,
 		}
 
-		// Create rate limiter for outbound message operations
-		// Default: 10 messages per second to prevent API rate limiting
-		const messageLimiter = yield* RateLimiter.make({
-			limit: 10,
-			interval: Duration.seconds(1),
-		})
+		// Create semaphore for outbound message operations
+		// Limit to 10 concurrent requests to prevent API rate limiting
+		const messageSemaphore = Semaphore.makeUnsafe(10)
+		const messageLimiter = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+			Semaphore.withPermit(messageSemaphore)(effect)
 
 		// Get the runtime config (optional - contains commands to sync)
 		const runtimeConfigOption = yield* Effect.serviceOption(HazelBotRuntimeConfigTag)
@@ -295,7 +293,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 									}),
 							}).pipe(
 								Effect.flatMap((parsed) =>
-									Schema.decodeUnknown(schema)(parsed).pipe(
+									Schema.decodeUnknownEffect(schema)(parsed).pipe(
 										Effect.mapError(
 											(cause) =>
 												new GatewayDecodeError({
@@ -379,7 +377,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				{
 					onNone: () => Effect.succeed(event.payload.arguments),
 					onSome: (def) =>
-						Schema.decodeUnknown(def.argsSchema)(event.payload.arguments).pipe(
+						Schema.decodeUnknownEffect(def.argsSchema)(event.payload.arguments).pipe(
 							Effect.mapError(
 								(cause) =>
 									new CommandArgsDecodeError({
@@ -503,7 +501,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 							partitionEvents,
 							(envelope) =>
 								dispatchGatewayEvent(envelope).pipe(
-									Effect.tapErrorCause((cause) =>
+									Effect.tapCause((cause) =>
 										Effect.logError("Gateway event handler failed", {
 											eventType: envelope.eventType,
 											partitionKey: envelope.partitionKey,
@@ -683,7 +681,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 															},
 														),
 												}),
-												Effect.zipRight(
+												Effect.andThen(
 													Effect.logInfo(
 														hasConnected || frame.resumed
 															? "Bot gateway websocket reconnected"
@@ -814,7 +812,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 										offset: nextResumeOffset,
 										sessionId: nextSessionId,
 									}).pipe(
-										Effect.zipRight(Effect.sleep(Duration.seconds(1))),
+										Effect.andThen(Effect.sleep(Duration.seconds(1))),
 										Effect.as({
 											resumeOffset: nextResumeOffset,
 											sessionId: nextSessionId,
@@ -824,7 +822,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 							)
 							nextResumeOffset = nextState.resumeOffset
 							nextSessionId = nextState.sessionId
-						}).pipe(Effect.zipRight(Effect.sleep(Duration.millis(250)))),
+						}).pipe(Effect.andThen(Effect.sleep(Duration.millis(250)))),
 					),
 				)
 			})
@@ -1403,7 +1401,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						})
 						.pipe(
 							Effect.timeout(Duration.seconds(15)),
-							Effect.tapErrorCause((cause) =>
+							Effect.tapCause((cause) =>
 								Effect.logError("[bot.channel.createThread] Failed to ensure thread", {
 									messageId,
 									channelId,

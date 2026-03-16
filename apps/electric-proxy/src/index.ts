@@ -137,8 +137,9 @@ const handleUserRequest = (request: Request) => {
 			Effect.gen(function* () {
 				yield* annotateHandledError(401, "ProxyAuthenticationError")
 				yield* Effect.logInfo("Authentication failed", { detail: error.detail })
-				yield* Metric.increment(proxyAuthFailures).pipe(
-					Effect.tagMetrics({ auth_type: "user", error_tag: "ProxyAuthenticationError" }),
+				yield* Metric.update(
+					Metric.withAttributes(proxyAuthFailures, { auth_type: "user", error_tag: "ProxyAuthenticationError" }),
+					1,
 				)
 				return new Response(
 					JSON.stringify({
@@ -180,7 +181,7 @@ const handleUserRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catch((error) =>
+		Effect.catchAll((error) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -206,12 +207,13 @@ const handleUserRequest = (request: Request) => {
 				const duration = Date.now() - start
 				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
 				yield* Effect.annotateCurrentSpan("http.response.status_code", response.status)
-				yield* Metric.increment(proxyRequestsTotal).pipe(
-					Effect.tagMetrics({
+				yield* Metric.update(
+					Metric.withAttributes(proxyRequestsTotal, {
 						route: "/v1/shape",
 						auth_type: "user",
 						status_code: String(response.status),
 					}),
+					1,
 				)
 				yield* Metric.update(proxyRequestDuration, duration)
 			}),
@@ -317,8 +319,9 @@ const handleBotRequest = (request: Request) => {
 				yield* Effect.logInfo("Bot authentication failed", {
 					detail: error.detail,
 				})
-				yield* Metric.increment(proxyAuthFailures).pipe(
-					Effect.tagMetrics({ auth_type: "bot", error_tag: "BotAuthenticationError" }),
+				yield* Metric.update(
+					Metric.withAttributes(proxyAuthFailures, { auth_type: "bot", error_tag: "BotAuthenticationError" }),
+					1,
 				)
 				return new Response(
 					JSON.stringify({

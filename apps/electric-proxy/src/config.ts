@@ -1,4 +1,4 @@
-import { ServiceMap, Config, Effect, Option, Redacted } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted } from "effect"
 
 /**
  * Proxy configuration interface
@@ -26,11 +26,11 @@ export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()
 		const electricUrl = yield* Config.string("ELECTRIC_URL")
 		const electricSourceId = yield* Config.string("ELECTRIC_SOURCE_ID").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const electricSourceSecret = yield* Config.string("ELECTRIC_SOURCE_SECRET").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
@@ -42,7 +42,7 @@ export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()
 		const port = yield* Config.number("PORT").pipe(Config.withDefault(8184))
 		const otlpEndpoint = yield* Config.string("OTLP_ENDPOINT").pipe(
 			Config.option,
-			Effect.map(Option.getOrUndefined),
+			Config.map(Option.getOrUndefined),
 		)
 		const redisUrl = yield* Config.redacted("REDIS_URL").pipe(
 			Config.withDefault(Redacted.make("redis://localhost:6380")),

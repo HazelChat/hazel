@@ -3,9 +3,9 @@
  *
  * Provides counters and histograms for monitoring proxy performance.
  */
-import { Metric, MetricBoundaries } from "effect"
+import { Metric } from "effect"
 
-const latencyBoundaries = MetricBoundaries.fromIterable([5, 10, 25, 50, 100, 250, 500, 1000, 2500])
+const latencyBoundaries = [5, 10, 25, 50, 100, 250, 500, 1000, 2500] as const
 
 // ============================================================================
 // Counters
@@ -25,7 +25,11 @@ export const proxyElectricErrors = Metric.counter("proxy.electric.errors")
 // ============================================================================
 
 /** End-to-end proxy request duration */
-export const proxyRequestDuration = Metric.histogram("proxy.request.duration_ms", latencyBoundaries)
+export const proxyRequestDuration = Metric.histogram("proxy.request.duration_ms", {
+	boundaries: latencyBoundaries,
+})
 
 /** Upstream Electric fetch latency */
-export const proxyElectricDuration = Metric.histogram("proxy.electric.duration_ms", latencyBoundaries)
+export const proxyElectricDuration = Metric.histogram("proxy.electric.duration_ms", {
+	boundaries: latencyBoundaries,
+})

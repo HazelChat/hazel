@@ -1,5 +1,6 @@
 import type { ChannelId } from "@hazel/schema"
-import { Duration, PrimaryKey, Schema } from "effect"
+import { Duration, Schema } from "effect"
+import { Persistable } from "effect/unstable/persistence"
 
 /**
  * Cache configuration constants
@@ -35,20 +36,15 @@ export class AccessContextLookupError extends Schema.TaggedErrorClass<AccessCont
 
 /**
  * Cache request for bot access context.
- * Implements Schema.TaggedRequest (provides WithResult) and PrimaryKey.
+ * Implements Persistable.Class (provides persistence key and schemas) and PrimaryKey.
  */
-export class BotAccessContextRequest extends Schema.TaggedRequest<BotAccessContextRequest>()(
-	"BotAccessContextRequest",
-	{
-		failure: AccessContextLookupError,
-		success: BotAccessContextSchema,
-		payload: {
-			botId: Schema.String,
-			userId: Schema.String,
-		},
-	},
-) {
-	[PrimaryKey.symbol]() {
-		return `bot:${this.botId}`
+export class BotAccessContextRequest extends Persistable.Class<{
+	payload: {
+		botId: string
+		userId: string
 	}
-}
+}>()("BotAccessContextRequest", {
+	primaryKey: (payload) => `bot:${payload.botId}`,
+	success: BotAccessContextSchema,
+	error: AccessContextLookupError,
+}) {}

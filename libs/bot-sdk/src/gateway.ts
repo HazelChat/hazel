@@ -1,5 +1,5 @@
 import type { BotId } from "@hazel/schema"
-import { Context, Effect, Layer, Ref } from "effect"
+import { ServiceMap, Effect, Layer, Ref } from "effect"
 import { GatewaySessionStoreError } from "./errors.ts"
 
 export interface GatewaySessionStore {
@@ -7,7 +7,7 @@ export interface GatewaySessionStore {
 	save(botId: BotId, offset: string): Effect.Effect<void, GatewaySessionStoreError>
 }
 
-export const GatewaySessionStoreTag = Context.GenericTag<GatewaySessionStore>(
+export const GatewaySessionStoreTag = ServiceMap.Service<GatewaySessionStore>(
 	"@hazel/bot-sdk/GatewaySessionStore",
 )
 
@@ -53,7 +53,7 @@ export interface BotStateStore {
 	delete(botId: BotId, key: string): Effect.Effect<void, GatewaySessionStoreError>
 }
 
-export const BotStateStoreTag = Context.GenericTag<BotStateStore>("@hazel/bot-sdk/BotStateStore")
+export const BotStateStoreTag = ServiceMap.Service<BotStateStore>("@hazel/bot-sdk/BotStateStore")
 
 export const InMemoryBotStateStoreLive = Layer.effect(
 	BotStateStoreTag,

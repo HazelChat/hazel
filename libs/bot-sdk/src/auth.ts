@@ -1,7 +1,7 @@
 import { HttpApiClient } from "effect/unstable/httpapi"
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { HazelApi } from "@hazel/domain/http"
-import { ServiceMap, Duration, Effect, Schedule } from "effect"
+import { Layer, ServiceMap, Duration, Effect, Schedule } from "effect"
 import { AuthenticationError } from "./errors.ts"
 
 /**
@@ -85,8 +85,8 @@ export const createAuthContextFromToken = (
 			Effect.retry(
 				Schedule.exponential("1 second", 2).pipe(
 					Schedule.jittered,
-					Schedule.whileOutput((duration) =>
-						Duration.lessThanOrEqualTo(duration, Duration.seconds(30)),
+					Schedule.while((duration) =>
+						Duration.isLessThanOrEqualTo(duration, Duration.seconds(30)),
 					),
 				),
 			),

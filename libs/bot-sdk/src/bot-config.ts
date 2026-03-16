@@ -18,24 +18,14 @@ const DEFAULT_ACTORS_URL = "https://rivet.hazel.sh"
  * - GATEWAY_URL (optional) - Gateway URL for inbound bot websocket delivery
  */
 export const BotEnvConfig = Config.all({
-	botToken: Config.redacted("BOT_TOKEN").pipe(Config.withDescription("Bot authentication token")),
-	backendUrl: Config.string("BACKEND_URL").pipe(
-		Config.withDefault("https://api.hazel.sh"),
-		Config.withDescription("Backend API URL"),
-	),
-	gatewayUrl: Config.string("GATEWAY_URL").pipe(
-		Config.withDefault("https://bot-gateway.hazel.sh"),
-		Config.withDescription("Gateway API URL for inbound bot websocket delivery"),
-	),
+	botToken: Config.redacted("BOT_TOKEN"),
+	backendUrl: Config.string("BACKEND_URL").pipe(Config.withDefault("https://api.hazel.sh")),
+	gatewayUrl: Config.string("GATEWAY_URL").pipe(Config.withDefault("https://bot-gateway.hazel.sh")),
 	actorsUrl: Config.string("ACTORS_URL").pipe(
 		Config.orElse(() => Config.string("RIVET_URL")),
 		Config.withDefault(DEFAULT_ACTORS_URL),
-		Config.withDescription("Actors/Rivet endpoint for live state streaming"),
 	),
-	healthPort: Config.number("PORT").pipe(
-		Config.withDefault(0),
-		Config.withDescription("Health check server port (default 0, OS-assigned)"),
-	),
+	healthPort: Config.number("PORT").pipe(Config.withDefault(0)),
 })
 
-export type BotEnvConfig = Config.Config.Success<typeof BotEnvConfig>
+export type BotEnvConfig = typeof BotEnvConfig extends Config<infer T> ? T : never
