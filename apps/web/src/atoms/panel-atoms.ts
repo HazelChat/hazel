@@ -36,7 +36,7 @@ export const panelWidthAtomFamily = Atom.family((panelType: PanelType) =>
 	Atom.kvs({
 		runtime: platformStorageRuntime,
 		key: `panel_width_${panelType}`,
-		schema: Schema.NullOr(Schema.Number),
+		schema: Schema.toCodecIso(Schema.NullOr(Schema.Number)),
 		defaultValue: () => DEFAULT_PANEL_WIDTHS[panelType],
 	}),
 )

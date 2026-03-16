@@ -112,7 +112,7 @@ export function AddChannelLinkModal({
 
 	const discordChannelsResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getDiscordGuildChannels", {
-			path: { orgId: organizationId, guildId: externalWorkspaceId },
+			params: { orgId: organizationId, guildId: externalWorkspaceId },
 		}),
 	)
 

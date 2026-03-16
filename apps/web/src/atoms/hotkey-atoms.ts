@@ -12,10 +12,7 @@ import {
 } from "~/lib/hotkeys/hotkey-registry"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 
-const HotkeyOverridesSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.String,
-})
+const HotkeyOverridesSchema = Schema.Record(Schema.String, Schema.String)
 
 type HotkeyOverrides = typeof HotkeyOverridesSchema.Type
 
@@ -36,7 +33,7 @@ export interface ResolvedHotkeyDefinition extends AppHotkeyDefinition {
 export const hotkeyOverridesAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-hotkey-overrides",
-	schema: HotkeyOverridesSchema,
+	schema: Schema.toCodecIso(HotkeyOverridesSchema),
 	defaultValue: () => ({}) as HotkeyOverrides,
 }).pipe(Atom.keepAlive)
 

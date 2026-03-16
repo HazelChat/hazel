@@ -15,7 +15,7 @@ import type {
 	OrganizationId,
 	UserId,
 } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { MessageReactionPolicy } from "./message-reaction-policy.ts"
 import { ConnectConversationService } from "../services/connect-conversation-service.ts"
 import { OrgResolver } from "../services/org-resolver.ts"
@@ -114,7 +114,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, {}, {}, {})
 
 		const result = await runWithActorEither(MessageReactionPolicy.canList(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate allows org member with channel access", async () => {
@@ -127,7 +127,7 @@ describe("MessageReactionPolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessageReactionPolicy.canCreate(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies non-org-member", async () => {
@@ -140,7 +140,7 @@ describe("MessageReactionPolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessageReactionPolicy.canCreate(MESSAGE_ID), layer, outsider)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows reaction owner", async () => {
@@ -148,7 +148,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
 		const result = await runWithActorEither(MessageReactionPolicy.canUpdate(REACTION_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-owner", async () => {
@@ -156,7 +156,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
 		const result = await runWithActorEither(MessageReactionPolicy.canUpdate(REACTION_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows reaction owner", async () => {
@@ -164,7 +164,7 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: actor.id } }, {}, {})
 
 		const result = await runWithActorEither(MessageReactionPolicy.canDelete(REACTION_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete denies non-owner", async () => {
@@ -172,8 +172,8 @@ describe("MessageReactionPolicy", () => {
 		const layer = makePolicyLayer({}, { [REACTION_ID]: { userId: OTHER_USER_ID } }, {}, {})
 
 		const result = await runWithActorEither(MessageReactionPolicy.canDelete(REACTION_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})

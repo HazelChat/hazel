@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, TypingIndicatorRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, TypingIndicatorId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { TypingIndicatorPolicy } from "./typing-indicator-policy.ts"
 import { makeActor, makeEntityNotFound, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
 
@@ -61,7 +61,7 @@ describe("TypingIndicatorPolicy", () => {
 	it("canRead always allows authenticated actors", async () => {
 		const layer = makePolicyLayer({}, {}, {})
 		const result = await runWithActorEither(TypingIndicatorPolicy.canRead(INDICATOR_ID), layer)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate requires channel membership", async () => {
@@ -86,8 +86,8 @@ describe("TypingIndicatorPolicy", () => {
 			actor,
 		)
 
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(denied)).toBe(true)
+		expect(Result.isSuccess(allowed)).toBe(true)
+		expect(Result.isFailure(denied)).toBe(true)
 	})
 
 	it("canUpdate allows only the member owner and maps missing indicator to UnauthorizedError", async () => {
@@ -131,10 +131,10 @@ describe("TypingIndicatorPolicy", () => {
 			actor,
 		)
 
-		expect(Either.isRight(ownerAllowed)).toBe(true)
-		expect(Either.isLeft(otherDenied)).toBe(true)
-		expect(Either.isLeft(missingDenied)).toBe(true)
-		if (Either.isLeft(missingDenied)) {
+		expect(Result.isSuccess(ownerAllowed)).toBe(true)
+		expect(Result.isFailure(otherDenied)).toBe(true)
+		expect(Result.isFailure(missingDenied)).toBe(true)
+		if (Result.isFailure(missingDenied)) {
 			expect(UnauthorizedError.is(missingDenied.left)).toBe(true)
 		}
 	})
@@ -182,8 +182,8 @@ describe("TypingIndicatorPolicy", () => {
 			actor,
 		)
 
-		expect(Either.isRight(byMemberAllowed)).toBe(true)
-		expect(Either.isRight(byIndicatorAllowed)).toBe(true)
-		expect(Either.isLeft(byMemberDenied)).toBe(true)
+		expect(Result.isSuccess(byMemberAllowed)).toBe(true)
+		expect(Result.isSuccess(byIndicatorAllowed)).toBe(true)
+		expect(Result.isFailure(byMemberDenied)).toBe(true)
 	})
 })

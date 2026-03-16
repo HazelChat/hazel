@@ -4,9 +4,8 @@
  * @description HTTP client that uses Bearer tokens for desktop and cookies for web
  */
 
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import * as HttpApiClient from "@effect/platform/HttpApiClient"
-import * as HttpClient from "@effect/platform/HttpClient"
+import { FetchHttpClient, HttpClient } from "effect/unstable/http"
+import { HttpApiClient } from "effect/unstable/httpapi"
 import { HazelApi } from "@hazel/domain/http"
 import { ServiceMap, Layer } from "effect"
 import * as Effect from "effect/Effect"

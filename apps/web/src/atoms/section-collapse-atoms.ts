@@ -7,10 +7,7 @@ import { platformStorageRuntime } from "~/lib/platform-storage"
  * Schema for collapsed sections state
  * Maps section IDs to their collapsed state
  */
-const CollapsedSectionsSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.Boolean,
-})
+const CollapsedSectionsSchema = Schema.Record(Schema.String, Schema.Boolean)
 
 /**
  * Atom that stores collapsed state for all sections
@@ -19,7 +16,7 @@ const CollapsedSectionsSchema = Schema.Record({
 export const collapsedSectionsAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "section_collapsed_state",
-	schema: CollapsedSectionsSchema,
+	schema: Schema.toCodecIso(CollapsedSectionsSchema),
 	defaultValue: () => ({}) as Record<string, boolean>,
 })
 

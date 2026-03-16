@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { OrganizationMemberPolicy } from "./organization-member-policy.ts"
 import {
 	makeActor,
@@ -46,7 +46,7 @@ describe("OrganizationMemberPolicy", () => {
 		const layer = makePolicyLayer({}, {})
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies already-existing member", async () => {
@@ -54,7 +54,7 @@ describe("OrganizationMemberPolicy", () => {
 		const layer = makePolicyLayer({}, { [`${TEST_ORG_ID}:${actor.id}`]: "member" })
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canCreate(TEST_ORG_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows self-update", async () => {
@@ -65,7 +65,7 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin", async () => {
@@ -76,7 +76,7 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies org owner (only admin allowed)", async () => {
@@ -87,8 +87,8 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canUpdate(MEMBER_ID), layer, owner)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})
@@ -105,7 +105,7 @@ describe("OrganizationMemberPolicy", () => {
 			layer,
 			outsider,
 		)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows self-removal", async () => {
@@ -116,7 +116,7 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin", async () => {
@@ -127,7 +127,7 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete denies org owner (only admin allowed)", async () => {
@@ -138,8 +138,8 @@ describe("OrganizationMemberPolicy", () => {
 		)
 
 		const result = await runWithActorEither(OrganizationMemberPolicy.canDelete(MEMBER_ID), layer, owner)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})

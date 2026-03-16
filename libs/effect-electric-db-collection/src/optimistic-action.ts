@@ -1,4 +1,4 @@
-import { Atom, type Result } from "effect"
+import { Atom, type AsyncResult } from "effect/unstable/reactivity"
 import type { Collection, Transaction } from "@tanstack/db"
 import { createTransaction } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
@@ -213,7 +213,7 @@ export function optimisticAction<
 >(
 	config: OptimisticActionConfig<TVariables, TSuccess, TError, TCollections, TRequires, TMutateResult>,
 ): Atom.Writable<
-	Result.Result<
+	AsyncResult.AsyncResult<
 		OptimisticActionResult<TSuccess, TMutateResult>,
 		TError | SyncError | OptimisticActionError
 	>,
@@ -241,8 +241,9 @@ export function optimisticAction<
 
 					if (Exit.isFailure(exit)) {
 						const cause = exit.cause
-						if (cause._tag === "Fail") {
-							throw cause.error // Typed TError
+						const failReason = cause.reasons.find(Cause.isFailReason)
+						if (failReason) {
+							throw failReason.error // Typed TError
 						}
 						throw new OptimisticActionError({
 							message: "Mutation failed unexpectedly",
@@ -288,8 +289,9 @@ export function optimisticAction<
 							`cause:`,
 							Cause.pretty(cause),
 						)
-						if (cause._tag === "Fail") {
-							throw cause.error // SyncError
+						const syncFailReason = cause.reasons.find(Cause.isFailReason)
+						if (syncFailReason) {
+							throw syncFailReason.error // SyncError
 						}
 						throw new SyncError({
 							message: "Sync failed unexpectedly",

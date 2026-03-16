@@ -1,6 +1,6 @@
 import { useAtomSet } from "@effect/atom-react"
 import type { ChannelId } from "@hazel/schema"
-import { UserId } from "@hazel/schema"
+import type { UserId } from "@hazel/schema"
 import { eq, inArray, not, or, useLiveQuery } from "@tanstack/react-db"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -69,7 +69,7 @@ export function JoinChannelModal({ isOpen, onOpenChange }: JoinChannelModalProps
 
 		const exit = await joinChannel({
 			channelId,
-			userId: UserId.make(user.id),
+			userId: user.id as UserId,
 		})
 
 		exitToast(exit)

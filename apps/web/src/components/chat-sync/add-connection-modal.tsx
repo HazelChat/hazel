@@ -48,7 +48,7 @@ export function AddConnectionModal({
 
 	const guildsResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getDiscordGuilds", {
-			path: { orgId: organizationId },
+			params: { orgId: organizationId },
 		}),
 	)
 

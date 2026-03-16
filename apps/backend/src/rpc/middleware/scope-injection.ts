@@ -16,6 +16,6 @@ export const ScopeInjectionMiddlewareLive = Layer.succeed(
 		if (Option.isNone(scopesOption)) {
 			return next
 		}
-		return Effect.locally(CurrentRpcScopes, scopesOption.value)(next)
+		return Effect.provideService(next, CurrentRpcScopes, scopesOption.value)
 	}),
 )

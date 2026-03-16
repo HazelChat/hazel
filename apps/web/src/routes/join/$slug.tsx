@@ -68,7 +68,7 @@ function JoinPage() {
 	const orgResult = useAtomValue(getOrgBySlugPublicQuery(slug))
 	const joinOrg = useAtomSet(joinViaPublicInviteMutation, { mode: "promiseExit" })
 
-	const isLoading = orgAsyncResult._tag === "Initial" || orgAsyncResult.waiting
+	const isLoading = orgResult._tag === "Initial" || orgResult.waiting
 
 	const handleSignIn = () => {
 		login({

@@ -597,7 +597,7 @@ export class DiscordGatewayService extends ServiceMap.Service<DiscordGatewayServ
 					},
 				)
 			}
-			const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
+			const botTokenOption = yield* Effect.option(Config.redacted("DISCORD_BOT_TOKEN"))
 
 			if (!gatewayEnabled) {
 				yield* Effect.logInfo("Discord gateway disabled via DISCORD_GATEWAY_ENABLED=false")

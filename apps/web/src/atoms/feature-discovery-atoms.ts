@@ -8,15 +8,12 @@ const HINT_IDS = ["command-palette", "create-channel"] as const
 
 export type HintId = (typeof HINT_IDS)[number]
 
-const DismissedHintsSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.Boolean,
-})
+const DismissedHintsSchema = Schema.Record(Schema.String, Schema.Boolean)
 
 export const dismissedHintsAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-dismissed-hints",
-	schema: DismissedHintsSchema,
+	schema: Schema.toCodecIso(DismissedHintsSchema),
 	defaultValue: () => ({}) as Record<string, boolean>,
 }).pipe(Atom.keepAlive)
 

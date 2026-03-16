@@ -23,7 +23,7 @@ interface UseKlipyReturn {
 export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn {
 	// === Auto-fetching query atoms (no useEffect needed) ===
 	const trendingResult = useAtomValue(
-		HazelApiClient.query("klipy", "trending", { urlParams: { page: 1, per_page: perPage } }),
+		HazelApiClient.query("klipy", "trending", { query: { page: 1, per_page: perPage } }),
 	)
 	const categoriesResult = useAtomValue(HazelApiClient.query("klipy", "categories", {}))
 
@@ -56,14 +56,14 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 	const trendingInitRef = useRef(false)
 	if (!trendingInitRef.current && AsyncResult.isSuccess(trendingResult) && overrideGifs === null) {
 		trendingInitRef.current = true
-		pageRef.current = trendingAsyncResult.value.current_page
-		const more = trendingAsyncResult.value.has_next
+		pageRef.current = trendingResult.value.current_page
+		const more = trendingResult.value.has_next
 		hasMoreRef.current = more
 		setHasMore(more)
 	}
 
 	// === Derived display values ===
-	const categories = AsyncResult.isSuccess(categoriesResult) ? [...categoriesAsyncResult.value.categories] : []
+	const categories = AsyncResult.isSuccess(categoriesResult) ? [...categoriesResult.value.categories] : []
 
 	let gifs: KlipyGif[]
 	let isLoading: boolean
@@ -72,7 +72,7 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 		gifs = overrideGifs
 		isLoading = isMutating
 	} else if (AsyncResult.isSuccess(trendingResult)) {
-		gifs = [...trendingAsyncResult.value.data]
+		gifs = [...trendingResult.value.data]
 		isLoading = false
 	} else {
 		gifs = []
@@ -93,9 +93,9 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 			try {
 				let exit: Exit.Exit<KlipySearchResponse, unknown>
 				if (query) {
-					exit = await searchRef.current({ urlParams: { q: query, page, per_page: perPage } })
+					exit = await searchRef.current({ query: { q: query, page, per_page: perPage } })
 				} else {
-					exit = await trendingMutRef.current({ urlParams: { page, per_page: perPage } })
+					exit = await trendingMutRef.current({ query: { page, per_page: perPage } })
 				}
 
 				if (requestIdRef.current !== id) return

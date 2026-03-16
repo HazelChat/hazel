@@ -61,7 +61,7 @@ export function AddGitHubRepoModal({
 	// Fetch repositories
 	const repositoriesResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
-			path: { orgId: organizationId },
+			params: { orgId: organizationId },
 			urlParams: { page: 1, perPage: 100 },
 		}),
 	)
@@ -124,7 +124,7 @@ export function AddGitHubRepoModal({
 	}
 
 	// Get repositories from result
-	const repositories = Result.builder(repositoriesResult)
+	const repositories = AsyncResult.builder(repositoriesResult)
 		.onSuccess((data) => data?.repositories ?? [])
 		.orElse(() => [])
 
@@ -145,7 +145,7 @@ export function AddGitHubRepoModal({
 						{/* Repository selector */}
 						<div className="flex flex-col gap-2">
 							<label className="font-medium text-fg text-sm">Repository</label>
-							{Result.builder(repositoriesResult)
+							{AsyncResult.builder(repositoriesResult)
 								.onInitial(() => (
 									<div className="flex h-32 items-center justify-center rounded-lg border border-border">
 										<div className="flex items-center gap-2 text-muted-fg">

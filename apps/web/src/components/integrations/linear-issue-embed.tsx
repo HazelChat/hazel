@@ -117,13 +117,13 @@ export function LinearIssueEmbed({ url, orgId }: LinearIssueEmbedProps) {
 
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchLinearIssue", {
-			path: { orgId },
+			params: { orgId },
 			urlParams: { url },
 			timeToLive: "3 minutes",
 		}),
 	)
 
-	return Result.builder(resourceResult)
+	return AsyncResult.builder(resourceResult)
 		.onInitial(() => <Embed.Skeleton accentColor={theme.color} />)
 		.onErrorTag("IntegrationNotConnectedForPreviewError", () => (
 			<Embed.ConnectPrompt

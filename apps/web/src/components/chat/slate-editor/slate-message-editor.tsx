@@ -466,7 +466,7 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 
 			// Execute via bot commands endpoint
 			const exit = await executeBotCommand({
-				path: {
+				params: {
 					orgId,
 					botId: command.bot.id as BotId,
 					commandName: command.name,
@@ -487,7 +487,8 @@ export const SlateMessageEditor = forwardRef<SlateMessageEditorRef, SlateMessage
 					toast.dismiss(toastId)
 
 					// Extract error message from cause
-					const error = cause._tag === "Fail" ? cause.error : null
+					const failReason = cause.reasons.find((r: any) => r._tag === "Fail")
+					const error = failReason ? (failReason as any).error : null
 					let message = "Command failed"
 
 					if (error && typeof error === "object" && "_tag" in error) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { UnauthorizedError } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
-import { Either, Layer } from "effect"
+import { Result, Layer } from "effect"
 import { OrganizationPolicy } from "./organization-policy.ts"
 import {
 	makeActor,
@@ -23,7 +23,7 @@ const makePolicyLayer = (members: Record<string, Role>) =>
 describe("OrganizationPolicy", () => {
 	it("canCreate allows any authenticated actor", async () => {
 		const result = await runWithActorEither(OrganizationPolicy.canCreate(), makePolicyLayer({}))
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows admin and owner, denies plain member", async () => {
@@ -48,9 +48,9 @@ describe("OrganizationPolicy", () => {
 			memberActor,
 		)
 
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isLeft(memberResult)).toBe(true)
-		if (Either.isLeft(memberResult)) {
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isFailure(memberResult)).toBe(true)
+		if (Result.isFailure(memberResult)) {
 			expect(UnauthorizedError.is(memberResult.left)).toBe(true)
 		}
 	})
@@ -77,8 +77,8 @@ describe("OrganizationPolicy", () => {
 			adminActor,
 		)
 
-		expect(Either.isRight(ownerResult)).toBe(true)
-		expect(Either.isLeft(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
+		expect(Result.isFailure(adminResult)).toBe(true)
 	})
 
 	it("isMember denies users without membership in target org", async () => {
@@ -88,8 +88,8 @@ describe("OrganizationPolicy", () => {
 		})
 
 		const result = await runWithActorEither(OrganizationPolicy.isMember(TEST_ORG_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})
@@ -105,6 +105,6 @@ describe("OrganizationPolicy", () => {
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 })

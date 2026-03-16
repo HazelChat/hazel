@@ -1,7 +1,7 @@
 import { type User } from "@hazel/domain/models"
-import {
-	type AttachmentId,
-	type ChannelIcon,
+import type {
+	AttachmentId,
+	ChannelIcon,
 	ChannelId,
 	ChannelMemberId,
 	ChannelSectionId,
@@ -10,7 +10,7 @@ import {
 	MessageReactionId,
 	OrganizationId,
 	PinnedMessageId,
-	type UserId,
+	UserId,
 } from "@hazel/schema"
 import { Cause, Effect, Schedule, Duration } from "effect"
 import { isRetryableError } from "~/lib/error-messages"
@@ -76,7 +76,7 @@ export const sendMessageAction = optimisticAction({
 		attachmentIds?: AttachmentId[]
 		onRetryAttempt?: (attempt: number) => void
 	}) => {
-		const messageId = props.messageId ?? MessageId.make(crypto.randomUUID())
+		const messageId = props.messageId ?? crypto.randomUUID() as MessageId
 
 		messageCollection.insert({
 			id: messageId,
@@ -161,7 +161,7 @@ export const createChannelAction = optimisticAction({
 		currentUserId: UserId
 		addAllMembers?: boolean
 	}) => {
-		const channelId = ChannelId.make(crypto.randomUUID())
+		const channelId = crypto.randomUUID() as ChannelId
 		const now = new Date()
 
 		// Optimistically insert the channel
@@ -180,7 +180,7 @@ export const createChannelAction = optimisticAction({
 
 		// Add creator as member
 		channelMemberCollection.insert({
-			id: ChannelMemberId.make(crypto.randomUUID()),
+			id: crypto.randomUUID() as ChannelMemberId,
 			channelId: channelId,
 			userId: props.currentUserId,
 			isHidden: false,
@@ -227,7 +227,7 @@ export const createDmChannelAction = optimisticAction({
 		name?: string
 		currentUserId: UserId
 	}) => {
-		const channelId = ChannelId.make(crypto.randomUUID())
+		const channelId = crypto.randomUUID() as ChannelId
 		const now = new Date()
 
 		let channelName = props.name
@@ -251,7 +251,7 @@ export const createDmChannelAction = optimisticAction({
 
 		// Add current user as member
 		channelMemberCollection.insert({
-			id: ChannelMemberId.make(crypto.randomUUID()),
+			id: crypto.randomUUID() as ChannelMemberId,
 			channelId: channelId,
 			userId: props.currentUserId,
 			isHidden: false,
@@ -267,7 +267,7 @@ export const createDmChannelAction = optimisticAction({
 		// Add all participants as members
 		for (const participantId of props.participantIds) {
 			channelMemberCollection.insert({
-				id: ChannelMemberId.make(crypto.randomUUID()),
+				id: crypto.randomUUID() as ChannelMemberId,
 				channelId: channelId,
 				userId: participantId,
 				isHidden: false,
@@ -308,7 +308,7 @@ export const createOrganizationAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: { name: string; slug: string; logoUrl?: string | null }) => {
-		const organizationId = OrganizationId.make(crypto.randomUUID())
+		const organizationId = crypto.randomUUID() as OrganizationId
 		const now = new Date()
 
 		// Optimistically insert the organization
@@ -369,7 +369,7 @@ export const toggleReactionAction = optimisticAction({
 		}
 
 		// Toggle on: insert a new reaction
-		const reactionId = MessageReactionId.make(crypto.randomUUID())
+		const reactionId = crypto.randomUUID() as MessageReactionId
 		messageReactionCollection.insert({
 			id: reactionId,
 			messageId: props.messageId,
@@ -415,7 +415,7 @@ export const createThreadAction = optimisticAction({
 		organizationId: OrganizationId
 		currentUserId: UserId
 	}) => {
-		const threadChannelId = props.threadChannelId ?? ChannelId.make(crypto.randomUUID())
+		const threadChannelId = props.threadChannelId ?? crypto.randomUUID() as ChannelId
 		const now = new Date()
 
 		// Create thread channel
@@ -434,7 +434,7 @@ export const createThreadAction = optimisticAction({
 
 		// Add creator as member
 		channelMemberCollection.insert({
-			id: ChannelMemberId.make(crypto.randomUUID()),
+			id: crypto.randomUUID() as ChannelMemberId,
 			channelId: threadChannelId,
 			userId: props.currentUserId,
 			isHidden: false,
@@ -561,7 +561,7 @@ export const pinMessageAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: { messageId: MessageId; channelId: ChannelId; userId: UserId }) => {
-		const pinnedMessageId = PinnedMessageId.make(crypto.randomUUID())
+		const pinnedMessageId = crypto.randomUUID() as PinnedMessageId
 		pinnedMessageCollection.insert({
 			id: pinnedMessageId,
 			channelId: props.channelId,
@@ -644,7 +644,7 @@ export const joinChannelAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: { channelId: ChannelId; userId: UserId }) => {
-		const memberId = ChannelMemberId.make(crypto.randomUUID())
+		const memberId = crypto.randomUUID() as ChannelMemberId
 		const now = new Date()
 		channelMemberCollection.insert({
 			id: memberId,
@@ -710,7 +710,7 @@ export const createChannelSectionAction = optimisticAction({
 	runtime: runtime,
 
 	onMutate: (props: { organizationId: OrganizationId; name: string; order?: number }) => {
-		const sectionId = ChannelSectionId.make(crypto.randomUUID())
+		const sectionId = crypto.randomUUID() as ChannelSectionId
 		const now = new Date()
 
 		channelSectionCollection.insert({
@@ -900,7 +900,7 @@ export const createCustomEmojiAction = optimisticAction({
 		imageUrl: string
 		createdBy: UserId
 	}) => {
-		const emojiId = CustomEmojiId.make(crypto.randomUUID())
+		const emojiId = crypto.randomUUID() as CustomEmojiId
 		const now = new Date()
 
 		customEmojiCollection.insert({

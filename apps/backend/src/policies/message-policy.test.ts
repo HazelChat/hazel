@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver.ts"
 import { MessagePolicy } from "./message-policy.ts"
 import {
@@ -114,7 +114,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies non-org-member", async () => {
@@ -130,7 +130,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canRead allows org member with channel access", async () => {
@@ -146,7 +146,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows message author", async () => {
@@ -164,7 +164,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-author", async () => {
@@ -184,7 +184,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canUpdate(MESSAGE_ID), layer, otherUser)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows message author", async () => {
@@ -202,7 +202,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin who is not author", async () => {
@@ -222,7 +222,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete denies org member who is not author and not admin", async () => {
@@ -242,7 +242,7 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canDelete(MESSAGE_ID), layer, member)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete maps missing message to UnauthorizedError", async () => {
@@ -258,8 +258,8 @@ describe("MessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(MessagePolicy.canDelete(MISSING_MESSAGE_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})

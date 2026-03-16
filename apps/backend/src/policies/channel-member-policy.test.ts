@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { ChannelMemberPolicy } from "./channel-member-policy.ts"
 import {
 	makeActor,
@@ -89,7 +89,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("isOwner denies different user", async () => {
@@ -103,8 +103,8 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.isOwner(CHANNEL_MEMBER_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})
@@ -126,8 +126,8 @@ describe("ChannelMemberPolicy", () => {
 		const adminResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, admin)
 		const ownerResult = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, owner)
 
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isRight(ownerResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
 	})
 
 	it("canCreate allows member for public channel", async () => {
@@ -142,7 +142,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies member for private channel", async () => {
@@ -157,8 +157,8 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})
@@ -178,7 +178,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canRead allows org admin even without channel membership", async () => {
@@ -194,7 +194,7 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canRead denies non-admin non-channel-member", async () => {
@@ -210,8 +210,8 @@ describe("ChannelMemberPolicy", () => {
 		})
 
 		const result = await runWithActorEither(ChannelMemberPolicy.canRead(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})
@@ -235,7 +235,7 @@ describe("ChannelMemberPolicy", () => {
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin but NOT org owner", async () => {
@@ -268,10 +268,10 @@ describe("ChannelMemberPolicy", () => {
 		)
 
 		// Admin is allowed
-		expect(Either.isRight(adminResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
 		// Owner is NOT allowed (canUpdate checks role === "admin", not isAdminOrOwner)
-		expect(Either.isLeft(ownerResult)).toBe(true)
-		if (Either.isLeft(ownerResult)) {
+		expect(Result.isFailure(ownerResult)).toBe(true)
+		if (Result.isFailure(ownerResult)) {
 			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
 		}
 	})
@@ -295,7 +295,7 @@ describe("ChannelMemberPolicy", () => {
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin but NOT org owner", async () => {
@@ -328,10 +328,10 @@ describe("ChannelMemberPolicy", () => {
 		)
 
 		// Admin is allowed
-		expect(Either.isRight(adminResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
 		// Owner is NOT allowed (canDelete checks role === "admin", not isAdminOrOwner)
-		expect(Either.isLeft(ownerResult)).toBe(true)
-		if (Either.isLeft(ownerResult)) {
+		expect(Result.isFailure(ownerResult)).toBe(true)
+		if (Result.isFailure(ownerResult)) {
 			expect(UnauthorizedError.is(ownerResult.left)).toBe(true)
 		}
 	})

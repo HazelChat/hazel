@@ -26,8 +26,8 @@ const BASE_BACKOFF_MS = 1000 // 1s, 2s, 4s
 // Shared Refs (prevents concurrent refreshes across all callers)
 // ============================================================================
 
-const isRefreshingRef = Ref.unsafeMake(false)
-const refreshDeferredRef = Ref.unsafeMake<Deferred.Deferred<boolean> | null>(null)
+const isRefreshingRef = Effect.runSync(Ref.make(false))
+const refreshDeferredRef = Effect.runSync(Ref.make<Deferred.Deferred<boolean> | null>(null))
 
 // ============================================================================
 // Platform-specific layers
@@ -76,37 +76,37 @@ const platformTag = () => (isTauri() ? "desktop" : "web")
 /** Read access token from the correct platform storage */
 const readAccessToken = Effect.fn("readAccessToken")(function* () {
 	if (isTauri()) {
-		return Option.getOrNull(yield* TokenStorage.getAccessToken.pipe(Effect.provide(desktopStorageLive)))
+		const storage = yield* TokenStorage
+		return Option.getOrNull(yield* storage.getAccessToken)
 	}
-	return Option.getOrNull(yield* WebTokenStorage.getAccessToken.pipe(Effect.provide(webStorageLive)))
-})
+	const storage = yield* WebTokenStorage
+	return Option.getOrNull(yield* storage.getAccessToken)
+}).pipe(Effect.provide(isTauri() ? desktopStorageLive : webStorageLive)) as Effect.Effect<string | null>
 
 /** Read refresh token from the correct platform storage */
 const readRefreshToken = Effect.fn("readRefreshToken")(function* () {
 	if (isTauri()) {
-		return yield* TokenStorage.getRefreshToken.pipe(Effect.provide(desktopStorageLive))
+		const storage = yield* TokenStorage
+		return yield* storage.getRefreshToken
 	}
-	return yield* WebTokenStorage.getRefreshToken.pipe(Effect.provide(webStorageLive))
-})
+	const storage = yield* WebTokenStorage
+	return yield* storage.getRefreshToken
+}).pipe(Effect.provide(isTauri() ? desktopStorageLive : webStorageLive)) as Effect.Effect<Option.Option<string>>
 
 /** Store tokens in the correct platform storage */
-const storeTokens = Effect.fn("storeTokens")(function* (
-	accessToken: string,
-	refreshToken: string,
-	expiresIn: number,
-) {
-	if (isTauri()) {
-		yield* TokenStorage.storeTokens(accessToken, refreshToken, expiresIn).pipe(
-			Effect.provide(desktopStorageLive),
-			Effect.orDie,
-		)
-	} else {
-		yield* WebTokenStorage.storeTokens(accessToken, refreshToken, expiresIn).pipe(
-			Effect.provide(webStorageLive),
-			Effect.orDie,
-		)
-	}
-})
+const storeTokens = (accessToken: string, refreshToken: string, expiresIn: number) =>
+	Effect.gen(function* () {
+		if (isTauri()) {
+			const storage = yield* TokenStorage
+			yield* storage.storeTokens(accessToken, refreshToken, expiresIn)
+		} else {
+			const storage = yield* WebTokenStorage
+			yield* storage.storeTokens(accessToken, refreshToken, expiresIn)
+		}
+	}).pipe(
+		Effect.provide(isTauri() ? desktopStorageLive : webStorageLive),
+		Effect.orDie,
+	)
 
 // ============================================================================
 // Core Effects
@@ -116,7 +116,7 @@ const storeTokens = Effect.fn("storeTokens")(function* (
  * Get the current access token from the appropriate platform storage.
  * Returns null if not authenticated.
  */
-const getAccessTokenEffect: Effect.Effect<string | null> = readAccessToken().pipe(
+const getAccessTokenEffect: Effect.Effect<string | null> = readAccessToken.pipe(
 	Effect.catch(() => Effect.succeed(null)),
 	Effect.withSpan("getAccessToken"),
 )
@@ -156,7 +156,7 @@ const forceRefreshEffect: Effect.Effect<boolean> = Effect.gen(function* () {
 	}
 
 	// Get refresh token to check if we can refresh
-	const refreshTokenOpt = yield* readRefreshToken().pipe(
+	const refreshTokenOpt = yield* readRefreshToken.pipe(
 		Effect.catch(() => Effect.succeed(Option.none<string>())),
 	)
 

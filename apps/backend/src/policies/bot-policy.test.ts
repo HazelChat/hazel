@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { BotRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { BotId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer } from "effect"
+import { Effect, Result, Layer } from "effect"
 import { BotPolicy } from "./bot-policy.ts"
 import {
 	makeActor,
@@ -48,8 +48,8 @@ describe("BotPolicy", () => {
 		const allowed = await runWithActorEither(BotPolicy.canCreate(TEST_ORG_ID), layer, actor)
 		const denied = await runWithActorEither(BotPolicy.canCreate(TEST_ALT_ORG_ID), layer, actor)
 
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(denied)).toBe(true)
+		expect(Result.isSuccess(allowed)).toBe(true)
+		expect(Result.isFailure(denied)).toBe(true)
 	})
 
 	it("canRead allows creator or org admin", async () => {
@@ -80,9 +80,9 @@ describe("BotPolicy", () => {
 		)
 		const outsiderDenied = await runWithActorEither(BotPolicy.canRead(BOT_ID), layer, outsider)
 
-		expect(Either.isRight(creatorAllowed)).toBe(true)
-		expect(Either.isRight(adminAllowed)).toBe(true)
-		expect(Either.isLeft(outsiderDenied)).toBe(true)
+		expect(Result.isSuccess(creatorAllowed)).toBe(true)
+		expect(Result.isSuccess(adminAllowed)).toBe(true)
+		expect(Result.isFailure(outsiderDenied)).toBe(true)
 	})
 
 	it("canUpdate/canDelete require creator and map missing bot to UnauthorizedError", async () => {
@@ -96,10 +96,10 @@ describe("BotPolicy", () => {
 		const updateOther = await runWithActorEither(BotPolicy.canUpdate(BOT_ID), layer, otherUser)
 		const deleteMissing = await runWithActorEither(BotPolicy.canDelete(MISSING_BOT_ID), layer, creator)
 
-		expect(Either.isRight(updateCreator)).toBe(true)
-		expect(Either.isLeft(updateOther)).toBe(true)
-		expect(Either.isLeft(deleteMissing)).toBe(true)
-		if (Either.isLeft(deleteMissing)) {
+		expect(Result.isSuccess(updateCreator)).toBe(true)
+		expect(Result.isFailure(updateOther)).toBe(true)
+		expect(Result.isFailure(deleteMissing)).toBe(true)
+		if (Result.isFailure(deleteMissing)) {
 			expect(UnauthorizedError.is(deleteMissing.left)).toBe(true)
 		}
 	})
@@ -121,8 +121,8 @@ describe("BotPolicy", () => {
 		const uninstallAdmin = await runWithActorEither(BotPolicy.canUninstall(TEST_ORG_ID), layer, admin)
 		const installMember = await runWithActorEither(BotPolicy.canInstall(TEST_ORG_ID), layer, member)
 
-		expect(Either.isRight(installAdmin)).toBe(true)
-		expect(Either.isRight(uninstallAdmin)).toBe(true)
-		expect(Either.isLeft(installMember)).toBe(true)
+		expect(Result.isSuccess(installAdmin)).toBe(true)
+		expect(Result.isSuccess(uninstallAdmin)).toBe(true)
+		expect(Result.isFailure(installMember)).toBe(true)
 	})
 })

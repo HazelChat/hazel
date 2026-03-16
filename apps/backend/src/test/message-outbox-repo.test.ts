@@ -83,7 +83,7 @@ describe("MessageOutboxRepo", () => {
 
 		expect(claimed).toHaveLength(3)
 		expect(claimed.map((event) => event.sequence)).toEqual(
-			[...claimed.map((event) => event.sequence)].sort((left, right) => left - right),
+			[...claimed.map((event) => event.sequence)].sort((value, right) => left - right),
 		)
 		expect(claimed.map((event) => event.eventType)).toEqual([
 			"message_created",

@@ -202,8 +202,8 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 				return
 			}
 
-			const hostAttempt = yield* requireAdminOrOwner(hostOrganizationId).pipe(Effect.either)
-			if (hostAttempt._tag === "Right") return
+			const hostAttempt = yield* requireAdminOrOwner(hostOrganizationId).pipe(Effect.result)
+			if (hostAttempt._tag === "Success") return
 
 			yield* requireAdminOrOwner(targetOrganizationId)
 		})

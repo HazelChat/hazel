@@ -1,5 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as ServiceMap from "effect/ServiceMap"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"

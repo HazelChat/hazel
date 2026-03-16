@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelMemberRepo, ChannelRepo, MessageRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { PermissionError } from "@hazel/domain"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { OrgResolver } from "./org-resolver"
 import { makeActor, TEST_ORG_ID } from "../policies/policy-test-helpers"
 import { CurrentUser } from "@hazel/domain"
@@ -74,7 +74,7 @@ const runEither = <A, E>(
 	actor: CurrentUser.Schema = makeActor(),
 ) =>
 	Effect.runPromise(
-		effect.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.either),
+		effect.pipe(Effect.provide(layer), Effect.provideService(CurrentUser.Context, actor), Effect.result),
 	)
 
 const use = (fn: (resolver: OrgResolver) => Effect.Effect<any, any, any>) =>
@@ -96,7 +96,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies access for non-members", async () => {
@@ -108,8 +108,8 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
 				expect(PermissionError.is(result.left)).toBe(true)
 			}
 		})
@@ -129,7 +129,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("grants access for owner", async () => {
@@ -145,7 +145,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies access for regular member", async () => {
@@ -161,8 +161,8 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
 				expect(PermissionError.is(result.left)).toBe(true)
 			}
 		})
@@ -191,8 +191,8 @@ describe("OrgResolver", () => {
 				adminActor,
 			)
 
-			expect(Either.isRight(ownerResult)).toBe(true)
-			expect(Either.isLeft(adminResult)).toBe(true)
+			expect(Result.isSuccess(ownerResult)).toBe(true)
+			expect(Result.isFailure(adminResult)).toBe(true)
 		})
 	})
 
@@ -215,7 +215,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("fails for missing channel", async () => {
@@ -230,7 +230,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 	})
 
@@ -253,7 +253,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("allows private channel for admin without membership", async () => {
@@ -274,7 +274,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("denies private channel for non-admin without channel membership", async () => {
@@ -296,7 +296,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 
 		it("allows private channel for member with channel membership", async () => {
@@ -318,7 +318,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("allows direct channel only for channel members", async () => {
@@ -351,8 +351,8 @@ describe("OrgResolver", () => {
 				outsider,
 			)
 
-			expect(Either.isRight(memberResult)).toBe(true)
-			expect(Either.isLeft(outsiderResult)).toBe(true)
+			expect(Result.isSuccess(memberResult)).toBe(true)
+			expect(Result.isFailure(outsiderResult)).toBe(true)
 		})
 
 		it("checks parent channel access for threads", async () => {
@@ -382,7 +382,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 	})
 
@@ -408,7 +408,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("fails for missing message", async () => {
@@ -423,7 +423,7 @@ describe("OrgResolver", () => {
 				layer,
 				actor,
 			)
-			expect(Either.isLeft(result)).toBe(true)
+			expect(Result.isFailure(result)).toBe(true)
 		})
 	})
 })

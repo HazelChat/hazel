@@ -221,7 +221,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 
 		const getAttachmentPublicUrlBase = Effect.fn("discordSyncWorker.getAttachmentPublicUrlBase")(
 			function* () {
-				const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Effect.option)
+				const configuredBaseUrl = yield* Effect.option(Config.string("S3_PUBLIC_URL"))
 				if (Option.isNone(configuredBaseUrl) || configuredBaseUrl.value.trim().length === 0) {
 					return yield* Effect.fail(
 						new DiscordSyncConfigurationError({
@@ -500,7 +500,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						return currentConfig
 					}
 
-					const botTokenOption = yield* Config.redacted("DISCORD_BOT_TOKEN").pipe(Effect.option)
+					const botTokenOption = yield* Effect.option(Config.redacted("DISCORD_BOT_TOKEN"))
 					if (Option.isNone(botTokenOption)) {
 						return Option.none()
 					}
@@ -1277,9 +1277,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					const result = yield* syncHazelMessageToProvider(
 						syncConnectionId,
 						unsyncedMessage.id,
-					).pipe(Effect.either)
-					if (result._tag === "Right") {
-						if (result.right.status === "synced") {
+					).pipe(Effect.result)
+					if (result._tag === "Success") {
+						if (result.value.status === "synced") {
 							sent++
 						} else {
 							skipped++
@@ -1749,9 +1749,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "synced" || result.right.status === "already_linked") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.value.status === "synced" || result.value.status === "already_linked") {
 						synced++
 					}
 				} else {
@@ -1785,9 +1785,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "updated") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.value.status === "updated") {
 						synced++
 					}
 				} else {
@@ -1821,9 +1821,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					target.syncConnectionId,
 					hazelMessageId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "deleted") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.value.status === "deleted") {
 						synced++
 					}
 				} else {
@@ -1858,9 +1858,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					target.syncConnectionId,
 					hazelReactionId,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "created") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.value.status === "created") {
 						synced++
 					}
 				} else {
@@ -1899,9 +1899,9 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					target.syncConnectionId,
 					payload,
 					dedupeKey,
-				).pipe(Effect.either)
-				if (result._tag === "Right") {
-					if (result.right.status === "deleted") {
+				).pipe(Effect.result)
+				if (result._tag === "Success") {
+					if (result.value.status === "deleted") {
 						synced++
 					}
 				} else {

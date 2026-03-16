@@ -45,7 +45,7 @@ export function MessageReplySection({ replyToMessageId, onClick }: MessageReplyS
 				className="flex w-fit items-center gap-1 pl-12 text-left hover:bg-transparent"
 				onClick={onClick}
 			>
-				{Result.builder(messageResult)
+				{AsyncResult.builder(messageResult)
 					.onInitial(() => (
 						<>
 							<div className="size-4 animate-pulse rounded-full bg-muted" />

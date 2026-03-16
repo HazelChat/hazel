@@ -4,7 +4,7 @@
  * @since 1.0.0
  */
 
-import { Atom, Result } from "@effect/atom-react"
+import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import {
 	type Collection,
 	type Context,
@@ -25,7 +25,7 @@ import type { CollectionStatus, ConditionalQueryFn, QueryFn, QueryOptions } from
  */
 export const makeCollectionAtom = <T extends object, TKey extends string | number>(
 	collection: Collection<T, TKey, any> & NonSingleResult,
-): Atom.Atom<Result.Result<Array<T>, Error>> => {
+): Atom.Atom<AsyncResult.AsyncResult<Array<T>, Error>> => {
 	return Atom.readable((get) => {
 		// Start sync if not already started
 		collection.startSyncImmediate()
@@ -36,22 +36,22 @@ export const makeCollectionAtom = <T extends object, TKey extends string | numbe
 			const status: CollectionStatus = collection.status
 
 			if (status === "error") {
-				get.setSelf(Result.fail(new Error("Collection failed to load")))
+				get.setSelf(AsyncResult.fail(new Error("Collection failed to load")))
 				return
 			}
 
 			if (status === "loading" || status === "idle") {
-				get.setSelf(Result.initial(true))
+				get.setSelf(AsyncResult.initial(true))
 				return
 			}
 
 			if (status === "cleaned-up") {
-				get.setSelf(Result.fail(new Error("Collection has been cleaned up")))
+				get.setSelf(AsyncResult.fail(new Error("Collection has been cleaned up")))
 				return
 			}
 
 			const newData = Array.from(collection.entries()).map(([_, value]) => value)
-			get.setSelf(Result.success(newData))
+			get.setSelf(AsyncResult.success(newData))
 		})
 
 		// Cleanup on unmount
@@ -63,21 +63,21 @@ export const makeCollectionAtom = <T extends object, TKey extends string | numbe
 		const status: CollectionStatus = collection.status
 
 		if (status === "error") {
-			return Result.fail(new Error("Collection failed to load"))
+			return AsyncResult.fail(new Error("Collection failed to load"))
 		}
 
 		if (status === "loading" || status === "idle") {
-			return Result.initial(true)
+			return AsyncResult.initial(true)
 		}
 
 		if (status === "cleaned-up") {
-			return Result.fail(new Error("Collection has been cleaned up"))
+			return AsyncResult.fail(new Error("Collection has been cleaned up"))
 		}
 
 		// Get current data
 		const initialData = Array.from(collection.entries()).map(([_, value]) => value)
 
-		return Result.success(initialData)
+		return AsyncResult.success(initialData)
 	})
 }
 
@@ -87,7 +87,7 @@ export const makeCollectionAtom = <T extends object, TKey extends string | numbe
  */
 export const makeSingleCollectionAtom = <T extends object, TKey extends string | number>(
 	collection: Collection<T, TKey, any> & SingleResult,
-): Atom.Atom<Result.Result<T | undefined, Error>> => {
+): Atom.Atom<AsyncResult.AsyncResult<T | undefined, Error>> => {
 	return Atom.readable((get) => {
 		// Start sync if not already started
 		collection.startSyncImmediate()
@@ -98,23 +98,23 @@ export const makeSingleCollectionAtom = <T extends object, TKey extends string |
 			const status: CollectionStatus = collection.status
 
 			if (status === "error") {
-				get.setSelf(Result.fail(new Error("Collection failed to load")))
+				get.setSelf(AsyncResult.fail(new Error("Collection failed to load")))
 				return
 			}
 
 			if (status === "loading" || status === "idle") {
-				get.setSelf(Result.initial(true))
+				get.setSelf(AsyncResult.initial(true))
 				return
 			}
 
 			if (status === "cleaned-up") {
-				get.setSelf(Result.fail(new Error("Collection has been cleaned up")))
+				get.setSelf(AsyncResult.fail(new Error("Collection has been cleaned up")))
 				return
 			}
 
 			const entries = Array.from(collection.entries())
 			const newData = entries.length > 0 ? entries[0]![1] : undefined
-			get.setSelf(Result.success(newData))
+			get.setSelf(AsyncResult.success(newData))
 		})
 
 		// Cleanup on unmount
@@ -126,22 +126,22 @@ export const makeSingleCollectionAtom = <T extends object, TKey extends string |
 		const status: CollectionStatus = collection.status
 
 		if (status === "error") {
-			return Result.fail(new Error("Collection failed to load"))
+			return AsyncResult.fail(new Error("Collection failed to load"))
 		}
 
 		if (status === "loading" || status === "idle") {
-			return Result.initial(true)
+			return AsyncResult.initial(true)
 		}
 
 		if (status === "cleaned-up") {
-			return Result.fail(new Error("Collection has been cleaned up"))
+			return AsyncResult.fail(new Error("Collection has been cleaned up"))
 		}
 
 		// Get current data (single result)
 		const entries = Array.from(collection.entries())
 		const initialData = entries.length > 0 ? entries[0]![1] : undefined
 
-		return Result.success(initialData)
+		return AsyncResult.success(initialData)
 	})
 }
 
@@ -152,7 +152,7 @@ export const makeSingleCollectionAtom = <T extends object, TKey extends string |
 export const makeQuery = <TContext extends Context>(
 	queryFn: QueryFn<TContext>,
 	options?: QueryOptions,
-): Atom.Atom<Result.Result<InferResultType<TContext>, Error>> => {
+): Atom.Atom<AsyncResult.AsyncResult<InferResultType<TContext>, Error>> => {
 	return Atom.readable((get) => {
 		// Create live query collection
 		const collection = createLiveQueryCollection({
@@ -167,17 +167,17 @@ export const makeQuery = <TContext extends Context>(
 			const status: CollectionStatus = collection.status
 
 			if (status === "error") {
-				get.setSelf(Result.fail(new Error("Query failed to load")))
+				get.setSelf(AsyncResult.fail(new Error("Query failed to load")))
 				return
 			}
 
 			if (status === "loading" || status === "idle") {
-				get.setSelf(Result.initial(true))
+				get.setSelf(AsyncResult.initial(true))
 				return
 			}
 
 			if (status === "cleaned-up") {
-				get.setSelf(Result.fail(new Error("Query collection has been cleaned up")))
+				get.setSelf(AsyncResult.fail(new Error("Query collection has been cleaned up")))
 				return
 			}
 
@@ -185,7 +185,7 @@ export const makeQuery = <TContext extends Context>(
 			const isSingleResult = (collection as any).config?.singleResult === true
 			const entries = Array.from(collection.entries()).map(([_, value]) => value)
 			const newData = (isSingleResult ? entries[0] : entries) as InferResultType<TContext>
-			get.setSelf(Result.success(newData))
+			get.setSelf(AsyncResult.success(newData))
 		})
 
 		// Cleanup on unmount
@@ -197,15 +197,15 @@ export const makeQuery = <TContext extends Context>(
 		const status: CollectionStatus = collection.status
 
 		if (status === "error") {
-			return Result.fail(new Error("Query failed to load"))
+			return AsyncResult.fail(new Error("Query failed to load"))
 		}
 
 		if (status === "loading" || status === "idle") {
-			return Result.initial(true)
+			return AsyncResult.initial(true)
 		}
 
 		if (status === "cleaned-up") {
-			return Result.fail(new Error("Query collection has been cleaned up"))
+			return AsyncResult.fail(new Error("Query collection has been cleaned up"))
 		}
 
 		// Get current data - handle both single and array results
@@ -213,7 +213,7 @@ export const makeQuery = <TContext extends Context>(
 		const entries = Array.from(collection.entries()).map(([_, value]) => value)
 		const initialData = (isSingleResult ? entries[0] : entries) as InferResultType<TContext>
 
-		return Result.success(initialData)
+		return AsyncResult.success(initialData)
 	})
 }
 
@@ -227,7 +227,7 @@ export const makeQueryUnsafe = <TContext extends Context>(
 ): Atom.Atom<InferResultType<TContext> | undefined> => {
 	return Atom.readable((get) => {
 		const result = get(makeQuery(queryFn, options))
-		return Result.getOrElse(result, constUndefined) as InferResultType<TContext> | undefined
+		return AsyncResult.getOrElse(result, constUndefined) as InferResultType<TContext> | undefined
 	})
 }
 
@@ -238,7 +238,7 @@ export const makeQueryUnsafe = <TContext extends Context>(
 export const makeQueryConditional = <TContext extends Context>(
 	queryFn: ConditionalQueryFn<TContext>,
 	options?: QueryOptions,
-): Atom.Atom<Result.Result<InferResultType<TContext>, Error> | undefined> => {
+): Atom.Atom<AsyncResult.AsyncResult<InferResultType<TContext>, Error> | undefined> => {
 	return Atom.readable((get) => {
 		// Create a proxy query builder to detect if query function returns null/undefined
 		// without actually executing any query methods

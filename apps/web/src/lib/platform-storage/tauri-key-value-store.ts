@@ -7,8 +7,8 @@
  * Store file: settings.json (separate from auth.json used for tokens)
  */
 
-import * as KeyValueStore from "@effect/platform/KeyValueStore"
-import { SystemError } from "@effect/platform/Error"
+import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
+import { KeyValueStoreError as SystemError } from "effect/unstable/persistence/KeyValueStore"
 import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { Effect, Layer, Option } from "effect"
 

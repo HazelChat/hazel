@@ -221,13 +221,13 @@ export function GitHubPREmbed({ url, orgId }: GitHubPREmbedProps) {
 
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchGitHubPR", {
-			path: { orgId },
+			params: { orgId },
 			urlParams: { url },
 			timeToLive: "3 minutes",
 		}),
 	)
 
-	return Result.builder(resourceResult)
+	return AsyncResult.builder(resourceResult)
 		.onInitial(() => <Embed.Skeleton accentColor={theme.color} />)
 		.onErrorTag("IntegrationNotConnectedForPreviewError", () => (
 			<Embed.ConnectPrompt

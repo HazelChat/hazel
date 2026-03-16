@@ -158,8 +158,8 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 					for (const mount of mounts) {
 						const attempt = yield* orgResolver
 							.fromChannelWithAccess(mount.channelId, scope, "ConnectConversation", "read")
-							.pipe(Effect.either)
-						if (attempt._tag === "Right") {
+							.pipe(Effect.result)
+						if (attempt._tag === "Success") {
 							return true
 						}
 					}

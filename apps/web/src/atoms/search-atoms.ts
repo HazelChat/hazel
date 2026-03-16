@@ -38,6 +38,6 @@ const RecentSearchesSchema = Schema.Array(RecentSearchSchema)
 export const recentSearchesAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "recentSearches",
-	schema: RecentSearchesSchema,
+	schema: Schema.toCodecIso(RecentSearchesSchema),
 	defaultValue: () => [] as RecentSearch[],
 }).pipe(Atom.keepAlive)

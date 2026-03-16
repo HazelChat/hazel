@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: NotificationSoundSettings = {
 export const notificationSoundSettingsAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "notification-sound-settings",
-	schema: Schema.NullOr(NotificationSoundSettingsSchema),
+	schema: Schema.toCodecIso(Schema.NullOr(NotificationSoundSettingsSchema)),
 	defaultValue: () => DEFAULT_SETTINGS,
 })
 

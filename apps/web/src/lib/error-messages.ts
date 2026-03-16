@@ -1,5 +1,6 @@
-import type { HttpClientError } from "@effect/platform/HttpClientError"
-import { RpcClientError } from "@effect/rpc/RpcClientError"
+import { Schema } from "effect"
+import type { HttpClientError } from "effect/unstable/http"
+import { RpcClientError } from "effect/unstable/rpc"
 import {
 	AIProviderUnavailableError,
 	AIRateLimitError,
@@ -123,7 +124,7 @@ export const CommonAppErrorSchema = Schema.Union([
 export type CommonAppError =
 	| typeof CommonAppErrorSchema.Type
 	// Non-Schema errors (still have _tag but not Schema.TaggedError)
-	| ParseError
+	| Schema.SchemaError
 	| HttpClientError
 
 /**

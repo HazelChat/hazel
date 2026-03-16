@@ -429,17 +429,17 @@ export type EffectCollection<
  * // messageCollection.utils.awaitTxIdEffect is properly typed!
  * ```
  */
-export function createEffectCollection<A extends Row<unknown>, I, TRuntime>(
+export function createEffectCollection<A extends Row<unknown>, TRuntime>(
 	config: Omit<
 		EffectElectricCollectionConfig<A, string | number, never, Record<string, never>, TRuntime>,
 		"schema"
 	> & {
-		schema: Schema.Schema<A, I>
+		schema: Schema.Schema<A>
 		runtime: ManagedRuntime.ManagedRuntime<TRuntime, unknown>
 	},
 ): EffectCollection<A> {
 	// Convert Effect Schema to StandardSchemaV1 internally
-	const standardSchema = Schema.standardSchemaV1(config.schema)
+	const standardSchema = Schema.toStandardSchemaV1(config.schema as any)
 
 	const options = effectElectricCollectionOptions({
 		...config,

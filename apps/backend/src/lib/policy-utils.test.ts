@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { UnauthorizedError } from "@hazel/domain"
-import { Effect, Either } from "effect"
+import { Effect, Result } from "effect"
 import { makePolicy, withPolicyUnauthorized } from "./policy-utils.ts"
 import { makeActor } from "../policies/policy-test-helpers.ts"
 import { CurrentUser } from "@hazel/domain"
@@ -12,11 +12,11 @@ describe("policy-utils", () => {
 			const result = await Effect.runPromise(
 				authorize("read", () => Effect.succeed(true)).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
-					Effect.either,
+					Effect.result,
 				),
 			)
 
-			expect(Either.isRight(result)).toBe(true)
+			expect(Result.isSuccess(result)).toBe(true)
 		})
 
 		it("fails with UnauthorizedError when check denies", async () => {
@@ -24,12 +24,12 @@ describe("policy-utils", () => {
 			const result = await Effect.runPromise(
 				authorize("read", () => Effect.succeed(false)).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
-					Effect.either,
+					Effect.result,
 				),
 			)
 
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
 				expect(UnauthorizedError.is(result.left)).toBe(true)
 			}
 		})
@@ -39,12 +39,12 @@ describe("policy-utils", () => {
 			const result = await Effect.runPromise(
 				authorize("read", () => Effect.fail({ _tag: "DatabaseError" as const })).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
-					Effect.either,
+					Effect.result,
 				),
 			)
 
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
 				expect(UnauthorizedError.is(result.left)).toBe(true)
 			}
 		})
@@ -60,12 +60,12 @@ describe("policy-utils", () => {
 			const result = await Effect.runPromise(
 				withPolicyUnauthorized("Widget", "read", Effect.fail(existing)).pipe(
 					Effect.provideService(CurrentUser.Context, makeActor()),
-					Effect.either,
+					Effect.result,
 				),
 			)
 
-			expect(Either.isLeft(result)).toBe(true)
-			if (Either.isLeft(result)) {
+			expect(Result.isFailure(result)).toBe(true)
+			if (Result.isFailure(result)) {
 				expect(result.left).toBe(existing)
 			}
 		})

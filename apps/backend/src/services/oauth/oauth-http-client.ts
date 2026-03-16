@@ -125,7 +125,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 			}
 
 			const data = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(OAuthTokenApiResponse)),
 				Effect.catchTags({
 					ParseError: (error) =>
 						new OAuthHttpError({
@@ -190,7 +190,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 			}
 
 			const data = yield* response.json.pipe(
-				Effect.flatMap(Schema.decodeUnknown(OAuthTokenApiResponse)),
+				Effect.flatMap(Schema.decodeUnknownEffect(OAuthTokenApiResponse)),
 				Effect.catchTags({
 					ParseError: (error) =>
 						new OAuthHttpError({

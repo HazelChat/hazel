@@ -262,10 +262,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 			),
 		)
 		// Execute a bot command (user auth)
-		.handle("executeBotCommand", ({ path, payload }) =>
+		.handle("executeBotCommand", ({ params, payload }) =>
 			Effect.gen(function* () {
 				const currentUser = yield* CurrentUser.Context
-				const { orgId, botId, commandName } = path
+				const { orgId, botId, commandName } = params
 				const { channelId, arguments: args } = payload
 
 				const botRepo = yield* BotRepo
@@ -343,7 +343,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				Effect.catchTag("DurableStreamRequestError", (error) =>
 					Effect.fail(
 						new BotCommandExecutionError({
-							commandName: path.commandName,
+							commandName: params.commandName,
 							message: "Failed to append command to bot gateway",
 							details: String(error.message),
 						}),
@@ -352,10 +352,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 			),
 		)
 		// Get integration token (bot token auth)
-		.handle("getIntegrationToken", ({ path }) =>
+		.handle("getIntegrationToken", ({ params }) =>
 			Effect.gen(function* () {
 				const bot = yield* validateBotToken
-				const { orgId, provider } = path
+				const { orgId, provider } = params
 
 				// Check provider is in bot's allowedIntegrations
 				const allowed = bot.allowedIntegrations ?? []
@@ -412,23 +412,23 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 					),
 				),
 				Effect.catchTag("TokenNotFoundError", () =>
-					Effect.fail(new IntegrationNotConnectedError({ provider: path.provider })),
+					Effect.fail(new IntegrationNotConnectedError({ provider: params.provider })),
 				),
 				Effect.catchTag("TokenRefreshError", (error) =>
 					Effect.fail(
 						new InternalServerError({
-							message: `Failed to refresh ${path.provider} token`,
+							message: `Failed to refresh ${params.provider} token`,
 							detail: String(error.cause),
 						}),
 					),
 				),
 				Effect.catchTag("ConnectionNotFoundError", () =>
-					Effect.fail(new IntegrationNotConnectedError({ provider: path.provider })),
+					Effect.fail(new IntegrationNotConnectedError({ provider: params.provider })),
 				),
 				Effect.catchTag("IntegrationEncryptionError", (error) =>
 					Effect.fail(
 						new InternalServerError({
-							message: `Failed to decrypt ${path.provider} token`,
+							message: `Failed to decrypt ${params.provider} token`,
 							detail: String(error),
 						}),
 					),
@@ -436,7 +436,7 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 				Effect.catchTag("KeyVersionNotFoundError", (error) =>
 					Effect.fail(
 						new InternalServerError({
-							message: `Encryption key version not found for ${path.provider} token`,
+							message: `Encryption key version not found for ${params.provider} token`,
 							detail: String(error),
 						}),
 					),
@@ -444,10 +444,10 @@ export const HttpBotCommandsLive = HttpApiBuilder.group(HazelApi, "bot-commands"
 			),
 		)
 		// Get enabled integrations (bot token auth)
-		.handle("getEnabledIntegrations", ({ path }) =>
+		.handle("getEnabledIntegrations", ({ params }) =>
 			Effect.gen(function* () {
 				const bot = yield* validateBotToken
-				const { orgId } = path
+				const { orgId } = params
 
 				// Verify bot is installed in this org
 				const installationRepo = yield* BotInstallationRepo

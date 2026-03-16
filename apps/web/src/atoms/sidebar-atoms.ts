@@ -14,7 +14,7 @@ export type SidebarState = "expanded" | "collapsed"
 export const sidebarOpenAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "sidebar_state",
-	schema: Schema.NullOr(Schema.Boolean),
+	schema: Schema.toCodecIso(Schema.NullOr(Schema.Boolean)),
 	defaultValue: () => true,
 })
 

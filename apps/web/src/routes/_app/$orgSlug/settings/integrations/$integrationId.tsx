@@ -157,7 +157,7 @@ function IntegrationConfigPage() {
 		// Make authenticated API call to get OAuth URL, then redirect
 		// This ensures the bearer token auth is properly sent
 		const exit = await getOAuthUrlMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 			urlParams: { level: "organization" },
 		})
 
@@ -176,7 +176,7 @@ function IntegrationConfigPage() {
 		if (!organizationId) return
 		setIsDisconnecting(true)
 		const exit = await disconnectMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 			urlParams: { level: "organization" },
 		})
 
@@ -201,7 +201,7 @@ function IntegrationConfigPage() {
 		setIsConnecting(true)
 
 		const exit = await connectApiKeyMutation({
-			path: { orgId: organizationId, provider: integrationId as IntegrationProvider },
+			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
 			payload: { token, baseUrl },
 		})
 
@@ -763,7 +763,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 
 	const repositoriesResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
-			path: { orgId: organizationId },
+			params: { orgId: organizationId },
 			urlParams: { page, perPage },
 		}),
 	)

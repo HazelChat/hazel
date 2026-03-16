@@ -17,7 +17,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 		make: Effect.gen(function* () {
 			const db = yield* Database.Database
 			const discordSyncWorker = yield* DiscordSyncWorker
-			const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
+			const clusterUrl = yield* Config.string("CLUSTER_URL")
 			const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 				baseUrl: clusterUrl,
 			})

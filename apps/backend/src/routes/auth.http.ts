@@ -11,23 +11,23 @@ import { WorkOSAuth as WorkOS } from "../services/workos-auth"
 
 export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 	handlers
-		.handle("login", ({ urlParams }) =>
+		.handle("login", ({ query }) =>
 			Effect.gen(function* () {
 				const workos = yield* WorkOS
 
-				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
-				const redirectUri = yield* Config.string("WORKOS_REDIRECT_URI").pipe(Effect.orDie)
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID")
+				const redirectUri = yield* Config.string("WORKOS_REDIRECT_URI")
 
 				// Validate returnTo is a relative URL (defense in depth)
-				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(urlParams.returnTo)
+				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(query.returnTo)
 				const state = JSON.stringify(AuthState.make({ returnTo: validatedReturnTo }))
 
 				let workosOrgId: string
 
-				if (urlParams.organizationId) {
+				if (query.organizationId) {
 					const workosOrg = yield* workos
 						.call(async (client) =>
-							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
+							client.organizations.getOrganizationByExternalId(query.organizationId!),
 						)
 						.pipe(
 							Effect.catchTag("WorkOSAuthError", (error) =>
@@ -55,7 +55,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 							...(workosOrgId && {
 								organizationId: workosOrgId,
 							}),
-							...(urlParams.invitationToken && { invitationToken: urlParams.invitationToken }),
+							...(query.invitationToken && { invitationToken: query.invitationToken }),
 						})
 						return authUrl
 					})
@@ -81,12 +81,12 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}),
 		)
-		.handle("callback", ({ urlParams }) =>
+		.handle("callback", ({ query }) =>
 			Effect.gen(function* () {
-				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+				const frontendUrl = yield* Config.string("FRONTEND_URL")
 
-				const code = urlParams.code
-				const state = urlParams.state
+				const code = query.code
+				const state = query.state
 
 				if (!code) {
 					return yield* Effect.fail(
@@ -111,12 +111,12 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}),
 		)
-		.handle("logout", ({ urlParams }) =>
+		.handle("logout", ({ query }) =>
 			Effect.gen(function* () {
-				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+				const frontendUrl = yield* Config.string("FRONTEND_URL")
 
 				// Build the full return URL - redirect to frontend after logout
-				const returnTo = urlParams.redirectTo ? `${frontendUrl}${urlParams.redirectTo}` : frontendUrl
+				const returnTo = query.redirectTo ? `${frontendUrl}${query.redirectTo}` : frontendUrl
 
 				return HttpServerResponse.empty({
 					status: 302,
@@ -126,33 +126,33 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}),
 		)
-		.handle("loginDesktop", ({ urlParams }) =>
+		.handle("loginDesktop", ({ query }) =>
 			Effect.gen(function* () {
 				const workos = yield* WorkOS
 
-				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
-				const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID")
+				const frontendUrl = yield* Config.string("FRONTEND_URL")
 
 				// Always use web app callback page
 				const redirectUri = `${frontendUrl}/auth/desktop-callback`
 
 				// Validate returnTo is a relative URL (defense in depth)
-				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(urlParams.returnTo)
+				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(query.returnTo)
 
 				// Build state with desktop connection info
 				const stateObj = DesktopAuthState.make({
 					returnTo: validatedReturnTo,
-					desktopPort: urlParams.desktopPort,
-					desktopNonce: urlParams.desktopNonce,
+					desktopPort: query.desktopPort,
+					desktopNonce: query.desktopNonce,
 				})
 				const state = JSON.stringify(stateObj)
 
 				let workosOrgId: string | undefined
 
-				if (urlParams.organizationId) {
+				if (query.organizationId) {
 					const workosOrg = yield* workos
 						.call(async (client) =>
-							client.organizations.getOrganizationByExternalId(urlParams.organizationId!),
+							client.organizations.getOrganizationByExternalId(query.organizationId!),
 						)
 						.pipe(Effect.catchTag("WorkOSAuthError", () => Effect.succeed(null)))
 
@@ -167,7 +167,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 							redirectUri,
 							state,
 							...(workosOrgId && { organizationId: workosOrgId }),
-							...(urlParams.invitationToken && { invitationToken: urlParams.invitationToken }),
+							...(query.invitationToken && { invitationToken: query.invitationToken }),
 						})
 					})
 					.pipe(
@@ -197,7 +197,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				const { code, state } = payload
 
-				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID")
 
 				// Exchange code for tokens (without sealing - we want the JWT for desktop)
 				const authResponse = yield* workos
@@ -299,7 +299,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const workos = yield* WorkOS
 				const { refreshToken } = payload
 
-				const clientId = yield* Config.string("WORKOS_CLIENT_ID").pipe(Effect.orDie)
+				const clientId = yield* Config.string("WORKOS_CLIENT_ID")
 
 				// Exchange refresh token for new tokens
 				const authResponse = yield* workos

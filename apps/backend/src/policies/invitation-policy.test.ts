@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { InvitationRepo, UserRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { InvitationPolicy } from "./invitation-policy.ts"
 import {
 	makeActor,
@@ -67,7 +67,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canRead(INVITATION_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate allows admin-or-owner", async () => {
@@ -81,7 +81,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies regular member", async () => {
@@ -95,7 +95,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canCreate(TEST_ORG_ID), layer, actor)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows creator", async () => {
@@ -113,7 +113,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin who is not creator", async () => {
@@ -133,7 +133,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, admin)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-creator non-admin", async () => {
@@ -153,7 +153,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canUpdate(INVITATION_ID), layer, outsider)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows creator", async () => {
@@ -171,7 +171,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin who is not creator", async () => {
@@ -191,7 +191,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canDelete(INVITATION_ID), layer, admin)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canAccept allows when user email matches invitation email", async () => {
@@ -212,7 +212,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canAccept denies when user email does not match", async () => {
@@ -233,7 +233,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canAccept denies when user is not found", async () => {
@@ -252,7 +252,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canAccept(INVITATION_ID), layer, actor)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canList allows admin-or-owner", async () => {
@@ -266,7 +266,7 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
 
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canList denies regular member", async () => {
@@ -280,6 +280,6 @@ describe("InvitationPolicy", () => {
 
 		const result = await runWithActorEither(InvitationPolicy.canList(TEST_ORG_ID), layer, actor)
 
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

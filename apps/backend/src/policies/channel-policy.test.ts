@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
-import { Effect, Either, Layer } from "effect"
+import { Effect, Result, Layer } from "effect"
 import { ChannelPolicy } from "./channel-policy.ts"
 import {
 	makeActor,
@@ -74,10 +74,10 @@ describe("ChannelPolicy", () => {
 			["channels:write"],
 		)
 
-		expect(Either.isLeft(memberResult)).toBe(true)
-		expect(Either.isRight(adminResult)).toBe(true)
-		expect(Either.isRight(ownerResult)).toBe(true)
-		expect(Either.isLeft(noMembership)).toBe(true)
+		expect(Result.isFailure(memberResult)).toBe(true)
+		expect(Result.isSuccess(adminResult)).toBe(true)
+		expect(Result.isSuccess(ownerResult)).toBe(true)
+		expect(Result.isFailure(noMembership)).toBe(true)
 	})
 
 	it("canUpdate allows org admins and maps not-found to UnauthorizedError", async () => {
@@ -94,9 +94,9 @@ describe("ChannelPolicy", () => {
 		const allowed = await runWithActorEither(ChannelPolicy.canUpdate(CHANNEL_ID), layer, actor)
 		const missing = await runWithActorEither(ChannelPolicy.canUpdate(MISSING_CHANNEL_ID), layer, actor)
 
-		expect(Either.isRight(allowed)).toBe(true)
-		expect(Either.isLeft(missing)).toBe(true)
-		if (Either.isLeft(missing)) {
+		expect(Result.isSuccess(allowed)).toBe(true)
+		expect(Result.isFailure(missing)).toBe(true)
+		if (Result.isFailure(missing)) {
 			expect(UnauthorizedError.is(missing.left)).toBe(true)
 		}
 	})
@@ -113,6 +113,6 @@ describe("ChannelPolicy", () => {
 		)
 
 		const result = await runWithActorEither(ChannelPolicy.canDelete(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

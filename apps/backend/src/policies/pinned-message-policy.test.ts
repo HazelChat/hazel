@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { ChannelRepo, OrganizationMemberRepo, PinnedMessageRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { ChannelId, OrganizationId, PinnedMessageId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { PinnedMessagePolicy } from "./pinned-message-policy.ts"
 import {
 	makeActor,
@@ -70,7 +70,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate allows member in public channel", async () => {
@@ -82,7 +82,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canCreate denies member in private channel", async () => {
@@ -94,7 +94,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canCreate denies non-org-member", async () => {
@@ -106,7 +106,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canCreate(CHANNEL_ID), layer, outsider)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows pinner", async () => {
@@ -118,7 +118,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin who is not pinner", async () => {
@@ -130,7 +130,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-pinner non-admin", async () => {
@@ -142,7 +142,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canUpdate(PINNED_MSG_ID), layer, outsider)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows pinner", async () => {
@@ -154,7 +154,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin who is not pinner", async () => {
@@ -166,7 +166,7 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete denies non-pinner non-admin", async () => {
@@ -178,8 +178,8 @@ describe("PinnedMessagePolicy", () => {
 		)
 
 		const result = await runWithActorEither(PinnedMessagePolicy.canDelete(PINNED_MSG_ID), layer, outsider)
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
 			expect(UnauthorizedError.is(result.left)).toBe(true)
 		}
 	})

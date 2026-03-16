@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { UnauthorizedError } from "@hazel/domain"
-import { Either, Layer } from "effect"
+import { Result, Layer } from "effect"
 import { IntegrationConnectionPolicy } from "./integration-connection-policy.ts"
 import { makeActor, makeOrgResolverLayer, runWithActorEither, TEST_ORG_ID } from "./policy-test-helpers.ts"
 
@@ -21,7 +21,7 @@ describe("IntegrationConnectionPolicy", () => {
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("allows insert/update/delete for admin-or-owner only", async () => {
@@ -42,11 +42,11 @@ describe("IntegrationConnectionPolicy", () => {
 		)
 		const del = await runWithActorEither(IntegrationConnectionPolicy.canDelete(TEST_ORG_ID), layer, actor)
 
-		expect(Either.isLeft(insert)).toBe(true)
-		expect(Either.isLeft(update)).toBe(true)
-		expect(Either.isLeft(del)).toBe(true)
+		expect(Result.isFailure(insert)).toBe(true)
+		expect(Result.isFailure(update)).toBe(true)
+		expect(Result.isFailure(del)).toBe(true)
 
-		if (Either.isLeft(insert)) {
+		if (Result.isFailure(insert)) {
 			expect(UnauthorizedError.is(insert.left)).toBe(true)
 		}
 	})

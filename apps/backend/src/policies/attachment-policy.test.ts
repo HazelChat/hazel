@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { AttachmentRepo, ChannelMemberRepo, ChannelRepo, MessageRepo } from "@hazel/backend-core"
 import type { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { AttachmentPolicy } from "./attachment-policy.ts"
 import {
 	makeActor,
@@ -102,7 +102,7 @@ describe("AttachmentPolicy", () => {
 		const layer = makePolicyLayer({})
 
 		const result = await runWithActorEither(AttachmentPolicy.canCreate(), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows uploader", async () => {
@@ -114,7 +114,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canUpdate(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-uploader", async () => {
@@ -126,7 +126,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canUpdate(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete without messageId allows uploader", async () => {
@@ -138,7 +138,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete without messageId denies other user", async () => {
@@ -150,7 +150,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows uploader", async () => {
@@ -168,7 +168,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows message author", async () => {
@@ -186,7 +186,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId allows org admin", async () => {
@@ -207,7 +207,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete with messageId denies random user", async () => {
@@ -228,7 +228,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canDelete(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canView without messageId allows uploader", async () => {
@@ -240,7 +240,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView without messageId denies other user", async () => {
@@ -252,7 +252,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canView with public channel allows org member", async () => {
@@ -273,7 +273,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel allows admin", async () => {
@@ -294,7 +294,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel allows channel member", async () => {
@@ -315,7 +315,7 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView with private channel denies non-member non-admin", async () => {
@@ -336,6 +336,6 @@ describe("AttachmentPolicy", () => {
 		})
 
 		const result = await runWithActorEither(AttachmentPolicy.canView(ATTACHMENT_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

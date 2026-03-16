@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { UnauthorizedError } from "@hazel/domain"
 import type { NotificationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Effect, Either, Layer, Option } from "effect"
+import { Effect, Result, Layer, Option } from "effect"
 import { NotificationPolicy } from "./notification-policy.ts"
 import {
 	makeActor,
@@ -68,7 +68,7 @@ describe("NotificationPolicy", () => {
 		const layer = makePolicyLayer({}, {}, {})
 
 		const result = await runWithActorEither(NotificationPolicy.canCreate(MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView allows notification owner", async () => {
@@ -80,7 +80,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canView(NOTIFICATION_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canView denies other user", async () => {
@@ -92,7 +92,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canView(NOTIFICATION_ID), layer, actor)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canUpdate allows notification owner", async () => {
@@ -104,7 +104,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canUpdate(NOTIFICATION_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate allows org admin", async () => {
@@ -116,7 +116,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canUpdate(NOTIFICATION_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canUpdate denies non-owner non-admin", async () => {
@@ -138,7 +138,7 @@ describe("NotificationPolicy", () => {
 			layer,
 			outsider,
 		)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 
 	it("canDelete allows notification owner", async () => {
@@ -150,7 +150,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canDelete(NOTIFICATION_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canDelete allows org admin", async () => {
@@ -162,7 +162,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canDelete(NOTIFICATION_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canMarkAsRead allows notification owner", async () => {
@@ -178,7 +178,7 @@ describe("NotificationPolicy", () => {
 			layer,
 			actor,
 		)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canMarkAllAsRead allows member owner", async () => {
@@ -190,7 +190,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canMarkAllAsRead(MEMBER_ID), layer, actor)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canMarkAllAsRead allows org admin", async () => {
@@ -202,7 +202,7 @@ describe("NotificationPolicy", () => {
 		)
 
 		const result = await runWithActorEither(NotificationPolicy.canMarkAllAsRead(MEMBER_ID), layer, admin)
-		expect(Either.isRight(result)).toBe(true)
+		expect(Result.isSuccess(result)).toBe(true)
 	})
 
 	it("canMarkAllAsRead denies outsider", async () => {
@@ -224,6 +224,6 @@ describe("NotificationPolicy", () => {
 			layer,
 			outsider,
 		)
-		expect(Either.isLeft(result)).toBe(true)
+		expect(Result.isFailure(result)).toBe(true)
 	})
 })

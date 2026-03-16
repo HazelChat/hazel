@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { CraftApiError, CraftNotFoundError, CraftRateLimitError } from "@hazel/integrations/craft"
-import { Effect, Either } from "effect"
+import { Effect, Result } from "effect"
 import {
 	mapCraftConnectApiKeyError,
 	parseOAuthStateParam,
@@ -8,9 +8,9 @@ import {
 } from "./integrations.http.ts"
 
 const expectInvalidBaseUrl = async (url: string) => {
-	const result = await Effect.runPromise(validateCraftBaseUrl(url).pipe(Effect.either))
-	expect(Either.isLeft(result)).toBe(true)
-	if (Either.isLeft(result)) {
+	const result = await Effect.runPromise(validateCraftBaseUrl(url).pipe(Effect.result))
+	expect(Result.isFailure(result)).toBe(true)
+	if (Result.isFailure(result)) {
 		expect(result.left._tag).toBe("InvalidApiKeyError")
 	}
 }
@@ -64,12 +64,12 @@ describe("integration connect API key helpers", () => {
 	describe("validateCraftBaseUrl", () => {
 		it("accepts and normalizes a valid Craft connect URL", async () => {
 			const result = await Effect.runPromise(
-				validateCraftBaseUrl("https://connect.craft.do/links/link_123/api/v1/").pipe(Effect.either),
+				validateCraftBaseUrl("https://connect.craft.do/links/link_123/api/v1/").pipe(Effect.result),
 			)
 
-			expect(Either.isRight(result)).toBe(true)
-			if (Either.isRight(result)) {
-				expect(result.right).toBe("https://connect.craft.do/links/link_123/api/v1")
+			expect(Result.isSuccess(result)).toBe(true)
+			if (Result.isSuccess(result)) {
+				expect(result.value).toBe("https://connect.craft.do/links/link_123/api/v1")
 			}
 		})
 

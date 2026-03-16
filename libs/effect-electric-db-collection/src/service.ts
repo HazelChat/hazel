@@ -158,7 +158,7 @@ export function makeElectricCollectionLayer(
 				collection,
 
 				insert: (data) =>
-					Effect.async<void, InsertError>((resume) => {
+					Effect.callback<void, InsertError>((resume) => {
 						const tx = collection.insert(data)
 						tx.isPersisted.promise
 							.then(() => resume(Effect.void))
@@ -176,7 +176,7 @@ export function makeElectricCollectionLayer(
 					}),
 
 				update: (keys, updateFn) =>
-					Effect.async<void, UpdateError>((resume) => {
+					Effect.callback<void, UpdateError>((resume) => {
 						const tx = collection.update(keys as any, updateFn as any)
 						tx.isPersisted.promise
 							.then(() => resume(Effect.void))
@@ -194,7 +194,7 @@ export function makeElectricCollectionLayer(
 					}),
 
 				delete: (keys) =>
-					Effect.async<void, DeleteError>((resume) => {
+					Effect.callback<void, DeleteError>((resume) => {
 						const tx = collection.delete(keys as any)
 						tx.isPersisted.promise
 							.then(() => resume(Effect.void))

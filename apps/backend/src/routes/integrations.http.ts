@@ -249,8 +249,7 @@ const makeOAuthSessionCookie = (
 	Effect.try({
 		try: () =>
 			Cookies.unsafeMakeCookie(name, value, {
-				domain: options.cookieDomain,
-				path: "/",
+				domain: options.cookieDomain, params: "/",
 				httpOnly: true,
 				secure: options.secure,
 				sameSite: "lax",
@@ -265,8 +264,7 @@ const makeOAuthSessionCookie = (
 
 const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string; secure: boolean }) =>
 	HttpServerResponse.expireCookie(name, {
-		domain: options.cookieDomain,
-		path: "/",
+		domain: options.cookieDomain, params: "/",
 		httpOnly: true,
 		secure: options.secure,
 		sameSite: "lax",
@@ -281,11 +279,11 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 		orgId: OrganizationId
 		provider: IntegrationConnection.IntegrationProvider
 	},
-	urlParams: { level?: IntegrationConnection.ConnectionLevel },
+	query: { level?: IntegrationConnection.ConnectionLevel },
 ) {
 	const currentUser = yield* CurrentUser.Context
 	const { orgId, provider } = path
-	const level = urlParams.level ?? "organization"
+	const level = query.level ?? "organization"
 
 	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
 		return yield* Effect.fail(
@@ -308,8 +306,8 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 		),
 	)
 
-	const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
-	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
+	const frontendUrl = yield* Config.string("FRONTEND_URL")
+	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN")
 
 	// Get org slug for redirect URL
 	const orgRepo = yield* OrganizationRepo
@@ -335,7 +333,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 
 	// Determine environment from NODE_ENV config
 	// Local dev uses "local" so production can redirect callbacks back to localhost
-	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
+	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"))
 	const environment = nodeEnv === "development" ? "local" : "production"
 	const cookieSecure = nodeEnv !== "development"
 
@@ -436,7 +434,7 @@ const OAuthSessionState = Schema.Struct({
  */
 const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	path: { provider: IntegrationConnection.IntegrationProvider },
-	urlParams: {
+	query: {
 		code?: string
 		state?: string
 		guild_id?: string
@@ -446,14 +444,14 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	},
 ) {
 	const { provider } = path
-	const { code, state: encodedState, installation_id, setup_action, guild_id, permissions } = urlParams
+	const { code, state: encodedState, installation_id, setup_action, guild_id, permissions } = query
 
 	// Get request to read cookies
 	const request = yield* HttpServerRequest.HttpServerRequest
 	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
 	const sessionCookie = request.cookies[sessionCookieName]
-	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN").pipe(Effect.orDie)
-	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"), Effect.orDie)
+	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN")
+	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"))
 	const cookieSecure = nodeEnv !== "development"
 
 	yield* Effect.logInfo("OAuth callback received", {
@@ -540,7 +538,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	if (!parsedState && installation_id && setup_action === "update") {
 		const connectionRepo = yield* IntegrationConnectionRepo
 		const orgRepo = yield* OrganizationRepo
-		const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Effect.orDie)
+		const frontendUrl = yield* Config.string("FRONTEND_URL")
 
 		yield* Effect.logInfo("GitHub update callback - looking up by installation ID", {
 			event: "integration_callback_installation_lookup",
@@ -707,10 +705,10 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			schedule: oauthRetrySchedule,
 			while: isRetryableError,
 		}),
-		Effect.either,
+		Effect.result,
 	)
 
-	if (tokensResult._tag === "Left") {
+	if (tokensResult._tag === "Failure") {
 		const error = tokensResult.left
 		yield* Effect.logError("OAuth token exchange failed", {
 			event: "integration_token_exchange_failed",
@@ -721,7 +719,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		return redirectWithError("token_exchange_failed")
 	}
 
-	const tokens = tokensResult.right
+	const tokens = tokensResult.value
 	yield* Effect.logInfo("OAuth token exchange succeeded", {
 		event: "integration_token_exchange_success",
 		provider,
@@ -740,10 +738,10 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			schedule: oauthRetrySchedule,
 			while: isRetryableError,
 		}),
-		Effect.either,
+		Effect.result,
 	)
 
-	if (accountInfoResult._tag === "Left") {
+	if (accountInfoResult._tag === "Failure") {
 		const error = accountInfoResult.left
 		yield* Effect.logError("OAuth account info fetch failed", {
 			event: "integration_account_info_failed",
@@ -753,7 +751,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		return redirectWithError("account_info_failed")
 	}
 
-	const accountInfo = accountInfoResult.right
+	const accountInfo = accountInfoResult.value
 	yield* Effect.logDebug("OAuth account info fetch succeeded", {
 		event: "integration_account_info_success",
 		provider,
@@ -812,9 +810,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 					lastUsedAt: null,
 					deletedAt: null,
 				})
-	).pipe(Effect.either)
+	).pipe(Effect.result)
 
-	if (connectionResult._tag === "Left") {
+	if (connectionResult._tag === "Failure") {
 		yield* Effect.logError("OAuth database upsert failed", {
 			event: "integration_db_upsert_failed",
 			provider,
@@ -823,7 +821,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		return redirectWithError("db_error")
 	}
 
-	const connection = connectionResult.right
+	const connection = connectionResult.value
 	yield* Effect.logDebug("OAuth database upsert succeeded", {
 		event: "integration_db_upsert_success",
 		provider,
@@ -844,9 +842,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			expiresAt: tokens.expiresAt,
 			scope: tokens.scope,
 		})
-		.pipe(Effect.either)
+		.pipe(Effect.result)
 
-	if (storeResult._tag === "Left") {
+	if (storeResult._tag === "Failure") {
 		yield* Effect.logError("OAuth token storage failed", {
 			event: "integration_token_storage_failed",
 			provider,
@@ -876,9 +874,9 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 				externalAccountId: accountInfo.externalAccountId,
 				externalAccountName: accountInfo.externalAccountName,
 			})
-			.pipe(Effect.either)
+			.pipe(Effect.result)
 
-		if (reconcileResult._tag === "Left") {
+		if (reconcileResult._tag === "Failure") {
 			yield* Effect.logWarning(
 				"Failed to re-attribute historical external messages after account link",
 				{
@@ -979,7 +977,7 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 						baseUrlHost: parsedBaseUrl.hostname,
 						baseUrlPath: parsedBaseUrl.pathname,
 						...craftConnectApiKeyErrorLogFields(error),
-					}).pipe(Effect.zipRight(Effect.fail(mapCraftConnectApiKeyError(error)))),
+					}).pipe(Effect.andThen(Effect.fail(mapCraftConnectApiKeyError(error)))),
 				CraftNotFoundError: (error) =>
 					Effect.logWarning("Craft API key validation failed", {
 						event: "craft_api_key_validation_failed",
@@ -988,7 +986,7 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 						baseUrlHost: parsedBaseUrl.hostname,
 						baseUrlPath: parsedBaseUrl.pathname,
 						...craftConnectApiKeyErrorLogFields(error),
-					}).pipe(Effect.zipRight(Effect.fail(mapCraftConnectApiKeyError(error)))),
+					}).pipe(Effect.andThen(Effect.fail(mapCraftConnectApiKeyError(error)))),
 				CraftRateLimitError: (error) =>
 					Effect.logWarning("Craft API key validation failed", {
 						event: "craft_api_key_validation_failed",
@@ -997,7 +995,7 @@ const handleConnectApiKey = Effect.fn("integrations.connectApiKey")(function* (
 						baseUrlHost: parsedBaseUrl.hostname,
 						baseUrlPath: parsedBaseUrl.pathname,
 						...craftConnectApiKeyErrorLogFields(error),
-					}).pipe(Effect.zipRight(Effect.fail(mapCraftConnectApiKeyError(error)))),
+					}).pipe(Effect.andThen(Effect.fail(mapCraftConnectApiKeyError(error)))),
 			}),
 		)
 		externalAccountName = spaceInfo.name ?? "Craft Space"
@@ -1067,12 +1065,12 @@ const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(
 		orgId: OrganizationId
 		provider: IntegrationConnection.IntegrationProvider
 	},
-	urlParams: { level?: IntegrationConnection.ConnectionLevel },
+	query: { level?: IntegrationConnection.ConnectionLevel },
 ) {
 	const { orgId, provider } = path
 	const currentUser = yield* CurrentUser.Context
 	const connectionRepo = yield* IntegrationConnectionRepo
-	const level = urlParams.level ?? "organization"
+	const level = query.level ?? "organization"
 
 	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
 		return yield* Effect.fail(
@@ -1117,14 +1115,14 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 		orgId: OrganizationId
 		provider: IntegrationConnection.IntegrationProvider
 	},
-	urlParams: { level?: IntegrationConnection.ConnectionLevel },
+	query: { level?: IntegrationConnection.ConnectionLevel },
 ) {
 	const { orgId, provider } = path
 	const currentUser = yield* CurrentUser.Context
 	const connectionRepo = yield* IntegrationConnectionRepo
 	const tokenService = yield* IntegrationTokenService
 	const chatSyncAttributionReconciler = yield* ChatSyncAttributionReconciler
-	const level = urlParams.level ?? "organization"
+	const level = query.level ?? "organization"
 
 	if (!currentUser.organizationId || currentUser.organizationId !== orgId) {
 		return yield* Effect.fail(
@@ -1160,9 +1158,9 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 				externalAccountId,
 				externalAccountName: connection.externalAccountName,
 			})
-			.pipe(Effect.either)
+			.pipe(Effect.result)
 
-		if (reconcileResult._tag === "Left") {
+		if (reconcileResult._tag === "Failure") {
 			yield* Effect.logWarning(
 				"Failed to re-attribute historical external messages after account unlink",
 				{
@@ -1197,9 +1195,9 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>
 	handlers
-		.handle("getOAuthUrl", ({ path, urlParams }) => handleGetOAuthUrl(path, urlParams))
-		.handle("oauthCallback", ({ path, urlParams }) =>
-			handleOAuthCallback(path, urlParams).pipe(
+		.handle("getOAuthUrl", ({ params, query }) => handleGetOAuthUrl(path, query))
+		.handle("oauthCallback", ({ params, query }) =>
+			handleOAuthCallback(path, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
@@ -1210,7 +1208,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				),
 			),
 		)
-		.handle("connectApiKey", ({ path, payload }) =>
+		.handle("connectApiKey", ({ params, payload }) =>
 			handleConnectApiKey(path, payload).pipe(
 				Effect.catchTags({
 					DatabaseError: (error) =>
@@ -1237,8 +1235,8 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				}),
 			),
 		)
-		.handle("getConnectionStatus", ({ path, urlParams }) =>
-			handleGetConnectionStatus(path, urlParams).pipe(
+		.handle("getConnectionStatus", ({ params, query }) =>
+			handleGetConnectionStatus(path, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
@@ -1249,8 +1247,8 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 				),
 			),
 		)
-		.handle("disconnect", ({ path, urlParams }) =>
-			handleDisconnect(path, urlParams).pipe(
+		.handle("disconnect", ({ params, query }) =>
+			handleDisconnect(path, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({

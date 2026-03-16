@@ -11,10 +11,7 @@ const DEFAULT_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "🎉"] as con
  * Schema for emoji usage data
  * Maps emoji string to usage count
  */
-const EmojiUsageSchema = Schema.Record({
-	key: Schema.String,
-	value: Schema.Number,
-})
+const EmojiUsageSchema = Schema.Record(Schema.String, Schema.Number)
 
 export type EmojiUsage = typeof EmojiUsageSchema.Type
 
@@ -24,7 +21,7 @@ export type EmojiUsage = typeof EmojiUsageSchema.Type
 export const emojiUsageAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-emoji-usage",
-	schema: EmojiUsageSchema,
+	schema: Schema.toCodecIso(EmojiUsageSchema),
 	defaultValue: () => ({}) as EmojiUsage,
 })
 

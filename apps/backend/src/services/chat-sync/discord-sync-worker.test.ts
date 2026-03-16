@@ -3189,12 +3189,12 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 			const result = await runWorkerEffect(
 				DiscordSyncWorker.syncHazelMessageToDiscord(SYNC_CONNECTION_ID, HAZEL_MESSAGE_ID).pipe(
 					Effect.provide(layer),
-					Effect.either,
+					Effect.result,
 				),
 			)
 
-			expect(result._tag).toBe("Left")
-			if (result._tag === "Left") {
+			expect(result._tag).toBe("Failure")
+			if (result._tag === "Failure") {
 				expect((result.left as { _tag?: string })._tag).toBe("DiscordSyncConfigurationError")
 			}
 		} finally {

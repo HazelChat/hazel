@@ -111,8 +111,8 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 
 				yield* Effect.gen(function* () {
 					for (const event of batch) {
-						const result = yield* processEvent(event).pipe(Effect.either)
-						if (result._tag === "Right") {
+						const result = yield* processEvent(event).pipe(Effect.result)
+						if (result._tag === "Success") {
 							yield* outboxRepo.markProcessed(event.id)
 							continue
 						}
@@ -174,16 +174,16 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 					const reservedResult = yield* Effect.tryPromise({
 						try: (): Promise<PoolClient> => pool.connect(),
 						catch: (cause) => new Error(String(cause)),
-					}).pipe(Effect.either)
+					}).pipe(Effect.result)
 
-					if (reservedResult._tag === "Left") {
+					if (reservedResult._tag === "Failure") {
 						yield* Effect.logError("Failed to reserve outbox advisory lock connection", {
 							error: String(reservedResult.left),
 						})
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
 						return yield* campaignForLeadership()
 					}
-					const reserved = reservedResult.right
+					const reserved = reservedResult.value
 
 					const lockResult = yield* Effect.tryPromise({
 						try: () =>
@@ -191,9 +191,9 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 								OUTBOX_DISPATCHER_LOCK_KEY,
 							]),
 						catch: (cause) => new Error(String(cause)),
-					}).pipe(Effect.either)
+					}).pipe(Effect.result)
 
-					if (lockResult._tag === "Left") {
+					if (lockResult._tag === "Failure") {
 						yield* Effect.logError("Failed to acquire outbox advisory lock", {
 							error: String(lockResult.left),
 						})
@@ -202,7 +202,7 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 						return yield* campaignForLeadership()
 					}
 
-					const lockRows = lockResult.right as { rows: Array<{ locked: boolean }> }
+					const lockRows = lockResult.value as { rows: Array<{ locked: boolean }> }
 					if (!lockRows.rows[0]?.locked) {
 						yield* Effect.sync(() => reserved.release())
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)

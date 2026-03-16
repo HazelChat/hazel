@@ -195,12 +195,12 @@ function DomainManagement({
 	const removeDomainResult = useAtomValue(removeOrganizationDomainMutation)
 	const removeDomain = useAtomSet(removeOrganizationDomainMutation, { mode: "promiseExit" })
 
-	const isAddingDomain = addDomainAsyncResult.waiting
-	const isRemovingDomain = removeDomainAsyncResult.waiting
+	const isAddingDomain = addDomainResult.waiting
+	const isRemovingDomain = removeDomainResult.waiting
 
 	const domains: Domain[] = AsyncResult.getOrElse(domainsResult, () => []) as Domain[]
 	// Only show loading on initial load, not during background refreshes (polling)
-	const isLoadingDomains = domainsAsyncResult._tag === "Initial"
+	const isLoadingDomains = domainsResult._tag === "Initial"
 
 	const reactivityKeys = [`organizationDomains:${organizationId}`] as const
 
@@ -291,7 +291,7 @@ function AuthenticationSettings() {
 		mode: "promiseExit",
 	})
 
-	const isLoadingPortalLink = getAdminPortalLinkAsyncResult.waiting
+	const isLoadingPortalLink = getAdminPortalLinkResult.waiting
 
 	const handleOpenPortal = async (intent: "sso" | "domain_verification") => {
 		if (!organizationId) return

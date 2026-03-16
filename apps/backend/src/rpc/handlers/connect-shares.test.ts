@@ -23,11 +23,11 @@ describe("connect-shares helpers", () => {
 				providedOrgId: GUEST_ORG_ID,
 				target: { kind: "slug", value: "other-workspace" },
 				findBySlug: () => Effect.succeed(Option.some({ id: OTHER_GUEST_ORG_ID })),
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(result._tag).toBe("Left")
-		if (result._tag === "Left") {
+		expect(result._tag).toBe("Failure")
+		if (result._tag === "Failure") {
 			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
@@ -42,11 +42,11 @@ describe("connect-shares helpers", () => {
 				},
 				guestOrganizationId: OTHER_GUEST_ORG_ID,
 				findBySlug: () => Effect.succeed(Option.some({ id: GUEST_ORG_ID })),
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(result._tag).toBe("Left")
-		if (result._tag === "Left") {
+		expect(result._tag).toBe("Failure")
+		if (result._tag === "Failure") {
 			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
@@ -61,11 +61,11 @@ describe("connect-shares helpers", () => {
 				},
 				guestOrganizationId: GUEST_ORG_ID,
 				findBySlug: () => Effect.succeed(Option.none()),
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(result._tag).toBe("Left")
-		if (result._tag === "Left") {
+		expect(result._tag).toBe("Failure")
+		if (result._tag === "Failure") {
 			expect(result.left).toBeInstanceOf(ConnectWorkspaceNotFoundError)
 		}
 	})
@@ -75,11 +75,11 @@ describe("connect-shares helpers", () => {
 			assertGuestMemberAddsAllowed({
 				role: "guest",
 				allowGuestMemberAdds: false,
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(result._tag).toBe("Left")
-		if (result._tag === "Left") {
+		expect(result._tag).toBe("Failure")
+		if (result._tag === "Failure") {
 			expect(result.left).toBeInstanceOf(PermissionError)
 		}
 	})
@@ -89,17 +89,17 @@ describe("connect-shares helpers", () => {
 			assertGuestMemberAddsAllowed({
 				role: "host",
 				allowGuestMemberAdds: false,
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 		const guestResult = await Effect.runPromise(
 			assertGuestMemberAddsAllowed({
 				role: "guest",
 				allowGuestMemberAdds: true,
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(hostResult._tag).toBe("Right")
-		expect(guestResult._tag).toBe("Right")
+		expect(hostResult._tag).toBe("Success")
+		expect(guestResult._tag).toBe("Success")
 	})
 
 	it("remaps guest mount unique conflicts to an already-shared error", async () => {
@@ -111,11 +111,11 @@ describe("connect-shares helpers", () => {
 				}),
 				guestOrganizationId: GUEST_ORG_ID,
 				findExistingMount: () => Effect.succeed(Option.some({ channelId: GUEST_CHANNEL_ID })),
-			}).pipe(Effect.either) as Effect.Effect<any, never, never>,
+			}).pipe(Effect.result) as Effect.Effect<any, never, never>,
 		)
 
-		expect(result._tag).toBe("Left")
-		if (result._tag === "Left") {
+		expect(result._tag).toBe("Failure")
+		if (result._tag === "Failure") {
 			expect(result.left).toBeInstanceOf(ConnectChannelAlreadySharedError)
 		}
 	})

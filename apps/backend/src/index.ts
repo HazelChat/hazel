@@ -182,7 +182,7 @@ const PolicyLive = Layer.mergeAll(
 )
 
 // ResultPersistence layer for session caching (uses Redis backing)
-const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.layer))
+const PersistenceLive = RedisResultPersistenceLive.pipe(Layer.provide(Redis.Default))
 
 const MainLive = Layer.mergeAll(
 	RepoLive,
@@ -193,8 +193,8 @@ const MainLive = Layer.mergeAll(
 	WorkOSSync.layer,
 	WorkOSWebhookVerifier.layer,
 	DatabaseLive,
-	S3.layer,
-	Redis.layer,
+	S3.Default,
+	Redis.Default,
 	PersistenceLive,
 	GitHub.GitHubAppJWTService.layer,
 	GitHub.GitHubApiClient.layer,
@@ -233,7 +233,7 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 			Layer.provideMerge(SessionManager.layer),
 			Layer.provideMerge(WorkOSAuth.layer),
 			Layer.provideMerge(PersistenceLive),
-			Layer.provideMerge(Redis.layer),
+			Layer.provideMerge(Redis.Default),
 			Layer.provideMerge(DatabaseLive),
 		),
 	),

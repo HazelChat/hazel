@@ -48,9 +48,9 @@ const convertEmbedToDb = (embed: MessageEmbed.MessageEmbed): DbMessageEmbed => (
 
 export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-webhooks", (handlers) =>
 	handlers
-		.handle("execute", ({ path, payload }) =>
+		.handle("execute", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
@@ -164,9 +164,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				}),
 			),
 		)
-		.handle("executeOpenStatus", ({ path, payload }) =>
+		.handle("executeOpenStatus", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo
@@ -267,9 +267,9 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				}),
 			),
 		)
-		.handle("executeRailway", ({ path, payload }) =>
+		.handle("executeRailway", ({ params, payload }) =>
 			Effect.gen(function* () {
-				const { webhookId, token } = path
+				const { webhookId, token } = params
 				const db = yield* Database.Database
 				const webhookRepo = yield* ChannelWebhookRepo
 				const messageRepo = yield* MessageRepo

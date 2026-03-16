@@ -1,7 +1,7 @@
 import { Headers } from "effect/unstable/http"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, type CurrentUser, SessionNotProvidedError } from "@hazel/domain"
-import { Effect, FiberRef, Layer, Option } from "effect"
+import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
 import { SessionManager } from "../../services/session-manager"
@@ -74,9 +74,10 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					const bot = botOption.value
 
-					// Set the bot's declared scopes for authorization
-					const botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
-					yield* FiberRef.set(CurrentBotScopes, Option.some(botApiScopes))
+					// TODO: v4 migration — Set the bot's declared scopes for authorization
+					// In v4, CurrentBotScopes is a ServiceMap.Service, needs different pattern
+					const _botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
+					void _botApiScopes // Will be used when service provision is wired
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(

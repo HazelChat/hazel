@@ -44,7 +44,7 @@ const ThemeCustomizationSchema = Schema.Struct({
 export const themeAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-ui-theme",
-	schema: Schema.NullOr(ThemeSchema),
+	schema: Schema.toCodecIso(Schema.NullOr(ThemeSchema)),
 	defaultValue: () => "system" as const,
 })
 
@@ -52,7 +52,7 @@ export const themeAtom = Atom.kvs({
 export const brandColorAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "brand-color",
-	schema: Schema.NullOr(HexColorSchema),
+	schema: Schema.toCodecIso(Schema.NullOr(HexColorSchema)),
 	defaultValue: () => DEFAULT_BRAND_COLOR as string,
 })
 
@@ -60,7 +60,7 @@ export const brandColorAtom = Atom.kvs({
 export const themeCustomizationAtom = Atom.kvs({
 	runtime: platformStorageRuntime,
 	key: "hazel-theme-customization",
-	schema: Schema.NullOr(ThemeCustomizationSchema),
+	schema: Schema.toCodecIso(Schema.NullOr(ThemeCustomizationSchema)),
 	defaultValue: () => getDefaultThemeCustomization() as ThemeModel.ThemeCustomization,
 })
 

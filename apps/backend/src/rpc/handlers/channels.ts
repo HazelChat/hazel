@@ -476,7 +476,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 					const originalMessageId = originalMessageResult[0]!.id
 
-					const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
+					const clusterUrl = yield* Config.string("CLUSTER_URL")
 					const client = yield* HttpApiClient.make(Cluster.WorkflowApi, {
 						baseUrl: clusterUrl,
 					})

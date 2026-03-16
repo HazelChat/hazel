@@ -10,15 +10,15 @@
 		],
 		"catalogs": {
 			"effect": {
-				"effect": "4.0.0-beta.32",
-				"@effect/platform-bun": "4.0.0-beta.32",
-				"@effect/platform-browser": "4.0.0-beta.32",
-				"@effect/platform-node": "4.0.0-beta.32",
-				"@effect/sql-pg": "4.0.0-beta.32",
-				"@effect/opentelemetry": "4.0.0-beta.32",
-				"@effect/atom-react": "4.0.0-beta.32",
-				"@effect/ai-openrouter": "4.0.0-beta.32",
-				"@effect/vitest": "4.0.0-beta.32"
+				"effect": "4.0.0-beta.33",
+				"@effect/platform-bun": "4.0.0-beta.33",
+				"@effect/platform-browser": "4.0.0-beta.33",
+				"@effect/platform-node": "4.0.0-beta.33",
+				"@effect/sql-pg": "4.0.0-beta.33",
+				"@effect/opentelemetry": "4.0.0-beta.33",
+				"@effect/atom-react": "4.0.0-beta.33",
+				"@effect/ai-openrouter": "4.0.0-beta.33",
+				"@effect/vitest": "4.0.0-beta.33"
 			}
 		}
 	},

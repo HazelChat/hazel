@@ -1,4 +1,4 @@
-import { Effect, Predicate, Schema } from "effect"
+import { Effect, Predicate, Schema, SchemaIssue } from "effect"
 import { ChannelId, MessageId } from "@hazel/schema"
 
 export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError>("UnauthorizedError")(
@@ -108,46 +108,39 @@ export class WorkflowServiceUnavailableError extends Schema.TaggedErrorClass<Wor
 export function withRemapDbErrors<R, E extends { _tag: string }, A>(
 	entityType: string,
 	action: "update" | "create" | "delete" | "select",
-	entityId?: any | { value: any; key: string }[],
+	entityId?: unknown | { value: unknown; key: string }[],
 ) {
 	return (
 		effect: Effect.Effect<R, E, A>,
-	): Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "ParseError" }> | InternalServerError, A> => {
+	): Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A> => {
+		const toInternalError = (err: unknown, detailPrefix: string) =>
+			Effect.fail(
+				new InternalServerError({
+					message: `Error ${action}ing ${entityType}`,
+					detail: constructDetailMessage(detailPrefix, entityType, entityId),
+					cause: String(err),
+				}),
+			)
+
 		return effect.pipe(
-			Effect.catchTags({
-				DatabaseError: (err: any) =>
-					Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: constructDetailMessage(
-								"There was an error in parsing when",
-								entityType,
-								entityId,
-							),
-							cause: String(err),
-						}),
-					),
-				ParseError: (err: any) =>
-					Effect.fail(
-						new InternalServerError({
-							message: `Error ${action}ing ${entityType}`,
-							detail: constructDetailMessage(
-								"There was an error in parsing when",
-								entityType,
-								entityId,
-							),
-							cause: String(err),
-						}),
-					),
-			}),
-		)
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "DatabaseError" }> =>
+					Predicate.isTagged(e, "DatabaseError"),
+				(err) => toInternalError(err, "There was a database error when"),
+			),
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "SchemaError" }> =>
+					Predicate.isTagged(e, "SchemaError"),
+				(err) => toInternalError(err, "There was an error in parsing when"),
+			),
+		) as Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A>
 	}
 }
 
 const constructDetailMessage = (
 	title: string,
 	entityType: string,
-	entityId?: any | { value: any; key: string }[],
+	entityId?: unknown | { value: unknown; key: string }[],
 ) => {
 	if (entityId) {
 		if (Array.isArray(entityId)) {

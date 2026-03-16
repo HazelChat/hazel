@@ -3,7 +3,7 @@ import { CurrentUser } from "@hazel/domain"
 import type { ApiScope } from "@hazel/domain/scopes"
 import { CurrentRpcScopes } from "@hazel/domain/scopes"
 import type { ChannelId, ChannelMemberId, MessageId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, FiberRef, Layer, Option } from "effect"
+import { Effect, Layer, Option } from "effect"
 import { OrgResolver } from "../services/org-resolver"
 
 export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001" as OrganizationId
@@ -31,11 +31,11 @@ export const runWithActorEither = <A, E, R>(
 	scopes: ReadonlyArray<ApiScope> = ["messages:read"],
 ) =>
 	Effect.runPromise(
-		effect.pipe(
-			Effect.locally(CurrentRpcScopes, scopes),
+		make.pipe(
+			Effect.provideService(CurrentRpcScopes, scopes),
 			Effect.provide(layer),
 			Effect.provideService(CurrentUser.Context, actor),
-			Effect.either,
+			Effect.result,
 		),
 	)
 
