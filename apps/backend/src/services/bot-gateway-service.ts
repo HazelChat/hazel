@@ -190,8 +190,11 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 				return
 			}
 
-			const eventTimestamp =
-				message.updatedAt ? toEpochMs(message.updatedAt) : message.createdAt ? toEpochMs(message.createdAt) : Date.now()
+			const eventTimestamp = message.updatedAt
+				? toEpochMs(message.updatedAt)
+				: message.createdAt
+					? toEpochMs(message.createdAt)
+					: Date.now()
 
 			yield* publishToInstalledBots(organizationId, () => ({
 				schemaVersion: 1,
@@ -211,8 +214,11 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 			eventType: "channel.create" | "channel.update" | "channel.delete",
 			channel: Schema.Schema.Type<typeof Channel.Model.json>,
 		) {
-			const eventTimestamp =
-				channel.updatedAt ? toEpochMs(channel.updatedAt) : channel.createdAt ? toEpochMs(channel.createdAt) : Date.now()
+			const eventTimestamp = channel.updatedAt
+				? toEpochMs(channel.updatedAt)
+				: channel.createdAt
+					? toEpochMs(channel.createdAt)
+					: Date.now()
 
 			yield* publishToInstalledBots(channel.organizationId, () => ({
 				schemaVersion: 1,
@@ -237,7 +243,11 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 				return
 			}
 
-			const eventTimestamp = member.createdAt ? toEpochMs(member.createdAt) : member.joinedAt ? toEpochMs(member.joinedAt) : Date.now()
+			const eventTimestamp = member.createdAt
+				? toEpochMs(member.createdAt)
+				: member.joinedAt
+					? toEpochMs(member.joinedAt)
+					: Date.now()
 
 			yield* publishToInstalledBots(organizationId, () => ({
 				schemaVersion: 1,

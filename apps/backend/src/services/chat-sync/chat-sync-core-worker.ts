@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import type { DiscordSyncWorker as DiscordSyncWorkerType } from "./discord-sync-worker"
 import { and, asc, Database, eq, isNull, schema } from "@hazel/db"
 import {
 	ChannelRepo,
@@ -168,7 +169,8 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		const channelAccessSyncService = yield* ChannelAccessSyncService
 		const providerRegistry = yield* ChatSyncProviderRegistry
 		const discordApiClient = yield* Discord.DiscordApiClient
-		const discordSyncWorker = yield* DiscordSyncWorker
+		const { DiscordSyncWorker } = yield* Effect.promise(() => import("./discord-sync-worker"))
+		const discordSyncWorker = yield* DiscordSyncWorker as typeof DiscordSyncWorkerType
 
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")

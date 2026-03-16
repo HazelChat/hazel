@@ -93,7 +93,9 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 
 					if (shouldNotifyAll) {
 						// DM/group or broadcast mention - notify all members (existing logic)
-						yield* Effect.logDebug(`Querying all channel members for channel ${payload.channelId}`)
+						yield* Effect.logDebug(
+							`Querying all channel members for channel ${payload.channelId}`,
+						)
 
 						const channelMembers = yield* db
 							.execute((client) =>
@@ -129,7 +131,9 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 														false,
 													),
 													or(
-														isNull(schema.userPresenceStatusTable.activeChannelId),
+														isNull(
+															schema.userPresenceStatusTable.activeChannelId,
+														),
 														ne(
 															schema.userPresenceStatusTable.activeChannelId,
 															payload.channelId,
@@ -234,7 +238,10 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 								.from(schema.channelMembersTable)
 								.leftJoin(
 									schema.userPresenceStatusTable,
-									eq(schema.channelMembersTable.userId, schema.userPresenceStatusTable.userId),
+									eq(
+										schema.channelMembersTable.userId,
+										schema.userPresenceStatusTable.userId,
+									),
 								)
 								.where(
 									and(
@@ -247,7 +254,10 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 											isNull(schema.userPresenceStatusTable.userId),
 											// Has presence record - check suppressNotifications and activeChannel/status
 											and(
-												eq(schema.userPresenceStatusTable.suppressNotifications, false),
+												eq(
+													schema.userPresenceStatusTable.suppressNotifications,
+													false,
+												),
 												or(
 													isNull(schema.userPresenceStatusTable.activeChannelId),
 													ne(
@@ -308,10 +318,17 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 				execute: Effect.gen(function* () {
 					const db = yield* Database.Database
 					const startedAt = Date.now()
-					yield* Effect.annotateCurrentSpan("activity.candidate_count", membersResult.members.length)
-					yield* Effect.logDebug(`Creating notifications for ${membersResult.members.length} members`)
+					yield* Effect.annotateCurrentSpan(
+						"activity.candidate_count",
+						membersResult.members.length,
+					)
+					yield* Effect.logDebug(
+						`Creating notifications for ${membersResult.members.length} members`,
+					)
 
-					const userIds = membersResult.members.map((member: Cluster.ChannelMemberForNotification) => member.userId)
+					const userIds = membersResult.members.map(
+						(member: Cluster.ChannelMemberForNotification) => member.userId,
+					)
 					const orgMembers = yield* db
 						.execute((client) =>
 							client

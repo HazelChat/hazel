@@ -4,7 +4,10 @@ import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"
 
 export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflow.toLayer(
-	Effect.fn("workflow.GitHubInstallation")(function* (payload: Cluster.GitHubInstallationWorkflowPayload, _executionId: string) {
+	Effect.fn("workflow.GitHubInstallation")(function* (
+		payload: Cluster.GitHubInstallationWorkflowPayload,
+		_executionId: string,
+	) {
 		yield* Effect.annotateCurrentSpan("workflow.action", payload.action)
 		yield* Effect.annotateCurrentSpan("workflow.installation_id", payload.installationId)
 		yield* Effect.annotateCurrentSpan("workflow.account_login", payload.accountLogin)
@@ -30,7 +33,9 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 				execute: Effect.gen(function* () {
 					const db = yield* Database.Database
 
-					yield* Effect.logDebug(`Querying connection for installation ID ${payload.installationId}`)
+					yield* Effect.logDebug(
+						`Querying connection for installation ID ${payload.installationId}`,
+					)
 
 					// Query for a connection with matching installationId in metadata
 					const connections = yield* db
@@ -40,7 +45,8 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 									id: schema.integrationConnectionsTable.id,
 									organizationId: schema.integrationConnectionsTable.organizationId,
 									status: schema.integrationConnectionsTable.status,
-									externalAccountName: schema.integrationConnectionsTable.externalAccountName,
+									externalAccountName:
+										schema.integrationConnectionsTable.externalAccountName,
 								})
 								.from(schema.integrationConnectionsTable)
 								.where(

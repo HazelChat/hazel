@@ -138,7 +138,10 @@ const handleUserRequest = (request: Request) => {
 				yield* annotateHandledError(401, "ProxyAuthenticationError")
 				yield* Effect.logInfo("Authentication failed", { detail: error.detail })
 				yield* Metric.update(
-					Metric.withAttributes(proxyAuthFailures, { auth_type: "user", error_tag: "ProxyAuthenticationError" }),
+					Metric.withAttributes(proxyAuthFailures, {
+						auth_type: "user",
+						error_tag: "ProxyAuthenticationError",
+					}),
 					1,
 				)
 				return new Response(
@@ -320,7 +323,10 @@ const handleBotRequest = (request: Request) => {
 					detail: error.detail,
 				})
 				yield* Metric.update(
-					Metric.withAttributes(proxyAuthFailures, { auth_type: "bot", error_tag: "BotAuthenticationError" }),
+					Metric.withAttributes(proxyAuthFailures, {
+						auth_type: "bot",
+						error_tag: "BotAuthenticationError",
+					}),
 					1,
 				)
 				return new Response(

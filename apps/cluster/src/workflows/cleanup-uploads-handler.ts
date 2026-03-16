@@ -7,7 +7,10 @@ import { Effect } from "effect"
 const DEFAULT_MAX_AGE_MINUTES = 10
 
 export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLayer(
-	Effect.fn("workflow.CleanupUploads")(function* (payload: Cluster.CleanupUploadsWorkflowPayload, _executionId: string) {
+	Effect.fn("workflow.CleanupUploads")(function* (
+		payload: Cluster.CleanupUploadsWorkflowPayload,
+		_executionId: string,
+	) {
 		const maxAgeMinutes = payload.maxAgeMinutes ?? DEFAULT_MAX_AGE_MINUTES
 
 		yield* Effect.annotateCurrentSpan("workflow.max_age_minutes", maxAgeMinutes)

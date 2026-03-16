@@ -7,16 +7,9 @@ import { HttpAppLive, HttpLinkPreviewLive, HttpTweetLive } from "./handle"
 import { TwitterApi } from "./services/twitter"
 
 const makeAppLayer = (env: Env) => {
-	const ServiceLayers = Layer.mergeAll(
-		makeKVCacheLayer(env.LINK_CACHE),
-		TwitterApi.layer,
-	)
+	const ServiceLayers = Layer.mergeAll(makeKVCacheLayer(env.LINK_CACHE), TwitterApi.layer)
 
-	const HandlerLayers = Layer.mergeAll(
-		HttpAppLive,
-		HttpLinkPreviewLive,
-		HttpTweetLive,
-	)
+	const HandlerLayers = Layer.mergeAll(HttpAppLive, HttpLinkPreviewLive, HttpTweetLive)
 
 	return HttpApiBuilder.layer(LinkPreviewApi).pipe(
 		Layer.provide(HandlerLayers),

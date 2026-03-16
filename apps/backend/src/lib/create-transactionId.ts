@@ -38,10 +38,7 @@ export const generateTransactionId = Effect.fn("generateTransactionId")(function
 			(e): e is Database.DatabaseError => Predicate.isTagged(e, "DatabaseError"),
 			(err) => Effect.die(`Database error generating transaction ID: ${err}`),
 		),
-		Effect.catchIf(
-			SchemaIssue.isIssue,
-			(err) => Effect.die(`Failed to parse transaction ID: ${err}`),
-		),
+		Effect.catchIf(SchemaIssue.isIssue, (err) => Effect.die(`Failed to parse transaction ID: ${err}`)),
 	)
 
 	return result

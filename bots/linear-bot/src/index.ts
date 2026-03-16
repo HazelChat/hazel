@@ -120,7 +120,9 @@ ${conversationText}`,
 					const text = response.text
 
 					// Parse the JSON response
-					const generatedIssue = yield* Schema.decodeUnknownEffect(GeneratedIssueSchema)(JSON.parse(text))
+					const generatedIssue = yield* Schema.decodeUnknownEffect(GeneratedIssueSchema)(
+						JSON.parse(text),
+					)
 
 					yield* Effect.log(`Generated issue: ${generatedIssue.title}`)
 

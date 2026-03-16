@@ -40,10 +40,12 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 	> => {
 		return effect.pipe(
 			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "DatabaseError" }> =>
-					Predicate.isTagged(e, "DatabaseError"),
+				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
 				(err) => {
-					const dbErr = err as unknown as { type: string; cause: { constraint_name?: string; detail?: string } }
+					const dbErr = err as unknown as {
+						type: string
+						cause: { constraint_name?: string; detail?: string }
+					}
 					// Check if it's a unique violation on the slug column
 					if (
 						dbErr.type === "unique_violation" &&
@@ -70,8 +72,7 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 				},
 			),
 			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "SchemaError" }> =>
-					Predicate.isTagged(e, "SchemaError"),
+				(e): e is Extract<E, { _tag: "SchemaError" }> => Predicate.isTagged(e, "SchemaError"),
 				(err) =>
 					Effect.fail(
 						new InternalServerError({
@@ -163,14 +164,16 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							// Create organization in local database first
 							yield* organizationPolicy.canCreate()
-							const createdOrganization = yield* organizationRepo.insert({
-								name: payload.name,
-								slug: payload.slug,
-								logoUrl: payload.logoUrl,
-								settings: payload.settings,
-								isPublic: false,
-								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdOrganization = yield* organizationRepo
+								.insert({
+									name: payload.name,
+									slug: payload.slug,
+									logoUrl: payload.logoUrl,
+									settings: payload.settings,
+									isPublic: false,
+									deletedAt: null,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							// Create organization in WorkOS using our DB ID as externalId
 							const workosOrg = yield* workos

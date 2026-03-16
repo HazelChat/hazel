@@ -128,10 +128,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 									}),
 								)
 
-								yield* channelAccessSync.syncUserInOrganization(
-									botUserId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(botUserId, organizationId)
 
 								const txid = yield* generateTransactionId()
 
@@ -448,10 +445,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										}),
 								)
 
-								yield* channelAccessSync.syncUserInOrganization(
-									bot.userId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(bot.userId, organizationId)
 
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId)
@@ -608,10 +602,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 										}),
 								)
 
-								yield* channelAccessSync.syncUserInOrganization(
-									bot.userId,
-									organizationId,
-								)
+								yield* channelAccessSync.syncUserInOrganization(bot.userId, organizationId)
 
 								// Increment install count
 								yield* botRepo.incrementInstallCount(botId)

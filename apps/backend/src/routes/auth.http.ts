@@ -81,7 +81,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -115,7 +117,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -134,7 +138,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -202,7 +208,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				})
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -310,7 +318,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				}
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -349,7 +359,9 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				}
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		),

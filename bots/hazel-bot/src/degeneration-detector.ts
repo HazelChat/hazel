@@ -33,7 +33,10 @@ export const withDegenerationDetection = <E, R>(
 
 				if (detected) {
 					// Return a sentinel value to trigger failure after mapAccum
-					return [updated, [{ __degenerate: true, pattern: detected.pattern, repeats: detected.repeats } as any]] as const
+					return [
+						updated,
+						[{ __degenerate: true, pattern: detected.pattern, repeats: detected.repeats } as any],
+					] as const
 				}
 
 				return [updated, [part]] as const

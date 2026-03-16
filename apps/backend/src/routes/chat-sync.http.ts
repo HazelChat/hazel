@@ -173,7 +173,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						),
 					),
 					Effect.catchTag("SchemaError", (error) =>
-						Effect.fail(toInternalServerError("Schema error while deleting sync connection", error)),
+						Effect.fail(
+							toInternalServerError("Schema error while deleting sync connection", error),
+						),
 					),
 				),
 			)

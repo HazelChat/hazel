@@ -35,12 +35,14 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							yield* pinnedMessagePolicy.canCreate(payload.channelId)
-							const createdPinnedMessage = yield* pinnedMessageRepo.insert({
-								channelId: payload.channelId,
-								messageId: payload.messageId,
-								pinnedBy: user.id,
-								pinnedAt: new Date(),
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdPinnedMessage = yield* pinnedMessageRepo
+								.insert({
+									channelId: payload.channelId,
+									messageId: payload.messageId,
+									pinnedBy: user.id,
+									pinnedAt: new Date(),
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 

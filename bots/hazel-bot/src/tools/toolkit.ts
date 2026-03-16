@@ -107,7 +107,9 @@ const baseHandlers = {
 
 const buildLinearHandlers = (options: { bot: HazelBotClient; orgId: OrganizationId }) => {
 	const getLinearToken = () =>
-		(options.bot as any).integration.getToken(options.orgId, "linear").pipe(Effect.map((r: any) => r.accessToken))
+		(options.bot as any).integration
+			.getToken(options.orgId, "linear")
+			.pipe(Effect.map((r: any) => r.accessToken))
 
 	return {
 		linear_get_account_info: () =>

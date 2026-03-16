@@ -48,9 +48,9 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 								: { ...payload, order, deletedAt: null }
 
 							yield* channelSectionPolicy.canCreate(payload.organizationId)
-							const createdSection = yield* channelSectionRepo.insert(
-								insertData as typeof payload & { order: number; deletedAt: null },
-							).pipe(Effect.map((res) => res[0]!))
+							const createdSection = yield* channelSectionRepo
+								.insert(insertData as typeof payload & { order: number; deletedAt: null })
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 

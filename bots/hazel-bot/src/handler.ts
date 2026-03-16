@@ -157,7 +157,9 @@ export const handleAIRequest = (params: {
 		Effect.provideServiceEffect(
 			LanguageModel.LanguageModel,
 			Effect.gen(function* () {
-				const model = yield* Config.string("AI_MODEL").pipe(Config.withDefault("google/gemini-3-flash-preview"))
+				const model = yield* Config.string("AI_MODEL").pipe(
+					Config.withDefault("google/gemini-3-flash-preview"),
+				)
 				return yield* makeOpenRouterModel(model)
 			}),
 		),

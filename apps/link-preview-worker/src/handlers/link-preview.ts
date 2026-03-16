@@ -167,11 +167,7 @@ export const HttpLinkPreviewLive = HttpApiBuilder.group(LinkPreviewApi, "linkPre
 			}
 
 			// Store in cache (don't fail request if caching fails)
-			yield* cache
-				.set(cacheKey, result)
-				.pipe(
-					Effect.orElseSucceed(() => undefined),
-				)
+			yield* cache.set(cacheKey, result).pipe(Effect.orElseSucceed(() => undefined))
 
 			return result
 		}),

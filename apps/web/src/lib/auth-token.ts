@@ -91,7 +91,9 @@ const readRefreshToken = Effect.fn("readRefreshToken")(function* () {
 	}
 	const storage = yield* WebTokenStorage
 	return yield* storage.getRefreshToken
-}).pipe(Effect.provide(isTauri() ? desktopStorageLive : webStorageLive)) as Effect.Effect<Option.Option<string>>
+}).pipe(Effect.provide(isTauri() ? desktopStorageLive : webStorageLive)) as Effect.Effect<
+	Option.Option<string>
+>
 
 /** Store tokens in the correct platform storage */
 const storeTokens = (accessToken: string, refreshToken: string, expiresIn: number) =>
@@ -103,10 +105,7 @@ const storeTokens = (accessToken: string, refreshToken: string, expiresIn: numbe
 			const storage = yield* WebTokenStorage
 			yield* storage.storeTokens(accessToken, refreshToken, expiresIn)
 		}
-	}).pipe(
-		Effect.provide(isTauri() ? desktopStorageLive : webStorageLive),
-		Effect.orDie,
-	)
+	}).pipe(Effect.provide(isTauri() ? desktopStorageLive : webStorageLive), Effect.orDie)
 
 // ============================================================================
 // Core Effects

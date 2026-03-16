@@ -76,7 +76,7 @@ export const sendMessageAction = optimisticAction({
 		attachmentIds?: AttachmentId[]
 		onRetryAttempt?: (attempt: number) => void
 	}) => {
-		const messageId = props.messageId ?? crypto.randomUUID() as MessageId
+		const messageId = props.messageId ?? (crypto.randomUUID() as MessageId)
 
 		messageCollection.insert({
 			id: messageId,
@@ -415,7 +415,7 @@ export const createThreadAction = optimisticAction({
 		organizationId: OrganizationId
 		currentUserId: UserId
 	}) => {
-		const threadChannelId = props.threadChannelId ?? crypto.randomUUID() as ChannelId
+		const threadChannelId = props.threadChannelId ?? (crypto.randomUUID() as ChannelId)
 		const now = new Date()
 
 		// Create thread channel

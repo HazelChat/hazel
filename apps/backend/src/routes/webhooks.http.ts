@@ -174,7 +174,9 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				})
 			}).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		),

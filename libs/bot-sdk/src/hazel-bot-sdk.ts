@@ -1370,17 +1370,16 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					},
 				) =>
 					rpc["channel.update"]({
-							id: channel.id,
-							type: channel.type,
-							organizationId: channel.organizationId,
-							parentChannelId: channel.parentChannelId,
-							name: updates.name ?? channel.name,
-							...updates,
-						})
-						.pipe(
-							Effect.map((r: any) => r.data),
-							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
-						),
+						id: channel.id,
+						type: channel.type,
+						organizationId: channel.organizationId,
+						parentChannelId: channel.parentChannelId,
+						name: updates.name ?? channel.name,
+						...updates,
+					}).pipe(
+						Effect.map((r: any) => r.data),
+						Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
+					),
 
 				/**
 				 * Ensure a thread exists on a message and return it.
@@ -1393,22 +1392,21 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 */
 				createThread: (messageId: MessageId, channelId: ChannelId) =>
 					rpc["channel.createThread"]({
-							messageId,
-						})
-						.pipe(
-							Effect.timeout(Duration.seconds(15)),
-							Effect.tapCause((cause) =>
-								Effect.logError("[bot.channel.createThread] Failed to ensure thread", {
-									messageId,
-									channelId,
-									cause,
-								}),
-							),
-							Effect.map((r: any) => r.data),
-							Effect.withSpan("bot.channel.createThread", {
-								attributes: { messageId, channelId },
+						messageId,
+					}).pipe(
+						Effect.timeout(Duration.seconds(15)),
+						Effect.tapCause((cause) =>
+							Effect.logError("[bot.channel.createThread] Failed to ensure thread", {
+								messageId,
+								channelId,
+								cause,
 							}),
 						),
+						Effect.map((r: any) => r.data),
+						Effect.withSpan("bot.channel.createThread", {
+							attributes: { messageId, channelId },
+						}),
+					),
 			},
 
 			/**
@@ -1422,14 +1420,13 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 */
 				start: (channelId: ChannelId, memberId: ChannelMemberId) =>
 					rpc["typingIndicator.create"]({
-							channelId,
-							memberId,
-							lastTyped: Date.now(),
-						})
-						.pipe(
-							Effect.map((r: any) => r.data),
-							Effect.withSpan("bot.typing.start", { attributes: { channelId, memberId } }),
-						),
+						channelId,
+						memberId,
+						lastTyped: Date.now(),
+					}).pipe(
+						Effect.map((r: any) => r.data),
+						Effect.withSpan("bot.typing.start", { attributes: { channelId, memberId } }),
+					),
 
 				/**
 				 * Stop showing typing indicator
@@ -1437,12 +1434,11 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 */
 				stop: (id: TypingIndicatorId) =>
 					rpc["typingIndicator.delete"]({
-							id,
-						})
-						.pipe(
-							Effect.map((r: any) => r.data),
-							Effect.withSpan("bot.typing.stop", { attributes: { typingIndicatorId: id } }),
-						),
+						id,
+					}).pipe(
+						Effect.map((r: any) => r.data),
+						Effect.withSpan("bot.typing.stop", { attributes: { typingIndicatorId: id } }),
+					),
 			},
 
 			/**
@@ -1551,9 +1547,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			 */
 			withErrorHandler:
 				<Args>(ctx: TypedCommandContext<Args>) =>
-				<A, E, R>(
-					effect: Effect.Effect<A, E, R>,
-				) =>
+				<A, E, R>(effect: Effect.Effect<A, E, R>) =>
 					effect.pipe(
 						Effect.mapError(
 							(cause) =>

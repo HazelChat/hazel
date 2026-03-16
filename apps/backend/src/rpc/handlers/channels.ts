@@ -51,9 +51,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								: { ...payload, deletedAt: null }
 
 							yield* channelPolicy.canCreate(payload.organizationId)
-							const createdChannel = yield* channelRepo.insert(
-								insertData as typeof payload & { deletedAt: null },
-							).pipe(Effect.map((res) => res[0]!))
+							const createdChannel = yield* channelRepo
+								.insert(insertData as typeof payload & { deletedAt: null })
+								.pipe(Effect.map((res) => res[0]!))
 
 							yield* channelMemberRepo.insert({
 								channelId: createdChannel.id,
@@ -151,9 +151,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 			"channel.delete": ({ id }) =>
 				Effect.gen(function* () {
-					const existingChannel = yield* channelRepo.findById(id).pipe(
-						withRemapDbErrors("Channel", "select"),
-					)
+					const existingChannel = yield* channelRepo
+						.findById(id)
+						.pipe(withRemapDbErrors("Channel", "select"))
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
@@ -237,15 +237,17 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// Create channel
 							yield* channelPolicy.canCreate(OrganizationId.makeUnsafe(payload.organizationId))
-							const createdChannel = yield* channelRepo.insert({
-								name: channelName || "Group Channel",
-								icon: null,
-								type: payload.type,
-								organizationId: OrganizationId.makeUnsafe(payload.organizationId),
-								parentChannelId: null,
-								sectionId: null,
-								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdChannel = yield* channelRepo
+								.insert({
+									name: channelName || "Group Channel",
+									icon: null,
+									type: payload.type,
+									organizationId: OrganizationId.makeUnsafe(payload.organizationId),
+									parentChannelId: null,
+									sectionId: null,
+									deletedAt: null,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							// Add creator as member
 							yield* channelMemberRepo.insert({
@@ -392,9 +394,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									}
 
 							yield* channelPolicy.canCreate(organizationId)
-							const createdChannel = yield* channelRepo.insert(insertData).pipe(
-								Effect.map((res) => res[0]!),
-							)
+							const createdChannel = yield* channelRepo
+								.insert(insertData)
+								.pipe(Effect.map((res) => res[0]!))
 
 							// 3. Add creator as member
 							yield* channelMemberRepo.insert({

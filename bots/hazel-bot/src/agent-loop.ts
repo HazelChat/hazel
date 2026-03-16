@@ -29,14 +29,12 @@ type AgentError = AiError.AiError | StreamIdleTimeoutError | IterationTimeoutErr
 export const streamAgentLoop = (options: {
 	prompt: Prompt.RawInput
 	toolkit: Toolkit.WithHandler<any>
-}): Stream.Stream<
-	Response.AnyPart,
-	AgentError,
-	LanguageModel.LanguageModel
-> =>
+}): Stream.Stream<Response.AnyPart, AgentError, LanguageModel.LanguageModel> =>
 	Effect.gen(function* () {
-		const queue: Queue.Queue<Response.AnyPart, AgentError | Cause.Done> =
-			yield* Queue.make<Response.AnyPart, AgentError | Cause.Done>()
+		const queue: Queue.Queue<Response.AnyPart, AgentError | Cause.Done> = yield* Queue.make<
+			Response.AnyPart,
+			AgentError | Cause.Done
+		>()
 
 		yield* Effect.gen(function* () {
 			let currentPrompt = Prompt.make(options.prompt)
@@ -87,8 +85,4 @@ export const streamAgentLoop = (options: {
 		}).pipe(Queue.into(queue), Effect.forkScoped)
 
 		return Stream.fromQueue(queue)
-	}).pipe(Stream.unwrap) as Stream.Stream<
-		Response.AnyPart,
-		AgentError,
-		LanguageModel.LanguageModel
-	>
+	}).pipe(Stream.unwrap) as Stream.Stream<Response.AnyPart, AgentError, LanguageModel.LanguageModel>

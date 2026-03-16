@@ -124,13 +124,11 @@ export function withRemapDbErrors<R, E extends { _tag: string }, A>(
 
 		return effect.pipe(
 			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "DatabaseError" }> =>
-					Predicate.isTagged(e, "DatabaseError"),
+				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
 				(err) => toInternalError(err, "There was a database error when"),
 			),
 			Effect.catchIf(
-				(e): e is Extract<E, { _tag: "SchemaError" }> =>
-					Predicate.isTagged(e, "SchemaError"),
+				(e): e is Extract<E, { _tag: "SchemaError" }> => Predicate.isTagged(e, "SchemaError"),
 				(err) => toInternalError(err, "There was an error in parsing when"),
 			),
 		) as Effect.Effect<R, Exclude<E, { _tag: "DatabaseError" | "SchemaError" }> | InternalServerError, A>

@@ -44,7 +44,8 @@ export function MentionElement({ attributes, children, element, interactive = fa
 	const userPresenceResult = useAtomValue(
 		userWithPresenceAtomFamily((shouldFetchUser ? userId : "dummy-id") as UserId),
 	)
-	const data = shouldFetchUser && userPresenceResult ? AsyncResult.getOrElse(userPresenceResult, () => []) : []
+	const data =
+		shouldFetchUser && userPresenceResult ? AsyncResult.getOrElse(userPresenceResult, () => []) : []
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence

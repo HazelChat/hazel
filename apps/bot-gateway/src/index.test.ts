@@ -109,12 +109,15 @@ describe("bot-gateway startup", () => {
 		const result = await Effect.runPromise(
 			Effect.scoped(
 				Layer.build(
-					instrumentStartupLayer(Layer.effectDiscard(Effect.fail(new Error("tracer unavailable"))), {
-						dependency: "tracer",
-						startMessage: "tracer start",
-						successMessage: "tracer ok",
-						failureMessage: "tracer failed",
-					}),
+					instrumentStartupLayer(
+						Layer.effectDiscard(Effect.fail(new Error("tracer unavailable"))),
+						{
+							dependency: "tracer",
+							startMessage: "tracer start",
+							successMessage: "tracer ok",
+							failureMessage: "tracer failed",
+						},
+					),
 				).pipe(Effect.result),
 			),
 		)

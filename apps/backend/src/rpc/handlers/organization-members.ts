@@ -35,11 +35,13 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							yield* organizationMemberPolicy.canCreate(payload.organizationId)
-							const createdOrganizationMember = yield* organizationMemberRepo.insert({
-								...payload,
-								userId: user.id,
-								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdOrganizationMember = yield* organizationMemberRepo
+								.insert({
+									...payload,
+									userId: user.id,
+									deletedAt: null,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							yield* channelAccessSync.syncUserInOrganization(
 								createdOrganizationMember.userId,

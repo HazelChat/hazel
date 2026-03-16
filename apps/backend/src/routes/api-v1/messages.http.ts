@@ -91,8 +91,7 @@ const createBotUserContext = (bot: { userId: typeof import("@hazel/schema").User
 const withHttpScopes = <A, E, R>(
 	scopes: ReadonlyArray<ApiScope>,
 	make: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> =>
-	Effect.provideService(make, CurrentRpcScopes, scopes) as Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => Effect.provideService(make, CurrentRpcScopes, scopes) as Effect.Effect<A, E, R>
 
 export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messages", (handlers) =>
 	Effect.gen(function* () {
@@ -130,9 +129,9 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const effectiveLimit = limit ?? 25
 
 							// First, check if user can read this channel (policy authorization)
-							yield* messagePolicy.canRead(channel_id).pipe(
-								Effect.provideService(CurrentUser.Context, currentUser),
-							)
+							yield* messagePolicy
+								.canRead(channel_id)
+								.pipe(Effect.provideService(CurrentUser.Context, currentUser))
 
 							// Resolve cursor IDs to stable cursor tuples.
 							let cursorBefore:
@@ -227,14 +226,16 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								.transaction(
 									Effect.gen(function* () {
 										yield* messagePolicy.canCreate(rest.channelId)
-										const createdMessage = yield* messageRepo.insert({
-											...rest,
-											embeds: embeds ?? null,
-											replyToMessageId: replyToMessageId ?? null,
-											threadChannelId: threadChannelId ?? null,
-											authorId: bot.userId,
-											deletedAt: null,
-										}).pipe(Effect.map((res) => res[0]!))
+										const createdMessage = yield* messageRepo
+											.insert({
+												...rest,
+												embeds: embeds ?? null,
+												replyToMessageId: replyToMessageId ?? null,
+												threadChannelId: threadChannelId ?? null,
+												authorId: bot.userId,
+												deletedAt: null,
+											})
+											.pipe(Effect.map((res) => res[0]!))
 
 										// Link attachments if provided
 										if (attachmentIds && attachmentIds.length > 0) {
@@ -492,12 +493,14 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 
 										// Otherwise, create a new reaction
 										yield* messageReactionPolicy.canCreate(messageId)
-										const createdReaction = yield* messageReactionRepo.insert({
-											messageId,
-											channelId,
-											emoji,
-											userId: bot.userId,
-										}).pipe(Effect.map((res) => res[0]!))
+										const createdReaction = yield* messageReactionRepo
+											.insert({
+												messageId,
+												channelId,
+												emoji,
+												userId: bot.userId,
+											})
+											.pipe(Effect.map((res) => res[0]!))
 
 										yield* outboxRepo.insert({
 											eventType: "reaction_created",

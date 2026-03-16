@@ -42,9 +42,7 @@ export const HttpTweetLive = HttpApiBuilder.group(LinkPreviewApi, "tweet", (hand
 			yield* Effect.logDebug(`Successfully fetched tweet: ${tweetId}`)
 
 			// Store in cache (don't fail request if caching fails)
-			yield* cache.set(cacheKey, tweet).pipe(
-				Effect.orElseSucceed(() => undefined),
-			)
+			yield* cache.set(cacheKey, tweet).pipe(Effect.orElseSucceed(() => undefined))
 
 			// Return the tweet data
 			return tweet

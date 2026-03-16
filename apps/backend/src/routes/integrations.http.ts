@@ -252,7 +252,8 @@ const makeOAuthSessionCookie = (
 	Effect.try({
 		try: () =>
 			Cookies.makeCookieUnsafe(name, value, {
-				domain: options.cookieDomain, path: "/",
+				domain: options.cookieDomain,
+				path: "/",
 				httpOnly: true,
 				secure: options.secure,
 				sameSite: "lax",
@@ -267,7 +268,8 @@ const makeOAuthSessionCookie = (
 
 const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string; secure: boolean }) =>
 	HttpServerResponse.expireCookie(name, {
-		domain: options.cookieDomain, path: "/",
+		domain: options.cookieDomain,
+		path: "/",
 		httpOnly: true,
 		secure: options.secure,
 		sameSite: "lax",
@@ -1204,7 +1206,9 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 		.handle("getOAuthUrl", ({ params, query }) =>
 			handleGetOAuthUrl(params, query).pipe(
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)
@@ -1227,7 +1231,9 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 					),
 				),
 				Effect.catchTag("ConfigError", (err) =>
-					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+					Effect.fail(
+						new InternalServerError({ message: "Missing configuration", detail: String(err) }),
+					),
 				),
 			),
 		)

@@ -27,17 +27,19 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							yield* channelMemberPolicy.canCreate(payload.channelId)
-							const createdChannelMember = yield* channelMemberRepo.insert({
-								channelId: payload.channelId,
-								userId: user.id,
-								isHidden: false,
-								isMuted: false,
-								isFavorite: false,
-								lastSeenMessageId: null,
-								notificationCount: 0,
-								joinedAt: new Date(),
-								deletedAt: null,
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdChannelMember = yield* channelMemberRepo
+								.insert({
+									channelId: payload.channelId,
+									userId: user.id,
+									isHidden: false,
+									isMuted: false,
+									isFavorite: false,
+									lastSeenMessageId: null,
+									notificationCount: 0,
+									joinedAt: new Date(),
+									deletedAt: null,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const channelOption = yield* channelRepo.findById(payload.channelId)
 							if (Option.isSome(channelOption)) {
@@ -91,9 +93,9 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 
 			"channelMember.delete": ({ id }) =>
 				Effect.gen(function* () {
-					const deletedMemberOption = yield* channelMemberRepo.findById(id).pipe(
-						withRemapDbErrors("ChannelMember", "select"),
-					)
+					const deletedMemberOption = yield* channelMemberRepo
+						.findById(id)
+						.pipe(withRemapDbErrors("ChannelMember", "select"))
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
@@ -101,9 +103,9 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 								yield* channelMemberRepo.deleteById(id)
 
 								if (Option.isSome(deletedMemberOption)) {
-									const channelOption = yield* channelRepo.findById(
-										deletedMemberOption.value.channelId,
-									).pipe(withRemapDbErrors("Channel", "select"))
+									const channelOption = yield* channelRepo
+										.findById(deletedMemberOption.value.channelId)
+										.pipe(withRemapDbErrors("Channel", "select"))
 									if (Option.isSome(channelOption)) {
 										yield* channelAccessSync.syncUserInOrganization(
 											deletedMemberOption.value.userId,
@@ -144,22 +146,20 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 
 					// Find the channel member record for this user and channel
 					yield* channelMemberPolicy.canRead(channelId)
-					const memberOption = yield* channelMemberRepo.findByChannelAndUser(
-						channelId,
-						user.id,
-					).pipe(withRemapDbErrors("ChannelMember", "select"))
+					const memberOption = yield* channelMemberRepo
+						.findByChannelAndUser(channelId, user.id)
+						.pipe(withRemapDbErrors("ChannelMember", "select"))
 
 					// Get channel to find organizationId
-					const channelOption = yield* channelRepo.findById(channelId).pipe(
-						withRemapDbErrors("Channel", "select"),
-					)
+					const channelOption = yield* channelRepo
+						.findById(channelId)
+						.pipe(withRemapDbErrors("Channel", "select"))
 
 					// Get organization member for notification deletion
 					const orgMemberOption = Option.isSome(channelOption)
-						? yield* organizationMemberRepo.findByOrgAndUser(
-								channelOption.value.organizationId,
-								user.id,
-							).pipe(withRemapDbErrors("OrganizationMember", "select"))
+						? yield* organizationMemberRepo
+								.findByOrgAndUser(channelOption.value.organizationId, user.id)
+								.pipe(withRemapDbErrors("OrganizationMember", "select"))
 						: Option.none()
 
 					// Wrap the update and transaction ID generation in a single transaction

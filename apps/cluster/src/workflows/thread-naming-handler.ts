@@ -20,7 +20,10 @@ Thread replies:
 Generate a concise thread name:`
 
 export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
-	Effect.fn("workflow.ThreadNaming")(function* (payload: Cluster.ThreadNamingWorkflowPayload, _executionId: string) {
+	Effect.fn("workflow.ThreadNaming")(function* (
+		payload: Cluster.ThreadNamingWorkflowPayload,
+		_executionId: string,
+	) {
 		yield* Effect.annotateCurrentSpan("workflow.thread_channel_id", payload.threadChannelId)
 		yield* Effect.annotateCurrentSpan("workflow.original_message_id", payload.originalMessageId)
 
@@ -210,30 +213,36 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					const response = yield* LanguageModel.generateText({
 						prompt,
 					}).pipe(
-						Effect.catchTag("AiError", (err: AiError.AiError): Effect.Effect<never, AiMappedError> => {
-							const reason = err.reason
-							if (reason._tag === "RateLimitError") {
+						Effect.catchTag(
+							"AiError",
+							(err: AiError.AiError): Effect.Effect<never, AiMappedError> => {
+								const reason = err.reason
+								if (reason._tag === "RateLimitError") {
+									return Effect.fail(
+										new Cluster.AIRateLimitError({
+											provider: "openrouter",
+										}),
+									)
+								}
+								if (
+									reason._tag === "InvalidOutputError" ||
+									reason._tag === "StructuredOutputError"
+								) {
+									return Effect.fail(
+										new Cluster.AIResponseParseError({
+											threadChannelId: payload.threadChannelId,
+											rawResponse: reason.message,
+										}),
+									)
+								}
 								return Effect.fail(
-									new Cluster.AIRateLimitError({
+									new Cluster.AIProviderUnavailableError({
 										provider: "openrouter",
+										cause: err,
 									}),
 								)
-							}
-							if (reason._tag === "InvalidOutputError" || reason._tag === "StructuredOutputError") {
-								return Effect.fail(
-									new Cluster.AIResponseParseError({
-										threadChannelId: payload.threadChannelId,
-										rawResponse: reason.message,
-									}),
-								)
-							}
-							return Effect.fail(
-								new Cluster.AIProviderUnavailableError({
-									provider: "openrouter",
-									cause: err,
-								}),
-							)
-						}),
+							},
+						),
 					)
 
 					// Clean up the response
@@ -258,13 +267,14 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 				}),
 			})
 		}).pipe(
-			Effect.tapError((err: { readonly _tag: string; readonly provider?: string; readonly cause?: unknown }) =>
-				Effect.logError("GenerateThreadName activity failed", {
-					threadChannelId: payload.threadChannelId,
-					errorTag: err._tag,
-					provider: err.provider,
-					cause: err.cause != null ? String(err.cause) : undefined,
-				}),
+			Effect.tapError(
+				(err: { readonly _tag: string; readonly provider?: string; readonly cause?: unknown }) =>
+					Effect.logError("GenerateThreadName activity failed", {
+						threadChannelId: payload.threadChannelId,
+						errorTag: err._tag,
+						provider: err.provider,
+						cause: err.cause != null ? String(err.cause) : undefined,
+					}),
 			),
 		)
 
@@ -299,7 +309,10 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 							),
 						)
 
-					yield* Effect.annotateCurrentSpan("activity.previous_name", contextResult.currentName ?? "")
+					yield* Effect.annotateCurrentSpan(
+						"activity.previous_name",
+						contextResult.currentName ?? "",
+					)
 					yield* Effect.annotateCurrentSpan("activity.new_name", nameResult.threadName)
 
 					yield* Effect.logDebug(
@@ -314,13 +327,14 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 				}),
 			})
 		}).pipe(
-			Effect.tapError((err: { readonly _tag: string; readonly newName?: string; readonly cause?: unknown }) =>
-				Effect.logError("UpdateThreadName activity failed", {
-					threadChannelId: payload.threadChannelId,
-					errorTag: err._tag,
-					newName: err.newName,
-					cause: err.cause != null ? String(err.cause) : undefined,
-				}),
+			Effect.tapError(
+				(err: { readonly _tag: string; readonly newName?: string; readonly cause?: unknown }) =>
+					Effect.logError("UpdateThreadName activity failed", {
+						threadChannelId: payload.threadChannelId,
+						errorTag: err._tag,
+						newName: err.newName,
+						cause: err.cause != null ? String(err.cause) : undefined,
+					}),
 			),
 		)
 

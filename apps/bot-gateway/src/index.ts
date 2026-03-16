@@ -820,7 +820,11 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 					Layer.catchCause((cause) =>
 						Layer.effectDiscard(
 							Effect.fail(
-								makeStartupError(options.dependency, options.failureMessage, Cause.squash(cause)),
+								makeStartupError(
+									options.dependency,
+									options.failureMessage,
+									Cause.squash(cause),
+								),
 							),
 						),
 					),

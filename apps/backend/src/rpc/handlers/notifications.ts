@@ -33,9 +33,11 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* notificationPolicy.canCreate(payload.memberId)
-							const createdNotification = yield* notificationRepo.insert({
-								...payload,
-							}).pipe(Effect.map((res) => res[0]!))
+							const createdNotification = yield* notificationRepo
+								.insert({
+									...payload,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 
@@ -92,9 +94,9 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const user = yield* CurrentUser.Context
 
 					// Get the channel to find the organization (system operation)
-					const channelOption = yield* channelRepo.findById(channelId).pipe(
-						withRemapDbErrors("Channel", "select"),
-					)
+					const channelOption = yield* channelRepo
+						.findById(channelId)
+						.pipe(withRemapDbErrors("Channel", "select"))
 
 					if (Option.isNone(channelOption)) {
 						return yield* Effect.fail(
@@ -108,10 +110,9 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const channel = channelOption.value
 
 					// Get the organization member for this user (system operation)
-					const memberOption = yield* organizationMemberRepo.findByOrgAndUser(
-						channel.organizationId,
-						user.id,
-					).pipe(withRemapDbErrors("OrganizationMember", "select"))
+					const memberOption = yield* organizationMemberRepo
+						.findByOrgAndUser(channel.organizationId, user.id)
+						.pipe(withRemapDbErrors("OrganizationMember", "select"))
 
 					if (Option.isNone(memberOption)) {
 						return yield* Effect.fail(

@@ -7,7 +7,10 @@ import { Effect, Option, Schema } from "effect"
 import { BotUserService } from "../services/bot-user-service.ts"
 
 export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
-	Effect.fn("workflow.GitHubWebhook")(function* (payload: Cluster.GitHubWebhookWorkflowPayload, _executionId: string) {
+	Effect.fn("workflow.GitHubWebhook")(function* (
+		payload: Cluster.GitHubWebhookWorkflowPayload,
+		_executionId: string,
+	) {
 		yield* Effect.annotateCurrentSpan("workflow.event_type", payload.eventType)
 		yield* Effect.annotateCurrentSpan("workflow.repository", payload.repositoryFullName)
 		yield* Effect.annotateCurrentSpan("workflow.repository_id", payload.repositoryId)
@@ -46,7 +49,10 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 								.from(schema.githubSubscriptionsTable)
 								.where(
 									and(
-										eq(schema.githubSubscriptionsTable.repositoryId, payload.repositoryId),
+										eq(
+											schema.githubSubscriptionsTable.repositoryId,
+											payload.repositoryId,
+										),
 										eq(schema.githubSubscriptionsTable.isEnabled, true),
 										isNull(schema.githubSubscriptionsTable.deletedAt),
 									),
@@ -96,19 +102,21 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 		const ref = eventPayload.ref
 
 		// Filter subscriptions by event type and branch filter
-		const eligibleSubscriptions = subscriptionsResult.subscriptions.filter((sub: Cluster.GitHubSubscriptionForWorkflow) => {
-			// Check if event type is enabled
-			if (!sub.enabledEvents.includes(internalEventType)) {
-				return false
-			}
+		const eligibleSubscriptions = subscriptionsResult.subscriptions.filter(
+			(sub: Cluster.GitHubSubscriptionForWorkflow) => {
+				// Check if event type is enabled
+				if (!sub.enabledEvents.includes(internalEventType)) {
+					return false
+				}
 
-			// For push events, check branch filter
-			if (payload.eventType === "push" && !GitHub.matchesBranchFilter(sub.branchFilter, ref)) {
-				return false
-			}
+				// For push events, check branch filter
+				if (payload.eventType === "push" && !GitHub.matchesBranchFilter(sub.branchFilter, ref)) {
+					return false
+				}
 
-			return true
-		})
+				return true
+			},
+		)
 
 		if (eligibleSubscriptions.length === 0) {
 			yield* Effect.logDebug("No eligible subscriptions after filtering, workflow complete")

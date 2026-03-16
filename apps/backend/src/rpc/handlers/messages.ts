@@ -51,12 +51,14 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 									yield* connectConversationService.getConversationIdForChannel(
 										messageData.channelId,
 									)
-								const createdMessage = yield* messageRepo.insert({
-									...messageData,
-									conversationId,
-									authorId: user.id,
-									deletedAt: null,
-								}).pipe(Effect.map((res) => res[0]!))
+								const createdMessage = yield* messageRepo
+									.insert({
+										...messageData,
+										conversationId,
+										authorId: user.id,
+										deletedAt: null,
+									})
+									.pipe(Effect.map((res) => res[0]!))
 
 								// Update attachments with messageId if provided
 								if (attachmentIds && attachmentIds.length > 0) {
@@ -156,9 +158,9 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 			"message.delete": ({ id }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
-					const existingMessage = yield* messageRepo.findById(id).pipe(
-						withRemapDbErrors("Message", "select"),
-					)
+					const existingMessage = yield* messageRepo
+						.findById(id)
+						.pipe(withRemapDbErrors("Message", "select"))
 
 					// Check rate limit before processing
 					yield* checkMessageRateLimit(user.id)

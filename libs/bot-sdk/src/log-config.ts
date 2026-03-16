@@ -95,10 +95,7 @@ export const debugLogConfig: BotLogConfig = {
 export const createLoggerLayer = (config: BotLogConfig): Layer.Layer<never> => {
 	const logger = config.format === "structured" ? Logger.consoleStructured : Logger.consolePretty()
 
-	return Layer.mergeAll(
-		Logger.layer([logger]),
-		Layer.succeed(References.MinimumLogLevel, config.level),
-	)
+	return Layer.mergeAll(Logger.layer([logger]), Layer.succeed(References.MinimumLogLevel, config.level))
 }
 
 /**

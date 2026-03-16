@@ -69,13 +69,15 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								yield* messageReactionPolicy.canCreate(messageId)
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(channelId)
-								const createdMessageReaction = yield* messageReactionRepo.insert({
-									messageId,
-									channelId,
-									conversationId,
-									emoji,
-									userId: user.id,
-								}).pipe(Effect.map((res) => res[0]!))
+								const createdMessageReaction = yield* messageReactionRepo
+									.insert({
+										messageId,
+										channelId,
+										conversationId,
+										emoji,
+										userId: user.id,
+									})
+									.pipe(Effect.map((res) => res[0]!))
 
 								yield* outboxRepo.insert({
 									eventType: "reaction_created",
@@ -115,11 +117,13 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 									yield* connectConversationService.getConversationIdForChannel(
 										payload.channelId,
 									)
-								const createdMessageReaction = yield* messageReactionRepo.insert({
-									...payload,
-									conversationId,
-									userId: user.id,
-								}).pipe(Effect.map((res) => res[0]!))
+								const createdMessageReaction = yield* messageReactionRepo
+									.insert({
+										...payload,
+										conversationId,
+										userId: user.id,
+									})
+									.pipe(Effect.map((res) => res[0]!))
 
 								yield* outboxRepo.insert({
 									eventType: "reaction_created",

@@ -7,7 +7,10 @@ import { Effect, Option, Schema } from "effect"
 import { BotUserService } from "../services/bot-user-service.ts"
 
 export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
-	Effect.fn("workflow.RssFeedPoll")(function* (payload: Cluster.RssFeedPollWorkflowPayload, _executionId: string) {
+	Effect.fn("workflow.RssFeedPoll")(function* (
+		payload: Cluster.RssFeedPollWorkflowPayload,
+		_executionId: string,
+	) {
 		yield* Effect.annotateCurrentSpan("workflow.subscription_id", payload.subscriptionId)
 		yield* Effect.annotateCurrentSpan("workflow.feed_url", payload.feedUrl)
 		yield* Effect.annotateCurrentSpan("workflow.channel_id", payload.channelId)
@@ -154,7 +157,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 					const newItems = feedResult.items.filter((item) => {
 						if (postedGuids.has(item.guid)) return false
 						// Skip items published before the subscription was created
-						if (item.pubDate && new Date(item.pubDate).getTime() < payload.subscribedAt) return false
+						if (item.pubDate && new Date(item.pubDate).getTime() < payload.subscribedAt)
+							return false
 						return true
 					})
 
@@ -263,7 +267,9 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 								.set({
 									lastFetchedAt: new Date(),
 									lastItemGuid: lastItem?.guid ?? null,
-									lastItemPublishedAt: lastItem?.pubDate ? new Date(lastItem.pubDate) : null,
+									lastItemPublishedAt: lastItem?.pubDate
+										? new Date(lastItem.pubDate)
+										: null,
 									consecutiveErrors: 0,
 									lastErrorMessage: null,
 									lastErrorAt: null,

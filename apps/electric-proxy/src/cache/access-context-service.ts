@@ -72,17 +72,15 @@ export class AccessContextCacheService extends ServiceMap.Service<AccessContextC
 									.where(eq(schema.botInstallationsTable.botId, botId)),
 							)
 							.pipe(
-								Effect.catchTag(
-									"DatabaseError",
-									(error) =>
-										Effect.fail(
-											new AccessContextLookupError({
-												message: "Failed to query bot's channels",
-												detail: error.message,
-												entityId: request.botId,
-												entityType: "bot",
-											}),
-										),
+								Effect.catchTag("DatabaseError", (error) =>
+									Effect.fail(
+										new AccessContextLookupError({
+											message: "Failed to query bot's channels",
+											detail: error.message,
+											entityId: request.botId,
+											entityType: "bot",
+										}),
+									),
 								),
 							)
 

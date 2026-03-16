@@ -55,12 +55,14 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 							}
 
 							yield* customEmojiPolicy.canCreate(payload.organizationId)
-							const created = yield* customEmojiRepo.insert({
-								organizationId: payload.organizationId,
-								name: payload.name,
-								imageUrl: payload.imageUrl,
-								createdBy: user.id,
-							}).pipe(Effect.map((res) => res[0]!))
+							const created = yield* customEmojiRepo
+								.insert({
+									organizationId: payload.organizationId,
+									name: payload.name,
+									imageUrl: payload.imageUrl,
+									createdBy: user.id,
+								})
+								.pipe(Effect.map((res) => res[0]!))
 
 							const txid = yield* generateTransactionId()
 

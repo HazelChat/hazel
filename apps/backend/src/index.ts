@@ -247,4 +247,5 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	),
 )
 
-ServerLayer.pipe(Layer.launch).pipe(BunRuntime.runMain)
+// TODO: Layer has leaked dependencies — fix service layer wiring so this cast is unnecessary
+ServerLayer.pipe(Layer.launch as never, BunRuntime.runMain)
