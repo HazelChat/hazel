@@ -14,7 +14,7 @@ import {
 
 import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option, type Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 	make: Effect.gen(function* () {

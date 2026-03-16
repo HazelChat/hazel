@@ -7,7 +7,7 @@ import { ServiceMap, Effect, Option } from "effect"
 export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationConnectionRepo>()(
 	"IntegrationConnectionRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.integrationConnectionsTable,
 				IntegrationConnection.Model,

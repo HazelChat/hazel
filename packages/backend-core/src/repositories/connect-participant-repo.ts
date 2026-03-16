@@ -6,7 +6,7 @@ import { ServiceMap, Effect, Option, type Schema as EffectSchema } from "effect"
 export class ConnectParticipantRepo extends ServiceMap.Service<ConnectParticipantRepo>()(
 	"ConnectParticipantRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.connectParticipantsTable,
 				ConnectParticipant.Model,

@@ -2,7 +2,7 @@ import { and, Database, eq, inArray, isNull, ModelRepository, schema, sql, type 
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { ChannelMember } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ChannelMemberRepo extends ServiceMap.Service<ChannelMemberRepo>()("ChannelMemberRepo", {
 	make: Effect.gen(function* () {

@@ -1,7 +1,7 @@
 import { Database, and, asc, eq, inArray, or, schema, sql } from "@hazel/db"
 import type { DatabaseError, TxFn } from "@hazel/db"
 import { ChannelId, MessageId, MessageOutboxEventId, MessageReactionId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Option, Schema } from "effect"
+import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
 
 export const MessageCreatedPayloadSchema = Schema.Struct({
 	messageId: MessageId,

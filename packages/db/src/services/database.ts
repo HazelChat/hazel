@@ -170,7 +170,7 @@ const makeService = (config: Config) =>
 			),
 		)
 
-		const makeQueryWithSchema = <InputSchema extends Schema.Schema.AnyNoContext, A, E, R>(
+		const makeQueryWithSchema = <InputSchema extends Schema.Top, A, E, R>(
 			inputSchema: InputSchema,
 			queryFn: (
 				execute: <T>(
@@ -185,9 +185,9 @@ const makeService = (config: Config) =>
 				tx?: <T>(
 					fn: (client: TransactionClient) => Promise<T>,
 				) => Effect.Effect<T, DatabaseError, never>,
-			): Effect.Effect<A, E | DatabaseError | ParseError, R> => {
+			): Effect.Effect<A, E | DatabaseError | Schema.SchemaError, R> => {
 				return Effect.gen(function* () {
-					const validatedInput = yield* Schema.decodeEffect(inputSchema)(rawData)
+					const validatedInput = yield* Schema.decodeUnknownEffect(inputSchema)(rawData)
 
 					if (tx) {
 						return yield* queryFn(tx, validatedInput)
@@ -252,7 +252,7 @@ const makeService = (config: Config) =>
 		} as const
 	})
 
-type Shape = Effect.Effect.Success<ReturnType<typeof makeService>>
+type Shape = Effect.Success<ReturnType<typeof makeService>>
 
 export class Database extends ServiceMap.Service<Database, Shape>()("Database") {}
 

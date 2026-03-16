@@ -27,26 +27,26 @@ export interface Repository<RecordType, S extends EntitySchema, Col extends stri
 	readonly insert: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<RecordType[], DatabaseError | ParseError>
+	) => Effect.Effect<RecordType[], DatabaseError | Schema.SchemaError>
 
 	readonly insertVoid: (
 		insert: S["insert"]["Type"],
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError | ParseError>
+	) => Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 	readonly update: (
 		update: PartialExcept<S["update"]["Type"], Col>,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<RecordType, DatabaseError | ParseError>
+	) => Effect.Effect<RecordType, DatabaseError | Schema.SchemaError>
 
 	readonly updateVoid: (
 		update: PartialExcept<S["update"]["Type"], Col>,
 		tx?: <U>(fn: (client: TransactionClient) => Promise<U>) => Effect.Effect<U, DatabaseError>,
-	) => Effect.Effect<void, DatabaseError | ParseError>
+	) => Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 	// readonly updateManyVoid: (
 	//   update: PartialExcept<S["update"]["Type"], Col>[]
-	// ) => Effect.Effect<void, DatabaseError | ParseError>
+	// ) => Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 	readonly findById: (
 		id: Id,

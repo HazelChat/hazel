@@ -7,7 +7,7 @@ import { ServiceMap, Effect, Option } from "effect"
 export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.githubSubscriptionsTable,
 				GitHubSubscription.Model,

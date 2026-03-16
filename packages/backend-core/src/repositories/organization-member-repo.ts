@@ -7,7 +7,7 @@ import { ServiceMap, Effect, Option, type Schema } from "effect"
 export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.organizationMembersTable,
 				OrganizationMember.Model,

@@ -1,6 +1,6 @@
 import type { InferSelectModel, Table } from "drizzle-orm"
 import { eq } from "drizzle-orm"
-import { pipe } from "effect"
+import { pipe, Struct } from "effect"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -28,16 +28,16 @@ export function makeRepository<
 				db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
 					execute((client) => client.insert(table).values([input]).returning()),
 				)(data, tx),
-			) as unknown as Effect.Effect<RecordType[], DatabaseError | ParseError>
+			) as unknown as Effect.Effect<RecordType[], DatabaseError | Schema.SchemaError>
 
 		const insertVoid = (data: S["insert"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(schema.insert as Schema.Schema<S["insert"]>, (execute, input) =>
 				execute((client) => client.insert(table).values(input)),
-			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
+			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 		const update = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
-				Schema.partial(schema.update as Schema.Schema<S["update"]>),
+				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)),
 				(execute, input) =>
 					execute((client) =>
 						client
@@ -53,11 +53,11 @@ export function makeRepository<
 								: Effect.die(new EntityNotFound({ type: options.name, id: input[idColumn] })),
 						),
 					),
-			)(data, tx) as Effect.Effect<RecordType, DatabaseError | ParseError>
+			)(data, tx) as Effect.Effect<RecordType, DatabaseError | Schema.SchemaError>
 
 		const updateVoid = (data: S["update"]["Type"], tx?: TxFn) =>
 			db.makeQueryWithSchema(
-				Schema.partial(schema.update as Schema.Schema<S["update"]>),
+				(schema.update as Schema.Struct<any>).mapFields(Struct.map(Schema.optional)),
 				(execute, input) =>
 					execute((client) =>
 						client
@@ -66,7 +66,7 @@ export function makeRepository<
 							// @ts-expect-error
 							.where(eq(table[idColumn], input[idColumn])),
 					),
-			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | ParseError>
+			)(data, tx) as unknown as Effect.Effect<void, DatabaseError | Schema.SchemaError>
 
 		const findById = (id: Id, tx?: TxFn) =>
 			db.makeQuery((execute, id: Id) =>

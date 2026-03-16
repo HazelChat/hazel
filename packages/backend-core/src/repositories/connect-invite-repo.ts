@@ -1,7 +1,7 @@
 import { and, Database, eq, isNull, ModelRepository, or, schema, type TxFn } from "@hazel/db"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { ConnectInvite } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ConnectInviteRepo extends ServiceMap.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
 	make: Effect.gen(function* () {

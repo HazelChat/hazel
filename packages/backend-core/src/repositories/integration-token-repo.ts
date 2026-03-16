@@ -2,7 +2,7 @@ import { Database, eq, ModelRepository, schema, type TxFn } from "@hazel/db"
 
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class IntegrationTokenRepo extends ServiceMap.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
 	make: Effect.gen(function* () {

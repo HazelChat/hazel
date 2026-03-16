@@ -13,7 +13,7 @@ import { ServiceMap, Effect, Option, Schema } from "effect"
 export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageLinkRepo>()(
 	"ChatSyncMessageLinkRepo",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const baseRepo = yield* ModelRepository.makeRepository(
 				schema.chatSyncMessageLinksTable,
 				ChatSyncMessageLink.Model,

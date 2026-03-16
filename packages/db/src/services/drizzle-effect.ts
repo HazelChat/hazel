@@ -16,26 +16,26 @@ type ColumnSchema<TColumn extends Drizzle.Column> = TColumn["dataType"] extends 
 				: Schema.Schema<TColumn["enumValues"][number]>
 			: TColumn["dataType"] extends "bigint"
 				? TColumn extends { mode: "number" }
-					? Schema.Schema<number, number>
-					: Schema.Schema<bigint, bigint>
+					? Schema.Schema<number>
+					: Schema.Schema<bigint>
 				: TColumn["dataType"] extends "number"
 					? TColumn["columnType"] extends `PgBigInt${number}`
-						? Schema.Schema<bigint, number>
-						: Schema.Schema<number, number>
+						? Schema.Schema<bigint>
+						: Schema.Schema<number>
 					: TColumn["columnType"] extends "PgNumeric"
-						? Schema.Schema<number, string>
+						? Schema.Schema<number>
 						: TColumn["columnType"] extends "PgUUID"
 							? Schema.Schema<string>
 							: TColumn["columnType"] extends "PgDate"
 								? TColumn extends { mode: "string" }
-									? Schema.Schema<string, string>
-									: Schema.Schema<Date, string>
+									? Schema.Schema<string>
+									: Schema.Schema<Date>
 								: TColumn["columnType"] extends "PgTimestamp"
 									? TColumn extends { mode: "string" }
-										? Schema.Schema<string, string>
-										: Schema.Schema<Date, string>
+										? Schema.Schema<string>
+										: Schema.Schema<Date>
 									: TColumn["dataType"] extends "string"
-										? Schema.Schema<string, string>
+										? Schema.Schema<string>
 										: TColumn["dataType"] extends "boolean"
 											? Schema.Schema<boolean>
 											: TColumn["dataType"] extends "date"
@@ -61,19 +61,19 @@ export const JsonValue = Schema.Union([
 	Schema.Number,
 	Schema.Boolean,
 	Schema.Null,
-	Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	Schema.Record(Schema.String, Schema.Unknown),
 	Schema.Array(Schema.Unknown),
 ]) satisfies Schema.Schema<JsonValue>
 
 // For cases where you need full JSON validation, use this explicit version
-export const StrictJsonValue = Schema.suspend(
-	(): Schema.Schema<StrictJsonValue> =>
+export const StrictJsonValue: Schema.Schema<StrictJsonValue> = Schema.suspend(
+	() =>
 		Schema.Union([
 			Schema.String,
 			Schema.Number,
 			Schema.Boolean,
 			Schema.Null,
-			Schema.Record({ key: Schema.String, value: StrictJsonValue }),
+			Schema.Record(Schema.String, StrictJsonValue),
 			Schema.Array(StrictJsonValue),
 		]),
 )
@@ -102,29 +102,14 @@ type BuildRefine<TColumns extends Record<string, Drizzle.Column>> = {
 }
 
 // Property signature builders - simplified
+// In v4, optional properties are represented via Schema.optional/Schema.optionalKey wrappers
 type InsertProperty<
 	TColumn extends Drizzle.Column,
-	TKey extends string,
+	_TKey extends string,
 > = TColumn["_"]["notNull"] extends false
-	? Schema.PropertySignature<
-			"?:",
-			Schema.Schema.Type<ColumnSchema<TColumn>> | null | undefined,
-			TKey,
-			"?:",
-			Schema.Schema.Encoded<ColumnSchema<TColumn>> | null | undefined,
-			false,
-			never
-		>
+	? Schema.optional<Schema.NullOr<ColumnSchema<TColumn>>>
 	: TColumn["_"]["hasDefault"] extends true
-		? Schema.PropertySignature<
-				"?:",
-				Schema.Schema.Type<ColumnSchema<TColumn>> | undefined,
-				TKey,
-				"?:",
-				Schema.Schema.Encoded<ColumnSchema<TColumn>> | undefined,
-				true,
-				never
-			>
+		? Schema.optional<ColumnSchema<TColumn>>
 		: ColumnSchema<TColumn>
 
 type SelectProperty<TColumn extends Drizzle.Column> = TColumn["_"]["notNull"] extends false
@@ -164,7 +149,7 @@ export function createInsertSchema<TTable extends Drizzle.Table, TRefine extends
 	const columns = Drizzle.getTableColumns(table)
 	const columnEntries = Object.entries(columns)
 
-	let schemaEntries: Record<string, Schema.Schema.All | Schema.PropertySignature.All> = Object.fromEntries(
+	let schemaEntries: Record<string, Schema.Top> = Object.fromEntries(
 		columnEntries.map(([name, column]) => [name, mapColumnToSchema(column)]),
 	)
 
@@ -173,12 +158,11 @@ export function createInsertSchema<TTable extends Drizzle.Table, TRefine extends
 		const refinedEntries = Object.entries(refine).map(([name, refineColumn]) => [
 			name,
 			typeof refineColumn === "function" &&
-			!Schema.isSchema(refineColumn) &&
-			!Schema.isPropertySignature(refineColumn)
+			!Schema.isSchema(refineColumn)
 				? (
 						refineColumn as (
-							schema: Schema.Schema.All | Schema.PropertySignature.All,
-						) => Schema.Schema.All | Schema.PropertySignature.All
+							schema: Schema.Top,
+						) => Schema.Top
 					)(schemaEntries[name]!)
 				: refineColumn,
 		])
@@ -189,9 +173,9 @@ export function createInsertSchema<TTable extends Drizzle.Table, TRefine extends
 	// Apply insert-specific optionality rules
 	for (const [name, column] of columnEntries) {
 		if (!column.notNull) {
-			schemaEntries[name] = Schema.optional(Schema.NullOr(schemaEntries[name] as Schema.Schema.All))
+			schemaEntries[name] = Schema.optional(Schema.NullOr(schemaEntries[name] as Schema.Top))
 		} else if (column.hasDefault) {
-			schemaEntries[name] = Schema.optional(schemaEntries[name] as Schema.Schema.All)
+			schemaEntries[name] = Schema.optional(schemaEntries[name] as Schema.Top)
 		}
 	}
 
@@ -212,7 +196,7 @@ export function createSelectSchema<TTable extends Drizzle.Table, TRefine extends
 	const columns = Drizzle.getTableColumns(table)
 	const columnEntries = Object.entries(columns)
 
-	let schemaEntries: Record<string, Schema.Schema.All | Schema.PropertySignature.All> = Object.fromEntries(
+	let schemaEntries: Record<string, Schema.Top> = Object.fromEntries(
 		columnEntries.map(([name, column]) => [name, mapColumnToSchema(column)]),
 	)
 
@@ -221,12 +205,11 @@ export function createSelectSchema<TTable extends Drizzle.Table, TRefine extends
 		const refinedEntries = Object.entries(refine).map(([name, refineColumn]) => [
 			name,
 			typeof refineColumn === "function" &&
-			!Schema.isSchema(refineColumn) &&
-			!Schema.isPropertySignature(refineColumn)
+			!Schema.isSchema(refineColumn)
 				? (
 						refineColumn as (
-							schema: Schema.Schema.All | Schema.PropertySignature.All,
-						) => Schema.Schema.All | Schema.PropertySignature.All
+							schema: Schema.Top,
+						) => Schema.Top
 					)(schemaEntries[name]!)
 				: refineColumn,
 		])
@@ -237,7 +220,7 @@ export function createSelectSchema<TTable extends Drizzle.Table, TRefine extends
 	// Apply select-specific nullability rules after refinements
 	for (const [name, column] of columnEntries) {
 		if (!column.notNull) {
-			schemaEntries[name] = Schema.NullOr(schemaEntries[name] as Schema.Schema.All)
+			schemaEntries[name] = Schema.NullOr(schemaEntries[name] as Schema.Top)
 		}
 	}
 
@@ -251,8 +234,8 @@ function hasMode(column: any): column is { mode: string } {
 	)
 }
 
-function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
-	let type: Schema.Schema<any, any> | undefined
+function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any> {
+	let type: Schema.Schema<any> | undefined
 
 	if (isWithEnum(column)) {
 		type = column.enumValues.length > 0 ? Schema.Literals(column.enumValues) : Schema.String
@@ -293,7 +276,7 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 						Drizzle.is(column, DrizzleSqlite.SQLiteText)) &&
 					typeof column.length === "number"
 				) {
-					sType = sType.pipe(Schema.isMaxLength(column.length))
+					sType = sType.check(Schema.isMaxLength(column.length))
 				}
 				type = sType
 			}
