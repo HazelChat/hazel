@@ -68,7 +68,7 @@ export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptio
 								.limit(1),
 						),
 					)({ channelId, repositoryId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Update subscription settings
 			const updateSettings = (

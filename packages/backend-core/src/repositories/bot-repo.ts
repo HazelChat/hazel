@@ -36,7 +36,7 @@ export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ id }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find bot by token hash
 		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
@@ -55,7 +55,7 @@ export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find bot by user ID
 		const findByUserId = (userId: UserId, tx?: TxFn) =>
@@ -74,7 +74,7 @@ export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 							.limit(1),
 					),
 				)({ userId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find all bots created by a user
 		const findByCreator = (createdBy: UserId, tx?: TxFn) =>

@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "effect/unstable/cli"
+import { Command, Flag, Prompt } from "effect/unstable/cli"
 import { Console, Effect, Redacted } from "effect"
 import pc from "picocolors"
 import { SecretGenerator } from "../services/secrets.ts"
@@ -8,21 +8,21 @@ import { ENV_TEMPLATES, extractExistingConfig, maskSecret, type Config, type S3C
 import { promptWithExisting, getExistingValue } from "../prompts.ts"
 
 // CLI Options
-export const skipValidation = Options.boolean("skip-validation").pipe(
-	Options.withDescription("Skip credential validation (API calls)"),
-	Options.withDefault(false),
+export const skipValidation = Flag.boolean("skip-validation").pipe(
+	Flag.withDescription("Skip credential validation (API calls)"),
+	Flag.withDefault(false),
 )
 
-export const force = Options.boolean("force").pipe(
-	Options.withAlias("f"),
-	Options.withDescription("Overwrite existing .env files without prompting"),
-	Options.withDefault(false),
+export const force = Flag.boolean("force").pipe(
+	Flag.withAlias("f"),
+	Flag.withDescription("Overwrite existing .env files without prompting"),
+	Flag.withDefault(false),
 )
 
-export const dryRun = Options.boolean("dry-run").pipe(
-	Options.withAlias("n"),
-	Options.withDescription("Show what would be done without writing files"),
-	Options.withDefault(false),
+export const dryRun = Flag.boolean("dry-run").pipe(
+	Flag.withAlias("n"),
+	Flag.withDescription("Show what would be done without writing files"),
+	Flag.withDefault(false),
 )
 
 export const envCommand = Command.make(
@@ -72,9 +72,9 @@ export const envCommand = Command.make(
 				const validator = yield* CredentialValidator
 				const dbResult = yield* validator
 					.validateDatabase("postgresql://user:password@localhost:5432/app")
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
-				if (dbResult._tag === "Left") {
+				if (dbResult._tag === "Failure") {
 					yield* Console.log(
 						pc.yellow("\u26A0\uFE0F  Database not reachable.") +
 							` Run ${pc.cyan("`docker compose up -d`")} first.`,
@@ -127,10 +127,10 @@ export const envCommand = Command.make(
 				const validator = yield* CredentialValidator
 				const result = yield* validator
 					.validateWorkOS(workosApiKey, workosClientId)
-					.pipe(Effect.either)
+					.pipe(Effect.result)
 
-				if (result._tag === "Left") {
-					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.left.message}`))
+				if (result._tag === "Failure") {
+					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.failure.message}`))
 					yield* Console.log(pc.dim("Please check your credentials and try again."))
 					return
 				}

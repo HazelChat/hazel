@@ -380,7 +380,7 @@ const parseLinearErrorMessage = (errorMessage: string): string => {
  * Retry schedule for transient Linear API errors.
  * Retries up to 3 times with exponential backoff (100ms, 200ms, 400ms)
  */
-const makeRetrySchedule = Schedule.exponential("100 millis").pipe(Schedule.intersect(Schedule.recurs(3)))
+const makeRetrySchedule = Schedule.exponential("100 millis").pipe(Schedule.both(Schedule.recurs(3)))
 
 /**
  * Check if an error is retryable (rate limit or server error)

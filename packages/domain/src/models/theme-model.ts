@@ -96,16 +96,14 @@ export type DisplayMode = Schema.Schema.Type<typeof DisplayMode>
  * User theme settings stored in the database.
  * Using mutable() to ensure compatibility with TanStack DB collections.
  */
-export const UserThemeSettings = Schema.mutable(
-	Schema.Struct({
-		/** Active preset ID ("default", "ocean", etc.) or custom preset ID */
-		activePresetId: Schema.NullOr(Schema.String),
-		/** Custom theme when not using a preset */
-		customTheme: Schema.NullOr(Schema.mutable(ThemeCustomization)),
-		/** User's saved custom presets */
-		savedPresets: Schema.optional(Schema.mutable(Schema.Array(Schema.mutable(ThemePreset)))),
-		/** Display mode preference */
-		mode: DisplayMode,
-	}),
-)
+export const UserThemeSettings = Schema.Struct({
+	/** Active preset ID ("default", "ocean", etc.) or custom preset ID */
+	activePresetId: Schema.NullOr(Schema.String),
+	/** Custom theme when not using a preset */
+	customTheme: Schema.NullOr(ThemeCustomization),
+	/** User's saved custom presets */
+	savedPresets: Schema.optional(Schema.mutable(Schema.Array(ThemePreset))),
+	/** Display mode preference */
+	mode: DisplayMode,
+})
 export type UserThemeSettings = Schema.Schema.Type<typeof UserThemeSettings>

@@ -33,7 +33,7 @@ export class ConnectConversationChannelRepo extends ServiceMap.Service<ConnectCo
 								.limit(1),
 						),
 					)(channelId, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const findByConversationId = (conversationId: ConnectConversationId, tx?: TxFn) =>
 				db.makeQuery((execute, input: ConnectConversationId) =>
@@ -81,7 +81,7 @@ export class ConnectConversationChannelRepo extends ServiceMap.Service<ConnectCo
 									.limit(1),
 							),
 					)({ conversationId, organizationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			return {
 				...baseRepo,

@@ -1,12 +1,12 @@
-import { OpenRouterClient, OpenRouterLanguageModel } from "@hazel/ai-openrouter"
+import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { FetchHttpClient } from "effect/unstable/http"
 import { Config, Layer } from "effect"
 
 // OpenRouter configuration from environment
 const OpenRouterClientLayer = OpenRouterClient.layerConfig({
 	apiKey: Config.redacted("OPENROUTER_API_KEY"),
-	referrer: Config.string("APP_URL").pipe(Config.withDefault("https://app.hazel.sh")),
-	title: Config.string("APP_NAME").pipe(Config.withDefault("Hazel")),
+	siteReferrer: Config.string("APP_URL").pipe(Config.withDefault("https://app.hazel.sh")),
+	siteTitle: Config.string("APP_NAME").pipe(Config.withDefault("Hazel")),
 }).pipe(Layer.provide(FetchHttpClient.layer))
 
 const MODEL = "anthropic/claude-3.5-haiku"

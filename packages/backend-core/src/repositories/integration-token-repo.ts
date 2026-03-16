@@ -28,7 +28,7 @@ export class IntegrationTokenRepo extends ServiceMap.Service<IntegrationTokenRep
 							.limit(1),
 					),
 				)({ connectionId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Update token (for refresh)
 		const updateToken = (

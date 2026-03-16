@@ -52,7 +52,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 									.limit(1),
 							),
 					)({ organizationId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find user-level connection for a specific provider
 			const findUserConnection = (
@@ -90,7 +90,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 									.limit(1),
 							),
 					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find user-level connection for a specific provider, including soft-deleted rows.
 			// Used by upsert to reactivate previously disconnected links.
@@ -128,7 +128,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 									.limit(1),
 							),
 					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find active user-level connection by external account ID.
 			const findActiveUserByExternalAccountId = (
@@ -170,7 +170,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 									.limit(1),
 							),
 					)({ organizationId, provider, externalAccountId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Get all connections for an organization (both org-level and user-level)
 			const findAllForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
@@ -276,7 +276,7 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 								.limit(1),
 						),
 					)({ installationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
 			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>

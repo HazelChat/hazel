@@ -33,7 +33,7 @@ export class ConnectConversationRepo extends ServiceMap.Service<ConnectConversat
 								.limit(1),
 						),
 					)(hostChannelId, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			return {
 				...baseRepo,

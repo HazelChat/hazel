@@ -1,4 +1,4 @@
-import { Command, Options, Prompt } from "effect/unstable/cli"
+import { Command, Flag, Prompt } from "effect/unstable/cli"
 import { Database, schema, isNull } from "@hazel/db"
 import type { BotId, BotInstallationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Console, Effect, Option, Redacted } from "effect"
@@ -6,11 +6,11 @@ import { randomUUID } from "crypto"
 import pc from "picocolors"
 
 // CLI Options
-const nameOption = Options.text("name").pipe(Options.withDescription("Bot name"), Options.optional)
+const nameOption = Flag.string("name").pipe(Flag.withDescription("Bot name"), Flag.optional)
 
-const orgOption = Options.text("org").pipe(
-	Options.withDescription("Organization ID to install bot in"),
-	Options.optional,
+const orgOption = Flag.string("org").pipe(
+	Flag.withDescription("Organization ID to install bot in"),
+	Flag.optional,
 )
 
 /**

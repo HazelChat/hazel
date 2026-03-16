@@ -49,7 +49,7 @@ export class ChannelWebhookRepo extends ServiceMap.Service<ChannelWebhookRepo>()
 							.limit(1),
 					),
 				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Update last used timestamp
 		const updateLastUsed = (id: ChannelWebhookId, tx?: TxFn) =>

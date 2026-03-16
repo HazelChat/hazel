@@ -33,7 +33,6 @@ import {
 	WorkOSUserFetchError,
 } from "@hazel/domain/errors"
 import { Cause, Chunk, Match, Option, Schema } from "effect"
-import type { ParseError } from "effect/ParseResult"
 import {
 	CollectionInErrorEffectError,
 	CollectionSyncEffectError,

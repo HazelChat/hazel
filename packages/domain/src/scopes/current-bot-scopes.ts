@@ -13,5 +13,4 @@ import type { ApiScope } from "./api-scope"
  */
 export class CurrentBotScopes extends ServiceMap.Service<CurrentBotScopes, Option.Option<ReadonlySet<ApiScope>>>()(
 	"CurrentBotScopes",
-	{ defaultValue: Option.none() },
 ) {}

@@ -192,7 +192,7 @@ export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("
 						})
 						.where(eq(schema.messageOutboxEventsTable.id, eventId))
 						.returning(),
-				).pipe(Effect.map((rows) => Option.fromNullable(rows[0]))),
+				).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
 			)(id, tx)
 
 		const markRetry = (id: MessageOutboxEventId, params: RetryMessageOutboxEventParams, tx?: TxFn) =>
@@ -218,7 +218,7 @@ export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("
 							})
 							.where(eq(schema.messageOutboxEventsTable.id, data.id))
 							.returning(),
-					).pipe(Effect.map((rows) => Option.fromNullable(rows[0]))),
+					).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
 			)(
 				{
 					id,
@@ -249,7 +249,7 @@ export class MessageOutboxRepo extends ServiceMap.Service<MessageOutboxRepo>()("
 							})
 							.where(eq(schema.messageOutboxEventsTable.id, data.id))
 							.returning(),
-					).pipe(Effect.map((rows) => Option.fromNullable(rows[0]))),
+					).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
 			)(
 				{
 					id,

@@ -29,7 +29,7 @@ export class ChannelRepo extends ServiceMap.Service<ChannelRepo>()("ChannelRepo"
 							.limit(1),
 					),
 				)({ organizationId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		return {
 			...baseRepo,

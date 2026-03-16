@@ -2,7 +2,6 @@ import { HttpApiClient } from "effect/unstable/httpapi"
 import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
 import { Cluster, WorkflowInitializationError } from "@hazel/domain"
 import { ServiceMap, Array, Config, Effect, Layer, Option } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import type {
 	MessageCreatedPayload,
 	MessageDeletedPayload,
@@ -120,7 +119,7 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 									Effect.fail(
 										new WorkflowInitializationError({
 											message: "Failed to execute notification workflow",
-											cause: TreeFormatter.formatErrorSync(err),
+											cause: String(err),
 										}),
 									),
 								RequestError: (err) =>

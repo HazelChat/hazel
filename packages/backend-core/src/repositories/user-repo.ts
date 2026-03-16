@@ -23,7 +23,7 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 							.limit(1),
 					),
 				)(externalId, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
 			findByExternalId(workosUserId, tx)

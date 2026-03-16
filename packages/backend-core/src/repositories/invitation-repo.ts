@@ -23,7 +23,7 @@ export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("Invita
 							.limit(1),
 					),
 				)(workosInvitationId, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const upsertByWorkosId = (data: Schema.Schema.Type<typeof Invitation.Insert>, tx?: TxFn) =>
 			db

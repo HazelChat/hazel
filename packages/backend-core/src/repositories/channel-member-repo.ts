@@ -34,7 +34,7 @@ export class ChannelMemberRepo extends ServiceMap.Service<ChannelMemberRepo>()("
 							.limit(1),
 					),
 				)({ channelId, userId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Find existing single DM channel between two users
 		const findExistingSingleDmChannel = (
@@ -78,7 +78,7 @@ export class ChannelMemberRepo extends ServiceMap.Service<ChannelMemberRepo>()("
 								.limit(1),
 						),
 				)({ userId1, userId2, organizationId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0]?.channel)))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0]?.channel)))
 
 		const listByChannel = (channelId: ChannelId, tx?: TxFn) =>
 			db.makeQuery((execute, input: ChannelId) =>

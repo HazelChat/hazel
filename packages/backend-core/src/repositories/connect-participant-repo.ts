@@ -34,7 +34,7 @@ export class ConnectParticipantRepo extends ServiceMap.Service<ConnectParticipan
 								.limit(1),
 						),
 					)({ channelId, userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const listByChannel = (channelId: ChannelId, tx?: TxFn) =>
 				db.makeQuery((execute, input: ChannelId) =>

@@ -26,7 +26,7 @@ const makeChannelMemberRepoLayer = (
 ) =>
 	Layer.succeed(ChannelMemberRepo, {
 		findByChannelAndUser: (channelId: ChannelId, userId: UserId) =>
-			Effect.succeed(Option.fromNullable(recordsByChannelAndUser[`${channelId}:${userId}`])),
+			Effect.succeed(Option.fromNullishOr(recordsByChannelAndUser[`${channelId}:${userId}`])),
 		with: <A, E, R>(id: ChannelMemberId, f: (member: MemberRecord) => Effect.Effect<A, E, R>) => {
 			const member = recordsByMemberId[id]
 			if (!member) {

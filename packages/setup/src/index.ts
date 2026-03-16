@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "effect/unstable/cli"
-import { BunContext, BunRuntime } from "@effect/platform-bun"
+import { BunServices, BunRuntime } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
 import { existsSync, readFileSync } from "fs"
 import { resolve } from "path"
@@ -41,16 +41,6 @@ const loadDatabaseUrl = () => {
 
 loadDatabaseUrl()
 
-// Root command with subcommands
-const rootCommand = setupCommand.pipe(
-	Command.withSubcommands([doctorCommand, envCommand, certsCommand, botsCommand]),
-)
-
-const cli = Command.run(rootCommand, {
-	name: "hazel-setup",
-	version: "0.0.1",
-})
-
 const ServicesLive = Layer.mergeAll(
 	SecretGenerator.layer,
 	CredentialValidator.layer,
@@ -59,4 +49,15 @@ const ServicesLive = Layer.mergeAll(
 	CertManager.layer,
 )
 
-cli(process.argv).pipe(Effect.provide(ServicesLive), Effect.provide(BunContext.layer), BunRuntime.runMain)
+// Root command with subcommands, run via v4 CLI pattern
+// Note: `any` in R position is due to @hazel/db Database types not yet migrated to v4
+const cli = setupCommand.pipe(
+	Command.withSubcommands([doctorCommand, envCommand, certsCommand, botsCommand]),
+	Command.run({
+		version: "0.0.1",
+	}),
+	Effect.provide(ServicesLive),
+	Effect.provide(BunServices.layer),
+)
+
+BunRuntime.runMain(cli as Effect.Effect<void>)

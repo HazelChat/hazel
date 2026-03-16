@@ -30,7 +30,7 @@ export const RetryStrategy = {
 				? retryPolicyForTag(tag) === "transient" || retryPolicyForTag(tag) === "connection"
 				: isRetryableError(error)
 		}),
-		Schedule.intersect(Schedule.recurs(5)),
+		Schedule.both(Schedule.recurs(5)),
 	),
 
 	/**
@@ -49,7 +49,7 @@ export const RetryStrategy = {
 					: ""
 			return tag.length > 0 ? retryPolicyForTag(tag) === "connection" : isRetryableError(error)
 		}),
-		Schedule.intersect(Schedule.recurs(10)),
+		Schedule.both(Schedule.recurs(10)),
 	),
 
 	/**
@@ -67,7 +67,7 @@ export const RetryStrategy = {
 					: ""
 			return tag.length > 0 ? retryPolicyForTag(tag) === "quick" : isRetryableError(error)
 		}),
-		Schedule.intersect(Schedule.recurs(3)),
+		Schedule.both(Schedule.recurs(3)),
 	),
 
 	/**
@@ -111,4 +111,4 @@ export const RetryStrategy = {
 export const composeRetryStrategies = <A1, E1, R1, A2, E2, R2>(
 	first: Schedule.Schedule<A1, E1, R1>,
 	second: Schedule.Schedule<A2, E2, R2>,
-) => Schedule.intersect(first, second)
+) => Schedule.both(first, second)

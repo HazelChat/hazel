@@ -39,7 +39,7 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 								.limit(1),
 						),
 					)({ organizationId, userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const upsertByOrgAndUser = (
 				data: Schema.Schema.Type<typeof OrganizationMember.Insert>,
@@ -155,7 +155,7 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 								.returning(),
 						),
 					)({ id, metadata }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const bulkUpsertByOrgAndUser = (
 				members: Schema.Schema.Type<typeof OrganizationMember.Insert>[],

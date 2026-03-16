@@ -83,7 +83,7 @@ export class WebTokenStorage extends ServiceMap.Service<WebTokenStorage>()("WebT
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -100,7 +100,7 @@ export class WebTokenStorage extends ServiceMap.Service<WebTokenStorage>()("WebT
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**

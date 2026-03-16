@@ -11,5 +11,4 @@ import type { ApiScope } from "./api-scope"
  */
 export class CurrentRpcScopes extends ServiceMap.Service<CurrentRpcScopes, ReadonlyArray<ApiScope>>()(
 	"CurrentRpcScopes",
-	{ defaultValue: [] as ReadonlyArray<ApiScope> },
 ) {}

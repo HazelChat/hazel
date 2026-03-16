@@ -8,7 +8,6 @@ import {
 	type WorkOSUserId,
 } from "@hazel/schema"
 import { ServiceMap, Config, Effect, Layer, Option, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { WorkOSClient } from "../session/workos-client.ts"
 
@@ -113,7 +112,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		): Effect.Effect<OrganizationId | undefined, never> =>
 			workos.getOrganization(workosOrgId).pipe(
 				Effect.flatMap((org) =>
-					Option.fromNullable(org.externalId).pipe(
+					Option.fromNullishOr(org.externalId).pipe(
 						Option.match({
 							onNone: () =>
 								Effect.logWarning("WorkOS organization is missing externalId", {
@@ -127,7 +126,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 											{
 												workosOrgId,
 												externalId,
-												error: TreeFormatter.formatErrorSync(error),
+												error: String(error),
 											},
 										).pipe(Effect.as(undefined)),
 									),
@@ -287,7 +286,7 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 						(error) =>
 							new InvalidJwtPayloadError({
 								message: "Invalid JWT claims",
-								detail: TreeFormatter.formatErrorSync(error),
+								detail: String(error),
 							}),
 					),
 				)

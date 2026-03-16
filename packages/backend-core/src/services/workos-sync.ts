@@ -9,7 +9,6 @@ import {
 } from "@hazel/schema"
 import type { Event } from "@workos-inc/node"
 import { ServiceMap, Effect, Layer, Match, Option, pipe, Schema, Stream } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import { InvitationRepo } from "../repositories/invitation-repo"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
@@ -102,7 +101,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 						(error) =>
 							new WorkOSSyncError({
 								message: "Invalid WorkOS webhook payload",
-								cause: TreeFormatter.formatErrorSync(error),
+								cause: String(error),
 							}),
 					),
 				)
@@ -116,7 +115,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 					(error) =>
 						new WorkOSSyncError({
 							message: `Invalid WorkOS externalId for organization ${workosOrgId}`,
-							cause: TreeFormatter.formatErrorSync(error),
+							cause: String(error),
 						}),
 				),
 			)
@@ -157,7 +156,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 					.pipe(
 						Effect.map(
 							(response) =>
-								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+								[response.data, Option.fromNullishOr(response.listMetadata?.after)] as const,
 						),
 					),
 			),
@@ -173,7 +172,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 					.pipe(
 						Effect.map(
 							(response) =>
-								[response.data, Option.fromNullable(response.listMetadata?.after)] as const,
+								[response.data, Option.fromNullishOr(response.listMetadata?.after)] as const,
 						),
 					),
 			),
@@ -198,7 +197,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 								(response) =>
 									[
 										response.data,
-										Option.fromNullable(response.listMetadata?.after),
+										Option.fromNullishOr(response.listMetadata?.after),
 									] as const,
 							),
 						),
@@ -226,7 +225,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 								(response) =>
 									[
 										response.data,
-										Option.fromNullable(response.listMetadata?.after),
+										Option.fromNullishOr(response.listMetadata?.after),
 									] as const,
 							),
 						),
@@ -453,7 +452,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 
 			// Fetch memberships from WorkOS using WorkOS organization ID (with pagination)
 			const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
-				Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
+				Effect.mapError((error) => String(String(error))),
 				Effect.either,
 			)
 			if (workosOrganizationId._tag === "Left") {
@@ -580,7 +579,7 @@ export class WorkOSSync extends ServiceMap.Service<WorkOSSync>()("WorkOSSync", {
 
 			// Fetch invitations from WorkOS using WorkOS organization ID (with pagination)
 			const workosOrganizationId = yield* decodeWorkOSOrganizationId(workosOrg.id).pipe(
-				Effect.mapError((error) => String(TreeFormatter.formatErrorSync(error))),
+				Effect.mapError((error) => String(String(error))),
 				Effect.either,
 			)
 			if (workosOrganizationId._tag === "Left") {

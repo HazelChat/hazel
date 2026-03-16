@@ -105,7 +105,7 @@ const makeMountRepoLayer = (mounts: MutableMount[]) =>
 	Layer.succeed(ConnectConversationChannelRepo, {
 		findByChannelId: (channelId: ChannelId) =>
 			Effect.succeed(
-				Option.fromNullable(
+				Option.fromNullishOr(
 					mounts.find((mount) => mount.channelId === channelId && mount.deletedAt === null),
 				),
 			),

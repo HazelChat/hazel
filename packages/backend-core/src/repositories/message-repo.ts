@@ -133,7 +133,7 @@ export class MessageRepo extends ServiceMap.Service<MessageRepo>()("MessageRepo"
 								.limit(1),
 						),
 				)(params, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const backfillConversationIdForChannel = (
 			channelId: ChannelId,

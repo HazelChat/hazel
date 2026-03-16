@@ -29,7 +29,7 @@ export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("Cust
 							.limit(1),
 					),
 				)({ organizationId, name })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findDeletedByOrgAndName = (organizationId: OrganizationId, name: string) =>
 			db
@@ -48,7 +48,7 @@ export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("Cust
 							.limit(1),
 					),
 				)({ organizationId, name })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const restore = (id: CustomEmojiId, imageUrl?: string) =>
 			db
@@ -70,7 +70,7 @@ export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("Cust
 							.returning(),
 					),
 				)({ id, imageUrl })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const softDelete = (id: CustomEmojiId) =>
 			db
@@ -88,7 +88,7 @@ export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("Cust
 							.returning(),
 					),
 				)(id)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		return {
 			...baseRepo,

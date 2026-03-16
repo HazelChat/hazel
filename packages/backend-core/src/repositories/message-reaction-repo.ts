@@ -34,7 +34,7 @@ export class MessageReactionRepo extends ServiceMap.Service<MessageReactionRepo>
 							.limit(1),
 					),
 				)({ messageId, userId, emoji })
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const backfillConversationIdForChannel = (
 			channelId: ChannelId,

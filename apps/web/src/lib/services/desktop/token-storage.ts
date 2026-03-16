@@ -103,7 +103,7 @@ export class TokenStorage extends ServiceMap.Service<TokenStorage>()("TokenStora
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -120,7 +120,7 @@ export class TokenStorage extends ServiceMap.Service<TokenStorage>()("TokenStora
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(token)
+				return Option.fromNullishOr(token)
 			}),
 
 			/**
@@ -137,7 +137,7 @@ export class TokenStorage extends ServiceMap.Service<TokenStorage>()("TokenStora
 							detail: String(e),
 						}),
 				})
-				return Option.fromNullable(expiresAt)
+				return Option.fromNullishOr(expiresAt)
 			}),
 
 			/**

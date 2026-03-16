@@ -30,7 +30,7 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 							.limit(1),
 					),
 				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
 			db
@@ -49,7 +49,7 @@ export class OrganizationRepo extends ServiceMap.Service<OrganizationRepo>()("Or
 							.limit(1),
 					),
 				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>

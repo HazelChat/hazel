@@ -893,7 +893,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						)
 						.limit(1),
 				)
-				return Option.fromNullable(links[0]?.externalMessageId as ExternalMessageId | undefined)
+				return Option.fromNullishOr(links[0]?.externalMessageId as ExternalMessageId | undefined)
 			},
 		)
 
@@ -945,7 +945,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						)
 						.limit(1),
 				)
-				return Option.fromNullable(links[0]?.hazelMessageId)
+				return Option.fromNullishOr(links[0]?.hazelMessageId)
 			},
 		)
 

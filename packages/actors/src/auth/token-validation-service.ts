@@ -1,7 +1,6 @@
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { WorkOSJwtClaims, WorkOSRole } from "@hazel/schema"
-import { ServiceMap, Either, Effect, Layer, Option, Redacted, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
+import { ServiceMap, Result, Effect, Layer, Option, Redacted, Schema } from "effect"
 import type { JWTPayload } from "jose"
 import { jwtVerify } from "jose"
 import { TokenValidationConfigService } from "./config-service"
@@ -42,11 +41,11 @@ function isBotToken(token: string): boolean {
 export class TokenValidationService extends ServiceMap.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
 			const jwksService = yield* JwksService
-			const decodeClaims = Schema.decodeUnknown(WorkOSJwtClaims)
-			const decodeBotValidationResponse = Schema.decodeUnknown(BotTokenValidationResponseSchema)
+			const decodeClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
+			const decodeBotValidationResponse = Schema.decodeUnknownEffect(BotTokenValidationResponseSchema)
 
 			/**
 			 * Validate a WorkOS JWT token.
@@ -80,21 +79,21 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 						(issuer) =>
 							Effect.tryPromise(() => jwtVerify(token, jwks, { issuer })).pipe(
 								Effect.map((result) => result.payload as JWTPayloadWithClaims),
-								Effect.either,
+								Effect.result,
 							),
 						{ concurrency: 1 },
 					).pipe(
 						Effect.flatMap((results) => {
-							const success = results.find(Either.isRight)
+							const success = results.find(Result.isSuccess)
 							if (success) {
-								return Effect.succeed(success.right)
+								return Effect.succeed(success.success)
 							}
 
 							return Effect.fail(
 								new JwtValidationError({
 									message: "Invalid or expired token",
 									cause: results.map((result) =>
-										Either.isLeft(result) ? result.left : null,
+										Result.isFailure(result) ? result.failure : null,
 									),
 								}),
 							)
@@ -105,8 +104,7 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 						Effect.mapError(
 							(error) =>
 								new JwtValidationError({
-									message: "Invalid JWT claims",
-									cause: TreeFormatter.formatErrorSync(error),
+									message: `Invalid JWT claims: ${error.message}`,
 								}),
 						),
 					)
@@ -146,28 +144,21 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 						`${backendUrl}/internal/actors/validate-bot-token`,
 					).pipe(
 						HttpClientRequest.setHeader("Content-Type", "application/json"),
-						HttpClientRequest.bodyUnsafeJson({ token }),
+						HttpClientRequest.bodyJsonUnsafe({ token }),
 					)
 					const request = Option.match(config.internalSecret, {
 						onNone: () => requestBase,
-						onSome: (secret) =>
+						onSome: (secret: Redacted.Redacted) =>
 							requestBase.pipe(
 								HttpClientRequest.setHeader("X-Internal-Secret", Redacted.value(secret)),
 							),
 					})
 
 					const response = yield* httpClient.execute(request).pipe(
-						Effect.catchTag("RequestError", (err) =>
+						Effect.catchTag("HttpClientError", (err) =>
 							Effect.fail(
 								new BotTokenValidationError({
 									message: `Failed to validate bot token: ${err.message}`,
-								}),
-							),
-						),
-						Effect.catchTag("ResponseError", (err) =>
-							Effect.fail(
-								new BotTokenValidationError({
-									message: `Failed to get response: ${err.message}`,
 								}),
 							),
 						),
@@ -187,7 +178,7 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 					}
 
 					const rawData = yield* response.json.pipe(
-						Effect.catchTag("ResponseError", (err) =>
+						Effect.catchTag("HttpClientError", (err) =>
 							Effect.fail(
 								new BotTokenValidationError({
 									message: `Failed to parse bot token response: ${err.message}`,
@@ -199,7 +190,7 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 						Effect.mapError(
 							(error) =>
 								new BotTokenValidationError({
-									message: `Failed to decode bot token response: ${TreeFormatter.formatErrorSync(error)}`,
+									message: `Failed to decode bot token response: ${error.message}`,
 								}),
 						),
 					)
@@ -242,7 +233,7 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(TokenValidationConfigService.layer),
 		Layer.provide(JwksService.layer),
 	)

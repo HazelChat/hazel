@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-export const WorkOSUserId = Schema.NonEmptyTrimmedString.pipe(
+export const WorkOSUserId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
 	Schema.brand("@HazelChat/WorkOSUserId"),
 ).annotate({
 	description: "A WorkOS user identifier",
@@ -8,7 +8,7 @@ export const WorkOSUserId = Schema.NonEmptyTrimmedString.pipe(
 })
 export type WorkOSUserId = Schema.Schema.Type<typeof WorkOSUserId>
 
-export const WorkOSOrganizationId = Schema.NonEmptyTrimmedString.pipe(
+export const WorkOSOrganizationId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
 	Schema.brand("@HazelChat/WorkOSOrganizationId"),
 ).annotate({
 	description: "A WorkOS organization identifier",
@@ -16,7 +16,7 @@ export const WorkOSOrganizationId = Schema.NonEmptyTrimmedString.pipe(
 })
 export type WorkOSOrganizationId = Schema.Schema.Type<typeof WorkOSOrganizationId>
 
-export const WorkOSSessionId = Schema.NonEmptyTrimmedString.pipe(
+export const WorkOSSessionId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
 	Schema.brand("@HazelChat/WorkOSSessionId"),
 ).annotate({
 	description: "A WorkOS session identifier",
@@ -24,7 +24,7 @@ export const WorkOSSessionId = Schema.NonEmptyTrimmedString.pipe(
 })
 export type WorkOSSessionId = Schema.Schema.Type<typeof WorkOSSessionId>
 
-export const WorkOSInvitationId = Schema.NonEmptyTrimmedString.pipe(
+export const WorkOSInvitationId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
 	Schema.brand("@HazelChat/WorkOSInvitationId"),
 ).annotate({
 	description: "A WorkOS invitation identifier",
@@ -32,7 +32,7 @@ export const WorkOSInvitationId = Schema.NonEmptyTrimmedString.pipe(
 })
 export type WorkOSInvitationId = Schema.Schema.Type<typeof WorkOSInvitationId>
 
-export const WorkOSClientId = Schema.NonEmptyTrimmedString.pipe(
+export const WorkOSClientId = Schema.Trimmed.check(Schema.isNonEmpty()).pipe(
 	Schema.brand("@HazelChat/WorkOSClientId"),
 ).annotate({
 	description: "A WorkOS client identifier",

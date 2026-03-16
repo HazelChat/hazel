@@ -67,7 +67,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const { token, tokenHash, tokenSuffix } = generateToken()
 
 							// Get or create bot user based on whether this is an integration webhook
-							const botUser = yield* Option.fromNullable(payload.integrationProvider).pipe(
+							const botUser = yield* Option.fromNullishOr(payload.integrationProvider).pipe(
 								Option.match({
 									onNone: () => {
 										const botReferenceId = crypto.randomUUID() as ChannelWebhookId

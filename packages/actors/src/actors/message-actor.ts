@@ -1,7 +1,14 @@
 import { Action, CreateConnState, Log, actor } from "@hazel/rivet-effect"
 import { Effect } from "effect"
 import { UserError } from "rivetkit"
-import { TokenValidationService, type ActorConnectParams } from "../auth"
+import {
+	TokenValidationService,
+	type ActorConnectParams,
+	type InvalidTokenFormatError,
+	type JwtValidationError,
+	type BotTokenValidationError,
+	type ConfigError,
+} from "../auth"
 import { messageActorRuntime } from "../effect/runtime"
 
 const getTokenKind = (token: string): "bot" | "jwt" | "unknown" => {
@@ -123,7 +130,7 @@ export const messageActor = actor({
 			return yield* service.validateToken(params.token)
 		}).pipe(
 			Effect.catchTags({
-				InvalidTokenFormatError: (e) =>
+				InvalidTokenFormatError: (e: InvalidTokenFormatError) =>
 					Log.error("Token validation failed: invalid format", {
 						tokenKind: getTokenKind(params.token),
 						tokenPrefix: params.token.slice(0, 12),
@@ -132,7 +139,7 @@ export const messageActor = actor({
 							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
 						),
 					),
-				JwtValidationError: (e) =>
+				JwtValidationError: (e: JwtValidationError) =>
 					Log.error("Token validation failed: JWT error", {
 						error: e.message,
 						tokenKind: getTokenKind(params.token),
@@ -141,7 +148,7 @@ export const messageActor = actor({
 							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
 						),
 					),
-				BotTokenValidationError: (e) =>
+				BotTokenValidationError: (e: BotTokenValidationError) =>
 					Log.error("Token validation failed: bot token error", {
 						statusCode: e.statusCode,
 						tokenKind: getTokenKind(params.token),
@@ -152,7 +159,7 @@ export const messageActor = actor({
 							Effect.fail(new UserError(e.message, { code: "invalid_token" })),
 						),
 					),
-				ConfigError: (e) =>
+				ConfigError: (e: ConfigError) =>
 					Log.error("Token validation failed: auth config unavailable", {
 						error: e.message,
 						tokenKind: getTokenKind(params.token),

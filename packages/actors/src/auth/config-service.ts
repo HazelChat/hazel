@@ -1,5 +1,5 @@
 import type { WorkOSClientId } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Option, Redacted, Schema } from "effect"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { WorkOSClientId as WorkOSClientIdSchema } from "@hazel/schema"
 
 /**
@@ -24,30 +24,33 @@ const optionalValue = <A>(effect: Effect.Effect<A, any, never>) => effect.pipe(E
 export class TokenValidationConfigService extends ServiceMap.Service<TokenValidationConfigService>()(
 	"TokenValidationConfigService",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const workosClientId = yield* optionalValue(
-				Config.string("WORKOS_CLIENT_ID").pipe(
-					Effect.flatMap((value) => Schema.decodeUnknown(WorkOSClientIdSchema)(value)),
+				Effect.flatMap(
+					Config.string("WORKOS_CLIENT_ID").asEffect(),
+					(value) => Schema.decodeUnknownEffect(WorkOSClientIdSchema)(value),
 				),
 			)
 
 			const backendUrl = yield* optionalValue(
 				Config.string("BACKEND_URL").pipe(
-					Effect.orElse(() => Config.string("API_BASE_URL")),
-					Effect.orElse(() => Config.string("VITE_BACKEND_URL")),
-					Effect.orElse(() => Config.string("VITE_API_BASE_URL")),
-				),
+					Config.orElse(() => Config.string("API_BASE_URL")),
+					Config.orElse(() => Config.string("VITE_BACKEND_URL")),
+					Config.orElse(() => Config.string("VITE_API_BASE_URL")),
+				).asEffect(),
 			)
 
-			const internalSecret = yield* optionalValue(Config.redacted("INTERNAL_SECRET"))
+			const internalSecret = yield* optionalValue(Config.redacted("INTERNAL_SECRET").asEffect())
 
 			const config: TokenValidationConfig = {
-				workosClientId,
-				backendUrl,
-				internalSecret,
+				workosClientId: workosClientId as Option.Option<WorkOSClientId>,
+				backendUrl: backendUrl as Option.Option<string>,
+				internalSecret: internalSecret as Option.Option<Redacted.Redacted>,
 			}
 
 			return config
 		}),
 	},
-) {}
+) {
+	static readonly layer = Layer.effect(this, this.make)
+}

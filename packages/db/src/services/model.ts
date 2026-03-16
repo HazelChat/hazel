@@ -8,7 +8,6 @@ export * from "@hazel/domain/models"
 import type { EntitySchema } from "@hazel/domain/models"
 import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
-import type { ParseError } from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import type { DatabaseError, TransactionClient } from "./database"
 

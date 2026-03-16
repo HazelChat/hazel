@@ -381,7 +381,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 					)
 
 				const insertedChannelMemberIds = Array.filterMap(insertedNotifications, (row) =>
-					Option.fromNullable(channelMemberByOrgMember.get(row.memberId)),
+					Option.fromNullishOr(channelMemberByOrgMember.get(row.memberId)),
 				)
 
 				if (insertedChannelMemberIds.length > 0) {

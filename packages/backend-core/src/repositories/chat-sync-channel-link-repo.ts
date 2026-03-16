@@ -46,7 +46,7 @@ export class ChatSyncChannelLinkRepo extends ServiceMap.Service<ChatSyncChannelL
 					)({ id }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 
@@ -127,7 +127,7 @@ export class ChatSyncChannelLinkRepo extends ServiceMap.Service<ChatSyncChannelL
 					)({ syncConnectionId, hazelChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 
@@ -167,7 +167,7 @@ export class ChatSyncChannelLinkRepo extends ServiceMap.Service<ChatSyncChannelL
 					)({ syncConnectionId, externalChannelId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeChannelLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
 						),
 					)
 

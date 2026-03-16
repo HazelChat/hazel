@@ -9,5 +9,4 @@ import { RpcMiddleware } from "effect/unstable/rpc"
  */
 export class ScopeInjectionMiddleware extends RpcMiddleware.Service<ScopeInjectionMiddleware>()(
 	"ScopeInjectionMiddleware",
-	{ wrap: true },
 ) {}

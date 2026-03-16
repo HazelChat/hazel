@@ -30,7 +30,7 @@ export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatu
 								.limit(1),
 						),
 					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Upsert user presence status
 			const upsertByUserId = (data: Schema.Schema.Type<typeof UserPresenceStatus.Insert>, tx?: TxFn) =>
@@ -115,7 +115,7 @@ export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatu
 								.returning(),
 						),
 					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			// Find users with stale heartbeats (for cron job cleanup)
 			const findStaleUsers = (timeout: Date) =>

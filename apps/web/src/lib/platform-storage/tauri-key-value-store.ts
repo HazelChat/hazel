@@ -59,7 +59,7 @@ export const layerTauriStore: Layer.Layer<KeyValueStore.KeyValueStore> = Layer.e
 				Effect.tryPromise({
 					try: async () => {
 						const value = await store.get<string>(key)
-						return Option.fromNullable(value)
+						return Option.fromNullishOr(value)
 					},
 					catch: (error) => makeError("get", key, error),
 				}),

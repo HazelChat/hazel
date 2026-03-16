@@ -2,7 +2,7 @@ import { and, Database, eq, inArray, ModelRepository, schema, type TxFn } from "
 
 import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class BotInstallationRepo extends ServiceMap.Service<BotInstallationRepo>()("BotInstallationRepo", {
 	make: Effect.gen(function* () {
@@ -55,7 +55,7 @@ export class BotInstallationRepo extends ServiceMap.Service<BotInstallationRepo>
 							.limit(1),
 					),
 				)({ botId, organizationId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Check if a bot is installed in an organization
 		const isInstalled = (botId: BotId, organizationId: OrganizationId, tx?: TxFn) =>

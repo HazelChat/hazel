@@ -11,7 +11,7 @@
 	"dependencies": {
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/sql-pg": "catalog:effect",
-		"@hazel/ai-openrouter": "workspace:*",
+		"@effect/ai-openrouter": "catalog:effect",
 		"@hazel/backend-core": "workspace:*",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",

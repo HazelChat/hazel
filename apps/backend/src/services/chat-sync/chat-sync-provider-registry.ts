@@ -75,7 +75,7 @@ const DISCORD_MAX_MESSAGE_LENGTH = 2000
 const DISCORD_SNOWFLAKE_MIN_LENGTH = 17
 const DISCORD_SNOWFLAKE_MAX_LENGTH = 30
 const DISCORD_THREAD_NAME_MAX_LENGTH = 100
-const DISCORD_SYNC_RETRY_SCHEDULE = Schedule.intersect(
+const DISCORD_SYNC_RETRY_SCHEDULE = Schedule.both(
 	Schedule.exponential("250 millis").pipe(Schedule.jittered),
 	Schedule.recurs(3),
 )
@@ -422,7 +422,7 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 			} as const satisfies Record<string, ChatSyncProviderAdapter>
 
 			const getAdapter = Effect.fn("ChatSyncProviderRegistry.getAdapter")(function* (provider: string) {
-				const adapter = Option.fromNullable(adapters[provider as keyof typeof adapters])
+				const adapter = Option.fromNullishOr(adapters[provider as keyof typeof adapters])
 				return yield* Option.match(adapter, {
 					onNone: () =>
 						Effect.fail(

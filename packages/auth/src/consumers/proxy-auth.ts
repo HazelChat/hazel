@@ -7,7 +7,6 @@ import {
 	type WorkOSUserId,
 } from "@hazel/schema"
 import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import { createRemoteJWKSet, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
@@ -47,7 +46,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 		): Effect.Effect<OrganizationId | undefined, never> =>
 			workos.getOrganization(workosOrgId).pipe(
 				Effect.flatMap((org) =>
-					Option.fromNullable(org.externalId).pipe(
+					Option.fromNullishOr(org.externalId).pipe(
 						Option.match({
 							onNone: () =>
 								Effect.logWarning("WorkOS organization is missing externalId", {
@@ -61,7 +60,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 											{
 												workosOrgId,
 												externalId,
-												error: TreeFormatter.formatErrorSync(error),
+												error: String(error),
 											},
 										).pipe(Effect.as(undefined)),
 									),
@@ -116,7 +115,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 							}),
 					),
 				)
-			const userOption = Option.fromNullable(userResult[0])
+			const userOption = Option.fromNullishOr(userResult[0])
 
 			// Cache successful lookup
 			if (Option.isSome(userOption)) {
@@ -164,7 +163,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 					(error) =>
 						new ProxyAuthenticationError({
 							message: "Invalid JWT claims",
-							detail: TreeFormatter.formatErrorSync(error),
+							detail: String(error),
 						}),
 				),
 			)

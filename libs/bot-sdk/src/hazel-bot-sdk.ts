@@ -371,7 +371,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 		const decodeCommandArgs = (event: Extract<BotGatewayEnvelope, { eventType: "command.invoke" }>) =>
 			Option.match(
 				Option.flatMap(commandGroup, (group) =>
-					Option.fromNullable(
+					Option.fromNullishOr(
 						group.commands.find((c: CommandDef) => c.name === event.payload.commandName),
 					),
 				),

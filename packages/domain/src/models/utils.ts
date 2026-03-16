@@ -2,7 +2,9 @@ import * as VariantSchema from "effect/unstable/schema/VariantSchema"
 import type { Brand } from "effect/Brand"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import * as SchemaGetter from "effect/SchemaGetter"
 import * as SchemaIssue from "effect/SchemaIssue"
 
 const { Class, Field, FieldExcept, FieldOnly, Struct, Union, extract, fieldEvolve } =
@@ -189,15 +191,15 @@ export interface Date extends Schema.decodeTo<
 
 /** A DateTime.Utc serialized as ISO date string (YYYY-MM-DD). */
 export const Date: Date = Schema.String.pipe(
-	Schema.decode({
-		decode: (s: string) => {
+	Schema.decodeTo(Schema.DateTimeUtc, {
+		decode: SchemaGetter.transformOrFail((s: string) => {
 			const opt = DateTime.make(s)
 			if (opt._tag === "Some") {
 				return Effect.succeed(DateTime.removeTime(opt.value))
 			}
-			return Effect.fail("Invalid date format")
-		},
-		encode: (dt: DateTime.Utc) => Effect.succeed(DateTime.formatIsoDate(dt)),
+			return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: "Invalid date format" }))
+		}),
+		encode: SchemaGetter.transform((dt: DateTime.Utc) => DateTime.formatIsoDate(dt)),
 	}),
 ) as any
 

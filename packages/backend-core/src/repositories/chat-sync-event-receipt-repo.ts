@@ -51,7 +51,7 @@ export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventRe
 									.limit(1),
 							),
 					)({ syncConnectionId, source, dedupeKey }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const claimByDedupeKey = (
 				params: {

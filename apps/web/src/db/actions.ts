@@ -55,7 +55,7 @@ const getMountedConversationId = (channelId: ChannelId) =>
 const MessageRetrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
 	Schedule.jittered,
 	Schedule.whileInput(isErrorRetryable),
-	Schedule.intersect(Schedule.recurs(3)),
+	Schedule.both(Schedule.recurs(3)),
 )
 
 export const sendMessageAction = optimisticAction({

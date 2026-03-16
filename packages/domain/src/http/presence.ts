@@ -22,7 +22,7 @@ export class PresencePublicGroup extends HttpApiGroup.make("presencePublic")
 			error: InternalServerError,
 		})
 			.annotateMerge(
-				OpenApi.annotate({
+				OpenApi.annotations({
 					title: "Mark User Offline",
 					description: "Mark a user as offline when they close their tab (no auth required)",
 					summary: "Mark offline",

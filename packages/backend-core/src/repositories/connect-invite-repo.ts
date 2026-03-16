@@ -31,7 +31,7 @@ export class ConnectInviteRepo extends ServiceMap.Service<ConnectInviteRepo>()("
 							.limit(1),
 					),
 				)(id, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		const listIncomingForOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
 			db.makeQuery((execute, input: OrganizationId) =>

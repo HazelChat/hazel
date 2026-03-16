@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm"
 import { pipe } from "effect"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import type { ParseError } from "effect/ParseResult"
 import * as Schema from "effect/Schema"
 import { Database, type DatabaseError, type TxFn } from "./database"
 import { EntityNotFound, type EntitySchema, type Repository, type RepositoryOptions } from "./model"
@@ -78,7 +77,7 @@ export function makeRepository<
 						// @ts-expect-error
 						.where(eq(table[idColumn], id))
 						.limit(1),
-				).pipe(Effect.map((results) => Option.fromNullable(results[0] as RecordType))),
+				).pipe(Effect.map((results) => Option.fromNullishOr(results[0] as RecordType))),
 			)(id, tx) as Effect.Effect<Option.Option<RecordType>, DatabaseError>
 
 		const deleteById = (id: Id, tx?: TxFn) =>

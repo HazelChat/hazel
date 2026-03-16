@@ -78,7 +78,7 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 			.where(and(eq(schema.botsTable.apiTokenHash, tokenHash), isNull(schema.botsTable.deletedAt)))
 			.limit(1),
 	)
-	const botOption = Option.fromNullable(botResult[0])
+	const botOption = Option.fromNullishOr(botResult[0])
 
 	if (Option.isNone(botOption)) {
 		yield* Effect.annotateCurrentSpan("auth.token.valid", false)

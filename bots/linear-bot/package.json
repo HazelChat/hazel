@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@hazel-chat/bot-sdk": "workspace:*",
-		"@hazel/ai-openrouter": "workspace:*",
+		"@effect/ai-openrouter": "catalog:effect",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/integrations": "workspace:*",

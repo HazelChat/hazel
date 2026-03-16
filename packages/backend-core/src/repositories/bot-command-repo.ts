@@ -2,7 +2,7 @@ import { and, Database, eq, inArray, lt, ModelRepository, schema, type TxFn } fr
 
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCommandRepo", {
 	make: Effect.gen(function* () {
@@ -76,7 +76,7 @@ export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCom
 							.limit(1),
 					),
 				)({ botId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 		// Upsert command (for bot sync)
 		const upsert = (

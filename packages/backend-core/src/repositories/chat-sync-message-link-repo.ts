@@ -90,7 +90,7 @@ export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageL
 					)({ channelLinkId, hazelMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
 						),
 					)
 
@@ -130,7 +130,7 @@ export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageL
 					)({ channelLinkId, externalMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
 						),
 					)
 
@@ -169,7 +169,7 @@ export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageL
 					)({ channelLinkId, rootHazelMessageId }, tx)
 					.pipe(
 						Effect.map((results) =>
-							Option.fromNullable(results[0]).pipe(decodeMessageLinkOption),
+							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
 						),
 					)
 

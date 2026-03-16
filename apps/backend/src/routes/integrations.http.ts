@@ -46,7 +46,7 @@ const OAuthState = Schema.Struct({
  * Retry schedule for OAuth operations.
  * Retries up to 3 times with exponential backoff (100ms, 200ms, 400ms)
  */
-const oauthRetrySchedule = Schedule.exponential("100 millis").pipe(Schedule.intersect(Schedule.recurs(3)))
+const oauthRetrySchedule = Schedule.exponential("100 millis").pipe(Schedule.both(Schedule.recurs(3)))
 
 const CRAFT_ALLOWED_HOST = "connect.craft.do"
 const CRAFT_BASE_URL_PATH_PATTERN = /^\/links\/[^/]+\/api\/v1$/

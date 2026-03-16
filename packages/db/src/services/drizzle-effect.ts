@@ -271,17 +271,17 @@ function mapColumnToSchema(column: Drizzle.Column): Schema.Schema<any, any> {
 			type = Schema.Number
 		} else if (column.dataType === "bigint") {
 			// Check if column has mode: "number" - Drizzle converts to JS number at runtime
-			type = hasMode(column) && column.mode === "number" ? Schema.Number : Schema.BigIntFromSelf
+			type = hasMode(column) && column.mode === "number" ? Schema.Number : Schema.BigInt
 		} else if (column.dataType === "boolean") {
 			type = Schema.Boolean
 		} else if (column.dataType === "date") {
-			type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.DateFromSelf
+			type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.Date
 		} else if (column.dataType === "string") {
 			// Additional check: if it's a PgTimestamp or PgDate masquerading as string
 			if (Drizzle.is(column, DrizzlePg.PgTimestamp)) {
-				type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.DateFromSelf
+				type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.Date
 			} else if (Drizzle.is(column, DrizzlePg.PgDate)) {
-				type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.DateFromSelf
+				type = hasMode(column) && column.mode === "string" ? Schema.String : Schema.Date
 			} else {
 				let sType = Schema.String
 				if (

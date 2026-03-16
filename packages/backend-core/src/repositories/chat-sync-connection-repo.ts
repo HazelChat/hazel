@@ -70,7 +70,7 @@ export class ChatSyncConnectionRepo extends ServiceMap.Service<ChatSyncConnectio
 									.limit(1),
 							),
 					)({ organizationId, provider, externalWorkspaceId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const findActiveByProvider = (provider: string, tx?: TxFn) =>
 				db.makeQuery((execute, data: { provider: string }) =>
@@ -110,7 +110,7 @@ export class ChatSyncConnectionRepo extends ServiceMap.Service<ChatSyncConnectio
 								.limit(1),
 						),
 					)({ integrationConnectionId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullable(results[0])))
+					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
 			const updateStatus = (
 				id: SyncConnectionId,

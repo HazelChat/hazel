@@ -7,7 +7,6 @@
 
 import { FetchHttpClient, HttpBody, HttpClient } from "effect/unstable/http"
 import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
-import { TreeFormatter } from "effect/ParseResult"
 import type { OAuthIntegrationProvider } from "./provider-config"
 
 // ============================================================================
@@ -130,7 +129,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 				Effect.catchTags({
 					ParseError: (error) =>
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
+							message: `Failed to parse token response: ${String(error)}`,
 							cause: error,
 						}),
 					ResponseError: (error) =>
@@ -195,7 +194,7 @@ export class OAuthHttpClient extends ServiceMap.Service<OAuthHttpClient>()("OAut
 				Effect.catchTags({
 					ParseError: (error) =>
 						new OAuthHttpError({
-							message: `Failed to parse token response: ${TreeFormatter.formatErrorSync(error)}`,
+							message: `Failed to parse token response: ${String(error)}`,
 							cause: error,
 						}),
 					ResponseError: (error) =>

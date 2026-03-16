@@ -1,4 +1,4 @@
-import { OpenRouterClient, OpenRouterLanguageModel } from "@hazel/ai-openrouter"
+import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { FetchHttpClient } from "effect/unstable/http"
 import { Config, Effect, Layer } from "effect"
 
