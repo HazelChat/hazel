@@ -69,7 +69,7 @@ function LinkedAccountsSettings() {
 		setIsConnectingDiscord(true)
 		const result = await getOAuthUrlMutation({
 			params: { orgId: user.organizationId, provider: "discord" },
-			urlParams: { level: "user" },
+			query: { level: "user" },
 		})
 
 		if (Exit.isSuccess(result)) {
@@ -86,7 +86,7 @@ function LinkedAccountsSettings() {
 		setIsDisconnectingDiscord(true)
 		const result = await disconnectMutation({
 			params: { orgId: user.organizationId, provider: "discord" },
-			urlParams: { level: "user" },
+			query: { level: "user" },
 		})
 
 		if (Exit.isSuccess(result)) {

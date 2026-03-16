@@ -158,7 +158,7 @@ function IntegrationConfigPage() {
 		// This ensures the bearer token auth is properly sent
 		const exit = await getOAuthUrlMutation({
 			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
-			urlParams: { level: "organization" },
+			query: { level: "organization" },
 		})
 
 		if (Exit.isSuccess(exit)) {
@@ -177,7 +177,7 @@ function IntegrationConfigPage() {
 		setIsDisconnecting(true)
 		const exit = await disconnectMutation({
 			params: { orgId: organizationId, provider: integrationId as IntegrationProvider },
-			urlParams: { level: "organization" },
+			query: { level: "organization" },
 		})
 
 		exitToast(exit)
@@ -764,7 +764,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 	const repositoriesResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
 			params: { orgId: organizationId },
-			urlParams: { page, perPage },
+			query: { page, perPage },
 		}),
 	)
 

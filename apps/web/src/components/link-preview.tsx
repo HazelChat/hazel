@@ -6,7 +6,7 @@ import { useMemo } from "react"
 import { LinkPreviewClient } from "~/lib/services/common/link-preview-client"
 
 export function LinkPreview({ url }: { url: string }) {
-	const previewResult = useAtomValue(LinkPreviewClient.query("linkPreview", "get", { urlParams: { url } }))
+	const previewResult = useAtomValue(LinkPreviewClient.query("linkPreview", "get", { query: { url } }))
 	const og = AsyncResult.getOrElse(previewResult, () => null)
 	const isLoading = AsyncResult.isInitial(previewResult)
 

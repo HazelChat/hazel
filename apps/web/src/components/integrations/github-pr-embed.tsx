@@ -222,7 +222,7 @@ export function GitHubPREmbed({ url, orgId }: GitHubPREmbedProps) {
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchGitHubPR", {
 			params: { orgId },
-			urlParams: { url },
+			query: { url },
 			timeToLive: "3 minutes",
 		}),
 	)

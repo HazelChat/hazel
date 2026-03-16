@@ -118,7 +118,7 @@ export function LinearIssueEmbed({ url, orgId }: LinearIssueEmbedProps) {
 	const resourceResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "fetchLinearIssue", {
 			params: { orgId },
-			urlParams: { url },
+			query: { url },
 			timeToLive: "3 minutes",
 		}),
 	)

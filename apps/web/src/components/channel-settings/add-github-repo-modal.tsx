@@ -62,7 +62,7 @@ export function AddGitHubRepoModal({
 	const repositoriesResult = useAtomValue(
 		HazelApiClient.query("integration-resources", "getGitHubRepositories", {
 			params: { orgId: organizationId },
-			urlParams: { page: 1, perPage: 100 },
+			query: { page: 1, perPage: 100 },
 		}),
 	)
 
