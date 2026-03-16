@@ -46,7 +46,7 @@ export class BotRpcClientConfigTag extends ServiceMap.Service<BotRpcClientConfig
  */
 export class BotRpcClient extends ServiceMap.Service<
 	BotRpcClient,
-	Effect.Effect.Success<ReturnType<typeof makeBotRpcClient>>
+	Effect.Success<ReturnType<typeof makeBotRpcClient>>
 >()("@hazel/bot-sdk/BotRpcClient") {}
 
 /**

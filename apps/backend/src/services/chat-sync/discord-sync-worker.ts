@@ -61,7 +61,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelMessageUpdateToDiscord = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToDiscord",
+			"discordSyncWorker.syncHazelMessageUpdateToDiscord",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -75,7 +75,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelMessageDeleteToDiscord = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToDiscord",
+			"discordSyncWorker.syncHazelMessageDeleteToDiscord",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -89,7 +89,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelReactionCreateToDiscord = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToDiscord",
+			"discordSyncWorker.syncHazelReactionCreateToDiscord",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelReactionId: MessageReactionId,
@@ -103,7 +103,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelReactionDeleteToDiscord = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToDiscord",
+			"discordSyncWorker.syncHazelReactionDeleteToDiscord",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			payload: {
@@ -122,7 +122,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
+			"discordSyncWorker.syncHazelMessageCreateToAllConnections",
 		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			return yield* coreWorker.syncHazelMessageCreateToAllConnections(
 				"discord",
@@ -132,7 +132,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelMessageUpdateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
+			"discordSyncWorker.syncHazelMessageUpdateToAllConnections",
 		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			return yield* coreWorker.syncHazelMessageUpdateToAllConnections(
 				"discord",
@@ -142,7 +142,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelMessageDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
+			"discordSyncWorker.syncHazelMessageDeleteToAllConnections",
 		)(function* (hazelMessageId: MessageId, dedupeKey?: string) {
 			return yield* coreWorker.syncHazelMessageDeleteToAllConnections(
 				"discord",
@@ -152,7 +152,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelReactionCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToAllConnections",
+			"discordSyncWorker.syncHazelReactionCreateToAllConnections",
 		)(function* (hazelReactionId: MessageReactionId, dedupeKey?: string) {
 			return yield* coreWorker.syncHazelReactionCreateToAllConnections(
 				"discord",
@@ -162,7 +162,7 @@ export class DiscordSyncWorker extends ServiceMap.Service<DiscordSyncWorker>()("
 		})
 
 		const syncHazelReactionDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToAllConnections",
+			"discordSyncWorker.syncHazelReactionDeleteToAllConnections",
 		)(function* (
 			payload: {
 				hazelChannelId: ChannelId

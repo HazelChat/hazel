@@ -17,6 +17,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const workos = yield* WorkOS
+		const invitationPolicy = yield* InvitationPolicy
+		const invitationRepo = yield* InvitationRepo
 
 		return {
 			"invitation.create": (payload) =>
@@ -60,8 +62,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 										expiresAt.setDate(expiresAt.getDate() + 7)
 
 										// Store invitation in local database
-										yield* InvitationPolicy.canCreate(payload.organizationId)
-										const createdInvitation = yield* InvitationRepo.upsertByWorkosId({
+										yield* invitationPolicy.canCreate(payload.organizationId)
+										const createdInvitation = yield* invitationRepo.upsertByWorkosId({
 											workosInvitationId: Schema.decodeUnknownSync(WorkOSInvitationId)(
 												workosInvitation.id,
 											),
@@ -117,8 +119,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* InvitationPolicy.canRead(invitationId)
-							const invitationOption = yield* InvitationRepo.findById(invitationId)
+							yield* invitationPolicy.canRead(invitationId)
+							const invitationOption = yield* invitationRepo.findById(invitationId)
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
 							}
@@ -126,7 +128,7 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 							const invitation = invitationOption.value
 
 							// Resend invitation via WorkOS (send new invitation to same email)
-							yield* InvitationPolicy.canUpdate(invitationId)
+							yield* invitationPolicy.canUpdate(invitationId)
 							yield* workos
 								.call((client) =>
 									client.userManagement.sendInvitation({
@@ -162,8 +164,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* InvitationPolicy.canRead(invitationId)
-							const invitationOption = yield* InvitationRepo.findById(invitationId)
+							yield* invitationPolicy.canRead(invitationId)
+							const invitationOption = yield* invitationRepo.findById(invitationId)
 
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
@@ -187,8 +189,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 									),
 								)
 
-							yield* InvitationPolicy.canUpdate(invitationId)
-							yield* InvitationRepo.updateStatus(invitationId, "revoked")
+							yield* invitationPolicy.canUpdate(invitationId)
+							yield* invitationRepo.updateStatus(invitationId, "revoked")
 
 							const txid = yield* generateTransactionId()
 
@@ -204,8 +206,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* InvitationPolicy.canUpdate(id)
-							const updatedInvitation = yield* InvitationRepo.update({
+							yield* invitationPolicy.canUpdate(id)
+							const updatedInvitation = yield* invitationRepo.update({
 								id,
 								...payload,
 							})
@@ -227,8 +229,8 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* InvitationPolicy.canDelete(id)
-							yield* InvitationRepo.deleteById(id)
+							yield* invitationPolicy.canDelete(id)
+							yield* invitationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 

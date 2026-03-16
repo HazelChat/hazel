@@ -7,7 +7,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class OrganizationMemberPolicy extends ServiceMap.Service<OrganizationMemberPolicy>()(
 	"OrganizationMemberPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "OrganizationMember" as const
 
 			const organizationMemberRepo = yield* OrganizationMemberRepo
@@ -105,7 +105,7 @@ export class OrganizationMemberPolicy extends ServiceMap.Service<OrganizationMem
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(OrganizationMemberRepo.layer),
 		Layer.provide(OrgResolver.layer),
 	)

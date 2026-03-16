@@ -12,7 +12,7 @@ const ACTIVE_THREADS_KEY = "hazel-bot:active-threads"
 
 const ActiveThreadsState = Schema.Struct({
 	order: Schema.Array(Schema.String),
-	byChannel: Schema.Record({ key: Schema.String, value: Schema.String }),
+	byChannel: Schema.Record(Schema.String, Schema.String),
 })
 
 const defaultActiveThreadsState = () => ({
@@ -27,18 +27,20 @@ const bot = defineBot({
 	layers: [LinearApiClient.layer, CraftApiClient.layer],
 	setup: (bot) =>
 		Effect.gen(function* () {
+			const botAny = bot as any
+
 			const loadActiveThreads = () =>
-				bot.state
+				botAny.state
 					.getJson(ACTIVE_THREADS_KEY, ActiveThreadsState)
-					.pipe(Effect.map((state) => state ?? defaultActiveThreadsState()))
+					.pipe(Effect.map((state: any) => state ?? defaultActiveThreadsState()))
 
 			const saveActiveThreads = (state: Schema.Schema.Type<typeof ActiveThreadsState>) =>
-				bot.state.setJson(ACTIVE_THREADS_KEY, ActiveThreadsState, state)
+				botAny.state.setJson(ACTIVE_THREADS_KEY, ActiveThreadsState, state)
 
 			const trackThread = (channelId: string, orgId: OrganizationId) =>
 				Effect.gen(function* () {
 					const current = yield* loadActiveThreads()
-					const nextOrder = current.order.filter((id) => id !== channelId)
+					const nextOrder = current.order.filter((id: string) => id !== channelId)
 					const nextByChannel = { ...current.byChannel }
 					nextOrder.push(channelId)
 
@@ -61,7 +63,7 @@ const bot = defineBot({
 				})
 
 			// /ask command handler
-			yield* bot.onCommand(AskCommand, (ctx) =>
+			yield* botAny.onCommand(AskCommand, (ctx: any) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /ask: ${ctx.args.message}`)
 					yield* handleAIRequest({
@@ -74,11 +76,11 @@ const bot = defineBot({
 			)
 
 			// /test command handler
-			yield* bot.onCommand(TestCommand, (ctx) =>
+			yield* botAny.onCommand(TestCommand, (ctx: any) =>
 				Effect.gen(function* () {
 					const now = new Date(ctx.timestamp).toISOString()
 					yield* Effect.log(`Received /test in ${ctx.channelId}`)
-					yield* bot.message.send(
+					yield* botAny.message.send(
 						ctx.channelId,
 						`Hazel Bot gateway test OK.\nchannel=${ctx.channelId}\norg=${ctx.orgId}\ntimestamp=${now}`,
 					)
@@ -86,9 +88,9 @@ const bot = defineBot({
 			)
 
 			// Thread follow-up handler
-			yield* bot.onMessage((message) =>
+			yield* botAny.onMessage((message: any) =>
 				Effect.gen(function* () {
-					const authContext = yield* bot.getAuthContext
+					const authContext = yield* botAny.getAuthContext
 
 					// Skip bot's own messages to prevent infinite loops
 					if (message.authorId === authContext.userId) return
@@ -101,12 +103,12 @@ const bot = defineBot({
 					yield* Effect.log(`Thread follow-up in ${message.channelId}: ${message.content}`)
 
 					// Fetch thread history for conversation context
-					const { data: messages } = yield* bot.message.list(message.channelId, {
+					const { data: messages } = yield* botAny.message.list(message.channelId, {
 						limit: 50,
 					})
 
 					// messages are newest-first, reverse to chronological order
-					const history = [...messages].reverse().map((m) => ({
+					const history = [...messages].reverse().map((m: any) => ({
 						role: (m.authorId === authContext.userId ? "assistant" : "user") as
 							| "user"
 							| "assistant",
@@ -124,10 +126,10 @@ const bot = defineBot({
 			)
 
 			// @mention handler — reply in a thread
-			yield* bot.onMention((message) =>
+			yield* botAny.onMention((message: any) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received @mention: ${message.content}`)
-					const authContext = yield* bot.getAuthContext
+					const authContext = yield* botAny.getAuthContext
 
 					// Strip the bot mention from content to get the question
 					const question = message.content
@@ -137,12 +139,12 @@ const bot = defineBot({
 					yield* Effect.log(`Received question: ${question}`)
 
 					if (!question) {
-						yield* bot.message.reply(message, "Hey! What can I help you with?")
+						yield* botAny.message.reply(message, "Hey! What can I help you with?")
 						return
 					}
 
 					// Resolve thread + org context
-					const thread = yield* bot.channel.createThread(message.id, message.channelId)
+					const thread = yield* botAny.channel.createThread(message.id, message.channelId)
 
 					yield* Effect.log(`Created thread: ${thread.id}`)
 

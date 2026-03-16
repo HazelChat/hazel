@@ -1,4 +1,5 @@
-import { Atom, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { Schema } from "effect"
 import { useCallback } from "react"
 import { platformStorageRuntime } from "~/lib/platform-storage"

@@ -266,7 +266,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			capacity: 100,
 			timeToLive: Duration.seconds(30),
 			lookup: (orgId: OrganizationId) =>
-				httpApiClient["bot-commands"].getEnabledIntegrations({ path: { orgId } }).pipe(
+				httpApiClient["bot-commands"].getEnabledIntegrations({ params: { orgId } }).pipe(
 					Effect.map((r) => new Set(r.providers)),
 					Effect.withSpan("bot.integration.getEnabled", { attributes: { orgId } }),
 				),
@@ -566,7 +566,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 
 		const startWebSocketGatewayLoop = (runtimeConfig: HazelBotRuntimeConfig) =>
 			Effect.gen(function* () {
-				const runtime = yield* Effect.runtime<any>()
+				const services = yield* Effect.services<any>()
 				let nextResumeOffset = yield* loadResumeOffset(runtimeConfig)
 				let nextSessionId = yield* loadGatewaySessionId()
 				let hasConnected = false
@@ -664,7 +664,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 									}
 									case "READY": {
 										sessionId = frame.sessionId
-										Runtime.runPromise(runtime)(
+										Effect.runPromiseWith(services)(
 											setBotState(
 												GATEWAY_SESSION_ID_STATE_KEY,
 												Schema.String,
@@ -700,7 +700,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 										return
 									}
 									case "DISPATCH": {
-										Runtime.runPromise(runtime)(
+										Effect.runPromiseWith(services)(
 											Effect.gen(function* () {
 												yield* processGatewayBatch(frame.events)
 												yield* gatewaySessionStore.save(
@@ -741,7 +741,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 										return
 									}
 									case "INVALID_SESSION": {
-										Runtime.runPromise(runtime)(
+										Effect.runPromiseWith(services)(
 											Effect.gen(function* () {
 												yield* gatewaySessionStore.save(
 													authContext.botId as BotId,
@@ -801,30 +801,28 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						}),
 				})
 
-				yield* Effect.forkScoped(
-					Effect.forever(
-						Effect.gen(function* () {
-							const nextState = yield* connectOnce.pipe(
-								Effect.catch((error) =>
-									Effect.logWarning("Bot gateway websocket failed, retrying", {
-										error,
-										botId: authContext.botId,
-										offset: nextResumeOffset,
+				yield* Effect.forever(
+					Effect.gen(function* () {
+						const nextState = yield* connectOnce.pipe(
+							Effect.catch((error) =>
+								Effect.logWarning("Bot gateway websocket failed, retrying", {
+									error,
+									botId: authContext.botId,
+									offset: nextResumeOffset,
+									sessionId: nextSessionId,
+								}).pipe(
+									Effect.andThen(Effect.sleep(Duration.seconds(1))),
+									Effect.as({
+										resumeOffset: nextResumeOffset,
 										sessionId: nextSessionId,
-									}).pipe(
-										Effect.andThen(Effect.sleep(Duration.seconds(1))),
-										Effect.as({
-											resumeOffset: nextResumeOffset,
-											sessionId: nextSessionId,
-										}),
-									),
+									}),
 								),
-							)
-							nextResumeOffset = nextState.resumeOffset
-							nextSessionId = nextState.sessionId
-						}).pipe(Effect.andThen(Effect.sleep(Duration.millis(250)))),
-					),
-				)
+							),
+						)
+						nextResumeOffset = nextState.resumeOffset
+						nextSessionId = nextState.sessionId
+					}).pipe(Effect.andThen(Effect.sleep(Duration.millis(250)))),
+				).pipe(Effect.forkScoped)
 			})
 
 		const startGatewayLoop = () =>
@@ -1031,7 +1029,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 			messageLimiter(
 				httpApiClient["api-v1-messages"]
 					.updateMessage({
-						path: { id: messageId },
+						params: { id: messageId },
 						payload: {
 							content: payload.content,
 							embeds: payload.embeds ?? null,
@@ -1048,7 +1046,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 								}),
 						),
 					),
-			)
+			) as any
 
 		return {
 			/**
@@ -1231,7 +1229,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					messageLimiter(
 						httpApiClient["api-v1-messages"]
 							.updateMessage({
-								path: { id: message.id },
+								params: { id: message.id },
 								payload: { content },
 							})
 							.pipe(
@@ -1258,7 +1256,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					messageLimiter(
 						httpApiClient["api-v1-messages"]
 							.deleteMessage({
-								path: { id },
+								params: { id },
 							})
 							.pipe(
 								Effect.mapError(
@@ -1282,7 +1280,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 					messageLimiter(
 						httpApiClient["api-v1-messages"]
 							.toggleReaction({
-								path: { id: message.id },
+								params: { id: message.id },
 								payload: {
 									emoji,
 									channelId: message.channelId,
@@ -1335,7 +1333,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				) =>
 					httpApiClient["api-v1-messages"]
 						.listMessages({
-							urlParams: {
+							query: {
 								channel_id: channelId,
 								starting_after: options?.startingAfter,
 								ending_before: options?.endingBefore,
@@ -1371,8 +1369,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						description?: string | null
 					},
 				) =>
-					rpc.channel
-						.update({
+					rpc["channel.update"]({
 							id: channel.id,
 							type: channel.type,
 							organizationId: channel.organizationId,
@@ -1381,7 +1378,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 							...updates,
 						})
 						.pipe(
-							Effect.map((r) => r.data),
+							Effect.map((r: any) => r.data),
 							Effect.withSpan("bot.channel.update", { attributes: { channelId: channel.id } }),
 						),
 
@@ -1395,8 +1392,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 * @throws MessageNotFoundError if the message doesn't exist
 				 */
 				createThread: (messageId: MessageId, channelId: ChannelId) =>
-					rpc.channel
-						.createThread({
+					rpc["channel.createThread"]({
 							messageId,
 						})
 						.pipe(
@@ -1408,7 +1404,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 									cause,
 								}),
 							),
-							Effect.map((r) => r.data),
+							Effect.map((r: any) => r.data),
 							Effect.withSpan("bot.channel.createThread", {
 								attributes: { messageId, channelId },
 							}),
@@ -1425,14 +1421,13 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 * @param memberId - Channel member ID
 				 */
 				start: (channelId: ChannelId, memberId: ChannelMemberId) =>
-					rpc.typingIndicator
-						.create({
+					rpc["typingIndicator.create"]({
 							channelId,
 							memberId,
 							lastTyped: Date.now(),
 						})
 						.pipe(
-							Effect.map((r) => r.data),
+							Effect.map((r: any) => r.data),
 							Effect.withSpan("bot.typing.start", { attributes: { channelId, memberId } }),
 						),
 
@@ -1441,12 +1436,11 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 * @param id - Typing indicator ID
 				 */
 				stop: (id: TypingIndicatorId) =>
-					rpc.typingIndicator
-						.delete({
+					rpc["typingIndicator.delete"]({
 							id,
 						})
 						.pipe(
-							Effect.map((r) => r.data),
+							Effect.map((r: any) => r.data),
 							Effect.withSpan("bot.typing.stop", { attributes: { typingIndicatorId: id } }),
 						),
 			},
@@ -1471,7 +1465,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 * ```
 				 */
 				getToken: (orgId: OrganizationId, provider: IntegrationConnection.IntegrationProvider) =>
-					httpApiClient["bot-commands"].getIntegrationToken({ path: { orgId, provider } }).pipe(
+					httpApiClient["bot-commands"].getIntegrationToken({ params: { orgId, provider } }).pipe(
 						Effect.withSpan("bot.integration.getToken", {
 							attributes: { orgId, provider },
 						}),
@@ -1493,7 +1487,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 * }
 				 * ```
 				 */
-				getEnabled: (orgId: OrganizationId) => enabledIntegrationsCache.get(orgId),
+				getEnabled: (orgId: OrganizationId) => Cache.get(enabledIntegrationsCache, orgId),
 
 				/**
 				 * Invalidate the enabled integrations cache for an organization.
@@ -1501,7 +1495,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 *
 				 * @param orgId - The organization ID to invalidate cache for
 				 */
-				invalidateCache: (orgId: OrganizationId) => enabledIntegrationsCache.invalidate(orgId),
+				invalidateCache: (orgId: OrganizationId) => Cache.invalidate(enabledIntegrationsCache, orgId),
 			},
 
 			/**
@@ -1559,7 +1553,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				<Args>(ctx: TypedCommandContext<Args>) =>
 				<A, E, R>(
 					effect: Effect.Effect<A, E, R>,
-				): Effect.Effect<A, CommandHandlerError | MessageSendError, R> =>
+				) =>
 					effect.pipe(
 						Effect.mapError(
 							(cause) =>
@@ -1660,7 +1654,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createStreamSessionInternal(
-							createMessageFnHelper,
+							createMessageFnHelper as any,
 							updateMessageFnHelper,
 							actorsService,
 							channelId,
@@ -1695,7 +1689,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 						const actorsService = yield* createActorsServiceFn()
 
 						return yield* createAIStreamSessionInternal(
-							createMessageFnHelper,
+							createMessageFnHelper as any,
 							updateMessageFnHelper,
 							actorsService,
 							channelId,
@@ -1730,7 +1724,7 @@ export class HazelBotClient extends ServiceMap.Service<HazelBotClient>()("HazelB
 				 */
 				withErrorHandler:
 					<Args>(ctx: TypedCommandContext<Args>, session: AIStreamSession) =>
-					<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, CommandHandlerError, R> =>
+					<A, E, R>(effect: Effect.Effect<A, E, R>) =>
 						effect.pipe(
 							Effect.mapError(
 								(cause) =>
@@ -1954,7 +1948,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 		process.env.RIVET_URL ??
 		DEFAULT_ACTORS_ENDPOINT
 
-	const AuthLayer = Layer.unwrapEffect(
+	const AuthLayer = Layer.unwrap(
 		createAuthContextFromToken(config.botToken, backendUrl).pipe(
 			Effect.map((context) => BotAuth.layer(context)),
 		),
@@ -1993,7 +1987,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	// Create logger layer with configurable level and format
 	// Defaults: INFO level, format based on NODE_ENV
 	// LOG_LEVEL env var overrides config (e.g. LOG_LEVEL=debug bun run dev)
-	const LoggerLayer = Layer.unwrapEffect(
+	const LoggerLayer = Layer.unwrap(
 		Effect.gen(function* () {
 			const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("development"))
 			const envLogLevel = yield* Config.string("LOG_LEVEL").pipe(Config.withDefault(""))
@@ -2001,7 +1995,7 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 
 			const resolvedLevel = envLogLevel
 				? logLevelFromString(envLogLevel)
-				: (config.logging?.level ?? LogLevel.Info)
+				: (config.logging?.level ?? "Info")
 
 			const logConfig: BotLogConfig = {
 				level: resolvedLevel,
@@ -2033,5 +2027,5 @@ export const createHazelBot = <Commands extends CommandGroup<any> = EmptyCommand
 	).pipe(Layer.provide(AuthLayer), Layer.provide(LoggerLayer), Layer.provide(TracingLayer))
 
 	// Create runtime
-	return ManagedRuntime.make(AllLayers)
+	return ManagedRuntime.make(AllLayers as Layer.Layer<HazelBotClient, any>)
 }

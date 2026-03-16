@@ -13,6 +13,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 		const db = yield* Database.Database
 		const outboxRepo = yield* MessageOutboxRepo
 		const connectConversationService = yield* ConnectConversationService
+		const messageReactionPolicy = yield* MessageReactionPolicy
+		const messageReactionRepo = yield* MessageReactionRepo
 
 		return {
 			"messageReaction.toggle": (payload) =>
@@ -23,8 +25,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								const user = yield* CurrentUser.Context
 								const { messageId, channelId, emoji } = payload
 
-								yield* MessageReactionPolicy.canList(messageId)
-								const existingReaction = yield* MessageReactionRepo.findByMessageUserEmoji(
+								yield* messageReactionPolicy.canList(messageId)
+								const existingReaction = yield* messageReactionRepo.findByMessageUserEmoji(
 									messageId,
 									user.id,
 									emoji,
@@ -41,8 +43,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 										emoji: existingReaction.value.emoji,
 										userId: existingReaction.value.userId,
 									} as const
-									yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
-									yield* MessageReactionRepo.deleteById(existingReaction.value.id)
+									yield* messageReactionPolicy.canDelete(existingReaction.value.id)
+									yield* messageReactionRepo.deleteById(existingReaction.value.id)
 									yield* outboxRepo.insert({
 										eventType: "reaction_deleted",
 										aggregateId: existingReaction.value.id,
@@ -64,10 +66,10 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 								}
 
 								// Otherwise, create a new reaction
-								yield* MessageReactionPolicy.canCreate(messageId)
+								yield* messageReactionPolicy.canCreate(messageId)
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(channelId)
-								const createdMessageReaction = yield* MessageReactionRepo.insert({
+								const createdMessageReaction = yield* messageReactionRepo.insert({
 									messageId,
 									channelId,
 									conversationId,
@@ -108,12 +110,12 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 							Effect.gen(function* () {
 								const user = yield* CurrentUser.Context
 
-								yield* MessageReactionPolicy.canCreate(payload.messageId)
+								yield* messageReactionPolicy.canCreate(payload.messageId)
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(
 										payload.channelId,
 									)
-								const createdMessageReaction = yield* MessageReactionRepo.insert({
+								const createdMessageReaction = yield* messageReactionRepo.insert({
 									...payload,
 									conversationId,
 									userId: user.id,
@@ -145,8 +147,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* MessageReactionPolicy.canUpdate(id)
-							const updatedMessageReaction = yield* MessageReactionRepo.update({
+							yield* messageReactionPolicy.canUpdate(id)
+							const updatedMessageReaction = yield* messageReactionRepo.update({
 								id,
 								...payload,
 							})
@@ -166,7 +168,7 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 					const txResult = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								const existing = yield* MessageReactionRepo.findById(id)
+								const existing = yield* messageReactionRepo.findById(id)
 								const deletedSyncPayload = Option.match(existing, {
 									onNone: () => null as null,
 									onSome: (value) =>
@@ -183,8 +185,8 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 										},
 								})
 
-								yield* MessageReactionPolicy.canDelete(id)
-								yield* MessageReactionRepo.deleteById(id)
+								yield* messageReactionPolicy.canDelete(id)
+								yield* messageReactionRepo.deleteById(id)
 
 								if (deletedSyncPayload !== null && Option.isSome(existing)) {
 									yield* outboxRepo.insert({

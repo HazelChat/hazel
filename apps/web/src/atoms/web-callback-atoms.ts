@@ -4,7 +4,7 @@
  * @description Effect Atom-based state management for web OAuth callback handling (JWT flow)
  */
 
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import {
 	MissingAuthCodeError,
 	OAuthCallbackError,

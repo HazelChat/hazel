@@ -131,7 +131,7 @@ export const runHazelBot = <Commands extends CommandGroup<any> = EmptyCommands>(
 			const bot = yield* HazelBotClient
 
 			// Run user's setup function
-			yield* options.setup(bot)
+			yield* options.setup(bot as any)
 
 			// Start the bot
 			yield* bot.start

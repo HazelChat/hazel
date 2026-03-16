@@ -3,7 +3,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type { Collection } from "@tanstack/db"
 import { createCollection } from "@tanstack/db"
 import type { Txid } from "@tanstack/electric-db-collection"
-import { Context, Effect, Layer } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 import { effectElectricCollectionOptions } from "./collection"
 import { DeleteError, InsertError, type InvalidTxIdError, type TxIdTimeoutError, UpdateError } from "./errors"
 import type { EffectElectricCollectionConfig } from "./types"
@@ -81,7 +81,7 @@ export interface ElectricCollectionService<
 /**
  * Create a tag for an Electric collection service.
  *
- * This factory uses `Context.Tag` instead of `Effect.Service` because collection
+ * This factory uses `ServiceMap.Service` instead of `Effect.Service` because collection
  * instances are created at runtime with dynamic configuration (shape URLs, schemas,
  * handlers) that vary per application context. The tag pattern allows:
  *
@@ -118,14 +118,14 @@ export interface ElectricCollectionService<
  */
 export const ElectricCollection = <T extends Row<unknown>, TKey extends string | number = string | number>(
 	id: string,
-): Context.Tag<ElectricCollectionService<T, TKey>, ElectricCollectionService<T, TKey>> =>
-	Context.GenericTag<ElectricCollectionService<T, TKey>>(`ElectricCollection<${id}>`)
+): ServiceMap.Service<ElectricCollectionService<T, TKey>, ElectricCollectionService<T, TKey>> =>
+	ServiceMap.Service<ElectricCollectionService<T, TKey>>(`ElectricCollection<${id}>`)
 
 /**
  * Create a Layer for an Electric collection service
  */
 export function makeElectricCollectionLayer<T extends StandardSchemaV1>(
-	tag: Context.Tag<
+	tag: ServiceMap.Service<
 		ElectricCollectionService<InferSchemaOutput<T>, string | number>,
 		ElectricCollectionService<InferSchemaOutput<T>, string | number>
 	>,
@@ -135,7 +135,7 @@ export function makeElectricCollectionLayer<T extends StandardSchemaV1>(
 ): Layer.Layer<ElectricCollectionService<InferSchemaOutput<T>, string | number>, never, never>
 
 export function makeElectricCollectionLayer<T extends Row<unknown>>(
-	tag: Context.Tag<
+	tag: ServiceMap.Service<
 		ElectricCollectionService<T, string | number>,
 		ElectricCollectionService<T, string | number>
 	>,
@@ -145,7 +145,7 @@ export function makeElectricCollectionLayer<T extends Row<unknown>>(
 ): Layer.Layer<ElectricCollectionService<T, string | number>, never, never>
 
 export function makeElectricCollectionLayer(
-	tag: Context.Tag<any, any>,
+	tag: ServiceMap.Service<any, any>,
 	config: EffectElectricCollectionConfig<any, any, any>,
 ): Layer.Layer<any, never, never> {
 	return Layer.succeed(

@@ -1,4 +1,4 @@
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 
 /**
  * Shared "now" signal used to periodically re-render presence UI.

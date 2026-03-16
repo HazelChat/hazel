@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"
@@ -29,8 +30,8 @@ function ConnectInvitesPage() {
 	const invitesResult = useAtomValue(listIncomingInvitesQuery(organizationId!))
 
 	const allInvites = useMemo(() => {
-		if (!Result.isSuccess(invitesResult)) return []
-		const data = Result.value(invitesResult)
+		if (!AsyncResult.isSuccess(invitesResult)) return []
+		const data = AsyncResult.value(invitesResult)
 		if (Option.isNone(data)) return []
 		return data.value.data
 	}, [invitesResult])

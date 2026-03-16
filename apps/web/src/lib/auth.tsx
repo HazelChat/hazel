@@ -1,4 +1,5 @@
-import { Atom, Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { Atom, AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import {
 	desktopInitAtom,
@@ -138,8 +139,8 @@ export function useAuth() {
 	}
 
 	return {
-		user: Result.getOrElse(userResult, () => null),
-		error: Result.error(userResult),
+		user: AsyncResult.getOrElse(userResult, () => null),
+		error: AsyncResult.error(userResult),
 		isLoading,
 		login,
 		logout,

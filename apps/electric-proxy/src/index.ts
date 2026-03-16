@@ -1,7 +1,7 @@
 import { BunRuntime } from "@effect/platform-bun"
 import { ProxyAuth } from "@hazel/auth/proxy"
 import { Database } from "@hazel/db"
-import { Effect, Layer, Logger, Metric, Runtime } from "effect"
+import { Effect, Layer, Logger, Metric } from "effect"
 import { validateBotToken } from "./auth/bot-auth"
 import { validateSession } from "./auth/user-auth"
 import {
@@ -181,7 +181,7 @@ const handleUserRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catchAll((error) =>
+		Effect.catch((error: unknown) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -376,7 +376,7 @@ const handleBotRequest = (request: Request) => {
 			}),
 		),
 		// Fallback for any unhandled errors - returns error details to client for debugging
-		Effect.catch((error) =>
+		Effect.catch((error: unknown) =>
 			Effect.gen(function* () {
 				const errorTag = (error as { _tag?: string })?._tag ?? "UnknownError"
 				yield* annotateHandledError(500, errorTag)
@@ -399,12 +399,13 @@ const handleBotRequest = (request: Request) => {
 				const duration = Date.now() - start
 				yield* Effect.annotateCurrentSpan("http.status_code", response.status)
 				yield* Effect.annotateCurrentSpan("http.response.status_code", response.status)
-				yield* Metric.increment(proxyRequestsTotal).pipe(
-					Effect.tagMetrics({
+				yield* Metric.update(
+					Metric.withAttributes(proxyRequestsTotal, {
 						route: "/bot/v1/shape",
 						auth_type: "bot",
 						status_code: String(response.status),
 					}),
+					1,
 				)
 				yield* Metric.update(proxyRequestDuration, duration)
 			}),
@@ -422,7 +423,7 @@ const handleBotRequest = (request: Request) => {
 // LAYERS
 // =============================================================================
 
-const DatabaseLive = Layer.unwrapEffect(
+const DatabaseLive = Layer.unwrap(
 	Effect.gen(function* () {
 		const config = yield* ProxyConfigService
 		yield* Effect.log("Connecting to database", { isDev: config.isDev })
@@ -433,10 +434,12 @@ const DatabaseLive = Layer.unwrapEffect(
 	}),
 )
 
-const LoggerLive = Layer.unwrapEffect(
+const LoggerLive = Layer.unwrap(
 	Effect.gen(function* () {
 		const config = yield* ProxyConfigService
-		return config.isDev ? Logger.pretty : Logger.structured
+		return config.isDev
+			? Logger.layer([Logger.consolePretty()])
+			: Logger.layer([Logger.withConsoleLog(Logger.formatStructured)])
 	}),
 ).pipe(Layer.provide(ProxyConfigService.layer))
 
@@ -467,7 +470,7 @@ const MainLive = DatabaseLive.pipe(
 // SERVER
 // =============================================================================
 
-const ServerLive = Layer.scopedDiscard(
+const ServerLive = Layer.effectDiscard(
 	Effect.gen(function* () {
 		const config = yield* ProxyConfigService
 
@@ -483,9 +486,10 @@ const ServerLive = Layer.scopedDiscard(
 			})
 		}
 
-		const runtime = yield* Effect.runtime<
+		const serviceMap = yield* Effect.services<
 			ProxyConfigService | Database.Database | AccessContextCacheService | ProxyAuth
 		>()
+		const run = Effect.runPromiseWith(serviceMap)
 
 		yield* Effect.acquireRelease(
 			Effect.sync(() =>
@@ -495,8 +499,8 @@ const ServerLive = Layer.scopedDiscard(
 					idleTimeout: 120,
 					routes: {
 						"/health": new Response("OK"), // Static response - zero allocation
-						"/v1/shape": (req) => Runtime.runPromise(runtime)(handleUserRequest(req)),
-						"/bot/v1/shape": (req) => Runtime.runPromise(runtime)(handleBotRequest(req)),
+						"/v1/shape": (req) => run(handleUserRequest(req)),
+						"/bot/v1/shape": (req) => run(handleBotRequest(req)),
 					},
 					fetch() {
 						return new Response("Not Found", { status: 404 })

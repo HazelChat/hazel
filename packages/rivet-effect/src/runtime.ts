@@ -51,7 +51,7 @@ export const getManagedRuntime = (context: unknown): AnyManagedRuntime | undefin
  * Only works when `R = never` (no unsatisfied requirements).
  */
 const runWithCurrentRuntime = <A, E>(effect: Effect.Effect<A, E, never>): Promise<A> =>
-	DefaultRuntime.runPromise(effect).catch((error) =>
+	Effect.runPromise(effect).catch((error: any) =>
 		Promise.reject(
 			new RuntimeExecutionError({
 				message: "Failed to execute effect with current runtime",

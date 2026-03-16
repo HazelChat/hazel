@@ -6,7 +6,7 @@
  */
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { Effect, FiberRef, type Tracer } from "effect"
+import { Effect, ServiceMap, type Tracer } from "effect"
 
 type GatewayEventType = string
 type GatewayEventOperation = string
@@ -52,12 +52,12 @@ export interface LogContext {
 }
 
 /**
- * FiberRef for fiber-local context propagation
+ * Reference for fiber-local context propagation
  * Allows context to flow through Effect operations without explicit passing
  */
-export const currentLogContext: FiberRef.FiberRef<LogContext | null> = FiberRef.unsafeMake<LogContext | null>(
-	null,
-)
+export const currentLogContext = ServiceMap.Reference<LogContext | null>("@hazel/bot-sdk/CurrentLogContext", {
+	defaultValue: () => null,
+})
 
 /**
  * Generate a unique correlation ID
@@ -206,17 +206,19 @@ export const withLogContext = <A, E, R>(
 	make: Effect.Effect<A, E, R>,
 	options?: { readonly parent?: Tracer.AnySpan },
 ): Effect.Effect<A, E, R> =>
-	effect.pipe(
+	make.pipe(
 		Effect.annotateLogs(contextToAnnotations(ctx)),
 		Effect.withSpan(spanName, { attributes: contextToSpanAttributes(ctx), ...options }),
-		(eff) => Effect.locally(eff, currentLogContext, ctx),
+		Effect.provideService(currentLogContext, ctx),
 	)
 
 /**
  * Get the current log context from the FiberRef
  * Returns null if no context is set
  */
-export const getLogContext: Effect.Effect<LogContext | null> = FiberRef.get(currentLogContext)
+export const getLogContext: Effect.Effect<LogContext | null> = Effect.gen(function* () {
+	return yield* currentLogContext
+})
 
 /**
  * Get the current correlation ID from context

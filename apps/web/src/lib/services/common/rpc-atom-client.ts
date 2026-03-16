@@ -1,7 +1,7 @@
 import { Reactivity } from "effect/unstable/reactivity"
 import { FetchHttpClient } from "effect/unstable/http"
 import { RpcClient as RpcClientBuilder, RpcSerialization } from "effect/unstable/rpc"
-import { AtomRpc } from "@effect/atom-react"
+import { AtomRpc } from "effect/unstable/reactivity"
 import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
 import {
 	AttachmentRpcs,
@@ -76,7 +76,7 @@ if (import.meta.env.DEV) {
 	setRpcTypeResolver(createRpcTypeResolver([AllRpcs]))
 }
 
-export class HazelRpcClient extends AtomRpc.Tag<HazelRpcClient>()("HazelRpcClient", {
+export class HazelRpcClient extends AtomRpc.Service<HazelRpcClient>()("HazelRpcClient", {
 	group: AllRpcs,
 	// @ts-expect-error
 	protocol: AtomRpcProtocolLive,

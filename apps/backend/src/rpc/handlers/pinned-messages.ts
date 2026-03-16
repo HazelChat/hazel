@@ -22,6 +22,10 @@ import { PinnedMessagePolicy } from "../../policies/pinned-message-policy"
 export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const messagePolicy = yield* MessagePolicy
+		const messageRepo = yield* MessageRepo
+		const pinnedMessagePolicy = yield* PinnedMessagePolicy
+		const pinnedMessageRepo = yield* PinnedMessageRepo
 
 		return {
 			"pinnedMessage.create": (payload) =>
@@ -30,8 +34,8 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* PinnedMessagePolicy.canCreate(payload.channelId)
-							const createdPinnedMessage = yield* PinnedMessageRepo.insert({
+							yield* pinnedMessagePolicy.canCreate(payload.channelId)
+							const createdPinnedMessage = yield* pinnedMessageRepo.insert({
 								channelId: payload.channelId,
 								messageId: payload.messageId,
 								pinnedBy: user.id,
@@ -52,8 +56,8 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* PinnedMessagePolicy.canUpdate(id)
-							const updatedPinnedMessage = yield* PinnedMessageRepo.update({
+							yield* pinnedMessagePolicy.canUpdate(id)
+							const updatedPinnedMessage = yield* pinnedMessageRepo.update({
 								id,
 								...payload,
 							})
@@ -72,8 +76,8 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* PinnedMessagePolicy.canDelete(id)
-							yield* PinnedMessageRepo.deleteById(id)
+							yield* pinnedMessagePolicy.canDelete(id)
+							yield* pinnedMessageRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 

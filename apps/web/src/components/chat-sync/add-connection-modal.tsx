@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
@@ -57,7 +58,7 @@ export function AddConnectionModal({
 
 	const guilds = useMemo(
 		() =>
-			Result.builder(guildsResult)
+			AsyncResult.builder(guildsResult)
 				.onSuccess((data) => data?.guilds ?? [])
 				.orElse(() => []),
 		[guildsResult],
@@ -133,7 +134,7 @@ export function AddConnectionModal({
 				</ModalHeader>
 
 				<ModalBody className="flex flex-col gap-5">
-					{Result.isInitial(guildsResult) && (
+					{AsyncResult.isInitial(guildsResult) && (
 						<div className="flex items-center justify-center py-8">
 							<div className="flex items-center gap-3 text-muted-fg">
 								<div className="size-5 animate-spin rounded-full border-2 border-border border-t-primary" />
@@ -141,7 +142,7 @@ export function AddConnectionModal({
 							</div>
 						</div>
 					)}
-					{Result.isFailure(guildsResult) && (
+					{AsyncResult.isFailure(guildsResult) && (
 						<div className="rounded-lg border border-border bg-bg-muted/20 p-4">
 							<p className="font-medium text-fg text-sm">Connect Discord first</p>
 							<p className="mt-1 text-muted-fg text-sm">
@@ -157,7 +158,7 @@ export function AddConnectionModal({
 							</Button>
 						</div>
 					)}
-					{Result.isSuccess(guildsResult) && (
+					{AsyncResult.isSuccess(guildsResult) && (
 						<div className="flex flex-col gap-3">
 							<Label>Discord Server</Label>
 							{selectedGuild ? (
@@ -222,7 +223,7 @@ export function AddConnectionModal({
 					<Button
 						intent="primary"
 						onPress={handleSubmit}
-						isDisabled={!selectedGuild || isCreating || !Result.isSuccess(guildsResult)}
+						isDisabled={!selectedGuild || isCreating || !AsyncResult.isSuccess(guildsResult)}
 						isPending={isCreating}
 					>
 						{isCreating ? "Connecting..." : "Connect"}

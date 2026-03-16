@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import {
 	type AttachmentId,
@@ -283,7 +284,7 @@ export function ChatProvider({ channelId, organizationId, children, onMessageSen
 	const setUploadingFiles = useAtomSet(uploadingFilesAtomFamily(channelId))
 
 	const channelResult = useAtomValue(channelByIdAtomFamily(channelId))
-	const channel = Result.getOrElse(channelResult, () => undefined)
+	const channel = AsyncResult.getOrElse(channelResult, () => undefined)
 
 	// Track pending thread creation to disable composer until thread is created
 	const [pendingThreadChannelId, setPendingThreadChannelId] = useState<ChannelId | null>(null)

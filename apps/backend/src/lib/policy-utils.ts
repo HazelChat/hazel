@@ -1,7 +1,7 @@
 import { CurrentUser, ErrorUtils, policy } from "@hazel/domain"
 import type { ApiScope } from "@hazel/domain/scopes"
 import { CurrentRpcScopes } from "@hazel/domain/scopes"
-import { Effect, FiberRef } from "effect"
+import { Effect } from "effect"
 
 export type OrganizationRole = "admin" | "member" | "owner"
 
@@ -28,7 +28,7 @@ export const withPolicyUnauthorized = <A, E, R>(
 	entity: string,
 	action: string,
 	make: Effect.Effect<A, E, R>,
-) => ErrorUtils.refailUnauthorized(entity, action)(effect)
+) => ErrorUtils.refailUnauthorized(entity, action)(make)
 
 /**
  * Reads the annotated scope from CurrentRpcScopes (injected by ScopeInjectionMiddleware)
@@ -44,17 +44,18 @@ export const withPolicyUnauthorized = <A, E, R>(
  */
 export const withAnnotatedScope = <A, E, R>(
 	fn: (scope: ApiScope) => Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> =>
-	Effect.flatMap(FiberRef.get(CurrentRpcScopes), (scopes) => {
+): Effect.Effect<A, E, R | CurrentRpcScopes> =>
+	Effect.gen(function* () {
+		const scopes = yield* CurrentRpcScopes
 		if (scopes.length === 0) {
-			return Effect.die(
+			return yield* Effect.die(
 				new Error("No RequiredScopes annotation on this RPC — cannot resolve annotated scope"),
 			)
 		}
 		if (scopes.length > 1) {
-			return Effect.die(
+			return yield* Effect.die(
 				new Error(`withAnnotatedScope only supports single-scope RPCs; got [${scopes.join(", ")}]`),
 			)
 		}
-		return fn(scopes[0]!)
+		return yield* fn(scopes[0]!)
 	})

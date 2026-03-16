@@ -1,4 +1,4 @@
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Schema } from "effect"
 import { platformStorageRuntime } from "~/lib/platform-storage"
 

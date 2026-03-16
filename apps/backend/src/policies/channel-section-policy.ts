@@ -8,7 +8,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class ChannelSectionPolicy extends ServiceMap.Service<ChannelSectionPolicy>()(
 	"ChannelSectionPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "ChannelSection" as const
 
 			const orgResolver = yield* OrgResolver
@@ -72,7 +72,7 @@ export class ChannelSectionPolicy extends ServiceMap.Service<ChannelSectionPolic
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelSectionRepo.layer),
 		Layer.provide(OrgResolver.layer),
 	)

@@ -1,13 +1,14 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import { useMemo } from "react"
 import { LinkPreviewClient } from "~/lib/services/common/link-preview-client"
 
 export function LinkPreview({ url }: { url: string }) {
 	const previewResult = useAtomValue(LinkPreviewClient.query("linkPreview", "get", { urlParams: { url } }))
-	const og = Result.getOrElse(previewResult, () => null)
-	const isLoading = Result.isInitial(previewResult)
+	const og = AsyncResult.getOrElse(previewResult, () => null)
+	const isLoading = AsyncResult.isInitial(previewResult)
 
 	const host = useMemo(() => {
 		const resolvedUrl = og?.url || url

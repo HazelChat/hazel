@@ -8,6 +8,7 @@ import { HazelApi } from "../api"
 export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePublic", (handlers) =>
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const userPresenceStatusRepo = yield* UserPresenceStatusRepo
 
 		return handlers.handle(
 			"markOffline",
@@ -16,7 +17,7 @@ export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePu
 				yield* db
 					.transaction(
 						Effect.asVoid(
-							UserPresenceStatusRepo.updateStatus({
+							userPresenceStatusRepo.updateStatus({
 								userId: payload.userId,
 								status: "offline",
 								customMessage: null,

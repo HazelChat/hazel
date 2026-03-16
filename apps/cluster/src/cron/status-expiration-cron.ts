@@ -5,7 +5,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
 // Run every minute
-const everyMinute = Cron.unsafeParse("* * * * *")
+const everyMinute = Cron.parseUnsafe("* * * * *")
 
 /**
  * Cron job that clears expired custom statuses.

@@ -1,4 +1,5 @@
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { ChannelId } from "@hazel/schema"
 import { useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
@@ -44,7 +45,7 @@ function ThreadMessageListContent({ threadChannelId }: ThreadMessageListProps) {
 
 	// Query thread messages with author data using the new atom
 	const messagesResult = useAtomValue(threadMessagesWithAuthorAtomFamily({ threadChannelId }))
-	const messages = Result.getOrElse(messagesResult, () => []) as MessageWithPinned[]
+	const messages = AsyncResult.getOrElse(messagesResult, () => []) as MessageWithPinned[]
 
 	// Find the hovered message for the toolbar
 	const hoveredMessage = useMemo(

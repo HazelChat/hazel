@@ -8,12 +8,12 @@ export const GetCurrentTime = Tool.make("get_current_time", {
 
 export const Calculate = Tool.make("calculate", {
 	description: "Perform basic arithmetic calculations",
-	parameters: {
+	parameters: Schema.Struct({
 		operation: Schema.Literals(["add", "subtract", "multiply", "divide"]).annotate({
 			description: "The arithmetic operation to perform",
 		}),
 		a: Schema.Number.annotate({ description: "First operand" }),
 		b: Schema.Number.annotate({ description: "Second operand" }),
-	},
+	}),
 	success: Schema.Number,
 })

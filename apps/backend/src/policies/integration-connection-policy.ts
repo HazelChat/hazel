@@ -7,7 +7,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class IntegrationConnectionPolicy extends ServiceMap.Service<IntegrationConnectionPolicy>()(
 	"IntegrationConnectionPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "IntegrationConnection" as const
 
 			const orgResolver = yield* OrgResolver
@@ -56,5 +56,5 @@ export class IntegrationConnectionPolicy extends ServiceMap.Service<IntegrationC
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(Layer.provide(OrgResolver.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(OrgResolver.layer))
 }

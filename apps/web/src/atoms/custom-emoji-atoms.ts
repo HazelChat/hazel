@@ -1,4 +1,4 @@
-import { Atom, Result } from "@effect/atom-react"
+import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import type { OrganizationId } from "@hazel/schema"
 import { and, eq, isNull } from "@tanstack/db"
 import { customEmojiCollection } from "~/db/collections"
@@ -24,7 +24,7 @@ export const customEmojisForOrgAtomFamily = Atom.family((orgId: OrganizationId) 
 export const customEmojiMapAtomFamily = Atom.family((orgId: OrganizationId) =>
 	Atom.make((get) => {
 		const emojisResult = get(customEmojisForOrgAtomFamily(orgId))
-		const emojis = Result.getOrElse(emojisResult, () => [])
+		const emojis = AsyncResult.getOrElse(emojisResult, () => [])
 
 		const map = new Map<string, { name: string; imageUrl: string }>()
 		for (const emoji of emojis) {

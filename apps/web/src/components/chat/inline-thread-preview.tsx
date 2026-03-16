@@ -1,4 +1,5 @@
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { formatDistanceToNow } from "date-fns"
@@ -33,7 +34,7 @@ export function InlineThreadPreview({
 
 	// Get total thread message count using atom
 	const countResult = useAtomValue(threadMessageCountAtomFamily(threadChannelId))
-	const countData = Result.getOrElse(countResult, () => [])
+	const countData = AsyncResult.getOrElse(countResult, () => [])
 	const totalCount = countData?.[0]?.count ?? 0
 
 	// Get last message timestamp and unique authors for avatar stack
@@ -135,7 +136,7 @@ function AvatarStack({ authorIds }: { authorIds: UserId[] }) {
 
 function AvatarStackItem({ authorId, index }: { authorId: UserId; index: number }) {
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(authorId))
-	const data = Result.getOrElse(userPresenceResult, () => [])
+	const data = AsyncResult.getOrElse(userPresenceResult, () => [])
 	const user = data[0]?.user
 	const authorIdentity = useChatAuthorIdentity(authorId, user)
 

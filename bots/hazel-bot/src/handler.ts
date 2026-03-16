@@ -44,7 +44,7 @@ export const handleAIRequest = (params: {
 	Effect.gen(function* () {
 		const { bot, message, channelId, orgId } = params
 
-		const enabledIntegrations = yield* bot.integration.getEnabled(orgId)
+		const enabledIntegrations = yield* (bot as any).integration.getEnabled(orgId)
 
 		yield* Effect.log(`Enabled integrations for org ${orgId}:`, {
 			integrations: Array.from(enabledIntegrations),
@@ -78,7 +78,7 @@ export const handleAIRequest = (params: {
 
 		// Use acquireUseRelease for guaranteed cleanup of the streaming session.
 		yield* Effect.acquireUseRelease(
-			bot.ai.stream(channelId, {
+			(bot as any).ai.stream(channelId, {
 				model: modelName,
 				showThinking: true,
 				showToolCalls: true,
@@ -88,7 +88,7 @@ export const handleAIRequest = (params: {
 					throbbing: true,
 				},
 			}),
-			(session) =>
+			(session: any) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Created streaming message ${session.messageId}`)
 
@@ -124,21 +124,30 @@ export const handleAIRequest = (params: {
 					}),
 				),
 			// Release: on failure/interrupt, persist the error state
-			(session, exit) =>
+			(session: any, exit) =>
 				Exit.isSuccess(exit)
 					? Effect.void
 					: Effect.gen(function* () {
 							const cause = exit.cause
 							yield* Effect.logError("Agent streaming failed", { error: cause })
 
-							const userMessage: string = Cause.match(cause, {
-								onEmpty: "Request was cancelled.",
-								onFail: (error) => mapErrorToUserMessage(error),
-								onDie: () => "An unexpected error occurred.",
-								onInterrupt: () => "Request was cancelled.",
-								onSequential: (left: string) => left,
-								onParallel: (left: string) => left,
-							})
+							// Extract a user-facing message from the cause
+							const failReason = cause.reasons.find(Cause.isFailReason)
+							const dieReason = cause.reasons.find(Cause.isDieReason)
+							const interruptReason = cause.reasons.find(Cause.isInterruptReason)
+
+							let userMessage: string
+							if (failReason) {
+								userMessage = mapErrorToUserMessage(failReason.error)
+							} else if (dieReason) {
+								userMessage = "An unexpected error occurred."
+							} else if (interruptReason) {
+								userMessage = "Request was cancelled."
+							} else if (cause.reasons.length === 0) {
+								userMessage = "Request was cancelled."
+							} else {
+								userMessage = "An unexpected error occurred."
+							}
 
 							yield* session.fail(userMessage).pipe(Effect.ignore)
 						}),
@@ -147,9 +156,9 @@ export const handleAIRequest = (params: {
 		// Provide the LanguageModel dynamically based on config
 		Effect.provideServiceEffect(
 			LanguageModel.LanguageModel,
-			Config.string("AI_MODEL").pipe(
-				Config.withDefault("google/gemini-3-flash-preview"),
-				Effect.flatMap((model) => makeOpenRouterModel(model)),
-			),
+			Effect.gen(function* () {
+				const model = yield* Config.string("AI_MODEL").pipe(Config.withDefault("google/gemini-3-flash-preview"))
+				return yield* makeOpenRouterModel(model)
+			}),
 		),
 	)

@@ -18,7 +18,7 @@ import {
 	UpdateBotSettingsResponse,
 } from "@hazel/domain/http"
 import { Redis } from "@hazel/effect-bun"
-import { Context, Duration, Effect, Option, Schedule, Stream } from "effect"
+import { ServiceMap, Duration, Effect, Option, Schedule, Stream } from "effect"
 import { HazelApi } from "../api.ts"
 import { BotGatewayService } from "../services/bot-gateway-service.ts"
 import { IntegrationTokenService } from "../services/integration-token-service.ts"
@@ -107,7 +107,7 @@ interface CommandSseStreamOptions {
 	readonly botId: string
 	readonly botName: string
 	readonly channel: string
-	readonly redis: Pick<Context.Tag.Service<typeof Redis>, "subscribe">
+	readonly redis: Pick<ServiceMap.Service.Shape<typeof Redis>, "subscribe">
 	readonly heartbeatInterval?: Duration.DurationInput
 }
 

@@ -67,7 +67,7 @@ const refreshOAuthToken = (
 export class IntegrationTokenService extends ServiceMap.Service<IntegrationTokenService>()(
 	"IntegrationTokenService",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const encryption = yield* IntegrationEncryption
 			const tokenRepo = yield* IntegrationTokenRepo
 			const connectionRepo = yield* IntegrationConnectionRepo
@@ -439,7 +439,7 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(DatabaseLive),
 		Layer.provide(IntegrationEncryption.layer),
 		Layer.provide(IntegrationTokenRepo.layer),

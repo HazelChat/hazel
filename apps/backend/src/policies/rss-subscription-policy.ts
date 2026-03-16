@@ -9,7 +9,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class RssSubscriptionPolicy extends ServiceMap.Service<RssSubscriptionPolicy>()(
 	"RssSubscriptionPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "RssSubscription" as const
 
 			const channelRepo = yield* ChannelRepo
@@ -98,7 +98,7 @@ export class RssSubscriptionPolicy extends ServiceMap.Service<RssSubscriptionPol
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelRepo.layer),
 		Layer.provide(RssSubscriptionRepo.layer),
 		Layer.provide(OrgResolver.layer),

@@ -1,4 +1,5 @@
-import { Atom, Result, useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { Atom, AsyncResult } from "effect/unstable/reactivity"
+import { useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, UserId } from "@hazel/schema"
 import { eq } from "@tanstack/db"
 import { DateTime, Duration, Effect } from "effect"
@@ -221,7 +222,7 @@ export const currentChannelIdAtom = Atom.make((get) => {
  * within the timeout period, the server-side cron job marks the user offline.
  */
 const heartbeatAtom = Atom.make((get) => {
-	const user = Result.getOrElse(get(userAtom), () => null)
+	const user = AsyncResult.getOrElse(get(userAtom), () => null)
 
 	// Skip if no user
 	if (!user?.id) return null
@@ -294,8 +295,8 @@ const userSettingsAtomFamily = Atom.family((userId: UserId) =>
  * Reads from userAtom and returns the presence data
  */
 const currentUserPresenceAtom = Atom.make((get) => {
-	const user = Result.getOrElse(get(userAtom), () => null)
-	if (!user?.id) return Result.initial(false)
+	const user = AsyncResult.getOrElse(get(userAtom), () => null)
+	if (!user?.id) return AsyncResult.initial(false)
 
 	return get(currentUserPresenceAtomFamily(user.id))
 })
@@ -418,13 +419,13 @@ export function usePresence() {
 	// Subscribe to atoms for return values (these cause re-renders, but that's expected for consumers)
 	const nowMs = useAtomValue(presenceNowSignal)
 	const presenceResult = useAtomValue(currentUserPresenceAtom)
-	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
+	const currentPresence = AsyncResult.getOrElse(presenceResult, () => undefined)
 	const computedStatus = useAtomValue(computedPresenceStatusAtom)
 	const afkState = useAtomValue(afkStateAtom)
 
 	// Query current user's settings for quiet hours
 	const userSettingsResult = useAtomValue(userSettingsAtomFamily(user?.id as UserId))
-	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+	const userSettings = AsyncResult.getOrElse(userSettingsResult, () => undefined)
 
 	// Compute quiet hours for current user
 	const quietHours = useMemo((): QuietHoursInfo | undefined => {
@@ -552,7 +553,7 @@ export interface QuietHoursInfo {
  */
 export function useCurrentUserStatus() {
 	const presenceResult = useAtomValue(currentUserPresenceAtom)
-	const currentPresence = Result.getOrElse(presenceResult, () => undefined)
+	const currentPresence = AsyncResult.getOrElse(presenceResult, () => undefined)
 
 	return {
 		statusEmoji: currentPresence?.statusEmoji ?? null,
@@ -569,9 +570,9 @@ export function useCurrentUserStatus() {
  */
 export function useUserStatus(userId: UserId) {
 	const presenceResult = useAtomValue(currentUserPresenceAtomFamily(userId))
-	const presence = Result.getOrElse(presenceResult, () => undefined)
+	const presence = AsyncResult.getOrElse(presenceResult, () => undefined)
 	const userSettingsResult = useAtomValue(userSettingsAtomFamily(userId))
-	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+	const userSettings = AsyncResult.getOrElse(userSettingsResult, () => undefined)
 
 	const quietHours = useMemo((): QuietHoursInfo | undefined => {
 		if (userSettings?.settings?.showQuietHoursInStatus === false) return undefined
@@ -603,9 +604,9 @@ export function useUserStatus(userId: UserId) {
 export function useUserPresence(userId: UserId) {
 	const nowMs = useAtomValue(presenceNowSignal)
 	const presenceResult = useAtomValue(currentUserPresenceAtomFamily(userId))
-	const presence = Result.getOrElse(presenceResult, () => undefined)
+	const presence = AsyncResult.getOrElse(presenceResult, () => undefined)
 	const userSettingsResult = useAtomValue(userSettingsAtomFamily(userId))
-	const userSettings = Result.getOrElse(userSettingsResult, () => undefined)
+	const userSettings = AsyncResult.getOrElse(userSettingsResult, () => undefined)
 
 	// Compute quiet hours state
 	const quietHours = useMemo((): QuietHoursInfo | undefined => {

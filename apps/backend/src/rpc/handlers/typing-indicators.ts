@@ -25,6 +25,8 @@ import { TypingIndicatorPolicy } from "../../policies/typing-indicator-policy"
 export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const typingIndicatorPolicy = yield* TypingIndicatorPolicy
+		const typingIndicatorRepo = yield* TypingIndicatorRepo
 
 		return {
 			"typingIndicator.create": (payload) =>
@@ -38,8 +40,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							})
 
 							// Use upsert to create or update typing indicator
-							yield* TypingIndicatorPolicy.canCreate(payload.channelId)
-							const result = yield* TypingIndicatorRepo.upsertByChannelAndMember({
+							yield* typingIndicatorPolicy.canCreate(payload.channelId)
+							const result = yield* typingIndicatorRepo.upsertByChannelAndMember({
 								channelId: payload.channelId,
 								memberId: payload.memberId,
 								lastTyped: payload.lastTyped ?? Date.now(),
@@ -72,8 +74,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 								typingIndicatorId: id,
 							})
 
-							yield* TypingIndicatorPolicy.canUpdate(id)
-							const typingIndicator = yield* TypingIndicatorRepo.update({
+							yield* typingIndicatorPolicy.canUpdate(id)
+							const typingIndicator = yield* typingIndicatorRepo.update({
 								...payload,
 								id,
 								lastTyped: Date.now(),
@@ -103,8 +105,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 							})
 
 							// First find the typing indicator to return it
-							yield* TypingIndicatorPolicy.canRead(id)
-							const existingOption = yield* TypingIndicatorRepo.findById(id)
+							yield* typingIndicatorPolicy.canRead(id)
+							const existingOption = yield* typingIndicatorRepo.findById(id)
 
 							if (Option.isNone(existingOption)) {
 								return yield* Effect.fail(
@@ -114,8 +116,8 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 
 							const existing = existingOption.value
 
-							yield* TypingIndicatorPolicy.canDelete({ id })
-							yield* TypingIndicatorRepo.deleteById(id)
+							yield* typingIndicatorPolicy.canDelete({ id })
+							yield* typingIndicatorRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 							yield* Effect.logDebug("typingIndicator.delete succeeded", {

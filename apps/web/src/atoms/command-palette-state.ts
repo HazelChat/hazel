@@ -1,4 +1,4 @@
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import type { FilterType, SearchFilter } from "~/lib/search-filter-parser"
 
 /**

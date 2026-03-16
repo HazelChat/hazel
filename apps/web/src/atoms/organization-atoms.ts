@@ -1,4 +1,4 @@
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import type { OrganizationId } from "@hazel/schema"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 

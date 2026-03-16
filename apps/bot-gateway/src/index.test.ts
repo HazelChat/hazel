@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { ConfigProvider, Effect, Either, Layer, Option, Redacted, Runtime } from "effect"
+import { ConfigProvider, Effect, Layer, Option, Redacted, Result, ServiceMap } from "effect"
 import {
 	createGatewayServer,
 	GatewayStartupError,
@@ -40,8 +40,8 @@ const makeHub = () =>
 			),
 	}) as any
 
-const makeTestRuntime = async () =>
-	(await Effect.runPromise(Effect.runtime<never>())) as Runtime.Runtime<never>
+const makeTestServices = async () =>
+	(await Effect.runPromise(Effect.services<never>())) as ServiceMap.ServiceMap<never>
 
 describe("bot-gateway startup", () => {
 	it("maps config failures to GatewayStartupError", async () => {
@@ -49,16 +49,16 @@ describe("bot-gateway startup", () => {
 			Effect.scoped(
 				Layer.build(
 					InstrumentedConfigLive.pipe(
-						Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(new Map()))),
+						Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({}))),
 					),
-				).pipe(Effect.either),
+				).pipe(Effect.result),
 			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left).toBeInstanceOf(GatewayStartupError)
-			expect(result.left.dependency).toBe("config")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure).toBeInstanceOf(GatewayStartupError)
+			expect((result.failure as GatewayStartupError).dependency).toBe("config")
 		}
 	})
 
@@ -66,21 +66,21 @@ describe("bot-gateway startup", () => {
 		const result = await Effect.runPromise(
 			Effect.scoped(
 				Layer.build(
-					instrumentStartupLayer(Layer.fail(new Error("db unavailable")), {
+					instrumentStartupLayer(Layer.effectDiscard(Effect.fail(new Error("db unavailable"))), {
 						dependency: "database",
 						startMessage: "db start",
 						successMessage: "db ok",
 						failureMessage: "db failed",
 					}),
-				).pipe(Effect.either),
+				).pipe(Effect.result),
 			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left).toBeInstanceOf(GatewayStartupError)
-			expect(result.left.dependency).toBe("database")
-			expect(result.left.message).toBe("db failed")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure).toBeInstanceOf(GatewayStartupError)
+			expect((result.failure as GatewayStartupError).dependency).toBe("database")
+			expect((result.failure as GatewayStartupError).message).toBe("db failed")
 		}
 	})
 
@@ -88,20 +88,20 @@ describe("bot-gateway startup", () => {
 		const result = await Effect.runPromise(
 			Effect.scoped(
 				Layer.build(
-					instrumentStartupLayer(Layer.fail(new Error("redis unavailable")), {
+					instrumentStartupLayer(Layer.effectDiscard(Effect.fail(new Error("redis unavailable"))), {
 						dependency: "redis",
 						startMessage: "redis start",
 						successMessage: "redis ok",
 						failureMessage: "redis failed",
 					}),
-				).pipe(Effect.either),
+				).pipe(Effect.result),
 			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left).toBeInstanceOf(GatewayStartupError)
-			expect(result.left.dependency).toBe("redis")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure).toBeInstanceOf(GatewayStartupError)
+			expect((result.failure as GatewayStartupError).dependency).toBe("redis")
 		}
 	})
 
@@ -109,47 +109,47 @@ describe("bot-gateway startup", () => {
 		const result = await Effect.runPromise(
 			Effect.scoped(
 				Layer.build(
-					instrumentStartupLayer(Layer.fail(new Error("tracer unavailable")), {
+					instrumentStartupLayer(Layer.effectDiscard(Effect.fail(new Error("tracer unavailable"))), {
 						dependency: "tracer",
 						startMessage: "tracer start",
 						successMessage: "tracer ok",
 						failureMessage: "tracer failed",
 					}),
-				).pipe(Effect.either),
+				).pipe(Effect.result),
 			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left).toBeInstanceOf(GatewayStartupError)
-			expect(result.left.dependency).toBe("tracer")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure).toBeInstanceOf(GatewayStartupError)
+			expect((result.failure as GatewayStartupError).dependency).toBe("tracer")
 		}
 	})
 
 	it("maps server bind failures to GatewayStartupError", async () => {
-		const runtime = await makeTestRuntime()
+		const services = await makeTestServices()
 		const result = await Effect.runPromise(
 			Effect.scoped(
 				createGatewayServer({
 					config: TEST_CONFIG as any,
 					hub: makeHub(),
-					runtime,
+					runtime: services,
 					serve: () => {
 						throw new Error("bind failed")
 					},
-				}).pipe(Effect.either),
+				}).pipe(Effect.result),
 			),
 		)
 
-		expect(Either.isLeft(result)).toBe(true)
-		if (Either.isLeft(result)) {
-			expect(result.left).toBeInstanceOf(GatewayStartupError)
-			expect(result.left.dependency).toBe("server")
+		expect(Result.isFailure(result)).toBe(true)
+		if (Result.isFailure(result)) {
+			expect(result.failure).toBeInstanceOf(GatewayStartupError)
+			expect((result.failure as GatewayStartupError).dependency).toBe("server")
 		}
 	})
 
 	it("starts the server with a fake serve function and wires handlers", async () => {
-		const runtime = await makeTestRuntime()
+		const services = await makeTestServices()
 		let stopCalls = 0
 		let servedOptions: any = null
 
@@ -158,7 +158,7 @@ describe("bot-gateway startup", () => {
 				createGatewayServer({
 					config: TEST_CONFIG as any,
 					hub: makeHub(),
-					runtime,
+					runtime: services,
 					serve: (options: any) => {
 						servedOptions = options
 						return {

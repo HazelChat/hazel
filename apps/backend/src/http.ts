@@ -1,5 +1,5 @@
-import { HttpRouter } from "effect/unstable/http"
 import { Layer } from "effect"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HazelApi } from "./api"
 import { HttpMessagesApiLive } from "./routes/api-v1"
 import { HttpAuthLive } from "./routes/auth.http"
@@ -17,7 +17,7 @@ import { HttpRootLive } from "./routes/root.http"
 import { HttpUploadsLive } from "./routes/uploads.http"
 import { HttpWebhookLive } from "./routes/webhooks.http"
 
-export const HttpApiRoutes = HttpRouter.addHttpApi(HazelApi).pipe(
+export const HttpApiRoutes = HttpApiBuilder.layer(HazelApi).pipe(
 	Layer.provide(HttpRootLive),
 	Layer.provide(HttpAuthLive),
 	Layer.provide(HttpMessagesApiLive),

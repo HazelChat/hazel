@@ -21,7 +21,8 @@ export const RetryStrategy = {
 	 */
 	transientErrors: Schedule.exponential(Duration.millis(100), 2).pipe(
 		Schedule.jittered,
-		Schedule.whileInput((error) => {
+		Schedule.while((metadata) => {
+			const error = metadata.input
 			const tag =
 				typeof error === "object" && error !== null && "_tag" in error
 					? String((error as Record<string, unknown>)["_tag"])
@@ -42,7 +43,8 @@ export const RetryStrategy = {
 	 */
 	connectionErrors: Schedule.exponential(Duration.seconds(1), 2).pipe(
 		Schedule.jittered,
-		Schedule.whileInput((error) => {
+		Schedule.while((metadata) => {
+			const error = metadata.input
 			const tag =
 				typeof error === "object" && error !== null && "_tag" in error
 					? String((error as Record<string, unknown>)["_tag"])
@@ -60,7 +62,8 @@ export const RetryStrategy = {
 	 */
 	quickRetry: Schedule.exponential(Duration.millis(50), 2).pipe(
 		Schedule.jittered,
-		Schedule.whileInput((error) => {
+		Schedule.while((metadata) => {
+			const error = metadata.input
 			const tag =
 				typeof error === "object" && error !== null && "_tag" in error
 					? String((error as Record<string, unknown>)["_tag"])
@@ -78,15 +81,16 @@ export const RetryStrategy = {
 		schedule: Schedule.Schedule<A, E, R>,
 		options: {
 			readonly threshold?: number
-			readonly resetAfter?: Duration.DurationInput
+			readonly resetAfter?: Duration.Input
 		} = {},
 	) => {
 		const threshold = options.threshold ?? 5
-		const resetAfter = options.resetAfter ?? Duration.seconds(30)
 
 		return schedule.pipe(
-			Schedule.resetAfter(resetAfter),
-			Schedule.whileOutput((attempt) => (typeof attempt === "number" ? attempt < threshold : true)),
+			Schedule.while((metadata) => {
+				const attempt = metadata.output
+				return typeof attempt === "number" ? attempt < threshold : true
+			}),
 		)
 	},
 

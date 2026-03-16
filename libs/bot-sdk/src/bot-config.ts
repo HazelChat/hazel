@@ -5,7 +5,7 @@
  * Provides automatic validation and helpful error messages.
  */
 
-import { Config } from "effect"
+import { Config, type Effect } from "effect"
 
 const DEFAULT_ACTORS_URL = "https://rivet.hazel.sh"
 
@@ -28,4 +28,4 @@ export const BotEnvConfig = Config.all({
 	healthPort: Config.number("PORT").pipe(Config.withDefault(0)),
 })
 
-export type BotEnvConfig = typeof BotEnvConfig extends Config<infer T> ? T : never
+export type BotEnvConfig = Effect.Success<typeof BotEnvConfig>

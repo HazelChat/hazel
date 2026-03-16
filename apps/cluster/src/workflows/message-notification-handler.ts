@@ -2,7 +2,7 @@ import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, inArray, isNull, ne, or, schema, sql } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { ChannelMemberId, NotificationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Array, Effect, Option, Schema } from "effect"
+import { Array, Effect, Option, Result, Schema } from "effect"
 
 interface OrgMemberLookupRow {
 	orgMemberId: OrganizationMemberId
@@ -57,6 +57,7 @@ export const buildNotificationInsertRows = (
 export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkflow.toLayer(
 	Effect.fn("workflow.MessageNotification")(function* (
 		payload: Cluster.MessageNotificationWorkflowPayload,
+		_executionId: string,
 	) {
 		yield* Effect.annotateCurrentSpan("workflow.message_id", payload.messageId)
 		yield* Effect.annotateCurrentSpan("workflow.channel_id", payload.channelId)
@@ -82,17 +83,144 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 		)
 
 		// Activity 1: Get notification targets based on channel type and mentions
-		const membersResult = yield* Activity.make({
-			name: "GetChannelMembers",
-			success: Cluster.GetChannelMembersResult,
-			error: Cluster.GetChannelMembersError,
-			execute: Effect.gen(function* () {
-				const db = yield* Database.Database
+		const membersResult = yield* Effect.gen(function* () {
+			return yield* Activity.make({
+				name: "GetChannelMembers",
+				success: Cluster.GetChannelMembersResult,
+				error: Cluster.GetChannelMembersError,
+				execute: Effect.gen(function* () {
+					const db = yield* Database.Database
 
-				if (shouldNotifyAll) {
-					// DM/group or broadcast mention - notify all members (existing logic)
-					yield* Effect.logDebug(`Querying all channel members for channel ${payload.channelId}`)
+					if (shouldNotifyAll) {
+						// DM/group or broadcast mention - notify all members (existing logic)
+						yield* Effect.logDebug(`Querying all channel members for channel ${payload.channelId}`)
 
+						const channelMembers = yield* db
+							.execute((client) =>
+								client
+									.select({
+										id: schema.channelMembersTable.id,
+										channelId: schema.channelMembersTable.channelId,
+										userId: schema.channelMembersTable.userId,
+										isMuted: schema.channelMembersTable.isMuted,
+										notificationCount: schema.channelMembersTable.notificationCount,
+									})
+									.from(schema.channelMembersTable)
+									.leftJoin(
+										schema.userPresenceStatusTable,
+										eq(
+											schema.channelMembersTable.userId,
+											schema.userPresenceStatusTable.userId,
+										),
+									)
+									.where(
+										and(
+											eq(schema.channelMembersTable.channelId, payload.channelId),
+											eq(schema.channelMembersTable.isMuted, false),
+											ne(schema.channelMembersTable.userId, payload.authorId),
+											isNull(schema.channelMembersTable.deletedAt),
+											or(
+												// No presence record - send notification
+												isNull(schema.userPresenceStatusTable.userId),
+												// Has presence record - check suppressNotifications and activeChannel/status
+												and(
+													eq(
+														schema.userPresenceStatusTable.suppressNotifications,
+														false,
+													),
+													or(
+														isNull(schema.userPresenceStatusTable.activeChannelId),
+														ne(
+															schema.userPresenceStatusTable.activeChannelId,
+															payload.channelId,
+														),
+														ne(schema.userPresenceStatusTable.status, "online"),
+													),
+												),
+											),
+										),
+									),
+							)
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new Cluster.GetChannelMembersError({
+												channelId: payload.channelId,
+												message: "Failed to query channel members",
+												cause: err,
+											}),
+										),
+								}),
+							)
+
+						yield* Effect.annotateCurrentSpan("activity.members_count", channelMembers.length)
+
+						yield* Effect.logDebug(
+							`Found ${channelMembers.length} members to notify (all members mode)`,
+						)
+
+						return {
+							members: channelMembers,
+							totalCount: channelMembers.length,
+						}
+					}
+
+					// Regular channel - only notify mentioned users and reply-to author
+					yield* Effect.logDebug(
+						`Smart notification mode: ${mentions.userMentions.length} user mentions, reply to: ${payload.replyToMessageId ?? "none"}`,
+					)
+
+					const usersToNotify: UserId[] = [...mentions.userMentions]
+
+					// If this is a reply, get the original message author
+					if (payload.replyToMessageId) {
+						const replyToMessage = yield* db
+							.execute((client) =>
+								client
+									.select({ authorId: schema.messagesTable.authorId })
+									.from(schema.messagesTable)
+									.where(eq(schema.messagesTable.id, payload.replyToMessageId!))
+									.limit(1),
+							)
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new Cluster.GetChannelMembersError({
+												channelId: payload.channelId,
+												message: "Failed to query reply-to message author",
+												cause: err,
+											}),
+										),
+								}),
+							)
+
+						const replyAuthor = Array.head(replyToMessage).pipe(
+							Option.map((msg) => msg.authorId),
+							Option.filter((authorId) => authorId !== payload.authorId),
+						)
+						if (Option.isSome(replyAuthor)) {
+							yield* Effect.logDebug(
+								`Adding reply-to author ${replyAuthor.value} to notification list`,
+							)
+							usersToNotify.push(replyAuthor.value)
+						}
+					}
+
+					// Remove duplicates and the author
+					const uniqueUsersToNotify = Array.dedupe(usersToNotify).filter(
+						(userId) => userId !== payload.authorId,
+					)
+
+					yield* Effect.logDebug(`Unique users to notify: ${uniqueUsersToNotify.length}`)
+
+					if (uniqueUsersToNotify.length === 0) {
+						yield* Effect.logDebug("No users to notify in smart mode")
+						return { members: [], totalCount: 0 }
+					}
+
+					// Query only the members who should be notified
 					const channelMembers = yield* db
 						.execute((client) =>
 							client
@@ -106,26 +234,20 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 								.from(schema.channelMembersTable)
 								.leftJoin(
 									schema.userPresenceStatusTable,
-									eq(
-										schema.channelMembersTable.userId,
-										schema.userPresenceStatusTable.userId,
-									),
+									eq(schema.channelMembersTable.userId, schema.userPresenceStatusTable.userId),
 								)
 								.where(
 									and(
 										eq(schema.channelMembersTable.channelId, payload.channelId),
+										inArray(schema.channelMembersTable.userId, uniqueUsersToNotify),
 										eq(schema.channelMembersTable.isMuted, false),
-										ne(schema.channelMembersTable.userId, payload.authorId),
 										isNull(schema.channelMembersTable.deletedAt),
 										or(
 											// No presence record - send notification
 											isNull(schema.userPresenceStatusTable.userId),
 											// Has presence record - check suppressNotifications and activeChannel/status
 											and(
-												eq(
-													schema.userPresenceStatusTable.suppressNotifications,
-													false,
-												),
+												eq(schema.userPresenceStatusTable.suppressNotifications, false),
 												or(
 													isNull(schema.userPresenceStatusTable.activeChannelId),
 													ne(
@@ -145,7 +267,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 									Effect.fail(
 										new Cluster.GetChannelMembersError({
 											channelId: payload.channelId,
-											message: "Failed to query channel members",
+											message: "Failed to query channel members for mentions",
 											cause: err,
 										}),
 									),
@@ -154,135 +276,16 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 
 					yield* Effect.annotateCurrentSpan("activity.members_count", channelMembers.length)
 
-					yield* Effect.logDebug(
-						`Found ${channelMembers.length} members to notify (all members mode)`,
-					)
+					yield* Effect.logDebug(`Found ${channelMembers.length} members to notify (smart mode)`)
 
 					return {
 						members: channelMembers,
 						totalCount: channelMembers.length,
 					}
-				}
-
-				// Regular channel - only notify mentioned users and reply-to author
-				yield* Effect.logDebug(
-					`Smart notification mode: ${mentions.userMentions.length} user mentions, reply to: ${payload.replyToMessageId ?? "none"}`,
-				)
-
-				const usersToNotify: UserId[] = [...mentions.userMentions]
-
-				// If this is a reply, get the original message author
-				if (payload.replyToMessageId) {
-					const replyToMessage = yield* db
-						.execute((client) =>
-							client
-								.select({ authorId: schema.messagesTable.authorId })
-								.from(schema.messagesTable)
-								.where(eq(schema.messagesTable.id, payload.replyToMessageId!))
-								.limit(1),
-						)
-						.pipe(
-							Effect.catchTags({
-								DatabaseError: (err) =>
-									Effect.fail(
-										new Cluster.GetChannelMembersError({
-											channelId: payload.channelId,
-											message: "Failed to query reply-to message author",
-											cause: err,
-										}),
-									),
-							}),
-						)
-
-					const replyAuthor = Array.head(replyToMessage).pipe(
-						Option.map((msg) => msg.authorId),
-						Option.filter((authorId) => authorId !== payload.authorId),
-					)
-					if (Option.isSome(replyAuthor)) {
-						yield* Effect.logDebug(
-							`Adding reply-to author ${replyAuthor.value} to notification list`,
-						)
-						usersToNotify.push(replyAuthor.value)
-					}
-				}
-
-				// Remove duplicates and the author
-				const uniqueUsersToNotify = Array.dedupe(usersToNotify).filter(
-					(userId) => userId !== payload.authorId,
-				)
-
-				yield* Effect.logDebug(`Unique users to notify: ${uniqueUsersToNotify.length}`)
-
-				if (uniqueUsersToNotify.length === 0) {
-					yield* Effect.logDebug("No users to notify in smart mode")
-					return { members: [], totalCount: 0 }
-				}
-
-				// Query only the members who should be notified
-				const channelMembers = yield* db
-					.execute((client) =>
-						client
-							.select({
-								id: schema.channelMembersTable.id,
-								channelId: schema.channelMembersTable.channelId,
-								userId: schema.channelMembersTable.userId,
-								isMuted: schema.channelMembersTable.isMuted,
-								notificationCount: schema.channelMembersTable.notificationCount,
-							})
-							.from(schema.channelMembersTable)
-							.leftJoin(
-								schema.userPresenceStatusTable,
-								eq(schema.channelMembersTable.userId, schema.userPresenceStatusTable.userId),
-							)
-							.where(
-								and(
-									eq(schema.channelMembersTable.channelId, payload.channelId),
-									inArray(schema.channelMembersTable.userId, uniqueUsersToNotify),
-									eq(schema.channelMembersTable.isMuted, false),
-									isNull(schema.channelMembersTable.deletedAt),
-									or(
-										// No presence record - send notification
-										isNull(schema.userPresenceStatusTable.userId),
-										// Has presence record - check suppressNotifications and activeChannel/status
-										and(
-											eq(schema.userPresenceStatusTable.suppressNotifications, false),
-											or(
-												isNull(schema.userPresenceStatusTable.activeChannelId),
-												ne(
-													schema.userPresenceStatusTable.activeChannelId,
-													payload.channelId,
-												),
-												ne(schema.userPresenceStatusTable.status, "online"),
-											),
-										),
-									),
-								),
-							),
-					)
-					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.GetChannelMembersError({
-										channelId: payload.channelId,
-										message: "Failed to query channel members for mentions",
-										cause: err,
-									}),
-								),
-						}),
-					)
-
-				yield* Effect.annotateCurrentSpan("activity.members_count", channelMembers.length)
-
-				yield* Effect.logDebug(`Found ${channelMembers.length} members to notify (smart mode)`)
-
-				return {
-					members: channelMembers,
-					totalCount: channelMembers.length,
-				}
-			}),
+				}),
+			})
 		}).pipe(
-			Effect.tapError((err) =>
+			Effect.tapError((err: { readonly _tag: string; readonly retryable?: boolean }) =>
 				Effect.logError("GetChannelMembers activity failed", {
 					errorTag: err._tag,
 					retryable: err.retryable,
@@ -297,102 +300,40 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 		}
 
 		// Activity 2: Create notifications for all members
-		const notificationsResult = yield* Activity.make({
-			name: "CreateNotifications",
-			success: Cluster.CreateNotificationsResult,
-			error: Schema.Union([Cluster.CreateNotificationError]),
-			execute: Effect.gen(function* () {
-				const db = yield* Database.Database
-				const startedAt = Date.now()
-				yield* Effect.annotateCurrentSpan("activity.candidate_count", membersResult.members.length)
-				yield* Effect.logDebug(`Creating notifications for ${membersResult.members.length} members`)
+		const notificationsResult = yield* Effect.gen(function* () {
+			return yield* Activity.make({
+				name: "CreateNotifications",
+				success: Cluster.CreateNotificationsResult,
+				error: Schema.Union([Cluster.CreateNotificationError]),
+				execute: Effect.gen(function* () {
+					const db = yield* Database.Database
+					const startedAt = Date.now()
+					yield* Effect.annotateCurrentSpan("activity.candidate_count", membersResult.members.length)
+					yield* Effect.logDebug(`Creating notifications for ${membersResult.members.length} members`)
 
-				const userIds = membersResult.members.map((member) => member.userId)
-				const orgMembers = yield* db
-					.execute((client) =>
-						client
-							.select({
-								orgMemberId: schema.organizationMembersTable.id,
-								userId: schema.organizationMembersTable.userId,
-							})
-							.from(schema.organizationMembersTable)
-							.innerJoin(
-								schema.channelsTable,
-								eq(
-									schema.channelsTable.organizationId,
-									schema.organizationMembersTable.organizationId,
-								),
-							)
-							.where(
-								and(
-									eq(schema.channelsTable.id, payload.channelId),
-									inArray(schema.organizationMembersTable.userId, userIds),
-									isNull(schema.organizationMembersTable.deletedAt),
-								),
-							),
-					)
-					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.CreateNotificationError({
-										messageId: payload.messageId,
-										message: "Failed to query organization members",
-										cause: err,
-									}),
-								),
-						}),
-					)
-
-				const orgMemberLookup = buildOrgMemberLookup(orgMembers)
-				const { values, channelMemberByOrgMember } = buildNotificationInsertRows(
-					membersResult.members,
-					orgMemberLookup,
-					payload,
-				)
-
-				if (values.length === 0) {
-					yield* Effect.logDebug("No valid organization members to notify")
-					return { notificationIds: [], notifiedCount: 0 }
-				}
-
-				const insertedNotifications = yield* db
-					.execute((client) =>
-						client
-							.insert(schema.notificationsTable)
-							.values(values)
-							.onConflictDoNothing()
-							.returning({
-								id: schema.notificationsTable.id,
-								memberId: schema.notificationsTable.memberId,
-							}),
-					)
-					.pipe(
-						Effect.catchTags({
-							DatabaseError: (err) =>
-								Effect.fail(
-									new Cluster.CreateNotificationError({
-										messageId: payload.messageId,
-										message: "Failed to insert notification batch",
-										cause: err,
-									}),
-								),
-						}),
-					)
-
-				const insertedChannelMemberIds = Array.filterMap(insertedNotifications, (row) =>
-					Option.fromNullishOr(channelMemberByOrgMember.get(row.memberId)),
-				)
-
-				if (insertedChannelMemberIds.length > 0) {
-					yield* db
+					const userIds = membersResult.members.map((member: Cluster.ChannelMemberForNotification) => member.userId)
+					const orgMembers = yield* db
 						.execute((client) =>
 							client
-								.update(schema.channelMembersTable)
-								.set({
-									notificationCount: sql`${schema.channelMembersTable.notificationCount} + 1`,
+								.select({
+									orgMemberId: schema.organizationMembersTable.id,
+									userId: schema.organizationMembersTable.userId,
 								})
-								.where(inArray(schema.channelMembersTable.id, insertedChannelMemberIds)),
+								.from(schema.organizationMembersTable)
+								.innerJoin(
+									schema.channelsTable,
+									eq(
+										schema.channelsTable.organizationId,
+										schema.organizationMembersTable.organizationId,
+									),
+								)
+								.where(
+									and(
+										eq(schema.channelsTable.id, payload.channelId),
+										inArray(schema.organizationMembersTable.userId, userIds),
+										isNull(schema.organizationMembersTable.deletedAt),
+									),
+								),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -400,31 +341,96 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 									Effect.fail(
 										new Cluster.CreateNotificationError({
 											messageId: payload.messageId,
-											message: "Failed to increment notification counts",
+											message: "Failed to query organization members",
 											cause: err,
 										}),
 									),
 							}),
 						)
-				}
 
-				const notificationIds = insertedNotifications.map((row) => row.id) as NotificationId[]
-				yield* Effect.annotateCurrentSpan("activity.eligible_count", values.length)
-				yield* Effect.annotateCurrentSpan("activity.inserted_count", insertedNotifications.length)
-				yield* Effect.logDebug("Notification batch completed", {
-					candidates: membersResult.members.length,
-					eligible: values.length,
-					inserted: insertedNotifications.length,
-					durationMs: Date.now() - startedAt,
-				})
+					const orgMemberLookup = buildOrgMemberLookup(orgMembers)
+					const { values, channelMemberByOrgMember } = buildNotificationInsertRows(
+						membersResult.members,
+						orgMemberLookup,
+						payload,
+					)
 
-				return {
-					notificationIds,
-					notifiedCount: notificationIds.length,
-				}
-			}),
+					if (values.length === 0) {
+						yield* Effect.logDebug("No valid organization members to notify")
+						return { notificationIds: [], notifiedCount: 0 }
+					}
+
+					const insertedNotifications = yield* db
+						.execute((client) =>
+							client
+								.insert(schema.notificationsTable)
+								.values(values)
+								.onConflictDoNothing()
+								.returning({
+									id: schema.notificationsTable.id,
+									memberId: schema.notificationsTable.memberId,
+								}),
+						)
+						.pipe(
+							Effect.catchTags({
+								DatabaseError: (err) =>
+									Effect.fail(
+										new Cluster.CreateNotificationError({
+											messageId: payload.messageId,
+											message: "Failed to insert notification batch",
+											cause: err,
+										}),
+									),
+							}),
+						)
+
+					const insertedChannelMemberIds = Array.filterMap(insertedNotifications, (row) => {
+						const memberId = channelMemberByOrgMember.get(row.memberId)
+						return memberId != null ? Result.succeed(memberId) : Result.failVoid
+					})
+
+					if (insertedChannelMemberIds.length > 0) {
+						yield* db
+							.execute((client) =>
+								client
+									.update(schema.channelMembersTable)
+									.set({
+										notificationCount: sql`${schema.channelMembersTable.notificationCount} + 1`,
+									})
+									.where(inArray(schema.channelMembersTable.id, insertedChannelMemberIds)),
+							)
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new Cluster.CreateNotificationError({
+												messageId: payload.messageId,
+												message: "Failed to increment notification counts",
+												cause: err,
+											}),
+										),
+								}),
+							)
+					}
+
+					const notificationIds = insertedNotifications.map((row) => row.id) as NotificationId[]
+					yield* Effect.annotateCurrentSpan("activity.eligible_count", values.length)
+					yield* Effect.annotateCurrentSpan("activity.inserted_count", insertedNotifications.length)
+					yield* Effect.logDebug("Notification batch completed", {
+						candidates: membersResult.members.length,
+						eligible: values.length,
+						inserted: insertedNotifications.length,
+						durationMs: Date.now() - startedAt,
+					})
+
+					return {
+						notificationIds,
+						notifiedCount: notificationIds.length,
+					}
+				}),
+			})
 		}).pipe(
-			Effect.tapError((err) =>
+			Effect.tapError((err: { readonly _tag: string; readonly retryable?: boolean }) =>
 				Effect.logError("CreateNotifications activity failed", {
 					errorTag: err._tag,
 					retryable: err.retryable,

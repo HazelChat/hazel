@@ -95,6 +95,13 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const workos = yield* WorkOS
+		const organizationRepo = yield* OrganizationRepo
+		const organizationPolicy = yield* OrganizationPolicy
+		const channelRepo = yield* ChannelRepo
+		const channelMemberRepo = yield* ChannelMemberRepo
+		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const userRepo = yield* UserRepo
+		const channelAccessSync = yield* ChannelAccessSyncService
 
 		return {
 			"organization.create": (payload) =>
@@ -105,7 +112,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Get the user's external ID (WorkOS user ID)
-							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
+							const userOption = yield* userRepo.findById(currentUser.id).pipe(
 								Effect.catchTags({
 									DatabaseError: (err) =>
 										Effect.fail(
@@ -129,7 +136,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							// Check if slug already exists
 							if (payload.slug) {
-								const existingOrganization = yield* OrganizationRepo.findBySlug(payload.slug)
+								const existingOrganization = yield* organizationRepo.findBySlug(payload.slug)
 
 								if (Option.isSome(existingOrganization)) {
 									return yield* Effect.fail(
@@ -142,8 +149,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Create organization in local database first
-							yield* OrganizationPolicy.canCreate()
-							const createdOrganization = yield* OrganizationRepo.insert({
+							yield* organizationPolicy.canCreate()
+							const createdOrganization = yield* organizationRepo.insert({
 								name: payload.name,
 								slug: payload.slug,
 								logoUrl: payload.logoUrl,
@@ -190,7 +197,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									),
 								)
 
-							yield* OrganizationMemberRepo.upsertByOrgAndUser({
+							yield* organizationMemberRepo.upsertByOrgAndUser({
 								organizationId: createdOrganization.id,
 								userId: currentUser.id,
 								role: "owner",
@@ -201,12 +208,12 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							})
 
 							// Setup default channels for the organization
-							yield* OrganizationRepo.setupDefaultChannels(
+							yield* organizationRepo.setupDefaultChannels(
 								createdOrganization.id,
 								currentUser.id,
 							)
 
-							yield* ChannelAccessSyncService.syncUserInOrganization(
+							yield* channelAccessSync.syncUserInOrganization(
 								currentUser.id,
 								createdOrganization.id,
 							)
@@ -230,9 +237,9 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* Effect.logInfo("OrganizationRepo.update", payload)
-							yield* OrganizationPolicy.canUpdate(id)
-							const updatedOrganization = yield* OrganizationRepo.update({
+							yield* Effect.logInfo("organizationRepo.update", payload)
+							yield* organizationPolicy.canUpdate(id)
+							const updatedOrganization = yield* organizationRepo.update({
 								id,
 								...payload,
 							})
@@ -256,8 +263,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationPolicy.canDelete(id)
-							yield* OrganizationRepo.deleteById(id)
+							yield* organizationPolicy.canDelete(id)
+							yield* organizationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -270,8 +277,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationPolicy.canUpdate(id)
-							const updatedOrganization = yield* OrganizationRepo.update({
+							yield* organizationPolicy.canUpdate(id)
+							const updatedOrganization = yield* organizationRepo.update({
 								id,
 								slug,
 							})
@@ -295,8 +302,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationPolicy.canUpdate(id)
-							const updatedOrganization = yield* OrganizationRepo.update({
+							yield* organizationPolicy.canUpdate(id)
+							const updatedOrganization = yield* organizationRepo.update({
 								id,
 								isPublic,
 							})
@@ -318,7 +325,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 			"organization.getBySlugPublic": ({ slug }) =>
 				Effect.gen(function* () {
-					const orgOption = yield* OrganizationRepo.findBySlugIfPublic(slug)
+					const orgOption = yield* organizationRepo.findBySlugIfPublic(slug)
 
 					if (Option.isNone(orgOption)) {
 						return null
@@ -327,7 +334,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 					const org = orgOption.value
 
 					// Count members for this organization
-					const memberCount = yield* OrganizationMemberRepo.countByOrganization(org.id)
+					const memberCount = yield* organizationMemberRepo.countByOrganization(org.id)
 
 					return {
 						id: org.id,
@@ -355,7 +362,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							const currentUser = yield* CurrentUser.Context
 
 							// Find the organization by slug
-							const orgOption = yield* OrganizationRepo.findBySlug(slug)
+							const orgOption = yield* organizationRepo.findBySlug(slug)
 
 							if (Option.isNone(orgOption)) {
 								return yield* new OrganizationNotFoundError({
@@ -373,7 +380,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Get the user's external ID for WorkOS sync
-							const userOption = yield* UserRepo.findById(currentUser.id).pipe(
+							const userOption = yield* userRepo.findById(currentUser.id).pipe(
 								Effect.catchTags({
 									DatabaseError: (err) =>
 										Effect.fail(
@@ -408,7 +415,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								)
 
 							// Check if user is already a member in local DB
-							const existingMember = yield* OrganizationMemberRepo.findByOrgAndUser(
+							const existingMember = yield* organizationMemberRepo.findByOrgAndUser(
 								org.id,
 								currentUser.id,
 							)
@@ -434,7 +441,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Create/ensure membership in local database
-							yield* OrganizationMemberRepo.upsertByOrgAndUser({
+							yield* organizationMemberRepo.upsertByOrgAndUser({
 								organizationId: org.id,
 								userId: currentUser.id,
 								role: "member",
@@ -466,10 +473,10 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 							}
 
 							// Add user to the default "general" channel
-							const generalChannel = yield* ChannelRepo.findByOrgAndName(org.id, "general")
+							const generalChannel = yield* channelRepo.findByOrgAndName(org.id, "general")
 
 							if (Option.isSome(generalChannel)) {
-								yield* ChannelMemberRepo.insert({
+								yield* channelMemberRepo.insert({
 									channelId: generalChannel.value.id,
 									userId: currentUser.id,
 									isHidden: false,
@@ -482,7 +489,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								})
 							}
 
-							yield* ChannelAccessSyncService.syncUserInOrganization(currentUser.id, org.id)
+							yield* channelAccessSync.syncUserInOrganization(currentUser.id, org.id)
 
 							const txid = yield* generateTransactionId()
 
@@ -502,7 +509,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.getAdminPortalLink": ({ id, intent }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can access admin portal
-					yield* OrganizationPolicy.canUpdate(id)
+					yield* organizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -551,7 +558,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.listDomains": ({ id }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can list domains
-					yield* OrganizationPolicy.canUpdate(id)
+					yield* organizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -578,7 +585,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.addDomain": ({ id, domain }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can add domains
-					yield* OrganizationPolicy.canUpdate(id)
+					yield* organizationPolicy.canUpdate(id)
 
 					// Get the WorkOS organization by our local org ID
 					const workosOrg = yield* workos
@@ -623,7 +630,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 			"organization.removeDomain": ({ id, domainId }) =>
 				Effect.gen(function* () {
 					// Policy check - only admins/owners can remove domains
-					yield* OrganizationPolicy.canUpdate(id)
+					yield* organizationPolicy.canUpdate(id)
 
 					// Delete domain from WorkOS
 					yield* workos

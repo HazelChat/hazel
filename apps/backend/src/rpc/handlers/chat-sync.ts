@@ -39,13 +39,14 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 		const connectionRepo = yield* ChatSyncConnectionRepo
 		const channelLinkRepo = yield* ChatSyncChannelLinkRepo
 		const integrationConnectionRepo = yield* IntegrationConnectionRepo
+		const integrationConnectionPolicy = yield* IntegrationConnectionPolicy
 
 		return {
 			"chatSync.connection.create": (payload) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* IntegrationConnectionPolicy.canInsert(payload.organizationId)
+							yield* integrationConnectionPolicy.canInsert(payload.organizationId)
 							const currentUser = yield* CurrentUser.Context
 
 							const integrationConnectionId = yield* Effect.gen(function* () {
@@ -134,7 +135,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 
 			"chatSync.connection.list": ({ organizationId }) =>
 				Effect.gen(function* () {
-					yield* IntegrationConnectionPolicy.canSelect(organizationId)
+					yield* integrationConnectionPolicy.canSelect(organizationId)
 					const data = yield* connectionRepo.findByOrganization(organizationId)
 					return new ChatSyncConnectionListResponse({ data })
 				}).pipe(
@@ -161,7 +162,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 							const connection = connectionOption.value
-							yield* IntegrationConnectionPolicy.canDelete(connection.organizationId)
+							yield* integrationConnectionPolicy.canDelete(connection.organizationId)
 
 							yield* connectionRepo.softDelete(syncConnectionId)
 							const links = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
@@ -197,7 +198,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 								)
 							}
 							const connection = connectionOption.value
-							yield* IntegrationConnectionPolicy.canInsert(connection.organizationId)
+							yield* integrationConnectionPolicy.canInsert(connection.organizationId)
 
 							const existingHazel = yield* channelLinkRepo.findByHazelChannel(
 								payload.syncConnectionId,
@@ -280,7 +281,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						)
 					}
 					const connection = connectionOption.value
-					yield* IntegrationConnectionPolicy.canSelect(connection.organizationId)
+					yield* integrationConnectionPolicy.canSelect(connection.organizationId)
 
 					const data = yield* channelLinkRepo.findBySyncConnection(syncConnectionId)
 					return new ChatSyncChannelLinkListResponse({ data })
@@ -318,7 +319,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									}),
 								)
 							}
-							yield* IntegrationConnectionPolicy.canDelete(
+							yield* integrationConnectionPolicy.canDelete(
 								connectionOption.value.organizationId,
 							)
 
@@ -360,7 +361,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 									}),
 								)
 							}
-							yield* IntegrationConnectionPolicy.canUpdate(
+							yield* integrationConnectionPolicy.canUpdate(
 								connectionOption.value.organizationId,
 							)
 

@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { memo, useState } from "react"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
@@ -116,7 +117,7 @@ interface UserNameProps {
 
 function UserName({ userId, isCurrentUser }: UserNameProps) {
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(userId))
-	const data = Result.getOrElse(userPresenceResult, () => [])
+	const data = AsyncResult.getOrElse(userPresenceResult, () => [])
 	const result = data[0]
 	const user = result?.user
 

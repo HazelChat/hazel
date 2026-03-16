@@ -107,26 +107,29 @@ const baseHandlers = {
 
 const buildLinearHandlers = (options: { bot: HazelBotClient; orgId: OrganizationId }) => {
 	const getLinearToken = () =>
-		options.bot.integration.getToken(options.orgId, "linear").pipe(Effect.map((r) => r.accessToken))
+		(options.bot as any).integration.getToken(options.orgId, "linear").pipe(Effect.map((r: any) => r.accessToken))
 
 	return {
 		linear_get_account_info: () =>
 			Effect.gen(function* () {
 				const accessToken = yield* getLinearToken()
-				return yield* LinearApiClient.getAccountInfo(accessToken)
+				const client = yield* LinearApiClient
+				return yield* client.getAccountInfo(accessToken)
 			}),
 
 		linear_get_default_team: () =>
 			Effect.gen(function* () {
 				const accessToken = yield* getLinearToken()
-				const team = yield* LinearApiClient.getDefaultTeam(accessToken)
+				const client = yield* LinearApiClient
+				const team = yield* client.getDefaultTeam(accessToken)
 				return { team }
 			}),
 
 		linear_create_issue: (args: { title: string; description?: string; teamId?: string }) =>
 			Effect.gen(function* () {
 				const accessToken = yield* getLinearToken()
-				const issue = yield* LinearApiClient.createIssue(accessToken, {
+				const client = yield* LinearApiClient
+				const issue = yield* client.createIssue(accessToken, {
 					title: args.title,
 					description: args.description,
 					teamId: args.teamId,
@@ -137,7 +140,8 @@ const buildLinearHandlers = (options: { bot: HazelBotClient; orgId: Organization
 		linear_fetch_issue: (args: { issueKey: string }) =>
 			Effect.gen(function* () {
 				const accessToken = yield* getLinearToken()
-				const issue = yield* LinearApiClient.fetchIssue(args.issueKey, accessToken)
+				const client = yield* LinearApiClient
+				const issue = yield* client.fetchIssue(args.issueKey, accessToken)
 				return { issue }
 			}),
 
@@ -204,9 +208,9 @@ const buildLinearHandlers = (options: { bot: HazelBotClient; orgId: Organization
 
 const buildCraftHandlers = (options: { bot: HazelBotClient; orgId: OrganizationId }) => {
 	const getCraftCredentials = () =>
-		options.bot.integration.getToken(options.orgId, "craft").pipe(
-			Effect.map((r) => ({
-				accessToken: r.accessToken,
+		(options.bot as any).integration.getToken(options.orgId, "craft").pipe(
+			Effect.map((r: any) => ({
+				accessToken: r.accessToken as string,
 				baseUrl: (r.settings as Record<string, unknown> | null)?.baseUrl as string,
 			})),
 		)
@@ -215,19 +219,22 @@ const buildCraftHandlers = (options: { bot: HazelBotClient; orgId: OrganizationI
 		craft_search_documents: (args: { query: string }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.searchDocuments(baseUrl, accessToken, args.query)
+				const client = yield* CraftApiClient
+				return yield* client.searchDocuments(baseUrl, accessToken, args.query)
 			}),
 
 		craft_get_document: (args: { documentId: string }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.getBlocks(baseUrl, accessToken, args.documentId)
+				const client = yield* CraftApiClient
+				return yield* client.getBlocks(baseUrl, accessToken, args.documentId)
 			}),
 
 		craft_create_document: (args: { title: string; content?: string; folderId?: string }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.createDocuments(baseUrl, accessToken, [
+				const client = yield* CraftApiClient
+				return yield* client.createDocuments(baseUrl, accessToken, [
 					{ title: args.title, content: args.content, folderId: args.folderId },
 				])
 			}),
@@ -239,7 +246,8 @@ const buildCraftHandlers = (options: { bot: HazelBotClient; orgId: OrganizationI
 		}) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.insertBlocks(
+				const client = yield* CraftApiClient
+				return yield* client.insertBlocks(
 					baseUrl,
 					accessToken,
 					args.documentId,
@@ -251,13 +259,15 @@ const buildCraftHandlers = (options: { bot: HazelBotClient; orgId: OrganizationI
 		craft_get_tasks: (args: { scope?: "inbox" | "active" | "upcoming" | "logbook" }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.getTasks(baseUrl, accessToken, args.scope)
+				const client = yield* CraftApiClient
+				return yield* client.getTasks(baseUrl, accessToken, args.scope)
 			}),
 
 		craft_create_task: (args: { content: string; documentId?: string }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.createTasks(baseUrl, accessToken, [
+				const client = yield* CraftApiClient
+				return yield* client.createTasks(baseUrl, accessToken, [
 					{ content: args.content, documentId: args.documentId },
 				])
 			}),
@@ -265,13 +275,15 @@ const buildCraftHandlers = (options: { bot: HazelBotClient; orgId: OrganizationI
 		craft_get_folders: () =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.listFolders(baseUrl, accessToken)
+				const client = yield* CraftApiClient
+				return yield* client.listFolders(baseUrl, accessToken)
 			}),
 
 		craft_search_blocks: (args: { documentId: string; query: string }) =>
 			Effect.gen(function* () {
 				const { baseUrl, accessToken } = yield* getCraftCredentials()
-				return yield* CraftApiClient.searchBlocks(baseUrl, accessToken, args.documentId, args.query)
+				const client = yield* CraftApiClient
+				return yield* client.searchBlocks(baseUrl, accessToken, args.documentId, args.query)
 			}),
 	} as const
 }
@@ -289,41 +301,37 @@ export const buildToolkit = (options: {
 	const hasCraft = options.enabledIntegrations.has("craft")
 
 	if (hasLinear && hasCraft) {
+		const handlers = {
+			...baseHandlers,
+			...buildLinearHandlers(options),
+			...buildCraftHandlers(options),
+		}
 		return Effect.gen(function* () {
-			const handlers = {
-				...baseHandlers,
-				...buildLinearHandlers(options),
-				...buildCraftHandlers(options),
-			}
-			const ctx = yield* LinearAndCraftToolkit.toContext(handlers as any)
-			return yield* Effect.provide(LinearAndCraftToolkit, ctx)
-		})
+			return yield* LinearAndCraftToolkit
+		}).pipe(Effect.provide(LinearAndCraftToolkit.toLayer(handlers as any)))
 	}
 
 	if (hasLinear) {
+		const handlers = {
+			...baseHandlers,
+			...buildLinearHandlers(options),
+		}
 		return Effect.gen(function* () {
-			const handlers = {
-				...baseHandlers,
-				...buildLinearHandlers(options),
-			}
-			const ctx = yield* LinearToolkit.toContext(handlers as any)
-			return yield* Effect.provide(LinearToolkit, ctx)
-		})
+			return yield* LinearToolkit
+		}).pipe(Effect.provide(LinearToolkit.toLayer(handlers as any)))
 	}
 
 	if (hasCraft) {
+		const handlers = {
+			...baseHandlers,
+			...buildCraftHandlers(options),
+		}
 		return Effect.gen(function* () {
-			const handlers = {
-				...baseHandlers,
-				...buildCraftHandlers(options),
-			}
-			const ctx = yield* CraftToolkit.toContext(handlers as any)
-			return yield* Effect.provide(CraftToolkit, ctx)
-		})
+			return yield* CraftToolkit
+		}).pipe(Effect.provide(CraftToolkit.toLayer(handlers as any)))
 	}
 
 	return Effect.gen(function* () {
-		const ctx = yield* BaseToolkit.toContext(baseHandlers)
-		return yield* Effect.provide(BaseToolkit, ctx)
-	})
+		return yield* BaseToolkit
+	}).pipe(Effect.provide(BaseToolkit.toLayer(baseHandlers)))
 }

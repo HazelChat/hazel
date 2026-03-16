@@ -46,7 +46,7 @@ export const createTracingLayer = (otelServiceName: string) =>
 					)
 				}
 
-				return DevTools.layerSocket.pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
+				return DevTools.layerWebSocket().pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
 			}
 
 			const otelBaseUrl = yield* Config.string("OTEL_BASE_URL")

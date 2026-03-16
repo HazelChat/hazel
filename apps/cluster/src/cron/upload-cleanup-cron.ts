@@ -5,7 +5,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
 // Run daily at 3 AM
-const dailyAt3AM = Cron.unsafeParse("0 3 * * *")
+const dailyAt3AM = Cron.parseUnsafe("0 3 * * *")
 
 // Max age for uploads to be considered stale (1 hour)
 const MAX_AGE_MINUTES = 60

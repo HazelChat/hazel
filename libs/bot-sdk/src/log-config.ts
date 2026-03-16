@@ -4,7 +4,7 @@
  * Provides configurable log levels and formats for bot logging.
  */
 
-import { Layer, Logger, LogLevel } from "effect"
+import { Effect, Layer, Logger, LogLevel, References } from "effect"
 
 /**
  * Log output format options
@@ -93,9 +93,12 @@ export const debugLogConfig: BotLogConfig = {
  * Create a logger layer from log configuration
  */
 export const createLoggerLayer = (config: BotLogConfig): Layer.Layer<never> => {
-	const formatLayer = config.format === "structured" ? Logger.structured : Logger.pretty
+	const logger = config.format === "structured" ? Logger.consoleStructured : Logger.consolePretty()
 
-	return Layer.mergeAll(formatLayer, Logger.minimumLogLevel(config.level))
+	return Layer.mergeAll(
+		Logger.layer([logger]),
+		Layer.succeed(References.MinimumLogLevel, config.level),
+	)
 }
 
 /**

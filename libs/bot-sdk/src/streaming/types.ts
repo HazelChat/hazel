@@ -131,7 +131,7 @@ export const ToolCallChunk = Schema.Struct({
 	type: Schema.Literal("tool_call"),
 	id: Schema.String,
 	name: Schema.String,
-	input: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	input: Schema.Record(Schema.String, Schema.Unknown),
 })
 export type ToolCallChunk = Schema.Schema.Type<typeof ToolCallChunk>
 

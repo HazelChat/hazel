@@ -168,11 +168,12 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		const channelAccessSyncService = yield* ChannelAccessSyncService
 		const providerRegistry = yield* ChatSyncProviderRegistry
 		const discordApiClient = yield* Discord.DiscordApiClient
+		const discordSyncWorker = yield* DiscordSyncWorker
 
 		const payloadHash = (value: unknown): string =>
 			createHash("sha256").update(JSON.stringify(value)).digest("hex")
 
-		const claimReceipt = Effect.fn("DiscordSyncWorker.claimReceipt")(function* (params: {
+		const claimReceipt = Effect.fn("discordSyncWorker.claimReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
 			channelLinkId?: SyncChannelLinkId
 			source: "hazel" | "external"
@@ -186,7 +187,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			})
 		})
 
-		const writeReceipt = Effect.fn("DiscordSyncWorker.writeReceipt")(function* (params: {
+		const writeReceipt = Effect.fn("discordSyncWorker.writeReceipt")(function* (params: {
 			syncConnectionId: SyncConnectionId
 			channelLinkId?: SyncChannelLinkId
 			source: "hazel" | "external"
@@ -218,7 +219,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return `${normalizedBase}/${attachmentId}`
 		}
 
-		const getAttachmentPublicUrlBase = Effect.fn("DiscordSyncWorker.getAttachmentPublicUrlBase")(
+		const getAttachmentPublicUrlBase = Effect.fn("discordSyncWorker.getAttachmentPublicUrlBase")(
 			function* () {
 				const configuredBaseUrl = yield* Config.string("S3_PUBLIC_URL").pipe(Effect.option)
 				if (Option.isNone(configuredBaseUrl) || configuredBaseUrl.value.trim().length === 0) {
@@ -233,7 +234,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		)
 
 		const listMessageAttachmentsForOutboundSync = Effect.fn(
-			"DiscordSyncWorker.listMessageAttachmentsForOutboundSync",
+			"discordSyncWorker.listMessageAttachmentsForOutboundSync",
 		)(function* (hazelMessageId: MessageId) {
 			const rows = yield* db.execute((client) =>
 				client
@@ -266,7 +267,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			}))
 		})
 
-		const getOrCreateShadowUserId = Effect.fn("DiscordSyncWorker.getOrCreateShadowUserId")(
+		const getOrCreateShadowUserId = Effect.fn("discordSyncWorker.getOrCreateShadowUserId")(
 			function* (params: {
 				provider: ChatSyncProvider
 				organizationId: OrganizationId
@@ -433,7 +434,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return Option.isSome(webhookConfig) && webhookConfig.value.webhookId === externalWebhookId
 		}
 
-		const persistWebhookIdentity = Effect.fn("DiscordSyncWorker.persistWebhookIdentity")(function* (
+		const persistWebhookIdentity = Effect.fn("discordSyncWorker.persistWebhookIdentity")(function* (
 			link: {
 				id: SyncChannelLinkId
 				settings: Record<string, unknown> | null
@@ -465,7 +466,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			yield* channelLinkRepo.updateSettings(link.id, nextSettings)
 		})
 
-		const ensureDiscordWebhookIdentity = Effect.fn("DiscordSyncWorker.ensureDiscordWebhookIdentity")(
+		const ensureDiscordWebhookIdentity = Effect.fn("discordSyncWorker.ensureDiscordWebhookIdentity")(
 			function* (params: {
 				provider: ChatSyncProvider
 				link: {
@@ -576,7 +577,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		)
 
 		const getDiscordWebhookIdentityMessageMetadata = Effect.fn(
-			"DiscordSyncWorker.getDiscordWebhookIdentityMessageMetadata",
+			"discordSyncWorker.getDiscordWebhookIdentityMessageMetadata",
 		)(function* (authorId: UserId) {
 			const userOption = yield* userRepo.findById(authorId)
 			if (Option.isNone(userOption)) {
@@ -593,7 +594,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { username, avatarUrl }
 		})
 
-		const sendDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.sendDiscordMessageViaWebhook")(
+		const sendDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.sendDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -650,7 +651,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			},
 		)
 
-		const updateDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.updateDiscordMessageViaWebhook")(
+		const updateDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.updateDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -698,7 +699,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			},
 		)
 
-		const deleteDiscordMessageViaWebhook = Effect.fn("DiscordSyncWorker.deleteDiscordMessageViaWebhook")(
+		const deleteDiscordMessageViaWebhook = Effect.fn("discordSyncWorker.deleteDiscordMessageViaWebhook")(
 			function* (params: {
 				link: {
 					id: SyncChannelLinkId
@@ -744,7 +745,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			},
 		)
 
-		const resolveAuthorUserId = Effect.fn("DiscordSyncWorker.resolveAuthorUserId")(function* (params: {
+		const resolveAuthorUserId = Effect.fn("discordSyncWorker.resolveAuthorUserId")(function* (params: {
 			provider: ChatSyncProvider
 			organizationId: OrganizationId
 			externalUserId: ExternalUserId
@@ -780,7 +781,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		const DISCORD_USER_MENTION_PATTERN = /@\[userId:([^\]]+)\]/g
 
 		const getDiscordMentionFallbackDisplayName = Effect.fn(
-			"DiscordSyncWorker.getDiscordMentionFallbackDisplayName",
+			"discordSyncWorker.getDiscordMentionFallbackDisplayName",
 		)(function* (userId: UserId) {
 			const userOption = yield* userRepo.findById(userId)
 			if (Option.isNone(userOption)) {
@@ -802,7 +803,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const translateHazelMentionsForDiscord = Effect.fn(
-			"DiscordSyncWorker.translateHazelMentionsForDiscord",
+			"discordSyncWorker.translateHazelMentionsForDiscord",
 		)(function* (params: { organizationId: OrganizationId; content: string }) {
 			const userIds = [...params.content.matchAll(DISCORD_USER_MENTION_PATTERN)].map(
 				(match) => match[1] as UserId,
@@ -851,7 +852,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			externalMessageId: messageLink.externalMessageId as ExternalMessageId,
 		})
 
-		const resolveExternalMessageId = Effect.fn("DiscordSyncWorker.resolveExternalMessageId")(
+		const resolveExternalMessageId = Effect.fn("discordSyncWorker.resolveExternalMessageId")(
 			function* (params: {
 				syncConnectionId: SyncConnectionId
 				hazelMessageId: MessageId
@@ -900,7 +901,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			},
 		)
 
-		const resolveHazelMessageId = Effect.fn("DiscordSyncWorker.resolveHazelMessageId")(
+		const resolveHazelMessageId = Effect.fn("discordSyncWorker.resolveHazelMessageId")(
 			function* (params: {
 				syncConnectionId: SyncConnectionId
 				externalMessageId: ExternalMessageId
@@ -953,7 +954,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		)
 
 		const resolveOrCreateOutboundLinkForMessage = Effect.fn(
-			"DiscordSyncWorker.resolveOrCreateOutboundLinkForMessage",
+			"discordSyncWorker.resolveOrCreateOutboundLinkForMessage",
 		)(function* (params: {
 			syncConnectionId: SyncConnectionId
 			provider: ChatSyncProvider
@@ -1071,7 +1072,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return normalizeChannelLinkExternalId(threadLink)
 		})
 
-		const syncHazelMessageToProvider = Effect.fn("DiscordSyncWorker.syncHazelMessageToProvider")(
+		const syncHazelMessageToProvider = Effect.fn("discordSyncWorker.syncHazelMessageToProvider")(
 			function* (
 				syncConnectionId: SyncConnectionId,
 				hazelMessageId: MessageId,
@@ -1223,7 +1224,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			},
 		)
 
-		const syncConnection = Effect.fn("DiscordSyncWorker.syncConnection")(function* (
+		const syncConnection = Effect.fn("discordSyncWorker.syncConnection")(function* (
 			syncConnectionId: SyncConnectionId,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
@@ -1299,7 +1300,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelMessageUpdateToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToProvider",
+			"discordSyncWorker.syncHazelMessageUpdateToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -1405,7 +1406,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelMessageDeleteToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToProvider",
+			"discordSyncWorker.syncHazelMessageDeleteToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelMessageId: MessageId,
@@ -1501,7 +1502,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelReactionCreateToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToProvider",
+			"discordSyncWorker.syncHazelReactionCreateToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			hazelReactionId: MessageReactionId,
@@ -1588,7 +1589,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelReactionDeleteToProvider = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToProvider",
+			"discordSyncWorker.syncHazelReactionDeleteToProvider",
 		)(function* (
 			syncConnectionId: SyncConnectionId,
 			payload: {
@@ -1698,7 +1699,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			}
 		})
 
-		const getActiveOutboundTargets = Effect.fn("DiscordSyncWorker.getActiveOutboundTargets")(function* (
+		const getActiveOutboundTargets = Effect.fn("discordSyncWorker.getActiveOutboundTargets")(function* (
 			hazelChannelId: ChannelId,
 			provider: ChatSyncProvider,
 		) {
@@ -1732,7 +1733,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelMessageCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageCreateToAllConnections",
+			"discordSyncWorker.syncHazelMessageCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1768,7 +1769,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelMessageUpdateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageUpdateToAllConnections",
+			"discordSyncWorker.syncHazelMessageUpdateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1804,7 +1805,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelMessageDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelMessageDeleteToAllConnections",
+			"discordSyncWorker.syncHazelMessageDeleteToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelMessageId: MessageId, dedupeKey?: string) {
 			const messageOption = yield* messageRepo.findById(hazelMessageId)
 			if (Option.isNone(messageOption)) {
@@ -1840,7 +1841,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelReactionCreateToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionCreateToAllConnections",
+			"discordSyncWorker.syncHazelReactionCreateToAllConnections",
 		)(function* (provider: ChatSyncProvider, hazelReactionId: MessageReactionId, dedupeKey?: string) {
 			const reactionOption = yield* messageReactionRepo.findById(hazelReactionId)
 			if (Option.isNone(reactionOption)) {
@@ -1877,7 +1878,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		})
 
 		const syncHazelReactionDeleteToAllConnections = Effect.fn(
-			"DiscordSyncWorker.syncHazelReactionDeleteToAllConnections",
+			"discordSyncWorker.syncHazelReactionDeleteToAllConnections",
 		)(function* (
 			provider: ChatSyncProvider,
 			payload: {
@@ -1917,7 +1918,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { synced, failed }
 		})
 
-		const syncAllActiveConnections = Effect.fn("DiscordSyncWorker.syncAllActiveConnections")(function* (
+		const syncAllActiveConnections = Effect.fn("discordSyncWorker.syncAllActiveConnections")(function* (
 			provider: ChatSyncProvider,
 			maxMessagesPerChannel = DEFAULT_MAX_MESSAGES_PER_CHANNEL,
 		) {
@@ -1935,7 +1936,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			)
 		})
 
-		const ingestMessageCreate = Effect.fn("DiscordSyncWorker.ingestMessageCreate")(function* (
+		const ingestMessageCreate = Effect.fn("discordSyncWorker.ingestMessageCreate")(function* (
 			payload: ChatSyncIngressMessageCreate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:create:${payload.externalMessageId}`
@@ -2129,7 +2130,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { status: "created" as const, hazelMessageId: message.id }
 		})
 
-		const ingestMessageUpdate = Effect.fn("DiscordSyncWorker.ingestMessageUpdate")(function* (
+		const ingestMessageUpdate = Effect.fn("discordSyncWorker.ingestMessageUpdate")(function* (
 			payload: ChatSyncIngressMessageUpdate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:update:${payload.externalMessageId}`
@@ -2239,7 +2240,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { status: "updated" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
 
-		const ingestMessageDelete = Effect.fn("DiscordSyncWorker.ingestMessageDelete")(function* (
+		const ingestMessageDelete = Effect.fn("discordSyncWorker.ingestMessageDelete")(function* (
 			payload: ChatSyncIngressMessageDelete,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:message:delete:${payload.externalMessageId}`
@@ -2350,7 +2351,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { status: "deleted" as const, hazelMessageId: messageLink.hazelMessageId }
 		})
 
-		const ingestReactionAdd = Effect.fn("DiscordSyncWorker.ingestReactionAdd")(function* (
+		const ingestReactionAdd = Effect.fn("discordSyncWorker.ingestReactionAdd")(function* (
 			payload: ChatSyncIngressReactionAdd,
 		) {
 			const dedupeKey =
@@ -2479,7 +2480,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { status: "created" as const, hazelReactionId: reaction.id }
 		})
 
-		const ingestReactionRemove = Effect.fn("DiscordSyncWorker.ingestReactionRemove")(function* (
+		const ingestReactionRemove = Effect.fn("discordSyncWorker.ingestReactionRemove")(function* (
 			payload: ChatSyncIngressReactionRemove,
 		) {
 			const dedupeKey =
@@ -2605,7 +2606,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 			return { status: "deleted" as const, hazelReactionId: existingReaction.value.id }
 		})
 
-		const ingestThreadCreate = Effect.fn("DiscordSyncWorker.ingestThreadCreate")(function* (
+		const ingestThreadCreate = Effect.fn("discordSyncWorker.ingestThreadCreate")(function* (
 			payload: ChatSyncIngressThreadCreate,
 		) {
 			const dedupeKey = payload.dedupeKey ?? `external:thread:create:${payload.externalThreadId}`
@@ -2764,7 +2765,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChatSyncConnectionRepo.layer),
 		Layer.provide(ChatSyncChannelLinkRepo.layer),
 		Layer.provide(ChatSyncMessageLinkRepo.layer),

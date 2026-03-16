@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { memo } from "react"
 import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"
@@ -19,7 +20,7 @@ export const CustomEmojiSection = memo(function CustomEmojiSection({
 	onEmojiSelect,
 }: CustomEmojiSectionProps) {
 	const emojisResult = useAtomValue(customEmojisForOrgAtomFamily(organizationId))
-	const emojis = Result.getOrElse(emojisResult, () => [])
+	const emojis = AsyncResult.getOrElse(emojisResult, () => [])
 
 	if (emojis.length === 0) return null
 

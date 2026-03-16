@@ -30,6 +30,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 		const botGateway = yield* BotGatewayService
 		const outboxRepo = yield* MessageOutboxRepo
 		const connectConversationService = yield* ConnectConversationService
+		const messagePolicy = yield* MessagePolicy
+		const messageRepo = yield* MessageRepo
+		const attachmentPolicy = yield* AttachmentPolicy
+		const attachmentRepo = yield* AttachmentRepo
 
 		return {
 			"message.create": ({ attachmentIds, ...messageData }) =>
@@ -42,12 +46,12 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canCreate(messageData.channelId)
+								yield* messagePolicy.canCreate(messageData.channelId)
 								const conversationId =
 									yield* connectConversationService.getConversationIdForChannel(
 										messageData.channelId,
 									)
-								const createdMessage = yield* MessageRepo.insert({
+								const createdMessage = yield* messageRepo.insert({
 									...messageData,
 									conversationId,
 									authorId: user.id,
@@ -58,8 +62,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 								if (attachmentIds && attachmentIds.length > 0) {
 									yield* Effect.forEach(attachmentIds, (attachmentId) =>
 										Effect.gen(function* () {
-											yield* AttachmentPolicy.canUpdate(attachmentId)
-											yield* AttachmentRepo.update({
+											yield* attachmentPolicy.canUpdate(attachmentId)
+											yield* attachmentRepo.update({
 												id: attachmentId,
 												messageId: createdMessage.id,
 											})
@@ -112,8 +116,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canUpdate(id)
-								const updatedMessage = yield* MessageRepo.update({
+								yield* messagePolicy.canUpdate(id)
+								const updatedMessage = yield* messageRepo.update({
 									id,
 									...payload,
 								})
@@ -152,7 +156,7 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 			"message.delete": ({ id }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser.Context
-					const existingMessage = yield* MessageRepo.findById(id).pipe(
+					const existingMessage = yield* messageRepo.findById(id).pipe(
 						withRemapDbErrors("Message", "select"),
 					)
 
@@ -162,8 +166,8 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* MessagePolicy.canDelete(id)
-								yield* MessageRepo.deleteById(id)
+								yield* messagePolicy.canDelete(id)
+								yield* messageRepo.deleteById(id)
 
 								if (Option.isSome(existingMessage)) {
 									yield* outboxRepo.insert({

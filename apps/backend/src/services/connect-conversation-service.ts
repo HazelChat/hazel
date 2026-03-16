@@ -15,7 +15,7 @@ import { OrgResolver } from "./org-resolver"
 export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
 	"ConnectConversationService",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const channelRepo = yield* ChannelRepo
 			const connectParticipantRepo = yield* ConnectParticipantRepo
 			const connectConversationRepo = yield* ConnectConversationRepo
@@ -61,7 +61,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 				)
 
 			const ensureChannelConversation = Effect.fn(
-				"ConnectConversationService.ensureChannelConversation",
+				"connectConversationService.ensureChannelConversation",
 			)(function* (channelId: ChannelId, createdBy: UserId) {
 				const existingMount = yield* connectConversationChannelRepo.findByChannelId(channelId)
 				if (Option.isSome(existingMount)) {
@@ -128,7 +128,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 			})
 
 			const getConversationIdForChannel = Effect.fn(
-				"ConnectConversationService.getConversationIdForChannel",
+				"connectConversationService.getConversationIdForChannel",
 			)(function* (channelId: ChannelId) {
 				const mount = yield* connectConversationChannelRepo.findByChannelId(channelId)
 				if (Option.isSome(mount)) {
@@ -168,7 +168,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 			)
 
 			const addParticipantToConversation = Effect.fn(
-				"ConnectConversationService.addParticipantToConversation",
+				"connectConversationService.addParticipantToConversation",
 			)(function* (
 				conversationId: ConnectConversationId,
 				userId: UserId,
@@ -183,7 +183,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 			})
 
 			const addParticipantsToConversation = Effect.fn(
-				"ConnectConversationService.addParticipantsToConversation",
+				"connectConversationService.addParticipantsToConversation",
 			)(function* (
 				conversationId: ConnectConversationId,
 				participants: ReadonlyArray<{
@@ -211,7 +211,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 			})
 
 			const removeParticipantFromConversation = Effect.fn(
-				"ConnectConversationService.removeParticipantFromConversation",
+				"connectConversationService.removeParticipantFromConversation",
 			)(function* (conversationId: ConnectConversationId, userId: UserId) {
 				const participants = yield* connectParticipantRepo.listByConversation(conversationId)
 				const mounts = yield* connectConversationChannelRepo.findByConversationId(conversationId)
@@ -322,7 +322,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelRepo.layer),
 		Layer.provide(ConnectParticipantRepo.layer),
 		Layer.provide(ConnectConversationRepo.layer),

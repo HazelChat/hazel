@@ -9,7 +9,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPolicy>()(
 	"MessageReactionPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "MessageReaction" as const
 
 			const messageReactionRepo = yield* MessageReactionRepo
@@ -101,7 +101,7 @@ export class MessageReactionPolicy extends ServiceMap.Service<MessageReactionPol
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(MessageReactionRepo.layer),
 		Layer.provide(MessageRepo.layer),
 		Layer.provide(OrgResolver.layer),

@@ -36,7 +36,7 @@
 		"@hazel/integrations": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"@workos-inc/node": "^7.77.0",
-		"dfx": "^0.127.0",
+		"dfx": "^1.0.10",
 		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect",
 		"jose": "^6.1.3",

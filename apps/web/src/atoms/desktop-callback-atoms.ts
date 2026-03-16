@@ -4,7 +4,7 @@
  * @description Effect Atom-based state management for desktop OAuth callback handling
  */
 
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import {
 	DesktopConnectionError,
 	InvalidDesktopStateError,
@@ -249,7 +249,7 @@ export const createCallbackInitAtom = (params: DesktopCallbackParams) =>
 		const fiber = runtime.runFork(callbackEffect)
 
 		get.addFinalizer(() => {
-			fiber.unsafeInterruptAsFork(fiber.id())
+			fiber.interruptUnsafe()
 		})
 
 		return null

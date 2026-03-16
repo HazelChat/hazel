@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import type { GitHubSubscription } from "@hazel/domain/models"
 import type { ChannelId } from "@hazel/schema"

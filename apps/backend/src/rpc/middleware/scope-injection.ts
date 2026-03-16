@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { ScopeInjectionMiddleware } from "@hazel/domain/rpc"
 import { RequiredScopes } from "@hazel/domain/scopes"
 import { CurrentRpcScopes } from "@hazel/domain/scopes"
@@ -12,7 +12,7 @@ import { CurrentRpcScopes } from "@hazel/domain/scopes"
 export const ScopeInjectionMiddlewareLive = Layer.succeed(
 	ScopeInjectionMiddleware,
 	ScopeInjectionMiddleware.of(({ rpc, next }) => {
-		const scopesOption = Context.getOption(rpc.annotations, RequiredScopes)
+		const scopesOption = ServiceMap.get(rpc.annotations, RequiredScopes)
 		if (Option.isNone(scopesOption)) {
 			return next
 		}

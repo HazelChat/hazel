@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, OrganizationId, SyncConnectionId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
@@ -123,7 +124,7 @@ export function AddChannelLinkModal({
 
 	const discordChannels = useMemo(
 		() =>
-			Result.builder(discordChannelsResult)
+			AsyncResult.builder(discordChannelsResult)
 				.onSuccess((data) => data?.channels ?? [])
 				.orElse(() => []),
 		[discordChannelsResult],
@@ -251,7 +252,7 @@ export function AddChannelLinkModal({
 
 					<div className="flex flex-col gap-2">
 						<Label>Discord Channel</Label>
-						{Result.isInitial(discordChannelsResult) && (
+						{AsyncResult.isInitial(discordChannelsResult) && (
 							<div className="flex items-center justify-center rounded-lg border border-border p-6">
 								<div className="flex items-center gap-3 text-muted-fg">
 									<div className="size-5 animate-spin rounded-full border-2 border-border border-t-primary" />
@@ -259,7 +260,7 @@ export function AddChannelLinkModal({
 								</div>
 							</div>
 						)}
-						{Result.isFailure(discordChannelsResult) && (
+						{AsyncResult.isFailure(discordChannelsResult) && (
 							<div className="rounded-lg border border-border bg-bg-muted/20 p-4">
 								<p className="font-medium text-fg text-sm">Could not load Discord channels</p>
 								<p className="mt-1 text-muted-fg text-sm">
@@ -267,7 +268,7 @@ export function AddChannelLinkModal({
 								</p>
 							</div>
 						)}
-						{Result.isSuccess(discordChannelsResult) && (
+						{AsyncResult.isSuccess(discordChannelsResult) && (
 							<>
 								{selectedDiscordChannel ? (
 									<div className="flex items-center justify-between rounded-lg border border-border bg-bg-muted/30 px-3 py-2.5">
@@ -367,7 +368,7 @@ export function AddChannelLinkModal({
 					<Button
 						intent="primary"
 						onPress={handleSubmit}
-						isDisabled={!isValid || isCreating || !Result.isSuccess(discordChannelsResult)}
+						isDisabled={!isValid || isCreating || !AsyncResult.isSuccess(discordChannelsResult)}
 						isPending={isCreating}
 					>
 						{isCreating ? "Linking..." : "Link Channel"}

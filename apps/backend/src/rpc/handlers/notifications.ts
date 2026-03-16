@@ -22,14 +22,18 @@ import { NotificationPolicy } from "../../policies/notification-policy"
 export const NotificationRpcLive = NotificationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const notificationPolicy = yield* NotificationPolicy
+		const channelRepo = yield* ChannelRepo
+		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const notificationRepo = yield* NotificationRepo
 
 		return {
 			"notification.create": (payload) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canCreate(payload.memberId)
-							const createdNotification = yield* NotificationRepo.insert({
+							yield* notificationPolicy.canCreate(payload.memberId)
+							const createdNotification = yield* notificationRepo.insert({
 								...payload,
 							}).pipe(Effect.map((res) => res[0]!))
 
@@ -47,8 +51,8 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canUpdate(id)
-							const updatedNotification = yield* NotificationRepo.update({
+							yield* notificationPolicy.canUpdate(id)
+							const updatedNotification = yield* notificationRepo.update({
 								id,
 								...payload,
 							})
@@ -67,8 +71,8 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* NotificationPolicy.canDelete(id)
-							yield* NotificationRepo.deleteById(id)
+							yield* notificationPolicy.canDelete(id)
+							yield* notificationRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -88,7 +92,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const user = yield* CurrentUser.Context
 
 					// Get the channel to find the organization (system operation)
-					const channelOption = yield* ChannelRepo.findById(channelId).pipe(
+					const channelOption = yield* channelRepo.findById(channelId).pipe(
 						withRemapDbErrors("Channel", "select"),
 					)
 
@@ -104,7 +108,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const channel = channelOption.value
 
 					// Get the organization member for this user (system operation)
-					const memberOption = yield* OrganizationMemberRepo.findByOrgAndUser(
+					const memberOption = yield* organizationMemberRepo.findByOrgAndUser(
 						channel.organizationId,
 						user.id,
 					).pipe(withRemapDbErrors("OrganizationMember", "select"))
@@ -125,7 +129,7 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 					const result = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								const deleted = yield* NotificationRepo.deleteByMessageIds(
+								const deleted = yield* notificationRepo.deleteByMessageIds(
 									messageIds,
 									member.id,
 								)

@@ -8,7 +8,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
 // Run every 5 minutes
-const everyFiveMinutes = Cron.unsafeParse("*/5 * * * *")
+const everyFiveMinutes = Cron.parseUnsafe("*/5 * * * *")
 
 /**
  * Cron job that polls RSS feeds due for a refresh.

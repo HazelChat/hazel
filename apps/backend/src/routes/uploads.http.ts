@@ -28,6 +28,9 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const s3 = yield* S3
+		const attachmentPolicy = yield* AttachmentPolicy
+		const organizationPolicy = yield* OrganizationPolicy
+		const attachmentRepo = yield* AttachmentRepo
 
 		return handlers.handle(
 			"presign",
@@ -148,7 +151,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 							}
 
 							// Check if user is an admin or owner of the organization
-							yield* OrganizationPolicy.canUpdate(req.organizationId)
+							yield* organizationPolicy.canUpdate(req.organizationId)
 
 							// Check rate limit (5 per hour)
 							yield* checkAvatarRateLimit(user.id)
@@ -189,7 +192,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					Match.when({ type: "custom-emoji" }, (req) =>
 						Effect.gen(function* () {
 							// Check if user is admin/owner of the org
-							yield* OrganizationPolicy.canUpdate(req.organizationId)
+							yield* organizationPolicy.canUpdate(req.organizationId)
 
 							// Check rate limit (reuse avatar rate limit)
 							yield* checkAvatarRateLimit(user.id)
@@ -237,11 +240,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							// Create attachment record with "uploading" status
 							// Validates user has permission to upload to the specified channel/org
-							yield* AttachmentPolicy.canCreate()
+							yield* attachmentPolicy.canCreate()
 							yield* db
 								.transaction(
 									Effect.gen(function* () {
-										yield* AttachmentRepo.insert({
+										yield* attachmentRepo.insert({
 											id: attachmentId,
 											uploadedBy: user.id,
 											organizationId: req.organizationId,

@@ -7,7 +7,7 @@
  * This module owns atom definitions, init, login, logout, and the scheduler.
  */
 
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Clipboard } from "@effect/platform-browser"
 import type { OrganizationId } from "@hazel/schema"
 import { Duration, Effect, Layer, Option, Schema } from "effect"
@@ -96,9 +96,10 @@ export const desktopLoginAtom = Atom.fn(
 			const auth = yield* TauriAuth
 			const authResult = yield* auth.initiateAuth(options)
 
-			const accessTokenOpt = yield* TokenStorage.getAccessToken
-			const refreshTokenOpt = yield* TokenStorage.getRefreshToken
-			const expiresAtOpt = yield* TokenStorage.getExpiresAt
+			const tokenStorage = yield* TokenStorage
+			const accessTokenOpt = yield* tokenStorage.getAccessToken
+			const refreshTokenOpt = yield* tokenStorage.getRefreshToken
+			const expiresAtOpt = yield* tokenStorage.getExpiresAt
 
 			if (
 				Option.isSome(accessTokenOpt) &&
@@ -142,7 +143,10 @@ export const desktopLogoutAtom = Atom.fn(
 			return
 		}
 
-		yield* TokenStorage.clearTokens.pipe(
+		yield* Effect.gen(function* () {
+			const tokenStorage = yield* TokenStorage
+			yield* tokenStorage.clearTokens
+		}).pipe(
 			Effect.provide(TokenStorageLive),
 			Effect.catch((error) => {
 				console.error("[desktop-auth] Failed to clear tokens:", error)
@@ -197,7 +201,7 @@ export const desktopLoginFromClipboardAtom = Atom.fn(
 				catch: () => new Error("Invalid clipboard data - not valid JSON"),
 			})
 
-			const parsed = yield* Schema.decodeUnknown(ClipboardAuthPayload)(rawJson).pipe(
+			const parsed = yield* Schema.decodeUnknownEffect(ClipboardAuthPayload)(rawJson).pipe(
 				Effect.mapError(() => new Error("Invalid clipboard data - missing code or state")),
 			)
 
@@ -206,7 +210,8 @@ export const desktopLoginFromClipboardAtom = Atom.fn(
 			const tokenExchange = yield* TokenExchange
 			const tokens = yield* tokenExchange.exchangeCode(parsed.code, stateString)
 
-			yield* TokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
+			const tokenStorage = yield* TokenStorage
+			yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
 
 			return tokens
 		}).pipe(
@@ -242,9 +247,10 @@ export const desktopInitAtom = Atom.make((get) => {
 	if (!isTauri()) return null
 
 	const loadTokens = Effect.gen(function* () {
-		const accessTokenOpt = yield* TokenStorage.getAccessToken
-		const refreshTokenOpt = yield* TokenStorage.getRefreshToken
-		const expiresAtOpt = yield* TokenStorage.getExpiresAt
+		const tokenStorage = yield* TokenStorage
+		const accessTokenOpt = yield* tokenStorage.getAccessToken
+		const refreshTokenOpt = yield* tokenStorage.getRefreshToken
+		const expiresAtOpt = yield* tokenStorage.getExpiresAt
 
 		if (Option.isSome(accessTokenOpt) && Option.isSome(refreshTokenOpt) && Option.isSome(expiresAtOpt)) {
 			get.set(desktopTokensAtom, {
@@ -274,7 +280,7 @@ export const desktopInitAtom = Atom.make((get) => {
 	const fiber = runtime.runFork(loadTokens)
 
 	get.addFinalizer(() => {
-		fiber.unsafeInterruptAsFork(fiber.id())
+		fiber.interruptUnsafe()
 	})
 
 	return null
@@ -314,7 +320,7 @@ export const desktopTokenSchedulerAtom = Atom.make((get) => {
 	const fiber = runtime.runFork(refreshSchedule)
 
 	get.addFinalizer(() => {
-		fiber.unsafeInterruptAsFork(fiber.id())
+		fiber.interruptUnsafe()
 	})
 
 	return { scheduledFor, immediate: false }
@@ -333,7 +339,10 @@ export const clearDesktopTokens = (): Promise<void> => {
 	if (!isTauri()) return Promise.resolve()
 
 	return runtime.runPromise(
-		TokenStorage.clearTokens.pipe(
+		Effect.gen(function* () {
+			const tokenStorage = yield* TokenStorage
+			yield* tokenStorage.clearTokens
+		}).pipe(
 			Effect.provide(TokenStorageLive),
 			Effect.catch((error) => {
 				console.error("[desktop-auth] Failed to clear tokens during recovery:", error)

@@ -22,6 +22,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 		const channelRepo = yield* ChannelRepo
 		const subscriptionRepo = yield* RssSubscriptionRepo
 		const integrationBotService = yield* IntegrationBotService
+		const rssSubscriptionPolicy = yield* RssSubscriptionPolicy
 
 		return {
 			"rssSubscription.create": (payload) =>
@@ -64,7 +65,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 									}),
 							})
 
-							yield* RssSubscriptionPolicy.canCreate(payload.channelId)
+							yield* rssSubscriptionPolicy.canCreate(payload.channelId)
 
 							// Create subscription
 							const [subscription] = yield* subscriptionRepo.insert({
@@ -97,7 +98,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 
 			"rssSubscription.list": ({ channelId }) =>
 				Effect.gen(function* () {
-					yield* RssSubscriptionPolicy.canRead(channelId)
+					yield* rssSubscriptionPolicy.canRead(channelId)
 					const subscriptions = yield* subscriptionRepo.findByChannel(channelId)
 
 					return new RssSubscriptionListResponse({ data: subscriptions })
@@ -113,7 +114,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 
 					const organizationId = user.organizationId
 
-					yield* RssSubscriptionPolicy.canReadByOrganization(organizationId)
+					yield* rssSubscriptionPolicy.canReadByOrganization(organizationId)
 					const subscriptions = yield* subscriptionRepo.findByOrganization(organizationId)
 
 					return new RssSubscriptionListResponse({ data: subscriptions })
@@ -130,7 +131,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 								)
 							}
 
-							yield* RssSubscriptionPolicy.canUpdate(id)
+							yield* rssSubscriptionPolicy.canUpdate(id)
 
 							const [updatedSubscription] = yield* subscriptionRepo.updateSettings(id, {
 								isEnabled: payload.isEnabled,
@@ -158,7 +159,7 @@ export const RssSubscriptionRpcLive = RssSubscriptionRpcs.toLayer(
 								)
 							}
 
-							yield* RssSubscriptionPolicy.canDelete(id)
+							yield* rssSubscriptionPolicy.canDelete(id)
 
 							yield* subscriptionRepo.softDelete(id)
 

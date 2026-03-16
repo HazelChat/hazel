@@ -27,6 +27,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 		const channelRepo = yield* ChannelRepo
 		const subscriptionRepo = yield* GitHubSubscriptionRepo
 		const integrationRepo = yield* IntegrationConnectionRepo
+		const gitHubSubscriptionPolicy = yield* GitHubSubscriptionPolicy
 
 		return {
 			"githubSubscription.create": (payload) =>
@@ -67,7 +68,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 								)
 							}
 
-							yield* GitHubSubscriptionPolicy.canCreate(payload.channelId)
+							yield* gitHubSubscriptionPolicy.canCreate(payload.channelId)
 
 							// Create subscription
 							const [subscription] = yield* subscriptionRepo.insert({
@@ -96,7 +97,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 
 			"githubSubscription.list": ({ channelId }) =>
 				Effect.gen(function* () {
-					yield* GitHubSubscriptionPolicy.canRead(channelId)
+					yield* gitHubSubscriptionPolicy.canRead(channelId)
 					const subscriptions = yield* subscriptionRepo.findByChannel(channelId)
 
 					return new GitHubSubscriptionListResponse({ data: subscriptions })
@@ -113,7 +114,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 
 					const organizationId = user.organizationId
 
-					yield* GitHubSubscriptionPolicy.canReadByOrganization(organizationId)
+					yield* gitHubSubscriptionPolicy.canReadByOrganization(organizationId)
 					const subscriptions = yield* subscriptionRepo.findByOrganization(organizationId)
 
 					return new GitHubSubscriptionListResponse({ data: subscriptions })
@@ -131,7 +132,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 								)
 							}
 
-							yield* GitHubSubscriptionPolicy.canUpdate(id)
+							yield* gitHubSubscriptionPolicy.canUpdate(id)
 
 							// Update subscription
 							const [updatedSubscription] = yield* subscriptionRepo.updateSettings(id, {
@@ -154,7 +155,7 @@ export const GitHubSubscriptionRpcLive = GitHubSubscriptionRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* GitHubSubscriptionPolicy.canDelete(id)
+							yield* gitHubSubscriptionPolicy.canDelete(id)
 
 							// Check subscription exists
 							const subscriptionOption = yield* subscriptionRepo.findById(id)

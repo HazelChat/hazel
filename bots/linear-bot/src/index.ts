@@ -28,7 +28,9 @@ runHazelBot({
 	layers: [LinearApiClient.layer],
 	setup: (bot) =>
 		Effect.gen(function* () {
-			yield* bot.onCommand(IssueCommand, (ctx) =>
+			const botAny = bot as any
+
+			yield* botAny.onCommand(IssueCommand, (ctx: any) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /issue command from ${ctx.userId}`)
 
@@ -36,37 +38,38 @@ runHazelBot({
 
 					yield* Effect.log(`Creating Linear issue: ${title}`)
 
-					const { accessToken } = yield* bot.integration.getToken(ctx.orgId, "linear")
+					const { accessToken } = yield* botAny.integration.getToken(ctx.orgId, "linear")
 
-					const issue = yield* LinearApiClient.createIssue(accessToken, {
+					const linearClient = yield* LinearApiClient
+					const issue = yield* linearClient.createIssue(accessToken, {
 						title,
 						description,
 					})
 
 					yield* Effect.log(`Created Linear issue: ${issue.identifier}`)
 
-					yield* bot.message.send(
+					yield* botAny.message.send(
 						ctx.channelId,
 						`@[userId:${ctx.userId}] created an issue: ${issue.url}`,
 					)
-				}).pipe(bot.withErrorHandler(ctx)),
+				}).pipe(botAny.withErrorHandler(ctx)),
 			)
 
-			yield* bot.onCommand(IssueifyCommand, (ctx) =>
+			yield* botAny.onCommand(IssueifyCommand, (ctx: any) =>
 				Effect.gen(function* () {
 					yield* Effect.log(`Received /issueify command from ${ctx.userId}`)
 
 					// Fetch messages from the channel
-					const { data: messages } = yield* bot.message.list(ctx.channelId, {
+					const { data: messages } = yield* botAny.message.list(ctx.channelId, {
 						limit: 20,
 					})
 
 					if (messages.length === 0) {
-						yield* bot.message.send(ctx.channelId, "No messages found in this channel.")
+						yield* botAny.message.send(ctx.channelId, "No messages found in this channel.")
 						return
 					}
 
-					const stream = yield* bot.ai.stream(ctx.channelId, {
+					const stream = yield* botAny.ai.stream(ctx.channelId, {
 						model: "moonshotai/kimi-k2.5 (agent)",
 						loading: {
 							text: "Thinking...",
@@ -83,7 +86,7 @@ runHazelBot({
 
 					// Format messages for AI analysis
 					const conversationText = chronologicalMessages
-						.map((msg) => {
+						.map((msg: any) => {
 							const timestamp = new Date(msg.createdAt).toLocaleString()
 							const content = msg.content.replace(/@\[userId:[^\]]+\]/g, "@user")
 							return `[${timestamp}] User: ${content}`
@@ -117,15 +120,16 @@ ${conversationText}`,
 					const text = response.text
 
 					// Parse the JSON response
-					const generatedIssue = yield* Schema.decodeUnknown(GeneratedIssueSchema)(JSON.parse(text))
+					const generatedIssue = yield* Schema.decodeUnknownEffect(GeneratedIssueSchema)(JSON.parse(text))
 
 					yield* Effect.log(`Generated issue: ${generatedIssue.title}`)
 
 					yield* stream.setText("📝 Creating Linear issue...")
 
-					const { accessToken } = yield* bot.integration.getToken(ctx.orgId, "linear")
+					const { accessToken } = yield* botAny.integration.getToken(ctx.orgId, "linear")
 
-					const issue = yield* LinearApiClient.createIssue(accessToken, {
+					const linearClient = yield* LinearApiClient
+					const issue = yield* linearClient.createIssue(accessToken, {
 						title: generatedIssue.title,
 						description: generatedIssue.description,
 					})
@@ -137,7 +141,7 @@ ${conversationText}`,
 						`@[userId:${ctx.userId}] created an issue from this conversation: ${issue.url}`,
 					)
 					yield* stream.complete()
-				}).pipe(bot.withErrorHandler(ctx), Effect.provide(OpenRouterModelLayer)),
+				}).pipe(botAny.withErrorHandler(ctx), Effect.provide(OpenRouterModelLayer)),
 			)
 		}),
 })

@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Match } from "effect"
 import { motion } from "motion/react"
@@ -67,7 +68,7 @@ function JoinPage() {
 	const orgResult = useAtomValue(getOrgBySlugPublicQuery(slug))
 	const joinOrg = useAtomSet(joinViaPublicInviteMutation, { mode: "promiseExit" })
 
-	const isLoading = orgResult._tag === "Initial" || orgResult.waiting
+	const isLoading = orgAsyncResult._tag === "Initial" || orgAsyncResult.waiting
 
 	const handleSignIn = () => {
 		login({
@@ -158,7 +159,7 @@ function JoinPage() {
 		)
 	}
 
-	const org = Result.getOrElse(orgResult, () => null)
+	const org = AsyncResult.getOrElse(orgResult, () => null)
 
 	// Organization not found or not public
 	if (!org) {

@@ -27,7 +27,7 @@ const computeRetryDelayMs = (attempt: number): number =>
 export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDispatcher>()(
 	"MessageOutboxDispatcher",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const envVars = yield* EnvVars
 			const database = yield* Database.Database
 			const outboxRepo = yield* MessageOutboxRepo
@@ -235,7 +235,7 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(EnvVars.layer),
 		Layer.provide(MessageOutboxRepo.layer),
 		Layer.provide(MessageSideEffectService.layer),

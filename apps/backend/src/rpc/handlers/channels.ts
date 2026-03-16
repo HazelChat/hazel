@@ -30,6 +30,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
 		const botGateway = yield* BotGatewayService
+		const channelMemberRepo = yield* ChannelMemberRepo
+		const channelPolicy = yield* ChannelPolicy
+		const userPolicy = yield* UserPolicy
+		const messageRepo = yield* MessageRepo
+		const channelRepo = yield* ChannelRepo
+		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const userRepo = yield* UserRepo
+		const channelAccessSync = yield* ChannelAccessSyncService
 
 		return {
 			"channel.create": ({ id, addAllMembers, ...payload }) =>
@@ -42,12 +50,12 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								? { id, ...payload, deletedAt: null }
 								: { ...payload, deletedAt: null }
 
-							yield* ChannelPolicy.canCreate(payload.organizationId)
-							const createdChannel = yield* ChannelRepo.insert(
+							yield* channelPolicy.canCreate(payload.organizationId)
+							const createdChannel = yield* channelRepo.insert(
 								insertData as typeof payload & { deletedAt: null },
 							).pipe(Effect.map((res) => res[0]!))
 
-							yield* ChannelMemberRepo.insert({
+							yield* channelMemberRepo.insert({
 								channelId: createdChannel.id,
 								userId: user.id,
 								isHidden: false,
@@ -60,14 +68,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							})
 
 							if (addAllMembers) {
-								const orgMembers = yield* OrganizationMemberRepo.findAllByOrganization(
+								const orgMembers = yield* organizationMemberRepo.findAllByOrganization(
 									payload.organizationId,
 								)
 
 								yield* Effect.forEach(
 									orgMembers.filter((m) => m.userId !== user.id),
 									(member) =>
-										ChannelMemberRepo.insert({
+										channelMemberRepo.insert({
 											channelId: createdChannel.id,
 											userId: member.userId,
 											isHidden: false,
@@ -82,7 +90,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								)
 							}
 
-							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
+							yield* channelAccessSync.syncChannel(createdChannel.id)
 
 							const txid = yield* generateTransactionId()
 
@@ -110,14 +118,14 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* ChannelPolicy.canUpdate(id)
-							const updatedChannel = yield* ChannelRepo.update({
+							yield* channelPolicy.canUpdate(id)
+							const updatedChannel = yield* channelRepo.update({
 								id,
 								...payload,
 							})
 
-							yield* ChannelAccessSyncService.syncChannel(id)
-							yield* ChannelAccessSyncService.syncChildThreads(id)
+							yield* channelAccessSync.syncChannel(id)
+							yield* channelAccessSync.syncChildThreads(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -143,16 +151,16 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 			"channel.delete": ({ id }) =>
 				Effect.gen(function* () {
-					const existingChannel = yield* ChannelRepo.findById(id).pipe(
+					const existingChannel = yield* channelRepo.findById(id).pipe(
 						withRemapDbErrors("Channel", "select"),
 					)
 					const response = yield* db
 						.transaction(
 							Effect.gen(function* () {
-								yield* ChannelPolicy.canDelete(id)
-								yield* ChannelRepo.deleteById(id)
-								yield* ChannelAccessSyncService.removeChannel(id)
-								yield* ChannelAccessSyncService.syncChildThreads(id)
+								yield* channelPolicy.canDelete(id)
+								yield* channelRepo.deleteById(id)
+								yield* channelAccessSync.removeChannel(id)
+								yield* channelAccessSync.syncChildThreads(id)
 
 								const txid = yield* generateTransactionId()
 
@@ -193,7 +201,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// Check for existing DM channel
 							if (payload.type === "single") {
-								const existingChannel = yield* ChannelMemberRepo.findExistingSingleDmChannel(
+								const existingChannel = yield* channelMemberRepo.findExistingSingleDmChannel(
 									user.id,
 									payload.participantIds[0],
 									OrganizationId.make(payload.organizationId),
@@ -212,9 +220,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							// Generate channel name for DMs
 							let channelName = payload.name
 							if (payload.type === "single") {
-								yield* UserPolicy.canRead(payload.participantIds[0]!)
-								const otherUser = yield* UserRepo.findById(payload.participantIds[0])
-								const currentUser = yield* UserRepo.findById(user.id)
+								yield* userPolicy.canRead(payload.participantIds[0]!)
+								const otherUser = yield* userRepo.findById(payload.participantIds[0])
+								const currentUser = yield* userRepo.findById(user.id)
 
 								if (Option.isSome(otherUser) && Option.isSome(currentUser)) {
 									// Create a consistent name for DMs using first and last name
@@ -228,8 +236,8 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 
 							// Create channel
-							yield* ChannelPolicy.canCreate(OrganizationId.make(payload.organizationId))
-							const createdChannel = yield* ChannelRepo.insert({
+							yield* channelPolicy.canCreate(OrganizationId.make(payload.organizationId))
+							const createdChannel = yield* channelRepo.insert({
 								name: channelName || "Group Channel",
 								icon: null,
 								type: payload.type,
@@ -240,7 +248,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}).pipe(Effect.map((res) => res[0]!))
 
 							// Add creator as member
-							yield* ChannelMemberRepo.insert({
+							yield* channelMemberRepo.insert({
 								channelId: createdChannel.id,
 								userId: user.id,
 								isHidden: false,
@@ -254,7 +262,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// Add all participants as members
 							for (const participantId of payload.participantIds) {
-								yield* ChannelMemberRepo.insert({
+								yield* channelMemberRepo.insert({
 									channelId: createdChannel.id,
 									userId: participantId,
 									isHidden: false,
@@ -267,7 +275,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								})
 							}
 
-							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
+							yield* channelAccessSync.syncChannel(createdChannel.id)
 
 							const txid = yield* generateTransactionId()
 
@@ -298,7 +306,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							// 1. Find the message and resolve thread context from authoritative DB data
-							const message = yield* MessageRepo.findById(messageId)
+							const message = yield* messageRepo.findById(messageId)
 
 							if (Option.isNone(message)) {
 								return yield* Effect.fail(new MessageNotFoundError({ messageId }))
@@ -306,7 +314,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// If the message already points to a thread, return that thread.
 							if (message.value.threadChannelId) {
-								const existingThread = yield* ChannelRepo.findById(
+								const existingThread = yield* channelRepo.findById(
 									message.value.threadChannelId,
 								)
 								if (Option.isNone(existingThread)) {
@@ -318,7 +326,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									)
 								}
 
-								yield* ChannelAccessSyncService.syncChannel(existingThread.value.id)
+								yield* channelAccessSync.syncChannel(existingThread.value.id)
 
 								const txid = yield* generateTransactionId()
 								return {
@@ -327,7 +335,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								}
 							}
 
-							const parentChannel = yield* ChannelRepo.findById(message.value.channelId)
+							const parentChannel = yield* channelRepo.findById(message.value.channelId)
 							if (Option.isNone(parentChannel)) {
 								return yield* Effect.fail(
 									new InternalServerError({
@@ -339,7 +347,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							// If the message is already in a thread channel, return that thread.
 							if (parentChannel.value.type === "thread") {
-								yield* ChannelAccessSyncService.syncChannel(parentChannel.value.id)
+								yield* channelAccessSync.syncChannel(parentChannel.value.id)
 
 								const txid = yield* generateTransactionId()
 								return {
@@ -383,13 +391,13 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 										deletedAt: null,
 									}
 
-							yield* ChannelPolicy.canCreate(organizationId)
-							const createdChannel = yield* ChannelRepo.insert(insertData).pipe(
+							yield* channelPolicy.canCreate(organizationId)
+							const createdChannel = yield* channelRepo.insert(insertData).pipe(
 								Effect.map((res) => res[0]!),
 							)
 
 							// 3. Add creator as member
-							yield* ChannelMemberRepo.insert({
+							yield* channelMemberRepo.insert({
 								channelId: createdChannel.id,
 								userId: user.id,
 								isHidden: false,
@@ -409,7 +417,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									.where(eq(schema.messagesTable.id, messageId)),
 							)
 
-							yield* ChannelAccessSyncService.syncChannel(createdChannel.id)
+							yield* channelAccessSync.syncChannel(createdChannel.id)
 
 							const txid = yield* generateTransactionId()
 
@@ -423,9 +431,9 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 			"channel.generateName": ({ channelId }) =>
 				Effect.gen(function* () {
-					yield* ChannelPolicy.canUpdate(channelId)
+					yield* channelPolicy.canUpdate(channelId)
 
-					const channel = yield* ChannelRepo.findById(channelId).pipe(
+					const channel = yield* channelRepo.findById(channelId).pipe(
 						Effect.catchTag("DatabaseError", (err) =>
 							Effect.fail(
 								new InternalServerError({

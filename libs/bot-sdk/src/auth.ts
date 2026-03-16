@@ -57,7 +57,7 @@ export class BotAuth extends ServiceMap.Service<BotAuth>()("BotAuth", {
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make)
+	static readonly layer = (context: BotAuthContext) => Layer.effect(this, this.make(context))
 }
 
 /**
@@ -85,8 +85,8 @@ export const createAuthContextFromToken = (
 			Effect.retry(
 				Schedule.exponential("1 second", 2).pipe(
 					Schedule.jittered,
-					Schedule.while((duration) =>
-						Duration.isLessThanOrEqualTo(duration, Duration.seconds(30)),
+					Schedule.while((metadata) =>
+						Duration.isLessThanOrEqualTo(metadata.output, Duration.seconds(30)),
 					),
 				),
 			),

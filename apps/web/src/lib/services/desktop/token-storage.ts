@@ -6,7 +6,7 @@
 
 import { getTauriStore, type TauriStoreApi } from "@hazel/desktop/bridge"
 import { TokenNotFoundError, TokenStoreError, TauriNotAvailableError } from "@hazel/domain/errors"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 type StoreInstance = Awaited<ReturnType<TauriStoreApi["load"]>>
 
@@ -232,6 +232,8 @@ export class TokenStorage extends ServiceMap.Service<TokenStorage>()("TokenStora
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	/**
 	 * Mock token data for testing
 	 */

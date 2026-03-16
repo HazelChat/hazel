@@ -1,4 +1,4 @@
-import { Atom, Result } from "@effect/atom-react"
+import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { and, count, eq, isNull } from "@tanstack/db"
 import {
@@ -35,7 +35,7 @@ export const processedReactionsAtomFamily = Atom.family((key: `${MessageId}:${st
 		const [messageId] = key.split(":") as [MessageId, string]
 		const currentUserId = key.slice(messageId.length + 1) // Handle userId that may contain ":"
 		const reactionsResult = get(messageReactionsAtomFamily(messageId))
-		const reactions = Result.getOrElse(reactionsResult, () => [])
+		const reactions = AsyncResult.getOrElse(reactionsResult, () => [])
 
 		// Aggregate reactions by emoji
 		return Object.entries(

@@ -16,13 +16,11 @@ import {
 	Cause,
 	Config,
 	ConfigProvider,
-	Context,
 	Deferred,
 	Effect,
 	Layer,
 	Option,
 	Ref,
-	Runtime,
 	Schema,
 	ServiceMap,
 } from "effect"
@@ -124,20 +122,20 @@ const extractGatewayOp = (payload: string | BufferSource): string | undefined =>
 export class GatewayConfig extends ServiceMap.Service<GatewayConfig>()("GatewayConfig", {
 	make: Effect.gen(function* () {
 		const config = {
-			port: yield* Config.integer("PORT").pipe(Config.withDefault(DEFAULT_PORT)),
+			port: yield* Config.int("PORT").pipe(Config.withDefault(DEFAULT_PORT)),
 			isDev: yield* Config.boolean("IS_DEV").pipe(Config.withDefault(false)),
 			databaseUrl: yield* Config.redacted("DATABASE_URL"),
 			durableStreamsUrl: yield* Config.string("DURABLE_STREAMS_URL").pipe(
 				Config.withDefault(DEFAULT_DURABLE_STREAMS_URL),
 			),
 			durableStreamsToken: yield* Config.option(Config.string("DURABLE_STREAMS_TOKEN")),
-			heartbeatIntervalMs: yield* Config.integer("GATEWAY_HEARTBEAT_INTERVAL_MS").pipe(
+			heartbeatIntervalMs: yield* Config.int("GATEWAY_HEARTBEAT_INTERVAL_MS").pipe(
 				Config.withDefault(DEFAULT_HEARTBEAT_INTERVAL_MS),
 			),
-			leaseTtlSeconds: yield* Config.integer("GATEWAY_LEASE_TTL_SECONDS").pipe(
+			leaseTtlSeconds: yield* Config.int("GATEWAY_LEASE_TTL_SECONDS").pipe(
 				Config.withDefault(DEFAULT_LEASE_TTL_SECONDS),
 			),
-			batchAckTimeoutMs: yield* Config.integer("GATEWAY_BATCH_ACK_TIMEOUT_MS").pipe(
+			batchAckTimeoutMs: yield* Config.int("GATEWAY_BATCH_ACK_TIMEOUT_MS").pipe(
 				Config.withDefault(DEFAULT_BATCH_ACK_TIMEOUT_MS),
 			),
 		} as const
@@ -304,7 +302,7 @@ class DurableStreamClient extends ServiceMap.Service<DurableStreamClient>()("Dur
 						cause,
 					}),
 			})
-			const events = yield* Schema.decodeUnknown(Schema.Array(BotGatewayEnvelope))(raw).pipe(
+			const events = yield* Schema.decodeUnknownEffect(Schema.Array(BotGatewayEnvelope))(raw).pipe(
 				Effect.mapError(
 					(cause) =>
 						new DurableStreamGatewayError({
@@ -336,7 +334,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 		const redis = yield* Redis
 		const durableStreams = yield* DurableStreamClient
 		const config = yield* GatewayConfig
-		const runtime = (yield* Effect.runtime<any>()) as Runtime.Runtime<never>
+		const runtime = (yield* Effect.services<any>()) as ServiceMap.ServiceMap<never>
 		const sessionsRef = yield* Ref.make(new Map<string, GatewaySession>())
 
 		const sendFrame = (
@@ -499,7 +497,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 							yield* annotateReconnectReason("durable_stream_unavailable")
 							yield* Effect.logWarning("Gateway delivery loop failed", { error, sessionId: id })
 						}).pipe(
-							Effect.zipRight(
+							Effect.andThen(
 								Effect.gen(function* () {
 									const session = yield* getSession(id)
 									if (session) {
@@ -528,7 +526,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 								sessionId: id,
 							})
 						}).pipe(
-							Effect.zipRight(
+							Effect.andThen(
 								Effect.gen(function* () {
 									const session = yield* getSession(id)
 									if (session) {
@@ -613,7 +611,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 				resumeOffset: frame.resumeOffset,
 			})
 
-			Runtime.runFork(runtime)(startDeliveryLoop(id))
+			Effect.runForkWith(runtime)(startDeliveryLoop(id))
 		})
 
 		const onOpen = (socket: ServerWebSocket<{ sessionId: string | null }>) =>
@@ -772,7 +770,7 @@ class BotGatewayHub extends ServiceMap.Service<BotGatewayHub>()("BotGatewayHub",
 	static readonly layer = Layer.effect(this, this.make)
 }
 
-const DatabaseLive = Layer.unwrapEffect(
+const DatabaseLive = Layer.unwrap(
 	Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		return Database.layer({
@@ -782,7 +780,7 @@ const DatabaseLive = Layer.unwrapEffect(
 	}),
 )
 
-const ConfigProviderLive = Layer.setConfigProvider(ConfigProvider.fromEnv())
+const ConfigProviderLive = ConfigProvider.layer(ConfigProvider.fromEnv())
 
 type StartupDependency = "config" | "database" | "redis" | "tracer" | "server"
 
@@ -799,11 +797,11 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 		readonly dependency: StartupDependency
 		readonly startMessage: string
 		readonly successMessage: string
-		readonly successLogs?: (context: Context.Context<ROut>) => Record<string, unknown>
+		readonly successLogs?: (context: ServiceMap.ServiceMap<ROut>) => Record<string, unknown>
 		readonly failureMessage: string
 	},
 ) =>
-	Layer.unwrapEffect(
+	Layer.unwrap(
 		Effect.logInfo(options.startMessage).pipe(
 			Effect.as(
 				layer.pipe(
@@ -813,14 +811,18 @@ export const instrumentStartupLayer = <ROut, E, RIn>(
 							? Effect.logInfo(options.successMessage, logs)
 							: Effect.logInfo(options.successMessage)
 					}),
-					Layer.tapErrorCause((cause) =>
+					Layer.tapCause((cause) =>
 						Effect.logError(options.failureMessage, {
 							dependency: options.dependency,
 							cause: Cause.pretty(cause),
 						}),
 					),
-					Layer.mapError((error) =>
-						makeStartupError(options.dependency, options.failureMessage, error),
+					Layer.catchCause((cause) =>
+						Layer.effectDiscard(
+							Effect.fail(
+								makeStartupError(options.dependency, options.failureMessage, Cause.squash(cause)),
+							),
+						),
 					),
 				),
 			),
@@ -832,7 +834,7 @@ export const InstrumentedConfigLive = instrumentStartupLayer(GatewayConfig.layer
 	startMessage: "Loading gateway startup config...",
 	successMessage: "Gateway startup config loaded",
 	successLogs: (context) => {
-		const config = Context.get(context, GatewayConfig)
+		const config = ServiceMap.get(context, GatewayConfig)
 		return {
 			port: config.port,
 			durableStreamsUrl: config.durableStreamsUrl,
@@ -852,7 +854,7 @@ export const InstrumentedDatabaseLive = instrumentStartupLayer(
 	},
 )
 
-export const InstrumentedRedisLive = instrumentStartupLayer(Redis.layer, {
+export const InstrumentedRedisLive = instrumentStartupLayer(Redis.Default, {
 	dependency: "redis",
 	startMessage: "Initializing bot gateway Redis layer...",
 	successMessage: "Bot gateway Redis layer initialized",
@@ -891,9 +893,9 @@ type GatewayServe = (options: any) => {
 }
 
 export const createGatewayServer = (options: {
-	readonly config: Context.Tag.Service<typeof GatewayConfig>
-	readonly hub: Context.Tag.Service<typeof BotGatewayHub>
-	readonly runtime: Runtime.Runtime<never>
+	readonly config: (typeof GatewayConfig)["Service"]
+	readonly hub: (typeof BotGatewayHub)["Service"]
+	readonly runtime: ServiceMap.ServiceMap<never>
 	readonly serve?: GatewayServe
 }) =>
 	Effect.gen(function* () {
@@ -964,7 +966,7 @@ export const createGatewayServer = (options: {
 							}
 
 							if (request.method === "GET" && url.pathname === "/bot-gateway/ws") {
-								return Runtime.runPromise(runtime)(
+								return Effect.runPromiseWith(runtime)(
 									Effect.gen(function* () {
 										yield* annotateHttpRequest("/bot-gateway/ws", request.method)
 										yield* Effect.logInfo(
@@ -993,14 +995,14 @@ export const createGatewayServer = (options: {
 							}
 
 							if (request.method === "GET" && url.pathname === "/bot-gateway/stream") {
-								return Runtime.runPromise(runtime)(handleStreamProxyRequest(request, url))
+								return Effect.runPromiseWith(runtime)(handleStreamProxyRequest(request, url))
 							}
 
 							return new Response("Not found", { status: 404 })
 						},
 						websocket: {
 							open(socket: ServerWebSocket<{ sessionId: string | null }>) {
-								Runtime.runFork(runtime)(
+								Effect.runForkWith(runtime)(
 									Effect.gen(function* () {
 										yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
 										yield* hub.onOpen(socket)
@@ -1015,7 +1017,7 @@ export const createGatewayServer = (options: {
 								message: string | BufferSource,
 							) {
 								const op = extractGatewayOp(message)
-								Runtime.runFork(runtime)(
+								Effect.runForkWith(runtime)(
 									Effect.gen(function* () {
 										yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
 										yield* annotateSessionContext({
@@ -1033,7 +1035,7 @@ export const createGatewayServer = (options: {
 								)
 							},
 							close(socket: ServerWebSocket<{ sessionId: string | null }>) {
-								Runtime.runFork(runtime)(
+								Effect.runForkWith(runtime)(
 									Effect.gen(function* () {
 										yield* Effect.annotateCurrentSpan("http.route", "/bot-gateway/ws")
 										yield* annotateSessionContext({
@@ -1068,7 +1070,7 @@ export const makeProgram = (options?: {
 	Effect.gen(function* () {
 		const config = yield* GatewayConfig
 		const hub = yield* BotGatewayHub
-		const runtime = (yield* Effect.runtime<any>()) as Runtime.Runtime<never>
+		const runtime = (yield* Effect.services<any>()) as ServiceMap.ServiceMap<never>
 
 		yield* createGatewayServer({
 			config,

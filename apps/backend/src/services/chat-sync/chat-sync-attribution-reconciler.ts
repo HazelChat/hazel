@@ -17,7 +17,7 @@ const defaultShadowDisplayName = (provider: string): string =>
 export class ChatSyncAttributionReconciler extends ServiceMap.Service<ChatSyncAttributionReconciler>()(
 	"ChatSyncAttributionReconciler",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const messageRepo = yield* MessageRepo
 			const userRepo = yield* UserRepo
 			const organizationMemberRepo = yield* OrganizationMemberRepo
@@ -128,7 +128,7 @@ export class ChatSyncAttributionReconciler extends ServiceMap.Service<ChatSyncAt
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(MessageRepo.layer),
 		Layer.provide(UserRepo.layer),
 		Layer.provide(OrganizationMemberRepo.layer),

@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { MessageId, OrganizationId } from "@hazel/schema"
 import { format } from "date-fns"
 import { createContext, memo, useCallback, useMemo, useRef, type ReactNode, type RefObject } from "react"
@@ -260,7 +261,7 @@ const MessageHeader = memo(function MessageHeader() {
 	const user = message.author
 	const { statusEmoji, customMessage, statusExpiresAt, quietHours } = useUserStatus(message.authorId)
 	const isDiscordSyncedResult = useAtomValue(isDiscordSyncedMessageAtomFamily(message.id))
-	const isDiscordSynced = Result.getOrElse(isDiscordSyncedResult, () => []).length > 0
+	const isDiscordSynced = AsyncResult.getOrElse(isDiscordSyncedResult, () => []).length > 0
 
 	const isEdited = message.updatedAt && message.updatedAt.getTime() > message.createdAt.getTime()
 

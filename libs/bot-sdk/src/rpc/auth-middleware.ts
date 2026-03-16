@@ -28,8 +28,8 @@ import { Effect } from "effect"
  * ```
  */
 export const createBotAuthMiddleware = (botToken: string) =>
-	RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
-		Effect.succeed({
+	RpcMiddleware.layerClient(AuthMiddleware, ({ request, next }) =>
+		next({
 			...request,
 			headers: Headers.set(request.headers ?? Headers.empty, "authorization", `Bearer ${botToken}`),
 		}),

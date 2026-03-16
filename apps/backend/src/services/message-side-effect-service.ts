@@ -14,7 +14,7 @@ import { DiscordSyncWorker } from "./chat-sync/discord-sync-worker"
 export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffectService>()(
 	"MessageSideEffectService",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const db = yield* Database.Database
 			const discordSyncWorker = yield* DiscordSyncWorker
 			const clusterUrl = yield* Config.string("CLUSTER_URL").pipe(Effect.orDie)
@@ -286,5 +286,5 @@ export class MessageSideEffectService extends ServiceMap.Service<MessageSideEffe
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(Layer.provide(DiscordSyncWorker.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(DiscordSyncWorker.layer))
 }

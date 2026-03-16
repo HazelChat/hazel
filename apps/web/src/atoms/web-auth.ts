@@ -7,7 +7,7 @@
  * This module owns atom definitions, init, logout, and the scheduler.
  */
 
-import { Atom } from "@effect/atom-react"
+import { Atom } from "effect/unstable/reactivity"
 import { Duration, Effect, Option, Schema } from "effect"
 import { runtime } from "~/lib/services/common/runtime"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
@@ -213,7 +213,7 @@ export const webInitAtom = Atom.make((get) => {
 	const fiber = runtime.runFork(loadTokens)
 
 	get.addFinalizer(() => {
-		fiber.unsafeInterruptAsFork(fiber.id())
+		fiber.interruptUnsafe()
 	})
 
 	return null
@@ -253,7 +253,7 @@ export const webTokenSchedulerAtom = Atom.make((get) => {
 	const fiber = runtime.runFork(refreshSchedule)
 
 	get.addFinalizer(() => {
-		fiber.unsafeInterruptAsFork(fiber.id())
+		fiber.interruptUnsafe()
 	})
 
 	return { scheduledFor, immediate: false }

@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { SyncConnectionId } from "@hazel/schema"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Option } from "effect"
@@ -141,7 +142,7 @@ function ChatSyncConnectionsPage() {
 	}
 
 	// Loading state
-	if (Result.isInitial(connectionsResult)) {
+	if (AsyncResult.isInitial(connectionsResult)) {
 		return (
 			<>
 				<SectionHeader.Root className="border-none pb-0">
@@ -165,7 +166,7 @@ function ChatSyncConnectionsPage() {
 	}
 
 	// Error state
-	if (Result.isFailure(connectionsResult)) {
+	if (AsyncResult.isFailure(connectionsResult)) {
 		return (
 			<>
 				<SectionHeader.Root className="border-none pb-0">
@@ -186,7 +187,7 @@ function ChatSyncConnectionsPage() {
 		)
 	}
 
-	const data = Result.value(connectionsResult)
+	const data = AsyncResult.value(connectionsResult)
 	const connections = Option.isSome(data) ? data.value.data : []
 
 	return (

@@ -42,6 +42,7 @@ const buildWebhookUrl = (webhookId: string, token: string) => {
 export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const channelWebhookPolicy = yield* ChannelWebhookPolicy
 
 		return {
 			"channelWebhook.create": (payload) =>
@@ -86,7 +87,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 								}),
 							)
 
-							yield* ChannelWebhookPolicy.canCreate(payload.channelId)
+							yield* channelWebhookPolicy.canCreate(payload.channelId)
 
 							// Create webhook
 							const [webhook] = yield* webhookRepo.insert({
@@ -120,7 +121,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 				Effect.gen(function* () {
 					const webhookRepo = yield* ChannelWebhookRepo
 
-					yield* ChannelWebhookPolicy.canRead(channelId)
+					yield* channelWebhookPolicy.canRead(channelId)
 					const webhooks = yield* webhookRepo.findByChannel(channelId)
 
 					return new ChannelWebhookListResponse({ data: webhooks })
@@ -133,7 +134,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 							const webhookRepo = yield* ChannelWebhookRepo
 							const botService = yield* WebhookBotService
 
-							yield* ChannelWebhookPolicy.canUpdate(id)
+							yield* channelWebhookPolicy.canUpdate(id)
 
 							// Get current webhook
 							const webhookOption = yield* webhookRepo.findById(id)
@@ -178,7 +179,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						Effect.gen(function* () {
 							const webhookRepo = yield* ChannelWebhookRepo
 
-							yield* ChannelWebhookPolicy.canUpdate(id)
+							yield* channelWebhookPolicy.canUpdate(id)
 
 							// Get current webhook
 							const webhookOption = yield* webhookRepo.findById(id)
@@ -214,7 +215,7 @@ export const ChannelWebhookRpcLive = ChannelWebhookRpcs.toLayer(
 						Effect.gen(function* () {
 							const webhookRepo = yield* ChannelWebhookRepo
 
-							yield* ChannelWebhookPolicy.canDelete(id)
+							yield* channelWebhookPolicy.canDelete(id)
 
 							// Soft delete webhook only - bot user cleanup can be handled separately
 							// (e.g., by admin or background job) since integrations may create webhooks

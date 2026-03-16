@@ -1,4 +1,4 @@
-import { LanguageModel } from "effect/unstable/ai"
+import { AiError, LanguageModel } from "effect/unstable/ai"
 import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
@@ -19,325 +19,307 @@ Thread replies:
 
 Generate a concise thread name:`
 
-// Define the workflow error type union for type safety
-type ThreadNamingError =
-	| Cluster.ThreadChannelNotFoundError
-	| Cluster.OriginalMessageNotFoundError
-	| Cluster.ThreadContextQueryError
-	| Cluster.AIProviderUnavailableError
-	| Cluster.AIRateLimitError
-	| Cluster.AIResponseParseError
-	| Cluster.ThreadNameUpdateError
-
 export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
-	Effect.fn("workflow.ThreadNaming")(function* (payload: Cluster.ThreadNamingWorkflowPayload) {
+	Effect.fn("workflow.ThreadNaming")(function* (payload: Cluster.ThreadNamingWorkflowPayload, _executionId: string) {
 		yield* Effect.annotateCurrentSpan("workflow.thread_channel_id", payload.threadChannelId)
 		yield* Effect.annotateCurrentSpan("workflow.original_message_id", payload.originalMessageId)
 
 		yield* Effect.logDebug(`Starting ThreadNamingWorkflow for thread ${payload.threadChannelId}`)
 
 		// Activity 1: Get thread context from database
-		const contextResult: Cluster.GetThreadContextResult = yield* Activity.make({
-			name: "GetThreadContext",
-			success: Cluster.GetThreadContextResult,
-			error: Cluster.ThreadNamingWorkflowError,
-			execute: Effect.gen(function* () {
-				const db = yield* Database.Database
+		const contextResult: Cluster.GetThreadContextResult = yield* Effect.gen(function* () {
+			return yield* Activity.make({
+				name: "GetThreadContext",
+				success: Cluster.GetThreadContextResult,
+				error: Cluster.ThreadNamingWorkflowError,
+				execute: Effect.gen(function* () {
+					const db = yield* Database.Database
 
-				const threadChannel = yield* db
-					.execute((client) =>
-						client
-							.select({
-								id: schema.channelsTable.id,
-								name: schema.channelsTable.name,
-								parentChannelId: schema.channelsTable.parentChannelId,
-							})
-							.from(schema.channelsTable)
-							.where(eq(schema.channelsTable.id, payload.threadChannelId))
-							.limit(1),
-					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (err) =>
-							Effect.fail(
-								new Cluster.ThreadContextQueryError({
-									threadChannelId: payload.threadChannelId,
-									operation: "thread",
-									cause: err,
-								}),
-							),
-						),
-					)
-
-				if (threadChannel.length === 0) {
-					return yield* Effect.fail(
-						new Cluster.ThreadChannelNotFoundError({
-							threadChannelId: payload.threadChannelId,
-						}),
-					)
-				}
-
-				const thread = threadChannel[0]!
-
-				// Get original message (the one with threadChannelId pointing to this thread)
-				const originalMessage = yield* db
-					.execute((client) =>
-						client
-							.select({
-								id: schema.messagesTable.id,
-								content: schema.messagesTable.content,
-								authorId: schema.messagesTable.authorId,
-								createdAt: schema.messagesTable.createdAt,
-								firstName: schema.usersTable.firstName,
-								lastName: schema.usersTable.lastName,
-							})
-							.from(schema.messagesTable)
-							.innerJoin(
-								schema.usersTable,
-								eq(schema.messagesTable.authorId, schema.usersTable.id),
-							)
-							.where(eq(schema.messagesTable.id, payload.originalMessageId))
-							.limit(1),
-					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (err) =>
-							Effect.fail(
-								new Cluster.ThreadContextQueryError({
-									threadChannelId: payload.threadChannelId,
-									operation: "originalMessage",
-									cause: err,
-								}),
-							),
-						),
-					)
-
-				if (originalMessage.length === 0) {
-					return yield* Effect.fail(
-						new Cluster.OriginalMessageNotFoundError({
-							threadChannelId: payload.threadChannelId,
-							messageId: payload.originalMessageId,
-						}),
-					)
-				}
-
-				const orig = originalMessage[0]!
-
-				// Get thread messages (messages in the thread channel)
-				const threadMessages = yield* db
-					.execute((client) =>
-						client
-							.select({
-								id: schema.messagesTable.id,
-								content: schema.messagesTable.content,
-								authorId: schema.messagesTable.authorId,
-								createdAt: schema.messagesTable.createdAt,
-								firstName: schema.usersTable.firstName,
-								lastName: schema.usersTable.lastName,
-							})
-							.from(schema.messagesTable)
-							.innerJoin(
-								schema.usersTable,
-								eq(schema.messagesTable.authorId, schema.usersTable.id),
-							)
-							.where(
-								and(
-									eq(schema.messagesTable.channelId, payload.threadChannelId),
-									isNull(schema.messagesTable.deletedAt),
+					const threadChannel = yield* db
+						.execute((client) =>
+							client
+								.select({
+									id: schema.channelsTable.id,
+									name: schema.channelsTable.name,
+									parentChannelId: schema.channelsTable.parentChannelId,
+								})
+								.from(schema.channelsTable)
+								.where(eq(schema.channelsTable.id, payload.threadChannelId))
+								.limit(1),
+						)
+						.pipe(
+							Effect.catchTag("DatabaseError", (err) =>
+								Effect.fail(
+									new Cluster.ThreadContextQueryError({
+										threadChannelId: payload.threadChannelId,
+										operation: "thread",
+										cause: err,
+									}),
 								),
-							)
-							.orderBy(schema.messagesTable.createdAt)
-							.limit(10),
-					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (err) =>
-							Effect.fail(
-								new Cluster.ThreadContextQueryError({
-									threadChannelId: payload.threadChannelId,
-									operation: "threadMessages",
-									cause: err,
-								}),
 							),
-						),
-					)
+						)
 
-				yield* Effect.annotateCurrentSpan("activity.thread_message_count", threadMessages.length)
+					if (threadChannel.length === 0) {
+						return yield* Effect.fail(
+							new Cluster.ThreadChannelNotFoundError({
+								threadChannelId: payload.threadChannelId,
+							}),
+						)
+					}
 
-				return {
-					threadChannelId: payload.threadChannelId,
-					currentName: thread.name,
-					originalMessage: {
-						id: orig.id,
-						content: orig.content ?? "",
-						authorId: orig.authorId,
-						authorName: `${orig.firstName} ${orig.lastName}`.trim(),
-						createdAt: orig.createdAt.toISOString(),
-					},
-					threadMessages: threadMessages.map((m) => ({
-						id: m.id,
-						content: m.content ?? "",
-						authorId: m.authorId,
-						authorName: `${m.firstName} ${m.lastName}`.trim(),
-						createdAt: m.createdAt.toISOString(),
-					})),
-				}
-			}),
+					const thread = threadChannel[0]!
+
+					// Get original message (the one with threadChannelId pointing to this thread)
+					const originalMessage = yield* db
+						.execute((client) =>
+							client
+								.select({
+									id: schema.messagesTable.id,
+									content: schema.messagesTable.content,
+									authorId: schema.messagesTable.authorId,
+									createdAt: schema.messagesTable.createdAt,
+									firstName: schema.usersTable.firstName,
+									lastName: schema.usersTable.lastName,
+								})
+								.from(schema.messagesTable)
+								.innerJoin(
+									schema.usersTable,
+									eq(schema.messagesTable.authorId, schema.usersTable.id),
+								)
+								.where(eq(schema.messagesTable.id, payload.originalMessageId))
+								.limit(1),
+						)
+						.pipe(
+							Effect.catchTag("DatabaseError", (err) =>
+								Effect.fail(
+									new Cluster.ThreadContextQueryError({
+										threadChannelId: payload.threadChannelId,
+										operation: "originalMessage",
+										cause: err,
+									}),
+								),
+							),
+						)
+
+					if (originalMessage.length === 0) {
+						return yield* Effect.fail(
+							new Cluster.OriginalMessageNotFoundError({
+								threadChannelId: payload.threadChannelId,
+								messageId: payload.originalMessageId,
+							}),
+						)
+					}
+
+					const orig = originalMessage[0]!
+
+					// Get thread messages (messages in the thread channel)
+					const threadMessages = yield* db
+						.execute((client) =>
+							client
+								.select({
+									id: schema.messagesTable.id,
+									content: schema.messagesTable.content,
+									authorId: schema.messagesTable.authorId,
+									createdAt: schema.messagesTable.createdAt,
+									firstName: schema.usersTable.firstName,
+									lastName: schema.usersTable.lastName,
+								})
+								.from(schema.messagesTable)
+								.innerJoin(
+									schema.usersTable,
+									eq(schema.messagesTable.authorId, schema.usersTable.id),
+								)
+								.where(
+									and(
+										eq(schema.messagesTable.channelId, payload.threadChannelId),
+										isNull(schema.messagesTable.deletedAt),
+									),
+								)
+								.orderBy(schema.messagesTable.createdAt)
+								.limit(10),
+						)
+						.pipe(
+							Effect.catchTag("DatabaseError", (err) =>
+								Effect.fail(
+									new Cluster.ThreadContextQueryError({
+										threadChannelId: payload.threadChannelId,
+										operation: "threadMessages",
+										cause: err,
+									}),
+								),
+							),
+						)
+
+					yield* Effect.annotateCurrentSpan("activity.thread_message_count", threadMessages.length)
+
+					return {
+						threadChannelId: payload.threadChannelId,
+						currentName: thread.name,
+						originalMessage: {
+							id: orig.id,
+							content: orig.content ?? "",
+							authorId: orig.authorId,
+							authorName: `${orig.firstName} ${orig.lastName}`.trim(),
+							createdAt: orig.createdAt.toISOString(),
+						},
+						threadMessages: threadMessages.map((m) => ({
+							id: m.id,
+							content: m.content ?? "",
+							authorId: m.authorId,
+							authorName: `${m.firstName} ${m.lastName}`.trim(),
+							createdAt: m.createdAt.toISOString(),
+						})),
+					}
+				}),
+			})
 		}).pipe(
-			Effect.tapError((err) =>
+			Effect.tapError((err: { readonly _tag: string; readonly cause?: unknown }) =>
 				Effect.logError("GetThreadContext activity failed", {
 					threadChannelId: payload.threadChannelId,
 					errorTag: err._tag,
-					cause: "cause" in err ? String(err.cause) : undefined,
+					cause: err.cause != null ? String(err.cause) : undefined,
 				}),
 			),
 		)
 
 		// Activity 2: Generate thread name using AI
-		const nameResult: Cluster.GenerateThreadNameResult = yield* Activity.make({
-			name: "GenerateThreadName",
-			success: Cluster.GenerateThreadNameResult,
-			error: Cluster.ThreadNamingWorkflowError,
-			execute: Effect.gen(function* () {
-				// Build the prompt
-				const threadMessagesText = contextResult.threadMessages
-					.map((m: Cluster.ThreadMessageContext) => `${m.authorName}: ${m.content}`)
-					.join("\n")
+		const nameResult: Cluster.GenerateThreadNameResult = yield* Effect.gen(function* () {
+			return yield* Activity.make({
+				name: "GenerateThreadName",
+				success: Cluster.GenerateThreadNameResult,
+				error: Cluster.ThreadNamingWorkflowError,
+				execute: Effect.gen(function* () {
+					// Build the prompt
+					const threadMessagesText = contextResult.threadMessages
+						.map((m: Cluster.ThreadMessageContext) => `${m.authorName}: ${m.content}`)
+						.join("\n")
 
-				const prompt = NAMING_PROMPT.replace(
-					"{originalAuthor}",
-					contextResult.originalMessage.authorName,
-				)
-					.replace("{originalContent}", contextResult.originalMessage.content)
-					.replace("{threadMessages}", threadMessagesText || "(no replies yet)")
+					const prompt = NAMING_PROMPT.replace(
+						"{originalAuthor}",
+						contextResult.originalMessage.authorName,
+					)
+						.replace("{originalContent}", contextResult.originalMessage.content)
+						.replace("{threadMessages}", threadMessagesText || "(no replies yet)")
 
-				// Call the AI model
-				const response = yield* LanguageModel.generateText({
-					prompt,
-				}).pipe(
-					Effect.catchTags({
-						HttpRequestError: (err) =>
-							Effect.fail(
+					type AiMappedError =
+						| Cluster.AIProviderUnavailableError
+						| Cluster.AIRateLimitError
+						| Cluster.AIResponseParseError
+
+					// Call the AI model
+					const response = yield* LanguageModel.generateText({
+						prompt,
+					}).pipe(
+						Effect.catchTag("AiError", (err: AiError.AiError): Effect.Effect<never, AiMappedError> => {
+							const reason = err.reason
+							if (reason._tag === "RateLimitError") {
+								return Effect.fail(
+									new Cluster.AIRateLimitError({
+										provider: "openrouter",
+									}),
+								)
+							}
+							if (reason._tag === "InvalidOutputError" || reason._tag === "StructuredOutputError") {
+								return Effect.fail(
+									new Cluster.AIResponseParseError({
+										threadChannelId: payload.threadChannelId,
+										rawResponse: reason.message,
+									}),
+								)
+							}
+							return Effect.fail(
 								new Cluster.AIProviderUnavailableError({
 									provider: "openrouter",
 									cause: err,
 								}),
-							),
-						HttpResponseError: (err) =>
-							err.response.status === 429
-								? Effect.fail(
-										new Cluster.AIRateLimitError({
-											provider: "openrouter",
-										}),
-									)
-								: Effect.fail(
-										new Cluster.AIProviderUnavailableError({
-											provider: "openrouter",
-											cause: err,
-										}),
-									),
-						MalformedInput: (err) =>
-							Effect.fail(
-								new Cluster.AIResponseParseError({
-									threadChannelId: payload.threadChannelId,
-									rawResponse: err.description,
-								}),
-							),
-						MalformedOutput: (err) =>
-							Effect.fail(
-								new Cluster.AIResponseParseError({
-									threadChannelId: payload.threadChannelId,
-									rawResponse: err.description,
-								}),
-							),
-						UnknownError: (err) =>
-							Effect.fail(
-								new Cluster.AIProviderUnavailableError({
-									provider: "openrouter",
-									cause: err,
-								}),
-							),
-					}),
-				)
+							)
+						}),
+					)
 
-				// Clean up the response
-				let threadName = response.text.trim()
-				// Remove quotes if present
-				threadName = threadName.replace(/^["']|["']$/g, "")
-				// Truncate if too long (max 50 chars)
-				if (threadName.length > 50) {
-					threadName = threadName.substring(0, 47) + "..."
-				}
-				// Fallback if empty
-				if (!threadName) {
-					threadName = "Discussion"
-				}
+					// Clean up the response
+					let threadName = response.text.trim()
+					// Remove quotes if present
+					threadName = threadName.replace(/^["']|["']$/g, "")
+					// Truncate if too long (max 50 chars)
+					if (threadName.length > 50) {
+						threadName = threadName.substring(0, 47) + "..."
+					}
+					// Fallback if empty
+					if (!threadName) {
+						threadName = "Discussion"
+					}
 
-				yield* Effect.annotateCurrentSpan("activity.ai_provider", "openrouter")
-				yield* Effect.annotateCurrentSpan("activity.generated_name", threadName)
+					yield* Effect.annotateCurrentSpan("activity.ai_provider", "openrouter")
+					yield* Effect.annotateCurrentSpan("activity.generated_name", threadName)
 
-				yield* Effect.logDebug(`Generated thread name: ${threadName}`)
+					yield* Effect.logDebug(`Generated thread name: ${threadName}`)
 
-				return { threadName }
-			}),
+					return { threadName }
+				}),
+			})
 		}).pipe(
-			Effect.tapError((err) =>
+			Effect.tapError((err: { readonly _tag: string; readonly provider?: string; readonly cause?: unknown }) =>
 				Effect.logError("GenerateThreadName activity failed", {
 					threadChannelId: payload.threadChannelId,
 					errorTag: err._tag,
-					provider: "provider" in err ? err.provider : undefined,
-					cause: "cause" in err ? String(err.cause) : undefined,
+					provider: err.provider,
+					cause: err.cause != null ? String(err.cause) : undefined,
 				}),
 			),
 		)
 
 		// Activity 3: Update thread name in database
-		yield* Activity.make({
-			name: "UpdateThreadName",
-			success: Cluster.UpdateThreadNameResult,
-			error: Cluster.ThreadNamingWorkflowError,
-			execute: Effect.gen(function* () {
-				const db = yield* Database.Database
+		yield* Effect.gen(function* () {
+			return yield* Activity.make({
+				name: "UpdateThreadName",
+				success: Cluster.UpdateThreadNameResult,
+				error: Cluster.ThreadNamingWorkflowError,
+				execute: Effect.gen(function* () {
+					const db = yield* Database.Database
 
-				yield* db
-					.execute((client) =>
-						client
-							.update(schema.channelsTable)
-							.set({
-								name: nameResult.threadName,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.channelsTable.id, payload.threadChannelId)),
-					)
-					.pipe(
-						Effect.catchTag("DatabaseError", (err) =>
-							Effect.fail(
-								new Cluster.ThreadNameUpdateError({
-									threadChannelId: payload.threadChannelId,
-									newName: nameResult.threadName,
-									cause: err,
-								}),
+					yield* db
+						.execute((client) =>
+							client
+								.update(schema.channelsTable)
+								.set({
+									name: nameResult.threadName,
+									updatedAt: new Date(),
+								})
+								.where(eq(schema.channelsTable.id, payload.threadChannelId)),
+						)
+						.pipe(
+							Effect.catchTag("DatabaseError", (err) =>
+								Effect.fail(
+									new Cluster.ThreadNameUpdateError({
+										threadChannelId: payload.threadChannelId,
+										newName: nameResult.threadName,
+										cause: err,
+									}),
+								),
 							),
-						),
+						)
+
+					yield* Effect.annotateCurrentSpan("activity.previous_name", contextResult.currentName ?? "")
+					yield* Effect.annotateCurrentSpan("activity.new_name", nameResult.threadName)
+
+					yield* Effect.logDebug(
+						`Updated thread ${payload.threadChannelId} name from "${contextResult.currentName}" to "${nameResult.threadName}"`,
 					)
 
-				yield* Effect.annotateCurrentSpan("activity.previous_name", contextResult.currentName ?? "")
-				yield* Effect.annotateCurrentSpan("activity.new_name", nameResult.threadName)
-
-				yield* Effect.logDebug(
-					`Updated thread ${payload.threadChannelId} name from "${contextResult.currentName}" to "${nameResult.threadName}"`,
-				)
-
-				return {
-					success: true,
-					previousName: contextResult.currentName,
-					newName: nameResult.threadName,
-				}
-			}),
+					return {
+						success: true,
+						previousName: contextResult.currentName,
+						newName: nameResult.threadName,
+					}
+				}),
+			})
 		}).pipe(
-			Effect.tapError((err) =>
+			Effect.tapError((err: { readonly _tag: string; readonly newName?: string; readonly cause?: unknown }) =>
 				Effect.logError("UpdateThreadName activity failed", {
 					threadChannelId: payload.threadChannelId,
 					errorTag: err._tag,
-					newName: "newName" in err ? err.newName : undefined,
-					cause: "cause" in err ? String(err.cause) : undefined,
+					newName: err.newName,
+					cause: err.cause != null ? String(err.cause) : undefined,
 				}),
 			),
 		)

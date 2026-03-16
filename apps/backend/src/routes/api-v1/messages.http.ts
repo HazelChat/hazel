@@ -44,6 +44,12 @@ async function hashToken(token: string): Promise<string> {
  */
 const authenticateBotFromToken = Effect.gen(function* () {
 	const request = yield* HttpServerRequest.HttpServerRequest
+	const attachmentPolicy = yield* AttachmentPolicy
+	const messagePolicy = yield* MessagePolicy
+	const messageReactionPolicy = yield* MessageReactionPolicy
+	const attachmentRepo = yield* AttachmentRepo
+	const messageRepo = yield* MessageRepo
+	const messageReactionRepo = yield* MessageReactionRepo
 	const authHeader = request.headers.authorization
 
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -123,7 +129,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const effectiveLimit = limit ?? 25
 
 							// First, check if user can read this channel (policy authorization)
-							yield* MessagePolicy.canRead(channel_id).pipe(
+							yield* messagePolicy.canRead(channel_id).pipe(
 								Effect.provideService(CurrentUser.Context, currentUser),
 							)
 
@@ -142,7 +148,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 								| undefined = undefined
 
 							if (starting_after) {
-								const cursorMsg = yield* MessageRepo.findByIdForCursor({
+								const cursorMsg = yield* messageRepo.findByIdForCursor({
 									id: starting_after,
 									channelId: channel_id,
 								})
@@ -158,7 +164,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 									createdAt: cursorMsg.value.createdAt,
 								}
 							} else if (ending_before) {
-								const cursorMsg = yield* MessageRepo.findByIdForCursor({
+								const cursorMsg = yield* messageRepo.findByIdForCursor({
 									id: ending_before,
 									channelId: channel_id,
 								})
@@ -176,7 +182,7 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							}
 
 							// Query messages (policy already checked, use system actor for db access)
-							const messages = yield* MessageRepo.listByChannel({
+							const messages = yield* messageRepo.listByChannel({
 								channelId: channel_id,
 								cursorBefore,
 								cursorAfter,
@@ -219,8 +225,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const response = yield* db
 								.transaction(
 									Effect.gen(function* () {
-										yield* MessagePolicy.canCreate(rest.channelId)
-										const createdMessage = yield* MessageRepo.insert({
+										yield* messagePolicy.canCreate(rest.channelId)
+										const createdMessage = yield* messageRepo.insert({
 											...rest,
 											embeds: embeds ?? null,
 											replyToMessageId: replyToMessageId ?? null,
@@ -233,8 +239,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										if (attachmentIds && attachmentIds.length > 0) {
 											yield* Effect.forEach(attachmentIds, (attachmentId) =>
 												Effect.gen(function* () {
-													yield* AttachmentPolicy.canUpdate(attachmentId)
-													yield* AttachmentRepo.update({
+													yield* attachmentPolicy.canUpdate(attachmentId)
+													yield* attachmentRepo.update({
 														id: attachmentId,
 														messageId: createdMessage.id,
 													})
@@ -306,8 +312,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 							const response = yield* db
 								.transaction(
 									Effect.gen(function* () {
-										yield* MessagePolicy.canUpdate(path.id)
-										const updatedMessage = yield* MessageRepo.update({
+										yield* messagePolicy.canUpdate(path.id)
+										const updatedMessage = yield* messageRepo.update({
 											id: path.id,
 											...rest,
 											...(embeds !== undefined ? { embeds } : {}),
@@ -365,15 +371,15 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 						Effect.gen(function* () {
 							const bot = yield* authenticateBotFromToken
 							const currentUser = createBotUserContext(bot)
-							const existingMessage = yield* MessageRepo.findById(path.id)
+							const existingMessage = yield* messageRepo.findById(path.id)
 
 							yield* checkMessageRateLimit(bot.userId)
 
 							const response = yield* db
 								.transaction(
 									Effect.gen(function* () {
-										yield* MessagePolicy.canDelete(path.id)
-										yield* MessageRepo.deleteById(path.id)
+										yield* messagePolicy.canDelete(path.id)
+										yield* messageRepo.deleteById(path.id)
 
 										if (Option.isSome(existingMessage)) {
 											yield* outboxRepo.insert({
@@ -441,9 +447,9 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										const { emoji, channelId } = payload
 										const messageId = path.id
 
-										yield* MessageReactionPolicy.canList(messageId)
+										yield* messageReactionPolicy.canList(messageId)
 										const existingReaction =
-											yield* MessageReactionRepo.findByMessageUserEmoji(
+											yield* messageReactionRepo.findByMessageUserEmoji(
 												messageId,
 												bot.userId,
 												emoji,
@@ -461,8 +467,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 												userId: existingReaction.value.userId,
 											} as const
 
-											yield* MessageReactionPolicy.canDelete(existingReaction.value.id)
-											yield* MessageReactionRepo.deleteById(existingReaction.value.id)
+											yield* messageReactionPolicy.canDelete(existingReaction.value.id)
+											yield* messageReactionRepo.deleteById(existingReaction.value.id)
 											yield* outboxRepo.insert({
 												eventType: "reaction_deleted",
 												aggregateId: existingReaction.value.id,
@@ -484,8 +490,8 @@ export const HttpMessagesApiLive = HttpApiBuilder.group(HazelApi, "api-v1-messag
 										}
 
 										// Otherwise, create a new reaction
-										yield* MessageReactionPolicy.canCreate(messageId)
-										const createdReaction = yield* MessageReactionRepo.insert({
+										yield* messageReactionPolicy.canCreate(messageId)
+										const createdReaction = yield* messageReactionRepo.insert({
 											messageId,
 											channelId,
 											emoji,

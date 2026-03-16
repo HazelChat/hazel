@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { Option } from "effect"
@@ -61,8 +62,8 @@ function ConnectPage() {
 	// Get outgoing invites for this channel (RPC returns all org invites, filter by channelId)
 	const outgoingResult = useAtomValue(listOutgoingInvitesQuery(organizationId!))
 	const outgoingInvites = useMemo(() => {
-		if (!Result.isSuccess(outgoingResult)) return []
-		const data = Result.value(outgoingResult)
+		if (!AsyncResult.isSuccess(outgoingResult)) return []
+		const data = AsyncResult.value(outgoingResult)
 		if (Option.isNone(data)) return []
 		return data.value.data.filter((inv) => inv.hostChannelId === channelId)
 	}, [outgoingResult, channelId])

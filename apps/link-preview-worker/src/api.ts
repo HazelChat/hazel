@@ -5,8 +5,8 @@ export class LinkPreviewApi extends HttpApi.make("api")
 	.add(AppApi)
 	.add(LinkPreviewGroup)
 	.add(TweetGroup)
-	.annotateContext(
-		OpenApi.annotate({
+	.annotateMerge(
+		OpenApi.annotations({
 			title: "Link Preview Worker API",
 			description: "API for fetching link previews and tweet data",
 		}),

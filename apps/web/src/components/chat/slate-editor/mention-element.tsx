@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { Button as PrimitiveButton } from "react-aria-components"
 import type { RenderElementProps } from "slate-react"
@@ -43,7 +44,7 @@ export function MentionElement({ attributes, children, element, interactive = fa
 	const userPresenceResult = useAtomValue(
 		userWithPresenceAtomFamily((shouldFetchUser ? userId : "dummy-id") as UserId),
 	)
-	const data = shouldFetchUser && userPresenceResult ? Result.getOrElse(userPresenceResult, () => []) : []
+	const data = shouldFetchUser && userPresenceResult ? AsyncResult.getOrElse(userPresenceResult, () => []) : []
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence

@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { KlipyCategory, KlipyGif, KlipySearchResponse } from "@hazel/domain/http"
 import { Exit } from "effect"
 import { useCallback, useMemo, useRef, useState } from "react"
@@ -53,16 +54,16 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 
 	// Initialize pagination from trending query result
 	const trendingInitRef = useRef(false)
-	if (!trendingInitRef.current && Result.isSuccess(trendingResult) && overrideGifs === null) {
+	if (!trendingInitRef.current && AsyncResult.isSuccess(trendingResult) && overrideGifs === null) {
 		trendingInitRef.current = true
-		pageRef.current = trendingResult.value.current_page
-		const more = trendingResult.value.has_next
+		pageRef.current = trendingAsyncResult.value.current_page
+		const more = trendingAsyncResult.value.has_next
 		hasMoreRef.current = more
 		setHasMore(more)
 	}
 
 	// === Derived display values ===
-	const categories = Result.isSuccess(categoriesResult) ? [...categoriesResult.value.categories] : []
+	const categories = AsyncResult.isSuccess(categoriesResult) ? [...categoriesAsyncResult.value.categories] : []
 
 	let gifs: KlipyGif[]
 	let isLoading: boolean
@@ -70,8 +71,8 @@ export function useKlipy({ perPage = 25 }: UseKlipyOptions = {}): UseKlipyReturn
 	if (overrideGifs !== null) {
 		gifs = overrideGifs
 		isLoading = isMutating
-	} else if (Result.isSuccess(trendingResult)) {
-		gifs = [...trendingResult.value.data]
+	} else if (AsyncResult.isSuccess(trendingResult)) {
+		gifs = [...trendingAsyncResult.value.data]
 		isLoading = false
 	} else {
 		gifs = []

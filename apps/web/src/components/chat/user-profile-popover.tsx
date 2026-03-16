@@ -1,6 +1,7 @@
 import { IconChatBubble } from "~/components/icons/icon-chat-bubble"
 import { IconClock } from "~/components/icons/icon-clock"
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
@@ -64,7 +65,7 @@ function PopoverBody({ userId }: { userId: UserId }) {
 	const nowMs = useAtomValue(presenceNowSignal)
 
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(userId))
-	const data = Result.getOrElse(userPresenceResult, () => [])
+	const data = AsyncResult.getOrElse(userPresenceResult, () => [])
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence

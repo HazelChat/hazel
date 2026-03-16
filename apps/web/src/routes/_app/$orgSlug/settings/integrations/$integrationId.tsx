@@ -1,4 +1,5 @@
-import { Result, useAtomSet, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import type { IntegrationConnection } from "@hazel/domain/models"
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
@@ -768,7 +769,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 	)
 
 	// Loading state
-	if (Result.isInitial(repositoriesResult)) {
+	if (AsyncResult.isInitial(repositoriesResult)) {
 		return (
 			<div className="overflow-hidden rounded-xl border border-border bg-bg">
 				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
@@ -799,7 +800,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 	}
 
 	// Error state
-	if (Result.isFailure(repositoriesResult)) {
+	if (AsyncResult.isFailure(repositoriesResult)) {
 		return (
 			<div className="overflow-hidden rounded-xl border border-border bg-bg">
 				<div className="border-border border-b bg-bg-muted/30 px-5 py-3">
@@ -812,7 +813,7 @@ function GitHubRepositoryAccessSection({ organizationId }: { organizationId: Org
 		)
 	}
 
-	const data = Result.value(repositoriesResult)
+	const data = AsyncResult.value(repositoriesResult)
 	if (Option.isNone(data)) {
 		return null
 	}

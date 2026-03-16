@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { cn } from "~/lib/utils"

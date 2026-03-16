@@ -6,7 +6,7 @@ import { makePolicy, withPolicyUnauthorized } from "../lib/policy-utils"
 export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPolicy>()(
 	"TypingIndicatorPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "TypingIndicator" as const
 			const authorize = makePolicy(policyEntity)
 
@@ -54,7 +54,7 @@ export class TypingIndicatorPolicy extends ServiceMap.Service<TypingIndicatorPol
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelMemberRepo.layer),
 		Layer.provide(TypingIndicatorRepo.layer),
 	)

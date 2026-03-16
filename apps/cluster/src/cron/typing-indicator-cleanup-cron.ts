@@ -4,7 +4,7 @@ import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
-const every5Seconds = Cron.unsafeParse("*/5 * * * * *")
+const every5Seconds = Cron.parseUnsafe("*/5 * * * * *")
 const TYPING_INDICATOR_STALE_MS = 12_000
 
 /**

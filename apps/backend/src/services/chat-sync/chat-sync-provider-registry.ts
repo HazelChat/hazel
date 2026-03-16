@@ -88,7 +88,7 @@ const isDiscordSnowflake = (value: string): boolean =>
 export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProviderRegistry>()(
 	"ChatSyncProviderRegistry",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const discordApiClient = yield* Discord.DiscordApiClient
 
 			const getDiscordToken = Effect.fn("ChatSyncProviderRegistry.getDiscordToken")(function* () {
@@ -438,7 +438,7 @@ export class ChatSyncProviderRegistry extends ServiceMap.Service<ChatSyncProvide
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(Discord.DiscordApiClient.layer),
 	)
 }

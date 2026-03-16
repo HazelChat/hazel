@@ -9,7 +9,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class GitHubSubscriptionPolicy extends ServiceMap.Service<GitHubSubscriptionPolicy>()(
 	"GitHubSubscriptionPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "GitHubSubscription" as const
 
 			const channelRepo = yield* ChannelRepo
@@ -98,7 +98,7 @@ export class GitHubSubscriptionPolicy extends ServiceMap.Service<GitHubSubscript
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelRepo.layer),
 		Layer.provide(GitHubSubscriptionRepo.layer),
 		Layer.provide(OrgResolver.layer),

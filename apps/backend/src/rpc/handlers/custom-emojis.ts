@@ -14,6 +14,8 @@ import { CustomEmojiPolicy } from "../../policies/custom-emoji-policy"
 export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const customEmojiPolicy = yield* CustomEmojiPolicy
+		const customEmojiRepo = yield* CustomEmojiRepo
 
 		return {
 			"customEmoji.create": (payload) =>
@@ -23,7 +25,7 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 							const user = yield* CurrentUser.Context
 
 							// Check name uniqueness
-							const existing = yield* CustomEmojiRepo.findByOrgAndName(
+							const existing = yield* customEmojiRepo.findByOrgAndName(
 								payload.organizationId,
 								payload.name,
 							)
@@ -37,7 +39,7 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 							}
 
 							// Check if a soft-deleted emoji with same name exists
-							const deleted = yield* CustomEmojiRepo.findDeletedByOrgAndName(
+							const deleted = yield* customEmojiRepo.findDeletedByOrgAndName(
 								payload.organizationId,
 								payload.name,
 							)
@@ -52,8 +54,8 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 								)
 							}
 
-							yield* CustomEmojiPolicy.canCreate(payload.organizationId)
-							const created = yield* CustomEmojiRepo.insert({
+							yield* customEmojiPolicy.canCreate(payload.organizationId)
+							const created = yield* customEmojiRepo.insert({
 								organizationId: payload.organizationId,
 								name: payload.name,
 								imageUrl: payload.imageUrl,
@@ -75,14 +77,14 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							// Check if emoji exists
-							const existing = yield* CustomEmojiRepo.findById(id)
+							const existing = yield* customEmojiRepo.findById(id)
 							if (Option.isNone(existing)) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
 							}
 
 							// Check name uniqueness if renaming
 							if (payload.name !== undefined) {
-								const nameConflict = yield* CustomEmojiRepo.findByOrgAndName(
+								const nameConflict = yield* customEmojiRepo.findByOrgAndName(
 									existing.value.organizationId,
 									payload.name,
 								)
@@ -96,8 +98,8 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 								}
 							}
 
-							yield* CustomEmojiPolicy.canUpdate(id)
-							const updated = yield* CustomEmojiRepo.update({
+							yield* customEmojiPolicy.canUpdate(id)
+							const updated = yield* customEmojiRepo.update({
 								id,
 								...payload,
 							})
@@ -117,13 +119,13 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							// Check existence first so missing IDs map to NotFound (not Unauthorized).
-							const existing = yield* CustomEmojiRepo.findById(id)
+							const existing = yield* customEmojiRepo.findById(id)
 							if (Option.isNone(existing) || existing.value.deletedAt !== null) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
 							}
 
-							yield* CustomEmojiPolicy.canDelete(id)
-							const deleted = yield* CustomEmojiRepo.softDelete(id)
+							yield* customEmojiPolicy.canDelete(id)
+							const deleted = yield* customEmojiRepo.softDelete(id)
 
 							if (Option.isNone(deleted)) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
@@ -141,13 +143,13 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							// Look up the deleted emoji first
-							const existing = yield* CustomEmojiRepo.findById(id)
+							const existing = yield* customEmojiRepo.findById(id)
 							if (Option.isNone(existing) || existing.value.deletedAt === null) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))
 							}
 
 							// Check that no active emoji with the same name exists
-							const nameConflict = yield* CustomEmojiRepo.findByOrgAndName(
+							const nameConflict = yield* customEmojiRepo.findByOrgAndName(
 								existing.value.organizationId,
 								existing.value.name,
 							)
@@ -160,8 +162,8 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 								)
 							}
 
-							yield* CustomEmojiPolicy.canCreate(existing.value.organizationId)
-							const restored = yield* CustomEmojiRepo.restore(id, imageUrl)
+							yield* customEmojiPolicy.canCreate(existing.value.organizationId)
+							const restored = yield* customEmojiRepo.restore(id, imageUrl)
 
 							if (Option.isNone(restored)) {
 								return yield* Effect.fail(new CustomEmojiNotFoundError({ customEmojiId: id }))

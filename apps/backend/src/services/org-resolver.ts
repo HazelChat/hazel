@@ -3,7 +3,7 @@ import { PermissionError } from "@hazel/domain"
 import * as CurrentUser from "@hazel/domain/current-user"
 import { type ApiScope, CurrentBotScopes, scopesForRole } from "@hazel/domain/scopes"
 import type { ChannelId, MessageId, OrganizationId } from "@hazel/schema"
-import { ServiceMap, Effect, FiberRef, Layer, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 import { isAdminOrOwner, type OrganizationRole } from "../lib/policy-utils"
 
 /**
@@ -25,9 +25,9 @@ export class OrgResolver extends ServiceMap.Service<OrgResolver>()("OrgResolver"
 		 */
 		const resolveGrantedScopes = (role: "owner" | "admin" | "member") =>
 			Effect.gen(function* () {
-				const botScopes = yield* FiberRef.get(CurrentBotScopes)
-				if (Option.isSome(botScopes)) {
-					return botScopes.value
+				const botScopes = yield* Effect.serviceOption(CurrentBotScopes)
+				if (Option.isSome(botScopes) && Option.isSome(botScopes.value)) {
+					return botScopes.value.value
 				}
 				return scopesForRole(role)
 			})

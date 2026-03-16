@@ -2,7 +2,7 @@ import { Database } from "@hazel/db"
 import { Effect, Layer } from "effect"
 import { EnvVars } from "../lib/env-vars"
 
-export const DatabaseLive = Layer.unwrapEffect(
+export const DatabaseLive = Layer.unwrap(
 	EnvVars.pipe(
 		Effect.map((envVars) =>
 			Database.layer({

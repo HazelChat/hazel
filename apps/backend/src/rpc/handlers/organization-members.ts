@@ -23,6 +23,9 @@ import { ChannelAccessSyncService } from "../../services/channel-access-sync"
 export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const organizationMemberPolicy = yield* OrganizationMemberPolicy
+		const organizationMemberRepo = yield* OrganizationMemberRepo
+		const channelAccessSync = yield* ChannelAccessSyncService
 
 		return {
 			"organizationMember.create": (payload) =>
@@ -31,14 +34,14 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 						Effect.gen(function* () {
 							const user = yield* CurrentUser.Context
 
-							yield* OrganizationMemberPolicy.canCreate(payload.organizationId)
-							const createdOrganizationMember = yield* OrganizationMemberRepo.insert({
+							yield* organizationMemberPolicy.canCreate(payload.organizationId)
+							const createdOrganizationMember = yield* organizationMemberRepo.insert({
 								...payload,
 								userId: user.id,
 								deletedAt: null,
 							}).pipe(Effect.map((res) => res[0]!))
 
-							yield* ChannelAccessSyncService.syncUserInOrganization(
+							yield* channelAccessSync.syncUserInOrganization(
 								createdOrganizationMember.userId,
 								createdOrganizationMember.organizationId,
 							)
@@ -57,8 +60,8 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationMemberPolicy.canUpdate(id)
-							const updatedOrganizationMember = yield* OrganizationMemberRepo.update({
+							yield* organizationMemberPolicy.canUpdate(id)
+							const updatedOrganizationMember = yield* organizationMemberRepo.update({
 								id,
 								...payload,
 							})
@@ -77,9 +80,9 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationMemberPolicy.canUpdate(id)
+							yield* organizationMemberPolicy.canUpdate(id)
 							const updatedOrganizationMemberOption =
-								yield* OrganizationMemberRepo.updateMetadata(id, metadata)
+								yield* organizationMemberRepo.updateMetadata(id, metadata)
 
 							const updatedOrganizationMember = yield* Option.match(
 								updatedOrganizationMemberOption,
@@ -108,13 +111,13 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* OrganizationMemberPolicy.canDelete(id)
-							const deletedMemberOption = yield* OrganizationMemberRepo.findById(id)
+							yield* organizationMemberPolicy.canDelete(id)
+							const deletedMemberOption = yield* organizationMemberRepo.findById(id)
 
-							yield* OrganizationMemberRepo.deleteById(id)
+							yield* organizationMemberRepo.deleteById(id)
 
 							if (Option.isSome(deletedMemberOption)) {
-								yield* ChannelAccessSyncService.syncUserInOrganization(
+								yield* channelAccessSync.syncUserInOrganization(
 									deletedMemberOption.value.userId,
 									deletedMemberOption.value.organizationId,
 								)

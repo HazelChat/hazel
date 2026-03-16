@@ -41,7 +41,7 @@ import {
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
-import { Config, ConfigProvider, Effect, Layer, Scope } from "effect"
+import { Config, ConfigProvider, Effect, Layer, Scope, ServiceMap } from "effect"
 import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
@@ -93,13 +93,12 @@ export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@
 
 const HealthRouter = HttpRouter.use((router) => router.add("GET", "/health", HttpServerResponse.text("OK")))
 
-const DocsRoute = HttpApiScalar.layerHttpRouter({
-	api: HazelApi,
+const DocsRoute = HttpApiScalar.layer(HazelApi, {
 	path: "/docs",
 })
 
 // HTTP RPC endpoint
-const RpcRoute = RpcServer.layerHttpRouter({
+const RpcRoute = RpcServer.layerHttp({
 	group: AllRpcs,
 	path: "/rpc",
 	protocol: "http",
@@ -216,12 +215,15 @@ const MainLive = Layer.mergeAll(
 	SessionManager.layer,
 ).pipe(
 	Layer.provideMerge(FetchHttpClient.layer),
-	Layer.provideMerge(Layer.setConfigProvider(ConfigProvider.fromEnv())),
+	Layer.provideMerge(ConfigProvider.layer(ConfigProvider.fromEnv())),
 )
 
 const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
-	HttpMiddleware.withTracerDisabledWhen(
-		(request) => request.url === "/health" || request.method === "OPTIONS",
+	Layer.provide(
+		Layer.succeed(
+			HttpMiddleware.TracerDisabledWhen,
+			(request: any) => request.url === "/health" || request.method === "OPTIONS",
+		),
 	),
 	Layer.provide(MainLive),
 	Layer.provide(TracerLive),

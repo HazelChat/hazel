@@ -9,7 +9,7 @@ import { OrgResolver } from "../services/org-resolver"
 export class ChannelWebhookPolicy extends ServiceMap.Service<ChannelWebhookPolicy>()(
 	"ChannelWebhookPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "ChannelWebhook" as const
 
 			const channelRepo = yield* ChannelRepo
@@ -88,7 +88,7 @@ export class ChannelWebhookPolicy extends ServiceMap.Service<ChannelWebhookPolic
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect).pipe(
+	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(ChannelRepo.layer),
 		Layer.provide(ChannelWebhookRepo.layer),
 		Layer.provide(OrgResolver.layer),

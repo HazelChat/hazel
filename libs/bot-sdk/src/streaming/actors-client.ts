@@ -8,7 +8,7 @@
  */
 
 import { createActorsClient } from "@hazel/actors/client"
-import { ServiceMap, Effect } from "effect"
+import { ServiceMap, Effect, Layer } from "effect"
 
 // biome-ignore lint/suspicious/noExplicitAny: Opaque type to avoid non-portable DTS references to @hazel/actors internals
 export type MessageActor = any
@@ -94,5 +94,5 @@ export class ActorsClient extends ServiceMap.Service<ActorsClient>()("@hazel/bot
 		} as ActorsClientService
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make)
+	static readonly layer = (config: ActorsClientConfig) => Layer.effect(this, this.make(config))
 }

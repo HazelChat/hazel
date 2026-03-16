@@ -5,7 +5,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 
 // Run every 15 seconds (6-field cron: seconds minutes hours day month weekday)
-const every15Seconds = Cron.unsafeParse("*/15 * * * * *")
+const every15Seconds = Cron.parseUnsafe("*/15 * * * * *")
 
 // Timeout: 45 seconds (3x heartbeat interval of 15s)
 const HEARTBEAT_TIMEOUT_MS = 45_000

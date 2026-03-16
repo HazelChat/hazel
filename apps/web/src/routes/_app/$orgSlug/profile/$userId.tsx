@@ -1,4 +1,5 @@
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { userWithPresenceAtomFamily } from "~/atoms/message-atoms"
@@ -26,7 +27,7 @@ function ProfilePage() {
 	const nowMs = useAtomValue(presenceNowSignal)
 
 	const userPresenceResult = useAtomValue(userWithPresenceAtomFamily(userId as UserId))
-	const data = Result.getOrElse(userPresenceResult, () => [])
+	const data = AsyncResult.getOrElse(userPresenceResult, () => [])
 	const result = data[0]
 	const user = result?.user
 	const presence = result?.presence

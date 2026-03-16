@@ -1,7 +1,7 @@
 import { PersistedCache, Persistence } from "effect/unstable/persistence"
 import { and, Database, eq, isNull, schema } from "@hazel/db"
 import type { BotId, ChannelId, UserId } from "@hazel/schema"
-import { ServiceMap, Effect, Layer } from "effect"
+import { ServiceMap, Effect, Layer, Schema } from "effect"
 import {
 	AccessContextLookupError,
 	type BotAccessContext,
@@ -20,7 +20,10 @@ export interface AccessContextCache {
 	readonly getBotContext: (
 		botId: BotId,
 		userId: UserId,
-	) => Effect.Effect<BotAccessContext, AccessContextLookupError | Persistence.PersistenceError>
+	) => Effect.Effect<
+		BotAccessContext,
+		AccessContextLookupError | Persistence.PersistenceError | Schema.SchemaError
+	>
 
 	readonly invalidateBot: (botId: BotId) => Effect.Effect<void, Persistence.PersistenceError>
 }
@@ -32,91 +35,92 @@ export interface AccessContextCache {
  * Note: Database.Database is intentionally NOT included in dependencies
  * as it's a global infrastructure layer provided at the application root.
  */
-export class AccessContextCacheService extends ServiceMap.Service<AccessContextCacheService, AccessContextCache>()(
+export class AccessContextCacheService extends ServiceMap.Service<AccessContextCacheService>()(
 	"AccessContextCacheService",
-) {
-	static readonly make = Effect.gen(function* () {
-		const db = yield* Database.Database
+	{
+		make: Effect.gen(function* () {
+			const db = yield* Database.Database
 
-		// Create bot access context cache
-		const botCache = yield* PersistedCache.make({
-			storeId: `${CACHE_STORE_ID}:bot`,
+			// Create bot access context cache
+			const botCache = yield* PersistedCache.make({
+				storeId: `${CACHE_STORE_ID}:bot`,
 
-			lookup: (request: BotAccessContextRequest) =>
-				Effect.gen(function* () {
-					yield* Effect.annotateCurrentSpan("cache.lookup_performed", true)
-					yield* Effect.annotateCurrentSpan("cache.result", "miss")
-					const botId = request.botId as BotId
+				lookup: (request: BotAccessContextRequest) =>
+					Effect.gen(function* () {
+						yield* Effect.annotateCurrentSpan("cache.lookup_performed", true)
+						yield* Effect.annotateCurrentSpan("cache.result", "miss")
+						const botId = request.botId as BotId
 
-					// Query channels in all orgs where the bot is installed.
-					// Bots are org-level (not channel members), so we join
-					// bot_installations → channels by organizationId.
-					const channels = yield* db
-						.execute((client) =>
-							client
-								.selectDistinct({ channelId: schema.channelsTable.id })
-								.from(schema.botInstallationsTable)
-								.innerJoin(
-									schema.channelsTable,
-									and(
-										eq(
-											schema.channelsTable.organizationId,
-											schema.botInstallationsTable.organizationId,
+						// Query channels in all orgs where the bot is installed.
+						// Bots are org-level (not channel members), so we join
+						// bot_installations → channels by organizationId.
+						const channels = yield* db
+							.execute((client) =>
+								client
+									.selectDistinct({ channelId: schema.channelsTable.id })
+									.from(schema.botInstallationsTable)
+									.innerJoin(
+										schema.channelsTable,
+										and(
+											eq(
+												schema.channelsTable.organizationId,
+												schema.botInstallationsTable.organizationId,
+											),
+											isNull(schema.channelsTable.deletedAt),
 										),
-										isNull(schema.channelsTable.deletedAt),
-									),
-								)
-								.where(eq(schema.botInstallationsTable.botId, botId)),
-						)
-						.pipe(
-							Effect.catchTag(
-								"DatabaseError",
-								(error) =>
-									Effect.fail(
-										new AccessContextLookupError({
-											message: "Failed to query bot's channels",
-											detail: error.message,
-											entityId: request.botId,
-											entityType: "bot",
-										}),
-									),
-							),
-						)
+									)
+									.where(eq(schema.botInstallationsTable.botId, botId)),
+							)
+							.pipe(
+								Effect.catchTag(
+									"DatabaseError",
+									(error) =>
+										Effect.fail(
+											new AccessContextLookupError({
+												message: "Failed to query bot's channels",
+												detail: error.message,
+												entityId: request.botId,
+												entityType: "bot",
+											}),
+										),
+								),
+							)
 
-					const channelIds = channels.map((c: { channelId: ChannelId }) => c.channelId)
-					yield* Effect.annotateCurrentSpan("cache.result_size", channelIds.length)
+						const channelIds = channels.map((c: { channelId: ChannelId }) => c.channelId)
+						yield* Effect.annotateCurrentSpan("cache.result_size", channelIds.length)
 
-					return { channelIds }
+						return { channelIds }
+					}),
+
+				timeToLive: (_exit, _request) => CACHE_TTL,
+				inMemoryCapacity: IN_MEMORY_CAPACITY,
+				inMemoryTTL: (_exit, _request) => IN_MEMORY_TTL,
+			})
+
+			return {
+				getBotContext: Effect.fn("AccessContextCache.getBotContext")(function* (
+					botId: BotId,
+					userId: UserId,
+				) {
+					yield* Effect.annotateCurrentSpan("cache.system", "redis")
+					yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
+					yield* Effect.annotateCurrentSpan("cache.operation", "get")
+					yield* Effect.annotateCurrentSpan("cache.lookup_performed", false)
+					yield* Effect.annotateCurrentSpan("cache.result", "hit")
+					const result = yield* botCache.get(new BotAccessContextRequest({ botId, userId }))
+					return { channelIds: result.channelIds as readonly ChannelId[] }
 				}),
 
-			timeToLive: (_exit, _request) => CACHE_TTL,
-			inMemoryCapacity: IN_MEMORY_CAPACITY,
-			inMemoryTTL: (_exit, _request) => IN_MEMORY_TTL,
-		})
-
-		return {
-			getBotContext: Effect.fn("AccessContextCache.getBotContext")(function* (
-				botId: BotId,
-				userId: UserId,
-			) {
-				yield* Effect.annotateCurrentSpan("cache.system", "redis")
-				yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
-				yield* Effect.annotateCurrentSpan("cache.operation", "get")
-				yield* Effect.annotateCurrentSpan("cache.lookup_performed", false)
-				yield* Effect.annotateCurrentSpan("cache.result", "hit")
-				const result = yield* botCache.get(new BotAccessContextRequest({ botId, userId }))
-				return { channelIds: result.channelIds as readonly ChannelId[] }
-			}),
-
-			invalidateBot: Effect.fn("AccessContextCache.invalidateBot")(function* (botId: BotId) {
-				yield* Effect.annotateCurrentSpan("cache.system", "redis")
-				yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
-				yield* Effect.annotateCurrentSpan("cache.operation", "invalidate")
-				// Note: We don't have userId here, but invalidation only uses the primary key (botId)
-				yield* botCache.invalidate(new BotAccessContextRequest({ botId, userId: "" as UserId }))
-			}),
-		} satisfies AccessContextCache
-	})
-
+				invalidateBot: Effect.fn("AccessContextCache.invalidateBot")(function* (botId: BotId) {
+					yield* Effect.annotateCurrentSpan("cache.system", "redis")
+					yield* Effect.annotateCurrentSpan("cache.name", "electric-proxy:access-context:bot")
+					yield* Effect.annotateCurrentSpan("cache.operation", "invalidate")
+					// Note: We don't have userId here, but invalidation only uses the primary key (botId)
+					yield* botCache.invalidate(new BotAccessContextRequest({ botId, userId: "" as UserId }))
+				}),
+			} satisfies AccessContextCache
+		}),
+	},
+) {
 	static readonly layer = Layer.effect(this, this.make)
 }

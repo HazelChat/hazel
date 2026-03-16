@@ -70,7 +70,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 
 					// Parse and validate response
 					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknown(TokenResponse)(rawJson).pipe(
+					return yield* Schema.decodeUnknownEffect(TokenResponse)(rawJson).pipe(
 						Effect.mapError(
 							(parseError) =>
 								new TokenDecodeError({
@@ -133,7 +133,7 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 
 					// Parse and validate response
 					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknown(RefreshTokenResponse)(rawJson).pipe(
+					return yield* Schema.decodeUnknownEffect(RefreshTokenResponse)(rawJson).pipe(
 						Effect.mapError(
 							(parseError) =>
 								new TokenDecodeError({

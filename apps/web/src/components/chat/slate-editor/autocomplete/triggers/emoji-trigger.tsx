@@ -1,6 +1,7 @@
 "use client"
 
-import { Result, useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
+import { useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { useMemo } from "react"
 import { customEmojisForOrgAtomFamily } from "~/atoms/custom-emoji-atoms"
@@ -76,7 +77,7 @@ function EmojiItem({ option }: { option: AutocompleteOption<EmojiData> }) {
  */
 function useCustomEmojiOptions(organizationId: OrganizationId | undefined): AutocompleteOption<EmojiData>[] {
 	const emojisResult = useAtomValue(customEmojisForOrgAtomFamily(organizationId ?? ("" as OrganizationId)))
-	const emojis = Result.getOrElse(emojisResult, () => [])
+	const emojis = AsyncResult.getOrElse(emojisResult, () => [])
 
 	return useMemo(() => {
 		if (!organizationId || emojis.length === 0) return []

@@ -20,26 +20,38 @@ const MIN_REPEATS = 8
 export const withDegenerationDetection = <E, R>(
 	stream: Stream.Stream<Response.AnyPart, E, R>,
 ): Stream.Stream<Response.AnyPart, E | DegenerateOutputError, R> =>
-	Stream.mapAccumEffect(stream, "", (window, part: Response.AnyPart) => {
-		if (part.type !== "text-delta") {
-			return Effect.succeed([window, part] as const)
-		}
+	stream.pipe(
+		Stream.mapAccum(
+			() => "",
+			(window: string, part: Response.AnyPart) => {
+				if (part.type !== "text-delta") {
+					return [window, [part]] as const
+				}
 
-		const updated = (window + part.delta).slice(-WINDOW_SIZE)
-		const detected = findRepetition(updated)
+				const updated = (window + part.delta).slice(-WINDOW_SIZE)
+				const detected = findRepetition(updated)
 
-		if (detected) {
-			return Effect.fail(
-				new DegenerateOutputError({
-					message: `Detected repeating pattern "${detected.pattern}" (${detected.repeats}x)`,
-					pattern: detected.pattern,
-					repeats: detected.repeats,
-				}),
-			)
-		}
+				if (detected) {
+					// Return a sentinel value to trigger failure after mapAccum
+					return [updated, [{ __degenerate: true, pattern: detected.pattern, repeats: detected.repeats } as any]] as const
+				}
 
-		return Effect.succeed([updated, part] as const)
-	})
+				return [updated, [part]] as const
+			},
+		),
+		Stream.filterEffect((part: any) => {
+			if (part.__degenerate) {
+				return Effect.fail(
+					new DegenerateOutputError({
+						message: `Detected repeating pattern "${part.pattern}" (${part.repeats}x)`,
+						pattern: part.pattern,
+						repeats: part.repeats,
+					}),
+				)
+			}
+			return Effect.succeed(true)
+		}),
+	) as Stream.Stream<Response.AnyPart, E | DegenerateOutputError, R>
 
 /**
  * Scans the tail of the window for any substring of length 2-10 that repeats

@@ -5,7 +5,7 @@
  */
 
 import { TokenNotFoundError, TokenStoreError } from "@hazel/domain/errors"
-import { ServiceMap, Effect, Option } from "effect"
+import { ServiceMap, Effect, Layer, Option } from "effect"
 
 const STORAGE_PREFIX = "hazel_auth_"
 const ACCESS_TOKEN_KEY = `${STORAGE_PREFIX}access_token`
@@ -216,6 +216,8 @@ export class WebTokenStorage extends ServiceMap.Service<WebTokenStorage>()("WebT
 		}
 	}),
 }) {
+	static readonly layer = Layer.effect(this, this.make)
+
 	/**
 	 * Mock token data for testing
 	 */

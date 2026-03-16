@@ -4,7 +4,7 @@ import { makePolicy } from "../lib/policy-utils"
 export class UserPresenceStatusPolicy extends ServiceMap.Service<UserPresenceStatusPolicy>()(
 	"UserPresenceStatusPolicy/Policy",
 	{
-		effect: Effect.gen(function* () {
+		make: Effect.gen(function* () {
 			const policyEntity = "UserPresenceStatus" as const
 			const authorize = makePolicy(policyEntity)
 
@@ -20,5 +20,5 @@ export class UserPresenceStatusPolicy extends ServiceMap.Service<UserPresenceSta
 		}),
 	},
 ) {
-	static readonly layer = Layer.effect(this, this.effect)
+	static readonly layer = Layer.effect(this, this.make)
 }

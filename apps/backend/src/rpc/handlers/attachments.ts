@@ -9,14 +9,16 @@ import { AttachmentPolicy } from "../../policies/attachment-policy"
 export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
+		const attachmentPolicy = yield* AttachmentPolicy
+		const attachmentRepo = yield* AttachmentRepo
 
 		return {
 			"attachment.delete": ({ id }) =>
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* AttachmentPolicy.canDelete(id)
-							yield* AttachmentRepo.deleteById(id)
+							yield* attachmentPolicy.canDelete(id)
+							yield* attachmentRepo.deleteById(id)
 
 							const txid = yield* generateTransactionId()
 
@@ -29,8 +31,8 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							yield* AttachmentPolicy.canUpdate(id)
-							const attachment = yield* AttachmentRepo.update({ id, status: "complete" })
+							yield* attachmentPolicy.canUpdate(id)
+							const attachment = yield* attachmentRepo.update({ id, status: "complete" })
 
 							return attachment
 						}),
@@ -45,8 +47,8 @@ export const AttachmentRpcLive = AttachmentRpcs.toLayer(
 								`Marking attachment ${id} as failed${reason ? `: ${reason}` : ""}`,
 							)
 
-							yield* AttachmentPolicy.canUpdate(id)
-							yield* AttachmentRepo.update({ id, status: "failed" })
+							yield* attachmentPolicy.canUpdate(id)
+							yield* attachmentRepo.update({ id, status: "failed" })
 						}),
 					)
 					.pipe(withRemapDbErrors("Attachment", "update")),
