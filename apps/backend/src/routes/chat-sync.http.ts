@@ -121,7 +121,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					const txid = yield* generateTransactionId()
 					return new ChatSyncConnectionResponse({ data: connection, transactionId: txid })
 				}).pipe(
-					Effect.catchTag("ParseError", (error) =>
+					Effect.catchTag("SchemaError", (error) =>
 						Effect.fail(toInternalServerError("Invalid sync connection data", error)),
 					),
 					Effect.catchTag("DatabaseError", (error) =>
@@ -171,6 +171,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						Effect.fail(
 							toInternalServerError("Database error while deleting sync connection", error),
 						),
+					),
+					Effect.catchTag("SchemaError", (error) =>
+						Effect.fail(toInternalServerError("Schema error while deleting sync connection", error)),
 					),
 				),
 			)
@@ -234,7 +237,7 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 					const txid = yield* generateTransactionId()
 					return new ChatSyncChannelLinkResponse({ data: brandedLink, transactionId: txid })
 				}).pipe(
-					Effect.catchTag("ParseError", (error) =>
+					Effect.catchTag("SchemaError", (error) =>
 						Effect.fail(toInternalServerError("Invalid channel link data", error)),
 					),
 					Effect.catchTag("DatabaseError", (error) =>
@@ -297,6 +300,9 @@ export const HttpChatSyncLive = HttpApiBuilder.group(HazelApi, "chat-sync", (han
 						Effect.fail(
 							toInternalServerError("Database error while deleting channel link", error),
 						),
+					),
+					Effect.catchTag("SchemaError", (error) =>
+						Effect.fail(toInternalServerError("Schema error while deleting channel link", error)),
 					),
 				),
 			)

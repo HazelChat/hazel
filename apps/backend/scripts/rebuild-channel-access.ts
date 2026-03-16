@@ -52,7 +52,7 @@ Effect.runPromise(
 	rebuildChannelAccess.pipe(
 		Effect.provide(ChannelAccessSyncLive),
 		Effect.provide(DatabaseLive),
-		Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+		Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
 	),
 ).catch((error) => {
 	console.error("Failed to rebuild channel_access", error)

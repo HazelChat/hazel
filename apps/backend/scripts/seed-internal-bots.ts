@@ -217,7 +217,7 @@ const seedInternalBots = Effect.gen(function* () {
 // Run the script
 const runnable = seedInternalBots.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
 )
 
 Effect.runPromise(runnable).catch((error) => {

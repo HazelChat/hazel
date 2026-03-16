@@ -204,7 +204,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								const existingChannel = yield* channelMemberRepo.findExistingSingleDmChannel(
 									user.id,
 									payload.participantIds[0],
-									OrganizationId.make(payload.organizationId),
+									OrganizationId.makeUnsafe(payload.organizationId),
 								)
 
 								if (Option.isSome(existingChannel)) {
@@ -236,12 +236,12 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							}
 
 							// Create channel
-							yield* channelPolicy.canCreate(OrganizationId.make(payload.organizationId))
+							yield* channelPolicy.canCreate(OrganizationId.makeUnsafe(payload.organizationId))
 							const createdChannel = yield* channelRepo.insert({
 								name: channelName || "Group Channel",
 								icon: null,
 								type: payload.type,
-								organizationId: OrganizationId.make(payload.organizationId),
+								organizationId: OrganizationId.makeUnsafe(payload.organizationId),
 								parentChannelId: null,
 								sectionId: null,
 								deletedAt: null,
@@ -506,23 +506,7 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 									}),
 								),
 							),
-							Effect.catchTag("HttpClientError", (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: `Thread naming failed: ${err.reason}`,
-										cause: String(err),
-									}),
-								),
-							),
-							Effect.catchTag("HttpApiDecodeError", (err) =>
-								Effect.fail(
-									new InternalServerError({
-										message: "Failed to decode workflow response",
-										cause: String(err),
-									}),
-								),
-							),
-							Effect.catchTag("ParseError", (err) =>
+							Effect.catchTag("SchemaError", (err) =>
 								Effect.fail(
 									new InternalServerError({
 										message: "Failed to parse workflow response",

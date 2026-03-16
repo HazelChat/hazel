@@ -20,7 +20,7 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 
 				// Validate returnTo is a relative URL (defense in depth)
 				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(query.returnTo)
-				const state = JSON.stringify(AuthState.make({ returnTo: validatedReturnTo }))
+				const state = JSON.stringify({ returnTo: validatedReturnTo })
 
 				let workosOrgId: string
 
@@ -79,7 +79,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						Location: authorizationUrl,
 					},
 				})
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		)
 		.handle("callback", ({ query }) =>
 			Effect.gen(function* () {
@@ -109,7 +113,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						Location: callbackUrl.toString(),
 					},
 				})
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		)
 		.handle("logout", ({ query }) =>
 			Effect.gen(function* () {
@@ -124,7 +132,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						Location: returnTo,
 					},
 				})
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		)
 		.handle("loginDesktop", ({ query }) =>
 			Effect.gen(function* () {
@@ -140,11 +152,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const validatedReturnTo = Schema.decodeSync(RelativeUrl)(query.returnTo)
 
 				// Build state with desktop connection info
-				const stateObj = DesktopAuthState.make({
+				const stateObj = {
 					returnTo: validatedReturnTo,
 					desktopPort: query.desktopPort,
 					desktopNonce: query.desktopNonce,
-				})
+				}
 				const state = JSON.stringify(stateObj)
 
 				let workosOrgId: string | undefined
@@ -188,7 +200,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						Location: authorizationUrl,
 					},
 				})
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		)
 		.handle("token", ({ payload }) =>
 			Effect.gen(function* () {
@@ -292,7 +308,11 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 						lastName: workosUser.lastName || "",
 					},
 				}
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		)
 		.handle("refresh", ({ payload }) =>
 			Effect.gen(function* () {
@@ -327,6 +347,10 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					refreshToken: authResponse.refreshToken!,
 					expiresIn,
 				}
-			}),
+			}).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
 		),
 )

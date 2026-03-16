@@ -1279,7 +1279,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						unsyncedMessage.id,
 					).pipe(Effect.result)
 					if (result._tag === "Success") {
-						if (result.value.status === "synced") {
+						if (result.success.status === "synced") {
 							sent++
 						} else {
 							skipped++
@@ -1290,7 +1290,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 							provider: connection.provider,
 							syncConnectionId,
 							hazelMessageId: unsyncedMessage.id,
-							error: result.left,
+							error: result.failure,
 						})
 					}
 				}
@@ -1751,7 +1751,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					dedupeKey,
 				).pipe(Effect.result)
 				if (result._tag === "Success") {
-					if (result.value.status === "synced" || result.value.status === "already_linked") {
+					if (result.success.status === "synced" || result.success.status === "already_linked") {
 						synced++
 					}
 				} else {
@@ -1760,7 +1760,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1787,7 +1787,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					dedupeKey,
 				).pipe(Effect.result)
 				if (result._tag === "Success") {
-					if (result.value.status === "updated") {
+					if (result.success.status === "updated") {
 						synced++
 					}
 				} else {
@@ -1796,7 +1796,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1823,7 +1823,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					dedupeKey,
 				).pipe(Effect.result)
 				if (result._tag === "Success") {
-					if (result.value.status === "deleted") {
+					if (result.success.status === "deleted") {
 						synced++
 					}
 				} else {
@@ -1832,7 +1832,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						provider,
 						hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1860,7 +1860,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					dedupeKey,
 				).pipe(Effect.result)
 				if (result._tag === "Success") {
-					if (result.value.status === "created") {
+					if (result.success.status === "created") {
 						synced++
 					}
 				} else {
@@ -1869,7 +1869,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						provider,
 						hazelReactionId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}
@@ -1901,7 +1901,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 					dedupeKey,
 				).pipe(Effect.result)
 				if (result._tag === "Success") {
-					if (result.value.status === "deleted") {
+					if (result.success.status === "deleted") {
 						synced++
 					}
 				} else {
@@ -1910,7 +1910,7 @@ export class ChatSyncCoreWorker extends ServiceMap.Service<ChatSyncCoreWorker>()
 						provider,
 						hazelMessageId: payload.hazelMessageId,
 						syncConnectionId: target.syncConnectionId,
-						error: result.left,
+						error: result.failure,
 					})
 				}
 			}

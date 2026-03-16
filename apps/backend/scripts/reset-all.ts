@@ -258,7 +258,7 @@ const resetScript = Effect.gen(function* () {
 const runnable = resetScript.pipe(
 	Effect.provide(DatabaseLive),
 	Effect.provide(WorkOSClient.layer),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
 )
 
 Effect.runPromise(runnable).catch((error) => {

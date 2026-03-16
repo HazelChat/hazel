@@ -62,7 +62,8 @@ const KlipyRawCategoriesResponse = Schema.Struct({
 
 const fetchKlipy = (
 	httpClient: HttpClient.HttpClient,
-	apiKey: string, params: string,
+	apiKey: string,
+	path: string,
 	params: Record<string, string>,
 ) => {
 	const searchParams = new URLSearchParams(params)

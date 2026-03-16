@@ -138,7 +138,7 @@ const createBotScript = Effect.gen(function* () {
 // Run the script with proper Effect runtime
 const runnable = createBotScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
 )
 
 Effect.runPromise(runnable).catch((error) => {

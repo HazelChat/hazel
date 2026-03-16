@@ -115,7 +115,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						Effect.catchTag("ParseError", (error) =>
+						Effect.catchTag("SchemaError", (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Invalid sync connection data",
@@ -252,7 +252,7 @@ export const ChatSyncRpcLive = ChatSyncRpcs.toLayer(
 						}),
 					)
 					.pipe(
-						Effect.catchTag("ParseError", (error) =>
+						Effect.catchTag("SchemaError", (error) =>
 							Effect.fail(
 								new InternalServerError({
 									message: "Invalid channel link data",

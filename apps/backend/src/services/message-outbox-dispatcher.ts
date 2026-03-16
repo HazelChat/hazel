@@ -118,7 +118,7 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 						}
 
 						const nextAttempt = event.attemptCount + 1
-						const errorMessage = String(result.left)
+						const errorMessage = String(result.failure)
 
 						if (nextAttempt >= OUTBOX_FAILURE_LIMIT) {
 							yield* outboxRepo.markFailed(event.id, {
@@ -178,12 +178,12 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 
 					if (reservedResult._tag === "Failure") {
 						yield* Effect.logError("Failed to reserve outbox advisory lock connection", {
-							error: String(reservedResult.left),
+							error: String(reservedResult.failure),
 						})
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
 						return yield* campaignForLeadership()
 					}
-					const reserved = reservedResult.value
+					const reserved = reservedResult.success
 
 					const lockResult = yield* Effect.tryPromise({
 						try: () =>
@@ -195,14 +195,14 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 
 					if (lockResult._tag === "Failure") {
 						yield* Effect.logError("Failed to acquire outbox advisory lock", {
-							error: String(lockResult.left),
+							error: String(lockResult.failure),
 						})
 						yield* Effect.sync(() => reserved.release())
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)
 						return yield* campaignForLeadership()
 					}
 
-					const lockRows = lockResult.value as { rows: Array<{ locked: boolean }> }
+					const lockRows = lockResult.success as { rows: Array<{ locked: boolean }> }
 					if (!lockRows.rows[0]?.locked) {
 						yield* Effect.sync(() => reserved.release())
 						yield* Effect.sleep(OUTBOX_LOCK_RETRY_INTERVAL)

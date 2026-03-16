@@ -154,7 +154,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
@@ -257,7 +257,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",
@@ -357,7 +357,7 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 								detail: String(error),
 							}),
 						),
-					ParseError: (error: unknown) =>
+					SchemaError: (error: unknown) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Invalid request data",

@@ -123,7 +123,7 @@ const MainLive = Layer.mergeAll(WorkOSSync.layer, WorkOSClient.layer).pipe(
 
 const runnable = setupScript.pipe(
 	Effect.provide(MainLive),
-	Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
+	Effect.provide(Layer.succeed(References.MinimumLogLevel, LogLevel.Info)),
 )
 
 Effect.runPromise(runnable).catch((error) => {

@@ -232,7 +232,7 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 					// ============ Attachment Upload ============
 					Match.when({ type: "attachment" }, (req) =>
 						Effect.gen(function* () {
-							const attachmentId = AttachmentId.make(randomUUIDv7())
+							const attachmentId = AttachmentId.makeUnsafe(randomUUIDv7())
 
 							yield* Effect.logDebug(
 								`Generating presigned URL for attachment upload: ${attachmentId} (size: ${req.fileSize} bytes, type: ${req.contentType})`,

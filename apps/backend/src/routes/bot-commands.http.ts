@@ -18,7 +18,7 @@ import {
 	UpdateBotSettingsResponse,
 } from "@hazel/domain/http"
 import { Redis } from "@hazel/effect-bun"
-import { ServiceMap, Duration, Effect, Option, Schedule, Stream } from "effect"
+import { ServiceMap, Cause, Duration, Effect, Option, Queue, Schedule, Stream } from "effect"
 import { HazelApi } from "../api.ts"
 import { BotGatewayService } from "../services/bot-gateway-service.ts"
 import { IntegrationTokenService } from "../services/integration-token-service.ts"
@@ -78,7 +78,7 @@ const encodeSseEvent = (event: string, data: string) =>
 		data,
 	})
 
-export const createSseHeartbeatStream = (interval: Duration.DurationInput = HEARTBEAT_INTERVAL) =>
+export const createSseHeartbeatStream = (interval: Duration.Input = HEARTBEAT_INTERVAL) =>
 	Stream.make(
 		encodeSseEvent(
 			"heartbeat",
@@ -108,7 +108,7 @@ interface CommandSseStreamOptions {
 	readonly botName: string
 	readonly channel: string
 	readonly redis: Pick<ServiceMap.Service.Shape<typeof Redis>, "subscribe">
-	readonly heartbeatInterval?: Duration.DurationInput
+	readonly heartbeatInterval?: Duration.Input
 }
 
 export const createCommandSseStream = ({
@@ -118,11 +118,11 @@ export const createCommandSseStream = ({
 	redis,
 	heartbeatInterval = HEARTBEAT_INTERVAL,
 }: CommandSseStreamOptions) => {
-	const commandStream = Stream.async<string>((emit) => {
+	const commandStream = Stream.callback<string>((queue) =>
 		Effect.gen(function* () {
 			const { unsubscribe } = yield* redis.subscribe(channel, (message) => {
 				// Encode the message as an SSE event
-				emit.single(encodeSseEvent("command", message))
+				Queue.offerUnsafe(queue, encodeSseEvent("command", message))
 			})
 
 			// Add finalizer to unsubscribe when stream closes
@@ -138,16 +138,13 @@ export const createCommandSseStream = ({
 			// Keep the subscription alive until the stream is closed
 			yield* Effect.never
 		}).pipe(
-			Effect.scoped,
 			Effect.catch((error) => {
 				// Log the error but don't fail the stream - end it gracefully
 				Effect.runFork(Effect.logError("Redis subscription error", { error, botId, botName }))
-				emit.end()
-				return Effect.void
+				return Queue.end(queue)
 			}),
-			Effect.runFork,
-		)
-	})
+		),
+	)
 
 	return Stream.merge(commandStream, createSseHeartbeatStream(heartbeatInterval), {
 		haltStrategy: "either",

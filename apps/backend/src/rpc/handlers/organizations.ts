@@ -15,7 +15,7 @@ import {
 	OrganizationSlugAlreadyExistsError,
 	PublicInviteDisabledError,
 } from "@hazel/domain/rpc"
-import { Effect, Option } from "effect"
+import { Effect, Option, Predicate } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
@@ -33,21 +33,24 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 		effect: Effect.Effect<R, E, A>,
 	): Effect.Effect<
 		R,
-		| Exclude<E, { _tag: "DatabaseError" | "ParseError" }>
+		| Exclude<E, { _tag: "DatabaseError" | "SchemaError" }>
 		| InternalServerError
 		| OrganizationSlugAlreadyExistsError,
 		A
 	> => {
 		return effect.pipe(
-			Effect.catchTags({
-				DatabaseError: (err: any) => {
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "DatabaseError" }> =>
+					Predicate.isTagged(e, "DatabaseError"),
+				(err) => {
+					const dbErr = err as unknown as { type: string; cause: { constraint_name?: string; detail?: string } }
 					// Check if it's a unique violation on the slug column
 					if (
-						err.type === "unique_violation" &&
-						err.cause.constraint_name === "organizations_slug_unique"
+						dbErr.type === "unique_violation" &&
+						dbErr.cause.constraint_name === "organizations_slug_unique"
 					) {
 						// Extract slug from error detail if possible
-						const slugMatch = err.cause.detail?.match(/Key \(slug\)=\(([^)]+)\)/)
+						const slugMatch = dbErr.cause.detail?.match(/Key \(slug\)=\(([^)]+)\)/)
 						const slug = slugMatch?.[1] || "unknown"
 						return Effect.fail(
 							new OrganizationSlugAlreadyExistsError({
@@ -65,7 +68,11 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 						}),
 					)
 				},
-				ParseError: (err: any) =>
+			),
+			Effect.catchIf(
+				(e): e is Extract<E, { _tag: "SchemaError" }> =>
+					Predicate.isTagged(e, "SchemaError"),
+				(err) =>
 					Effect.fail(
 						new InternalServerError({
 							message: `Error ${action}ing ${entityType}`,
@@ -73,8 +80,14 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 							cause: String(err),
 						}),
 					),
-			}),
-		)
+			),
+		) as Effect.Effect<
+			R,
+			| Exclude<E, { _tag: "DatabaseError" | "SchemaError" }>
+			| InternalServerError
+			| OrganizationSlugAlreadyExistsError,
+			A
+		>
 	}
 }
 

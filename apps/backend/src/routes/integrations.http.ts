@@ -18,7 +18,7 @@ import {
 	CraftRateLimitError,
 } from "@hazel/integrations/craft"
 import type { IntegrationConnection } from "@hazel/domain/models"
-import { Config, Effect, Layer, Option, Schedule, Schema } from "effect"
+import { Config, DateTime, Effect, Layer, Option, Schedule, Schema, SchemaGetter } from "effect"
 import * as Duration from "effect/Duration"
 import { HazelApi } from "../api"
 import { ChatSyncAttributionReconciler } from "../services/chat-sync/chat-sync-attribution-reconciler"
@@ -33,13 +33,16 @@ import { OAuthProviderRegistry } from "../services/oauth"
 const OAuthState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
-	level: Schema.optionalWith(Schema.Literals(["organization", "user"]), {
-		default: () => "organization",
-	}),
+	level: Schema.optional(Schema.Literals(["organization", "user"])).pipe(
+		Schema.decodeTo(Schema.toType(Schema.Literals(["organization", "user"])), {
+			decode: SchemaGetter.withDefault((): "organization" | "user" => "organization"),
+			encode: SchemaGetter.required(),
+		}),
+	),
 	/** Full URL to redirect after OAuth completes (e.g., http://localhost:3000/org/settings/integrations/github) */
 	returnTo: Schema.String,
 	/** Environment that initiated the OAuth flow. Used to redirect back to localhost for local dev. */
-	environment: Schema.optional(Schema.Literals(["local", "production"])),
+	environment: Schema.optionalKey(Schema.Literals(["local", "production"])),
 })
 
 /**
@@ -248,8 +251,8 @@ const makeOAuthSessionCookie = (
 ) =>
 	Effect.try({
 		try: () =>
-			Cookies.unsafeMakeCookie(name, value, {
-				domain: options.cookieDomain, params: "/",
+			Cookies.makeCookieUnsafe(name, value, {
+				domain: options.cookieDomain, path: "/",
 				httpOnly: true,
 				secure: options.secure,
 				sameSite: "lax",
@@ -264,7 +267,7 @@ const makeOAuthSessionCookie = (
 
 const expireOAuthSessionCookie = (name: string, options: { cookieDomain: string; secure: boolean }) =>
 	HttpServerResponse.expireCookie(name, {
-		domain: options.cookieDomain, params: "/",
+		domain: options.cookieDomain, path: "/",
 		httpOnly: true,
 		secure: options.secure,
 		sameSite: "lax",
@@ -412,11 +415,14 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 const OAuthSessionState = Schema.Struct({
 	organizationId: Schema.String,
 	userId: Schema.String,
-	level: Schema.optionalWith(Schema.Literals(["organization", "user"]), {
-		default: () => "organization",
-	}),
+	level: Schema.optional(Schema.Literals(["organization", "user"])).pipe(
+		Schema.decodeTo(Schema.toType(Schema.Literals(["organization", "user"])), {
+			decode: SchemaGetter.withDefault((): "organization" | "user" => "organization"),
+			encode: SchemaGetter.required(),
+		}),
+	),
 	returnTo: Schema.String,
-	environment: Schema.optional(Schema.Literals(["local", "production"])),
+	environment: Schema.optionalKey(Schema.Literals(["local", "production"])),
 	createdAt: Schema.Number,
 })
 
@@ -709,7 +715,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	)
 
 	if (tokensResult._tag === "Failure") {
-		const error = tokensResult.left
+		const error = tokensResult.failure
 		yield* Effect.logError("OAuth token exchange failed", {
 			event: "integration_token_exchange_failed",
 			provider,
@@ -719,7 +725,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		return redirectWithError("token_exchange_failed")
 	}
 
-	const tokens = tokensResult.value
+	const tokens = tokensResult.success
 	yield* Effect.logInfo("OAuth token exchange succeeded", {
 		event: "integration_token_exchange_success",
 		provider,
@@ -742,7 +748,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	)
 
 	if (accountInfoResult._tag === "Failure") {
-		const error = accountInfoResult.left
+		const error = accountInfoResult.failure
 		yield* Effect.logError("OAuth account info fetch failed", {
 			event: "integration_account_info_failed",
 			provider,
@@ -751,7 +757,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		return redirectWithError("account_info_failed")
 	}
 
-	const accountInfo = accountInfoResult.value
+	const accountInfo = accountInfoResult.success
 	yield* Effect.logDebug("OAuth account info fetch succeeded", {
 		event: "integration_account_info_success",
 		provider,
@@ -816,12 +822,12 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 		yield* Effect.logError("OAuth database upsert failed", {
 			event: "integration_db_upsert_failed",
 			provider,
-			error: String(connectionResult.left),
+			error: String(connectionResult.failure),
 		})
 		return redirectWithError("db_error")
 	}
 
-	const connection = connectionResult.value
+	const connection = connectionResult.success
 	yield* Effect.logDebug("OAuth database upsert succeeded", {
 		event: "integration_db_upsert_success",
 		provider,
@@ -849,7 +855,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 			event: "integration_token_storage_failed",
 			provider,
 			connectionId: connection.id,
-			error: String(storeResult.left),
+			error: String(storeResult.failure),
 		})
 		return redirectWithError("encryption_error")
 	}
@@ -885,7 +891,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 					organizationId: parsedState.organizationId,
 					userId: parsedState.userId,
 					externalAccountId: accountInfo.externalAccountId,
-					error: String(reconcileResult.left),
+					error: String(reconcileResult.failure),
 				},
 			)
 		}
@@ -1102,8 +1108,8 @@ const handleGetConnectionStatus = Effect.fn("integrations.getConnectionStatus")(
 		provider,
 		externalAccountName: connection.externalAccountName,
 		status: connection.status,
-		connectedAt: connection.createdAt ?? null,
-		lastUsedAt: connection.lastUsedAt ?? null,
+		connectedAt: connection.createdAt ? DateTime.fromDateUnsafe(connection.createdAt) : null,
+		lastUsedAt: connection.lastUsedAt ? DateTime.fromDateUnsafe(connection.lastUsedAt) : null,
 	})
 })
 
@@ -1169,7 +1175,7 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 					organizationId: orgId,
 					userId: currentUser.id,
 					externalAccountId,
-					error: String(reconcileResult.left),
+					error: String(reconcileResult.failure),
 				},
 			)
 		}
@@ -1195,9 +1201,15 @@ const handleDisconnect = Effect.fn("integrations.disconnect")(function* (
 
 export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations", (handlers) =>
 	handlers
-		.handle("getOAuthUrl", ({ params, query }) => handleGetOAuthUrl(path, query))
+		.handle("getOAuthUrl", ({ params, query }) =>
+			handleGetOAuthUrl(params, query).pipe(
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
+			),
+		)
 		.handle("oauthCallback", ({ params, query }) =>
-			handleOAuthCallback(path, query).pipe(
+			handleOAuthCallback(params, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
@@ -1206,10 +1218,21 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 						}),
 					),
 				),
+				Effect.catchTag("SchemaError", (error) =>
+					Effect.fail(
+						new InternalServerError({
+							message: "Schema error during OAuth callback",
+							detail: String(error),
+						}),
+					),
+				),
+				Effect.catchTag("ConfigError", (err) =>
+					Effect.fail(new InternalServerError({ message: "Missing configuration", detail: String(err) })),
+				),
 			),
 		)
 		.handle("connectApiKey", ({ params, payload }) =>
-			handleConnectApiKey(path, payload).pipe(
+			handleConnectApiKey(params, payload).pipe(
 				Effect.catchTags({
 					DatabaseError: (error) =>
 						Effect.fail(
@@ -1218,7 +1241,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 								detail: String(error),
 							}),
 						),
-					ParseError: (error) =>
+					SchemaError: (error) =>
 						Effect.fail(
 							new InternalServerError({
 								message: "Failed to parse API response",
@@ -1236,7 +1259,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 			),
 		)
 		.handle("getConnectionStatus", ({ params, query }) =>
-			handleGetConnectionStatus(path, query).pipe(
+			handleGetConnectionStatus(params, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
@@ -1248,7 +1271,7 @@ export const HttpIntegrationLive = HttpApiBuilder.group(HazelApi, "integrations"
 			),
 		)
 		.handle("disconnect", ({ params, query }) =>
-			handleDisconnect(path, query).pipe(
+			handleDisconnect(params, query).pipe(
 				Effect.catchTag("DatabaseError", (error) =>
 					Effect.fail(
 						new InternalServerError({
