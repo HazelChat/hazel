@@ -108,7 +108,7 @@ const memoryStore = new Map<string, number>()
 
 export const RateLimiterMemoryLive = Layer.succeed(
 	RateLimiter,
-	RateLimiter.make({
+	RateLimiter.of({
 		consume: (key: string, limit: number, windowMs: number) =>
 			Effect.sync(() => {
 				// Simple in-memory implementation using a Map
