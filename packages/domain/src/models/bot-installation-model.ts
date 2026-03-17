@@ -1,9 +1,9 @@
 import { BotId, BotInstallationId, OrganizationId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { Generated, JsonDate } from "./utils"
 
-export class Model extends M.Class<Model>("BotInstallation")({
+class Model extends M.Class<Model>("BotInstallation")({
 	id: M.Generated(BotInstallationId),
 	botId: BotId,
 	organizationId: OrganizationId,
@@ -11,5 +11,5 @@ export class Model extends M.Class<Model>("BotInstallation")({
 	installedAt: Generated(JsonDate),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

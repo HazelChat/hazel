@@ -15,7 +15,7 @@ import { OrganizationNotFoundError } from "./organizations"
 export class OrganizationMemberResponse extends Schema.Class<OrganizationMemberResponse>(
 	"OrganizationMemberResponse",
 )({
-	data: OrganizationMember.Model.json,
+	data: OrganizationMember.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -75,7 +75,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("organizationMember.create", {
-		payload: OrganizationMember.Model.jsonCreate,
+		payload: OrganizationMember.Create,
 		success: OrganizationMemberResponse,
 		error: Schema.Union([OrganizationNotFoundError, UnauthorizedError, InternalServerError]),
 	})
@@ -97,7 +97,7 @@ export class OrganizationMemberRpcs extends RpcGroup.make(
 	Rpc.make("organizationMember.update", {
 		payload: Schema.Struct({
 			id: OrganizationMemberId,
-			...OrganizationMember.Model.jsonUpdate.fields,
+			...OrganizationMember.Patch.fields,
 		}),
 		success: OrganizationMemberResponse,
 		error: Schema.Union([OrganizationMemberNotFoundError, UnauthorizedError, InternalServerError]),

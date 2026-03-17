@@ -11,8 +11,8 @@ interface MessageReplySectionProps {
 	onClick?: () => void
 }
 
-type MessageWithAuthor = typeof Message.Model.Type & {
-	author: typeof User.Model.Type
+type MessageWithAuthor = Message.Type & {
+	author: User.Type
 }
 
 export function MessageReplySection({ replyToMessageId, onClick }: MessageReplySectionProps) {

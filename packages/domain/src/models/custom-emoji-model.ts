@@ -1,18 +1,18 @@
 import { CustomEmojiId, OrganizationId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export class Model extends M.Class<Model>("CustomEmoji")({
+class Model extends M.Class<Model>("CustomEmoji")({
 	id: M.Generated(CustomEmojiId),
 	organizationId: OrganizationId,
-	name: Schema.String,
-	imageUrl: Schema.String,
+	name: S.String,
+	imageUrl: S.String,
 	createdBy: M.GeneratedByApp(UserId),
 	createdAt: M.Generated(JsonDate),
-	updatedAt: M.Generated(Schema.NullOr(JsonDate)),
-	deletedAt: M.Generated(Schema.NullOr(JsonDate)),
+	updatedAt: M.Generated(S.NullOr(JsonDate)),
+	deletedAt: M.Generated(S.NullOr(JsonDate)),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

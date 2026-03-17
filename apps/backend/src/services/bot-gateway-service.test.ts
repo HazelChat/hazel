@@ -120,7 +120,7 @@ describe("BotGatewayService", () => {
 			createdAt: new Date("2026-03-05T12:00:00.000Z"),
 			updatedAt: null,
 			deletedAt: null,
-		} satisfies Schema.Schema.Type<typeof Message.Model.json>
+		} satisfies Schema.Schema.Type<typeof Message.Schema>
 
 		globalThis.fetch = (async (input, init) => {
 			requests.push({

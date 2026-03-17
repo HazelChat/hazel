@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the section data and a transaction ID for optimistic updates.
  */
 export class ChannelSectionResponse extends Schema.Class<ChannelSectionResponse>("ChannelSectionResponse")({
-	data: ChannelSection.Model.json,
+	data: ChannelSection.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -32,7 +32,7 @@ export class ChannelSectionNotFoundError extends Schema.TaggedErrorClass<Channel
  * Request schema for creating channel sections.
  * Uses jsonCreate which includes optional id for optimistic updates.
  */
-export const CreateChannelSectionRequest = ChannelSection.Model.jsonCreate
+export const CreateChannelSectionRequest = ChannelSection.Create
 
 export class ChannelSectionRpcs extends RpcGroup.make(
 	/**
@@ -72,7 +72,7 @@ export class ChannelSectionRpcs extends RpcGroup.make(
 			id: ChannelSectionId,
 		}).pipe(
 			(s: any) =>
-				Schema.Struct({ ...s.fields, ...(ChannelSection.Model.jsonUpdate as any).fields }) as any,
+				Schema.Struct({ ...s.fields, ...(ChannelSection.Patch as any).fields }) as any,
 		),
 		success: ChannelSectionResponse,
 		error: Schema.Union([ChannelSectionNotFoundError, UnauthorizedError, InternalServerError]),

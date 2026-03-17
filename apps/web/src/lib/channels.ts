@@ -31,7 +31,7 @@ export function findExistingDmChannel(
 	currentUserId: UserId,
 	targetUserIds: UserId[],
 	organizationId: OrganizationId,
-): typeof Channel.Model.Type | null {
+): Channel.Type | null {
 	const channels = dmChannelsCollection.toArray
 
 	if (!channels || channels.length === 0 || targetUserIds.length === 0) {
@@ -41,7 +41,7 @@ export function findExistingDmChannel(
 	const allParticipants = [currentUserId, ...targetUserIds]
 
 	// Group channels by channel ID to get all members per channel
-	const channelMembersMap = new Map<string, { channel: typeof Channel.Model.Type; memberIds: string[] }>()
+	const channelMembersMap = new Map<string, { channel: Channel.Type; memberIds: string[] }>()
 
 	for (const item of channels) {
 		// Skip channels from other organizations

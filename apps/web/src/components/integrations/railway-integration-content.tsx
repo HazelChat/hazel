@@ -18,7 +18,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { ConfigureRailwayModal } from "./configure-railway-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface RailwayIntegrationContentProps {
 	organizationId: OrganizationId

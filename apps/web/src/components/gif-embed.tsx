@@ -5,7 +5,7 @@ import { extractGiphyMediaUrl, isKlipyUrl } from "~/components/link-preview"
 
 interface GifEmbedProps {
 	url: string
-	author?: typeof User.Model.Type
+	author?: User.Type
 	createdAt?: number
 }
 

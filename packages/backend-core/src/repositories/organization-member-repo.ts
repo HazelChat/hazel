@@ -1,4 +1,4 @@
-import { and, count, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, count, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
@@ -8,9 +8,9 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 	"OrganizationMemberRepo",
 	{
 		make: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.organizationMembersTable,
-				OrganizationMember.Model,
+				{ insert: OrganizationMember.Insert, update: OrganizationMember.Update },
 				{
 					idColumn: "id",
 					name: "OrganizationMember",

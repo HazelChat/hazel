@@ -31,49 +31,49 @@ export const BotGatewayCommandInvokeEnvelope = Schema.Struct({
 export const BotGatewayMessageCreateEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("message.create"),
-	payload: Message.Model.json,
+	payload: Message.Schema,
 })
 
 export const BotGatewayMessageUpdateEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("message.update"),
-	payload: Message.Model.json,
+	payload: Message.Schema,
 })
 
 export const BotGatewayMessageDeleteEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("message.delete"),
-	payload: Message.Model.json,
+	payload: Message.Schema,
 })
 
 export const BotGatewayChannelCreateEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("channel.create"),
-	payload: Channel.Model.json,
+	payload: Channel.Schema,
 })
 
 export const BotGatewayChannelUpdateEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("channel.update"),
-	payload: Channel.Model.json,
+	payload: Channel.Schema,
 })
 
 export const BotGatewayChannelDeleteEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("channel.delete"),
-	payload: Channel.Model.json,
+	payload: Channel.Schema,
 })
 
 export const BotGatewayChannelMemberAddEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("channel_member.add"),
-	payload: ChannelMember.Model.json,
+	payload: ChannelMember.Schema,
 })
 
 export const BotGatewayChannelMemberRemoveEnvelope = Schema.Struct({
 	...BaseGatewayEnvelope,
 	eventType: Schema.Literal("channel_member.remove"),
-	payload: ChannelMember.Model.json,
+	payload: ChannelMember.Schema,
 })
 
 export const BotGatewayEnvelope = Schema.Union([

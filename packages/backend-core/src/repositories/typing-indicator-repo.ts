@@ -1,4 +1,4 @@
-import { and, Database, eq, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, lt, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
@@ -7,9 +7,9 @@ import { ServiceMap, Effect, Layer } from "effect"
 export class TypingIndicatorRepo extends ServiceMap.Service<TypingIndicatorRepo>()("TypingIndicatorRepo", {
 	make: Effect.gen(function* () {
 		const db = yield* Database.Database
-		const baseRepo = yield* ModelRepository.makeRepository(
+		const baseRepo = yield* Repository.makeRepository(
 			schema.typingIndicatorsTable,
-			TypingIndicator.Model,
+			{ insert: TypingIndicator.Insert, update: TypingIndicator.Update },
 			{
 				idColumn: "id",
 				name: "TypingIndicator",

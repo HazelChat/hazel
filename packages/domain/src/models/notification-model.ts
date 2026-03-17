@@ -1,18 +1,18 @@
 import { NotificationId, OrganizationMemberId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export class Model extends M.Class<Model>("Notification")({
+class Model extends M.Class<Model>("Notification")({
 	id: M.Generated(NotificationId),
 	memberId: OrganizationMemberId,
-	targetedResourceId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
-	targetedResourceType: Schema.NullOr(Schema.String),
-	resourceId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
-	resourceType: Schema.NullOr(Schema.String),
+	targetedResourceId: S.NullOr(S.String.check(S.isUUID())),
+	targetedResourceType: S.NullOr(S.String),
+	resourceId: S.NullOr(S.String.check(S.isUUID())),
+	resourceType: S.NullOr(S.String),
 	createdAt: M.Generated(JsonDate),
-	readAt: Schema.NullOr(JsonDate),
+	readAt: S.NullOr(JsonDate),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

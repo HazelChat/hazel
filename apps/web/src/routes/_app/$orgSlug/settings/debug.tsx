@@ -101,7 +101,7 @@ function DebugSettings() {
 
 	const handleSyntheticNotification = () => {
 		const now = new Date()
-		const syntheticNotification: typeof Notification.Model.Type = {
+		const syntheticNotification: Notification.Type = {
 			id: `synthetic-${Date.now()}` as any,
 			memberId: `synthetic-member-${Date.now()}` as any,
 			targetedResourceId: null,

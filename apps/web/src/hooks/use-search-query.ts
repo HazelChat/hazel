@@ -14,9 +14,9 @@ import { parseDateFilter, type SearchFilter } from "~/lib/search-filter-parser"
 import { getFileCategory } from "~/utils/file-utils"
 
 export interface SearchResult {
-	message: typeof Message.Model.Type
-	author: typeof User.Model.Type | null
-	channel: typeof Channel.Model.Type | null
+	message: Message.Type
+	author: User.Type | null
+	channel: Channel.Type | null
 	attachmentCount: number
 }
 

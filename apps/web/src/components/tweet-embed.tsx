@@ -232,7 +232,7 @@ function TweetMetrics({ tweet }: { tweet: EnrichedTweet }) {
 
 interface TweetEmbedProps {
 	id: string
-	author?: typeof User.Model.Type
+	author?: User.Type
 	messageCreatedAt?: number
 }
 

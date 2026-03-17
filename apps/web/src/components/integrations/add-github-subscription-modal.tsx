@@ -23,7 +23,7 @@ import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { exitToast } from "~/lib/toast-exit"
 
 type GitHubEventType = typeof GitHubSubscription.GitHubEventType.Type
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 const EVENT_OPTIONS: { id: GitHubEventType; label: string; description: string }[] = [
 	{ id: "push", label: "Push", description: "Commits pushed to branches" },

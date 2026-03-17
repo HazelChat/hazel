@@ -11,7 +11,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the custom emoji data and a transaction ID for optimistic updates.
  */
 export class CustomEmojiResponse extends Schema.Class<CustomEmojiResponse>("CustomEmojiResponse")({
-	data: CustomEmoji.Model.json,
+	data: CustomEmoji.Schema,
 	transactionId: TransactionId,
 }) {}
 

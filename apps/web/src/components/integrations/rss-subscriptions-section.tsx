@@ -23,7 +23,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { AddRssSubscriptionModal } from "./add-rss-subscription-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface RssSubscriptionsSectionProps {
 	organizationId: OrganizationId

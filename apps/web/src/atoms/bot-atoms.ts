@@ -7,12 +7,12 @@ import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
  * Type for bot data returned from RPC.
  * Inferred from the domain model's JSON schema to stay in sync automatically.
  */
-export type BotData = Schema.Schema.Type<typeof Bot.Model.json>
+export type BotData = Schema.Schema.Type<typeof Bot.Schema>
 
 /**
  * Type for bot command data returned from RPC.
  */
-export type BotCommandData = Schema.Schema.Type<typeof BotCommand.Model.json>
+export type BotCommandData = Schema.Schema.Type<typeof BotCommand.Schema>
 
 /**
  * Type for public bot data with install status.

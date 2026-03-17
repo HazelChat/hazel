@@ -12,7 +12,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the organization data and a transaction ID for optimistic updates.
  */
 export class OrganizationResponse extends Schema.Class<OrganizationResponse>("OrganizationResponse")({
-	data: Organization.Model.json,
+	data: Organization.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -70,7 +70,7 @@ export class PublicOrganizationInfo extends Schema.Class<PublicOrganizationInfo>
 
 export class OrganizationRpcs extends RpcGroup.make(
 	Rpc.make("organization.create", {
-		payload: Organization.Model.jsonCreate,
+		payload: Organization.Create,
 		success: OrganizationResponse,
 		error: Schema.Union([OrganizationSlugAlreadyExistsError, UnauthorizedError, InternalServerError]),
 	})
@@ -82,7 +82,7 @@ export class OrganizationRpcs extends RpcGroup.make(
 			id: OrganizationId,
 		}).pipe(
 			(s: any) =>
-				Schema.Struct({ ...s.fields, ...(Organization.Model.jsonUpdate as any).fields }) as any,
+				Schema.Struct({ ...s.fields, ...(Organization.Patch as any).fields }) as any,
 		),
 		success: OrganizationResponse,
 		error: Schema.Union([

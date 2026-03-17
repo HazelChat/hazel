@@ -1,9 +1,9 @@
 import { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const IntegrationProvider = Schema.Literals([
+export const IntegrationProvider = S.Literals([
 	"linear",
 	"github",
 	"figma",
@@ -11,32 +11,32 @@ export const IntegrationProvider = Schema.Literals([
 	"discord",
 	"craft",
 ])
-export type IntegrationProvider = Schema.Schema.Type<typeof IntegrationProvider>
+export type IntegrationProvider = S.Schema.Type<typeof IntegrationProvider>
 
-export const ConnectionLevel = Schema.Literals(["organization", "user"])
-export type ConnectionLevel = Schema.Schema.Type<typeof ConnectionLevel>
+export const ConnectionLevel = S.Literals(["organization", "user"])
+export type ConnectionLevel = S.Schema.Type<typeof ConnectionLevel>
 
-export const ConnectionStatus = Schema.Literals(["active", "expired", "revoked", "error", "suspended"])
-export type ConnectionStatus = Schema.Schema.Type<typeof ConnectionStatus>
+export const ConnectionStatus = S.Literals(["active", "expired", "revoked", "error", "suspended"])
+export type ConnectionStatus = S.Schema.Type<typeof ConnectionStatus>
 
-export class Model extends M.Class<Model>("IntegrationConnection")({
+class Model extends M.Class<Model>("IntegrationConnection")({
 	id: M.Generated(IntegrationConnectionId),
 	provider: IntegrationProvider,
 	organizationId: OrganizationId,
-	userId: Schema.NullOr(UserId),
+	userId: S.NullOr(UserId),
 	level: ConnectionLevel,
 	status: ConnectionStatus,
-	externalAccountId: Schema.NullOr(Schema.String),
-	externalAccountName: Schema.NullOr(Schema.String),
+	externalAccountId: S.NullOr(S.String),
+	externalAccountName: S.NullOr(S.String),
 	connectedBy: UserId,
-	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
-	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
-	errorMessage: Schema.NullOr(Schema.String),
-	lastUsedAt: Schema.NullOr(JsonDate),
+	settings: S.NullOr(S.Record(S.String, S.Unknown)),
+	metadata: S.NullOr(S.Record(S.String, S.Unknown)),
+	errorMessage: S.NullOr(S.String),
+	lastUsedAt: S.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),
-	updatedAt: M.Generated(Schema.NullOr(JsonDate)),
-	deletedAt: M.GeneratedByApp(Schema.NullOr(JsonDate)),
+	updatedAt: M.Generated(S.NullOr(JsonDate)),
+	deletedAt: M.GeneratedByApp(S.NullOr(JsonDate)),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

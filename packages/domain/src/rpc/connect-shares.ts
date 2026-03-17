@@ -14,28 +14,28 @@ import { AuthMiddleware } from "./middleware"
 import { RequiredScopes } from "../scopes/required-scopes"
 
 export class ConnectInviteResponse extends Schema.Class<ConnectInviteResponse>("ConnectInviteResponse")({
-	data: ConnectInvite.Model.json,
+	data: ConnectInvite.Schema,
 	transactionId: TransactionId,
 }) {}
 
 export class ConnectConversationResponse extends Schema.Class<ConnectConversationResponse>(
 	"ConnectConversationResponse",
 )({
-	data: ConnectConversation.Model.json,
+	data: ConnectConversation.Schema,
 	transactionId: TransactionId,
 }) {}
 
 export class ConnectParticipantResponse extends Schema.Class<ConnectParticipantResponse>(
 	"ConnectParticipantResponse",
 )({
-	data: ConnectParticipant.Model.json,
+	data: ConnectParticipant.Schema,
 	transactionId: TransactionId,
 }) {}
 
 export class ConnectInviteListResponse extends Schema.Class<ConnectInviteListResponse>(
 	"ConnectInviteListResponse",
 )({
-	data: Schema.Array(ConnectInvite.Model.json),
+	data: Schema.Array(ConnectInvite.Schema),
 }) {}
 
 export class ConnectWorkspaceSearchResult extends Schema.Class<ConnectWorkspaceSearchResult>(

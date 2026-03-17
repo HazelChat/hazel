@@ -192,7 +192,7 @@ export function getMessagePreview(content: string | null | undefined, maxLength 
 /**
  * Format author display name
  */
-export function formatAuthorName(user: typeof User.Model.Type | undefined): string {
+export function formatAuthorName(user: User.Type | undefined): string {
 	if (!user) return "Someone"
 	return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Someone"
 }
@@ -203,8 +203,8 @@ export function formatAuthorName(user: typeof User.Model.Type | undefined): stri
  * - Channel/thread: Author + channel ("John Doe in #general")
  */
 export function formatNotificationTitle(
-	author: typeof User.Model.Type | undefined,
-	channel: typeof Channel.Model.Type | undefined,
+	author: User.Type | undefined,
+	channel: Channel.Type | undefined,
 ): string {
 	const authorName = formatAuthorName(author)
 
@@ -221,9 +221,9 @@ export function formatNotificationTitle(
  * Build complete notification content from message, author, and channel data
  */
 export function buildNotificationContent(
-	message: typeof Message.Model.Type | undefined,
-	author: typeof User.Model.Type | undefined,
-	channel: typeof Channel.Model.Type | undefined,
+	message: Message.Type | undefined,
+	author: User.Type | undefined,
+	channel: Channel.Type | undefined,
 ): NativeNotificationOptions {
 	const title = formatNotificationTitle(author, channel)
 	const body = getMessagePreview(message?.content)

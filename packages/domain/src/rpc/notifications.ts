@@ -12,7 +12,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the notification data and a transaction ID for optimistic updates.
  */
 export class NotificationResponse extends Schema.Class<NotificationResponse>("NotificationResponse")({
-	data: Notification.Model.json,
+	data: Notification.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -40,7 +40,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("notification.create", {
-		payload: Notification.Model.jsonCreate,
+		payload: Notification.Create,
 		success: NotificationResponse,
 		error: Schema.Union([UnauthorizedError, InternalServerError]),
 	})
@@ -62,7 +62,7 @@ export class NotificationRpcs extends RpcGroup.make(
 	Rpc.make("notification.update", {
 		payload: Schema.Struct({
 			id: NotificationId,
-			...Notification.Model.jsonUpdate.fields,
+			...Notification.Patch.fields,
 		}),
 		success: NotificationResponse,
 		error: Schema.Union([NotificationNotFoundError, UnauthorizedError, InternalServerError]),

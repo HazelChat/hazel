@@ -554,7 +554,7 @@ function ConnectedState({
 	isConfiguring,
 }: {
 	integration: Integration
-	connection: typeof IntegrationConnection.Model.Type | null
+	connection: IntegrationConnection.Type | null
 	externalAccountName: string | null
 	isDisconnecting: boolean
 	onDisconnect: () => void

@@ -15,7 +15,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class GitHubSubscriptionResponse extends Schema.Class<GitHubSubscriptionResponse>(
 	"GitHubSubscriptionResponse",
 )({
-	data: GitHubSubscription.Model.json,
+	data: GitHubSubscription.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -25,7 +25,7 @@ export class GitHubSubscriptionResponse extends Schema.Class<GitHubSubscriptionR
 export class GitHubSubscriptionListResponse extends Schema.Class<GitHubSubscriptionListResponse>(
 	"GitHubSubscriptionListResponse",
 )({
-	data: Schema.Array(GitHubSubscription.Model.json),
+	data: Schema.Array(GitHubSubscription.Schema),
 }) {}
 
 /**

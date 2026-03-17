@@ -1,32 +1,32 @@
 import { ChannelId, ConnectConversationId, ConnectInviteId, OrganizationId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ConnectInviteStatus = Schema.Literals(["pending", "accepted", "declined", "revoked", "expired"])
-export type ConnectInviteStatus = Schema.Schema.Type<typeof ConnectInviteStatus>
+export const ConnectInviteStatus = S.Literals(["pending", "accepted", "declined", "revoked", "expired"])
+export type ConnectInviteStatus = S.Schema.Type<typeof ConnectInviteStatus>
 
-export const ConnectInviteTargetKind = Schema.Literals(["slug", "email"])
-export type ConnectInviteTargetKind = Schema.Schema.Type<typeof ConnectInviteTargetKind>
+export const ConnectInviteTargetKind = S.Literals(["slug", "email"])
+export type ConnectInviteTargetKind = S.Schema.Type<typeof ConnectInviteTargetKind>
 
-export class Model extends M.Class<Model>("ConnectInvite")({
+class Model extends M.Class<Model>("ConnectInvite")({
 	id: M.Generated(ConnectInviteId),
 	conversationId: ConnectConversationId,
 	hostOrganizationId: OrganizationId,
 	hostChannelId: ChannelId,
 	targetKind: ConnectInviteTargetKind,
-	targetValue: Schema.String,
-	guestOrganizationId: Schema.NullOr(OrganizationId),
+	targetValue: S.String,
+	guestOrganizationId: S.NullOr(OrganizationId),
 	status: ConnectInviteStatus,
-	allowGuestMemberAdds: Schema.Boolean,
+	allowGuestMemberAdds: S.Boolean,
 	invitedBy: UserId,
-	acceptedBy: Schema.NullOr(UserId),
-	acceptedAt: Schema.NullOr(JsonDate),
-	expiresAt: Schema.NullOr(JsonDate),
+	acceptedBy: S.NullOr(UserId),
+	acceptedAt: S.NullOr(JsonDate),
+	expiresAt: S.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),
-	updatedAt: M.Generated(Schema.NullOr(JsonDate)),
-	deletedAt: M.GeneratedByApp(Schema.NullOr(JsonDate)),
+	updatedAt: M.Generated(S.NullOr(JsonDate)),
+	deletedAt: M.GeneratedByApp(S.NullOr(JsonDate)),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

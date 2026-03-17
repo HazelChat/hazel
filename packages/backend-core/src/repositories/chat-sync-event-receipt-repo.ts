@@ -1,4 +1,4 @@
-import { and, Database, eq, gte, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, gte, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
@@ -8,9 +8,9 @@ export class ChatSyncEventReceiptRepo extends ServiceMap.Service<ChatSyncEventRe
 	"ChatSyncEventReceiptRepo",
 	{
 		make: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.chatSyncEventReceiptsTable,
-				ChatSyncEventReceipt.Model,
+				{ insert: ChatSyncEventReceipt.Insert, update: ChatSyncEventReceipt.Update },
 				{
 					idColumn: "id",
 					name: "ChatSyncEventReceipt",

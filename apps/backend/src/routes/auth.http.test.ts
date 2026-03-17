@@ -51,7 +51,7 @@ const makeJwt = (exp: number = Math.floor(Date.now() / 1000) + 3600) => {
 	return `${encode({ alg: "none", typ: "JWT" })}.${encode({ exp, sid: "session_test_123" })}.`
 }
 
-const makeUserRecord = (overrides: Partial<Schema.Schema.Type<typeof User.Model>> = {}) =>
+const makeUserRecord = (overrides: Partial<Schema.Schema.Type<typeof User.Schema>> = {}) =>
 	({
 		id: "usr_default123" as UserId,
 		externalId: "user_default",
@@ -67,7 +67,7 @@ const makeUserRecord = (overrides: Partial<Schema.Schema.Type<typeof User.Model>
 		updatedAt: NOW,
 		deletedAt: null,
 		...overrides,
-	}) satisfies Schema.Schema.Type<typeof User.Model>
+	}) satisfies Schema.Schema.Type<typeof User.Schema>
 
 // ===== Mock WorkOS Service =====
 

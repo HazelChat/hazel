@@ -10,7 +10,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 
 export class RssSubscriptionResponse extends Schema.Class<RssSubscriptionResponse>("RssSubscriptionResponse")(
 	{
-		data: RssSubscription.Model.json,
+		data: RssSubscription.Schema,
 		transactionId: TransactionId,
 	},
 ) {}
@@ -18,7 +18,7 @@ export class RssSubscriptionResponse extends Schema.Class<RssSubscriptionRespons
 export class RssSubscriptionListResponse extends Schema.Class<RssSubscriptionListResponse>(
 	"RssSubscriptionListResponse",
 )({
-	data: Schema.Array(RssSubscription.Model.json),
+	data: Schema.Array(RssSubscription.Schema),
 }) {}
 
 export class RssSubscriptionNotFoundError extends Schema.TaggedErrorClass<RssSubscriptionNotFoundError>()(

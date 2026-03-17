@@ -10,7 +10,7 @@ import { Description } from "~/components/ui/field"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface ConfigureRailwayModalProps {
 	isOpen: boolean

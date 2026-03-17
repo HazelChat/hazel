@@ -17,27 +17,27 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class ChatSyncConnectionResponse extends Schema.Class<ChatSyncConnectionResponse>(
 	"ChatSyncConnectionResponse",
 )({
-	data: ChatSyncConnection.Model.json,
+	data: ChatSyncConnection.Schema,
 	transactionId: TransactionId,
 }) {}
 
 export class ChatSyncConnectionListResponse extends Schema.Class<ChatSyncConnectionListResponse>(
 	"ChatSyncConnectionListResponse",
 )({
-	data: Schema.Array(ChatSyncConnection.Model.json),
+	data: Schema.Array(ChatSyncConnection.Schema),
 }) {}
 
 export class ChatSyncChannelLinkResponse extends Schema.Class<ChatSyncChannelLinkResponse>(
 	"ChatSyncChannelLinkResponse",
 )({
-	data: ChatSyncChannelLink.Model.json,
+	data: ChatSyncChannelLink.Schema,
 	transactionId: TransactionId,
 }) {}
 
 export class ChatSyncChannelLinkListResponse extends Schema.Class<ChatSyncChannelLinkListResponse>(
 	"ChatSyncChannelLinkListResponse",
 )({
-	data: Schema.Array(ChatSyncChannelLink.Model.json),
+	data: Schema.Array(ChatSyncChannelLink.Schema),
 }) {}
 
 export class ChatSyncConnectionNotFoundError extends Schema.TaggedErrorClass<ChatSyncConnectionNotFoundError>()(

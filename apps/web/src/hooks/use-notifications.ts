@@ -42,10 +42,10 @@ function useOrganizationMember() {
 }
 
 export interface NotificationWithDetails {
-	notification: typeof Notification.Model.Type
-	message?: typeof Message.Model.Type
-	channel?: typeof Channel.Model.Type
-	author?: typeof User.Model.Type
+	notification: Notification.Type
+	message?: Message.Type
+	channel?: Channel.Type
+	author?: User.Type
 }
 
 export function useNotifications() {
@@ -76,10 +76,10 @@ export function useNotifications() {
 		if (!notificationsData) return []
 
 		return notificationsData.map((row) => ({
-			notification: row.notification as typeof Notification.Model.Type,
-			message: (row.message ?? undefined) as typeof Message.Model.Type | undefined,
-			channel: (row.channel ?? undefined) as typeof Channel.Model.Type | undefined,
-			author: (row.author ?? undefined) as typeof User.Model.Type | undefined,
+			notification: row.notification as Notification.Type,
+			message: (row.message ?? undefined) as Message.Type | undefined,
+			channel: (row.channel ?? undefined) as Channel.Type | undefined,
+			author: (row.author ?? undefined) as User.Type | undefined,
 		}))
 	}, [notificationsData])
 

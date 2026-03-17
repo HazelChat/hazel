@@ -5,9 +5,9 @@ import { eq } from "@tanstack/db"
 import { channelCollection } from "~/db/collections"
 import { makeQuery } from "../../../../libs/tanstack-db-atom/src"
 
-export type MessageWithPinned = typeof Message.Model.Type & {
-	pinnedMessage: typeof PinnedMessage.Model.Type | null | undefined
-	author: typeof User.Model.Type | null | undefined
+export type MessageWithPinned = Message.Type & {
+	pinnedMessage: PinnedMessage.Type | null | undefined
+	author: User.Type | null | undefined
 	isSyncedFromDiscord?: boolean
 }
 

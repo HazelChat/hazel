@@ -12,7 +12,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the invitation data and a transaction ID for optimistic updates.
  */
 export class InvitationResponse extends Schema.Class<InvitationResponse>("InvitationResponse")({
-	data: Invitation.Model.json,
+	data: Invitation.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -23,7 +23,7 @@ export class InvitationResponse extends Schema.Class<InvitationResponse>("Invita
 export class InvitationBatchResult extends Schema.Class<InvitationBatchResult>("InvitationBatchResult")({
 	email: Schema.String,
 	success: Schema.Boolean,
-	data: Schema.optional(Invitation.Model.json),
+	data: Schema.optional(Invitation.Schema),
 	error: Schema.optional(Schema.String),
 	transactionId: Schema.optional(TransactionId),
 }) {}
@@ -134,7 +134,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.update", {
 		payload: Schema.Struct({
 			id: InvitationId,
-			...Invitation.Model.jsonUpdate.fields,
+			...Invitation.Patch.fields,
 		}),
 		success: InvitationResponse,
 		error: Schema.Union([InvitationNotFoundError, UnauthorizedError, InternalServerError]),

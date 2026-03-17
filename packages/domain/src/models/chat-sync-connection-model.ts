@@ -1,31 +1,31 @@
 import { IntegrationConnectionId, OrganizationId, SyncConnectionId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncProvider = Schema.NonEmptyString
-export type ChatSyncProvider = Schema.Schema.Type<typeof ChatSyncProvider>
+export const ChatSyncProvider = S.NonEmptyString
+export type ChatSyncProvider = S.Schema.Type<typeof ChatSyncProvider>
 
-export const ChatSyncConnectionStatus = Schema.Literals(["active", "paused", "error", "disabled"])
-export type ChatSyncConnectionStatus = Schema.Schema.Type<typeof ChatSyncConnectionStatus>
+export const ChatSyncConnectionStatus = S.Literals(["active", "paused", "error", "disabled"])
+export type ChatSyncConnectionStatus = S.Schema.Type<typeof ChatSyncConnectionStatus>
 
-export class Model extends M.Class<Model>("ChatSyncConnection")({
+class Model extends M.Class<Model>("ChatSyncConnection")({
 	id: M.Generated(SyncConnectionId),
 	organizationId: OrganizationId,
-	integrationConnectionId: Schema.NullOr(IntegrationConnectionId),
+	integrationConnectionId: S.NullOr(IntegrationConnectionId),
 	provider: ChatSyncProvider,
-	externalWorkspaceId: Schema.String,
-	externalWorkspaceName: Schema.NullOr(Schema.String),
+	externalWorkspaceId: S.String,
+	externalWorkspaceName: S.NullOr(S.String),
 	status: ChatSyncConnectionStatus,
-	settings: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
-	metadata: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
-	errorMessage: Schema.NullOr(Schema.String),
-	lastSyncedAt: Schema.NullOr(JsonDate),
+	settings: S.NullOr(S.Record(S.String, S.Unknown)),
+	metadata: S.NullOr(S.Record(S.String, S.Unknown)),
+	errorMessage: S.NullOr(S.String),
+	lastSyncedAt: S.NullOr(JsonDate),
 	createdBy: UserId,
 	createdAt: M.Generated(JsonDate),
-	updatedAt: M.Generated(Schema.NullOr(JsonDate)),
-	deletedAt: M.GeneratedByApp(Schema.NullOr(JsonDate)),
+	updatedAt: M.Generated(S.NullOr(JsonDate)),
+	deletedAt: M.GeneratedByApp(S.NullOr(JsonDate)),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

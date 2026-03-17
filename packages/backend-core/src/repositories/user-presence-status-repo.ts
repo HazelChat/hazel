@@ -1,4 +1,4 @@
-import { and, Database, eq, inArray, lt, ModelRepository, ne, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, lt, Repository, ne, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
@@ -9,9 +9,9 @@ export class UserPresenceStatusRepo extends ServiceMap.Service<UserPresenceStatu
 	{
 		make: Effect.gen(function* () {
 			const db = yield* Database.Database
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.userPresenceStatusTable,
-				UserPresenceStatus.Model,
+				{ insert: UserPresenceStatus.Insert, update: UserPresenceStatus.Update },
 				{
 					idColumn: "id",
 					name: "UserPresenceStatus",

@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import { ChatSyncMessageLink } from "@hazel/domain/models"
 import type {
@@ -14,16 +14,16 @@ export class ChatSyncMessageLinkRepo extends ServiceMap.Service<ChatSyncMessageL
 	"ChatSyncMessageLinkRepo",
 	{
 		make: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.chatSyncMessageLinksTable,
-				ChatSyncMessageLink.Model,
+				{ insert: ChatSyncMessageLink.Insert, update: ChatSyncMessageLink.Update },
 				{
 					idColumn: "id",
 					name: "ChatSyncMessageLink",
 				},
 			)
 			const db = yield* Database.Database
-			const decodeMessageLink = Schema.decodeUnknownSync(ChatSyncMessageLink.Model)
+			const decodeMessageLink = Schema.decodeUnknownSync(ChatSyncMessageLink.Schema)
 			const decodeMessageLinkRows = (rows: readonly unknown[]) =>
 				rows.map((row) => decodeMessageLink(row))
 			const decodeMessageLinkOption = <T>(value: Option.Option<T>) =>

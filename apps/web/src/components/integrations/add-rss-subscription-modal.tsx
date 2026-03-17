@@ -19,7 +19,7 @@ import {
 import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 const POLLING_INTERVAL_OPTIONS = [
 	{ value: 5, label: "Every 5 minutes" },

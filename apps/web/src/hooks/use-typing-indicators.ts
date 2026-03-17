@@ -7,8 +7,8 @@ import { useAuth } from "~/lib/auth"
 import { pushTypingDiagnostics } from "~/lib/typing-diagnostics"
 
 type TypingUser = {
-	user: typeof User.Model.Type
-	member: typeof ChannelMember.Model.Type
+	user: User.Type
+	member: ChannelMember.Type
 }
 
 export type TypingUsers = TypingUser[]

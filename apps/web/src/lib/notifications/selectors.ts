@@ -5,7 +5,7 @@ import { useMemo } from "react"
 import { notificationCollection } from "~/db/collections"
 
 export type NotificationLike = Pick<
-	typeof Notification.Model.Type,
+	Notification.Type,
 	"id" | "readAt" | "targetedResourceId" | "targetedResourceType"
 >
 

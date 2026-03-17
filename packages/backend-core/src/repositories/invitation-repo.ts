@@ -1,4 +1,4 @@
-import { and, Database, eq, lte, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, lte, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { InvitationId, OrganizationId, WorkOSInvitationId } from "@hazel/schema"
 import { Invitation } from "@hazel/domain/models"
@@ -6,7 +6,7 @@ import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("InvitationRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.invitationsTable, Invitation.Model, {
+		const baseRepo = yield* Repository.makeRepository(schema.invitationsTable, { insert: Invitation.Insert, update: Invitation.Update }, {
 			idColumn: "id",
 			name: "Invitation",
 		})

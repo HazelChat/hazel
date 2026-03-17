@@ -1,4 +1,4 @@
-import { and, Database, eq, inArray, isNull, ModelRepository, schema, sql, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
 
 import type { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import { ChannelMember } from "@hazel/domain/models"
@@ -6,9 +6,9 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ChannelMemberRepo extends ServiceMap.Service<ChannelMemberRepo>()("ChannelMemberRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+		const baseRepo = yield* Repository.makeRepository(
 			schema.channelMembersTable,
-			ChannelMember.Model,
+			{ insert: ChannelMember.Insert, update: ChannelMember.Update },
 			{
 				idColumn: "id",
 				name: "ChannelMember",

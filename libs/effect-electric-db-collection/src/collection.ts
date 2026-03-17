@@ -421,7 +421,7 @@ export type EffectCollection<
  *   id: "messages",
  *   runtime: runtime,
  *   shapeOptions: { url: electricUrl, params: { table: "messages" } },
- *   schema: Message.Model.json,  // Direct Effect Schema!
+ *   schema: Message.Schema,  // Direct Effect Schema!
  *   getKey: (item) => item.id,
  *   onInsert: ({ transaction }) => Effect.gen(function* () { ... }),
  * })

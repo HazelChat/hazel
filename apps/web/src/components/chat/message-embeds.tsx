@@ -4,10 +4,10 @@ import { Embed } from "~/components/embeds"
 import { MessageLive } from "./message-live-state"
 
 // Extract embed type from the Message model
-type MessageEmbedType = NonNullable<typeof Message.Model.Type.embeds>[number]
+type MessageEmbedType = NonNullable<Message.Type["embeds"]>[number]
 
 interface MessageEmbedsProps {
-	embeds: typeof Message.Model.Type.embeds
+	embeds: Message.Type["embeds"]
 	messageId?: MessageId
 	organizationId?: OrganizationId
 }

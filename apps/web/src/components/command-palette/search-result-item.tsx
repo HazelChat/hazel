@@ -8,9 +8,9 @@ import { cn, toDate } from "~/lib/utils"
 import { MarkdownText } from "./markdown-text"
 
 interface SearchResultItemProps {
-	message: typeof Message.Model.Type
-	author: typeof User.Model.Type | null
-	channel: typeof Channel.Model.Type | null
+	message: Message.Type
+	author: User.Type | null
+	channel: Channel.Type | null
 	attachmentCount: number
 	searchQuery?: string
 	isSelected?: boolean

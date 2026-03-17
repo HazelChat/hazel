@@ -27,7 +27,7 @@ export class ListMessagesQuery extends Schema.Class<ListMessagesQuery>("ListMess
 }) {}
 
 export class ListMessagesResponse extends Schema.Class<ListMessagesResponse>("ListMessagesResponse")({
-	data: Schema.Array(Message.Model.json as any),
+	data: Schema.Array(Message.Schema as any),
 	has_more: Schema.Boolean,
 }) {}
 
@@ -55,7 +55,7 @@ export class ToggleReactionRequest extends Schema.Class<ToggleReactionRequest>("
 // ============ RESPONSE SCHEMAS ============
 
 export class MessageResponse extends Schema.Class<MessageResponse>("MessageResponse")({
-	data: Message.Model.json as any,
+	data: Message.Schema as any,
 	transactionId: TransactionId,
 }) {}
 
@@ -65,7 +65,7 @@ export class DeleteMessageResponse extends Schema.Class<DeleteMessageResponse>("
 
 export class ToggleReactionResponse extends Schema.Class<ToggleReactionResponse>("ToggleReactionResponse")({
 	wasCreated: Schema.Boolean,
-	data: Schema.optional(MessageReaction.Model.json as any),
+	data: Schema.optional(MessageReaction.Schema as any),
 	transactionId: TransactionId,
 }) {}
 

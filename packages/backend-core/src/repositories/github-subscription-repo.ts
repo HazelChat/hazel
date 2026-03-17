@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
@@ -8,9 +8,9 @@ export class GitHubSubscriptionRepo extends ServiceMap.Service<GitHubSubscriptio
 	"GitHubSubscriptionRepo",
 	{
 		make: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.githubSubscriptionsTable,
-				GitHubSubscription.Model,
+				{ insert: GitHubSubscription.Insert, update: GitHubSubscription.Update },
 				{
 					idColumn: "id",
 					name: "GitHubSubscription",

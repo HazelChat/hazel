@@ -19,7 +19,7 @@ export interface ChatAuthorIdentity {
 }
 
 export function buildChatAuthorIdentity(
-	user: ChatAuthorUserLike | typeof User.Model.Type | null | undefined,
+	user: ChatAuthorUserLike | User.Type | null | undefined,
 	botName?: string | null,
 ): ChatAuthorIdentity {
 	if (!user) {
@@ -45,7 +45,7 @@ export function buildChatAuthorIdentity(
 
 export function useChatAuthorIdentity(
 	userId: UserId | undefined,
-	user: ChatAuthorUserLike | typeof User.Model.Type | null | undefined,
+	user: ChatAuthorUserLike | User.Type | null | undefined,
 ): ChatAuthorIdentity {
 	const botName = useBotName(userId, user?.userType)
 	return buildChatAuthorIdentity(user, botName)

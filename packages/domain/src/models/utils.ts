@@ -21,15 +21,6 @@ export type Any = Schema.Top & {
 	readonly jsonUpdate: Schema.Top
 }
 
-export type AnyNoContext = Schema.Top & {
-	readonly fields: Schema.Struct.Fields
-	readonly insert: Schema.Top
-	readonly update: Schema.Top
-	readonly json: Schema.Top
-	readonly jsonCreate: Schema.Top
-	readonly jsonUpdate: Schema.Top
-}
-
 export type VariantsDatabase = "select" | "insert" | "update"
 
 export type VariantsJson = "json" | "jsonCreate" | "jsonUpdate"
@@ -66,6 +57,10 @@ export {
 
 export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[typeof VariantSchema.TypeId] =
 	VariantSchema.fields
+
+export const structFields = <A extends { readonly fields: Schema.Struct.Fields }>(
+	self: A,
+): A["fields"] => self.fields
 
 export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
 
@@ -339,14 +334,65 @@ export const UuidV4Insert = <const B extends string | symbol>(
 /** A boolean parsed from 0 or 1. */
 export const BooleanFromNumber: typeof Schema.BooleanFromBit = Schema.BooleanFromBit
 
-export interface EntitySchema extends Schema.Top {
-	readonly fields: Schema.Struct.Fields
-	readonly insert: Schema.Top
-	readonly update: Schema.Top
-	readonly json: Schema.Top
-	readonly jsonCreate: Schema.Top
-	readonly jsonUpdate: Schema.Top
+export interface ExposedModel<
+	InsertSchema extends Schema.Top,
+	UpdateSchema extends Schema.Top,
+	JsonSchema extends Schema.Top,
+	CreateSchema extends Schema.Top,
+	PatchSchema extends Schema.Top,
+> {
+	readonly Insert: InsertSchema
+	readonly Update: UpdateSchema
+	readonly Schema: JsonSchema
+	readonly Create: CreateSchema
+	readonly Patch: PatchSchema
 }
+
+export interface ExposedModelWithRow<
+	RowSchema extends Any,
+	InsertSchema extends Schema.Top,
+	UpdateSchema extends Schema.Top,
+	JsonSchema extends Schema.Top,
+	CreateSchema extends Schema.Top,
+	PatchSchema extends Schema.Top,
+> extends ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> {
+	readonly Row: RowSchema
+}
+
+export const expose = <
+	Model extends Any,
+	InsertSchema extends Schema.Top = Model["insert"],
+	UpdateSchema extends Schema.Top = Model["update"],
+	JsonSchema extends Schema.Top = Model["json"],
+	CreateSchema extends Schema.Top = Model["jsonCreate"],
+	PatchSchema extends Schema.Top = Model["jsonUpdate"],
+>(
+	model: Model,
+	overrides: Partial<ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema>> = {},
+): ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> => ({
+	Insert: overrides.Insert ?? ((model.insert as unknown) as InsertSchema),
+	Update: overrides.Update ?? ((model.update as unknown) as UpdateSchema),
+	Schema: overrides.Schema ?? ((model.json as unknown) as JsonSchema),
+	Create: overrides.Create ?? ((model.jsonCreate as unknown) as CreateSchema),
+	Patch: overrides.Patch ?? ((model.jsonUpdate as unknown) as PatchSchema),
+})
+
+export const exposeWithRow = <
+	Model extends Any,
+	InsertSchema extends Schema.Top = Model["insert"],
+	UpdateSchema extends Schema.Top = Model["update"],
+	JsonSchema extends Schema.Top = Model["json"],
+	CreateSchema extends Schema.Top = Model["jsonCreate"],
+	PatchSchema extends Schema.Top = Model["jsonUpdate"],
+>(
+	model: Model,
+	overrides: Partial<
+		ExposedModelWithRow<Model, InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema>
+	> = {},
+): ExposedModelWithRow<Model, InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> => ({
+	...expose(model, overrides),
+	Row: overrides.Row ?? model,
+})
 
 // Helper utilities for common model fields
 export const JsonDate = Schema.Union([Schema.DateTimeUtcFromString, Schema.Date]).pipe(

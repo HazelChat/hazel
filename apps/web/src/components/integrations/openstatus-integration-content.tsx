@@ -18,7 +18,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { ConfigureOpenStatusModal } from "./configure-openstatus-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface OpenStatusIntegrationContentProps {
 	organizationId: OrganizationId

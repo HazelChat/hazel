@@ -17,7 +17,7 @@ export { MessageNotFoundError } from "../errors"
  * Contains the message data and a transaction ID for optimistic updates.
  */
 export class MessageResponse extends Schema.Class<MessageResponse>("MessageResponse")({
-	data: Message.Model.json,
+	data: Message.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -97,7 +97,7 @@ export class MessageRpcs extends RpcGroup.make(
 	Rpc.make("message.update", {
 		payload: Schema.Struct({
 			id: MessageId,
-		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Message.JsonUpdate as any).fields }) as any),
+		}).pipe((s: any) => Schema.Struct({ ...s.fields, ...(Message.Patch as any).fields }) as any),
 		success: MessageResponse,
 		error: Schema.Union([
 			MessageNotFoundError,

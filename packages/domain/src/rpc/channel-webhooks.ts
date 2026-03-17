@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the webhook data and a transaction ID for optimistic updates.
  */
 export class ChannelWebhookResponse extends Schema.Class<ChannelWebhookResponse>("ChannelWebhookResponse")({
-	data: ChannelWebhook.Model.json,
+	data: ChannelWebhook.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -23,7 +23,7 @@ export class ChannelWebhookResponse extends Schema.Class<ChannelWebhookResponse>
 export class ChannelWebhookCreatedResponse extends Schema.Class<ChannelWebhookCreatedResponse>(
 	"ChannelWebhookCreatedResponse",
 )({
-	data: ChannelWebhook.Model.json,
+	data: ChannelWebhook.Schema,
 	token: Schema.String, // Plain token, only returned once on creation
 	webhookUrl: Schema.String, // Full URL for the webhook
 	transactionId: TransactionId,
@@ -35,7 +35,7 @@ export class ChannelWebhookCreatedResponse extends Schema.Class<ChannelWebhookCr
 export class ChannelWebhookListResponse extends Schema.Class<ChannelWebhookListResponse>(
 	"ChannelWebhookListResponse",
 )({
-	data: Schema.Array(ChannelWebhook.Model.json),
+	data: Schema.Array(ChannelWebhook.Schema),
 }) {}
 
 /**

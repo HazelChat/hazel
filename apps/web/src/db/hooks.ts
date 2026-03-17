@@ -35,9 +35,9 @@ export const useMessage = (messageId: MessageId) => {
 	}
 }
 
-type ChannelWithMembers = typeof Channel.Model.Type & {
-	members: (typeof ChannelMember.Model.Type & {
-		user: typeof User.Model.Type
+type ChannelWithMembers = Channel.Type & {
+	members: (ChannelMember.Type & {
+		user: User.Type
 	})[]
 }
 
@@ -199,7 +199,7 @@ export const useIntegrationConnections = (organizationId: OrganizationId | null)
 	// Build a map of provider -> connection for easy lookup
 	const connectionsByProvider = new Map<
 		IntegrationConnection.IntegrationProvider,
-		typeof IntegrationConnection.Model.Type
+		IntegrationConnection.Type
 	>()
 
 	if (organizationId && data) {
@@ -417,8 +417,8 @@ export const useBotName = (userId: UserId | undefined, userType: string | undefi
 /**
  * Type for bot data with its machine user included.
  */
-export type BotWithUser = typeof Bot.Model.Type & {
-	user: typeof User.Model.Type
+export type BotWithUser = Bot.Type & {
+	user: User.Type
 }
 
 /**

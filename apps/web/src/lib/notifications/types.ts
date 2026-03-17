@@ -26,10 +26,10 @@ export interface NotificationSinkResult {
 
 export interface NotificationEvent {
 	id: string
-	notification: typeof Notification.Model.Type
-	message?: typeof Message.Model.Type
-	author?: typeof User.Model.Type
-	channel?: typeof Channel.Model.Type
+	notification: Notification.Type
+	message?: Message.Type
+	author?: User.Type
+	channel?: Channel.Type
 	receivedAt: number
 }
 

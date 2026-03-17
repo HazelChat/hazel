@@ -8,8 +8,8 @@ import { getAttachmentUrl } from "~/utils/attachment-url"
 import { formatFileSize, getFileTypeFromName } from "~/utils/file-utils"
 import { useChatAuthorIdentity } from "../author-identity"
 
-type AttachmentWithUser = typeof Attachment.Model.Type & {
-	user: typeof User.Model.Type | null
+type AttachmentWithUser = Attachment.Type & {
+	user: User.Type | null
 }
 
 interface ChannelFilesDocumentsListProps {

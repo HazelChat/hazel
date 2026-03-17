@@ -8,7 +8,7 @@ import {
 	inArray,
 	isNull,
 	lt,
-	ModelRepository,
+	Repository,
 	schema,
 	sql,
 	type TxFn,
@@ -37,7 +37,7 @@ export interface ListByChannelParams {
 
 export class MessageRepo extends ServiceMap.Service<MessageRepo>()("MessageRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.messagesTable, Message.Model, {
+		const baseRepo = yield* Repository.makeRepository(schema.messagesTable, { insert: Message.Insert, update: Message.Update }, {
 			idColumn: "id",
 			name: "Message",
 		})

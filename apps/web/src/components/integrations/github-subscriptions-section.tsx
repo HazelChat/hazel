@@ -26,7 +26,7 @@ import { exitToast } from "~/lib/toast-exit"
 import { AddGitHubSubscriptionModal } from "./add-github-subscription-modal"
 import { EditGitHubSubscriptionModal } from "./edit-github-subscription-modal"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 
 interface GitHubSubscriptionsSectionProps {
 	organizationId: OrganizationId

@@ -1,4 +1,4 @@
-import { and, Database, eq, isNotNull, isNull, ModelRepository, schema } from "@hazel/db"
+import { and, Database, eq, isNotNull, isNull, Repository, schema } from "@hazel/db"
 
 import type { CustomEmojiId, OrganizationId } from "@hazel/schema"
 import { CustomEmoji } from "@hazel/domain/models"
@@ -6,7 +6,7 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.customEmojisTable, CustomEmoji.Model, {
+		const baseRepo = yield* Repository.makeRepository(schema.customEmojisTable, { insert: CustomEmoji.Insert, update: CustomEmoji.Update }, {
 			idColumn: "id",
 			name: "CustomEmoji",
 		})

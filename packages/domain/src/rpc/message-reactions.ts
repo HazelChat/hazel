@@ -14,7 +14,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  */
 export class MessageReactionResponse extends Schema.Class<MessageReactionResponse>("MessageReactionResponse")(
 	{
-		data: MessageReaction.Model.json,
+		data: MessageReaction.Schema,
 		transactionId: TransactionId,
 	},
 ) {}
@@ -52,7 +52,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 		}),
 		success: Schema.Struct({
 			wasCreated: Schema.Boolean,
-			data: Schema.optional(MessageReaction.Model.json),
+			data: Schema.optional(MessageReaction.Schema),
 			transactionId: TransactionId,
 		}),
 		error: Schema.Union([MessageNotFoundError, UnauthorizedError, InternalServerError]),
@@ -95,7 +95,7 @@ export class MessageReactionRpcs extends RpcGroup.make(
 	Rpc.make("messageReaction.update", {
 		payload: Schema.Struct({
 			id: MessageReactionId,
-			...MessageReaction.Model.jsonUpdate.fields,
+			...MessageReaction.Patch.fields,
 		}),
 		success: MessageReactionResponse,
 		error: Schema.Union([MessageReactionNotFoundError, UnauthorizedError, InternalServerError]),

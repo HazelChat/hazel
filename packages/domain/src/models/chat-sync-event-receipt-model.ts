@@ -1,27 +1,27 @@
 import { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export const ChatSyncReceiptSource = Schema.Literals(["hazel", "external"])
-export type ChatSyncReceiptSource = Schema.Schema.Type<typeof ChatSyncReceiptSource>
+export const ChatSyncReceiptSource = S.Literals(["hazel", "external"])
+export type ChatSyncReceiptSource = S.Schema.Type<typeof ChatSyncReceiptSource>
 
-export const ChatSyncReceiptStatus = Schema.Literals(["processed", "ignored", "failed"])
-export type ChatSyncReceiptStatus = Schema.Schema.Type<typeof ChatSyncReceiptStatus>
+export const ChatSyncReceiptStatus = S.Literals(["processed", "ignored", "failed"])
+export type ChatSyncReceiptStatus = S.Schema.Type<typeof ChatSyncReceiptStatus>
 
-export class Model extends M.Class<Model>("ChatSyncEventReceipt")({
+class Model extends M.Class<Model>("ChatSyncEventReceipt")({
 	id: M.Generated(SyncEventReceiptId),
 	syncConnectionId: SyncConnectionId,
-	channelLinkId: Schema.NullOr(SyncChannelLinkId),
+	channelLinkId: S.NullOr(SyncChannelLinkId),
 	source: ChatSyncReceiptSource,
-	externalEventId: Schema.NullOr(Schema.String),
-	dedupeKey: Schema.String,
-	payloadHash: Schema.NullOr(Schema.String),
+	externalEventId: S.NullOr(S.String),
+	dedupeKey: S.String,
+	payloadHash: S.NullOr(S.String),
 	status: ChatSyncReceiptStatus,
-	errorMessage: Schema.NullOr(Schema.String),
+	errorMessage: S.NullOr(S.String),
 	processedAt: M.Generated(JsonDate),
 	createdAt: M.Generated(JsonDate),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

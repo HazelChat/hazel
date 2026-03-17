@@ -134,9 +134,9 @@ export class HazelBotRuntimeConfigTag extends ServiceMap.Service<
 /**
  * Hazel-specific type aliases for convenience
  */
-export type MessageType = Schema.Schema.Type<typeof Message.Model.json>
-export type ChannelType = Schema.Schema.Type<typeof Channel.Model.json>
-export type ChannelMemberType = Schema.Schema.Type<typeof ChannelMember.Model.json>
+export type MessageType = Schema.Schema.Type<typeof Message.Schema>
+export type ChannelType = Schema.Schema.Type<typeof Channel.Schema>
+export type ChannelMemberType = Schema.Schema.Type<typeof ChannelMember.Schema>
 
 /**
  * Hazel-specific event handlers

@@ -48,7 +48,7 @@ export const organizationCollection = createEffectCollection({
 
 		fetchClient: electricFetchClient,
 	},
-	schema: Organization.Model.json,
+	schema: Organization.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -67,7 +67,7 @@ export const invitationCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: Invitation.Model.json,
+	schema: Invitation.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -87,7 +87,7 @@ export const messageCollection = createEffectCollection({
 		} as any,
 		fetchClient: electricFetchClient,
 	},
-	schema: Message.Model.json,
+	schema: Message.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -106,7 +106,7 @@ export const messageReactionCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: MessageReaction.Model.json,
+	schema: MessageReaction.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -125,7 +125,7 @@ export const pinnedMessageCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: PinnedMessage.Model.json,
+	schema: PinnedMessage.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -145,7 +145,7 @@ export const notificationCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: Notification.Model.json,
+	schema: Notification.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -165,7 +165,7 @@ export const userCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: User.Model.json,
+	schema: User.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -184,7 +184,7 @@ export const organizationMemberCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: OrganizationMember.Model.json,
+	schema: OrganizationMember.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -203,7 +203,7 @@ export const channelCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: Channel.Model.json,
+	schema: Channel.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -221,7 +221,7 @@ export const connectConversationCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ConnectConversation.Model.json,
+	schema: ConnectConversation.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -239,7 +239,7 @@ export const connectConversationChannelCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ConnectConversationChannel.Model.json,
+	schema: ConnectConversationChannel.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -257,7 +257,7 @@ export const connectParticipantCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ConnectParticipant.Model.json,
+	schema: ConnectParticipant.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -277,7 +277,7 @@ export const channelMemberCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ChannelMember.Model.json,
+	schema: ChannelMember.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -295,7 +295,7 @@ export const channelSectionCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ChannelSection.Model.json,
+	schema: ChannelSection.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -314,7 +314,7 @@ export const attachmentCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: Attachment.Model.json,
+	schema: Attachment.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -331,7 +331,7 @@ export const typingIndicatorCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: TypingIndicator.Model.json,
+	schema: TypingIndicator.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -350,7 +350,7 @@ export const userPresenceStatusCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: UserPresenceStatus.Model.json,
+	schema: UserPresenceStatus.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -370,7 +370,7 @@ export const integrationConnectionCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: IntegrationConnection.Model.json,
+	schema: IntegrationConnection.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -388,7 +388,7 @@ export const chatSyncConnectionCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ChatSyncConnection.Model.json,
+	schema: ChatSyncConnection.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -406,7 +406,7 @@ export const chatSyncChannelLinkCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ChatSyncChannelLink.Model.json,
+	schema: ChatSyncChannelLink.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -424,7 +424,7 @@ export const chatSyncMessageLinkCollection = createEffectCollection({
 		},
 		fetchClient: electricFetchClient,
 	},
-	schema: ChatSyncMessageLink.Model.json,
+	schema: ChatSyncMessageLink.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -442,7 +442,7 @@ export const botCollection = createEffectCollection({
 		} as any,
 		fetchClient: electricFetchClient,
 	},
-	schema: Bot.Model.json,
+	schema: Bot.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -460,7 +460,7 @@ export const botCommandCollection = createEffectCollection({
 		} as any,
 		fetchClient: electricFetchClient,
 	},
-	schema: BotCommand.Model.json,
+	schema: BotCommand.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -478,7 +478,7 @@ export const botInstallationCollection = createEffectCollection({
 		} as any,
 		fetchClient: electricFetchClient,
 	},
-	schema: BotInstallation.Model.json,
+	schema: BotInstallation.Schema,
 	getKey: (item) => item.id,
 })
 
@@ -496,6 +496,6 @@ export const customEmojiCollection = createEffectCollection({
 		} as any,
 		fetchClient: electricFetchClient,
 	},
-	schema: CustomEmoji.Model.json,
+	schema: CustomEmoji.Schema,
 	getKey: (item) => item.id,
 })

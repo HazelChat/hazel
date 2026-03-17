@@ -6,7 +6,7 @@ import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
  * Type for GitHub subscription data returned from RPC.
  * Inferred from the domain model's JSON schema to stay in sync automatically.
  */
-export type GitHubSubscriptionData = Schema.Schema.Type<typeof GitHubSubscription.Model.json>
+export type GitHubSubscriptionData = Schema.Schema.Type<typeof GitHubSubscription.Schema>
 
 /**
  * Mutation atom for creating a GitHub subscription.

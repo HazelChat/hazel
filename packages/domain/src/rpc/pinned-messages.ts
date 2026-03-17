@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the pinned message data and a transaction ID for optimistic updates.
  */
 export class PinnedMessageResponse extends Schema.Class<PinnedMessageResponse>("PinnedMessageResponse")({
-	data: PinnedMessage.Model.json,
+	data: PinnedMessage.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -97,7 +97,7 @@ export class PinnedMessageRpcs extends RpcGroup.make(
 	Rpc.make("pinnedMessage.update", {
 		payload: Schema.Struct({
 			id: PinnedMessageId,
-			...PinnedMessage.Model.jsonUpdate.fields,
+			...PinnedMessage.Patch.fields,
 		}),
 		success: PinnedMessageResponse,
 		error: Schema.Union([PinnedMessageNotFoundError, UnauthorizedError, InternalServerError]),

@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, sql, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
 
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
@@ -8,9 +8,9 @@ export class IntegrationConnectionRepo extends ServiceMap.Service<IntegrationCon
 	"IntegrationConnectionRepo",
 	{
 		make: Effect.gen(function* () {
-			const baseRepo = yield* ModelRepository.makeRepository(
+			const baseRepo = yield* Repository.makeRepository(
 				schema.integrationConnectionsTable,
-				IntegrationConnection.Model,
+				{ insert: IntegrationConnection.Insert, update: IntegrationConnection.Update },
 				{
 					idColumn: "id",
 					name: "IntegrationConnection",

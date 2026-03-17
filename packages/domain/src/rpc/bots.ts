@@ -14,7 +14,7 @@ import { ApiScope } from "../scopes/api-scope"
  * Contains the bot data and a transaction ID for optimistic updates.
  */
 export class BotResponse extends Schema.Class<BotResponse>("BotResponse")({
-	data: Bot.Model.json,
+	data: Bot.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -22,7 +22,7 @@ export class BotResponse extends Schema.Class<BotResponse>("BotResponse")({
  * Response for bot creation - includes the plain token (only shown once).
  */
 export class BotCreatedResponse extends Schema.Class<BotCreatedResponse>("BotCreatedResponse")({
-	data: Bot.Model.json,
+	data: Bot.Schema,
 	token: Schema.String, // Plain token, only returned once on creation
 	transactionId: TransactionId,
 }) {}
@@ -31,21 +31,21 @@ export class BotCreatedResponse extends Schema.Class<BotCreatedResponse>("BotCre
  * Response for listing bots.
  */
 export class BotListResponse extends Schema.Class<BotListResponse>("BotListResponse")({
-	data: Schema.Array(Bot.Model.json),
+	data: Schema.Array(Bot.Schema),
 }) {}
 
 /**
  * Response for listing bot commands.
  */
 export class BotCommandListResponse extends Schema.Class<BotCommandListResponse>("BotCommandListResponse")({
-	data: Schema.Array(BotCommand.Model.json),
+	data: Schema.Array(BotCommand.Schema),
 }) {}
 
 /**
  * Public bot info for marketplace - includes install status and creator name.
  */
 export const PublicBotInfo = Schema.Struct({
-	...Bot.Model.json.fields,
+	...Bot.Schema.fields,
 	isInstalled: Schema.Boolean,
 	creatorName: Schema.String,
 })

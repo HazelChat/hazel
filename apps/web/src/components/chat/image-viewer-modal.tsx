@@ -20,7 +20,7 @@ import { IconExternalLink } from "../icons/icon-link-external"
 export type ViewerImage =
 	| {
 			type: "attachment"
-			attachment: typeof Attachment.Model.Type
+			attachment: Attachment.Type
 	  }
 	| {
 			type: "url"
@@ -33,7 +33,7 @@ interface ImageViewerModalProps {
 	onOpenChange: (open: boolean) => void
 	images: ViewerImage[]
 	initialIndex: number
-	author?: typeof User.Model.Type
+	author?: User.Type
 	createdAt: number
 }
 

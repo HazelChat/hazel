@@ -1,22 +1,22 @@
 import { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { baseFields, JsonDate } from "./utils"
 
-export const OrganizationRole = Schema.Literals(["admin", "member", "owner"])
-export type OrganizationRole = Schema.Schema.Type<typeof OrganizationRole>
+export const OrganizationRole = S.Literals(["admin", "member", "owner"])
+export type OrganizationRole = S.Schema.Type<typeof OrganizationRole>
 
-export class Model extends M.Class<Model>("OrganizationMember")({
+class Model extends M.Class<Model>("OrganizationMember")({
 	id: M.Generated(OrganizationMemberId),
 	organizationId: OrganizationId,
 	userId: M.GeneratedByApp(UserId),
 	role: OrganizationRole,
-	nickname: Schema.NullishOr(Schema.String),
+	nickname: S.NullishOr(S.String),
 	joinedAt: JsonDate,
-	invitedBy: Schema.NullOr(UserId),
-	deletedAt: Schema.NullOr(JsonDate),
+	invitedBy: S.NullOr(UserId),
+	deletedAt: S.NullOr(JsonDate),
 	createdAt: M.Generated(JsonDate),
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

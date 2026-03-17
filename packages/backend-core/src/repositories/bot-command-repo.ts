@@ -1,4 +1,4 @@
-import { and, Database, eq, inArray, lt, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, inArray, lt, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { BotCommandId, BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
@@ -6,7 +6,7 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCommandRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.botCommandsTable, BotCommand.Model, {
+		const baseRepo = yield* Repository.makeRepository(schema.botCommandsTable, { insert: BotCommand.Insert, update: BotCommand.Update }, {
 			idColumn: "id",
 			name: "BotCommand",
 		})

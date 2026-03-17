@@ -2,7 +2,7 @@ import { ChannelId, MessageId, PinnedMessageId, UserId } from "@hazel/schema"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export class Model extends M.Class<Model>("PinnedMessage")({
+class Model extends M.Class<Model>("PinnedMessage")({
 	id: M.Generated(PinnedMessageId),
 	channelId: ChannelId,
 	messageId: MessageId,
@@ -10,5 +10,5 @@ export class Model extends M.Class<Model>("PinnedMessage")({
 	pinnedAt: JsonDate,
 }) {}
 
-export const Insert = Model.insert
-export const Update = Model.update
+export const { Insert, Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

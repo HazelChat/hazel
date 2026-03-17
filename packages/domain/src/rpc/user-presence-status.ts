@@ -15,7 +15,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class UserPresenceStatusResponse extends Schema.Class<UserPresenceStatusResponse>(
 	"UserPresenceStatusResponse",
 )({
-	data: UserPresenceStatus.Model.json,
+	data: UserPresenceStatus.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -63,12 +63,12 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 	 */
 	Rpc.make("userPresenceStatus.update", {
 		payload: Schema.Struct({
-			status: Schema.optional(UserPresenceStatus.Model.json.fields.status),
+			status: Schema.optional(UserPresenceStatus.Schema.fields.status),
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
 			statusEmoji: Schema.optional(Schema.NullOr(Schema.String)),
 			statusExpiresAt: Schema.optional(Schema.NullOr(JsonDate)),
 			activeChannelId: Schema.optional(
-				Schema.NullOr(UserPresenceStatus.Model.json.fields.activeChannelId),
+				Schema.NullOr(UserPresenceStatus.Schema.fields.activeChannelId),
 			),
 			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),

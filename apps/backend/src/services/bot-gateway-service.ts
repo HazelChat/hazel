@@ -183,7 +183,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 
 		const publishMessageEvent = Effect.fn("BotGatewayService.publishMessageEvent")(function* (
 			eventType: "message.create" | "message.update" | "message.delete",
-			message: Schema.Schema.Type<typeof Message.Model.json>,
+			message: Schema.Schema.Type<typeof Message.Schema>,
 		) {
 			const organizationId = yield* resolveOrganizationIdForChannel(message.channelId)
 			if (!organizationId) {
@@ -212,7 +212,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 
 		const publishChannelEvent = Effect.fn("BotGatewayService.publishChannelEvent")(function* (
 			eventType: "channel.create" | "channel.update" | "channel.delete",
-			channel: Schema.Schema.Type<typeof Channel.Model.json>,
+			channel: Schema.Schema.Type<typeof Channel.Schema>,
 		) {
 			const eventTimestamp = channel.updatedAt
 				? toEpochMs(channel.updatedAt)
@@ -236,7 +236,7 @@ export class BotGatewayService extends ServiceMap.Service<BotGatewayService>()("
 
 		const publishChannelMemberEvent = Effect.fn("BotGatewayService.publishChannelMemberEvent")(function* (
 			eventType: "channel_member.add" | "channel_member.remove",
-			member: Schema.Schema.Type<typeof ChannelMember.Model.json>,
+			member: Schema.Schema.Type<typeof ChannelMember.Schema>,
 		) {
 			const organizationId = yield* resolveOrganizationIdForChannel(member.channelId)
 			if (!organizationId) {

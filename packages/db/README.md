@@ -182,16 +182,21 @@ Effect.gen(function* () {
 ### Creating a Repository
 
 ```typescript
-import { ModelRepository, schema } from "@hazel/db"
+import { Repository, schema } from "@hazel/db"
+import { User } from "@hazel/domain/models"
 import { Effect } from "effect"
 
 export class UserRepo extends Effect.Service<UserRepo>()("UserRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.usersTable, User.Model, {
-			idColumn: "id",
-			name: "User",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.usersTable,
+			{ insert: User.Insert, update: User.Update },
+			{
+				idColumn: "id",
+				name: "User",
+			},
+		)
 
 		return baseRepo
 	}),
@@ -217,7 +222,7 @@ All repositories include these methods:
 export class ChannelMemberRepo extends Effect.Service<ChannelMemberRepo>()("ChannelMemberRepo", {
 	accessors: true,
 	effect: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(/*...*/)
+		const baseRepo = yield* Repository.makeRepository(/*...*/)
 		const db = yield* Database.Database
 
 		// Custom method with automatic transaction support

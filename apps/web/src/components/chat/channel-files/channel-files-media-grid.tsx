@@ -11,8 +11,8 @@ import { getAttachmentUrl } from "~/utils/attachment-url"
 import { getFileTypeFromName } from "~/utils/file-utils"
 import { ImageViewerModal, type ViewerImage } from "../image-viewer-modal"
 
-type AttachmentWithUser = typeof Attachment.Model.Type & {
-	user: typeof User.Model.Type | null
+type AttachmentWithUser = Attachment.Type & {
+	user: User.Type | null
 }
 
 interface ChannelFilesMediaGridProps {

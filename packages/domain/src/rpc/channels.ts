@@ -28,7 +28,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the channel data and a transaction ID for optimistic updates.
  */
 export class ChannelResponse extends Schema.Class<ChannelResponse>("ChannelResponse")({
-	data: Channel.Model.json,
+	data: Channel.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -71,7 +71,7 @@ export class CreateThreadRequest extends Schema.Class<CreateThreadRequest>("Crea
  * Uses jsonCreate which includes optional id for optimistic updates.
  * Extended with addAllMembers option to auto-add all organization members.
  */
-export const CreateChannelRequest = Channel.Model.jsonCreate.pipe(
+export const CreateChannelRequest = Channel.Create.pipe(
 	Schema.fieldsAssign({ addAllMembers: Schema.optional(Schema.Boolean) }),
 )
 
@@ -112,7 +112,7 @@ export class ChannelRpcs extends RpcGroup.make(
 		payload: Schema.Struct({
 			id: ChannelId,
 		}).pipe(
-			(s: any) => Schema.Struct({ ...s.fields, ...(Channel.Model.jsonUpdate as any).fields }) as any,
+			(s: any) => Schema.Struct({ ...s.fields, ...(Channel.Patch as any).fields }) as any,
 		),
 		success: ChannelResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),

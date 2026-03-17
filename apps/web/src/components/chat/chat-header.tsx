@@ -24,7 +24,7 @@ import { PinnedMessagesModal } from "./pinned-messages-modal"
 interface OtherMemberAvatarProps {
 	member: {
 		userId: UserId
-		user: Pick<typeof User.Model.Type, "avatarUrl" | "firstName" | "lastName" | "userType">
+		user: Pick<User.Type, "avatarUrl" | "firstName" | "lastName" | "userType">
 	}
 }
 

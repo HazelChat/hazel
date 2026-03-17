@@ -6,7 +6,7 @@ import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
  * Type for RSS subscription data returned from RPC.
  * Inferred from the domain model's JSON schema to stay in sync automatically.
  */
-export type RssSubscriptionData = Schema.Schema.Type<typeof RssSubscription.Model.json>
+export type RssSubscriptionData = Schema.Schema.Type<typeof RssSubscription.Schema>
 
 /**
  * Mutation atom for creating an RSS subscription.

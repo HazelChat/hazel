@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  */
 export class TypingIndicatorResponse extends Schema.Class<TypingIndicatorResponse>("TypingIndicatorResponse")(
 	{
-		data: TypingIndicator.Model.json,
+		data: TypingIndicator.Schema,
 		transactionId: TransactionId,
 	},
 ) {}

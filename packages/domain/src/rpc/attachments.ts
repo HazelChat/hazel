@@ -69,7 +69,7 @@ export class AttachmentRpcs extends RpcGroup.make(
 	 */
 	Rpc.make("attachment.complete", {
 		payload: Schema.Struct({ id: AttachmentId }),
-		success: Attachment.Model,
+		success: Attachment.Schema,
 		error: Schema.Union([AttachmentNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["attachments:write"])

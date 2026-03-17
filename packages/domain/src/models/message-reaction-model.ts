@@ -1,20 +1,21 @@
 import { ChannelId, ConnectConversationId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
-import { Schema } from "effect"
+import { Schema as S } from "effect"
 import * as M from "./utils"
 import { JsonDate } from "./utils"
 
-export class Model extends M.Class<Model>("MessageReaction")({
+class Model extends M.Class<Model>("MessageReaction")({
 	id: M.Generated(MessageReactionId),
 	messageId: MessageId,
 	channelId: ChannelId,
-	conversationId: M.GeneratedOptional(Schema.NullOr(ConnectConversationId)),
+	conversationId: M.GeneratedOptional(S.NullOr(ConnectConversationId)),
 	userId: M.GeneratedByApp(UserId),
-	emoji: Schema.String,
+	emoji: S.String,
 	createdAt: M.Generated(JsonDate),
 }) {}
 
-export const Insert = Schema.Struct({
-	...Model.insert.fields,
-	conversationId: Schema.optional(Schema.NullOr(ConnectConversationId)),
+export const Insert = S.Struct({
+	...M.structFields(Model.insert),
+	conversationId: S.optional(S.NullOr(ConnectConversationId)),
 })
-export const Update = Model.update
+export const { Update, Schema, Create, Patch } = M.expose(Model)
+export type Type = typeof Schema.Type

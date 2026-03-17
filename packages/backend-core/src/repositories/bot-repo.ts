@@ -5,7 +5,7 @@ import {
 	ilike,
 	inArray,
 	isNull,
-	ModelRepository,
+	Repository,
 	or,
 	schema,
 	sql,
@@ -18,7 +18,7 @@ import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(schema.botsTable, Bot.Model, {
+		const baseRepo = yield* Repository.makeRepository(schema.botsTable, { insert: Bot.Insert, update: Bot.Update }, {
 			idColumn: "id",
 			name: "Bot",
 		})

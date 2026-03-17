@@ -6,7 +6,7 @@ import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
  * Type for webhook data returned from RPC (without sensitive tokenHash field).
  * Inferred from the domain model's JSON schema to stay in sync automatically.
  */
-export type WebhookData = Schema.Schema.Type<typeof ChannelWebhook.Model.json>
+export type WebhookData = Schema.Schema.Type<typeof ChannelWebhook.Schema>
 
 /**
  * Mutation atom for creating a channel webhook.

@@ -50,7 +50,7 @@ interface SendMessageProps {
 export interface ChatStableValue {
 	channelId: ChannelId
 	organizationId: OrganizationId
-	channel: typeof Channel.Model.Type | undefined
+	channel: Channel.Type | undefined
 	// All actions (sendMessage is stabilized via refs)
 	sendMessage: (props: SendMessageProps) => void
 	editMessage: (messageId: MessageId, content: string) => Promise<void>
@@ -100,7 +100,7 @@ export interface ChatThreadValue {
 export interface ChatState {
 	channelId: ChannelId
 	organizationId: OrganizationId
-	channel: typeof Channel.Model.Type | undefined
+	channel: Channel.Type | undefined
 	replyToMessageId: MessageId | null
 	attachmentIds: AttachmentId[]
 	isUploading: boolean

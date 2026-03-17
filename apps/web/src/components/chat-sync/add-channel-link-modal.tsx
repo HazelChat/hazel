@@ -22,7 +22,7 @@ import { HazelApiClient } from "~/lib/services/common/atom-client"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 import { exitToast } from "~/lib/toast-exit"
 
-type ChannelData = typeof Channel.Model.Type
+type ChannelData = Channel.Type
 type SyncDirection = "both" | "hazel_to_external" | "external_to_hazel"
 
 interface DiscordChannel {

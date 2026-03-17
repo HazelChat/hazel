@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
  * Contains the channel member data and a transaction ID for optimistic updates.
  */
 export class ChannelMemberResponse extends Schema.Class<ChannelMemberResponse>("ChannelMemberResponse")({
-	data: ChannelMember.Model.json,
+	data: ChannelMember.Schema,
 	transactionId: TransactionId,
 }) {}
 
@@ -104,7 +104,7 @@ export class ChannelMemberRpcs extends RpcGroup.make(
 			id: ChannelMemberId,
 		}).pipe(
 			(s: any) =>
-				Schema.Struct({ ...s.fields, ...(ChannelMember.Model.jsonUpdate as any).fields }) as any,
+				Schema.Struct({ ...s.fields, ...(ChannelMember.Patch as any).fields }) as any,
 		),
 		success: ChannelMemberResponse,
 		error: Schema.Union([ChannelMemberNotFoundError, UnauthorizedError, InternalServerError]),

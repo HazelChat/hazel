@@ -17,7 +17,7 @@ interface MessageAttachmentsProps {
 }
 
 interface ImageAttachmentItemProps {
-	attachment: typeof Attachment.Model.Type
+	attachment: Attachment.Type
 	imageCount: number
 	index: number
 	onClick: () => void
@@ -52,7 +52,7 @@ function ImageAttachmentItem({ attachment, imageCount, index, onClick }: ImageAt
 }
 
 interface AttachmentItemProps {
-	attachment: typeof Attachment.Model.Type
+	attachment: Attachment.Type
 }
 
 function AttachmentItem({ attachment }: AttachmentItemProps) {

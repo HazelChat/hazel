@@ -13,7 +13,7 @@ import { RequiredScopes } from "../scopes/required-scopes"
 export class IntegrationRequestResponse extends Schema.Class<IntegrationRequestResponse>(
 	"IntegrationRequestResponse",
 )({
-	data: IntegrationRequest.Model.json,
+	data: IntegrationRequest.Schema,
 	transactionId: TransactionId,
 }) {}
 

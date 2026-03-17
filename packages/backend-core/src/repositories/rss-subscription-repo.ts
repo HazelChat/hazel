@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, ModelRepository, schema, type TxFn } from "@hazel/db"
+import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
 import type { ChannelId, OrganizationId, RssSubscriptionId } from "@hazel/schema"
 import { RssSubscription } from "@hazel/domain/models"
@@ -6,9 +6,9 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class RssSubscriptionRepo extends ServiceMap.Service<RssSubscriptionRepo>()("RssSubscriptionRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* ModelRepository.makeRepository(
+		const baseRepo = yield* Repository.makeRepository(
 			schema.rssSubscriptionsTable,
-			RssSubscription.Model,
+			{ insert: RssSubscription.Insert, update: RssSubscription.Update },
 			{
 				idColumn: "id",
 				name: "RssSubscription",

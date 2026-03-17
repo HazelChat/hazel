@@ -165,7 +165,7 @@ export function CreateDmModal({ isOpen, onOpenChange }: CreateDmModalProps) {
 
 	// Stable callback for toggling user selection - only updates form state
 	const toggleUserSelection = useCallback(
-		(targetUser: typeof User.Model.Type) => {
+		(targetUser: User.Type) => {
 			const currentIds = form.state.values.userIds
 			const isSelected = currentIds.includes(targetUser.id)
 			const newIds = isSelected
