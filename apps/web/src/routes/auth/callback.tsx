@@ -4,13 +4,15 @@
  * @description Receives OAuth callback from WorkOS, exchanges code for JWT tokens, and stores them in localStorage
  */
 
-import { useAtomSet, useAtomValue } from "@effect/atom-react"
+import { useAtomValue } from "@effect/atom-react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Schema } from "effect"
-import { useEffect, useMemo } from "react"
+import { useEffect } from "react"
 import {
-	createWebCallbackInitAtom,
-	retryWebCallbackAtom,
+	getWebCallbackAttemptKey,
+	resetCallbackState,
+	retryWebCallback,
+	startWebCallback,
 	webCallbackStatusAtom,
 } from "~/atoms/web-callback-atoms"
 import { Logo } from "~/components/logo"
@@ -35,17 +37,15 @@ export const Route = createFileRoute("/auth/callback")({
 	validateSearch: (search: Record<string, unknown>) => Schema.decodeUnknownSync(RawSearchParams)(search),
 })
 
-function WebCallbackPage() {
+export function WebCallbackPage() {
 	const search = Route.useSearch()
 	const navigate = useNavigate()
 	const status = useAtomValue(webCallbackStatusAtom)
+	const callbackAttemptKey = getWebCallbackAttemptKey(search)
 
-	// Create and mount init atom - triggers callback automatically when mounted
-	const initAtom = useMemo(() => createWebCallbackInitAtom(search), [search])
-	useAtomValue(initAtom)
-
-	// Get action atom setters
-	const retryCallback = useAtomSet(retryWebCallbackAtom)
+	useEffect(() => {
+		void startWebCallback(search)
+	}, [callbackAttemptKey])
 
 	// Redirect on success
 	useEffect(() => {
@@ -59,10 +59,11 @@ function WebCallbackPage() {
 	}, [status, navigate])
 
 	function handleRetry() {
-		retryCallback(search)
+		void retryWebCallback(search)
 	}
 
 	function handleBackToLogin() {
+		resetCallbackState()
 		navigate({ to: "/auth/login", replace: true })
 	}
 

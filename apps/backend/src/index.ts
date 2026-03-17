@@ -80,6 +80,7 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
+import { AuthRedemptionStore } from "./services/auth-redemption-store"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { ConnectConversationService } from "./services/connect-conversation-service"
 import { OrgResolver } from "./services/org-resolver"
@@ -189,6 +190,7 @@ const MainLive = Layer.mergeAll(
 	PolicyLive,
 	MockDataGenerator.layer,
 	WorkOSAuth.layer,
+	AuthRedemptionStore.layer,
 	WorkOSClient.layer,
 	WorkOSSync.layer,
 	WorkOSWebhookVerifier.layer,

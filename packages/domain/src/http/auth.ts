@@ -1,6 +1,12 @@
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Schema } from "effect"
-import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "../errors"
+import {
+	InternalServerError,
+	OAuthCodeExpiredError,
+	OAuthRedemptionPendingError,
+	OAuthStateMismatchError,
+	UnauthorizedError,
+} from "../errors"
 import { OrganizationId } from "@hazel/schema"
 import { RequiredScopes } from "../scopes/required-scopes"
 
@@ -16,6 +22,10 @@ export class LoginResponse extends Schema.Class<LoginResponse>("LoginResponse")(
 export class TokenRequest extends Schema.Class<TokenRequest>("TokenRequest")({
 	code: Schema.String,
 	state: Schema.String,
+}) {}
+
+export class AuthRequestHeaders extends Schema.Class<AuthRequestHeaders>("AuthRequestHeaders")({
+	"x-auth-attempt-id": Schema.optional(Schema.String),
 }) {}
 
 export class TokenResponse extends Schema.Class<TokenResponse>("TokenResponse")({
@@ -134,9 +144,16 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 	)
 	.add(
 		HttpApiEndpoint.post("token", "/token", {
+			headers: AuthRequestHeaders,
 			payload: TokenRequest,
 			success: TokenResponse,
-			error: [UnauthorizedError, OAuthCodeExpiredError, InternalServerError],
+			error: [
+				UnauthorizedError,
+				OAuthCodeExpiredError,
+				OAuthStateMismatchError,
+				OAuthRedemptionPendingError,
+				InternalServerError,
+			],
 		})
 			.annotateMerge(
 				OpenApi.annotations({
@@ -149,6 +166,7 @@ export class AuthGroup extends HttpApiGroup.make("auth")
 	)
 	.add(
 		HttpApiEndpoint.post("refresh", "/refresh", {
+			headers: AuthRequestHeaders,
 			payload: RefreshTokenRequest,
 			success: RefreshTokenResponse,
 			error: [UnauthorizedError, InternalServerError],

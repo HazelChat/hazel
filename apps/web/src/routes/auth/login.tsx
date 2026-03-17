@@ -1,7 +1,8 @@
 import type { OrganizationId } from "@hazel/schema"
 import { createFileRoute, Navigate } from "@tanstack/react-router"
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { Loader } from "~/components/ui/loader"
+import { getWebLoginAttemptKey, startWebLoginRedirectOnce } from "~/lib/web-login-single-flight"
 import { useAuth } from "../../lib/auth"
 
 export const Route = createFileRoute("/auth/login")({
@@ -21,24 +22,27 @@ export const Route = createFileRoute("/auth/login")({
 	},
 })
 
-function LoginPage() {
+export function LoginPage() {
 	const { user, login, isLoading } = useAuth()
 	const search = Route.useSearch()
-
-	// Use ref to track if login was initiated
-	const hasInitiatedLogin = useRef(false)
+	const loginAttemptKey = getWebLoginAttemptKey({
+		returnTo: search.returnTo || "/",
+		organizationId: search.organizationId,
+		invitationToken: search.invitationToken,
+	})
 
 	// Initiate login in useEffect when conditions are met
 	useEffect(() => {
-		if (!user && !isLoading && !hasInitiatedLogin.current) {
-			hasInitiatedLogin.current = true
-			login({
-				returnTo: search.returnTo || "/",
-				organizationId: search.organizationId as OrganizationId | undefined,
-				invitationToken: search.invitationToken,
-			})
+		if (!user && !isLoading) {
+			startWebLoginRedirectOnce(loginAttemptKey, () =>
+				login({
+					returnTo: search.returnTo || "/",
+					organizationId: search.organizationId as OrganizationId | undefined,
+					invitationToken: search.invitationToken,
+				}),
+			)
 		}
-	}, [user, isLoading, login, search.returnTo, search.organizationId, search.invitationToken])
+	}, [user, isLoading, login, loginAttemptKey])
 
 	if (isLoading) {
 		return (

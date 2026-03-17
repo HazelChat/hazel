@@ -9,11 +9,21 @@ import {
 	MissingAuthCodeError,
 	OAuthCallbackError,
 	OAuthCodeExpiredError,
+	OAuthRedemptionPendingError,
+	OAuthStateMismatchError,
+	TokenDecodeError,
 	TokenExchangeError,
 } from "@hazel/domain/errors"
 import { Effect, Layer, type ServiceMap } from "effect"
 import { appRegistry } from "~/lib/registry"
-import { runtime } from "~/lib/services/common/runtime"
+import { getWebAuthErrorInfo, type WebAuthError } from "~/lib/auth-errors"
+import {
+	getWebCallbackAttemptKey as buildWebCallbackAttemptKey,
+	resetAllWebCallbackAttempts,
+	resetWebCallbackAttempt,
+	runWebCallbackAttemptOnce,
+	type WebCallbackKeyParams,
+} from "~/lib/web-callback-single-flight"
 import { TokenExchange } from "~/lib/services/desktop/token-exchange"
 import { WebTokenStorage } from "~/lib/services/web/token-storage"
 import { webAuthStatusAtom, webTokensAtom } from "./web-auth"
@@ -69,66 +79,59 @@ type TokenExchangeService = ServiceMap.Service.Shape<typeof TokenExchange>
 type WebTokenStorageService = ServiceMap.Service.Shape<typeof WebTokenStorage>
 
 // ============================================================================
-// Error Handling
+// Attempt Context
 // ============================================================================
 
-type CallbackError = OAuthCallbackError | MissingAuthCodeError | TokenExchangeError | OAuthCodeExpiredError
+const callbackAttemptIds = new Map<string, string>()
 
-/**
- * Get user-friendly error info from typed error
- */
-function getErrorInfo(error: CallbackError): {
-	message: string
-	isRetryable: boolean
-} {
-	switch (error._tag) {
-		case "OAuthCallbackError":
-			return {
-				message: error.errorDescription || error.error,
-				isRetryable: true,
-			}
-		case "MissingAuthCodeError":
-			return {
-				message: "No authorization code received. Please try again.",
-				isRetryable: true,
-			}
-		case "OAuthCodeExpiredError":
-			// Code expired or already used - user must restart the login flow
-			return {
-				message: "Login session expired. Please try logging in again.",
-				isRetryable: false,
-			}
-		case "TokenExchangeError":
-			return {
-				message: error.message || "Failed to exchange authorization code.",
-				isRetryable: true,
-			}
+const getOrCreateCallbackAttemptId = (attemptKey: string): string => {
+	const existing = callbackAttemptIds.get(attemptKey)
+	if (existing) {
+		return existing
 	}
+
+	const attemptId = `web_callback_${crypto.randomUUID()}`
+	callbackAttemptIds.set(attemptKey, attemptId)
+	return attemptId
 }
 
-// ============================================================================
-// Core Callback Logic
-// ============================================================================
+const logWebCallback = (
+	level: "Info" | "Error",
+	message: string,
+	fields: Record<string, unknown>,
+): void => {
+	const effect =
+		level === "Error" ? Effect.logError(message, fields) : Effect.logInfo(message, fields)
+	void Effect.runFork(effect)
+}
 
-/**
- * Module-level Set to track codes that have been processed
- * Prevents double-execution from React StrictMode or hot reload
- */
-const processedCodes = new Set<string>()
+type WebCallbackResult =
+	| { success: true; returnTo: string }
+	| { success: false; error: WebAuthError }
 
 /**
  * Effect that handles the web callback - exchanges code for tokens and stores them
  */
-const exchangeAndStoreTokens = (code: string, stateString: string, returnTo: string) =>
+const exchangeAndStoreTokens = (
+	code: string,
+	stateString: string,
+	returnTo: string,
+	attemptId: string,
+) =>
 	Effect.gen(function* () {
 		const tokenExchange: TokenExchangeService = yield* TokenExchange
 		const tokenStorage: WebTokenStorageService = yield* WebTokenStorage
 
-		yield* Effect.log("[web-callback] Exchanging code for tokens...")
+		yield* Effect.logInfo("[web-callback] Exchanging code for tokens", {
+			attemptId,
+			returnTo,
+		})
 
-		const tokens = yield* tokenExchange.exchangeCode(code, stateString)
+		const tokens = yield* tokenExchange.exchangeCode(code, stateString, attemptId)
 
-		yield* Effect.log("[web-callback] Storing tokens...")
+		yield* Effect.logInfo("[web-callback] Storing tokens", {
+			attemptId,
+		})
 		yield* tokenStorage.storeTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
 
 		const expiresAt = Date.now() + tokens.expiresIn * 1000
@@ -139,103 +142,133 @@ const exchangeAndStoreTokens = (code: string, stateString: string, returnTo: str
 		})
 		appRegistry.set(webAuthStatusAtom, "authenticated")
 
-		yield* Effect.log("[web-callback] Token exchange successful")
+		yield* Effect.logInfo("[web-callback] Token exchange successful", {
+			attemptId,
+			returnTo,
+		})
 
 		return { success: true as const, returnTo }
 	})
 
-const handleCallback = (params: WebCallbackParams): Effect.Effect<void, never> =>
-	Effect.gen(function* () {
-		// Guard against double-execution (React StrictMode, hot reload)
-		// OAuth codes are one-time use, so we track processed codes
-		if (params.code && processedCodes.has(params.code)) {
-			yield* Effect.log("[web-callback] Code already processed, skipping")
-			return
+const parseWebCallbackState = (state: string | AuthState): { authState: AuthState; stateString: string } => {
+	if (typeof state === "string") {
+		return {
+			authState: JSON.parse(state) as AuthState,
+			stateString: state,
 		}
+	}
 
-		// Mark code as being processed
-		if (params.code) {
-			processedCodes.add(params.code)
-		}
+	return {
+		authState: state,
+		stateString: JSON.stringify(state),
+	}
+}
 
-		appRegistry.set(webCallbackStatusAtom, { _tag: "exchanging" })
+const executeWebCallback = async (
+	params: WebCallbackParams,
+	attemptKey: string,
+	attemptId: string,
+): Promise<WebCallbackResult> => {
+	if (params.error) {
+		const error = new OAuthCallbackError({
+			message: params.error_description || params.error,
+			error: params.error,
+			errorDescription: params.error_description,
+		})
+		logWebCallback("Error", "[web-callback] OAuth provider returned an error", {
+			attemptId,
+			attemptKey,
+			errorTag: error._tag,
+			error: error.error,
+			errorDescription: error.errorDescription,
+		})
+		return { success: false, error }
+	}
 
-		// Check for OAuth errors from WorkOS
-		if (params.error) {
-			const error = new OAuthCallbackError({
-				message: params.error_description || params.error,
-				error: params.error,
-				errorDescription: params.error_description,
-			})
-			const errorInfo = getErrorInfo(error)
-			console.error("[web-callback] OAuth error:", error)
-			appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
-			return
-		}
+	if (!params.code) {
+		const error = new MissingAuthCodeError({ message: "Missing authorization code" })
+		logWebCallback("Error", "[web-callback] Missing authorization code", {
+			attemptId,
+			attemptKey,
+			errorTag: error._tag,
+		})
+		return { success: false, error }
+	}
 
-		// Validate required code
-		if (!params.code) {
-			const error = new MissingAuthCodeError({ message: "Missing authorization code" })
-			const errorInfo = getErrorInfo(error)
-			console.error("[web-callback] Missing code:", error)
-			appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
-			return
-		}
-		const code = params.code
+	if (!params.state) {
+		const error = new MissingAuthCodeError({ message: "Missing state parameter" })
+		logWebCallback("Error", "[web-callback] Missing state parameter", {
+			attemptId,
+			attemptKey,
+			errorTag: error._tag,
+		})
+		return { success: false, error }
+	}
 
-		// Validate state
-		if (!params.state) {
-			const error = new MissingAuthCodeError({ message: "Missing state parameter" })
-			const errorInfo = getErrorInfo(error)
-			console.error("[web-callback] Missing state:", error)
-			appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
-			return
-		}
+	let authState: AuthState
+	let stateString: string
+	try {
+		;({ authState, stateString } = parseWebCallbackState(params.state))
+	} catch {
+		const error = new MissingAuthCodeError({ message: "Invalid state parameter" })
+		logWebCallback("Error", "[web-callback] Invalid state parameter", {
+			attemptId,
+			attemptKey,
+			errorTag: error._tag,
+		})
+		return { success: false, error }
+	}
 
-		// Parse the state to extract returnTo
-		// State can be either a string (raw JSON) or already-parsed object (TanStack Router auto-parses JSON)
-		let authState: AuthState
-		let stateString: string
-		if (typeof params.state === "string") {
-			stateString = params.state
-			try {
-				authState = JSON.parse(params.state)
-			} catch {
-				const error = new MissingAuthCodeError({ message: "Invalid state parameter" })
-				const errorInfo = getErrorInfo(error)
-				console.error("[web-callback] Invalid state JSON:", params.state)
-				appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
-				return
-			}
-		} else {
-			// State is already parsed by TanStack Router
-			authState = params.state
-			stateString = JSON.stringify(params.state)
-		}
+	const returnTo = authState.returnTo || "/"
+	return webCallbackExecutor({
+		attemptId,
+		code: params.code,
+		stateString,
+		returnTo,
+	})
+}
 
-		const returnTo = authState.returnTo || "/"
+type WebCallbackExecutorArgs = {
+	attemptId: string
+	code: string
+	stateString: string
+	returnTo: string
+}
 
-		// Exchange code for tokens
-		const result = yield* exchangeAndStoreTokens(code, stateString, returnTo).pipe(
+type WebCallbackExecutor = (args: WebCallbackExecutorArgs) => Promise<WebCallbackResult>
+
+const defaultWebCallbackExecutor: WebCallbackExecutor = async ({ attemptId, code, stateString, returnTo }) =>
+	await exchangeAndStoreTokens(code, stateString, returnTo, attemptId)
+		.pipe(
 			Effect.provide(Layer.mergeAll(TokenExchangeLive, WebTokenStorageLive)),
 			Effect.catchTags({
-				OAuthCodeExpiredError: (error) => {
-					console.error("[web-callback] OAuth code expired:", error)
-					return Effect.succeed({
+				OAuthCodeExpiredError: (error) =>
+					Effect.succeed({
 						success: false as const,
 						error,
-					})
-				},
-				TokenExchangeError: (error) => {
-					console.error("[web-callback] Token exchange failed:", error)
-					return Effect.succeed({
+					}),
+				OAuthStateMismatchError: (error) =>
+					Effect.succeed({
 						success: false as const,
 						error,
-					})
-				},
+					}),
+				OAuthRedemptionPendingError: (error) =>
+					Effect.succeed({
+						success: false as const,
+						error,
+					}),
+				TokenExchangeError: (error) =>
+					Effect.succeed({
+						success: false as const,
+						error,
+					}),
+				TokenDecodeError: (error) =>
+					Effect.succeed({
+						success: false as const,
+						error,
+					}),
 			}),
 			Effect.catch((error: unknown) => {
-				console.error("[web-callback] Token exchange failed:", error)
 				const msg =
 					error && typeof error === "object" && "message" in error
 						? (error as { message?: string }).message
@@ -249,36 +282,66 @@ const handleCallback = (params: WebCallbackParams): Effect.Effect<void, never> =
 				})
 			}),
 		)
+		.pipe(Effect.runPromise)
 
-		if (result.success) {
-			appRegistry.set(webCallbackStatusAtom, { _tag: "success", returnTo: result.returnTo })
-		} else {
-			const errorInfo = getErrorInfo(result.error)
-			// Allow retry for retryable errors by clearing the processed code
-			if (errorInfo.isRetryable && code) {
-				processedCodes.delete(code)
+let webCallbackExecutor: WebCallbackExecutor = defaultWebCallbackExecutor
+
+export const setWebCallbackExecutorForTest = (executor: WebCallbackExecutor | null): void => {
+	webCallbackExecutor = executor ?? defaultWebCallbackExecutor
+}
+
+export const getWebCallbackAttemptKey = (params: WebCallbackKeyParams): string =>
+	buildWebCallbackAttemptKey(params)
+
+export const startWebCallback = async (params: WebCallbackParams): Promise<void> => {
+	const attemptKey = getWebCallbackAttemptKey(params)
+	const attemptId = getOrCreateCallbackAttemptId(attemptKey)
+	logWebCallback("Info", "[web-callback] Starting callback handling", {
+		attemptId,
+		attemptKey,
+		hasCode: Boolean(params.code),
+		hasState: Boolean(params.state),
+		hasProviderError: Boolean(params.error),
+	})
+
+	await runWebCallbackAttemptOnce(
+		attemptKey,
+		async () => {
+			appRegistry.set(webCallbackStatusAtom, { _tag: "exchanging" })
+			const result = await executeWebCallback(params, attemptKey, attemptId)
+
+			if (result.success) {
+				appRegistry.set(webCallbackStatusAtom, { _tag: "success", returnTo: result.returnTo })
+				logWebCallback("Info", "[web-callback] Callback completed", {
+					attemptId,
+					attemptKey,
+					outcome: "success",
+					returnTo: result.returnTo,
+				})
+			} else {
+				const errorInfo = getWebAuthErrorInfo(result.error)
+				appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
+				logWebCallback("Error", "[web-callback] Callback failed", {
+					attemptId,
+					attemptKey,
+					outcome: "error",
+					errorTag: result.error._tag,
+					message: errorInfo.message,
+					isRetryable: errorInfo.isRetryable,
+				})
 			}
-			appRegistry.set(webCallbackStatusAtom, { _tag: "error", ...errorInfo })
-		}
-	})
 
-// ============================================================================
-// Init Atom Factory
-// ============================================================================
+			return result
+		},
+		(result) => result.success || !getWebAuthErrorInfo(result.error).isRetryable,
+	)
+}
 
-/**
- * Factory that creates an init atom for handling the callback
- * The atom runs the callback effect when mounted via useAtomValue
- */
-export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
-	Atom.make(() => {
-		// No finalizer — let the OAuth exchange complete even if Strict Mode
-		// unmounts/remounts. processedCodes prevents re-execution on remount.
-		// All atom updates use appRegistry.set() so they survive unmount.
-		runtime.runFork(handleCallback(params))
-
-		return null
-	})
+export const retryWebCallback = async (params: WebCallbackParams): Promise<void> => {
+	const attemptKey = getWebCallbackAttemptKey(params)
+	resetWebCallbackAttempt(attemptKey)
+	await startWebCallback(params)
+}
 
 // ============================================================================
 // State Reset
@@ -289,20 +352,7 @@ export const createWebCallbackInitAtom = (params: WebCallbackParams) =>
  * Called during logout to clear stale state that survives client-side navigation.
  */
 export const resetCallbackState = () => {
-	processedCodes.clear()
+	resetAllWebCallbackAttempts()
+	callbackAttemptIds.clear()
 	appRegistry.set(webCallbackStatusAtom, { _tag: "idle" })
 }
-
-// ============================================================================
-// Action Atoms
-// ============================================================================
-
-/**
- * Action atom for retry functionality
- * Takes params directly instead of reading from a params atom
- */
-export const retryWebCallbackAtom = Atom.fn(
-	Effect.fnUntraced(function* (params: WebCallbackParams) {
-		yield* handleCallback(params)
-	}),
-)

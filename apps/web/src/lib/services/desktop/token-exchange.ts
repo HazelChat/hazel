@@ -1,99 +1,140 @@
 /**
- * @module Token exchange Effect service for desktop apps
- * @platform desktop
- * @description HTTP client for token exchange using Effect HttpClient with Schema validation
+ * @module Auth HTTP Effect service
+ * @platform web
+ * @description Type-safe auth client for token exchange and refresh
  */
 
-import { FetchHttpClient, HttpBody, HttpClient, HttpClientError, HttpClientRequest } from "effect/unstable/http"
-import { OAuthCodeExpiredError, TokenDecodeError, TokenExchangeError } from "@hazel/domain/errors"
-import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
-import { ServiceMap, Duration, Effect, Layer, Schema } from "effect"
+import { FetchHttpClient, HttpClient, HttpClientError } from "effect/unstable/http"
+import { HttpApiClient } from "effect/unstable/httpapi"
+import {
+	OAuthCodeExpiredError,
+	OAuthRedemptionPendingError,
+	OAuthStateMismatchError,
+	TokenDecodeError,
+	TokenExchangeError,
+} from "@hazel/domain/errors"
+import {
+	AuthRequestHeaders,
+	HazelApi,
+	RefreshTokenRequest,
+	RefreshTokenResponse,
+	TokenRequest,
+	TokenResponse,
+} from "@hazel/domain/http"
+import { Duration, Effect, Layer, Schema, ServiceMap } from "effect"
 
 const DEFAULT_TIMEOUT = Duration.seconds(60)
+const createAttemptId = (scope: "callback" | "refresh"): string => `${scope}_${crypto.randomUUID()}`
 
-const mapHttpClientError = (context: string) => (error: HttpClientError.HttpClientError) =>
-	Effect.fail(
-		new TokenExchangeError({
+const makeAttemptHeaders = (attemptId?: string) =>
+	new AuthRequestHeaders({
+		"x-auth-attempt-id": attemptId,
+	})
+
+const mapExchangeError = (
+	error: unknown,
+): OAuthCodeExpiredError | OAuthStateMismatchError | OAuthRedemptionPendingError | TokenExchangeError | TokenDecodeError => {
+	if (
+		error instanceof OAuthCodeExpiredError ||
+		error instanceof OAuthStateMismatchError ||
+		error instanceof OAuthRedemptionPendingError ||
+		error instanceof TokenExchangeError
+	) {
+		return error
+	}
+
+	if (HttpClientError.isHttpClientError(error)) {
+		return new TokenExchangeError({
 			message:
 				error.response?.status === undefined
-					? `Network error during ${context}`
-					: `Server error during ${context}`,
+					? "Network error during token exchange"
+					: "Server error during token exchange",
 			detail:
 				error.response?.status === undefined
 					? String(error)
 					: `HTTP ${error.response.status}`,
-		}),
-	)
+		})
+	}
+
+	if (Schema.isSchemaError(error)) {
+		return new TokenDecodeError({
+			message: "Invalid token response from server",
+			detail: String(error),
+		})
+	}
+
+	return new TokenExchangeError({
+		message: "Failed to exchange code for token",
+		detail: String(error),
+	})
+}
+
+const mapRefreshError = (error: unknown): TokenExchangeError | TokenDecodeError => {
+	if (error instanceof TokenExchangeError) {
+		return error
+	}
+
+	if (HttpClientError.isHttpClientError(error)) {
+		return new TokenExchangeError({
+			message:
+				error.response?.status === undefined
+					? "Network error during token refresh"
+					: "Server error during token refresh",
+			detail:
+				error.response?.status === undefined
+					? String(error)
+					: `HTTP ${error.response.status}`,
+		})
+	}
+
+	if (Schema.isSchemaError(error)) {
+		return new TokenDecodeError({
+			message: "Invalid refresh response from server",
+			detail: String(error),
+		})
+	}
+
+	if (error instanceof OAuthCodeExpiredError) {
+		return new TokenExchangeError({
+			message: error.message,
+		})
+	}
+
+	return new TokenExchangeError({
+		message: "Failed to refresh token",
+		detail: String(error),
+	})
+}
 
 export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExchange", {
 	make: Effect.gen(function* () {
 		const httpClient = yield* HttpClient.HttpClient
 		const backendUrl = import.meta.env.VITE_BACKEND_URL
-
-		/**
-		 * Create a configured client for auth requests
-		 */
-		const makeAuthClient = () =>
-			httpClient.pipe(
-				HttpClient.mapRequest(
-					HttpClientRequest.setHeaders({
-						"Content-Type": "application/json",
-					}),
-				),
-			)
+		const authClient = yield* HttpApiClient.group(HazelApi, {
+			group: "auth",
+			httpClient,
+			baseUrl: backendUrl,
+		})
 
 		return {
-			/**
-			 * Exchange authorization code for access/refresh tokens
-			 */
-			exchangeCode: (code: string, state: string) =>
-				Effect.gen(function* () {
-					const client = makeAuthClient()
-					const body = JSON.stringify({ code, state })
-
-					const response = yield* client
-						.post(`${backendUrl}/auth/token`, {
-							body: HttpBody.text(body, "application/json"),
-						})
-						.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
-
-					// Handle HTTP errors
-					if (response.status >= 400) {
-						const errorText = yield* response.text
-						// Try to parse the error response to detect specific error types
-						try {
-							const errorJson = JSON.parse(errorText)
-							if (errorJson._tag === "OAuthCodeExpiredError") {
-								return yield* Effect.fail(
-									new OAuthCodeExpiredError({
-										message:
-											errorJson.message || "Authorization code expired or already used",
-									}),
-								)
-							}
-						} catch {
-							// JSON parsing failed, fall through to generic error
-						}
-						return yield* Effect.fail(
-							new TokenExchangeError({
-								message: "Failed to exchange code for token",
-								detail: `HTTP ${response.status}: ${errorText}`,
-							}),
-						)
-					}
-
-					// Parse and validate response
-					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknownEffect(TokenResponse)(rawJson).pipe(
-						Effect.mapError(
-							(parseError) =>
-								new TokenDecodeError({
-									message: "Invalid token response from server",
-									detail: String(parseError),
-								}),
-						),
-					)
+			exchangeCode: (
+				code: string,
+				state: string,
+				attemptId: string = createAttemptId("callback"),
+			): Effect.Effect<
+				Schema.Schema.Type<typeof TokenResponse>,
+				| OAuthCodeExpiredError
+				| OAuthStateMismatchError
+				| OAuthRedemptionPendingError
+				| TokenExchangeError
+				| TokenDecodeError,
+				never
+			> =>
+				authClient.token({
+					headers: makeAttemptHeaders(attemptId),
+					payload: new TokenRequest({ code, state }),
 				}).pipe(
+					Effect.timeout(DEFAULT_TIMEOUT),
 					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
@@ -101,46 +142,25 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchIf(HttpClientError.isHttpClientError, mapHttpClientError("token exchange")),
+					Effect.catchTag("OAuthCodeExpiredError", (error) => Effect.fail(error)),
+					Effect.catchTag("OAuthStateMismatchError", (error) => Effect.fail(error)),
+					Effect.catchTag("OAuthRedemptionPendingError", (error) => Effect.fail(error)),
+					Effect.catch((error) => Effect.fail(mapExchangeError(error))),
 				),
 
-			/**
-			 * Refresh tokens using a refresh token
-			 */
-			refreshToken: (refreshToken: string) =>
-				Effect.gen(function* () {
-					const client = makeAuthClient()
-					const body = JSON.stringify({ refreshToken })
-
-					const response = yield* client
-						.post(`${backendUrl}/auth/refresh`, {
-							body: HttpBody.text(body, "application/json"),
-						})
-						.pipe(Effect.scoped, Effect.timeout(DEFAULT_TIMEOUT))
-
-					// Handle HTTP errors
-					if (response.status >= 400) {
-						const errorText = yield* response.text
-						return yield* Effect.fail(
-							new TokenExchangeError({
-								message: "Failed to refresh token",
-								detail: `HTTP ${response.status}: ${errorText}`,
-							}),
-						)
-					}
-
-					// Parse and validate response
-					const rawJson = yield* response.json
-					return yield* Schema.decodeUnknownEffect(RefreshTokenResponse)(rawJson).pipe(
-						Effect.mapError(
-							(parseError) =>
-								new TokenDecodeError({
-									message: "Invalid refresh response from server",
-									detail: String(parseError),
-								}),
-						),
-					)
+			refreshToken: (
+				refreshToken: string,
+				attemptId: string = createAttemptId("refresh"),
+			): Effect.Effect<
+				Schema.Schema.Type<typeof RefreshTokenResponse>,
+				TokenExchangeError | TokenDecodeError,
+				never
+			> =>
+				authClient.refresh({
+					headers: makeAttemptHeaders(attemptId),
+					payload: new RefreshTokenRequest({ refreshToken }),
 				}).pipe(
+					Effect.timeout(DEFAULT_TIMEOUT),
 					Effect.catchTag("TimeoutError", () =>
 						Effect.fail(
 							new TokenExchangeError({
@@ -148,25 +168,19 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 							}),
 						),
 					),
-					Effect.catchIf(HttpClientError.isHttpClientError, mapHttpClientError("token refresh")),
+					Effect.catch((error) => Effect.fail(mapRefreshError(error))),
 				),
 		}
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer))
 
-	/**
-	 * Mock token response for testing
-	 */
 	static mockTokenResponse = () => ({
 		accessToken: "new-access-token",
 		refreshToken: "new-refresh-token",
 		expiresIn: 3600,
 	})
 
-	/**
-	 * Mock full token response with user data for testing
-	 */
 	static mockFullTokenResponse = () => ({
 		accessToken: "new-access-token",
 		refreshToken: "new-refresh-token",

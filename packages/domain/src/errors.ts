@@ -32,6 +32,30 @@ export class OAuthCodeExpiredError extends Schema.TaggedErrorClass<OAuthCodeExpi
 	}
 }
 
+export class OAuthStateMismatchError extends Schema.TaggedErrorClass<OAuthStateMismatchError>()(
+	"OAuthStateMismatchError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 400 },
+) {
+	static is(u: unknown): u is OAuthStateMismatchError {
+		return Predicate.isTagged(u, "OAuthStateMismatchError")
+	}
+}
+
+export class OAuthRedemptionPendingError extends Schema.TaggedErrorClass<OAuthRedemptionPendingError>()(
+	"OAuthRedemptionPendingError",
+	{
+		message: Schema.String,
+	},
+	{ httpApiStatus: 503 },
+) {
+	static is(u: unknown): u is OAuthRedemptionPendingError {
+		return Predicate.isTagged(u, "OAuthRedemptionPendingError")
+	}
+}
+
 export class InternalServerError extends Schema.TaggedErrorClass<InternalServerError>("InternalServerError")(
 	"InternalServerError",
 	{
