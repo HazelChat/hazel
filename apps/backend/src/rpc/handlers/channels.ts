@@ -16,7 +16,7 @@ import {
 	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
 import { OrganizationId } from "@hazel/schema"
-import { ChannelNotFoundError, ChannelRpcs, MessageNotFoundError } from "@hazel/domain/rpc"
+import { ChannelNotFoundError, ChannelResponse, ChannelRpcs, MessageNotFoundError } from "@hazel/domain/rpc"
 import { eq } from "drizzle-orm"
 import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -94,10 +94,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelResponse({
 								data: createdChannel,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(
@@ -129,10 +129,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelResponse({
 								data: updatedChannel,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(
@@ -281,10 +281,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelResponse({
 								data: createdChannel,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(
@@ -331,10 +331,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								yield* channelAccessSync.syncChannel(existingThread.value.id)
 
 								const txid = yield* generateTransactionId()
-								return {
+								return new ChannelResponse({
 									data: existingThread.value,
 									transactionId: txid,
-								}
+								})
 							}
 
 							const parentChannel = yield* channelRepo.findById(message.value.channelId)
@@ -352,10 +352,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 								yield* channelAccessSync.syncChannel(parentChannel.value.id)
 
 								const txid = yield* generateTransactionId()
-								return {
+								return new ChannelResponse({
 									data: parentChannel.value,
 									transactionId: txid,
-								}
+								})
 							}
 
 							// Derive organization from parent channel (source of truth).
@@ -423,10 +423,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelResponse({
 								data: createdChannel,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Channel", "create")),

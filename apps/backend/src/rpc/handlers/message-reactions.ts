@@ -1,7 +1,7 @@
 import { MessageOutboxRepo, MessageReactionRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { MessageReactionRpcs } from "@hazel/domain/rpc"
+import { MessageReactionResponse, MessageReactionRpcs } from "@hazel/domain/rpc"
 import type { ChannelId, MessageId, UserId } from "@hazel/schema"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -136,10 +136,10 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 
 								const txid = yield* generateTransactionId()
 
-								return {
+								return new MessageReactionResponse({
 									data: createdMessageReaction,
 									transactionId: txid,
-								}
+								})
 							}),
 						)
 						.pipe(withRemapDbErrors("MessageReaction", "create"))
@@ -159,10 +159,10 @@ export const MessageReactionRpcLive = MessageReactionRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new MessageReactionResponse({
 								data: updatedMessageReaction,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("MessageReaction", "update")),

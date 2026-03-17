@@ -1,7 +1,7 @@
 import { AttachmentRepo, MessageOutboxRepo, MessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { MessageRpcs } from "@hazel/domain/rpc"
+import { MessageResponse, MessageRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { AttachmentPolicy } from "../../policies/attachment-policy"
@@ -88,10 +88,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const txid = yield* generateTransactionId()
 
-								return {
+								return new MessageResponse({
 									data: createdMessage,
 									transactionId: txid,
-								}
+								})
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "create"))
@@ -135,10 +135,10 @@ export const MessageRpcLive = MessageRpcs.toLayer(
 
 								const txid = yield* generateTransactionId()
 
-								return {
+								return new MessageResponse({
 									data: updatedMessage,
 									transactionId: txid,
-								}
+								})
 							}),
 						)
 						.pipe(withRemapDbErrors("Message", "update"))

@@ -226,7 +226,10 @@ export class AuthRedemptionStore extends ServiceMap.Service<AuthRedemptionStore>
 			startedAt: number,
 		): Effect.Effect<
 			TokenExchangeResponse | null,
-			OAuthCodeExpiredError | OAuthStateMismatchError | OAuthRedemptionPendingError | InternalServerError
+			| OAuthCodeExpiredError
+			| OAuthStateMismatchError
+			| OAuthRedemptionPendingError
+			| InternalServerError
 		> =>
 			Effect.gen(function* () {
 				const current = yield* readRecord(key)
@@ -262,12 +265,15 @@ export class AuthRedemptionStore extends ServiceMap.Service<AuthRedemptionStore>
 						return yield* Effect.fail(revivePermanentFailure(current.error))
 					case "processing":
 						if (Date.now() - startedAt >= POLL_TIMEOUT_MS) {
-							yield* Effect.logError("[auth/token] OAuth redemption still pending after poll timeout", {
-								attemptId,
-								codeHash: shortHash(codeHash),
-								stateHash: shortHash(stateHash),
-								outcome: "pending_timeout",
-							})
+							yield* Effect.logError(
+								"[auth/token] OAuth redemption still pending after poll timeout",
+								{
+									attemptId,
+									codeHash: shortHash(codeHash),
+									stateHash: shortHash(stateHash),
+									outcome: "pending_timeout",
+								},
+							)
 							return yield* Effect.fail(
 								new OAuthRedemptionPendingError({
 									message:
@@ -277,7 +283,14 @@ export class AuthRedemptionStore extends ServiceMap.Service<AuthRedemptionStore>
 						}
 
 						yield* Effect.sleep(POLL_INTERVAL)
-						return yield* awaitCompletion(key, requestHash, codeHash, stateHash, attemptId, startedAt)
+						return yield* awaitCompletion(
+							key,
+							requestHash,
+							codeHash,
+							stateHash,
+							attemptId,
+							startedAt,
+						)
 				}
 			})
 
@@ -290,7 +303,10 @@ export class AuthRedemptionStore extends ServiceMap.Service<AuthRedemptionStore>
 			exchange: Effect.Effect<TokenExchangeResponse, OAuthCodeExpiredError | InternalServerError, R>,
 		): Effect.Effect<
 			TokenExchangeResponse,
-			OAuthCodeExpiredError | OAuthStateMismatchError | OAuthRedemptionPendingError | InternalServerError,
+			| OAuthCodeExpiredError
+			| OAuthStateMismatchError
+			| OAuthRedemptionPendingError
+			| InternalServerError,
 			R
 		> =>
 			Effect.gen(function* () {
@@ -419,23 +435,29 @@ export class AuthRedemptionStore extends ServiceMap.Service<AuthRedemptionStore>
 							},
 							RESULT_TTL_MS,
 						)
-						yield* Effect.logInfo("[auth/token] OAuth redemption completed with permanent failure", {
-							attemptId,
-							codeHash: shortHash(codeHash),
-							stateHash: shortHash(stateHash),
-							outcome: "expired",
-							errorTag: exchangeResult.error._tag,
-						})
+						yield* Effect.logInfo(
+							"[auth/token] OAuth redemption completed with permanent failure",
+							{
+								attemptId,
+								codeHash: shortHash(codeHash),
+								stateHash: shortHash(stateHash),
+								outcome: "expired",
+								errorTag: exchangeResult.error._tag,
+							},
+						)
 						return yield* Effect.fail(exchangeResult.error)
 					case "internal":
 						yield* deleteRecord(key)
-						yield* Effect.logError("[auth/token] OAuth redemption reset after transient failure", {
-							attemptId,
-							codeHash: shortHash(codeHash),
-							stateHash: shortHash(stateHash),
-							outcome: "transient_reset",
-							errorTag: exchangeResult.error._tag,
-						})
+						yield* Effect.logError(
+							"[auth/token] OAuth redemption reset after transient failure",
+							{
+								attemptId,
+								codeHash: shortHash(codeHash),
+								stateHash: shortHash(stateHash),
+								outcome: "transient_reset",
+								errorTag: exchangeResult.error._tag,
+							},
+						)
 						return yield* Effect.fail(exchangeResult.error)
 				}
 			}).pipe(

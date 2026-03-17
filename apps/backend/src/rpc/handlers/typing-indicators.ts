@@ -1,7 +1,7 @@
 import { TypingIndicatorRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { withRemapDbErrors } from "@hazel/domain"
-import { TypingIndicatorNotFoundError, TypingIndicatorRpcs } from "@hazel/domain/rpc"
+import { TypingIndicatorNotFoundError, TypingIndicatorResponse, TypingIndicatorRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { TypingIndicatorPolicy } from "../../policies/typing-indicator-policy"
@@ -57,10 +57,10 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 								durationMs: Date.now() - startedAt,
 							})
 
-							return {
+							return new TypingIndicatorResponse({
 								data: typingIndicator,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("TypingIndicator", "create")),
@@ -87,10 +87,10 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 								durationMs: Date.now() - startedAt,
 							})
 
-							return {
+							return new TypingIndicatorResponse({
 								data: typingIndicator,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("TypingIndicator", "update")),
@@ -127,7 +127,7 @@ export const TypingIndicatorRpcLive = TypingIndicatorRpcs.toLayer(
 								durationMs: Date.now() - startedAt,
 							})
 
-							return { data: existing, transactionId: txid }
+							return new TypingIndicatorResponse({ data: existing, transactionId: txid })
 						}),
 					)
 					.pipe(withRemapDbErrors("TypingIndicator", "delete")),

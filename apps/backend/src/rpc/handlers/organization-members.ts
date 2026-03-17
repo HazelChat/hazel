@@ -1,7 +1,11 @@
 import { OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
-import { OrganizationMemberNotFoundError, OrganizationMemberRpcs } from "@hazel/domain/rpc"
+import {
+	OrganizationMemberNotFoundError,
+	OrganizationMemberResponse,
+	OrganizationMemberRpcs,
+} from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationMemberPolicy } from "../../policies/organization-member-policy"
@@ -50,10 +54,10 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationMemberResponse({
 								data: createdOrganizationMember,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("OrganizationMember", "create")),
@@ -70,10 +74,10 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationMemberResponse({
 								data: updatedOrganizationMember,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("OrganizationMember", "update")),
@@ -101,10 +105,10 @@ export const OrganizationMemberRpcLive = OrganizationMemberRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationMemberResponse({
 								data: updatedOrganizationMember,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("OrganizationMember", "update")),

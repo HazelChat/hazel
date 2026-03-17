@@ -1,7 +1,7 @@
 import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
-import { UserNotFoundError, UserRpcs } from "@hazel/domain/rpc"
+import { UserNotFoundError, UserResponse, UserRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPolicy } from "../../policies/user-policy"
@@ -48,10 +48,10 @@ export const UserRpcLive = UserRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),
@@ -106,10 +106,10 @@ export const UserRpcLive = UserRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),
@@ -163,10 +163,10 @@ export const UserRpcLive = UserRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserResponse({
 								data: updatedUser,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("User", "update")),

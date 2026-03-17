@@ -1,10 +1,7 @@
 import { FetchHttpClient } from "effect/unstable/http"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Effect, Layer } from "effect"
-import {
-	OAuthRedemptionPendingError,
-	OAuthStateMismatchError,
-} from "@hazel/domain/errors"
+import { OAuthRedemptionPendingError, OAuthStateMismatchError } from "@hazel/domain/errors"
 import { TokenExchange } from "./token-exchange"
 
 const makeTokenExchangeLayer = (fetchImpl: typeof fetch) =>
@@ -75,17 +72,18 @@ describe("TokenExchange", () => {
 	})
 
 	it("decodes typed auth errors from the generated auth client", async () => {
-		const fetchMock = vi.fn(async () =>
-			new Response(
-				JSON.stringify({
-					_tag: "OAuthStateMismatchError",
-					message: "state mismatch",
-				}),
-				{
-					status: 400,
-					headers: { "content-type": "application/json" },
-				},
-			),
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						_tag: "OAuthStateMismatchError",
+						message: "state mismatch",
+					}),
+					{
+						status: 400,
+						headers: { "content-type": "application/json" },
+					},
+				),
 		)
 
 		const error = await runExchange(fetchMock as typeof fetch).catch((caught) => caught)
@@ -129,17 +127,18 @@ describe("TokenExchange", () => {
 	})
 
 	it("preserves pending-redemption errors as typed failures", async () => {
-		const fetchMock = vi.fn(async () =>
-			new Response(
-				JSON.stringify({
-					_tag: "OAuthRedemptionPendingError",
-					message: "try again shortly",
-				}),
-				{
-					status: 503,
-					headers: { "content-type": "application/json" },
-				},
-			),
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						_tag: "OAuthRedemptionPendingError",
+						message: "try again shortly",
+					}),
+					{
+						status: 503,
+						headers: { "content-type": "application/json" },
+					},
+				),
 		)
 
 		const error = await runExchange(fetchMock as typeof fetch).catch((caught) => caught)

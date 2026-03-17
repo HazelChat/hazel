@@ -95,29 +95,17 @@ const getOrCreateCallbackAttemptId = (attemptKey: string): string => {
 	return attemptId
 }
 
-const logWebCallback = (
-	level: "Info" | "Error",
-	message: string,
-	fields: Record<string, unknown>,
-): void => {
-	const effect =
-		level === "Error" ? Effect.logError(message, fields) : Effect.logInfo(message, fields)
+const logWebCallback = (level: "Info" | "Error", message: string, fields: Record<string, unknown>): void => {
+	const effect = level === "Error" ? Effect.logError(message, fields) : Effect.logInfo(message, fields)
 	void Effect.runFork(effect)
 }
 
-type WebCallbackResult =
-	| { success: true; returnTo: string }
-	| { success: false; error: WebAuthError }
+type WebCallbackResult = { success: true; returnTo: string } | { success: false; error: WebAuthError }
 
 /**
  * Effect that handles the web callback - exchanges code for tokens and stores them
  */
-const exchangeAndStoreTokens = (
-	code: string,
-	stateString: string,
-	returnTo: string,
-	attemptId: string,
-) =>
+const exchangeAndStoreTokens = (code: string, stateString: string, returnTo: string, attemptId: string) =>
 	Effect.gen(function* () {
 		const tokenExchange: TokenExchangeService = yield* TokenExchange
 		const tokenStorage: WebTokenStorageService = yield* WebTokenStorage

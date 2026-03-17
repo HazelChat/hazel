@@ -3,18 +3,22 @@ import { StrictMode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const getMockLoginSearch = () =>
-	(globalThis as typeof globalThis & {
-		__authLoginSearch: {
-			returnTo?: string
-			organizationId?: string
-			invitationToken?: string
+	(
+		globalThis as typeof globalThis & {
+			__authLoginSearch: {
+				returnTo?: string
+				organizationId?: string
+				invitationToken?: string
+			}
 		}
-	}).__authLoginSearch
+	).__authLoginSearch
 
 const getMockUseAuth = () =>
-	(globalThis as typeof globalThis & {
-		__authLoginUseAuth: ReturnType<typeof vi.fn>
-	}).__authLoginUseAuth
+	(
+		globalThis as typeof globalThis & {
+			__authLoginUseAuth: ReturnType<typeof vi.fn>
+		}
+	).__authLoginUseAuth
 
 vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (config: Record<string, unknown>) => ({
@@ -35,22 +39,26 @@ describe("/auth/login", () => {
 	beforeEach(() => {
 		resetAllWebLoginRedirects()
 		const mockLogin = vi.fn()
-		;(globalThis as typeof globalThis & {
-			__authLoginSearch: {
-				returnTo?: string
-				organizationId?: string
-				invitationToken?: string
+		;(
+			globalThis as typeof globalThis & {
+				__authLoginSearch: {
+					returnTo?: string
+					organizationId?: string
+					invitationToken?: string
+				}
+				__authLoginUseAuth: ReturnType<typeof vi.fn>
+				__authLoginFn: ReturnType<typeof vi.fn>
 			}
-			__authLoginUseAuth: ReturnType<typeof vi.fn>
-			__authLoginFn: ReturnType<typeof vi.fn>
-		}).__authLoginSearch = {
+		).__authLoginSearch = {
 			returnTo: "/",
 			organizationId: undefined,
 			invitationToken: undefined,
 		}
-		;(globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn = mockLogin
-		;(globalThis as typeof globalThis & { __authLoginUseAuth: ReturnType<typeof vi.fn> }).__authLoginUseAuth =
-			vi.fn()
+		;(globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn =
+			mockLogin
+		;(
+			globalThis as typeof globalThis & { __authLoginUseAuth: ReturnType<typeof vi.fn> }
+		).__authLoginUseAuth = vi.fn()
 		getMockUseAuth().mockReturnValue({
 			user: null,
 			login: mockLogin,
@@ -66,10 +74,14 @@ describe("/auth/login", () => {
 		)
 
 		await waitFor(() => {
-			expect((globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn).toHaveBeenCalledTimes(1)
+			expect(
+				(globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn,
+			).toHaveBeenCalledTimes(1)
 		})
 
-		expect((globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn).toHaveBeenCalledWith({
+		expect(
+			(globalThis as typeof globalThis & { __authLoginFn: ReturnType<typeof vi.fn> }).__authLoginFn,
+		).toHaveBeenCalledWith({
 			returnTo: "/",
 			organizationId: undefined,
 			invitationToken: undefined,

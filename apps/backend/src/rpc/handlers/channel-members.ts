@@ -1,7 +1,7 @@
 import { ChannelMemberRepo, ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { ChannelMemberRpcs } from "@hazel/domain/rpc"
+import { ChannelMemberResponse, ChannelMemberRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { ChannelMemberPolicy } from "../../policies/channel-member-policy"
@@ -51,10 +51,10 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelMemberResponse({
 								data: createdChannelMember,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(
@@ -83,10 +83,10 @@ export const ChannelMemberRpcLive = ChannelMemberRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelMemberResponse({
 								data: updatedChannelMember,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("ChannelMember", "update")),

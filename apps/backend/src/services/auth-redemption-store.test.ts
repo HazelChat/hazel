@@ -101,7 +101,11 @@ const makeStore = async () =>
 		Effect.gen(function* () {
 			return yield* AuthRedemptionStore
 		}).pipe(
-			Effect.provide(Layer.effect(AuthRedemptionStore, AuthRedemptionStore.make).pipe(Layer.provide(makeRedisLayer()))),
+			Effect.provide(
+				Layer.effect(AuthRedemptionStore, AuthRedemptionStore.make).pipe(
+					Layer.provide(makeRedisLayer()),
+				),
+			),
 		),
 	)
 
@@ -165,12 +169,18 @@ describe("AuthRedemptionStore", () => {
 
 		const first = await Effect.runPromise(
 			Effect.flip(
-				store.exchangeCodeOnce({ code: "code-3", state: JSON.stringify({ returnTo: "/" }) }, exchange),
+				store.exchangeCodeOnce(
+					{ code: "code-3", state: JSON.stringify({ returnTo: "/" }) },
+					exchange,
+				),
 			),
 		)
 		const second = await Effect.runPromise(
 			Effect.flip(
-				store.exchangeCodeOnce({ code: "code-3", state: JSON.stringify({ returnTo: "/" }) }, exchange),
+				store.exchangeCodeOnce(
+					{ code: "code-3", state: JSON.stringify({ returnTo: "/" }) },
+					exchange,
+				),
 			),
 		)
 
@@ -248,8 +258,7 @@ describe("AuthRedemptionStore", () => {
 
 		expect(result).toEqual(
 			new OAuthStateMismatchError({
-				message:
-					"Received a duplicate OAuth redemption with mismatched state. Please restart login.",
+				message: "Received a duplicate OAuth redemption with mismatched state. Please restart login.",
 			}),
 		)
 	})

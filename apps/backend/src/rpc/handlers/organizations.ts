@@ -12,6 +12,7 @@ import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/doma
 import {
 	AlreadyMemberError,
 	OrganizationNotFoundError,
+	OrganizationResponse,
 	OrganizationRpcs,
 	OrganizationSlugAlreadyExistsError,
 	PublicInviteDisabledError,
@@ -239,7 +240,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationResponse({
 								data: {
 									...createdOrganization,
 									settings: createdOrganization.settings as {
@@ -247,7 +248,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									} | null,
 								},
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(handleOrganizationDbErrors("Organization", "create")),
@@ -265,7 +266,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationResponse({
 								data: {
 									...updatedOrganization,
 									settings: updatedOrganization.settings as {
@@ -273,7 +274,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									} | null,
 								},
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(handleOrganizationDbErrors("Organization", "update")),
@@ -304,7 +305,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationResponse({
 								data: {
 									...updatedOrganization,
 									settings: updatedOrganization.settings as {
@@ -312,7 +313,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									} | null,
 								},
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(handleOrganizationDbErrors("Organization", "update")),
@@ -329,7 +330,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationResponse({
 								data: {
 									...updatedOrganization,
 									settings: updatedOrganization.settings as {
@@ -337,7 +338,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									} | null,
 								},
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Organization", "update")),
@@ -512,7 +513,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new OrganizationResponse({
 								data: {
 									...org,
 									settings: org.settings as {
@@ -520,7 +521,7 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									} | null,
 								},
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Organization", "update")),

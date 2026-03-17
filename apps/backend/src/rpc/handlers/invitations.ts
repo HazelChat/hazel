@@ -6,6 +6,7 @@ import {
 	InvitationBatchResponse,
 	InvitationBatchResult,
 	InvitationNotFoundError,
+	InvitationResponse,
 	InvitationRpcs,
 } from "@hazel/domain/rpc"
 import { Effect, Option, Schema } from "effect"
@@ -154,10 +155,13 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					)
 					.pipe(
 						withRemapDbErrors("Invitation", "update"),
-						Effect.map(({ invitation, txid }) => ({
-							data: invitation,
-							transactionId: txid,
-						})),
+						Effect.map(
+							({ invitation, txid }) =>
+								new InvitationResponse({
+									data: invitation,
+									transactionId: txid,
+								}),
+						),
 					),
 
 			"invitation.revoke": ({ invitationId }) =>
@@ -219,10 +223,13 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 					)
 					.pipe(
 						withRemapDbErrors("Invitation", "update"),
-						Effect.map(({ updatedInvitation, txid }) => ({
-							data: updatedInvitation,
-							transactionId: txid,
-						})),
+						Effect.map(
+							({ updatedInvitation, txid }) =>
+								new InvitationResponse({
+									data: updatedInvitation,
+									transactionId: txid,
+								}),
+						),
 					),
 
 			"invitation.delete": ({ id }) =>

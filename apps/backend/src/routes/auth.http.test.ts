@@ -46,7 +46,8 @@ const TestConfigLive = configLayer({
 
 const NOW = new Date("2026-03-05T12:00:00.000Z")
 const makeJwt = (exp: number = Math.floor(Date.now() / 1000) + 3600) => {
-	const encode = (value: Record<string, unknown>) => Buffer.from(JSON.stringify(value)).toString("base64url")
+	const encode = (value: Record<string, unknown>) =>
+		Buffer.from(JSON.stringify(value)).toString("base64url")
 	return `${encode({ alg: "none", typ: "JWT" })}.${encode({ exp, sid: "session_test_123" })}.`
 }
 
@@ -115,7 +116,8 @@ const createMockWorkOSLive = (options?: {
 								}
 								return {
 									accessToken: options?.authenticateResponse?.accessToken ?? makeJwt(),
-									refreshToken: options?.authenticateResponse?.refreshToken ?? "refresh-token",
+									refreshToken:
+										options?.authenticateResponse?.refreshToken ?? "refresh-token",
 									user: options?.authenticateResponse?.user ?? {
 										id: "user_01ABC123",
 										email: "test@example.com",
@@ -135,7 +137,8 @@ const createMockWorkOSLive = (options?: {
 								}
 								return {
 									accessToken: options?.refreshResponse?.accessToken ?? makeJwt(),
-									refreshToken: options?.refreshResponse?.refreshToken ?? "refresh-token-next",
+									refreshToken:
+										options?.refreshResponse?.refreshToken ?? "refresh-token-next",
 								}
 							},
 							listOrganizationMemberships: async () => ({
@@ -596,9 +599,9 @@ describe("Auth HTTP Endpoint Logic", () => {
 		it("returns HTTP 200 with a decodable TokenResponse for /auth/token", async () => {
 			const { handler, dispose } = makeAuthRouteHandler()
 
-				try {
-					const response = await handler(
-						new Request("http://localhost/auth/token", {
+			try {
+				const response = await handler(
+					new Request("http://localhost/auth/token", {
 						method: "POST",
 						headers: {
 							"content-type": "application/json",
@@ -607,10 +610,10 @@ describe("Auth HTTP Endpoint Logic", () => {
 						body: JSON.stringify({
 							code: "authorization_code",
 							state: JSON.stringify({ returnTo: "/" }),
-							}),
 						}),
-						ServiceMap.empty() as ServiceMap.ServiceMap<any>,
-					)
+					}),
+					ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				)
 
 				expect(response.status).toBe(200)
 
@@ -628,20 +631,20 @@ describe("Auth HTTP Endpoint Logic", () => {
 		it("returns HTTP 200 with a decodable RefreshTokenResponse for /auth/refresh", async () => {
 			const { handler, dispose } = makeAuthRouteHandler()
 
-				try {
-					const response = await handler(
-						new Request("http://localhost/auth/refresh", {
+			try {
+				const response = await handler(
+					new Request("http://localhost/auth/refresh", {
 						method: "POST",
 						headers: {
 							"content-type": "application/json",
 							"x-auth-attempt-id": "attempt_refresh_123",
 						},
-							body: JSON.stringify({
-								refreshToken: "refresh-token",
-							}),
+						body: JSON.stringify({
+							refreshToken: "refresh-token",
 						}),
-						ServiceMap.empty() as ServiceMap.ServiceMap<any>,
-					)
+					}),
+					ServiceMap.empty() as ServiceMap.ServiceMap<any>,
+				)
 
 				expect(response.status).toBe(200)
 

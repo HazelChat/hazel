@@ -2,26 +2,26 @@ import { RegistryContext } from "@effect/atom-react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { StrictMode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import {
-	OAuthCodeExpiredError,
-	OAuthStateMismatchError,
-	TokenExchangeError,
-} from "@hazel/domain/errors"
+import { OAuthCodeExpiredError, OAuthStateMismatchError, TokenExchangeError } from "@hazel/domain/errors"
 
 const getMockSearch = () =>
-	(globalThis as typeof globalThis & {
-		__authCallbackSearch: {
-			code?: string
-			state?: string
-			error?: string
-			error_description?: string
+	(
+		globalThis as typeof globalThis & {
+			__authCallbackSearch: {
+				code?: string
+				state?: string
+				error?: string
+				error_description?: string
+			}
 		}
-	}).__authCallbackSearch
+	).__authCallbackSearch
 
 const getMockNavigate = () =>
-	(globalThis as typeof globalThis & {
-		__authCallbackNavigate: ReturnType<typeof vi.fn>
-	}).__authCallbackNavigate
+	(
+		globalThis as typeof globalThis & {
+			__authCallbackNavigate: ReturnType<typeof vi.fn>
+		}
+	).__authCallbackNavigate
 
 vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (config: Record<string, unknown>) => ({
@@ -31,31 +31,31 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => getMockNavigate(),
 }))
 
-import {
-	resetCallbackState,
-	setWebCallbackExecutorForTest,
-} from "~/atoms/web-callback-atoms"
+import { resetCallbackState, setWebCallbackExecutorForTest } from "~/atoms/web-callback-atoms"
 import { appRegistry } from "~/lib/registry"
 import { WebCallbackPage } from "./callback"
 
 describe("/auth/callback", () => {
 	beforeEach(() => {
-		;(globalThis as typeof globalThis & {
-			__authCallbackSearch: {
-				code?: string
-				state?: string
-				error?: string
-				error_description?: string
+		;(
+			globalThis as typeof globalThis & {
+				__authCallbackSearch: {
+					code?: string
+					state?: string
+					error?: string
+					error_description?: string
+				}
+				__authCallbackNavigate: ReturnType<typeof vi.fn>
 			}
-			__authCallbackNavigate: ReturnType<typeof vi.fn>
-		}).__authCallbackSearch = {
+		).__authCallbackSearch = {
 			code: "test-auth-code",
 			state: JSON.stringify({ returnTo: "/" }),
 			error: undefined,
 			error_description: undefined,
 		}
-		;(globalThis as typeof globalThis & { __authCallbackNavigate: ReturnType<typeof vi.fn> }).__authCallbackNavigate =
-			vi.fn()
+		;(
+			globalThis as typeof globalThis & { __authCallbackNavigate: ReturnType<typeof vi.fn> }
+		).__authCallbackNavigate = vi.fn()
 		resetCallbackState()
 		setWebCallbackExecutorForTest(null)
 	})
@@ -82,7 +82,10 @@ describe("/auth/callback", () => {
 	it("retries once after a retryable failure and then succeeds", async () => {
 		const executor = vi
 			.fn<
-				(args: { attemptId: string; returnTo: string }) => Promise<
+				(args: {
+					attemptId: string
+					returnTo: string
+				}) => Promise<
 					| { success: true; returnTo: string }
 					| { success: false; error: TokenExchangeError | OAuthCodeExpiredError }
 				>

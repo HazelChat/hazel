@@ -33,7 +33,12 @@ const makeAttemptHeaders = (attemptId?: string) =>
 
 const mapExchangeError = (
 	error: unknown,
-): OAuthCodeExpiredError | OAuthStateMismatchError | OAuthRedemptionPendingError | TokenExchangeError | TokenDecodeError => {
+):
+	| OAuthCodeExpiredError
+	| OAuthStateMismatchError
+	| OAuthRedemptionPendingError
+	| TokenExchangeError
+	| TokenDecodeError => {
 	if (
 		error instanceof OAuthCodeExpiredError ||
 		error instanceof OAuthStateMismatchError ||
@@ -49,10 +54,7 @@ const mapExchangeError = (
 				error.response?.status === undefined
 					? "Network error during token exchange"
 					: "Server error during token exchange",
-			detail:
-				error.response?.status === undefined
-					? String(error)
-					: `HTTP ${error.response.status}`,
+			detail: error.response?.status === undefined ? String(error) : `HTTP ${error.response.status}`,
 		})
 	}
 
@@ -80,10 +82,7 @@ const mapRefreshError = (error: unknown): TokenExchangeError | TokenDecodeError 
 				error.response?.status === undefined
 					? "Network error during token refresh"
 					: "Server error during token refresh",
-			detail:
-				error.response?.status === undefined
-					? String(error)
-					: `HTTP ${error.response.status}`,
+			detail: error.response?.status === undefined ? String(error) : `HTTP ${error.response.status}`,
 		})
 	}
 
@@ -130,23 +129,25 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 				| TokenDecodeError,
 				never
 			> =>
-				authClient.token({
-					headers: makeAttemptHeaders(attemptId),
-					payload: new TokenRequest({ code, state }),
-				}).pipe(
-					Effect.timeout(DEFAULT_TIMEOUT),
-					Effect.catchTag("TimeoutError", () =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Token exchange timed out",
-							}),
+				authClient
+					.token({
+						headers: makeAttemptHeaders(attemptId),
+						payload: new TokenRequest({ code, state }),
+					})
+					.pipe(
+						Effect.timeout(DEFAULT_TIMEOUT),
+						Effect.catchTag("TimeoutError", () =>
+							Effect.fail(
+								new TokenExchangeError({
+									message: "Token exchange timed out",
+								}),
+							),
 						),
+						Effect.catchTag("OAuthCodeExpiredError", (error) => Effect.fail(error)),
+						Effect.catchTag("OAuthStateMismatchError", (error) => Effect.fail(error)),
+						Effect.catchTag("OAuthRedemptionPendingError", (error) => Effect.fail(error)),
+						Effect.catch((error) => Effect.fail(mapExchangeError(error))),
 					),
-					Effect.catchTag("OAuthCodeExpiredError", (error) => Effect.fail(error)),
-					Effect.catchTag("OAuthStateMismatchError", (error) => Effect.fail(error)),
-					Effect.catchTag("OAuthRedemptionPendingError", (error) => Effect.fail(error)),
-					Effect.catch((error) => Effect.fail(mapExchangeError(error))),
-				),
 
 			refreshToken: (
 				refreshToken: string,
@@ -156,20 +157,22 @@ export class TokenExchange extends ServiceMap.Service<TokenExchange>()("TokenExc
 				TokenExchangeError | TokenDecodeError,
 				never
 			> =>
-				authClient.refresh({
-					headers: makeAttemptHeaders(attemptId),
-					payload: new RefreshTokenRequest({ refreshToken }),
-				}).pipe(
-					Effect.timeout(DEFAULT_TIMEOUT),
-					Effect.catchTag("TimeoutError", () =>
-						Effect.fail(
-							new TokenExchangeError({
-								message: "Token refresh timed out",
-							}),
+				authClient
+					.refresh({
+						headers: makeAttemptHeaders(attemptId),
+						payload: new RefreshTokenRequest({ refreshToken }),
+					})
+					.pipe(
+						Effect.timeout(DEFAULT_TIMEOUT),
+						Effect.catchTag("TimeoutError", () =>
+							Effect.fail(
+								new TokenExchangeError({
+									message: "Token refresh timed out",
+								}),
+							),
 						),
+						Effect.catch((error) => Effect.fail(mapRefreshError(error))),
 					),
-					Effect.catch((error) => Effect.fail(mapRefreshError(error))),
-				),
 		}
 	}),
 }) {

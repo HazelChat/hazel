@@ -1,7 +1,7 @@
 import { ChannelRepo, NotificationRepo, OrganizationMemberRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
-import { NotificationRpcs } from "@hazel/domain/rpc"
+import { NotificationResponse, NotificationRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { NotificationPolicy } from "../../policies/notification-policy"
@@ -41,10 +41,10 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new NotificationResponse({
 								data: createdNotification,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Notification", "create")),
@@ -61,10 +61,10 @@ export const NotificationRpcLive = NotificationRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new NotificationResponse({
 								data: updatedNotification,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("Notification", "update")),

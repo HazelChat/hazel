@@ -5,11 +5,7 @@ import { getJwtExpiry } from "@hazel/auth"
 import { UserRepo } from "@hazel/backend-core"
 import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
 import { WorkOSUserId } from "@hazel/schema"
-import {
-	InternalServerError,
-	OAuthCodeExpiredError,
-	UnauthorizedError,
-} from "@hazel/domain"
+import { InternalServerError, OAuthCodeExpiredError, UnauthorizedError } from "@hazel/domain"
 import { Config, Effect, Schema } from "effect"
 import { HazelApi } from "../api"
 import { RelativeUrl } from "../lib/schema"
@@ -46,11 +42,7 @@ const getWorkOSCauseDetails = (cause: unknown) => {
 	}
 }
 
-const mapWorkOSCodeExchangeError = (
-	error: {
-		cause: unknown
-	},
-): OAuthCodeExpiredError | UnauthorizedError => {
+const mapWorkOSCodeExchangeError = (error: { cause: unknown }): OAuthCodeExpiredError | UnauthorizedError => {
 	const details = getWorkOSCauseDetails(error.cause)
 
 	if (details.error === "invalid_grant") {
@@ -341,28 +333,30 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 				const workosUser = tokens.user
 				const workosUserId = Schema.decodeUnknownSync(WorkOSUserId)(workosUser.id)
 
-				yield* userRepo.upsertWorkOSUser({
-					externalId: workosUserId,
-					email: workosUser.email,
-					firstName: workosUser.firstName || "",
-					lastName: workosUser.lastName || "",
-					avatarUrl: null,
-					userType: "user",
-					settings: null,
-					isOnboarded: false,
-					timezone: null,
-					deletedAt: null,
-				}).pipe(
-					Effect.catchTags({
-						DatabaseError: (err) =>
-							Effect.fail(
-								new InternalServerError({
-									message: "Failed to upsert user after OAuth redemption",
-									detail: String(err),
-								}),
-							),
-					}),
-				)
+				yield* userRepo
+					.upsertWorkOSUser({
+						externalId: workosUserId,
+						email: workosUser.email,
+						firstName: workosUser.firstName || "",
+						lastName: workosUser.lastName || "",
+						avatarUrl: null,
+						userType: "user",
+						settings: null,
+						isOnboarded: false,
+						timezone: null,
+						deletedAt: null,
+					})
+					.pipe(
+						Effect.catchTags({
+							DatabaseError: (err) =>
+								Effect.fail(
+									new InternalServerError({
+										message: "Failed to upsert user after OAuth redemption",
+										detail: String(err),
+									}),
+								),
+						}),
+					)
 
 				yield* Effect.logInfo("[auth/token] Token exchange request completed", {
 					attemptId,

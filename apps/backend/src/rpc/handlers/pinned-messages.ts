@@ -1,7 +1,7 @@
 import { MessageRepo, PinnedMessageRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { PinnedMessageRpcs } from "@hazel/domain/rpc"
+import { PinnedMessageResponse, PinnedMessageRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { MessagePolicy } from "../../policies/message-policy"
@@ -47,10 +47,10 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new PinnedMessageResponse({
 								data: createdPinnedMessage,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("PinnedMessage", "create")),
@@ -67,10 +67,10 @@ export const PinnedMessageRpcLive = PinnedMessageRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new PinnedMessageResponse({
 								data: updatedPinnedMessage,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("PinnedMessage", "update")),

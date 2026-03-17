@@ -5,6 +5,7 @@ import {
 	CustomEmojiDeletedExistsError,
 	CustomEmojiNameConflictError,
 	CustomEmojiNotFoundError,
+	CustomEmojiResponse,
 	CustomEmojiRpcs,
 } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
@@ -66,10 +67,10 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new CustomEmojiResponse({
 								data: created,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("CustomEmoji", "create")),
@@ -108,10 +109,10 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new CustomEmojiResponse({
 								data: updated,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("CustomEmoji", "update")),
@@ -173,10 +174,10 @@ export const CustomEmojiRpcLive = CustomEmojiRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new CustomEmojiResponse({
 								data: restored.value,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("CustomEmoji", "update")),

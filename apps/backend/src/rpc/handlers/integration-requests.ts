@@ -1,6 +1,6 @@
 import { Database, schema } from "@hazel/db"
 import { CurrentUser, ErrorUtils, withRemapDbErrors } from "@hazel/domain"
-import { IntegrationRequestRpcs } from "@hazel/domain/rpc"
+import { IntegrationRequestResponse, IntegrationRequestRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { withAnnotatedScope } from "../../lib/policy-utils"
@@ -55,10 +55,10 @@ export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new IntegrationRequestResponse({
 								data: result,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("IntegrationRequest", "create")),

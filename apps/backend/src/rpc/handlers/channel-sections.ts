@@ -1,7 +1,12 @@
 import { ChannelRepo, ChannelSectionRepo } from "@hazel/backend-core"
 import { Database, schema } from "@hazel/db"
 import { ErrorUtils, withRemapDbErrors } from "@hazel/domain"
-import { ChannelNotFoundError, ChannelSectionNotFoundError, ChannelSectionRpcs } from "@hazel/domain/rpc"
+import {
+	ChannelNotFoundError,
+	ChannelSectionNotFoundError,
+	ChannelSectionResponse,
+	ChannelSectionRpcs,
+} from "@hazel/domain/rpc"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
@@ -55,10 +60,10 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelSectionResponse({
 								data: createdSection,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("ChannelSection", "create")),
@@ -75,10 +80,10 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new ChannelSectionResponse({
 								data: updatedSection,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("ChannelSection", "update")),

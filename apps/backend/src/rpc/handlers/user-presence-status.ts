@@ -1,7 +1,7 @@
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
-import { UserPresenceStatusRpcs } from "@hazel/domain/rpc"
+import { UserPresenceStatusResponse, UserPresenceStatusRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPresenceStatusPolicy } from "../../policies/user-presence-status-policy"
@@ -59,10 +59,10 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserPresenceStatusResponse({
 								data: updatedStatus!,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),
@@ -126,10 +126,10 @@ export const UserPresenceStatusRpcLive = UserPresenceStatusRpcs.toLayer(
 
 							const txid = yield* generateTransactionId()
 
-							return {
+							return new UserPresenceStatusResponse({
 								data: updatedStatus!,
 								transactionId: txid,
-							}
+							})
 						}),
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update")),
