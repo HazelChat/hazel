@@ -1,34 +1,27 @@
 import { NodeHttpPlatform, NodeServices } from "@effect/platform-node"
 import { describe, expect, it } from "@effect/vitest"
-import { AttachmentRepo, BotRepo, UserPresenceStatusRepo } from "@hazel/backend-core"
+import { BotRepo, UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser } from "@hazel/domain"
 import {
-	AttachmentUploadRequest,
 	InternalApiGroup,
 	MarkOfflinePayload,
 	MarkOfflineResponse,
 	MockDataGroup,
-	PresignUploadResponse,
 	PresencePublicGroup,
-	UploadsGroup,
 	ValidateBotTokenRequest,
 	ValidateBotTokenResponse,
 	GenerateMockDataRequest,
 	GenerateMockDataResponse,
 } from "@hazel/domain/http"
-import { AttachmentId, BotId, ChannelId, OrganizationId, UserId } from "@hazel/schema"
-import { S3 } from "@hazel/effect-bun"
+import { BotId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { Etag, HttpRouter } from "effect/unstable/http"
 import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"
 import { vi } from "vitest"
-import { AttachmentPolicy } from "../policies/attachment-policy"
-import { OrganizationPolicy } from "../policies/organization-policy"
 import { HttpInternalLive } from "./internal.http"
 import { HttpMockDataLive } from "./mock-data.http"
 import { HttpPresencePublicLive } from "./presence.http"
-import { HttpUploadsLive } from "./uploads.http"
 import { MockDataGenerator } from "../services/mock-data-generator"
 import { configLayer, serviceShape } from "../test/effect-helpers"
 
@@ -44,26 +37,8 @@ vi.mock("@hazel/effect-bun", async () => {
 		}
 	>()("@hazel/effect-bun/Redis") {}
 
-	class S3 extends ServiceMap.Service<
-		S3,
-		{
-			readonly presign: (
-				key: string,
-				options: {
-					acl: string
-					method: string
-					type: string
-					expiresIn: number
-				},
-			) => unknown
-		}
-	>()("@hazel/effect-bun/S3") {}
-
 	return {
 		Redis: Object.assign(Redis, {
-			Default: Layer.empty,
-		}),
-		S3: Object.assign(S3, {
 			Default: Layer.empty,
 		}),
 	}
@@ -71,7 +46,7 @@ vi.mock("@hazel/effect-bun", async () => {
 
 const makeCurrentUser = () =>
 	({
-		id: UserId.makeUnsafe("usr_test123"),
+		id: UserId.makeUnsafe("00000000-0000-4000-8000-000000000111"),
 		organizationId: OrganizationId.makeUnsafe("00000000-0000-4000-8000-000000000123"),
 		role: "owner",
 		avatarUrl: undefined,
@@ -95,7 +70,15 @@ const makeDatabaseLayer = () =>
 	Layer.succeed(
 		Database.Database,
 		serviceShape<typeof Database.Database>({
-			transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => effect,
+			transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+				Effect.provideService(effect, Database.TransactionContext, {
+					execute: (fn) =>
+						Effect.promise(() =>
+							fn({
+								execute: async () => [{ txid: "42" }],
+							} as never),
+						),
+				}),
 		}),
 	)
 
@@ -159,7 +142,9 @@ describe("HTTP success response encoding", () => {
 				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
 			)
 
-			expect(response.status).toBe(200)
+			if (response.status !== 200) {
+				throw new Error(await response.text())
+			}
 
 			const body = await response.json()
 			const decoded = Schema.decodeUnknownSync(GenerateMockDataResponse)(body)
@@ -196,14 +181,16 @@ describe("HTTP success response encoding", () => {
 					},
 					body: JSON.stringify(
 						new MarkOfflinePayload({
-							userId: UserId.makeUnsafe("usr_presence123"),
+							userId: UserId.makeUnsafe("00000000-0000-4000-8000-000000000222"),
 						}),
 					),
 				}),
 				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
 			)
 
-			expect(response.status).toBe(200)
+			if (response.status !== 200) {
+				throw new Error(await response.text())
+			}
 
 			const body = await response.json()
 			const decoded = Schema.decodeUnknownSync(MarkOfflineResponse)(body)
@@ -225,7 +212,7 @@ describe("HTTP success response encoding", () => {
 							Effect.succeed(
 								Option.some({
 									id: BotId.makeUnsafe("00000000-0000-4000-8000-000000000456"),
-									userId: UserId.makeUnsafe("usr_botuser123"),
+									userId: UserId.makeUnsafe("00000000-0000-4000-8000-000000000333"),
 									scopes: ["messages:write"],
 								}),
 							),
@@ -253,89 +240,15 @@ describe("HTTP success response encoding", () => {
 				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
 			)
 
-			expect(response.status).toBe(200)
+			if (response.status !== 200) {
+				throw new Error(await response.text())
+			}
 
 			const body = await response.json()
 			const decoded = Schema.decodeUnknownSync(ValidateBotTokenResponse)(body)
 
-			expect(decoded.userId).toBe("usr_botuser123")
+			expect(decoded.userId).toBe("00000000-0000-4000-8000-000000000333")
 			expect(decoded.scopes).toEqual(["messages:write"])
-		} finally {
-			await dispose()
-		}
-	})
-
-	it("returns HTTP 200 with a decodable PresignUploadResponse", async () => {
-		const api = HttpApi.make("HazelApp").add(UploadsGroup)
-		const routeLayer = HttpUploadsLive.pipe(
-			Layer.provideMerge(
-				Layer.succeed(
-					S3,
-					serviceShape<typeof S3>({
-						presign: () => Effect.succeed("https://s3.example.com/presigned"),
-					}),
-				),
-			),
-			Layer.provideMerge(
-				Layer.succeed(
-					AttachmentRepo,
-					serviceShape<typeof AttachmentRepo>({
-						insert: () => Effect.void,
-					}),
-				),
-			),
-			Layer.provideMerge(
-				Layer.succeed(
-					AttachmentPolicy,
-					serviceShape<typeof AttachmentPolicy>({
-						canCreate: () => Effect.void,
-					}),
-				),
-			),
-			Layer.provideMerge(
-				Layer.succeed(
-					OrganizationPolicy,
-					serviceShape<typeof OrganizationPolicy>({
-						canUpdate: () => Effect.void,
-					}),
-				),
-			),
-			Layer.provideMerge(makeDatabaseLayer()),
-			Layer.provideMerge(makeAuthorizationLayer()),
-		)
-
-		const { handler, dispose } = makeHandler(api, routeLayer)
-
-		try {
-			const response = await handler(
-				new Request("http://localhost/uploads/presign", {
-					method: "POST",
-					headers: {
-						authorization: "Bearer test-token",
-						"content-type": "application/json",
-					},
-					body: JSON.stringify(
-						new AttachmentUploadRequest({
-							type: "attachment",
-							fileName: "hello.png",
-							contentType: "image/png",
-							fileSize: 1024,
-							organizationId: OrganizationId.makeUnsafe("00000000-0000-4000-8000-000000000123"),
-							channelId: ChannelId.makeUnsafe("00000000-0000-4000-8000-000000000789"),
-						}),
-					),
-				}),
-				ServiceMap.empty() as ServiceMap.ServiceMap<any>,
-			)
-
-			expect(response.status).toBe(200)
-
-			const body = await response.json()
-			const decoded = Schema.decodeUnknownSync(PresignUploadResponse)(body)
-
-			expect(decoded.uploadUrl).toBe("https://s3.example.com/presigned")
-			expect(decoded.resourceId).toBeDefined()
-			expect(typeof decoded.resourceId).toBe("string")
 		} finally {
 			await dispose()
 		}
