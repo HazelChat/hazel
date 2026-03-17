@@ -98,7 +98,10 @@ export const inSubquery = (column: PgColumn, subquerySql: SQL): SQL => sql`${col
 const comma = sql.raw(", ")
 
 const buildParamList = (values: readonly unknown[]): SQL =>
-	sql`(${sql.join(values.map((value) => sql`${value}`), comma)})`
+	sql`(${sql.join(
+		values.map((value) => sql`${value}`),
+		comma,
+	)})`
 
 const buildSubquery = (selectedColumn: PgColumn, table: PgTable, whereExpr: SQL): SQL =>
 	sql`(SELECT ${col(selectedColumn)} FROM ${table} WHERE ${whereExpr})`
@@ -142,7 +145,11 @@ export function sqlToWhereClause(
 	whereExpr: SQL,
 	overrideParams?: unknown[],
 ): WhereClauseResult {
-	const compiled = queryBuilder.select({ __electric_where__: sql`1` }).from(rootTable).where(whereExpr).toSQL()
+	const compiled = queryBuilder
+		.select({ __electric_where__: sql`1` })
+		.from(rootTable)
+		.where(whereExpr)
+		.toSQL()
 	const result = {
 		whereClause: extractWhereClause(compiled.sql),
 		params: overrideParams ?? compiled.params,

@@ -17,7 +17,9 @@ describe("user table where clauses", () => {
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
-		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
+		expect(result.whereClause).toMatch(
+			/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/,
+		)
 		expect(result.whereClause).toMatch(/"channelId" IN \(SELECT "channelId" FROM "?channel_access"?/)
 	})
 
@@ -51,7 +53,9 @@ describe("user table where clauses", () => {
 		)
 		expect(result.whereClause).toContain(`"conversationId" IS NULL`)
 		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
+		expect(result.whereClause).toMatch(
+			/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/,
+		)
 	})
 
 	it("filters message reactions by channel access and conversation access", async () => {
@@ -63,6 +67,8 @@ describe("user table where clauses", () => {
 		)
 		expect(result.whereClause).toContain(`"conversationId" IS NULL`)
 		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
+		expect(result.whereClause).toMatch(
+			/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/,
+		)
 	})
 })
