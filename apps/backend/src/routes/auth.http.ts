@@ -3,7 +3,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpServerResponse } from "effect/unstable/http"
 import { getJwtExpiry } from "@hazel/auth"
 import { UserRepo } from "@hazel/backend-core"
-import { TokenResponse } from "@hazel/domain/http"
+import { RefreshTokenResponse, TokenResponse } from "@hazel/domain/http"
 import { WorkOSUserId } from "@hazel/schema"
 import {
 	InternalServerError,
@@ -370,7 +370,13 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					outcome: "success",
 				})
 
-				return tokens
+				const response = new TokenResponse(tokens)
+				yield* Effect.logInfo("[auth/token] Constructed schema success response", {
+					attemptId,
+					outcome: "success_response",
+				})
+
+				return response
 			}).pipe(
 				Effect.tapError((error) =>
 					Effect.logError("[auth/token] Token exchange request failed", {
@@ -425,11 +431,18 @@ export const HttpAuthLive = HttpApiBuilder.group(HazelApi, "auth", (handlers) =>
 					outcome: "success",
 				})
 
-				return {
+				const response = new RefreshTokenResponse({
 					accessToken: authResponse.accessToken,
 					refreshToken: authResponse.refreshToken!,
 					expiresIn,
-				}
+				})
+
+				yield* Effect.logInfo("[auth/refresh] Constructed schema success response", {
+					attemptId,
+					outcome: "success_response",
+				})
+
+				return response
 			}).pipe(
 				Effect.tapError((error) =>
 					Effect.logError("[auth/refresh] Refresh request failed", {
