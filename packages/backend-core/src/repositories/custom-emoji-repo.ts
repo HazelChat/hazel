@@ -6,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class CustomEmojiRepo extends ServiceMap.Service<CustomEmojiRepo>()("CustomEmojiRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.customEmojisTable, { insert: CustomEmoji.Insert, update: CustomEmoji.Update }, {
-			idColumn: "id",
-			name: "CustomEmoji",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.customEmojisTable,
+			{ insert: CustomEmoji.Insert, update: CustomEmoji.Update },
+			{
+				idColumn: "id",
+				name: "CustomEmoji",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByOrgAndName = (organizationId: OrganizationId, name: string) =>

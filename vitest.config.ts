@@ -5,6 +5,7 @@ export default defineConfig({
 		projects: [
 			"packages/*",
 			"apps/backend",
+			"apps/cluster",
 			"apps/electric-proxy",
 			"apps/link-preview-worker",
 			"apps/web",

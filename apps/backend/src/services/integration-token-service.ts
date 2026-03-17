@@ -4,7 +4,6 @@ import { IntegrationConnection } from "@hazel/domain/models"
 import { GitHub } from "@hazel/integrations"
 import { IntegrationConnectionId as IntegrationConnectionIdSchema } from "@hazel/schema"
 import { ServiceMap, Effect, Layer, Option, PartitionedSemaphore, Redacted, Schema } from "effect"
-import { DatabaseLive } from "./database"
 import { type EncryptedToken, IntegrationEncryption } from "./integration-encryption"
 import { OAuthHttpClient } from "./oauth/oauth-http-client"
 import { type OAuthIntegrationProvider, loadProviderConfig } from "./oauth/provider-config"
@@ -442,7 +441,6 @@ export class IntegrationTokenService extends ServiceMap.Service<IntegrationToken
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
-		Layer.provide(DatabaseLive),
 		Layer.provide(IntegrationEncryption.layer),
 		Layer.provide(IntegrationTokenRepo.layer),
 		Layer.provide(IntegrationConnectionRepo.layer),

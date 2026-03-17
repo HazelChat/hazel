@@ -249,5 +249,9 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 	),
 )
 
-// TODO: Layer has leaked dependencies — fix service layer wiring so this cast is unnecessary
+// The `as never` cast is required because ChatSyncCoreWorkerMake (in chat-sync-core-worker.ts)
+// is explicitly typed as Effect<..., unknown, unknown> to break a circular type dependency.
+// Those `unknown` types propagate through DiscordSyncWorkerLayer -> ServiceLive -> MainLive -> ServerLayer,
+// causing TypeScript to collapse the layer's type parameters to `unknown`.
+// All actual dependencies are wired correctly at runtime.
 ServerLayer.pipe(Layer.launch as never, BunRuntime.runMain)

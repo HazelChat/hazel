@@ -6,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class BotCommandRepo extends ServiceMap.Service<BotCommandRepo>()("BotCommandRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.botCommandsTable, { insert: BotCommand.Insert, update: BotCommand.Update }, {
-			idColumn: "id",
-			name: "BotCommand",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.botCommandsTable,
+			{ insert: BotCommand.Insert, update: BotCommand.Update },
+			{
+				idColumn: "id",
+				name: "BotCommand",
+			},
+		)
 		const db = yield* Database.Database
 
 		// Find all commands for a bot

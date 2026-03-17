@@ -6,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("InvitationRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.invitationsTable, { insert: Invitation.Insert, update: Invitation.Update }, {
-			idColumn: "id",
-			name: "Invitation",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.invitationsTable,
+			{ insert: Invitation.Insert, update: Invitation.Update },
+			{
+				idColumn: "id",
+				name: "Invitation",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByWorkosId = (workosInvitationId: WorkOSInvitationId, tx?: TxFn) =>

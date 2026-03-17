@@ -10,6 +10,7 @@ import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
 import { ServiceMap, Effect, Layer, Option } from "effect"
 import { ChannelAccessSyncService } from "./channel-access-sync"
+import { DatabaseLive } from "./database"
 import { OrgResolver } from "./org-resolver"
 
 export class ConnectConversationService extends ServiceMap.Service<ConnectConversationService>()(
@@ -323,6 +324,7 @@ export class ConnectConversationService extends ServiceMap.Service<ConnectConver
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
 		Layer.provide(ChannelRepo.layer),
 		Layer.provide(ConnectParticipantRepo.layer),
 		Layer.provide(ConnectConversationRepo.layer),

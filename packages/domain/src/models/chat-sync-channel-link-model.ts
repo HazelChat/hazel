@@ -15,9 +15,7 @@ export const DiscordWebhookOutboundIdentityConfig = S.Struct({
 	webhookToken: S.NonEmptyString,
 	defaultAvatarUrl: S.optional(S.NonEmptyString),
 })
-export type DiscordWebhookOutboundIdentityConfig = S.Schema.Type<
-	typeof DiscordWebhookOutboundIdentityConfig
->
+export type DiscordWebhookOutboundIdentityConfig = S.Schema.Type<typeof DiscordWebhookOutboundIdentityConfig>
 
 export const SlackWebhookOutboundIdentityConfig = S.Struct({
 	kind: S.Literal("slack.webhook"),

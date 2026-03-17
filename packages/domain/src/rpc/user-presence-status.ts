@@ -67,9 +67,7 @@ export class UserPresenceStatusRpcs extends RpcGroup.make(
 			customMessage: Schema.optional(Schema.NullOr(Schema.String)),
 			statusEmoji: Schema.optional(Schema.NullOr(Schema.String)),
 			statusExpiresAt: Schema.optional(Schema.NullOr(JsonDate)),
-			activeChannelId: Schema.optional(
-				Schema.NullOr(UserPresenceStatus.Schema.fields.activeChannelId),
-			),
+			activeChannelId: Schema.optional(Schema.NullOr(UserPresenceStatus.Schema.fields.activeChannelId)),
 			suppressNotifications: Schema.optional(Schema.Boolean),
 		}),
 		success: UserPresenceStatusResponse,

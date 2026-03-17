@@ -74,10 +74,7 @@ export const AuthMiddlewareLive = Layer.effect(
 
 					const bot = botOption.value
 
-					// TODO: v4 migration — Set the bot's declared scopes for authorization
-					// In v4, CurrentBotScopes is a ServiceMap.Service, needs different pattern
-					const _botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
-					void _botApiScopes // Will be used when service provision is wired
+					const botApiScopes = new Set(bot.scopes ?? []) as ReadonlySet<ApiScope>
 
 					// Get the bot's user from users table
 					const userOption = yield* userRepo.findById(bot.userId).pipe(
@@ -115,7 +112,11 @@ export const AuthMiddlewareLive = Layer.effect(
 						settings: user.settings,
 					}
 
-					return yield* Effect.provideService(effect, CurrentUser.Context, botUser)
+					return yield* Effect.provideService(
+						Effect.provideService(effect, CurrentUser.Context, botUser),
+						CurrentBotScopes,
+						Option.some(botApiScopes),
+					)
 				}
 
 				// No valid authentication provided

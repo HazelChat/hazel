@@ -37,10 +37,14 @@ export interface ListByChannelParams {
 
 export class MessageRepo extends ServiceMap.Service<MessageRepo>()("MessageRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.messagesTable, { insert: Message.Insert, update: Message.Update }, {
-			idColumn: "id",
-			name: "Message",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.messagesTable,
+			{ insert: Message.Insert, update: Message.Update },
+			{
+				idColumn: "id",
+				name: "Message",
+			},
+		)
 		const db = yield* Database.Database
 
 		/**

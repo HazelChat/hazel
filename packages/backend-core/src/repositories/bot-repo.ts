@@ -1,16 +1,4 @@
-import {
-	and,
-	Database,
-	eq,
-	ilike,
-	inArray,
-	isNull,
-	Repository,
-	or,
-	schema,
-	sql,
-	type TxFn,
-} from "@hazel/db"
+import { and, Database, eq, ilike, inArray, isNull, Repository, or, schema, sql, type TxFn } from "@hazel/db"
 
 import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
@@ -18,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class BotRepo extends ServiceMap.Service<BotRepo>()("BotRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.botsTable, { insert: Bot.Insert, update: Bot.Update }, {
-			idColumn: "id",
-			name: "Bot",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.botsTable,
+			{ insert: Bot.Insert, update: Bot.Update },
+			{
+				idColumn: "id",
+				name: "Bot",
+			},
+		)
 		const db = yield* Database.Database
 
 		// Find bot by ID

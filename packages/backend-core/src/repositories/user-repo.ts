@@ -6,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
 export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.usersTable, { insert: User.Insert, update: User.Update }, {
-			idColumn: "id",
-			name: "User",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.usersTable,
+			{ insert: User.Insert, update: User.Update },
+			{
+				idColumn: "id",
+				name: "User",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByExternalId = (externalId: string, tx?: TxFn) =>

@@ -6,10 +6,14 @@ import { ServiceMap, Effect, Layer, Option } from "effect"
 
 export class ChannelRepo extends ServiceMap.Service<ChannelRepo>()("ChannelRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.channelsTable, { insert: Channel.Insert, update: Channel.Update }, {
-			idColumn: "id",
-			name: "Channel",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.channelsTable,
+			{ insert: Channel.Insert, update: Channel.Update },
+			{
+				idColumn: "id",
+				name: "Channel",
+			},
+		)
 		const db = yield* Database.Database
 
 		const findByOrgAndName = (organizationId: OrganizationId, name: string, tx?: TxFn) =>

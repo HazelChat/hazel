@@ -2,7 +2,7 @@ import { Activity } from "effect/unstable/workflow"
 import { and, Database, eq, inArray, isNull, ne, or, schema, sql } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { ChannelMemberId, NotificationId, OrganizationMemberId, UserId } from "@hazel/schema"
-import { Array, Effect, Option, Result, Schema } from "effect"
+import { Array, Effect, Option, Result } from "effect"
 
 interface OrgMemberLookupRow {
 	orgMemberId: OrganizationMemberId
@@ -314,7 +314,7 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 			return yield* Activity.make({
 				name: "CreateNotifications",
 				success: Cluster.CreateNotificationsResult,
-				error: Schema.Union([Cluster.CreateNotificationError]),
+				error: Cluster.CreateNotificationError,
 				execute: Effect.gen(function* () {
 					const db = yield* Database.Database
 					const startedAt = Date.now()

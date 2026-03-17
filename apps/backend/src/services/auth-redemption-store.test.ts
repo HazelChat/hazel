@@ -112,7 +112,13 @@ const makeStore = async () =>
 describe("AuthRedemptionStore", () => {
 	it("deduplicates concurrent redemptions and calls WorkOS once", async () => {
 		const store = await makeStore()
-		const gate = Promise.withResolvers<void>()
+		let resolveGate: () => void
+		const gate = {
+			promise: new Promise<void>((r) => {
+				resolveGate = r
+			}),
+			resolve: () => resolveGate(),
+		}
 		let calls = 0
 		const response = makeResponse()
 		const exchange = Effect.gen(function* () {

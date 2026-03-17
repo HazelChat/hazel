@@ -4,10 +4,14 @@ import { ServiceMap, Effect, Layer } from "effect"
 
 export class AttachmentRepo extends ServiceMap.Service<AttachmentRepo>()("AttachmentRepo", {
 	make: Effect.gen(function* () {
-		const baseRepo = yield* Repository.makeRepository(schema.attachmentsTable, { insert: Attachment.Insert, update: Attachment.Update }, {
-			idColumn: "id",
-			name: "Attachment",
-		})
+		const baseRepo = yield* Repository.makeRepository(
+			schema.attachmentsTable,
+			{ insert: Attachment.Insert, update: Attachment.Update },
+			{
+				idColumn: "id",
+				name: "Attachment",
+			},
+		)
 
 		return baseRepo
 	}),

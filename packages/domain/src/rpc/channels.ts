@@ -51,7 +51,7 @@ export class CreateDmChannelRequest extends Schema.Class<CreateDmChannelRequest>
 	participantIds: Schema.Array(UserId),
 	type: Schema.Literals(["direct", "single"]),
 	name: Schema.optional(Schema.String),
-	organizationId: Schema.String.check(Schema.isUUID()),
+	organizationId: OrganizationId,
 }) {}
 
 /**
@@ -111,9 +111,7 @@ export class ChannelRpcs extends RpcGroup.make(
 	Rpc.make("channel.update", {
 		payload: Schema.Struct({
 			id: ChannelId,
-		}).pipe(
-			(s: any) => Schema.Struct({ ...s.fields, ...(Channel.Patch as any).fields }) as any,
-		),
+		}).pipe(Schema.fieldsAssign((Channel.Patch as Schema.Struct<any>).fields)),
 		success: ChannelResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),
 	})

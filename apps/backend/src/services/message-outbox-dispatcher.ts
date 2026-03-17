@@ -11,6 +11,7 @@ import {
 import { Database } from "@hazel/db"
 import { ServiceMap, Effect, Layer, Redacted, Schema } from "effect"
 import { EnvVars } from "../lib/env-vars"
+import { DatabaseLive } from "./database"
 import { MessageSideEffectService } from "./message-side-effect-service"
 
 const OUTBOX_BATCH_SIZE = 100
@@ -236,6 +237,7 @@ export class MessageOutboxDispatcher extends ServiceMap.Service<MessageOutboxDis
 	},
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseLive),
 		Layer.provide(EnvVars.layer),
 		Layer.provide(MessageOutboxRepo.layer),
 		Layer.provide(MessageSideEffectService.layer),

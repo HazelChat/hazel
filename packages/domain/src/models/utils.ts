@@ -58,9 +58,8 @@ export {
 export const fields: <A extends VariantSchema.Struct<any>>(self: A) => A[typeof VariantSchema.TypeId] =
 	VariantSchema.fields
 
-export const structFields = <A extends { readonly fields: Schema.Struct.Fields }>(
-	self: A,
-): A["fields"] => self.fields
+export const structFields = <A extends { readonly fields: Schema.Struct.Fields }>(self: A): A["fields"] =>
+	self.fields
 
 export const Override: <A>(value: A) => A & Brand<"Override"> = VariantSchema.Override
 
@@ -370,11 +369,11 @@ export const expose = <
 	model: Model,
 	overrides: Partial<ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema>> = {},
 ): ExposedModel<InsertSchema, UpdateSchema, JsonSchema, CreateSchema, PatchSchema> => ({
-	Insert: overrides.Insert ?? ((model.insert as unknown) as InsertSchema),
-	Update: overrides.Update ?? ((model.update as unknown) as UpdateSchema),
-	Schema: overrides.Schema ?? ((model.json as unknown) as JsonSchema),
-	Create: overrides.Create ?? ((model.jsonCreate as unknown) as CreateSchema),
-	Patch: overrides.Patch ?? ((model.jsonUpdate as unknown) as PatchSchema),
+	Insert: overrides.Insert ?? (model.insert as unknown as InsertSchema),
+	Update: overrides.Update ?? (model.update as unknown as UpdateSchema),
+	Schema: overrides.Schema ?? (model.json as unknown as JsonSchema),
+	Create: overrides.Create ?? (model.jsonCreate as unknown as CreateSchema),
+	Patch: overrides.Patch ?? (model.jsonUpdate as unknown as PatchSchema),
 })
 
 export const exposeWithRow = <

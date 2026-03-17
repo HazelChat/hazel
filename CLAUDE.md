@@ -208,25 +208,28 @@ Without both changes, Electric sync requests for the new table will be rejected 
 
 ## Effect-TS Best Practices
 
-> **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing Effect.Service, Schema.TaggedError, Layer composition, or effect-atom code.
+> **Skill Available**: Run `/effect-best-practices` for comprehensive Effect-TS patterns. The skill auto-activates when writing ServiceMap.Service, Schema.TaggedError, Layer composition, or effect-atom code.
 
-### Always Use `Effect.Service` Instead of `Context.Tag`
+### Always Use `ServiceMap.Service` Instead of `Context.Tag`
 
-**ALWAYS** prefer `Effect.Service` over `Context.Tag` for defining services. Effect.Service provides built-in `Default` layer, automatic accessors, and proper dependency declaration.
+**ALWAYS** prefer `ServiceMap.Service` (from `effect`) over `Context.Tag` for defining services. `ServiceMap.Service` with a `make` option stores the constructor effect on the class. You must define the layer explicitly using `Layer.effect`.
 
 ```typescript
-// ✅ CORRECT - Use Effect.Service
-export class MyService extends Effect.Service<MyService>()("MyService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
+// ✅ CORRECT - Use ServiceMap.Service with make and explicit layer
+import { ServiceMap, Effect, Layer } from "effect"
+
+export class MyService extends ServiceMap.Service<MyService>()("MyService", {
+	make: Effect.gen(function* () {
 		// ... implementation
 		return {
 			/* methods */
 		}
 	}),
-}) {}
+}) {
+	static readonly layer = Layer.effect(this, this.make)
+}
 
-// Usage: MyService.Default, yield* MyService
+// Usage: MyService.layer, yield* MyService
 ```
 
 ```typescript
@@ -237,7 +240,7 @@ export class MyService extends Context.Tag("MyService")<
 		/* shape */
 	}
 >() {
-	static Default = Layer.effect(
+	static layer = Layer.effect(
 		this,
 		Effect.gen(function* () {
 			/* ... */
@@ -246,50 +249,58 @@ export class MyService extends Context.Tag("MyService")<
 }
 ```
 
+```typescript
+// ❌ WRONG - Don't use v3 Effect.Service pattern
+export class MyService extends Effect.Service<MyService>()("MyService", {
+	accessors: true,
+	effect: Effect.gen(function* () {
+		/* ... */
+	}),
+}) {}
+```
+
 **When Context.Tag is acceptable:**
 
 - Infrastructure layers with runtime injection (e.g., Cloudflare KV namespace, worker bindings)
 - Factory patterns where the resource is provided externally at runtime
 
-### Use `dependencies` Array in Effect.Service
+### Wire Dependencies with `Layer.provide`
 
-**ALWAYS** declare service dependencies in the `dependencies` array when using `Effect.Service`. This ensures proper layer composition and avoids "leaked dependencies" that require manual `Layer.provide` calls at the usage site.
+Wire service dependencies using `Layer.provide` on the layer. The v3 `dependencies` array no longer exists.
 
 ```typescript
-// ✅ CORRECT - Dependencies declared in the service
+// ✅ CORRECT - Dependencies wired via Layer.provide on the layer
+export class MyService extends ServiceMap.Service<MyService>()("MyService", {
+	make: Effect.gen(function* () {
+		const db = yield* DatabaseService
+		const cache = yield* CacheService
+		// ... implementation
+		return {
+			/* methods */
+		}
+	}),
+}) {
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(DatabaseService.layer),
+		Layer.provide(CacheService.layer),
+	)
+}
+
+// Usage is simple - MyService.layer includes all dependencies
+const MainLive = Layer.mergeAll(MyService.layer, OtherService.layer)
+```
+
+```typescript
+// ❌ WRONG - v3 dependencies array no longer exists
 export class MyService extends Effect.Service<MyService>()("MyService", {
-	accessors: true,
 	dependencies: [DatabaseService.Default, CacheService.Default],
 	effect: Effect.gen(function* () {
-		const db = yield* DatabaseService
-		const cache = yield* CacheService
-		// ... implementation
+		/* ... */
 	}),
 }) {}
-
-// Usage is simple - MyService.Default includes all dependencies
-const MainLive = Layer.mergeAll(MyService.Default, OtherService.Default)
 ```
 
-```typescript
-// ❌ WRONG - Dependencies leaked to usage site
-export class MyService extends Effect.Service<MyService>()("MyService", {
-	accessors: true,
-	effect: Effect.gen(function* () {
-		const db = yield* DatabaseService
-		const cache = yield* CacheService
-		// ... implementation
-	}),
-}) {}
-
-// Now every usage site must manually wire dependencies
-const MainLive = Layer.mergeAll(
-	MyService.Default.pipe(Layer.provide(DatabaseService.Default), Layer.provide(CacheService.Default)),
-	OtherService.Default,
-)
-```
-
-**When it's acceptable to omit dependencies:**
+**When it's acceptable to omit `Layer.provide`:**
 
 - Infrastructure layers that are globally provided (e.g., Redis, Database) may be intentionally "leaked" to be provided once at the application root
 - When a dependency is explicitly meant to be provided by the consumer
