@@ -2,6 +2,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { UserPresenceStatusRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { withRemapDbErrors } from "@hazel/domain"
+import { MarkOfflineResponse } from "@hazel/domain/http"
 import { Effect } from "effect"
 import { HazelApi } from "../api"
 
@@ -26,9 +27,9 @@ export const HttpPresencePublicLive = HttpApiBuilder.group(HazelApi, "presencePu
 					)
 					.pipe(withRemapDbErrors("UserPresenceStatus", "update"))
 
-				return {
+				return new MarkOfflineResponse({
 					success: true,
-				}
+				})
 			}),
 		)
 	}),

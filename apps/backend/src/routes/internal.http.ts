@@ -2,6 +2,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpServerRequest } from "effect/unstable/http"
 import { BotRepo } from "@hazel/backend-core"
 import { InvalidBearerTokenError, UnauthorizedError } from "@hazel/domain"
+import { ValidateBotTokenResponse } from "@hazel/domain/http"
 import { Config, Effect, Option } from "effect"
 import { HazelApi } from "../api"
 
@@ -79,12 +80,12 @@ export const HttpInternalLive = HttpApiBuilder.group(HazelApi, "internal", (hand
 			const bot = botOption.value
 
 			// Return the bot identity for actor authentication
-			return {
+			return new ValidateBotTokenResponse({
 				userId: bot.userId,
 				botId: bot.id,
 				organizationId: null, // Bot's org is determined by where it's installed, not stored on the bot itself
 				scopes: bot.scopes,
-			}
+			})
 		}),
 	),
 )

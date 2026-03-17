@@ -5,6 +5,7 @@ import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain
 import {
 	BotNotFoundForUploadError,
 	OrganizationNotFoundForUploadError,
+	PresignUploadResponse,
 	UploadError,
 } from "@hazel/domain/http"
 import { AttachmentId } from "@hazel/schema"
@@ -23,6 +24,13 @@ import { checkAvatarRateLimit } from "../services/rate-limit-helpers"
 const getPublicUrlBase = (): string => {
 	return process.env.S3_PUBLIC_URL ?? ""
 }
+
+const makePresignUploadResponse = (input: {
+	uploadUrl: string
+	key: string
+	publicUrl: string
+	resourceId?: AttachmentId
+}) => new PresignUploadResponse(input)
 
 export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handlers) =>
 	Effect.gen(function* () {
@@ -69,11 +77,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							yield* Effect.logDebug(`Generated presigned URL for user avatar: ${key}`)
 
-							return {
+							return makePresignUploadResponse({
 								uploadUrl,
 								key,
 								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
-							}
+							})
 						}),
 					),
 
@@ -127,11 +135,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							yield* Effect.logDebug(`Generated presigned URL for bot avatar: ${key}`)
 
-							return {
+							return makePresignUploadResponse({
 								uploadUrl,
 								key,
 								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
-							}
+							})
 						}),
 					),
 
@@ -180,11 +188,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							yield* Effect.logDebug(`Generated presigned URL for organization avatar: ${key}`)
 
-							return {
+							return makePresignUploadResponse({
 								uploadUrl,
 								key,
 								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
-							}
+							})
 						}),
 					),
 
@@ -221,11 +229,11 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							yield* Effect.logDebug(`Generated presigned URL for custom emoji: ${key}`)
 
-							return {
+							return makePresignUploadResponse({
 								uploadUrl,
 								key,
 								publicUrl: publicUrlBase ? `${publicUrlBase}/${key}` : key,
-							}
+							})
 						}),
 					),
 
@@ -279,12 +287,12 @@ export const HttpUploadsLive = HttpApiBuilder.group(HazelApi, "uploads", (handle
 
 							yield* Effect.logDebug(`Generated presigned URL for attachment: ${attachmentId}`)
 
-							return {
+							return makePresignUploadResponse({
 								uploadUrl,
 								key: attachmentId,
 								publicUrl: publicUrlBase ? `${publicUrlBase}/${attachmentId}` : attachmentId,
 								resourceId: attachmentId,
-							}
+							})
 						}),
 					),
 
