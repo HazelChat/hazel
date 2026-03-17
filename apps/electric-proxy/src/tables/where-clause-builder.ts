@@ -1,5 +1,6 @@
-import type { PgColumn } from "drizzle-orm/pg-core"
+import { schema, sql, type SQL, type SQLWrapper } from "@hazel/db"
 import type { UserId } from "@hazel/schema"
+import { QueryBuilder, type PgColumn, type PgTable } from "drizzle-orm/pg-core"
 
 /**
  * Result of building a WHERE clause with parameterized values
@@ -8,6 +9,8 @@ export interface WhereClauseResult {
 	whereClause: string
 	params: unknown[]
 }
+
+const queryBuilder = new QueryBuilder()
 
 /**
  * Summary of placeholder/param usage in a WHERE clause.
@@ -82,6 +85,72 @@ export function assertWhereClauseParamsAreSequential(result: WhereClauseResult):
 	}
 }
 
+const getRootTable = (column: PgColumn): PgTable => column.table as PgTable
+
+export const col = (column: PgColumn) => sql.identifier(column.name)
+
+export const eqCol = <T>(column: PgColumn, value: T | SQLWrapper): SQL => sql`${col(column)} = ${value}`
+
+export const isNullCol = (column: PgColumn): SQL => sql`${col(column)} IS NULL`
+
+export const inSubquery = (column: PgColumn, subquerySql: SQL): SQL => sql`${col(column)} IN ${subquerySql}`
+
+const comma = sql.raw(", ")
+
+const buildParamList = (values: readonly unknown[]): SQL =>
+	sql`(${sql.join(values.map((value) => sql`${value}`), comma)})`
+
+const buildSubquery = (selectedColumn: PgColumn, table: PgTable, whereExpr: SQL): SQL =>
+	sql`(SELECT ${col(selectedColumn)} FROM ${table} WHERE ${whereExpr})`
+
+const extractWhereClause = (compiledSql: string): string => {
+	const match = /\bwhere\b\s+([\s\S]*)$/i.exec(compiledSql)
+	if (!match?.[1]) {
+		throw new Error(`Failed to extract WHERE clause from compiled SQL: ${compiledSql}`)
+	}
+	return match[1].trim()
+}
+
+const dedupeParams = (whereClause: string, params: unknown[]): WhereClauseResult => {
+	const dedupedParams: unknown[] = []
+	const placeholderMap = new Map<number, number>()
+
+	params.forEach((param, index) => {
+		const existingIndex = dedupedParams.findIndex((existingParam) => Object.is(existingParam, param))
+		if (existingIndex === -1) {
+			dedupedParams.push(param)
+			placeholderMap.set(index + 1, dedupedParams.length)
+			return
+		}
+
+		placeholderMap.set(index + 1, existingIndex + 1)
+	})
+
+	const dedupedWhereClause = whereClause.replace(/\$(\d+)\b/g, (_, rawIndex: string) => {
+		const nextIndex = placeholderMap.get(Number(rawIndex))
+		return `$${nextIndex ?? Number(rawIndex)}`
+	})
+
+	return {
+		whereClause: dedupedWhereClause,
+		params: dedupedParams,
+	}
+}
+
+export function sqlToWhereClause(
+	rootTable: PgTable,
+	whereExpr: SQL,
+	overrideParams?: unknown[],
+): WhereClauseResult {
+	const compiled = queryBuilder.select({ __electric_where__: sql`1` }).from(rootTable).where(whereExpr).toSQL()
+	const result = {
+		whereClause: extractWhereClause(compiled.sql),
+		params: overrideParams ?? compiled.params,
+	}
+
+	return dedupeParams(result.whereClause, result.params)
+}
+
 /**
  * Build IN clause with sorted IDs using unqualified column name.
  * Uses column.name for Electric SQL compatibility (Electric requires unqualified column names).
@@ -95,11 +164,7 @@ export function buildInClause<T extends string>(column: PgColumn, values: readon
 		return { whereClause: "false", params: [] }
 	}
 	const sorted = [...values].sort()
-	const placeholders = sorted.map((_, i) => `$${i + 1}`).join(", ")
-	return {
-		whereClause: `"${column.name}" IN (${placeholders})`,
-		params: sorted,
-	}
+	return sqlToWhereClause(getRootTable(column), sql`${col(column)} IN ${buildParamList(sorted)}`)
 }
 
 /**
@@ -119,11 +184,10 @@ export function buildInClauseWithDeletedAt<T extends string>(
 		return { whereClause: "false", params: [] }
 	}
 	const sorted = [...values].sort()
-	const placeholders = sorted.map((_, i) => `$${i + 1}`).join(", ")
-	return {
-		whereClause: `"${column.name}" IN (${placeholders}) AND "${deletedAtColumn.name}" IS NULL`,
-		params: sorted,
-	}
+	return sqlToWhereClause(
+		getRootTable(column),
+		sql`${col(column)} IN ${buildParamList(sorted)} AND ${isNullCol(deletedAtColumn)}`,
+	)
 }
 
 /**
@@ -135,9 +199,14 @@ export function buildInClauseWithDeletedAt<T extends string>(
  * @returns WhereClauseResult with parameterized WHERE clause
  */
 export function buildEqClause<T>(column: PgColumn, value: T, paramIndex = 1): WhereClauseResult {
+	const result = sqlToWhereClause(getRootTable(column), eqCol(column, value))
+	if (paramIndex === 1) {
+		return result
+	}
+
 	return {
-		whereClause: `"${column.name}" = $${paramIndex}`,
-		params: [value],
+		whereClause: result.whereClause.replace(/\$1\b/g, `$${paramIndex}`),
+		params: result.params,
 	}
 }
 
@@ -148,10 +217,7 @@ export function buildEqClause<T>(column: PgColumn, value: T, paramIndex = 1): Wh
  * @returns WhereClauseResult with no parameters
  */
 export function buildDeletedAtNullClause(deletedAtColumn: PgColumn): WhereClauseResult {
-	return {
-		whereClause: `"${deletedAtColumn.name}" IS NULL`,
-		params: [],
-	}
+	return sqlToWhereClause(getRootTable(deletedAtColumn), isNullCol(deletedAtColumn))
 }
 
 /**
@@ -177,12 +243,16 @@ export function buildNoFilterClause(): WhereClauseResult {
  * @returns WhereClauseResult with parameterized WHERE clause and subquery
  */
 export function buildChannelVisibilityClause(userId: UserId, deletedAtColumn: PgColumn): WhereClauseResult {
-	const whereClause = `"${deletedAtColumn.name}" IS NULL AND "id" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`
+	const channelAccessSubquery = buildSubquery(
+		schema.channelAccessTable.channelId,
+		schema.channelAccessTable,
+		eqCol(schema.channelAccessTable.userId, userId),
+	)
 
-	return {
-		whereClause,
-		params: [userId],
-	}
+	return sqlToWhereClause(
+		getRootTable(deletedAtColumn),
+		sql`${isNullCol(deletedAtColumn)} AND ${inSubquery(schema.channelsTable.id, channelAccessSubquery)}`,
+	)
 }
 
 /**
@@ -201,9 +271,18 @@ export function buildOrgMembershipClause(
 	orgIdColumn: PgColumn,
 	deletedAtColumn?: PgColumn,
 ): WhereClauseResult {
-	const deletedAtClause = deletedAtColumn ? `"${deletedAtColumn.name}" IS NULL AND ` : ""
-	const whereClause = `${deletedAtClause}"${orgIdColumn.name}" IN (SELECT "organizationId" FROM organization_members WHERE "userId" = $1 AND "deletedAt" IS NULL)`
-	return { whereClause, params: [userId] }
+	const orgMembershipSubquery = buildSubquery(
+		schema.organizationMembersTable.organizationId,
+		schema.organizationMembersTable,
+		sql`${eqCol(schema.organizationMembersTable.userId, userId)} AND ${isNullCol(schema.organizationMembersTable.deletedAt)}`,
+	)
+
+	const baseCondition = inSubquery(orgIdColumn, orgMembershipSubquery)
+	const whereExpr = deletedAtColumn
+		? sql`${isNullCol(deletedAtColumn)} AND ${baseCondition}`
+		: baseCondition
+
+	return sqlToWhereClause(getRootTable(orgIdColumn), whereExpr)
 }
 
 /**
@@ -222,9 +301,21 @@ export function buildUserOrgMembershipClause(
 	userIdColumn: PgColumn,
 	deletedAtColumn: PgColumn,
 ): WhereClauseResult {
-	// Filter users to those in same orgs as the current user
-	const whereClause = `"${deletedAtColumn.name}" IS NULL AND "${userIdColumn.name}" IN (SELECT "userId" FROM organization_members WHERE "organizationId" IN (SELECT "organizationId" FROM organization_members WHERE "userId" = $1 AND "deletedAt" IS NULL) AND "deletedAt" IS NULL)`
-	return { whereClause, params: [userId] }
+	const currentUserOrgIds = buildSubquery(
+		schema.organizationMembersTable.organizationId,
+		schema.organizationMembersTable,
+		sql`${eqCol(schema.organizationMembersTable.userId, userId)} AND ${isNullCol(schema.organizationMembersTable.deletedAt)}`,
+	)
+	const sharedOrgUsers = buildSubquery(
+		schema.organizationMembersTable.userId,
+		schema.organizationMembersTable,
+		sql`${col(schema.organizationMembersTable.organizationId)} IN ${currentUserOrgIds} AND ${isNullCol(schema.organizationMembersTable.deletedAt)}`,
+	)
+
+	return sqlToWhereClause(
+		getRootTable(userIdColumn),
+		sql`${isNullCol(deletedAtColumn)} AND ${inSubquery(userIdColumn, sharedOrgUsers)}`,
+	)
 }
 
 /**
@@ -238,8 +329,13 @@ export function buildUserOrgMembershipClause(
  * @returns WhereClauseResult with parameterized WHERE clause and subquery
  */
 export function buildUserMembershipClause(userId: UserId, memberIdColumn: PgColumn): WhereClauseResult {
-	const whereClause = `"${memberIdColumn.name}" IN (SELECT "id" FROM organization_members WHERE "userId" = $1 AND "deletedAt" IS NULL)`
-	return { whereClause, params: [userId] }
+	const membershipSubquery = buildSubquery(
+		schema.organizationMembersTable.id,
+		schema.organizationMembersTable,
+		sql`${eqCol(schema.organizationMembersTable.userId, userId)} AND ${isNullCol(schema.organizationMembersTable.deletedAt)}`,
+	)
+
+	return sqlToWhereClause(getRootTable(memberIdColumn), inSubquery(memberIdColumn, membershipSubquery))
 }
 
 /**
@@ -258,9 +354,17 @@ export function buildChannelAccessClause(
 	channelIdColumn: PgColumn,
 	deletedAtColumn?: PgColumn,
 ): WhereClauseResult {
-	const deletedAtClause = deletedAtColumn ? `"${deletedAtColumn.name}" IS NULL AND ` : ""
-	const whereClause = `${deletedAtClause}"${channelIdColumn.name}" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`
-	return { whereClause, params: [userId] }
+	const channelAccessSubquery = buildSubquery(
+		schema.channelAccessTable.channelId,
+		schema.channelAccessTable,
+		eqCol(schema.channelAccessTable.userId, userId),
+	)
+	const baseCondition = inSubquery(channelIdColumn, channelAccessSubquery)
+	const whereExpr = deletedAtColumn
+		? sql`${isNullCol(deletedAtColumn)} AND ${baseCondition}`
+		: baseCondition
+
+	return sqlToWhereClause(getRootTable(channelIdColumn), whereExpr)
 }
 
 /**
@@ -277,9 +381,16 @@ export function buildIntegrationConnectionClause(
 	userId: UserId,
 	deletedAtColumn: PgColumn,
 ): WhereClauseResult {
-	// Org-level connections (userId IS NULL) in user's orgs OR user's own connections
-	const whereClause = `"${deletedAtColumn.name}" IS NULL AND (("userId" IS NULL AND "organizationId" IN (SELECT "organizationId" FROM organization_members WHERE "userId" = $1 AND "deletedAt" IS NULL)) OR "userId" = $1)`
-	return { whereClause, params: [userId] }
+	const orgMembershipSubquery = buildSubquery(
+		schema.organizationMembersTable.organizationId,
+		schema.organizationMembersTable,
+		sql`${eqCol(schema.organizationMembersTable.userId, userId)} AND ${isNullCol(schema.organizationMembersTable.deletedAt)}`,
+	)
+
+	return sqlToWhereClause(
+		getRootTable(deletedAtColumn),
+		sql`${isNullCol(deletedAtColumn)} AND ((${sql.identifier("userId")} IS NULL AND ${sql.identifier("organizationId")} IN ${orgMembershipSubquery}) OR ${sql.identifier("userId")} = ${userId})`,
+	)
 }
 
 /**

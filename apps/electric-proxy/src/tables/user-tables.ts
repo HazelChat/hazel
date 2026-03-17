@@ -1,4 +1,4 @@
-import { schema } from "@hazel/db"
+import { schema, sql } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
 import type { AuthenticatedUser } from "../auth/user-auth"
 import {
@@ -9,6 +9,11 @@ import {
 	buildNoFilterClause,
 	buildOrgMembershipClause,
 	buildUserMembershipClause,
+	col,
+	eqCol,
+	inSubquery,
+	isNullCol,
+	sqlToWhereClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
 
@@ -127,6 +132,9 @@ export function getWhereClauseForTable(
 	table: AllowedTable,
 	user: AuthenticatedUser,
 ): Effect.Effect<WhereClauseResult, TableAccessError> {
+	const channelAccessSubquery = sql`(SELECT ${col(schema.channelAccessTable.channelId)} FROM ${schema.channelAccessTable} WHERE ${eqCol(schema.channelAccessTable.userId, user.internalUserId)})`
+	const connectConversationAccessSubquery = sql`(SELECT ${col(schema.connectConversationChannelsTable.conversationId)} FROM ${schema.connectConversationChannelsTable} WHERE ${isNullCol(schema.connectConversationChannelsTable.deletedAt)} AND ${col(schema.connectConversationChannelsTable.channelId)} IN ${channelAccessSubquery})`
+
 	// Chat Sync tables — handled before Match.pipe to stay within its 20-arg type limit
 	switch (table) {
 		case "chat_sync_connections":
@@ -145,15 +153,26 @@ export function getWhereClauseForTable(
 					schema.chatSyncChannelLinksTable.deletedAt,
 				),
 			)
-		case "chat_sync_message_links": {
-			const deletedAtClause = `"${schema.chatSyncMessageLinksTable.deletedAt.name}" IS NULL AND `
-			const whereClause = `${deletedAtClause}"${schema.chatSyncMessageLinksTable.channelLinkId.name}" IN (SELECT "id" FROM chat_sync_channel_links WHERE "deletedAt" IS NULL AND "hazelChannelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))`
-			return Effect.succeed({ whereClause, params: [user.internalUserId] })
-		}
-		case "connect_conversations": {
-			const whereClause = `"${schema.connectConversationsTable.deletedAt.name}" IS NULL AND "${schema.connectConversationsTable.id.name}" IN (SELECT "conversationId" FROM connect_conversation_channels WHERE "deletedAt" IS NULL AND "channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))`
-			return Effect.succeed({ whereClause, params: [user.internalUserId] })
-		}
+		case "chat_sync_message_links":
+			return Effect.succeed(
+				sqlToWhereClause(
+					schema.chatSyncMessageLinksTable,
+					sql`${isNullCol(schema.chatSyncMessageLinksTable.deletedAt)} AND ${inSubquery(
+						schema.chatSyncMessageLinksTable.channelLinkId,
+						sql`(SELECT ${col(schema.chatSyncChannelLinksTable.id)} FROM ${schema.chatSyncChannelLinksTable} WHERE ${isNullCol(schema.chatSyncChannelLinksTable.deletedAt)} AND ${col(schema.chatSyncChannelLinksTable.hazelChannelId)} IN ${channelAccessSubquery})`,
+					)}`,
+				),
+			)
+		case "connect_conversations":
+			return Effect.succeed(
+				sqlToWhereClause(
+					schema.connectConversationsTable,
+					sql`${isNullCol(schema.connectConversationsTable.deletedAt)} AND ${inSubquery(
+						schema.connectConversationsTable.id,
+						connectConversationAccessSubquery,
+					)}`,
+				),
+			)
 		case "connect_conversation_channels":
 			return Effect.succeed(
 				buildChannelAccessClause(
@@ -250,17 +269,21 @@ export function getWhereClauseForTable(
 		// ===========================================
 
 		Match.when("messages", () =>
-			Effect.succeed({
-				whereClause: `"${schema.messagesTable.deletedAt.name}" IS NULL AND (("${schema.messagesTable.conversationId.name}" IS NULL AND "${schema.messagesTable.channelId.name}" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)) OR ("${schema.messagesTable.conversationId.name}" IS NOT NULL AND "${schema.messagesTable.conversationId.name}" IN (SELECT "conversationId" FROM connect_conversation_channels WHERE "deletedAt" IS NULL AND "channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1))))`,
-				params: [user.internalUserId],
-			}),
+			Effect.succeed(
+				sqlToWhereClause(
+					schema.messagesTable,
+					sql`${isNullCol(schema.messagesTable.deletedAt)} AND ((${col(schema.messagesTable.conversationId)} IS NULL AND ${inSubquery(schema.messagesTable.channelId, channelAccessSubquery)}) OR (${col(schema.messagesTable.conversationId)} IS NOT NULL AND ${inSubquery(schema.messagesTable.conversationId, connectConversationAccessSubquery)}))`,
+				),
+			),
 		),
 
 		Match.when("message_reactions", () =>
-			Effect.succeed({
-				whereClause: `("${schema.messageReactionsTable.conversationId.name}" IS NULL AND "${schema.messageReactionsTable.channelId.name}" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)) OR ("${schema.messageReactionsTable.conversationId.name}" IS NOT NULL AND "${schema.messageReactionsTable.conversationId.name}" IN (SELECT "conversationId" FROM connect_conversation_channels WHERE "deletedAt" IS NULL AND "channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)))`,
-				params: [user.internalUserId],
-			}),
+			Effect.succeed(
+				sqlToWhereClause(
+					schema.messageReactionsTable,
+					sql`((${col(schema.messageReactionsTable.conversationId)} IS NULL AND ${inSubquery(schema.messageReactionsTable.channelId, channelAccessSubquery)}) OR (${col(schema.messageReactionsTable.conversationId)} IS NOT NULL AND ${inSubquery(schema.messageReactionsTable.conversationId, connectConversationAccessSubquery)}))`,
+				),
+			),
 		),
 
 		Match.when("attachments", () =>

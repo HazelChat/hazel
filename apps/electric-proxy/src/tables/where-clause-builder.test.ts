@@ -1,3 +1,4 @@
+import { sql } from "@hazel/db"
 import { schema } from "@hazel/db"
 import type { UserId } from "@hazel/schema"
 import { describe, expect, it } from "vitest"
@@ -5,6 +6,11 @@ import {
 	assertWhereClauseParamsAreSequential,
 	buildChannelAccessClause,
 	buildChannelVisibilityClause,
+	col,
+	eqCol,
+	inSubquery,
+	isNullCol,
+	sqlToWhereClause,
 	WhereClauseParamMismatchError,
 } from "./where-clause-builder"
 
@@ -14,10 +20,11 @@ describe("where-clause-builder channel access", () => {
 
 		expect(result.params).toEqual(["user-1"])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
-		expect(result.whereClause).toContain(
-			`"id" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"id" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 		expect(result.whereClause).not.toContain("COALESCE")
+		expect(result.whereClause).not.toContain(`"channels".`)
 	})
 
 	it("buildChannelAccessClause includes optional deletedAt and single subquery", () => {
@@ -29,10 +36,28 @@ describe("where-clause-builder channel access", () => {
 
 		expect(result.params).toEqual(["user-1"])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL AND`)
-		expect(result.whereClause).toContain(
-			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"channelId" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 		expect(result.whereClause).not.toContain("COALESCE")
+		expect(result.whereClause).not.toContain(`"messages".`)
+	})
+})
+
+describe("where-clause-builder sql compiler", () => {
+	it("compiles drizzle sql to an Electric-compatible where clause", () => {
+		const channelAccessSubquery = sql`(SELECT ${col(schema.channelAccessTable.channelId)} FROM ${schema.channelAccessTable} WHERE ${eqCol(schema.channelAccessTable.userId, "user-1" as UserId)})`
+		const result = sqlToWhereClause(
+			schema.channelsTable,
+			sql`${isNullCol(schema.channelsTable.deletedAt)} AND ${inSubquery(schema.channelsTable.id, channelAccessSubquery)}`,
+		)
+
+		expect(result.params).toEqual(["user-1"])
+		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
+		expect(result.whereClause).toMatch(
+			/"id" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
+		)
+		expect(result.whereClause).not.toContain(`"channels".`)
 	})
 })
 

@@ -17,8 +17,8 @@ describe("user table where clauses", () => {
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
-		expect(result.whereClause).toContain(`IN (SELECT "conversationId" FROM connect_conversation_channels`)
-		expect(result.whereClause).toContain(`"channelId" IN (SELECT "channelId" FROM channel_access`)
+		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
+		expect(result.whereClause).toMatch(/"channelId" IN \(SELECT "channelId" FROM "?channel_access"?/)
 	})
 
 	it("filters connect conversation channels by channel access", async () => {
@@ -26,8 +26,8 @@ describe("user table where clauses", () => {
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL AND`)
-		expect(result.whereClause).toContain(
-			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"channelId" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 	})
 
@@ -36,8 +36,8 @@ describe("user table where clauses", () => {
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL AND`)
-		expect(result.whereClause).toContain(
-			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"channelId" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 	})
 
@@ -46,23 +46,23 @@ describe("user table where clauses", () => {
 
 		expect(result.params).toEqual([testUser.internalUserId])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
-		expect(result.whereClause).toContain(
-			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"channelId" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 		expect(result.whereClause).toContain(`"conversationId" IS NULL`)
 		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toContain(`IN (SELECT "conversationId" FROM connect_conversation_channels`)
+		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
 	})
 
 	it("filters message reactions by channel access and conversation access", async () => {
 		const result = await run(getWhereClauseForTable("message_reactions", testUser))
 
 		expect(result.params).toEqual([testUser.internalUserId])
-		expect(result.whereClause).toContain(
-			`"channelId" IN (SELECT "channelId" FROM channel_access WHERE "userId" = $1)`,
+		expect(result.whereClause).toMatch(
+			/"channelId" IN \(SELECT "channelId" FROM "?channel_access"? WHERE "userId" = \$1\)/,
 		)
 		expect(result.whereClause).toContain(`"conversationId" IS NULL`)
 		expect(result.whereClause).toContain(`"conversationId" IS NOT NULL`)
-		expect(result.whereClause).toContain(`IN (SELECT "conversationId" FROM connect_conversation_channels`)
+		expect(result.whereClause).toMatch(/IN \(SELECT "conversationId" FROM "?connect_conversation_channels"?/)
 	})
 })
