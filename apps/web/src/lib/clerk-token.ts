@@ -12,6 +12,7 @@ interface ClerkLike {
 	session?: {
 		getToken: (options?: { template?: string }) => Promise<string | null>
 	} | null
+	redirectToSignIn?: (options: { redirectUrl: string }) => Promise<void>
 }
 
 declare global {

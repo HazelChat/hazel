@@ -1,3 +1,4 @@
+import { useAuth as useClerkAuth } from "@clerk/react"
 import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/_app")({
 
 function RouteComponent() {
 	const { user, error, isLoading } = useAuth()
+	const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth()
 	const router = useRouter()
 	usePostHogIdentify()
 	const search = useSearch({ from: "/_app" }) as {
@@ -52,22 +54,26 @@ function RouteComponent() {
 		})
 	}, [router])
 
-	// Handle redirect to login - must be in useEffect, not during render
+	// Redirect to login only when Clerk has definitively confirmed the user is
+	// not signed in. We used to redirect whenever `useAuth().user` was null,
+	// which fired a redirect loop mid-handshake (Clerk sets `__clerk_handshake`
+	// in the URL while finalising the session).
 	useEffect(() => {
-		if (user || isLoading) return // Don't redirect if logged in or still loading
-
-		const hasAuthError =
-			Option.isSome(error) && !["SessionLoadError", "WorkOSUserFetchError"].includes(error.value._tag)
-		const needsLogin = !user && (hasAuthError || Option.isNone(error))
-
-		if (!needsLogin) return
-
 		if (isTauri()) {
-			navigateToDesktopLogin()
-		} else {
-			void restartWebLogin({ returnTo: currentReturnTo })
+			// Desktop still uses the legacy flow pending the Tauri migration
+			if (user || isLoading) return
+			const hasAuthError = Option.isSome(error)
+			if (!user && (hasAuthError || Option.isNone(error))) {
+				navigateToDesktopLogin()
+			}
+			return
 		}
-	}, [currentReturnTo, user, error, isLoading, navigateToDesktopLogin])
+
+		// Web: wait for Clerk to finish loading before making any redirect call.
+		if (!clerkLoaded) return
+		if (isSignedIn) return // signed in — user.me will resolve shortly
+		void restartWebLogin({ returnTo: currentReturnTo })
+	}, [currentReturnTo, user, error, isLoading, clerkLoaded, isSignedIn, navigateToDesktopLogin])
 
 	// Handle schema validation errors from Electric collections after deploys.
 	// A stale cache can cause permanent decode failures — reload once to bust it.

@@ -5,7 +5,7 @@ import { Loader } from "~/components/loader"
 import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
-import { useAuth } from "~/lib/auth"
+import { restartWebLogin, useAuth } from "~/lib/auth"
 
 export const Route = createFileRoute("/_app/select-organization/")({
 	component: RouteComponent,
@@ -40,7 +40,9 @@ function RouteComponent() {
 	}
 
 	if (!user) {
-		return <Navigate to="/auth/login" search={{ returnTo: "/select-organization" }} />
+		// Kick off Clerk's hosted sign-in; `restartWebLogin` handles the return URL.
+		restartWebLogin({ returnTo: "/select-organization" })
+		return <Loader />
 	}
 
 	if (userOrganizations && userOrganizations.length === 1) {

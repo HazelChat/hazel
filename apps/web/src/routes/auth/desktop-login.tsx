@@ -5,7 +5,8 @@
  */
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
-import { createFileRoute, Navigate, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
+import { restartWebLogin } from "~/lib/auth"
 import {
 	desktopAuthErrorAtom,
 	desktopAuthStatusAtom,
@@ -34,9 +35,10 @@ function DesktopLoginPage() {
 	const login = useAtomSet(desktopLoginAtom)
 	const loginFromClipboard = useAtomSet(desktopLoginFromClipboardAtom)
 
-	// Redirect web users to regular login
+	// Web users don't see this page — kick them to Clerk's hosted sign-in.
 	if (!isTauri()) {
-		return <Navigate to="/auth/login" />
+		restartWebLogin({ returnTo: "/" })
+		return null
 	}
 
 	const isLoading = authStatus === "loading"

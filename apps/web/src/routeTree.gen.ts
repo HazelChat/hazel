@@ -13,11 +13,8 @@ import { Route as DevLayoutRouteImport } from './routes/_dev/layout'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as JoinSlugRouteImport } from './routes/join/$slug'
-import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
 import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as DevUiLayoutRouteImport } from './routes/_dev/ui/layout'
 import { Route as AppOrgSlugLayoutRouteImport } from './routes/_app/$orgSlug/layout'
 import { Route as DevEmbedsIndexRouteImport } from './routes/dev/embeds/index'
@@ -88,16 +85,6 @@ const JoinSlugRoute = JoinSlugRouteImport.update({
   path: '/join/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthSignUpRoute = AuthSignUpRouteImport.update({
-  id: '/auth/sign-up',
-  path: '/auth/sign-up',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthDesktopLoginRoute = AuthDesktopLoginRouteImport.update({
   id: '/auth/desktop-login',
   path: '/auth/desktop-login',
@@ -106,11 +93,6 @@ const AuthDesktopLoginRoute = AuthDesktopLoginRouteImport.update({
 const AuthDesktopCallbackRoute = AuthDesktopCallbackRouteImport.update({
   id: '/auth/desktop-callback',
   path: '/auth/desktop-callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevUiLayoutRoute = DevUiLayoutRouteImport.update({
@@ -407,11 +389,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
@@ -466,11 +445,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/ui/agent-steps': typeof DevUiAgentStepsRoute
@@ -521,11 +497,8 @@ export interface FileRoutesById {
   '/_dev': typeof DevLayoutRouteWithChildren
   '/_app/$orgSlug': typeof AppOrgSlugLayoutRouteWithChildren
   '/_dev/ui': typeof DevUiLayoutRouteWithChildren
-  '/auth/callback': typeof AuthCallbackRoute
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
@@ -584,11 +557,8 @@ export interface FileRouteTypes {
     | '/'
     | '/$orgSlug'
     | '/ui'
-    | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
-    | '/auth/login'
-    | '/auth/sign-up'
     | '/join/$slug'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
@@ -643,11 +613,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ui'
-    | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
-    | '/auth/login'
-    | '/auth/sign-up'
     | '/join/$slug'
     | '/onboarding/setup-organization'
     | '/ui/agent-steps'
@@ -697,11 +664,8 @@ export interface FileRouteTypes {
     | '/_dev'
     | '/_app/$orgSlug'
     | '/_dev/ui'
-    | '/auth/callback'
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
-    | '/auth/login'
-    | '/auth/sign-up'
     | '/join/$slug'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
@@ -758,11 +722,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppLayoutRoute: typeof AppLayoutRouteWithChildren
   DevLayoutRoute: typeof DevLayoutRouteWithChildren
-  AuthCallbackRoute: typeof AuthCallbackRoute
   AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
   AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignUpRoute: typeof AuthSignUpRoute
   JoinSlugRoute: typeof JoinSlugRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
@@ -801,20 +762,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/sign-up': {
-      id: '/auth/sign-up'
-      path: '/auth/sign-up'
-      fullPath: '/auth/sign-up'
-      preLoaderRoute: typeof AuthSignUpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/desktop-login': {
       id: '/auth/desktop-login'
       path: '/auth/desktop-login'
@@ -827,13 +774,6 @@ declare module '@tanstack/react-router' {
       path: '/auth/desktop-callback'
       fullPath: '/auth/desktop-callback'
       preLoaderRoute: typeof AuthDesktopCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dev/ui': {
@@ -1431,11 +1371,8 @@ const DevLayoutRouteWithChildren = DevLayoutRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AppLayoutRoute: AppLayoutRouteWithChildren,
   DevLayoutRoute: DevLayoutRouteWithChildren,
-  AuthCallbackRoute: AuthCallbackRoute,
   AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
   AuthDesktopLoginRoute: AuthDesktopLoginRoute,
-  AuthLoginRoute: AuthLoginRoute,
-  AuthSignUpRoute: AuthSignUpRoute,
   JoinSlugRoute: JoinSlugRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,
