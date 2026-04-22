@@ -571,6 +571,7 @@
         "hazel-setup": "./src/index.ts",
       },
       "dependencies": {
+        "@clerk/backend": "^3.3.0",
         "@effect/platform-bun": "catalog:effect",
         "@hazel/db": "workspace:*",
         "@hazel/schema": "workspace:*",

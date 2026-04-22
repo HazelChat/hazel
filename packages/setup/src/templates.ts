@@ -16,6 +16,9 @@ export interface EnvValue {
 
 /** Existing configuration extracted from .env files */
 export interface ExistingConfig {
+	clerkSecretKey?: EnvValue
+	clerkPublishableKey?: EnvValue
+	clerkWebhookSecret?: EnvValue
 	workosApiKey?: EnvValue
 	workosClientId?: EnvValue
 	encryptionKey?: EnvValue
@@ -46,7 +49,17 @@ const getEnvValue = (result: EnvReadResult, key: string): EnvValue | undefined =
 export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => {
 	const config: ExistingConfig = {}
 
-	// WorkOS
+	// Clerk
+	const clerkSecretKey = getEnvValue(result, "CLERK_SECRET_KEY")
+	if (clerkSecretKey) config.clerkSecretKey = clerkSecretKey
+
+	const clerkPublishableKey = getEnvValue(result, "CLERK_PUBLISHABLE_KEY")
+	if (clerkPublishableKey) config.clerkPublishableKey = clerkPublishableKey
+
+	const clerkWebhookSecret = getEnvValue(result, "CLERK_WEBHOOK_SECRET")
+	if (clerkWebhookSecret) config.clerkWebhookSecret = clerkWebhookSecret
+
+	// WorkOS (legacy — migrating away, kept readable so existing dev envs still work pre-cutover)
 	const workosApiKey = getEnvValue(result, "WORKOS_API_KEY")
 	if (workosApiKey) config.workosApiKey = workosApiKey
 
@@ -118,6 +131,9 @@ export const getLocalMinioConfig = (): S3Config => ({
 })
 
 export interface Config {
+	clerkSecretKey: string
+	clerkPublishableKey: string
+	clerkWebhookSecret: string
 	workosApiKey: string
 	workosClientId: string
 	secrets: {
@@ -144,6 +160,8 @@ export const ENV_TEMPLATES = {
 		VITE_BACKEND_URL: "https://localhost:3004",
 		VITE_CLUSTER_URL: "http://localhost:3020",
 		VITE_ELECTRIC_URL: "https://localhost:5133/v1/shape",
+		VITE_CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
+		// WorkOS vars kept for legacy dev flows; harmless once Clerk is fully swapped in.
 		VITE_WORKOS_CLIENT_ID: config.workosClientId,
 		VITE_WORKOS_REDIRECT_URI: "http://localhost:3000/auth/callback",
 		VITE_R2_PUBLIC_URL: config.s3PublicUrl ?? "",
@@ -169,7 +187,12 @@ export const ENV_TEMPLATES = {
 			// Electric
 			ELECTRIC_URL: "http://localhost:3333",
 
-			// WorkOS
+			// Clerk (primary auth provider)
+			CLERK_SECRET_KEY: config.clerkSecretKey,
+			CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
+			CLERK_WEBHOOK_SECRET: config.clerkWebhookSecret,
+
+			// WorkOS (legacy — keeps legacy tokens + webhooks working during the migration)
 			WORKOS_API_KEY: config.workosApiKey,
 			WORKOS_CLIENT_ID: config.workosClientId,
 			WORKOS_COOKIE_DOMAIN: "localhost",

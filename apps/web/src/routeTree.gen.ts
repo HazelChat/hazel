@@ -13,6 +13,7 @@ import { Route as DevLayoutRouteImport } from './routes/_dev/layout'
 import { Route as AppLayoutRouteImport } from './routes/_app/layout'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as JoinSlugRouteImport } from './routes/join/$slug'
+import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthDesktopLoginRouteImport } from './routes/auth/desktop-login'
 import { Route as AuthDesktopCallbackRouteImport } from './routes/auth/desktop-callback'
@@ -85,6 +86,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const JoinSlugRoute = JoinSlugRouteImport.update({
   id: '/join/$slug',
   path: '/join/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthSignUpRoute = AuthSignUpRouteImport.update({
+  id: '/auth/sign-up',
+  path: '/auth/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
   '/$orgSlug/notifications': typeof AppOrgSlugNotificationsLayoutRouteWithChildren
@@ -463,6 +470,7 @@ export interface FileRoutesByTo {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/onboarding/setup-organization': typeof AppOnboardingSetupOrganizationRoute
   '/ui/agent-steps': typeof DevUiAgentStepsRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/auth/desktop-callback': typeof AuthDesktopCallbackRoute
   '/auth/desktop-login': typeof AuthDesktopLoginRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
   '/join/$slug': typeof JoinSlugRoute
   '/_app/': typeof AppIndexRoute
   '/_app/$orgSlug/my-settings': typeof AppOrgSlugMySettingsLayoutRouteWithChildren
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/auth/sign-up'
     | '/join/$slug'
     | '/$orgSlug/my-settings'
     | '/$orgSlug/notifications'
@@ -637,6 +647,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/auth/sign-up'
     | '/join/$slug'
     | '/onboarding/setup-organization'
     | '/ui/agent-steps'
@@ -690,6 +701,7 @@ export interface FileRouteTypes {
     | '/auth/desktop-callback'
     | '/auth/desktop-login'
     | '/auth/login'
+    | '/auth/sign-up'
     | '/join/$slug'
     | '/_app/'
     | '/_app/$orgSlug/my-settings'
@@ -750,6 +762,7 @@ export interface RootRouteChildren {
   AuthDesktopCallbackRoute: typeof AuthDesktopCallbackRoute
   AuthDesktopLoginRoute: typeof AuthDesktopLoginRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignUpRoute: typeof AuthSignUpRoute
   JoinSlugRoute: typeof JoinSlugRoute
   DevEmbedsDemoRoute: typeof DevEmbedsDemoRoute
   DevEmbedsGithubRoute: typeof DevEmbedsGithubRoute
@@ -786,6 +799,13 @@ declare module '@tanstack/react-router' {
       path: '/join/$slug'
       fullPath: '/join/$slug'
       preLoaderRoute: typeof JoinSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/sign-up': {
+      id: '/auth/sign-up'
+      path: '/auth/sign-up'
+      fullPath: '/auth/sign-up'
+      preLoaderRoute: typeof AuthSignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/login': {
@@ -1415,6 +1435,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthDesktopCallbackRoute: AuthDesktopCallbackRoute,
   AuthDesktopLoginRoute: AuthDesktopLoginRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthSignUpRoute: AuthSignUpRoute,
   JoinSlugRoute: JoinSlugRoute,
   DevEmbedsDemoRoute: DevEmbedsDemoRoute,
   DevEmbedsGithubRoute: DevEmbedsGithubRoute,

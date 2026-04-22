@@ -89,52 +89,101 @@ export const envCommand = Command.make(
 				}
 			}
 
-			// Step 2: WorkOS setup
-			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 2: WorkOS Authentication \u2500\u2500\u2500"))
-			yield* Console.log("WorkOS provides user authentication.")
-			if (!existingConfig.workosApiKey) {
-				yield* Console.log(`Create a free account at ${pc.cyan("https://dashboard.workos.com")}\n`)
-				yield* Console.log(pc.dim("1. Create a new project"))
-				yield* Console.log(pc.dim("2. Go to API Keys \u2192 copy your API key (sk_test_...)"))
-				yield* Console.log(pc.dim("3. Go to Configuration \u2192 copy Client ID (client_...)"))
-				yield* Console.log(pc.dim("4. Add redirect URI: http://localhost:3003/auth/callback\n"))
+			// Step 2: Clerk setup
+			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 2: Clerk Authentication \u2500\u2500\u2500"))
+			yield* Console.log("Clerk provides user authentication.")
+			if (!existingConfig.clerkSecretKey) {
+				yield* Console.log(`Create a free account at ${pc.cyan("https://dashboard.clerk.com")}\n`)
+				yield* Console.log(pc.dim("1. Create a new application"))
+				yield* Console.log(pc.dim("2. Go to API Keys \u2192 copy the Publishable key (pk_test_...)"))
+				yield* Console.log(pc.dim("3. Go to API Keys \u2192 copy the Secret key (sk_test_...)"))
+				yield* Console.log(
+					pc.dim(
+						"4. Go to Webhooks \u2192 add endpoint http://localhost:3003/webhooks/clerk \u2192 copy signing secret (whsec_...)",
+					),
+				)
+				yield* Console.log(
+					pc.dim("5. Enable Organizations + Slugs in the dashboard (required by this app)\n"),
+				)
 			} else {
 				yield* Console.log(
 					pc.dim("(Using existing credentials - press Enter to keep or type new value)\n"),
 				)
 			}
 
-			const workosApiKey = yield* promptWithExisting({
-				key: "WORKOS_API_KEY",
-				message: "Enter your WorkOS API Key",
+			const clerkSecretKey = yield* promptWithExisting({
+				key: "CLERK_SECRET_KEY",
+				message: "Enter your Clerk Secret Key",
 				envResult,
 				validate: (s) =>
 					s.startsWith("sk_") ? Effect.succeed(s) : Effect.fail("Must start with sk_"),
 				isSecret: true,
 			})
 
-			const workosClientId = yield* promptWithExisting({
-				key: "WORKOS_CLIENT_ID",
-				message: "Enter your WorkOS Client ID",
+			const clerkPublishableKey = yield* promptWithExisting({
+				key: "CLERK_PUBLISHABLE_KEY",
+				message: "Enter your Clerk Publishable Key",
 				envResult,
 				validate: (s) =>
-					s.startsWith("client_") ? Effect.succeed(s) : Effect.fail("Must start with client_"),
+					s.startsWith("pk_") ? Effect.succeed(s) : Effect.fail("Must start with pk_"),
 			})
 
-			// Validate WorkOS credentials
+			const clerkWebhookSecret = yield* promptWithExisting({
+				key: "CLERK_WEBHOOK_SECRET",
+				message: "Enter your Clerk Webhook Signing Secret",
+				envResult,
+				validate: (s) =>
+					s.startsWith("whsec_") ? Effect.succeed(s) : Effect.fail("Must start with whsec_"),
+				isSecret: true,
+			})
+
+			// Validate Clerk credentials
 			if (!skipValidation) {
-				yield* Console.log(pc.dim("\nValidating WorkOS credentials..."))
+				yield* Console.log(pc.dim("\nValidating Clerk credentials..."))
 				const validator = yield* CredentialValidator
 				const result = yield* validator
-					.validateWorkOS(workosApiKey, workosClientId)
+					.validateClerk(clerkSecretKey, clerkPublishableKey)
 					.pipe(Effect.result)
 
 				if (result._tag === "Failure") {
-					yield* Console.log(pc.red(`\u274C WorkOS validation failed: ${result.failure.message}`))
+					yield* Console.log(pc.red(`\u274C Clerk validation failed: ${result.failure.message}`))
 					yield* Console.log(pc.dim("Please check your credentials and try again."))
 					return
 				}
-				yield* Console.log(pc.green("\u2713") + " WorkOS credentials valid\n")
+				yield* Console.log(pc.green("\u2713") + " Clerk credentials valid\n")
+			}
+
+			// Legacy WorkOS credentials — kept optional during the migration so existing
+			// dev environments keep working until the cutover. New projects can skip.
+			yield* Console.log(
+				pc.cyan("\u2500\u2500\u2500 Step 2b: Legacy WorkOS (optional during migration) \u2500\u2500\u2500"),
+			)
+			const configureWorkOS = yield* Prompt.confirm({
+				message: "Configure legacy WorkOS credentials? (skip for new setups)",
+				initial: !!existingConfig.workosApiKey,
+			})
+
+			let workosApiKey = ""
+			let workosClientId = ""
+			if (configureWorkOS) {
+				workosApiKey = yield* promptWithExisting({
+					key: "WORKOS_API_KEY",
+					message: "Enter your WorkOS API Key",
+					envResult,
+					validate: (s) =>
+						s.startsWith("sk_") ? Effect.succeed(s) : Effect.fail("Must start with sk_"),
+					isSecret: true,
+				})
+
+				workosClientId = yield* promptWithExisting({
+					key: "WORKOS_CLIENT_ID",
+					message: "Enter your WorkOS Client ID",
+					envResult,
+					validate: (s) =>
+						s.startsWith("client_")
+							? Effect.succeed(s)
+							: Effect.fail("Must start with client_"),
+				})
 			}
 
 			// Step 3: Secrets - reuse existing or generate new
@@ -365,6 +414,9 @@ export const envCommand = Command.make(
 			}
 
 			const config: Config = {
+				clerkSecretKey,
+				clerkPublishableKey,
+				clerkWebhookSecret,
 				workosApiKey,
 				workosClientId,
 				secrets: generatedSecrets,

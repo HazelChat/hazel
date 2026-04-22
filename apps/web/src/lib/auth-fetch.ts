@@ -10,6 +10,7 @@
 
 import { Effect } from "effect"
 import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
+import { getClerkToken } from "~/lib/clerk-token"
 import { TokenStorage } from "./services/desktop/token-storage"
 import { WebTokenStorage } from "./services/web/token-storage"
 import { runtime } from "./services/common/runtime"
@@ -78,9 +79,15 @@ const makeAuthenticatedRequest = async (
  * - Dispatch auth:session-expired event if auth fails completely
  */
 export const authenticatedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-	// Wait for any in-progress token refresh before making the request
-	await waitForRefresh()
+	// Prefer a Clerk session token if the user is signed in with Clerk.
+	// Clerk manages its own refresh, so no waitForRefresh / forceRefresh plumbing needed.
+	const clerkToken = await getClerkToken()
+	if (clerkToken) {
+		return makeAuthenticatedRequest(input, init, clerkToken)
+	}
 
+	// Legacy WorkOS path for pre-migration sessions.
+	await waitForRefresh()
 	const token = await getAccessToken()
 
 	// If we have a token, use Bearer authentication

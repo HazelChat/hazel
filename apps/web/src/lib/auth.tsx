@@ -1,9 +1,11 @@
+import { useClerk } from "@clerk/react"
 import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { desktopInitAtom, desktopLogoutAtom, desktopTokenSchedulerAtom } from "~/atoms/desktop-auth"
 import { webInitAtom, webLogoutAtom, webTokenSchedulerAtom } from "~/atoms/web-auth"
 import { normalizeAuthReturnTo, recoverSession, startLogin } from "~/lib/auth-flow"
+import { hasClerkSession } from "~/lib/clerk-token"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
 
@@ -46,19 +48,18 @@ export const userAtom = Atom.make((get) => get(authStateAtom).user)
 
 export function useAuth() {
 	const { user: userResult, isLoading } = useAtomValue(authStateAtom)
+	const clerk = useClerk()
 
 	// Initialize auth atoms for both platforms
 	// Each atom internally checks platform and returns early if not applicable
 	// Desktop: loads stored tokens from Tauri store, starts refresh scheduler
 	useAtomValue(desktopInitAtom)
 	useAtomValue(desktopTokenSchedulerAtom)
-	// Web: loads stored tokens from localStorage, starts refresh scheduler
+	// Web: loads stored tokens from localStorage, starts refresh scheduler (legacy WorkOS path)
 	useAtomValue(webInitAtom)
 	useAtomValue(webTokenSchedulerAtom)
 
 	const desktopLogout = useAtomSet(desktopLogoutAtom)
-
-	// Web auth action atoms
 	const webLogout = useAtomSet(webLogoutAtom)
 
 	const login = (options?: LoginOptions) => {
@@ -66,16 +67,15 @@ export function useAuth() {
 			options?.returnTo || location.pathname + location.search + location.hash,
 		)
 
-		if (isTauri()) {
-			void startLogin("desktop", {
-				returnTo,
-				organizationId: options?.organizationId,
-				invitationToken: options?.invitationToken,
-			})
+		// Web: route to our Clerk sign-in page. Desktop still uses the legacy WorkOS flow
+		// until the desktop migration follow-up lands.
+		if (!isTauri()) {
+			const search = new URLSearchParams({ returnTo })
+			window.location.assign(`/auth/login?${search.toString()}`)
 			return
 		}
 
-		void startLogin("web", {
+		void startLogin("desktop", {
 			returnTo,
 			organizationId: options?.organizationId,
 			invitationToken: options?.invitationToken,
@@ -88,6 +88,12 @@ export function useAuth() {
 			return
 		}
 
+		// If we have a Clerk session, sign out of Clerk; otherwise run the legacy
+		// WorkOS logout path. During the overlap, both may be set — be defensive.
+		if (hasClerkSession()) {
+			await clerk.signOut({ redirectUrl: options?.redirectTo ?? "/auth/login" })
+			return
+		}
 		webLogout(options)
 	}
 

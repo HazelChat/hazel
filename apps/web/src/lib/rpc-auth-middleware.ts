@@ -9,11 +9,20 @@ import { RpcMiddleware } from "effect/unstable/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { waitForRefreshEffect, getAccessTokenEffect } from "~/lib/auth-token"
+import { getClerkToken } from "~/lib/clerk-token"
 
 export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request, next }) =>
 	Effect.gen(function* () {
-		yield* waitForRefreshEffect
+		// Prefer a Clerk session token if the user is signed in with Clerk.
+		// Fall back to the legacy WorkOS token path otherwise — this lets existing
+		// sessions keep working during the migration window.
+		const clerkToken = yield* Effect.promise(() => getClerkToken())
+		if (clerkToken) {
+			const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${clerkToken}`)
+			return yield* next({ ...request, headers: newHeaders })
+		}
 
+		yield* waitForRefreshEffect
 		const token = yield* getAccessTokenEffect
 
 		if (token) {
