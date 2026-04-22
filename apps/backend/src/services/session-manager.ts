@@ -25,6 +25,7 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 			findByExternalId: userRepo.findByExternalId,
 			upsertWorkOSUser: userRepo.upsertWorkOSUser,
 			upsertClerkUser: userRepo.upsertClerkUser,
+			setExternalIdById: userRepo.setExternalIdById,
 			update: userRepo.update,
 		}
 

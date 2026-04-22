@@ -80,6 +80,25 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 			tx?: TxFn,
 		) => upsertByExternalId(data, options, tx)
 
+		/**
+		 * Rewrite a user's externalId in place (by primary key).
+		 * Used for the WorkOS → Clerk migration: when a user signs in with Clerk
+		 * for the first time, we find their row by legacy WorkOS ID and flip the
+		 * column to the Clerk ID.
+		 */
+		const setExternalIdById = (id: UserId, externalId: string, tx?: TxFn) =>
+			db
+				.makeQuery((execute, args: { id: UserId; externalId: string }) =>
+					execute((client) =>
+						client
+							.update(schema.usersTable)
+							.set({ externalId: args.externalId, updatedAt: new Date() })
+							.where(eq(schema.usersTable.id, args.id))
+							.returning(),
+					),
+				)({ id, externalId }, tx)
+				.pipe(Effect.map((results) => results[0]))
+
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>
 				execute((client) =>
@@ -125,6 +144,7 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 			upsertByExternalId,
 			upsertWorkOSUser,
 			upsertClerkUser,
+			setExternalIdById,
 			findAllActive,
 			softDelete,
 			softDeleteByExternalId,

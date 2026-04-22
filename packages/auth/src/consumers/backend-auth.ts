@@ -63,6 +63,10 @@ export interface UserRepoLike {
 		timezone: string | null
 		deletedAt: null
 	}) => Effect.Effect<UserRow, { _tag: "DatabaseError" }, any>
+	setExternalIdById: (
+		id: UserId,
+		externalId: string,
+	) => Effect.Effect<UserRow, { _tag: "DatabaseError" }, any>
 	update: (data: {
 		id: UserId
 		firstName?: string
@@ -458,6 +462,44 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 							const clerkUser = yield* clerk.getUser(claims.sub)
 							const email =
 								claims.email ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""
+
+							// Pre-cutover: our DB has users keyed by their WorkOS ID. During
+							// data migration we stashed the old ID in Clerk's publicMetadata.
+							// If we can find the user by their legacy WorkOS ID, flip the
+							// externalId to the Clerk ID in place — effectively running
+							// the Phase G backfill on a per-user basis at sign-in time.
+							const legacyWorkOSUserId =
+								(clerkUser.publicMetadata as { legacyWorkOSUserId?: string } | null)
+									?.legacyWorkOSUserId
+							if (legacyWorkOSUserId) {
+								const legacyOption = yield* userRepo
+									.findByExternalId(legacyWorkOSUserId)
+									.pipe(
+										Effect.catchTags({
+											DatabaseError: () => Effect.succeed(Option.none()),
+										}),
+									)
+								if (Option.isSome(legacyOption)) {
+									yield* Effect.logInfo(
+										`[clerk-auth] Migrating user ${legacyOption.value.id} externalId ${legacyWorkOSUserId} → ${claims.sub}`,
+									)
+									const migrated = yield* userRepo
+										.setExternalIdById(legacyOption.value.id, claims.sub)
+										.pipe(
+											Effect.catchTags({
+												DatabaseError: (err) =>
+													Effect.fail(
+														new SessionLoadError({
+															message: "Failed to migrate externalId",
+															detail: String(err),
+														}),
+													),
+											}),
+										)
+									return migrated
+								}
+							}
+
 							return yield* syncUserFromClerk(
 								userRepo,
 								claims.sub,
