@@ -191,31 +191,15 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		[createStepHandler],
 	)
 
-	// Async org setup handler
+	// Org setup handler — the step uses Clerk's <CreateOrganization/> so by the
+	// time we land here, the org already exists in both Clerk and (via webhook)
+	// our DB. Just record it and advance.
 	const handleOrgSetupContinue = useCallback(
 		async (data: { name: string; slug: string; organizationId: string }) => {
 			setState((prev) => ({ ...prev, isProcessing: true, error: undefined }))
 
 			try {
-				// If organizationId is passed, org was just created by OrgSetupStep with slug already set
-				// Only call setOrganizationSlug if we have a pre-existing org that needs its slug updated
-				let effectiveOrgId: OrganizationId | undefined
-
-				if (data.organizationId) {
-					// Org was just created by OrgSetupStep - slug is already set, no API call needed
-					effectiveOrgId = data.organizationId as OrganizationId
-				} else if (state.initialOrgId) {
-					// Pre-existing org needs slug update
-					effectiveOrgId = state.initialOrgId
-					const result = await setOrganizationSlug({
-						payload: { id: effectiveOrgId, slug: data.slug },
-					})
-					if (!Exit.isSuccess(result)) {
-						throw new Error("Failed to set organization slug")
-					}
-				} else {
-					throw new Error("No organization ID available")
-				}
+				const effectiveOrgId = data.organizationId as OrganizationId
 
 				setState((prev) => {
 					trackStepCompleted(prev.currentStep, prev.userType)

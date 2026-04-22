@@ -1,197 +1,72 @@
-import { useAtomSet } from "@effect/atom-react"
-import { type } from "arktype"
-import { Exit } from "effect"
-import { createOrganizationMutation } from "~/atoms/organization-atoms"
+import { CreateOrganization, useOrganizationList } from "@clerk/react"
+import { eq, useLiveQuery } from "@tanstack/react-db"
+import { useEffect } from "react"
 import { CardDescription, CardTitle } from "~/components/ui/card"
-import { Description, FieldError, Label } from "~/components/ui/field"
-import { Input } from "~/components/ui/input"
-import { TextField } from "~/components/ui/text-field"
-import { useAppForm } from "~/hooks/use-app-form"
+import { Loader } from "~/components/ui/loader"
+import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
-import { exitToast } from "~/lib/toast-exit"
 import { OnboardingNavigation } from "./onboarding-navigation"
-
-// Sanitize slug value to URL-safe format
-function sanitizeSlug(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/[^a-z0-9\s-]/g, "")
-		.replace(/\s+/g, "-")
-		.replace(/-+/g, "-")
-		.slice(0, 50)
-}
-
-// Define a custom slug validator
-const slugValidator = (slug: string) => {
-	if (slug.startsWith("-") || slug.endsWith("-")) {
-		return false
-	}
-	return true
-}
-
-const orgSchema = type({
-	name: "string > 0",
-	slug: type("string >= 3").narrow(slugValidator),
-})
-
-type OrgFormData = typeof orgSchema.infer
 
 interface OrgSetupStepProps {
 	onBack: () => void
+	/** Called with { organizationId } once our DB has picked up the Clerk org via webhook. */
 	onContinue: (data: { name: string; slug: string; organizationId: string }) => void
-	defaultName?: string
-	defaultSlug?: string
-	error?: string
 }
 
-export function OrgSetupStep({
-	onBack,
-	onContinue,
-	defaultName = "",
-	defaultSlug = "",
-	error,
-}: OrgSetupStepProps) {
+/**
+ * Onboarding step that delegates org creation to Clerk's <CreateOrganization/>.
+ * Once Clerk fires the org.created webhook → our DB has the row → we advance.
+ */
+export function OrgSetupStep({ onBack, onContinue }: OrgSetupStepProps) {
 	const { user } = useAuth()
-	const createOrganization = useAtomSet(createOrganizationMutation, { mode: "promiseExit" })
+	const { userMemberships } = useOrganizationList({ userMemberships: true })
 
-	const form = useAppForm({
-		defaultValues: {
-			name: defaultName,
-			slug: defaultSlug,
-		} as OrgFormData,
-		validators: {
-			onChange: orgSchema,
+	const clerkOrgSlug = userMemberships?.data?.[0]?.organization.slug
+	const clerkOrgName = userMemberships?.data?.[0]?.organization.name
+
+	// Watch our local DB for the org appearing (via Clerk webhook).
+	const { data: localOrg } = useLiveQuery(
+		(q) => {
+			if (!user?.id || !clerkOrgSlug) return undefined
+			return q
+				.from({ member: organizationMemberCollection })
+				.innerJoin({ org: organizationCollection }, ({ member, org }) =>
+					eq(member.organizationId, org.id),
+				)
+				.where(({ member, org }) => eq(member.userId, user.id) && eq(org.slug, clerkOrgSlug))
+				.findOne()
 		},
-		onSubmit: async ({ value }) => {
-			if (!user?.id) return
+		[user?.id, clerkOrgSlug],
+	)
 
-			const exit = await createOrganization({
-				payload: {
-					name: value.name,
-					slug: value.slug,
-					logoUrl: null,
-					settings: null,
-					isPublic: false,
-				},
+	// Auto-advance once both Clerk says the org exists AND our DB has the row.
+	useEffect(() => {
+		if (clerkOrgSlug && clerkOrgName && localOrg?.org?.id) {
+			onContinue({
+				name: clerkOrgName,
+				slug: clerkOrgSlug,
+				organizationId: localOrg.org.id,
 			})
-			exitToast(exit)
-				.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({
-					title: "Slug already taken",
-					description: "That workspace URL is already in use. Please choose a different one.",
-					isRetryable: false,
-				}))
-				.run()
-
-			if (Exit.isSuccess(exit)) {
-				const organizationId = exit.value.data.id
-				onContinue({ name: value.name, slug: value.slug, organizationId })
-			}
-		},
-	})
+		}
+	}, [clerkOrgSlug, clerkOrgName, localOrg?.org?.id, onContinue])
 
 	return (
-		<div data-testid="onboarding-step-org" className="space-y-4 sm:space-y-6">
-			<div className="flex flex-col space-y-1.5">
+		<div className="space-y-6">
+			<div className="flex flex-col space-y-1.5 px-1">
 				<CardTitle>Set up your workspace</CardTitle>
-				<CardDescription>
-					Choose a name and URL for your organization. You can change these later.
-				</CardDescription>
+				<CardDescription>Name your organization and pick a workspace URL.</CardDescription>
 			</div>
 
-			{error && (
-				<div className="rounded-lg border border-danger bg-danger/10 p-3">
-					<p className="text-danger text-sm">{error}</p>
+			{clerkOrgSlug && !localOrg ? (
+				<div className="flex flex-col items-center justify-center gap-3 py-8">
+					<Loader className="size-6" />
+					<p className="text-muted-fg text-sm">Provisioning your workspace…</p>
 				</div>
+			) : (
+				<CreateOrganization routing="hash" skipInvitationScreen />
 			)}
 
-			<form
-				onSubmit={(e) => {
-					e.preventDefault()
-					form.handleSubmit()
-				}}
-			>
-				<div className="space-y-4">
-					<form.AppField
-						name="name"
-						children={(field) => (
-							<TextField isRequired>
-								<Label>Organization name</Label>
-								<Input
-									data-testid="input-org-name"
-									value={field.state.value}
-									onChange={(e) => field.handleChange(e.target.value)}
-									onBlur={field.handleBlur}
-									placeholder="Acme Inc."
-									autoFocus
-									aria-invalid={!!field.state.meta.errors?.length}
-								/>
-								<Description>The display name for your organization</Description>
-								{field.state.meta.errors?.[0] && (
-									<FieldError>{field.state.meta.errors[0].message}</FieldError>
-								)}
-							</TextField>
-						)}
-					/>
-
-					<form.AppField
-						name="slug"
-						children={(field) => (
-							<>
-								<TextField isRequired isInvalid={!!field.state.meta.errors?.length}>
-									<Label>Workspace URL</Label>
-									<div className="relative">
-										<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-											<span className="text-muted-fg text-sm">hazel.app/</span>
-											<Input
-												data-testid="input-org-slug"
-												value={field.state.value}
-												onChange={(e) =>
-													field.handleChange(sanitizeSlug(e.target.value))
-												}
-												onBlur={field.handleBlur}
-												placeholder="acme"
-												aria-invalid={!!field.state.meta.errors?.length}
-											/>
-										</div>
-									</div>
-									{field.state.meta.errors?.[0] ? (
-										<FieldError>{field.state.meta.errors[0].message}</FieldError>
-									) : (
-										<Description>
-											Your unique workspace URL (lowercase letters, numbers, and
-											hyphens)
-										</Description>
-									)}
-								</TextField>
-
-								{field.state.value &&
-									field.state.value.length >= 3 &&
-									!field.state.meta.errors?.length && (
-										<div className="rounded-lg border border-border bg-muted/30 p-4">
-											<p className="text-muted-fg text-sm">
-												Your workspace will be accessible at:{" "}
-												<span className="font-medium text-fg">
-													hazel.app/{field.state.value}
-												</span>
-											</p>
-										</div>
-									)}
-							</>
-						)}
-					/>
-				</div>
-
-				<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-					{([canSubmit, isSubmitting]) => (
-						<OnboardingNavigation
-							onBack={onBack}
-							onContinue={() => form.handleSubmit()}
-							canContinue={canSubmit}
-							isLoading={isSubmitting}
-						/>
-					)}
-				</form.Subscribe>
-			</form>
+			<OnboardingNavigation onBack={onBack} canContinue={false} />
 		</div>
 	)
 }
