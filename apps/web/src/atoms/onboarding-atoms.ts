@@ -1,13 +1,14 @@
 import { Atom } from "effect/unstable/reactivity"
 import type { OrganizationId } from "@hazel/schema"
 
-// Step identifiers
+// Step identifiers.
+// NOTE: "organizationSetup" used to be in the creator flow but has been dropped —
+// Clerk's <CreateOrganization> (triggered during sign-up) handles it natively.
 export type OnboardingStep =
 	| "welcome"
 	| "profileInfo"
 	| "timezoneSelection"
 	| "themeSelection"
-	| "organizationSetup"
 	| "useCases"
 	| "role"
 	| "teamInvitation"
@@ -54,7 +55,6 @@ export const CREATOR_FLOW: OnboardingStep[] = [
 	"profileInfo",
 	"timezoneSelection",
 	"themeSelection",
-	"organizationSetup",
 	"useCases",
 	"role",
 	"teamInvitation",
@@ -82,12 +82,11 @@ const STEP_NUMBERS: Record<OnboardingStep, { creator: number | null; invited: nu
 	profileInfo: { creator: 2, invited: 2 },
 	timezoneSelection: { creator: 3, invited: 3 },
 	themeSelection: { creator: 4, invited: 4 },
-	organizationSetup: { creator: 5, invited: null },
-	useCases: { creator: 6, invited: null },
-	role: { creator: 7, invited: 5 },
-	teamInvitation: { creator: 8, invited: null },
-	finalization: { creator: 8, invited: 5 },
-	completed: { creator: 8, invited: 5 },
+	useCases: { creator: 5, invited: null },
+	role: { creator: 6, invited: 5 },
+	teamInvitation: { creator: 7, invited: null },
+	finalization: { creator: 7, invited: 5 },
+	completed: { creator: 7, invited: 5 },
 }
 
 // Helper functions
@@ -115,7 +114,7 @@ export function getStepNumber(step: OnboardingStep, userType: UserType): number 
 }
 
 export function getTotalSteps(userType: UserType): number {
-	return userType === "creator" ? 8 : 5
+	return userType === "creator" ? 7 : 5
 }
 
 // Factory function to create initial state
