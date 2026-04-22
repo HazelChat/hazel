@@ -4,7 +4,7 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react"
 import type { OrganizationId } from "@hazel/schema"
 import { desktopInitAtom, desktopLogoutAtom, desktopTokenSchedulerAtom } from "~/atoms/desktop-auth"
 import { webInitAtom, webLogoutAtom, webTokenSchedulerAtom } from "~/atoms/web-auth"
-import { normalizeAuthReturnTo, recoverSession, startLogin } from "~/lib/auth-flow"
+import { normalizeAuthReturnTo, startLogin } from "~/lib/auth-flow"
 import { hasClerkSession } from "~/lib/clerk-token"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 import { isTauri } from "./tauri"
@@ -19,7 +19,18 @@ interface LogoutOptions {
 	redirectTo?: string
 }
 
-export const restartWebLogin = (options?: LoginOptions) => recoverSession("web", options)
+/**
+ * Redirect the browser to the Clerk-hosted sign-in page, preserving an optional returnTo.
+ * Replaces the old WorkOS redirect flow — Clerk's <SignIn> component on /auth/login
+ * handles the OAuth round-trip itself.
+ */
+export const restartWebLogin = (options?: LoginOptions) => {
+	const returnTo = normalizeAuthReturnTo(
+		options?.returnTo || location.pathname + location.search + location.hash,
+	)
+	const search = new URLSearchParams({ returnTo })
+	window.location.assign(`/auth/login?${search.toString()}`)
+}
 
 /**
  * Query atom that fetches the current user from the API

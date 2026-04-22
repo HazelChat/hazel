@@ -653,7 +653,15 @@ export class AuthFlow extends ServiceMap.Service<AuthFlow>()("AuthFlow", {
 					}
 
 					if (platform === "web") {
-						yield* authNavigator.redirect(buildWebLoginUrl(request))
+						// Web auth now goes through Clerk (<SignIn> on /auth/login).
+						// Redirect straight to our front-end login page instead of the
+						// backend's legacy WorkOS OAuth endpoint.
+						const relative = `/auth/login?${new URLSearchParams({
+							returnTo,
+							...(options.organizationId ? { organizationId: options.organizationId } : {}),
+							...(options.invitationToken ? { invitationToken: options.invitationToken } : {}),
+						}).toString()}`
+						yield* authNavigator.redirect(relative)
 						return
 					}
 
@@ -789,7 +797,6 @@ export class AuthFlow extends ServiceMap.Service<AuthFlow>()("AuthFlow", {
 			recoverSession: (platform: AuthPlatform, options: StartLoginOptions = {}) =>
 				Effect.gen(function* () {
 					const returnTo = yield* validateRelativeReturnTo(normalizeAuthReturnTo(options.returnTo))
-					const accessToken = yield* storage.getAccessToken(platform)
 
 					yield* storage
 						.clearSession(platform)
@@ -809,19 +816,14 @@ export class AuthFlow extends ServiceMap.Service<AuthFlow>()("AuthFlow", {
 					resetAllWebCallbackAttempts()
 					resetAllWebLoginRedirects()
 
-					const loginUrl = buildWebLoginUrl({
+					// Clerk replaces WorkOS for web sign-in. Go straight to our /auth/login page
+					// (which renders <SignIn/>) — no WorkOS logout hop, no backend OAuth endpoint.
+					const clerkLoginUrl = `/auth/login?${new URLSearchParams({
 						returnTo,
-						organizationId: options.organizationId,
-						invitationToken: options.invitationToken,
-					}).toString()
-
-					const sessionId = accessToken
-						? yield* getJwtSessionId(accessToken).pipe(Effect.catch(() => Effect.succeed(null)))
-						: null
-
-					yield* authNavigator.redirect(
-						sessionId ? buildWorkosLogoutUrl(sessionId, loginUrl) : loginUrl,
-					)
+						...(options.organizationId ? { organizationId: options.organizationId } : {}),
+						...(options.invitationToken ? { invitationToken: options.invitationToken } : {}),
+					}).toString()}`
+					yield* authNavigator.redirect(clerkLoginUrl)
 				}),
 			logout: (platform: AuthPlatform, options: LogoutOptions = {}) =>
 				Effect.gen(function* () {
