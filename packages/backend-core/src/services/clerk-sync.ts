@@ -1,27 +1,32 @@
 import type { WebhookEvent } from "@clerk/backend"
 import { ClerkUserId } from "@hazel/schema"
 import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
+import { OrganizationRepo } from "../repositories/organization-repo"
 import { UserRepo } from "../repositories/user-repo"
 
 /**
  * Clerk webhook event processor.
  *
- * Currently handles `user.*` events — orgs + memberships are handled through
- * the RPC handlers (which write both to our DB and Clerk) rather than webhooks.
- * Expand this when we need server-side propagation of dashboard-initiated changes.
+ * Handles:
+ * - `user.*`        → upsert / soft-delete by Clerk user ID (externalId column)
+ * - `organization.*` → upsert / soft-delete by slug (with Clerk org ID stashed in settings)
+ * - `organizationMembership.*` → maintain the org_members junction table
  */
 export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 	make: Effect.gen(function* () {
 		const userRepo = yield* UserRepo
+		const orgRepo = yield* OrganizationRepo
+		const membershipRepo = yield* OrganizationMemberRepo
 
 		const decodeClerkUserId = Schema.decodeUnknownSync(ClerkUserId)
 
 		const normalizeAvatarUrl = (avatarUrl: string | null | undefined): string | null =>
 			avatarUrl?.trim() ? avatarUrl : null
 
-		const handleUserUpsert = (
-			data: WebhookEvent extends { data: infer D } ? Extract<D, { id: string }> : never,
-		) =>
+		// --- Users ---
+
+		const handleUserUpsert = (data: unknown) =>
 			Effect.gen(function* () {
 				const anyData = data as {
 					id: string
@@ -71,6 +76,118 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				yield* userRepo.softDeleteByClerkUserId(decodeClerkUserId(data.id))
 			}).pipe(Effect.asVoid)
 
+		// --- Organizations ---
+
+		const handleOrgUpsert = (data: unknown) =>
+			Effect.gen(function* () {
+				const anyData = data as {
+					id: string
+					name: string
+					slug: string | null
+					image_url?: string | null
+				}
+				if (!anyData.slug) {
+					yield* Effect.logWarning(`Clerk org ${anyData.id} has no slug — skipping`)
+					return
+				}
+
+				// Look up by slug first (primary key in our URL routing).
+				const existing = yield* orgRepo
+					.findBySlug(anyData.slug)
+					.pipe(Effect.map(Option.getOrNull))
+
+				if (existing) {
+					yield* orgRepo.update({
+						id: existing.id,
+						name: anyData.name,
+						logoUrl: anyData.image_url ?? existing.logoUrl,
+					})
+					return
+				}
+
+				yield* orgRepo.insert({
+					name: anyData.name,
+					slug: anyData.slug,
+					logoUrl: anyData.image_url ?? null,
+					isPublic: false,
+					// Store the Clerk org ID in settings so we can correlate later.
+					settings: { clerkOrganizationId: anyData.id },
+					deletedAt: null,
+				})
+			}).pipe(Effect.asVoid)
+
+		const handleOrgDeleted = (data: unknown) =>
+			Effect.gen(function* () {
+				const anyData = data as { id?: string; slug?: string | null }
+				if (!anyData.slug) return
+				const existing = yield* orgRepo.findBySlug(anyData.slug)
+				if (Option.isNone(existing)) return
+				yield* orgRepo.deleteById(existing.value.id)
+			}).pipe(Effect.asVoid)
+
+		// --- Organization memberships ---
+
+		const roleFromClerk = (role: string | undefined | null): "admin" | "member" | "owner" => {
+			if (role === "org:admin" || role === "admin") return "admin"
+			return "member"
+		}
+
+		const handleMembershipUpsert = (data: unknown) =>
+			Effect.gen(function* () {
+				const anyData = data as {
+					public_user_data?: { user_id?: string }
+					organization?: { id?: string; slug?: string | null }
+					role?: string | null
+				}
+				const clerkUserId = anyData.public_user_data?.user_id
+				const orgSlug = anyData.organization?.slug
+				if (!clerkUserId || !orgSlug) return
+
+				const userOpt = yield* userRepo
+					.findByExternalId(clerkUserId)
+					.pipe(Effect.map(Option.getOrNull))
+				const orgOpt = yield* orgRepo
+					.findBySlug(orgSlug)
+					.pipe(Effect.map(Option.getOrNull))
+				if (!userOpt || !orgOpt) {
+					yield* Effect.logWarning(
+						`Skipping membership upsert — user or org not found (user=${clerkUserId}, org=${orgSlug})`,
+					)
+					return
+				}
+
+				yield* membershipRepo.upsertByOrgAndUser({
+					organizationId: orgOpt.id,
+					userId: userOpt.id,
+					role: roleFromClerk(anyData.role),
+					nickname: undefined,
+					joinedAt: new Date(),
+					invitedBy: null,
+					deletedAt: null,
+				})
+			}).pipe(Effect.asVoid)
+
+		const handleMembershipRemoved = (data: unknown) =>
+			Effect.gen(function* () {
+				const anyData = data as {
+					public_user_data?: { user_id?: string }
+					organization?: { slug?: string | null }
+				}
+				const clerkUserId = anyData.public_user_data?.user_id
+				const orgSlug = anyData.organization?.slug
+				if (!clerkUserId || !orgSlug) return
+
+				const userOpt = yield* userRepo
+					.findByExternalId(clerkUserId)
+					.pipe(Effect.map(Option.getOrNull))
+				const orgOpt = yield* orgRepo
+					.findBySlug(orgSlug)
+					.pipe(Effect.map(Option.getOrNull))
+				if (!userOpt || !orgOpt) return
+
+				yield* membershipRepo.softDeleteByOrgAndUser(orgOpt.id, userOpt.id)
+			}).pipe(Effect.asVoid)
+
 		/** Process a verified Clerk webhook event. Returns `{ success, error? }`. */
 		const processWebhookEvent = (event: WebhookEvent) =>
 			Effect.gen(function* () {
@@ -81,10 +198,24 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				switch (event.type) {
 					case "user.created":
 					case "user.updated":
-						yield* handleUserUpsert(event.data as never)
+						yield* handleUserUpsert(event.data)
 						break
 					case "user.deleted":
 						yield* handleUserDeleted(event.data as { id?: string })
+						break
+					case "organization.created":
+					case "organization.updated":
+						yield* handleOrgUpsert(event.data)
+						break
+					case "organization.deleted":
+						yield* handleOrgDeleted(event.data)
+						break
+					case "organizationMembership.created":
+					case "organizationMembership.updated":
+						yield* handleMembershipUpsert(event.data)
+						break
+					case "organizationMembership.deleted":
+						yield* handleMembershipRemoved(event.data)
 						break
 					default:
 						yield* Effect.logDebug(`Ignoring Clerk event type: ${event.type}`)
@@ -100,8 +231,20 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				),
 			)
 
-		return { processWebhookEvent, handleUserUpsert, handleUserDeleted }
+		return {
+			processWebhookEvent,
+			handleUserUpsert,
+			handleUserDeleted,
+			handleOrgUpsert,
+			handleOrgDeleted,
+			handleMembershipUpsert,
+			handleMembershipRemoved,
+		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(UserRepo.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(UserRepo.layer),
+		Layer.provide(OrganizationRepo.layer),
+		Layer.provide(OrganizationMemberRepo.layer),
+	)
 }
