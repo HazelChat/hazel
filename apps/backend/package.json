@@ -24,6 +24,7 @@
 		"rebuild-channel-access": "bun run scripts/rebuild-channel-access.ts"
 	},
 	"dependencies": {
+		"@clerk/backend": "^3.3.0",
 		"@effect/opentelemetry": "catalog:effect",
 		"@effect/platform-bun": "catalog:effect",
 		"@effect/platform-node": "catalog:effect",

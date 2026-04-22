@@ -83,3 +83,14 @@ export class WorkOSUserFetchError extends Schema.TaggedErrorClass<WorkOSUserFetc
 	},
 	{ httpApiStatus: 503 },
 ) {}
+
+export class ClerkUserFetchError extends Schema.TaggedErrorClass<ClerkUserFetchError>(
+	"ClerkUserFetchError",
+)(
+	"ClerkUserFetchError",
+	{
+		message: Schema.String,
+		detail: Schema.String,
+	},
+	{ httpApiStatus: 503 },
+) {}

@@ -1,5 +1,6 @@
 import { BackendAuth, type UserRepoLike } from "@hazel/auth/backend"
 import {
+	ClerkUserFetchError,
 	CurrentUser,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
@@ -9,10 +10,11 @@ import { UserRepo } from "@hazel/backend-core"
 import { ServiceMap, Effect, Layer } from "effect"
 
 /**
- * Session management service that handles authentication via WorkOS.
- * Supports bearer token (JWT) authentication.
+ * Session management service that handles bearer-token authentication.
  *
- * This service delegates to @hazel/auth/backend for the actual authentication logic.
+ * During the WorkOS → Clerk migration this accepts tokens from either provider;
+ * the issuer is sniffed from the JWT payload and routed accordingly. Post-cutover,
+ * the WorkOS branch gets removed (Phase H).
  */
 export class SessionManager extends ServiceMap.Service<SessionManager>()("SessionManager", {
 	make: Effect.gen(function* () {
@@ -20,23 +22,27 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 		const userRepo = yield* UserRepo
 		const userRepoLike: UserRepoLike = {
 			findByWorkOSUserId: userRepo.findByWorkOSUserId,
+			findByExternalId: userRepo.findByExternalId,
 			upsertWorkOSUser: userRepo.upsertWorkOSUser,
+			upsertClerkUser: userRepo.upsertClerkUser,
 			update: userRepo.update,
 		}
 
 		/**
-		 * Authenticate with a WorkOS bearer token (JWT).
-		 * Verifies the JWT signature and syncs the user to the database.
+		 * Unified bearer-token authenticator. Routes to Clerk or WorkOS based on JWT issuer.
 		 */
 		const authenticateWithBearer = (bearerToken: string) =>
-			auth.authenticateWithBearer(bearerToken, userRepoLike)
+			auth.authenticate(bearerToken, userRepoLike)
 
 		return {
 			authenticateWithBearer: authenticateWithBearer as (
 				bearerToken: string,
 			) => Effect.Effect<
 				CurrentUser.Schema,
-				InvalidBearerTokenError | InvalidJwtPayloadError | WorkOSUserFetchError,
+				| InvalidBearerTokenError
+				| InvalidJwtPayloadError
+				| WorkOSUserFetchError
+				| ClerkUserFetchError,
 				never
 			>,
 		} as const

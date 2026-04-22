@@ -1,6 +1,6 @@
 import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
-import type { UserId, WorkOSUserId } from "@hazel/schema"
+import type { ClerkUserId, UserId, WorkOSUserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
 import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
@@ -74,6 +74,12 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 			tx?: TxFn,
 		) => upsertByExternalId(data, options, tx)
 
+		const upsertClerkUser = (
+			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: ClerkUserId },
+			options?: { syncAvatarUrl?: boolean },
+			tx?: TxFn,
+		) => upsertByExternalId(data, options, tx)
+
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>
 				execute((client) =>
@@ -106,6 +112,9 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 		const softDeleteByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
 			softDeleteByExternalId(workosUserId, tx)
 
+		const softDeleteByClerkUserId = (clerkUserId: ClerkUserId, tx?: TxFn) =>
+			softDeleteByExternalId(clerkUserId, tx)
+
 		const bulkUpsertByExternalId = (users: Schema.Schema.Type<typeof User.Insert>[]) =>
 			Effect.forEach(users, (data) => upsertByExternalId(data), { concurrency: 10 })
 
@@ -115,10 +124,12 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 			findByWorkOSUserId,
 			upsertByExternalId,
 			upsertWorkOSUser,
+			upsertClerkUser,
 			findAllActive,
 			softDelete,
 			softDeleteByExternalId,
 			softDeleteByWorkOSUserId,
+			softDeleteByClerkUserId,
 			bulkUpsertByExternalId,
 		}
 	}),

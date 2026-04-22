@@ -4,6 +4,7 @@
  * @description Main entry point with Tauri initialization for desktop
  */
 
+import { ClerkProvider } from "@clerk/react"
 import { createRouter, type NavigateOptions, RouterProvider, type ToOptions } from "@tanstack/react-router"
 import { HotkeysProvider } from "@tanstack/react-hotkeys"
 import { StrictMode, useEffect, useState, type ReactNode } from "react"
@@ -123,9 +124,14 @@ declare module "react-aria-components" {
 		const root = ReactDOM.createRoot(rootElement)
 		root.render(
 			<StrictMode>
-				<RegistryContext.Provider value={appRegistry}>
-					<RouterProvider router={router} />
-				</RegistryContext.Provider>
+				<ClerkProvider
+					publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+					afterSignOutUrl="/"
+				>
+					<RegistryContext.Provider value={appRegistry}>
+						<RouterProvider router={router} />
+					</RegistryContext.Provider>
+				</ClerkProvider>
 			</StrictMode>,
 		)
 	}

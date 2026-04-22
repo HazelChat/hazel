@@ -23,3 +23,6 @@ opensrc/
 # Tauri/Rust build artifacts
 **/target/
 /.artifacts
+
+# Migration exports (contain PII — WorkOS user emails, IDs, avatars)
+apps/backend/exports/

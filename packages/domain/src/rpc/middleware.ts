@@ -10,6 +10,7 @@ import { Schema as S } from "effect"
 import * as CurrentUser from "../current-user"
 import { UnauthorizedError } from "../errors"
 import {
+	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
@@ -52,6 +53,7 @@ const AuthFailure = S.Union([
 	SessionExpiredError,
 	InvalidBearerTokenError,
 	WorkOSUserFetchError,
+	ClerkUserFetchError,
 ])
 
 export class AuthMiddleware extends RpcMiddleware.Service<

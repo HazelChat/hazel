@@ -2,27 +2,32 @@ import { ServiceMap, Config, Effect, Layer } from "effect"
 
 /**
  * Configuration for auth services.
- * Reads WorkOS credentials from environment variables.
+ * Carries both WorkOS and Clerk credentials during the migration window;
+ * WorkOS keys will be removed once the swap completes (see Phase H).
  */
 export interface AuthConfigShape {
 	/** WorkOS API key */
 	readonly workosApiKey: string
 	/** WorkOS client ID */
 	readonly workosClientId: string
+	/** Clerk secret key (sk_live_* / sk_test_*) */
+	readonly clerkSecretKey: string
+	/** Clerk publishable key (pk_live_* / pk_test_*) */
+	readonly clerkPublishableKey: string
 }
 
-/**
- * Auth configuration service.
- * Provides WorkOS credentials from environment variables.
- */
 export class AuthConfig extends ServiceMap.Service<AuthConfig>()("@hazel/auth/AuthConfig", {
 	make: Effect.gen(function* () {
 		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
 		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
+		const clerkSecretKey = yield* Config.string("CLERK_SECRET_KEY")
+		const clerkPublishableKey = yield* Config.string("CLERK_PUBLISHABLE_KEY")
 
 		return {
 			workosApiKey,
 			workosClientId,
+			clerkSecretKey,
+			clerkPublishableKey,
 		} satisfies AuthConfigShape
 	}),
 }) {
@@ -31,5 +36,7 @@ export class AuthConfig extends ServiceMap.Service<AuthConfig>()("@hazel/auth/Au
 	static Test = Layer.mock(this, {
 		workosApiKey: "sk_test_123",
 		workosClientId: "client_test_123",
+		clerkSecretKey: "sk_test_clerk_123",
+		clerkPublishableKey: "pk_test_clerk_123",
 	})
 }

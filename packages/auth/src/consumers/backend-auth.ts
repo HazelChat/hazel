@@ -1,15 +1,30 @@
+import { verifyToken } from "@clerk/backend"
 import { CurrentUser, InvalidBearerTokenError, InvalidJwtPayloadError, SessionLoadError } from "@hazel/domain"
 import { User } from "@hazel/domain/models"
 import {
+	ClerkJwtClaims,
+	type ClerkUserId,
 	OrganizationId,
 	WorkOSJwtClaims,
 	type UserId,
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Schema } from "effect"
-import { createRemoteJWKSet, jwtVerify } from "jose"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose"
+import { ClerkClient } from "../session/clerk-client.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
+
+type UserRow = {
+	id: UserId
+	email: string
+	firstName: string
+	lastName: string
+	avatarUrl: string | null
+	isOnboarded: boolean
+	timezone: string | null
+	settings: User.UserSettings | null
+}
 
 /**
  * Interface for the user repository methods needed by backend auth.
@@ -17,20 +32,13 @@ import { WorkOSClient } from "../session/workos-client.ts"
  * The methods accept any context requirement.
  */
 export interface UserRepoLike {
-	findByWorkOSUserId: (workosUserId: WorkOSUserId) => Effect.Effect<
-		Option.Option<{
-			id: UserId
-			email: string
-			firstName: string
-			lastName: string
-			avatarUrl: string | null
-			isOnboarded: boolean
-			timezone: string | null
-			settings: User.UserSettings | null
-		}>,
-		{ _tag: "DatabaseError" },
-		any
-	>
+	findByWorkOSUserId: (
+		workosUserId: WorkOSUserId,
+	) => Effect.Effect<Option.Option<UserRow>, { _tag: "DatabaseError" }, any>
+	/** Lookup by provider-agnostic externalId (used by Clerk path). */
+	findByExternalId: (
+		externalId: string,
+	) => Effect.Effect<Option.Option<UserRow>, { _tag: "DatabaseError" }, any>
 	upsertWorkOSUser: (user: {
 		externalId: WorkOSUserId
 		email: string
@@ -42,45 +50,45 @@ export interface UserRepoLike {
 		isOnboarded: boolean
 		timezone: string | null
 		deletedAt: null
-	}) => Effect.Effect<
-		{
-			id: UserId
-			email: string
-			firstName: string
-			lastName: string
-			avatarUrl: string | null
-			isOnboarded: boolean
-			timezone: string | null
-			settings: User.UserSettings | null
-		},
-		{ _tag: "DatabaseError" },
-		any
-	>
+	}) => Effect.Effect<UserRow, { _tag: "DatabaseError" }, any>
+	upsertClerkUser: (user: {
+		externalId: ClerkUserId
+		email: string
+		firstName: string
+		lastName: string
+		avatarUrl: string | null
+		userType: "user" | "machine"
+		settings: null
+		isOnboarded: boolean
+		timezone: string | null
+		deletedAt: null
+	}) => Effect.Effect<UserRow, { _tag: "DatabaseError" }, any>
 	update: (data: {
 		id: UserId
 		firstName?: string
 		lastName?: string
 		avatarUrl?: string | null
-	}) => Effect.Effect<
-		{
-			id: UserId
-			email: string
-			firstName: string
-			lastName: string
-			avatarUrl: string | null
-			isOnboarded: boolean
-			timezone: string | null
-			settings: User.UserSettings | null
-		},
-		{ _tag: "DatabaseError" } | { _tag: "SchemaError" },
-		any
-	>
+	}) => Effect.Effect<UserRow, { _tag: "DatabaseError" } | { _tag: "SchemaError" }, any>
 }
 
 export const decodeWorkOSJwtClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
+export const decodeClerkJwtClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
 
 export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
 	Schema.decodeUnknownEffect(OrganizationId)(externalId)
+
+/** Classify a bearer token by its `iss` claim without verifying the signature. */
+export const classifyJwtIssuer = (token: string): "clerk" | "workos" | "unknown" => {
+	try {
+		const payload = decodeJwt(token)
+		const iss = payload.iss ?? ""
+		if (iss.includes("workos.com")) return "workos"
+		if (iss.includes("clerk.") || iss.includes("accounts.")) return "clerk"
+	} catch {
+		// fall through
+	}
+	return "unknown"
+}
 
 /**
  * Backend authentication service.
@@ -91,7 +99,9 @@ export const decodeInternalOrganizationIdFromWorkOS = (externalId: string) =>
 export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/BackendAuth", {
 	make: Effect.gen(function* () {
 		const workos = yield* WorkOSClient
+		const clerk = yield* ClerkClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID")
+		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY")
 		const decodeClaims = decodeWorkOSJwtClaims
 
 		/**
@@ -344,13 +354,164 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 				return currentUser
 			})
 
+		/**
+		 * Sync a Clerk user to the database (find or create).
+		 * Uses `findByExternalId` — the externalId column holds Clerk user IDs post-cutover.
+		 */
+		const syncUserFromClerk = (
+			userRepo: UserRepoLike,
+			clerkUserId: ClerkUserId,
+			email: string,
+			firstName: string | null,
+			lastName: string | null,
+			avatarUrl: string | null,
+		) =>
+			Effect.gen(function* () {
+				const userOption = yield* userRepo.findByExternalId(clerkUserId).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
+							Effect.fail(
+								new SessionLoadError({
+									message: "Failed to query user by external ID",
+									detail: String(err),
+								}),
+							),
+					}),
+				)
+
+				const user = yield* Option.match(userOption, {
+					onNone: () =>
+						userRepo
+							.upsertClerkUser({
+								externalId: clerkUserId,
+								email,
+								firstName: firstName || "",
+								lastName: lastName || "",
+								avatarUrl: normalizeAvatarUrl(avatarUrl),
+								userType: "user",
+								settings: null,
+								isOnboarded: false,
+								timezone: null,
+								deletedAt: null,
+							})
+							.pipe(
+								Effect.catchTags({
+									DatabaseError: (err) =>
+										Effect.fail(
+											new SessionLoadError({
+												message: "Failed to create user",
+												detail: String(err),
+											}),
+										),
+								}),
+							),
+					onSome: (existing) => Effect.succeed(existing),
+				})
+
+				return user
+			})
+
+		/**
+		 * Authenticate with a Clerk bearer token (JWT).
+		 * Uses `@clerk/backend`'s verifyToken which handles JWKS fetching + caching.
+		 */
+		const authenticateWithClerkBearer = (bearerToken: string, userRepo: UserRepoLike) =>
+			Effect.gen(function* () {
+				const payload = yield* Effect.tryPromise({
+					try: () => verifyToken(bearerToken, { secretKey: Redacted.value(clerkSecretKey) }),
+					catch: (error) =>
+						new InvalidBearerTokenError({
+							message: `Clerk JWT verification failed: ${error}`,
+							detail: String(error),
+						}),
+				})
+
+				const claims = yield* decodeClerkJwtClaims(payload).pipe(
+					Effect.mapError(
+						(error) =>
+							new InvalidJwtPayloadError({
+								message: "Invalid Clerk JWT claims",
+								detail: String(error),
+							}),
+					),
+				)
+
+				const userOption = yield* userRepo.findByExternalId(claims.sub).pipe(
+					Effect.catchTags({
+						DatabaseError: (err) =>
+							Effect.fail(
+								new InvalidBearerTokenError({
+									message: "Failed to query user",
+									detail: String(err),
+								}),
+							),
+					}),
+				)
+
+				const user = yield* Option.match(userOption, {
+					onNone: () =>
+						Effect.gen(function* () {
+							const clerkUser = yield* clerk.getUser(claims.sub)
+							const email =
+								claims.email ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""
+							return yield* syncUserFromClerk(
+								userRepo,
+								claims.sub,
+								email,
+								clerkUser.firstName,
+								clerkUser.lastName,
+								clerkUser.imageUrl ?? null,
+							)
+						}),
+					onSome: (u) => Effect.succeed(u),
+				})
+
+				// Map Clerk org role ("org:admin" / "org:member" / custom) to our CurrentUser.role.
+				const currentUserRole: "admin" | "member" | "owner" =
+					claims.org_role === "org:admin" ? "admin" : "member"
+
+				// Clerk's org_id from the JWT is a Clerk org ID (org_…). We keep it as the
+				// `organizationId` on CurrentUser during the transition; a follow-up commit
+				// after Phase G will resolve it to our internal organization UUID.
+				const currentUser = new CurrentUser.Schema({
+					id: user.id,
+					role: currentUserRole,
+					organizationId: undefined,
+					avatarUrl: user.avatarUrl ?? undefined,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					email: user.email,
+					isOnboarded: user.isOnboarded,
+					timezone: user.timezone,
+					settings: user.settings,
+				})
+
+				return currentUser
+			})
+
+		/**
+		 * Unified bearer-token authenticator. Sniffs the JWT issuer and routes to the
+		 * correct provider. Used by middleware during the WorkOS→Clerk overlap.
+		 */
+		const authenticate = (bearerToken: string, userRepo: UserRepoLike) => {
+			const issuer = classifyJwtIssuer(bearerToken)
+			if (issuer === "clerk") return authenticateWithClerkBearer(bearerToken, userRepo)
+			return authenticateWithBearer(bearerToken, userRepo)
+		}
+
 		return {
+			authenticate,
 			authenticateWithBearer,
+			authenticateWithClerkBearer,
 			syncUserFromWorkOS,
+			syncUserFromClerk,
 		}
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(WorkOSClient.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(
+		Layer.provide(WorkOSClient.layer),
+		Layer.provide(ClerkClient.layer),
+	)
 
 	/** Mock user ID - a valid UUID */
 	static readonly mockUserId = "00000000-0000-4000-8000-000000000001" as UserId
@@ -384,11 +545,23 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 
 	/** Test layer with successful authentication */
 	static Test = Layer.mock(this, {
+		authenticate: (_bearerToken: string, _userRepo: UserRepoLike) =>
+			Effect.succeed(BackendAuth.mockCurrentUser()),
 		authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
+			Effect.succeed(BackendAuth.mockCurrentUser()),
+		authenticateWithClerkBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 			Effect.succeed(BackendAuth.mockCurrentUser()),
 		syncUserFromWorkOS: (
 			_userRepo: UserRepoLike,
 			_workOsUserId: string,
+			_email: string,
+			_firstName: string | null,
+			_lastName: string | null,
+			_avatarUrl: string | null,
+		) => Effect.succeed(BackendAuth.mockUser()),
+		syncUserFromClerk: (
+			_userRepo: UserRepoLike,
+			_clerkUserId: string,
 			_email: string,
 			_firstName: string | null,
 			_lastName: string | null,
@@ -404,12 +577,26 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		}
 	}) =>
 		Layer.mock(BackendAuth, {
+			authenticate: (_bearerToken: string, _userRepo: UserRepoLike) =>
+				options.shouldFail?.authenticateWithBearer ??
+				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
 			authenticateWithBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
+				options.shouldFail?.authenticateWithBearer ??
+				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
+			authenticateWithClerkBearer: (_bearerToken: string, _userRepo: UserRepoLike) =>
 				options.shouldFail?.authenticateWithBearer ??
 				Effect.succeed(options.currentUser ?? BackendAuth.mockCurrentUser()),
 			syncUserFromWorkOS: (
 				_userRepo: UserRepoLike,
 				_workOsUserId: string,
+				_email: string,
+				_firstName: string | null,
+				_lastName: string | null,
+				_avatarUrl: string | null,
+			) => Effect.succeed(BackendAuth.mockUser()),
+			syncUserFromClerk: (
+				_userRepo: UserRepoLike,
+				_clerkUserId: string,
 				_email: string,
 				_firstName: string | null,
 				_lastName: string | null,

@@ -4,6 +4,7 @@ export { type AuthenticatedUserContext, ValidatedSession, type WorkOSUser } from
 // Errors
 export { SessionCacheError } from "./errors.ts"
 export {
+	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
@@ -18,7 +19,7 @@ export {
 export { AuthConfig, type AuthConfigShape } from "./config.ts"
 
 // Session
-export { decodeSessionJwt, getJwtExpiry, WorkOSClient } from "./session/index.ts"
+export { ClerkClient, decodeSessionJwt, getJwtExpiry, WorkOSClient } from "./session/index.ts"
 
 // Consumers
 export { BackendAuth, BackendAuthLive, type UserRepoLike } from "./consumers/backend-auth.ts"

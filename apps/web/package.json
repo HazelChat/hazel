@@ -12,6 +12,7 @@
 		"tauri": "bun run --cwd ../desktop tauri"
 	},
 	"dependencies": {
+		"@clerk/react": "^6.4.3",
 		"@cloudflare/realtimekit-react": "^1.2.4",
 		"@cloudflare/realtimekit-react-ui": "^1.1.0",
 		"@effect/atom-react": "catalog:effect",

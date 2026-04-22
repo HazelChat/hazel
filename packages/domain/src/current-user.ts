@@ -4,6 +4,7 @@ import { UnauthorizedError } from "./errors"
 import { OrganizationId, UserId } from "@hazel/schema"
 import { User } from "./models"
 import {
+	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
@@ -39,6 +40,7 @@ const AuthFailure = S.Union([
 	SessionExpiredError,
 	InvalidBearerTokenError,
 	WorkOSUserFetchError,
+	ClerkUserFetchError,
 ])
 
 export class Authorization extends HttpApiMiddleware.Service<

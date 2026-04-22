@@ -11,6 +11,7 @@
 		"./errors": "./src/errors.ts"
 	},
 	"dependencies": {
+		"@clerk/backend": "^3.3.0",
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/effect-bun": "workspace:*",

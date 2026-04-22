@@ -1,3 +1,4 @@
+import { ClerkClient } from "@hazel/auth"
 import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
@@ -5,12 +6,11 @@ import { UserNotFoundError, UserResponse, UserRpcs } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPolicy } from "../../policies/user-policy"
-import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 export const UserRpcLive = UserRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
-		const workos = yield* WorkOS
+		const clerk = yield* ClerkClient
 		const userPolicy = yield* UserPolicy
 		const userRepo = yield* UserRepo
 
@@ -27,24 +27,20 @@ export const UserRpcLive = UserRpcs.toLayer(
 								...payload,
 							})
 
-							yield* workos
-								.call((client) =>
-									client.userManagement.updateUser({
-										userId: updatedUser.externalId,
+							// Sync display name to Clerk. `externalId` holds the Clerk user ID post-cutover.
+							yield* Effect.tryPromise({
+								try: () =>
+									clerk.raw.users.updateUser(updatedUser.externalId, {
 										firstName: payload.firstName,
 										lastName: payload.lastName,
 									}),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to update user in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
+								catch: (error) =>
+									new InternalServerError({
+										message: "Failed to update user in Clerk",
+										detail: String(error),
+										cause: String(error),
+									}),
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -71,18 +67,15 @@ export const UserRpcLive = UserRpcs.toLayer(
 							yield* userPolicy.canDelete(id)
 							yield* userRepo.deleteById(id)
 
-							yield* workos
-								.call((client) => client.userManagement.deleteUser(user.externalId))
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to delete user in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
+							yield* Effect.tryPromise({
+								try: () => clerk.raw.users.deleteUser(user.externalId),
+								catch: (error) =>
+									new InternalServerError({
+										message: "Failed to delete user in Clerk",
+										detail: String(error),
+										cause: String(error),
+									}),
+							})
 
 							const txid = yield* generateTransactionId()
 
@@ -97,7 +90,6 @@ export const UserRpcLive = UserRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Update the current user's isOnboarded flag
 							yield* userPolicy.canUpdate(currentUser.id)
 							const updatedUser = yield* userRepo.update({
 								id: currentUser.id,
@@ -120,7 +112,6 @@ export const UserRpcLive = UserRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Fetch user from database to get externalId
 							yield* userPolicy.canRead(currentUser.id)
 							const userOption = yield* userRepo.findById(currentUser.id)
 
@@ -135,26 +126,19 @@ export const UserRpcLive = UserRpcs.toLayer(
 								onSome: (user) => Effect.succeed(user),
 							})
 
-							// Fetch user from WorkOS to get their original profile picture
-							const workosUser = yield* workos
-								.call((client) => client.userManagement.getUser(user.externalId))
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to fetch user from WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
+							// Fetch user from Clerk to get their OAuth/upload profile image.
+							const clerkUser = yield* Effect.tryPromise({
+								try: () => clerk.raw.users.getUser(user.externalId),
+								catch: (error) =>
+									new InternalServerError({
+										message: "Failed to fetch user from Clerk",
+										detail: String(error),
+										cause: String(error),
+									}),
+							})
 
-							// Use WorkOS profile picture, otherwise clear avatar
-							const avatarUrl = workosUser.profilePictureUrl?.trim()
-								? workosUser.profilePictureUrl
-								: null
+							const avatarUrl = clerkUser.imageUrl?.trim() ? clerkUser.imageUrl : null
 
-							// Update user's avatar in our database
 							yield* userPolicy.canUpdate(currentUser.id)
 							const updatedUser = yield* userRepo.update({
 								id: currentUser.id,

@@ -32,6 +32,7 @@ export class OrganizationFetchError extends Schema.TaggedErrorClass<Organization
 
 // Re-export session errors from domain package for convenience
 export {
+	ClerkUserFetchError,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
 	SessionAuthenticationError,
