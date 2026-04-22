@@ -39,6 +39,7 @@ import {
 	WorkOSSync,
 	ClerkSync,
 } from "@hazel/backend-core"
+import { ClerkClient } from "@hazel/auth"
 import { Redis, RedisResultPersistenceLive, S3 } from "@hazel/effect-bun"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { GitHub } from "@hazel/integrations"
@@ -195,6 +196,7 @@ const MainLive = Layer.mergeAll(
 	WorkOSClient.layer,
 	WorkOSSync.layer,
 	WorkOSWebhookVerifier.layer,
+	ClerkClient.layer,
 	ClerkSync.layer,
 	DatabaseLive,
 	S3.Default,
