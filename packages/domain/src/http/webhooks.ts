@@ -59,6 +59,21 @@ export class WebhookGroup extends HttpApiGroup.make("webhooks")
 			.annotate(RequiredScopes, []),
 	)
 	.add(
+		HttpApiEndpoint.post("clerk", "/clerk", {
+			payload: Schema.Unknown,
+			success: WebhookResponse,
+			error: [InvalidWebhookSignature, InternalServerError],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
+					title: "Clerk Webhook",
+					description: "Receive and process Clerk webhook events (Svix-signed)",
+					summary: "Process Clerk webhook events",
+				}),
+			)
+			.annotate(RequiredScopes, []),
+	)
+	.add(
 		HttpApiEndpoint.post("github", "/github", {
 			payload: Schema.Unknown,
 			success: GitHubWebhookResponse,

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
+import { verifyWebhook as verifyClerkWebhook } from "@clerk/backend/webhooks"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpServerRequest } from "effect/unstable/http"
 import { InternalServerError } from "@hazel/domain"
@@ -6,7 +7,7 @@ import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/dom
 import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
-import { WorkOSSync } from "@hazel/backend-core/services"
+import { ClerkSync, WorkOSSync } from "@hazel/backend-core/services"
 import { WorkOSWebhookVerifier } from "../services/workos-webhook"
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
@@ -81,6 +82,64 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 						: "error" in result
 							? result.error
 							: "Unknown error",
+				})
+			}),
+		)
+		.handle("clerk", (_args) =>
+			Effect.gen(function* () {
+				const request = yield* HttpServerRequest.HttpServerRequest
+
+				const rawBody = yield* pipe(
+					request.text,
+					Effect.mapError(
+						() =>
+							new InvalidWebhookSignature({
+								message: "Invalid request body",
+							}),
+					),
+				)
+
+				const signingSecret = yield* Effect.gen(function* () {
+					return yield* Config.string("CLERK_WEBHOOK_SECRET")
+				}).pipe(
+					Effect.catchTag("ConfigError", (err) =>
+						Effect.fail(
+							new InternalServerError({
+								message: "CLERK_WEBHOOK_SECRET not configured",
+								detail: String(err),
+							}),
+						),
+					),
+				)
+
+				// Reconstruct a WHATWG Request so @clerk/backend's verifyWebhook can read Svix headers.
+				const stdRequest = new Request("https://webhooks.local/clerk", {
+					method: "POST",
+					headers: request.headers as unknown as HeadersInit,
+					body: rawBody,
+				})
+
+				const event = yield* Effect.tryPromise({
+					try: () => verifyClerkWebhook(stdRequest, { signingSecret }),
+					catch: (error) =>
+						new InvalidWebhookSignature({
+							message: `Clerk webhook verification failed: ${error}`,
+						}),
+				})
+
+				const syncService = yield* ClerkSync
+				const result = yield* syncService.processWebhookEvent(event)
+
+				if (!result.success) {
+					yield* Effect.logError("Failed to process Clerk webhook event", {
+						type: event.type,
+						error: result.error,
+					})
+				}
+
+				return new WebhookResponse({
+					success: result.success,
+					message: result.success ? "Event processed successfully" : result.error,
 				})
 			}),
 		)

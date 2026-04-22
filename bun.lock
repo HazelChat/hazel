@@ -463,6 +463,7 @@
       "name": "@hazel/backend-core",
       "version": "0.0.0",
       "dependencies": {
+        "@clerk/backend": "^3.3.0",
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",

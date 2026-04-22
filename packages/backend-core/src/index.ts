@@ -48,3 +48,4 @@ export { UserRepo } from "./repositories/user-repo"
 // Services
 export { WorkOSClient, WorkOSApiError } from "./services/workos"
 export { type FullSyncResult, type SyncResult, WorkOSSync, WorkOSSyncError } from "./services/workos-sync"
+export { ClerkSync } from "./services/clerk-sync"
