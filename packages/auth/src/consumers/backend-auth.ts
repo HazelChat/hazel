@@ -101,7 +101,11 @@ export class BackendAuth extends ServiceMap.Service<BackendAuth>()("@hazel/auth/
 		const workos = yield* WorkOSClient
 		const clerk = yield* ClerkClient
 		const clientId = yield* Config.string("WORKOS_CLIENT_ID")
-		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY")
+		// Optional during the migration window — apps that haven't configured Clerk yet
+		// still boot; the Clerk branch fails at request time if the key is empty.
+		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY").pipe(
+			Config.withDefault(Redacted.make("")),
+		)
 		const decodeClaims = decodeWorkOSJwtClaims
 
 		/**
