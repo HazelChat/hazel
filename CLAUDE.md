@@ -106,14 +106,14 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 - **State Management**: TanStack Query + React Form
 - **Rich Text**: Plate.js editor with AI features
 - **Real-time**: Cloudflare Realtimekit
-- **Auth**: WorkOS AuthKit
+- **Auth**: Clerk (`@clerk/react`)
 
 ### Backend
 
 - **Runtime**: Bun
 - **Framework**: Effect-TS for functional programming
 - **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: WorkOS integration
+- **Auth**: Clerk (`@clerk/backend` JWT verification + webhook sync)
 - **API**: RPC-style endpoints via Effect Http Api
 
 ### Cluster Service
@@ -189,7 +189,7 @@ Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src
 - Frontend uses file-based routing with TanStack Router
 - Backend follows Effect-TS patterns for error handling and dependency injection
 - Real-time features implemented via Cloudflare Realtimekit
-- Authentication handled by WorkOS with React integration
+- Authentication handled by Clerk; backend verifies Clerk-issued JWTs and syncs users/orgs via webhook
 - Shared database package ensures type safety between frontend and backend
 - Domain package (`packages/domain/`) contains shared contracts:
     - RPC definitions for client-server communication

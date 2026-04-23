@@ -37,7 +37,6 @@ import { Route as AppOrgSlugSettingsInvitationsRouteImport } from './routes/_app
 import { Route as AppOrgSlugSettingsDebugRouteImport } from './routes/_app/$orgSlug/settings/debug'
 import { Route as AppOrgSlugSettingsCustomEmojisRouteImport } from './routes/_app/$orgSlug/settings/custom-emojis'
 import { Route as AppOrgSlugSettingsConnectInvitesRouteImport } from './routes/_app/$orgSlug/settings/connect-invites'
-import { Route as AppOrgSlugSettingsAuthenticationRouteImport } from './routes/_app/$orgSlug/settings/authentication'
 import { Route as AppOrgSlugProfileUserIdRouteImport } from './routes/_app/$orgSlug/profile/$userId'
 import { Route as AppOrgSlugNotificationsThreadsRouteImport } from './routes/_app/$orgSlug/notifications/threads'
 import { Route as AppOrgSlugNotificationsGeneralRouteImport } from './routes/_app/$orgSlug/notifications/general'
@@ -211,12 +210,6 @@ const AppOrgSlugSettingsConnectInvitesRoute =
   AppOrgSlugSettingsConnectInvitesRouteImport.update({
     id: '/connect-invites',
     path: '/connect-invites',
-    getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
-  } as any)
-const AppOrgSlugSettingsAuthenticationRoute =
-  AppOrgSlugSettingsAuthenticationRouteImport.update({
-    id: '/authentication',
-    path: '/authentication',
     getParentRoute: () => AppOrgSlugSettingsLayoutRoute,
   } as any)
 const AppOrgSlugProfileUserIdRoute = AppOrgSlugProfileUserIdRouteImport.update({
@@ -402,7 +395,6 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -450,7 +442,6 @@ export interface FileRoutesByTo {
   '/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -507,7 +498,6 @@ export interface FileRoutesById {
   '/_app/$orgSlug/notifications/general': typeof AppOrgSlugNotificationsGeneralRoute
   '/_app/$orgSlug/notifications/threads': typeof AppOrgSlugNotificationsThreadsRoute
   '/_app/$orgSlug/profile/$userId': typeof AppOrgSlugProfileUserIdRoute
-  '/_app/$orgSlug/settings/authentication': typeof AppOrgSlugSettingsAuthenticationRoute
   '/_app/$orgSlug/settings/connect-invites': typeof AppOrgSlugSettingsConnectInvitesRoute
   '/_app/$orgSlug/settings/custom-emojis': typeof AppOrgSlugSettingsCustomEmojisRoute
   '/_app/$orgSlug/settings/debug': typeof AppOrgSlugSettingsDebugRoute
@@ -564,7 +554,6 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
@@ -612,7 +601,6 @@ export interface FileRouteTypes {
     | '/$orgSlug/notifications/general'
     | '/$orgSlug/notifications/threads'
     | '/$orgSlug/profile/$userId'
-    | '/$orgSlug/settings/authentication'
     | '/$orgSlug/settings/connect-invites'
     | '/$orgSlug/settings/custom-emojis'
     | '/$orgSlug/settings/debug'
@@ -668,7 +656,6 @@ export interface FileRouteTypes {
     | '/_app/$orgSlug/notifications/general'
     | '/_app/$orgSlug/notifications/threads'
     | '/_app/$orgSlug/profile/$userId'
-    | '/_app/$orgSlug/settings/authentication'
     | '/_app/$orgSlug/settings/connect-invites'
     | '/_app/$orgSlug/settings/custom-emojis'
     | '/_app/$orgSlug/settings/debug'
@@ -902,13 +889,6 @@ declare module '@tanstack/react-router' {
       path: '/connect-invites'
       fullPath: '/$orgSlug/settings/connect-invites'
       preLoaderRoute: typeof AppOrgSlugSettingsConnectInvitesRouteImport
-      parentRoute: typeof AppOrgSlugSettingsLayoutRoute
-    }
-    '/_app/$orgSlug/settings/authentication': {
-      id: '/_app/$orgSlug/settings/authentication'
-      path: '/authentication'
-      fullPath: '/$orgSlug/settings/authentication'
-      preLoaderRoute: typeof AppOrgSlugSettingsAuthenticationRouteImport
       parentRoute: typeof AppOrgSlugSettingsLayoutRoute
     }
     '/_app/$orgSlug/profile/$userId': {
@@ -1187,7 +1167,6 @@ const AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren =
 interface AppOrgSlugSettingsLayoutRouteChildren {
   AppOrgSlugSettingsChatSyncLayoutRoute: typeof AppOrgSlugSettingsChatSyncLayoutRouteWithChildren
   AppOrgSlugSettingsIntegrationsLayoutRoute: typeof AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren
-  AppOrgSlugSettingsAuthenticationRoute: typeof AppOrgSlugSettingsAuthenticationRoute
   AppOrgSlugSettingsConnectInvitesRoute: typeof AppOrgSlugSettingsConnectInvitesRoute
   AppOrgSlugSettingsCustomEmojisRoute: typeof AppOrgSlugSettingsCustomEmojisRoute
   AppOrgSlugSettingsDebugRoute: typeof AppOrgSlugSettingsDebugRoute
@@ -1202,8 +1181,6 @@ const AppOrgSlugSettingsLayoutRouteChildren: AppOrgSlugSettingsLayoutRouteChildr
       AppOrgSlugSettingsChatSyncLayoutRouteWithChildren,
     AppOrgSlugSettingsIntegrationsLayoutRoute:
       AppOrgSlugSettingsIntegrationsLayoutRouteWithChildren,
-    AppOrgSlugSettingsAuthenticationRoute:
-      AppOrgSlugSettingsAuthenticationRoute,
     AppOrgSlugSettingsConnectInvitesRoute:
       AppOrgSlugSettingsConnectInvitesRoute,
     AppOrgSlugSettingsCustomEmojisRoute: AppOrgSlugSettingsCustomEmojisRoute,

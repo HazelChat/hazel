@@ -19,8 +19,6 @@ export interface ExistingConfig {
 	clerkSecretKey?: EnvValue
 	clerkPublishableKey?: EnvValue
 	clerkWebhookSecret?: EnvValue
-	workosApiKey?: EnvValue
-	workosClientId?: EnvValue
 	encryptionKey?: EnvValue
 	linear?: {
 		clientId: EnvValue
@@ -58,13 +56,6 @@ export const extractExistingConfig = (result: EnvReadResult): ExistingConfig => 
 
 	const clerkWebhookSecret = getEnvValue(result, "CLERK_WEBHOOK_SECRET")
 	if (clerkWebhookSecret) config.clerkWebhookSecret = clerkWebhookSecret
-
-	// WorkOS (legacy — migrating away, kept readable so existing dev envs still work pre-cutover)
-	const workosApiKey = getEnvValue(result, "WORKOS_API_KEY")
-	if (workosApiKey) config.workosApiKey = workosApiKey
-
-	const workosClientId = getEnvValue(result, "WORKOS_CLIENT_ID")
-	if (workosClientId) config.workosClientId = workosClientId
 
 	const encryptionKey = getEnvValue(result, "INTEGRATION_ENCRYPTION_KEY")
 	if (encryptionKey) config.encryptionKey = encryptionKey
@@ -134,8 +125,6 @@ export interface Config {
 	clerkSecretKey: string
 	clerkPublishableKey: string
 	clerkWebhookSecret: string
-	workosApiKey: string
-	workosClientId: string
 	secrets: {
 		encryptionKey: string
 	}
@@ -161,9 +150,6 @@ export const ENV_TEMPLATES = {
 		VITE_CLUSTER_URL: "http://localhost:3020",
 		VITE_ELECTRIC_URL: "https://localhost:5133/v1/shape",
 		VITE_CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
-		// WorkOS vars kept for legacy dev flows; harmless once Clerk is fully swapped in.
-		VITE_WORKOS_CLIENT_ID: config.workosClientId,
-		VITE_WORKOS_REDIRECT_URI: "http://localhost:3000/auth/callback",
 		VITE_R2_PUBLIC_URL: config.s3PublicUrl ?? "",
 	}),
 
@@ -187,17 +173,10 @@ export const ENV_TEMPLATES = {
 			// Electric
 			ELECTRIC_URL: "http://localhost:3333",
 
-			// Clerk (primary auth provider)
+			// Clerk
 			CLERK_SECRET_KEY: config.clerkSecretKey,
 			CLERK_PUBLISHABLE_KEY: config.clerkPublishableKey,
 			CLERK_WEBHOOK_SECRET: config.clerkWebhookSecret,
-
-			// WorkOS (legacy — keeps legacy tokens + webhooks working during the migration)
-			WORKOS_API_KEY: config.workosApiKey,
-			WORKOS_CLIENT_ID: config.workosClientId,
-			WORKOS_COOKIE_DOMAIN: "localhost",
-			WORKOS_REDIRECT_URI: "http://localhost:3003/auth/callback",
-			WORKOS_WEBHOOK_SECRET: "whsec_" + config.secrets.encryptionKey.slice(0, 20),
 
 			// Encryption
 			INTEGRATION_ENCRYPTION_KEY: config.secrets.encryptionKey,
@@ -235,9 +214,6 @@ export const ENV_TEMPLATES = {
 		EFFECT_DATABASE_URL: "postgresql://user:password@localhost:5432/cluster",
 		IS_DEV: "true",
 		OPENROUTER_API_KEY: config.openrouterApiKey ?? "",
-		// WorkOS - required for WorkOS sync cron
-		WORKOS_API_KEY: config.workosApiKey,
-		WORKOS_CLIENT_ID: config.workosClientId,
 	}),
 
 	electricProxy: (config: Config) => ({
@@ -245,8 +221,7 @@ export const ENV_TEMPLATES = {
 		DATABASE_URL: "postgresql://user:password@localhost:5432/app",
 		IS_DEV: "true",
 		ELECTRIC_URL: "http://localhost:3333",
-		WORKOS_API_KEY: config.workosApiKey,
-		WORKOS_CLIENT_ID: config.workosClientId,
+		CLERK_SECRET_KEY: config.clerkSecretKey,
 		ALLOWED_ORIGIN: "http://localhost:3000",
 	}),
 

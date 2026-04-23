@@ -264,38 +264,6 @@ export const setupCommand = Command.make(
 				yield* Console.log(pc.green("\u2713") + " Clerk credentials valid\n")
 			}
 
-			// Legacy WorkOS — optional during the migration window.
-			yield* Console.log(
-				pc.cyan("\u2500\u2500\u2500 Step 2b: Legacy WorkOS (optional during migration) \u2500\u2500\u2500"),
-			)
-			const configureWorkOS = yield* Prompt.confirm({
-				message: "Configure legacy WorkOS credentials? (skip for new setups)",
-				initial: !!existingConfig.workosApiKey,
-			})
-
-			let workosApiKey = ""
-			let workosClientId = ""
-			if (configureWorkOS) {
-				workosApiKey = yield* promptWithExisting({
-					key: "WORKOS_API_KEY",
-					message: "Enter your WorkOS API Key",
-					envResult,
-					validate: (s) =>
-						s.startsWith("sk_") ? Effect.succeed(s) : Effect.fail("Must start with sk_"),
-					isSecret: true,
-				})
-
-				workosClientId = yield* promptWithExisting({
-					key: "WORKOS_CLIENT_ID",
-					message: "Enter your WorkOS Client ID",
-					envResult,
-					validate: (s) =>
-						s.startsWith("client_")
-							? Effect.succeed(s)
-							: Effect.fail("Must start with client_"),
-				})
-			}
-
 			// Step 3: Secrets - reuse existing or generate new
 			yield* Console.log(pc.cyan("\u2500\u2500\u2500 Step 3: Secrets \u2500\u2500\u2500"))
 
@@ -554,8 +522,6 @@ export const setupCommand = Command.make(
 				clerkSecretKey,
 				clerkPublishableKey,
 				clerkWebhookSecret,
-				workosApiKey,
-				workosClientId,
 				secrets: generatedSecrets,
 				s3: s3Config,
 				s3PublicUrl: s3Config.publicUrl,
