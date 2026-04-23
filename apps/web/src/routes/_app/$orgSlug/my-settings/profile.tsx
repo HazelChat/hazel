@@ -1,3 +1,4 @@
+import { useUser } from "@clerk/react"
 import { useAtomSet } from "@effect/atom-react"
 import type { UserId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
@@ -32,6 +33,7 @@ type ProfileFormData = typeof profileSchema.infer
 
 function ProfileSettings() {
 	const { user } = useAuth()
+	const { user: clerkUser } = useUser()
 	const updateUserMutation = useAtomSet(updateUserAction, { mode: "promiseExit" })
 
 	// Use browser timezone as default if user hasn't set one
@@ -47,20 +49,36 @@ function ProfileSettings() {
 			onChange: profileSchema,
 		},
 		onSubmit: async ({ value }) => {
-			if (!user) return
-			const result = await updateUserMutation({
-				userId: user.id as UserId,
-				firstName: value.firstName,
-				lastName: value.lastName,
-				timezone: value.timezone,
-			})
+			if (!user || !clerkUser) return
 
-			if (Exit.isSuccess(result)) {
-				toast.success("Profile updated successfully")
-			} else {
-				console.error(result.cause)
+			// Name lives in Clerk (synced to our DB via webhook); timezone is Hazel-only.
+			const [clerkResult, timezoneResult] = await Promise.allSettled([
+				clerkUser.update({
+					firstName: value.firstName,
+					lastName: value.lastName,
+				}),
+				updateUserMutation({
+					userId: user.id as UserId,
+					timezone: value.timezone,
+				}),
+			])
+
+			const clerkFailed = clerkResult.status === "rejected"
+			const timezoneFailed =
+				timezoneResult.status === "rejected" ||
+				(timezoneResult.status === "fulfilled" && !Exit.isSuccess(timezoneResult.value))
+
+			if (clerkFailed || timezoneFailed) {
+				if (clerkFailed) console.error(clerkResult.reason)
+				if (timezoneResult.status === "rejected") console.error(timezoneResult.reason)
+				if (timezoneResult.status === "fulfilled" && !Exit.isSuccess(timezoneResult.value)) {
+					console.error(timezoneResult.value.cause)
+				}
 				toast.error("Failed to update profile")
+				return
 			}
+
+			toast.success("Profile updated successfully")
 		},
 	})
 

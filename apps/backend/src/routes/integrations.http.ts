@@ -312,7 +312,7 @@ const handleGetOAuthUrl = Effect.fn("integrations.getOAuthUrl")(function* (
 	)
 
 	const frontendUrl = yield* Config.string("FRONTEND_URL")
-	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN")
+	const cookieDomain = yield* Config.string("COOKIE_DOMAIN")
 
 	// Get org slug for redirect URL
 	const orgRepo = yield* OrganizationRepo
@@ -458,7 +458,7 @@ const handleOAuthCallback = Effect.fn("integrations.oauthCallback")(function* (
 	const request = yield* HttpServerRequest.HttpServerRequest
 	const sessionCookieName = `${OAUTH_SESSION_COOKIE_PREFIX}${provider}`
 	const sessionCookie = request.cookies[sessionCookieName]
-	const cookieDomain = yield* Config.string("WORKOS_COOKIE_DOMAIN")
+	const cookieDomain = yield* Config.string("COOKIE_DOMAIN")
 	const nodeEnv = yield* Config.string("NODE_ENV").pipe(Config.withDefault("production"))
 	const cookieSecure = nodeEnv !== "development"
 

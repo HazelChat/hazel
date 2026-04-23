@@ -7,6 +7,7 @@ import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/dom
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
 import { ClerkSync } from "@hazel/backend-core/services"
+import { ChannelAccessSyncService } from "../services/channel-access-sync"
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
 	handlers
@@ -53,6 +54,7 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 				})
 
 				const syncService = yield* ClerkSync
+				const channelAccessSync = yield* ChannelAccessSyncService
 				const result = yield* syncService.processWebhookEvent(event)
 
 				if (!result.success) {
@@ -60,6 +62,27 @@ export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handl
 						type: event.type,
 						error: result.error,
 					})
+				}
+
+				// Re-sync channel access when membership changes come in via webhook (e.g. after
+				// a Clerk invitation is accepted). The RPC-backed membership path does this
+				// inline; Clerk-originated changes arrive here instead, so we replicate it.
+				if (result.success && result.membershipChange) {
+					yield* channelAccessSync
+						.syncUserInOrganization(
+							result.membershipChange.userId,
+							result.membershipChange.organizationId,
+						)
+						.pipe(
+							Effect.catch((err) =>
+								Effect.logError("Failed to sync channel access after Clerk membership event", {
+									userId: result.membershipChange!.userId,
+									organizationId: result.membershipChange!.organizationId,
+									removed: result.membershipRemoved,
+									error: String(err),
+								}),
+							),
+						)
 				}
 
 				return new WebhookResponse({

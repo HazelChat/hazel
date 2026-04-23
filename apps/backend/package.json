@@ -17,7 +17,6 @@
 		"test:watch": "vitest src/**/*.test.ts",
 		"test:policies": "vitest run src/lib/policy-utils.test.ts src/policies/*.test.ts",
 		"setup": "bun run scripts/setup.ts",
-		"sync:workos": "bun run src/scripts/sync-workos.ts",
 		"reset": "bun run scripts/reset-all.ts",
 		"reset:dry-run": "bun run scripts/reset-all.ts --dry-run",
 		"reset:force": "bun run scripts/reset-all.ts --force",

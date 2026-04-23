@@ -1,9 +1,8 @@
-import { useAtomRefresh, useAtomSet } from "@effect/atom-react"
-import { Exit } from "effect"
+import { useUser } from "@clerk/react"
+import { useAtomRefresh } from "@effect/atom-react"
 import { useState } from "react"
 import { Button, type DropItem, DropZone, FileTrigger } from "react-aria-components"
 import { toast } from "sonner"
-import { resetUserAvatarMutation } from "~/atoms/user-atoms"
 import IconEdit from "~/components/icons/icon-edit"
 import { Avatar } from "~/components/ui/avatar/avatar"
 import { Loader } from "~/components/ui/loader"
@@ -37,27 +36,22 @@ export function ProfilePictureUpload({
 	const [isCropModalOpen, setIsCropModalOpen] = useState(false)
 	const [isResetting, setIsResetting] = useState(false)
 
-	const resetAvatar = useAtomSet(resetUserAvatarMutation, { mode: "promiseExit" })
+	const { user: clerkUser } = useUser()
 	const refreshCurrentUser = useAtomRefresh(userAtom)
 
 	const handleResetAvatar = async () => {
-		if (!userId) return
+		if (!clerkUser) return
 
 		setIsResetting(true)
 		try {
-			const result = await resetAvatar({ payload: void 0 })
-
-			if (Exit.isSuccess(result)) {
-				refreshCurrentUser()
-				toast.success("Profile picture reset to account photo")
-			} else {
-				console.error(result.cause)
-				toast.error("Failed to reset profile picture")
-			}
-			setIsResetting(false)
+			await clerkUser.setProfileImage({ file: null })
+			refreshCurrentUser()
+			toast.success("Profile picture reset to account photo")
 		} catch (error) {
+			console.error(error)
+			toast.error("Failed to reset profile picture")
+		} finally {
 			setIsResetting(false)
-			throw error
 		}
 	}
 

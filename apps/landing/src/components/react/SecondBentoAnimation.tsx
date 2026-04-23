@@ -34,7 +34,6 @@ export function SecondBentoAnimation() {
 					</OrbitingCircles>
 
 					<OrbitingCircles index={1} iconSize={60} speed={0.5}>
-						<Icons.workos />
 						<IntegrationLink href="/integrations/netlify">
 							<Icons.netlify />
 						</IntegrationLink>

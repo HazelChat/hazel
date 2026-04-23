@@ -13,9 +13,7 @@ export class UserPolicy extends ServiceMap.Service<UserPolicy>()("UserPolicy/Pol
 
 		const canUpdate = (id: UserId) => authorize("update", (actor) => Effect.succeed(actor.id === id))
 
-		const canDelete = (id: UserId) => authorize("delete", (actor) => Effect.succeed(actor.id === id))
-
-		return { canCreate, canUpdate, canDelete, canRead } as const
+		return { canCreate, canUpdate, canRead } as const
 	}),
 }) {
 	static readonly layer = Layer.effect(this, this.make)

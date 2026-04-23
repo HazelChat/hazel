@@ -1,14 +1,12 @@
-import { useAtomSet } from "@effect/atom-react"
+import { useUser } from "@clerk/react"
 import { type } from "arktype"
-import { Exit } from "effect"
-import { updateUserMutation } from "~/atoms/user-atoms"
+import { useState } from "react"
+import { toast } from "sonner"
 import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
 import { useAppForm } from "~/hooks/use-app-form"
-import { useAuth } from "~/lib/auth"
-import { exitToast } from "~/lib/toast-exit"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
 const profileSchema = type({
@@ -31,8 +29,8 @@ export function ProfileInfoStep({
 	defaultFirstName = "",
 	defaultLastName = "",
 }: ProfileInfoStepProps) {
-	const { user } = useAuth()
-	const updateUser = useAtomSet(updateUserMutation, { mode: "promiseExit" })
+	const { user: clerkUser } = useUser()
+	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	const form = useAppForm({
 		defaultValues: {
@@ -43,28 +41,23 @@ export function ProfileInfoStep({
 			onChange: profileSchema,
 		},
 		onSubmit: async ({ value }) => {
-			if (!user?.id) return
+			if (!clerkUser) return
 
-			const exit = await updateUser({
-				payload: {
-					id: user.id,
+			setIsSubmitting(true)
+			try {
+				await clerkUser.update({
 					firstName: value.firstName.trim(),
 					lastName: value.lastName.trim(),
-				},
-			})
-			exitToast(exit)
-				.onErrorTag("UserNotFoundError", () => ({
-					title: "User not found",
-					description: "Your account could not be found. Please try signing in again.",
-					isRetryable: false,
-				}))
-				.run()
-
-			if (Exit.isSuccess(exit)) {
+				})
 				onContinue({
 					firstName: value.firstName.trim(),
 					lastName: value.lastName.trim(),
 				})
+			} catch (error) {
+				console.error(error)
+				toast.error("Failed to update profile")
+			} finally {
+				setIsSubmitting(false)
 			}
 		},
 	})
@@ -127,8 +120,8 @@ export function ProfileInfoStep({
 					/>
 				</div>
 
-				<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-					{([canSubmit, isSubmitting]) => (
+				<form.Subscribe selector={(state) => [state.canSubmit]}>
+					{([canSubmit]) => (
 						<OnboardingNavigation
 							onBack={onBack}
 							onContinue={() => form.handleSubmit()}

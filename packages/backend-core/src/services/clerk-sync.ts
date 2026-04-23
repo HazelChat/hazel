@@ -1,17 +1,30 @@
 import type { WebhookEvent } from "@clerk/backend"
-import { ClerkUserId } from "@hazel/schema"
+import { ClerkUserId, type OrganizationId, type UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
 import { OrganizationRepo } from "../repositories/organization-repo"
 import { UserRepo } from "../repositories/user-repo"
 
 /**
+ * Signals that a webhook event changed an organization membership.
+ * The route handler uses this to re-sync channel access (which lives in
+ * `apps/backend` and isn't reachable from this package).
+ */
+export type MembershipChange = {
+	readonly userId: UserId
+	readonly organizationId: OrganizationId
+}
+
+/**
  * Clerk webhook event processor.
  *
  * Handles:
- * - `user.*`        → upsert / soft-delete by Clerk user ID (externalId column)
- * - `organization.*` → upsert / soft-delete by slug (with Clerk org ID stashed in settings)
- * - `organizationMembership.*` → maintain the org_members junction table
+ * - `user.*`                    → upsert / soft-delete by Clerk user ID (externalId column).
+ *                                  Email changes flow through `user.updated` (Clerk refires the
+ *                                  whole user payload including `email_addresses`), so there's
+ *                                  no separate email-sync case — the upsert picks the primary.
+ * - `organization.*`            → upsert / soft-delete by slug (with Clerk org ID stashed in settings)
+ * - `organizationMembership.*`  → maintain the org_members junction table
  */
 export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 	make: Effect.gen(function* () {
@@ -132,7 +145,7 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 			return "member"
 		}
 
-		const handleMembershipUpsert = (data: unknown) =>
+		const handleMembershipUpsert = (data: unknown): Effect.Effect<Option.Option<MembershipChange>> =>
 			Effect.gen(function* () {
 				const anyData = data as {
 					public_user_data?: { user_id?: string }
@@ -141,7 +154,7 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				}
 				const clerkUserId = anyData.public_user_data?.user_id
 				const orgSlug = anyData.organization?.slug
-				if (!clerkUserId || !orgSlug) return
+				if (!clerkUserId || !orgSlug) return Option.none()
 
 				const userOpt = yield* userRepo
 					.findByExternalId(clerkUserId)
@@ -153,7 +166,7 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 					yield* Effect.logWarning(
 						`Skipping membership upsert — user or org not found (user=${clerkUserId}, org=${orgSlug})`,
 					)
-					return
+					return Option.none()
 				}
 
 				yield* membershipRepo.upsertByOrgAndUser({
@@ -165,9 +178,11 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 					invitedBy: null,
 					deletedAt: null,
 				})
-			}).pipe(Effect.asVoid)
 
-		const handleMembershipRemoved = (data: unknown) =>
+				return Option.some({ userId: userOpt.id, organizationId: orgOpt.id })
+			})
+
+		const handleMembershipRemoved = (data: unknown): Effect.Effect<Option.Option<MembershipChange>> =>
 			Effect.gen(function* () {
 				const anyData = data as {
 					public_user_data?: { user_id?: string }
@@ -175,7 +190,7 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				}
 				const clerkUserId = anyData.public_user_data?.user_id
 				const orgSlug = anyData.organization?.slug
-				if (!clerkUserId || !orgSlug) return
+				if (!clerkUserId || !orgSlug) return Option.none()
 
 				const userOpt = yield* userRepo
 					.findByExternalId(clerkUserId)
@@ -183,17 +198,26 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				const orgOpt = yield* orgRepo
 					.findBySlug(orgSlug)
 					.pipe(Effect.map(Option.getOrNull))
-				if (!userOpt || !orgOpt) return
+				if (!userOpt || !orgOpt) return Option.none()
 
 				yield* membershipRepo.softDeleteByOrgAndUser(orgOpt.id, userOpt.id)
-			}).pipe(Effect.asVoid)
 
-		/** Process a verified Clerk webhook event. Returns `{ success, error? }`. */
+				return Option.some({ userId: userOpt.id, organizationId: orgOpt.id })
+			})
+
+		/**
+		 * Process a verified Clerk webhook event. Returns `{ success, error?, membershipChange? }`.
+		 * When membership events are processed, `membershipChange` carries the affected Hazel
+		 * user + org IDs so the caller can re-sync channel access (which lives outside this package).
+		 */
 		const processWebhookEvent = (event: WebhookEvent) =>
 			Effect.gen(function* () {
 				yield* Effect.logInfo(`Processing Clerk webhook: ${event.type}`, {
 					type: event.type,
 				})
+
+				let membershipChange: MembershipChange | undefined
+				let membershipRemoved = false
 
 				switch (event.type) {
 					case "user.created":
@@ -211,17 +235,28 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 						yield* handleOrgDeleted(event.data)
 						break
 					case "organizationMembership.created":
-					case "organizationMembership.updated":
-						yield* handleMembershipUpsert(event.data)
+					case "organizationMembership.updated": {
+						const result = yield* handleMembershipUpsert(event.data)
+						if (Option.isSome(result)) membershipChange = result.value
 						break
-					case "organizationMembership.deleted":
-						yield* handleMembershipRemoved(event.data)
+					}
+					case "organizationMembership.deleted": {
+						const result = yield* handleMembershipRemoved(event.data)
+						if (Option.isSome(result)) {
+							membershipChange = result.value
+							membershipRemoved = true
+						}
 						break
+					}
 					default:
 						yield* Effect.logDebug(`Ignoring Clerk event type: ${event.type}`)
 				}
 
-				return { success: true as const }
+				return {
+					success: true as const,
+					membershipChange,
+					membershipRemoved,
+				}
 			}).pipe(
 				Effect.catch((err: unknown) =>
 					Effect.succeed({

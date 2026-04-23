@@ -781,7 +781,7 @@ export const siteConfig = {
 			img: "https://randomuser.me/api/portraits/men/18.jpg",
 			description: (
 				<p>
-					We needed a solution with strong security and SSO support. Hazel delivered with WorkOS
+					We needed a solution with strong security and SSO support. Hazel delivered with Clerk
 					integration out of the box.
 					<Highlight>Enterprise-grade auth without enterprise-grade complexity.</Highlight> Perfect
 					for regulated industries.

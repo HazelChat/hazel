@@ -19,7 +19,7 @@ export class UserResponse extends Schema.Class<UserResponse>("UserResponse")({
 
 /**
  * Error thrown when a user is not found.
- * Used in update and delete operations.
+ * Used in update operations.
  */
 export class UserNotFoundError extends Schema.TaggedErrorClass<UserNotFoundError>()("UserNotFoundError", {
 	userId: UserId,
@@ -46,10 +46,11 @@ export class UserRpcs extends RpcGroup.make(
 	/**
 	 * UserUpdate
 	 *
-	 * Updates an existing user.
-	 * Only users with appropriate permissions can update user data.
+	 * Updates Hazel-specific user preferences (timezone, settings).
+	 * Identity fields (firstName, lastName, avatarUrl, email) are owned by Clerk
+	 * and synced via the Clerk webhook — update them with the Clerk client SDK.
 	 *
-	 * @param payload - User ID and fields to update
+	 * @param payload - User ID and Hazel-specific fields to update
 	 * @returns Updated user data and transaction ID
 	 * @throws UserNotFoundError if user doesn't exist
 	 * @throws UnauthorizedError if user lacks permission
@@ -58,28 +59,10 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.update", {
 		payload: Schema.Struct({
 			id: UserId,
-		}).pipe(Schema.fieldsAssign(User.PatchPartial.fields)),
+			timezone: Schema.optional(User.PatchPartial.fields.timezone),
+			settings: Schema.optional(User.PatchPartial.fields.settings),
+		}),
 		success: UserResponse,
-		error: Schema.Union([UserNotFoundError, UnauthorizedError, InternalServerError]),
-	})
-		.annotate(RequiredScopes, ["users:write"])
-		.middleware(AuthMiddleware),
-
-	/**
-	 * UserDelete
-	 *
-	 * Deletes a user (soft delete).
-	 * Only users with appropriate permissions can delete users.
-	 *
-	 * @param payload - User ID to delete
-	 * @returns Transaction ID
-	 * @throws UserNotFoundError if user doesn't exist
-	 * @throws UnauthorizedError if user lacks permission
-	 * @throws InternalServerError for unexpected errors
-	 */
-	Rpc.make("user.delete", {
-		payload: Schema.Struct({ id: UserId }),
-		success: Schema.Struct({ transactionId: TransactionId }),
 		error: Schema.Union([UserNotFoundError, UnauthorizedError, InternalServerError]),
 	})
 		.annotate(RequiredScopes, ["users:write"])
@@ -96,25 +79,6 @@ export class UserRpcs extends RpcGroup.make(
 	 * @throws InternalServerError for unexpected errors
 	 */
 	Rpc.make("user.finalizeOnboarding", {
-		payload: Schema.Void,
-		success: UserResponse,
-		error: Schema.Union([UnauthorizedError, InternalServerError]),
-	})
-		.annotate(RequiredScopes, ["users:write"])
-		.middleware(AuthMiddleware),
-
-	/**
-	 * UserResetAvatar
-	 *
-	 * Resets the current user's avatar to their original WorkOS profile picture
-	 * (e.g., Google/GitHub OAuth avatar). Clears the avatar if WorkOS doesn't have
-	 * a profile picture.
-	 *
-	 * @returns Updated user data and transaction ID
-	 * @throws UnauthorizedError if user is not authenticated
-	 * @throws InternalServerError for unexpected errors
-	 */
-	Rpc.make("user.resetAvatar", {
 		payload: Schema.Void,
 		success: UserResponse,
 		error: Schema.Union([UnauthorizedError, InternalServerError]),

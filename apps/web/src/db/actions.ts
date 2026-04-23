@@ -473,22 +473,22 @@ export const createThreadAction = optimisticAction({
 		}),
 })
 
+/**
+ * Updates Hazel-specific user preferences (timezone, settings).
+ * Identity fields (firstName/lastName/avatarUrl) live in Clerk — update them
+ * via `useUser().user.update(...)` / `setProfileImage(...)` and let the Clerk
+ * webhook sync them back.
+ */
 export const updateUserAction = optimisticAction({
 	collections: [userCollection],
 	runtime: runtime,
 
 	onMutate: (props: {
 		userId: UserId
-		firstName?: string
-		lastName?: string
-		avatarUrl?: string
 		timezone?: string | null
 		settings?: User.UserSettings | null
 	}) => {
 		userCollection.update(props.userId, (draft) => {
-			if (props.firstName !== undefined) draft.firstName = props.firstName
-			if (props.lastName !== undefined) draft.lastName = props.lastName
-			if (props.avatarUrl !== undefined) draft.avatarUrl = props.avatarUrl
 			if (props.timezone !== undefined) draft.timezone = props.timezone
 			if (props.settings !== undefined) draft.settings = props.settings
 		})
@@ -502,9 +502,6 @@ export const updateUserAction = optimisticAction({
 
 			const result = yield* client("user.update", {
 				id: props.userId,
-				...(props.firstName !== undefined && { firstName: props.firstName }),
-				...(props.lastName !== undefined && { lastName: props.lastName }),
-				...(props.avatarUrl !== undefined && { avatarUrl: props.avatarUrl }),
 				...(props.timezone !== undefined && { timezone: props.timezone }),
 				...(props.settings !== undefined && { settings: props.settings }),
 			})

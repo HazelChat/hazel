@@ -12,7 +12,7 @@ See the [root README](../../README.md) for development setup instructions.
 - **Effect-TS** for functional programming and dependency injection
 - **Effect RPC** for type-safe APIs
 - **Drizzle ORM** with PostgreSQL
-- **WorkOS** for authentication
+- **Clerk** for authentication
 
 ## Development
 

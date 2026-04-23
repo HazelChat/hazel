@@ -41,7 +41,7 @@ Hazel Chat is a full-stack chat application featuring:
 - **Effect-TS** functional programming framework
 - **Effect RPC** for type-safe APIs
 - **Drizzle ORM** with PostgreSQL
-- **WorkOS** for authentication
+- **Clerk** for authentication
 
 ### Cluster Service
 
@@ -77,7 +77,7 @@ Hazel Chat is a full-stack chat application featuring:
 
 - [Bun](https://bun.sh/) **v1.2.14 or later** (required for [workspace catalogs](https://bun.sh/blog/release-notes/bun-v1.2.14))
 - [Docker](https://docker.com/) (for local services)
-- [WorkOS](https://workos.com/) account (for authentication)
+- [Clerk](https://clerk.com/) account (for authentication)
 
 ## Getting Started
 
@@ -103,7 +103,7 @@ Hazel Chat is a full-stack chat application featuring:
     This interactive CLI will:
     - Start Docker services (PostgreSQL, Redis, Electric, MinIO)
     - Validate your environment
-    - Configure WorkOS authentication
+    - Configure Clerk authentication
     - Generate secrets
     - Create all necessary `.env` files
     - Initialize the database
@@ -132,34 +132,23 @@ Hazel Chat is a full-stack chat application featuring:
     bun run dev:withBots
     ```
 
-## WorkOS Configuration
+## Clerk Configuration
 
-This project uses [WorkOS](https://workos.com/) for authentication. After creating a WorkOS account, configure the following:
+This project uses [Clerk](https://clerk.com/) for authentication. After creating a Clerk application, grab your **Publishable key** and **Secret key** from the dashboard and provide them to `bun run setup` (or set `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` in the generated `.env` files).
 
-### 1. Enable AuthKit
+### Organizations
 
-1. Go to **Authentication** → **AuthKit** in your WorkOS dashboard
-2. Click **"Get started"** or **"Enable AuthKit"**
-3. Configure your app name and branding
-4. Enable at least one sign-in method (Email + Password, Google, GitHub, etc.)
+Enable **Organizations** in your Clerk dashboard (Organizations → Settings). Hazel uses Clerk organizations for multi-tenant workspaces, with members synced to our database via webhooks.
 
-### 2. Configure Redirect URI
+### Webhook endpoint
 
-Add the following redirect URI in **Redirects** → **Edit redirect URIs**:
+Add a webhook in the Clerk dashboard pointing at `http://<backend-host>/webhooks/clerk` (e.g. `http://localhost:3003/webhooks/clerk` for local dev, exposed via a tunnel). Subscribe to at least:
 
-```
-http://localhost:3003/auth/callback
-```
+- `user.created`, `user.updated`, `user.deleted`
+- `organization.created`, `organization.updated`, `organization.deleted`
+- `organizationMembership.created`, `organizationMembership.updated`, `organizationMembership.deleted`
 
-### 3. Create Required Roles
-
-The application uses custom roles for organization members. Go to **Roles** and create these roles:
-
-| Role Slug | Name   | Description                          |
-| --------- | ------ | ------------------------------------ |
-| `owner`   | Owner  | Full access, can delete organization |
-| `admin`   | Admin  | Can manage members and settings      |
-| `member`  | Member | Standard access (default)            |
+Copy the signing secret into `CLERK_WEBHOOK_SECRET`.
 
 ## Development Commands
 
