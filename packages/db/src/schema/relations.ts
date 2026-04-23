@@ -16,7 +16,6 @@ import {
 import { rssSubscriptionsTable } from "./rss-subscriptions"
 import { integrationConnectionsTable } from "./integration-connections"
 import { integrationTokensTable } from "./integration-tokens"
-import { invitationsTable } from "./invitations"
 import { messageReactionsTable, messagesTable } from "./messages"
 import { notificationsTable } from "./notifications"
 import { organizationMembersTable, organizationsTable } from "./organizations"
@@ -33,8 +32,6 @@ export const usersRelations = relations(usersTable, ({ many }) => ({
 	messageReactions: many(messageReactionsTable),
 	chatSyncConnectionsCreated: many(chatSyncConnectionsTable),
 	attachments: many(attachmentsTable),
-	invitationsSent: many(invitationsTable),
-	invitationsAccepted: many(invitationsTable),
 	pinnedMessages: many(pinnedMessagesTable),
 }))
 
@@ -44,7 +41,6 @@ export const organizationsRelations = relations(organizationsTable, ({ many }) =
 	channels: many(channelsTable),
 	chatSyncConnections: many(chatSyncConnectionsTable),
 	channelAccess: many(channelAccessTable),
-	invitations: many(invitationsTable),
 	attachments: many(attachmentsTable),
 	customEmojis: many(customEmojisTable),
 }))
@@ -191,24 +187,6 @@ export const attachmentsRelations = relations(attachmentsTable, ({ one }) => ({
 	uploadedBy: one(usersTable, {
 		fields: [attachmentsTable.uploadedBy],
 		references: [usersTable.id],
-	}),
-}))
-
-// Invitations relations
-export const invitationsRelations = relations(invitationsTable, ({ one }) => ({
-	organization: one(organizationsTable, {
-		fields: [invitationsTable.organizationId],
-		references: [organizationsTable.id],
-	}),
-	invitedBy: one(usersTable, {
-		fields: [invitationsTable.invitedBy],
-		references: [usersTable.id],
-		relationName: "invitationsSent",
-	}),
-	acceptedBy: one(usersTable, {
-		fields: [invitationsTable.acceptedBy],
-		references: [usersTable.id],
-		relationName: "invitationsAccepted",
 	}),
 }))
 

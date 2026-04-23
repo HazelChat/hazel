@@ -58,7 +58,6 @@ export const ALLOWED_TABLES = [
 
 	// Interaction tables
 	"typing_indicators",
-	"invitations",
 
 	// Bot tables
 	"bots",
@@ -323,13 +322,6 @@ export function getWhereClauseForTable(
 			// Typing indicators: only in channels user has access to
 			Effect.succeed(
 				buildChannelAccessClause(user.internalUserId, schema.typingIndicatorsTable.channelId),
-			),
-		),
-
-		Match.when("invitations", () =>
-			// Invitations: only in orgs the user is a member of (no deletedAt column)
-			Effect.succeed(
-				buildOrgMembershipClause(user.internalUserId, schema.invitationsTable.organizationId),
 			),
 		),
 

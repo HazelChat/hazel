@@ -142,10 +142,6 @@ type Fixture = {
 			publicAVisible: string
 			privateAHidden: string
 		}
-		invitations: {
-			orgAVisible: string
-			orgBHidden: string
-		}
 		bots: {
 			installed: string
 			noAccess: string
@@ -532,10 +528,6 @@ const createFixture = (): Fixture => {
 			publicAVisible: id(),
 			privateAHidden: id(),
 		},
-		invitations: {
-			orgAVisible: id(),
-			orgBHidden: id(),
-		},
 		bots: {
 			installed: id(),
 			noAccess: id(),
@@ -737,12 +729,6 @@ INSERT INTO typing_indicators (id, "channelId", "memberId", "lastTyped")
 VALUES
 	('${f.ids.typingIndicators.publicAVisible}', '${f.ids.channels.publicA}', '${f.ids.channelMembers.publicAOther}', ${timestamp}),
 	('${f.ids.typingIndicators.privateAHidden}', '${f.ids.channels.privateA}', '${f.ids.channelMembers.privateAOther}', ${timestamp + 1})
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO invitations (id, "invitationUrl", "workosInvitationId", "organizationId", email, "invitedBy", "invitedAt", "expiresAt", status, "createdAt")
-VALUES
-	('${f.ids.invitations.orgAVisible}', 'https://example.test/invite/${f.runId}/a', 'wrk_invite_${f.runId}_a', '${f.ids.organizations.orgA}', 'invite-a+${f.runId}@e2e.test', '${f.ids.users.viewer}', NOW(), NOW() + INTERVAL '7 day', 'pending', NOW()),
-	('${f.ids.invitations.orgBHidden}', 'https://example.test/invite/${f.runId}/b', 'wrk_invite_${f.runId}_b', '${f.ids.organizations.orgB}', 'invite-b+${f.runId}@e2e.test', '${f.ids.users.otherUser}', NOW(), NOW() + INTERVAL '7 day', 'pending', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO bots (id, "userId", "createdBy", name, "apiTokenHash", "isPublic", "installCount", mentionable, "createdAt", "updatedAt", "deletedAt")
@@ -1005,12 +991,6 @@ const buildUserVisibilitySpecs = (f: Fixture): VisibilitySpec<AllowedTable>[] =>
 		table: "typing_indicators",
 		allowedIds: [f.ids.typingIndicators.publicAVisible],
 		blockedIds: [f.ids.typingIndicators.privateAHidden],
-		strict: true,
-	},
-	{
-		table: "invitations",
-		allowedIds: [f.ids.invitations.orgAVisible],
-		blockedIds: [f.ids.invitations.orgBHidden],
 		strict: true,
 	},
 	{

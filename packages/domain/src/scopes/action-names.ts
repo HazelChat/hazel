@@ -10,7 +10,6 @@ import type {
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
-	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
 	NotificationRpcs,
@@ -44,7 +43,6 @@ export type RpcActionName =
 	| ActionOf<CustomEmojiRpcs>
 	| ActionOf<GitHubSubscriptionRpcs>
 	| ActionOf<IntegrationRequestRpcs>
-	| ActionOf<InvitationRpcs>
 	| ActionOf<MessageReactionRpcs>
 	| ActionOf<MessageRpcs>
 	| ActionOf<NotificationRpcs>

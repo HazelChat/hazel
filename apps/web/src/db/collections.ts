@@ -14,7 +14,6 @@ import {
 	ConnectParticipant,
 	CustomEmoji,
 	IntegrationConnection,
-	Invitation,
 	Message,
 	MessageReaction,
 	Notification,
@@ -49,25 +48,6 @@ export const organizationCollection = createEffectCollection({
 		fetchClient: electricFetchClient,
 	},
 	schema: Organization.Schema,
-	getKey: (item) => item.id,
-})
-
-export const invitationCollection = createEffectCollection({
-	id: "invitations",
-	runtime: runtime,
-	backoff: false,
-	shapeOptions: {
-		url: electricUrl,
-		params: {
-			table: "invitations",
-		},
-		//liveSse: true,
-		parser: {
-			timestamptz: (date) => new Date(date),
-		},
-		fetchClient: electricFetchClient,
-	},
-	schema: Invitation.Schema,
 	getKey: (item) => item.id,
 })
 

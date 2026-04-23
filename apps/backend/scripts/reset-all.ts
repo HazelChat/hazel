@@ -35,7 +35,6 @@ const dependentTables = [
 	"messages",
 	"channel_members",
 	"notifications",
-	"invitations",
 	"organization_members",
 	"user_presence_status",
 	"bots",

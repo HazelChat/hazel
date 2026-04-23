@@ -18,7 +18,6 @@ export { ConnectParticipantRepo } from "./connect-participant-repo"
 export { GitHubSubscriptionRepo } from "./github-subscription-repo"
 export { IntegrationConnectionRepo } from "./integration-connection-repo"
 export { IntegrationTokenRepo } from "./integration-token-repo"
-export { InvitationRepo } from "./invitation-repo"
 export { MessageReactionRepo } from "./message-reaction-repo"
 export {
 	MessageCreatedPayloadSchema,

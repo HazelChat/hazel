@@ -15,7 +15,6 @@ import {
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
-	InvitationRpcs,
 	RssSubscriptionRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
@@ -44,7 +43,6 @@ const AtomRpcProtocolLive = Layer.mergeAll(RpcProtocolLive, AuthMiddlewareClient
 
 const BaseRpcs = MessageRpcs.merge(
 	NotificationRpcs,
-	InvitationRpcs,
 	IntegrationRequestRpcs,
 	ChannelRpcs,
 	ChannelMemberRpcs,

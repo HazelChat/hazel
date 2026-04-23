@@ -23,7 +23,6 @@ import {
 	GitHubSubscriptionRepo,
 	IntegrationConnectionRepo,
 	IntegrationTokenRepo,
-	InvitationRepo,
 	MessageReactionRepo,
 	MessageOutboxRepo,
 	MessageRepo,
@@ -54,7 +53,6 @@ import { ChannelWebhookPolicy } from "./policies/channel-webhook-policy"
 import { GitHubSubscriptionPolicy } from "./policies/github-subscription-policy"
 import { RssSubscriptionPolicy } from "./policies/rss-subscription-policy"
 import { IntegrationConnectionPolicy } from "./policies/integration-connection-policy"
-import { InvitationPolicy } from "./policies/invitation-policy"
 import { MessagePolicy } from "./policies/message-policy"
 import { MessageReactionPolicy } from "./policies/message-reaction-policy"
 import { NotificationPolicy } from "./policies/notification-policy"
@@ -87,7 +85,7 @@ import { OrgResolver } from "./services/org-resolver"
 export { HazelApi }
 
 // Export RPC groups for frontend consumption
-export { AuthMiddleware, InvitationRpcs, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
+export { AuthMiddleware, MessageRpcs, NotificationRpcs } from "@hazel/domain/rpc"
 
 const HealthRouter = HttpRouter.use((router) => router.add("GET", "/health", HttpServerResponse.text("OK")))
 
@@ -136,7 +134,6 @@ const RepoLive = Layer.mergeAll(
 	UserRepo.layer,
 	OrganizationRepo.layer,
 	OrganizationMemberRepo.layer,
-	InvitationRepo.layer,
 	PinnedMessageRepo.layer,
 	AttachmentRepo.layer,
 	NotificationRepo.layer,
@@ -161,7 +158,6 @@ const PolicyLive = Layer.mergeAll(
 	ChannelPolicy.layer,
 	ChannelSectionPolicy.layer,
 	MessagePolicy.layer,
-	InvitationPolicy.layer,
 	OrganizationMemberPolicy.layer,
 	ChannelMemberPolicy.layer,
 	MessageReactionPolicy.layer,

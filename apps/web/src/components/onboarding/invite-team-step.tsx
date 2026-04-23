@@ -1,27 +1,26 @@
-import { useAtomSet } from "@effect/atom-react"
+import { useOrganization } from "@clerk/react"
 import type { OrganizationId } from "@hazel/schema"
 import IconClose from "~/components/icons/icon-close"
 import IconPlus from "~/components/icons/icon-plus"
-import { Exit } from "effect"
 import { useState } from "react"
-import { createInvitationMutation } from "~/atoms/invitation-atoms"
+import { toast } from "sonner"
 import { Button } from "~/components/ui/button"
 import { CardDescription, CardTitle } from "~/components/ui/card"
 import { Description, FieldError, Label } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
 import { TextField } from "~/components/ui/text-field"
-import { exitToast } from "~/lib/toast-exit"
 import { OnboardingNavigation } from "./onboarding-navigation"
 
 interface InviteTeamStepProps {
 	onBack: () => void
 	onContinue: (emails: string[]) => void
 	onSkip: () => void
-	organizationId: OrganizationId | undefined
+	/** Kept for callers; not used now that Clerk owns the invitation flow. */
+	organizationId?: OrganizationId
 }
 
-export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: InviteTeamStepProps) {
-	const createInvitation = useAtomSet(createInvitationMutation, { mode: "promiseExit" })
+export function InviteTeamStep({ onBack, onContinue, onSkip }: InviteTeamStepProps) {
+	const { organization } = useOrganization()
 	const [emails, setEmails] = useState<string[]>([""])
 	const [errors, setErrors] = useState<Record<number, string>>({})
 	const [isLoading, setIsLoading] = useState(false)
@@ -78,31 +77,40 @@ export function InviteTeamStep({ onBack, onContinue, onSkip, organizationId }: I
 			return
 		}
 
-		if (!organizationId) {
-			console.error("No organization ID available")
+		if (!organization) {
+			console.error("No active Clerk organization available")
+			toast.error("No active organization")
 			return
 		}
 
 		setIsLoading(true)
-		try {
-			const exit = await createInvitation({
-				payload: {
-					organizationId: organizationId,
-					invites: filledEmails.map((email) => ({
-						email,
-						role: "member",
-					})),
-				},
-			})
-			exitToast(exit).run()
+		const results = await Promise.allSettled(
+			filledEmails.map((email) =>
+				organization.inviteMember({ emailAddress: email, role: "org:member" }),
+			),
+		)
+		setIsLoading(false)
 
-			if (Exit.isSuccess(exit)) {
-				onContinue(filledEmails)
-			}
-			setIsLoading(false)
-		} catch (error) {
-			setIsLoading(false)
-			throw error
+		const failed = results
+			.map((r, i) => ({ r, email: filledEmails[i]! }))
+			.filter(({ r }) => r.status === "rejected")
+
+		if (failed.length === 0) {
+			toast.success(`Sent ${filledEmails.length} invitation${filledEmails.length > 1 ? "s" : ""}`)
+			onContinue(filledEmails)
+			return
+		}
+
+		for (const { r, email } of failed) {
+			console.error(`Failed to invite ${email}`, (r as PromiseRejectedResult).reason)
+		}
+
+		const succeeded = results.length - failed.length
+		if (succeeded > 0) {
+			toast.warning(`Sent ${succeeded} invitation${succeeded > 1 ? "s" : ""}, ${failed.length} failed`)
+			onContinue(filledEmails)
+		} else {
+			toast.error("Failed to send invitations")
 		}
 	}
 

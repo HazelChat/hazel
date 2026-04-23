@@ -1,6 +1,7 @@
-import { useAtomSet } from "@effect/atom-react"
+import { useOrganization } from "@clerk/react"
 import type { OrganizationId } from "@hazel/schema"
-import { createInvitationMutation } from "~/atoms/invitation-atoms"
+import { useState } from "react"
+import { toast } from "sonner"
 import IconClose from "~/components/icons/icon-close"
 import IconEnvelope from "~/components/icons/icon-envelope"
 import IconPlus from "~/components/icons/icon-plus"
@@ -11,72 +12,71 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "~/components/ui/select"
 import { useAppForm } from "~/hooks/use-app-form"
-import { useOrganization } from "~/hooks/use-organization"
-import { exitToastAsync } from "~/lib/toast-exit"
 
 interface InviteFormData {
 	invites: {
 		email: string
-		role: "member" | "admin"
+		role: "org:member" | "org:admin"
 	}[]
 }
 
 interface EmailInviteModalProps {
 	isOpen: boolean
 	onOpenChange: (open: boolean) => void
+	/** Kept for backwards compatibility with callers that still pass it; ignored. */
 	organizationId?: OrganizationId
 }
 
-export const EmailInviteModal = ({
-	isOpen,
-	onOpenChange,
-	organizationId: propOrgId,
-}: EmailInviteModalProps) => {
-	const { organizationId: hookOrgId } = useOrganization()
-	const organizationId = propOrgId || hookOrgId
-
-	const createInvitation = useAtomSet(createInvitationMutation, {
-		mode: "promiseExit",
-	})
+export const EmailInviteModal = ({ isOpen, onOpenChange }: EmailInviteModalProps) => {
+	const { organization, isLoaded } = useOrganization()
+	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	const form = useAppForm({
 		defaultValues: {
-			invites: [{ email: "", role: "member" as const }],
+			invites: [{ email: "", role: "org:member" as const }],
 		} as InviteFormData,
 		onSubmit: async ({ value }) => {
-			if (!organizationId) return
+			if (!organization) {
+				toast.error("No active organization — please select one first.")
+				return
+			}
 
-			// Filter out empty emails
 			const validInvites = value.invites.filter((invite) => invite.email.trim() !== "")
-
 			if (validInvites.length === 0) return
 
-			const exit = await exitToastAsync(
-				createInvitation({
-					payload: {
-						organizationId,
-						invites: validInvites,
-					},
-				}),
+			setIsSubmitting(true)
+			const results = await Promise.allSettled(
+				validInvites.map((invite) =>
+					organization.inviteMember({
+						emailAddress: invite.email.trim(),
+						role: invite.role,
+					}),
+				),
 			)
-				.loading("Sending invitations...")
-				.onSuccess((result) => {
-					onOpenChange(false)
-					form.reset()
-				})
-				.successMessage((result) => {
-					const { successCount, errorCount } = result
-					if (successCount > 0 && errorCount === 0) {
-						return `Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`
-					}
-					if (successCount > 0 && errorCount > 0) {
-						return `Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`
-					}
-					return "Failed to send invitations"
-				})
-				.run()
 
-			return exit
+			const successCount = results.filter((r) => r.status === "fulfilled").length
+			const errorCount = results.length - successCount
+
+			setIsSubmitting(false)
+
+			if (successCount > 0 && errorCount === 0) {
+				toast.success(`Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}`)
+				onOpenChange(false)
+				form.reset()
+			} else if (successCount > 0 && errorCount > 0) {
+				const failures = results
+					.map((r, i) => ({ r, email: validInvites[i]!.email }))
+					.filter(({ r }) => r.status === "rejected")
+				for (const { r, email } of failures) {
+					console.error(`Failed to invite ${email}`, (r as PromiseRejectedResult).reason)
+				}
+				toast.warning(`Sent ${successCount} invitation${successCount > 1 ? "s" : ""}, ${errorCount} failed`)
+			} else {
+				for (const r of results) {
+					if (r.status === "rejected") console.error(r.reason)
+				}
+				toast.error("Failed to send invitations")
+			}
 		},
 	})
 
@@ -131,14 +131,14 @@ export const EmailInviteModal = ({
 															defaultSelectedKey={roleField.state.value}
 															onSelectionChange={(key) =>
 																roleField.handleChange(
-																	key as "member" | "admin",
+																	key as "org:member" | "org:admin",
 																)
 															}
 														>
 															<SelectTrigger />
 															<SelectContent>
-																<SelectItem id="member">Member</SelectItem>
-																<SelectItem id="admin">Admin</SelectItem>
+																<SelectItem id="org:member">Member</SelectItem>
+																<SelectItem id="org:admin">Admin</SelectItem>
 															</SelectContent>
 														</Select>
 													)}
@@ -160,7 +160,7 @@ export const EmailInviteModal = ({
 									<Button
 										intent="plain"
 										size="md"
-										onPress={() => field.pushValue({ email: "", role: "member" })}
+										onPress={() => field.pushValue({ email: "", role: "org:member" })}
 										isDisabled={field.state.value.length >= 10}
 										type="button"
 									>
@@ -176,8 +176,8 @@ export const EmailInviteModal = ({
 						<Button intent="outline" onPress={() => onOpenChange(false)} type="button">
 							Cancel
 						</Button>
-						<form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-							{([canSubmit, isSubmitting]) => {
+						<form.Subscribe selector={(state) => [state.canSubmit]}>
+							{([canSubmit]) => {
 								const validInvitesCount = form.state.values.invites.filter(
 									(i) => i.email.trim() !== "",
 								).length
@@ -186,7 +186,7 @@ export const EmailInviteModal = ({
 									<Button
 										intent="primary"
 										type="submit"
-										isDisabled={!canSubmit || isSubmitting}
+										isDisabled={!canSubmit || isSubmitting || !isLoaded}
 									>
 										{isSubmitting
 											? "Sending..."

@@ -12,7 +12,6 @@ import {
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
 	RssSubscriptionRpcs,
-	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
 	NotificationRpcs,
@@ -37,7 +36,6 @@ import { CustomEmojiRpcLive } from "./handlers/custom-emojis"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
 import { RssSubscriptionRpcLive } from "./handlers/rss-subscriptions"
-import { InvitationRpcLive } from "./handlers/invitations"
 import { MessageReactionRpcLive } from "./handlers/message-reactions"
 import { MessageRpcLive } from "./handlers/messages"
 import { NotificationRpcLive } from "./handlers/notifications"
@@ -67,7 +65,6 @@ import { ScopeInjectionMiddleware } from "@hazel/domain/rpc"
 const BaseRpcs = MessageRpcs.merge(
 	MessageReactionRpcs,
 	NotificationRpcs,
-	InvitationRpcs,
 	IntegrationRequestRpcs,
 	TypingIndicatorRpcs,
 	PinnedMessageRpcs,
@@ -95,7 +92,6 @@ const rpcGroups = [
 	["MessageRpcs", MessageRpcs],
 	["MessageReactionRpcs", MessageReactionRpcs],
 	["NotificationRpcs", NotificationRpcs],
-	["InvitationRpcs", InvitationRpcs],
 	["IntegrationRequestRpcs", IntegrationRequestRpcs],
 	["TypingIndicatorRpcs", TypingIndicatorRpcs],
 	["PinnedMessageRpcs", PinnedMessageRpcs],
@@ -130,7 +126,6 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(MessageRpcLive),
 		Layer.provideMerge(MessageReactionRpcLive),
 		Layer.provideMerge(NotificationRpcLive),
-		Layer.provideMerge(InvitationRpcLive),
 		Layer.provideMerge(IntegrationRequestRpcLive),
 		Layer.provideMerge(TypingIndicatorRpcLive),
 		Layer.provideMerge(PinnedMessageRpcLive),

@@ -1,14 +1,8 @@
-import { useAtomSet } from "@effect/atom-react"
-import type { InvitationId } from "@hazel/schema"
-import { toEpochMs } from "~/lib/utils"
-import { IconArrowPath } from "~/components/icons/icon-arrow-path"
-import { eq, useLiveQuery } from "@tanstack/react-db"
+import { useOrganization } from "@clerk/react"
 import { createFileRoute } from "@tanstack/react-router"
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
-import { resendInvitationMutation, revokeInvitationMutation } from "~/atoms/invitation-atoms"
 import IconClose from "~/components/icons/icon-close"
-import IconCopy from "~/components/icons/icon-copy"
 import IconDots from "~/components/icons/icon-dots"
 import IconPlus from "~/components/icons/icon-plus"
 import IconUsersPlus from "~/components/icons/icon-users-plus"
@@ -17,125 +11,67 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardHeader, CardHeaderGroup } from "~/components/ui/card"
 import { EmptyState } from "~/components/ui/empty-state"
+import { Loader } from "~/components/ui/loader"
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "~/components/ui/menu"
-import { invitationCollection, userCollection } from "~/db/collections"
-import { useOrganization } from "~/hooks/use-organization"
-import { exitToastAsync } from "~/lib/toast-exit"
 
 export const Route = createFileRoute("/_app/$orgSlug/settings/invitations")({
 	component: InvitationsSettings,
 })
 
+type ClerkInvitation = {
+	readonly id: string
+	readonly emailAddress: string
+	readonly role: string
+	readonly status: string
+	readonly createdAt: Date | number
+	revoke: () => Promise<unknown>
+}
+
 function InvitationsSettings() {
-	const [now] = useState(Date.now)
+	const { organization, isLoaded, invitations } = useOrganization({
+		invitations: { infinite: true, keepPreviousData: true, status: "pending" },
+	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
-	const [resendingId, setResendingId] = useState<InvitationId | null>(null)
-	const [revokingId, setRevokingId] = useState<InvitationId | null>(null)
+	const [revokingId, setRevokingId] = useState<string | null>(null)
 
-	const { organizationId } = useOrganization()
+	const pendingInvitations = (invitations?.data ?? []) as unknown as ClerkInvitation[]
 
-	const resendInvitation = useAtomSet(resendInvitationMutation, {
-		mode: "promiseExit",
-	})
-
-	const revokeInvitation = useAtomSet(revokeInvitationMutation, {
-		mode: "promiseExit",
-	})
-
-	const { data: invitations } = useLiveQuery(
-		(q) =>
-			q
-				.from({
-					invitation: invitationCollection,
-				})
-				.leftJoin(
-					{
-						invitee: userCollection,
-					},
-					({ invitation, invitee }) => eq(invitation.invitedBy, invitee.id),
-				)
-				.where(({ invitation }) => eq(invitation.organizationId, organizationId))
-				.select(({ invitation, invitee }) => ({
-					...invitation,
-					invitee,
-				})),
-		[organizationId],
-	)
-
-	const pendingInvitations = invitations?.filter((inv) => inv.status === "pending") || []
-
-	const formatTimeRemaining = (milliseconds: number) => {
-		if (milliseconds <= 0) return "Expired"
-
-		const days = Math.floor(milliseconds / (1000 * 60 * 60 * 24))
-		const hours = Math.floor((milliseconds % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-
-		if (days > 0) {
-			return `Expires in ${days} day${days > 1 ? "s" : ""}`
-		}
-		if (hours > 0) {
-			return `Expires in ${hours} hour${hours > 1 ? "s" : ""}`
-		}
-		return "Expires soon"
-	}
-
-	const handleCopyInvitationUrl = async (url: string) => {
+	const handleRevokeInvitation = useCallback(async (invitation: ClerkInvitation) => {
+		setRevokingId(invitation.id)
 		try {
-			await navigator.clipboard.writeText(url)
-			toast.success("Invitation URL copied to clipboard")
-		} catch (_error) {
-			toast.error("Failed to copy invitation URL")
-		}
-	}
-
-	const handleResendInvitation = async (invitationId: InvitationId) => {
-		setResendingId(invitationId)
-		try {
-			await exitToastAsync(
-				resendInvitation({
-					payload: {
-						invitationId,
-					},
-				}),
-			)
-				.loading("Resending invitation...")
-				.successMessage("Invitation resent successfully")
-				.onErrorTag("InvitationNotFoundError", () => ({
-					title: "Invitation not found",
-					description: "This invitation may have been revoked or expired.",
-					isRetryable: false,
-				}))
-				.run()
-			setResendingId(null)
+			await invitation.revoke()
+			toast.success("Invitation revoked successfully")
 		} catch (error) {
-			setResendingId(null)
-			throw error
+			console.error(error)
+			toast.error("Failed to revoke invitation")
+		} finally {
+			setRevokingId(null)
 		}
+	}, [])
+
+	// Clerk's infinite query doesn't auto-refetch after a mutation; nudge it.
+	useEffect(() => {
+		if (!revokingId && invitations) invitations.revalidate?.()
+	}, [revokingId, invitations])
+
+	const formatSent = (createdAt: Date | number) => {
+		const d = typeof createdAt === "number" ? new Date(createdAt) : createdAt
+		return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 	}
 
-	const handleRevokeInvitation = async (invitationId: InvitationId) => {
-		setRevokingId(invitationId)
-		try {
-			await exitToastAsync(
-				revokeInvitation({
-					payload: {
-						invitationId,
-					},
-				}),
-			)
-				.loading("Revoking invitation...")
-				.successMessage("Invitation revoked successfully")
-				.onErrorTag("InvitationNotFoundError", () => ({
-					title: "Invitation not found",
-					description: "This invitation may have already been revoked or expired.",
-					isRetryable: false,
-				}))
-				.run()
-			setRevokingId(null)
-		} catch (error) {
-			setRevokingId(null)
-			throw error
-		}
+	const roleLabel = (role: string) =>
+		role === "org:admin" || role === "admin"
+			? "Admin"
+			: role === "org:member" || role === "member"
+				? "Member"
+				: role
+
+	if (!isLoaded) {
+		return (
+			<div className="flex flex-col gap-6 px-4 lg:px-8">
+				<Loader />
+			</div>
+		)
 	}
 
 	return (
@@ -152,7 +88,8 @@ function InvitationsSettings() {
 									)}
 								</div>
 								<p className="text-muted-fg text-sm">
-									Manage pending invitations sent to team members.
+									Manage pending invitations sent to team members. Clerk handles email
+									delivery and hosts the accept page.
 								</p>
 							</div>
 							<div className="flex gap-3">
@@ -186,13 +123,13 @@ function InvitationsSettings() {
 											Email
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
-											Invited by
+											Role
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
 											Status
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-muted-fg text-xs">
-											Expiration
+											Sent
 										</th>
 										<th className="px-4 py-3 text-right font-medium text-muted-fg text-xs">
 											Actions
@@ -204,14 +141,12 @@ function InvitationsSettings() {
 										<tr key={invitation.id} className="hover:bg-secondary/50">
 											<td className="px-4 py-4">
 												<p className="font-medium text-fg text-sm">
-													{invitation.email}
+													{invitation.emailAddress}
 												</p>
 											</td>
 											<td className="px-4 py-4">
 												<p className="text-muted-fg text-sm">
-													{invitation.invitee
-														? `${invitation.invitee.firstName} ${invitation.invitee.lastName}`
-														: "System"}
+													{roleLabel(invitation.role)}
 												</p>
 											</td>
 											<td className="px-4 py-4">
@@ -222,9 +157,7 @@ function InvitationsSettings() {
 											</td>
 											<td className="px-4 py-4">
 												<p className="text-muted-fg text-sm">
-													{formatTimeRemaining(
-														toEpochMs(invitation.expiresAt) - now,
-													)}
+													{formatSent(invitation.createdAt)}
 												</p>
 											</td>
 											<td className="px-4 py-4 text-right">
@@ -232,55 +165,16 @@ function InvitationsSettings() {
 													<Button
 														intent="plain"
 														size="sq-xs"
-														isPending={
-															resendingId === invitation.id ||
-															revokingId === invitation.id
-														}
-														isDisabled={
-															resendingId === invitation.id ||
-															revokingId === invitation.id
-														}
+														isPending={revokingId === invitation.id}
+														isDisabled={revokingId === invitation.id}
 													>
 														<IconDots />
 													</Button>
 													<MenuContent placement="bottom end">
 														<MenuItem
-															onAction={() =>
-																handleCopyInvitationUrl(
-																	invitation.invitationUrl,
-																)
-															}
-															isDisabled={
-																resendingId === invitation.id ||
-																revokingId === invitation.id
-															}
-														>
-															<IconCopy data-slot="icon" />
-															Copy Invitation URL
-														</MenuItem>
-														<MenuItem
-															onAction={() =>
-																handleResendInvitation(invitation.id)
-															}
-															isDisabled={
-																resendingId === invitation.id ||
-																revokingId === invitation.id
-															}
-														>
-															<IconArrowPath data-slot="icon" />
-															{resendingId === invitation.id
-																? "Resending..."
-																: "Resend Invitation"}
-														</MenuItem>
-														<MenuItem
-															onAction={() =>
-																handleRevokeInvitation(invitation.id)
-															}
+															onAction={() => handleRevokeInvitation(invitation)}
 															intent="danger"
-															isDisabled={
-																resendingId === invitation.id ||
-																revokingId === invitation.id
-															}
+															isDisabled={revokingId === invitation.id}
 														>
 															<IconClose data-slot="icon" />
 															{revokingId === invitation.id
@@ -299,13 +193,8 @@ function InvitationsSettings() {
 				</Card>
 			</div>
 
-			{/* Email Invite Modal */}
-			{organizationId && (
-				<EmailInviteModal
-					isOpen={showInviteModal}
-					onOpenChange={setShowInviteModal}
-					organizationId={organizationId}
-				/>
+			{organization && (
+				<EmailInviteModal isOpen={showInviteModal} onOpenChange={setShowInviteModal} />
 			)}
 		</>
 	)
