@@ -74,17 +74,16 @@ function RouteComponent() {
 		onStepChange: handleStepChange,
 	})
 
-	// Auto-redirect when onboarding is completed (handles race conditions and direct URL access)
+	// Auto-redirect when onboarding is completed. We force a full page reload
+	// so the cached currentUserQueryAtom doesn't come back stale (with
+	// isOnboarded=false) — which would bounce the user right back here via
+	// /_app/index.tsx's isOnboarded guard.
 	useEffect(() => {
 		if (onboarding.currentStep === "completed") {
 			const slug = onboarding.data.orgSlug || organization?.slug
-			if (slug) {
-				navigate({ to: "/$orgSlug", params: { orgSlug: slug } })
-			} else {
-				navigate({ to: "/" })
-			}
+			window.location.assign(slug ? `/${slug}` : "/")
 		}
-	}, [onboarding.currentStep, onboarding.data.orgSlug, organization?.slug, navigate])
+	}, [onboarding.currentStep, onboarding.data.orgSlug, organization?.slug])
 
 	// Animation variants based on direction with blur effect
 	const variants = {
