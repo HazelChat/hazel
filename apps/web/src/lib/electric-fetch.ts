@@ -1,10 +1,7 @@
 /**
- * Authenticated fetch client for Electric SQL with exponential backoff retry.
- *
- * Uses Clerk's session token on web. `getClerkToken` waits for Clerk to finish
- * loading, so there's no synchronous gate and no race against ClerkProvider
- * hydration. 5xx errors retry with jittered exponential backoff so the proxy
- * isn't hammered during outages.
+ * Authenticated fetch for Electric SQL. Attaches the Clerk bearer token and
+ * retries 5xx with jittered backoff so we don't hammer the proxy on outages.
+ * Auth state is handled by the React tree — this just fetches.
  */
 import { Effect, Schedule } from "effect"
 import { getClerkToken } from "./clerk-token"
@@ -17,18 +14,12 @@ const retrySchedule = Schedule.exponential("2 seconds").pipe(
 	Schedule.compose(Schedule.recurs(8)),
 )
 
-const shouldRetry = (response: Response): boolean =>
-	response.status >= 500 && response.status < 600
+const shouldRetry = (response: Response): boolean => response.status >= 500 && response.status < 600
 
 const doFetch = async (input: RequestInfo | URL, init: RequestInit | undefined): Promise<Response> => {
-	// Desktop still uses the legacy flow — out of scope for the Clerk migration.
-	if (isTauri()) {
-		return fetch(input, init)
-	}
-
+	if (isTauri()) return fetch(input, init)
 	const token = await getClerkToken()
 	if (!token) return new Response(null, { status: 401 })
-
 	return fetch(input, {
 		...init,
 		headers: { ...init?.headers, Authorization: `Bearer ${token}` },

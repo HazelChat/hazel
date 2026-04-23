@@ -10,35 +10,26 @@ interface LoginOptions {
 	invitationToken?: string
 }
 
-interface LogoutOptions {
-	redirectTo?: string
-}
-
 /**
- * Trigger Clerk's hosted sign-in. Works outside React because Clerk exposes
- * the singleton on `window.Clerk`.
- */
-export const restartWebLogin = (options?: LoginOptions) => {
-	const redirectUrl =
-		options?.returnTo || window.location.pathname + window.location.search + window.location.hash
-	if (typeof window !== "undefined" && window.Clerk?.redirectToSignIn) {
-		void window.Clerk.redirectToSignIn({ redirectUrl })
-		return
-	}
-	window.location.assign(redirectUrl)
-}
-
-/**
- * Query atom for the Hazel DB user (internal UUID, membership, etc.).
- * Clerk's JWT gives us identity; this gives us app-level user data.
+ * Hazel DB user (internal UUID, membership, isOnboarded, etc.). Clerk owns
+ * identity; this atom is our app-level user record on top of the Clerk JWT.
  */
 export const userAtom = HazelRpcClient.query("user.me", void 0, {
 	reactivityKeys: ["currentUser"],
 })
 
 /**
- * Unified auth hook. Clerk owns session lifecycle and sign-in UI; we surface
- * the DB user (via user.me) on top of that.
+ * Programmatic redirect to Clerk sign-in (for callers outside the React tree,
+ * e.g. session-expired handlers). Inside the tree prefer `<RedirectToSignIn>`.
+ */
+export const restartWebLogin = (options?: LoginOptions) => {
+	const redirectUrl =
+		options?.returnTo || window.location.pathname + window.location.search + window.location.hash
+	window.Clerk?.redirectToSignIn?.({ redirectUrl })
+}
+
+/**
+ * Unified auth hook. Surfaces the Hazel DB user on top of Clerk's session.
  */
 export function useAuth() {
 	const clerk = useClerk()
@@ -48,21 +39,12 @@ export function useAuth() {
 	const userLoading = userResult._tag === "Initial" || userResult.waiting
 	const isLoading = !clerkLoaded || (isSignedIn === true && userLoading)
 
-	const login = (options?: LoginOptions) => {
-		const redirectUrl =
-			options?.returnTo || window.location.pathname + window.location.search + window.location.hash
-		void clerk.redirectToSignIn({ redirectUrl })
-	}
-
-	const logout = async (options?: LogoutOptions) => {
-		await clerk.signOut({ redirectUrl: options?.redirectTo ?? "/" })
-	}
-
 	return {
 		user: AsyncResult.getOrElse(userResult, () => null),
 		error: AsyncResult.error(userResult),
 		isLoading,
-		login,
-		logout,
+		login: (options?: LoginOptions) => restartWebLogin(options),
+		logout: (options?: { redirectTo?: string }) =>
+			clerk.signOut({ redirectUrl: options?.redirectTo ?? "/" }),
 	}
 }
