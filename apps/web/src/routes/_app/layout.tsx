@@ -1,9 +1,8 @@
 import { useAuth as useClerkAuth } from "@clerk/react"
-import { createFileRoute, Outlet, useRouter, useSearch } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useSearch } from "@tanstack/react-router"
 import { Match, Option } from "effect"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { clearDesktopTokens } from "~/atoms/desktop-auth"
 import IconCheck from "~/components/icons/icon-check"
 import IconCopy from "~/components/icons/icon-copy"
 import { IconEnvelope } from "~/components/icons/icon-envelope"
@@ -12,7 +11,6 @@ import { Button } from "~/components/ui/button"
 import { Text } from "~/components/ui/text"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { restartWebLogin, useAuth } from "~/lib/auth"
-import { isTauri } from "~/lib/tauri"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
@@ -39,7 +37,6 @@ export const Route = createFileRoute("/_app")({
 function RouteComponent() {
 	const { user, error, isLoading } = useAuth()
 	const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth()
-	const router = useRouter()
 	usePostHogIdentify()
 	const search = useSearch({ from: "/_app" }) as {
 		loginRetry?: string
@@ -48,32 +45,14 @@ function RouteComponent() {
 
 	const loginRetry = Number(search.loginRetry) || 0
 	const currentReturnTo = `${location.pathname}${location.search}${location.hash}`
-	const navigateToDesktopLogin = useCallback(() => {
-		clearDesktopTokens().finally(() => {
-			router.navigate({ to: "/auth/desktop-login" })
-		})
-	}, [router])
 
-	// Redirect to login only when Clerk has definitively confirmed the user is
-	// not signed in. We used to redirect whenever `useAuth().user` was null,
-	// which fired a redirect loop mid-handshake (Clerk sets `__clerk_handshake`
-	// in the URL while finalising the session).
+	// Redirect to Clerk sign-in only once Clerk has finished loading and
+	// definitively reports not-signed-in. Same flow for web and desktop.
 	useEffect(() => {
-		if (isTauri()) {
-			// Desktop still uses the legacy flow pending the Tauri migration
-			if (user || isLoading) return
-			const hasAuthError = Option.isSome(error)
-			if (!user && (hasAuthError || Option.isNone(error))) {
-				navigateToDesktopLogin()
-			}
-			return
-		}
-
-		// Web: wait for Clerk to finish loading before making any redirect call.
 		if (!clerkLoaded) return
-		if (isSignedIn) return // signed in — user.me will resolve shortly
+		if (isSignedIn) return
 		void restartWebLogin({ returnTo: currentReturnTo })
-	}, [currentReturnTo, user, error, isLoading, clerkLoaded, isSignedIn, navigateToDesktopLogin])
+	}, [currentReturnTo, clerkLoaded, isSignedIn])
 
 	// Handle schema validation errors from Electric collections after deploys.
 	// A stale cache can cause permanent decode failures — reload once to bust it.
@@ -89,24 +68,18 @@ function RouteComponent() {
 		return () => window.removeEventListener("collection:schema-error", handleSchemaError)
 	}, [])
 
-	// Handle session expiry events from token refresh failures (web and desktop).
-	// At this point refresh has already failed, so go straight into session recovery.
+	// Handle session expiry — bounce to Clerk sign-in.
 	useEffect(() => {
 		let isHandling = false
 		const handleSessionExpired = () => {
 			if (isHandling) return
 			isHandling = true
-			if (isTauri()) {
-				navigateToDesktopLogin()
-				return
-			}
-
 			void restartWebLogin({ returnTo: currentReturnTo })
 		}
 
 		window.addEventListener("auth:session-expired", handleSessionExpired)
 		return () => window.removeEventListener("auth:session-expired", handleSessionExpired)
-	}, [currentReturnTo, navigateToDesktopLogin])
+	}, [currentReturnTo])
 
 	const handleCopyEmail = async () => {
 		try {
