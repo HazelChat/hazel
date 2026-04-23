@@ -266,11 +266,13 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 		 * Validate a Bearer token (JWT) and return user context.
 		 * Routes to Clerk or WorkOS based on the JWT issuer.
 		 */
-		const validateBearerToken = (bearerToken: string) => {
-			const issuer = classifyIssuer(bearerToken)
-			if (issuer === "clerk") return validateClerkBearer(bearerToken)
-			return validateWorkOSBearer(bearerToken)
-		}
+		const validateBearerToken = (bearerToken: string) =>
+			Effect.gen(function* () {
+				const issuer = classifyIssuer(bearerToken)
+				yield* Effect.logDebug(`[proxy-auth] classified token as ${issuer}`)
+				if (issuer === "clerk") return yield* validateClerkBearer(bearerToken)
+				return yield* validateWorkOSBearer(bearerToken)
+			})
 
 		return {
 			validateBearerToken,
