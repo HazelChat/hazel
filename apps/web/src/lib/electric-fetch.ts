@@ -1,84 +1,60 @@
 /**
  * Authenticated fetch client for Electric SQL with exponential backoff retry.
  *
- * Handles both Tauri desktop (Bearer token) and web (cookies) authentication.
- * Retries 5xx server errors with exponential backoff to prevent overwhelming
- * the Electric proxy during outages.
+ * Uses Clerk's session token on web. Retries 5xx server errors with
+ * exponential backoff so the Electric proxy isn't hammered during outages.
  */
 import { Effect, Schedule } from "effect"
-import { authenticatedFetch } from "./auth-fetch"
-import { hasClerkSession } from "./clerk-token"
+import { getClerkToken, hasClerkSession } from "./clerk-token"
 import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
-const ACCESS_TOKEN_KEY = "hazel_auth_access_token"
-
-/**
- * Synchronous check for auth availability.
- * - Tauri: assume yes (token lives in an async store)
- * - Web: either a Clerk session is loaded OR a legacy WorkOS access token
- *   is present in localStorage
- */
-const hasAuthToken = (): boolean => {
-	if (isTauri()) return true
-	if (typeof window === "undefined") return false
-	if (hasClerkSession()) return true
-	return window.localStorage?.getItem(ACCESS_TOKEN_KEY) !== null
-}
-
-/**
- * Retry schedule for Electric fetch:
- * - Exponential backoff starting at 2 seconds
- * - Max delay capped at 60 seconds
- * - Jitter to spread out retries (prevents thundering herd)
- * - Max 8 retries
- */
 const retrySchedule = Schedule.exponential("2 seconds").pipe(
 	Schedule.jittered,
 	Schedule.either(Schedule.spaced("60 seconds")),
 	Schedule.compose(Schedule.recurs(8)),
 )
 
-/**
- * Check if response status warrants a retry (5xx server errors only)
- */
-const shouldRetry = (response: Response): boolean => response.status >= 500 && response.status < 600
+const shouldRetry = (response: Response): boolean =>
+	response.status >= 500 && response.status < 600
 
-/**
- * Electric fetch client with exponential backoff retry for server errors.
- * - Retries 5xx errors with exponential backoff (2s -> 4s -> 8s... up to 60s)
- * - Does NOT retry 4xx client errors (auth, validation, etc.)
- * - Uses jitter to prevent thundering herd
- */
+const doFetch = async (input: RequestInfo | URL, init: RequestInit | undefined): Promise<Response> => {
+	// Desktop still uses the legacy flow — out of scope for the Clerk migration.
+	if (isTauri()) {
+		return fetch(input, init)
+	}
+
+	const token = await getClerkToken()
+	if (!token) return new Response(null, { status: 401 })
+
+	return fetch(input, {
+		...init,
+		headers: { ...init?.headers, Authorization: `Bearer ${token}` },
+	})
+}
+
 export const electricFetchClient = async (
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<Response> => {
-	if (!hasAuthToken()) {
+	if (!isTauri() && !hasClerkSession()) {
 		return new Response(null, { status: 401 })
 	}
 
 	const fetchEffect = Effect.gen(function* () {
 		const response = yield* Effect.tryPromise({
-			try: () => authenticatedFetch(input, init),
+			try: () => doFetch(input, init),
 			catch: (error) => error as Error,
 		})
-
-		// If server error, fail the effect to trigger retry
-		if (shouldRetry(response)) {
-			return yield* Effect.fail(response)
-		}
-
+		if (shouldRetry(response)) return yield* Effect.fail(response)
 		return response
 	})
 
-	// Retry only on server errors (when effect fails with Response)
 	const withRetry = fetchEffect.pipe(
 		Effect.retry({
 			schedule: retrySchedule,
 			while: (error) => error instanceof Response && shouldRetry(error),
 		}),
-		// If all retries exhausted, return the last failed response
 		Effect.catch((error) => (error instanceof Response ? Effect.succeed(error) : Effect.fail(error))),
 	)
 

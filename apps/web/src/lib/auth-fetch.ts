@@ -1,141 +1,48 @@
 /**
- * @module Shared authenticated fetch for desktop and web
- * @description Platform-aware fetch that uses Bearer tokens for both desktop and web
- *
- * Auth flow (both platforms):
- * 1. Wait for any in-progress token refresh before making request
- * 2. On 401, attempt token refresh and retry once
- * 3. Only clear tokens if retry also fails
+ * Authenticated fetch. Clerk manages the session; we just attach a bearer
+ * token on each request and dispatch `auth:session-expired` on 401 so the
+ * app can redirect to sign-in.
  */
 
-import { Effect } from "effect"
-import { forceRefresh, waitForRefresh, getAccessToken } from "~/lib/auth-token"
-import { getClerkToken } from "~/lib/clerk-token"
-import { TokenStorage } from "./services/desktop/token-storage"
-import { WebTokenStorage } from "./services/web/token-storage"
-import { runtime } from "./services/common/runtime"
-import { isTauri } from "./tauri"
+import { getClerkToken } from "./clerk-token"
 
-const DesktopTokenStorageLive = TokenStorage.layer
-const WebTokenStorageLive = WebTokenStorage.layer
 const SESSION_EXPIRED_EVENT = "auth:session-expired"
 
-/**
- * Clear tokens from appropriate storage (desktop or web)
- */
-const clearTokens = async (): Promise<void> => {
-	const effect = isTauri()
-		? Effect.gen(function* () {
-				const storage = yield* TokenStorage
-				yield* storage.clearTokens
-			}).pipe(Effect.provide(DesktopTokenStorageLive))
-		: Effect.gen(function* () {
-				const storage = yield* WebTokenStorage
-				yield* storage.clearTokens
-			}).pipe(Effect.provide(WebTokenStorageLive))
-	return runtime.runPromise(
-		effect.pipe(
-			Effect.catch(() => Effect.void),
-			Effect.withSpan("clearTokens"),
-		),
-	)
-}
-
 const dispatchSessionExpired = (): void => {
-	window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+	if (typeof window !== "undefined") {
+		window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+	}
 }
 
-const expireSession = async (message: string): Promise<void> => {
-	console.error(message)
-	await clearTokens()
-	dispatchSessionExpired()
-}
-
-/**
- * Make an authenticated request with a token
- */
-const makeAuthenticatedRequest = async (
+export const authenticatedFetch = async (
 	input: RequestInfo | URL,
-	init: RequestInit | undefined,
-	token: string,
+	init?: RequestInit,
 ): Promise<Response> => {
-	return fetch(input, {
+	const token = await getClerkToken()
+	if (!token) {
+		dispatchSessionExpired()
+		return new Response(null, { status: 401 })
+	}
+
+	const response = await fetch(input, {
 		...init,
-		headers: {
-			...init?.headers,
-			Authorization: `Bearer ${token}`,
-		},
+		headers: { ...init?.headers, Authorization: `Bearer ${token}` },
 	})
-}
 
-/**
- * Authenticated fetch that handles both Tauri and web using Bearer tokens
- * - Desktop: Reads access token from Tauri store
- * - Web: Reads access token from localStorage
- *
- * Both platforms:
- * - Wait for any in-progress refresh before making request
- * - On 401, attempt token refresh and retry once
- * - Dispatch auth:session-expired event if auth fails completely
- */
-export const authenticatedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-	// Prefer a Clerk session token if the user is signed in with Clerk.
-	// Clerk manages its own refresh, so no waitForRefresh / forceRefresh plumbing needed.
-	const clerkToken = await getClerkToken()
-	if (clerkToken) {
-		return makeAuthenticatedRequest(input, init, clerkToken)
-	}
-
-	// Legacy WorkOS path for pre-migration sessions.
-	await waitForRefresh()
-	const token = await getAccessToken()
-
-	// If we have a token, use Bearer authentication
-	if (token) {
-		const response = await makeAuthenticatedRequest(input, init, token)
-
-		// If 401 (expired/invalid token), try to refresh and retry once
-		if (response.status === 401) {
-			console.log("[auth-fetch] Got 401, attempting token refresh...")
-
-			// Try to refresh the token
-			const refreshed = await forceRefresh()
-
-			if (refreshed) {
-				// Get the new token and retry the request
-				const newToken = await getAccessToken()
-				if (newToken) {
-					console.log("[auth-fetch] Token refreshed, retrying request...")
-					const retryResponse = await makeAuthenticatedRequest(input, init, newToken)
-
-					// If retry also fails with 401, clear tokens and dispatch session expired
-					if (retryResponse.status === 401) {
-						await expireSession("[auth-fetch] Retry failed with 401, clearing tokens")
-					}
-
-					return retryResponse
-				}
-			}
-
-			// Refresh failed or no new token available, clear tokens and dispatch session expired
-			await expireSession("[auth-fetch] Token refresh failed, clearing tokens")
+	if (response.status === 401) {
+		// Token might have rotated; Clerk's getToken refreshes automatically on the
+		// next call, so try once more.
+		const retryToken = await getClerkToken()
+		if (retryToken && retryToken !== token) {
+			const retry = await fetch(input, {
+				...init,
+				headers: { ...init?.headers, Authorization: `Bearer ${retryToken}` },
+			})
+			if (retry.status === 401) dispatchSessionExpired()
+			return retry
 		}
-
-		return response
+		dispatchSessionExpired()
 	}
 
-	// No token available — attempt refresh first (refresh token might still exist)
-	console.log("[auth-fetch] No access token, attempting refresh...")
-	const refreshed = await forceRefresh()
-	if (refreshed) {
-		const newToken = await getAccessToken()
-		if (newToken) {
-			console.log("[auth-fetch] Token refreshed from no-token state, making request...")
-			return makeAuthenticatedRequest(input, init, newToken)
-		}
-	}
-
-	// Refresh failed or no refresh token — trigger login redirect
-	dispatchSessionExpired()
-	return new Response(null, { status: 401 })
+	return response
 }
