@@ -46,7 +46,7 @@ export const getOrgBySlugPublicQuery = (slug: string) =>
 export const joinViaPublicInviteMutation = HazelRpcClient.mutation("organization.joinViaPublicInvite")
 
 /**
- * Mutation atom for getting the WorkOS Admin Portal link
+ * Mutation atom for getting the Admin Portal link (SSO / domain verification).
  */
 export const getAdminPortalLinkMutation = HazelRpcClient.mutation("organization.getAdminPortalLink")
 

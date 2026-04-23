@@ -3,8 +3,7 @@ import type { Registry } from "@hazel/actors"
 import { getClerkToken } from "~/lib/clerk-token"
 
 /**
- * Get the current auth token. Re-exported for callers that previously imported
- * from `~/lib/auth-token`. Uses Clerk's session token on both web and desktop.
+ * Get the current auth token (Clerk session JWT).
  */
 export const getAccessToken = async (): Promise<string | null> => getClerkToken()
 

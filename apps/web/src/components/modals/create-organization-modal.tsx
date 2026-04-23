@@ -1,4 +1,5 @@
 import { useAtomSet } from "@effect/atom-react"
+import { useNavigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { useCallback } from "react"
 import { createOrganizationMutation } from "~/atoms/organization-atoms"
@@ -9,8 +10,8 @@ import { Input, InputGroup } from "~/components/ui/input"
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from "~/components/ui/modal"
 import { TextField } from "~/components/ui/text-field"
 import { useAppForm } from "~/hooks/use-app-form"
-import { useAuth } from "~/lib/auth"
 import { exitToastAsync } from "~/lib/toast-exit"
+import { getOrganizationRoute } from "~/utils/organization-navigation"
 
 const organizationSchema = type({
 	name: "string > 2",
@@ -25,7 +26,7 @@ interface CreateOrganizationModalProps {
 }
 
 export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganizationModalProps) {
-	const { login } = useAuth()
+	const navigate = useNavigate()
 	const createOrganization = useAtomSet(createOrganizationMutation, {
 		mode: "promiseExit",
 	})
@@ -59,10 +60,8 @@ export function CreateOrganizationModal({ isOpen, onOpenChange }: CreateOrganiza
 					handleClose()
 					form.reset()
 
-					// Redirect to the new organization
-					// Use login() to handle organization switch - Tauri-aware
-					const returnUrl = `/${result.data.slug}`
-					login({ organizationId: result.data.id, returnTo: returnUrl })
+					const route = getOrganizationRoute(result.data)
+					navigate({ to: route.to, search: route.search })
 				})
 				.successMessage("Server created successfully")
 				.onErrorTag("OrganizationSlugAlreadyExistsError", () => ({

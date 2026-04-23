@@ -2,9 +2,6 @@
  * @module Tauri detection and initialization
  * @platform desktop
  * @description Check if the app is running inside Tauri desktop environment and initialize Tauri-specific features
- *
- * Note: Token refresh is now handled by the desktopTokenSchedulerAtom in ~/atoms/desktop-auth.ts
- * which is mounted via useAuth() in auth.tsx
  */
 
 import { isTauri as isTauriRuntime } from "@hazel/desktop/bridge"

@@ -7,6 +7,7 @@ import { Avatar } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { restartWebLogin, useAuth } from "~/lib/auth"
+import { getOrganizationRoute } from "~/utils/organization-navigation"
 
 export const Route = createFileRoute("/_app/select-organization/")({
 	component: RouteComponent,
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/_app/select-organization/")({
 function RouteComponent() {
 	const navigate = useNavigate()
 
-	const { user, isLoading: isAuthLoading, login } = useAuth()
+	const { user, isLoading: isAuthLoading } = useAuth()
 
 	const {
 		data: userOrganizations,
@@ -47,15 +48,10 @@ function RouteComponent() {
 	}
 
 	if (userOrganizations && userOrganizations.length === 1) {
-		// If user already has org context in session, redirect directly
-		if (user?.organizationId) {
-			return <Navigate to="/" />
-		}
-		// Otherwise, get org-scoped session first
 		const singleOrg = userOrganizations[0]
 		if (singleOrg) {
-			login({ organizationId: singleOrg.org.id, returnTo: "/" })
-			return <Loader />
+			const route = getOrganizationRoute(singleOrg.org)
+			return <Navigate to={route.to} search={route.search} />
 		}
 	}
 
@@ -82,8 +78,9 @@ function RouteComponent() {
 		)
 	}
 
-	const handleSelectOrganization = (organizationId: OrganizationId) => {
-		login({ organizationId, returnTo: "/" })
+	const handleSelectOrganization = (org: { id: OrganizationId; slug: string | null }) => {
+		const route = getOrganizationRoute(org)
+		navigate({ to: route.to, search: route.search })
 	}
 
 	const getOrgInitials = (name: string) => {
@@ -107,7 +104,7 @@ function RouteComponent() {
 						<button
 							key={org.id}
 							type="button"
-							onClick={() => handleSelectOrganization(org.id)}
+							onClick={() => handleSelectOrganization(org)}
 							className="flex w-full items-center gap-4 rounded-xl border border-border bg-bg p-4 text-left transition-all hover:border-primary hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
 						>
 							<Avatar

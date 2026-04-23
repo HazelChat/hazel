@@ -1,6 +1,6 @@
 import type { OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { toast } from "sonner"
+import { useNavigate } from "@tanstack/react-router"
 import IconPlus from "~/components/icons/icon-plus"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
 import { useOrganization } from "~/hooks/use-organization"
@@ -15,7 +15,8 @@ interface SwitchServerMenuProps {
 }
 
 export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps) => {
-	const { user, login } = useAuth()
+	const { user } = useAuth()
+	const navigate = useNavigate()
 
 	const { organizationId: currentOrgId } = useOrganization()
 
@@ -40,16 +41,8 @@ export const SwitchServerMenu = ({ onCreateOrganization }: SwitchServerMenuProps
 		const selectedOrg = userOrganizations?.find((row) => row.org.id === selectedOrgId)
 		if (!selectedOrg) return
 
-		// Show loading toast
-		toast.loading(`Switching to ${selectedOrg.org.name}...`)
-
-		// Build the return URL (relative path only)
 		const route = getOrganizationRoute(selectedOrg.org)
-		const returnUrl = route.to
-
-		// Use login() to handle organization switch
-		// This is Tauri-aware and will open system browser on desktop
-		login({ organizationId: selectedOrgId, returnTo: returnUrl })
+		navigate({ to: route.to, search: route.search })
 	}
 
 	return (

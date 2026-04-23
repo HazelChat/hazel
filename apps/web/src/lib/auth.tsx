@@ -1,13 +1,10 @@
 import { useAuth as useClerkAuth, useClerk } from "@clerk/react"
 import { useAtomValue } from "@effect/atom-react"
 import { AsyncResult } from "effect/unstable/reactivity"
-import type { OrganizationId } from "@hazel/schema"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 
 interface LoginOptions {
 	returnTo?: string
-	organizationId?: OrganizationId
-	invitationToken?: string
 }
 
 /**
