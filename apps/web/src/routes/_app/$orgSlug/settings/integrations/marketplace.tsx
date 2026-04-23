@@ -3,7 +3,7 @@ import type { BotId } from "@hazel/schema"
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useDeferredValue, useMemo, useState } from "react"
 import { installBotMutation } from "~/atoms/bot-atoms"
-import { MarketplaceBotCard } from "~/components/bots/marketplace-bot-card"
+import { MarketplaceBotCard, type PublicBotWithUser } from "~/components/bots/marketplace-bot-card"
 import IconMagnifier from "~/components/icons/icon-magnifier-3"
 import IconRobot from "~/components/icons/icon-robot"
 import { EmptyState } from "~/components/ui/empty-state"
@@ -112,7 +112,7 @@ function MarketplaceSettings() {
 						{publicBots.map((bot) => (
 							<MarketplaceBotCard
 								key={bot.id}
-								bot={bot}
+								bot={bot as unknown as PublicBotWithUser}
 								onInstall={() => handleInstall(bot.id)}
 							/>
 						))}

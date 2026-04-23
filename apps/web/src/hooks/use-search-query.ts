@@ -188,7 +188,10 @@ export function useSearchQuery({
 	const results: SearchResult[] = useMemo(() => {
 		if (!searchResults) return []
 
-		let filtered = searchResults
+		// TanStack DB 0.6 wraps query rows in WithVirtualProps<T> — cast away the
+		// extra $synced/$origin/$key/$collectionId fields since our SearchResult
+		// shape doesn't include them.
+		let filtered = searchResults as unknown as SearchResult[]
 
 		// Apply "has" filter
 		if (hasFilter) {

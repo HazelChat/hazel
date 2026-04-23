@@ -114,7 +114,7 @@ export function useTypingIndicators({ channelId, staleThreshold = 6000 }: UseTyp
 				if (!user) return null
 				return { member, user }
 			})
-			.filter((tu): tu is TypingUser => tu !== null)
+			.filter((tu) => tu !== null) as unknown as TypingUsers
 	})()
 
 	return {

@@ -180,8 +180,8 @@ const ChannelSection = ({
 				{channels.map(({ channel, member }) => (
 					<ChannelItem
 						key={channel.id}
-						channel={channel}
-						member={member}
+						channel={channel as unknown as SidebarChannelData}
+						member={member as unknown as SidebarChannelMemberData}
 						notificationCount={unreadByChannel.get(channel.id) ?? member.notificationCount}
 						threads={threadsByParent?.get(channel.id)}
 						sections={sections}

@@ -1,4 +1,5 @@
 import { useAtomSet } from "@effect/atom-react"
+import type { WithVirtualProps } from "@tanstack/db"
 import type { Channel } from "@hazel/domain/models"
 import type { ChannelId, OrganizationId } from "@hazel/schema"
 import { eq, or, useLiveQuery } from "@tanstack/react-db"
@@ -18,7 +19,7 @@ import { channelCollection } from "~/db/collections"
 import { exitToast } from "~/lib/toast-exit"
 import { ConfigureOpenStatusModal } from "./configure-openstatus-modal"
 
-type ChannelData = Channel.Type
+type ChannelData = WithVirtualProps<Channel.Type>
 
 interface OpenStatusIntegrationContentProps {
 	organizationId: OrganizationId

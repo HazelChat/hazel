@@ -5,7 +5,7 @@ import { SidebarSection } from "~/components/ui/sidebar"
 import { Strong } from "~/components/ui/text"
 import { channelCollection, channelMemberCollection } from "~/db/collections"
 import { useAuth } from "~/lib/auth"
-import { ChannelItem } from "./channel-item"
+import { ChannelItem, type SidebarChannelData, type SidebarChannelMemberData } from "./channel-item"
 import { DmChannelItem } from "./dm-channel-item"
 
 export const FavoriteSection = (props: {
@@ -69,8 +69,8 @@ export const FavoriteSection = (props: {
 			{publicPrivateChannels.map(({ channel, member }) => (
 				<ChannelItem
 					key={channel.id}
-					channel={channel}
-					member={member}
+					channel={channel as unknown as SidebarChannelData}
+					member={member as unknown as SidebarChannelMemberData}
 					notificationCount={props.unreadByChannel.get(channel.id) ?? member.notificationCount}
 				/>
 			))}
