@@ -1,13 +1,15 @@
+import { verifyToken } from "@clerk/backend"
 import { Database, eq, schema } from "@hazel/db"
 import {
+	ClerkJwtClaims,
 	OrganizationId,
 	WorkOSJwtClaims,
 	type UserId,
 	type WorkOSOrganizationId,
 	type WorkOSUserId,
 } from "@hazel/schema"
-import { ServiceMap, Effect, Layer, Option, Schema } from "effect"
-import { createRemoteJWKSet, jwtVerify } from "jose"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import { WorkOSClient } from "../session/workos-client.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
@@ -40,6 +42,22 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 		const workos = yield* WorkOSClient
 		const db = yield* Database.Database
 		const decodeClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
+		const decodeClerkClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
+		// Optional so proxy can still boot on environments that haven't set the key.
+		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY").pipe(
+			Config.withDefault(Redacted.make("")),
+		)
+
+		const classifyIssuer = (token: string): "clerk" | "workos" | "unknown" => {
+			try {
+				const iss = decodeJwt(token).iss ?? ""
+				if (iss.includes("workos.com")) return "workos"
+				if (iss.includes("clerk.") || iss.includes("accounts.")) return "clerk"
+			} catch {
+				// fall through
+			}
+			return "unknown"
+		}
 
 		const resolveInternalOrganizationId = (
 			workosOrgId: WorkOSOrganizationId,
@@ -130,20 +148,12 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 			return Option.map(userOption, (user) => user.id)
 		})
 
-		/**
-		 * Validate a Bearer token (JWT) and return user context.
-		 * Used by web and Tauri desktop apps that authenticate via JWT.
-		 * Rejects if user is not found in database.
-		 */
-		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
+		const validateWorkOSBearer = Effect.fn("ProxyAuth.validateWorkOSBearer")(function* (
 			bearerToken: string,
 		) {
 			const clientId = workos.clientId
 			const jwks = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`))
 
-			// WorkOS can issue tokens with either issuer format:
-			// - SSO/OIDC flow: https://api.workos.com
-			// - User Management flow: https://api.workos.com/user_management/${clientId}
 			const verifyWithIssuer = (issuer: string) =>
 				Effect.tryPromise({
 					try: () => jwtVerify(bearerToken, jwks, { issuer }),
@@ -168,7 +178,6 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 				),
 			)
 
-			// Lookup user (uses cache, falls back to database)
 			const userIdOption = yield* lookupUser(claims.sub).pipe(
 				Effect.withSpan("ProxyAuth.lookupUser", {
 					attributes: { "workos.user_id": claims.sub },
@@ -198,6 +207,70 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 				role: claims.role,
 			} satisfies AuthenticatedUserContext
 		})
+
+		const validateClerkBearer = Effect.fn("ProxyAuth.validateClerkBearer")(function* (
+			bearerToken: string,
+		) {
+			const key = Redacted.value(clerkSecretKey)
+			if (!key) {
+				return yield* new ProxyAuthenticationError({
+					message: "Clerk token received but CLERK_SECRET_KEY is not configured on the proxy",
+				})
+			}
+			const payload = yield* Effect.tryPromise({
+				try: () => verifyToken(bearerToken, { secretKey: key }),
+				catch: (error) =>
+					new ProxyAuthenticationError({
+						message: `Clerk JWT verification failed: ${error}`,
+						detail: String(error),
+					}),
+			})
+
+			const claims = yield* decodeClerkClaims(payload).pipe(
+				Effect.mapError(
+					(error) =>
+						new ProxyAuthenticationError({
+							message: "Invalid Clerk JWT claims",
+							detail: String(error),
+						}),
+				),
+			)
+
+			// lookupUser's param is typed as WorkOSUserId but actually just selects by
+			// usersTable.externalId — which post-cutover holds Clerk IDs. Cast to
+			// satisfy the signature without rebranding.
+			const userIdOption = yield* lookupUser(claims.sub as unknown as WorkOSUserId).pipe(
+				Effect.withSpan("ProxyAuth.lookupUser", {
+					attributes: { "clerk.user_id": claims.sub },
+				}),
+			)
+
+			if (Option.isNone(userIdOption)) {
+				yield* Effect.annotateCurrentSpan("user.found", false)
+				return yield* new ProxyAuthenticationError({
+					message: "User not found in database",
+					detail: `User must be created via backend first. Clerk ID: ${claims.sub}`,
+				})
+			}
+
+			return {
+				workosUserId: claims.sub as unknown as WorkOSUserId,
+				internalUserId: userIdOption.value,
+				email: claims.email ?? "",
+				organizationId: undefined,
+				role: claims.org_role === "org:admin" ? "admin" : "member",
+			} satisfies AuthenticatedUserContext
+		})
+
+		/**
+		 * Validate a Bearer token (JWT) and return user context.
+		 * Routes to Clerk or WorkOS based on the JWT issuer.
+		 */
+		const validateBearerToken = (bearerToken: string) => {
+			const issuer = classifyIssuer(bearerToken)
+			if (issuer === "clerk") return validateClerkBearer(bearerToken)
+			return validateWorkOSBearer(bearerToken)
+		}
 
 		return {
 			validateBearerToken,
