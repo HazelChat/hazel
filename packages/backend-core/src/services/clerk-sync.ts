@@ -1,4 +1,5 @@
 import type { WebhookEvent } from "@clerk/backend"
+import type { DatabaseError } from "@hazel/db"
 import { ClerkUserId, type OrganizationId, type UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { OrganizationMemberRepo } from "../repositories/organization-member-repo"
@@ -145,7 +146,9 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 			return "member"
 		}
 
-		const handleMembershipUpsert = (data: unknown): Effect.Effect<Option.Option<MembershipChange>> =>
+		const handleMembershipUpsert = (
+			data: unknown,
+		): Effect.Effect<Option.Option<MembershipChange>, DatabaseError> =>
 			Effect.gen(function* () {
 				const anyData = data as {
 					public_user_data?: { user_id?: string }
@@ -182,7 +185,9 @@ export class ClerkSync extends ServiceMap.Service<ClerkSync>()("ClerkSync", {
 				return Option.some({ userId: userOpt.id, organizationId: orgOpt.id })
 			})
 
-		const handleMembershipRemoved = (data: unknown): Effect.Effect<Option.Option<MembershipChange>> =>
+		const handleMembershipRemoved = (
+			data: unknown,
+		): Effect.Effect<Option.Option<MembershipChange>, DatabaseError> =>
 			Effect.gen(function* () {
 				const anyData = data as {
 					public_user_data?: { user_id?: string }

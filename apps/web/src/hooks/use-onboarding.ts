@@ -1,9 +1,9 @@
+import { useOrganization as useClerkOrganization } from "@clerk/react"
 import { useAtom, useAtomSet } from "@effect/atom-react"
 import type { OrganizationId, OrganizationMemberId } from "@hazel/schema"
 import { Exit } from "effect"
 import { usePostHog } from "posthog-js/react"
 import { useCallback, useEffect, useMemo, useRef } from "react"
-import { createInvitationMutation } from "~/atoms/invitation-atoms"
 import {
 	computeStepNumber,
 	computeTotalSteps,
@@ -52,7 +52,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		mode: "promiseExit",
 	})
 	const finalizeOnboarding = useAtomSet(finalizeOnboardingMutation, { mode: "promiseExit" })
-	const createInvitation = useAtomSet(createInvitationMutation, { mode: "promiseExit" })
+	const { organization: clerkOrganization } = useClerkOrganization()
 
 	// Track if we've initialized with the options
 	const hasInitialized = useRef(false)
@@ -337,16 +337,13 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				})
 			}
 
-			// Non-critical: send invitations (only if we have an org to invite to)
-			if (ctx.orgId && ctx.emails.length > 0) {
-				await createInvitation({
-					payload: {
-						organizationId: ctx.orgId,
-						invites: ctx.emails.map((email) => ({ email, role: "member" as const })),
-					},
-				}).catch(() => {
-					// Silently ignore invitation failures
-				})
+			// Non-critical: send invitations via Clerk (only if we have an active Clerk org).
+			if (clerkOrganization && ctx.emails.length > 0) {
+				await Promise.allSettled(
+					ctx.emails.map((email) =>
+						clerkOrganization.inviteMember({ emailAddress: email, role: "org:member" }),
+					),
+				)
 			}
 
 			// Track onboarding completion
@@ -368,7 +365,7 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				error: error instanceof Error ? error.message : "Failed to complete onboarding",
 			}))
 		}
-	}, [finalizeOnboarding, updateMemberMetadata, createInvitation, setState, posthog])
+	}, [finalizeOnboarding, updateMemberMetadata, clerkOrganization, setState, posthog])
 
 	// Auto-trigger finalization when reaching that step
 	const finalizationTriggered = useRef(false)

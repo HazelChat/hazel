@@ -92,14 +92,6 @@ export const OrganizationId = Schema.String.check(Schema.isUUID())
 	})
 export type OrganizationId = Schema.Schema.Type<typeof OrganizationId>
 
-export const InvitationId = Schema.String.check(Schema.isUUID())
-	.pipe(Schema.brand("@HazelChat/InvitationId"))
-	.annotate({
-		description: "The ID of the invitation",
-		title: "Invitation ID",
-	})
-export type InvitationId = Schema.Schema.Type<typeof InvitationId>
-
 export const PinnedMessageId = Schema.String.check(Schema.isUUID())
 	.pipe(Schema.brand("@HazelChat/PinnedMessageId"))
 	.annotate({

@@ -29,7 +29,7 @@ type ClerkInvitation = {
 
 function InvitationsSettings() {
 	const { organization, isLoaded, invitations } = useOrganization({
-		invitations: { infinite: true, keepPreviousData: true, status: "pending" },
+		invitations: { infinite: true, keepPreviousData: true, status: ["pending"] },
 	})
 	const [showInviteModal, setShowInviteModal] = useState(false)
 	const [revokingId, setRevokingId] = useState<string | null>(null)
