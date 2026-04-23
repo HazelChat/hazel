@@ -839,6 +839,9 @@ const startProxy = async () => {
 			REDIS_URL: "redis://localhost:6380",
 			WORKOS_API_KEY: "sk_test_e2e",
 			WORKOS_CLIENT_ID: "client_e2e",
+			// Placeholder — user-visibility specs hit Electric directly; bot
+			// tests use bot tokens. Proxy just needs the var set to boot.
+			CLERK_SECRET_KEY: "sk_test_e2e_placeholder",
 			ALLOWED_ORIGIN: "http://localhost:3000",
 		},
 		stdio: ["ignore", "pipe", "pipe"],
