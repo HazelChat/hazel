@@ -7,20 +7,23 @@
  */
 import { Effect, Schedule } from "effect"
 import { authenticatedFetch } from "./auth-fetch"
+import { hasClerkSession } from "./clerk-token"
 import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
 const ACCESS_TOKEN_KEY = "hazel_auth_access_token"
 
 /**
- * Synchronous check for auth token availability.
- * On web, checks localStorage directly. On Tauri, skips the check
- * since tokens are in an async store handled by authenticatedFetch.
+ * Synchronous check for auth availability.
+ * - Tauri: assume yes (token lives in an async store)
+ * - Web: either a Clerk session is loaded OR a legacy WorkOS access token
+ *   is present in localStorage
  */
 const hasAuthToken = (): boolean => {
 	if (isTauri()) return true
-	if (typeof window === "undefined" || !window.localStorage) return false
-	return window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null
+	if (typeof window === "undefined") return false
+	if (hasClerkSession()) return true
+	return window.localStorage?.getItem(ACCESS_TOKEN_KEY) !== null
 }
 
 /**
