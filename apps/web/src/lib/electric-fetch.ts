@@ -1,11 +1,13 @@
 /**
  * Authenticated fetch client for Electric SQL with exponential backoff retry.
  *
- * Uses Clerk's session token on web. Retries 5xx server errors with
- * exponential backoff so the Electric proxy isn't hammered during outages.
+ * Uses Clerk's session token on web. `getClerkToken` waits for Clerk to finish
+ * loading, so there's no synchronous gate and no race against ClerkProvider
+ * hydration. 5xx errors retry with jittered exponential backoff so the proxy
+ * isn't hammered during outages.
  */
 import { Effect, Schedule } from "effect"
-import { getClerkToken, hasClerkSession } from "./clerk-token"
+import { getClerkToken } from "./clerk-token"
 import { runtime } from "./services/common/runtime"
 import { isTauri } from "./tauri"
 
@@ -37,10 +39,6 @@ export const electricFetchClient = async (
 	input: RequestInfo | URL,
 	init?: RequestInit,
 ): Promise<Response> => {
-	if (!isTauri() && !hasClerkSession()) {
-		return new Response(null, { status: 401 })
-	}
-
 	const fetchEffect = Effect.gen(function* () {
 		const response = yield* Effect.tryPromise({
 			try: () => doFetch(input, init),

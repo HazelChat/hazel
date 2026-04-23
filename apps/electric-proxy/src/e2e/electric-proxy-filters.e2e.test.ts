@@ -599,7 +599,7 @@ const createFixture = (): Fixture => {
 	const noAccessBotToken = `e2e-bot-empty-token-${runId}-${id()}`
 
 	const viewer = {
-		userId: `wrk_${ids.users.viewer}`,
+		externalId: `user_${ids.users.viewer}`,
 		internalUserId: ids.users.viewer as AuthenticatedUser["internalUserId"],
 		email: `viewer+${runId}@e2e.test`,
 	} satisfies AuthenticatedUser

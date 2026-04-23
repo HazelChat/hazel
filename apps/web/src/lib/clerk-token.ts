@@ -1,11 +1,10 @@
 /**
- * Clerk bearer-token helpers.
- *
- * Clerk's React SDK exposes the `Clerk` singleton on `window.Clerk` once
- * `<ClerkProvider>` has mounted and loaded. We use it here so non-React
- * callers (RPC middleware, auth-fetch) can obtain a JWT without threading
- * hooks through their call sites.
+ * Clerk bearer-token helpers for non-React callers (RPC middleware, auth-fetch,
+ * electric-fetch). `clerkReady()` resolves once `<ClerkProvider>` has finished
+ * hydrating Clerk; it's cached so every caller shares one wait.
  */
+
+type ClerkUnsubscribe = () => void
 
 interface ClerkLike {
 	loaded?: boolean
@@ -13,6 +12,7 @@ interface ClerkLike {
 		getToken: (options?: { template?: string }) => Promise<string | null>
 	} | null
 	redirectToSignIn?: (options: { redirectUrl: string }) => Promise<void>
+	addListener?: (listener: (emission: unknown) => void) => ClerkUnsubscribe
 }
 
 declare global {
@@ -21,38 +21,59 @@ declare global {
 	}
 }
 
-/**
- * Wait for Clerk to finish loading (up to `timeoutMs`). Returns the Clerk
- * singleton once loaded, or null on timeout / if Clerk is absent.
- */
-const waitForClerkLoaded = async (timeoutMs = 5000): Promise<ClerkLike | null> => {
-	if (typeof window === "undefined") return null
-	if (window.Clerk?.loaded) return window.Clerk
-	const start = Date.now()
-	while (Date.now() - start < timeoutMs) {
-		await new Promise((resolve) => setTimeout(resolve, 50))
-		if (window.Clerk?.loaded) return window.Clerk
-	}
-	return window.Clerk ?? null
+const CLERK_READY_TIMEOUT_MS = 10_000
+
+let cached: Promise<ClerkLike | null> | null = null
+
+export const clerkReady = (): Promise<ClerkLike | null> => {
+	if (cached) return cached
+	cached = new Promise<ClerkLike | null>((resolve) => {
+		if (typeof window === "undefined") {
+			resolve(null)
+			return
+		}
+
+		const timeout = setTimeout(() => resolve(window.Clerk ?? null), CLERK_READY_TIMEOUT_MS)
+
+		const subscribe = (clerk: ClerkLike) => {
+			if (clerk.loaded) {
+				clearTimeout(timeout)
+				resolve(clerk)
+				return
+			}
+			const unsub = clerk.addListener?.(() => {
+				if (clerk.loaded) {
+					unsub?.()
+					clearTimeout(timeout)
+					resolve(clerk)
+				}
+			})
+		}
+
+		if (window.Clerk) {
+			subscribe(window.Clerk)
+			return
+		}
+
+		// `<ClerkProvider>` sets `window.Clerk` during its mount; poll briefly
+		// until it appears, then hand off to addListener.
+		const iv = setInterval(() => {
+			if (window.Clerk) {
+				clearInterval(iv)
+				subscribe(window.Clerk)
+			}
+		}, 20)
+		setTimeout(() => clearInterval(iv), CLERK_READY_TIMEOUT_MS)
+	})
+	return cached
 }
 
-/**
- * Returns a Clerk session token if the user is signed in, otherwise null.
- * Waits briefly for Clerk to finish hydrating so callers racing with the
- * initial Clerk load don't miss the session on the first page render.
- */
 export const getClerkToken = async (): Promise<string | null> => {
-	const clerk = await waitForClerkLoaded()
+	const clerk = await clerkReady()
 	if (!clerk?.session) return null
 	try {
 		return (await clerk.session.getToken()) ?? null
 	} catch {
 		return null
 	}
-}
-
-/** Synchronous check: is a Clerk session currently active? */
-export const hasClerkSession = (): boolean => {
-	if (typeof window === "undefined") return false
-	return !!window.Clerk?.loaded && !!window.Clerk?.session
 }

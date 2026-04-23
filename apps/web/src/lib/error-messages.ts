@@ -30,7 +30,6 @@ import {
 	TokenStoreError,
 	UnauthorizedError,
 	WorkflowServiceUnavailableError,
-	WorkOSUserFetchError,
 } from "@hazel/domain/errors"
 import { Cause, Match, Schema } from "effect"
 import {
@@ -70,7 +69,6 @@ export const CommonAppErrorSchema = Schema.Union([
 	// Service errors (503)
 	SessionLoadError,
 	SessionRefreshError,
-	WorkOSUserFetchError,
 	WorkflowServiceUnavailableError,
 	// Business logic errors
 	DmChannelAlreadyExistsError,
@@ -176,11 +174,6 @@ const ERROR_MESSAGE_MAP: Record<string, UserErrorMessage> = {
 		title: "Session refresh failed",
 		description: "Please sign in again.",
 		isRetryable: false,
-	},
-	WorkOSUserFetchError: {
-		title: "Unable to load your profile",
-		description: "Please try refreshing the page.",
-		isRetryable: true,
 	},
 
 	// Business logic errors (409)

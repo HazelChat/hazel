@@ -1,6 +1,6 @@
 import { useAuth as useClerkAuth, useClerk } from "@clerk/react"
-import { Atom, AsyncResult } from "effect/unstable/reactivity"
 import { useAtomValue } from "@effect/atom-react"
+import { AsyncResult } from "effect/unstable/reactivity"
 import type { OrganizationId } from "@hazel/schema"
 import { HazelRpcClient } from "./services/common/rpc-atom-client"
 
@@ -15,8 +15,8 @@ interface LogoutOptions {
 }
 
 /**
- * Trigger Clerk's hosted sign-in (no in-app /auth/login page needed).
- * Works outside React because Clerk exposes the singleton on `window.Clerk`.
+ * Trigger Clerk's hosted sign-in. Works outside React because Clerk exposes
+ * the singleton on `window.Clerk`.
  */
 export const restartWebLogin = (options?: LoginOptions) => {
 	const redirectUrl =
@@ -25,43 +25,32 @@ export const restartWebLogin = (options?: LoginOptions) => {
 		void window.Clerk.redirectToSignIn({ redirectUrl })
 		return
 	}
-	// Fallback: reload; ClerkProvider will hydrate and redirect us.
 	window.location.assign(redirectUrl)
 }
 
 /**
- * Query atom that fetches the current user from the API.
- * RPC middleware attaches the Clerk session token automatically.
+ * Query atom for the Hazel DB user (internal UUID, membership, etc.).
+ * Clerk's JWT gives us identity; this gives us app-level user data.
  */
-export const currentUserQueryAtom = HazelRpcClient.query("user.me", void 0, {
+export const userAtom = HazelRpcClient.query("user.me", void 0, {
 	reactivityKeys: ["currentUser"],
 })
 
-const authStateAtom = Atom.make((get) => {
-	const result = get(currentUserQueryAtom)
-	return {
-		user: result,
-		isLoading: result._tag === "Initial" || result.waiting,
-	}
-})
-
-export const userAtom = Atom.make((get) => get(authStateAtom).user)
-
 /**
- * Unified auth hook. Clerk handles session lifecycle and sign-in UI;
- * we just surface the current user (from our DB via user.me).
+ * Unified auth hook. Clerk owns session lifecycle and sign-in UI; we surface
+ * the DB user (via user.me) on top of that.
  */
 export function useAuth() {
 	const clerk = useClerk()
 	const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth()
-	const { user: userResult, isLoading: userLoading } = useAtomValue(authStateAtom)
+	const userResult = useAtomValue(userAtom)
 
+	const userLoading = userResult._tag === "Initial" || userResult.waiting
 	const isLoading = !clerkLoaded || (isSignedIn === true && userLoading)
 
 	const login = (options?: LoginOptions) => {
 		const redirectUrl =
-			options?.returnTo ||
-			window.location.pathname + window.location.search + window.location.hash
+			options?.returnTo || window.location.pathname + window.location.search + window.location.hash
 		void clerk.redirectToSignIn({ redirectUrl })
 	}
 

@@ -11,10 +11,17 @@ import { Button } from "~/components/ui/button"
 import { Text } from "~/components/ui/text"
 import { usePostHogIdentify } from "~/hooks/use-posthog-identify"
 import { restartWebLogin, useAuth } from "~/lib/auth"
+import { clerkReady } from "~/lib/clerk-token"
 
 export const Route = createFileRoute("/_app")({
 	component: RouteComponent,
 	loader: async () => {
+		// Don't start Electric shape streams until Clerk is loaded and a
+		// session exists. Preloading before hydration would hit the proxy with
+		// no token and kill the stream on a synthetic 401.
+		const clerk = await clerkReady()
+		if (!clerk?.session) return null
+
 		const {
 			connectConversationChannelCollection,
 			connectConversationCollection,
@@ -47,10 +54,17 @@ function RouteComponent() {
 	const currentReturnTo = `${location.pathname}${location.search}${location.hash}`
 
 	// Redirect to Clerk sign-in only once Clerk has finished loading and
-	// definitively reports not-signed-in. Same flow for web and desktop.
+	// definitively reports not-signed-in. Guarded so re-renders (e.g. URL
+	// changes while the redirect is in flight) don't fire a second redirect.
+	// Also double-check the Clerk singleton — on return from sign-in, the
+	// React `isSignedIn` hook can lag behind `window.Clerk.session` briefly.
+	const redirectFiredRef = useRef(false)
 	useEffect(() => {
 		if (!clerkLoaded) return
 		if (isSignedIn) return
+		if (typeof window !== "undefined" && window.Clerk?.session) return
+		if (redirectFiredRef.current) return
+		redirectFiredRef.current = true
 		void restartWebLogin({ returnTo: currentReturnTo })
 	}, [currentReturnTo, clerkLoaded, isSignedIn])
 
@@ -67,19 +81,6 @@ function RouteComponent() {
 		window.addEventListener("collection:schema-error", handleSchemaError)
 		return () => window.removeEventListener("collection:schema-error", handleSchemaError)
 	}, [])
-
-	// Handle session expiry — bounce to Clerk sign-in.
-	useEffect(() => {
-		let isHandling = false
-		const handleSessionExpired = () => {
-			if (isHandling) return
-			isHandling = true
-			void restartWebLogin({ returnTo: currentReturnTo })
-		}
-
-		window.addEventListener("auth:session-expired", handleSessionExpired)
-		return () => window.removeEventListener("auth:session-expired", handleSessionExpired)
-	}, [currentReturnTo])
 
 	const handleCopyEmail = async () => {
 		try {
@@ -177,7 +178,6 @@ function RouteComponent() {
 		return Match.value(errorTag).pipe(
 			// 503 errors - infrastructure/service issues - show error screen with retry
 			Match.when("SessionLoadError", () => serviceErrorScreen),
-			Match.when("WorkOSUserFetchError", () => serviceErrorScreen),
 			// 401 errors - user needs to re-authenticate - useEffect handles redirect
 			Match.orElse(() => <Loader />),
 		)

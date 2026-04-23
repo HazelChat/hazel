@@ -311,8 +311,6 @@ export const createOrganizationAction = optimisticAction({
 		const organizationId = crypto.randomUUID() as OrganizationId
 		const now = new Date()
 
-		// Optimistically insert the organization
-		// Note: workosId will be set by backend after creating org in WorkOS
 		organizationCollection.insert({
 			id: organizationId,
 			name: props.name,
@@ -330,7 +328,6 @@ export const createOrganizationAction = optimisticAction({
 
 	mutate: (props, _ctx) =>
 		Effect.gen(function* () {
-			// Backend will create org in WorkOS and return real WorkOS ID
 			const client = yield* HazelRpcClient
 			const result = yield* client("organization.create", {
 				name: props.name,

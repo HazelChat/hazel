@@ -4,12 +4,12 @@ import { Exit } from "effect"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { updateUserAction } from "~/db/actions"
-import { currentUserQueryAtom, useAuth } from "~/lib/auth"
+import { useAuth, userAtom } from "~/lib/auth"
 import { useUpload } from "./use-upload"
 
 export function useProfilePictureUpload() {
 	const { user } = useAuth()
-	const refreshCurrentUser = useAtomRefresh(currentUserQueryAtom)
+	const refreshCurrentUser = useAtomRefresh(userAtom)
 	const updateUserMutation = useAtomSet(updateUserAction, { mode: "promiseExit" })
 
 	const { upload, isUploading, progress } = useUpload()

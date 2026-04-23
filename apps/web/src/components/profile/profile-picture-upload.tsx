@@ -9,7 +9,7 @@ import { Avatar } from "~/components/ui/avatar/avatar"
 import { Loader } from "~/components/ui/loader"
 import { useDragDetection } from "~/hooks/use-drag-detection"
 import { useProfilePictureUpload } from "~/hooks/use-profile-picture-upload"
-import { currentUserQueryAtom } from "~/lib/auth"
+import { userAtom } from "~/lib/auth"
 import { cx } from "~/utils/cx"
 import { AvatarCropModal } from "./avatar-crop-modal"
 
@@ -38,7 +38,7 @@ export function ProfilePictureUpload({
 	const [isResetting, setIsResetting] = useState(false)
 
 	const resetAvatar = useAtomSet(resetUserAvatarMutation, { mode: "promiseExit" })
-	const refreshCurrentUser = useAtomRefresh(currentUserQueryAtom)
+	const refreshCurrentUser = useAtomRefresh(userAtom)
 
 	const handleResetAvatar = async () => {
 		if (!userId) return

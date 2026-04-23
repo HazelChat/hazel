@@ -3,14 +3,14 @@ import type { UserId } from "@hazel/schema"
 import { Effect } from "effect"
 
 /**
- * Authenticated user context extracted from session
+ * Authenticated user context extracted from the Clerk JWT.
  */
 export interface AuthenticatedUser {
-	userId: string // WorkOS external ID (e.g., user_01KAA...)
-	internalUserId: UserId // Internal database UUID
+	/** Clerk user ID (e.g., user_2abc...) — stored in users.externalId. */
+	externalId: string
+	/** Internal Hazel database user UUID. */
+	internalUserId: UserId
 	email: string
-	organizationId?: string
-	role?: string
 }
 
 /**
@@ -36,14 +36,10 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	yield* Effect.annotateCurrentSpan("auth.scheme", "bearer")
 
 	const authContext = yield* proxyAuth.validateBearerToken(token)
-	yield* Effect.annotateCurrentSpan("auth.organization.present", !!authContext.organizationId)
-	yield* Effect.annotateCurrentSpan("auth.role.present", !!authContext.role)
 
 	return {
-		userId: authContext.workosUserId,
+		externalId: authContext.workosUserId,
 		internalUserId: authContext.internalUserId,
 		email: authContext.email,
-		organizationId: authContext.organizationId,
-		role: authContext.role,
 	} satisfies AuthenticatedUser
 })
