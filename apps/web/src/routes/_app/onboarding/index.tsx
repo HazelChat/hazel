@@ -6,7 +6,6 @@ import { useCallback, useEffect } from "react"
 import type { OnboardingStep } from "~/atoms/onboarding-atoms"
 import { InviteTeamStep } from "~/components/onboarding/invite-team-step"
 import { OnboardingLayout } from "~/components/onboarding/onboarding-layout"
-import { OrgSetupStep } from "~/components/onboarding/org-setup-step"
 import { ProfileInfoStep } from "~/components/onboarding/profile-info-step"
 import { RoleStep } from "~/components/onboarding/role-step"
 import { ThemeSelectionStep } from "~/components/onboarding/theme-selection-step"
@@ -181,23 +180,6 @@ function RouteComponent() {
 						<ThemeSelectionStep
 							onBack={onboarding.goBack}
 							onContinue={onboarding.handleThemeContinue}
-						/>
-					</motion.div>
-				)}
-
-				{onboarding.currentStep === "organizationSetup" && (
-					<motion.div
-						key="organizationSetup"
-						custom={onboarding.direction}
-						variants={variants}
-						initial="enter"
-						animate="center"
-						exit="exit"
-						transition={{ duration: 0.3, ease: "easeInOut" }}
-					>
-						<OrgSetupStep
-							onBack={onboarding.goBack}
-							onContinue={onboarding.handleOrgSetupContinue}
 						/>
 					</motion.div>
 				)}

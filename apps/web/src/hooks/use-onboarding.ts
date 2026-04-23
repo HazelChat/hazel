@@ -315,11 +315,10 @@ export function useOnboarding(options: UseOnboardingOptions) {
 		setState((prev) => ({ ...prev, isProcessing: true, error: undefined }))
 
 		try {
-			if (!ctx.orgId) {
-				throw new Error("Organization ID is required")
-			}
-
-			// Critical: finalize onboarding first
+			// Critical: finalize onboarding first (sets isOnboarded=true on the user).
+			// We no longer require an org at this point — Clerk handles org creation
+			// during sign-up separately; the rest of the app can nudge the user to
+			// create one later if needed.
 			const finalizeResult = await finalizeOnboarding({
 				payload: void 0,
 				reactivityKeys: ["currentUser"],
@@ -338,8 +337,8 @@ export function useOnboarding(options: UseOnboardingOptions) {
 				})
 			}
 
-			// Non-critical: send invitations
-			if (ctx.emails.length > 0) {
+			// Non-critical: send invitations (only if we have an org to invite to)
+			if (ctx.orgId && ctx.emails.length > 0) {
 				await createInvitation({
 					payload: {
 						organizationId: ctx.orgId,
