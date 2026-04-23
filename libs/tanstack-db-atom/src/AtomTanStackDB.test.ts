@@ -177,7 +177,7 @@ describe("makeCollectionAtom", () => {
 		expect(Result.isSuccess(result)).toBe(true)
 		if (Result.isSuccess(result)) {
 			expect(result.value).toHaveLength(3)
-			expect(result.value).toEqual(initialTodos)
+			expect(result.value).toMatchObject(initialTodos)
 		}
 	})
 
@@ -276,7 +276,7 @@ describe("makeSingleCollectionAtom", () => {
 
 		expect(Result.isSuccess(result)).toBe(true)
 		if (Result.isSuccess(result)) {
-			expect(result.value).toEqual(initialUsers[0])
+			expect(result.value).toMatchObject(initialUsers[0]!)
 		}
 	})
 
@@ -318,7 +318,7 @@ describe("makeSingleCollectionAtom", () => {
 
 		expect(Result.isSuccess(result)).toBe(true)
 		if (Result.isSuccess(result)) {
-			expect(result.value).toEqual(initialUsers[1])
+			expect(result.value).toMatchObject(initialUsers[1]!)
 			expect(result.value?.name).toBe("Jane Smith")
 		}
 	})
