@@ -1,3 +1,4 @@
+import { CreateOrganization } from "@clerk/react"
 import type { OrganizationId } from "@hazel/schema"
 import { eq, useLiveQuery } from "@tanstack/react-db"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
@@ -58,9 +59,27 @@ function RouteComponent() {
 		}
 	}
 
-	// If user has no organizations, redirect to onboarding
+	// No organizations → let the user create one via Clerk's hosted component.
+	// (Previously redirected to /onboarding, which looped when the user was
+	// already onboarded: onboarding → / → select-organization → /onboarding → …)
 	if (!userOrganizations || userOrganizations.length === 0) {
-		return <Navigate to="/onboarding" />
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-bg p-4">
+				<div className="flex w-full max-w-lg flex-col items-center gap-6">
+					<div className="text-center">
+						<h1 className="font-semibold text-2xl">Create your workspace</h1>
+						<p className="mt-2 text-muted-fg text-sm">
+							Get started by creating or joining an organization.
+						</p>
+					</div>
+					<CreateOrganization
+						routing="hash"
+						skipInvitationScreen
+						afterCreateOrganizationUrl="/"
+					/>
+				</div>
+			</div>
+		)
 	}
 
 	const handleSelectOrganization = (organizationId: OrganizationId) => {

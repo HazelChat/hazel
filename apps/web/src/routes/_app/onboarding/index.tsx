@@ -1,5 +1,5 @@
 import { eq, useLiveQuery } from "@tanstack/react-db"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Navigate } from "@tanstack/react-router"
 import { type } from "arktype"
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect } from "react"
@@ -31,6 +31,13 @@ function RouteComponent() {
 	const { user } = useAuth()
 	const navigate = Route.useNavigate()
 	const { step: urlStep } = Route.useSearch()
+
+	// Reverse guard: if the user somehow lands here after finishing, just bounce
+	// to the app root. Prevents a "completed → onboarding → /" loop when the
+	// post-finalize redirect lands here before the app root settles.
+	if (user?.isOnboarded) {
+		return <Navigate to="/" />
+	}
 
 	// Fetch user's organizations to determine if they're creating or joining
 	const { data: userOrganizations } = useLiveQuery(
