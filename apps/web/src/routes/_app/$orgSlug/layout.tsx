@@ -76,10 +76,9 @@ export const Route = createFileRoute("/_app/$orgSlug")({
 function RouteComponent() {
 	const [openCmd, setOpenCmd] = useState(false)
 	const [initialPage, setInitialPage] = useState<CommandPalettePageType>("home")
-	const { user, login } = useAuth()
-	const { organizationId, isLoading: isOrgLoading } = useOrganization()
+	const { user } = useAuth()
+	const { isLoading: isOrgLoading } = useOrganization()
 	const { can } = usePermission()
-	const isRedirecting = useRef(false)
 
 	// Modal state and actions from hooks
 	const newChannelModal = useModal("new-channel")
@@ -112,23 +111,8 @@ function RouteComponent() {
 	useAppHotkey("dm.create", () => createDmModal.open())
 	useAppHotkey("invite.email", () => emailInviteModal.open())
 
-	// Sync organization context to user session
-	// If user's JWT doesn't have org context (or has different org), re-authenticate with correct org
-	useEffect(() => {
-		if (isOrgLoading || !organizationId || !user || isRedirecting.current) return
-
-		// If user's session org doesn't match the route's org, re-login with correct org context
-		if (user.organizationId !== organizationId) {
-			isRedirecting.current = true
-			login({
-				organizationId,
-				returnTo: window.location.pathname + window.location.search + window.location.hash,
-			})
-		}
-	}, [user, organizationId, isOrgLoading, login])
-
-	// Show loader while org is loading or while redirecting for org context sync
-	if (isOrgLoading || (user && organizationId && user.organizationId !== organizationId)) {
+	// Show loader while org is loading
+	if (isOrgLoading) {
 		return <Loader />
 	}
 

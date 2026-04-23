@@ -1,14 +1,12 @@
 /**
- * Clerk bearer-token helpers for non-React callers.
- * `<ClerkProvider>` owns the Clerk lifecycle; we just wait for it.
+ * Clerk bearer-token helper for non-React callers (Electric fetch, RPC
+ * middleware). Out-of-the-box Clerk: poll `window.Clerk` until it's loaded,
+ * then call `session.getToken()`.
  */
 
 interface ClerkLike {
 	loaded?: boolean
-	session?: {
-		getToken: (options?: { template?: string }) => Promise<string | null>
-	} | null
-	addListener?: (listener: () => void) => () => void
+	session?: { getToken: () => Promise<string | null> } | null
 	redirectToSignIn?: (options: { redirectUrl: string }) => Promise<void>
 }
 
@@ -18,25 +16,16 @@ declare global {
 	}
 }
 
-export const waitForClerk = (): Promise<ClerkLike | null> =>
-	new Promise((resolve) => {
-		if (typeof window === "undefined") return resolve(null)
-		const clerk = window.Clerk
-		if (!clerk) return resolve(null)
-		if (clerk.loaded) return resolve(clerk)
-		const unsubscribe = clerk.addListener?.(() => {
-			if (clerk.loaded) {
-				unsubscribe?.()
-				resolve(clerk)
-			}
-		})
-	})
-
 export const getClerkToken = async (): Promise<string | null> => {
-	const clerk = await waitForClerk()
-	if (!clerk?.session) return null
+	if (typeof window === "undefined") return null
+	const deadline = Date.now() + 10_000
+	while (!window.Clerk?.loaded && Date.now() < deadline) {
+		await new Promise((r) => setTimeout(r, 50))
+	}
+	const session = window.Clerk?.session
+	if (!session) return null
 	try {
-		return (await clerk.session.getToken()) ?? null
+		return (await session.getToken()) ?? null
 	} catch {
 		return null
 	}

@@ -28,7 +28,11 @@ function RouteComponent() {
 }
 
 function Gate({ currentUrl }: { currentUrl: string }) {
-	const { isSignedIn } = useClerkAuth()
+	// `treatPendingAsSignedOut: false` — users with pending Clerk tasks (org
+	// selection, MFA, etc.) count as signed in so they can reach our own
+	// /onboarding + /select-organization routes. Default `true` caused a
+	// RedirectToSignIn ↔ Clerk hosted sign-in loop.
+	const { isSignedIn } = useClerkAuth({ treatPendingAsSignedOut: false })
 	if (!isSignedIn) return <RedirectToSignIn redirectUrl={currentUrl} />
 	return <AppShell />
 }
@@ -37,8 +41,6 @@ function AppShell() {
 	const { user, error, isLoading } = useAuth()
 	usePostHogIdentify()
 
-	// Preload Electric collections once we're signed in. The RPC middleware
-	// will attach a Clerk token; the proxy accepts it and syncs shape state.
 	const preloadStartedRef = useRef(false)
 	useEffect(() => {
 		if (preloadStartedRef.current) return
@@ -54,7 +56,6 @@ function AppShell() {
 		)
 	}, [])
 
-	// Reload once on collection schema errors so we bust a stale cache.
 	const schemaReloadAttemptedRef = useRef(false)
 	useEffect(() => {
 		const onError = () => {

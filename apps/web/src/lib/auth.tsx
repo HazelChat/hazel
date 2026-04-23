@@ -18,22 +18,15 @@ export const userAtom = HazelRpcClient.query("user.me", void 0, {
 	reactivityKeys: ["currentUser"],
 })
 
-/**
- * Programmatic redirect to Clerk sign-in (for callers outside the React tree,
- * e.g. session-expired handlers). Inside the tree prefer `<RedirectToSignIn>`.
- */
 export const restartWebLogin = (options?: LoginOptions) => {
 	const redirectUrl =
 		options?.returnTo || window.location.pathname + window.location.search + window.location.hash
 	window.Clerk?.redirectToSignIn?.({ redirectUrl })
 }
 
-/**
- * Unified auth hook. Surfaces the Hazel DB user on top of Clerk's session.
- */
 export function useAuth() {
 	const clerk = useClerk()
-	const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth()
+	const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth({ treatPendingAsSignedOut: false })
 	const userResult = useAtomValue(userAtom)
 
 	const userLoading = userResult._tag === "Initial" || userResult.waiting
