@@ -1,11 +1,9 @@
+import { verifyToken } from "@clerk/backend"
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { WorkOSJwtClaims, WorkOSRole } from "@hazel/schema"
-import { ServiceMap, Result, Effect, Layer, Option, Redacted, Schema } from "effect"
-import type { JWTPayload } from "jose"
-import { jwtVerify } from "jose"
+import { ClerkJwtClaims } from "@hazel/schema"
+import { ServiceMap, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { TokenValidationConfigService } from "./config-service"
 import { BotTokenValidationError, ConfigError, InvalidTokenFormatError, JwtValidationError } from "./errors"
-import { JwksService } from "./jwks-service"
 import {
 	BotTokenValidationResponseSchema,
 	type AuthenticatedClient,
@@ -13,94 +11,50 @@ import {
 	type UserClient,
 } from "./types"
 
-interface JWTPayloadWithClaims extends JWTPayload {
-	org_id?: string
-	role?: string
-}
-
-/**
- * Check if a token looks like a JWT (three base64url-encoded segments)
- */
 function isJwtToken(token: string): boolean {
 	const parts = token.split(".")
 	return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))
 }
 
-/**
- * Check if a token is a bot token (hzl_bot_xxxxx format)
- */
 function isBotToken(token: string): boolean {
 	return token.startsWith("hzl_bot_")
 }
 
 /**
- * Service for validating authentication tokens (JWT and bot tokens).
- *
- * Provides Effect-native token validation with proper error types.
+ * Service for validating authentication tokens (Clerk JWT and bot tokens).
  */
 export class TokenValidationService extends ServiceMap.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
 		make: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
-			const jwksService = yield* JwksService
-			const decodeClaims = Schema.decodeUnknownEffect(WorkOSJwtClaims)
+			const decodeClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
 			const decodeBotValidationResponse = Schema.decodeUnknownEffect(BotTokenValidationResponseSchema)
 
-			/**
-			 * Validate a WorkOS JWT token.
-			 * Verifies the signature against WorkOS JWKS and extracts user identity.
-			 */
 			const validateJwt = (
 				token: string,
 			): Effect.Effect<UserClient, JwtValidationError | ConfigError> =>
 				Effect.gen(function* () {
-					const clientId = yield* Option.match(config.workosClientId, {
+					const clerkSecretKey = yield* Option.match(config.clerkSecretKey, {
 						onNone: () =>
 							Effect.fail(
 								new ConfigError({
 									message:
-										"WORKOS_CLIENT_ID environment variable is required for JWT actor authentication",
+										"CLERK_SECRET_KEY environment variable is required for JWT actor authentication",
 								}),
 							),
 						onSome: Effect.succeed,
 					})
 
-					const jwks = yield* jwksService.getJwks()
+					const payload = yield* Effect.tryPromise({
+						try: () => verifyToken(token, { secretKey: Redacted.value(clerkSecretKey) }),
+						catch: (error) =>
+							new JwtValidationError({
+								message: `Clerk JWT verification failed: ${error}`,
+							}),
+					})
 
-					// WorkOS can issue tokens with either issuer format
-					const issuers = [
-						"https://api.workos.com",
-						`https://api.workos.com/user_management/${clientId}`,
-					]
-
-					const verifiedPayload = yield* Effect.forEach(
-						issuers,
-						(issuer) =>
-							Effect.tryPromise(() => jwtVerify(token, jwks, { issuer })).pipe(
-								Effect.map((result) => result.payload as JWTPayloadWithClaims),
-								Effect.result,
-							),
-						{ concurrency: 1 },
-					).pipe(
-						Effect.flatMap((results) => {
-							const success = results.find(Result.isSuccess)
-							if (success) {
-								return Effect.succeed(success.success)
-							}
-
-							return Effect.fail(
-								new JwtValidationError({
-									message: "Invalid or expired token",
-									cause: results.map((result) =>
-										Result.isFailure(result) ? result.failure : null,
-									),
-								}),
-							)
-						}),
-					)
-
-					const claims = yield* decodeClaims(verifiedPayload).pipe(
+					const claims = yield* decodeClaims(payload).pipe(
 						Effect.mapError(
 							(error) =>
 								new JwtValidationError({
@@ -109,20 +63,16 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 						),
 					)
 
-					const role = claims.role ?? Schema.decodeUnknownSync(WorkOSRole)("member")
+					const role: "admin" | "member" = claims.org_role === "org:admin" ? "admin" : "member"
 
 					return {
 						type: "user" as const,
-						workosUserId: claims.sub,
-						workosOrganizationId: claims.org_id ?? null,
+						externalId: claims.sub,
+						externalOrganizationId: claims.org_id ?? null,
 						role,
 					}
 				})
 
-			/**
-			 * Validate a bot token by calling the backend validation endpoint.
-			 * Bot tokens are hashed and looked up in the database.
-			 */
 			const validateBotToken = (
 				token: string,
 			): Effect.Effect<BotClient, BotTokenValidationError | ConfigError, HttpClient.HttpClient> =>
@@ -204,9 +154,6 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 					}
 				})
 
-			/**
-			 * Validate a token (JWT or bot token) and return the authenticated client identity.
-			 */
 			const validateToken = (
 				token: string,
 			): Effect.Effect<
@@ -235,12 +182,7 @@ export class TokenValidationService extends ServiceMap.Service<TokenValidationSe
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(TokenValidationConfigService.layer),
-		Layer.provide(JwksService.layer),
 	)
 }
 
-/**
- * Live layer for TokenValidationService with all dependencies.
- * Includes FetchHttpClient for bot token validation.
- */
 export const TokenValidationLive = TokenValidationService.layer

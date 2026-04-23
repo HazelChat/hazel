@@ -1,5 +1,5 @@
 // Core types
-export { type AuthenticatedUserContext, ValidatedSession, type WorkOSUser } from "./types.ts"
+export { type AuthenticatedUserContext } from "./types.ts"
 
 // Errors
 export { SessionCacheError } from "./errors.ts"
@@ -12,14 +12,13 @@ export {
 	SessionLoadError,
 	SessionNotProvidedError,
 	SessionRefreshError,
-	WorkOSUserFetchError,
 } from "./errors.ts"
 
 // Configuration
 export { AuthConfig, type AuthConfigShape } from "./config.ts"
 
 // Session
-export { ClerkClient, decodeSessionJwt, getJwtExpiry, WorkOSClient } from "./session/index.ts"
+export { ClerkClient, decodeSessionJwt, getJwtExpiry } from "./session/index.ts"
 
 // Consumers
 export { BackendAuth, BackendAuthLive, type UserRepoLike } from "./consumers/backend-auth.ts"

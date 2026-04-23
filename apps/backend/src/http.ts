@@ -2,7 +2,6 @@ import { Layer } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HazelApi } from "./api"
 import { HttpMessagesApiLive } from "./routes/api-v1"
-import { HttpAuthLive } from "./routes/auth.http"
 import { HttpKlipyLive } from "./routes/klipy.http"
 import { HttpChatSyncLive } from "./routes/chat-sync.http"
 import { HttpBotCommandsLive } from "./routes/bot-commands.http"
@@ -19,7 +18,6 @@ import { HttpWebhookLive } from "./routes/webhooks.http"
 
 export const HttpApiRoutes = HttpApiBuilder.layer(HazelApi).pipe(
 	Layer.provide(HttpRootLive),
-	Layer.provide(HttpAuthLive),
 	Layer.provide(HttpMessagesApiLive),
 	Layer.provide(HttpBotCommandsLive),
 	Layer.provide(HttpChatSyncLive),

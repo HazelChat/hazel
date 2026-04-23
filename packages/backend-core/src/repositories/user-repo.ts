@@ -1,6 +1,6 @@
 import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
 
-import type { ClerkUserId, UserId, WorkOSUserId } from "@hazel/schema"
+import type { ClerkUserId, UserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
 import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
@@ -29,16 +29,10 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 				)(externalId, tx)
 				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
 
-		const findByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
-			findByExternalId(workosUserId, tx)
-
 		/**
 		 * Upsert user by external ID.
-		 * @param data - User data to upsert
-		 * @param options - Optional settings
-		 * @param options.syncAvatarUrl - If true, sync avatarUrl from external source (WorkOS).
-		 *                                 If false (default), preserve local avatarUrl (managed via R2 uploads).
-		 * @param tx - Optional transaction
+		 * @param options.syncAvatarUrl - If true, sync avatarUrl from the identity
+		 *   provider; if false (default), preserve local avatarUrl (managed via R2 uploads).
 		 */
 		const upsertByExternalId = (
 			data: Schema.Schema.Type<typeof User.Insert>,
@@ -56,8 +50,6 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 								set: {
 									firstName: input.firstName,
 									lastName: input.lastName,
-									// Only sync avatarUrl when explicitly requested (e.g., WorkOS sync)
-									// Otherwise preserve local avatarUrl managed via R2 uploads
 									...(input.syncAvatarUrl && { avatarUrl: input.avatarUrl }),
 									email: input.email,
 									updatedAt: new Date(),
@@ -68,36 +60,11 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 				)({ ...data, syncAvatarUrl: options?.syncAvatarUrl }, tx)
 				.pipe(Effect.map((results) => results[0]))
 
-		const upsertWorkOSUser = (
-			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: WorkOSUserId },
-			options?: { syncAvatarUrl?: boolean },
-			tx?: TxFn,
-		) => upsertByExternalId(data, options, tx)
-
 		const upsertClerkUser = (
 			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: ClerkUserId },
 			options?: { syncAvatarUrl?: boolean },
 			tx?: TxFn,
 		) => upsertByExternalId(data, options, tx)
-
-		/**
-		 * Rewrite a user's externalId in place (by primary key).
-		 * Used for the WorkOS → Clerk migration: when a user signs in with Clerk
-		 * for the first time, we find their row by legacy WorkOS ID and flip the
-		 * column to the Clerk ID.
-		 */
-		const setExternalIdById = (id: UserId, externalId: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, args: { id: UserId; externalId: string }) =>
-					execute((client) =>
-						client
-							.update(schema.usersTable)
-							.set({ externalId: args.externalId, updatedAt: new Date() })
-							.where(eq(schema.usersTable.id, args.id))
-							.returning(),
-					),
-				)({ id, externalId }, tx)
-				.pipe(Effect.map((results) => results[0]))
 
 		const findAllActive = (tx?: TxFn) =>
 			db.makeQuery((execute, _data: {}) =>
@@ -128,9 +95,6 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 				),
 			)(externalId, tx)
 
-		const softDeleteByWorkOSUserId = (workosUserId: WorkOSUserId, tx?: TxFn) =>
-			softDeleteByExternalId(workosUserId, tx)
-
 		const softDeleteByClerkUserId = (clerkUserId: ClerkUserId, tx?: TxFn) =>
 			softDeleteByExternalId(clerkUserId, tx)
 
@@ -140,15 +104,11 @@ export class UserRepo extends ServiceMap.Service<UserRepo>()("UserRepo", {
 		return {
 			...baseRepo,
 			findByExternalId,
-			findByWorkOSUserId,
 			upsertByExternalId,
-			upsertWorkOSUser,
 			upsertClerkUser,
-			setExternalIdById,
 			findAllActive,
 			softDelete,
 			softDeleteByExternalId,
-			softDeleteByWorkOSUserId,
 			softDeleteByClerkUserId,
 			bulkUpsertByExternalId,
 		}

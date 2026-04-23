@@ -1,35 +1,24 @@
-import type { WorkOSClientId } from "@hazel/schema"
-import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
-import { WorkOSClientId as WorkOSClientIdSchema } from "@hazel/schema"
+import { ServiceMap, Config, Effect, Layer, Option, Redacted } from "effect"
 
 /**
- * Configuration required for token validation
+ * Configuration required for token validation.
  */
 export interface TokenValidationConfig {
-	/** WorkOS client ID for JWT validation */
-	readonly workosClientId: Option.Option<WorkOSClientId>
-	/** Backend URL for bot token validation */
+	/** Clerk secret key for JWT validation (sk_live_* / sk_test_*). */
+	readonly clerkSecretKey: Option.Option<Redacted.Redacted>
+	/** Backend URL for bot token validation. */
 	readonly backendUrl: Option.Option<string>
-	/** Internal secret for server-to-server auth (optional) */
+	/** Internal secret for server-to-server auth (optional). */
 	readonly internalSecret: Option.Option<Redacted.Redacted>
 }
 
 const optionalValue = <A, E>(effect: Effect.Effect<A, E, never>) => effect.pipe(Effect.option)
 
-/**
- * Service for loading and providing token validation configuration.
- *
- * Uses Effect.Config to load from environment variables with proper fallbacks.
- */
 export class TokenValidationConfigService extends ServiceMap.Service<TokenValidationConfigService>()(
 	"TokenValidationConfigService",
 	{
 		make: Effect.gen(function* () {
-			const workosClientId = yield* optionalValue(
-				Effect.flatMap(Config.string("WORKOS_CLIENT_ID").asEffect(), (value) =>
-					Schema.decodeUnknownEffect(WorkOSClientIdSchema)(value),
-				),
-			)
+			const clerkSecretKey = yield* optionalValue(Config.redacted("CLERK_SECRET_KEY").asEffect())
 
 			const backendUrl = yield* optionalValue(
 				Config.string("BACKEND_URL")
@@ -44,7 +33,7 @@ export class TokenValidationConfigService extends ServiceMap.Service<TokenValida
 			const internalSecret = yield* optionalValue(Config.redacted("INTERNAL_SECRET").asEffect())
 
 			const config: TokenValidationConfig = {
-				workosClientId: workosClientId as Option.Option<WorkOSClientId>,
+				clerkSecretKey: clerkSecretKey as Option.Option<Redacted.Redacted>,
 				backendUrl: backendUrl as Option.Option<string>,
 				internalSecret: internalSecret as Option.Option<Redacted.Redacted>,
 			}

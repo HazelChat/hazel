@@ -35,8 +35,6 @@ import {
 	TypingIndicatorRepo,
 	UserPresenceStatusRepo,
 	UserRepo,
-	WorkOSClient,
-	WorkOSSync,
 	ClerkSync,
 } from "@hazel/backend-core"
 import { ClerkClient } from "@hazel/auth"
@@ -82,12 +80,9 @@ import { RateLimiter } from "./services/rate-limiter"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
-import { AuthRedemptionStore } from "./services/auth-redemption-store"
 import { ChannelAccessSyncService } from "./services/channel-access-sync"
 import { ConnectConversationService } from "./services/connect-conversation-service"
 import { OrgResolver } from "./services/org-resolver"
-import { WorkOSAuth } from "./services/workos-auth"
-import { WorkOSWebhookVerifier } from "./services/workos-webhook"
 
 export { HazelApi }
 
@@ -191,11 +186,6 @@ const MainLive = Layer.mergeAll(
 	RepoLive,
 	PolicyLive,
 	MockDataGenerator.layer,
-	WorkOSAuth.layer,
-	AuthRedemptionStore.layer,
-	WorkOSClient.layer,
-	WorkOSSync.layer,
-	WorkOSWebhookVerifier.layer,
 	ClerkClient.layer,
 	ClerkSync.layer,
 	DatabaseLive,
@@ -237,7 +227,6 @@ const ServerLayer = HttpRouter.serve(AllRoutes).pipe(
 		AuthorizationLive.pipe(
 			// SessionManager.layer includes BackendAuth and UserRepo via dependencies
 			Layer.provideMerge(SessionManager.layer),
-			Layer.provideMerge(WorkOSAuth.layer),
 			Layer.provideMerge(PersistenceLive),
 			Layer.provideMerge(Redis.Default),
 			Layer.provideMerge(DatabaseLive),

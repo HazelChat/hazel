@@ -1,5 +1,3 @@
-import { Atom } from "effect/unstable/reactivity"
-import type { OrganizationId } from "@hazel/schema"
 import { HazelRpcClient } from "~/lib/services/common/rpc-atom-client"
 
 /**
@@ -45,47 +43,3 @@ export const getOrgBySlugPublicQuery = (slug: string) =>
  */
 export const joinViaPublicInviteMutation = HazelRpcClient.mutation("organization.joinViaPublicInvite")
 
-/**
- * Mutation atom for getting the Admin Portal link (SSO / domain verification).
- */
-export const getAdminPortalLinkMutation = HazelRpcClient.mutation("organization.getAdminPortalLink")
-
-/**
- * Polling signal atom that emits every 5 seconds for domain verification.
- * Uses setInterval with get.setSelf pattern similar to windowFocusSignal.
- * Auto-disposes when no components are subscribed.
- */
-export const domainPollingSignal = Atom.readable<number>((get) => {
-	let count = 0
-	const intervalId = setInterval(() => {
-		get.setSelf(++count)
-	}, 5_000)
-	get.addFinalizer(() => {
-		clearInterval(intervalId)
-	})
-	return count
-})
-
-/**
- * Query atom factory for listing organization domains.
- * Auto-polls every 5 seconds to detect when pending domains become verified.
- * Polling stops automatically when the user navigates away from the page.
- */
-export const listOrganizationDomainsQuery = (organizationId: OrganizationId) =>
-	HazelRpcClient.query(
-		"organization.listDomains",
-		{ id: organizationId },
-		{
-			reactivityKeys: [`organizationDomains:${organizationId}`],
-		},
-	).pipe(Atom.makeRefreshOnSignal(domainPollingSignal))
-
-/**
- * Mutation atom for adding a domain to an organization
- */
-export const addOrganizationDomainMutation = HazelRpcClient.mutation("organization.addDomain")
-
-/**
- * Mutation atom for removing a domain from an organization
- */
-export const removeOrganizationDomainMutation = HazelRpcClient.mutation("organization.removeDomain")

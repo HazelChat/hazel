@@ -1,13 +1,10 @@
 import { verifyToken } from "@clerk/backend"
 import { Database, eq, schema } from "@hazel/db"
-import { ClerkJwtClaims, type UserId, type WorkOSUserId } from "@hazel/schema"
+import { ClerkJwtClaims } from "@hazel/schema"
 import { ServiceMap, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
 
-/**
- * Authentication error for proxy auth.
- */
 export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthenticationError>()(
 	"ProxyAuthenticationError",
 	{
@@ -20,8 +17,8 @@ export class ProxyAuthenticationError extends Schema.TaggedErrorClass<ProxyAuthe
  * Electric-proxy authentication service.
  *
  * Verifies a Clerk bearer JWT and resolves it to an internal Hazel user. Does
- * NOT upsert users — if the user isn't already in the DB (via backend sync),
- * the request is rejected.
+ * NOT upsert users — if the user isn't already in the DB (via Clerk webhook
+ * sync), the request is rejected.
  */
 export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	make: Effect.gen(function* () {
@@ -30,16 +27,11 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 		const decodeClerkClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
 		const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY")
 
-		/**
-		 * Lookup user by externalId. `UserLookupCache` is typed around WorkOSUserId,
-		 * but `users.externalId` is a plain varchar that now holds Clerk IDs —
-		 * the cast is a type-lie only.
-		 */
 		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (externalId: string) {
-			const cached = yield* userLookupCache.get(externalId as WorkOSUserId).pipe(
+			const cached = yield* userLookupCache.get(externalId).pipe(
 				Effect.catch((error) =>
 					Effect.logWarning("User lookup cache error", error).pipe(
-						Effect.map(() => Option.none<{ internalUserId: UserId }>()),
+						Effect.map(() => Option.none<{ internalUserId: (typeof schema.usersTable.$inferSelect)["id"] }>()),
 					),
 				),
 			)
@@ -70,7 +62,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 			const userOption = Option.fromNullishOr(userResult[0])
 
 			if (Option.isSome(userOption)) {
-				yield* userLookupCache.set(externalId as WorkOSUserId, userOption.value.id).pipe(
+				yield* userLookupCache.set(externalId, userOption.value.id).pipe(
 					Effect.catch((error) => Effect.logWarning("Failed to cache user lookup", error)),
 				)
 			}
@@ -110,7 +102,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 				yield* Effect.annotateCurrentSpan("user.found", false)
 				return yield* new ProxyAuthenticationError({
 					message: "User not found in database",
-					detail: `User must be created via backend first. Clerk ID: ${claims.sub}`,
+					detail: `User must be created via Clerk webhook first. Clerk ID: ${claims.sub}`,
 				})
 			}
 
@@ -118,7 +110,7 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
 
 			return {
-				workosUserId: claims.sub as unknown as WorkOSUserId,
+				externalId: claims.sub,
 				internalUserId: userIdOption.value,
 				email: claims.email ?? "",
 				organizationId: undefined,
@@ -134,10 +126,4 @@ export class ProxyAuth extends ServiceMap.Service<ProxyAuth>()("@hazel/auth/Prox
 	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(UserLookupCache.layer))
 }
 
-/**
- * Layer that provides ProxyAuth with all its dependencies.
- *
- * External dependencies that must be provided:
- * - Database.Database (for user lookup)
- */
 export const ProxyAuthLive = ProxyAuth.layer

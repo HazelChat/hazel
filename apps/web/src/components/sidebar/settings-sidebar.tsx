@@ -10,7 +10,6 @@ import IconEmojiAdd from "~/components/icons/icon-emoji-add"
 import IconGear from "~/components/icons/icon-gear"
 import IconGridCirclePlus from "~/components/icons/icon-grid-circle-plus"
 import IconIntegratio from "~/components/icons/icon-integratio-"
-import IconLock from "~/components/icons/icon-lock"
 import IconShop from "~/components/icons/icon-shop"
 import IconUsers from "~/components/icons/icon-users"
 import IconUsersPlus from "~/components/icons/icon-users-plus"
@@ -186,18 +185,6 @@ export function SettingsSidebar() {
 							>
 								<IconUsersPlus data-slot="icon" />
 								<SidebarLabel>Invitations</SidebarLabel>
-							</SidebarLink>
-						</SidebarItem>
-						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/authentication")}>
-							<SidebarLink
-								to="/$orgSlug/settings/authentication"
-								params={{ orgSlug: slug }}
-								activeProps={{
-									className: "bg-sidebar-accent font-medium text-sidebar-accent-fg",
-								}}
-							>
-								<IconLock data-slot="icon" />
-								<SidebarLabel>Authentication</SidebarLabel>
 							</SidebarLink>
 						</SidebarItem>
 						<SidebarItem isCurrent={!!isRouteActive("/$orgSlug/settings/custom-emojis")}>

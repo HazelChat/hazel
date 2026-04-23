@@ -4,22 +4,18 @@ import {
 	CurrentUser,
 	InvalidBearerTokenError,
 	InvalidJwtPayloadError,
-	WorkOSUserFetchError,
 } from "@hazel/domain"
 import { OrganizationMemberRepo, OrganizationRepo, UserRepo } from "@hazel/backend-core"
 import { ServiceMap, Effect, Layer, Option } from "effect"
 
 /**
- * Session management service that handles bearer-token authentication.
+ * Session management service. Authenticates Clerk bearer tokens and lazily
+ * syncs a signed-in user's organizations into our DB on auth.
  *
- * During the WorkOS → Clerk migration this accepts tokens from either provider;
- * the issuer is sniffed from the JWT payload and routed accordingly.
- *
- * Additionally: lazily syncs a Clerk-signed-in user's organizations into our DB
- * on auth. This removes the hard webhook dependency for local development —
+ * The lazy sync removes the hard webhook dependency for local development —
  * `bun run dev` doesn't need an ngrok tunnel pointing at /webhooks/clerk to
- * have orgs/memberships appear. Webhooks are still preferred in production for
- * instant propagation, but they're no longer required.
+ * have orgs/memberships appear. Webhooks are still preferred in production
+ * for instant propagation, but they're no longer required.
  */
 export class SessionManager extends ServiceMap.Service<SessionManager>()("SessionManager", {
 	make: Effect.gen(function* () {
@@ -30,11 +26,8 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 		const membershipRepo = yield* OrganizationMemberRepo
 
 		const userRepoLike: UserRepoLike = {
-			findByWorkOSUserId: userRepo.findByWorkOSUserId,
 			findByExternalId: userRepo.findByExternalId,
-			upsertWorkOSUser: userRepo.upsertWorkOSUser,
 			upsertClerkUser: userRepo.upsertClerkUser,
-			setExternalIdById: userRepo.setExternalIdById,
 			update: userRepo.update,
 		}
 
@@ -48,10 +41,6 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 			return "member"
 		}
 
-		/**
-		 * Pull the user's org memberships from Clerk and upsert them into our DB.
-		 * Fire-and-forget from the auth path; logs but never throws.
-		 */
 		const syncClerkOrgsForUser = (clerkUserId: string, localUserId: string) =>
 			Effect.gen(function* () {
 				const lastSync = orgSyncCache.get(clerkUserId) ?? 0
@@ -71,9 +60,6 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 					const org = m.organization
 					if (!org.slug) continue
 
-					// Upsert the org by slug. If it exists, no-op; otherwise insert with
-					// the Clerk org ID stashed in settings so the webhook path can still
-					// correlate it later.
 					const existingOrg = yield* orgRepo
 						.findBySlug(org.slug)
 						.pipe(Effect.map(Option.getOrNull))
@@ -105,18 +91,12 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 				Effect.catch((err) => Effect.logWarning(`[session] Clerk org sync failed: ${err}`)),
 			)
 
-		/**
-		 * Unified bearer-token authenticator. Routes to Clerk or WorkOS based on JWT issuer.
-		 * For Clerk tokens, triggers a background org sync.
-		 */
 		const triggerLazySync = (currentUser: CurrentUser.Schema) =>
 			Effect.gen(function* () {
 				const externalId = yield* userRepo
 					.findById(currentUser.id)
 					.pipe(Effect.map((u) => Option.getOrNull(u)?.externalId))
 				if (!externalId) return
-				// Clerk user IDs are `user_<base58...>`; WorkOS ULIDs start with `user_01`.
-				if (!externalId.startsWith("user_") || externalId.startsWith("user_01")) return
 				yield* syncClerkOrgsForUser(externalId, currentUser.id)
 			}).pipe(Effect.catch(() => Effect.void))
 
@@ -132,10 +112,7 @@ export class SessionManager extends ServiceMap.Service<SessionManager>()("Sessio
 				bearerToken: string,
 			) => Effect.Effect<
 				CurrentUser.Schema,
-				| InvalidBearerTokenError
-				| InvalidJwtPayloadError
-				| WorkOSUserFetchError
-				| ClerkUserFetchError,
+				InvalidBearerTokenError | InvalidJwtPayloadError | ClerkUserFetchError,
 				never
 			>,
 		} as const

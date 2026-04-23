@@ -42,9 +42,8 @@ export const AuthMiddlewareLive = Layer.effect(
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
 
-					// Check if this is a JWT token (used by desktop apps via WorkOS)
+					// JWT → Clerk bearer auth. Otherwise, treat as bot token (hash lookup).
 					if (isJwtToken(token)) {
-						// Authenticate using WorkOS JWT
 						const currentUser = yield* sessionManager.authenticateWithBearer(token)
 						return yield* Effect.provideService(effect, CurrentUser.Context, currentUser)
 					}

@@ -23,8 +23,3 @@ export const userLookupCacheMisses = Metric.counter("user_lookup.cache.misses")
 export const userLookupCacheOperationLatency = Metric.histogram("user_lookup.cache.operation.latency_ms", {
 	boundaries: [1, 2, 5, 10, 25, 50],
 })
-
-/** WorkOS organization lookup latency */
-export const orgLookupLatency = Metric.histogram("session.org.lookup.latency_ms", {
-	boundaries: [5, 10, 25, 50, 100, 250, 500],
-})

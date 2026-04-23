@@ -9,6 +9,5 @@ export {
 	TokenValidationService,
 	TokenValidationLive,
 	TokenValidationConfigService,
-	JwksService,
 } from "./auth"
 export type { TokenValidationConfig } from "./auth"

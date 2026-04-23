@@ -1,11 +1,11 @@
-import { UserId, WorkOSUserId } from "@hazel/schema"
+import { UserId } from "@hazel/schema"
 import { Schema } from "effect"
 import { Persistable } from "effect/unstable/persistence"
 import { UserLookupCacheError } from "../errors.ts"
 
 /**
  * Schema for cached user lookup result.
- * Maps workosUserId to internalUserId.
+ * Maps external user ID (Clerk user ID) → internal UserId.
  */
 export const UserLookupResult = Schema.Struct({
 	internalUserId: UserId,
@@ -15,15 +15,14 @@ export type UserLookupResult = typeof UserLookupResult.Type
 
 /**
  * Request type for user lookup cache operations.
- * Implements Persistable.Class for use with Persistence.
  */
 export class UserLookupCacheRequest extends Persistable.Class<{
 	payload: {
-		/** WorkOS user ID (external ID) */
-		workosUserId: typeof WorkOSUserId.Type
+		/** External user ID from the identity provider (Clerk user ID). */
+		externalId: string
 	}
 }>()("UserLookupCacheRequest", {
-	primaryKey: (payload) => payload.workosUserId,
+	primaryKey: (payload) => payload.externalId,
 	success: UserLookupResult,
 	error: UserLookupCacheError,
 }) {}

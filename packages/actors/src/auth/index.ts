@@ -9,7 +9,6 @@ export {
 
 // Services
 export { TokenValidationConfigService, type TokenValidationConfig } from "./config-service"
-export { JwksService } from "./jwks-service"
 export { TokenValidationService, TokenValidationLive } from "./token-validation-service"
 
 // Types

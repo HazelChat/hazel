@@ -12,7 +12,6 @@ import {
 	SessionLoadError,
 	SessionNotProvidedError,
 	SessionRefreshError,
-	WorkOSUserFetchError,
 } from "./session-errors"
 
 export class Schema extends S.Class<Schema>("CurrentUserSchema")({
@@ -39,7 +38,6 @@ const AuthFailure = S.Union([
 	SessionRefreshError,
 	SessionExpiredError,
 	InvalidBearerTokenError,
-	WorkOSUserFetchError,
 	ClerkUserFetchError,
 ])
 

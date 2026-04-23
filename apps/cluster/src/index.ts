@@ -4,14 +4,6 @@ import { HttpMiddleware, HttpRouter, HttpServer } from "effect/unstable/http"
 import { BunClusterSocket, BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { PgClient } from "@effect/sql-pg"
 import { WorkflowProxyServer } from "effect/unstable/workflow"
-import {
-	InvitationRepo,
-	OrganizationMemberRepo,
-	OrganizationRepo,
-	UserRepo,
-	WorkOSClient,
-	WorkOSSync,
-} from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
@@ -20,7 +12,6 @@ import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
 import { StatusExpirationCronLayer } from "./cron/status-expiration-cron.ts"
 import { TypingIndicatorCleanupCronLayer } from "./cron/typing-indicator-cleanup-cron.ts"
 import { UploadCleanupCronLayer } from "./cron/upload-cleanup-cron.ts"
-import { WorkOSSyncCronLayer } from "./cron/workos-sync-cron.ts"
 import { BotUserServiceLive } from "./services/bot-user-service.ts"
 import { OpenRouterLanguageModelLayer } from "./services/openrouter-service.ts"
 import { RssPollCronLayer } from "./cron/rss-poll-cron.ts"
@@ -66,20 +57,8 @@ const AllWorkflows = Layer.mergeAll(
 	ThreadNamingWorkflowLayer.pipe(Layer.provide(OpenRouterLanguageModelLayer)),
 ).pipe(Layer.provide(BotUserServiceLive), Layer.provide(DatabaseLayer))
 
-// WorkOSSync dependencies layer for cron job
-// Build the layer manually to ensure Database is provided to all deps
-const WorkOSSyncLive = WorkOSSync.layer.pipe(
-	Layer.provide(WorkOSClient.layer),
-	Layer.provide(UserRepo.layer),
-	Layer.provide(OrganizationRepo.layer),
-	Layer.provide(OrganizationMemberRepo.layer),
-	Layer.provide(InvitationRepo.layer),
-	Layer.provide(DatabaseLayer),
-)
-
 // Cron jobs layer - WorkflowEngineLayer provides Sharding which ClusterCron requires
 const AllCronJobs = Layer.mergeAll(
-	WorkOSSyncCronLayer.pipe(Layer.provide(WorkOSSyncLive)),
 	PresenceCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),
 	StatusExpirationCronLayer.pipe(Layer.provide(DatabaseLayer)),
 	TypingIndicatorCleanupCronLayer.pipe(Layer.provide(DatabaseLayer)),

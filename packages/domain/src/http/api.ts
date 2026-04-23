@@ -1,7 +1,6 @@
 import { HttpApi, OpenApi } from "effect/unstable/httpapi"
 import { ChatSyncGroup } from "./chat-sync"
 import { MessagesApiGroup } from "./api-v1/messages"
-import { AuthGroup } from "./auth"
 import { BotCommandsApiGroup } from "./bot-commands"
 import { IncomingWebhookGroup } from "./incoming-webhooks"
 import { IntegrationCommandGroup } from "./integration-commands"
@@ -20,7 +19,6 @@ export class HazelApi extends HttpApi.make("HazelApp")
 	.add(BotCommandsApiGroup)
 	.add(PresencePublicGroup)
 	.add(RootGroup)
-	.add(AuthGroup)
 	.add(IntegrationGroup)
 	.add(IntegrationCommandGroup)
 	.add(IntegrationResourceGroup)

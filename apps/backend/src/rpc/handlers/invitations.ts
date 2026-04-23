@@ -1,7 +1,7 @@
+import { randomUUID } from "node:crypto"
 import { InvitationRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { WorkOSInvitationId } from "@hazel/schema"
-import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import {
 	InvitationBatchResponse,
 	InvitationBatchResult,
@@ -9,17 +9,28 @@ import {
 	InvitationResponse,
 	InvitationRpcs,
 } from "@hazel/domain/rpc"
-import { Effect, Option, Schema } from "effect"
+import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { InvitationPolicy } from "../../policies/invitation-policy"
-import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
+/**
+ * Invitation RPC handlers.
+ *
+ * NOTE: Since the WorkOS removal, invitations are local-only — we generate
+ * an opaque token, stash it in the DB, and surface a copy-paste URL. No
+ * email is sent; the admin shares the URL manually. A future pass can wire
+ * this up to Clerk's organization-invitation API if we want email delivery.
+ */
 export const InvitationRpcLive = InvitationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
-		const workos = yield* WorkOS
 		const invitationPolicy = yield* InvitationPolicy
 		const invitationRepo = yield* InvitationRepo
+		const frontendUrl = yield* Config.string("FRONTEND_URL").pipe(Config.withDefault(""))
+
+		const makeInvitationToken = () => `inv_${randomUUID()}`
+		const makeInvitationUrl = (token: string) =>
+			frontendUrl ? `${frontendUrl}/invitations/${token}` : `/invitations/${token}`
 
 		return {
 			"invitation.create": (payload) =>
@@ -28,48 +39,19 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Get WorkOS organization
-							const workosOrg = yield* workos
-								.call((client) =>
-									client.organizations.getOrganizationByExternalId(payload.organizationId),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to get organization from WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
-
-							// Process each invite
 							const results = yield* Effect.forEach(
 								payload.invites,
 								(invite) =>
 									Effect.gen(function* () {
-										// Send invitation via WorkOS
-										const workosInvitation = yield* workos.call((client) =>
-											client.userManagement.sendInvitation({
-												email: invite.email,
-												organizationId: workosOrg.id,
-												roleSlug: invite.role,
-											}),
-										)
-
-										// Calculate expiration (7 days from now, matching WorkOS default)
+										const token = makeInvitationToken()
 										const expiresAt = new Date()
 										expiresAt.setDate(expiresAt.getDate() + 7)
 
-										// Store invitation in local database
 										yield* invitationPolicy.canCreate(payload.organizationId)
 										const createdInvitation = yield* invitationRepo.upsertByWorkosId({
-											workosInvitationId: Schema.decodeUnknownSync(WorkOSInvitationId)(
-												workosInvitation.id,
-											),
+											workosInvitationId: token,
 											organizationId: payload.organizationId,
-											invitationUrl: workosInvitation.acceptInvitationUrl,
+											invitationUrl: makeInvitationUrl(token),
 											email: invite.email,
 											invitedBy: currentUser.id,
 											invitedAt: new Date(),
@@ -88,8 +70,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 											transactionId: txid,
 										})
 									}).pipe(
-										// Note: catchAll is intentional here for batch processing -
-										// we want to convert ALL errors to InvitationBatchResult entries
 										Effect.catch((error) =>
 											Effect.succeed(
 												new InvitationBatchResult({
@@ -128,26 +108,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 
 							const invitation = invitationOption.value
 
-							// Resend invitation via WorkOS (send new invitation to same email)
-							yield* invitationPolicy.canUpdate(invitationId)
-							yield* workos
-								.call((client) =>
-									client.userManagement.sendInvitation({
-										email: invitation.email,
-										organizationId: invitation.organizationId,
-									}),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to resend invitation in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
-
 							const txid = yield* generateTransactionId()
 
 							return { invitation, txid }
@@ -174,24 +134,6 @@ export const InvitationRpcLive = InvitationRpcs.toLayer(
 							if (Option.isNone(invitationOption)) {
 								return yield* Effect.fail(new InvitationNotFoundError({ invitationId }))
 							}
-
-							const invitation = invitationOption.value
-
-							// Revoke invitation via WorkOS
-							yield* workos
-								.call((client) =>
-									client.userManagement.revokeInvitation(invitation.workosInvitationId),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to revoke invitation in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
 
 							yield* invitationPolicy.canUpdate(invitationId)
 							yield* invitationRepo.updateStatus(invitationId, "revoked")

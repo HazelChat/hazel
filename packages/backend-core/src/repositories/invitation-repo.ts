@@ -1,6 +1,6 @@
 import { and, Database, eq, lte, Repository, schema, type TxFn } from "@hazel/db"
 
-import type { InvitationId, OrganizationId, WorkOSInvitationId } from "@hazel/schema"
+import type { InvitationId, OrganizationId } from "@hazel/schema"
 import { Invitation } from "@hazel/domain/models"
 import { ServiceMap, Effect, Layer, Option, type Schema } from "effect"
 
@@ -16,9 +16,9 @@ export class InvitationRepo extends ServiceMap.Service<InvitationRepo>()("Invita
 		)
 		const db = yield* Database.Database
 
-		const findByWorkosId = (workosInvitationId: WorkOSInvitationId, tx?: TxFn) =>
+		const findByWorkosId = (workosInvitationId: string, tx?: TxFn) =>
 			db
-				.makeQuery((execute, id: WorkOSInvitationId) =>
+				.makeQuery((execute, id: string) =>
 					execute((client) =>
 						client
 							.select()

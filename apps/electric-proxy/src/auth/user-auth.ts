@@ -38,7 +38,7 @@ export const validateSession = Effect.fn("ElectricProxy.validateSession")(functi
 	const authContext = yield* proxyAuth.validateBearerToken(token)
 
 	return {
-		externalId: authContext.workosUserId,
+		externalId: authContext.externalId,
 		internalUserId: authContext.internalUserId,
 		email: authContext.email,
 	} satisfies AuthenticatedUser

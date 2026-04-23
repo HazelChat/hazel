@@ -18,7 +18,7 @@ export class OrganizationMemberRepo extends ServiceMap.Service<OrganizationMembe
 			)
 			const db = yield* Database.Database
 
-			// Extended methods for WorkOS sync
+			// Extended methods used by Clerk sync
 			const findByOrgAndUser = (organizationId: OrganizationId, userId: UserId, tx?: TxFn) =>
 				db
 					.makeQuery((execute, data: { organizationId: OrganizationId; userId: UserId }) =>

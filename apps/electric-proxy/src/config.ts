@@ -7,8 +7,6 @@ export interface ProxyConfig {
 	readonly electricUrl: string
 	readonly electricSourceId: string | undefined
 	readonly electricSourceSecret: string | undefined
-	readonly workosApiKey: string
-	readonly workosClientId: string
 	readonly allowedOrigin: string
 	readonly databaseUrl: Redacted.Redacted<string>
 	readonly isDev: boolean
@@ -32,8 +30,6 @@ export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()
 			Config.option,
 			Config.map(Option.getOrUndefined),
 		)
-		const workosApiKey = yield* Config.string("WORKOS_API_KEY")
-		const workosClientId = yield* Config.string("WORKOS_CLIENT_ID")
 		const allowedOrigin = yield* Config.string("ALLOWED_ORIGIN").pipe(
 			Config.withDefault("http://localhost:3000"),
 		)
@@ -52,8 +48,6 @@ export class ProxyConfigService extends ServiceMap.Service<ProxyConfigService>()
 			electricUrl,
 			electricSourceId,
 			electricSourceSecret,
-			workosApiKey,
-			workosClientId,
 			allowedOrigin,
 			databaseUrl,
 			isDev,

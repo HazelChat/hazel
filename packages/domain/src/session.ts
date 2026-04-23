@@ -1,1 +1,1 @@
-export { WorkOSJwtClaims as JwtPayload } from "@hazel/schema"
+export { ClerkJwtClaims as JwtPayload } from "@hazel/schema"

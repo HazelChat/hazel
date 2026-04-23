@@ -1,16 +1,18 @@
-import type { InvitationId, OrganizationId, UserId, WorkOSInvitationId } from "@hazel/schema"
+import type { InvitationId, OrganizationId, UserId } from "@hazel/schema"
 import { index, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
 
 // Invitation status
 export const invitationStatusEnum = pgEnum("invitation_status", ["pending", "accepted", "expired", "revoked"])
 
-// Invitations table
+// Invitations table. Column `workosInvitationId` is legacy-named from the
+// WorkOS era; it now holds a locally-generated invitation token. Renaming the
+// column would require a migration, so the historical name is preserved.
 export const invitationsTable = pgTable(
 	"invitations",
 	{
 		id: uuid().primaryKey().defaultRandom().$type<InvitationId>(),
 		invitationUrl: text().notNull(),
-		workosInvitationId: varchar({ length: 255 }).notNull().unique().$type<WorkOSInvitationId>(),
+		workosInvitationId: varchar({ length: 255 }).notNull().unique(),
 		organizationId: uuid().notNull().$type<OrganizationId>(),
 		email: varchar({ length: 255 }).notNull(),
 		invitedBy: uuid().$type<UserId>(),

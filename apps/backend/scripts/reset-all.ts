@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 
 import { Database } from "@hazel/db"
-import { WorkOSClient } from "@hazel/backend-core"
 import { Effect, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
@@ -46,7 +45,6 @@ const mainTables = ["channels", "organizations", "users"] as const
 
 const allTables = [...dependentTables, ...mainTables] as const
 
-// Database clearing logic
 const clearDatabase = Effect.gen(function* () {
 	const db = yield* Database.Database
 	const tableCounts: Record<string, number> = {}
@@ -56,7 +54,6 @@ const clearDatabase = Effect.gen(function* () {
 	log("cyan", `${"=".repeat(50)}`)
 
 	for (const table of allTables) {
-		// Count rows before deletion
 		const countResult = yield* db
 			.execute((client) => client.$client`SELECT COUNT(*)::int as count FROM ${client.$client(table)}`)
 			.pipe(Effect.orDie)
@@ -81,108 +78,15 @@ const clearDatabase = Effect.gen(function* () {
 	return tableCounts
 })
 
-// WorkOS clearing logic
-const clearWorkOS = Effect.gen(function* () {
-	const workos = yield* WorkOSClient
-
-	log("magenta", `\n${"=".repeat(50)}`)
-	log("magenta", "WORKOS CLEARING")
-	log("magenta", `${"=".repeat(50)}`)
-
-	const counts = {
-		invitations: 0,
-		organizations: 0,
-		users: 0,
-	}
-
-	// 1. Clear invitations
-	log("blue", "\n  → Clearing invitations...")
-	const invitations = yield* workos.call((client) => client.userManagement.listInvitations({ limit: 100 }))
-
-	counts.invitations = invitations.data.filter((invitation) => invitation.state === "pending").length
-
-	if (counts.invitations === 0) {
-		log("white", "  ⊘ No invitations to delete")
-	} else {
-		for (const invitation of invitations.data) {
-			if (isDryRun) {
-				log("yellow", `  [DRY RUN] Would delete invitation: ${invitation.email}`)
-			} else {
-				yield* workos.call((client) => client.userManagement.revokeInvitation(invitation.id))
-				log("green", `  ✓ Deleted invitation: ${invitation.email}`)
-			}
-		}
-	}
-
-	// 2. Clear organizations (this will cascade to memberships)
-	log("blue", "\n  → Clearing organizations...")
-	const organizations = yield* workos.call((client) =>
-		client.organizations.listOrganizations({ limit: 100 }),
-	)
-
-	// Filter out "TTest Organization - it should be preserved
-	const orgsToDelete = organizations.data.filter((org) => org.name !== "Test Organization")
-	const skippedOrgs = organizations.data.filter((org) => org.name === "Test Organization")
-
-	if (skippedOrgs.length > 0) {
-		log(
-			"white",
-			`  ⊘ Skipping ${skippedOrgs.length} protected organization(s): ${skippedOrgs.map((o) => o.name).join(", ")}`,
-		)
-	}
-
-	counts.organizations = orgsToDelete.length
-
-	if (counts.organizations === 0) {
-		log("white", "  ⊘ No organizations to delete")
-	} else {
-		for (const org of orgsToDelete) {
-			if (isDryRun) {
-				log("yellow", `  [DRY RUN] Would delete organization: ${org.name}`)
-			} else {
-				yield* workos.call((client) => client.organizations.deleteOrganization(org.id))
-				log("green", `  ✓ Deleted organization: ${org.name}`)
-			}
-		}
-	}
-
-	// 3. Clear users
-	log("blue", "\n  → Clearing users...")
-	const users = yield* workos.call((client) => client.userManagement.listUsers({ limit: 100 }))
-
-	counts.users = users.data.length
-
-	if (counts.users === 0) {
-		log("white", "  ⊘ No users to delete")
-	} else {
-		for (const user of users.data) {
-			if (isDryRun) {
-				log(
-					"yellow",
-					`  [DRY RUN] Would delete user: ${user.email} (${user.firstName} ${user.lastName})`,
-				)
-			} else {
-				yield* workos.call((client) => client.userManagement.deleteUser(user.id))
-				log("green", `  ✓ Deleted user: ${user.email}`)
-			}
-		}
-	}
-
-	return counts
-})
-
-// Main script
 const resetScript = Effect.gen(function* () {
-	// Print banner
 	log("bold", `\n${"=".repeat(50)}`)
-	log("bold", "RESET SCRIPT - DATABASE & WORKOS")
+	log("bold", "RESET SCRIPT — DATABASE")
 	log("bold", `${"=".repeat(50)}`)
 
 	if (isDryRun) {
 		log("yellow", "\n⚠️  DRY RUN MODE - No changes will be made")
 	}
 
-	// Environment check
 	const dbUrl = process.env.DATABASE_URL ?? ""
 	if (dbUrl.includes("production") || dbUrl.includes("prod")) {
 		log("red", "\n⛔ ERROR: This script cannot run in production!")
@@ -190,11 +94,8 @@ const resetScript = Effect.gen(function* () {
 		return yield* Effect.die("Cannot run in production")
 	}
 
-	// Confirmation prompt
 	if (!isForce && !isDryRun) {
-		log("red", "\n⚠️  WARNING: This will delete ALL data from:")
-		log("red", "  • All database tables (users, orgs, messages, etc.)")
-		log("red", "  • All WorkOS data (users, organizations, invitations)")
+		log("red", "\n⚠️  WARNING: This will delete ALL data from every database table.")
 		log("white", "\nThis action cannot be undone!")
 
 		const readline = require("node:readline").createInterface({
@@ -220,15 +121,10 @@ const resetScript = Effect.gen(function* () {
 		}
 	}
 
-	// Execute clearing operations
 	const startTime = Date.now()
-
 	const dbCounts = yield* clearDatabase
-	const workOSCounts = yield* clearWorkOS
-
 	const duration = ((Date.now() - startTime) / 1000).toFixed(2)
 
-	// Print summary
 	log("bold", `\n${"=".repeat(50)}`)
 	log("bold", "SUMMARY")
 	log("bold", `${"=".repeat(50)}`)
@@ -242,11 +138,6 @@ const resetScript = Effect.gen(function* () {
 		}
 	}
 
-	log("magenta", "\nWorkOS:")
-	log("white", `  Invitations ${isDryRun ? "to delete" : "deleted"}: ${workOSCounts.invitations}`)
-	log("white", `  Organizations ${isDryRun ? "to delete" : "deleted"}: ${workOSCounts.organizations}`)
-	log("white", `  Users ${isDryRun ? "to delete" : "deleted"}: ${workOSCounts.users}`)
-
 	log("green", `\n✓ Completed in ${duration}s`)
 
 	if (isDryRun) {
@@ -254,10 +145,8 @@ const resetScript = Effect.gen(function* () {
 	}
 })
 
-// Run the script with proper Effect runtime
 const runnable = resetScript.pipe(
 	Effect.provide(DatabaseLive),
-	Effect.provide(WorkOSClient.layer),
 	Effect.provideService(References.MinimumLogLevel, "Info"),
 )
 

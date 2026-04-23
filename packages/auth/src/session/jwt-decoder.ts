@@ -13,7 +13,7 @@ export const decodeSessionJwt = (accessToken: string): Effect.Effect<JwtPayload,
 			Effect.mapError(
 				(error) =>
 					new InvalidJwtPayloadError({
-						message: "Invalid JWT payload from WorkOS",
+						message: "Invalid JWT payload",
 						detail: String(error),
 					}),
 			),

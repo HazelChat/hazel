@@ -1,14 +1,16 @@
-import { BotId, OrganizationId, UserId, WorkOSOrganizationId, WorkOSRole, WorkOSUserId } from "@hazel/schema"
+import { BotId, OrganizationId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 
 /**
- * Represents an authenticated user (via WorkOS JWT)
+ * Represents an authenticated user (via Clerk JWT).
  */
 export interface UserClient {
 	readonly type: "user"
-	readonly workosUserId: WorkOSUserId
-	readonly workosOrganizationId: WorkOSOrganizationId | null
-	readonly role: Schema.Schema.Type<typeof WorkOSRole>
+	/** Clerk user ID (`user_…`), carried through as an opaque string. */
+	readonly externalId: string
+	/** Clerk organization ID (`org_…`), or null when no active organization. */
+	readonly externalOrganizationId: string | null
+	readonly role: "admin" | "member"
 }
 
 /**

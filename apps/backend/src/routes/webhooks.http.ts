@@ -4,87 +4,12 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { HttpServerRequest } from "effect/unstable/http"
 import { InternalServerError } from "@hazel/domain"
 import { GitHubWebhookResponse, InvalidGitHubWebhookSignature } from "@hazel/domain/http"
-import type { Event } from "@workos-inc/node"
 import { Config, Effect, pipe, Redacted } from "effect"
 import { HazelApi, InvalidWebhookSignature, WebhookResponse } from "../api"
-import { ClerkSync, WorkOSSync } from "@hazel/backend-core/services"
-import { WorkOSWebhookVerifier } from "../services/workos-webhook"
+import { ClerkSync } from "@hazel/backend-core/services"
 
 export const HttpWebhookLive = HttpApiBuilder.group(HazelApi, "webhooks", (handlers) =>
 	handlers
-		.handle("workos", (_args) =>
-			Effect.gen(function* () {
-				const request = yield* HttpServerRequest.HttpServerRequest
-
-				const signatureHeader = request.headers["workos-signature"]
-				if (!signatureHeader) {
-					return yield* Effect.fail(
-						new InvalidWebhookSignature({
-							message: "Missing workos-signature header",
-						}),
-					)
-				}
-
-				const rawBody = yield* pipe(
-					request.text,
-					Effect.mapError(
-						() =>
-							new InvalidWebhookSignature({
-								message: "Invalid request body",
-							}),
-					),
-				)
-
-				const verifier = yield* WorkOSWebhookVerifier
-				yield* pipe(
-					verifier.verifyWebhook(signatureHeader, rawBody),
-					Effect.mapError((error) => {
-						if (
-							error._tag === "WebhookVerificationError" ||
-							error._tag === "WebhookTimestampError"
-						) {
-							return new InvalidWebhookSignature({
-								message: error.message,
-							})
-						}
-						return error
-					}),
-				)
-
-				const payload = JSON.parse(rawBody) as Event
-
-				yield* Effect.logInfo(`Processing WorkOS webhook event: ${payload.event}`, {
-					eventId: payload.id,
-					eventType: payload.event,
-				})
-
-				const syncService = yield* WorkOSSync
-				const result = yield* syncService.processWebhookEvent(payload)
-
-				if (!result.success) {
-					const errorMessage = "error" in result ? result.error : "Unknown error"
-					yield* Effect.logError(`Failed to process webhook event: ${errorMessage}`, {
-						eventId: payload.id,
-						eventType: payload.event,
-						error: errorMessage,
-					})
-				} else {
-					yield* Effect.logDebug("Successfully processed webhook event", {
-						eventId: payload.id,
-						eventType: payload.event,
-					})
-				}
-
-				return new WebhookResponse({
-					success: result.success,
-					message: result.success
-						? "Event processed successfully"
-						: "error" in result
-							? result.error
-							: "Unknown error",
-				})
-			}),
-		)
 		.handle("clerk", (_args) =>
 			Effect.gen(function* () {
 				const request = yield* HttpServerRequest.HttpServerRequest

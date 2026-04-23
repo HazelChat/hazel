@@ -1,11 +1,9 @@
-import { GeneratePortalLinkIntent } from "@workos-inc/node"
 import type { OrganizationId } from "@hazel/schema"
 import {
 	ChannelMemberRepo,
 	ChannelRepo,
 	OrganizationMemberRepo,
 	OrganizationRepo,
-	UserRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
@@ -21,7 +19,6 @@ import { Effect, Option, Predicate } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { OrganizationPolicy } from "../../policies/organization-policy"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
-import { WorkOSAuth as WorkOS } from "../../services/workos-auth"
 
 const UNKNOWN_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000000" as OrganizationId
 
@@ -112,13 +109,11 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 	Effect.gen(function* () {
 		const db = yield* Database.Database
-		const workos = yield* WorkOS
 		const organizationRepo = yield* OrganizationRepo
 		const organizationPolicy = yield* OrganizationPolicy
 		const channelRepo = yield* ChannelRepo
 		const channelMemberRepo = yield* ChannelMemberRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
-		const userRepo = yield* UserRepo
 		const channelAccessSync = yield* ChannelAccessSyncService
 
 		return {
@@ -126,33 +121,8 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 				db
 					.transaction(
 						Effect.gen(function* () {
-							// Get current user from context
 							const currentUser = yield* CurrentUser.Context
 
-							// Get the user's external ID (WorkOS user ID)
-							const userOption = yield* userRepo.findById(currentUser.id).pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.fail(
-											new InternalServerError({
-												message: "Failed to query user",
-												detail: String(err),
-											}),
-										),
-								}),
-							)
-							if (userOption._tag === "None") {
-								return yield* Effect.fail(
-									new InternalServerError({
-										message: "User not found",
-										detail: `Could not find user with ID ${currentUser.id}`,
-									}),
-								)
-							}
-
-							const user = userOption.value
-
-							// Check if slug already exists
 							if (payload.slug) {
 								const existingOrganization = yield* organizationRepo.findBySlug(payload.slug)
 
@@ -166,7 +136,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								}
 							}
 
-							// Create organization in local database first
 							yield* organizationPolicy.canCreate()
 							const createdOrganization = yield* organizationRepo
 								.insert({
@@ -178,44 +147,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 									deletedAt: null,
 								})
 								.pipe(Effect.map((res) => res[0]!))
-
-							// Create organization in WorkOS using our DB ID as externalId
-							const workosOrg = yield* workos
-								.call((client) =>
-									client.organizations.createOrganization({
-										name: payload.name,
-										externalId: createdOrganization.id,
-									}),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to create organization in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
-
-							yield* workos
-								.call((client) =>
-									client.userManagement.createOrganizationMembership({
-										userId: user.externalId,
-										organizationId: workosOrg.id,
-										roleSlug: "owner",
-									}),
-								)
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to add user to organization in WorkOS",
-												detail: String(error.cause),
-												cause: String(error),
-											}),
-									),
-								)
 
 							yield* organizationMemberRepo.upsertByOrgAndUser({
 								organizationId: createdOrganization.id,
@@ -381,7 +312,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 						Effect.gen(function* () {
 							const currentUser = yield* CurrentUser.Context
 
-							// Find the organization by slug
 							const orgOption = yield* organizationRepo.findBySlug(slug)
 
 							if (Option.isNone(orgOption)) {
@@ -392,75 +322,24 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 							const org = orgOption.value
 
-							// Check if organization has public invites enabled
 							if (!org.isPublic) {
 								return yield* new PublicInviteDisabledError({
 									organizationId: org.id,
 								})
 							}
 
-							// Get the user's external ID for WorkOS sync
-							const userOption = yield* userRepo.findById(currentUser.id).pipe(
-								Effect.catchTags({
-									DatabaseError: (err) =>
-										Effect.fail(
-											new InternalServerError({
-												message: "Failed to query user",
-												detail: String(err),
-											}),
-										),
-								}),
-							)
-
-							if (Option.isNone(userOption)) {
-								return yield* new InternalServerError({
-									message: "User not found",
-									detail: `Could not find user with ID ${currentUser.id}`,
-								})
-							}
-
-							const user = userOption.value
-
-							// Get WorkOS org first - fail early if not found
-							const workosOrg = yield* workos
-								.call((client) => client.organizations.getOrganizationByExternalId(org.id))
-								.pipe(
-									Effect.mapError(
-										(error) =>
-											new InternalServerError({
-												message: "Failed to get WorkOS organization",
-												detail: String(error),
-											}),
-									),
-								)
-
-							// Check if user is already a member in local DB
 							const existingMember = yield* organizationMemberRepo.findByOrgAndUser(
 								org.id,
 								currentUser.id,
 							)
 
-							// Check WorkOS membership
-							const workosMembers = yield* workos
-								.call((client) =>
-									client.userManagement.listOrganizationMemberships({
-										organizationId: workosOrg.id,
-										userId: user.externalId,
-									}),
-								)
-								.pipe(Effect.catchTag("WorkOSAuthError", () => Effect.succeed({ data: [] })))
-
-							const hasWorkosMembership = workosMembers.data.length > 0
-
-							if (Option.isSome(existingMember) && hasWorkosMembership) {
-								// Truly already a member in both systems
+							if (Option.isSome(existingMember)) {
 								return yield* new AlreadyMemberError({
 									organizationId: org.id,
 									organizationSlug: org.slug,
 								})
 							}
 
-							// Create/ensure membership in local database
 							yield* organizationMemberRepo.upsertByOrgAndUser({
 								organizationId: org.id,
 								userId: currentUser.id,
@@ -470,27 +349,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 								invitedBy: null,
 								deletedAt: null,
 							})
-
-							// Sync to WorkOS - REQUIRED, fails the transaction if it fails
-							if (!hasWorkosMembership) {
-								yield* workos
-									.call((client) =>
-										client.userManagement.createOrganizationMembership({
-											userId: user.externalId,
-											organizationId: workosOrg.id,
-											roleSlug: "member",
-										}),
-									)
-									.pipe(
-										Effect.mapError(
-											(error) =>
-												new InternalServerError({
-													message: "Failed to create WorkOS membership",
-													detail: String(error),
-												}),
-										),
-									)
-							}
 
 							// Add user to the default "general" channel
 							const generalChannel = yield* channelRepo.findByOrgAndName(org.id, "general")
@@ -525,149 +383,6 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 						}),
 					)
 					.pipe(withRemapDbErrors("Organization", "update")),
-
-			"organization.getAdminPortalLink": ({ id, intent }) =>
-				Effect.gen(function* () {
-					// Policy check - only admins/owners can access admin portal
-					yield* organizationPolicy.canUpdate(id)
-
-					// Get the WorkOS organization by our local org ID
-					const workosOrg = yield* workos
-						.call((client) => client.organizations.getOrganizationByExternalId(id))
-						.pipe(
-							Effect.catchTag("WorkOSAuthError", () =>
-								Effect.fail(
-									new OrganizationNotFoundError({
-										organizationId: id,
-									}),
-								),
-							),
-						)
-
-					// Map intent string to WorkOS enum
-					const intentMap = {
-						sso: GeneratePortalLinkIntent.SSO,
-						domain_verification: GeneratePortalLinkIntent.DomainVerification,
-						dsync: GeneratePortalLinkIntent.DSync,
-						audit_logs: GeneratePortalLinkIntent.AuditLogs,
-						log_streams: GeneratePortalLinkIntent.LogStreams,
-					} as const
-
-					// Generate portal link
-					const portalLink = yield* workos
-						.call((client) =>
-							client.portal.generateLink({
-								organization: workosOrg.id,
-								intent: intentMap[intent],
-							}),
-						)
-						.pipe(
-							Effect.mapError(
-								(error) =>
-									new InternalServerError({
-										message: "Failed to generate admin portal link",
-										detail: String(error.cause),
-										cause: String(error),
-									}),
-							),
-						)
-
-					return { link: portalLink.link }
-				}),
-
-			"organization.listDomains": ({ id }) =>
-				Effect.gen(function* () {
-					// Policy check - only admins/owners can list domains
-					yield* organizationPolicy.canUpdate(id)
-
-					// Get the WorkOS organization by our local org ID
-					const workosOrg = yield* workos
-						.call((client) => client.organizations.getOrganizationByExternalId(id))
-						.pipe(
-							Effect.catchTag("WorkOSAuthError", () =>
-								Effect.fail(
-									new OrganizationNotFoundError({
-										organizationId: id,
-									}),
-								),
-							),
-						)
-
-					// The domains are included in the organization response
-					return workosOrg.domains.map((d) => ({
-						id: d.id,
-						domain: d.domain,
-						state: d.state as "pending" | "verified" | "failed" | "legacy_verified",
-						verificationToken: d.verificationToken ?? null,
-					}))
-				}),
-
-			"organization.addDomain": ({ id, domain }) =>
-				Effect.gen(function* () {
-					// Policy check - only admins/owners can add domains
-					yield* organizationPolicy.canUpdate(id)
-
-					// Get the WorkOS organization by our local org ID
-					const workosOrg = yield* workos
-						.call((client) => client.organizations.getOrganizationByExternalId(id))
-						.pipe(
-							Effect.catchTag("WorkOSAuthError", () =>
-								Effect.fail(
-									new OrganizationNotFoundError({
-										organizationId: id,
-									}),
-								),
-							),
-						)
-
-					// Create domain in WorkOS
-					const newDomain = yield* workos
-						.call((client) =>
-							client.organizationDomains.create({
-								domain,
-								organizationId: workosOrg.id,
-							}),
-						)
-						.pipe(
-							Effect.mapError(
-								(error) =>
-									new InternalServerError({
-										message: "Failed to add domain",
-										detail: String(error.cause),
-										cause: String(error),
-									}),
-							),
-						)
-
-					return {
-						id: newDomain.id,
-						domain: newDomain.domain,
-						state: newDomain.state,
-						verificationToken: newDomain.verificationToken ?? null,
-					}
-				}),
-
-			"organization.removeDomain": ({ id, domainId }) =>
-				Effect.gen(function* () {
-					// Policy check - only admins/owners can remove domains
-					yield* organizationPolicy.canUpdate(id)
-
-					// Delete domain from WorkOS
-					yield* workos
-						.call((client) => client.organizationDomains.delete(domainId))
-						.pipe(
-							Effect.mapError(
-								(error) =>
-									new InternalServerError({
-										message: "Failed to remove domain",
-										detail: String(error.cause),
-										cause: String(error),
-									}),
-							),
-						)
-
-					return { success: true }
-				}),
 		}
 	}),
 )
