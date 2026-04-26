@@ -7,6 +7,7 @@ import { Exit, Option } from "effect"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { GitHubSubscriptionsSection } from "~/components/integrations/github-subscriptions-section"
+import { MapleIntegrationContent } from "~/components/integrations/maple-integration-content"
 import { OpenStatusIntegrationContent } from "~/components/integrations/openstatus-integration-content"
 import { RailwayIntegrationContent } from "~/components/integrations/railway-integration-content"
 import { RssSubscriptionsSection } from "~/components/integrations/rss-subscriptions-section"
@@ -235,9 +236,12 @@ function IntegrationConfigPage() {
 		navigate({ to: "/$orgSlug/settings/integrations", params: { orgSlug } })
 	}
 
-	// OpenStatus, Railway, and RSS use webhook/polling-based integration (per-channel), not OAuth
+	// OpenStatus, Railway, RSS, and Maple use webhook/polling-based integration (per-channel), not OAuth
 	const isWebhookIntegration =
-		integrationId === "openstatus" || integrationId === "railway" || integrationId === "rss"
+		integrationId === "openstatus" ||
+		integrationId === "railway" ||
+		integrationId === "rss" ||
+		integrationId === "maple"
 
 	const isApiKeyIntegration = integration?.connectionType === "api-key"
 
@@ -299,6 +303,8 @@ function IntegrationConfigPage() {
 							<RailwayIntegrationContent organizationId={organizationId} />
 						) : integrationId === "rss" ? (
 							<RssSubscriptionsSection organizationId={organizationId} />
+						) : integrationId === "maple" ? (
+							<MapleIntegrationContent organizationId={organizationId} />
 						) : null)
 					) : isApiKeyIntegration ? (
 						<>

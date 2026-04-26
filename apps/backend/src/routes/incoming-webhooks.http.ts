@@ -11,6 +11,7 @@ import {
 	WebhookNotFoundError,
 } from "@hazel/domain/http"
 import type { MessageEmbed } from "@hazel/domain/models"
+import { buildMapleEmbed } from "@hazel/integrations/maple"
 import { buildOpenStatusEmbed } from "@hazel/integrations/openstatus"
 import { buildRailwayEmbed } from "@hazel/integrations/railway"
 import { Effect, Option } from "effect"
@@ -342,6 +343,99 @@ export const HttpIncomingWebhookLive = HttpApiBuilder.group(HazelApi, "incoming-
 				)
 
 				// Update last used timestamp (fire and forget)
+				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
+
+				return new WebhookMessageResponse({
+					messageId: message.id,
+					channelId: webhook.channelId,
+				})
+			}).pipe(
+				Effect.catchTags({
+					DatabaseError: (error: unknown) =>
+						Effect.fail(
+							new InternalServerError({
+								message: "Database error while creating message",
+								detail: String(error),
+							}),
+						),
+					SchemaError: (error: unknown) =>
+						Effect.fail(
+							new InternalServerError({
+								message: "Invalid request data",
+								detail: String(error),
+							}),
+						),
+				}),
+			),
+		)
+		.handle("executeMaple", ({ params, payload }) =>
+			Effect.gen(function* () {
+				const { webhookId, token } = params
+				const db = yield* Database.Database
+				const webhookRepo = yield* ChannelWebhookRepo
+				const messageRepo = yield* MessageRepo
+				const outboxRepo = yield* MessageOutboxRepo
+				const botService = yield* IntegrationBotService
+
+				const tokenHash = createHash("sha256").update(token).digest("hex")
+
+				const webhookOption = yield* webhookRepo.findById(webhookId)
+
+				if (Option.isNone(webhookOption)) {
+					yield* Effect.logWarning("Webhook not found", { webhookId })
+					return yield* Effect.fail(new WebhookNotFoundError({ message: "Webhook not found" }))
+				}
+
+				const webhook = webhookOption.value
+
+				const tokenBuffer = Buffer.from(tokenHash, "hex")
+				const expectedBuffer = Buffer.from(webhook.tokenHash, "hex")
+				if (
+					tokenBuffer.length !== expectedBuffer.length ||
+					!timingSafeEqual(tokenBuffer, expectedBuffer)
+				) {
+					yield* Effect.logWarning("Invalid webhook token", { webhookId })
+					return yield* Effect.fail(
+						new InvalidWebhookTokenError({ message: "Invalid webhook token" }),
+					)
+				}
+
+				if (!webhook.isEnabled) {
+					yield* Effect.logWarning("Webhook is disabled", { webhookId: webhook.id })
+					return yield* Effect.fail(new WebhookDisabledError({ message: "Webhook is disabled" }))
+				}
+
+				const botUser = yield* botService.getOrCreateWebhookBotUser("maple", webhook.organizationId)
+
+				const embed = buildMapleEmbed(payload)
+
+				const message = yield* db.transaction(
+					Effect.gen(function* () {
+						const [createdMessage] = yield* messageRepo.insert({
+							channelId: webhook.channelId,
+							authorId: botUser.id,
+							content: "",
+							embeds: [embed],
+							replyToMessageId: null,
+							threadChannelId: null,
+							deletedAt: null,
+						})
+						yield* outboxRepo.insert({
+							eventType: "message_created",
+							aggregateId: createdMessage.id,
+							channelId: createdMessage.channelId,
+							payload: {
+								messageId: createdMessage.id,
+								channelId: createdMessage.channelId,
+								authorId: createdMessage.authorId,
+								content: createdMessage.content,
+								replyToMessageId: createdMessage.replyToMessageId,
+							},
+						})
+						return createdMessage
+					}),
+				)
+
 				yield* webhookRepo.updateLastUsed(webhook.id).pipe(Effect.ignore)
 
 				return new WebhookMessageResponse({

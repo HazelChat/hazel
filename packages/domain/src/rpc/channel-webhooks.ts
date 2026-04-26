@@ -81,7 +81,7 @@ export class ChannelWebhookRpcs extends RpcGroup.make(
 			description: Schema.optional(Schema.String.check(Schema.isMaxLength(500))),
 			avatarUrl: Schema.optional(AvatarUrl),
 			/** When set, uses a global integration bot user instead of creating a unique webhook bot */
-			integrationProvider: Schema.optional(Schema.Literals(["openstatus", "railway"])),
+			integrationProvider: Schema.optional(Schema.Literals(["openstatus", "railway", "maple"])),
 		}),
 		success: ChannelWebhookCreatedResponse,
 		error: Schema.Union([ChannelNotFoundError, UnauthorizedError, InternalServerError]),

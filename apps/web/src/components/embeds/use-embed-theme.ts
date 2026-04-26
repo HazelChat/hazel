@@ -2,7 +2,7 @@ import { useAtomValue } from "@effect/atom-react"
 import { getBrandfetchIcon } from "~/lib/integrations/__data"
 import { resolvedThemeAtom } from "../theme-provider"
 
-export type EmbedProvider = "linear" | "github" | "figma" | "notion" | "openstatus" | "railway"
+export type EmbedProvider = "linear" | "github" | "figma" | "notion" | "openstatus" | "railway" | "maple"
 
 export interface EmbedTheme {
 	/** Provider display name */
@@ -52,6 +52,12 @@ export const EMBED_THEMES: Record<EmbedProvider, EmbedTheme> = {
 		name: "Railway",
 		color: "#0B0D0E",
 		domain: "railway.com",
+		logoType: "icon",
+	},
+	maple: {
+		name: "Maple",
+		color: "#10B981",
+		domain: "maple.dev",
 		logoType: "icon",
 	},
 }

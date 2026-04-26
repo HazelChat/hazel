@@ -93,6 +93,60 @@ export class RailwayPayload extends Schema.Class<RailwayPayload>("RailwayPayload
 	timestamp: Schema.String, // ISO 8601 timestamp
 }) {}
 
+// Maple alert webhook schemas (mirror Maple's buildPayload output)
+export const MapleEventType = Schema.Literals(["trigger", "resolve", "renotify", "test"])
+export type MapleEventType = Schema.Schema.Type<typeof MapleEventType>
+
+export const MapleIncidentStatus = Schema.Literals(["open", "resolved"])
+export type MapleIncidentStatus = Schema.Schema.Type<typeof MapleIncidentStatus>
+
+export const MapleSeverity = Schema.Literals(["warning", "critical"])
+export type MapleSeverity = Schema.Schema.Type<typeof MapleSeverity>
+
+export const MapleComparator = Schema.Literals(["gt", "gte", "lt", "lte"])
+export type MapleComparator = Schema.Schema.Type<typeof MapleComparator>
+
+export const MapleSignalType = Schema.Literals([
+	"error_rate",
+	"p95_latency",
+	"p99_latency",
+	"apdex",
+	"throughput",
+	"metric",
+	"query",
+])
+export type MapleSignalType = Schema.Schema.Type<typeof MapleSignalType>
+
+export const MapleAlertRule = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	signalType: MapleSignalType,
+	severity: MapleSeverity,
+	groupKey: Schema.NullOr(Schema.String),
+	comparator: MapleComparator,
+	threshold: Schema.Number,
+	windowMinutes: Schema.Number,
+})
+export type MapleAlertRule = Schema.Schema.Type<typeof MapleAlertRule>
+
+export const MapleObserved = Schema.Struct({
+	value: Schema.NullOr(Schema.Number),
+	sampleCount: Schema.NullOr(Schema.Number),
+})
+export type MapleObserved = Schema.Schema.Type<typeof MapleObserved>
+
+export class MaplePayload extends Schema.Class<MaplePayload>("MaplePayload")({
+	eventType: MapleEventType,
+	incidentId: Schema.NullOr(Schema.String),
+	incidentStatus: MapleIncidentStatus,
+	dedupeKey: Schema.String,
+	rule: MapleAlertRule,
+	observed: MapleObserved,
+	linkUrl: Schema.String,
+	chatUrl: Schema.String,
+	sentAt: Schema.String,
+}) {}
+
 // Response after successful webhook execution
 export class WebhookMessageResponse extends Schema.Class<WebhookMessageResponse>("WebhookMessageResponse")({
 	messageId: Schema.String,
@@ -199,6 +253,31 @@ export class IncomingWebhookGroup extends HttpApiGroup.make("incoming-webhooks")
 					description:
 						"Receive deployment and alert events from Railway and post them as rich embeds to a channel.",
 					summary: "Process Railway event",
+				}),
+			)
+			.annotate(RequiredScopes, []),
+	)
+	.add(
+		HttpApiEndpoint.post("executeMaple", `/:webhookId/:token/maple`, {
+			params: {
+				webhookId: ChannelWebhookId,
+				token: Schema.String,
+			},
+			payload: MaplePayload,
+			success: WebhookMessageResponse,
+			error: [
+				WebhookNotFoundError,
+				WebhookDisabledError,
+				InvalidWebhookTokenError,
+				InternalServerError,
+			],
+		})
+			.annotateMerge(
+				OpenApi.annotations({
+					title: "Execute Maple Webhook",
+					description:
+						"Receive alert trigger, resolve, renotify, and test events from Maple and post them as rich embeds to a channel.",
+					summary: "Process Maple alert",
 				}),
 			)
 			.annotate(RequiredScopes, []),

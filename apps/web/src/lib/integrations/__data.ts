@@ -265,6 +265,25 @@ export const integrations: Integration[] = [
 		],
 		configOptions: [],
 	},
+	{
+		id: "maple",
+		name: "Maple",
+		description: "Observability alerts for traces, latency, and error rates.",
+		fullDescription:
+			"Connect Maple to receive alerts directly in your channels when error rates spike, latency degrades, or custom rules trip. Each alert includes severity, observed values, and deep links back to the incident and Maple AI chat.",
+		logoDomain: "maple.dev",
+		logoType: "icon",
+		brandColor: "#10B981",
+		category: "developer-tools",
+		connectionType: "webhook",
+		features: [
+			"Trigger, resolve, and renotify events",
+			"Severity-aware embed coloring",
+			"Deep links to incident & AI chat",
+			"Test deliveries from Maple",
+		],
+		configOptions: [],
+	},
 ]
 
 export const categories = [

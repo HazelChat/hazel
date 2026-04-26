@@ -57,7 +57,7 @@ export const INTEGRATION_BOT_CONFIGS: Record<IntegrationProvider, IntegrationBot
 /**
  * Webhook provider types (non-OAuth integrations)
  */
-export type WebhookProvider = "openstatus" | "railway" | "rss"
+export type WebhookProvider = "openstatus" | "railway" | "rss" | "maple"
 
 /**
  * Bot configurations for webhook-based integrations.
@@ -80,6 +80,11 @@ export const WEBHOOK_BOT_CONFIGS: Record<WebhookProvider, IntegrationBotConfig> 
 		name: "RSS",
 		avatarUrl: "https://cdn.brandfetch.io/rss.com/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
 		botId: "bot-rss",
+	},
+	maple: {
+		name: "Maple",
+		avatarUrl: "https://cdn.brandfetch.io/maple.dev/w/64/h/64/theme/dark/icon?token=1id0IQ-4i8Z46-n-DfQ",
+		botId: "bot-maple",
 	},
 }
 
