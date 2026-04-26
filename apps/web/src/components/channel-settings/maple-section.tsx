@@ -64,7 +64,6 @@ export function MapleSection({
 				channelId,
 				name: MAPLE_NAME,
 				description: "Maple alert notifications",
-				avatarUrl: mapleLogoUrl,
 				integrationProvider: "maple",
 			},
 		})
