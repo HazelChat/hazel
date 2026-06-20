@@ -167,10 +167,18 @@ export class ClerkSync extends Context.Service<ClerkSync>()("ClerkSync", {
 					return Option.none()
 				}
 
+				// Clerk has no "owner" concept — it's a Hazel-only elevated role — so a Clerk
+				// membership event (which can only carry admin/member) must never downgrade an
+				// existing owner.
+				const existingMembership = yield* membershipRepo
+					.findByOrgAndUser(orgOpt.id, userOpt.id)
+					.pipe(Effect.map(Option.getOrNull))
+				const role = existingMembership?.role === "owner" ? "owner" : roleFromClerk(anyData.role)
+
 				yield* membershipRepo.upsertByOrgAndUser({
 					organizationId: orgOpt.id,
 					userId: userOpt.id,
-					role: roleFromClerk(anyData.role),
+					role,
 					nickname: undefined,
 					joinedAt: new Date(),
 					invitedBy: null,

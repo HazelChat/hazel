@@ -28,6 +28,15 @@ export class OrganizationFetchError extends Schema.TaggedErrorClass<Organization
 	},
 ) {}
 
+/** Error thrown when creating an organization in the identity provider fails. */
+export class OrganizationCreateError extends Schema.TaggedErrorClass<OrganizationCreateError>()(
+	"OrganizationCreateError",
+	{
+		message: Schema.String,
+		detail: Schema.optional(Schema.String),
+	},
+) {}
+
 // Re-export session errors from domain package for convenience
 export {
 	ClerkUserFetchError,

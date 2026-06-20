@@ -2,7 +2,7 @@
 export { type AuthenticatedUserContext } from "./types.ts"
 
 // Errors
-export { SessionCacheError } from "./errors.ts"
+export { OrganizationCreateError, OrganizationFetchError, SessionCacheError } from "./errors.ts"
 export {
 	ClerkUserFetchError,
 	InvalidBearerTokenError,

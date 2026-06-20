@@ -2,7 +2,7 @@ import { createClerkClient, type Organization, type User } from "@clerk/backend"
 import { ClerkUserFetchError } from "@hazel/domain"
 import { ClerkOrganizationId, ClerkUserId } from "@hazel/schema"
 import { Effect, Layer, Context } from "effect"
-import { OrganizationFetchError } from "../errors.ts"
+import { OrganizationCreateError, OrganizationFetchError } from "../errors.ts"
 import { AuthConfig } from "../config.ts"
 
 /**
@@ -47,9 +47,49 @@ export class ClerkClient extends Context.Service<ClerkClient>()("@hazel/auth/Cle
 				Effect.withSpan("ClerkClient.getOrganization", { attributes: { "org.id": orgId } }),
 			)
 
+		const createOrganization = (params: {
+			name: string
+			slug?: string | null
+			/** Clerk user id of the creator — becomes the org admin and fires the membership webhook. */
+			createdBy?: string
+		}): Effect.Effect<Organization, OrganizationCreateError> =>
+			Effect.tryPromise({
+				try: () =>
+					client.organizations.createOrganization({
+						name: params.name,
+						...(params.slug ? { slug: params.slug } : {}),
+						...(params.createdBy ? { createdBy: params.createdBy } : {}),
+					}),
+				catch: (error) =>
+					new OrganizationCreateError({
+						message: "Failed to create organization in Clerk",
+						detail: String(error),
+					}),
+			}).pipe(
+				Effect.tap((org) => Effect.annotateCurrentSpan("org.id", org.id)),
+				Effect.withSpan("ClerkClient.createOrganization", {
+					attributes: { "org.slug": params.slug ?? undefined },
+				}),
+			)
+
+		const deleteOrganization = (orgId: string): Effect.Effect<void, OrganizationCreateError> =>
+			Effect.tryPromise({
+				try: () => client.organizations.deleteOrganization(orgId),
+				catch: (error) =>
+					new OrganizationCreateError({
+						message: "Failed to delete organization in Clerk",
+						detail: String(error),
+					}),
+			}).pipe(
+				Effect.asVoid,
+				Effect.withSpan("ClerkClient.deleteOrganization", { attributes: { "org.id": orgId } }),
+			)
+
 		return {
 			getUser,
 			getOrganization,
+			createOrganization,
+			deleteOrganization,
 			/** Raw SDK client for operations not yet wrapped (createUser, updateUser, webhooks, etc.). */
 			raw: client,
 		}
@@ -72,6 +112,13 @@ export class ClerkClient extends Context.Service<ClerkClient>()("@hazel/auth/Cle
 				name: "Test Organization",
 				slug: "test-organization",
 			} as unknown as Organization),
+		createOrganization: (params: { name: string; slug?: string | null; createdBy?: string }) =>
+			Effect.succeed({
+				id: "org_test",
+				name: params.name,
+				slug: params.slug ?? "test-organization",
+			} as unknown as Organization),
+		deleteOrganization: (_orgId: string) => Effect.void,
 		raw: {} as ReturnType<typeof createClerkClient>,
 	})
 }
