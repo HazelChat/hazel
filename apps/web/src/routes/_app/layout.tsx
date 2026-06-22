@@ -77,26 +77,23 @@ function AppShell() {
 
 	if (!user && Option.isSome(error)) {
 		const errorValue = error.value
-		if (errorValue._tag === "SessionLoadError") {
-			return (
-				<div className="flex h-screen flex-col items-center justify-center gap-6">
-					<div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-						<h1 className="font-bold font-mono text-2xl text-danger">
-							Service Temporarily Unavailable
-						</h1>
-						<Text>
-							We're having trouble connecting to the authentication service. This is usually
-							temporary.
-						</Text>
-						<Text className="text-muted-fg text-xs">{errorValue.message}</Text>
-						<Button intent="primary" onPress={() => window.location.reload()}>
-							Retry
-						</Button>
-					</div>
+		return (
+			<div className="flex h-screen flex-col items-center justify-center gap-6">
+				<div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
+					<h1 className="font-bold font-mono text-2xl text-danger">
+						Service Temporarily Unavailable
+					</h1>
+					<Text>
+						We're having trouble connecting to the authentication service. This is usually
+						temporary.
+					</Text>
+					<Text className="text-muted-fg text-xs">{errorValue.message}</Text>
+					<Button intent="primary" onPress={() => window.location.reload()}>
+						Retry
+					</Button>
 				</div>
-			)
-		}
-		return <Loader />
+			</div>
+		)
 	}
 
 	if (!user) return <Loader />
