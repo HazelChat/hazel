@@ -10,7 +10,7 @@ import { AnimatePresence, type Variants, motion } from "motion/react"
 import { useEffect, useState } from "react"
 
 const INITIAL_WIDTH = "70rem"
-const MAX_WIDTH = "800px"
+const MAX_WIDTH = "900px"
 
 // Animation variants
 const overlayVariants = {
