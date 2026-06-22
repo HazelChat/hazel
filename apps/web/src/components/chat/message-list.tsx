@@ -270,9 +270,9 @@ function MessageListContent({
 			<div className="flex size-full flex-col items-center justify-center p-4 sm:p-8">
 				<div className="relative aspect-square w-full max-w-sm">
 					<img
-						src="/images/squirrle_ocean.png"
+						src="/images/squirrle_ocean.webp"
 						alt="squirrel"
-						className="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.png)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover opacity-50"
+						className="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.webp)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover opacity-50"
 					/>
 				</div>
 				<p className="font-bold font-mono text-fg text-xl">Quiet as an ocean gazing squirrel...</p>

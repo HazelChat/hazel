@@ -16,7 +16,7 @@ export function RouteErrorComponent({ error, reset }: ErrorComponentProps) {
 				<div className="relative w-48">
 					<div className="mask-radial-at-center mask-radial-from-black mask-radial-to-transparent aspect-square w-full">
 						<img
-							src="/images/squirrle_ocean.png"
+							src="/images/squirrle_ocean.webp"
 							alt=""
 							className="h-full w-full object-contain opacity-80"
 						/>

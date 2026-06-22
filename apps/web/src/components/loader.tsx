@@ -6,9 +6,9 @@ export const Loader = () => {
 			<div className="flex w-full max-w-sm flex-col items-center gap-4">
 				<div className="mask-radial-at-center mask-radial-from-black mask-radial-to-transparent relative aspect-square w-full">
 					<img
-						src="/images/squirrle_window.png"
+						src="/images/squirrle_window.webp"
 						alt="squirrel"
-						className="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.png)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover"
+						className="mask-size-[110%_90%] mask-linear-to-r mask-from-black mask-to-transparent mask-center mask-no-repeat mask-[url(/images/image-mask.webp)] h-full w-full rounded-md bg-center bg-cover bg-no-repeat object-cover"
 					/>
 				</div>
 

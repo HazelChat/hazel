@@ -12,42 +12,11 @@ import { Button } from "~/components/ui/button"
 import { Loader } from "~/components/ui/loader"
 import { useAuth } from "~/lib/auth"
 import { exitToastAsync } from "~/lib/toast-exit"
+import { getOnboardingImage } from "~/lib/helper/get-onboarding-image"
 
 export const Route = createFileRoute("/join/$slug")({
 	component: JoinPage,
 })
-
-function getOnboardingImage() {
-	const now = new Date()
-	const month = now.getMonth()
-	const hour = now.getHours()
-
-	const season = Match.value(month).pipe(
-		Match.when(
-			(m) => m >= 2 && m <= 4,
-			() => "spring" as const,
-		),
-		Match.when(
-			(m) => m >= 5 && m <= 7,
-			() => "summer" as const,
-		),
-		Match.when(
-			(m) => m >= 8 && m <= 10,
-			() => "autumn" as const,
-		),
-		Match.orElse(() => "winter" as const),
-	)
-
-	const timeOfDay = Match.value(hour).pipe(
-		Match.when(
-			(h) => h >= 6 && h < 18,
-			() => "day" as const,
-		),
-		Match.orElse(() => "night" as const),
-	)
-
-	return `/images/onboarding/${season}-${timeOfDay}.png`
-}
 
 const cardVariants = {
 	hidden: { opacity: 0, y: 20, filter: "blur(8px)" },
