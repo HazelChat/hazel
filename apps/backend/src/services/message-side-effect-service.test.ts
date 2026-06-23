@@ -97,7 +97,7 @@ const workflowClientLayer = (requests: Array<{ url: string }>) =>
 		HttpClient.make((request, url) =>
 			Effect.sync(() => {
 				requests.push({ url: String(url) })
-				return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+				return HttpClientResponse.fromWeb(request, new Response(null, { status: 200 }))
 			}),
 		),
 	)
