@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { BotCommandRepo, BotInstallationRepo, BotRepo, UserRepo } from "@hazel/backend-core"
-import { and, Database, eq, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
 import type { BotId, BotInstallationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import {
@@ -15,7 +15,6 @@ import {
 } from "@hazel/domain/rpc"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
-import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { BotPolicy } from "../../policies/bot-policy"
 import { checkBotOperationRateLimit, checkBotUpdateRateLimit } from "../../services/rate-limit-helpers"
 import { ChannelAccessSyncService } from "../../services/channel-access-sync"
@@ -75,8 +74,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								const externalId = `bot_${botUserId}`
 
 								// 1. Create a machine user for the bot
-								yield* transactionAwareExecute((client) =>
-									client.insert(schema.usersTable).values({
+								yield* db.run(
+									PG.insertInto(schema.usersTable).values({
 										id: botUserId,
 										externalId,
 										email: botEmail,
@@ -88,9 +87,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								)
 
 								// 2. Create the bot record
-								const [bot] = yield* transactionAwareExecute((client) =>
-									client
-										.insert(schema.botsTable)
+								const [bot] = yield* db.run(
+									PG.insertInto(schema.botsTable)
 										.values({
 											id: botId,
 											userId: botUserId,
@@ -109,8 +107,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								)
 
 								// 3. Install the bot in the creator's organization
-								yield* transactionAwareExecute((client) =>
-									client.insert(schema.botInstallationsTable).values({
+								yield* db.run(
+									PG.insertInto(schema.botInstallationsTable).values({
 										id: installationId,
 										botId,
 										organizationId,
@@ -119,8 +117,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 								)
 
 								// 4. Add bot user to the organization as a member
-								yield* transactionAwareExecute((client) =>
-									client.insert(schema.organizationMembersTable).values({
+								yield* db.run(
+									PG.insertInto(schema.organizationMembersTable).values({
 										id: membershipId,
 										organizationId,
 										userId: botUserId,
@@ -203,11 +201,10 @@ export const BotRpcLive = BotRpcs.toLayer(
 								// Keep machine user's firstName in sync with bot name
 								if (payload.name) {
 									const bot = botOption.value
-									yield* transactionAwareExecute((client) =>
-										client
-											.update(schema.usersTable)
+									yield* db.run(
+										PG.update(schema.usersTable)
 											.set({ firstName: payload.name, updatedAt: new Date() })
-											.where(eq(schema.usersTable.id, bot.userId)),
+											.where(($) => [$.id.eq(bot.userId)]),
 									)
 								}
 
@@ -416,8 +413,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 								// Create installation
 								const installationId = randomUUID() as BotInstallationId
-								yield* transactionAwareExecute((client) =>
-									client.insert(schema.botInstallationsTable).values({
+								yield* db.run(
+									PG.insertInto(schema.botInstallationsTable).values({
 										id: installationId,
 										botId,
 										organizationId,
@@ -427,9 +424,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 								// Add bot user to the organization as a member (reactivate if soft-deleted)
 								const membershipId = randomUUID() as OrganizationMemberId
-								yield* transactionAwareExecute((client) =>
-									client
-										.insert(schema.organizationMembersTable)
+								yield* db.run(
+									PG.insertInto(schema.organizationMembersTable)
 										.values({
 											id: membershipId,
 											organizationId,
@@ -437,10 +433,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											role: "member",
 										})
 										.onConflictDoUpdate({
-											target: [
-												schema.organizationMembersTable.organizationId,
-												schema.organizationMembersTable.userId,
-											],
+											target: ["organizationId", "userId"],
 											set: { deletedAt: null },
 										}),
 								)
@@ -489,34 +482,23 @@ export const BotRpcLive = BotRpcs.toLayer(
 								}
 
 								// Delete the installation
-								yield* transactionAwareExecute((client) =>
-									client
-										.delete(schema.botInstallationsTable)
-										.where(
-											eq(schema.botInstallationsTable.id, installationOption.value.id),
-										),
+								yield* db.run(
+									PG.deleteFrom(schema.botInstallationsTable).where(($) => [
+										$.id.eq(installationOption.value.id),
+									]),
 								)
 
 								// Get bot to remove bot user from org
 								const botOption = yield* botRepo.findById(botId)
 								if (Option.isSome(botOption)) {
 									// Remove bot user from organization (soft delete)
-									yield* transactionAwareExecute((client) =>
-										client
-											.update(schema.organizationMembersTable)
+									yield* db.run(
+										PG.update(schema.organizationMembersTable)
 											.set({ deletedAt: new Date() })
-											.where(
-												and(
-													eq(
-														schema.organizationMembersTable.organizationId,
-														organizationId,
-													),
-													eq(
-														schema.organizationMembersTable.userId,
-														botOption.value.userId,
-													),
-												),
-											),
+											.where(($) => [
+												$.organizationId.eq(organizationId),
+												$.userId.eq(botOption.value.userId),
+											]),
 									)
 
 									yield* channelAccessSync.syncUserInOrganization(
@@ -573,8 +555,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 								// Create installation
 								const installationId = randomUUID() as BotInstallationId
-								yield* transactionAwareExecute((client) =>
-									client.insert(schema.botInstallationsTable).values({
+								yield* db.run(
+									PG.insertInto(schema.botInstallationsTable).values({
 										id: installationId,
 										botId,
 										organizationId,
@@ -584,9 +566,8 @@ export const BotRpcLive = BotRpcs.toLayer(
 
 								// Add bot user to the organization as a member (reactivate if soft-deleted)
 								const membershipId = randomUUID() as OrganizationMemberId
-								yield* transactionAwareExecute((client) =>
-									client
-										.insert(schema.organizationMembersTable)
+								yield* db.run(
+									PG.insertInto(schema.organizationMembersTable)
 										.values({
 											id: membershipId,
 											organizationId,
@@ -594,10 +575,7 @@ export const BotRpcLive = BotRpcs.toLayer(
 											role: "member",
 										})
 										.onConflictDoUpdate({
-											target: [
-												schema.organizationMembersTable.organizationId,
-												schema.organizationMembersTable.userId,
-											],
+											target: ["organizationId", "userId"],
 											set: { deletedAt: null },
 										}),
 								)
@@ -631,11 +609,10 @@ export const BotRpcLive = BotRpcs.toLayer(
 							const bot = botOption.value
 
 							// Update the machine user's avatar URL
-							yield* transactionAwareExecute((client) =>
-								client
-									.update(schema.usersTable)
+							yield* db.run(
+								PG.update(schema.usersTable)
 									.set({ avatarUrl, updatedAt: new Date() })
-									.where(eq(schema.usersTable.id, bot.userId)),
+									.where(($) => [$.id.eq(bot.userId)]),
 							)
 
 							// Return the bot data (unchanged, but user avatar is updated)

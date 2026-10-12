@@ -1,10 +1,9 @@
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { CurrentUser, ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import { IntegrationRequestResponse, IntegrationRequestRpcs } from "@hazel/domain/rpc"
 import { Effect } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { withAnnotatedScope } from "../../lib/policy-utils"
-import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { OrgResolver } from "../../services/org-resolver"
 
 /**
@@ -39,9 +38,8 @@ export const IntegrationRequestRpcLive = IntegrationRequestRpcs.toLayer(
 							)
 
 							// Direct database insert
-							const [result] = yield* transactionAwareExecute((client) =>
-								client
-									.insert(schema.integrationRequestsTable)
+							const [result] = yield* db.run(
+								PG.insertInto(schema.integrationRequestsTable)
 									.values({
 										organizationId: payload.organizationId,
 										requestedBy: currentUser.id,

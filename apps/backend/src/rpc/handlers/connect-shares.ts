@@ -8,7 +8,7 @@ import {
 	OrganizationMemberRepo,
 	OrganizationRepo,
 } from "@hazel/backend-core"
-import { and, Database, eq, ilike, isNull, or, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import {
 	CurrentUser,
 	InternalServerError,
@@ -37,7 +37,7 @@ import { ConnectConversationService } from "../../services/connect-conversation-
 import { OrgResolver } from "../../services/org-resolver"
 
 const isUniqueViolation = (error: any, constraintName: string) =>
-	error?.type === "unique_violation" && error?.cause?.constraint_name === constraintName
+	error?.type === "unique_violation" && error?.constraint === constraintName
 
 export const resolveGuestOrganizationForInviteCreate = ({
 	providedOrgId,
@@ -217,29 +217,16 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 						"ConnectShare",
 						"workspace.search",
 					)
-					const results = yield* db.makeQuery((execute, input: string) =>
-						execute((client) =>
-							client
-								.select({
-									id: schema.organizationsTable.id,
-									name: schema.organizationsTable.name,
-									slug: schema.organizationsTable.slug,
-									logoUrl: schema.organizationsTable.logoUrl,
-								})
-								.from(schema.organizationsTable)
-								.where(
-									and(
-										isNull(schema.organizationsTable.deletedAt),
-										eq(schema.organizationsTable.isPublic, true),
-										or(
-											ilike(schema.organizationsTable.name, `%${input}%`),
-											ilike(schema.organizationsTable.slug, `%${input}%`),
-										),
-									),
-								)
-								.limit(10),
-						),
-					)(query)
+					const results = yield* db.run(
+						PG.from(schema.organizationsTable)
+							.select("id", "name", "slug", "logoUrl")
+							.where(($) => [
+								$.deletedAt.isNull(),
+								$.isPublic.eq(true),
+								$.name.ilike(`%${query}%`).or($.slug.ilike(`%${query}%`)),
+							])
+							.limit(10),
+					)
 
 					const filtered = results.filter((result) => result.id !== organizationId)
 

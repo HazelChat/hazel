@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { HttpApiBuilder } from "effect/http-api"
 import { HttpServerRequest } from "effect/http"
 import { ChannelRepo, ChannelWebhookRepo, OrganizationMemberRepo } from "@hazel/backend-core"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { CurrentUser, InternalServerError, UnauthorizedError } from "@hazel/domain"
 import {
 	ApiV1ChannelNotFoundError,
@@ -71,32 +71,23 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 					const { currentUser } = yield* authenticate
 
 					const rows = yield* db
-						.makeQuery((execute, userId: typeof currentUser.id) =>
-							execute((client) =>
-								client
-									.select({
-										id: schema.organizationsTable.id,
-										name: schema.organizationsTable.name,
-										slug: schema.organizationsTable.slug,
-										logoUrl: schema.organizationsTable.logoUrl,
-									})
-									.from(schema.organizationMembersTable)
-									.innerJoin(
-										schema.organizationsTable,
-										eq(
-											schema.organizationsTable.id,
-											schema.organizationMembersTable.organizationId,
-										),
-									)
-									.where(
-										and(
-											eq(schema.organizationMembersTable.userId, userId),
-											isNull(schema.organizationMembersTable.deletedAt),
-											isNull(schema.organizationsTable.deletedAt),
-										),
-									),
-							),
-						)(currentUser.id)
+						.run(
+							PG.from(schema.organizationMembersTable)
+								.innerJoin(schema.organizationsTable, "o", (om, o) =>
+									o.id.eq(om.organizationId),
+								)
+								.select(($) => ({
+									id: $.o.id,
+									name: $.o.name,
+									slug: $.o.slug,
+									logoUrl: $.o.logoUrl,
+								}))
+								.where(($) => [
+									$.userId.eq(currentUser.id),
+									$.deletedAt.isNull(),
+									$.o.deletedAt.isNull(),
+								]),
+						)
 						.pipe(
 							Effect.catchTag("DatabaseError", (err) =>
 								Effect.fail(
@@ -145,24 +136,14 @@ export const HttpApiV1IntegrationsLive = HttpApiBuilder.group(HazelApi, "api-v1-
 					}
 
 					const rows = yield* db
-						.makeQuery((execute, orgId: typeof params.organizationId) =>
-							execute((client) =>
-								client
-									.select({
-										id: schema.channelsTable.id,
-										name: schema.channelsTable.name,
-										type: schema.channelsTable.type,
-										organizationId: schema.channelsTable.organizationId,
-									})
-									.from(schema.channelsTable)
-									.where(
-										and(
-											eq(schema.channelsTable.organizationId, orgId),
-											isNull(schema.channelsTable.deletedAt),
-										),
-									),
-							),
-						)(params.organizationId)
+						.run(
+							PG.from(schema.channelsTable)
+								.select("id", "name", "type", "organizationId")
+								.where(($) => [
+									$.organizationId.eq(params.organizationId),
+									$.deletedAt.isNull(),
+								]),
+						)
 						.pipe(
 							Effect.catchTag("DatabaseError", (err) =>
 								Effect.fail(

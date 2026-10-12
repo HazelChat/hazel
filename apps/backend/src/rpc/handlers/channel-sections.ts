@@ -1,5 +1,5 @@
 import { ChannelRepo, ChannelSectionRepo } from "@hazel/backend-core"
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { ErrorUtils, withRemapDbErrors } from "@hazel/domain"
 import {
 	ChannelNotFoundError,
@@ -7,10 +7,8 @@ import {
 	ChannelSectionResponse,
 	ChannelSectionRpcs,
 } from "@hazel/domain/rpc"
-import { and, eq, inArray, sql } from "drizzle-orm"
 import { Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
-import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { withAnnotatedScope } from "../../lib/policy-utils"
 import { ChannelSectionPolicy } from "../../policies/channel-section-policy"
 import { OrgResolver } from "../../services/org-resolver"
@@ -31,18 +29,12 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							// Calculate next order value if not provided or is 0
 							let order = payload.order
 							if (order === 0) {
-								const maxOrderResult = yield* transactionAwareExecute((client) =>
-									client
-										.select({
-											maxOrder: sql<number>`COALESCE(MAX(${schema.channelSectionsTable.order}), -1)`,
-										})
-										.from(schema.channelSectionsTable)
-										.where(
-											eq(
-												schema.channelSectionsTable.organizationId,
-												payload.organizationId,
-											),
-										),
+								const maxOrderResult = yield* db.run(
+									PG.from(schema.channelSectionsTable)
+										.select(($) => ({
+											maxOrder: PG.coalesce(PG.max($.order), PG.lit(-1)),
+										}))
+										.where(($) => [$.organizationId.eq(payload.organizationId)]),
 								)
 
 								order = (maxOrderResult[0]?.maxOrder ?? -1) + 1
@@ -101,11 +93,10 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 							}
 
 							// Update all channels in this section to have null sectionId
-							yield* transactionAwareExecute((client) =>
-								client
-									.update(schema.channelsTable)
+							yield* db.run(
+								PG.update(schema.channelsTable)
 									.set({ sectionId: null })
-									.where(eq(schema.channelsTable.sectionId, id)),
+									.where(($) => [$.sectionId.eq(id)]),
 							)
 
 							// Delete the section
@@ -123,21 +114,20 @@ export const ChannelSectionRpcLive = ChannelSectionRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* channelSectionPolicy.canReorder(organizationId)
-							yield* transactionAwareExecute((client) =>
-								client
-									.update(schema.channelSectionsTable)
-									.set({
-										order: sql`CASE id ${sql.join(
-											sectionIds.map((id, index) => sql`WHEN ${id} THEN ${index}`),
-											sql` `,
-										)} END`,
-									})
-									.where(
-										and(
-											inArray(schema.channelSectionsTable.id, sectionIds),
-											eq(schema.channelSectionsTable.organizationId, organizationId),
+							yield* db.run(
+								PG.update(schema.channelSectionsTable)
+									.set(($) => ({
+										order: PG.caseWhen(
+											sectionIds.map(
+												(id, index) => [$.id.eq(id), PG.lit(index)] as const,
+											),
+											$.order,
 										),
-									),
+									}))
+									.where(($) => [
+										$.id.in_(...sectionIds),
+										$.organizationId.eq(organizationId),
+									]),
 							)
 
 							const txid = yield* generateTransactionId()

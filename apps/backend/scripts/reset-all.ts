@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { Database } from "@hazel/db"
-import { Effect, References } from "effect"
+import { Effect, References, Schema } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
 // Parse command line arguments
@@ -54,9 +54,12 @@ const clearDatabase = Effect.gen(function* () {
 
 	for (const table of allTables) {
 		const countResult = yield* db
-			.execute((client) => client.$client`SELECT COUNT(*)::int as count FROM ${client.$client(table)}`)
+			.query(
+				Database.sql`SELECT COUNT(*)::int as count FROM ${Database.sql.identifier(table)}`,
+				Schema.Struct({ count: Schema.Number }),
+			)
 			.pipe(Effect.orDie)
-		const count = (countResult[0] as { count: number } | undefined)?.count ?? 0
+		const count = countResult[0]?.count ?? 0
 		tableCounts[table] = count
 
 		if (count === 0) {
@@ -68,7 +71,7 @@ const clearDatabase = Effect.gen(function* () {
 			log("yellow", `  [DRY RUN] Would delete ${count} rows from ${table}`)
 		} else {
 			yield* db
-				.execute((client) => client.$client`TRUNCATE TABLE ${client.$client(table)} CASCADE`)
+				.execute(Database.sql`TRUNCATE TABLE ${Database.sql.identifier(table)} CASCADE`)
 				.pipe(Effect.orDie)
 			log("green", `  ✓ Cleared ${count} rows from ${table}`)
 		}
