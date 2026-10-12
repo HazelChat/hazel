@@ -392,16 +392,19 @@ export const ConnectShareRpcLive = ConnectShareRpcs.toLayer(
 								joinedAt: new Date(),
 								deletedAt: null,
 							})
-							yield* connectConversationChannelRepo
-								.insert({
-									conversationId: invite.conversationId,
-									organizationId: guestOrganizationId,
-									channelId: guestChannel.id,
-									role: "guest",
-									allowGuestMemberAdds: invite.allowGuestMemberAdds,
-									isActive: true,
-									deletedAt: null,
-								})
+							// A savepoint, so a unique conflict leaves the outer transaction usable for the lookup below.
+							yield* db
+								.transaction(
+									connectConversationChannelRepo.insert({
+										conversationId: invite.conversationId,
+										organizationId: guestOrganizationId,
+										channelId: guestChannel.id,
+										role: "guest",
+										allowGuestMemberAdds: invite.allowGuestMemberAdds,
+										isActive: true,
+										deletedAt: null,
+									}),
+								)
 								.pipe(
 									Effect.catchTag("DatabaseError", (error) =>
 										remapGuestMountInsertConflict({

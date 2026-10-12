@@ -1,12 +1,12 @@
 import { ChannelId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz } from "./columns"
+import { now, timestamptz, uuid } from "./columns"
 
 export const channelAccessTable = PG.table("channel_access", {
 	columns: {
-		userId: PG.brand(PG.uuid, UserId),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
+		userId: uuid(UserId),
+		channelId: uuid(ChannelId),
+		organizationId: uuid(OrganizationId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},

@@ -1,6 +1,6 @@
 import { ChannelId, UserId, UserPresenceStatusId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { pgEnum, timestamptz, varchar } from "./columns"
+import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const userPresenceStatusEnum = pgEnum("user_presence_status_enum", [
 	"online",
@@ -12,13 +12,13 @@ export const userPresenceStatusEnum = pgEnum("user_presence_status_enum", [
 
 export const userPresenceStatusTable = PG.table("user_presence_status", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, UserPresenceStatusId), { defaultExpr: "gen_random_uuid()" }),
-		userId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(UserPresenceStatusId), { defaultExpr: "gen_random_uuid()" }),
+		userId: uuid(UserId),
 		status: PG.column(userPresenceStatusEnum, { default: "online" }),
 		customMessage: PG.nullable(varchar(255)),
 		statusEmoji: PG.nullable(varchar(10)),
 		statusExpiresAt: PG.nullable(timestamptz),
-		activeChannelId: PG.nullable(PG.brand(PG.uuid, ChannelId)),
+		activeChannelId: PG.nullable(uuid(ChannelId)),
 		suppressNotifications: PG.column(PG.bool, { default: false }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		lastSeenAt: PG.column(timestamptz, { defaultExpr: "now()" }),

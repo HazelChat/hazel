@@ -100,6 +100,23 @@ describe("Database.transaction", () => {
 		)
 		expect(counts).toEqual([1, 0])
 	})
+	it("keeps the outer transaction usable after a conflict inside a savepoint", async () => {
+		const id = `savepoint-${Date.now()}`
+		const result = await run(
+			Effect.gen(function* () {
+				const db = yield* Database
+				yield* insertRow(id)
+				return yield* db.transaction(
+					Effect.gen(function* () {
+						// The pattern the unique-conflict fallbacks use: the insert in a savepoint, the lookup after.
+						const conflict = yield* db.transaction(insertRow(id)).pipe(Effect.flip)
+						return { conflict: conflict.type, count: yield* countRows(id) }
+					}),
+				)
+			}),
+		)
+		expect(result).toEqual({ conflict: "unique_violation", count: 1 })
+	})
 })
 
 describe("DatabaseError", () => {

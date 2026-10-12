@@ -1,6 +1,6 @@
 import { ChannelId, ConnectConversationId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, timestamptz, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
 // Embed types for JSONB column
 export interface MessageEmbedAuthor {
@@ -65,11 +65,11 @@ export interface MessageEmbed {
 
 export const messageReactionsTable = PG.table("message_reactions", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, MessageReactionId), { defaultExpr: "gen_random_uuid()" }),
-		messageId: PG.brand(PG.uuid, MessageId),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		conversationId: PG.nullable(PG.brand(PG.uuid, ConnectConversationId)),
-		userId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(MessageReactionId), { defaultExpr: "gen_random_uuid()" }),
+		messageId: uuid(MessageId),
+		channelId: uuid(ChannelId),
+		conversationId: PG.nullable(uuid(ConnectConversationId)),
+		userId: uuid(UserId),
 		emoji: varchar(50),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
@@ -88,14 +88,14 @@ export type NewMessageReaction = PG.InsertRowOf<typeof messageReactionsTable>
 
 export const messagesTable = PG.table("messages", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, MessageId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		conversationId: PG.nullable(PG.brand(PG.uuid, ConnectConversationId)),
-		authorId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(MessageId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		conversationId: PG.nullable(uuid(ConnectConversationId)),
+		authorId: uuid(UserId),
 		content: PG.text,
 		embeds: PG.nullable(jsonb<MessageEmbed[]>()),
-		replyToMessageId: PG.nullable(PG.brand(PG.uuid, MessageId)),
-		threadChannelId: PG.nullable(PG.brand(PG.uuid, ChannelId)),
+		replyToMessageId: PG.nullable(uuid(MessageId)),
+		threadChannelId: PG.nullable(uuid(ChannelId)),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.nullable(timestamptz),
 		deletedAt: PG.nullable(timestamptz),

@@ -12,9 +12,20 @@
  */
 import * as PgClient from "@effect/sql-pg/PgClient"
 import * as Orm from "@maple-dev/effect-orm/database"
+import { sql } from "@maple-dev/effect-orm/database"
 import { CompiledQueryDecodeError, postgresDialect, QueryBuilderError } from "@maple-dev/effect-orm/postgres"
-import { Cause, Context, Duration, Effect, Layer, Option, Redacted, Schema, type Scope } from "effect"
-import * as Reactivity from "effect/reactivity/Reactivity"
+import {
+	Cause,
+	Context,
+	Duration,
+	Effect,
+	Layer,
+	Option,
+	Redacted,
+	Schedule,
+	Schema,
+	type Scope,
+} from "effect"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError } from "effect/sql/SqlError"
 
@@ -200,7 +211,9 @@ const makeShape = (getOrm: Effect.Effect<Orm.DatabaseApi>): DatabaseShape => {
 			)) as DatabaseShape["query"],
 		execute: (statement) => Effect.flatMap(getOrm, (orm) => absorb(orm.execute(statement))),
 		transaction: (body, options) =>
-			Effect.flatMap(getOrm, (orm) => absorb(orm.transaction(body, options))) as never,
+			Effect.flatMap(getOrm, (orm) => absorb(orm.transaction(body, options))).pipe(
+				Effect.withSpan("Database.transaction"),
+			) as never,
 	}
 }
 
@@ -216,14 +229,37 @@ export type Config = {
 	maxConnections?: number
 }
 
-/** A long-lived pool, for long-running processes (Bun servers, the cluster, scripts). */
-export const layer = (config: Config): Layer.Layer<Database, SqlError> =>
+/**
+ * Checks the database is reachable, retrying for a while before giving up: the pool connects
+ * lazily, so without this a bad URL would only surface on the first query.
+ */
+const startupCheck = (shape: DatabaseShape) =>
+	shape.execute(sql`SELECT 1`).pipe(
+		Effect.retry(
+			Schedule.jittered(Schedule.spaced("1.25 seconds")).pipe(
+				(schedule) => Schedule.max([schedule, Schedule.recurs(10)]),
+				Schedule.tap(({ attempt }) =>
+					Effect.logWarning(
+						`[Database client]: Connection to the database failed. Retrying (attempt ${attempt}).`,
+					),
+				),
+			),
+		),
+		Effect.tap(() => Effect.logInfo("[Database client]: Connection to the database established.")),
+		Effect.orDie,
+	)
+
+/**
+ * A long-lived pool, for long-running processes (Bun servers, the cluster, scripts). Probes the
+ * database at startup and dies if it stays unreachable.
+ */
+export const layer = (config: Config): Layer.Layer<Database> =>
 	Layer.effect(
 		Database,
 		Effect.gen(function* () {
-			const sql = yield* SqlClient.SqlClient
-			const orm = fromSqlClient(sql)
-			return makeShape(Effect.succeed(orm))
+			const shape = makeShape(Effect.succeed(fromSqlClient(yield* SqlClient.SqlClient)))
+			yield* startupCheck(shape)
+			return shape
 		}),
 	).pipe(
 		Layer.provide(
@@ -236,6 +272,7 @@ export const layer = (config: Config): Layer.Layer<Database, SqlError> =>
 					: { maxConnections: config.maxConnections }),
 			}),
 		),
+		Layer.orDie,
 	)
 
 /**
@@ -268,7 +305,7 @@ export const makeRequestConnection = (
 					connectTimeout: Duration.seconds(10),
 					prepare: false,
 				}),
-			).pipe(Layer.provide(Reactivity.layer)),
+			),
 		)
 		return { orm: fromSqlClient(Context.get(services, SqlClient.SqlClient)) }
 	})
@@ -300,4 +337,4 @@ export const requireTransaction = Orm.requireTransaction
 /** The open transaction; `transaction` provides it, `requireTransaction` requires it. */
 export const Transaction = Orm.Transaction
 
-export { sql } from "@maple-dev/effect-orm/database"
+export { sql }

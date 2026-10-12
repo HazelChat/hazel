@@ -1,20 +1,20 @@
 import { ChannelId, ChannelWebhookId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const channelWebhooksTable = PG.table("channel_webhooks", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ChannelWebhookId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		botUserId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(ChannelWebhookId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		organizationId: uuid(OrganizationId),
+		botUserId: uuid(UserId),
 		name: varchar(100),
 		description: PG.nullable(PG.text),
 		avatarUrl: PG.nullable(PG.text),
 		tokenHash: PG.text,
 		tokenSuffix: varchar(4),
 		isEnabled: PG.column(PG.bool, { default: true }),
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		lastUsedAt: PG.nullable(timestamptz),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),

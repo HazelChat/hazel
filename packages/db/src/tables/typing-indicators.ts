@@ -1,12 +1,12 @@
 import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import {} from "./columns"
+import { uuid } from "./columns"
 
 export const typingIndicatorsTable = PG.table("typing_indicators", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, TypingIndicatorId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		memberId: PG.brand(PG.uuid, ChannelMemberId),
+		id: PG.column(uuid(TypingIndicatorId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		memberId: uuid(ChannelMemberId),
 		lastTyped: PG.int8,
 	},
 	primaryKey: ["id"],

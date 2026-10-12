@@ -8,7 +8,7 @@ import {
 	UserId,
 } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const connectConversationStatusEnum = pgEnum("connect_conversation_status", ["active", "disconnected"])
 export const connectConversationChannelRoleEnum = pgEnum("connect_conversation_channel_role", [
@@ -26,10 +26,10 @@ export const connectInviteTargetKindEnum = pgEnum("connect_invite_target_kind", 
 
 export const connectConversationChannelsTable = PG.table("connect_conversation_channels", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ConnectConversationChannelId), { defaultExpr: "gen_random_uuid()" }),
-		conversationId: PG.brand(PG.uuid, ConnectConversationId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		channelId: PG.brand(PG.uuid, ChannelId),
+		id: PG.column(uuid(ConnectConversationChannelId), { defaultExpr: "gen_random_uuid()" }),
+		conversationId: uuid(ConnectConversationId),
+		organizationId: uuid(OrganizationId),
+		channelId: uuid(ChannelId),
 		role: connectConversationChannelRoleEnum,
 		allowGuestMemberAdds: PG.column(PG.bool, { default: false }),
 		isActive: PG.column(PG.bool, { default: true }),
@@ -58,12 +58,12 @@ export type NewConnectConversationChannel = PG.InsertRowOf<typeof connectConvers
 
 export const connectConversationsTable = PG.table("connect_conversations", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ConnectConversationId), { defaultExpr: "gen_random_uuid()" }),
-		hostOrganizationId: PG.brand(PG.uuid, OrganizationId),
-		hostChannelId: PG.brand(PG.uuid, ChannelId),
+		id: PG.column(uuid(ConnectConversationId), { defaultExpr: "gen_random_uuid()" }),
+		hostOrganizationId: uuid(OrganizationId),
+		hostChannelId: uuid(ChannelId),
 		status: PG.column(connectConversationStatusEnum, { default: "active" }),
 		settings: PG.nullable(jsonb<Record<string, unknown>>()),
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),
@@ -84,17 +84,17 @@ export type NewConnectConversation = PG.InsertRowOf<typeof connectConversationsT
 
 export const connectInvitesTable = PG.table("connect_invites", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ConnectInviteId), { defaultExpr: "gen_random_uuid()" }),
-		conversationId: PG.brand(PG.uuid, ConnectConversationId),
-		hostOrganizationId: PG.brand(PG.uuid, OrganizationId),
-		hostChannelId: PG.brand(PG.uuid, ChannelId),
+		id: PG.column(uuid(ConnectInviteId), { defaultExpr: "gen_random_uuid()" }),
+		conversationId: uuid(ConnectConversationId),
+		hostOrganizationId: uuid(OrganizationId),
+		hostChannelId: uuid(ChannelId),
 		targetKind: connectInviteTargetKindEnum,
 		targetValue: varchar(255),
-		guestOrganizationId: PG.nullable(PG.brand(PG.uuid, OrganizationId)),
+		guestOrganizationId: PG.nullable(uuid(OrganizationId)),
 		status: PG.column(connectInviteStatusEnum, { default: "pending" }),
 		allowGuestMemberAdds: PG.column(PG.bool, { default: false }),
-		invitedBy: PG.brand(PG.uuid, UserId),
-		acceptedBy: PG.nullable(PG.brand(PG.uuid, UserId)),
+		invitedBy: uuid(UserId),
+		acceptedBy: PG.nullable(uuid(UserId)),
 		acceptedAt: PG.nullable(timestamptz),
 		expiresAt: PG.nullable(timestamptz),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
@@ -116,13 +116,13 @@ export type NewConnectInvite = PG.InsertRowOf<typeof connectInvitesTable>
 
 export const connectParticipantsTable = PG.table("connect_participants", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ConnectParticipantId), { defaultExpr: "gen_random_uuid()" }),
-		conversationId: PG.brand(PG.uuid, ConnectConversationId),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		userId: PG.brand(PG.uuid, UserId),
-		homeOrganizationId: PG.brand(PG.uuid, OrganizationId),
+		id: PG.column(uuid(ConnectParticipantId), { defaultExpr: "gen_random_uuid()" }),
+		conversationId: uuid(ConnectConversationId),
+		channelId: uuid(ChannelId),
+		userId: uuid(UserId),
+		homeOrganizationId: uuid(OrganizationId),
 		isExternal: PG.column(PG.bool, { default: false }),
-		addedBy: PG.nullable(PG.brand(PG.uuid, UserId)),
+		addedBy: PG.nullable(uuid(UserId)),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

@@ -1,11 +1,11 @@
 import { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const integrationTokensTable = PG.table("integration_tokens", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, IntegrationTokenId), { defaultExpr: "gen_random_uuid()" }),
-		connectionId: PG.brand(PG.uuid, IntegrationConnectionId),
+		id: PG.column(uuid(IntegrationTokenId), { defaultExpr: "gen_random_uuid()" }),
+		connectionId: uuid(IntegrationConnectionId),
 		encryptedAccessToken: PG.text,
 		encryptedRefreshToken: PG.nullable(PG.text),
 		iv: varchar(32),

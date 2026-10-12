@@ -1,6 +1,6 @@
 import { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, typed, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, typed, uuid, varchar } from "./columns"
 
 export const connectionLevelEnum = pgEnum("connection_level", ["organization", "user"])
 export const connectionStatusEnum = pgEnum("connection_status", [
@@ -13,15 +13,15 @@ export const connectionStatusEnum = pgEnum("connection_status", [
 
 export const integrationConnectionsTable = PG.table("integration_connections", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, IntegrationConnectionId), { defaultExpr: "gen_random_uuid()" }),
+		id: PG.column(uuid(IntegrationConnectionId), { defaultExpr: "gen_random_uuid()" }),
 		provider: typed<"linear" | "github" | "figma" | "notion" | "discord" | "craft">()(varchar(50)),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		userId: PG.nullable(PG.brand(PG.uuid, UserId)),
+		organizationId: uuid(OrganizationId),
+		userId: PG.nullable(uuid(UserId)),
 		level: connectionLevelEnum,
 		status: PG.column(connectionStatusEnum, { default: "active" }),
 		externalAccountId: PG.nullable(varchar(255)),
 		externalAccountName: PG.nullable(varchar(255)),
-		connectedBy: PG.brand(PG.uuid, UserId),
+		connectedBy: uuid(UserId),
 		settings: PG.nullable(jsonb<Record<string, any>>()),
 		metadata: PG.nullable(jsonb<Record<string, any>>()),
 		errorMessage: PG.nullable(PG.text),

@@ -1,6 +1,6 @@
 import { IntegrationRequestId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { pgEnum, timestamptz, varchar } from "./columns"
+import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const integrationRequestStatusEnum = pgEnum("integration_request_status", [
 	"pending",
@@ -11,9 +11,9 @@ export const integrationRequestStatusEnum = pgEnum("integration_request_status",
 
 export const integrationRequestsTable = PG.table("integration_requests", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, IntegrationRequestId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		requestedBy: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(IntegrationRequestId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
+		requestedBy: uuid(UserId),
 		integrationName: varchar(255),
 		integrationUrl: PG.nullable(varchar(500)),
 		description: PG.nullable(PG.text),

@@ -1,11 +1,11 @@
 import { ChannelSectionId, OrganizationId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const channelSectionsTable = PG.table("channel_sections", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ChannelSectionId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
+		id: PG.column(uuid(ChannelSectionId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
 		name: varchar(255),
 		order: PG.column(PG.int4, { default: 0 }),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),

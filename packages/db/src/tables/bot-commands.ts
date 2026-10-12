@@ -1,6 +1,6 @@
 import { BotCommandId, BotId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, timestamptz, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
 /**
  * Argument definition for a bot command
@@ -18,8 +18,8 @@ export interface BotCommandArgument {
  */
 export const botCommandsTable = PG.table("bot_commands", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, BotCommandId), { defaultExpr: "gen_random_uuid()" }),
-		botId: PG.brand(PG.uuid, BotId),
+		id: PG.column(uuid(BotCommandId), { defaultExpr: "gen_random_uuid()" }),
+		botId: uuid(BotId),
 		name: varchar(50),
 		description: PG.text,
 		arguments: PG.column(PG.nullable(jsonb<BotCommandArgument[]>()), { default: [] }),

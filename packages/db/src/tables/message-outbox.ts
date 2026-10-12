@@ -1,6 +1,6 @@
 import { ChannelId, MessageOutboxEventId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const messageOutboxEventTypeEnum = pgEnum("message_outbox_event_type", [
 	"message_created",
@@ -18,11 +18,11 @@ export const messageOutboxEventStatusEnum = pgEnum("message_outbox_event_status"
 
 export const messageOutboxEventsTable = PG.table("message_outbox_events", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, MessageOutboxEventId), { defaultExpr: "gen_random_uuid()" }),
+		id: PG.column(uuid(MessageOutboxEventId), { defaultExpr: "gen_random_uuid()" }),
 		sequence: PG.column(PG.int8, { identity: "always" }),
 		eventType: messageOutboxEventTypeEnum,
 		aggregateId: PG.uuid,
-		channelId: PG.brand(PG.uuid, ChannelId),
+		channelId: uuid(ChannelId),
 		payload: jsonb<Record<string, unknown>>(),
 		status: PG.column(messageOutboxEventStatusEnum, { default: "pending" }),
 		attemptCount: PG.column(PG.int4, { default: 0 }),

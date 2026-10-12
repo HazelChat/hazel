@@ -1,14 +1,14 @@
 import { ChannelId, MessageId, OrganizationId, RssSubscriptionId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const rssPostedItemsTable = PG.table("rss_posted_items", {
 	columns: {
 		id: PG.column(PG.uuid, { defaultExpr: "gen_random_uuid()" }),
-		subscriptionId: PG.brand(PG.uuid, RssSubscriptionId),
+		subscriptionId: uuid(RssSubscriptionId),
 		itemGuid: PG.text,
 		itemUrl: PG.nullable(PG.text),
-		messageId: PG.nullable(PG.brand(PG.uuid, MessageId)),
+		messageId: PG.nullable(uuid(MessageId)),
 		postedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],
@@ -22,9 +22,9 @@ export type NewRssPostedItem = PG.InsertRowOf<typeof rssPostedItemsTable>
 
 export const rssSubscriptionsTable = PG.table("rss_subscriptions", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, RssSubscriptionId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
+		id: PG.column(uuid(RssSubscriptionId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		organizationId: uuid(OrganizationId),
 		feedUrl: PG.text,
 		feedTitle: PG.nullable(varchar(255)),
 		feedIconUrl: PG.nullable(PG.text),
@@ -36,7 +36,7 @@ export const rssSubscriptionsTable = PG.table("rss_subscriptions", {
 		lastErrorAt: PG.nullable(timestamptz),
 		isEnabled: PG.column(PG.bool, { default: true }),
 		pollingIntervalMinutes: PG.column(PG.int4, { default: 15 }),
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

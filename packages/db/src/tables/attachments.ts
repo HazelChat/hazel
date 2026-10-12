@@ -1,19 +1,19 @@
 import { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { pgEnum, timestamptz, varchar } from "./columns"
+import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const attachmentStatusEnum = pgEnum("attachment_status", ["uploading", "complete", "failed"])
 
 export const attachmentsTable = PG.table("attachments", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, AttachmentId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		channelId: PG.nullable(PG.brand(PG.uuid, ChannelId)),
-		messageId: PG.nullable(PG.brand(PG.uuid, MessageId)),
+		id: PG.column(uuid(AttachmentId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
+		channelId: PG.nullable(uuid(ChannelId)),
+		messageId: PG.nullable(uuid(MessageId)),
 		fileName: varchar(255),
 		fileSize: PG.int4,
 		externalUrl: PG.nullable(varchar(2048)),
-		uploadedBy: PG.brand(PG.uuid, UserId),
+		uploadedBy: uuid(UserId),
 		status: PG.column(attachmentStatusEnum, { default: "uploading" }),
 		uploadedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

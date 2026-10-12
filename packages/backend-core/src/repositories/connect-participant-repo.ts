@@ -42,7 +42,8 @@ export class ConnectParticipantRepo extends Context.Service<ConnectParticipantRe
 			const upsertByChannelAndUser = (
 				data: EffectSchema.Schema.Type<typeof ConnectParticipant.Insert>,
 			) =>
-				baseRepo.insert(data).pipe(
+				// A savepoint, so a unique conflict leaves an enclosing transaction usable for the lookup.
+				db.transaction(baseRepo.insert(data)).pipe(
 					Effect.map((results) => results[0]!),
 					Effect.catchTag("DatabaseError", (error) => {
 						if (

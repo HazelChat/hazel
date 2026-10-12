@@ -1,12 +1,12 @@
 import { UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const userTypeEnum = pgEnum("user_type", ["user", "machine"])
 
 export const usersTable = PG.table("users", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, UserId), { defaultExpr: "gen_random_uuid()" }),
+		id: PG.column(uuid(UserId), { defaultExpr: "gen_random_uuid()" }),
 		externalId: varchar(255),
 		email: varchar(255),
 		firstName: varchar(100),

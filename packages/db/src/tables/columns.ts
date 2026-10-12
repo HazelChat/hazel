@@ -60,3 +60,11 @@ export const pgEnum = <const Values extends readonly [string, ...Array<string>]>
 
 /** `now()`, typed as the `Date` the timestamp columns hold. */
 export const now = () => PG.sql(timestamptz)`now()`
+
+/**
+ * A `uuid` column typed as a branded id. The brand is type-only, as drizzle's `$type<Id>()` was:
+ * rows are not re-validated against the id schema on read, so one stored id outside its schema's
+ * checks (a nil-like fixture id, say) cannot fail a whole result set.
+ */
+export const uuid = <S extends Schema.Top>(_id: S): PG.PgType<string, S["Type"], string> =>
+	typed<S["Type"]>()(PG.uuid)

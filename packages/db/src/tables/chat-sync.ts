@@ -10,7 +10,7 @@ import {
 	UserId,
 } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const chatSyncConnectionStatusEnum = pgEnum("chat_sync_connection_status", [
 	"active",
@@ -32,9 +32,9 @@ export const chatSyncReceiptStatusEnum = pgEnum("chat_sync_receipt_status", [
 
 export const chatSyncChannelLinksTable = PG.table("chat_sync_channel_links", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, SyncChannelLinkId), { defaultExpr: "gen_random_uuid()" }),
-		syncConnectionId: PG.brand(PG.uuid, SyncConnectionId),
-		hazelChannelId: PG.brand(PG.uuid, ChannelId),
+		id: PG.column(uuid(SyncChannelLinkId), { defaultExpr: "gen_random_uuid()" }),
+		syncConnectionId: uuid(SyncConnectionId),
+		hazelChannelId: uuid(ChannelId),
 		externalChannelId: varchar(255),
 		externalChannelName: PG.nullable(varchar(255)),
 		direction: PG.column(chatSyncDirectionEnum, { default: "both" }),
@@ -66,9 +66,9 @@ export type NewChatSyncChannelLink = PG.InsertRowOf<typeof chatSyncChannelLinksT
 
 export const chatSyncConnectionsTable = PG.table("chat_sync_connections", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, SyncConnectionId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		integrationConnectionId: PG.nullable(PG.brand(PG.uuid, IntegrationConnectionId)),
+		id: PG.column(uuid(SyncConnectionId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
+		integrationConnectionId: PG.nullable(uuid(IntegrationConnectionId)),
 		provider: varchar(50),
 		externalWorkspaceId: varchar(255),
 		externalWorkspaceName: PG.nullable(varchar(255)),
@@ -77,7 +77,7 @@ export const chatSyncConnectionsTable = PG.table("chat_sync_connections", {
 		metadata: PG.nullable(jsonb<Record<string, any>>()),
 		errorMessage: PG.nullable(PG.text),
 		lastSyncedAt: PG.nullable(timestamptz),
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),
@@ -104,9 +104,9 @@ export type NewChatSyncConnection = PG.InsertRowOf<typeof chatSyncConnectionsTab
 
 export const chatSyncEventReceiptsTable = PG.table("chat_sync_event_receipts", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, SyncEventReceiptId), { defaultExpr: "gen_random_uuid()" }),
-		syncConnectionId: PG.brand(PG.uuid, SyncConnectionId),
-		channelLinkId: PG.nullable(PG.brand(PG.uuid, SyncChannelLinkId)),
+		id: PG.column(uuid(SyncEventReceiptId), { defaultExpr: "gen_random_uuid()" }),
+		syncConnectionId: uuid(SyncConnectionId),
+		channelLinkId: PG.nullable(uuid(SyncChannelLinkId)),
 		source: chatSyncReceiptSourceEnum,
 		externalEventId: PG.nullable(varchar(255)),
 		dedupeKey: varchar(255),
@@ -130,14 +130,14 @@ export type NewChatSyncEventReceipt = PG.InsertRowOf<typeof chatSyncEventReceipt
 
 export const chatSyncMessageLinksTable = PG.table("chat_sync_message_links", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, SyncMessageLinkId), { defaultExpr: "gen_random_uuid()" }),
-		channelLinkId: PG.brand(PG.uuid, SyncChannelLinkId),
-		hazelMessageId: PG.brand(PG.uuid, MessageId),
+		id: PG.column(uuid(SyncMessageLinkId), { defaultExpr: "gen_random_uuid()" }),
+		channelLinkId: uuid(SyncChannelLinkId),
+		hazelMessageId: uuid(MessageId),
 		externalMessageId: varchar(255),
 		source: PG.column(chatSyncReceiptSourceEnum, { default: "hazel" }),
-		rootHazelMessageId: PG.nullable(PG.brand(PG.uuid, MessageId)),
+		rootHazelMessageId: PG.nullable(uuid(MessageId)),
 		rootExternalMessageId: PG.nullable(varchar(255)),
-		hazelThreadChannelId: PG.nullable(PG.brand(PG.uuid, ChannelId)),
+		hazelThreadChannelId: PG.nullable(uuid(ChannelId)),
 		externalThreadId: PG.nullable(varchar(255)),
 		lastSyncedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),

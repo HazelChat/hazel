@@ -1,11 +1,11 @@
 import { NotificationId, OrganizationMemberId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const notificationsTable = PG.table("notifications", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, NotificationId), { defaultExpr: "gen_random_uuid()" }),
-		memberId: PG.brand(PG.uuid, OrganizationMemberId),
+		id: PG.column(uuid(NotificationId), { defaultExpr: "gen_random_uuid()" }),
+		memberId: uuid(OrganizationMemberId),
 		targetedResourceId: PG.nullable(PG.uuid),
 		targetedResourceType: PG.nullable(varchar(50)),
 		resourceId: PG.nullable(PG.uuid),

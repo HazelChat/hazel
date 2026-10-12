@@ -1,7 +1,7 @@
 import * as PgClient from "@effect/sql-pg/PgClient"
 import { defineConfig } from "@maple-dev/effect-orm/kit"
 import * as Migrate from "@maple-dev/effect-orm/migrate"
-import { Layer, Redacted } from "effect"
+import { Effect, Layer, Redacted } from "effect"
 
 export default defineConfig({
 	dialect: "postgres",

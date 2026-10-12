@@ -1,13 +1,13 @@
 import { ChannelId, MessageId, PinnedMessageId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz } from "./columns"
+import { now, timestamptz, uuid } from "./columns"
 
 export const pinnedMessagesTable = PG.table("pinned_messages", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, PinnedMessageId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		messageId: PG.brand(PG.uuid, MessageId),
-		pinnedBy: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(PinnedMessageId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		messageId: uuid(MessageId),
+		pinnedBy: uuid(UserId),
 		pinnedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],

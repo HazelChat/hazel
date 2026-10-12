@@ -145,36 +145,46 @@ export class MessageOutboxRepo extends Context.Service<MessageOutboxRepo>()("Mes
 		 * went stale. Candidates are locked with FOR UPDATE SKIP LOCKED so concurrent workers never
 		 * claim the same event.
 		 */
+		/**
+		 * Claims up to `limit` due events. The candidates are locked first (`FOR UPDATE SKIP LOCKED`)
+		 * and exactly those ids are updated, in one transaction: an `UPDATE ... WHERE id IN (subquery
+		 * ... LIMIT)` may re-evaluate its subquery and claim more rows, or rows another worker locked.
+		 */
 		const claimNextBatch = (params: ClaimNextBatchParams) =>
-			Effect.gen(function* () {
-				const staleBefore = new Date(Date.now() - params.lockTimeoutMs)
-				const lockedAt = new Date()
+			db.transaction(
+				Effect.gen(function* () {
+					const staleBefore = new Date(Date.now() - params.lockTimeoutMs)
+					const lockedAt = new Date()
 
-				const candidates = PG.from(schema.messageOutboxEventsTable)
-					.select("id")
-					.where(($) => [
-						PG.or(
-							$.status.eq("pending").and($.availableAt.lte(schema.now())),
-							$.status.eq("processing").and($.lockedAt.lt(staleBefore)),
-						),
-					])
-					.orderBy(($) => [[$.sequence, "asc"]])
-					.limit(params.limit)
-					.forUpdate({ skipLocked: true })
+					const candidates = yield* db.run(
+						PG.from(schema.messageOutboxEventsTable)
+							.select("id")
+							.where(($) => [
+								PG.or(
+									$.status.eq("pending").and($.availableAt.lte(schema.now())),
+									$.status.eq("processing").and($.lockedAt.lt(staleBefore)),
+								),
+							])
+							.orderBy(($) => [[$.sequence, "asc"]])
+							.limit(params.limit)
+							.forUpdate({ skipLocked: true }),
+					)
+					if (candidates.length === 0) return []
 
-				const rows = yield* db.run(
-					PG.update(schema.messageOutboxEventsTable)
-						.set({
-							status: "processing",
-							lockedAt,
-							lockedBy: params.workerId,
-						})
-						.where(($) => [PG.inSubquery($.id, candidates)])
-						.returning(),
-				)
+					const rows = yield* db.run(
+						PG.update(schema.messageOutboxEventsTable)
+							.set({
+								status: "processing",
+								lockedAt,
+								lockedBy: params.workerId,
+							})
+							.where(($) => [$.id.in_(...candidates.map((candidate) => candidate.id))])
+							.returning(),
+					)
 
-				return rows.slice().sort((left, right) => left.sequence - right.sequence)
-			})
+					return rows.slice().sort((left, right) => left.sequence - right.sequence)
+				}),
+			)
 
 		const markProcessed = (id: MessageOutboxEventId) =>
 			db.first(

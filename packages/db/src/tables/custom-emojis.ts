@@ -1,14 +1,14 @@
 import { CustomEmojiId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
 export const customEmojisTable = PG.table("custom_emojis", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, CustomEmojiId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
+		id: PG.column(uuid(CustomEmojiId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
 		name: varchar(64),
 		imageUrl: PG.text,
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.nullable(timestamptz),
 		deletedAt: PG.nullable(timestamptz),

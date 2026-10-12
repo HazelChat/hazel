@@ -1,15 +1,15 @@
 import { BotId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, timestamptz, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 import type { IntegrationConnection } from "./integration-connections"
 
 type IntegrationProvider = IntegrationConnection["provider"]
 
 export const botsTable = PG.table("bots", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, BotId), { defaultExpr: "gen_random_uuid()" }),
-		userId: PG.brand(PG.uuid, UserId),
-		createdBy: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(BotId), { defaultExpr: "gen_random_uuid()" }),
+		userId: uuid(UserId),
+		createdBy: uuid(UserId),
 		name: varchar(100),
 		description: PG.nullable(PG.text),
 		webhookUrl: PG.nullable(PG.text),

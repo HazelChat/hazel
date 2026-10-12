@@ -1,13 +1,13 @@
 import { BotId, BotInstallationId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { timestamptz } from "./columns"
+import { now, timestamptz, uuid } from "./columns"
 
 export const botInstallationsTable = PG.table("bot_installations", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, BotInstallationId), { defaultExpr: "gen_random_uuid()" }),
-		botId: PG.brand(PG.uuid, BotId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		installedBy: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(BotInstallationId), { defaultExpr: "gen_random_uuid()" }),
+		botId: uuid(BotId),
+		organizationId: uuid(OrganizationId),
+		installedBy: uuid(UserId),
 		installedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],

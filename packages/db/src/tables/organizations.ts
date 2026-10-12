@@ -1,12 +1,12 @@
 import { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, pgEnum, timestamptz, varchar } from "./columns"
+import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const organizationRoleEnum = pgEnum("organization_role", ["admin", "member", "owner"])
 
 export const organizationsTable = PG.table("organizations", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, OrganizationId), { defaultExpr: "gen_random_uuid()" }),
+		id: PG.column(uuid(OrganizationId), { defaultExpr: "gen_random_uuid()" }),
 		name: varchar(255),
 		slug: PG.nullable(varchar(100)),
 		logoUrl: PG.nullable(PG.text),
@@ -33,13 +33,13 @@ export type NewOrganization = PG.InsertRowOf<typeof organizationsTable>
 
 export const organizationMembersTable = PG.table("organization_members", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, OrganizationMemberId), { defaultExpr: "gen_random_uuid()" }),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		userId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(OrganizationMemberId), { defaultExpr: "gen_random_uuid()" }),
+		organizationId: uuid(OrganizationId),
+		userId: uuid(UserId),
 		role: PG.column(organizationRoleEnum, { default: "member" }),
 		nickname: PG.nullable(varchar(100)),
 		joinedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
-		invitedBy: PG.nullable(PG.brand(PG.uuid, UserId)),
+		invitedBy: PG.nullable(uuid(UserId)),
 		metadata: PG.nullable(jsonb<unknown>()),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

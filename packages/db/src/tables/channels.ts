@@ -8,19 +8,19 @@ import {
 	UserId,
 } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { pgEnum, timestamptz, varchar } from "./columns"
+import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
 
 export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "thread", "direct", "single"])
 
 export const channelMembersTable = PG.table("channel_members", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ChannelMemberId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		userId: PG.brand(PG.uuid, UserId),
+		id: PG.column(uuid(ChannelMemberId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		userId: uuid(UserId),
 		isHidden: PG.column(PG.bool, { default: false }),
 		isMuted: PG.column(PG.bool, { default: false }),
 		isFavorite: PG.column(PG.bool, { default: false }),
-		lastSeenMessageId: PG.nullable(PG.brand(PG.uuid, MessageId)),
+		lastSeenMessageId: PG.nullable(uuid(MessageId)),
 		notificationCount: PG.column(PG.int4, { default: 0 }),
 		joinedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
@@ -38,13 +38,13 @@ export type NewChannelMember = PG.InsertRowOf<typeof channelMembersTable>
 
 export const channelsTable = PG.table("channels", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, ChannelId), { defaultExpr: "gen_random_uuid()" }),
+		id: PG.column(uuid(ChannelId), { defaultExpr: "gen_random_uuid()" }),
 		name: varchar(255),
 		icon: PG.nullable(PG.brand(varchar(32), ChannelIcon)),
 		type: channelTypeEnum,
-		organizationId: PG.brand(PG.uuid, OrganizationId),
-		parentChannelId: PG.nullable(PG.brand(PG.uuid, ChannelId)),
-		sectionId: PG.nullable(PG.brand(PG.uuid, ChannelSectionId)),
+		organizationId: uuid(OrganizationId),
+		parentChannelId: PG.nullable(uuid(ChannelId)),
+		sectionId: PG.nullable(uuid(ChannelSectionId)),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

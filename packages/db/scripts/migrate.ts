@@ -9,7 +9,11 @@
 import { Effect } from "effect"
 import { migrateUrl } from "../src/migrate"
 
-const url = process.env.DATABASE_URL ?? "postgresql://user:password@localhost:5432/app"
+const url = process.env.DATABASE_URL
+if (!url) {
+	console.error("DATABASE_URL is not set: refusing to guess which database to migrate.")
+	process.exit(1)
+}
 
 const program = migrateUrl(url).pipe(
 	Effect.tap(({ adopted, applied }) =>

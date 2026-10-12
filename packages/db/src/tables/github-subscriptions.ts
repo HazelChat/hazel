@@ -1,15 +1,15 @@
 import type { GitHubSubscription as GitHubSubscriptionModel } from "@hazel/domain/models"
 import { ChannelId, GitHubSubscriptionId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, timestamptz, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
 type GitHubEventType = GitHubSubscriptionModel.GitHubEventType
 
 export const githubSubscriptionsTable = PG.table("github_subscriptions", {
 	columns: {
-		id: PG.column(PG.brand(PG.uuid, GitHubSubscriptionId), { defaultExpr: "gen_random_uuid()" }),
-		channelId: PG.brand(PG.uuid, ChannelId),
-		organizationId: PG.brand(PG.uuid, OrganizationId),
+		id: PG.column(uuid(GitHubSubscriptionId), { defaultExpr: "gen_random_uuid()" }),
+		channelId: uuid(ChannelId),
+		organizationId: uuid(OrganizationId),
 		repositoryId: PG.int8,
 		repositoryFullName: varchar(255),
 		repositoryOwner: varchar(255),
@@ -17,7 +17,7 @@ export const githubSubscriptionsTable = PG.table("github_subscriptions", {
 		enabledEvents: PG.column(jsonb<GitHubEventType[]>(), { default: ["push", "pull_request", "issues"] }),
 		branchFilter: PG.nullable(varchar(255)),
 		isEnabled: PG.column(PG.bool, { default: true }),
-		createdBy: PG.brand(PG.uuid, UserId),
+		createdBy: uuid(UserId),
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 		deletedAt: PG.nullable(timestamptz),

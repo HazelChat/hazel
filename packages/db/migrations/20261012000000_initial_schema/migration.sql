@@ -561,7 +561,7 @@ CREATE INDEX IF NOT EXISTS "bots_deleted_at_idx" ON "bots" USING btree ("deleted
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "bots_is_public_idx" ON "bots" USING btree ("isPublic");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "bots_userId_unique" ON "bots" USING btree ("userId");
+ALTER TABLE "bots" ADD CONSTRAINT "bots_userId_unique" UNIQUE ("userId");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "bots_user_id_idx" ON "bots" USING btree ("userId");
 --> statement-breakpoint
@@ -745,7 +745,7 @@ CREATE INDEX IF NOT EXISTS "int_tokens_expires_at_idx" ON "integration_tokens" U
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "int_tokens_key_version_idx" ON "integration_tokens" USING btree ("encryptionKeyVersion");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "integration_tokens_connectionId_unique" ON "integration_tokens" USING btree ("connectionId");
+ALTER TABLE "integration_tokens" ADD CONSTRAINT "integration_tokens_connectionId_unique" UNIQUE ("connectionId");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "message_outbox_events_channel_sequence_idx" ON "message_outbox_events" USING btree ("channelId", "sequence");
 --> statement-breakpoint
@@ -765,7 +765,7 @@ CREATE INDEX IF NOT EXISTS "reactions_message_id_idx" ON "message_reactions" USI
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "reactions_message_user_emoji_idx" ON "message_reactions" USING btree ("messageId", "userId", "emoji");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "reactions_message_user_emoji_unique" ON "message_reactions" USING btree ("messageId", "userId", "emoji");
+ALTER TABLE "message_reactions" ADD CONSTRAINT "reactions_message_user_emoji_unique" UNIQUE ("messageId", "userId", "emoji");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "reactions_user_id_idx" ON "message_reactions" USING btree ("userId");
 --> statement-breakpoint
@@ -795,7 +795,7 @@ CREATE INDEX IF NOT EXISTS "notifications_resource_idx" ON "notifications" USING
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "notifications_targeted_resource_idx" ON "notifications" USING btree ("targetedResourceId", "targetedResourceType");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "org_members_org_user_unique" ON "organization_members" USING btree ("organizationId", "userId");
+ALTER TABLE "organization_members" ADD CONSTRAINT "org_members_org_user_unique" UNIQUE ("organizationId", "userId");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "org_members_organization_id_idx" ON "organization_members" USING btree ("organizationId");
 --> statement-breakpoint
@@ -807,7 +807,7 @@ CREATE INDEX IF NOT EXISTS "organizations_deleted_at_idx" ON "organizations" USI
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "organizations_slug_idx" ON "organizations" USING btree ("slug");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "organizations_slug_unique" ON "organizations" USING btree ("slug");
+ALTER TABLE "organizations" ADD CONSTRAINT "organizations_slug_unique" UNIQUE ("slug");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "pinned_messages_channel_id_idx" ON "pinned_messages" USING btree ("channelId");
 --> statement-breakpoint
@@ -839,7 +839,7 @@ CREATE INDEX IF NOT EXISTS "user_presence_status_active_channel_idx" ON "user_pr
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "user_presence_status_last_seen_idx" ON "user_presence_status" USING btree ("lastSeenAt");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "user_presence_status_userId_unique" ON "user_presence_status" USING btree ("userId");
+ALTER TABLE "user_presence_status" ADD CONSTRAINT "user_presence_status_userId_unique" UNIQUE ("userId");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "user_presence_status_user_id_idx" ON "user_presence_status" USING btree ("userId");
 --> statement-breakpoint
@@ -847,7 +847,7 @@ CREATE INDEX IF NOT EXISTS "users_deleted_at_idx" ON "users" USING btree ("delet
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "users_email_idx" ON "users" USING btree ("email");
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "users_externalId_unique" ON "users" USING btree ("externalId");
+ALTER TABLE "users" ADD CONSTRAINT "users_externalId_unique" UNIQUE ("externalId");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "users_external_id_idx" ON "users" USING btree ("externalId");
 --> statement-breakpoint

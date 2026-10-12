@@ -6,7 +6,7 @@ import {
 	MessageReactionRepo,
 	MessageRepo,
 } from "@hazel/backend-core"
-import type { DatabaseError } from "@hazel/db"
+import { Database, type DatabaseError } from "@hazel/db"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Option } from "effect"
@@ -25,6 +25,7 @@ export class ConnectConversationService extends Context.Service<ConnectConversat
 			const messageReactionRepo = yield* MessageReactionRepo
 			const channelAccessSync = yield* ChannelAccessSyncService
 			const orgResolver = yield* OrgResolver
+			const db = yield* Database.Database
 
 			const isUniqueViolation = (error: DatabaseError, constraintName: string) =>
 				error.type === "unique_violation" && error.constraint === constraintName
@@ -80,15 +81,19 @@ export class ConnectConversationService extends Context.Service<ConnectConversat
 				}
 
 				const channel = channelOption.value
-				const conversation = yield* connectConversationRepo
-					.insert({
-						hostOrganizationId: channel.organizationId,
-						hostChannelId: channel.id,
-						status: "active",
-						settings: null,
-						createdBy,
-						deletedAt: null,
-					})
+				// Each insert is a savepoint, so a unique conflict leaves the caller's transaction usable
+				// for the lookup that recovers from it.
+				const conversation = yield* db
+					.transaction(
+						connectConversationRepo.insert({
+							hostOrganizationId: channel.organizationId,
+							hostChannelId: channel.id,
+							status: "active",
+							settings: null,
+							createdBy,
+							deletedAt: null,
+						}),
+					)
 					.pipe(
 						Effect.map((results) => results[0]!),
 						Effect.catchTag("DatabaseError", (error) => {
@@ -99,16 +104,18 @@ export class ConnectConversationService extends Context.Service<ConnectConversat
 						}),
 					)
 
-				const mount = yield* connectConversationChannelRepo
-					.insert({
-						conversationId: conversation.id,
-						organizationId: channel.organizationId,
-						channelId: channel.id,
-						role: "host",
-						allowGuestMemberAdds: false,
-						isActive: true,
-						deletedAt: null,
-					})
+				const mount = yield* db
+					.transaction(
+						connectConversationChannelRepo.insert({
+							conversationId: conversation.id,
+							organizationId: channel.organizationId,
+							channelId: channel.id,
+							role: "host",
+							allowGuestMemberAdds: false,
+							isActive: true,
+							deletedAt: null,
+						}),
+					)
 					.pipe(
 						Effect.map((results) => results[0]!),
 						Effect.catchTag("DatabaseError", (error) => {

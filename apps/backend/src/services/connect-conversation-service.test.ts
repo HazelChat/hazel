@@ -22,6 +22,12 @@ import { ChannelAccessSyncService } from "./channel-access-sync"
 import { ConnectConversationService } from "./connect-conversation-service"
 import { OrgResolver } from "./org-resolver"
 
+/** The service only opens savepoints itself; the repositories it calls are faked. */
+const makeDatabaseLayer = () =>
+	Layer.succeed(Database.Database, {
+		transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => effect,
+	} as unknown as Database.DatabaseShape)
+
 const HOST_ORG_ID = "00000000-0000-4000-8000-000000000101" as OrganizationId
 const GUEST_ORG_ID = "00000000-0000-4000-8000-000000000102" as OrganizationId
 const OTHER_GUEST_ORG_ID = "00000000-0000-4000-8000-000000000103" as OrganizationId
@@ -199,6 +205,7 @@ const makeServiceLayer = (params: {
 		Layer.provide(makeMessageReactionRepoLayer()),
 		Layer.provide(makeChannelAccessSyncLayer(params.syncedChannels)),
 		Layer.provide(makeOrgResolverLayer()),
+		Layer.provide(makeDatabaseLayer()),
 	)
 
 const useService = <A, E, R>(fn: (service: ConnectConversationServiceShape) => Effect.Effect<A, E, R>) =>
@@ -318,6 +325,7 @@ describe("ConnectConversationService", () => {
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		const mount = await Effect.runPromise(
@@ -432,6 +440,7 @@ describe("ConnectConversationService", () => {
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		await Effect.runPromise(
@@ -518,6 +527,7 @@ describe("ConnectConversationService", () => {
 			Layer.provide(makeMessageReactionRepoLayer()),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		await Effect.runPromise(
