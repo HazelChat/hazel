@@ -29,8 +29,8 @@
  *   IS_DEV=false bun run src/scripts/migrate-to-clerk/merge-org-duplicates.ts
  */
 
-import { Database, and, eq, isNull, sql, schema } from "@hazel/db"
-import { Effect, Logger } from "effect"
+import { Database, PG, schema } from "@hazel/db"
+import { Effect, Logger, Schema } from "effect"
 import { DatabaseLive } from "../../services/database"
 
 const dryRun = process.argv.includes("--dry-run")
@@ -38,44 +38,30 @@ const dryRun = process.argv.includes("--dry-run")
 const program = Effect.gen(function* () {
 	const db = yield* Database.Database
 
-	const orgs = yield* db.makeQuery((execute, _data: {}) =>
-		execute((client) =>
-			client
-				.select({
-					id: schema.organizationsTable.id,
-					name: schema.organizationsTable.name,
-					slug: schema.organizationsTable.slug,
-					logoUrl: schema.organizationsTable.logoUrl,
-					settings: schema.organizationsTable.settings,
-					createdAt: schema.organizationsTable.createdAt,
-				})
-				.from(schema.organizationsTable)
-				.where(isNull(schema.organizationsTable.deletedAt)),
-		),
-	)({})
+	const orgs = yield* db.run(
+		PG.from(schema.organizationsTable)
+			.select("id", "name", "slug", "logoUrl", "settings", "createdAt")
+			.where(($) => [$.deletedAt.isNull()]),
+	)
 
 	// Count channels + messages per org in one pass.
-	const counts = yield* db.makeQuery((execute, _data: {}) =>
-		execute(
-			(client) =>
-				client.execute(sql`
-					select
-						o.id as org_id,
-						(select count(*)::int from channels where "organizationId" = o.id and "deletedAt" is null) as channel_count,
-						(select count(*)::int from messages m join channels c on c.id = m."channelId" where c."organizationId" = o.id) as message_count,
-						(select count(*)::int from organization_members where "organizationId" = o.id and "deletedAt" is null) as member_count
-					from organizations o
-					where o."deletedAt" is null
-				`) as unknown as Promise<
-					Array<{
-						org_id: string
-						channel_count: number
-						message_count: number
-						member_count: number
-					}>
-				>,
-		),
-	)({})
+	const counts = yield* db.query(
+		Database.sql`
+			select
+				o.id as org_id,
+				(select count(*)::int from channels where "organizationId" = o.id and "deletedAt" is null) as channel_count,
+				(select count(*)::int from messages m join channels c on c.id = m."channelId" where c."organizationId" = o.id) as message_count,
+				(select count(*)::int from organization_members where "organizationId" = o.id and "deletedAt" is null) as member_count
+			from organizations o
+			where o."deletedAt" is null
+		`,
+		Schema.Struct({
+			org_id: Schema.String,
+			channel_count: Schema.Number,
+			message_count: Schema.Number,
+			member_count: Schema.Number,
+		}),
+	)
 
 	const statsById = new Map(counts.map((c) => [c.org_id, c]))
 
@@ -178,53 +164,26 @@ const program = Effect.gen(function* () {
 					clerkOrganizationId: ghost.clerkOrgId,
 				}
 
-				yield* db.makeQuery(
-					(
-						execute,
-						payload: {
-							id: string
-							settings: any
-							logoUrl: string | null
-							copyLogo: boolean
-						},
-					) =>
-						execute((client) =>
-							client
-								.update(schema.organizationsTable)
-								.set({
-									settings: payload.settings,
-									...(payload.copyLogo && payload.logoUrl
-										? { logoUrl: payload.logoUrl }
-										: {}),
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.organizationsTable.id, payload.id as any)),
-						),
-				)({
-					id: canonical.id,
-					settings: mergedSettings,
-					logoUrl: ghost.logoUrl,
-					copyLogo: !canonical.logoUrl,
-				})
+				yield* db.run(
+					PG.update(schema.organizationsTable)
+						.set({
+							settings: mergedSettings,
+							...(!canonical.logoUrl && ghost.logoUrl ? { logoUrl: ghost.logoUrl } : {}),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(canonical.id)]),
+				)
 
 				// Remove the ghost's membership rows — the next webhook fire on the
 				// canonical (now correctly keyed by clerkOrgId) will re-sync real members.
-				yield* db.makeQuery((execute, payload: { orgId: string }) =>
-					execute((client) =>
-						client
-							.delete(schema.organizationMembersTable)
-							.where(eq(schema.organizationMembersTable.organizationId, payload.orgId as any)),
-					),
-				)({ orgId: ghost.id })
+				yield* db.run(
+					PG.deleteFrom(schema.organizationMembersTable).where(($) => [
+						$.organizationId.eq(ghost.id),
+					]),
+				)
 
 				// Drop the ghost row itself (hard delete — it has no channels/messages).
-				yield* db.makeQuery((execute, payload: { orgId: string }) =>
-					execute((client) =>
-						client
-							.delete(schema.organizationsTable)
-							.where(eq(schema.organizationsTable.id, payload.orgId as any)),
-					),
-				)({ orgId: ghost.id })
+				yield* db.run(PG.deleteFrom(schema.organizationsTable).where(($) => [$.id.eq(ghost.id)]))
 
 				yield* Effect.log(`  ✓ merged ghost ${ghost.id} into ${canonical.id} (${canonical.name})`)
 			}

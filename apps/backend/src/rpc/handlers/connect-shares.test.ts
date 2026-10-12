@@ -107,7 +107,10 @@ describe("connect-shares helpers", () => {
 			remapGuestMountInsertConflict({
 				error: new Database.DatabaseError({
 					type: "unique_violation",
-					cause: { constraint_name: "connect_conv_channels_conversation_org_unique" },
+					message: "duplicate key value violates unique constraint",
+					sqlState: "23505",
+					constraint: "connect_conv_channels_conversation_org_unique",
+					cause: new Error("duplicate key value violates unique constraint"),
 				}),
 				guestOrganizationId: GUEST_ORG_ID,
 				findExistingMount: () => Effect.succeed(Option.some({ channelId: GUEST_CHANNEL_ID })),

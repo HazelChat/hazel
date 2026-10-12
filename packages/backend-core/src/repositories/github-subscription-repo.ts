@@ -1,8 +1,8 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ChannelId, GitHubSubscriptionId, OrganizationId } from "@hazel/schema"
 import { GitHubSubscription } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class GitHubSubscriptionRepo extends Context.Service<GitHubSubscriptionRepo>()(
 	"GitHubSubscriptionRepo",
@@ -19,56 +19,33 @@ export class GitHubSubscriptionRepo extends Context.Service<GitHubSubscriptionRe
 			const db = yield* Database.Database
 
 			// Find all subscriptions for a channel
-			const findByChannel = (channelId: ChannelId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { channelId: ChannelId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.githubSubscriptionsTable)
-							.where(
-								and(
-									eq(schema.githubSubscriptionsTable.channelId, data.channelId),
-									isNull(schema.githubSubscriptionsTable.deletedAt),
-								),
-							),
-					),
-				)({ channelId }, tx)
+			const findByChannel = (channelId: ChannelId) =>
+				db.run(
+					PG.from(schema.githubSubscriptionsTable)
+						.select()
+						.where(($) => [$.channelId.eq(channelId), $.deletedAt.isNull()]),
+				)
 
 			// Find all subscriptions for an organization
-			const findByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.githubSubscriptionsTable)
-							.where(
-								and(
-									eq(schema.githubSubscriptionsTable.organizationId, data.organizationId),
-									isNull(schema.githubSubscriptionsTable.deletedAt),
-								),
-							),
-					),
-				)({ organizationId }, tx)
+			const findByOrganization = (organizationId: OrganizationId) =>
+				db.run(
+					PG.from(schema.githubSubscriptionsTable)
+						.select()
+						.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+				)
 
 			// Find subscription by channel and repository (for uniqueness check)
-			const findByChannelAndRepo = (channelId: ChannelId, repositoryId: number, tx?: TxFn) =>
-				db
-					.makeQuery((execute, data: { channelId: ChannelId; repositoryId: number }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.githubSubscriptionsTable)
-								.where(
-									and(
-										eq(schema.githubSubscriptionsTable.channelId, data.channelId),
-										eq(schema.githubSubscriptionsTable.repositoryId, data.repositoryId),
-										isNull(schema.githubSubscriptionsTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)({ channelId, repositoryId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByChannelAndRepo = (channelId: ChannelId, repositoryId: number) =>
+				db.first(
+					PG.from(schema.githubSubscriptionsTable)
+						.select()
+						.where(($) => [
+							$.channelId.eq(channelId),
+							$.repositoryId.eq(repositoryId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			// Update subscription settings
 			const updateSettings = (
@@ -78,50 +55,34 @@ export class GitHubSubscriptionRepo extends Context.Service<GitHubSubscriptionRe
 					branchFilter?: string | null
 					isEnabled?: boolean
 				},
-				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: {
-							id: GitHubSubscriptionId
-							enabledEvents?: GitHubSubscription.GitHubEventType[]
-							branchFilter?: string | null
-							isEnabled?: boolean
-						},
-					) =>
-						execute((client) =>
-							client
-								.update(schema.githubSubscriptionsTable)
-								.set({
-									...(data.enabledEvents !== undefined && {
-										enabledEvents: data.enabledEvents,
-									}),
-									...(data.branchFilter !== undefined && {
-										branchFilter: data.branchFilter,
-									}),
-									...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.githubSubscriptionsTable.id, data.id))
-								.returning(),
-						),
-				)({ id, ...settings }, tx)
+				db.run(
+					PG.update(schema.githubSubscriptionsTable)
+						.set({
+							...(settings.enabledEvents !== undefined && {
+								enabledEvents: settings.enabledEvents,
+							}),
+							...(settings.branchFilter !== undefined && {
+								branchFilter: settings.branchFilter,
+							}),
+							...(settings.isEnabled !== undefined && { isEnabled: settings.isEnabled }),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			// Soft delete subscription
-			const softDelete = (id: GitHubSubscriptionId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: GitHubSubscriptionId }) =>
-					execute((client) =>
-						client
-							.update(schema.githubSubscriptionsTable)
-							.set({
-								deletedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.githubSubscriptionsTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const softDelete = (id: GitHubSubscriptionId) =>
+				db.run(
+					PG.update(schema.githubSubscriptionsTable)
+						.set({
+							deletedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			return {
 				...baseRepo,

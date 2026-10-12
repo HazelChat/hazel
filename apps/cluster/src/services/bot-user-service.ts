@@ -1,4 +1,4 @@
-import { Database, eq, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster, Integrations } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
 import { Context, Array, Effect, Layer, Option } from "effect"
@@ -40,11 +40,10 @@ export class BotUserService extends Context.Service<BotUserService>()("BotUserSe
 
 				// Query database
 				const results = yield* db
-					.execute((client) =>
-						client
-							.select({ id: schema.usersTable.id })
-							.from(schema.usersTable)
-							.where(eq(schema.usersTable.externalId, externalId))
+					.run(
+						PG.from(schema.usersTable)
+							.select("id")
+							.where(($) => [$.externalId.eq(externalId)])
 							.limit(1),
 					)
 					.pipe(
@@ -68,7 +67,7 @@ export class BotUserService extends Context.Service<BotUserService>()("BotUserSe
 					return Option.none<UserId>()
 				}
 
-				const userId = headOption.value.id as UserId
+				const userId = headOption.value.id
 
 				// Cache the result
 				cache.set(externalId, userId)

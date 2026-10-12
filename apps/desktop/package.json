@@ -28,6 +28,6 @@
 	},
 	"devDependencies": {
 		"@tauri-apps/cli": "^2.9.6",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }

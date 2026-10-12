@@ -1,22 +1,8 @@
-import {
-	and,
-	or,
-	Database,
-	desc,
-	eq,
-	gt,
-	inArray,
-	isNull,
-	lt,
-	Repository,
-	schema,
-	sql,
-	type TxFn,
-} from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ChannelId, ConnectConversationId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import { Message } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export interface ListByChannelParams {
 	channelId: ChannelId
@@ -50,198 +36,101 @@ export class MessageRepo extends Context.Service<MessageRepo>()("MessageRepo", {
 		/**
 		 * List messages in a channel with cursor-based pagination (Stripe-style).
 		 */
-		const listByChannel = (params: ListByChannelParams, tx?: TxFn) =>
-			db.makeQuery(
-				(
-					execute,
-					data: {
-						channelId: ChannelId
-						conversationId?: ConnectConversationId
-						limit: number
-						cursorBefore?: {
-							id: MessageId
-							createdAt: Date
-						}
-						cursorAfter?: {
-							id: MessageId
-							createdAt: Date
-						}
-					},
-				) =>
-					execute((client) => {
-						// Build the WHERE conditions
-						const conditions = [isNull(schema.messagesTable.deletedAt)]
-						conditions.push(
-							data.conversationId
-								? eq(schema.messagesTable.conversationId, data.conversationId)
-								: eq(schema.messagesTable.channelId, data.channelId),
-						)
-						if (data.cursorBefore) {
-							conditions.push(
-								or(
-									lt(schema.messagesTable.createdAt, data.cursorBefore.createdAt),
-									and(
-										eq(schema.messagesTable.createdAt, data.cursorBefore.createdAt),
-										lt(schema.messagesTable.id, data.cursorBefore.id),
-									),
-								)!,
-							)
-						}
-						if (data.cursorAfter) {
-							conditions.push(
-								or(
-									gt(schema.messagesTable.createdAt, data.cursorAfter.createdAt),
-									and(
-										eq(schema.messagesTable.createdAt, data.cursorAfter.createdAt),
-										gt(schema.messagesTable.id, data.cursorAfter.id),
-									),
-								)!,
-							)
-						}
-
-						return client
-							.select()
-							.from(schema.messagesTable)
-							.where(and(...conditions))
-							.orderBy(desc(schema.messagesTable.createdAt), desc(schema.messagesTable.id))
-							.limit(data.limit + 1)
-					}),
-			)(params, tx)
+		const listByChannel = (params: ListByChannelParams) =>
+			db.run(
+				PG.from(schema.messagesTable)
+					.select()
+					.where(($) => [
+						$.deletedAt.isNull(),
+						params.conversationId
+							? $.conversationId.eq(params.conversationId)
+							: $.channelId.eq(params.channelId),
+						PG.when(params.cursorBefore, (cursor) =>
+							$.createdAt.lt(cursor.createdAt).or($.createdAt.eq(cursor.createdAt).and($.id.lt(cursor.id))),
+						),
+						PG.when(params.cursorAfter, (cursor) =>
+							$.createdAt.gt(cursor.createdAt).or($.createdAt.eq(cursor.createdAt).and($.id.gt(cursor.id))),
+						),
+					])
+					.orderBy(["createdAt", "desc"], ["id", "desc"])
+					.limit(params.limit + 1),
+			)
 
 		/**
 		 * Find a message by ID scoped to a channel for cursor resolution.
 		 */
-		const findByIdForCursor = (
-			params: { id: MessageId; channelId: ChannelId; conversationId?: ConnectConversationId },
-			tx?: TxFn,
-		) =>
-			db
-				.makeQuery(
-					(
-						execute,
-						data: { id: MessageId; channelId: ChannelId; conversationId?: ConnectConversationId },
-					) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.messagesTable)
-								.where(
-									and(
-										eq(schema.messagesTable.id, data.id),
-										data.conversationId
-											? eq(schema.messagesTable.conversationId, data.conversationId)
-											: eq(schema.messagesTable.channelId, data.channelId),
-										isNull(schema.messagesTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-				)(params, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByIdForCursor = (params: {
+			id: MessageId
+			channelId: ChannelId
+			conversationId?: ConnectConversationId
+		}) =>
+			db.first(
+				PG.from(schema.messagesTable)
+					.select()
+					.where(($) => [
+						$.id.eq(params.id),
+						params.conversationId
+							? $.conversationId.eq(params.conversationId)
+							: $.channelId.eq(params.channelId),
+						$.deletedAt.isNull(),
+					])
+					.limit(1),
+			)
 
-		const backfillConversationIdForChannel = (
-			channelId: ChannelId,
-			conversationId: ConnectConversationId,
-			tx?: TxFn,
-		) =>
-			db.makeQuery((execute, input: { channelId: ChannelId; conversationId: ConnectConversationId }) =>
-				execute((client) =>
-					client
-						.update(schema.messagesTable)
-						.set({
-							conversationId: input.conversationId,
-							updatedAt: sql`COALESCE(${schema.messagesTable.updatedAt}, NOW())`,
-						})
-						.where(
-							and(
-								eq(schema.messagesTable.channelId, input.channelId),
-								isNull(schema.messagesTable.deletedAt),
-								isNull(schema.messagesTable.conversationId),
-							),
-						),
-				),
-			)({ channelId, conversationId }, tx)
+		const backfillConversationIdForChannel = (channelId: ChannelId, conversationId: ConnectConversationId) =>
+			db.run(
+				PG.update(schema.messagesTable)
+					.set(($) => ({
+						conversationId,
+						updatedAt: PG.coalesce($.updatedAt, schema.now()),
+					}))
+					.where(($) => [$.channelId.eq(channelId), $.deletedAt.isNull(), $.conversationId.isNull()]),
+			)
 
 		/**
 		 * Reassign message authors for external chat-synced messages scoped to a provider + org.
 		 * Used when a user links/unlinks their external account and historical messages need re-attribution.
 		 */
-		const reassignExternalSyncedAuthors = (
-			params: {
-				organizationId: OrganizationId
-				provider: string
-				fromAuthorId: UserId
-				toAuthorId: UserId
-			},
-			tx?: TxFn,
-		) =>
-			db.makeQuery(
-				(
-					execute,
-					data: {
-						organizationId: OrganizationId
-						provider: string
-						fromAuthorId: UserId
-						toAuthorId: UserId
-					},
-				) =>
-					execute(async (client) => {
-						if (data.fromAuthorId === data.toAuthorId) {
-							return 0
-						}
+		const reassignExternalSyncedAuthors = (params: {
+			organizationId: OrganizationId
+			provider: string
+			fromAuthorId: UserId
+			toAuthorId: UserId
+		}) =>
+			Effect.gen(function* () {
+				if (params.fromAuthorId === params.toAuthorId) {
+					return 0
+				}
 
-						const externalLinkedMessageIds = client
-							.select({
-								hazelMessageId: schema.chatSyncMessageLinksTable.hazelMessageId,
-							})
-							.from(schema.chatSyncMessageLinksTable)
-							.innerJoin(
-								schema.chatSyncChannelLinksTable,
-								and(
-									eq(
-										schema.chatSyncChannelLinksTable.id,
-										schema.chatSyncMessageLinksTable.channelLinkId,
-									),
-									isNull(schema.chatSyncChannelLinksTable.deletedAt),
-								),
-							)
-							.innerJoin(
-								schema.chatSyncConnectionsTable,
-								and(
-									eq(
-										schema.chatSyncConnectionsTable.id,
-										schema.chatSyncChannelLinksTable.syncConnectionId,
-									),
-									isNull(schema.chatSyncConnectionsTable.deletedAt),
-								),
-							)
-							.where(
-								and(
-									eq(schema.chatSyncMessageLinksTable.source, "external"),
-									isNull(schema.chatSyncMessageLinksTable.deletedAt),
-									eq(schema.chatSyncConnectionsTable.organizationId, data.organizationId),
-									eq(schema.chatSyncConnectionsTable.provider, data.provider),
-								),
-							)
+				const externalLinkedMessageIds = PG.from(schema.chatSyncMessageLinksTable, "message_link")
+					.innerJoin(schema.chatSyncChannelLinksTable, "channel_link", (link, channelLink) =>
+						channelLink.id.eq(link.channelLinkId).and(channelLink.deletedAt.isNull()),
+					)
+					.innerJoin(schema.chatSyncConnectionsTable, "connection", (_link, connection) =>
+						connection.deletedAt.isNull(),
+					)
+					.select(($) => ({ hazelMessageId: $.hazelMessageId }))
+					.where(($) => [
+						$.connection.id.eq($.channel_link.syncConnectionId),
+						$.source.eq("external"),
+						$.deletedAt.isNull(),
+						$.connection.organizationId.eq(params.organizationId),
+						$.connection.provider.eq(params.provider),
+					])
 
-						const updatedMessages = await client
-							.update(schema.messagesTable)
-							.set({
-								authorId: data.toAuthorId,
-								updatedAt: new Date(),
-							})
-							.where(
-								and(
-									eq(schema.messagesTable.authorId, data.fromAuthorId),
-									isNull(schema.messagesTable.deletedAt),
-									inArray(schema.messagesTable.id, externalLinkedMessageIds),
-								),
-							)
-							.returning({ id: schema.messagesTable.id })
+				const updatedMessages = yield* db.run(
+					PG.update(schema.messagesTable)
+						.set({ authorId: params.toAuthorId, updatedAt: new Date() })
+						.where(($) => [
+							$.authorId.eq(params.fromAuthorId),
+							$.deletedAt.isNull(),
+							PG.inSubquery($.id, externalLinkedMessageIds),
+						])
+						.returning("id"),
+				)
 
-						return updatedMessages.length
-					}),
-			)(params, tx)
+				return updatedMessages.length
+			})
 
 		return {
 			...baseRepo,

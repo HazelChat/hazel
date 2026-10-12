@@ -5,7 +5,7 @@ import {
 	OrganizationMemberRepo,
 	UserRepo,
 } from "@hazel/backend-core"
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import {
 	CurrentUser,
 	DmChannelAlreadyExistsError,
@@ -13,12 +13,10 @@ import {
 	withRemapDbErrors,
 	WorkflowServiceUnavailableError,
 } from "@hazel/domain"
-import { OrganizationId } from "@hazel/schema"
+import { type MessageId, OrganizationId } from "@hazel/schema"
 import { ChannelNotFoundError, ChannelResponse, ChannelRpcs, MessageNotFoundError } from "@hazel/domain/rpc"
-import { eq } from "drizzle-orm"
 import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
-import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelPolicy } from "../../policies/channel-policy"
 import { UserPolicy } from "../../policies/user-policy"
 import { BotGatewayService } from "../../services/bot-gateway-service"
@@ -411,11 +409,10 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 							})
 
 							// 4. Link message to thread (direct SQL update to bypass schema restrictions)
-							yield* transactionAwareExecute((client) =>
-								client
-									.update(schema.messagesTable)
+							yield* db.run(
+								PG.update(schema.messagesTable)
 									.set({ threadChannelId: createdChannel.id })
-									.where(eq(schema.messagesTable.id, messageId)),
+									.where(($) => [$.id.eq(messageId)]),
 							)
 
 							yield* channelAccessSync.syncChannel(createdChannel.id)
@@ -458,19 +455,19 @@ export const ChannelRpcLive = ChannelRpcs.toLayer(
 						)
 					}
 
-					const originalMessageResult = yield* transactionAwareExecute((client) =>
-						client
-							.select({ id: schema.messagesTable.id })
-							.from(schema.messagesTable)
-							.where(eq(schema.messagesTable.threadChannelId, channelId))
-							.limit(1),
-					).pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
+					const originalMessageResult = yield* db
+						.run(
+							PG.from(schema.messagesTable)
+								.select("id")
+								.where(($) => [$.threadChannelId.eq(channelId)])
+								.limit(1),
+						)
+						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
 
 					if (originalMessageResult.length === 0) {
 						return yield* Effect.fail(
 							new MessageNotFoundError({
-								messageId:
-									channelId as unknown as typeof schema.messagesTable.$inferSelect.id,
+								messageId: channelId as unknown as MessageId,
 							}),
 						)
 					}

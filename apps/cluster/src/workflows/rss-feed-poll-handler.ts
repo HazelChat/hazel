@@ -1,5 +1,5 @@
 import { Activity } from "effect/workflow"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
 import { Rss } from "@hazel/integrations"
@@ -77,9 +77,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 					const db = yield* Database.Database
 
 					yield* db
-						.execute((client) =>
-							client
-								.update(schema.rssSubscriptionsTable)
+						.run(
+							PG.update(schema.rssSubscriptionsTable)
 								.set({
 									lastFetchedAt: new Date(),
 									consecutiveErrors: 0,
@@ -91,7 +90,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 									}),
 									updatedAt: new Date(),
 								})
-								.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+								.where(($) => [$.id.eq(payload.subscriptionId)]),
 						)
 						.pipe(
 							Effect.catchTag("DatabaseError", (err) =>
@@ -132,11 +131,10 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 
 					// Get already posted items for deduplication
 					const postedItems = yield* db
-						.execute((client) =>
-							client
-								.select({ itemGuid: schema.rssPostedItemsTable.itemGuid })
-								.from(schema.rssPostedItemsTable)
-								.where(eq(schema.rssPostedItemsTable.subscriptionId, payload.subscriptionId)),
+						.run(
+							PG.from(schema.rssPostedItemsTable)
+								.select("itemGuid")
+								.where(($) => [$.subscriptionId.eq(payload.subscriptionId)]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -167,9 +165,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 
 						// Still update last fetched time (non-critical, use orDie)
 						yield* db
-							.execute((client) =>
-								client
-									.update(schema.rssSubscriptionsTable)
+							.run(
+								PG.update(schema.rssSubscriptionsTable)
 									.set({
 										lastFetchedAt: new Date(),
 										consecutiveErrors: 0,
@@ -181,7 +178,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 										}),
 										updatedAt: new Date(),
 									})
-									.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+									.where(($) => [$.id.eq(payload.subscriptionId)]),
 							)
 							.pipe(Effect.orDie)
 
@@ -203,9 +200,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 						const embed = Rss.buildRssEmbed(item, feedResult.feedTitle)
 
 						const messageResult = yield* db
-							.execute((client) =>
-								client
-									.insert(schema.messagesTable)
+							.run(
+								PG.insertInto(schema.messagesTable)
 									.values({
 										channelId: payload.channelId,
 										authorId: botUserId,
@@ -215,7 +211,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 										threadChannelId: null,
 										deletedAt: null,
 									})
-									.returning({ id: schema.messagesTable.id }),
+									.returning("id"),
 							)
 							.pipe(
 								Effect.catchTags({
@@ -237,8 +233,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 
 							// Record posted item for deduplication (non-critical)
 							yield* db
-								.execute((client) =>
-									client.insert(schema.rssPostedItemsTable).values({
+								.run(
+									PG.insertInto(schema.rssPostedItemsTable).values({
 										subscriptionId: payload.subscriptionId,
 										itemGuid: item.guid,
 										itemUrl: item.link || null,
@@ -261,9 +257,8 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 					// Update subscription state (non-critical, use orDie)
 					const lastItem = itemsToPost[0]
 					yield* db
-						.execute((client) =>
-							client
-								.update(schema.rssSubscriptionsTable)
+						.run(
+							PG.update(schema.rssSubscriptionsTable)
 								.set({
 									lastFetchedAt: new Date(),
 									lastItemGuid: lastItem?.guid ?? null,
@@ -279,7 +274,7 @@ export const RssFeedPollWorkflowLayer = Cluster.RssFeedPollWorkflow.toLayer(
 									}),
 									updatedAt: new Date(),
 								})
-								.where(eq(schema.rssSubscriptionsTable.id, payload.subscriptionId)),
+								.where(($) => [$.id.eq(payload.subscriptionId)]),
 						)
 						.pipe(Effect.orDie)
 

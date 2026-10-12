@@ -1,6 +1,6 @@
-import { and, Database, eq, inArray, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
-import type { BotId, BotInstallationId, OrganizationId } from "@hazel/schema"
+import type { BotId, OrganizationId } from "@hazel/schema"
 import { BotInstallation } from "@hazel/domain/models"
 import { Context, Effect, Layer, Option } from "effect"
 
@@ -17,55 +17,37 @@ export class BotInstallationRepo extends Context.Service<BotInstallationRepo>()(
 		const db = yield* Database.Database
 
 		// Find all installations for an organization
-		const findByOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botInstallationsTable)
-						.where(eq(schema.botInstallationsTable.organizationId, data.organizationId)),
-				),
-			)({ organizationId }, tx)
+		const findByOrg = (organizationId: OrganizationId) =>
+			db.run(
+				PG.from(schema.botInstallationsTable)
+					.select()
+					.where(($) => [$.organizationId.eq(organizationId)]),
+			)
 
 		// Find all installations for a bot
-		const findByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { botId: BotId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botInstallationsTable)
-						.where(eq(schema.botInstallationsTable.botId, data.botId)),
-				),
-			)({ botId }, tx)
+		const findByBot = (botId: BotId) =>
+			db.run(
+				PG.from(schema.botInstallationsTable)
+					.select()
+					.where(($) => [$.botId.eq(botId)]),
+			)
 
 		// Find a specific installation
-		const findByBotAndOrg = (botId: BotId, organizationId: OrganizationId, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { botId: BotId; organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botInstallationsTable)
-							.where(
-								and(
-									eq(schema.botInstallationsTable.botId, data.botId),
-									eq(schema.botInstallationsTable.organizationId, data.organizationId),
-								),
-							)
-							.limit(1),
-					),
-				)({ botId, organizationId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByBotAndOrg = (botId: BotId, organizationId: OrganizationId) =>
+			db.first(
+				PG.from(schema.botInstallationsTable)
+					.select()
+					.where(($) => [$.botId.eq(botId), $.organizationId.eq(organizationId)])
+					.limit(1),
+			)
 
 		// Check if a bot is installed in an organization
-		const isInstalled = (botId: BotId, organizationId: OrganizationId, tx?: TxFn) =>
-			findByBotAndOrg(botId, organizationId, tx).pipe(Effect.map(Option.isSome))
+		const isInstalled = (botId: BotId, organizationId: OrganizationId) =>
+			findByBotAndOrg(botId, organizationId).pipe(Effect.map(Option.isSome))
 
 		// Get bot IDs installed in an organization
-		const getBotIdsForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-			findByOrg(organizationId, tx).pipe(
-				Effect.map((installations) => installations.map((i) => i.botId)),
-			)
+		const getBotIdsForOrg = (organizationId: OrganizationId) =>
+			findByOrg(organizationId).pipe(Effect.map((installations) => installations.map((i) => i.botId)))
 
 		return {
 			...baseRepo,

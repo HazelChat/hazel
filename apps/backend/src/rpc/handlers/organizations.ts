@@ -45,17 +45,14 @@ const handleOrganizationDbErrors = <R, E extends { _tag: string }, A>(
 			Effect.catchIf(
 				(e): e is Extract<E, { _tag: "DatabaseError" }> => Predicate.isTagged(e, "DatabaseError"),
 				(err): Effect.Effect<never, InternalServerError | OrganizationSlugAlreadyExistsError> => {
-					const dbErr = err as unknown as {
-						type: string
-						cause: { constraint_name?: string; detail?: string }
-					}
+					const dbErr = err as unknown as Database.DatabaseError
 					// Check if it's a unique violation on the slug column
 					if (
 						dbErr.type === "unique_violation" &&
-						dbErr.cause.constraint_name === "organizations_slug_unique"
+						dbErr.constraint === "organizations_slug_unique"
 					) {
 						// Extract slug from error detail if possible
-						const slugMatch = dbErr.cause.detail?.match(/Key \(slug\)=\(([^)]+)\)/)
+						const slugMatch = dbErr.detail?.match(/Key \(slug\)=\(([^)]+)\)/)
 						const slug = slugMatch?.[1] || "unknown"
 						return Effect.fail(
 							new OrganizationSlugAlreadyExistsError({

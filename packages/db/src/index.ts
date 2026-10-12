@@ -1,10 +1,9 @@
-export * from "drizzle-orm"
-export * as schema from "./schema"
-// Re-export embed types for direct import
+export * as PG from "@maple-dev/effect-orm/postgres"
+export * as schema from "./tables"
 export type {
 	MessageEmbed,
 	MessageEmbedAuthor,
 	MessageEmbedField,
 	MessageEmbedFooter,
-} from "./schema/messages"
+} from "./tables/messages"
 export * from "./services"

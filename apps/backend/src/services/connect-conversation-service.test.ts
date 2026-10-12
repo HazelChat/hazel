@@ -22,6 +22,12 @@ import { ChannelAccessSyncService } from "./channel-access-sync"
 import { ConnectConversationService } from "./connect-conversation-service"
 import { OrgResolver } from "./org-resolver"
 
+/** The service only opens savepoints itself; the repositories it calls are faked. */
+const makeDatabaseLayer = () =>
+	Layer.succeed(Database.Database, {
+		transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) => effect,
+	} as unknown as Database.DatabaseShape)
+
 const HOST_ORG_ID = "00000000-0000-4000-8000-000000000101" as OrganizationId
 const GUEST_ORG_ID = "00000000-0000-4000-8000-000000000102" as OrganizationId
 const OTHER_GUEST_ORG_ID = "00000000-0000-4000-8000-000000000103" as OrganizationId
@@ -199,6 +205,7 @@ const makeServiceLayer = (params: {
 		Layer.provide(makeMessageReactionRepoLayer()),
 		Layer.provide(makeChannelAccessSyncLayer(params.syncedChannels)),
 		Layer.provide(makeOrgResolverLayer()),
+		Layer.provide(makeDatabaseLayer()),
 	)
 
 const useService = <A, E, R>(fn: (service: ConnectConversationServiceShape) => Effect.Effect<A, E, R>) =>
@@ -256,7 +263,9 @@ describe("ConnectConversationService", () => {
 							Effect.fail(
 								new Database.DatabaseError({
 									type: "unique_violation",
-									cause: { constraint_name: "connect_conversations_host_channel_unique" },
+									message: "duplicate key value violates unique constraint",
+									constraint: "connect_conversations_host_channel_unique",
+									cause: null,
 								}),
 							),
 						findByHostChannel: () => Effect.succeed(Option.some(existingConversation)),
@@ -276,7 +285,9 @@ describe("ConnectConversationService", () => {
 							Effect.fail(
 								new Database.DatabaseError({
 									type: "unique_violation",
-									cause: { constraint_name: "connect_conv_channels_channel_unique" },
+									message: "duplicate key value violates unique constraint",
+									constraint: "connect_conv_channels_channel_unique",
+									cause: null,
 								}),
 							),
 						findByConversationId: () => Effect.succeed([existingMount]),
@@ -314,6 +325,7 @@ describe("ConnectConversationService", () => {
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		const mount = await Effect.runPromise(
@@ -399,7 +411,7 @@ describe("ConnectConversationService", () => {
 					MessageRepo,
 					serviceShape<typeof MessageRepo>({
 						backfillConversationIdForChannel: () =>
-							Effect.serviceOption(Database.TransactionContext).pipe(
+							Effect.serviceOption(Database.Transaction).pipe(
 								Effect.tap((maybeTx) =>
 									Effect.sync(() => {
 										transactionChecks.push(Option.isSome(maybeTx))
@@ -415,7 +427,7 @@ describe("ConnectConversationService", () => {
 					MessageReactionRepo,
 					serviceShape<typeof MessageReactionRepo>({
 						backfillConversationIdForChannel: () =>
-							Effect.serviceOption(Database.TransactionContext).pipe(
+							Effect.serviceOption(Database.Transaction).pipe(
 								Effect.tap((maybeTx) =>
 									Effect.sync(() => {
 										transactionChecks.push(Option.isSome(maybeTx))
@@ -428,13 +440,16 @@ describe("ConnectConversationService", () => {
 			),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		await Effect.runPromise(
 			useService((service) => service.ensureChannelConversation(HOST_CHANNEL_ID, HOST_USER_ID)).pipe(
 				Effect.provide(layer),
-				Effect.provideService(Database.TransactionContext, {
-					execute: (fn) => Effect.promise(() => fn({} as never)),
+				Effect.provideService(Database.Transaction, {
+					depth: 0,
+					isolationLevel: undefined,
+					accessMode: undefined,
 				}),
 				Effect.orDie,
 			),
@@ -512,6 +527,7 @@ describe("ConnectConversationService", () => {
 			Layer.provide(makeMessageReactionRepoLayer()),
 			Layer.provide(makeChannelAccessSyncLayer([])),
 			Layer.provide(makeOrgResolverLayer()),
+			Layer.provide(makeDatabaseLayer()),
 		)
 
 		await Effect.runPromise(

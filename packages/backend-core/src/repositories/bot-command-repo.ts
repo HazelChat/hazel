@@ -1,8 +1,8 @@
-import { and, Database, eq, inArray, lt, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
-import type { BotCommandId, BotId } from "@hazel/schema"
+import type { BotId } from "@hazel/schema"
 import { BotCommand } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class BotCommandRepo extends Context.Service<BotCommandRepo>()("BotCommandRepo", {
 	make: Effect.gen(function* () {
@@ -17,140 +17,90 @@ export class BotCommandRepo extends Context.Service<BotCommandRepo>()("BotComman
 		const db = yield* Database.Database
 
 		// Find all commands for a bot
-		const findByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { botId: BotId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botCommandsTable)
-						.where(eq(schema.botCommandsTable.botId, data.botId)),
-				),
-			)({ botId }, tx)
+		const findByBot = (botId: BotId) =>
+			db.run(
+				PG.from(schema.botCommandsTable)
+					.select()
+					.where(($) => [$.botId.eq(botId)]),
+			)
 
 		// Find enabled commands for a bot
-		const findEnabledByBot = (botId: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { botId: BotId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botCommandsTable)
-						.where(
-							and(
-								eq(schema.botCommandsTable.botId, data.botId),
-								eq(schema.botCommandsTable.isEnabled, true),
-							),
-						),
-				),
-			)({ botId }, tx)
+		const findEnabledByBot = (botId: BotId) =>
+			db.run(
+				PG.from(schema.botCommandsTable)
+					.select()
+					.where(($) => [$.botId.eq(botId), $.isEnabled.eq(true)]),
+			)
 
 		// Find commands for multiple bots (for getAvailableCommands)
-		const findByBots = (botIds: BotId[], tx?: TxFn) => {
+		const findByBots = (botIds: BotId[]) => {
 			if (botIds.length === 0) {
 				return Effect.succeed([])
 			}
-			return db.makeQuery((execute, data: { botIds: BotId[] }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botCommandsTable)
-						.where(
-							and(
-								inArray(schema.botCommandsTable.botId, data.botIds),
-								eq(schema.botCommandsTable.isEnabled, true),
-							),
-						),
-				),
-			)({ botIds }, tx)
+			return db.run(
+				PG.from(schema.botCommandsTable)
+					.select()
+					.where(($) => [$.botId.in_(...botIds), $.isEnabled.eq(true)]),
+			)
 		}
 
 		// Find a specific command by bot and name
-		const findByBotAndName = (botId: BotId, name: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { botId: BotId; name: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botCommandsTable)
-							.where(
-								and(
-									eq(schema.botCommandsTable.botId, data.botId),
-									eq(schema.botCommandsTable.name, data.name),
-								),
-							)
-							.limit(1),
-					),
-				)({ botId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByBotAndName = (botId: BotId, name: string) =>
+			db.first(
+				PG.from(schema.botCommandsTable)
+					.select()
+					.where(($) => [$.botId.eq(botId), $.name.eq(name)])
+					.limit(1),
+			)
 
 		// Upsert command (for bot sync)
-		const upsert = (
-			data: {
-				botId: BotId
-				name: string
-				description: string
-				arguments: BotCommand.BotCommandArgument[] | null
-				usageExample: string | null
-			},
-			tx?: TxFn,
-		) =>
-			db
-				.makeQuery(
-					(
-						execute,
-						d: {
-							botId: BotId
-							name: string
-							description: string
-							arguments: BotCommand.BotCommandArgument[] | null
-							usageExample: string | null
-						},
-					) =>
-						execute((client) => {
-							// Convert null values to undefined for DB schema compatibility
-							const args = (d.arguments ?? []).map((arg) => ({
-								...arg,
-								description: arg.description ?? undefined,
-								placeholder: arg.placeholder ?? undefined,
-							}))
-							return client
-								.insert(schema.botCommandsTable)
-								.values({
-									botId: d.botId,
-									name: d.name,
-									description: d.description,
-									arguments: args,
-									usageExample: d.usageExample,
-									isEnabled: true,
-								})
-								.onConflictDoUpdate({
-									target: [schema.botCommandsTable.botId, schema.botCommandsTable.name],
-									set: {
-										description: d.description,
-										arguments: args,
-										usageExample: d.usageExample,
-										isEnabled: true,
-										updatedAt: new Date(),
-									},
-								})
-								.returning()
-						}),
-				)(data, tx)
+		const upsert = (data: {
+			botId: BotId
+			name: string
+			description: string
+			arguments: BotCommand.BotCommandArgument[] | null
+			usageExample: string | null
+		}) => {
+			// Convert null values to undefined for DB schema compatibility
+			const args = (data.arguments ?? []).map((arg) => ({
+				...arg,
+				description: arg.description ?? undefined,
+				placeholder: arg.placeholder ?? undefined,
+			}))
+			return db
+				.run(
+					PG.insertInto(schema.botCommandsTable)
+						.values({
+							botId: data.botId,
+							name: data.name,
+							description: data.description,
+							arguments: args,
+							usageExample: data.usageExample,
+							isEnabled: true,
+						})
+						.onConflictDoUpdate({
+							target: ["botId", "name"],
+							set: {
+								description: data.description,
+								arguments: args,
+								usageExample: data.usageExample,
+								isEnabled: true,
+								updatedAt: new Date(),
+							},
+						})
+						.returning(),
+				)
 				.pipe(Effect.map((results) => results[0]))
+		}
 
 		// Delete commands not updated since the given timestamp (for bot sync cleanup)
-		const deleteStaleCommands = (botId: BotId, syncStartTime: Date, tx?: TxFn) =>
-			db.makeQuery((execute, data: { botId: BotId; syncStartTime: Date }) =>
-				execute((client) =>
-					client
-						.delete(schema.botCommandsTable)
-						.where(
-							and(
-								eq(schema.botCommandsTable.botId, data.botId),
-								lt(schema.botCommandsTable.updatedAt, data.syncStartTime),
-							),
-						),
-				),
-			)({ botId, syncStartTime }, tx)
+		const deleteStaleCommands = (botId: BotId, syncStartTime: Date) =>
+			db.run(
+				PG.deleteFrom(schema.botCommandsTable).where(($) => [
+					$.botId.eq(botId),
+					$.updatedAt.lt(syncStartTime),
+				]),
+			)
 
 		return {
 			...baseRepo,

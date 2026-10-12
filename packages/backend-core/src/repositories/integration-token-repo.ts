@@ -1,8 +1,8 @@
-import { Database, eq, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { IntegrationConnectionId, IntegrationTokenId } from "@hazel/schema"
 import { IntegrationToken } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class IntegrationTokenRepo extends Context.Service<IntegrationTokenRepo>()("IntegrationTokenRepo", {
 	make: Effect.gen(function* () {
@@ -17,18 +17,13 @@ export class IntegrationTokenRepo extends Context.Service<IntegrationTokenRepo>(
 		const db = yield* Database.Database
 
 		// Find token by connection ID
-		const findByConnectionId = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.integrationTokensTable)
-							.where(eq(schema.integrationTokensTable.connectionId, data.connectionId))
-							.limit(1),
-					),
-				)({ connectionId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByConnectionId = (connectionId: IntegrationConnectionId) =>
+			db.first(
+				PG.from(schema.integrationTokensTable)
+					.select()
+					.where(($) => [$.connectionId.eq(connectionId)])
+					.limit(1),
+			)
 
 		// Update token (for refresh)
 		const updateToken = (
@@ -42,50 +37,29 @@ export class IntegrationTokenRepo extends Context.Service<IntegrationTokenRepo>(
 				expiresAt?: Date | null
 				scope?: string | null
 			},
-			tx?: TxFn,
 		) =>
-			db.makeQuery(
-				(
-					execute,
-					params: {
-						tokenId: IntegrationTokenId
-						encryptedAccessToken: string
-						encryptedRefreshToken?: string | null
-						iv: string
-						refreshTokenIv?: string | null
-						encryptionKeyVersion: number
-						expiresAt?: Date | null
-						scope?: string | null
-					},
-				) =>
-					execute((client) =>
-						client
-							.update(schema.integrationTokensTable)
-							.set({
-								encryptedAccessToken: params.encryptedAccessToken,
-								encryptedRefreshToken: params.encryptedRefreshToken,
-								iv: params.iv,
-								refreshTokenIv: params.refreshTokenIv,
-								encryptionKeyVersion: params.encryptionKeyVersion,
-								expiresAt: params.expiresAt,
-								scope: params.scope,
-								lastRefreshedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.integrationTokensTable.id, params.tokenId))
-							.returning(),
-					),
-			)({ tokenId, ...data }, tx)
+			db.run(
+				PG.update(schema.integrationTokensTable)
+					.set({
+						encryptedAccessToken: data.encryptedAccessToken,
+						encryptedRefreshToken: data.encryptedRefreshToken,
+						iv: data.iv,
+						refreshTokenIv: data.refreshTokenIv,
+						encryptionKeyVersion: data.encryptionKeyVersion,
+						expiresAt: data.expiresAt,
+						scope: data.scope,
+						lastRefreshedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(($) => [$.id.eq(tokenId)])
+					.returning(),
+			)
 
 		// Delete token (hard delete for security)
-		const deleteByConnectionId = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
-				execute((client) =>
-					client
-						.delete(schema.integrationTokensTable)
-						.where(eq(schema.integrationTokensTable.connectionId, data.connectionId)),
-				),
-			)({ connectionId }, tx)
+		const deleteByConnectionId = (connectionId: IntegrationConnectionId) =>
+			db.run(
+				PG.deleteFrom(schema.integrationTokensTable).where(($) => [$.connectionId.eq(connectionId)]),
+			)
 
 		return {
 			...baseRepo,

@@ -1,4 +1,4 @@
-import { and, Database, eq, inArray, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ChannelId, MessageId, OrganizationMemberId } from "@hazel/schema"
 import { Notification } from "@hazel/domain/models"
@@ -25,26 +25,16 @@ export class NotificationRepo extends Context.Service<NotificationRepo>()("Notif
 		 * ensures users can only delete their own notifications.
 		 * The caller is responsible for authorization.
 		 */
-		const deleteByMessageIds = (
-			messageIds: readonly MessageId[],
-			memberId: OrganizationMemberId,
-			tx?: TxFn,
-		) =>
-			db.makeQuery(
-				(execute, data: { messageIds: readonly MessageId[]; memberId: OrganizationMemberId }) =>
-					execute((client) =>
-						client
-							.delete(schema.notificationsTable)
-							.where(
-								and(
-									inArray(schema.notificationsTable.resourceId, [...data.messageIds]),
-									eq(schema.notificationsTable.resourceType, "message"),
-									eq(schema.notificationsTable.memberId, data.memberId),
-								),
-							)
-							.returning(),
-					),
-			)({ messageIds, memberId }, tx)
+		const deleteByMessageIds = (messageIds: readonly MessageId[], memberId: OrganizationMemberId) =>
+			db.run(
+				PG.deleteFrom(schema.notificationsTable)
+					.where(($) => [
+						$.resourceId.in_(...messageIds),
+						$.resourceType.eq("message"),
+						$.memberId.eq(memberId),
+					])
+					.returning(),
+			)
 
 		/**
 		 * Delete all notifications for a specific channel and member.
@@ -55,21 +45,16 @@ export class NotificationRepo extends Context.Service<NotificationRepo>()("Notif
 		 * ensures users can only delete their own notifications.
 		 * The caller is responsible for authorization.
 		 */
-		const deleteByChannelId = (channelId: ChannelId, memberId: OrganizationMemberId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { channelId: ChannelId; memberId: OrganizationMemberId }) =>
-				execute((client) =>
-					client
-						.delete(schema.notificationsTable)
-						.where(
-							and(
-								eq(schema.notificationsTable.targetedResourceId, data.channelId),
-								eq(schema.notificationsTable.targetedResourceType, "channel"),
-								eq(schema.notificationsTable.memberId, data.memberId),
-							),
-						)
-						.returning(),
-				),
-			)({ channelId, memberId }, tx)
+		const deleteByChannelId = (channelId: ChannelId, memberId: OrganizationMemberId) =>
+			db.run(
+				PG.deleteFrom(schema.notificationsTable)
+					.where(($) => [
+						$.targetedResourceId.eq(channelId),
+						$.targetedResourceType.eq("channel"),
+						$.memberId.eq(memberId),
+					])
+					.returning(),
+			)
 
 		return {
 			...baseRepo,

@@ -1,8 +1,8 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { OrganizationId } from "@hazel/schema"
 import { Channel } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ChannelRepo extends Context.Service<ChannelRepo>()("ChannelRepo", {
 	make: Effect.gen(function* () {
@@ -16,24 +16,17 @@ export class ChannelRepo extends Context.Service<ChannelRepo>()("ChannelRepo", {
 		)
 		const db = yield* Database.Database
 
-		const findByOrgAndName = (organizationId: OrganizationId, name: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { organizationId: OrganizationId; name: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.channelsTable)
-							.where(
-								and(
-									eq(schema.channelsTable.organizationId, data.organizationId),
-									eq(schema.channelsTable.name, data.name),
-									isNull(schema.channelsTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)({ organizationId, name }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByOrgAndName = (organizationId: OrganizationId, name: string) =>
+			db.first(
+				PG.from(schema.channelsTable)
+					.select()
+					.where(($) => [
+						$.organizationId.eq(organizationId),
+						$.name.eq(name),
+						$.deletedAt.isNull(),
+					])
+					.limit(1),
+			)
 
 		return {
 			...baseRepo,

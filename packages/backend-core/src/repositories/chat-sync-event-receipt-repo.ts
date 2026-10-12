@@ -1,8 +1,8 @@
-import { and, Database, eq, gte, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import { ChatSyncEventReceipt } from "@hazel/domain/models"
 import type { SyncChannelLinkId, SyncConnectionId, SyncEventReceiptId } from "@hazel/schema"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ChatSyncEventReceiptRepo extends Context.Service<ChatSyncEventReceiptRepo>()(
 	"ChatSyncEventReceiptRepo",
@@ -22,192 +22,104 @@ export class ChatSyncEventReceiptRepo extends Context.Service<ChatSyncEventRecei
 				syncConnectionId: SyncConnectionId,
 				source: ChatSyncEventReceipt.ChatSyncReceiptSource,
 				dedupeKey: string,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								syncConnectionId: SyncConnectionId
-								source: ChatSyncEventReceipt.ChatSyncReceiptSource
-								dedupeKey: string
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncEventReceiptsTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncEventReceiptsTable.syncConnectionId,
-												data.syncConnectionId,
-											),
-											eq(schema.chatSyncEventReceiptsTable.source, data.source),
-											eq(schema.chatSyncEventReceiptsTable.dedupeKey, data.dedupeKey),
-										),
-									)
-									.limit(1),
-							),
-					)({ syncConnectionId, source, dedupeKey }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.chatSyncEventReceiptsTable)
+						.select()
+						.where(($) => [
+							$.syncConnectionId.eq(syncConnectionId),
+							$.source.eq(source),
+							$.dedupeKey.eq(dedupeKey),
+						])
+						.limit(1),
+				)
 
-			const claimByDedupeKey = (
-				params: {
-					syncConnectionId: SyncConnectionId
-					channelLinkId?: SyncChannelLinkId | null
-					source: ChatSyncEventReceipt.ChatSyncReceiptSource
-					dedupeKey: string
-				},
-				tx?: TxFn,
-			) =>
+			const claimByDedupeKey = (params: {
+				syncConnectionId: SyncConnectionId
+				channelLinkId?: SyncChannelLinkId | null
+				source: ChatSyncEventReceipt.ChatSyncReceiptSource
+				dedupeKey: string
+			}) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								syncConnectionId: SyncConnectionId
-								channelLinkId?: SyncChannelLinkId | null
-								source: ChatSyncEventReceipt.ChatSyncReceiptSource
-								dedupeKey: string
-							},
-						) =>
-							execute((client) =>
-								client
-									.insert(schema.chatSyncEventReceiptsTable)
-									.values({
-										syncConnectionId: data.syncConnectionId,
-										channelLinkId: data.channelLinkId ?? null,
-										source: data.source,
-										externalEventId: null,
-										dedupeKey: data.dedupeKey,
-										payloadHash: null,
-										status: "processed",
-										errorMessage: null,
-									})
-									.onConflictDoNothing({
-										target: [
-											schema.chatSyncEventReceiptsTable.syncConnectionId,
-											schema.chatSyncEventReceiptsTable.source,
-											schema.chatSyncEventReceiptsTable.dedupeKey,
-										],
-									})
-									.returning({ id: schema.chatSyncEventReceiptsTable.id }),
-							),
-					)(params, tx)
+					.run(
+						PG.insertInto(schema.chatSyncEventReceiptsTable)
+							.values({
+								syncConnectionId: params.syncConnectionId,
+								channelLinkId: params.channelLinkId ?? null,
+								source: params.source,
+								externalEventId: null,
+								dedupeKey: params.dedupeKey,
+								payloadHash: null,
+								status: "processed",
+								errorMessage: null,
+							})
+							.onConflictDoNothing({ target: ["syncConnectionId", "source", "dedupeKey"] })
+							.returning("id"),
+					)
 					.pipe(Effect.map((results) => results.length > 0))
 
-			const updateByDedupeKey = (
-				params: {
-					syncConnectionId: SyncConnectionId
-					source: ChatSyncEventReceipt.ChatSyncReceiptSource
-					dedupeKey: string
+			const updateByDedupeKey = (params: {
+				syncConnectionId: SyncConnectionId
+				source: ChatSyncEventReceipt.ChatSyncReceiptSource
+				dedupeKey: string
+				channelLinkId?: SyncChannelLinkId | null
+				externalEventId?: string | null
+				payloadHash?: string | null
+				status?: ChatSyncEventReceipt.ChatSyncReceiptStatus
+				errorMessage?: string | null
+			}) => {
+				const set: {
 					channelLinkId?: SyncChannelLinkId | null
 					externalEventId?: string | null
-					payloadHash?: string | null
-					status?: ChatSyncEventReceipt.ChatSyncReceiptStatus
-					errorMessage?: string | null
-				},
-				tx?: TxFn,
-			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: {
-							syncConnectionId: SyncConnectionId
-							source: ChatSyncEventReceipt.ChatSyncReceiptSource
-							dedupeKey: string
-							channelLinkId?: SyncChannelLinkId | null
-							externalEventId?: string | null
-							payloadHash?: string | null
-							status?: ChatSyncEventReceipt.ChatSyncReceiptStatus
-							errorMessage?: string | null
-						},
-					) =>
-						execute((client) => {
-							const set: {
-								channelLinkId?: SyncChannelLinkId | null
-								externalEventId?: string | null
-								payloadHash: string | null
-								status: ChatSyncEventReceipt.ChatSyncReceiptStatus
-								errorMessage: string | null
-								processedAt: Date
-							} = {
-								payloadHash: data.payloadHash ?? null,
-								status: data.status ?? "processed",
-								errorMessage: data.errorMessage ?? null,
-								processedAt: new Date(),
-							}
-							if (data.channelLinkId !== undefined) {
-								set.channelLinkId = data.channelLinkId
-							}
-							if (data.externalEventId !== undefined) {
-								set.externalEventId = data.externalEventId
-							}
+					payloadHash: string | null
+					status: ChatSyncEventReceipt.ChatSyncReceiptStatus
+					errorMessage: string | null
+					processedAt: Date
+				} = {
+					payloadHash: params.payloadHash ?? null,
+					status: params.status ?? "processed",
+					errorMessage: params.errorMessage ?? null,
+					processedAt: new Date(),
+				}
+				if (params.channelLinkId !== undefined) {
+					set.channelLinkId = params.channelLinkId
+				}
+				if (params.externalEventId !== undefined) {
+					set.externalEventId = params.externalEventId
+				}
 
-							return client
-								.update(schema.chatSyncEventReceiptsTable)
-								.set(set)
-								.where(
-									and(
-										eq(
-											schema.chatSyncEventReceiptsTable.syncConnectionId,
-											data.syncConnectionId,
-										),
-										eq(schema.chatSyncEventReceiptsTable.source, data.source),
-										eq(schema.chatSyncEventReceiptsTable.dedupeKey, data.dedupeKey),
-									),
-								)
-								.returning()
-						}),
-				)(params, tx)
+				return db.run(
+					PG.update(schema.chatSyncEventReceiptsTable)
+						.set(set)
+						.where(($) => [
+							$.syncConnectionId.eq(params.syncConnectionId),
+							$.source.eq(params.source),
+							$.dedupeKey.eq(params.dedupeKey),
+						])
+						.returning(),
+				)
+			}
 
-			const findRecentByConnection = (
-				syncConnectionId: SyncConnectionId,
-				processedAfter: Date,
-				tx?: TxFn,
-			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: {
-							syncConnectionId: SyncConnectionId
-							processedAfter: Date
-						},
-					) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncEventReceiptsTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncEventReceiptsTable.syncConnectionId,
-											data.syncConnectionId,
-										),
-										gte(
-											schema.chatSyncEventReceiptsTable.processedAt,
-											data.processedAfter,
-										),
-									),
-								),
-						),
-				)({ syncConnectionId, processedAfter }, tx)
+			const findRecentByConnection = (syncConnectionId: SyncConnectionId, processedAfter: Date) =>
+				db.run(
+					PG.from(schema.chatSyncEventReceiptsTable)
+						.select()
+						.where(($) => [
+							$.syncConnectionId.eq(syncConnectionId),
+							$.processedAt.gte(processedAfter),
+						]),
+				)
 
-			const markFailed = (id: SyncEventReceiptId, errorMessage: string, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncEventReceiptId; errorMessage: string }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncEventReceiptsTable)
-							.set({
-								status: "failed",
-								errorMessage: data.errorMessage,
-							})
-							.where(eq(schema.chatSyncEventReceiptsTable.id, data.id))
-							.returning(),
-					),
-				)({ id, errorMessage }, tx)
+			const markFailed = (id: SyncEventReceiptId, errorMessage: string) =>
+				db.run(
+					PG.update(schema.chatSyncEventReceiptsTable)
+						.set({
+							status: "failed",
+							errorMessage,
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			return {
 				...baseRepo,

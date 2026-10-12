@@ -3,8 +3,8 @@
  * and the `HAZEL_DB` Hyperdrive config every Worker binds. PR previews and dev stages point the
  * Hyperdrive at `HAZEL_PG_URL` (a shared preview database, or docker Postgres under `alchemy dev`).
  *
- * Schema changes stay on `drizzle-kit push` (packages/db has no migration files), so the stack
- * declares no migrations.
+ * Schema changes are effect-orm migrations in `packages/db/migrations`, applied with
+ * `bun run db:migrate` (packages/db); the stack declares no migrations.
  */
 import * as Cloudflare from "alchemy/Cloudflare"
 import * as Planetscale from "alchemy/Planetscale"

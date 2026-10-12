@@ -17,7 +17,6 @@ export default defineConfig({
 		"jose",
 		/^rivetkit/,
 		"react",
-		"drizzle-orm",
 		"@linear/sdk",
 		"he",
 		"rss-parser",

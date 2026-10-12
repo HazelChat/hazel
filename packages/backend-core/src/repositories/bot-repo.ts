@@ -1,8 +1,8 @@
-import { and, Database, eq, ilike, inArray, isNull, Repository, or, schema, sql, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { BotId, UserId } from "@hazel/schema"
 import { Bot } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option, type Schema } from "effect"
+import { Context, Effect, Layer, type Schema } from "effect"
 
 export class BotRepo extends Context.Service<BotRepo>()("BotRepo", {
 	make: Effect.gen(function* () {
@@ -17,225 +17,153 @@ export class BotRepo extends Context.Service<BotRepo>()("BotRepo", {
 		const db = yield* Database.Database
 
 		// Find bot by ID
-		const findById = (id: BotId, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { id: BotId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botsTable)
-							.where(and(eq(schema.botsTable.id, data.id), isNull(schema.botsTable.deletedAt)))
-							.limit(1),
-					),
-				)({ id }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findById = (id: BotId) =>
+			db.first(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [$.id.eq(id), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
 		// Find bot by token hash
-		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { tokenHash: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botsTable)
-							.where(
-								and(
-									eq(schema.botsTable.apiTokenHash, data.tokenHash),
-									isNull(schema.botsTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByTokenHash = (tokenHash: string) =>
+			db.first(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [$.apiTokenHash.eq(tokenHash), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
 		// Find bot by user ID
-		const findByUserId = (userId: UserId, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { userId: UserId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.botsTable)
-							.where(
-								and(
-									eq(schema.botsTable.userId, data.userId),
-									isNull(schema.botsTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)({ userId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByUserId = (userId: UserId) =>
+			db.first(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [$.userId.eq(userId), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
 		// Find all bots created by a user
-		const findByCreator = (createdBy: UserId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { createdBy: UserId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botsTable)
-						.where(
-							and(
-								eq(schema.botsTable.createdBy, data.createdBy),
-								isNull(schema.botsTable.deletedAt),
-							),
-						),
-				),
-			)({ createdBy }, tx)
+		const findByCreator = (createdBy: UserId) =>
+			db.run(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [$.createdBy.eq(createdBy), $.deletedAt.isNull()]),
+			)
 
 		// Find all public bots (for marketplace)
-		const findPublic = (search?: string, tx?: TxFn) =>
-			db.makeQuery((execute, data: { search?: string }) =>
-				execute((client) => {
-					const conditions = [
-						eq(schema.botsTable.isPublic, true),
-						isNull(schema.botsTable.deletedAt),
-					]
-
-					if (data.search) {
-						conditions.push(
-							or(
-								ilike(schema.botsTable.name, `%${data.search}%`),
-								ilike(schema.botsTable.description, `%${data.search}%`),
-							)!,
-						)
-					}
-
-					return client
-						.select()
-						.from(schema.botsTable)
-						.where(and(...conditions))
-						.orderBy(schema.botsTable.installCount)
-				}),
-			)({ search }, tx)
+		const findPublic = (search?: string) =>
+			db.run(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [
+						$.isPublic.eq(true),
+						$.deletedAt.isNull(),
+						search
+							? $.name.ilike(`%${search}%`).or($.description.ilike(`%${search}%`))
+							: undefined,
+					])
+					.orderBy(["installCount", "asc"]),
+			)
 
 		// Find bots by IDs (for installed bots lookup)
-		const findByIds = (ids: BotId[], tx?: TxFn) => {
+		const findByIds = (ids: BotId[]) => {
 			if (ids.length === 0) {
 				return Effect.succeed([])
 			}
-			return db.makeQuery((execute, data: { ids: BotId[] }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.botsTable)
-						.where(
-							and(inArray(schema.botsTable.id, data.ids), isNull(schema.botsTable.deletedAt)),
-						),
-				),
-			)({ ids }, tx)
+			return db.run(
+				PG.from(schema.botsTable)
+					.select()
+					.where(($) => [$.id.in_(...ids), $.deletedAt.isNull()]),
+			)
 		}
 
 		// Insert a new bot
-		const insert = (data: Schema.Schema.Type<typeof Bot.Insert>, tx?: TxFn) =>
-			db.makeQuery((execute, input: typeof data) =>
-				execute((client) =>
-					client
-						.insert(schema.botsTable)
-						.values({
-							userId: input.userId,
-							createdBy: input.createdBy,
-							name: input.name,
-							description: input.description,
-							webhookUrl: input.webhookUrl,
-							apiTokenHash: input.apiTokenHash,
-							scopes: input.scopes ? [...input.scopes] : null,
-							metadata: input.metadata,
-							isPublic: input.isPublic,
-							installCount: input.installCount,
-							allowedIntegrations: input.allowedIntegrations
-								? [...input.allowedIntegrations]
-								: null,
-						})
-						.returning(),
-				),
-			)(data, tx)
+		const insert = (data: Schema.Schema.Type<typeof Bot.Insert>) =>
+			db.run(
+				PG.insertInto(schema.botsTable)
+					.values({
+						userId: data.userId,
+						createdBy: data.createdBy,
+						name: data.name,
+						description: data.description,
+						webhookUrl: data.webhookUrl,
+						apiTokenHash: data.apiTokenHash,
+						scopes: data.scopes ? [...data.scopes] : null,
+						metadata: data.metadata,
+						isPublic: data.isPublic,
+						installCount: data.installCount,
+						allowedIntegrations: data.allowedIntegrations ? [...data.allowedIntegrations] : null,
+					})
+					.returning(),
+			)
 
 		// Update a bot
 		const update = (
 			data: { id: BotId } & Partial<
 				Omit<Schema.Schema.Type<typeof Bot.Update>, "id" | "createdAt" | "updatedAt" | "deletedAt">
 			>,
-			tx?: TxFn,
 		) =>
 			db
-				.makeQuery((execute, input: typeof data) =>
-					execute((client) =>
-						client
-							.update(schema.botsTable)
-							.set({
-								...(input.name !== undefined && { name: input.name }),
-								...(input.description !== undefined && {
-									description: input.description,
-								}),
-								...(input.webhookUrl !== undefined && { webhookUrl: input.webhookUrl }),
-								...(input.scopes !== undefined && {
-									scopes: input.scopes ? [...input.scopes] : null,
-								}),
-								...(input.isPublic !== undefined && { isPublic: input.isPublic }),
-								...(input.apiTokenHash !== undefined && {
-									apiTokenHash: input.apiTokenHash,
-								}),
-								...(input.mentionable !== undefined && {
-									mentionable: input.mentionable,
-								}),
-								updatedAt: new Date(),
-							})
-							.where(and(eq(schema.botsTable.id, input.id), isNull(schema.botsTable.deletedAt)))
-							.returning(),
-					),
-				)(data, tx)
+				.run(
+					PG.update(schema.botsTable)
+						.set({
+							...(data.name !== undefined && { name: data.name }),
+							...(data.description !== undefined && {
+								description: data.description,
+							}),
+							...(data.webhookUrl !== undefined && { webhookUrl: data.webhookUrl }),
+							...(data.scopes !== undefined && {
+								scopes: data.scopes ? [...data.scopes] : null,
+							}),
+							...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+							...(data.apiTokenHash !== undefined && {
+								apiTokenHash: data.apiTokenHash,
+							}),
+							...(data.mentionable !== undefined && {
+								mentionable: data.mentionable,
+							}),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(data.id), $.deletedAt.isNull()])
+						.returning(),
+				)
 				.pipe(Effect.map((results) => results[0]))
 
 		// Update token hash
-		const updateTokenHash = (id: BotId, tokenHash: string, tx?: TxFn) =>
+		const updateTokenHash = (id: BotId, tokenHash: string) =>
 			db
-				.makeQuery((execute, data: { id: BotId; tokenHash: string }) =>
-					execute((client) =>
-						client
-							.update(schema.botsTable)
-							.set({ apiTokenHash: data.tokenHash, updatedAt: new Date() })
-							.where(and(eq(schema.botsTable.id, data.id), isNull(schema.botsTable.deletedAt)))
-							.returning(),
-					),
-				)({ id, tokenHash }, tx)
+				.run(
+					PG.update(schema.botsTable)
+						.set({ apiTokenHash: tokenHash, updatedAt: new Date() })
+						.where(($) => [$.id.eq(id), $.deletedAt.isNull()])
+						.returning(),
+				)
 				.pipe(Effect.map((results) => results[0]))
 
 		// Soft delete a bot
-		const softDelete = (id: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, botId: BotId) =>
-				execute((client) =>
-					client
-						.update(schema.botsTable)
-						.set({ deletedAt: new Date() })
-						.where(and(eq(schema.botsTable.id, botId), isNull(schema.botsTable.deletedAt))),
-				),
-			)(id, tx)
+		const softDelete = (id: BotId) =>
+			db.run(
+				PG.update(schema.botsTable)
+					.set({ deletedAt: new Date() })
+					.where(($) => [$.id.eq(id), $.deletedAt.isNull()]),
+			)
 
 		// Increment install count
-		const incrementInstallCount = (id: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, botId: BotId) =>
-				execute((client) =>
-					client
-						.update(schema.botsTable)
-						.set({ installCount: sql`${schema.botsTable.installCount} + 1` })
-						.where(eq(schema.botsTable.id, botId)),
-				),
-			)(id, tx)
+		const incrementInstallCount = (id: BotId) =>
+			db.run(
+				PG.update(schema.botsTable)
+					.set(($) => ({ installCount: $.installCount.add(1) }))
+					.where(($) => [$.id.eq(id)]),
+			)
 
 		// Decrement install count
-		const decrementInstallCount = (id: BotId, tx?: TxFn) =>
-			db.makeQuery((execute, botId: BotId) =>
-				execute((client) =>
-					client
-						.update(schema.botsTable)
-						.set({
-							installCount: sql`GREATEST(0, ${schema.botsTable.installCount} - 1)`,
-						})
-						.where(eq(schema.botsTable.id, botId)),
-				),
-			)(id, tx)
+		const decrementInstallCount = (id: BotId) =>
+			db.run(
+				PG.update(schema.botsTable)
+					.set(($) => ({ installCount: PG.greatest(PG.lit(0), $.installCount.sub(1)) }))
+					.where(($) => [$.id.eq(id)]),
+			)
 
 		return {
 			...baseRepo,

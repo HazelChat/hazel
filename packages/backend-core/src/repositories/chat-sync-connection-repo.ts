@@ -1,8 +1,8 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import { ChatSyncConnection } from "@hazel/domain/models"
 import type { IntegrationConnectionId, OrganizationId, SyncConnectionId } from "@hazel/schema"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ChatSyncConnectionRepo extends Context.Service<ChatSyncConnectionRepo>()(
 	"ChatSyncConnectionRepo",
@@ -18,156 +18,86 @@ export class ChatSyncConnectionRepo extends Context.Service<ChatSyncConnectionRe
 			)
 			const db = yield* Database.Database
 
-			const findByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.chatSyncConnectionsTable)
-							.where(
-								and(
-									eq(schema.chatSyncConnectionsTable.organizationId, data.organizationId),
-									isNull(schema.chatSyncConnectionsTable.deletedAt),
-								),
-							),
-					),
-				)({ organizationId }, tx)
+			const findByOrganization = (organizationId: OrganizationId) =>
+				db.run(
+					PG.from(schema.chatSyncConnectionsTable)
+						.select()
+						.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+				)
 
 			const findByProviderAndWorkspace = (
 				organizationId: OrganizationId,
 				provider: string,
 				externalWorkspaceId: string,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								organizationId: OrganizationId
-								provider: string
-								externalWorkspaceId: string
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncConnectionsTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncConnectionsTable.organizationId,
-												data.organizationId,
-											),
-											eq(schema.chatSyncConnectionsTable.provider, data.provider),
-											eq(
-												schema.chatSyncConnectionsTable.externalWorkspaceId,
-												data.externalWorkspaceId,
-											),
-											isNull(schema.chatSyncConnectionsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ organizationId, provider, externalWorkspaceId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.chatSyncConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.provider.eq(provider),
+							$.externalWorkspaceId.eq(externalWorkspaceId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
-			const findActiveByProvider = (provider: string, tx?: TxFn) =>
-				db.makeQuery((execute, data: { provider: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.chatSyncConnectionsTable)
-							.where(
-								and(
-									eq(schema.chatSyncConnectionsTable.provider, data.provider),
-									eq(schema.chatSyncConnectionsTable.status, "active"),
-									isNull(schema.chatSyncConnectionsTable.deletedAt),
-								),
-							),
-					),
-				)({ provider }, tx)
+			const findActiveByProvider = (provider: string) =>
+				db.run(
+					PG.from(schema.chatSyncConnectionsTable)
+						.select()
+						.where(($) => [$.provider.eq(provider), $.status.eq("active"), $.deletedAt.isNull()]),
+				)
 
-			const findByIntegrationConnectionId = (
-				integrationConnectionId: IntegrationConnectionId,
-				tx?: TxFn,
-			) =>
-				db
-					.makeQuery((execute, data: { integrationConnectionId: IntegrationConnectionId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncConnectionsTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncConnectionsTable.integrationConnectionId,
-											data.integrationConnectionId,
-										),
-										isNull(schema.chatSyncConnectionsTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)({ integrationConnectionId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByIntegrationConnectionId = (integrationConnectionId: IntegrationConnectionId) =>
+				db.first(
+					PG.from(schema.chatSyncConnectionsTable)
+						.select()
+						.where(($) => [
+							$.integrationConnectionId.eq(integrationConnectionId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			const updateStatus = (
 				id: SyncConnectionId,
 				status: ChatSyncConnection.ChatSyncConnectionStatus,
 				errorMessage?: string,
-				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: {
-							id: SyncConnectionId
-							status: ChatSyncConnection.ChatSyncConnectionStatus
-							errorMessage?: string
-						},
-					) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncConnectionsTable)
-								.set({
-									status: data.status,
-									errorMessage: data.errorMessage ?? null,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncConnectionsTable.id, data.id))
-								.returning(),
-						),
-				)({ id, status, errorMessage }, tx)
+				db.run(
+					PG.update(schema.chatSyncConnectionsTable)
+						.set({
+							status,
+							errorMessage: errorMessage ?? null,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const updateLastSyncedAt = (id: SyncConnectionId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncConnectionId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncConnectionsTable)
-							.set({
-								lastSyncedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncConnectionsTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const updateLastSyncedAt = (id: SyncConnectionId) =>
+				db.run(
+					PG.update(schema.chatSyncConnectionsTable)
+						.set({
+							lastSyncedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const softDelete = (id: SyncConnectionId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncConnectionId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncConnectionsTable)
-							.set({
-								deletedAt: new Date(),
-								status: "disabled",
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncConnectionsTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const softDelete = (id: SyncConnectionId) =>
+				db.run(
+					PG.update(schema.chatSyncConnectionsTable)
+						.set({
+							deletedAt: new Date(),
+							status: "disabled",
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			return {
 				...baseRepo,

@@ -59,7 +59,7 @@ Worker env (secrets are uploaded as Worker secrets, plain values as vars) is lis
 1. **Plan first.** `bunx alchemy plan --stage prd` and check that the existing Workers, KV
    namespaces and custom domains show as _adopt/update_, not _create/replace_.
 2. **Database.** The first deploy creates the PlanetScale database `hazel` and its roles.
-    - Load the schema with `drizzle-kit push` (packages/db) against the API role's URL.
+    - Load the schema with `bun run db:migrate` (packages/db) against the API role's URL.
     - Copy the data over in a maintenance window (`pg_dump` from the current host, then restore).
     - Repoint the Railway services (backend, cluster) at PlanetScale first, so the database moves
       before any compute does.

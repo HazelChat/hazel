@@ -1,8 +1,12 @@
-import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import { IntegrationConnection } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, DateTime, Effect, Layer, Option } from "effect"
+
+/** Domain timestamps may be a `DateTime.Utc`; the timestamp columns take a `Date`. */
+const toDate = <A extends Date | DateTime.Utc | null | undefined>(value: A) =>
+	(DateTime.isDateTime(value) ? DateTime.toDate(value) : value) as Exclude<A, DateTime.Utc> | Date
 
 export class IntegrationConnectionRepo extends Context.Service<IntegrationConnectionRepo>()(
 	"IntegrationConnectionRepo",
@@ -22,75 +26,38 @@ export class IntegrationConnectionRepo extends Context.Service<IntegrationConnec
 			const findOrgConnection = (
 				organizationId: OrganizationId,
 				provider: IntegrationConnection.IntegrationProvider,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								organizationId: OrganizationId
-								provider: IntegrationConnection.IntegrationProvider
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.integrationConnectionsTable)
-									.where(
-										and(
-											eq(
-												schema.integrationConnectionsTable.organizationId,
-												data.organizationId,
-											),
-											eq(schema.integrationConnectionsTable.provider, data.provider),
-											isNull(schema.integrationConnectionsTable.userId),
-											eq(schema.integrationConnectionsTable.level, "organization"),
-											isNull(schema.integrationConnectionsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ organizationId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.provider.eq(provider),
+							$.userId.isNull(),
+							$.level.eq("organization"),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			// Find user-level connection for a specific provider
 			const findUserConnection = (
 				organizationId: OrganizationId,
 				userId: UserId,
 				provider: IntegrationConnection.IntegrationProvider,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								organizationId: OrganizationId
-								userId: UserId
-								provider: IntegrationConnection.IntegrationProvider
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.integrationConnectionsTable)
-									.where(
-										and(
-											eq(
-												schema.integrationConnectionsTable.organizationId,
-												data.organizationId,
-											),
-											eq(schema.integrationConnectionsTable.userId, data.userId),
-											eq(schema.integrationConnectionsTable.provider, data.provider),
-											eq(schema.integrationConnectionsTable.level, "user"),
-											isNull(schema.integrationConnectionsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.userId.eq(userId),
+							$.provider.eq(provider),
+							$.level.eq("user"),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			// Find user-level connection for a specific provider, including soft-deleted rows.
 			// Used by upsert to reactivate previously disconnected links.
@@ -98,249 +65,148 @@ export class IntegrationConnectionRepo extends Context.Service<IntegrationConnec
 				organizationId: OrganizationId,
 				userId: UserId,
 				provider: IntegrationConnection.IntegrationProvider,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								organizationId: OrganizationId
-								userId: UserId
-								provider: IntegrationConnection.IntegrationProvider
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.integrationConnectionsTable)
-									.where(
-										and(
-											eq(
-												schema.integrationConnectionsTable.organizationId,
-												data.organizationId,
-											),
-											eq(schema.integrationConnectionsTable.userId, data.userId),
-											eq(schema.integrationConnectionsTable.provider, data.provider),
-											eq(schema.integrationConnectionsTable.level, "user"),
-										),
-									)
-									.limit(1),
-							),
-					)({ organizationId, userId, provider }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.userId.eq(userId),
+							$.provider.eq(provider),
+							$.level.eq("user"),
+						])
+						.limit(1),
+				)
 
 			// Find active user-level connection by external account ID.
 			const findActiveUserByExternalAccountId = (
 				organizationId: OrganizationId,
 				provider: IntegrationConnection.IntegrationProvider,
 				externalAccountId: string,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								organizationId: OrganizationId
-								provider: IntegrationConnection.IntegrationProvider
-								externalAccountId: string
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.integrationConnectionsTable)
-									.where(
-										and(
-											eq(
-												schema.integrationConnectionsTable.organizationId,
-												data.organizationId,
-											),
-											eq(schema.integrationConnectionsTable.provider, data.provider),
-											eq(
-												schema.integrationConnectionsTable.externalAccountId,
-												data.externalAccountId,
-											),
-											eq(schema.integrationConnectionsTable.level, "user"),
-											eq(schema.integrationConnectionsTable.status, "active"),
-											isNull(schema.integrationConnectionsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ organizationId, provider, externalAccountId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.provider.eq(provider),
+							$.externalAccountId.eq(externalAccountId),
+							$.level.eq("user"),
+							$.status.eq("active"),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			// Get all connections for an organization (both org-level and user-level)
-			const findAllForOrg = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.integrationConnectionsTable)
-							.where(
-								and(
-									eq(
-										schema.integrationConnectionsTable.organizationId,
-										data.organizationId,
-									),
-									isNull(schema.integrationConnectionsTable.deletedAt),
-								),
-							),
-					),
-				)({ organizationId }, tx)
+			const findAllForOrg = (organizationId: OrganizationId) =>
+				db.run(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+				)
 
 			// Get all active org-level connections for an organization
-			const findActiveOrgConnections = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.integrationConnectionsTable)
-							.where(
-								and(
-									eq(
-										schema.integrationConnectionsTable.organizationId,
-										data.organizationId,
-									),
-									eq(schema.integrationConnectionsTable.level, "organization"),
-									eq(schema.integrationConnectionsTable.status, "active"),
-									isNull(schema.integrationConnectionsTable.userId),
-									isNull(schema.integrationConnectionsTable.deletedAt),
-								),
-							),
-					),
-				)({ organizationId }, tx)
+			const findActiveOrgConnections = (organizationId: OrganizationId) =>
+				db.run(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.level.eq("organization"),
+							$.status.eq("active"),
+							$.userId.isNull(),
+							$.deletedAt.isNull(),
+						]),
+				)
 
 			// Update connection status
 			const updateStatus = (
 				connectionId: IntegrationConnectionId,
 				status: IntegrationConnection.ConnectionStatus,
 				errorMessage?: string,
-				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: {
-							connectionId: IntegrationConnectionId
-							status: IntegrationConnection.ConnectionStatus
-							errorMessage?: string
-						},
-					) =>
-						execute((client) =>
-							client
-								.update(schema.integrationConnectionsTable)
-								.set({
-									status: data.status,
-									errorMessage: data.errorMessage ?? null,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.integrationConnectionsTable.id, data.connectionId))
-								.returning(),
-						),
-				)({ connectionId, status, errorMessage }, tx)
+				db.run(
+					PG.update(schema.integrationConnectionsTable)
+						.set({
+							status,
+							errorMessage: errorMessage ?? null,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(connectionId)])
+						.returning(),
+				)
 
 			// Soft delete connection
-			const softDelete = (connectionId: IntegrationConnectionId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { connectionId: IntegrationConnectionId }) =>
-					execute((client) =>
-						client
-							.update(schema.integrationConnectionsTable)
-							.set({
-								deletedAt: new Date(),
-								status: "revoked",
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.integrationConnectionsTable.id, data.connectionId))
-							.returning(),
-					),
-				)({ connectionId }, tx)
+			const softDelete = (connectionId: IntegrationConnectionId) =>
+				db.run(
+					PG.update(schema.integrationConnectionsTable)
+						.set({
+							deletedAt: new Date(),
+							status: "revoked",
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(connectionId)])
+						.returning(),
+				)
 
 			// Find connection by GitHub installation ID (stored in metadata JSONB)
-			const findByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
-				db
-					.makeQuery((execute, data: { installationId: string }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.integrationConnectionsTable)
-								.where(
-									and(
-										eq(schema.integrationConnectionsTable.provider, "github"),
-										sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
-										isNull(schema.integrationConnectionsTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)({ installationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByGitHubInstallationId = (installationId: string) =>
+				db.first(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.provider.eq("github"),
+							PG.jsonText($.metadata, "installationId").eq(installationId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			// Find all connections for a GitHub installation ID (stored in metadata JSONB)
-			const findAllByGitHubInstallationId = (installationId: string, tx?: TxFn) =>
-				db.makeQuery((execute, data: { installationId: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.integrationConnectionsTable)
-							.where(
-								and(
-									eq(schema.integrationConnectionsTable.provider, "github"),
-									sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${data.installationId}`,
-									isNull(schema.integrationConnectionsTable.deletedAt),
-								),
-							),
-					),
-				)({ installationId }, tx)
+			const findAllByGitHubInstallationId = (installationId: string) =>
+				db.run(
+					PG.from(schema.integrationConnectionsTable)
+						.select()
+						.where(($) => [
+							$.provider.eq("github"),
+							PG.jsonText($.metadata, "installationId").eq(installationId),
+							$.deletedAt.isNull(),
+						]),
+				)
+
+			// Overwrite an existing connection with the given insert data
+			const overwrite = (id: IntegrationConnectionId, data: typeof IntegrationConnection.Insert.Type) =>
+				db.run(
+					PG.update(schema.integrationConnectionsTable)
+						.set({
+							...data,
+							lastUsedAt: toDate(data.lastUsedAt),
+							deletedAt: toDate(data.deletedAt),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			// Upsert org-level connection for a provider
-			const upsertByOrgAndProvider = (
-				insertData: typeof IntegrationConnection.Insert.Type,
-				tx?: TxFn,
-			) =>
+			const upsertByOrgAndProvider = (insertData: typeof IntegrationConnection.Insert.Type) =>
 				Effect.gen(function* () {
-					const existing = yield* findOrgConnection(
-						insertData.organizationId,
-						insertData.provider,
-						tx,
-					)
+					const existing = yield* findOrgConnection(insertData.organizationId, insertData.provider)
 
 					if (Option.isSome(existing)) {
 						// Update existing connection
-						const results = yield* db.makeQuery(
-							(
-								execute,
-								updateParams: {
-									id: IntegrationConnectionId
-									data: Partial<typeof IntegrationConnection.Update.Type>
-								},
-							) =>
-								execute((client) =>
-									client
-										.update(schema.integrationConnectionsTable)
-										.set({
-											...updateParams.data,
-											updatedAt: new Date(),
-										} as any)
-										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
-										.returning(),
-								),
-						)({ id: existing.value.id, data: insertData }, tx)
+						const results = yield* overwrite(existing.value.id, insertData)
 						return results[0]!
 					}
 
 					// Insert new connection - returns array, take first element
-					const inserted = yield* baseRepo.insert(insertData, tx)
+					const inserted = yield* baseRepo.insert(insertData)
 					return inserted[0]!
 				})
 
 			// Upsert user-level connection for a provider.
-			const upsertByUserAndProvider = (
-				insertData: typeof IntegrationConnection.Insert.Type,
-				tx?: TxFn,
-			) =>
+			const upsertByUserAndProvider = (insertData: typeof IntegrationConnection.Insert.Type) =>
 				Effect.gen(function* () {
 					if (!insertData.userId) {
 						return yield* Effect.die(
@@ -352,33 +218,14 @@ export class IntegrationConnectionRepo extends Context.Service<IntegrationConnec
 						insertData.organizationId,
 						insertData.userId,
 						insertData.provider,
-						tx,
 					)
 
 					if (Option.isSome(existing)) {
-						const results = yield* db.makeQuery(
-							(
-								execute,
-								updateParams: {
-									id: IntegrationConnectionId
-									data: Partial<typeof IntegrationConnection.Update.Type>
-								},
-							) =>
-								execute((client) =>
-									client
-										.update(schema.integrationConnectionsTable)
-										.set({
-											...updateParams.data,
-											updatedAt: new Date(),
-										} as any)
-										.where(eq(schema.integrationConnectionsTable.id, updateParams.id))
-										.returning(),
-								),
-						)({ id: existing.value.id, data: insertData }, tx)
+						const results = yield* overwrite(existing.value.id, insertData)
 						return results[0]!
 					}
 
-					const inserted = yield* baseRepo.insert(insertData, tx)
+					const inserted = yield* baseRepo.insert(insertData)
 					return inserted[0]!
 				})
 

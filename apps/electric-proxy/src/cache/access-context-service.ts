@@ -1,5 +1,5 @@
 import { PersistedCache, Persistence } from "effect/persistence"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { BotId, ChannelId, UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Schema } from "effect"
 import {
@@ -54,21 +54,14 @@ export class AccessContextCacheService extends Context.Service<AccessContextCach
 						// Bots are org-level (not channel members), so we join
 						// bot_installations → channels by organizationId.
 						const channels = yield* db
-							.execute((client) =>
-								client
-									.selectDistinct({ channelId: schema.channelsTable.id })
-									.from(schema.botInstallationsTable)
-									.innerJoin(
-										schema.channelsTable,
-										and(
-											eq(
-												schema.channelsTable.organizationId,
-												schema.botInstallationsTable.organizationId,
-											),
-											isNull(schema.channelsTable.deletedAt),
-										),
+							.run(
+								PG.from(schema.botInstallationsTable, "bi")
+									.innerJoin(schema.channelsTable, "c", (bi, c) =>
+										c.organizationId.eq(bi.organizationId).and(c.deletedAt.isNull()),
 									)
-									.where(eq(schema.botInstallationsTable.botId, botId)),
+									.select(($) => ({ channelId: $.c.id }))
+									.distinct()
+									.where(($) => [$.botId.eq(botId)]),
 							)
 							.pipe(
 								Effect.catchTag("DatabaseError", (error) =>
@@ -83,7 +76,7 @@ export class AccessContextCacheService extends Context.Service<AccessContextCach
 								),
 							)
 
-						const channelIds = channels.map((c: { channelId: ChannelId }) => c.channelId)
+						const channelIds = channels.map((c) => c.channelId)
 						yield* Effect.annotateCurrentSpan("cache.result_size", channelIds.length)
 
 						return { channelIds }

@@ -12,7 +12,7 @@ import {
 	OrganizationMemberRepo,
 	UserRepo,
 } from "@hazel/backend-core"
-import { Database, type TxFn } from "@hazel/db"
+import { Database } from "@hazel/db"
 import type {
 	ChannelId,
 	ExternalChannelId,
@@ -123,8 +123,18 @@ type WorkerLayerDeps = {
 	channelAccessSyncService: unknown
 	providerRegistry?: unknown
 	discordApiClient?: unknown
-	databaseExecute?: (query: unknown) => Effect.Effect<unknown, unknown, never>
+	databaseRun?: (query: unknown) => Effect.Effect<unknown, unknown, never>
 }
+
+/** The rows of a `PG.insertInto(...).values(rows)` the worker handed to `db.run`, if it was an insert. */
+const insertedRows = (query: unknown): Array<any> | undefined =>
+	typeof query === "object" &&
+	query !== null &&
+	"_tag" in query &&
+	query._tag === "CHInsert" &&
+	"_state" in query
+		? [...((query as { _state: { rows?: ReadonlyArray<unknown> } })._state.rows ?? [])]
+		: undefined
 
 type DiscordSyncWorkerShape = Context.Service.Shape<typeof DiscordSyncWorkerTag>
 
@@ -196,16 +206,15 @@ const makeWorkerLayer = (deps: WorkerLayerDeps) =>
 		),
 		Layer.provide(
 			Layer.succeed(Database.Database, {
-				execute: (query: unknown) =>
-					deps.databaseExecute ? deps.databaseExecute(query) : Effect.succeed([]),
-				transaction: (effect: any) =>
-					Effect.provideService(effect, Database.TransactionContext, {
-						execute: ((query: unknown) =>
-							deps.databaseExecute ? deps.databaseExecute(query) : Effect.succeed([])) as TxFn,
-					}),
-				makeQuery: () => Effect.die("not used in this test"),
-				makeQueryWithSchema: () => Effect.die("not used in this test"),
-			} as any),
+				run: (query: unknown) => (deps.databaseRun ? deps.databaseRun(query) : Effect.succeed([])),
+				first: (query: unknown) =>
+					(deps.databaseRun ? deps.databaseRun(query) : Effect.succeed([])).pipe(
+						Effect.map((rows) => Option.fromNullishOr((rows as ReadonlyArray<unknown>)[0])),
+					),
+				query: () => Effect.die("not used in this test"),
+				execute: () => Effect.die("not used in this test"),
+				transaction: (effect: Effect.Effect<unknown, unknown, unknown>) => effect,
+			} as unknown as Database.DatabaseShape),
 		),
 		Layer.provide(
 			Layer.succeed(
@@ -530,17 +539,11 @@ describe("DiscordSyncWorker inbound attachment records", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: (query) =>
+			databaseRun: (query) =>
 				Effect.sync(() => {
-					if (typeof query === "function") {
-						query({
-							insert: () => ({
-								values: (rows: Array<any>) => {
-									insertedAttachmentRows = rows
-									return []
-								},
-							}),
-						} as any)
+					const rows = insertedRows(query)
+					if (rows) {
+						insertedAttachmentRows = rows
 					}
 					return []
 				}),
@@ -571,7 +574,7 @@ describe("DiscordSyncWorker inbound attachment records", () => {
 
 	it("keeps plain content unchanged and does not write attachment rows when there are no attachments", async () => {
 		let insertedContent: string | null = null
-		let databaseExecuteCalls = 0
+		let databaseRunCalls = 0
 
 		const layer = makeWorkerLayer({
 			connectionRepo: {
@@ -633,9 +636,9 @@ describe("DiscordSyncWorker inbound attachment records", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: () =>
+			databaseRun: () =>
 				Effect.sync(() => {
-					databaseExecuteCalls += 1
+					databaseRunCalls += 1
 					return []
 				}),
 		})
@@ -649,7 +652,7 @@ describe("DiscordSyncWorker inbound attachment records", () => {
 
 		expect(result.status).toBe("created")
 		expect(insertedContent).toBe("plain text from discord")
-		expect(databaseExecuteCalls).toBe(0)
+		expect(databaseRunCalls).toBe(0)
 	})
 
 	it("writes only valid attachment rows when payload includes malformed attachment items", async () => {
@@ -716,17 +719,11 @@ describe("DiscordSyncWorker inbound attachment records", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: (query) =>
+			databaseRun: (query) =>
 				Effect.sync(() => {
-					if (typeof query === "function") {
-						query({
-							insert: () => ({
-								values: (rows: Array<any>) => {
-									insertedAttachmentRows = rows
-									return []
-								},
-							}),
-						} as any)
+					const rows = insertedRows(query)
+					if (rows) {
+						insertedAttachmentRows = rows
 					}
 					return []
 				}),
@@ -2952,7 +2949,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: () =>
+			databaseRun: () =>
 				Effect.succeed([
 					{
 						id: "00000000-0000-4000-8000-000000000101",
@@ -3053,7 +3050,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: () => Effect.succeed([]),
+			databaseRun: () => Effect.succeed([]),
 		})
 
 		const result = await runWorkerEffect(
@@ -3170,7 +3167,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 				updateWebhookMessage: () => Effect.succeed(undefined),
 				deleteWebhookMessage: () => Effect.succeed(undefined),
 			} as unknown as Discord.DiscordApiClient,
-			databaseExecute: () =>
+			databaseRun: () =>
 				Effect.succeed([
 					{
 						id: "00000000-0000-4000-8000-000000000201",
@@ -3258,7 +3255,7 @@ describe("DiscordSyncWorker outbound attachments primitive", () => {
 						createThread: () => Effect.succeed("thread-id"),
 					}),
 			} as unknown as ChatSyncProviderRegistry,
-			databaseExecute: () =>
+			databaseRun: () =>
 				Effect.succeed([
 					{
 						id: "00000000-0000-4000-8000-000000000301",

@@ -16,6 +16,6 @@
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "catalog:alchemy",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }

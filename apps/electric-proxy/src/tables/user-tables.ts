@@ -1,4 +1,4 @@
-import { schema, sql } from "@hazel/db"
+import { schema } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
 import type { AuthenticatedUser } from "../auth/user-auth"
 import {
@@ -13,9 +13,38 @@ import {
 	eqCol,
 	inSubquery,
 	isNullCol,
+	refs,
+	sql,
 	sqlToWhereClause,
 	type WhereClauseResult,
 } from "./where-clause-builder"
+
+/** The tables whose columns the WHERE clauses name. */
+const T = {
+	attachments: refs(schema.attachmentsTable),
+	botInstallations: refs(schema.botInstallationsTable),
+	bots: refs(schema.botsTable),
+	channelAccess: refs(schema.channelAccessTable),
+	channelMembers: refs(schema.channelMembersTable),
+	channelSections: refs(schema.channelSectionsTable),
+	channels: refs(schema.channelsTable),
+	chatSyncChannelLinks: refs(schema.chatSyncChannelLinksTable),
+	chatSyncConnections: refs(schema.chatSyncConnectionsTable),
+	chatSyncMessageLinks: refs(schema.chatSyncMessageLinksTable),
+	connectConversationChannels: refs(schema.connectConversationChannelsTable),
+	connectConversations: refs(schema.connectConversationsTable),
+	connectParticipants: refs(schema.connectParticipantsTable),
+	customEmojis: refs(schema.customEmojisTable),
+	integrationConnections: refs(schema.integrationConnectionsTable),
+	messageReactions: refs(schema.messageReactionsTable),
+	messages: refs(schema.messagesTable),
+	notifications: refs(schema.notificationsTable),
+	organizationMembers: refs(schema.organizationMembersTable),
+	organizations: refs(schema.organizationsTable),
+	pinnedMessages: refs(schema.pinnedMessagesTable),
+	typingIndicators: refs(schema.typingIndicatorsTable),
+	users: refs(schema.usersTable),
+}
 
 /**
  * Error thrown when table access is denied or where clause cannot be generated
@@ -131,8 +160,8 @@ export function getWhereClauseForTable(
 	table: AllowedTable,
 	user: AuthenticatedUser,
 ): Effect.Effect<WhereClauseResult, TableAccessError> {
-	const channelAccessSubquery = sql`(SELECT ${col(schema.channelAccessTable.channelId)} FROM ${schema.channelAccessTable} WHERE ${eqCol(schema.channelAccessTable.userId, user.internalUserId)})`
-	const connectConversationAccessSubquery = sql`(SELECT ${col(schema.connectConversationChannelsTable.conversationId)} FROM ${schema.connectConversationChannelsTable} WHERE ${isNullCol(schema.connectConversationChannelsTable.deletedAt)} AND ${col(schema.connectConversationChannelsTable.channelId)} IN ${channelAccessSubquery})`
+	const channelAccessSubquery = sql`(SELECT ${col(T.channelAccess.channelId)} FROM ${T.channelAccess.$table} WHERE ${eqCol(T.channelAccess.userId, user.internalUserId)})`
+	const connectConversationAccessSubquery = sql`(SELECT ${col(T.connectConversationChannels.conversationId)} FROM ${T.connectConversationChannels.$table} WHERE ${isNullCol(T.connectConversationChannels.deletedAt)} AND ${col(T.connectConversationChannels.channelId)} IN ${channelAccessSubquery})`
 
 	// Chat Sync tables — handled before Match.pipe to stay within its 20-arg type limit
 	switch (table) {
@@ -140,34 +169,32 @@ export function getWhereClauseForTable(
 			return Effect.succeed(
 				buildOrgMembershipClause(
 					user.internalUserId,
-					schema.chatSyncConnectionsTable.organizationId,
-					schema.chatSyncConnectionsTable.deletedAt,
+					T.chatSyncConnections.organizationId,
+					T.chatSyncConnections.deletedAt,
 				),
 			)
 		case "chat_sync_channel_links":
 			return Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					schema.chatSyncChannelLinksTable.hazelChannelId,
-					schema.chatSyncChannelLinksTable.deletedAt,
+					T.chatSyncChannelLinks.hazelChannelId,
+					T.chatSyncChannelLinks.deletedAt,
 				),
 			)
 		case "chat_sync_message_links":
 			return Effect.succeed(
 				sqlToWhereClause(
-					schema.chatSyncMessageLinksTable,
-					sql`${isNullCol(schema.chatSyncMessageLinksTable.deletedAt)} AND ${inSubquery(
-						schema.chatSyncMessageLinksTable.channelLinkId,
-						sql`(SELECT ${col(schema.chatSyncChannelLinksTable.id)} FROM ${schema.chatSyncChannelLinksTable} WHERE ${isNullCol(schema.chatSyncChannelLinksTable.deletedAt)} AND ${col(schema.chatSyncChannelLinksTable.hazelChannelId)} IN ${channelAccessSubquery})`,
+					sql`${isNullCol(T.chatSyncMessageLinks.deletedAt)} AND ${inSubquery(
+						T.chatSyncMessageLinks.channelLinkId,
+						sql`(SELECT ${col(T.chatSyncChannelLinks.id)} FROM ${T.chatSyncChannelLinks.$table} WHERE ${isNullCol(T.chatSyncChannelLinks.deletedAt)} AND ${col(T.chatSyncChannelLinks.hazelChannelId)} IN ${channelAccessSubquery})`,
 					)}`,
 				),
 			)
 		case "connect_conversations":
 			return Effect.succeed(
 				sqlToWhereClause(
-					schema.connectConversationsTable,
-					sql`${isNullCol(schema.connectConversationsTable.deletedAt)} AND ${inSubquery(
-						schema.connectConversationsTable.id,
+					sql`${isNullCol(T.connectConversations.deletedAt)} AND ${inSubquery(
+						T.connectConversations.id,
 						connectConversationAccessSubquery,
 					)}`,
 				),
@@ -176,16 +203,16 @@ export function getWhereClauseForTable(
 			return Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					schema.connectConversationChannelsTable.channelId,
-					schema.connectConversationChannelsTable.deletedAt,
+					T.connectConversationChannels.channelId,
+					T.connectConversationChannels.deletedAt,
 				),
 			)
 		case "connect_participants":
 			return Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					schema.connectParticipantsTable.channelId,
-					schema.connectParticipantsTable.deletedAt,
+					T.connectParticipants.channelId,
+					T.connectParticipants.deletedAt,
 				),
 			)
 	}
@@ -198,7 +225,7 @@ export function getWhereClauseForTable(
 		Match.when("users", () =>
 			// All non-deleted users (organization filtering removed to support bot machine users
 			// whose organization membership is soft-deleted on bot uninstall)
-			Effect.succeed(buildDeletedAtNullClause(schema.usersTable.deletedAt)),
+			Effect.succeed(buildDeletedAtNullClause(T.users.deletedAt)),
 		),
 
 		Match.when("user_presence_status", () =>
@@ -213,11 +240,7 @@ export function getWhereClauseForTable(
 		Match.when("organizations", () =>
 			// Organizations: only those the user is a member of
 			Effect.succeed(
-				buildOrgMembershipClause(
-					user.internalUserId,
-					schema.organizationsTable.id,
-					schema.organizationsTable.deletedAt,
-				),
+				buildOrgMembershipClause(user.internalUserId, T.organizations.id, T.organizations.deletedAt),
 			),
 		),
 
@@ -226,8 +249,8 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildOrgMembershipClause(
 					user.internalUserId,
-					schema.organizationMembersTable.organizationId,
-					schema.organizationMembersTable.deletedAt,
+					T.organizationMembers.organizationId,
+					T.organizationMembers.deletedAt,
 				),
 			),
 		),
@@ -238,7 +261,7 @@ export function getWhereClauseForTable(
 
 		Match.when("channels", () =>
 			// Channel visibility: rows materialized in channel_access for this user
-			Effect.succeed(buildChannelVisibilityClause(user.internalUserId, schema.channelsTable.deletedAt)),
+			Effect.succeed(buildChannelVisibilityClause(user.internalUserId, T.channels.deletedAt)),
 		),
 
 		Match.when("channel_members", () =>
@@ -246,8 +269,8 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildChannelAccessClause(
 					user.internalUserId,
-					schema.channelMembersTable.channelId,
-					schema.channelMembersTable.deletedAt,
+					T.channelMembers.channelId,
+					T.channelMembers.deletedAt,
 				),
 			),
 		),
@@ -257,8 +280,8 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildOrgMembershipClause(
 					user.internalUserId,
-					schema.channelSectionsTable.organizationId,
-					schema.channelSectionsTable.deletedAt,
+					T.channelSections.organizationId,
+					T.channelSections.deletedAt,
 				),
 			),
 		),
@@ -270,8 +293,7 @@ export function getWhereClauseForTable(
 		Match.when("messages", () =>
 			Effect.succeed(
 				sqlToWhereClause(
-					schema.messagesTable,
-					sql`${isNullCol(schema.messagesTable.deletedAt)} AND ((${col(schema.messagesTable.conversationId)} IS NULL AND ${inSubquery(schema.messagesTable.channelId, channelAccessSubquery)}) OR (${col(schema.messagesTable.conversationId)} IS NOT NULL AND ${inSubquery(schema.messagesTable.conversationId, connectConversationAccessSubquery)}))`,
+					sql`${isNullCol(T.messages.deletedAt)} AND ((${col(T.messages.conversationId)} IS NULL AND ${inSubquery(T.messages.channelId, channelAccessSubquery)}) OR (${col(T.messages.conversationId)} IS NOT NULL AND ${inSubquery(T.messages.conversationId, connectConversationAccessSubquery)}))`,
 				),
 			),
 		),
@@ -279,8 +301,7 @@ export function getWhereClauseForTable(
 		Match.when("message_reactions", () =>
 			Effect.succeed(
 				sqlToWhereClause(
-					schema.messageReactionsTable,
-					sql`((${col(schema.messageReactionsTable.conversationId)} IS NULL AND ${inSubquery(schema.messageReactionsTable.channelId, channelAccessSubquery)}) OR (${col(schema.messageReactionsTable.conversationId)} IS NOT NULL AND ${inSubquery(schema.messageReactionsTable.conversationId, connectConversationAccessSubquery)}))`,
+					sql`((${col(T.messageReactions.conversationId)} IS NULL AND ${inSubquery(T.messageReactions.channelId, channelAccessSubquery)}) OR (${col(T.messageReactions.conversationId)} IS NOT NULL AND ${inSubquery(T.messageReactions.conversationId, connectConversationAccessSubquery)}))`,
 				),
 			),
 		),
@@ -290,8 +311,8 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildOrgMembershipClause(
 					user.internalUserId,
-					schema.attachmentsTable.organizationId,
-					schema.attachmentsTable.deletedAt,
+					T.attachments.organizationId,
+					T.attachments.deletedAt,
 				),
 			),
 		),
@@ -302,16 +323,12 @@ export function getWhereClauseForTable(
 
 		Match.when("notifications", () =>
 			// Users can only see their own notifications (via subquery on organization_members)
-			Effect.succeed(
-				buildUserMembershipClause(user.internalUserId, schema.notificationsTable.memberId),
-			),
+			Effect.succeed(buildUserMembershipClause(user.internalUserId, T.notifications.memberId)),
 		),
 
 		Match.when("pinned_messages", () =>
 			// Pinned messages: only in channels user has access to
-			Effect.succeed(
-				buildChannelAccessClause(user.internalUserId, schema.pinnedMessagesTable.channelId),
-			),
+			Effect.succeed(buildChannelAccessClause(user.internalUserId, T.pinnedMessages.channelId)),
 		),
 
 		// ===========================================
@@ -320,16 +337,14 @@ export function getWhereClauseForTable(
 
 		Match.when("typing_indicators", () =>
 			// Typing indicators: only in channels user has access to
-			Effect.succeed(
-				buildChannelAccessClause(user.internalUserId, schema.typingIndicatorsTable.channelId),
-			),
+			Effect.succeed(buildChannelAccessClause(user.internalUserId, T.typingIndicators.channelId)),
 		),
 
 		// ===========================================
 		// Bot tables
 		// ===========================================
 
-		Match.when("bots", () => Effect.succeed(buildDeletedAtNullClause(schema.botsTable.deletedAt))),
+		Match.when("bots", () => Effect.succeed(buildDeletedAtNullClause(T.bots.deletedAt))),
 
 		Match.when("bot_commands", () =>
 			// All bot commands visible (filtered by bot installation in frontend)
@@ -338,9 +353,7 @@ export function getWhereClauseForTable(
 
 		Match.when("bot_installations", () =>
 			// Bot installations: only in orgs the user is a member of (no deletedAt column)
-			Effect.succeed(
-				buildOrgMembershipClause(user.internalUserId, schema.botInstallationsTable.organizationId),
-			),
+			Effect.succeed(buildOrgMembershipClause(user.internalUserId, T.botInstallations.organizationId)),
 		),
 
 		// ===========================================
@@ -350,10 +363,7 @@ export function getWhereClauseForTable(
 		Match.when("integration_connections", () =>
 			// Integration connections: org-level in user's orgs OR user's own connections
 			Effect.succeed(
-				buildIntegrationConnectionClause(
-					user.internalUserId,
-					schema.integrationConnectionsTable.deletedAt,
-				),
+				buildIntegrationConnectionClause(user.internalUserId, T.integrationConnections.deletedAt),
 			),
 		),
 
@@ -365,8 +375,8 @@ export function getWhereClauseForTable(
 			Effect.succeed(
 				buildOrgMembershipClause(
 					user.internalUserId,
-					schema.customEmojisTable.organizationId,
-					schema.customEmojisTable.deletedAt,
+					T.customEmojis.organizationId,
+					T.customEmojis.deletedAt,
 				),
 			),
 		),

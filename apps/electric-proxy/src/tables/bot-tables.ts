@@ -1,4 +1,3 @@
-import { schema } from "@hazel/db"
 import { Effect, Match, Schema } from "effect"
 import type { AuthenticatedBot } from "../auth/bot-auth"
 import type { WhereClauseResult } from "./where-clause-builder"
@@ -59,7 +58,7 @@ export function validateBotTable(table: string | null): {
  * Get the WHERE clause for a table based on the authenticated bot.
  * This ensures bots can only access data from channels they're installed in.
  *
- * Uses unqualified column names (via column.name) for Electric SQL compatibility.
+ * Uses unqualified column names for Electric SQL compatibility.
  * All WHERE clauses are parameterized for security.
  *
  * @param table - The table name
@@ -77,7 +76,7 @@ export function getBotWhereClauseForTable(
 		Match.when("messages", () =>
 			// Messages from all non-deleted channels in orgs where the bot is installed.
 			Effect.succeed({
-				whereClause: `"${schema.messagesTable.deletedAt.name}" IS NULL AND "${schema.messagesTable.channelId.name}" IN ${botVisibleChannelSubquery}`,
+				whereClause: `"deletedAt" IS NULL AND "channelId" IN ${botVisibleChannelSubquery}`,
 				params: [bot.botId],
 			}),
 		),
@@ -85,7 +84,7 @@ export function getBotWhereClauseForTable(
 		Match.when("channels", () =>
 			// Channels from orgs where the bot is installed.
 			Effect.succeed({
-				whereClause: `"${schema.channelsTable.deletedAt.name}" IS NULL AND "${schema.channelsTable.organizationId.name}" IN ${botOrgSubquery}`,
+				whereClause: `"deletedAt" IS NULL AND "organizationId" IN ${botOrgSubquery}`,
 				params: [bot.botId],
 			}),
 		),
@@ -93,7 +92,7 @@ export function getBotWhereClauseForTable(
 		Match.when("channel_members", () =>
 			// Channel members in channels from orgs where the bot is installed.
 			Effect.succeed({
-				whereClause: `"${schema.channelMembersTable.deletedAt.name}" IS NULL AND "${schema.channelMembersTable.channelId.name}" IN ${botVisibleChannelSubquery}`,
+				whereClause: `"deletedAt" IS NULL AND "channelId" IN ${botVisibleChannelSubquery}`,
 				params: [bot.botId],
 			}),
 		),

@@ -1,45 +1,23 @@
 import { Database } from "@hazel/db"
 import { TransactionIdFromString } from "@hazel/schema"
-import { Effect, Option, Predicate, Schema } from "effect"
+import { Effect, Schema } from "effect"
 
-export const generateTransactionId = Effect.fn("generateTransactionId")(function* (
-	tx?: <T>(
-		fn: (client: Database.TransactionClient) => Promise<T>,
-	) => Effect.Effect<T, Database.DatabaseError, never>,
-) {
-	// 1. Check explicit tx parameter (highest priority)
-	let txExecutor: Database.TxFn | undefined = tx
+const TxidRow = Schema.Struct({ txid: Schema.String })
 
-	// 2. Check TransactionContext from Effect Context (auto-propagated)
-	if (!txExecutor) {
-		const maybeCtx = yield* Effect.serviceOption(Database.TransactionContext)
-		if (Option.isSome(maybeCtx)) {
-			txExecutor = maybeCtx.value.execute
-		}
-	}
-
-	// 3. Fail if no transaction context found
-	if (!txExecutor) {
-		return yield* Effect.die("generateTransactionId must be called within a transaction")
-	}
-
-	const result = yield* txExecutor((client) =>
-		client.execute(`SELECT pg_current_xact_id()::xid::text as txid`),
-	).pipe(
-		Effect.map((rows) => rows[0]?.txid as string),
-		Effect.tap((rawTxid) =>
-			Effect.log(`[txid-debug] Raw PostgreSQL txid string: "${rawTxid}", type: ${typeof rawTxid}`),
-		),
-		Effect.flatMap((txid) => Schema.decodeEffect(TransactionIdFromString)(txid)),
-		Effect.tap((decodedTxid) =>
-			Effect.log(`[txid-debug] Decoded transactionId: ${decodedTxid}, type: ${typeof decodedTxid}`),
-		),
-		Effect.catchIf(
-			(e): e is Database.DatabaseError => Predicate.isTagged(e, "DatabaseError"),
-			(err) => Effect.die(`Database error generating transaction ID: ${err}`),
-		),
+/**
+ * The id of the open transaction, for Electric to confirm the client's optimistic write against.
+ * Must run inside `db.transaction`, which pins this statement to the transaction's connection.
+ */
+export const generateTransactionId = Effect.fn("generateTransactionId")(function* () {
+	const db = yield* Database.Database
+	const rows = yield* db
+		.query(Database.sql`SELECT pg_current_xact_id()::xid::text AS txid`, TxidRow)
+		.pipe(
+			Effect.catchTag("DatabaseError", (err) =>
+				Effect.die(`Database error generating transaction ID: ${err}`),
+			),
+		)
+	return yield* Schema.decodeEffect(TransactionIdFromString)(rows[0]?.txid ?? "").pipe(
 		Effect.catchTag("SchemaError", (err) => Effect.die(`Failed to parse transaction ID: ${err}`)),
 	)
-
-	return result
-})
+}, Database.requireTransaction)
