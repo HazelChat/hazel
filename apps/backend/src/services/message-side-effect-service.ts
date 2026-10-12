@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { WorkflowInitializationError } from "@hazel/domain"
 import { Context, Array, Config, Effect, Layer, Option } from "effect"
 import type {
@@ -24,25 +24,16 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 			const resolveIntegrationBotUserId = Effect.fn(
 				"MessageSideEffectService.resolveIntegrationBotUserId",
 			)(function* () {
-				const integrationBotResult = yield* db
-					.execute((dbClient) =>
-						dbClient
-							.select({ id: schema.usersTable.id })
-							.from(schema.usersTable)
-							.where(
-								and(
-									eq(schema.usersTable.externalId, "integration-bot-discord"),
-									isNull(schema.usersTable.deletedAt),
-								),
-							)
+				const integrationBot = yield* db
+					.first(
+						PG.from(schema.usersTable)
+							.select("id")
+							.where(($) => [$.externalId.eq("integration-bot-discord"), $.deletedAt.isNull()])
 							.limit(1),
 					)
-					.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
+					.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
 
-				return Array.head(integrationBotResult).pipe(
-					Option.map((row) => row.id),
-					Option.getOrNull,
-				)
+				return Option.getOrNull(Option.map(integrationBot, (row) => row.id))
 			})
 
 			const handleMessageCreated = Effect.fn("MessageSideEffectService.handleMessageCreated")(
@@ -68,14 +59,10 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 					}
 
 					const channelResult = yield* db
-						.execute((dbClient) =>
-							dbClient
-								.select({
-									type: schema.channelsTable.type,
-									name: schema.channelsTable.name,
-								})
-								.from(schema.channelsTable)
-								.where(eq(schema.channelsTable.id, payload.channelId))
+						.run(
+							PG.from(schema.channelsTable)
+								.select("type", "name")
+								.where(($) => [$.id.eq(payload.channelId)])
 								.limit(1),
 						)
 						.pipe(
@@ -132,16 +119,10 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 					}
 
 					const messageCountResult = yield* db
-						.execute((dbClient) =>
-							dbClient
-								.select({ count: sql<number>`count(*)::int` })
-								.from(schema.messagesTable)
-								.where(
-									and(
-										eq(schema.messagesTable.channelId, payload.channelId),
-										isNull(schema.messagesTable.deletedAt),
-									),
-								),
+						.run(
+							PG.from(schema.messagesTable)
+								.select(() => ({ count: PG.count() }))
+								.where(($) => [$.channelId.eq(payload.channelId), $.deletedAt.isNull()]),
 						)
 						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([{ count: 0 }])))
 
@@ -157,17 +138,14 @@ export class MessageSideEffectService extends Context.Service<MessageSideEffectS
 						return
 					}
 
-					const originalMessageResult = yield* db
-						.execute((dbClient) =>
-							dbClient
-								.select({ id: schema.messagesTable.id })
-								.from(schema.messagesTable)
-								.where(eq(schema.messagesTable.threadChannelId, payload.channelId))
+					const originalMessage = yield* db
+						.first(
+							PG.from(schema.messagesTable)
+								.select("id")
+								.where(($) => [$.threadChannelId.eq(payload.channelId)])
 								.limit(1),
 						)
-						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed([])))
-
-					const originalMessage = Array.head(originalMessageResult)
+						.pipe(Effect.catchTag("DatabaseError", () => Effect.succeed(Option.none())))
 					if (Option.isNone(originalMessage)) {
 						return
 					}

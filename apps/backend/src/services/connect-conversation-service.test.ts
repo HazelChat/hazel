@@ -256,7 +256,9 @@ describe("ConnectConversationService", () => {
 							Effect.fail(
 								new Database.DatabaseError({
 									type: "unique_violation",
-									cause: { constraint_name: "connect_conversations_host_channel_unique" },
+									message: "duplicate key value violates unique constraint",
+									constraint: "connect_conversations_host_channel_unique",
+									cause: null,
 								}),
 							),
 						findByHostChannel: () => Effect.succeed(Option.some(existingConversation)),
@@ -276,7 +278,9 @@ describe("ConnectConversationService", () => {
 							Effect.fail(
 								new Database.DatabaseError({
 									type: "unique_violation",
-									cause: { constraint_name: "connect_conv_channels_channel_unique" },
+									message: "duplicate key value violates unique constraint",
+									constraint: "connect_conv_channels_channel_unique",
+									cause: null,
 								}),
 							),
 						findByConversationId: () => Effect.succeed([existingMount]),
@@ -399,7 +403,7 @@ describe("ConnectConversationService", () => {
 					MessageRepo,
 					serviceShape<typeof MessageRepo>({
 						backfillConversationIdForChannel: () =>
-							Effect.serviceOption(Database.TransactionContext).pipe(
+							Effect.serviceOption(Database.Transaction).pipe(
 								Effect.tap((maybeTx) =>
 									Effect.sync(() => {
 										transactionChecks.push(Option.isSome(maybeTx))
@@ -415,7 +419,7 @@ describe("ConnectConversationService", () => {
 					MessageReactionRepo,
 					serviceShape<typeof MessageReactionRepo>({
 						backfillConversationIdForChannel: () =>
-							Effect.serviceOption(Database.TransactionContext).pipe(
+							Effect.serviceOption(Database.Transaction).pipe(
 								Effect.tap((maybeTx) =>
 									Effect.sync(() => {
 										transactionChecks.push(Option.isSome(maybeTx))
@@ -433,8 +437,10 @@ describe("ConnectConversationService", () => {
 		await Effect.runPromise(
 			useService((service) => service.ensureChannelConversation(HOST_CHANNEL_ID, HOST_USER_ID)).pipe(
 				Effect.provide(layer),
-				Effect.provideService(Database.TransactionContext, {
-					execute: (fn) => Effect.promise(() => fn({} as never)),
+				Effect.provideService(Database.Transaction, {
+					depth: 0,
+					isolationLevel: undefined,
+					accessMode: undefined,
 				}),
 				Effect.orDie,
 			),

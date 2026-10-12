@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { and, asc, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import {
 	ChannelRepo,
 	ChatSyncChannelLinkRepo,
@@ -29,7 +29,6 @@ import {
 	ExternalThreadId,
 } from "@hazel/schema"
 import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
-import { transactionAwareExecute } from "../../lib/transaction-aware-execute"
 import { ChannelAccessSyncService } from "../channel-access-sync"
 import { IntegrationBotService } from "../integrations/integration-bot-service"
 import { ChatSyncProviderRegistry } from "./chat-sync-provider-registry"
@@ -244,22 +243,18 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 		const listMessageAttachmentsForOutboundSync = Effect.fn(
 			"discordSyncWorker.listMessageAttachmentsForOutboundSync",
 		)(function* (hazelMessageId: MessageId) {
-			const rows = yield* db.execute((client) =>
-				client
-					.select({
-						id: schema.attachmentsTable.id,
-						fileName: schema.attachmentsTable.fileName,
-						fileSize: schema.attachmentsTable.fileSize,
-					})
-					.from(schema.attachmentsTable)
-					.where(
-						and(
-							eq(schema.attachmentsTable.messageId, hazelMessageId),
-							eq(schema.attachmentsTable.status, "complete"),
-							isNull(schema.attachmentsTable.deletedAt),
-						),
-					)
-					.orderBy(asc(schema.attachmentsTable.uploadedAt), asc(schema.attachmentsTable.id)),
+			const rows = yield* db.run(
+				PG.from(schema.attachmentsTable)
+					.select("id", "fileName", "fileSize")
+					.where(($) => [
+						$.messageId.eq(hazelMessageId),
+						$.status.eq("complete"),
+						$.deletedAt.isNull(),
+					])
+					.orderBy(($) => [
+						[$.uploadedAt, "asc"],
+						[$.id, "asc"],
+					]),
 			)
 
 			if (rows.length === 0) {
@@ -877,32 +872,20 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				}
 
-				const links = yield* db.execute((client) =>
-					client
-						.select({
-							externalMessageId: schema.chatSyncMessageLinksTable.externalMessageId,
-						})
-						.from(schema.chatSyncMessageLinksTable)
+				const links = yield* db.run(
+					PG.from(schema.chatSyncMessageLinksTable, "message_link")
 						.innerJoin(
 							schema.chatSyncChannelLinksTable,
-							and(
-								eq(
-									schema.chatSyncChannelLinksTable.id,
-									schema.chatSyncMessageLinksTable.channelLinkId,
+							"channel_link",
+							(messageLink, channelLink) =>
+								PG.and(
+									channelLink.id.eq(messageLink.channelLinkId),
+									channelLink.syncConnectionId.eq(params.syncConnectionId),
+									channelLink.deletedAt.isNull(),
 								),
-								eq(
-									schema.chatSyncChannelLinksTable.syncConnectionId,
-									params.syncConnectionId,
-								),
-								isNull(schema.chatSyncChannelLinksTable.deletedAt),
-							),
 						)
-						.where(
-							and(
-								eq(schema.chatSyncMessageLinksTable.hazelMessageId, params.hazelMessageId),
-								isNull(schema.chatSyncMessageLinksTable.deletedAt),
-							),
-						)
+						.select(($) => ({ externalMessageId: $.externalMessageId }))
+						.where(($) => [$.hazelMessageId.eq(params.hazelMessageId), $.deletedAt.isNull()])
 						.limit(1),
 				)
 				return Option.fromNullishOr(links[0]?.externalMessageId as ExternalMessageId | undefined)
@@ -926,35 +909,23 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 					}
 				}
 
-				const links = yield* db.execute((client) =>
-					client
-						.select({
-							hazelMessageId: schema.chatSyncMessageLinksTable.hazelMessageId,
-						})
-						.from(schema.chatSyncMessageLinksTable)
+				const links = yield* db.run(
+					PG.from(schema.chatSyncMessageLinksTable, "message_link")
 						.innerJoin(
 							schema.chatSyncChannelLinksTable,
-							and(
-								eq(
-									schema.chatSyncChannelLinksTable.id,
-									schema.chatSyncMessageLinksTable.channelLinkId,
+							"channel_link",
+							(messageLink, channelLink) =>
+								PG.and(
+									channelLink.id.eq(messageLink.channelLinkId),
+									channelLink.syncConnectionId.eq(params.syncConnectionId),
+									channelLink.deletedAt.isNull(),
 								),
-								eq(
-									schema.chatSyncChannelLinksTable.syncConnectionId,
-									params.syncConnectionId,
-								),
-								isNull(schema.chatSyncChannelLinksTable.deletedAt),
-							),
 						)
-						.where(
-							and(
-								eq(
-									schema.chatSyncMessageLinksTable.externalMessageId,
-									params.externalMessageId,
-								),
-								isNull(schema.chatSyncMessageLinksTable.deletedAt),
-							),
-						)
+						.select(($) => ({ hazelMessageId: $.hazelMessageId }))
+						.where(($) => [
+							$.externalMessageId.eq(params.externalMessageId),
+							$.deletedAt.isNull(),
+						])
 						.limit(1),
 				)
 				return Option.fromNullishOr(links[0]?.hazelMessageId)
@@ -1009,19 +980,14 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			}
 			const parentLink = parentLinkOption.value
 
-			const rootMessages = yield* db.execute((client) =>
-				client
-					.select({
-						id: schema.messagesTable.id,
-					})
-					.from(schema.messagesTable)
-					.where(
-						and(
-							eq(schema.messagesTable.threadChannelId, params.hazelChannelId),
-							isNull(schema.messagesTable.deletedAt),
-						),
-					)
-					.orderBy(asc(schema.messagesTable.createdAt), asc(schema.messagesTable.id))
+			const rootMessages = yield* db.run(
+				PG.from(schema.messagesTable)
+					.select("id")
+					.where(($) => [$.threadChannelId.eq(params.hazelChannelId), $.deletedAt.isNull()])
+					.orderBy(($) => [
+						[$.createdAt, "asc"],
+						[$.id, "asc"],
+					])
 					.limit(1),
 			)
 			const rootMessageId = rootMessages[0]?.id
@@ -1256,28 +1222,25 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			let failed = 0
 
 			for (const link of links) {
-				const unsyncedMessages = yield* db.execute((client) =>
-					client
-						.select({
-							id: schema.messagesTable.id,
-						})
-						.from(schema.messagesTable)
-						.leftJoin(
-							schema.chatSyncMessageLinksTable,
-							and(
-								eq(schema.chatSyncMessageLinksTable.channelLinkId, link.id),
-								eq(schema.chatSyncMessageLinksTable.hazelMessageId, schema.messagesTable.id),
-								isNull(schema.chatSyncMessageLinksTable.deletedAt),
+				const unsyncedMessages = yield* db.run(
+					PG.from(schema.messagesTable, "message")
+						.leftJoin(schema.chatSyncMessageLinksTable, "message_link", (message, messageLink) =>
+							PG.and(
+								messageLink.channelLinkId.eq(link.id),
+								messageLink.hazelMessageId.eq(message.id),
+								messageLink.deletedAt.isNull(),
 							),
 						)
-						.where(
-							and(
-								eq(schema.messagesTable.channelId, link.hazelChannelId),
-								isNull(schema.messagesTable.deletedAt),
-								isNull(schema.chatSyncMessageLinksTable.id),
-							),
-						)
-						.orderBy(asc(schema.messagesTable.createdAt), asc(schema.messagesTable.id))
+						.select(($) => ({ id: $.id }))
+						.where(($) => [
+							$.channelId.eq(link.hazelChannelId),
+							$.deletedAt.isNull(),
+							$.message_link.id.isNull(),
+						])
+						.orderBy(($) => [
+							[$.createdAt, "asc"],
+							[$.id, "asc"],
+						])
 						.limit(maxMessagesPerChannel),
 				)
 
@@ -1653,18 +1616,10 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			const messageLink = messageLinkOption.value
 			const normalizedMessageLink = normalizeMessageLinkExternalId(messageLink)
 
-			const remainingReactions = yield* db.execute((client) =>
-				client
-					.select({
-						id: schema.messageReactionsTable.id,
-					})
-					.from(schema.messageReactionsTable)
-					.where(
-						and(
-							eq(schema.messageReactionsTable.messageId, payload.hazelMessageId),
-							eq(schema.messageReactionsTable.emoji, payload.emoji),
-						),
-					)
+			const remainingReactions = yield* db.run(
+				PG.from(schema.messageReactionsTable)
+					.select("id")
+					.where(($) => [$.messageId.eq(payload.hazelMessageId), $.emoji.eq(payload.emoji)])
 					.limit(1),
 			)
 			if (remainingReactions.length > 0) {
@@ -1711,31 +1666,24 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 			hazelChannelId: ChannelId,
 			provider: ChatSyncProvider,
 		) {
-			const targets = yield* db.execute((client) =>
-				client
-					.select({
-						syncConnectionId: schema.chatSyncConnectionsTable.id,
-						channelLinkId: schema.chatSyncChannelLinksTable.id,
-						direction: schema.chatSyncChannelLinksTable.direction,
-					})
-					.from(schema.chatSyncChannelLinksTable)
-					.innerJoin(
-						schema.chatSyncConnectionsTable,
-						eq(
-							schema.chatSyncConnectionsTable.id,
-							schema.chatSyncChannelLinksTable.syncConnectionId,
-						),
+			const targets = yield* db.run(
+				PG.from(schema.chatSyncChannelLinksTable, "channel_link")
+					.innerJoin(schema.chatSyncConnectionsTable, "connection", (link, connection) =>
+						connection.id.eq(link.syncConnectionId),
 					)
-					.where(
-						and(
-							eq(schema.chatSyncChannelLinksTable.hazelChannelId, hazelChannelId),
-							eq(schema.chatSyncChannelLinksTable.isActive, true),
-							isNull(schema.chatSyncChannelLinksTable.deletedAt),
-							eq(schema.chatSyncConnectionsTable.provider, provider),
-							eq(schema.chatSyncConnectionsTable.status, "active"),
-							isNull(schema.chatSyncConnectionsTable.deletedAt),
-						),
-					),
+					.select(($) => ({
+						syncConnectionId: $.connection.id,
+						channelLinkId: $.id,
+						direction: $.direction,
+					}))
+					.where(($) => [
+						$.hazelChannelId.eq(hazelChannelId),
+						$.isActive.eq(true),
+						$.deletedAt.isNull(),
+						$.connection.provider.eq(provider),
+						$.connection.status.eq("active"),
+						$.connection.deletedAt.isNull(),
+					]),
 			)
 			return targets
 		})
@@ -2091,8 +2039,8 @@ export const ChatSyncCoreWorkerMake: Effect.Effect<Record<string, Function>, unk
 
 					if (normalizedExternalAttachments.length > 0) {
 						const uploadedAtBase = Date.now()
-						yield* transactionAwareExecute((client) =>
-							client.insert(schema.attachmentsTable).values(
+						yield* db.run(
+							PG.insertInto(schema.attachmentsTable).values(
 								normalizedExternalAttachments.map((attachment, index) => ({
 									organizationId: connection.organizationId,
 									channelId: link.hazelChannelId,

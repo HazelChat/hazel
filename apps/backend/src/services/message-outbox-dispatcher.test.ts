@@ -7,7 +7,7 @@ import {
 	type ReactionCreatedPayload,
 	type ReactionDeletedPayload,
 } from "@hazel/backend-core"
-import { Database, asc, eq, inArray, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageOutboxEventId, UserId } from "@hazel/schema"
 import { Effect, Layer, Redacted, Context } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
@@ -118,11 +118,8 @@ const getOutboxRows = (harness: ChatSyncDbHarness) =>
 	harness.run(
 		Effect.gen(function* () {
 			const db = yield* Database.Database
-			return yield* db.execute((client) =>
-				client
-					.select()
-					.from(schema.messageOutboxEventsTable)
-					.orderBy(asc(schema.messageOutboxEventsTable.sequence)),
+			return yield* db.run(
+				PG.from(schema.messageOutboxEventsTable).select().orderBy(["sequence", "asc"]),
 			)
 		}),
 	)
@@ -131,11 +128,10 @@ const getOutboxRowByIds = (harness: ChatSyncDbHarness, ids: ReadonlyArray<Messag
 	harness.run(
 		Effect.gen(function* () {
 			const db = yield* Database.Database
-			return yield* db.execute((client) =>
-				client
+			return yield* db.run(
+				PG.from(schema.messageOutboxEventsTable)
 					.select()
-					.from(schema.messageOutboxEventsTable)
-					.where(inArray(schema.messageOutboxEventsTable.id, [...ids])),
+					.where(($) => [$.id.in_(...ids)]),
 			)
 		}),
 	)
@@ -272,13 +268,12 @@ describe("MessageOutboxDispatcher", () => {
 					},
 				})
 
-				yield* db.execute((client) =>
-					client
-						.update(schema.messageOutboxEventsTable)
+				yield* db.run(
+					PG.update(schema.messageOutboxEventsTable)
 						.set({
 							attemptCount: 24,
 						})
-						.where(eq(schema.messageOutboxEventsTable.id, inserted.id)),
+						.where(($) => [$.id.eq(inserted.id)]),
 				)
 
 				return [inserted] as const

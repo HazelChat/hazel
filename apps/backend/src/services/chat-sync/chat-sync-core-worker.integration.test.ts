@@ -12,7 +12,7 @@ import {
 	OrganizationMemberRepo,
 	UserRepo,
 } from "@hazel/backend-core"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type {
 	ChannelId,
 	ExternalChannelId,
@@ -152,8 +152,8 @@ const insertBaseContext = (harness: ChatSyncDbHarness) =>
 			const botUserId = uuid<UserId>()
 			const channelId = uuid<ChannelId>()
 
-			yield* db.execute((client) =>
-				client.insert(schema.organizationsTable).values({
+			yield* db.run(
+				PG.insertInto(schema.organizationsTable).values({
 					id: organizationId,
 					name: "Chat Sync Org",
 					slug: `chat-sync-${organizationId.slice(0, 8)}`,
@@ -164,8 +164,8 @@ const insertBaseContext = (harness: ChatSyncDbHarness) =>
 				}),
 			)
 
-			yield* db.execute((client) =>
-				client.insert(schema.usersTable).values([
+			yield* db.run(
+				PG.insertInto(schema.usersTable).values([
 					{
 						id: authorUserId,
 						externalId: `user-${authorUserId}`,
@@ -195,8 +195,8 @@ const insertBaseContext = (harness: ChatSyncDbHarness) =>
 				]),
 			)
 
-			yield* db.execute((client) =>
-				client.insert(schema.channelsTable).values({
+			yield* db.run(
+				PG.insertInto(schema.channelsTable).values({
 					id: channelId,
 					name: "general",
 					icon: null,
@@ -231,8 +231,8 @@ const insertConnection = (
 			const db = yield* Database.Database
 			const syncConnectionId = uuid<SyncConnectionId>()
 
-			yield* db.execute((client) =>
-				client.insert(schema.chatSyncConnectionsTable).values({
+			yield* db.run(
+				PG.insertInto(schema.chatSyncConnectionsTable).values({
 					id: syncConnectionId,
 					organizationId: params.organizationId,
 					integrationConnectionId: null,
@@ -268,8 +268,8 @@ const insertLink = (
 		Effect.gen(function* () {
 			const db = yield* Database.Database
 			const linkId = uuid<SyncChannelLinkId>()
-			yield* db.execute((client) =>
-				client.insert(schema.chatSyncChannelLinksTable).values({
+			yield* db.run(
+				PG.insertInto(schema.chatSyncChannelLinksTable).values({
 					id: linkId,
 					syncConnectionId: params.syncConnectionId,
 					hazelChannelId: params.hazelChannelId,
@@ -300,8 +300,8 @@ const insertMessage = (
 		Effect.gen(function* () {
 			const db = yield* Database.Database
 			const messageId = uuid<MessageId>()
-			yield* db.execute((client) =>
-				client.insert(schema.messagesTable).values({
+			yield* db.run(
+				PG.insertInto(schema.messagesTable).values({
 					id: messageId,
 					channelId: params.channelId,
 					authorId: params.authorId,
@@ -329,8 +329,8 @@ const insertReaction = (
 		Effect.gen(function* () {
 			const db = yield* Database.Database
 			const reactionId = uuid<MessageReactionId>()
-			yield* db.execute((client) =>
-				client.insert(schema.messageReactionsTable).values({
+			yield* db.run(
+				PG.insertInto(schema.messageReactionsTable).values({
 					id: reactionId,
 					messageId: params.messageId,
 					channelId: params.channelId,
@@ -464,11 +464,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				yield* db.execute((client) =>
-					client
-						.update(schema.messagesTable)
+				yield* db.run(
+					PG.update(schema.messagesTable)
 						.set({ content: "hello-updated", updatedAt: new Date() })
-						.where(eq(schema.messagesTable.id, messageId)),
+						.where(($) => [$.id.eq(messageId)]),
 				)
 			}),
 		)
@@ -494,20 +493,18 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				const messageLinkRows = yield* db.execute((client) =>
-					client
+				const messageLinkRows = yield* db.run(
+					PG.from(schema.chatSyncMessageLinksTable)
 						.select()
-						.from(schema.chatSyncMessageLinksTable)
-						.where(eq(schema.chatSyncMessageLinksTable.channelLinkId, linkId)),
+						.where(($) => [$.channelLinkId.eq(linkId)]),
 				)
 				expect(messageLinkRows).toHaveLength(1)
 				expect(messageLinkRows[0]?.deletedAt).not.toBeNull()
 
-				const receiptRows = yield* db.execute((client) =>
-					client
+				const receiptRows = yield* db.run(
+					PG.from(schema.chatSyncEventReceiptsTable)
 						.select()
-						.from(schema.chatSyncEventReceiptsTable)
-						.where(eq(schema.chatSyncEventReceiptsTable.syncConnectionId, syncConnectionId)),
+						.where(($) => [$.syncConnectionId.eq(syncConnectionId)]),
 				)
 				expect(receiptRows.length).toBeGreaterThanOrEqual(3)
 				expect(
@@ -553,11 +550,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				const links = yield* db.execute((client) =>
-					client
+				const links = yield* db.run(
+					PG.from(schema.chatSyncMessageLinksTable)
 						.select()
-						.from(schema.chatSyncMessageLinksTable)
-						.where(eq(schema.chatSyncMessageLinksTable.channelLinkId, linkId)),
+						.where(($) => [$.channelLinkId.eq(linkId)]),
 				)
 				expect(links[0]?.externalMessageId).toBe(externalMessageId)
 			}),
@@ -595,11 +591,7 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				yield* db.execute((client) =>
-					client
-						.delete(schema.messageReactionsTable)
-						.where(eq(schema.messageReactionsTable.id, reactionId)),
-				)
+				yield* db.run(PG.deleteFrom(schema.messageReactionsTable).where(($) => [$.id.eq(reactionId)]))
 			}),
 		)
 
@@ -743,20 +735,18 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				const linkRows = yield* db.execute((client) =>
-					client
+				const linkRows = yield* db.run(
+					PG.from(schema.chatSyncMessageLinksTable)
 						.select()
-						.from(schema.chatSyncMessageLinksTable)
-						.where(eq(schema.chatSyncMessageLinksTable.channelLinkId, parentLinkId)),
+						.where(($) => [$.channelLinkId.eq(parentLinkId)]),
 				)
 				expect(linkRows).toHaveLength(1)
 				expect(linkRows[0]?.hazelMessageId).toBe(hazelMessageId)
 
-				const deletedMessageRows = yield* db.execute((client) =>
-					client
+				const deletedMessageRows = yield* db.run(
+					PG.from(schema.messagesTable)
 						.select()
-						.from(schema.messagesTable)
-						.where(eq(schema.messagesTable.id, hazelMessageId)),
+						.where(($) => [$.id.eq(hazelMessageId)]),
 				)
 				expect(deletedMessageRows[0]?.deletedAt).not.toBeNull()
 			}),
@@ -887,16 +877,10 @@ describe("ChatSyncCoreWorker integration", () => {
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				const rows = yield* db.execute((client) =>
-					client
+				const rows = yield* db.run(
+					PG.from(schema.messagesTable)
 						.select()
-						.from(schema.messagesTable)
-						.where(
-							and(
-								eq(schema.messagesTable.channelId, ctx.channelId),
-								isNull(schema.messagesTable.deletedAt),
-							),
-						),
+						.where(($) => [$.channelId.eq(ctx.channelId), $.deletedAt.isNull()]),
 				)
 				const contents = rows.map((row) => row.content)
 				expect(contents).toContain("direction-check")

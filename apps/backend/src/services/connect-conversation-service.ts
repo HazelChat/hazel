@@ -6,6 +6,7 @@ import {
 	MessageReactionRepo,
 	MessageRepo,
 } from "@hazel/backend-core"
+import type { DatabaseError } from "@hazel/db"
 import { InternalServerError } from "@hazel/domain"
 import type { ChannelId, ConnectConversationId, OrganizationId, UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Option } from "effect"
@@ -25,8 +26,8 @@ export class ConnectConversationService extends Context.Service<ConnectConversat
 			const channelAccessSync = yield* ChannelAccessSyncService
 			const orgResolver = yield* OrgResolver
 
-			const isUniqueViolation = (error: any, constraintName: string) =>
-				error?.type === "unique_violation" && error?.cause?.constraint_name === constraintName
+			const isUniqueViolation = (error: DatabaseError, constraintName: string) =>
+				error.type === "unique_violation" && error.constraint === constraintName
 
 			const getHostConversationOrFail = (channelId: ChannelId) =>
 				connectConversationRepo.findByHostChannel(channelId).pipe(
