@@ -1,7 +1,7 @@
-import { and, Database, eq, isNull, Repository, or, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 import type { ConnectInviteId, OrganizationId } from "@hazel/schema"
 import { ConnectInvite } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ConnectInviteRepo extends Context.Service<ConnectInviteRepo>()("ConnectInviteRepo", {
 	make: Effect.gen(function* () {
@@ -15,72 +15,38 @@ export class ConnectInviteRepo extends Context.Service<ConnectInviteRepo>()("Con
 		)
 		const db = yield* Database.Database
 
-		const findActiveById = (id: ConnectInviteId, tx?: TxFn) =>
-			db
-				.makeQuery((execute, input: ConnectInviteId) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.connectInvitesTable)
-							.where(
-								and(
-									eq(schema.connectInvitesTable.id, input),
-									isNull(schema.connectInvitesTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)(id, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findActiveById = (id: ConnectInviteId) =>
+			db.first(
+				PG.from(schema.connectInvitesTable)
+					.select()
+					.where(($) => [$.id.eq(id), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
-		const listIncomingForOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, input: OrganizationId) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.connectInvitesTable)
-						.where(
-							and(
-								eq(schema.connectInvitesTable.guestOrganizationId, input),
-								isNull(schema.connectInvitesTable.deletedAt),
-							),
-						),
-				),
-			)(organizationId, tx)
+		const listIncomingForOrganization = (organizationId: OrganizationId) =>
+			db.run(
+				PG.from(schema.connectInvitesTable)
+					.select()
+					.where(($) => [$.guestOrganizationId.eq(organizationId), $.deletedAt.isNull()]),
+			)
 
-		const listOutgoingForOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, input: OrganizationId) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.connectInvitesTable)
-						.where(
-							and(
-								eq(schema.connectInvitesTable.hostOrganizationId, input),
-								isNull(schema.connectInvitesTable.deletedAt),
-							),
-						),
-				),
-			)(organizationId, tx)
+		const listOutgoingForOrganization = (organizationId: OrganizationId) =>
+			db.run(
+				PG.from(schema.connectInvitesTable)
+					.select()
+					.where(($) => [$.hostOrganizationId.eq(organizationId), $.deletedAt.isNull()]),
+			)
 
-		const findPendingForGuestOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, input: OrganizationId) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.connectInvitesTable)
-						.where(
-							and(
-								eq(schema.connectInvitesTable.status, "pending"),
-								isNull(schema.connectInvitesTable.deletedAt),
-								or(
-									eq(schema.connectInvitesTable.guestOrganizationId, input),
-									eq(schema.connectInvitesTable.targetKind, "email"),
-								),
-							),
-						),
-				),
-			)(organizationId, tx)
+		const findPendingForGuestOrganization = (organizationId: OrganizationId) =>
+			db.run(
+				PG.from(schema.connectInvitesTable)
+					.select()
+					.where(($) => [
+						$.status.eq("pending"),
+						$.deletedAt.isNull(),
+						$.guestOrganizationId.eq(organizationId).or($.targetKind.eq("email")),
+					]),
+			)
 
 		return {
 			...baseRepo,

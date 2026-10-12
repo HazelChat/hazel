@@ -17,7 +17,6 @@
 	"dependencies": {
 		"@hazel/integrations": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

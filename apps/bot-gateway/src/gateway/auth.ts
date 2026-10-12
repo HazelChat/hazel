@@ -31,10 +31,7 @@ export const authenticateBotToken = (token: string, connectionString: string): E
 		Effect.provide(
 			Layer.effect(
 				Database.DatabaseConnection,
-				Effect.acquireRelease(
-					Effect.sync(() => Database.makeRequestConnection(connectionString)),
-					(connection) => Effect.promise(() => connection.end()),
-				),
+				Database.makeRequestConnection(connectionString).pipe(Effect.orDie),
 			),
 		),
 		Effect.withSpan("BotGateway.authenticate"),

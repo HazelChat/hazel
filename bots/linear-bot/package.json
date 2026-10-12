@@ -14,7 +14,6 @@
 		"@hazel/db": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/integrations": "workspace:*",
-		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

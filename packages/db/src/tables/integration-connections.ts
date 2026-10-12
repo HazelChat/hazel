@@ -44,7 +44,7 @@ export const integrationConnectionsTable = PG.table("integration_connections", {
 				where: '"deletedAt" IS NULL\n\t\t\t\t\tAND "level" = \'user\'\n\t\t\t\t\tAND "externalAccountId" IS NOT NULL',
 			},
 		),
-		PG.index("int_conn_github_installation_idx", ($) => [PG.jsonText($.metadata, "installationId")]),
+		PG.index("int_conn_github_installation_idx", ($) => [PG.jsonText($.metadata!, "installationId")]),
 	],
 })
 export type IntegrationConnection = PG.SelectRowOf<typeof integrationConnectionsTable>

@@ -1,7 +1,6 @@
-import { Database, and, asc, eq, inArray, or, schema, sql } from "@hazel/db"
-import type { DatabaseError, TxFn } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { ChannelId, MessageId, MessageOutboxEventId, MessageReactionId, UserId } from "@hazel/schema"
-import { Context, Effect, Layer, Option, Schema } from "effect"
+import { Context, Effect, Layer, Schema } from "effect"
 
 export const MessageCreatedPayloadSchema = Schema.Struct({
 	messageId: MessageId,
@@ -80,7 +79,7 @@ export interface FailMessageOutboxEventParams {
 	readonly lastError: string
 }
 
-export type MessageOutboxEventRecord = typeof schema.messageOutboxEventsTable.$inferSelect
+export type MessageOutboxEventRecord = schema.MessageOutboxEvent
 
 const InsertMessageOutboxEventSchema = Schema.Struct({
 	eventType: MessageOutboxEventType,
@@ -109,171 +108,115 @@ export class MessageOutboxRepo extends Context.Service<MessageOutboxRepo>()("Mes
 	make: Effect.gen(function* () {
 		const db = yield* Database.Database
 
-		const insert = (data: InsertMessageOutboxEvent, tx?: TxFn) =>
-			db
-				.makeQueryWithSchema(InsertMessageOutboxEventSchema, (execute, input) =>
-					execute((client) =>
-						client
-							.insert(schema.messageOutboxEventsTable)
-							.values({
-								eventType: input.eventType,
-								aggregateId: input.aggregateId,
-								channelId: input.channelId,
-								payload: input.payload as Record<string, unknown>,
-							})
-							.returning(),
-					),
-				)(data, tx)
-				.pipe(Effect.tap(() => markOutboxWrite))
-
-		const insertMany = (data: ReadonlyArray<InsertMessageOutboxEvent>, tx?: TxFn) =>
-			db
-				.makeQueryWithSchema(InsertMessageOutboxEventArraySchema, (execute, input) =>
-					execute((client) =>
-						client
-							.insert(schema.messageOutboxEventsTable)
-							.values(
-								input.map((event) => ({
-									eventType: event.eventType,
-									aggregateId: event.aggregateId,
-									channelId: event.channelId,
-									payload: event.payload as Record<string, unknown>,
-								})),
-							)
-							.returning(),
-					),
-				)(data, tx)
-				.pipe(Effect.tap(() => markOutboxWrite))
-
-		const claimNextBatch = (params: ClaimNextBatchParams, tx?: TxFn) =>
-			db.makeQuery((execute, data: ClaimNextBatchParams) => {
-				const staleBefore = new Date(Date.now() - data.lockTimeoutMs).toISOString()
-				const lockedAt = new Date().toISOString()
-				return execute(
-					(client) =>
-						(
-							client as typeof client & {
-								$client: {
-									<T>(
-										strings: TemplateStringsArray,
-										...values: ReadonlyArray<unknown>
-									): Promise<T>
-								}
-							}
-						).$client<Array<MessageOutboxEventRecord>>`
-						WITH candidates AS (
-							SELECT id
-							FROM "message_outbox_events"
-							WHERE (
-								"status" = 'pending'
-								AND "availableAt" <= now()
-							) OR (
-								"status" = 'processing'
-								AND "lockedAt" < ${staleBefore}
-							)
-							ORDER BY "sequence" ASC
-							LIMIT ${data.limit}
-							FOR UPDATE SKIP LOCKED
-						)
-						UPDATE "message_outbox_events" AS events
-						SET
-							"status" = 'processing',
-							"lockedAt" = ${lockedAt},
-							"lockedBy" = ${data.workerId}
-						FROM candidates
-						WHERE events.id = candidates.id
-						RETURNING events.*;
-					`,
-				).pipe(
-					Effect.map(
-						(rows) =>
-							rows
-								.slice()
-								.sort(
-									(left, right) => left.sequence - right.sequence,
-								) as Array<MessageOutboxEventRecord>,
-					),
-				)
-			})(params, tx)
-
-		const markProcessed = (id: MessageOutboxEventId, tx?: TxFn) =>
-			db.makeQuery((execute, eventId: MessageOutboxEventId) =>
-				execute((client) =>
-					client
-						.update(schema.messageOutboxEventsTable)
-						.set({
-							status: "processed",
-							processedAt: new Date(),
-							lockedAt: null,
-							lockedBy: null,
-							lastError: null,
+		const insert = (data: InsertMessageOutboxEvent) =>
+			Effect.gen(function* () {
+				const input = yield* Schema.decodeUnknownEffect(InsertMessageOutboxEventSchema)(data)
+				return yield* db.run(
+					PG.insertInto(schema.messageOutboxEventsTable)
+						.values({
+							eventType: input.eventType,
+							aggregateId: input.aggregateId,
+							channelId: input.channelId,
+							payload: input.payload as Record<string, unknown>,
 						})
-						.where(eq(schema.messageOutboxEventsTable.id, eventId))
 						.returning(),
-				).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
-			)(id, tx)
+				)
+			}).pipe(Effect.tap(() => markOutboxWrite))
 
-		const markRetry = (id: MessageOutboxEventId, params: RetryMessageOutboxEventParams, tx?: TxFn) =>
-			db.makeQuery(
-				(
-					execute,
-					data: {
-						id: MessageOutboxEventId
-						availableAt: Date
-						lastError: string
-					},
-				) =>
-					execute((client) =>
-						client
-							.update(schema.messageOutboxEventsTable)
-							.set({
-								status: "pending",
-								availableAt: data.availableAt,
-								lastError: data.lastError,
-								lockedAt: null,
-								lockedBy: null,
-								attemptCount: sql`${schema.messageOutboxEventsTable.attemptCount} + 1`,
-							})
-							.where(eq(schema.messageOutboxEventsTable.id, data.id))
-							.returning(),
-					).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
-			)(
-				{
-					id,
-					availableAt: params.availableAt,
-					lastError: params.lastError,
-				},
-				tx,
+		const insertMany = (data: ReadonlyArray<InsertMessageOutboxEvent>) =>
+			Effect.gen(function* () {
+				const input = yield* Schema.decodeUnknownEffect(InsertMessageOutboxEventArraySchema)(data)
+				return yield* db.run(
+					PG.insertInto(schema.messageOutboxEventsTable)
+						.values(
+							input.map((event) => ({
+								eventType: event.eventType,
+								aggregateId: event.aggregateId,
+								channelId: event.channelId,
+								payload: event.payload as Record<string, unknown>,
+							})),
+						)
+						.returning(),
+				)
+			}).pipe(Effect.tap(() => markOutboxWrite))
+
+		/**
+		 * Claims up to `limit` events: pending events that are due, plus processing events whose lock
+		 * went stale. Candidates are locked with FOR UPDATE SKIP LOCKED so concurrent workers never
+		 * claim the same event.
+		 */
+		const claimNextBatch = (params: ClaimNextBatchParams) =>
+			Effect.gen(function* () {
+				const staleBefore = new Date(Date.now() - params.lockTimeoutMs)
+				const lockedAt = new Date()
+
+				const candidates = PG.from(schema.messageOutboxEventsTable)
+					.select("id")
+					.where(($) => [
+						PG.or(
+							$.status.eq("pending").and($.availableAt.lte(schema.now())),
+							$.status.eq("processing").and($.lockedAt.lt(staleBefore)),
+						),
+					])
+					.orderBy(($) => [[$.sequence, "asc"]])
+					.limit(params.limit)
+					.forUpdate({ skipLocked: true })
+
+				const rows = yield* db.run(
+					PG.update(schema.messageOutboxEventsTable)
+						.set({
+							status: "processing",
+							lockedAt,
+							lockedBy: params.workerId,
+						})
+						.where(($) => [PG.inSubquery($.id, candidates)])
+						.returning(),
+				)
+
+				return rows.slice().sort((left, right) => left.sequence - right.sequence)
+			})
+
+		const markProcessed = (id: MessageOutboxEventId) =>
+			db.first(
+				PG.update(schema.messageOutboxEventsTable)
+					.set({
+						status: "processed",
+						processedAt: new Date(),
+						lockedAt: null,
+						lockedBy: null,
+						lastError: null,
+					})
+					.where(($) => [$.id.eq(id)])
+					.returning(),
 			)
 
-		const markFailed = (id: MessageOutboxEventId, params: FailMessageOutboxEventParams, tx?: TxFn) =>
-			db.makeQuery(
-				(
-					execute,
-					data: {
-						id: MessageOutboxEventId
-						lastError: string
-					},
-				) =>
-					execute((client) =>
-						client
-							.update(schema.messageOutboxEventsTable)
-							.set({
-								status: "failed",
-								lastError: data.lastError,
-								lockedAt: null,
-								lockedBy: null,
-								attemptCount: sql`${schema.messageOutboxEventsTable.attemptCount} + 1`,
-							})
-							.where(eq(schema.messageOutboxEventsTable.id, data.id))
-							.returning(),
-					).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
-			)(
-				{
-					id,
-					lastError: params.lastError,
-				},
-				tx,
+		const markRetry = (id: MessageOutboxEventId, params: RetryMessageOutboxEventParams) =>
+			db.first(
+				PG.update(schema.messageOutboxEventsTable)
+					.set(($) => ({
+						status: "pending" as const,
+						availableAt: params.availableAt,
+						lastError: params.lastError,
+						lockedAt: null,
+						lockedBy: null,
+						attemptCount: $.attemptCount.add(1),
+					}))
+					.where(($) => [$.id.eq(id)])
+					.returning(),
+			)
+
+		const markFailed = (id: MessageOutboxEventId, params: FailMessageOutboxEventParams) =>
+			db.first(
+				PG.update(schema.messageOutboxEventsTable)
+					.set(($) => ({
+						status: "failed" as const,
+						lastError: params.lastError,
+						lockedAt: null,
+						lockedBy: null,
+						attemptCount: $.attemptCount.add(1),
+					}))
+					.where(($) => [$.id.eq(id)])
+					.returning(),
 			)
 
 		return {

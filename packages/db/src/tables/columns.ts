@@ -43,8 +43,20 @@ export const typed =
 	<T extends PG.PgType<string, any, any>>(type: T): PG.PgType<string, A, PG.InferEncoded<T>> =>
 		type as unknown as PG.PgType<string, A, PG.InferEncoded<T>>
 
-/** A Postgres enum type, read as the union of its labels. The `CREATE TYPE` lives in a migration. */
+/**
+ * A Postgres enum type in `public`, read as the union of its labels. effect-orm does not model enums,
+ * so the `CREATE TYPE` (and any later `ALTER TYPE`) is written in a `--custom` migration. The name is
+ * schema-qualified so `effect-orm verify`, which rebuilds the tables in a scratch schema, still
+ * resolves it.
+ */
 export const pgEnum = <const Values extends readonly [string, ...Array<string>]>(
 	name: string,
 	values: Values,
-) => Object.assign(PG.custom(name, Schema.Literals(values)), { enumName: name, enumValues: values })
+) =>
+	Object.assign(PG.custom(`public.${name}`, Schema.Literals(values)), {
+		enumName: `public.${name}`,
+		enumValues: values,
+	})
+
+/** `now()`, typed as the `Date` the timestamp columns hold. */
+export const now = () => PG.sql(timestamptz)`now()`

@@ -23,7 +23,7 @@ export const organizationsTable = PG.table("organizations", {
 		PG.index("organizations_deleted_at_idx", ["deletedAt"]),
 		PG.uniqueIndex(
 			"organizations_clerk_org_id_unique",
-			($) => [PG.jsonText($.settings, "clerkOrganizationId")],
+			($) => [PG.jsonText($.settings!, "clerkOrganizationId")],
 			{ where: '"deletedAt" IS NULL AND "settings"->>\'clerkOrganizationId\' IS NOT NULL' },
 		),
 	],

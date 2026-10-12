@@ -567,15 +567,15 @@ export const setupCommand = Command.make(
 				yield* Console.log(pc.dim("\nDry-run complete! No files were written."))
 				yield* Console.log(`Run without ${pc.cyan("--dry-run")} to apply these changes.\n`)
 			} else {
-				// Run db:push to initialize database schema
+				// Run db:migrate to initialize the database schema
 				yield* Console.log(
 					pc.cyan("\n\u2500\u2500\u2500 Step 6: Initialize Database \u2500\u2500\u2500"),
 				)
-				yield* Console.log(pc.dim("Running `bun run db:push`...\n"))
+				yield* Console.log(pc.dim("Running `bun run db:migrate`...\n"))
 
 				const dbPushResult = yield* Effect.tryPromise({
 					try: async () => {
-						const proc = Bun.spawn(["bun", "run", "db:push"], {
+						const proc = Bun.spawn(["bun", "run", "db:migrate"], {
 							cwd: process.cwd() + "/packages/db",
 							stdout: "inherit",
 							stderr: "inherit",
@@ -587,7 +587,7 @@ export const setupCommand = Command.make(
 				}).pipe(Effect.catch(() => Effect.succeed(false)))
 
 				if (dbPushResult) {
-					yield* Console.log(pc.green("\n\u2713") + " Database schema pushed")
+					yield* Console.log(pc.green("\n\u2713") + " Database schema migrated")
 				} else {
 					yield* Console.log(
 						pc.yellow("\n\u26A0") + " Database push failed. You may need to run it manually.",

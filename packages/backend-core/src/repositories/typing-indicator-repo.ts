@@ -1,6 +1,6 @@
-import { and, Database, eq, lt, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
-import { ChannelId, ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
+import { type ChannelId, type ChannelMemberId, TypingIndicatorId } from "@hazel/schema"
 import { TypingIndicator } from "@hazel/domain/models"
 import { Context, Effect, Layer } from "effect"
 
@@ -17,70 +17,49 @@ export class TypingIndicatorRepo extends Context.Service<TypingIndicatorRepo>()(
 		)
 
 		// Add custom method to delete by channel and member
-		const deleteByChannelAndMember = (
-			{
-				channelId,
-				memberId,
-			}: {
-				channelId: ChannelId
-				memberId: ChannelMemberId
-			},
-			tx?: TxFn,
-		) =>
-			db.makeQuery((execute, _data) =>
-				execute((client) =>
-					client
-						.delete(schema.typingIndicatorsTable)
-						.where(
-							and(
-								eq(schema.typingIndicatorsTable.channelId, channelId),
-								eq(schema.typingIndicatorsTable.memberId, memberId),
-							),
-						),
-				),
-			)({ channelId, memberId }, tx)
+		const deleteByChannelAndMember = ({
+			channelId,
+			memberId,
+		}: {
+			channelId: ChannelId
+			memberId: ChannelMemberId
+		}) =>
+			db.run(
+				PG.deleteFrom(schema.typingIndicatorsTable).where(($) => [
+					$.channelId.eq(channelId),
+					$.memberId.eq(memberId),
+				]),
+			)
 
 		// Upsert method to create or update typing indicator
-		const upsertByChannelAndMember = (
-			params: {
-				channelId: ChannelId
-				memberId: ChannelMemberId
-				lastTyped: number
-			},
-			tx?: TxFn,
-		) =>
-			db.makeQuery((execute, _data) =>
-				execute((client) => {
-					return client
-						.insert(schema.typingIndicatorsTable)
-						.values({
-							id: TypingIndicatorId.make(crypto.randomUUID()),
-							channelId: params.channelId,
-							memberId: params.memberId,
-							lastTyped: params.lastTyped,
-						})
-						.onConflictDoUpdate({
-							target: [
-								schema.typingIndicatorsTable.channelId,
-								schema.typingIndicatorsTable.memberId,
-							],
-							set: { lastTyped: params.lastTyped },
-						})
-						.returning()
-				}),
-			)(params, tx)
+		const upsertByChannelAndMember = (params: {
+			channelId: ChannelId
+			memberId: ChannelMemberId
+			lastTyped: number
+		}) =>
+			db.run(
+				PG.insertInto(schema.typingIndicatorsTable)
+					.values({
+						id: TypingIndicatorId.make(crypto.randomUUID()),
+						channelId: params.channelId,
+						memberId: params.memberId,
+						lastTyped: params.lastTyped,
+					})
+					.onConflictDoUpdate({
+						target: ["channelId", "memberId"],
+						set: { lastTyped: params.lastTyped },
+					})
+					.returning(),
+			)
 
 		// Cleanup method to remove stale indicators
-		const deleteStale = (thresholdMs: number = 10000, tx?: TxFn) => {
+		const deleteStale = (thresholdMs: number = 10000) => {
 			const threshold = Date.now() - thresholdMs
-			return db.makeQuery((execute, _data) =>
-				execute((client) =>
-					client
-						.delete(schema.typingIndicatorsTable)
-						.where(lt(schema.typingIndicatorsTable.lastTyped, threshold))
-						.returning(),
-				),
-			)({}, tx)
+			return db.run(
+				PG.deleteFrom(schema.typingIndicatorsTable)
+					.where(($) => [$.lastTyped.lt(threshold)])
+					.returning(),
+			)
 		}
 
 		return {

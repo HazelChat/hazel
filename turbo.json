@@ -60,7 +60,7 @@
 			"cache": false,
 			"dependsOn": ["^setup"]
 		},
-		"db:push": {
+		"db:migrate": {
 			"cache": false
 		},
 		"dev": {

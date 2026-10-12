@@ -6,30 +6,29 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./schema": "./src/schema/index.ts",
-		"./tables": "./src/tables/index.ts"
+		"./schema": "./src/tables/index.ts",
+		"./tables": "./src/tables/index.ts",
+		"./migrate": "./src/migrate.ts"
 	},
 	"scripts": {
-		"db": "drizzle-kit",
-		"setup": "drizzle-kit push --force",
-		"db:push": "drizzle-kit push --force",
-		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"db:generate": "bun --bun effect-orm generate",
+		"db:check": "bun --bun effect-orm check",
+		"db:migrate": "bun scripts/migrate.ts",
+		"db:status": "bun --bun effect-orm status",
+		"db:verify": "bun --bun effect-orm verify",
+		"setup": "bun scripts/migrate.ts",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect/sql-pg": "catalog:effect",
 		"@hazel/domain": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"drizzle-orm": "^0.45.1",
-		"effect": "catalog:effect",
-		"postgres": "^3.4.7",
 		"@maple-dev/effect-orm": "0.5.0",
-		"@effect/sql-pg": "catalog:effect"
+		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@testcontainers/postgresql": "^10.18.0",
 		"@types/bun": "1.3.9",
-		"drizzle-kit": "^0.31.8",
 		"typescript": "^5.9.3"
 	}
 }

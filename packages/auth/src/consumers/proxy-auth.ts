@@ -1,6 +1,6 @@
 import { verifyToken } from "@clerk/backend"
-import { Database, eq, schema } from "@hazel/db"
-import { ClerkJwtClaims } from "@hazel/schema"
+import { Database, PG, schema } from "@hazel/db"
+import { ClerkJwtClaims, type UserId } from "@hazel/schema"
 import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { UserLookupCache } from "../cache/user-lookup-cache.ts"
 import type { AuthenticatedUserContext } from "../types.ts"
@@ -28,31 +28,28 @@ export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAu
 		const clerkSecretKey = yield* Config.Redacted("CLERK_SECRET_KEY")
 
 		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (externalId: string) {
-			const cached = yield* userLookupCache
-				.get(externalId)
-				.pipe(
-					Effect.catch((error) =>
-						Effect.logWarning("User lookup cache error", error).pipe(
-							Effect.map(() =>
-								Option.none<{
-									internalUserId: (typeof schema.usersTable.$inferSelect)["id"]
-								}>(),
-							),
+			const cached = yield* userLookupCache.get(externalId).pipe(
+				Effect.catch((error) =>
+					Effect.logWarning("User lookup cache error", error).pipe(
+						Effect.map(() =>
+							Option.none<{
+								internalUserId: UserId
+							}>(),
 						),
 					),
-				)
+				),
+			)
 
 			if (Option.isSome(cached)) {
 				yield* Effect.annotateCurrentSpan("cache.result", "hit")
 				return Option.some(cached.value.internalUserId)
 			}
 
-			const userResult = yield* db
-				.execute((client) =>
-					client
-						.select({ id: schema.usersTable.id })
-						.from(schema.usersTable)
-						.where(eq(schema.usersTable.externalId, externalId))
+			const userOption = yield* db
+				.first(
+					PG.from(schema.usersTable)
+						.select("id")
+						.where(($) => [$.externalId.eq(externalId)])
 						.limit(1),
 				)
 				.pipe(
@@ -65,7 +62,6 @@ export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAu
 						),
 					),
 				)
-			const userOption = Option.fromNullishOr(userResult[0])
 
 			if (Option.isSome(userOption)) {
 				yield* userLookupCache

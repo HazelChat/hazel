@@ -415,7 +415,6 @@
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/integrations": "workspace:*",
-        "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
       },
       "devDependencies": {
@@ -525,7 +524,6 @@
         "@hazel/db": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
-        "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
       },
       "devDependencies": {
@@ -545,14 +543,11 @@
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
         "@maple-dev/effect-orm": "0.5.0",
-        "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
-        "postgres": "^3.4.7",
       },
       "devDependencies": {
         "@testcontainers/postgresql": "^10.18.0",
         "@types/bun": "1.3.9",
-        "drizzle-kit": "^0.31.8",
         "typescript": "^5.9.3",
       },
     },
@@ -562,7 +557,6 @@
       "dependencies": {
         "@hazel/integrations": "workspace:*",
         "@hazel/schema": "workspace:*",
-        "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
       },
       "devDependencies": {
@@ -4709,7 +4703,7 @@
 
     "@grpc/proto-loader/yargs": ["yargs@17.7.2", "", { "dependencies": { "cliui": "^8.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "require-directory": "^2.1.1", "string-width": "^4.2.3", "y18n": "^5.0.5", "yargs-parser": "^21.1.1" } }, "sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w=="],
 
-    "@hazel/effect-bun/@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
+    "@hazel/effect-bun/@types/bun": ["@types/bun@1.4.3", "", { "dependencies": { "bun-types": "1.4.3" } }, "sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw=="],
 
     "@hazel/electric-proxy/@electric-sql/client": ["@electric-sql/client@1.5.15", "", { "dependencies": { "@microsoft/fetch-event-source": "^2.0.1" }, "optionalDependencies": { "@rollup/rollup-darwin-arm64": "^4.18.1" }, "bin": { "intent": "bin/intent.mjs" } }, "sha512-8C+mqZu6r68kU/jf63FLuc90M2ejyeTgB/68G0ufX4H2WepQw/NJXrIY3veE+sLrDGL+uyQB+fDStHH30fi8qg=="],
 
@@ -5569,7 +5563,7 @@
 
     "@grpc/proto-loader/yargs/string-width": ["string-width@4.2.3", "", { "dependencies": { "emoji-regex": "^8.0.0", "is-fullwidth-code-point": "^3.0.0", "strip-ansi": "^6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
 
-    "@hazel/effect-bun/@types/bun/bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
+    "@hazel/effect-bun/@types/bun/bun-types": ["bun-types@1.4.3", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg=="],
 
     "@img/sharp-freebsd-wasm32/@img/sharp-wasm32/@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 

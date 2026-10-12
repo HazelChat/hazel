@@ -58,12 +58,12 @@ export const objectPlatformLive = (env: Record<string, unknown>, botGateways: Bo
 		workerEnvLayer(env),
 	)
 
-/** Opens the request's Postgres client; it connects lazily and is closed with the request scope. */
+/**
+ * Opens the request's Postgres client; it connects lazily and is closed with the request scope.
+ * Opening dials nothing, so it cannot fail for want of a database: a failure here is a defect.
+ */
 export const provideRequestDatabase = (env: Record<string, unknown>) =>
 	Effect.provideServiceEffect(
 		Database.DatabaseConnection,
-		Effect.acquireRelease(
-			Effect.sync(() => Database.makeRequestConnection(hazelDbConnectionString(env))),
-			(connection) => Effect.promise(() => connection.end()).pipe(Effect.ignore),
-		),
+		Database.makeRequestConnection(hazelDbConnectionString(env)).pipe(Effect.orDie),
 	)
