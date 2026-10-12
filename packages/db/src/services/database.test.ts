@@ -115,6 +115,7 @@ describe("DatabaseError", () => {
 		expect(error.type).toBe("unique_violation")
 		expect(error.constraint).toBe("_test_rollback_pkey")
 		expect(error.sqlState).toBe("23505")
+		expect(error.detail).toBe(`Key (id)=(${id}) already exists.`)
 	})
 })
 

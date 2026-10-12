@@ -34,6 +34,8 @@ export class DatabaseError extends Schema.TaggedError<DatabaseError>()("Database
 	message: Schema.String,
 	sqlState: Schema.optional(Schema.String),
 	constraint: Schema.optional(Schema.String),
+	/** Postgres's DETAIL line, e.g. `Key (slug)=(acme) already exists.` */
+	detail: Schema.optional(Schema.String),
 	cause: Schema.Defect(),
 }) {
 	public override toString() {
@@ -101,11 +103,13 @@ export const toDatabaseError = (cause: OrmFailure): DatabaseError => {
 				? cause.reason._tag
 				: "Unknown"
 	const constraint = findField(cause, "constraint") ?? findField(cause, "constraint_name")
+	const detail = findField(cause, "detail")
 	return new DatabaseError({
 		type: classify(sqlState, reason),
 		message: cause.message,
 		...(sqlState === undefined ? undefined : { sqlState }),
 		...(constraint === undefined ? undefined : { constraint }),
+		...(detail === undefined ? undefined : { detail }),
 		cause,
 	})
 }
@@ -292,5 +296,8 @@ export const layerFromSqlClient: Layer.Layer<Database, never, SqlClient.SqlClien
 
 /** Marks an effect as correct only inside a transaction (see effect-orm's `requireTransaction`). */
 export const requireTransaction = Orm.requireTransaction
+
+/** The open transaction; `transaction` provides it, `requireTransaction` requires it. */
+export const Transaction = Orm.Transaction
 
 export { sql } from "@maple-dev/effect-orm/database"
