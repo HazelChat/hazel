@@ -541,8 +541,10 @@
       "name": "@hazel/db",
       "version": "0.0.0",
       "dependencies": {
+        "@effect/sql-pg": "catalog:effect",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
+        "@maple-dev/effect-orm": "0.5.0",
         "drizzle-orm": "^0.45.1",
         "effect": "catalog:effect",
         "postgres": "^3.4.7",
@@ -1404,6 +1406,8 @@
     "@linear/sdk": ["@linear/sdk@73.0.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0" } }, "sha512-+7bMcDsDafS+468dd0JE0a0tbiBJtL253wKdKUIjGqkG6zm6Mr+WW+cvjo2Bl7T8Lldldq2cIA2tUT9ZjzJDkQ=="],
 
     "@maple-dev/alchemy": ["@maple-dev/alchemy@0.2.0", "", { "dependencies": { "@maple-dev/effect-sdk": "0.10.0" }, "peerDependencies": { "alchemy": ">=2.0.0-beta.80 <3", "effect": "^4.0.0" } }, "sha512-lGjw1u0eAfNBKzp+IfcZHOJyqn2N3ivT0uGvrj8alK5vJsYwP1lI3y9A7rgTIyrgIsEswodTyUFduaZa9YjGkw=="],
+
+    "@maple-dev/effect-orm": ["@maple-dev/effect-orm@0.5.0", "", { "peerDependencies": { "effect": "^4.0.0" }, "bin": { "ch-bench": "dist/benchmark/bin.mjs", "effect-orm": "dist/kit/bin.mjs" } }, "sha512-DsjyJSHSX5xRhlVdTsPOci69MFNT6wuh0xXKnviYdsBgH7Il4zsB5v/95krbx9JSL2LKR0Q+5iBDZfdcPQLGCA=="],
 
     "@maple-dev/effect-sdk": ["@maple-dev/effect-sdk@0.10.0", "", { "dependencies": { "std-env": "^4.0.0" }, "peerDependencies": { "effect": "^4.0.0" } }, "sha512-3MWyBqWPyiizAZItDk7Uk+vi69csziIJxCcaqW10aowVV1Tlcwao1EW6xLccAzvfkz43Y8WAiLzhf/Kr4oRkdQ=="],
 

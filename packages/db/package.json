@@ -6,7 +6,8 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./schema": "./src/schema/index.ts"
+		"./schema": "./src/schema/index.ts",
+		"./tables": "./src/tables/index.ts"
 	},
 	"scripts": {
 		"db": "drizzle-kit",
@@ -21,7 +22,9 @@
 		"@hazel/schema": "workspace:*",
 		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect",
-		"postgres": "^3.4.7"
+		"postgres": "^3.4.7",
+		"@maple-dev/effect-orm": "0.5.0",
+		"@effect/sql-pg": "catalog:effect"
 	},
 	"devDependencies": {
 		"@testcontainers/postgresql": "^10.18.0",
