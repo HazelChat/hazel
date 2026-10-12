@@ -1,5 +1,5 @@
 import * as ClusterCron from "effect/cluster/ClusterCron"
-import { and, Database, isNotNull, lt, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -20,21 +20,10 @@ export const StatusExpirationCronLayer = ClusterCron.make({
 		const now = new Date()
 
 		// Find users with expired statuses
-		const expiredStatuses = yield* db.execute((client) =>
-			client
-				.select({
-					userId: schema.userPresenceStatusTable.userId,
-					statusEmoji: schema.userPresenceStatusTable.statusEmoji,
-					customMessage: schema.userPresenceStatusTable.customMessage,
-					statusExpiresAt: schema.userPresenceStatusTable.statusExpiresAt,
-				})
-				.from(schema.userPresenceStatusTable)
-				.where(
-					and(
-						isNotNull(schema.userPresenceStatusTable.statusExpiresAt),
-						lt(schema.userPresenceStatusTable.statusExpiresAt, now),
-					),
-				),
+		const expiredStatuses = yield* db.run(
+			PG.from(schema.userPresenceStatusTable)
+				.select("userId", "statusEmoji", "customMessage", "statusExpiresAt")
+				.where(($) => [$.statusExpiresAt.isNotNull(), $.statusExpiresAt.lt(now)]),
 		)
 
 		yield* Effect.annotateCurrentSpan("cron.expired_count", expiredStatuses.length)
@@ -47,21 +36,15 @@ export const StatusExpirationCronLayer = ClusterCron.make({
 
 		// Clear expired statuses by setting emoji, message, and expiration to null
 		const userIds = expiredStatuses.map((s) => s.userId)
-		yield* db.execute((client) =>
-			client
-				.update(schema.userPresenceStatusTable)
+		yield* db.run(
+			PG.update(schema.userPresenceStatusTable)
 				.set({
 					statusEmoji: null,
 					customMessage: null,
 					statusExpiresAt: null,
 					updatedAt: new Date(),
 				})
-				.where(
-					and(
-						isNotNull(schema.userPresenceStatusTable.statusExpiresAt),
-						lt(schema.userPresenceStatusTable.statusExpiresAt, now),
-					),
-				),
+				.where(($) => [$.statusExpiresAt.isNotNull(), $.statusExpiresAt.lt(now)]),
 		)
 
 		yield* Effect.logInfo(`Cleared ${expiredStatuses.length} expired statuses`, {

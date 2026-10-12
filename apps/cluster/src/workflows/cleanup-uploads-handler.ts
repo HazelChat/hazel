@@ -1,5 +1,5 @@
 import { Activity } from "effect/workflow"
-import { and, Database, eq, isNull, lt, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { AttachmentId } from "@hazel/schema"
 import { Effect } from "effect"
@@ -32,21 +32,14 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 					const cutoffTime = new Date(Date.now() - maxAgeMinutes * 60 * 1000)
 
 					const staleUploads = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.attachmentsTable.id,
-									fileName: schema.attachmentsTable.fileName,
-									uploadedAt: schema.attachmentsTable.uploadedAt,
-								})
-								.from(schema.attachmentsTable)
-								.where(
-									and(
-										eq(schema.attachmentsTable.status, "uploading"),
-										lt(schema.attachmentsTable.uploadedAt, cutoffTime),
-										isNull(schema.attachmentsTable.deletedAt),
-									),
-								),
+						.run(
+							PG.from(schema.attachmentsTable)
+								.select("id", "fileName", "uploadedAt")
+								.where(($) => [
+									$.status.eq("uploading"),
+									$.uploadedAt.lt(cutoffTime),
+									$.deletedAt.isNull(),
+								]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -104,16 +97,10 @@ export const CleanupUploadsWorkflowLayer = Cluster.CleanupUploadsWorkflow.toLaye
 
 					for (const upload of staleUploadsResult.uploads) {
 						yield* db
-							.execute((client) =>
-								client
-									.update(schema.attachmentsTable)
+							.run(
+								PG.update(schema.attachmentsTable)
 									.set({ status: "failed" })
-									.where(
-										and(
-											eq(schema.attachmentsTable.id, upload.id),
-											eq(schema.attachmentsTable.status, "uploading"),
-										),
-									),
+									.where(($) => [$.id.eq(upload.id), $.status.eq("uploading")]),
 							)
 							.pipe(
 								Effect.catchTags({

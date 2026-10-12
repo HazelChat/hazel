@@ -19,7 +19,6 @@
 		"@hazel/infra": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"alchemy": "catalog:alchemy",
-		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

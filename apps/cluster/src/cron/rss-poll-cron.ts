@@ -1,6 +1,6 @@
 import * as ClusterCron from "effect/cluster/ClusterCron"
 import { WorkflowEngine } from "effect/workflow"
-import { and, Database, eq, isNull, lt, schema, sql } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import * as Cron from "effect/Cron"
 import * as DateTime from "effect/DateTime"
@@ -28,28 +28,20 @@ export const RssPollCronLayer = ClusterCron.make({
 		// - enabled and not deleted
 		// - last fetched + polling interval <= now (or never fetched)
 		// - consecutive errors < 10 (circuit breaker)
-		const dueSubscriptions = yield* db.execute((client) =>
-			client
-				.select({
-					id: schema.rssSubscriptionsTable.id,
-					channelId: schema.rssSubscriptionsTable.channelId,
-					organizationId: schema.rssSubscriptionsTable.organizationId,
-					feedUrl: schema.rssSubscriptionsTable.feedUrl,
-					pollingIntervalMinutes: schema.rssSubscriptionsTable.pollingIntervalMinutes,
-					createdAt: schema.rssSubscriptionsTable.createdAt,
-				})
-				.from(schema.rssSubscriptionsTable)
-				.where(
-					and(
-						eq(schema.rssSubscriptionsTable.isEnabled, true),
-						isNull(schema.rssSubscriptionsTable.deletedAt),
-						lt(schema.rssSubscriptionsTable.consecutiveErrors, 10),
-						sql`(
-							${schema.rssSubscriptionsTable.lastFetchedAt} IS NULL
-							OR ${schema.rssSubscriptionsTable.lastFetchedAt} + (${schema.rssSubscriptionsTable.pollingIntervalMinutes} || ' minutes')::interval <= ${nowIso}
-						)`,
-					),
-				),
+		const dueSubscriptions = yield* db.run(
+			PG.from(schema.rssSubscriptionsTable)
+				.select("id", "channelId", "organizationId", "feedUrl", "pollingIntervalMinutes", "createdAt")
+				.where(($) => [
+					$.isEnabled.eq(true),
+					$.deletedAt.isNull(),
+					$.consecutiveErrors.lt(10),
+					$.lastFetchedAt
+						.isNull()
+						.or(
+							PG.sql
+								.cond`${$.lastFetchedAt} + (${$.pollingIntervalMinutes} || ' minutes')::interval <= ${nowIso}`,
+						),
+				]),
 		)
 
 		yield* Effect.annotateCurrentSpan("cron.due_count", dueSubscriptions.length)
@@ -90,18 +82,17 @@ export const RssPollCronLayer = ClusterCron.make({
 
 								// Increment error counter
 								yield* db
-									.execute((client) =>
-										client
-											.update(schema.rssSubscriptionsTable)
-											.set({
-												consecutiveErrors: sql`${schema.rssSubscriptionsTable.consecutiveErrors} + 1`,
+									.run(
+										PG.update(schema.rssSubscriptionsTable)
+											.set(($) => ({
+												consecutiveErrors: $.consecutiveErrors.add(1),
 												lastErrorMessage:
 													err instanceof Error ? err.message : String(err),
 												lastErrorAt: new Date(),
 												lastFetchedAt: new Date(),
 												updatedAt: new Date(),
-											})
-											.where(eq(schema.rssSubscriptionsTable.id, sub.id)),
+											}))
+											.where(($) => [$.id.eq(sub.id)]),
 									)
 									.pipe(
 										Effect.catch((dbErr) =>

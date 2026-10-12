@@ -1,5 +1,5 @@
 import { Activity } from "effect/workflow"
-import { and, Database, eq, inArray, isNull, ne, or, schema, sql } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { ChannelMemberId, NotificationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Array, Effect, Option, Result } from "effect"
@@ -98,52 +98,31 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 						)
 
 						const channelMembers = yield* db
-							.execute((client) =>
-								client
-									.select({
-										id: schema.channelMembersTable.id,
-										channelId: schema.channelMembersTable.channelId,
-										userId: schema.channelMembersTable.userId,
-										isMuted: schema.channelMembersTable.isMuted,
-										notificationCount: schema.channelMembersTable.notificationCount,
-									})
-									.from(schema.channelMembersTable)
-									.leftJoin(
-										schema.userPresenceStatusTable,
-										eq(
-											schema.channelMembersTable.userId,
-											schema.userPresenceStatusTable.userId,
-										),
+							.run(
+								PG.from(schema.channelMembersTable)
+									.leftJoin(schema.userPresenceStatusTable, "presence", (cm, presence) =>
+										presence.userId.eq(cm.userId),
 									)
-									.where(
-										and(
-											eq(schema.channelMembersTable.channelId, payload.channelId),
-											eq(schema.channelMembersTable.isMuted, false),
-											ne(schema.channelMembersTable.userId, payload.authorId),
-											isNull(schema.channelMembersTable.deletedAt),
-											or(
-												// No presence record - send notification
-												isNull(schema.userPresenceStatusTable.userId),
-												// Has presence record - check suppressNotifications and activeChannel/status
-												and(
-													eq(
-														schema.userPresenceStatusTable.suppressNotifications,
-														false,
-													),
-													or(
-														isNull(
-															schema.userPresenceStatusTable.activeChannelId,
-														),
-														ne(
-															schema.userPresenceStatusTable.activeChannelId,
-															payload.channelId,
-														),
-														ne(schema.userPresenceStatusTable.status, "online"),
-													),
+									.select("id", "channelId", "userId", "isMuted", "notificationCount")
+									.where(($) => [
+										$.channelId.eq(payload.channelId),
+										$.isMuted.eq(false),
+										$.userId.neq(payload.authorId),
+										$.deletedAt.isNull(),
+										PG.or(
+											// No presence record - send notification
+											$.presence.userId.isNull(),
+											// Has presence record - check suppressNotifications and activeChannel/status
+											PG.and(
+												$.presence.suppressNotifications.eq(false),
+												PG.or(
+													$.presence.activeChannelId.isNull(),
+													$.presence.activeChannelId.neq(payload.channelId),
+													$.presence.status.neq("online"),
 												),
 											),
 										),
-									),
+									]),
 							)
 							.pipe(
 								Effect.catchTags({
@@ -180,11 +159,10 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 					// If this is a reply, get the original message author
 					if (payload.replyToMessageId) {
 						const replyToMessage = yield* db
-							.execute((client) =>
-								client
-									.select({ authorId: schema.messagesTable.authorId })
-									.from(schema.messagesTable)
-									.where(eq(schema.messagesTable.id, payload.replyToMessageId!))
+							.run(
+								PG.from(schema.messagesTable)
+									.select("authorId")
+									.where(($) => [$.id.eq(payload.replyToMessageId!)])
 									.limit(1),
 							)
 							.pipe(
@@ -226,50 +204,31 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 
 					// Query only the members who should be notified
 					const channelMembers = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.channelMembersTable.id,
-									channelId: schema.channelMembersTable.channelId,
-									userId: schema.channelMembersTable.userId,
-									isMuted: schema.channelMembersTable.isMuted,
-									notificationCount: schema.channelMembersTable.notificationCount,
-								})
-								.from(schema.channelMembersTable)
-								.leftJoin(
-									schema.userPresenceStatusTable,
-									eq(
-										schema.channelMembersTable.userId,
-										schema.userPresenceStatusTable.userId,
-									),
+						.run(
+							PG.from(schema.channelMembersTable)
+								.leftJoin(schema.userPresenceStatusTable, "presence", (cm, presence) =>
+									presence.userId.eq(cm.userId),
 								)
-								.where(
-									and(
-										eq(schema.channelMembersTable.channelId, payload.channelId),
-										inArray(schema.channelMembersTable.userId, uniqueUsersToNotify),
-										eq(schema.channelMembersTable.isMuted, false),
-										isNull(schema.channelMembersTable.deletedAt),
-										or(
-											// No presence record - send notification
-											isNull(schema.userPresenceStatusTable.userId),
-											// Has presence record - check suppressNotifications and activeChannel/status
-											and(
-												eq(
-													schema.userPresenceStatusTable.suppressNotifications,
-													false,
-												),
-												or(
-													isNull(schema.userPresenceStatusTable.activeChannelId),
-													ne(
-														schema.userPresenceStatusTable.activeChannelId,
-														payload.channelId,
-													),
-													ne(schema.userPresenceStatusTable.status, "online"),
-												),
+								.select("id", "channelId", "userId", "isMuted", "notificationCount")
+								.where(($) => [
+									$.channelId.eq(payload.channelId),
+									$.userId.in_(...uniqueUsersToNotify),
+									$.isMuted.eq(false),
+									$.deletedAt.isNull(),
+									PG.or(
+										// No presence record - send notification
+										$.presence.userId.isNull(),
+										// Has presence record - check suppressNotifications and activeChannel/status
+										PG.and(
+											$.presence.suppressNotifications.eq(false),
+											PG.or(
+												$.presence.activeChannelId.isNull(),
+												$.presence.activeChannelId.neq(payload.channelId),
+												$.presence.status.neq("online"),
 											),
 										),
 									),
-								),
+								]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -330,27 +289,17 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 						(member: Cluster.ChannelMemberForNotification) => member.userId,
 					)
 					const orgMembers = yield* db
-						.execute((client) =>
-							client
-								.select({
-									orgMemberId: schema.organizationMembersTable.id,
-									userId: schema.organizationMembersTable.userId,
-								})
-								.from(schema.organizationMembersTable)
-								.innerJoin(
-									schema.channelsTable,
-									eq(
-										schema.channelsTable.organizationId,
-										schema.organizationMembersTable.organizationId,
-									),
+						.run(
+							PG.from(schema.organizationMembersTable)
+								.innerJoin(schema.channelsTable, "c", (om, c) =>
+									c.organizationId.eq(om.organizationId),
 								)
-								.where(
-									and(
-										eq(schema.channelsTable.id, payload.channelId),
-										inArray(schema.organizationMembersTable.userId, userIds),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								),
+								.select(($) => ({ orgMemberId: $.id, userId: $.userId }))
+								.where(($) => [
+									$.c.id.eq(payload.channelId),
+									$.userId.in_(...userIds),
+									$.deletedAt.isNull(),
+								]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -378,15 +327,11 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 					}
 
 					const insertedNotifications = yield* db
-						.execute((client) =>
-							client
-								.insert(schema.notificationsTable)
+						.run(
+							PG.insertInto(schema.notificationsTable)
 								.values(values)
 								.onConflictDoNothing()
-								.returning({
-									id: schema.notificationsTable.id,
-									memberId: schema.notificationsTable.memberId,
-								}),
+								.returning("id", "memberId"),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -408,13 +353,12 @@ export const MessageNotificationWorkflowLayer = Cluster.MessageNotificationWorkf
 
 					if (insertedChannelMemberIds.length > 0) {
 						yield* db
-							.execute((client) =>
-								client
-									.update(schema.channelMembersTable)
-									.set({
-										notificationCount: sql`${schema.channelMembersTable.notificationCount} + 1`,
-									})
-									.where(inArray(schema.channelMembersTable.id, insertedChannelMemberIds)),
+							.run(
+								PG.update(schema.channelMembersTable)
+									.set(($) => ({
+										notificationCount: $.notificationCount.add(1),
+									}))
+									.where(($) => [$.id.in_(...insertedChannelMemberIds)]),
 							)
 							.pipe(
 								Effect.catchTags({

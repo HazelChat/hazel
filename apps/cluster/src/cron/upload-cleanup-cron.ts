@@ -1,5 +1,5 @@
 import * as ClusterCron from "effect/cluster/ClusterCron"
-import { and, Database, eq, isNull, lt, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import * as Cron from "effect/Cron"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -24,18 +24,11 @@ export const UploadCleanupCronLayer = ClusterCron.make({
 		const cutoffTime = new Date(Date.now() - MAX_AGE_MINUTES * 60 * 1000)
 
 		// Find and mark stale uploads as failed
-		const result = yield* db.execute((client) =>
-			client
-				.update(schema.attachmentsTable)
+		const result = yield* db.run(
+			PG.update(schema.attachmentsTable)
 				.set({ status: "failed" })
-				.where(
-					and(
-						eq(schema.attachmentsTable.status, "uploading"),
-						lt(schema.attachmentsTable.uploadedAt, cutoffTime),
-						isNull(schema.attachmentsTable.deletedAt),
-					),
-				)
-				.returning({ id: schema.attachmentsTable.id }),
+				.where(($) => [$.status.eq("uploading"), $.uploadedAt.lt(cutoffTime), $.deletedAt.isNull()])
+				.returning("id"),
 		)
 
 		yield* Effect.annotateCurrentSpan("cron.marked_count", result.length)

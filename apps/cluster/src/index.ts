@@ -7,7 +7,7 @@ import { WorkflowProxyServer } from "effect/workflow"
 import { Database } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
-import { Config, ConfigProvider, Effect, Layer, Logger, Redacted } from "effect"
+import { Config, ConfigProvider, Effect, Layer, Logger, Redacted, Schedule } from "effect"
 import { PresenceCleanupCronLayer } from "./cron/presence-cleanup-cron.ts"
 import { StatusExpirationCronLayer } from "./cron/status-expiration-cron.ts"
 import { TypingIndicatorCleanupCronLayer } from "./cron/typing-indicator-cleanup-cron.ts"
@@ -35,11 +35,35 @@ const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
 	),
 )
 
-// Database layer for Drizzle ORM (uses same credentials as PgClient)
-const DatabaseLayer = Database.layer({
-	url: Redacted.make(process.env.DATABASE_URL as string)!,
-	ssl: !process.env.IS_DEV,
-})
+// Database layer (uses same credentials as PgClient). The pool connects lazily, so probe it once at
+// startup: retry while the database is unreachable, then die, as the previous client did.
+const DatabaseLayer = Layer.effectDiscard(
+	Effect.gen(function* () {
+		const db = yield* Database.Database
+		yield* db.execute(Database.sql`SELECT 1`).pipe(
+			Effect.retry(
+				Schedule.jittered(Schedule.spaced("1.25 seconds")).pipe(
+					(schedule) => Schedule.max([schedule, Schedule.recurs(10)]),
+					Schedule.tap(({ attempt }) =>
+						Effect.logWarning(
+							`[Database client]: Connection to the database failed. Retrying (attempt ${attempt}).`,
+						),
+					),
+				),
+			),
+			Effect.tap(() => Effect.logInfo("[Database client]: Connection to the database established.")),
+			Effect.orDie,
+		)
+	}),
+).pipe(
+	Layer.provideMerge(
+		Database.layer({
+			url: Redacted.make(process.env.DATABASE_URL as string)!,
+			ssl: !process.env.IS_DEV,
+		}),
+	),
+	Layer.orDie,
+)
 
 // OpenTelemetry tracing layer
 const TracerLive = createTracingLayer("cluster")

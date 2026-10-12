@@ -1,5 +1,5 @@
 import { Activity } from "effect/workflow"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import type { MessageId } from "@hazel/schema"
 import { GitHub } from "@hazel/integrations"
@@ -38,25 +38,14 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 					yield* Effect.logDebug(`Querying subscriptions for repository ${payload.repositoryId}`)
 
 					const subscriptions = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.githubSubscriptionsTable.id,
-									channelId: schema.githubSubscriptionsTable.channelId,
-									enabledEvents: schema.githubSubscriptionsTable.enabledEvents,
-									branchFilter: schema.githubSubscriptionsTable.branchFilter,
-								})
-								.from(schema.githubSubscriptionsTable)
-								.where(
-									and(
-										eq(
-											schema.githubSubscriptionsTable.repositoryId,
-											payload.repositoryId,
-										),
-										eq(schema.githubSubscriptionsTable.isEnabled, true),
-										isNull(schema.githubSubscriptionsTable.deletedAt),
-									),
-								),
+						.run(
+							PG.from(schema.githubSubscriptionsTable)
+								.select("id", "channelId", "enabledEvents", "branchFilter")
+								.where(($) => [
+									$.repositoryId.eq(payload.repositoryId),
+									$.isEnabled.eq(true),
+									$.deletedAt.isNull(),
+								]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -159,9 +148,8 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 					// Create a message in each eligible channel
 					for (const subscription of eligibleSubscriptions) {
 						const messageResult = yield* db
-							.execute((client) =>
-								client
-									.insert(schema.messagesTable)
+							.run(
+								PG.insertInto(schema.messagesTable)
 									.values({
 										channelId: subscription.channelId,
 										authorId: botUserId,
@@ -171,7 +159,7 @@ export const GitHubWebhookWorkflowLayer = Cluster.GitHubWebhookWorkflow.toLayer(
 										threadChannelId: null,
 										deletedAt: null,
 									})
-									.returning({ id: schema.messagesTable.id }),
+									.returning("id"),
 							)
 							.pipe(
 								Effect.catchTags({
