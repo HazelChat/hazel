@@ -50,6 +50,6 @@
 		"@cloudflare/workers-types": "catalog:alchemy",
 		"@testcontainers/postgresql": "^10.18.0",
 		"@types/bun": "1.3.9",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }
