@@ -157,22 +157,14 @@ const driverDefect = (cause: Cause.Cause<unknown>): Option.Option<OrmFailure> =>
 	return Option.none()
 }
 
-/**
- * What `run` takes: effect-orm's `Runnable`, plus any builder insert. Under TypeScript 5 a concrete
- * `PG.insertInto(table)` is not assignable to `Runnable`'s `CHInsert<any, ...>` (the variance of its
- * `onConflictDoUpdate` target), so inserts are recognised by their tag; the row type still comes from
- * the query.
- */
-export type Runnable = Orm.Runnable | { readonly _tag: "CHInsert" }
-
 export interface DatabaseShape {
 	/** Compiles a built query or write, runs it, and decodes its rows (a write's RETURNING rows). */
-	readonly run: <Q extends Runnable, const Given extends object = {}>(
+	readonly run: <Q extends Orm.Runnable, const Given extends object = {}>(
 		query: Q,
 		params?: Given,
 	) => Effect.Effect<ReadonlyArray<Orm.RowOf<Q>>, DatabaseError>
 	/** `run`, keeping the first row. */
-	readonly first: <Q extends Runnable, const Given extends object = {}>(
+	readonly first: <Q extends Orm.Runnable, const Given extends object = {}>(
 		query: Q,
 		params?: Given,
 	) => Effect.Effect<Option.Option<Orm.RowOf<Q>>, DatabaseError>
@@ -197,11 +189,11 @@ export interface DatabaseShape {
 }
 
 const makeShape = (getOrm: Effect.Effect<Orm.DatabaseApi>): DatabaseShape => {
-	const run = (query: Runnable, params?: object) =>
+	const run = (query: Orm.Runnable, params?: object) =>
 		Effect.flatMap(getOrm, (orm) => absorb(orm.run(query as never, params as never)))
 	return {
 		run: run as DatabaseShape["run"],
-		first: ((query: Runnable, params?: object) =>
+		first: ((query: Orm.Runnable, params?: object) =>
 			Effect.map(run(query, params), (rows) =>
 				Option.fromNullishOr(rows[0]),
 			)) as DatabaseShape["first"],

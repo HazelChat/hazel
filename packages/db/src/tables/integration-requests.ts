@@ -1,8 +1,8 @@
 import { IntegrationRequestId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
-export const integrationRequestStatusEnum = pgEnum("integration_request_status", [
+export const integrationRequestStatusEnum = PG.enumType("integration_request_status", [
 	"pending",
 	"reviewed",
 	"planned",

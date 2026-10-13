@@ -1,8 +1,8 @@
 import { UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
-export const userTypeEnum = pgEnum("user_type", ["user", "machine"])
+export const userTypeEnum = PG.enumType("user_type", ["user", "machine"])
 
 export const usersTable = PG.table("users", {
 	columns: {
@@ -21,8 +21,8 @@ export const usersTable = PG.table("users", {
 		deletedAt: PG.nullable(timestamptz),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("users_externalId_unique", ["externalId"])],
 	indexes: [
-		PG.uniqueIndex("users_externalId_unique", ["externalId"]),
 		PG.index("users_external_id_idx", ["externalId"]),
 		PG.index("users_email_idx", ["email"]),
 		PG.index("users_user_type_idx", ["userType"]),

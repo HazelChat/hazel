@@ -20,8 +20,8 @@ export const integrationTokensTable = PG.table("integration_tokens", {
 		updatedAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("integration_tokens_connectionId_unique", ["connectionId"])],
 	indexes: [
-		PG.uniqueIndex("integration_tokens_connectionId_unique", ["connectionId"]),
 		PG.index("int_tokens_connection_id_idx", ["connectionId"]),
 		PG.index("int_tokens_expires_at_idx", ["expiresAt"]),
 		PG.index("int_tokens_key_version_idx", ["encryptionKeyVersion"]),

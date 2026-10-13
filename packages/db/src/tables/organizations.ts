@@ -1,8 +1,8 @@
 import { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
-export const organizationRoleEnum = pgEnum("organization_role", ["admin", "member", "owner"])
+export const organizationRoleEnum = PG.enumType("organization_role", ["admin", "member", "owner"])
 
 export const organizationsTable = PG.table("organizations", {
 	columns: {
@@ -17,8 +17,8 @@ export const organizationsTable = PG.table("organizations", {
 		deletedAt: PG.nullable(timestamptz),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("organizations_slug_unique", ["slug"])],
 	indexes: [
-		PG.uniqueIndex("organizations_slug_unique", ["slug"]),
 		PG.index("organizations_slug_idx", ["slug"]),
 		PG.index("organizations_deleted_at_idx", ["deletedAt"]),
 		PG.uniqueIndex(
@@ -45,10 +45,10 @@ export const organizationMembersTable = PG.table("organization_members", {
 		deletedAt: PG.nullable(timestamptz),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("org_members_org_user_unique", ["organizationId", "userId"])],
 	indexes: [
 		PG.index("org_members_organization_id_idx", ["organizationId"]),
 		PG.index("org_members_user_id_idx", ["userId"]),
-		PG.uniqueIndex("org_members_org_user_unique", ["organizationId", "userId"]),
 	],
 	foreignKeys: [
 		PG.foreignKey({
