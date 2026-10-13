@@ -1,5 +1,6 @@
 import { OrganizationId } from "@hazel/schema"
 import { Schema } from "effect"
+import * as CreateWorkspace from "../create-workspace"
 
 export const UserOrganization = Schema.Struct({
 	id: OrganizationId,
@@ -14,5 +15,7 @@ export const Model = Schema.Struct({
 	/** `null` until the live query is ready. */
 	organizations: Schema.NullOr(Schema.Array(UserOrganization)),
 	hasRedirected: Schema.Boolean,
+	/** Shown when the user has no organization. */
+	createWorkspace: CreateWorkspace.Model,
 })
 export type Model = typeof Model.Type

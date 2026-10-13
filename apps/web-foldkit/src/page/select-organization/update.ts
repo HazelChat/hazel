@@ -1,4 +1,6 @@
 import { Option } from "effect"
+import { Command } from "foldkit"
+import * as CreateWorkspace from "../create-workspace"
 import { modifyFields } from "foldkit/struct"
 import { AppRoute, hrefOf, organizationHref } from "../../route"
 import type { PageReturn } from "../contract"
@@ -13,7 +15,9 @@ const navigate = (model: Model, href: string): Return => ({
 	outMessage: PageOutMessage.RequestedNavigation({ href, replace: false }),
 })
 
-export const init = (): Return => ({ model: { organizations: null, hasRedirected: false } })
+export const init = (): Return => ({
+	model: { organizations: null, hasRedirected: false, createWorkspace: CreateWorkspace.init() },
+})
 
 export const update = (model: Model, message: Message): Return =>
 	Message.match<Return>(message, {
@@ -28,5 +32,13 @@ export const update = (model: Model, message: Message): Return =>
 		ClickedOrganization: ({ organization }) => navigate(model, organizationHref(organization)),
 		ClickedCreateNew: () =>
 			navigate(model, hrefOf(AppRoute.Onboarding({ orgId: Option.none(), step: Option.none() }))),
-		GotClerkMountMessage: () => ({ model }),
+		GotCreateWorkspaceMessage: ({ message: child }) => {
+			const result = CreateWorkspace.update(model.createWorkspace, child)
+			return {
+				model: modifyFields(model, { createWorkspace: () => result.model }),
+				commands: Command.mapMessages(result.commands, (message) =>
+					Message.GotCreateWorkspaceMessage({ message }),
+				),
+			}
+		},
 	})

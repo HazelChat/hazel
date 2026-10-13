@@ -1,37 +1,53 @@
 import { Schema } from "effect"
 import { Submodel } from "foldkit"
-import { ClerkMountMessage, clerkComponent } from "../../auth/clerk-mount"
 import { definePage, type PageReturn, type PageViewInputs } from "../../contract"
+import * as CreateWorkspace from "../../create-workspace"
 
-/** `_app/onboarding/setup-organization.tsx`: Clerk's `<CreateOrganization>`, centered. */
+/** `_app/onboarding/setup-organization.tsx`: create a workspace, centered. */
 
-const Model = Schema.Struct({})
+const Model = Schema.Struct({ form: CreateWorkspace.Model })
 type Model = typeof Model.Type
-type Message = ClerkMountMessage
+const Message = CreateWorkspace.Message
+type Message = CreateWorkspace.Message
 
-const toMessage = (message: ClerkMountMessage): Message => message
+export const update = (model: Model, message: Message): PageReturn<Model, Message> => {
+	const result = CreateWorkspace.update(model.form, message)
+	return { ...result, model: { form: result.model } }
+}
 
-/** The `<CreateOrganization>` props legacy passes on both of its screens. */
-export const createOrganizationProps = {
-	routing: "hash",
-	skipInvitationScreen: true,
-	afterCreateOrganizationUrl: "/",
-} as const
+const toMessage = (message: Message): Message => message
 
-export const view = Submodel.defineView<Model, Message, PageViewInputs>((_model, _inputs, h) =>
+export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, _inputs, h) =>
 	h.div(
 		[h.Class("flex min-h-screen items-center justify-center bg-bg p-4")],
-		[clerkComponent(h, "CreateOrganization", createOrganizationProps, toMessage)],
+		[
+			h.div(
+				[h.Class("flex w-full max-w-sm flex-col gap-6")],
+				[
+					h.div(
+						[h.Class("space-y-2 text-center")],
+						[
+							h.h1([h.Class("font-semibold text-2xl text-fg")], ["Create your workspace"]),
+							h.p(
+								[h.Class("text-muted-fg text-sm")],
+								["A workspace is where your team's channels and conversations live."],
+							),
+						],
+					),
+					CreateWorkspace.view(h, model.form, toMessage),
+				],
+			),
+		],
 	),
 )
 
 export const page = definePage(
 	"OnboardingSetupOrganization",
-	{ Model, Message: ClerkMountMessage },
+	{ Model, Message },
 	{
 		routes: ["OnboardingSetupOrganization"],
-		init: (): PageReturn<Model, Message> => ({ model: {} }),
-		update: (model): PageReturn<Model, Message> => ({ model }),
+		init: (): PageReturn<Model, Message> => ({ model: { form: CreateWorkspace.init() } }),
+		update,
 		view,
 	},
 )

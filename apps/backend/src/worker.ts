@@ -21,7 +21,7 @@ import {
 	OutboxDispatcherObject,
 	OutboxDispatcherObjectLive,
 } from "./worker/outbox-dispatcher-object"
-import { CACHE_BINDING } from "./worker/platform"
+import { CACHE_BINDING, EMAIL_BINDING } from "./worker/platform"
 import { RateLimiterObject, RateLimiterObjectLive } from "./worker/rate-limiter-object"
 
 /** Session and user-lookup caches (Redis on Bun). */
@@ -35,6 +35,7 @@ const props = Effect.gen(function* () {
 	if (globalThis.__ALCHEMY_RUNTIME__) return { main: import.meta.url }
 	const stack = yield* HazelStack
 	const cache = yield* ApiCache
+	const email = yield* Cloudflare.Email.SendEmail(EMAIL_BINDING)
 	return {
 		main: import.meta.url,
 		...hazelWorkerProps("api", stack),
@@ -48,6 +49,7 @@ const props = Effect.gen(function* () {
 		env: {
 			HAZEL_DB: stack.db.hyperdrive,
 			[CACHE_BINDING]: cache,
+			[EMAIL_BINDING]: email,
 			...(yield* apiEnv(stack)),
 		},
 	}

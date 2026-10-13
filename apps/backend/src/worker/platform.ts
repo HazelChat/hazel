@@ -10,9 +10,20 @@ import { readHazelDbBinding } from "@hazel/infra/cloudflare"
 import { workerEnvLayer } from "@hazel/infra/worker-runtime"
 import { Effect, Layer, Option, Redacted } from "effect"
 import { type BotGatewayNamespace, BotGatewayTransport } from "../services/bot-gateway-transport"
+import { InviteMailer, isEmailBinding } from "../services/invite-mailer"
 
 /** KV namespace backing the session/user-lookup caches (Redis on Bun). */
 export const CACHE_BINDING = "CACHE"
+
+/** Cloudflare Email Sending, for invitation emails. */
+export const EMAIL_BINDING = "EMAIL"
+
+/** Invites go out through the `EMAIL` binding; without it the link is only logged. */
+const inviteMailerLive = (env: Record<string, unknown>) =>
+	Layer.suspend(() => {
+		const binding = env[EMAIL_BINDING]
+		return isEmailBinding(binding) ? InviteMailer.layerBinding(binding) : InviteMailer.layerLog
+	})
 
 /** The Hyperdrive connection string, a defect when the binding is missing. */
 export const hazelDbConnectionString = (env: Record<string, unknown>): string =>
@@ -40,6 +51,7 @@ export const requestPlatformLive = (env: Record<string, unknown>, botGateways: B
 		BotGatewayTransport.layerDurableObject(botGateways),
 		// Suspended: init also runs at plan time, where the KV binding does not exist yet.
 		Layer.suspend(() => layerKvResultPersistence(cacheNamespace(env))),
+		inviteMailerLive(env).pipe(Layer.provide(workerEnvLayer(env))),
 		workerEnvLayer(env),
 	)
 

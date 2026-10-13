@@ -46,11 +46,11 @@ export class UserRpcs extends RpcGroup.make(
 	/**
 	 * UserUpdate
 	 *
-	 * Updates Hazel-specific user preferences (timezone, settings).
-	 * Identity fields (firstName, lastName, avatarUrl, email) are owned by Clerk
-	 * and synced via the Clerk webhook — update them with the Clerk client SDK.
+	 * Updates the user's profile (name, avatar) and preferences (timezone, settings).
+	 * The email comes from the sign-in provider and is not editable here. The avatar is
+	 * uploaded first (`type: "user-avatar"`), then its public URL is set; `null` removes it.
 	 *
-	 * @param payload - User ID and Hazel-specific fields to update
+	 * @param payload - User ID and the fields to update
 	 * @returns Updated user data and transaction ID
 	 * @throws UserNotFoundError if user doesn't exist
 	 * @throws UnauthorizedError if user lacks permission
@@ -59,6 +59,9 @@ export class UserRpcs extends RpcGroup.make(
 	Rpc.make("user.update", {
 		payload: Schema.Struct({
 			id: UserId,
+			firstName: Schema.optional(Schema.Trim.check(Schema.isNonEmpty(), Schema.isMaxLength(100))),
+			lastName: Schema.optional(Schema.Trim.check(Schema.isMaxLength(100))),
+			avatarUrl: Schema.optional(Schema.NullOr(Schema.NonEmptyString)),
 			timezone: Schema.optional(User.PatchPartial.fields.timezone),
 			settings: Schema.optional(User.PatchPartial.fields.settings),
 		}),

@@ -27,6 +27,7 @@ import * as IntegrationsSettings from "./settings/integrations/index"
 import * as InstalledAppsSettings from "./settings/integrations/installed"
 import * as MarketplaceSettings from "./settings/integrations/marketplace"
 import * as YourAppsSettings from "./settings/integrations/your-apps"
+import * as Invite from "./invite"
 import * as Join from "./join"
 import * as Onboarding from "./onboarding"
 import * as OnboardingSetupOrganization from "./onboarding/setup-organization"
@@ -69,6 +70,7 @@ export const pages = [
 	OnboardingSetupOrganization.page,
 	SelectOrganization.page,
 	Join.page,
+	Invite.page,
 	ChannelSettingsRedirect.page,
 	ChannelSettingsOverview.page,
 	ChannelSettingsConnect.page,

@@ -223,6 +223,7 @@ describe("hrefOf", () => {
 			[AppRoute.AuthContinue({ provider: Option.some("github") }), "/auth/continue?provider=github"],
 		],
 		Join: [[AppRoute.Join({ slug: "hazel" }), "/join/hazel"]],
+		Invite: [[AppRoute.Invite({ token: "abc_DEF-123" }), "/invite/abc_DEF-123"]],
 		Onboarding: [
 			[AppRoute.Onboarding({ orgId: Option.none(), step: none }), "/onboarding"],
 			[

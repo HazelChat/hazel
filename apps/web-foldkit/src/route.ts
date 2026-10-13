@@ -13,6 +13,8 @@ export const AppRoute = defineRouteUnion({
 	/** Where the OAuth callback sends a user whose provider account it just linked (`?provider=`). */
 	AuthContinue: { provider: Schema.Option(Schema.String) },
 	Join: { slug: Schema.String },
+	/** The link in an invitation email. */
+	Invite: { token: Schema.String },
 	/** `?orgId=&step=` (`validateSearch` in `onboarding/index.tsx`). */
 	Onboarding: { orgId: Schema.Option(OrganizationId), step: Schema.Option(Schema.String) },
 	OnboardingSetupOrganization: { orgId: Schema.Option(OrganizationId) },
@@ -145,6 +147,7 @@ const routers = {
 		Route.mapTo(AppRoute.AuthContinue),
 	),
 	Join: pipe(literal("join"), slash(string("slug")), Route.mapTo(AppRoute.Join)),
+	Invite: pipe(literal("invite"), slash(string("token")), Route.mapTo(AppRoute.Invite)),
 	Onboarding: pipe(literal("onboarding"), query(OnboardingQuery), Route.mapTo(AppRoute.Onboarding)),
 	OnboardingSetupOrganization: pipe(
 		literal("onboarding"),
@@ -246,6 +249,7 @@ export const urlToAppRoute = Route.parseUrlWithFallback(
 		routers.AuthRegister,
 		routers.AuthContinue,
 		routers.Join,
+		routers.Invite,
 		routers.Onboarding,
 		routers.OnboardingSetupOrganization,
 		routers.SelectOrganization,
@@ -307,6 +311,7 @@ export const isPublicRoute = AppRoute.isAnyOf([
 	"AuthRegister",
 	"AuthContinue",
 	"Join",
+	"Invite",
 	"NotFound",
 ])
 

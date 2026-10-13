@@ -24,6 +24,7 @@ import {
 	ConnectInviteRepo,
 	ConnectParticipantRepo,
 	CustomEmojiRepo,
+	InvitationRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
 	IntegrationConnectionRepo,
@@ -48,6 +49,8 @@ import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { BotPolicy } from "./policies/bot-policy"
+import { InvitationPolicy } from "./policies/invitation-policy"
+import { Invitations } from "./services/invitations"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
@@ -169,6 +172,7 @@ export const RepoLive = Layer.mergeAll(
 	BotCommandRepo.layer,
 	BotInstallationRepo.layer,
 	CustomEmojiRepo.layer,
+	InvitationRepo.layer,
 )
 
 export const PolicyLive = Layer.mergeAll(
@@ -192,6 +196,7 @@ export const PolicyLive = Layer.mergeAll(
 	RssSubscriptionPolicy.layer,
 	BotPolicy.layer,
 	CustomEmojiPolicy.layer,
+	InvitationPolicy.layer,
 )
 
 /**
@@ -217,6 +222,7 @@ export const AppServicesLive = Layer.mergeAll(
 	WebhookBotService.layer,
 	ChannelAccessSyncService.layer,
 	ConnectConversationService.layer,
+	Invitations.layer,
 	// SessionManager.layer includes BackendAuth.layer via dependencies
 	SessionManager.layer,
 	OAuthBearerAuth.layer,

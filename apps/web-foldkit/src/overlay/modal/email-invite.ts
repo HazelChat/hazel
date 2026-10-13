@@ -14,9 +14,11 @@ import { closed, completed, ModalOutMessage } from "../out-message"
 import { ToastRequest } from "../toasts"
 import * as Requests from "./requests"
 import { defineModal, type ModalReturn, type ModalViewInputs } from "./contract"
-import { type InviteRole, sendInvites } from "./email-invite-clerk"
 import { Frame, Message as FrameMessage, frameView, initFrame, isFrameClosed, modalDescription, modalTitle } from "./frame"
 import { errorToast, successToast, warningToast } from "../../data/actions"
+import { sendInvitations } from "../../data/invitations"
+import { OrganizationId } from "@hazel/schema"
+import { InvitationRole } from "@hazel/domain/rpc"
 
 /** `components/modals/email-invite-modal.tsx` (legacy `useModal("email-invite")`). */
 
@@ -25,6 +27,8 @@ type Row = typeof Row.Type
 
 const Model = Schema.Struct({
 	frame: Frame,
+	/** The organization on screen when the modal opened; `null` outside one. */
+	organizationId: Schema.NullOr(OrganizationId),
 	invites: Schema.Array(Row),
 	nextRowId: Schema.Number,
 	isSubmitting: Schema.Boolean,
@@ -44,21 +48,14 @@ const Message = defineMessageUnion({
 })
 type Message = typeof Message.Type
 
-const InviteRoleSchema = Schema.Literals(["org:member", "org:admin"])
-
 const SendInvites = Command.define("SendInvites", {
-	args: { invites: Schema.Array(Schema.Struct({ email: Schema.String, role: InviteRoleSchema })) },
+	args: {
+		organizationId: OrganizationId,
+		invites: Schema.Array(Schema.Struct({ email: Schema.String, role: InvitationRole })),
+	},
 	messages: [Message.CompletedSendInvites, Message.FailedSendInvites],
-	execute: ({ invites }) =>
-		sendInvites(invites).pipe(
-			Effect.map(
-				Option.match({
-					onNone: () =>
-						Message.FailedSendInvites({ toast: errorToast("No active organization, please select one first.") }),
-					onSome: (results) => Message.CompletedSendInvites(results),
-				}),
-			),
-		),
+	execute: ({ organizationId, invites }) =>
+		sendInvitations(organizationId, invites).pipe(Effect.map((results) => Message.CompletedSendInvites(results))),
 })
 
 const ID = "email-invite-modal"
@@ -69,13 +66,13 @@ const newRow = (rowId: number): Row => ({
 	email: "",
 	role: Select.init({
 		id: `${ID}-role-${rowId}`,
-		items: [Select.item("org:member", "Member"), Select.item("org:admin", "Admin")],
-		selectedKey: "org:member",
+		items: [Select.item("member", "Member"), Select.item("admin", "Admin")],
+		selectedKey: "member",
 	}),
 })
 
-const roleOf = (row: Row): InviteRole =>
-	Option.getOrElse(row.role.selectedKey, () => "org:member") === "org:admin" ? "org:admin" : "org:member"
+const roleOf = (row: Row): InvitationRole =>
+	Option.getOrElse(row.role.selectedKey, () => "member") === "admin" ? "admin" : "member"
 
 const validInvites = (model: Model) => model.invites.filter((invite) => invite.email.trim() !== "")
 
@@ -89,9 +86,21 @@ type Return = ModalReturn<Model, Message>
 const submitted = (model: Model): Return => {
 	const invites = validInvites(model)
 	if (invites.length === 0 || model.isSubmitting) return { model }
+	if (model.organizationId === null)
+		return {
+			model,
+			outMessage: ModalOutMessage.RequestedToast({
+				toast: errorToast("No active organization, please select one first."),
+			}),
+		}
 	return {
 		model: modifyFields(model, { isSubmitting: () => true }),
-		commands: [SendInvites({ invites: invites.map((row) => ({ email: row.email, role: roleOf(row) })) })],
+		commands: [
+			SendInvites({
+				organizationId: model.organizationId,
+				invites: invites.map((row) => ({ email: row.email, role: roleOf(row) })),
+			}),
+		],
 	}
 }
 
@@ -250,8 +259,14 @@ export const modal = defineModal(
 	"EmailInvite",
 	{ request: Requests.EmailInvite, Model, Message },
 	{
-		init: () => ({
-			model: { frame: initFrame(ID), invites: [newRow(0)], nextRowId: 1, isSubmitting: false },
+		init: (_request, shared) => ({
+			model: {
+				frame: initFrame(ID),
+				organizationId: shared.organization?.id ?? null,
+				invites: [newRow(0)],
+				nextRowId: 1,
+				isSubmitting: false,
+			},
 		}),
 		update,
 		view,

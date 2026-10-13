@@ -9,6 +9,7 @@ import { createTracingLayer } from "@hazel/effect-bun/Telemetry"
 import { Config, ConfigProvider, Effect, Layer } from "effect"
 import { HttpMiddleware, HttpRouter } from "effect/http"
 import { AllRoutes, AppAuthorizationLive, AppServicesLive, HazelApi } from "./app"
+import { InviteMailer } from "./services/invite-mailer"
 import { BotGatewayTransport } from "./services/bot-gateway-transport"
 import { DiscordGatewayBackgroundLive } from "./services/chat-sync/discord-gateway-service"
 import { EnvVars } from "./lib/env-vars"
@@ -42,6 +43,8 @@ const PlatformLive = Layer.mergeAll(
 	Redis.Default,
 	RateLimiterRedisLive,
 	BotGatewayTransport.layerDurableStreams,
+	// No email service on Bun: invite links are logged.
+	InviteMailer.layerLog,
 )
 
 /** Long-running loops; on Cloudflare these are Durable Objects driven by crons. */

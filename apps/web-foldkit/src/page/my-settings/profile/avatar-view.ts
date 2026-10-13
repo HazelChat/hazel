@@ -186,7 +186,7 @@ export const profilePictureUpload = (
 						"mt-1 w-full text-center text-muted-fg text-xs underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50",
 					),
 				],
-				[model.isResetting ? "Resetting..." : "Reset to account photo"],
+				[model.isResetting ? "Removing..." : "Remove photo"],
 			),
 			Modal.controlledModal(h, {
 				model: model.cropModal,

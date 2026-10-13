@@ -22,6 +22,8 @@ export const apiEnv = ({ stage, urls }: HazelStackContext) =>
 		derived("API_BASE_URL", urls.api),
 		derived("FRONTEND_URL", urls.web),
 		optionalPlain("COOKIE_DOMAIN"),
+		// Sender of invitation emails; its domain must be onboarded to Cloudflare Email Sending.
+		optionalPlain("INVITE_EMAIL_FROM"),
 
 		// Auth (Clerk)
 		requireSecretEntry("CLERK_SECRET_KEY"),

@@ -114,7 +114,7 @@ describe("avatar", () => {
 				PageOutMessage.RequestedCurrentUserRefresh({
 					toast: {
 						intent: "success",
-						title: "Profile picture reset to account photo",
+						title: "Profile picture removed",
 						description: null,
 					},
 				}),
@@ -412,7 +412,7 @@ describe("avatar reset", () => {
 			Command.resolve(ResetAvatar, Message.CompletedResetAvatar({ isReset: false })),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({
-					toast: { intent: "error", title: "Failed to reset profile picture", description: null },
+					toast: { intent: "error", title: "Failed to remove profile picture", description: null },
 				}),
 			),
 			model((current) => expect(current.isResetting).toBe(false)),

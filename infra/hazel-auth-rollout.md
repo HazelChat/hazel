@@ -43,7 +43,15 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
    fetch is HTTPS-only, so for a plain-HTTP dev API set `AUTH_ACCESS_TOKEN_JWKS` (printed by
    `generate-keys`) for both. `CLERK_SECRET_KEY` is no longer needed by either.
 4. **Preview stage.** Do one real GitHub and Google sign-in through Hyperdrive before prd.
-5. **Organizations, invites and profile editing.** Move these off Clerk.
+5. **Organizations, invites and profile editing: done in code.** These steps remain in prd:
+    - Apply `packages/db/sql/2026-10-13-organization-invitations.sql`. It adds one table and is
+      safe while the app runs:
+      `psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/sql/2026-10-13-organization-invitations.sql`.
+    - Onboard `hazel.sh` to Cloudflare **Email Sending** (Compute → Email Service). Cloudflare
+      adds the SPF/DKIM/DMARC records under `cf-bounce`. The api Worker's `EMAIL` binding sends
+      invites from `INVITE_EMAIL_FROM`, which defaults to `invites@hazel.sh`. Until the domain is
+      onboarded, sends fail: the invite is withdrawn and the admin sees it as failed.
+    - Pending Clerk invitations don't carry over. Ask admins to re-invite anyone still pending.
 6. **Cutover.** Re-run the import, deploy with `AUTH_GITHUB_CLIENT_ID` set, then switch the web
    app. Keep Clerk read-only for 2–4 weeks, then remove it (middleware fallback, `ClerkSync`,
    webhooks, `CLERK_*`).

@@ -129,18 +129,18 @@ describe("profile save scene", () => {
 })
 
 describe("avatar scene", () => {
-	const reset = Scene.role("button", { name: "Reset to account photo" })
+	const reset = Scene.role("button", { name: "Remove photo" })
 
-	test("a failed reset shows Resetting..., then toasts and re-enables the button", () => {
+	test("a failed removal shows Removing..., then toasts and re-enables the button", () => {
 		Scene.scene(
 			config,
 			Scene.given(init(undefined, shared).model),
 			comboBoxFocusMounted,
 			comboBoxTypedValueMounted,
 			Scene.click(reset),
-			Scene.expect(Scene.role("button", { name: "Resetting..." })).toBeDisabled(),
+			Scene.expect(Scene.role("button", { name: "Removing..." })).toBeDisabled(),
 			Scene.Command.resolve(ResetAvatar, Message.CompletedResetAvatar({ isReset: false })),
-			Scene.expectOutMessage(toastOf("error", "Failed to reset profile picture")),
+			Scene.expectOutMessage(toastOf("error", "Failed to remove profile picture")),
 			Scene.expect(reset).toBeEnabled(),
 		)
 	})
@@ -174,7 +174,7 @@ describe("avatar crop dialog scene", () => {
 			Scene.expect(dialog).toBeAbsent(),
 			Scene.Mount.expectEnded(Modal.PortalModal),
 			Scene.expect(Scene.text("Uploading...")).toExist(),
-			Scene.expect(Scene.role("button", { name: "Reset to account photo" })).toBeDisabled(),
+			Scene.expect(Scene.role("button", { name: "Remove photo" })).toBeDisabled(),
 			Scene.Command.resolveAll(
 				[RevokeCropImage, Message.CompletedRevokeCropImage()],
 				[UploadAvatar, Message.CompletedUploadAvatar({ isUploaded: true })],

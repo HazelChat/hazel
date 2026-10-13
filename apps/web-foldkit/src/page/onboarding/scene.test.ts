@@ -4,7 +4,7 @@ import { Command, Mount, all, click, expect, expectAll, expectOutMessage, given,
 import { describe, test, vi, expect as vitestExpect } from "vitest"
 import type { Shared } from "../contract"
 import { PageOutMessage } from "../out-message"
-import { CompleteOnboarding, ReplaceOnboardingStepUrl, SendInvites, UpdateClerkProfile } from "./command"
+import { CompleteOnboarding, ReplaceOnboardingStepUrl, SendInvites, UpdateProfile } from "./command"
 import { Message } from "./message"
 import type { Model } from "./model"
 import { EnterAnimation } from "./enter-animation"
@@ -112,8 +112,8 @@ describe("onboarding flow", () => {
 			type(role("textbox", { name: "First name" }), "Ada"),
 			expect(role("button", { name: /Continue/ })).toBeEnabled(),
 			click(role("button", { name: /Continue/ })),
-			Command.expectExact(UpdateClerkProfile),
-			Command.resolve(UpdateClerkProfile, Message.SucceededUpdateProfile()),
+			Command.expectExact(UpdateProfile),
+			Command.resolve(UpdateProfile, Message.SucceededUpdateProfile()),
 			Command.resolve(ReplaceOnboardingStepUrl, Message.CompletedReplaceStepUrl()),
 			expect(role("heading", { name: "Where are you located?" })).toExist(),
 			expect(role("button", { name: /Detect My Timezone/ })).toExist(),
@@ -229,7 +229,7 @@ describe("profile step validation", () => {
 			click(role("button", { name: /Continue/ })),
 			expect(role("button", { name: /Continue/ })).toBeDisabled(),
 			expect(role("button", { name: /Back/ })).toBeDisabled(),
-			Command.resolve(UpdateClerkProfile, Message.FailedUpdateProfile()),
+			Command.resolve(UpdateProfile, Message.FailedUpdateProfile()),
 			expectOutMessage(errorOut("Failed to update profile")),
 			expect(role("heading", { name: "Set up your profile" })).toExist(),
 			expect(role("button", { name: /Continue/ })).toBeEnabled(),
@@ -275,7 +275,7 @@ describe("invite step", () => {
 			firstMounts,
 			type(role("textbox", { name: "Email 1" }), "grace@hazel.test"),
 			click(role("button", { name: /Send invites/ })),
-			Command.expectExact(SendInvites({ emails: ["grace@hazel.test"] })),
+			Command.expectExact(SendInvites({ organizationId: null, emails: ["grace@hazel.test"] })),
 			expect(role("button", { name: /Send invites/ })).toBeDisabled(),
 			expect(role("button", { name: /Back/ })).toBeDisabled(),
 			Command.resolve(SendInvites, Message.SucceededSendInvites({ emails: ["grace@hazel.test"], failedCount: 0 })),
