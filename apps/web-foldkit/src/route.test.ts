@@ -87,7 +87,10 @@ describe("urlToAppRoute", () => {
 			splat: "factor-one",
 			redirectUrl: Option.some("/hazel"),
 		})
-		expect(parse(`/onboarding?orgId=${orgId}`)).toMatchObject({ orgId: Option.some(orgId), step: Option.none() })
+		expect(parse(`/onboarding?orgId=${orgId}`)).toMatchObject({
+			orgId: Option.some(orgId),
+			step: Option.none(),
+		})
 	})
 
 	it("types the search params legacy reads with `Route.useSearch()`", () => {
@@ -96,7 +99,9 @@ describe("urlToAppRoute", () => {
 			step: Option.some("themeSelection"),
 		})
 		expect(
-			parse("/hazel/my-settings/linked-accounts?connection_status=error&provider=discord&error_code=db_error"),
+			parse(
+				"/hazel/my-settings/linked-accounts?connection_status=error&provider=discord&error_code=db_error",
+			),
 		).toMatchObject({
 			_tag: "MySettingsLinkedAccounts",
 			connectionStatus: Option.some("error"),
@@ -136,7 +141,9 @@ describe("urlToAppRoute", () => {
 
 describe("redirects", () => {
 	it("leaves the channel settings index to its redirect page", () => {
-		expect(routeRedirect(parse(`/hazel/channels/${channelId}/settings`), { isProd: true })).toEqual(Option.none())
+		expect(routeRedirect(parse(`/hazel/channels/${channelId}/settings`), { isProd: true })).toEqual(
+			Option.none(),
+		)
 		expect(routeRedirect(parse("/hazel/settings/team"), { isProd: true })).toEqual(Option.none())
 	})
 
@@ -203,6 +210,17 @@ describe("hrefOf", () => {
 		SignUp: [
 			[AppRoute.SignUp({ splat: "", redirectUrl: none }), "/sign-up"],
 			[AppRoute.SignUp({ splat: "verify", redirectUrl: none }), "/sign-up/verify"],
+		],
+		AuthRegister: [
+			[AppRoute.AuthRegister({ flowId: none, reference: none }), "/auth/register"],
+			[
+				AppRoute.AuthRegister({ flowId: Option.some("f1"), reference: Option.some("r1") }),
+				"/auth/register?flowId=f1&reference=r1",
+			],
+		],
+		AuthContinue: [
+			[AppRoute.AuthContinue({ provider: none }), "/auth/continue"],
+			[AppRoute.AuthContinue({ provider: Option.some("github") }), "/auth/continue?provider=github"],
 		],
 		Join: [[AppRoute.Join({ slug: "hazel" }), "/join/hazel"]],
 		Onboarding: [

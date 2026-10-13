@@ -355,14 +355,17 @@
     "apps/web-foldkit": {
       "name": "web-foldkit",
       "dependencies": {
-        "@clerk/shared": "4.8.3",
         "@effect/platform-browser": "catalog:effect",
         "@electric-sql/client": "1.5.28",
         "@foldkit/ui": "0.167.0",
         "@fontsource/inter": "^5.2.8",
+        "@hazel/auth": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
+        "@simplewebauthn/browser": "^14.0.0",
         "@tanstack/db": "0.11.3",
+        "@yielded/auth": "0.1.0-beta.38",
+        "@yielded/auth-simplewebauthn": "0.1.0-beta.38",
         "effect": "catalog:effect",
         "embla-carousel": "8.6.0",
         "foldkit": "0.167.0",
@@ -2111,6 +2114,8 @@
     "@shikijs/types": ["@shikijs/types@4.0.2", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-qzbeRooUTPnLE+sHD/Z8DStmaDgnbbc/pMrU203950aRqjX/6AFHeDYT+j00y2lPdz0ywJKx7o/7qnqTivtlXg=="],
 
     "@shikijs/vscode-textmate": ["@shikijs/vscode-textmate@10.0.2", "", {}, "sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg=="],
+
+    "@simplewebauthn/browser": ["@simplewebauthn/browser@14.0.0", "", {}, "sha512-1odWVqeEBTl7lJ9zMKLEsmTlnyrDO5iRcTvfMKKk1WThUnp/i8JJdffdj2icP+tty159s4PgwE3BiMoEW9NFow=="],
 
     "@simplewebauthn/server": ["@simplewebauthn/server@14.0.3", "", { "dependencies": { "@hexagon/base64": "^1.1.27", "@levischuck/tiny-cbor": "^0.2.2", "@peculiar/asn1-android": "^2.6.0", "@peculiar/asn1-ecc": "^2.6.1", "@peculiar/asn1-rsa": "^2.6.1", "@peculiar/asn1-schema": "^2.6.0", "@peculiar/asn1-x509": "^2.6.1", "@peculiar/asn1-x509-post-quantum": "^2.9.4", "@peculiar/x509": "^2.1.0", "reflect-metadata": "^0.2.2" } }, "sha512-D39/0fiDiYmGV+nraY9s63D1Ho2AX/waMLy22/9gUadTUuvbAnstfb4bpbHYbwZuV5ZLDYN1SmzDKuiHzKAA4Q=="],
 

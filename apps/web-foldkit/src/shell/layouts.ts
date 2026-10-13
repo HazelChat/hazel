@@ -194,10 +194,6 @@ export const channelSettingsLayout = <Message>(
 	)
 }
 
-/** `sign-in/$.tsx` and `sign-up/$.tsx`: Clerk's prebuilt form, centered. */
-export const authLayout = <Message>(h: HtmlBuilder<Message>, page: Html): Html =>
-	h.div([h.Class("flex min-h-dvh items-center justify-center p-6")], [page])
-
 /** `components/loader.tsx`: the full-page loader `_app` shows while auth or the user loads. */
 export const appLoader = <Message>(h: HtmlBuilder<Message>): Html =>
 	h.div(

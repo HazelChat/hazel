@@ -6,7 +6,7 @@ import { applyTheme, ResolvedTheme, saveThemePreference, ThemeCustomization, The
 import { saveSoundSettings, SoundSettings } from "../notification-sound"
 import { deliverNotifications } from "./notification-sinks"
 import { NotificationId } from "@hazel/schema"
-import { signOut } from "./clerk"
+import { readSession, signOut } from "./auth"
 import { Message } from "./message"
 
 export const NavigateInternal = Command.define("NavigateInternal", {
@@ -53,6 +53,12 @@ export const DeliverNotifications = Command.define("DeliverNotifications", {
 	args: { ids: Schema.Array(NotificationId) },
 	messages: [Message.CompletedDeliverNotifications],
 	execute: ({ ids }) => deliverNotifications(ids).pipe(Effect.as(Message.CompletedDeliverNotifications())),
+})
+
+/** Whether the API has a session for this browser; retried until the API answers. */
+export const CheckSession = Command.define("CheckSession", {
+	messages: [Message.ChangedAuth],
+	execute: readSession.pipe(Effect.map((auth) => Message.ChangedAuth({ auth }))),
 })
 
 export const SignOut = Command.define("SignOut", {

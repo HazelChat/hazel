@@ -8,6 +8,10 @@ export const AppRoute = defineRouteUnion({
 	Root: {},
 	SignIn: { splat: Schema.String, redirectUrl: Schema.Option(Schema.String) },
 	SignUp: { splat: Schema.String, redirectUrl: Schema.Option(Schema.String) },
+	/** Where the OAuth callback sends a first-time user to pick their name (`?flowId=&reference=`). */
+	AuthRegister: { flowId: Schema.Option(Schema.String), reference: Schema.Option(Schema.String) },
+	/** Where the OAuth callback sends a user whose provider account it just linked (`?provider=`). */
+	AuthContinue: { provider: Schema.Option(Schema.String) },
 	Join: { slug: Schema.String },
 	/** `?orgId=&step=` (`validateSearch` in `onboarding/index.tsx`). */
 	Onboarding: { orgId: Schema.Option(OrganizationId), step: Schema.Option(Schema.String) },
@@ -68,6 +72,11 @@ export type RouteOf<Tag extends RouteTag> = Extract<AppRoute, { readonly _tag: T
 const RedirectQuery = Schema.Struct({ redirectUrl: Schema.OptionFromOptional(Schema.String) }).pipe(
 	Schema.encodeKeys({ redirectUrl: "redirect_url" }),
 )
+const RegisterQuery = Schema.Struct({
+	flowId: Schema.OptionFromOptional(Schema.String),
+	reference: Schema.OptionFromOptional(Schema.String),
+})
+const ContinueQuery = Schema.Struct({ provider: Schema.OptionFromOptional(Schema.String) })
 const OrgIdQuery = Schema.Struct({ orgId: Schema.OptionFromOptional(OrganizationId) })
 const OnboardingQuery = Schema.Struct({
 	orgId: Schema.OptionFromOptional(OrganizationId),
@@ -85,7 +94,7 @@ const IntegrationCallbackQuery = Schema.Struct({
 	errorCode: Schema.OptionFromOptional(Schema.String),
 }).pipe(Schema.encodeKeys({ connectionStatus: "connection_status", errorCode: "error_code" }))
 
-/** `/sign-in/$`: the bare prefix and any splat below it (Clerk's own sub-routes). */
+/** `/sign-in/$`: the bare prefix and any splat below it (old Clerk sub-route links). */
 const authRouters = (segment: "sign-in" | "sign-up", make: typeof AppRoute.SignIn | typeof AppRoute.SignUp) =>
 	({
 		bare: pipe(
@@ -123,6 +132,18 @@ const signUp = authRouters("sign-up", AppRoute.SignUp)
 /** One router per route tag, used to parse URLs and to build them back (`hrefOf`). */
 const routers = {
 	Root: pipe(Route.root, Route.mapTo(AppRoute.Root)),
+	AuthRegister: pipe(
+		literal("auth"),
+		slash(literal("register")),
+		query(RegisterQuery),
+		Route.mapTo(AppRoute.AuthRegister),
+	),
+	AuthContinue: pipe(
+		literal("auth"),
+		slash(literal("continue")),
+		query(ContinueQuery),
+		Route.mapTo(AppRoute.AuthContinue),
+	),
 	Join: pipe(literal("join"), slash(string("slug")), Route.mapTo(AppRoute.Join)),
 	Onboarding: pipe(literal("onboarding"), query(OnboardingQuery), Route.mapTo(AppRoute.Onboarding)),
 	OnboardingSetupOrganization: pipe(
@@ -222,6 +243,8 @@ export const urlToAppRoute = Route.parseUrlWithFallback(
 		signIn.splat,
 		signUp.bare,
 		signUp.splat,
+		routers.AuthRegister,
+		routers.AuthContinue,
 		routers.Join,
 		routers.Onboarding,
 		routers.OnboardingSetupOrganization,
@@ -278,7 +301,14 @@ export const orgSlugOf = (route: AppRoute): string | undefined =>
 	"orgSlug" in route ? route.orgSlug : undefined
 
 /** Routes outside `/_app`, which legacy renders without the signed-in gate. */
-export const isPublicRoute = AppRoute.isAnyOf(["SignIn", "SignUp", "Join", "NotFound"])
+export const isPublicRoute = AppRoute.isAnyOf([
+	"SignIn",
+	"SignUp",
+	"AuthRegister",
+	"AuthContinue",
+	"Join",
+	"NotFound",
+])
 
 /** Which secondary sidebar and section layout an org route gets (legacy `AppSidebar`). */
 export type OrgSection = "Chat" | "Settings" | "MySettings" | "Notifications"

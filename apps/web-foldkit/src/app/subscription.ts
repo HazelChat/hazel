@@ -19,7 +19,6 @@ import { layoutHotkeys } from "../overlay/hotkeys"
 import * as Modal from "../overlay/modal"
 import * as Platform from "../platform"
 import * as Toasts from "../overlay/toaster"
-import { clerkAuthStream } from "./clerk"
 import { Message } from "./message"
 import { type Model, pageHostOf, sharedOf } from "./model"
 
@@ -29,9 +28,6 @@ const rootSubscriptions = Subscription.make<Model, Message>()((entry) => ({
 			query: "(prefers-color-scheme: dark)",
 			mapMatches: (isDark) => Message.ChangedSystemTheme({ theme: isDark ? "dark" : "light" }),
 		}),
-	),
-	auth: Subscription.persistentEntry(
-		clerkAuthStream.pipe(Stream.map((auth) => Message.ChangedAuth({ auth }))),
 	),
 	// Legacy `presenceNowSignal`: wall clock for deriving stale presence.
 	presenceClock: Subscription.persistentEntry(

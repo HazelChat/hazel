@@ -10,11 +10,14 @@ export const RootMembership = Schema.Struct({
 export const Model = Schema.Struct({
 	/** `undefined` until the live query is ready; `null` when the user has no membership. */
 	membership: Schema.UndefinedOr(Schema.NullOr(RootMembership)),
+	/** The page sign-in started from (`auth/return-to.ts`); `undefined` until read, `null` if none. */
+	returnTo: Schema.UndefinedOr(Schema.NullOr(Schema.String)),
 	hasRedirected: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
 export const Message = defineMessageUnion({
 	UpdatedMembership: { membership: Schema.NullOr(RootMembership) },
+	TookReturnTo: { returnTo: Schema.NullOr(Schema.String) },
 })
 export type Message = typeof Message.Type

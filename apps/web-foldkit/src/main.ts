@@ -5,6 +5,7 @@ import { modifyFields } from "foldkit/struct"
 import { toString as urlToString, type Url } from "foldkit/url"
 import {
 	ApplyTheme,
+	CheckSession,
 	FetchCurrentUser,
 	LoadExternal,
 	NavigateInternal,
@@ -328,7 +329,13 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 		},
 		url,
 	)
-	return Update.combine<Model, Message, Resources>(model, [appliedTheme, enteredRoute, informShell, redirect])
+	return Update.combine<Model, Message, Resources>(model, [
+		appliedTheme,
+		enteredRoute,
+		informShell,
+		redirect,
+		(m) => ({ model: m, commands: [CheckSession()] }),
+	])
 }
 
 // UPDATE

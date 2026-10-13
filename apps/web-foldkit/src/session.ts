@@ -10,7 +10,7 @@ export const CurrentUser = Schema.Struct({
 	email: Schema.String,
 	avatarUrl: Schema.NullOr(Schema.String),
 	isOnboarded: Schema.Boolean,
-	/** The organization in the Clerk JWT, if any (legacy `useAuth().user.organizationId`). */
+	/** `user.me`'s organization, if any (legacy `useAuth().user.organizationId`). */
 	organizationId: Schema.NullOr(OrganizationId),
 })
 export type CurrentUser = typeof CurrentUser.Type
@@ -30,7 +30,7 @@ export const Member = Schema.Struct({
 })
 export type Member = typeof Member.Type
 
-/** Clerk session state, read from `window.Clerk` (`treatPendingAsSignedOut: false`). */
+/** Whether the API has a Hazel session for this browser (`app/auth.ts`). */
 export const Auth = Schema.Literals(["Loading", "SignedIn", "SignedOut"])
 export type Auth = typeof Auth.Type
 

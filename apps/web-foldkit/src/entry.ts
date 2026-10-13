@@ -2,9 +2,7 @@ import "@fontsource/inter/400.css"
 import "@fontsource/inter/400-italic.css"
 import "./styles.css"
 
-import { Effect } from "effect"
 import { Runtime } from "foldkit"
-import { loadClerk } from "./app/clerk-loader"
 import { galleryComponentOf, startGallery } from "./gallery/boot"
 import { Flags, flags, init, managedResources, Message, Model, subscriptions, update, view } from "./main"
 import { ResourcesLive } from "./rpc"
@@ -36,8 +34,3 @@ const startApplication = () =>
 const galleryComponent = galleryComponentOf(location.pathname)
 if (galleryComponent === undefined) startApplication()
 else startGallery(galleryComponent, container)
-
-// Parity's Clerk stub is installed before boot; production downloads the real clerk-js.
-const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-if (galleryComponent === undefined && window.Clerk === undefined && clerkKey)
-	Effect.runFork(loadClerk(clerkKey).pipe(Effect.tapError(Effect.logError)))
