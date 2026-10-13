@@ -20,6 +20,7 @@ import {
 } from "@hazel/infra/cloudflare"
 import { plainWithDefault } from "@hazel/infra/env"
 import { isMapleDeploy } from "@hazel/infra/maple"
+import { HazelMonitoring } from "@hazel/infra/maple-monitoring"
 import Actors from "./apps/actors/alchemy.run.ts"
 import ApiLive, { Api } from "./apps/backend/src/worker.ts"
 import BotGateway from "./apps/bot-gateway/alchemy.run.ts"
@@ -107,6 +108,8 @@ export default Alchemy.Stack(
 		// Shared marketing site: prd only (previews and dev run their own dev servers). docs.hazel.sh
 		// stays on Vercel until its DNS record is moved, so the docs site is not deployed here yet.
 		const landing = stage.kind === "prd" ? yield* Landing : undefined
+		// Maple alerts and dashboard watch production only: see `@hazel/infra/maple-monitoring`.
+		const monitoring = stage.kind === "prd" && isMapleDeploy() ? yield* HazelMonitoring : undefined
 
 		const summary = {
 			stage: formatHazelStage(stage),
@@ -127,6 +130,8 @@ export default Alchemy.Stack(
 			linkPreviewWorker: linkPreview.workerName,
 			actorsWorker: actors.workerName,
 			landingWorker: landing?.workerName,
+			mapleDashboard: monitoring?.dashboardId,
+			mapleAlertRules: monitoring?.alertRules,
 		}
 	}).pipe(
 		// The stack IS the entry point: the one place `HazelStack` is provided.

@@ -9,6 +9,7 @@
 		"./cloudflare": "./src/cloudflare/index.ts",
 		"./env": "./src/env.ts",
 		"./maple": "./src/cloudflare/maple.ts",
+		"./maple-monitoring": "./src/cloudflare/maple-monitoring.ts",
 		"./worker-http": "./src/cloudflare/worker-http.ts",
 		"./worker-runtime": "./src/cloudflare/worker-runtime.ts",
 		"./cached-recoverable": "./src/cloudflare/cached-recoverable.ts"
