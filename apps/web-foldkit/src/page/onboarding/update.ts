@@ -15,7 +15,7 @@ import {
 	LoadOnboardingHome,
 	ReadBrowserTimezone,
 	SendInvites,
-	UpdateClerkProfile,
+	UpdateProfile,
 	UpdateUserTimezone,
 } from "./command"
 import { Message } from "./message"
@@ -121,11 +121,12 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 				if (form.isSubmitting) return { model }
 				const firstName = form.firstName.trim()
 				const lastName = form.lastName.trim()
-				return !firstName || !lastName
+				const userId = shared.currentUser?.id
+				return !firstName || !lastName || userId === undefined
 					? { model: setForm(model, StepForm.Profile({ ...form, hasChanged: true })) }
 					: {
 							model: setForm(model, StepForm.Profile({ ...form, isSubmitting: true })),
-							commands: [UpdateClerkProfile({ firstName, lastName })],
+							commands: [UpdateProfile({ userId, firstName, lastName })],
 						}
 			}),
 		SucceededUpdateProfile: () => withForm(model, "Profile", () => advance(model, shared)),
@@ -280,7 +281,12 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 					? { model: setForm(model, StepForm.Invite({ ...form, errors })) }
 					: {
 							model: setForm(model, StepForm.Invite({ ...form, isLoading: true })),
-							commands: [SendInvites({ emails: filled })],
+							commands: [
+								SendInvites({
+									organizationId: model.membership?.organizationId ?? model.orgId,
+									emails: filled,
+								}),
+							],
 						}
 			}),
 		SucceededSendInvites: ({ emails, failedCount }) =>

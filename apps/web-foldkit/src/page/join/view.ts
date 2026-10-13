@@ -220,7 +220,7 @@ const inviteView = (h: HtmlBuilder<Message>, model: Model, org: PublicOrganizati
 		),
 	)
 
-/** `useAuth().isLoading`: Clerk not loaded yet, or signed in while `user.me` is pending. */
+/** `useAuth().isLoading`: the session check is pending, or signed in while `user.me` is pending. */
 const isAuthLoading = (shared: Shared) =>
 	shared.auth === "Loading" || (shared.auth === "SignedIn" && shared.currentUser === null)
 

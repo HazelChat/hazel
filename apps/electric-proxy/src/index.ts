@@ -61,13 +61,8 @@ const CacheLive = AccessContextCache.layer.pipe(
 	Layer.provide(ProxyConfigService.layer),
 )
 
-// ProxyAuth layer requires ResultPersistence for session caching and Database for user lookup
-// ProxyAuth.layer includes SessionValidator.layer via dependencies
-const ProxyAuthLive = ProxyAuth.layer.pipe(
-	Layer.provide(RedisPersistenceLive),
-	Layer.provide(DatabaseLive),
-	Layer.provide(ProxyConfigService.layer),
-)
+// Verifies Hazel access tokens against the API's key set (API_BASE_URL / AUTH_ACCESS_TOKEN_JWKS)
+const ProxyAuthLive = ProxyAuth.layer
 
 const MainLive = DatabaseLive.pipe(
 	Layer.provideMerge(ProxyConfigService.layer),

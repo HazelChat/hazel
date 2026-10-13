@@ -8,6 +8,8 @@ export const usersTable = PG.table("users", {
 	columns: {
 		id: PG.column(uuid(UserId), { defaultExpr: "gen_random_uuid()" }),
 		externalId: varchar(255),
+		authActive: PG.column(PG.bool, { default: true }),
+		securityRevision: PG.column(PG.text, { default: "initial" }),
 		email: varchar(255),
 		firstName: varchar(100),
 		lastName: varchar(100),

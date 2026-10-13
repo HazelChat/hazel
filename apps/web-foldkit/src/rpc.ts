@@ -15,6 +15,7 @@ import {
 	CustomEmojiRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
+	InvitationRpcs,
 	MessageReactionRpcs,
 	MessageRpcs,
 	NotificationRpcs,
@@ -26,8 +27,9 @@ import {
 	UserPresenceStatusRpcs,
 	UserRpcs,
 } from "@hazel/domain/rpc"
-import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
+import { AuthMiddlewareClientLive, RpcCredentialsLive } from "~/lib/rpc-auth-middleware"
 import { CustomFetchLive } from "~/lib/services/common/api-client"
+import { HazelAuthClient, HazelAuthClientLive } from "./auth/client"
 import { MessageWindows, MessageWindowsLive } from "./data/message-windows"
 
 /** Same groups, transport and auth middleware as the legacy `HazelRpcClient`, as a plain Effect service. */
@@ -51,6 +53,7 @@ const AllRpcs = MessageRpcs.merge(
 	UserPresenceStatusRpcs,
 	BotRpcs,
 	ConnectShareRpcs,
+	InvitationRpcs,
 ).merge(ChatSyncRpcs)
 
 const makeClient = RpcClient.make(AllRpcs, { flatten: true })
@@ -58,7 +61,7 @@ const makeClient = RpcClient.make(AllRpcs, { flatten: true })
 export class HazelRpc extends Context.Service<HazelRpc, Effect.Success<typeof makeClient>>()("HazelRpc") {}
 
 const ProtocolLive = RpcClient.layerProtocolHttp({ url: `${import.meta.env.VITE_BACKEND_URL}/rpc` }).pipe(
-	Layer.provide(FetchHttpClient.layer),
+	Layer.provide(FetchHttpClient.layer.pipe(Layer.provide(RpcCredentialsLive))),
 	Layer.provide(RpcSerialization.layerNdjson),
 )
 
@@ -75,9 +78,16 @@ export class HazelApiClient extends Context.Service<HazelApiClient, Effect.Succe
 	"HazelApiClient",
 ) {}
 
-export const HazelApiClientLive = Layer.effect(HazelApiClient, makeApiClient).pipe(Layer.provide(CustomFetchLive))
+export const HazelApiClientLive = Layer.effect(HazelApiClient, makeApiClient).pipe(
+	Layer.provide(CustomFetchLive),
+)
 
 /** The app's `resources`: what every Command and Subscription may use. */
-export type Resources = HazelRpc | HazelApiClient | MessageWindows
+export type Resources = HazelRpc | HazelApiClient | MessageWindows | HazelAuthClient
 
-export const ResourcesLive = Layer.mergeAll(HazelRpcLive, HazelApiClientLive, MessageWindowsLive)
+export const ResourcesLive = Layer.mergeAll(
+	HazelRpcLive,
+	HazelApiClientLive,
+	MessageWindowsLive,
+	HazelAuthClientLive,
+)

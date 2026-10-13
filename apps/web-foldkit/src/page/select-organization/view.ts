@@ -3,13 +3,13 @@ import type { Html, HtmlBuilder } from "foldkit/html"
 import { appLoader } from "../../shell/layouts"
 import { avatar } from "../../ui/avatar"
 import { button } from "../../ui/button"
-import { type ClerkMountMessage, clerkComponent } from "../auth/clerk-mount"
 import type { PageViewInputs } from "../contract"
-import { createOrganizationProps } from "../onboarding/setup-organization"
+import * as CreateWorkspace from "../create-workspace"
 import { Message } from "./message"
 import type { Model, UserOrganization } from "./model"
 
-const toClerkMessage = (message: ClerkMountMessage): Message => Message.GotClerkMountMessage({ message })
+const toCreateWorkspaceMessage = (message: CreateWorkspace.Message): Message =>
+	Message.GotCreateWorkspaceMessage({ message })
 
 const initialsOf = (name: string) =>
 	name
@@ -20,13 +20,13 @@ const initialsOf = (name: string) =>
 
 const capitalize = (role: string) => role.charAt(0).toUpperCase() + role.slice(1)
 
-/** No organizations: Clerk's `<CreateOrganization>` (previously a redirect to `/onboarding`, which looped). */
-const createWorkspace = (h: HtmlBuilder<Message>): Html =>
+/** No organizations: create one here (previously a redirect to `/onboarding`, which looped). */
+const createWorkspace = (h: HtmlBuilder<Message>, model: Model): Html =>
 	h.div(
 		[h.Class("flex min-h-screen items-center justify-center bg-bg p-4")],
 		[
 			h.div(
-				[h.Class("flex w-full max-w-lg flex-col items-center gap-6")],
+				[h.Class("flex w-full max-w-sm flex-col items-center gap-6")],
 				[
 					h.div(
 						[h.Class("text-center")],
@@ -34,11 +34,11 @@ const createWorkspace = (h: HtmlBuilder<Message>): Html =>
 							h.h1([h.Class("font-semibold text-2xl")], ["Create your workspace"]),
 							h.p(
 								[h.Class("mt-2 text-muted-fg text-sm")],
-								["Get started by creating or joining an organization."],
+								["Create a workspace for your team, or ask a teammate to invite you."],
 							),
 						],
 					),
-					clerkComponent(h, "CreateOrganization", createOrganizationProps, toClerkMessage),
+					CreateWorkspace.view(h, model.createWorkspace, toCreateWorkspaceMessage),
 				],
 			),
 		],
@@ -155,5 +155,5 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 	// A single organization redirects, so it shows the loader like `<Navigate>` does.
 	if (shared.currentUser === null || organizations === null || organizations.length === 1)
 		return appLoader(h)
-	return organizations.length === 0 ? createWorkspace(h) : picker(h, organizations)
+	return organizations.length === 0 ? createWorkspace(h, model) : picker(h, organizations)
 })

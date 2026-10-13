@@ -20,7 +20,7 @@ import {
 	ReadBrowserTimezone,
 	ReplaceOnboardingStepUrl,
 	SendInvites,
-	UpdateClerkProfile,
+	UpdateProfile,
 	UpdateUserTimezone,
 } from "./command"
 import { Message } from "./message"
@@ -97,9 +97,9 @@ describe("profile step", () => {
 			model((current) => expect(current.form).toMatchObject({ firstName: "Nora", lastName: "Newcomer" })),
 			message(Message.ChangedFirstName({ value: "  Ada " })),
 			message(Message.SubmittedProfile()),
-			Command.expectExact(UpdateClerkProfile({ firstName: "Ada", lastName: "Newcomer" })),
+			Command.expectExact(UpdateProfile({ userId, firstName: "Ada", lastName: "Newcomer" })),
 			model((current) => expect(current.form).toMatchObject({ isSubmitting: true })),
-			Command.resolve(UpdateClerkProfile, Message.SucceededUpdateProfile()),
+			Command.resolve(UpdateProfile, Message.SucceededUpdateProfile()),
 			Command.expectExact(urlFor("timezoneSelection")),
 			Command.resolve(ReplaceOnboardingStepUrl, urlDone),
 			model((current) => {
@@ -124,7 +124,7 @@ describe("profile step", () => {
 			run,
 			given(profile),
 			message(Message.SubmittedProfile()),
-			Command.resolve(UpdateClerkProfile, Message.FailedUpdateProfile()),
+			Command.resolve(UpdateProfile, Message.FailedUpdateProfile()),
 			expectOutMessage(errorOut("Failed to update profile")),
 			model((current) => {
 				expect(current.step).toBe("profileInfo")
@@ -153,7 +153,7 @@ describe("profile step", () => {
 			run,
 			given(profile),
 			message(Message.SubmittedProfile()),
-			Command.resolve(UpdateClerkProfile, Message.SucceededUpdateProfile()),
+			Command.resolve(UpdateProfile, Message.SucceededUpdateProfile()),
 			Command.resolve(ReplaceOnboardingStepUrl, urlDone),
 			message(Message.SucceededUpdateProfile()),
 			Command.expectNone(),
@@ -296,7 +296,7 @@ describe("invite step and finalization", () => {
 			run,
 			given(inviteForm([...emails, " "])),
 			message(Message.ClickedContinueInvite()),
-			Command.expectExact(SendInvites({ emails })),
+			Command.expectExact(SendInvites({ organizationId: null, emails })),
 			model((current) => expect(current.form).toMatchObject({ isLoading: true })),
 			Command.resolve(SendInvites, Message.SucceededSendInvites({ emails, failedCount: 0 })),
 			expectOutMessage(PageOutMessage.RequestedToast({ toast: { intent: "success", title: "Sent 2 invitations", description: null } })),
@@ -339,13 +339,13 @@ describe("invite step and finalization", () => {
 		story(run, given(inviteForm(["grace@hazel.test"], true)), message(Message.ClickedContinueInvite()), Command.expectNone())
 	})
 
-	// Bug (inherited from legacy): finalization re-invites the addresses SendInvites already invited.
-	test.fails("finalization does not re-send invitations the step already sent", () => {
+	// Legacy re-invited these addresses at finalization; the invite step is now the only sender.
+	test("finalization does not re-send invitations the step already sent", () => {
 		story(
 			run,
 			given(inviteForm(["grace@hazel.test"], true)),
 			message(Message.SucceededSendInvites({ emails: ["grace@hazel.test"], failedCount: 0 })),
-			Command.expectHas(CompleteOnboarding({ memberId: null, role: null, useCases: [], emails: [] })),
+			Command.expectHas(CompleteOnboarding({ memberId: null, role: null, useCases: [] })),
 			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.FailedCompleteOnboarding({ error: "x" })]),
 		)
 	})
@@ -380,7 +380,7 @@ describe("invite step and finalization", () => {
 			run,
 			given(role),
 			message(Message.ClickedContinueChoice()),
-			Command.expectExact(urlFor("finalization"), CompleteOnboarding({ memberId: invitedMembership.memberId, role: "developer", useCases: [], emails: [] })),
+			Command.expectExact(urlFor("finalization"), CompleteOnboarding({ memberId: invitedMembership.memberId, role: "developer", useCases: [] })),
 			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [CompleteOnboarding, Message.SucceededCompleteOnboarding()]),
 			Command.expectHas(LoadOnboardingHome({ href: "/hazel" })),
 			Command.resolveAll([ReplaceOnboardingStepUrl, urlDone], [LoadOnboardingHome, Message.CompletedLoadHome()]),

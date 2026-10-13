@@ -1,8 +1,8 @@
 import { UserRepo } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
-import { CurrentUser, withRemapDbErrors } from "@hazel/domain"
+import { CurrentUser, UnauthorizedError, withRemapDbErrors } from "@hazel/domain"
 import { UserResponse, UserRpcs } from "@hazel/domain/rpc"
-import { Effect } from "effect"
+import { Config, Effect, Option } from "effect"
 import { generateTransactionId } from "../../lib/create-transactionId"
 import { UserPolicy } from "../../policies/user-policy"
 
@@ -11,6 +11,7 @@ export const UserRpcLive = UserRpcs.toLayer(
 		const db = yield* Database.Database
 		const userPolicy = yield* UserPolicy
 		const userRepo = yield* UserRepo
+		const publicUrl = yield* Config.option(Config.String("S3_PUBLIC_URL"))
 
 		return {
 			"user.me": () => CurrentUser.Context,
@@ -20,6 +21,17 @@ export const UserRpcLive = UserRpcs.toLayer(
 					.transaction(
 						Effect.gen(function* () {
 							yield* userPolicy.canUpdate(id)
+							if (
+								payload.avatarUrl != null &&
+								!isAllowedAvatarUrl(payload.avatarUrl, Option.getOrUndefined(publicUrl), id)
+							) {
+								return yield* Effect.fail(
+									new UnauthorizedError({
+										message: "Invalid avatar URL",
+										detail: "Use an avatar uploaded for this user",
+									}),
+								)
+							}
 							const updatedUser = yield* userRepo.update({
 								id,
 								...payload,
@@ -59,3 +71,23 @@ export const UserRpcLive = UserRpcs.toLayer(
 		}
 	}),
 )
+
+/** Profile avatars must come from this user's upload prefix on the configured CDN. */
+export const isAllowedAvatarUrl = (value: string, publicUrl: string | undefined, userId: string): boolean => {
+	if (publicUrl === undefined) return false
+	try {
+		const base = new URL(publicUrl)
+		const avatar = new URL(value)
+		const prefix = `${base.pathname.replace(/\/$/, "")}/avatars/${userId}/`
+		return (
+			(avatar.protocol === "https:" || avatar.protocol === "http:") &&
+			avatar.origin === base.origin &&
+			avatar.username === "" &&
+			avatar.password === "" &&
+			avatar.pathname.startsWith(prefix) &&
+			avatar.pathname.length > prefix.length
+		)
+	} catch {
+		return false
+	}
+}

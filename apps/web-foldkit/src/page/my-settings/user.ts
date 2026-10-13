@@ -17,6 +17,9 @@ export type UserRow = typeof UserRow.Type
 /** The `user.update` RPC behind the legacy `updateUserAction` (fields left out are not sent). */
 export const updateUser = (payload: {
 	readonly id: UserId
+	readonly firstName?: string
+	readonly lastName?: string
+	readonly avatarUrl?: string | null
 	readonly timezone?: string | null
 	readonly settings?: User.UserSettings | null
 }) =>

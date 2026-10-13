@@ -7,16 +7,19 @@
 		"build": "vite build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
-		"deploy": "./scripts/deploy.sh"
+		"deploy": "./scripts/deploy.sh",
+		"build:desktop": "./scripts/build-desktop.sh"
 	},
 	"dependencies": {
-		"@clerk/shared": "4.8.3",
 		"@effect/platform-browser": "catalog:effect",
 		"@electric-sql/client": "1.5.28",
 		"@foldkit/ui": "0.167.0",
 		"@fontsource/inter": "^5.2.8",
+		"@hazel/auth": "workspace:*",
+		"@hazel/desktop": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/schema": "workspace:*",
+		"@simplewebauthn/browser": "^14.0.0",
 		"@tanstack/db": "0.11.3",
 		"effect": "catalog:effect",
 		"embla-carousel": "8.6.0",
@@ -31,7 +34,10 @@
 		"prosemirror-view": "^1.42.6",
 		"remend": "^1.2.2",
 		"tailwind-merge": "^3.5.0",
-		"tailwind-variants": "^3.2.2"
+		"tailwind-variants": "^3.2.2",
+		"@yielded/auth": "0.1.0-beta.38",
+		"@yielded/auth-simplewebauthn": "0.1.0-beta.38",
+		"@yielded/crypto": "0.1.0-beta.38"
 	},
 	"devDependencies": {
 		"@foldkit/devtools": "0.167.0",

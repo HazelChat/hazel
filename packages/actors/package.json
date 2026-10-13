@@ -13,7 +13,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@clerk/backend": "^3.3.0",
+		"@hazel/auth": "workspace:*",
 		"@hazel/rivet-effect": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"effect": "catalog:effect",

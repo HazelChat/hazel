@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Builds with the production env legacy app.hazel.sh used and publishes to the hazel-app Worker.
+# Builds with the production env and publishes to the hazel-app Worker behind app.hazel.sh.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export VITE_BACKEND_URL=https://api.hazel.sh
-export VITE_ELECTRIC_URL=https://electric.hazel.sh/v1/shape
-export VITE_RIVET_URL=https://rivet.hazel.sh
-export VITE_R2_PUBLIC_URL=https://cdn.hazel.sh
-export VITE_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuaGF6ZWwuc2gk
-export VITE_PUBLIC_POSTHOG_KEY=phc_ifs2nPyiiVDqk2c4cZO9uQwSertR5TFg19repUZLvfX
-export VITE_PUBLIC_POSTHOG_HOST=https://ph.hazel.sh
-export VITE_OTEL_ENVIRONMENT=production
-export VITE_COMMIT_SHA="$(git rev-parse HEAD)"
+. scripts/production-env.sh
+# Keep the currently deployed Clerk frontend until the new backend routes are live.
+# A missing/disabled Hazel backend must never be replaced by a frontend that cannot sign in.
+if ! curl --fail --silent --show-error --max-time 15 --request POST \
+ --header "Content-Type: application/json" --header "x-effect-auth-csrf: 1" \
+ --header "Origin: ${VITE_APP_URL}" --data '{}' "${VITE_BACKEND_URL%/}/auth/getSession" >/dev/null; then
+ echo "Hazel auth is unavailable. Deploy the auth-enabled API before publishing Foldkit." >&2
+ exit 1
+fi
 rm -rf dist
 bunx vite build
 bunx wrangler deploy --message "web-foldkit $(git rev-parse --short HEAD)"

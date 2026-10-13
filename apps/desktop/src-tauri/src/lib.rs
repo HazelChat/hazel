@@ -1,182 +1,69 @@
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
-use std::thread;
 #[cfg(desktop)]
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{command, AppHandle, Emitter, Manager};
+use tauri::{command, Emitter, Manager};
 use tauri_plugin_decorum::WebviewWindowExt;
-use tiny_http::{Header, Method, Response, Server};
 
-// Port range for OAuth callback server (dynamic)
-const OAUTH_PORT_MIN: u16 = 17900;
-const OAUTH_PORT_MAX: u16 = 17999;
+/// The desktop sign-in vault (`@hazel/auth/desktop`): one opaque JSON record holding the app's
+/// session and any sign-in in progress, kept in the OS keychain (Keychain, Credential Manager,
+/// Secret Service). The webview never sees the keychain itself, only this record.
+const VAULT_SERVICE: &str = "com.hazel.app";
+const VAULT_ACCOUNT: &str = "auth";
 
-// Active nonces storage (port -> nonce mapping)
-fn active_nonces() -> &'static Mutex<HashMap<u16, String>> {
-    static NONCES: OnceLock<Mutex<HashMap<u16, String>>> = OnceLock::new();
-    NONCES.get_or_init(|| Mutex::new(HashMap::new()))
+#[cfg(desktop)]
+fn vault_entry() -> Result<keyring::Entry, String> {
+    keyring::Entry::new(VAULT_SERVICE, VAULT_ACCOUNT).map_err(|error| error.to_string())
 }
 
-/// Generate a unique nonce for OAuth session
-fn generate_nonce() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    // Add some randomness by mixing with thread id
-    let thread_id = format!("{:?}", std::thread::current().id());
-    format!("{:x}{}", timestamp, thread_id.len())
-}
-
-/// Create CORS headers for OAuth responses
-fn cors_headers() -> Vec<Header> {
-    vec![
-        Header::from_bytes("Access-Control-Allow-Origin", "*").unwrap(),
-        Header::from_bytes("Access-Control-Allow-Methods", "POST, OPTIONS").unwrap(),
-        Header::from_bytes("Access-Control-Allow-Headers", "Content-Type").unwrap(),
-        Header::from_bytes("Content-Type", "application/json").unwrap(),
-        Header::from_bytes("Connection", "close").unwrap(),
-    ]
-}
-
-/// Start OAuth server with dynamic port and nonce validation.
-/// Returns (port, nonce) tuple for the frontend to use.
-/// The web app callback page will POST auth data to this server.
 #[command]
-fn start_oauth_server(app: AppHandle) -> Result<(u16, String), String> {
-    // Find available port
-    let mut port = None;
-    let mut server = None;
-    for p in OAUTH_PORT_MIN..=OAUTH_PORT_MAX {
-        if let Ok(s) = Server::http(format!("127.0.0.1:{}", p)) {
-            port = Some(p);
-            server = Some(s);
-            break;
-        }
-    }
-    let port = port.ok_or("No available ports in range 17900-17999")?;
-    let server = server.unwrap();
-
-    // Generate and store nonce
-    let nonce = generate_nonce();
+fn auth_vault_read() -> Result<Option<String>, String> {
+    #[cfg(desktop)]
     {
-        let mut nonces = active_nonces().lock().unwrap();
-        nonces.insert(port, nonce.clone());
-    }
-
-    let app_handle = app.clone();
-    let expected_nonce = nonce.clone();
-    let server_port = port;
-
-    thread::spawn(move || {
-        // Handle up to 10 requests (OPTIONS preflight + POST + retries)
-        for _ in 0..10 {
-            let Ok(mut request) = server.recv() else {
-                continue;
-            };
-
-            // Handle CORS preflight
-            if *request.method() == Method::Options {
-                let response = Response::empty(204)
-                    .with_header(Header::from_bytes("Access-Control-Max-Age", "86400").unwrap());
-                let response = cors_headers()
-                    .into_iter()
-                    .fold(response, |r, h| r.with_header(h));
-                let _ = request.respond(response);
-                continue;
-            }
-
-            // Handle POST
-            if *request.method() == Method::Post {
-                let mut body = String::new();
-                if request.as_reader().read_to_string(&mut body).is_err() {
-                    let response = Response::from_string(r#"{"error":"Failed to read body"}"#)
-                        .with_status_code(400);
-                    let response = cors_headers()
-                        .into_iter()
-                        .fold(response, |r, h| r.with_header(h));
-                    let _ = request.respond(response);
-                    continue;
-                }
-
-                let Ok(json): Result<serde_json::Value, _> = serde_json::from_str(&body) else {
-                    let response =
-                        Response::from_string(r#"{"error":"Invalid JSON"}"#).with_status_code(400);
-                    let response = cors_headers()
-                        .into_iter()
-                        .fold(response, |r, h| r.with_header(h));
-                    let _ = request.respond(response);
-                    continue;
-                };
-
-                let code = json.get("code").and_then(|v| v.as_str());
-                let nonce = json.get("nonce").and_then(|v| v.as_str());
-                let state = json.get("state").and_then(|v| v.as_str());
-
-                match (code, nonce, state) {
-                    (Some(code), Some(nonce), Some(state)) if nonce == expected_nonce => {
-                        // Clear nonce
-                        {
-                            let mut nonces = active_nonces().lock().unwrap();
-                            nonces.remove(&server_port);
-                        }
-
-                        // Emit callback
-                        let callback_url = format!(
-                            "http://localhost:{}?code={}&state={}",
-                            server_port,
-                            urlencoding::encode(code),
-                            urlencoding::encode(state)
-                        );
-                        let _ = app_handle.emit("oauth-callback", callback_url);
-
-                        // Send success response with explicit content length
-                        let body = r#"{"success":true}"#;
-                        let response = Response::from_string(body).with_header(
-                            Header::from_bytes("Content-Length", body.len().to_string()).unwrap(),
-                        );
-                        let response = cors_headers()
-                            .into_iter()
-                            .fold(response, |r, h| r.with_header(h));
-                        let _ = request.respond(response);
-                        // Delay to ensure response is fully sent before thread exits
-                        thread::sleep(std::time::Duration::from_millis(500));
-                        break;
-                    }
-                    (Some(_), Some(_), Some(_)) => {
-                        let response = Response::from_string(r#"{"error":"Invalid nonce"}"#)
-                            .with_status_code(403);
-                        let response = cors_headers()
-                            .into_iter()
-                            .fold(response, |r, h| r.with_header(h));
-                        let _ = request.respond(response);
-                    }
-                    _ => {
-                        let response = Response::from_string(r#"{"error":"Missing fields"}"#)
-                            .with_status_code(400);
-                        let response = cors_headers()
-                            .into_iter()
-                            .fold(response, |r, h| r.with_header(h));
-                        let _ = request.respond(response);
-                    }
-                }
-            }
+        match vault_entry()?.get_password() {
+            Ok(record) => Ok(Some(record)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(error) => Err(error.to_string()),
         }
-    });
+    }
+    #[cfg(not(desktop))]
+    Err("unsupported".into())
+}
 
-    Ok((port, nonce))
+#[command]
+fn auth_vault_write(record: String) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        vault_entry()?
+            .set_password(&record)
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = record;
+        Err("unsupported".into())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Must be the first plugin: a second launch (a `com.hazel.app://` link on Windows and
+    // Linux) hands its arguments to the running app, and the deep-link plugin picks them up.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+
+    let builder = builder
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![start_oauth_server]);
+        .invoke_handler(tauri::generate_handler![auth_vault_read, auth_vault_write]);
 
     #[cfg(desktop)]
     let builder = builder
@@ -193,6 +80,13 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+            }
+
+            // macOS registers the link schemes from the bundle; Windows and Linux at runtime.
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().register_all()?;
             }
 
             // Configure custom titlebar with decorum

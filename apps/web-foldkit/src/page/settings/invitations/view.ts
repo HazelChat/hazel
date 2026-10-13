@@ -121,7 +121,7 @@ export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, 
 								h.p(
 									[h.Class("text-muted-fg text-sm")],
 									[
-										"Manage pending invitations sent to team members. Clerk handles email delivery and hosts the accept page.",
+										"Pending invitations to this workspace. Each link expires 7 days after it was sent.",
 									],
 								),
 							],

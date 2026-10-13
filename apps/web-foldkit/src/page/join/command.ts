@@ -53,7 +53,7 @@ export const JoinWorkspace = Command.define("JoinWorkspace", {
 		}),
 })
 
-/** `login({ returnTo })`: a full page load of Clerk's sign-in, coming back here afterwards. */
+/** `login({ returnTo })`: a full page load of sign-in, coming back here afterwards. */
 export const RedirectToSignIn = Command.define("RedirectToSignIn", {
 	args: { returnTo: Schema.String },
 	messages: [Message.CompletedRedirectToSignIn],

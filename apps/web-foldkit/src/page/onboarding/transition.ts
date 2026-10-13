@@ -56,7 +56,6 @@ const stepCommands = (model: Model, step: Step): ReadonlyArray<Command.Command<M
 						memberId: model.membership?.memberId ?? null,
 						role: model.data.role,
 						useCases: model.data.useCases,
-						emails: model.data.emails,
 					}),
 				]
 			: []

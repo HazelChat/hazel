@@ -1,7 +1,10 @@
 import { Effect, Schema } from "effect"
 import { Command } from "foldkit"
 import { modifyFields } from "foldkit/struct"
+import { getTauriApp } from "@hazel/desktop/bridge"
 import { disableAutostart, enableAutostart, isAutostartEnabled } from "~/lib/tauri-autostart"
+import { isDesktop } from "../../../platform/desktop"
+import { PageOutMessage } from "../../out-message"
 import * as Interaction from "../../../ui/aria/interaction"
 import type { PageReturn } from "../../contract"
 import { embedInteraction } from "../shared"
@@ -34,9 +37,18 @@ export const SetAutostart = Command.define("SetAutostart", {
 		),
 })
 
+/** `useAppVersion()`: the installed version on desktop. */
+export const ReadVersion = Command.define("ReadVersion", {
+	messages: [Message.ReadAppVersion],
+	execute: Effect.tryPromise(async () => (await getTauriApp()?.getVersion()) ?? null).pipe(
+		Effect.catch(() => Effect.succeed(null)),
+		Effect.map((version) => Message.ReadAppVersion({ version })),
+	),
+})
+
 export const init = (): PageReturn<Model, Message> => ({
-	model: { autostartEnabled: null, isUpdating: false, interaction: Interaction.init() },
-	commands: [CheckAutostart()],
+	model: { autostartEnabled: null, isUpdating: false, version: null, interaction: Interaction.init() },
+	commands: isDesktop ? [CheckAutostart(), ReadVersion()] : [CheckAutostart()],
 })
 
 export const update = (model: Model, message: Message): PageReturn<Model, Message> =>
@@ -57,4 +69,7 @@ export const update = (model: Model, message: Message): PageReturn<Model, Messag
 			model: modifyFields(model, { autostartEnabled: () => isEnabled, isUpdating: () => false }),
 		}),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),
+		ReadAppVersion: ({ version }) => ({ model: modifyFields(model, { version: () => version }) }),
+		ClickedCheckForUpdates: () => ({ model, outMessage: PageOutMessage.RequestedUpdateCheck() }),
+		ClickedInstallUpdate: () => ({ model, outMessage: PageOutMessage.RequestedUpdateInstall() }),
 	})

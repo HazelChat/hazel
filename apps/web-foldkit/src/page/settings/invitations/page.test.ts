@@ -1,14 +1,21 @@
 // @vitest-environment jsdom
+import { InvitationId } from "@hazel/schema"
+import { Schema } from "effect"
 import { describe, expect, test } from "vitest"
 import * as Menu from "../../../ui/menu"
+import { makeShared, uuid } from "../../../test/pages-fixtures"
 import { Message } from "./message"
+import type { Invitation } from "./model"
 import { init, REVOKE_KEY, update } from "./update"
+
+const inv1 = Schema.decodeSync(InvitationId)(uuid(11))
+const inv2 = Schema.decodeSync(InvitationId)(uuid(12))
 
 /** Update-loop tests for pending invitations: row menus and the revoke lifecycle. */
 
-const invitation = { id: "inv_1", emailAddress: "ada@example.com", role: "org:member", createdAtMs: 0 }
+const invitation: Invitation = { id: inv1, emailAddress: "ada@example.com", role: "member", createdAtMs: 0 }
 const loaded = () =>
-	update(init().model, Message.CompletedFetchInvitations({ version: 1, invitations: [invitation] })).model
+	update(init(undefined, makeShared()).model, Message.CompletedFetchInvitations({ version: 1, invitations: [invitation] })).model
 
 describe("pending invitations", () => {
 	test("every invitation gets a row menu with a revoke item", () => {

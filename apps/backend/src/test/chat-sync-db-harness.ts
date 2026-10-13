@@ -118,7 +118,8 @@ const ensureSchema = async (databaseUrl: string, dbLayer: Layer.Layer<Database.D
 	}
 }
 
-export const createChatSyncDbHarness = async (): Promise<ChatSyncDbHarness> => {
+export const createChatSyncDbHarness = async (databaseUrl?: string): Promise<ChatSyncDbHarness> => {
+	if (databaseUrl !== undefined) return connectHarness(databaseUrl, async () => {})
 	const containerId = runDocker([
 		"run",
 		"-d",
@@ -139,41 +140,42 @@ export const createChatSyncDbHarness = async (): Promise<ChatSyncDbHarness> => {
 		const hostPort = getPublishedPort(containerId)
 		const databaseUrl = `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${hostPort}/${POSTGRES_DB}?sslmode=disable`
 
-		const dbLayer = Database.layer({
-			url: Redacted.make(databaseUrl),
-			ssl: false,
-		}).pipe(Layer.orDie)
-
-		await ensureSchema(databaseUrl, dbLayer)
-
-		const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-			Effect.runPromise(
-				(effect as Effect.Effect<A, E, never>).pipe(Effect.provide(dbLayer), Effect.scoped),
-			)
-
-		const reset = () =>
-			run(
-				Effect.gen(function* () {
-					const db = yield* Database.Database
-					yield* db.execute(Database.sql.raw(TRUNCATE_SQL))
-				}),
-			)
-
-		const stop = async () => {
+		return await connectHarness(databaseUrl, async () => {
 			runDocker(["rm", "-f", containerId], { stdio: "ignore" })
-		}
-
-		return {
-			container: {
-				getConnectionUri: () => databaseUrl,
-			},
-			dbLayer,
-			run,
-			reset,
-			stop,
-		}
+		})
 	} catch (error) {
 		runDocker(["rm", "-f", containerId], { stdio: "ignore" })
 		throw error
+	}
+}
+
+/** An explicitly supplied disposable database, useful when Docker cannot start containers. */
+const connectHarness = async (databaseUrl: string, stop: () => Promise<void>): Promise<ChatSyncDbHarness> => {
+	const dbLayer = Database.layer({
+		url: Redacted.make(databaseUrl),
+		ssl: false,
+	}).pipe(Layer.orDie)
+
+	await ensureSchema(databaseUrl, dbLayer)
+
+	const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+		Effect.runPromise((effect as Effect.Effect<A, E, never>).pipe(Effect.provide(dbLayer), Effect.scoped))
+
+	const reset = () =>
+		run(
+			Effect.gen(function* () {
+				const db = yield* Database.Database
+				yield* db.execute(Database.sql.raw(TRUNCATE_SQL))
+			}),
+		)
+
+	return {
+		container: {
+			getConnectionUri: () => databaseUrl,
+		},
+		dbLayer,
+		run,
+		reset,
+		stop,
 	}
 }

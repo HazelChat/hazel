@@ -2,6 +2,7 @@ import type {
 	TauriAppApi,
 	TauriAutostartApi,
 	TauriCoreApi,
+	TauriDeepLinkApi,
 	TauriEventApi,
 	TauriNotificationApi,
 	TauriOpenerApi,
@@ -32,3 +33,4 @@ export const getTauriOpener = (): TauriOpenerApi | undefined => getTauri()?.open
 export const getTauriNotification = (): TauriNotificationApi | undefined => getTauri()?.notification
 export const getTauriAutostart = (): TauriAutostartApi | undefined => getTauri()?.autostart
 export const getTauriApp = (): TauriAppApi | undefined => getTauri()?.app
+export const getTauriDeepLink = (): TauriDeepLinkApi | undefined => getTauri()?.deepLink

@@ -7,6 +7,7 @@ import type { AppRoute, RouteOf, RouteTag } from "../route"
 import type { Auth, CurrentUser, Member, Organization } from "../session"
 import type { SoundSettings } from "../notification-sound"
 import type { ThemeState } from "../theme"
+import type * as Updates from "../platform/updates"
 import type { PageOutMessage } from "./out-message"
 
 /** The page contract: every routed page is a Submodel registered once in `registry.ts`. See README.md. */
@@ -28,6 +29,8 @@ export interface Shared {
 	readonly theme: ThemeState
 	/** `notificationSoundSettingsAtom`: what the sound sink and "Test sound" use. */
 	readonly soundSettings: SoundSettings
+	/** The desktop app's update check and install (always `Idle` on the web). */
+	readonly desktopUpdate: Updates.Model
 }
 
 /** `usePermission().can(action)` */

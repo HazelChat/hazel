@@ -1,10 +1,11 @@
 /**
- * Authenticated fetch for Electric SQL. Attaches the Clerk bearer token and
- * retries 5xx with jittered backoff so we don't hammer the proxy on outages.
+ * Authenticated fetch for Electric SQL. Attaches the Hazel access token (the proxy is on
+ * another host, so it cannot see the API's session cookie) and retries 5xx with jittered
+ * backoff so we don't hammer the proxy on outages.
  * Auth state is handled by the React tree — this just fetches.
  */
 import { Effect, Schedule } from "effect"
-import { getClerkToken } from "./clerk-token"
+import { getAccessToken } from "./access-token"
 import { runtime } from "./services/common/runtime"
 
 const retrySchedule = Schedule.max([
@@ -15,7 +16,7 @@ const retrySchedule = Schedule.max([
 const shouldRetry = (response: Response): boolean => response.status >= 500 && response.status < 600
 
 const doFetch = async (input: RequestInfo | URL, init: RequestInit | undefined): Promise<Response> => {
-	const token = await getClerkToken()
+	const token = await getAccessToken()
 	if (!token) return new Response(null, { status: 401 })
 	return fetch(input, {
 		...init,

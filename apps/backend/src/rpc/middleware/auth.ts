@@ -4,6 +4,7 @@ import { CurrentUser, InvalidBearerTokenError, SessionNotProvidedError } from "@
 import { Effect, Layer, Option } from "effect"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { type ApiScope, CurrentBotScopes } from "@hazel/domain/scopes"
+import { HazelSession } from "../../services/hazel-session"
 import { SessionManager } from "../../services/session-manager"
 
 export { AuthMiddleware } from "@hazel/domain/rpc"
@@ -31,14 +32,30 @@ export const AuthMiddlewareLive = Layer.effect(
 	AuthMiddleware,
 	Effect.gen(function* () {
 		const sessionManager = yield* SessionManager
+		const hazelSession = yield* HazelSession
 		const botRepo = yield* BotRepo
 		const userRepo = yield* UserRepo
 
 		return AuthMiddleware.of((effect, { headers }) =>
 			Effect.gen(function* () {
-				// Check for Bearer token first (bot SDK or desktop app authentication)
+				// Hazel session cookie (browser). RPC calls are POSTs, so the Origin is checked.
 				const authHeader = Headers.get(headers, "authorization")
+				const hasBearer =
+					Option.isSome(authHeader) &&
+					authHeader.value.startsWith("Bearer ") &&
+					authHeader.value.length > 7
+				const cookieUser = yield* hazelSession
+					.fromCookie(headers, "POST")
+					.pipe(
+						Effect.catchTag("InvalidBearerTokenError", (error) =>
+							hasBearer ? Effect.succeedNone : Effect.fail(error),
+						),
+					)
+				if (Option.isSome(cookieUser)) {
+					return yield* Effect.provideService(effect, CurrentUser.Context, cookieUser.value)
+				}
 
+				// Bearer token: Clerk JWT, Hazel session credential (native clients) or bot token
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
 
@@ -46,6 +63,17 @@ export const AuthMiddlewareLive = Layer.effect(
 					if (isJwtToken(token)) {
 						const currentUser = yield* sessionManager.authenticateWithBearer(token)
 						return yield* Effect.provideService(effect, CurrentUser.Context, currentUser)
+					}
+
+					if (hazelSession.enabled && !token.startsWith("hzl_bot_")) {
+						const sessionUser = yield* hazelSession.verify(token)
+						if (Option.isSome(sessionUser)) {
+							return yield* Effect.provideService(
+								effect,
+								CurrentUser.Context,
+								sessionUser.value,
+							)
+						}
 					}
 
 					// Otherwise, treat as bot token (hash-based lookup)

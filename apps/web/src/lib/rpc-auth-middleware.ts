@@ -1,20 +1,23 @@
 /**
- * Client-side RPC auth middleware — attaches the Clerk session token as a
- * Bearer header on outbound RPC requests.
+ * Client-side RPC auth middleware. Browsers authenticate RPC with the session cookie, which
+ * the protocol sends through `RpcCredentialsLive`; the desktop app adds its session as a bearer.
  */
-import { Headers } from "effect/http"
+import { FetchHttpClient, Headers } from "effect/http"
 import { RpcMiddleware } from "effect/rpc"
 import { AuthMiddleware } from "@hazel/domain/rpc"
-import { Effect } from "effect"
-import { getClerkToken } from "~/lib/clerk-token"
+import { Effect, Layer } from "effect"
+import { sessionAuthorization } from "./session-bearer"
 
 export const AuthMiddlewareClientLive = RpcMiddleware.layerClient(AuthMiddleware, ({ request, next }) =>
 	Effect.gen(function* () {
-		const token = yield* Effect.promise(() => getClerkToken())
-		if (token) {
-			const newHeaders = Headers.set(request.headers, "authorization", `Bearer ${token}`)
-			return yield* next({ ...request, headers: newHeaders })
-		}
-		return yield* next(request)
+		const authorization = yield* Effect.promise(sessionAuthorization)
+		return yield* next(
+			authorization === null
+				? request
+				: { ...request, headers: Headers.set(request.headers, "authorization", authorization) },
+		)
 	}),
 )
+
+/** Sends the API's session cookie with cross-origin RPC requests. */
+export const RpcCredentialsLive = Layer.succeed(FetchHttpClient.RequestInit, { credentials: "include" })

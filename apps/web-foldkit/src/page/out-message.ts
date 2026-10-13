@@ -23,6 +23,10 @@ export const PageOutMessage = defineMessageUnion({
 	RequestedCurrentUserRefresh: { toast: Schema.optionalKey(ToastRequest) },
 	/** The mobile header's menu button: open the sidebar sheet (`setIsOpenOnMobile(true)`). */
 	RequestedMobileSidebar: {},
+	/** Desktop: check for an app update now; read the result back as `Shared.desktopUpdate`. */
+	RequestedUpdateCheck: {},
+	/** Desktop: download and install the available update, then relaunch. */
+	RequestedUpdateInstall: {},
 })
 export type PageOutMessage = typeof PageOutMessage.Type
 

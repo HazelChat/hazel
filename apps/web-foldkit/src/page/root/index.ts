@@ -1,11 +1,13 @@
 import { OrganizationId, UserId } from "@hazel/schema"
 import { and, eq } from "@tanstack/db"
-import { Option, Schema, Stream } from "effect"
-import { Submodel, Subscription } from "foldkit"
+import { Effect, Option, Schema, Stream } from "effect"
+import { Command, Submodel, Subscription } from "foldkit"
 import { modifyFields } from "foldkit/struct"
 import { organizationCollection, organizationMemberCollection } from "~/db/collections"
+import { takeReturnTo } from "../../auth/return-to"
 import { liveQueryStream } from "../../data/live-query"
 import { rootRedirect } from "../../redirect"
+import type { CurrentUser } from "../../session"
 import { appLoader } from "../../shell/layouts"
 import {
 	definePage,
@@ -21,14 +23,28 @@ import { Message, Model } from "./model"
 
 type Return = PageReturn<Model, Message>
 
-/** Redirects once both the user and their membership are known. */
+export const TakeReturnTo = Command.define("TakeReturnTo", {
+	messages: [Message.TookReturnTo],
+	execute: takeReturnTo.pipe(Effect.map((returnTo) => Message.TookReturnTo({ returnTo }))),
+})
+
+/** Where to go: back to where sign-in started, unless onboarding comes first; else `rootRedirect`. */
+const targetOf = (model: Model, user: CurrentUser): string =>
+	model.returnTo && user.isOnboarded
+		? model.returnTo
+		: rootRedirect(user, Option.fromNullishOr(model.membership))
+
+/** Redirects once the user, their membership and the remembered page are known. */
 const redirectWhenReady = (model: Model, shared: Shared): Return =>
-	model.hasRedirected || model.membership === undefined || shared.currentUser === null
+	model.hasRedirected ||
+	model.membership === undefined ||
+	model.returnTo === undefined ||
+	shared.currentUser === null
 		? { model }
 		: {
 				model: modifyFields(model, { hasRedirected: () => true }),
 				outMessage: PageOutMessage.RequestedNavigation({
-					href: rootRedirect(shared.currentUser, Option.fromNullishOr(model.membership)),
+					href: targetOf(model, shared.currentUser),
 					replace: true,
 				}),
 			}
@@ -78,17 +94,26 @@ const subscriptions = Subscription.make<PageSubscriptionInput<Model>, Message>()
 	),
 }))
 
+export const init = (): Return => ({
+	model: { membership: undefined, returnTo: undefined, hasRedirected: false },
+	commands: [TakeReturnTo()],
+})
+
+export const update = (model: Model, message: Message, shared: Shared): Return =>
+	Message.match<Return>(message, {
+		UpdatedMembership: ({ membership }) =>
+			redirectWhenReady(modifyFields(model, { membership: () => membership }), shared),
+		TookReturnTo: ({ returnTo }) =>
+			redirectWhenReady(modifyFields(model, { returnTo: () => returnTo }), shared),
+	})
+
 export const page = definePage(
 	"Root",
 	{ Model, Message },
 	{
 		routes: ["Root"],
-		init: () => ({ model: { membership: undefined, hasRedirected: false } }),
-		update: (model, message, shared) =>
-			Message.match<Return>(message, {
-				UpdatedMembership: ({ membership }) =>
-					redirectWhenReady(modifyFields(model, { membership: () => membership }), shared),
-			}),
+		init,
+		update,
 		view: Submodel.defineView<Model, Message, PageViewInputs>((_model, _inputs, h) => appLoader(h)),
 		subscriptions,
 		sharedChanged: redirectWhenReady,

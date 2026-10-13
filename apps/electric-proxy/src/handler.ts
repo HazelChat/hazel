@@ -166,6 +166,24 @@ export const handleUserRequest = (request: Request) => {
 				)
 			}),
 		),
+		// The API's signing keys could not be fetched → 503, which the web client retries
+		Effect.catchTag("ProxyAuthUnavailableError", (error) =>
+			Effect.gen(function* () {
+				yield* annotateHandledError(503, "ProxyAuthUnavailableError")
+				yield* Metric.update(
+					Metric.withAttributes(proxyAuthFailures, {
+						auth_type: "user",
+						error_tag: "ProxyAuthUnavailableError",
+					}),
+					1,
+				)
+				yield* Effect.logWarning("Access token keys unavailable", { detail: error.detail })
+				return new Response(JSON.stringify({ error: error.message, detail: error.detail }), {
+					status: 503,
+					headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+				})
+			}),
+		),
 		// Upstream errors → 502
 		Effect.catchTag("ElectricProxyError", (error: ElectricProxyError) =>
 			Effect.gen(function* () {

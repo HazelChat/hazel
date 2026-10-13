@@ -1,35 +1,42 @@
 // @vitest-environment jsdom
 import * as Scene from "foldkit/scene"
-import { describe, expect, test } from "vitest"
-import { pageScene } from "../../../test/pages-fixtures"
+import { describe, test } from "vitest"
 import { newcomer } from "../../../test/pages-entry-fixtures"
-import { ClerkMountMessage, MountClerkComponent } from "../../auth/clerk-mount"
-import { view } from "./index"
+import { pageScene } from "../../../test/pages-fixtures"
+import * as CreateWorkspace from "../../create-workspace"
+import { update, view } from "./index"
 
-/** `/onboarding/setup-organization`: Clerk's CreateOrganization, skipping its invite screen. */
+/** `/onboarding/setup-organization`: name the workspace; its URL follows the name until edited. */
 
-// The page keeps no state: its update returns the Model unchanged.
-const update = (model: object) => ({ model })
+const empty = { form: CreateWorkspace.init() }
+const create = Scene.role("button", { name: "Create workspace" })
 
 describe("setup organization", () => {
-	test("mounts CreateOrganization with hash routing and a return to the app root", () => {
+	test("creates the workspace with the slug derived from its name", () => {
 		Scene.scene(
 			pageScene(update, view, newcomer),
-			Scene.given({}),
-			Scene.expect(Scene.selector('[data-clerk-component="CreateOrganization"]')).toExist(),
-			Scene.tap(({ mounts }) =>
-				expect(mounts.map((mount) => mount.args)).toEqual([
-					{
-						component: "CreateOrganization",
-						props: { routing: "hash", skipInvitationScreen: true, afterCreateOrganizationUrl: "/" },
-					},
-				]),
+			Scene.given(empty),
+			Scene.type(Scene.label("Workspace name"), "Acme Corp!"),
+			Scene.expect(Scene.label("Workspace URL")).toHaveValue("acme-corp"),
+			Scene.click(create),
+			Scene.Command.expectExact(CreateWorkspace.CreateWorkspace({ name: "Acme Corp!", slug: "acme-corp" })),
+			Scene.Command.resolve(
+				CreateWorkspace.CreateWorkspace,
+				CreateWorkspace.Message.FailedCreateWorkspace({ error: "That workspace URL is taken. Pick another." }),
 			),
-			Scene.Mount.resolve(
-				MountClerkComponent,
-				ClerkMountMessage.MountedClerkComponent({ component: "CreateOrganization" }),
-			),
-			Scene.Mount.expectNone(),
+			Scene.expect(Scene.role("alert")).toHaveText("That workspace URL is taken. Pick another."),
+		)
+	})
+
+	test("an invalid URL blocks the submit and says why", () => {
+		Scene.scene(
+			pageScene(update, view, newcomer),
+			Scene.given(empty),
+			Scene.type(Scene.label("Workspace name"), "Acme"),
+			Scene.type(Scene.label("Workspace URL"), "a!"),
+			Scene.click(create),
+			Scene.Command.expectNone(),
+			Scene.expect(Scene.text("Use at least 3 lowercase letters, numbers or hyphens")).toExist(),
 		)
 	})
 })

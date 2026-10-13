@@ -10,6 +10,8 @@ import * as Toasts from "../overlay/toaster"
 import { Message as PageMessage } from "../page/registry"
 import { Auth, CurrentUser, Member, Organization } from "../session"
 import * as Platform from "../platform"
+import { DesktopMenuItem } from "../platform/desktop-menu"
+import * as Updates from "../platform/updates"
 import * as Shell from "../shell/model"
 import { ResolvedTheme } from "../theme"
 
@@ -42,6 +44,9 @@ export const Message = defineMessageUnion({
 	GotCommandPaletteMessage: { message: CommandPalette.Message },
 	GotToastsMessage: { message: Toasts.Message },
 	GotPlatformMessage: { message: Platform.Message },
+	GotUpdatesMessage: { message: Updates.Message },
+	/** A desktop app menu item (`menu-*` events from the Tauri host). */
+	PressedDesktopMenuItem: { item: DesktopMenuItem },
 	/** A legacy `useAppHotkey` binding fired (`lib/hotkeys/hotkey-registry.ts` id). */
 	PressedHotkey: { actionId: LayoutHotkeyActionId },
 })

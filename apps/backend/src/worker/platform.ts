@@ -3,15 +3,27 @@
  * caches, `ConfigProvider.fromEnv`), rebuilt over Cloudflare bindings.
  */
 import type { KVNamespace } from "@cloudflare/workers-types"
+import { AuthSqlConnection, makeRequestConnection } from "@hazel/auth/server"
 import { Database } from "@hazel/db"
 import { layerKvResultPersistence } from "@hazel/effect-cloudflare"
 import { readHazelDbBinding } from "@hazel/infra/cloudflare"
 import { workerEnvLayer } from "@hazel/infra/worker-runtime"
 import { Effect, Layer, Option, Redacted } from "effect"
 import { type BotGatewayNamespace, BotGatewayTransport } from "../services/bot-gateway-transport"
+import { InviteMailer, isEmailBinding } from "../services/invite-mailer"
 
 /** KV namespace backing the session/user-lookup caches (Redis on Bun). */
 export const CACHE_BINDING = "CACHE"
+
+/** Cloudflare Email Sending, for invitation emails. */
+export const EMAIL_BINDING = "EMAIL"
+
+/** Invites go out through the `EMAIL` binding; without it the link is only logged. */
+const inviteMailerLive = (env: Record<string, unknown>) =>
+	Layer.suspend(() => {
+		const binding = env[EMAIL_BINDING]
+		return isEmailBinding(binding) ? InviteMailer.layerBinding(binding) : InviteMailer.layerLog
+	})
 
 /** The Hyperdrive connection string, a defect when the binding is missing. */
 export const hazelDbConnectionString = (env: Record<string, unknown>): string =>
@@ -39,6 +51,7 @@ export const requestPlatformLive = (env: Record<string, unknown>, botGateways: B
 		BotGatewayTransport.layerDurableObject(botGateways),
 		// Suspended: init also runs at plan time, where the KV binding does not exist yet.
 		Layer.suspend(() => layerKvResultPersistence(cacheNamespace(env))),
+		inviteMailerLive(env).pipe(Layer.provide(workerEnvLayer(env))),
 		workerEnvLayer(env),
 	)
 
@@ -58,12 +71,19 @@ export const objectPlatformLive = (env: Record<string, unknown>, botGateways: Bo
 		workerEnvLayer(env),
 	)
 
-/**
- * Opens the request's Postgres client; it connects lazily and is closed with the request scope.
- * Opening dials nothing, so it cannot fail for want of a database: a failure here is a defect.
- */
-export const provideRequestDatabase = (env: Record<string, unknown>) =>
-	Effect.provideServiceEffect(
-		Database.DatabaseConnection,
-		Database.makeRequestConnection(hazelDbConnectionString(env)).pipe(Effect.orDie),
-	)
+/** Both ORM and auth SQL clients connect lazily and close with the request scope. */
+export const provideRequestDatabase =
+	(env: Record<string, unknown>) =>
+	<A, E, R>(effect: Effect.Effect<A, E, R>) =>
+		effect.pipe(
+			Effect.provideServiceEffect(
+				AuthSqlConnection,
+				Effect.flatMap(Effect.scope, (scope) =>
+					makeRequestConnection(Redacted.make(hazelDbConnectionString(env)), scope),
+				),
+			),
+			Effect.provideServiceEffect(
+				Database.DatabaseConnection,
+				Database.makeRequestConnection(hazelDbConnectionString(env)).pipe(Effect.orDie),
+			),
+		)

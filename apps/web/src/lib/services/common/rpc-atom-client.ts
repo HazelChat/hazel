@@ -2,7 +2,7 @@ import { Reactivity } from "effect/reactivity"
 import { FetchHttpClient } from "effect/http"
 import { RpcClient as RpcClientBuilder, RpcSerialization } from "effect/rpc"
 import { AtomRpc } from "effect/reactivity"
-import { AuthMiddlewareClientLive } from "~/lib/rpc-auth-middleware"
+import { AuthMiddlewareClientLive, RpcCredentialsLive } from "~/lib/rpc-auth-middleware"
 import {
 	AttachmentRpcs,
 	BotRpcs,
@@ -33,7 +33,10 @@ const httpUrl = `${backendUrl}/rpc`
 
 const BaseProtocolLive = RpcClientBuilder.layerProtocolHttp({
 	url: httpUrl,
-}).pipe(Layer.provide(FetchHttpClient.layer), Layer.provide(RpcSerialization.layerNdjson))
+}).pipe(
+	Layer.provide(FetchHttpClient.layer.pipe(Layer.provide(RpcCredentialsLive))),
+	Layer.provide(RpcSerialization.layerNdjson),
+)
 
 export const RpcProtocolLive = BaseProtocolLive
 

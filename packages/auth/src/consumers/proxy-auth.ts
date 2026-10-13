@@ -1,9 +1,6 @@
-import { verifyToken } from "@clerk/backend"
-import { Database, PG, schema } from "@hazel/db"
-import { ClerkJwtClaims, type UserId } from "@hazel/schema"
-import { Context, Config, Effect, Layer, Option, Redacted, Schema } from "effect"
-import { UserLookupCache } from "../cache/user-lookup-cache.ts"
-import type { AuthenticatedUserContext } from "../types.ts"
+import { UserId } from "@hazel/schema"
+import { Context, Effect, Layer, Schema } from "effect"
+import { AccessTokenVerifier } from "../yielded/access-token.ts"
 
 export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthenticationError>()(
 	"ProxyAuthenticationError",
@@ -13,119 +10,62 @@ export class ProxyAuthenticationError extends Schema.TaggedError<ProxyAuthentica
 	},
 ) {}
 
+/** The API's key set could not be fetched; the request may succeed on retry. */
+export class ProxyAuthUnavailableError extends Schema.TaggedError<ProxyAuthUnavailableError>()(
+	"ProxyAuthUnavailableError",
+	{
+		message: Schema.String,
+		detail: Schema.optional(Schema.String),
+	},
+) {}
+
+const decodeUserId = Schema.decodeUnknownEffect(UserId)
+
 /**
  * Electric-proxy authentication service.
  *
- * Verifies a Clerk bearer JWT and resolves it to an internal Hazel user. Does
- * NOT upsert users — if the user isn't already in the DB (via Clerk webhook
- * sync), the request is rejected.
+ * Verifies the Hazel access token the web app gets from `POST /auth/token`. Its subject is
+ * the user's `users.id`, so no lookup is needed; the API only issues it for a live session.
  */
 export class ProxyAuth extends Context.Service<ProxyAuth>()("@hazel/auth/ProxyAuth", {
 	make: Effect.gen(function* () {
-		const userLookupCache = yield* UserLookupCache
-		const db = yield* Database.Database
-		const decodeClerkClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
-		const clerkSecretKey = yield* Config.Redacted("CLERK_SECRET_KEY")
-
-		const lookupUser = Effect.fn("ProxyAuth.lookupUser")(function* (externalId: string) {
-			const cached = yield* userLookupCache.get(externalId).pipe(
-				Effect.catch((error) =>
-					Effect.logWarning("User lookup cache error", error).pipe(
-						Effect.map(() =>
-							Option.none<{
-								internalUserId: UserId
-							}>(),
-						),
-					),
-				),
-			)
-
-			if (Option.isSome(cached)) {
-				yield* Effect.annotateCurrentSpan("cache.result", "hit")
-				return Option.some(cached.value.internalUserId)
-			}
-
-			const userOption = yield* db
-				.first(
-					PG.from(schema.usersTable)
-						.select("id")
-						.where(($) => [$.externalId.eq(externalId)])
-						.limit(1),
-				)
-				.pipe(
-					Effect.catchTag("DatabaseError", (error) =>
-						Effect.fail(
-							new ProxyAuthenticationError({
-								message: "Failed to lookup user in database",
-								detail: error.message,
-							}),
-						),
-					),
-				)
-
-			if (Option.isSome(userOption)) {
-				yield* userLookupCache
-					.set(externalId, userOption.value.id)
-					.pipe(Effect.catch((error) => Effect.logWarning("Failed to cache user lookup", error)))
-			}
-
-			return Option.map(userOption, (user) => user.id)
-		})
+		const verifier = yield* AccessTokenVerifier
 
 		const validateBearerToken = Effect.fn("ProxyAuth.validateBearerToken")(function* (
 			bearerToken: string,
 		) {
-			const payload = yield* Effect.tryPromise({
-				try: () => verifyToken(bearerToken, { secretKey: Redacted.value(clerkSecretKey) }),
-				catch: (error) =>
-					new ProxyAuthenticationError({
-						message: "Clerk JWT verification failed",
-						detail: String(error),
-					}),
-			})
-
-			const claims = yield* decodeClerkClaims(payload).pipe(
-				Effect.mapError(
-					(error) =>
-						new ProxyAuthenticationError({
-							message: "Invalid Clerk JWT claims",
-							detail: String(error),
-						}),
-				),
-			)
-
-			const userIdOption = yield* lookupUser(claims.sub).pipe(
-				Effect.withSpan("ProxyAuth.lookupUser", {
-					attributes: { "clerk.user_id": claims.sub },
+			const access = yield* verifier.verify(bearerToken).pipe(
+				Effect.catchTags({
+					AccessTokenInvalid: (error) =>
+						Effect.fail(
+							new ProxyAuthenticationError({
+								message: "Access token verification failed",
+								detail: error.reason,
+							}),
+						),
+					AccessTokenUnavailable: (error) =>
+						Effect.fail(
+							new ProxyAuthUnavailableError({
+								message: "Access token keys are unavailable",
+								detail: error.reason,
+							}),
+						),
 				}),
 			)
 
-			if (Option.isNone(userIdOption)) {
-				yield* Effect.annotateCurrentSpan("user.found", false)
-				return yield* new ProxyAuthenticationError({
-					message: "User not found in database",
-					detail: `User must be created via Clerk webhook first. Clerk ID: ${claims.sub}`,
-				})
-			}
-
-			yield* Effect.annotateCurrentSpan("user.found", true)
-			yield* Effect.annotateCurrentSpan("user.id", userIdOption.value)
-
-			return {
-				externalId: claims.sub,
-				internalUserId: userIdOption.value,
-				email: claims.email ?? "",
-				organizationId: undefined,
-				role: claims.org_role === "org:admin" ? "admin" : "member",
-			} satisfies AuthenticatedUserContext
+			const internalUserId = yield* decodeUserId(access.userId).pipe(
+				Effect.mapError(
+					() => new ProxyAuthenticationError({ message: "Access token subject is not a user id" }),
+				),
+			)
+			yield* Effect.annotateCurrentSpan("user.id", internalUserId)
+			return { internalUserId }
 		})
 
-		return {
-			validateBearerToken,
-		}
+		return { validateBearerToken }
 	}),
 }) {
-	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(UserLookupCache.layer))
+	static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(AccessTokenVerifier.layer))
 }
 
 export const ProxyAuthLive = ProxyAuth.layer

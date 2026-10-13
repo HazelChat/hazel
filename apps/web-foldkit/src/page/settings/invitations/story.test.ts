@@ -1,31 +1,36 @@
 // @vitest-environment jsdom
+import { InvitationId } from "@hazel/schema"
+import { Schema } from "effect"
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from "foldkit/story"
 import { describe, expect, test } from "vitest"
 import { errorToast, successToast } from "../../../data/actions"
-import { makeShared, storyUpdate } from "../../../test/pages-fixtures"
+import {makeShared,storyUpdate,uuid} from "../../../test/pages-fixtures"
 import * as Menu from "../../../ui/menu"
 import { PageOutMessage } from "../../out-message"
 import { Message } from "./message"
 import type { Invitation } from "./model"
 import { FetchInvitations, init, REVOKE_KEY, RevokeInvitation, update } from "./update"
 
+const inv1 = Schema.decodeSync(InvitationId)(uuid(11))
+const inv2 = Schema.decodeSync(InvitationId)(uuid(12))
+
 /** Pending invitations through update: fetch, the row menu revoke, and its result toasts. */
 
 const run = storyUpdate(update, makeShared())
-const ada: Invitation = { id: "inv_1", emailAddress: "ada@hazel.test", role: "org:member", createdAtMs: 0 }
-const grace: Invitation = { id: "inv_2", emailAddress: "grace@hazel.test", role: "org:admin", createdAtMs: 0 }
+const ada: Invitation = { id: inv1, emailAddress: "ada@hazel.test", role: "member", createdAtMs: 0 }
+const grace: Invitation = { id: inv2, emailAddress: "grace@hazel.test", role: "admin", createdAtMs: 0 }
 const loaded = update(
-	init().model,
+	init(undefined, makeShared()).model,
 	Message.CompletedFetchInvitations({ version: 1, invitations: [ada, grace] }),
 ).model
 
-const rowMenu = (invitationId: string, child: Menu.Message) =>
+const rowMenu = (invitationId: InvitationId, child: Menu.Message) =>
 	Message.GotRowMenuMessage({ invitationId, message: child })
-const openMenu = (invitationId: string) =>
+const openMenu = (invitationId: InvitationId) =>
 	message(rowMenu(invitationId, Menu.Message.PressedTrigger({ pointerType: "mouse" })))
-const pickRevoke = (invitationId: string) =>
+const pickRevoke = (invitationId: InvitationId) =>
 	message(rowMenu(invitationId, Menu.Message.ClickedItem({ key: REVOKE_KEY })))
-const revokeDisabled = (invitationId: string) =>
+const revokeDisabled = (invitationId: InvitationId) =>
 	model<typeof loaded>((current) => {
 		const row = current.menus.find((candidate) => candidate.invitationId === invitationId)
 		expect(row?.menu.entries).toEqual([Menu.item(REVOKE_KEY, { intent: "Danger", isDisabled: true })])
@@ -46,23 +51,23 @@ describe("fetch", () => {
 	test("init fetches the pending invitations, and the result builds one closed menu per row", () => {
 		story(
 			run,
-			given(init().model),
+			given(init(undefined, makeShared()).model),
 			message(Message.ClickedInviteUser()),
 			expectOutMessage(PageOutMessage.RequestedModal({ modal: { _tag: "EmailInvite" } })),
 			message(Message.CompletedFetchInvitations({ version: 1, invitations: [ada, grace] })),
 			model((current) => {
-				expect(current.menus.map((row) => row.invitationId)).toEqual(["inv_1", "inv_2"])
+				expect(current.menus.map((row) => row.invitationId)).toEqual([inv1, inv2])
 				expect(current.menus.every((row) => row.menu.popup._tag === "Closed")).toBe(true)
 			}),
 		)
-		expect(init().commands?.map((command) => command.name)).toEqual([FetchInvitations.name])
+		expect(init(undefined, makeShared()).commands?.map((command) => command.name)).toEqual([FetchInvitations.name])
 	})
 
 	test("a refetch keeps the open menu of a row that stays and drops rows that left", () => {
 		story(
 			run,
 			given(loaded),
-			openMenu("inv_2"),
+			openMenu(inv2),
 			message(Message.CompletedFetchInvitations({ version: 1, invitations: [grace] })),
 			model((current) => {
 				expect(current.menus).toHaveLength(1)
@@ -75,7 +80,7 @@ describe("fetch", () => {
 		story(
 			run,
 			given(loaded),
-			openMenu("inv_missing"),
+			openMenu(Schema.decodeSync(InvitationId)(uuid(99))),
 			model((current) => expect(current).toEqual(loaded)),
 			expectNoOutMessage(),
 		)
@@ -87,11 +92,11 @@ describe("revoke", () => {
 		story(
 			run,
 			given(loaded),
-			openMenu("inv_1"),
-			pickRevoke("inv_1"),
-			Command.expectExact(RevokeInvitation({ invitationId: "inv_1" })),
-			model((current) => expect(current.revokingId).toBe("inv_1")),
-			revokeDisabled("inv_1"),
+			openMenu(inv1),
+			pickRevoke(inv1),
+			Command.expectExact(RevokeInvitation({ invitationId: inv1 })),
+			model((current) => expect(current.revokingId).toBe(inv1)),
+			revokeDisabled(inv1),
 			Command.resolve(RevokeInvitation, Message.SucceededRevokeInvitation()),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: successToast("Invitation revoked successfully") }),
@@ -109,8 +114,8 @@ describe("revoke", () => {
 		story(
 			run,
 			given(loaded),
-			openMenu("inv_1"),
-			pickRevoke("inv_1"),
+			openMenu(inv1),
+			pickRevoke(inv1),
 			Command.resolve(RevokeInvitation, Message.FailedRevokeInvitation()),
 			expectOutMessage(
 				PageOutMessage.RequestedToast({ toast: errorToast("Failed to revoke invitation") }),
@@ -131,12 +136,12 @@ describe("revoke", () => {
 	test("a second revoke while one is in flight sends nothing", () => {
 		story(
 			run,
-			given({ ...loaded, revokingId: "inv_1" }),
-			openMenu("inv_2"),
-			pickRevoke("inv_2"),
+			given({ ...loaded, revokingId: inv1 }),
+			openMenu(inv2),
+			pickRevoke(inv2),
 			Command.expectNone(),
 			model((current) => {
-				expect(current.revokingId).toBe("inv_1")
+				expect(current.revokingId).toBe(inv1)
 				expect(current.menus[1]?.menu.popup._tag).toBe("Closed")
 			}),
 		)

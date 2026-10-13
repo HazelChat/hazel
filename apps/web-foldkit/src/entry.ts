@@ -2,9 +2,11 @@ import "@fontsource/inter/400.css"
 import "@fontsource/inter/400-italic.css"
 import "./styles.css"
 
-import { Effect } from "effect"
 import { Runtime } from "foldkit"
-import { loadClerk } from "./app/clerk-loader"
+import { setSessionBearerProvider } from "~/lib/session-bearer"
+import { initTauri } from "~/lib/tauri"
+import { isDesktop } from "./platform/desktop"
+import { desktopSessionBearer } from "./platform/desktop-auth"
 import { galleryComponentOf, startGallery } from "./gallery/boot"
 import { Flags, flags, init, managedResources, Message, Model, subscriptions, update, view } from "./main"
 import { ResourcesLive } from "./rpc"
@@ -34,10 +36,10 @@ const startApplication = () =>
 
 // `/dev/gallery/<name>` boots one UI primitive's gallery program instead of the app (parity scenarios).
 const galleryComponent = galleryComponentOf(location.pathname)
-if (galleryComponent === undefined) startApplication()
-else startGallery(galleryComponent, container)
-
-// Parity's Clerk stub is installed before boot; production downloads the real clerk-js.
-const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-if (galleryComponent === undefined && window.Clerk === undefined && clerkKey)
-	Effect.runFork(loadClerk(clerkKey).pipe(Effect.tapError(Effect.logError)))
+if (galleryComponent === undefined) {
+	// The desktop app has no API cookie: its requests carry its own session as a bearer.
+	if (isDesktop) setSessionBearerProvider(desktopSessionBearer)
+	startApplication()
+	// Desktop only: native notification permission (a no-op in the browser).
+	void initTauri()
+} else startGallery(galleryComponent, container)

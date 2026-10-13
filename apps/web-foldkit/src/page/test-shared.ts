@@ -7,4 +7,5 @@ export const sharedDefaults = {
 	isMobile: false,
 	theme: { ...defaultThemePreference(), resolved: "light" },
 	soundSettings: DEFAULT_SOUND_SETTINGS,
+	desktopUpdate: { _tag: "Idle" },
 } satisfies Partial<Shared>

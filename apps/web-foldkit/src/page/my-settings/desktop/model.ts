@@ -6,6 +6,8 @@ export const Model = Schema.Struct({
 	autostartEnabled: Schema.NullOr(Schema.Boolean),
 	/** A `SetAutostart` is running; further toggles wait for its result. */
 	isUpdating: Schema.Boolean,
+	/** The installed app's version (Tauri `getVersion`); `null` until it answers. */
+	version: Schema.NullOr(Schema.String),
 	interaction: Interaction.Model,
 })
 export type Model = typeof Model.Type

@@ -1,11 +1,8 @@
 import { createClient } from "rivetkit/client"
 import type { Registry } from "@hazel/actors"
-import { getClerkToken } from "~/lib/clerk-token"
+import { getAccessToken } from "~/lib/access-token"
 
-/**
- * Get the current auth token (Clerk session JWT).
- */
-export const getAccessToken = async (): Promise<string | null> => getClerkToken()
+export { getAccessToken }
 
 const RIVET_URL = import.meta.env.VITE_RIVET_URL || "http://localhost:6420"
 
@@ -13,7 +10,7 @@ export const rivetClient = createClient<Registry>(RIVET_URL)
 
 /**
  * Get or create a message actor with authentication.
- * The Clerk session token is passed as a connection parameter.
+ * The Hazel access token is passed as a connection parameter.
  */
 export async function getAuthenticatedMessageActor(
 	key: string[],

@@ -1,11 +1,9 @@
 import type { OrganizationId } from "@hazel/schema"
-import { ClerkClient } from "@hazel/auth"
 import {
 	ChannelMemberRepo,
 	ChannelRepo,
 	OrganizationMemberRepo,
 	OrganizationRepo,
-	UserRepo,
 } from "@hazel/backend-core"
 import { Database } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
@@ -114,15 +112,12 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 		const channelMemberRepo = yield* ChannelMemberRepo
 		const organizationMemberRepo = yield* OrganizationMemberRepo
 		const channelAccessSync = yield* ChannelAccessSyncService
-		const clerkClient = yield* ClerkClient
-		const userRepo = yield* UserRepo
 
 		return {
 			"organization.create": (payload) =>
 				Effect.gen(function* () {
 					const currentUser = yield* CurrentUser.Context
 
-					// Fail fast on a locally-taken slug before creating anything in Clerk.
 					if (payload.slug) {
 						const existingOrganization = yield* organizationRepo.findBySlug(payload.slug)
 
@@ -138,118 +133,47 @@ export const OrganizationRpcLive = OrganizationRpcs.toLayer(
 
 					yield* organizationPolicy.canCreate()
 
-					// The creator must become the Clerk org admin, so resolve their Clerk user id.
-					const userOption = yield* userRepo.findById(currentUser.id)
-					if (Option.isNone(userOption)) {
-						return yield* Effect.fail(
-							new InternalServerError({
-								message: "Error creating Organization",
-								detail: "Could not resolve the current user for Clerk organization creation",
-							}),
-						)
-					}
-
-					// Create the org in Clerk first — Clerk is the source of truth for org
-					// membership and powers Clerk-backed features (invitations, member management).
-					// The inbound webhook later dedupes back to our row via clerkOrganizationId.
-					const clerkOrg = yield* clerkClient
-						.createOrganization({
-							name: payload.name,
-							slug: payload.slug,
-							createdBy: userOption.value.externalId,
-						})
-						.pipe(
-							Effect.catchTag(
-								"OrganizationCreateError",
-								(
-									err,
-								): Effect.Effect<
-									never,
-									OrganizationSlugAlreadyExistsError | InternalServerError
-								> => {
-									const detail = err.detail ?? ""
-									// Clerk rejects duplicate slugs — surface as the slug-taken error.
-									if (
-										payload.slug &&
-										/slug/i.test(detail) &&
-										/(taken|already|exist|unique|duplicate)/i.test(detail)
-									) {
-										return Effect.fail(
-											new OrganizationSlugAlreadyExistsError({
-												message: `Organization slug '${payload.slug}' is already taken`,
-												slug: payload.slug,
-											}),
-										)
-									}
-									return Effect.fail(
-										new InternalServerError({
-											message: "Error creating Organization",
-											detail: "Failed to create the organization in Clerk",
-											cause: detail,
-										}),
-									)
-								},
-							),
-						)
-
-					// Run local setup in a transaction. If it fails, delete the Clerk org we just
-					// created so the two systems don't drift.
-					return yield* db
-						.transaction(
-							Effect.gen(function* () {
-								const createdOrganization = yield* organizationRepo
-									.insert({
-										name: payload.name,
-										slug: payload.slug,
-										logoUrl: payload.logoUrl,
-										settings: {
-											...(payload.settings ?? {}),
-											clerkOrganizationId: clerkOrg.id,
-										},
-										isPublic: false,
-										deletedAt: null,
-									})
-									.pipe(Effect.map((res) => res[0]!))
-
-								yield* organizationMemberRepo.upsertByOrgAndUser({
-									organizationId: createdOrganization.id,
-									userId: currentUser.id,
-									role: "owner",
-									nickname: undefined,
-									joinedAt: new Date(),
-									invitedBy: null,
+					return yield* db.transaction(
+						Effect.gen(function* () {
+							const createdOrganization = yield* organizationRepo
+								.insert({
+									name: payload.name,
+									slug: payload.slug,
+									logoUrl: payload.logoUrl,
+									settings: payload.settings ?? null,
+									isPublic: false,
 									deletedAt: null,
 								})
+								.pipe(Effect.map((res) => res[0]!))
 
-								// Setup default channels for the organization
-								yield* organizationRepo.setupDefaultChannels(
-									createdOrganization.id,
-									currentUser.id,
-								)
+							yield* organizationMemberRepo.upsertByOrgAndUser({
+								organizationId: createdOrganization.id,
+								userId: currentUser.id,
+								role: "owner",
+								nickname: undefined,
+								joinedAt: new Date(),
+								invitedBy: null,
+								deletedAt: null,
+							})
 
-								yield* channelAccessSync.syncUserInOrganization(
-									currentUser.id,
-									createdOrganization.id,
-								)
+							// Setup default channels for the organization
+							yield* organizationRepo.setupDefaultChannels(createdOrganization.id, currentUser.id)
 
-								const txid = yield* generateTransactionId()
+							yield* channelAccessSync.syncUserInOrganization(currentUser.id, createdOrganization.id)
 
-								return new OrganizationResponse({
-									data: {
-										...createdOrganization,
-										settings: createdOrganization.settings as {
-											readonly [x: string]: unknown
-										} | null,
-									},
-									transactionId: txid,
-								})
-							}),
-						)
-						.pipe(
-							Effect.onError(() =>
-								clerkClient.deleteOrganization(clerkOrg.id).pipe(Effect.ignore),
-							),
-						)
+							const txid = yield* generateTransactionId()
+
+							return new OrganizationResponse({
+								data: {
+									...createdOrganization,
+									settings: createdOrganization.settings as {
+										readonly [x: string]: unknown
+									} | null,
+								},
+								transactionId: txid,
+							})
+						}),
+					)
 				}).pipe(handleOrganizationDbErrors("Organization", "create")),
 
 			"organization.update": ({ id, ...payload }) =>

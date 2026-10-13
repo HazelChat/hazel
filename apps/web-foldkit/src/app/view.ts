@@ -11,7 +11,6 @@ import { formatStatusExpirationAt } from "../shell/menus"
 import type { ShellContext } from "../shell/context"
 import {
 	appLoader,
-	authLayout,
 	type ChannelSettingsTab,
 	channelSettingsLayout,
 	contentColumnLayout,
@@ -153,10 +152,8 @@ const appRoot = (h: HtmlBuilder<Message>, model: Model, children: ReadonlyArray<
 const body = (model: Model, h: HtmlBuilder<Message>): Html => {
 	const route = model.route
 	if (route._tag === "NotFound") return h.div([h.Id("app")], [`Not found: ${route.path}`])
-	if (route._tag === "SignIn" || route._tag === "SignUp")
-		return appRoot(h, model, [authLayout(h, pageBody(model, h, true))])
 	if (isPublicRoute(route)) return appRoot(h, model, [pageBody(model, h, false)])
-	// `_app/layout.tsx`: a loader until Clerk knows the session; signed out redirects to sign-in.
+	// `_app/layout.tsx`: a loader until the API answers for the session; signed out redirects to sign-in.
 	if (model.auth !== "SignedIn") return appRoot(h, model, [appLoader(h)])
 	// `AppShell`: a loader until `user.me` answers.
 	if (model.currentUser === null) return appRoot(h, model, [appLoader(h)])

@@ -303,3 +303,11 @@ export const MessageOutboxEventId = Schema.String.check(Schema.isUUID())
 		title: "Message Outbox Event ID",
 	})
 export type MessageOutboxEventId = Schema.Schema.Type<typeof MessageOutboxEventId>
+
+export const InvitationId = Schema.String.check(Schema.isUUID())
+	.pipe(Schema.brand("@HazelChat/InvitationId"))
+	.annotate({
+		description: "The ID of an email invitation to an organization",
+		title: "Invitation ID",
+	})
+export type InvitationId = Schema.Schema.Type<typeof InvitationId>

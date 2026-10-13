@@ -2,6 +2,7 @@
 // diffs them into migrations.
 
 export * from "./attachments"
+export * from "./auth"
 export * from "./bot-commands"
 export * from "./bot-installations"
 export * from "./bots"
@@ -14,6 +15,7 @@ export * from "./connect"
 export * from "./custom-emojis"
 export * from "./github-subscriptions"
 export * from "./integration-connections"
+export * from "./invitations"
 export * from "./integration-requests"
 export * from "./integration-tokens"
 export * from "./message-outbox"

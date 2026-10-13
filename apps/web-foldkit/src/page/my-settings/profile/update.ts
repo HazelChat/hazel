@@ -39,7 +39,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 const toast = (request: ToastRequest) => PageOutMessage.RequestedToast({ toast: request })
 
-/** The avatar changed in Clerk: `refreshCurrentUser()` re-reads `user.me`, then the success toast. */
+/** The avatar changed: `refreshCurrentUser()` re-reads `user.me`, then the success toast. */
 const refreshUser = (title: string) =>
 	PageOutMessage.RequestedCurrentUserRefresh({ toast: successToast(title) })
 
@@ -252,9 +252,10 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 			if (blob === null)
 				return { model: modifyFields(model, { crop: () => ({ _tag: "Ready", image: crop.image }) }) }
 			const closed = closeCrop(model)
+			if (model.userId === null) return closed
 			return {
 				model: modifyFields(closed.model, { isUploading: () => true }),
-				commands: [...(closed.commands ?? []), UploadAvatar({ blob })],
+				commands: [...(closed.commands ?? []), UploadAvatar({ userId: model.userId, blob })],
 			}
 		},
 		CompletedUploadAvatar: ({ isUploaded }) => ({
@@ -264,14 +265,14 @@ export const update = (model: Model, message: Message, shared: Shared): Return =
 				: toast(errorToast("Upload failed", "Failed to update profile picture. Please try again.")),
 		}),
 		ClickedResetAvatar: () =>
-			model.isResetting
+			model.isResetting || model.userId === null
 				? { model }
-				: { model: modifyFields(model, { isResetting: () => true }), commands: [ResetAvatar()] },
+				: { model: modifyFields(model, { isResetting: () => true }), commands: [ResetAvatar({ userId: model.userId })] },
 		CompletedResetAvatar: ({ isReset }) => ({
 			model: modifyFields(model, { isResetting: () => false }),
 			outMessage: isReset
-				? refreshUser("Profile picture reset to account photo")
-				: toast(errorToast("Failed to reset profile picture")),
+				? refreshUser("Profile picture removed")
+				: toast(errorToast("Failed to remove profile picture")),
 		}),
 		GotCropModalMessage: ({ message: child }) => foldCropModal(model, child),
 		GotInteractionMessage: ({ message: child }) => interaction.fold(model, child),

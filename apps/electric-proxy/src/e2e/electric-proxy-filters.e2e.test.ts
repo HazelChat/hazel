@@ -594,7 +594,7 @@ const createFixture = (): Fixture => {
 		externalId: `user_${ids.users.viewer}`,
 		internalUserId: ids.users.viewer as AuthenticatedUser["internalUserId"],
 		email: `viewer+${runId}@e2e.test`,
-	} satisfies AuthenticatedUser
+	}
 
 	return {
 		runId,
@@ -823,9 +823,10 @@ const startProxy = async () => {
 			IS_DEV: "true",
 			ELECTRIC_URL: ELECTRIC_BASE_URL,
 			REDIS_URL: "redis://localhost:6380",
-			// Placeholder — user-visibility specs hit Electric directly; bot
-			// tests use bot tokens. Proxy just needs the var set to boot.
-			CLERK_SECRET_KEY: "sk_test_e2e_placeholder",
+			// User-visibility specs hit Electric directly and bot tests use bot tokens, so
+			// no access token verifies; the verifier just needs a key set to boot.
+			API_BASE_URL: "http://localhost:3003",
+			AUTH_ACCESS_TOKEN_JWKS: '{"keys":[]}',
 			ALLOWED_ORIGIN: "http://localhost:3000",
 		},
 		stdio: ["ignore", "pipe", "pipe"],

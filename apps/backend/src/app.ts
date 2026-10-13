@@ -24,6 +24,7 @@ import {
 	ConnectInviteRepo,
 	ConnectParticipantRepo,
 	CustomEmojiRepo,
+	InvitationRepo,
 	ChannelWebhookRepo,
 	GitHubSubscriptionRepo,
 	IntegrationConnectionRepo,
@@ -48,6 +49,8 @@ import { HazelApi } from "./api"
 import { HttpApiRoutes } from "./http"
 import { AttachmentPolicy } from "./policies/attachment-policy"
 import { BotPolicy } from "./policies/bot-policy"
+import { InvitationPolicy } from "./policies/invitation-policy"
+import { Invitations } from "./services/invitations"
 import { ChannelMemberPolicy } from "./policies/channel-member-policy"
 import { ChannelPolicy } from "./policies/channel-policy"
 import { ChannelSectionPolicy } from "./policies/channel-section-policy"
@@ -76,6 +79,8 @@ import { MockDataGenerator } from "./services/mock-data-generator"
 import { OAuthBearerAuth } from "./services/oauth-bearer-auth"
 import { ObjectStorage } from "./services/object-storage"
 import { OAuthProviderRegistry } from "./services/oauth"
+import { HazelAuthInstance, HazelAuthRoutes, HazelAuthServicesLive } from "./services/hazel-auth"
+import { HazelSession } from "./services/hazel-session"
 import { SessionManager } from "./services/session-manager"
 import { WebhookBotService } from "./services/webhook-bot-service"
 import { BotGatewayService } from "./services/bot-gateway-service"
@@ -103,11 +108,18 @@ const RpcRoute = RpcServer.layerHttp({
 	protocol: "http",
 }).pipe(Layer.provide(RpcSerialization.layerNdjson), Layer.provide(RpcServerLive))
 
-export const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, RpcRoute).pipe(
+export const AllRoutes = Layer.mergeAll(
+	HttpApiRoutes,
+	HealthRouter,
+	DocsRoute,
+	RpcRoute,
+	HazelAuthRoutes,
+).pipe(
 	Layer.provide(
 		HttpRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
+				"http://localhost:3100",
 				"http://localhost:5173",
 				"https://app.hazel.sh",
 				"tauri://localhost",
@@ -117,6 +129,16 @@ export const AllRoutes = Layer.mergeAll(HttpApiRoutes, HealthRouter, DocsRoute, 
 			credentials: true,
 		}),
 	),
+)
+
+/**
+ * Hazel's own sign-in: the configured instance, its auth services, and the session lookup
+ * the RPC and HttpApi middleware use. Inert until `AUTH_GITHUB_CLIENT_ID` is set. Needs
+ * `AuthSqlConnection` (and `AuthSqlDirect` on Workers) from the entry point.
+ */
+export const HazelAuthLive = HazelSession.layer.pipe(
+	Layer.provideMerge(HazelAuthServicesLive),
+	Layer.provideMerge(HazelAuthInstance.layer),
 )
 
 export const RepoLive = Layer.mergeAll(
@@ -151,6 +173,7 @@ export const RepoLive = Layer.mergeAll(
 	BotCommandRepo.layer,
 	BotInstallationRepo.layer,
 	CustomEmojiRepo.layer,
+	InvitationRepo.layer,
 )
 
 export const PolicyLive = Layer.mergeAll(
@@ -174,6 +197,7 @@ export const PolicyLive = Layer.mergeAll(
 	RssSubscriptionPolicy.layer,
 	BotPolicy.layer,
 	CustomEmojiPolicy.layer,
+	InvitationPolicy.layer,
 )
 
 /**
@@ -199,10 +223,18 @@ export const AppServicesLive = Layer.mergeAll(
 	WebhookBotService.layer,
 	ChannelAccessSyncService.layer,
 	ConnectConversationService.layer,
+	Invitations.layer,
 	// SessionManager.layer includes BackendAuth.layer via dependencies
 	SessionManager.layer,
 	OAuthBearerAuth.layer,
 ).pipe(Layer.provideMerge(FetchHttpClient.layer))
 
-/** `CurrentUser` resolution for authenticated routes. Requires `Database` from the platform. */
-export const AppAuthorizationLive = AuthorizationLive.pipe(Layer.provideMerge(SessionManager.layer))
+/**
+ * `CurrentUser` resolution for authenticated routes, and Hazel's sign-in services. Only the
+ * HTTP entry points build this; the Durable Objects never authenticate. Requires `Database`
+ * and the auth SQL connection from the platform.
+ */
+export const AppAuthorizationLive = AuthorizationLive.pipe(
+	Layer.provideMerge(SessionManager.layer),
+	Layer.provideMerge(HazelAuthLive),
+)

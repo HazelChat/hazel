@@ -3,7 +3,7 @@ import { Effect, Schema } from "effect"
 import { uploadErrorMessages, uploadToStorage } from "~/lib/upload-to-storage"
 import { HazelApiClient } from "../../rpc"
 
-/** Port of `hooks/use-upload.ts` for the settings uploads (organization logo, custom emoji). */
+/** Port of `hooks/use-upload.ts` for the settings uploads (avatars, organization logo, custom emoji). */
 
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 export const MAX_EMOJI_SIZE = 256 * 1024
@@ -16,6 +16,7 @@ export class UploadFailedError extends Schema.TaggedError<UploadFailedError>()("
 }) {}
 
 export type UploadTarget =
+	| { readonly type: "user-avatar" }
 	| { readonly type: "organization-avatar"; readonly organizationId: OrganizationId }
 	| { readonly type: "custom-emoji"; readonly organizationId: OrganizationId }
 
@@ -47,12 +48,7 @@ export const uploadFile = (
 		}
 		const presigned = yield* HazelApiClient.use((client) =>
 			client.uploads.presign({
-				payload: {
-					type: target.type,
-					organizationId: target.organizationId,
-					contentType: file.type,
-					fileSize: file.size,
-				},
+				payload: { ...target, contentType: file.type, fileSize: file.size },
 			}),
 		).pipe(Effect.catch(() => fail("Upload failed", "Failed to get upload URL. Please try again.")))
 		// A rejection is a failed upload with the generic message, not a defect that leaves the spinner on.

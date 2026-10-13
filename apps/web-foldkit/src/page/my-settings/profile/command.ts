@@ -4,30 +4,11 @@ import { Command } from "foldkit"
 import { File } from "foldkit/file"
 import { calculateInitialCrop, cropImage } from "~/utils/image-crop"
 import { detectBrowserTimezone } from "~/utils/timezone"
+import { publicUrlOf, uploadFile } from "../../settings/upload"
 import { updateUser } from "../user"
 import { CropRect } from "./crop"
 import { Message } from "./message"
 import { FILE_INPUT_ID, FormValues } from "./model"
-
-/** `useUser().user` from `@clerk/react`, read off the shared `window.Clerk` instance. */
-interface ClerkUser {
-	readonly update: (params: { firstName: string; lastName: string }) => Promise<unknown>
-	readonly setProfileImage: (params: { file: Blob | null }) => Promise<unknown>
-}
-
-const isClerkUser = (value: unknown): value is ClerkUser =>
-	typeof value === "object" &&
-	value !== null &&
-	"update" in value &&
-	typeof value.update === "function" &&
-	"setProfileImage" in value &&
-	typeof value.setProfileImage === "function"
-
-const clerkUser = (): ClerkUser | null => {
-	const clerk: unknown = window.Clerk
-	const user = typeof clerk === "object" && clerk !== null && "user" in clerk ? clerk.user : null
-	return isClerkUser(user) ? user : null
-}
 
 const OUTPUT_SIZE = 512
 
@@ -104,17 +85,17 @@ export const CropAvatarImage = Command.define("CropAvatarImage", {
 		),
 })
 
-/** `useProfilePictureUpload`: Clerk stores the image; the webhook syncs it to Hazel. */
+/** `useProfilePictureUpload`: upload the cropped image, then point the user's avatar at it. */
 export const UploadAvatar = Command.define("UploadAvatar", {
-	args: { blob: Schema.instanceOf(Blob) },
+	args: { userId: UserId, blob: Schema.instanceOf(Blob) },
 	messages: [Message.CompletedUploadAvatar],
-	execute: ({ blob }) =>
-		Effect.tryPromise(async () => {
-			const user = clerkUser()
-			if (user === null) return false
-			await user.setProfileImage({
-				file: new globalThis.File([blob], "avatar.webp", { type: "image/webp" }),
-			})
+	execute: ({ userId, blob }) =>
+		Effect.gen(function* () {
+			const file = new globalThis.File([blob], "avatar.webp", { type: "image/webp" })
+			const key = yield* uploadFile({ type: "user-avatar" }, file)
+			const avatarUrl = publicUrlOf(key)
+			if (avatarUrl === null) return false
+			yield* updateUser({ id: userId, avatarUrl })
 			return true
 		}).pipe(
 			Effect.catch(() => Effect.succeed(false)),
@@ -123,40 +104,29 @@ export const UploadAvatar = Command.define("UploadAvatar", {
 })
 
 export const ResetAvatar = Command.define("ResetAvatar", {
+	args: { userId: UserId },
 	messages: [Message.CompletedResetAvatar],
-	execute: Effect.tryPromise(async () => {
-		const user = clerkUser()
-		if (user === null) return false
-		await user.setProfileImage({ file: null })
-		return true
-	}).pipe(
-		Effect.catch(() => Effect.succeed(false)),
-		Effect.map((isReset) => Message.CompletedResetAvatar({ isReset })),
-	),
+	execute: ({ userId }) =>
+		updateUser({ id: userId, avatarUrl: null }).pipe(
+			Effect.as(true),
+			Effect.catch(() => Effect.succeed(false)),
+			Effect.map((isReset) => Message.CompletedResetAvatar({ isReset })),
+		),
 })
 
-/** The legacy `onSubmit`: the name goes to Clerk, the timezone to `user.update`, both settled. */
+/** The legacy `onSubmit`: name and timezone in one `user.update`. */
 export const SaveProfile = Command.define("SaveProfile", {
 	args: { userId: UserId, values: FormValues },
 	messages: [Message.CompletedSaveProfile],
 	execute: ({ userId, values }) =>
-		Effect.all(
-			[
-				Effect.fromNullishOr(clerkUser()).pipe(
-					Effect.flatMap((user) =>
-						Effect.tryPromise(() =>
-							user.update({ firstName: values.firstName, lastName: values.lastName }),
-						),
-					),
-				),
-				updateUser({ id: userId, timezone: values.timezone }),
-			],
-			{ concurrency: "unbounded", mode: "result" },
-		).pipe(
-			Effect.map((results) =>
-				Message.CompletedSaveProfile({
-					isSaved: results.every((result) => result._tag === "Success"),
-				}),
-			),
+		updateUser({
+			id: userId,
+			firstName: values.firstName,
+			lastName: values.lastName,
+			timezone: values.timezone,
+		}).pipe(
+			Effect.as(true),
+			Effect.catch(() => Effect.succeed(false)),
+			Effect.map((isSaved) => Message.CompletedSaveProfile({ isSaved })),
 		),
 })

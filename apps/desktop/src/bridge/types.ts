@@ -7,6 +7,7 @@ export type TauriOpenerApi = typeof import("@tauri-apps/plugin-opener")
 export type TauriNotificationApi = typeof import("@tauri-apps/plugin-notification")
 export type TauriAutostartApi = typeof import("@tauri-apps/plugin-autostart")
 export type TauriAppApi = typeof import("@tauri-apps/api/app")
+export type TauriDeepLinkApi = typeof import("@tauri-apps/plugin-deep-link")
 
 export type TauriApiMap = {
 	core?: TauriCoreApi
@@ -18,6 +19,7 @@ export type TauriApiMap = {
 	notification?: TauriNotificationApi
 	autostart?: TauriAutostartApi
 	app?: TauriAppApi
+	deepLink?: TauriDeepLinkApi
 }
 
 export type TauriWindow = Window & {

@@ -4,7 +4,7 @@ import { Schema } from "effect"
 import * as Scene from "foldkit/scene"
 import { describe, test } from "vitest"
 import { makeShared, pageScene, uuid } from "../../test/pages-fixtures"
-import { ClerkMountMessage, MountClerkComponent } from "../auth/clerk-mount"
+import * as CreateWorkspace from "../create-workspace"
 import { PageOutMessage } from "../out-message"
 import { Message } from "./message"
 import type { Model, UserOrganization } from "./model"
@@ -16,7 +16,11 @@ import { view } from "./view"
 const shared = makeShared()
 const hazel: UserOrganization = { id: Schema.decodeSync(OrganizationId)(uuid(1)), name: "Hazel Labs", slug: "hazel", logoUrl: null, role: "owner" }
 const acme: UserOrganization = { id: Schema.decodeSync(OrganizationId)(uuid(2)), name: "Acme Corp", slug: null, logoUrl: null, role: "member" }
-const withOrganizations = (organizations: ReadonlyArray<UserOrganization>): Model => ({ organizations: [...organizations], hasRedirected: false })
+const withOrganizations = (organizations: ReadonlyArray<UserOrganization>): Model => ({
+	organizations: [...organizations],
+	hasRedirected: false,
+	createWorkspace: CreateWorkspace.init(),
+})
 
 describe("select organization view", () => {
 	test("lists each organization with its role; picking one navigates to it", () => {
@@ -46,17 +50,19 @@ describe("select organization view", () => {
 		)
 	})
 
-	test("no organizations offers Clerk's CreateOrganization instead of a redirect loop", () => {
+	test("no organizations offers to create one instead of a redirect loop", () => {
 		Scene.scene(
 			pageScene(update, view, shared),
 			Scene.given(init().model),
 			Scene.Subscription.emit(Message.UpdatedOrganizations({ organizations: [] })),
 			Scene.expectNoOutMessage(),
 			Scene.expect(Scene.role("heading", { name: "Create your workspace" })).toExist(),
-			Scene.expect(Scene.selector('[data-clerk-component="CreateOrganization"]')).toExist(),
-			Scene.Mount.resolve(
-				{ name: "MountClerkComponent" },
-				Message.GotClerkMountMessage({ message: ClerkMountMessage.MountedClerkComponent({ component: "CreateOrganization" }) }),
+			Scene.type(Scene.label("Workspace name"), "Hazel Labs"),
+			Scene.click(Scene.role("button", { name: "Create workspace" })),
+			Scene.Command.expectExact(CreateWorkspace.CreateWorkspace({ name: "Hazel Labs", slug: "hazel-labs" })),
+			Scene.Command.resolve(
+				CreateWorkspace.CreateWorkspace,
+				CreateWorkspace.Message.LeftForWorkspace(),
 			),
 		)
 	})

@@ -5,6 +5,7 @@ import { modifyFields } from "foldkit/struct"
 import { toString as urlToString, type Url } from "foldkit/url"
 import {
 	ApplyTheme,
+	CheckSession,
 	FetchCurrentUser,
 	LoadExternal,
 	NavigateInternal,
@@ -22,6 +23,8 @@ import type { Return as CommandPaletteReturn } from "./overlay/command-palette/u
 import type { LayoutHotkeyActionId } from "./overlay/hotkeys"
 import * as Modal from "./overlay/modal"
 import * as Platform from "./platform"
+import type { DesktopMenuItem } from "./platform/desktop-menu"
+import * as Updates from "./platform/updates"
 import * as Toasts from "./overlay/toaster"
 import { can } from "./page/contract"
 import { PageOutMessage } from "./page/out-message"
@@ -29,7 +32,7 @@ import { errorToast } from "./data/actions"
 import { ModalOutMessage } from "./overlay/out-message"
 import { enterRoute, informShared, type PageTransition, updatePage } from "./page/registry"
 import { authRedirect, routeRedirect } from "./redirect"
-import { urlToAppRoute } from "./route"
+import { AppRoute, hrefOf, orgSlugOf, urlToAppRoute } from "./route"
 import type { Resources } from "./rpc"
 import { loadSoundSettings, SoundSettings } from "./notification-sound"
 import { Message as ShellMessage } from "./shell/model"
@@ -154,6 +157,84 @@ const pressedHotkey = (model: Model, actionId: LayoutHotkeyActionId): Return => 
 	)
 }
 
+/** The update toast for a change of update state (legacy `TauriUpdateCheck`), if it needs one. */
+const updateToastOf = (previous: Updates.Model, next: Updates.Model): Toasts.ToastRequest | null => {
+	const id = "tauri-update"
+	switch (next._tag) {
+		case "Available":
+			return previous._tag === "Available"
+				? null
+				: {
+						intent: "info",
+						title: `Update available: v${next.version}`,
+						description: next.body ?? "A new version is ready to install",
+						id,
+						isSticky: true,
+						action: { label: "Install & Restart", key: "InstallUpdate" },
+					}
+		case "Downloading":
+			return {
+				intent: "loading",
+				title:
+					next.totalBytes === null
+						? `Downloading update... ${(next.downloadedBytes / 1024 / 1024).toFixed(1)} MB`
+						: `Downloading update... ${Math.round((next.downloadedBytes / next.totalBytes) * 100)}%`,
+				description: null,
+				id,
+			}
+		case "Installing":
+			return { intent: "loading", title: "Installing update...", description: null, id }
+		case "Restarting":
+			return { intent: "loading", title: "Restarting...", description: null, id }
+		case "InstallFailed":
+			return previous._tag === "InstallFailed"
+				? null
+				: { intent: "error", title: "Update failed", description: next.message, id }
+		default:
+			return null
+	}
+}
+
+/** The update state after a check or install step, its toast, and the pages that read it. */
+const withUpdates = (model: Model, result: Update.Return<Updates.Model, Updates.Message>): Return => {
+	const next = modifyFields(model, { desktopUpdate: () => result.model })
+	const toast = updateToastOf(model.desktopUpdate, result.model)
+	const toasted = toast === null ? { model: next } : withToasts(next, Toasts.push(next.toasts, toast))
+	return Update.combine<Model, Message, Resources>(toasted.model, [
+		(m) => ({
+			model: m,
+			commands: [
+				...Command.mapMessages(result.commands, (message) => Message.GotUpdatesMessage({ message })),
+				...(toasted.commands ?? []),
+			],
+		}),
+		informPage,
+	])
+}
+
+/** A toast's action button: the update toast's "Install & Restart". */
+const followToasts = (model: Model, result: ReturnType<typeof Toasts.update>): Return => {
+	const toasted = withToasts(model, result)
+	if (result.action !== "InstallUpdate") return toasted
+	const installing = withUpdates(toasted.model, Updates.install(toasted.model.desktopUpdate))
+	return { model: installing.model, commands: [...(toasted.commands ?? []), ...(installing.commands ?? [])] }
+}
+
+/** The desktop app menu (legacy `TauriMenuListener`). */
+const pressedDesktopMenuItem = (model: Model, item: DesktopMenuItem): Return =>
+	Match.value(item).pipe(
+		Match.when("OpenSettings", () => {
+			const orgSlug = orgSlugOf(model.route)
+			return orgSlug === undefined
+				? { model }
+				: { model, commands: [NavigateInternal({ url: hrefOf(AppRoute.MySettingsDesktop({ orgSlug })) })] }
+		}),
+		Match.when("CheckForUpdates", () => withUpdates(model, Updates.check(model.desktopUpdate))),
+		Match.when("NewChannel", () => pressedHotkey(model, "channel.create")),
+		Match.when("Invite", () => pressedHotkey(model, "invite.email")),
+		Match.exhaustive,
+	)
+
 /** Runs the OutMessage's consequence after `result`, keeping both sets of Commands. */
 const withCommands = (result: Return, outMessage: Option.Option<PageOutMessage>): Return =>
 	Option.match(outMessage, {
@@ -212,6 +293,8 @@ const handleOutMessage = (outMessage: PageOutMessage): Step =>
 				const toasted = toast === undefined ? { model } : withToasts(model, Toasts.push(model.toasts, toast))
 				return { model: toasted.model, commands: [...(toasted.commands ?? []), FetchCurrentUser()] }
 			},
+		RequestedUpdateCheck: () => (model) => withUpdates(model, Updates.check(model.desktopUpdate)),
+		RequestedUpdateInstall: () => (model) => withUpdates(model, Updates.install(model.desktopUpdate)),
 		// The shell owns its sheet: the root sends it the same Message as its header button.
 		RequestedMobileSidebar: () => (model) => {
 			const result = Shell.update(model.shell, ShellMessage.ToggledSidebar({ isOpen: true }), shellContextOf(model))
@@ -325,10 +408,17 @@ export const init: Runtime.RoutingApplicationInit<Model, Message, Flags, Resourc
 			commandPalette: CommandPalette.init(),
 			toasts: Toasts.init(),
 			platform: Platform.init(),
+			desktopUpdate: Updates.init(),
 		},
 		url,
 	)
-	return Update.combine<Model, Message, Resources>(model, [appliedTheme, enteredRoute, informShell, redirect])
+	return Update.combine<Model, Message, Resources>(model, [
+		appliedTheme,
+		enteredRoute,
+		informShell,
+		redirect,
+		(m) => ({ model: m, commands: [CheckSession()] }),
+	])
 }
 
 // UPDATE
@@ -416,6 +506,8 @@ export const update = (model: Model, message: Message): Return =>
 		GotCommandPaletteMessage: ({ message }) =>
 			withCommandPalette(model, CommandPalette.update(model.commandPalette, message, sharedOf(model))),
 		PressedHotkey: ({ actionId }) => pressedHotkey(model, actionId),
-		GotToastsMessage: ({ message }) => withToasts(model, Toasts.update(model.toasts, message)),
+		GotToastsMessage: ({ message }) => followToasts(model, Toasts.update(model.toasts, message)),
+		GotUpdatesMessage: ({ message }) => withUpdates(model, Updates.update(model.desktopUpdate, message)),
+		PressedDesktopMenuItem: ({ item }) => pressedDesktopMenuItem(model, item),
 		GotPlatformMessage: ({ message }) => withPlatform(model, Platform.update(model.platform, message)),
 	})

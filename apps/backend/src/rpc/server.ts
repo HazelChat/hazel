@@ -9,6 +9,7 @@ import {
 	ChannelWebhookRpcs,
 	ConnectShareRpcs,
 	CustomEmojiRpcs,
+	InvitationRpcs,
 	GitHubSubscriptionRpcs,
 	IntegrationRequestRpcs,
 	RssSubscriptionRpcs,
@@ -33,6 +34,7 @@ import { ChannelWebhookRpcLive } from "./handlers/channel-webhooks"
 import { ChannelRpcLive } from "./handlers/channels"
 import { ConnectShareRpcLive } from "./handlers/connect-shares"
 import { CustomEmojiRpcLive } from "./handlers/custom-emojis"
+import { InvitationRpcLive } from "./handlers/invitations"
 import { GitHubSubscriptionRpcLive } from "./handlers/github-subscriptions"
 import { IntegrationRequestRpcLive } from "./handlers/integration-requests"
 import { RssSubscriptionRpcLive } from "./handlers/rss-subscriptions"
@@ -83,6 +85,7 @@ const BaseRpcs = MessageRpcs.merge(
 	AttachmentRpcs,
 	BotRpcs,
 	CustomEmojiRpcs,
+	InvitationRpcs,
 )
 
 export const AllRpcs = BaseRpcs.merge(ChatSyncRpcs).middleware(ScopeInjectionMiddleware)
@@ -109,6 +112,7 @@ const rpcGroups = [
 	["AttachmentRpcs", AttachmentRpcs],
 	["BotRpcs", BotRpcs],
 	["CustomEmojiRpcs", CustomEmojiRpcs],
+	["InvitationRpcs", InvitationRpcs],
 	["ChatSyncRpcs", ChatSyncRpcs],
 ] as const
 
@@ -146,5 +150,6 @@ export const RpcServerLive = Layer.empty
 		Layer.provideMerge(AttachmentRpcLive),
 		Layer.provideMerge(BotRpcLive),
 		Layer.provideMerge(CustomEmojiRpcLive),
+		Layer.provideMerge(InvitationRpcLive),
 	)
 	.pipe(Layer.provideMerge(AuthMiddlewareLive), Layer.provideMerge(ScopeInjectionMiddlewareLive))
