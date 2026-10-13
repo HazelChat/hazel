@@ -30,7 +30,7 @@ import * as AccessToken from "./access-token.ts"
 import { HazelAuth } from "./auth.ts"
 import { CryptoLive, makeHazelAuthLive } from "./server.ts"
 import { identityKey, linkIdentity } from "./identities.ts"
-import { AuthSqlConnection, AuthSqlDirect, layerDirect, makeRequestConnection } from "./sql.ts"
+import { AuthSqlConnection, makeRequestConnection } from "./sql.ts"
 
 const DATABASE_URL = process.env.AUTH_TEST_DATABASE_URL
 const origin = "http://localhost:3003"
@@ -131,21 +131,11 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		Layer.provideMerge(Services),
 		Layer.provide(FakeGitHub),
 		Layer.provide(Hooks.LifecycleHooks.empty),
-		// Counts the dedicated connections opened outside a request connection.
-		Layer.provide(
-			Layer.effect(
-				AuthSqlDirect,
-				Effect.map(Effect.service(AuthSqlDirect), (direct) => ({
-					open: direct.open.pipe(Effect.tap(() => Effect.sync(() => directOpened++))),
-				})),
-			).pipe(Layer.provide(layerDirect(url))),
-		),
 		Layer.provide([NodeServices.layer, NodeHttpPlatform.layer, Etag.layer]),
 	)
 
 	let web: ReturnType<typeof HttpRouter.toWebHandler>
 	let connectionsOpened = 0
-	let directOpened = 0
 
 	/** Each request gets its own lazily-connecting auth client, closed after the response. */
 	const send = async (request: Request): Promise<Response> => {
@@ -322,15 +312,13 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		expect((await verify("nope")).status).toBe(401)
 	}, 60_000)
 
-	test("after startup's schema checks, storage only uses the request's connection", async () => {
+	test("storage only uses the request's connection", async () => {
 		githubUserId = 4242
-		const direct = directOpened
 		const opened = connectionsOpened
 		const browser = jar()
 		await signInWithGitHub(browser)
 		expect((await call(browser, "GET", "/me")).status).toBe(200)
 		expect(connectionsOpened).toBeGreaterThan(opened)
-		expect(directOpened).toBe(direct)
 	}, 60_000)
 
 	test("requests that never touch auth storage open no database connection", async () => {

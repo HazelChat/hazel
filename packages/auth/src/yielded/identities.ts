@@ -69,7 +69,7 @@ export const linkIdentity = (input: ExternalIdentity & { readonly userId: string
 		const sql = yield* SqlClient.SqlClient
 		const crypto = yield* Crypto.Crypto
 		const key = yield* identityKey(input)
-		const credentialId = yield* crypto.randomUUIDv4
+		const credentialId = yield* crypto.randomUUIDv4()
 
 		return yield* sql.withTransaction(
 			Effect.gen(function* () {

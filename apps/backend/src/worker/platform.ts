@@ -3,7 +3,7 @@
  * caches, `ConfigProvider.fromEnv`), rebuilt over Cloudflare bindings.
  */
 import type { KVNamespace } from "@cloudflare/workers-types"
-import { AuthSqlConnection, layerDirect as authSqlDirect, makeRequestConnection } from "@hazel/auth/server"
+import { AuthSqlConnection, makeRequestConnection } from "@hazel/auth/server"
 import { Database } from "@hazel/db"
 import { layerKvResultPersistence } from "@hazel/effect-cloudflare"
 import { readHazelDbBinding } from "@hazel/infra/cloudflare"
@@ -40,8 +40,6 @@ export const requestPlatformLive = (env: Record<string, unknown>, botGateways: B
 		BotGatewayTransport.layerDurableObject(botGateways),
 		// Suspended: init also runs at plan time, where the KV binding does not exist yet.
 		Layer.suspend(() => layerKvResultPersistence(cacheNamespace(env))),
-		// Auth storage's startup schema checks run outside any request's connection.
-		Layer.suspend(() => authSqlDirect(Redacted.make(hazelDbConnectionString(env)))),
 		workerEnvLayer(env),
 	)
 

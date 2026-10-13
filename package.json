@@ -10,15 +10,15 @@
 		],
 		"catalogs": {
 			"effect": {
-				"effect": "4.0.1",
-				"@effect/platform-bun": "4.0.1",
-				"@effect/platform-browser": "4.0.1",
-				"@effect/platform-node": "4.0.1",
-				"@effect/sql-pg": "4.0.1",
-				"@effect/opentelemetry": "4.0.1",
-				"@effect/atom-react": "4.0.1",
-				"@effect/ai-openrouter": "4.0.1",
-				"@effect/vitest": "4.0.1"
+				"effect": "4.0.4",
+				"@effect/platform-bun": "4.0.4",
+				"@effect/platform-browser": "4.0.4",
+				"@effect/platform-node": "4.0.4",
+				"@effect/sql-pg": "4.0.4",
+				"@effect/opentelemetry": "4.0.4",
+				"@effect/atom-react": "4.0.4",
+				"@effect/ai-openrouter": "4.0.4",
+				"@effect/vitest": "4.0.4"
 			},
 			"alchemy": {
 				"@cloudflare/workers-types": "4.20260603.1",

@@ -177,9 +177,13 @@ export const OAuthStorageLive = Layer.effectContext(
 		const crypto = yield* Crypto.Crypto
 		const sqlClient = yield* SqlClient.SqlClient
 
-		const uuid = crypto.randomUUIDv4.pipe(
-			Effect.mapError((cause) => PersistenceMappingError.make({ operation: "hazel.allocate", cause })),
-		)
+		const uuid = crypto
+			.randomUUIDv4()
+			.pipe(
+				Effect.mapError((cause) =>
+					PersistenceMappingError.make({ operation: "hazel.allocate", cause }),
+				),
+			)
 
 		const common = { subject, authority, subjectId, clock: Mapping.clock }
 

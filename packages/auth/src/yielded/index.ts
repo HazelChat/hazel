@@ -24,4 +24,4 @@ export {
 	makeHazelAuthLive,
 	sessionCookieName,
 } from "./server.ts"
-export { AuthSqlConnection, AuthSqlDirect, layerDirect, layerPool, makeRequestConnection } from "./sql.ts"
+export { AuthSqlConnection, layerPool, makeRequestConnection } from "./sql.ts"
