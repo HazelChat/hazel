@@ -46,6 +46,12 @@ Alchemy reads its own credentials from the environment (or an `alchemy profile`)
   Effect Workers (api, electric-proxy, bot-gateway), which export traces, logs and metrics through
   the Maple SDK (`packages/infra/src/cloudflare/maple.ts`). Without it, and under `alchemy dev`,
   the SDK is a no-op.
+  On prd it also declares Hazel's monitoring in Maple (`packages/infra/src/cloudflare/maple-monitoring.ts`):
+  a "Hazel services" dashboard, plus error-rate and p95 alert rules per Worker (needs a key that
+  is also allowed `dashboards:write` and `alerts:write`).
+- `MAPLE_ALERTS_WEBHOOK_URL` (optional, prd): the alert rules' destination, a Hazel channel's
+  Maple webhook URL (Integrations → Maple in Hazel, `…/webhooks/incoming/<id>/<token>/maple`).
+  Without it only the dashboard is declared.
 
 Locally, `bunx alchemy profile refresh --profile default --provider Cloudflare` re-authenticates
 the default profile.
@@ -85,4 +91,4 @@ Worker env (secrets are uploaded as Worker secrets, plain values as vars) is lis
 - Moved to Cloudflare: `api.hazel.sh` (`hazel-api`), `electric.hazel.sh` (`hazel-electric-proxy`), `bot-gateway.hazel.sh`.
 - Electric itself runs on Railway (service `electric`, volume at `/app/persistent`, PlanetScale role `electric-railway` with replication); `ELECTRIC_URL` = `electric-production-0d89.up.railway.app`. Electric runs with `ELECTRIC_MANUAL_TABLE_PUBLISHING=true` and `ELECTRIC_DB_POOL_SIZE=4` (PS-5 allows 50 connections): the synced tables plus `channel_access` were added to `electric_publication_default` by hand (owned by `postgres`; Electric's role cannot alter it), so a newly synced table must be added there too. The Cloudflare Container was removed: always-on it cost several times more and lost its disk on every restart. `app.hazel.sh` serves `apps/web-foldkit`.
 - Rollback DNS (all unproxied CNAMEs, detach the Worker custom domain first): `api` → `j0tqzlof.up.railway.app`, `electric` → `2hg74iuk.up.railway.app`, `bot-gateway` → `s3t62x1p.up.railway.app` (was proxied).
-- Not done yet: Discord gateway flip (Worker `false`, Railway still runs it), `MAPLE_API_KEY` for Worker telemetry to Maple, docs.hazel.sh stays on Vercel, GitHub `production` environment secrets for CI deploys. Link previews return `INVALID_URL` for every URL (already broken on the June build).
+- Not done yet: Discord gateway flip (Worker `false`, Railway still runs it), `MAPLE_API_KEY` for Worker telemetry to Maple and `MAPLE_ALERTS_WEBHOOK_URL` for its alerts, docs.hazel.sh stays on Vercel, GitHub `production` environment secrets for CI deploys. Link previews return `INVALID_URL` for every URL (already broken on the June build).
