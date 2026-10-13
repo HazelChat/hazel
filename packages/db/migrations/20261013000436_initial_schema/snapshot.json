@@ -1,9 +1,123 @@
 {
 	"version": "1",
 	"dialect": "postgres",
-	"id": "9630633859de45b3a47113409704ffc3527838ed939973fc94d6e3fec6499f78",
+	"id": "22e156dde724cb523f05dc334f01094098ae3d0ff19a185a57d84316f63fecb8",
 	"prevIds": ["0000000000000000000000000000000000000000000000000000000000000000"],
 	"entities": [
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "attachment_status",
+			"values": ["uploading", "complete", "failed"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "channel_type",
+			"values": ["public", "private", "thread", "direct", "single"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "chat_sync_connection_status",
+			"values": ["active", "paused", "error", "disabled"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "chat_sync_direction",
+			"values": ["both", "hazel_to_external", "external_to_hazel"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "chat_sync_receipt_source",
+			"values": ["hazel", "external"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "chat_sync_receipt_status",
+			"values": ["processed", "ignored", "failed"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connect_conversation_channel_role",
+			"values": ["host", "guest"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connect_conversation_status",
+			"values": ["active", "disconnected"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connect_invite_status",
+			"values": ["pending", "accepted", "declined", "revoked", "expired"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connect_invite_target_kind",
+			"values": ["slug", "email"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connection_level",
+			"values": ["organization", "user"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "connection_status",
+			"values": ["active", "expired", "revoked", "error", "suspended"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "integration_request_status",
+			"values": ["pending", "reviewed", "planned", "rejected"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "message_outbox_event_status",
+			"values": ["pending", "processing", "processed", "failed"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "message_outbox_event_type",
+			"values": [
+				"message_created",
+				"message_updated",
+				"message_deleted",
+				"reaction_created",
+				"reaction_deleted"
+			]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "organization_role",
+			"values": ["admin", "member", "owner"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "user_presence_status_enum",
+			"values": ["online", "away", "busy", "dnd", "offline"]
+		},
+		{
+			"kind": "enum",
+			"schema": null,
+			"name": "user_type",
+			"values": ["user", "machine"]
+		},
 		{
 			"kind": "table",
 			"name": "attachments",
@@ -361,7 +475,7 @@
 			"table": "attachments",
 			"name": "status",
 			"position": 8,
-			"type": "public.attachment_status",
+			"type": "attachment_status",
 			"notNull": true,
 			"default": "'uploading'",
 			"identity": null
@@ -1101,7 +1215,7 @@
 			"table": "channels",
 			"name": "type",
 			"position": 3,
-			"type": "public.channel_type",
+			"type": "channel_type",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -1221,7 +1335,7 @@
 			"table": "chat_sync_channel_links",
 			"name": "direction",
 			"position": 5,
-			"type": "public.chat_sync_direction",
+			"type": "chat_sync_direction",
 			"notNull": true,
 			"default": "'both'",
 			"identity": null
@@ -1351,7 +1465,7 @@
 			"table": "chat_sync_connections",
 			"name": "status",
 			"position": 6,
-			"type": "public.chat_sync_connection_status",
+			"type": "chat_sync_connection_status",
 			"notNull": true,
 			"default": "'active'",
 			"identity": null
@@ -1471,7 +1585,7 @@
 			"table": "chat_sync_event_receipts",
 			"name": "source",
 			"position": 3,
-			"type": "public.chat_sync_receipt_source",
+			"type": "chat_sync_receipt_source",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -1511,7 +1625,7 @@
 			"table": "chat_sync_event_receipts",
 			"name": "status",
 			"position": 7,
-			"type": "public.chat_sync_receipt_status",
+			"type": "chat_sync_receipt_status",
 			"notNull": true,
 			"default": "'processed'",
 			"identity": null
@@ -1591,7 +1705,7 @@
 			"table": "chat_sync_message_links",
 			"name": "source",
 			"position": 4,
-			"type": "public.chat_sync_receipt_source",
+			"type": "chat_sync_receipt_source",
 			"notNull": true,
 			"default": "'hazel'",
 			"identity": null
@@ -1721,7 +1835,7 @@
 			"table": "connect_conversation_channels",
 			"name": "role",
 			"position": 4,
-			"type": "public.connect_conversation_channel_role",
+			"type": "connect_conversation_channel_role",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -1811,7 +1925,7 @@
 			"table": "connect_conversations",
 			"name": "status",
 			"position": 3,
-			"type": "public.connect_conversation_status",
+			"type": "connect_conversation_status",
 			"notNull": true,
 			"default": "'active'",
 			"identity": null
@@ -1911,7 +2025,7 @@
 			"table": "connect_invites",
 			"name": "targetKind",
 			"position": 4,
-			"type": "public.connect_invite_target_kind",
+			"type": "connect_invite_target_kind",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -1941,7 +2055,7 @@
 			"table": "connect_invites",
 			"name": "status",
 			"position": 7,
-			"type": "public.connect_invite_status",
+			"type": "connect_invite_status",
 			"notNull": true,
 			"default": "'pending'",
 			"identity": null
@@ -2391,7 +2505,7 @@
 			"table": "integration_connections",
 			"name": "level",
 			"position": 4,
-			"type": "public.connection_level",
+			"type": "connection_level",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -2401,7 +2515,7 @@
 			"table": "integration_connections",
 			"name": "status",
 			"position": 5,
-			"type": "public.connection_status",
+			"type": "connection_status",
 			"notNull": true,
 			"default": "'active'",
 			"identity": null
@@ -2571,7 +2685,7 @@
 			"table": "integration_requests",
 			"name": "status",
 			"position": 6,
-			"type": "public.integration_request_status",
+			"type": "integration_request_status",
 			"notNull": true,
 			"default": "'pending'",
 			"identity": null
@@ -2761,7 +2875,7 @@
 			"table": "message_outbox_events",
 			"name": "eventType",
 			"position": 2,
-			"type": "public.message_outbox_event_type",
+			"type": "message_outbox_event_type",
 			"notNull": true,
 			"default": null,
 			"identity": null
@@ -2801,7 +2915,7 @@
 			"table": "message_outbox_events",
 			"name": "status",
 			"position": 6,
-			"type": "public.message_outbox_event_status",
+			"type": "message_outbox_event_status",
 			"notNull": true,
 			"default": "'pending'",
 			"identity": null
@@ -3171,7 +3285,7 @@
 			"table": "organization_members",
 			"name": "role",
 			"position": 3,
-			"type": "public.organization_role",
+			"type": "organization_role",
 			"notNull": true,
 			"default": "'member'",
 			"identity": null
@@ -3681,7 +3795,7 @@
 			"table": "user_presence_status",
 			"name": "status",
 			"position": 2,
-			"type": "public.user_presence_status_enum",
+			"type": "user_presence_status_enum",
 			"notNull": true,
 			"default": "'online'",
 			"identity": null
@@ -3821,7 +3935,7 @@
 			"table": "users",
 			"name": "userType",
 			"position": 6,
-			"type": "public.user_type",
+			"type": "user_type",
 			"notNull": true,
 			"default": "'user'",
 			"identity": null
@@ -4019,15 +4133,6 @@
 			"unique": false,
 			"method": "btree",
 			"columns": ["\"isPublic\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "bots",
-			"name": "bots_userId_unique",
-			"unique": true,
-			"method": "btree",
-			"columns": ["\"userId\""],
 			"where": null
 		},
 		{
@@ -4842,15 +4947,6 @@
 		},
 		{
 			"kind": "index",
-			"table": "integration_tokens",
-			"name": "integration_tokens_connectionId_unique",
-			"unique": true,
-			"method": "btree",
-			"columns": ["\"connectionId\""],
-			"where": null
-		},
-		{
-			"kind": "index",
 			"table": "message_outbox_events",
 			"name": "message_outbox_events_channel_sequence_idx",
 			"unique": false,
@@ -4926,15 +5022,6 @@
 			"table": "message_reactions",
 			"name": "reactions_message_user_emoji_idx",
 			"unique": false,
-			"method": "btree",
-			"columns": ["\"messageId\"", "\"userId\"", "\"emoji\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "message_reactions",
-			"name": "reactions_message_user_emoji_unique",
-			"unique": true,
 			"method": "btree",
 			"columns": ["\"messageId\"", "\"userId\"", "\"emoji\""],
 			"where": null
@@ -5068,15 +5155,6 @@
 		{
 			"kind": "index",
 			"table": "organization_members",
-			"name": "org_members_org_user_unique",
-			"unique": true,
-			"method": "btree",
-			"columns": ["\"organizationId\"", "\"userId\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "organization_members",
 			"name": "org_members_organization_id_idx",
 			"unique": false,
 			"method": "btree",
@@ -5115,15 +5193,6 @@
 			"table": "organizations",
 			"name": "organizations_slug_idx",
 			"unique": false,
-			"method": "btree",
-			"columns": ["\"slug\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "organizations",
-			"name": "organizations_slug_unique",
-			"unique": true,
 			"method": "btree",
 			"columns": ["\"slug\""],
 			"where": null
@@ -5266,15 +5335,6 @@
 		{
 			"kind": "index",
 			"table": "user_presence_status",
-			"name": "user_presence_status_userId_unique",
-			"unique": true,
-			"method": "btree",
-			"columns": ["\"userId\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "user_presence_status",
 			"name": "user_presence_status_user_id_idx",
 			"unique": false,
 			"method": "btree",
@@ -5302,15 +5362,6 @@
 		{
 			"kind": "index",
 			"table": "users",
-			"name": "users_externalId_unique",
-			"unique": true,
-			"method": "btree",
-			"columns": ["\"externalId\""],
-			"where": null
-		},
-		{
-			"kind": "index",
-			"table": "users",
 			"name": "users_external_id_idx",
 			"unique": false,
 			"method": "btree",
@@ -5325,6 +5376,55 @@
 			"method": "btree",
 			"columns": ["\"userType\""],
 			"where": null
+		},
+		{
+			"kind": "unique",
+			"table": "bots",
+			"name": "bots_userId_unique",
+			"columns": ["userId"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "integration_tokens",
+			"name": "integration_tokens_connectionId_unique",
+			"columns": ["connectionId"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "message_reactions",
+			"name": "reactions_message_user_emoji_unique",
+			"columns": ["messageId", "userId", "emoji"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "organization_members",
+			"name": "org_members_org_user_unique",
+			"columns": ["organizationId", "userId"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "organizations",
+			"name": "organizations_slug_unique",
+			"columns": ["slug"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "user_presence_status",
+			"name": "user_presence_status_userId_unique",
+			"columns": ["userId"],
+			"nullsNotDistinct": false
+		},
+		{
+			"kind": "unique",
+			"table": "users",
+			"name": "users_externalId_unique",
+			"columns": ["externalId"],
+			"nullsNotDistinct": false
 		},
 		{
 			"kind": "foreign_key",

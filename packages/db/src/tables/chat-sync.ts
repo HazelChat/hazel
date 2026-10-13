@@ -10,21 +10,21 @@ import {
 	UserId,
 } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
-export const chatSyncConnectionStatusEnum = pgEnum("chat_sync_connection_status", [
+export const chatSyncConnectionStatusEnum = PG.enumType("chat_sync_connection_status", [
 	"active",
 	"paused",
 	"error",
 	"disabled",
 ])
-export const chatSyncDirectionEnum = pgEnum("chat_sync_direction", [
+export const chatSyncDirectionEnum = PG.enumType("chat_sync_direction", [
 	"both",
 	"hazel_to_external",
 	"external_to_hazel",
 ])
-export const chatSyncReceiptSourceEnum = pgEnum("chat_sync_receipt_source", ["hazel", "external"])
-export const chatSyncReceiptStatusEnum = pgEnum("chat_sync_receipt_status", [
+export const chatSyncReceiptSourceEnum = PG.enumType("chat_sync_receipt_source", ["hazel", "external"])
+export const chatSyncReceiptStatusEnum = PG.enumType("chat_sync_receipt_status", [
 	"processed",
 	"ignored",
 	"failed",

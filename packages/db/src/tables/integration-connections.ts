@@ -1,9 +1,9 @@
 import { IntegrationConnectionId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, typed, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, typed, uuid, varchar } from "./columns"
 
-export const connectionLevelEnum = pgEnum("connection_level", ["organization", "user"])
-export const connectionStatusEnum = pgEnum("connection_status", [
+export const connectionLevelEnum = PG.enumType("connection_level", ["organization", "user"])
+export const connectionStatusEnum = PG.enumType("connection_status", [
 	"active",
 	"expired",
 	"revoked",

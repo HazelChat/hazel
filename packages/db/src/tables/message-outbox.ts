@@ -1,15 +1,15 @@
 import { ChannelId, MessageOutboxEventId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
-export const messageOutboxEventTypeEnum = pgEnum("message_outbox_event_type", [
+export const messageOutboxEventTypeEnum = PG.enumType("message_outbox_event_type", [
 	"message_created",
 	"message_updated",
 	"message_deleted",
 	"reaction_created",
 	"reaction_deleted",
 ])
-export const messageOutboxEventStatusEnum = pgEnum("message_outbox_event_status", [
+export const messageOutboxEventStatusEnum = PG.enumType("message_outbox_event_status", [
 	"pending",
 	"processing",
 	"processed",

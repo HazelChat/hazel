@@ -197,7 +197,7 @@ yield* db.transaction(Effect.gen(function* () { /* every statement in here joins
 ```
 
 - `db.transaction(effect)` pins every statement inside `effect` (repositories included) to one connection through fiber context; there is no transaction handle to pass around.
-- Schema changes: edit `src/tables`, then `bun run db:generate --name <name>`. effect-orm does not model enums or unique constraints: write those in a `--custom` migration.
+- Schema changes: edit `src/tables`, then `bun run db:generate --name <name>`. Enums are `PG.enumType`, unique constraints `PG.unique` in `uniqueConstraints`; `generate` migrates both. What effect-orm does not model (check constraints, removing or reordering enum labels) goes in a `--custom` migration.
 
 ## Architecture Notes
 
