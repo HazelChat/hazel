@@ -18,6 +18,7 @@ import {
 import type * as Modal from "../ui/modal"
 import { isActiveFuzzy, type ShellContext } from "./context"
 import { mobileNav, mobileSidebarPlaceholder, mobileSidebarSheet } from "./mobile"
+import { hasDesktopTitlebar } from "../platform/desktop"
 
 /**
  * Org shell: port of `routes/_app/$orgSlug/layout.tsx` + `AppSidebar` (nav rail and the
@@ -59,8 +60,9 @@ const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unread
 		sidebarItem(h, { ariaLabel: label, className: "size-9 justify-items-center" }, [
 			sidebarLink(h, { href: to, isActive, activeClassName: NAV_ACTIVE }, [icon]),
 		])
-	return sidebarStatic(h, "hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex md:border-r", [
-		sidebarHeader(h, { state: "expanded", className: "px-3 py-4  border-b h-14" }, [
+	// Under the macOS window controls the dock draws its own borders, below the titlebar strip.
+	return sidebarStatic(h, `hidden w-[calc(var(--sidebar-width-dock)+1px)] md:flex ${hasDesktopTitlebar ? "" : "md:border-r"}`, [
+		sidebarHeader(h, { state: "expanded", className: `px-3 py-4  border-b ${hasDesktopTitlebar ? "pt-14 relative before:absolute before:top-10 before:left-0 before:right-0 before:bottom-0 before:border-t before:border-r before:border-sidebar-border" : "h-14"}` }, [
 			h.a(
 				[
 					h.Class(linkClassName({ hasHref: true, className: "flex items-center justify-center" })),
@@ -71,7 +73,7 @@ const navRail = <Message>(h: HtmlBuilder<Message>, context: ShellContext, unread
 				[Logo(h, { className: "size-7" })],
 			),
 		]),
-		sidebarContent(h, { state: "expanded", className: "mask-none " }, [
+		sidebarContent(h, { state: "expanded", className: `mask-none ${hasDesktopTitlebar ? "border-r border-sidebar-border" : ""}` }, [
 			sidebarSectionGroup(h, [
 				sidebarSection(h, { className: "p-2! *:data-[slot=sidebar-section-inner]:gap-y-2" }, [
 					navItem(

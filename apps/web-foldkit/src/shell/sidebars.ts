@@ -2,6 +2,7 @@ import type { Attribute, Html, HtmlBuilder } from "foldkit/html"
 import {
 	IconArrowPath,
 	IconBell,
+	IconCube,
 	IconCode,
 	IconEmojiAdd,
 	IconGear,
@@ -31,6 +32,7 @@ import {
 import type { SidebarChrome } from "./channels-sidebar"
 import { isActiveFuzzy, type ShellContext } from "./context"
 import { orgSwitcherHeader, userMenuFooter } from "./menus"
+import { isDesktop, sidebarHeaderHeightClass } from "../platform/desktop"
 
 /** The settings, my-settings and notifications sidebars next to the nav rail. */
 
@@ -153,6 +155,7 @@ export const mySettingsSidebar = <Message>(
 	const profile = hrefOf(AppRoute.MySettingsProfile({ orgSlug }))
 	const linkedAccounts = linkedAccountsHref(orgSlug)
 	const notifications = hrefOf(AppRoute.MySettingsNotifications({ orgSlug }))
+	const desktop = hrefOf(AppRoute.MySettingsDesktop({ orgSlug }))
 	const path = context.pathname
 	const item = navList(h)
 	const fuzzy = (to: string) => ({
@@ -174,6 +177,7 @@ export const mySettingsSidebar = <Message>(
 					item("Profile", profile, fuzzy(profile), IconUser),
 					item("Linked Accounts", linkedAccounts, fuzzy(linkedAccounts), IconArrowPath),
 					item("Notifications", notifications, fuzzy(notifications), IconBell),
+					...(isDesktop ? [item("Desktop", desktop, fuzzy(desktop), IconCube)] : []),
 				]),
 			]),
 		]),
@@ -207,7 +211,7 @@ export const notificationsSidebar = <Message>(
 		isLinkActive: isActiveFuzzy(path, to),
 	})
 	return sidebarStatic(h, "flex flex-1", [
-		sidebarHeader(h, { state: "expanded", className: "border-b py-4 h-14" }, [
+		sidebarHeader(h, { state: "expanded", className: `border-b py-4 ${sidebarHeaderHeightClass()}` }, [
 			h.span([h.Class("text-muted-fg text-xs font-medium uppercase tracking-wider")], ["Activity"]),
 		]),
 		sidebarContent(h, { state: "expanded" }, [

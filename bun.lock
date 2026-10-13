@@ -360,6 +360,7 @@
         "@foldkit/ui": "0.167.0",
         "@fontsource/inter": "^5.2.8",
         "@hazel/auth": "workspace:*",
+        "@hazel/desktop": "workspace:*",
         "@hazel/domain": "workspace:*",
         "@hazel/schema": "workspace:*",
         "@simplewebauthn/browser": "^14.0.0",

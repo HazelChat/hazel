@@ -18,8 +18,8 @@
 		}
 	},
 	"build": {
-		"frontendDist": "../../web/dist",
-		"devUrl": "http://localhost:3000",
+		"frontendDist": "../../web-foldkit/dist",
+		"devUrl": "http://localhost:3100",
 		"beforeBuildCommand": "bun run build:web"
 	},
 	"app": {

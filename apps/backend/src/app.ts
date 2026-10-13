@@ -119,6 +119,7 @@ export const AllRoutes = Layer.mergeAll(
 		HttpRouter.cors({
 			allowedOrigins: [
 				"http://localhost:3000",
+				"http://localhost:3100",
 				"http://localhost:5173",
 				"https://app.hazel.sh",
 				"tauri://localhost",

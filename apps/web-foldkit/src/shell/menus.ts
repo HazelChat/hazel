@@ -23,6 +23,7 @@ import { menuLabel, menuTriggerClassName, view as menuView } from "../ui/menu-vi
 import { sidebarFooter, sidebarHeader, sidebarLabel } from "../ui/sidebar"
 import type { ShellContext } from "./context"
 import type { UserStatus } from "./model"
+import { sidebarHeaderHeightClass } from "../platform/desktop"
 
 /** The user menu (`sidebar/user-menu.tsx`) and the org switcher (`channels-sidebar.tsx` header). */
 
@@ -296,7 +297,7 @@ export const orgSwitcherHeader = <M>(
 	organizations: ReadonlyArray<SwitcherOrg>,
 	toMenuMessage: (message: Menu.Message) => M,
 ): Html =>
-	sidebarHeader(h, { state: "expanded", className: "border-b h-14" }, [
+	sidebarHeader(h, { state: "expanded", className: `border-b ${sidebarHeaderHeightClass()}` }, [
 		h.submodel({
 			slotId: ORG_SWITCHER_ID,
 			model: menu,

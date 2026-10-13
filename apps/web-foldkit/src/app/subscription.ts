@@ -18,6 +18,8 @@ import * as CommandPalette from "../overlay/command-palette"
 import { layoutHotkeys } from "../overlay/hotkeys"
 import * as Modal from "../overlay/modal"
 import * as Platform from "../platform"
+import { desktopMenuItems } from "../platform/desktop-menu"
+import * as Updates from "../platform/updates"
 import * as Toasts from "../overlay/toaster"
 import { Message } from "./message"
 import { type Model, pageHostOf, sharedOf } from "./model"
@@ -187,6 +189,17 @@ const platformSubscriptions = Subscription.lift(Platform.subscriptions)<Model, M
 	toParentMessage: (message): Message => ({ _tag: "GotPlatformMessage", message }),
 })
 
+const updateSubscriptions = Subscription.lift(Updates.subscriptions)<Model, Message>({
+	read: (model) => Option.some(model.desktopUpdate),
+	toParentMessage: (message): Message => ({ _tag: "GotUpdatesMessage", message }),
+})
+
+const desktopMenuSubscriptions = Subscription.make<Model, Message>()(() => ({
+	desktopMenu: Subscription.persistentEntry(
+		desktopMenuItems.pipe(Stream.map((item) => Message.PressedDesktopMenuItem({ item }))),
+	),
+}))
+
 const toastSubscriptions = Subscription.lift(Toasts.subscriptions)<Model, Message>({
 	read: (model) => Option.some(model.toasts.toaster),
 	toParentMessage: (message): Message => ({ _tag: "GotToastsMessage", message }),
@@ -207,6 +220,8 @@ export const subscriptions = Subscription.aggregate(
 	shellSubscriptions,
 	pages,
 	platformSubscriptions,
+	updateSubscriptions,
+	desktopMenuSubscriptions,
 )
 
 /** App-lifetime managed resources (the Rivet client). */

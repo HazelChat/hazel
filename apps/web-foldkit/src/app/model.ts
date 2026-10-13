@@ -8,6 +8,7 @@ import { AppRoute, orgSectionOf, orgSlugOf } from "../route"
 import { Auth, CurrentUser, Member, Organization } from "../session"
 import { SoundSettings } from "../notification-sound"
 import * as Platform from "../platform"
+import * as Updates from "../platform/updates"
 import * as Shell from "../shell/model"
 import { ResolvedTheme, resolveTheme, ThemePreference } from "../theme"
 import type { Context as ShellUpdateContext } from "../shell/update"
@@ -40,6 +41,8 @@ export const Model = Schema.Struct({
 	toasts: Toasts.Model,
 	/** Presence and the Rivet client (legacy `PresenceProvider`, `lib/rivet-client.ts`). */
 	platform: Platform.Model,
+	/** The desktop app's update check and install. */
+	desktopUpdate: Updates.Model,
 })
 export type Model = typeof Model.Type
 
@@ -56,6 +59,7 @@ export const sharedOf = (model: Model): Shared => ({
 	isMobile: model.shell.isMobile,
 	theme: { ...model.themePreference, resolved: resolvedThemeOf(model) },
 	soundSettings: model.soundSettings,
+	desktopUpdate: model.desktopUpdate,
 })
 
 export const pageHostOf = (model: Model): PageHost => ({ page: model.page, shared: sharedOf(model) })

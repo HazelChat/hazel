@@ -10,7 +10,7 @@ import * as ToastView from "../ui/toast-view"
  * through `push`. Sonner ids are strings; the kit's are numbers, so the slot keeps the mapping.
  */
 
-import { ToastRequest } from "./toasts"
+import { ToastAction, ToastRequest } from "./toasts"
 
 export { ToastRequest }
 
@@ -18,15 +18,18 @@ export const Model = Schema.Struct({
 	toaster: Toast.Model,
 	/** Sonner id → the kit's numeric id of the toast it last showed. */
 	idsByKey: Schema.Record(Schema.String, Schema.Number),
+	/** The kit's numeric id → the action its button reports. */
+	actionsById: Schema.Record(Schema.String, ToastAction),
 })
 export type Model = typeof Model.Type
 
 export const Message = Toast.Message
 export type Message = Toast.Message
 
-export const init = (): Model => ({ toaster: Toast.init(), idsByKey: {} })
+export const init = (): Model => ({ toaster: Toast.init(), idsByKey: {}, actionsById: {} })
 
 type Return = Update.Return<Model, Message>
+type ReturnWithAction = Update.Return<Model, Message> & { readonly action?: ToastAction }
 
 // UPDATE
 
@@ -34,28 +37,39 @@ type Return = Update.Return<Model, Message>
 export const push = (model: Model, request: ToastRequest): Return => {
 	const known = request.id === undefined ? undefined : model.idsByKey[request.id]
 	const { kind, title, description } = Toast.fromIntentRequest(request)
+	const extras = {
+		...(request.action === undefined ? {} : { actionLabel: request.action.label }),
+		...(request.isSticky ? { duration: Number.POSITIVE_INFINITY } : {}),
+	}
 	const shown =
 		known === undefined
-			? Toast.showRequest(model.toaster, Toast.fromIntentRequest(request))
+			? Toast.show(model.toaster, { kind, title, ...(description === undefined ? {} : { description }), ...extras })
 			: Toast.show(model.toaster, {
 					id: known,
 					kind,
 					title,
 					...(description === undefined ? {} : { description }),
+					...extras,
 				})
 	return {
 		model: modifyFields(model, {
 			toaster: () => shown.model,
 			idsByKey: (ids) => (request.id === undefined ? ids : { ...ids, [request.id]: shown.id }),
+			actionsById: (actions) =>
+				request.action === undefined ? actions : { ...actions, [String(shown.id)]: request.action.key },
 		}),
 		commands: shown.commands ?? [],
 	}
 }
 
-/** Root toasts carry no action button, so the kit's `ClickedAction` has no one to report to. */
-export const update = (model: Model, message: Message): Return => {
+/** The kit's `ClickedAction` becomes the toast's `action`, for the root to carry out. */
+export const update = (model: Model, message: Message): ReturnWithAction => {
 	const result = Toast.update(model.toaster, message)
-	return { model: modifyFields(model, { toaster: () => result.model }), commands: result.commands ?? [] }
+	const next = { model: modifyFields(model, { toaster: () => result.model }), commands: result.commands ?? [] }
+	const clicked = result.outMessage
+	if (clicked === undefined || clicked._tag !== "ClickedAction") return next
+	const action = model.actionsById[String(clicked.id)]
+	return action === undefined ? next : { ...next, action }
 }
 
 // SUBSCRIPTION

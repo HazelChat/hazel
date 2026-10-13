@@ -3,6 +3,7 @@ import "@fontsource/inter/400-italic.css"
 import "./styles.css"
 
 import { Runtime } from "foldkit"
+import { initTauri } from "~/lib/tauri"
 import { galleryComponentOf, startGallery } from "./gallery/boot"
 import { Flags, flags, init, managedResources, Message, Model, subscriptions, update, view } from "./main"
 import { ResourcesLive } from "./rpc"
@@ -32,5 +33,8 @@ const startApplication = () =>
 
 // `/dev/gallery/<name>` boots one UI primitive's gallery program instead of the app (parity scenarios).
 const galleryComponent = galleryComponentOf(location.pathname)
-if (galleryComponent === undefined) startApplication()
-else startGallery(galleryComponent, container)
+if (galleryComponent === undefined) {
+	startApplication()
+	// Desktop only: native notification permission (a no-op in the browser).
+	void initTauri()
+} else startGallery(galleryComponent, container)

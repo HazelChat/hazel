@@ -7,7 +7,8 @@
 		"build": "vite build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
-		"deploy": "./scripts/deploy.sh"
+		"deploy": "./scripts/deploy.sh",
+		"build:desktop": "./scripts/build-desktop.sh"
 	},
 	"dependencies": {
 		"@effect/platform-browser": "catalog:effect",
@@ -15,6 +16,7 @@
 		"@foldkit/ui": "0.167.0",
 		"@fontsource/inter": "^5.2.8",
 		"@hazel/auth": "workspace:*",
+		"@hazel/desktop": "workspace:*",
 		"@hazel/domain": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"@simplewebauthn/browser": "^14.0.0",

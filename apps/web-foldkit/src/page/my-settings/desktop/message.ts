@@ -7,5 +7,8 @@ export const Message = defineMessageUnion({
 	ToggledAutostart: { isSelected: Schema.Boolean },
 	CompletedSetAutostart: { isEnabled: Schema.Boolean },
 	GotInteractionMessage: { message: Interaction.Message },
+	ReadAppVersion: { version: Schema.NullOr(Schema.String) },
+	ClickedCheckForUpdates: {},
+	ClickedInstallUpdate: {},
 })
 export type Message = typeof Message.Type
