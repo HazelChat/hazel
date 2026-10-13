@@ -34,12 +34,14 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
       as `AUTH_GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_CLIENT_SECRET`.
     - Setting `AUTH_GITHUB_CLIENT_ID` turns the routes on at the next deploy. Do this only
       once the web app is ready.
-2. **Web app (`apps/web-foldkit`).** Build these pages: sign-in (GitHub, Google, passkey),
-   `/auth/register` (name form), `/auth/continue?provider=` (restarts sign-in), and passkey
-   settings. Then switch the RPC client to cookie credentials, and the Electric and actors
-   clients to `POST /auth/token`.
-3. **Electric proxy and actors.** Verify the access token against
-   `https://api.hazel.sh/.well-known/jwks.json` instead of Clerk.
+2. **Web app (`apps/web-foldkit`): done.** The sign-in pages are in place: sign-in (GitHub,
+   Google, passkey), `/auth/register` (name form) and `/auth/continue?provider=` (restarts
+   sign-in). The RPC and HTTP API clients send the session cookie. The Electric and actors
+   clients use `POST /auth/token`. Passkey enrollment settings are still to do.
+3. **Electric proxy and actors: done.** Both verify the access token against
+   `<API_BASE_URL>/.well-known/jwks.json`, and the deploy sets `API_BASE_URL`. The JWKS
+   fetch is HTTPS-only, so for a plain-HTTP dev API set `AUTH_ACCESS_TOKEN_JWKS` (printed by
+   `generate-keys`) for both. `CLERK_SECRET_KEY` is no longer needed by either.
 4. **Preview stage.** Do one real GitHub and Google sign-in through Hyperdrive before prd.
 5. **Organizations, invites and profile editing.** Move these off Clerk.
 6. **Cutover.** Re-run the import, deploy with `AUTH_GITHUB_CLIENT_ID` set, then switch the web

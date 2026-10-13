@@ -2,15 +2,11 @@ import { BotId, OrganizationId, UserId } from "@hazel/schema"
 import { Schema } from "effect"
 
 /**
- * Represents an authenticated user (via Clerk JWT).
+ * Represents an authenticated user (via a Hazel access token).
  */
 export interface UserClient {
 	readonly type: "user"
-	/** Clerk user ID (`user_…`), carried through as an opaque string. */
-	readonly externalId: string
-	/** Clerk organization ID (`org_…`), or null when no active organization. */
-	readonly externalOrganizationId: string | null
-	readonly role: "admin" | "member"
+	readonly userId: UserId
 }
 
 /**

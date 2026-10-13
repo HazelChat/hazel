@@ -1,5 +1,5 @@
 /**
- * The electric-proxy Worker: authenticates Clerk users and bots, pins each shape's where-clause
+ * The electric-proxy Worker: authenticates Hazel users (access tokens) and bots, pins each shape's where-clause
  * and forwards to Electric, streaming the response through. Electric is the self-hosted
  * container's Durable Object (`ELECTRIC`), or `ELECTRIC_URL` (docker Electric under `alchemy dev`).
  */
@@ -8,7 +8,7 @@ import { Database } from "@hazel/db"
 import { layerKvResultPersistence } from "@hazel/effect-cloudflare/KvPersistence"
 import { cachedRecoverable } from "@hazel/infra/cached-recoverable"
 import { HAZEL_DB_BINDING, HazelStack, hazelWorkerProps, readHazelDbBinding } from "@hazel/infra/cloudflare"
-import { merge, requireSecretEntry, telemetryEnv } from "@hazel/infra/env"
+import { derived, merge, optionalPlain, telemetryEnv } from "@hazel/infra/env"
 import { forIsolate, isolateContext } from "@hazel/infra/worker-http"
 import { workerEnvLayer } from "@hazel/infra/worker-runtime"
 import type { KVNamespace } from "@cloudflare/workers-types"
@@ -20,7 +20,7 @@ import { AccessContextCacheService } from "./cache"
 import { handleRequest } from "./handler"
 import { type ElectricNamespace, ElectricUpstream } from "./proxy/electric-upstream"
 
-/** KV namespace backing the bot access-context and Clerk user-lookup caches (was Redis). */
+/** KV namespace backing the bot access-context cache (was Redis). */
 const PROXY_CACHE_BINDING = "PROXY_CACHE"
 /** The Electric container's Durable Object namespace, bound from the `electric` Worker. */
 const ELECTRIC_BINDING = "ELECTRIC"
@@ -41,7 +41,13 @@ const props = Effect.gen(function* () {
 			[HAZEL_DB_BINDING]: stack.db.hyperdrive,
 			[PROXY_CACHE_BINDING]: yield* ProxyCache,
 			...(yield* electricProxyEnv(stack)),
-			...(yield* merge(requireSecretEntry("CLERK_SECRET_KEY"), telemetryEnv(stage))),
+			...(yield* merge(
+				// Access tokens are issued and signed by the API; the public keys come from its
+				// JWKS, or inline for a plain-HTTP dev API (`generate-keys` prints them).
+				derived("API_BASE_URL", stack.urls.api),
+				optionalPlain("AUTH_ACCESS_TOKEN_JWKS"),
+				telemetryEnv(stage),
+			)),
 		},
 	}
 })

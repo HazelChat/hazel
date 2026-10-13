@@ -4,6 +4,8 @@
  *   OAuth state encryption).
  * - AUTH_ACCESS_TOKEN_PRIVATE_JWK: an ES256 key for the access tokens the Electric proxy
  *   and actors verify. Changing it invalidates outstanding access tokens (5 minutes).
+ * - AUTH_ACCESS_TOKEN_JWKS: its public key set, for the proxy and actors when the API is
+ *   plain HTTP (local dev). Over HTTPS they fetch `/.well-known/jwks.json` instead.
  *
  * Usage: bun run --cwd packages/auth generate-keys
  */
@@ -20,3 +22,7 @@ console.log(`AUTH_BINDING_KEY=${randomKey()}`)
 console.log(`AUTH_TRANSACTION_KEY=${randomKey()}`)
 console.log(`AUTH_ACCESS_TOKEN_KID=${kid}`)
 console.log(`AUTH_ACCESS_TOKEN_PRIVATE_JWK='${JSON.stringify(Redacted.value(pair.privateKey))}'`)
+
+const signingKey = { kid, privateJwk: pair.privateKey }
+const publicJwk = await Effect.runPromise(AccessToken.publicJwk(signingKey).pipe(Effect.provide(CryptoLive)))
+console.log(`AUTH_ACCESS_TOKEN_JWKS='${JSON.stringify({ keys: [publicJwk] })}'`)

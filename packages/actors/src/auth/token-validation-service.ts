@@ -1,6 +1,6 @@
-import { verifyToken } from "@clerk/backend"
+import { AccessTokenVerifier } from "@hazel/auth/access-token"
 import { HttpClient, HttpClientRequest } from "effect/http"
-import { ClerkJwtClaims } from "@hazel/schema"
+import { UserId } from "@hazel/schema"
 import { Context, Effect, Layer, Option, Redacted, Schema } from "effect"
 import { TokenValidationConfigService } from "./config-service"
 import { BotTokenValidationError, ConfigError, InvalidTokenFormatError, JwtValidationError } from "./errors"
@@ -21,56 +21,45 @@ function isBotToken(token: string): boolean {
 }
 
 /**
- * Service for validating authentication tokens (Clerk JWT and bot tokens).
+ * Service for validating authentication tokens (Hazel access tokens and bot tokens).
  */
 export class TokenValidationService extends Context.Service<TokenValidationService>()(
 	"TokenValidationService",
 	{
 		make: Effect.gen(function* () {
 			const config = yield* TokenValidationConfigService
-			const decodeClaims = Schema.decodeUnknownEffect(ClerkJwtClaims)
+			const verifier = yield* AccessTokenVerifier
+			const decodeUserId = Schema.decodeUnknownEffect(UserId)
 			const decodeBotValidationResponse = Schema.decodeUnknownEffect(BotTokenValidationResponseSchema)
 
+			/** A Hazel access token (`POST /auth/token` on the API), verified against its key set. */
 			const validateJwt = (
 				token: string,
 			): Effect.Effect<UserClient, JwtValidationError | ConfigError> =>
 				Effect.gen(function* () {
-					const clerkSecretKey = yield* Option.match(config.clerkSecretKey, {
-						onNone: () =>
-							Effect.fail(
-								new ConfigError({
-									message:
-										"CLERK_SECRET_KEY environment variable is required for JWT actor authentication",
-								}),
-							),
-						onSome: Effect.succeed,
-					})
-
-					const payload = yield* Effect.tryPromise({
-						try: () => verifyToken(token, { secretKey: Redacted.value(clerkSecretKey) }),
-						catch: (error) =>
-							new JwtValidationError({
-								message: `Clerk JWT verification failed: ${error}`,
-							}),
-					})
-
-					const claims = yield* decodeClaims(payload).pipe(
+					const access = yield* verifier.verify(token).pipe(
+						Effect.catchTags({
+							AccessTokenInvalid: (error) =>
+								Effect.fail(
+									new JwtValidationError({
+										message: `Access token verification failed: ${error.reason}`,
+									}),
+								),
+							AccessTokenUnavailable: (error) =>
+								Effect.fail(
+									new ConfigError({
+										message: `Access token keys unavailable: ${error.reason}`,
+									}),
+								),
+						}),
+					)
+					const userId = yield* decodeUserId(access.userId).pipe(
 						Effect.mapError(
-							(error) =>
-								new JwtValidationError({
-									message: `Invalid JWT claims: ${error.message}`,
-								}),
+							() =>
+								new JwtValidationError({ message: "Access token subject is not a user id" }),
 						),
 					)
-
-					const role: "admin" | "member" = claims.org_role === "org:admin" ? "admin" : "member"
-
-					return {
-						type: "user" as const,
-						externalId: claims.sub,
-						externalOrganizationId: claims.org_id ?? null,
-						role,
-					}
+					return { type: "user" as const, userId }
 				})
 
 			const validateBotToken = (
@@ -182,6 +171,7 @@ export class TokenValidationService extends Context.Service<TokenValidationServi
 ) {
 	static readonly layer = Layer.effect(this, this.make).pipe(
 		Layer.provide(TokenValidationConfigService.layer),
+		Layer.provide(AccessTokenVerifier.layer),
 	)
 }
 

@@ -8,6 +8,7 @@
 		".": "./src/index.ts",
 		"./backend": "./src/consumers/backend-auth.ts",
 		"./proxy": "./src/consumers/proxy-auth.ts",
+		"./access-token": "./src/yielded/access-token.ts",
 		"./errors": "./src/errors.ts",
 		"./contract": "./src/yielded/contract.ts",
 		"./server": "./src/yielded/index.ts"

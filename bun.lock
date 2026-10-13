@@ -489,7 +489,7 @@
       "name": "@hazel/actors",
       "version": "0.0.1",
       "dependencies": {
-        "@clerk/backend": "^3.3.0",
+        "@hazel/auth": "workspace:*",
         "@hazel/rivet-effect": "workspace:*",
         "@hazel/schema": "workspace:*",
         "effect": "catalog:effect",

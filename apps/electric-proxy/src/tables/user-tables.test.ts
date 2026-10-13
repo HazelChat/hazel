@@ -4,9 +4,7 @@ import type { AuthenticatedUser } from "../auth/user-auth"
 import { getWhereClauseForTable } from "./user-tables"
 
 const testUser: AuthenticatedUser = {
-	externalId: "user_test",
 	internalUserId: "00000000-0000-0000-0000-0000000000a1" as AuthenticatedUser["internalUserId"],
-	email: "viewer@hazel.test",
 }
 
 const run = <A>(effect: Effect.Effect<A, any>) => Effect.runPromise(effect)

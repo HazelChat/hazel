@@ -4,6 +4,7 @@
  * `ACTOR_DO` -> `ActorHandler` mapping (alchemy matches the live class by binding name).
  */
 import { HazelStack, hazelWorkerProps, stageProps } from "@hazel/infra/cloudflare"
+import { derived, merge, optionalPlain } from "@hazel/infra/env"
 import * as Cloudflare from "alchemy/Cloudflare"
 import { Effect } from "effect"
 
@@ -25,6 +26,12 @@ export default Effect.gen(function* () {
 			ACTOR_KV: actorKv,
 			NODE_ENV: stack.stage.kind === "dev" ? "development" : "production",
 			RIVET_PUBLIC_ENDPOINT: stack.urls.rivet,
+			...(yield* merge(
+				// Issuer and JWKS of the access tokens users connect with; also where bot
+				// tokens are validated. A plain-HTTP dev API needs the key set inline.
+				derived("API_BASE_URL", stack.urls.api),
+				optionalPlain("AUTH_ACCESS_TOKEN_JWKS"),
+			)),
 		},
 		observability: {
 			enabled: true,

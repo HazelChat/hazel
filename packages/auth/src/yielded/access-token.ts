@@ -1,9 +1,11 @@
-import { InvalidKey } from "@yielded/jose/Errors"
+import * as PortableCrypto from "@yielded/crypto/Portable"
+import { InvalidKey, type JwksUnavailable } from "@yielded/jose/Errors"
 import * as Jwk from "@yielded/jose/Jwk"
 import * as Jwks from "@yielded/jose/Jwks"
 import * as Jwt from "@yielded/jose/Jwt"
 import { Signature } from "@yielded/crypto/Signature"
-import { DateTime, Effect, Redacted, Schema } from "effect"
+import { Config, Context, DateTime, Effect, Layer, Option, Redacted, Schema } from "effect"
+import { FetchHttpClient } from "effect/http"
 
 /**
  * Short-lived access token for services on other hosts (electric.hazel.sh, rivet.hazel.sh).
@@ -84,5 +86,84 @@ export const verifyAccessToken = (issuer: string, token: string) =>
 
 /** A new ES256 key pair; the private JWK goes in `AUTH_ACCESS_TOKEN_PRIVATE_JWK`. */
 export const generateSigningKey = (kid: string) => Jwk.generateKeyPair({ algorithm: "ES256", kid })
+
+/** The token is missing, malformed, expired, for another stage, or not signed by the API. */
+export class AccessTokenInvalid extends Schema.TaggedError<AccessTokenInvalid>()("AccessTokenInvalid", {
+	reason: Schema.String,
+}) {}
+
+/** The API's key set could not be fetched, so no token can be checked right now. */
+export class AccessTokenUnavailable extends Schema.TaggedError<AccessTokenUnavailable>()(
+	"AccessTokenUnavailable",
+	{ reason: Schema.String },
+) {}
+
+export interface VerifiedAccess {
+	/** Hazel's `users.id`. */
+	readonly userId: string
+	readonly sessionId: string
+}
+
+const VerifierConfig = Config.all({
+	apiBaseUrl: Config.String("API_BASE_URL"),
+	/**
+	 * The public key set as JSON. Optional in production, where the verifier fetches
+	 * `<API_BASE_URL>/.well-known/jwks.json` (HTTPS only); needed for a plain-HTTP API in dev.
+	 */
+	inlineJwks: Config.option(Config.String("AUTH_ACCESS_TOKEN_JWKS")),
+})
+
+/** Signature verification only: WebCrypto through the library's portable layer. */
+const VerifierCryptoLive = Layer.suspend(() => PortableCrypto.layerWithoutKdf(globalThis.crypto.subtle))
+
+const makeVerifier = (issuer: string) =>
+	Effect.gen(function* () {
+		const services = yield* Effect.context<Jwks.Jwks | Signature>()
+
+		const verify = Effect.fn("AccessTokenVerifier.verify")(function* (token: string) {
+			const verified = yield* verifyAccessToken(issuer, token).pipe(
+				Effect.provideContext(services),
+				Effect.catchTag("JoseJwksUnavailable", (error) =>
+					Effect.fail(new AccessTokenUnavailable({ reason: error.reason })),
+				),
+				Effect.catchIf(
+					(error) => error._tag !== "AccessTokenUnavailable",
+					(error) => Effect.fail(new AccessTokenInvalid({ reason: error._tag })),
+				),
+			)
+			return { userId: verified.claims.sub, sessionId: verified.claims.sid } satisfies VerifiedAccess
+		})
+
+		return { verify } as const
+	})
+
+/**
+ * Verifies the access tokens `POST /auth/token` issues, for the Electric proxy and the
+ * actors. The issuer is the API origin, so a token only verifies on its own stage.
+ */
+export class AccessTokenVerifier extends Context.Service<
+	AccessTokenVerifier,
+	Effect.Success<ReturnType<typeof makeVerifier>>
+>()("@hazel/auth/AccessTokenVerifier") {
+	static readonly layer = Layer.unwrap(
+		Effect.gen(function* () {
+			const config = yield* VerifierConfig
+			const issuer = new URL(config.apiBaseUrl).origin
+			const keySet: Layer.Layer<Jwks.Jwks, InvalidKey | JwksUnavailable> = Option.match(
+				config.inlineJwks,
+				{
+					onSome: (json) => Jwks.layerLocal(JSON.parse(json)),
+					onNone: () =>
+						Jwks.layerRemote({ url: `${issuer}/.well-known/jwks.json` }).pipe(
+							Layer.provide(FetchHttpClient.layer),
+						),
+				},
+			)
+			return Layer.effect(AccessTokenVerifier, makeVerifier(issuer)).pipe(
+				Layer.provide(Layer.merge(keySet, VerifierCryptoLive)),
+			)
+		}),
+	)
+}
 
 export { Jwks }
