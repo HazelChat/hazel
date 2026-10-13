@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import { ChatSyncChannelLink } from "@hazel/domain/models"
 import type { ChannelId, ExternalChannelId, SyncChannelLinkId, SyncConnectionId } from "@hazel/schema"
@@ -28,253 +28,140 @@ export class ChatSyncChannelLinkRepo extends Context.Service<ChatSyncChannelLink
 					typeof baseRepo.insert
 				>
 
-			const findById = (id: SyncChannelLinkId, tx?: TxFn) =>
+			const findById = (id: SyncChannelLinkId) =>
 				db
-					.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncChannelLinksTable)
-								.where(
-									and(
-										eq(schema.chatSyncChannelLinksTable.id, data.id),
-										isNull(schema.chatSyncChannelLinksTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)({ id }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [$.id.eq(id), $.deletedAt.isNull()])
+							.limit(1),
 					)
+					.pipe(Effect.map(decodeChannelLinkOption))
 
-			const findBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
+			const findBySyncConnection = (syncConnectionId: SyncConnectionId) =>
 				db
-					.makeQuery((execute, data: { syncConnectionId: SyncConnectionId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncChannelLinksTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncChannelLinksTable.syncConnectionId,
-											data.syncConnectionId,
-										),
-										isNull(schema.chatSyncChannelLinksTable.deletedAt),
-									),
-								),
-						),
-					)({ syncConnectionId }, tx)
+					.run(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [$.syncConnectionId.eq(syncConnectionId), $.deletedAt.isNull()]),
+					)
 					.pipe(Effect.map(decodeChannelLinkRows))
 
-			const findActiveBySyncConnection = (syncConnectionId: SyncConnectionId, tx?: TxFn) =>
+			const findActiveBySyncConnection = (syncConnectionId: SyncConnectionId) =>
 				db
-					.makeQuery((execute, data: { syncConnectionId: SyncConnectionId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncChannelLinksTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncChannelLinksTable.syncConnectionId,
-											data.syncConnectionId,
-										),
-										eq(schema.chatSyncChannelLinksTable.isActive, true),
-										isNull(schema.chatSyncChannelLinksTable.deletedAt),
-									),
-								),
-						),
-					)({ syncConnectionId }, tx)
+					.run(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [
+								$.syncConnectionId.eq(syncConnectionId),
+								$.isActive.eq(true),
+								$.deletedAt.isNull(),
+							]),
+					)
 					.pipe(Effect.map(decodeChannelLinkRows))
 
-			const findByHazelChannel = (
-				syncConnectionId: SyncConnectionId,
-				hazelChannelId: ChannelId,
-				tx?: TxFn,
-			) =>
+			const findByHazelChannel = (syncConnectionId: SyncConnectionId, hazelChannelId: ChannelId) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								syncConnectionId: SyncConnectionId
-								hazelChannelId: ChannelId
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncChannelLinksTable.syncConnectionId,
-												data.syncConnectionId,
-											),
-											eq(
-												schema.chatSyncChannelLinksTable.hazelChannelId,
-												data.hazelChannelId,
-											),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ syncConnectionId, hazelChannelId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [
+								$.syncConnectionId.eq(syncConnectionId),
+								$.hazelChannelId.eq(hazelChannelId),
+								$.deletedAt.isNull(),
+							])
+							.limit(1),
 					)
+					.pipe(Effect.map(decodeChannelLinkOption))
 
 			const findByExternalChannel = (
 				syncConnectionId: SyncConnectionId,
 				externalChannelId: ExternalChannelId,
-				tx?: TxFn,
 			) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								syncConnectionId: SyncConnectionId
-								externalChannelId: ExternalChannelId
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncChannelLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncChannelLinksTable.syncConnectionId,
-												data.syncConnectionId,
-											),
-											eq(
-												schema.chatSyncChannelLinksTable.externalChannelId,
-												data.externalChannelId,
-											),
-											isNull(schema.chatSyncChannelLinksTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ syncConnectionId, externalChannelId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeChannelLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [
+								$.syncConnectionId.eq(syncConnectionId),
+								$.externalChannelId.eq(externalChannelId),
+								$.deletedAt.isNull(),
+							])
+							.limit(1),
 					)
+					.pipe(Effect.map(decodeChannelLinkOption))
 
-			const findActiveByExternalChannel = (externalChannelId: ExternalChannelId, tx?: TxFn) =>
+			const findActiveByExternalChannel = (externalChannelId: ExternalChannelId) =>
 				db
-					.makeQuery((execute, data: { externalChannelId: ExternalChannelId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncChannelLinksTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncChannelLinksTable.externalChannelId,
-											data.externalChannelId,
-										),
-										eq(schema.chatSyncChannelLinksTable.isActive, true),
-										isNull(schema.chatSyncChannelLinksTable.deletedAt),
-									),
-								),
-						),
-					)({ externalChannelId }, tx)
+					.run(
+						PG.from(schema.chatSyncChannelLinksTable)
+							.select()
+							.where(($) => [
+								$.externalChannelId.eq(externalChannelId),
+								$.isActive.eq(true),
+								$.deletedAt.isNull(),
+							]),
+					)
 					.pipe(Effect.map(decodeChannelLinkRows))
 
-			const setActive = (id: SyncChannelLinkId, isActive: boolean, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncChannelLinkId; isActive: boolean }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncChannelLinksTable)
-							.set({
-								isActive: data.isActive,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-							.returning(),
-					),
-				)({ id, isActive }, tx)
+			const setActive = (id: SyncChannelLinkId, isActive: boolean) =>
+				db.run(
+					PG.update(schema.chatSyncChannelLinksTable)
+						.set({
+							isActive,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const updateLastSyncedAt = (id: SyncChannelLinkId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncChannelLinksTable)
-							.set({
-								lastSyncedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const updateLastSyncedAt = (id: SyncChannelLinkId) =>
+				db.run(
+					PG.update(schema.chatSyncChannelLinksTable)
+						.set({
+							lastSyncedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			const updateDirection = (
 				id: SyncChannelLinkId,
 				direction: ChatSyncChannelLink.ChatSyncDirection,
-				tx?: TxFn,
 			) =>
-				db.makeQuery(
-					(
-						execute,
-						data: { id: SyncChannelLinkId; direction: ChatSyncChannelLink.ChatSyncDirection },
-					) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncChannelLinksTable)
-								.set({
-									direction: data.direction,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-								.returning(),
-						),
-				)({ id, direction }, tx)
+				db.run(
+					PG.update(schema.chatSyncChannelLinksTable)
+						.set({
+							direction,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const softDelete = (id: SyncChannelLinkId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncChannelLinkId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncChannelLinksTable)
-							.set({
-								deletedAt: new Date(),
-								isActive: false,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const softDelete = (id: SyncChannelLinkId) =>
+				db.run(
+					PG.update(schema.chatSyncChannelLinksTable)
+						.set({
+							deletedAt: new Date(),
+							isActive: false,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const updateSettings = (
-				id: SyncChannelLinkId,
-				settings: Record<string, unknown> | null,
-				tx?: TxFn,
-			) =>
-				db.makeQuery(
-					(execute, data: { id: SyncChannelLinkId; settings: Record<string, unknown> | null }) =>
-						execute((client) =>
-							client
-								.update(schema.chatSyncChannelLinksTable)
-								.set({
-									settings: data.settings,
-									updatedAt: new Date(),
-								})
-								.where(eq(schema.chatSyncChannelLinksTable.id, data.id))
-								.returning(),
-						),
-				)({ id, settings }, tx)
+			const updateSettings = (id: SyncChannelLinkId, settings: Record<string, unknown> | null) =>
+				db.run(
+					PG.update(schema.chatSyncChannelLinksTable)
+						.set({
+							settings,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			return {
 				...baseRepo,

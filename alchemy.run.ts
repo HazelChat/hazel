@@ -2,6 +2,7 @@
 // builds the deploy context (`HazelStack`) and yields them in dependency order.
 // Plan: infra/cloudflare-migration-plan.md
 import { appendFileSync } from "node:fs"
+import * as Maple from "@maple-dev/alchemy"
 import * as Alchemy from "alchemy"
 import * as Cloudflare from "alchemy/Cloudflare"
 import * as Planetscale from "alchemy/Planetscale"
@@ -18,6 +19,8 @@ import {
 	resolveHazelDomains,
 } from "@hazel/infra/cloudflare"
 import { plainWithDefault } from "@hazel/infra/env"
+import { isMapleDeploy } from "@hazel/infra/maple"
+import { HazelMonitoring } from "@hazel/infra/maple-monitoring"
 import Actors from "./apps/actors/alchemy.run.ts"
 import ApiLive, { Api } from "./apps/backend/src/worker.ts"
 import BotGateway from "./apps/bot-gateway/alchemy.run.ts"
@@ -80,9 +83,13 @@ export default Alchemy.Stack(
 	"hazel",
 	{
 		// PlanetScale's credential lookup runs when the layer is built; `alchemy dev` never needs it.
-		providers: isDevServer
-			? Cloudflare.providers()
-			: Cloudflare.providers().pipe(Layer.provideMerge(Planetscale.providers())),
+		// Maple (Worker telemetry's ingest key) only with `MAPLE_API_KEY`: see `@hazel/infra/maple`.
+		providers: Layer.mergeAll(
+			isDevServer
+				? Cloudflare.providers()
+				: Cloudflare.providers().pipe(Layer.provideMerge(Planetscale.providers())),
+			isMapleDeploy() ? Maple.providers() : Layer.empty,
+		),
 		// ALCHEMY_LOCAL_STATE=1 uses .alchemy/ file state instead of the account-wide store.
 		state: process.env.ALCHEMY_LOCAL_STATE ? Alchemy.localState() : Cloudflare.state(),
 	},
@@ -101,6 +108,8 @@ export default Alchemy.Stack(
 		// Shared marketing site: prd only (previews and dev run their own dev servers). docs.hazel.sh
 		// stays on Vercel until its DNS record is moved, so the docs site is not deployed here yet.
 		const landing = stage.kind === "prd" ? yield* Landing : undefined
+		// Maple alerts and dashboard watch production only: see `@hazel/infra/maple-monitoring`.
+		const monitoring = stage.kind === "prd" && isMapleDeploy() ? yield* HazelMonitoring : undefined
 
 		const summary = {
 			stage: formatHazelStage(stage),
@@ -121,6 +130,8 @@ export default Alchemy.Stack(
 			linkPreviewWorker: linkPreview.workerName,
 			actorsWorker: actors.workerName,
 			landingWorker: landing?.workerName,
+			mapleDashboard: monitoring?.dashboardId,
+			mapleAlertRules: monitoring?.alertRules,
 		}
 	}).pipe(
 		// The stack IS the entry point: the one place `HazelStack` is provided.

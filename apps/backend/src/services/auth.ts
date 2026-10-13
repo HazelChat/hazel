@@ -23,13 +23,19 @@ export const AuthorizationLive = Layer.effect(
 				Effect.gen(function* () {
 					// Hazel session cookie (browser)
 					const request = yield* HttpServerRequest.HttpServerRequest
-					const cookieUser = yield* hazelSession.fromCookie(request.headers, request.method)
+					const token = Redacted.value(bearerToken)
+					const cookieUser = yield* hazelSession
+						.fromCookie(request.headers, request.method)
+						.pipe(
+							Effect.catchTag("InvalidBearerTokenError", (error) =>
+								token !== "" ? Effect.succeedNone : Effect.fail(error),
+							),
+						)
 					if (Option.isSome(cookieUser)) {
 						return yield* Effect.provideService(httpEffect, CurrentUser.Context, cookieUser.value)
 					}
 
 					// Hazel session credential (native clients)
-					const token = Redacted.value(bearerToken)
 					if (hazelSession.enabled && token !== "" && !isJwt(token)) {
 						const sessionUser = yield* hazelSession.verify(token)
 						if (Option.isSome(sessionUser)) {

@@ -5,7 +5,7 @@ import {
 	OrganizationMemberRepo,
 	OrganizationRepo,
 } from "@hazel/backend-core"
-import { Database, type schema } from "@hazel/db"
+import { Database, type PG, type schema } from "@hazel/db"
 import { CurrentUser, InternalServerError, withRemapDbErrors } from "@hazel/domain"
 import {
 	Invitation,
@@ -29,7 +29,7 @@ import { InviteMailer } from "./invite-mailer"
 /** How long an invite link works. */
 const INVITATION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000
 
-type InvitationRow = typeof schema.organizationInvitationsTable.$inferSelect
+type InvitationRow = PG.SelectRowOf<typeof schema.organizationInvitationsTable>
 
 const newToken = () => Base64Url.encode(crypto.getRandomValues(new Uint8Array(32)))
 
@@ -150,7 +150,7 @@ export class Invitations extends Context.Service<Invitations>()("Invitations", {
 						} else {
 							// A link nobody received shouldn't sit in the pending list.
 							yield* Effect.logWarning("[invite] email failed", { error: sent.failure.message })
-							yield* invitationRepo.revoke(row.id)
+							yield* invitationRepo.revoke(row.id, row.tokenHash)
 							skipped.push({ email, reason: "EmailFailed" })
 						}
 					}
@@ -203,7 +203,11 @@ export class Invitations extends Context.Service<Invitations>()("Invitations", {
 								})
 
 							const organization = yield* findOrganization(invitation.organizationId)
-							const accepted = yield* invitationRepo.markAccepted(invitation.id, currentUser.id)
+							const accepted = yield* invitationRepo.markAccepted(
+								invitation.id,
+								currentUser.id,
+								invitation.tokenHash,
+							)
 							if (Option.isNone(accepted))
 								return yield* new InvitationUnavailableError({ status: "Accepted" })
 

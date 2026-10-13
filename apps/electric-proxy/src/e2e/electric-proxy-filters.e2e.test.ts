@@ -1095,7 +1095,7 @@ const assertVisibilitySpec = (rows: Array<Record<string, unknown>>, spec: Visibi
 describe("electric-proxy filter E2E (real Electric)", () => {
 	beforeAll(async () => {
 		runShell("docker compose up -d postgres electric cache_redis")
-		runShell("bun run --cwd packages/db db:push", REPO_ROOT, { DATABASE_URL: DB_URL })
+		runShell("bun run --cwd packages/db db:migrate", REPO_ROOT, { DATABASE_URL: DB_URL })
 
 		fixture = createFixture()
 		seedFixture(fixture)

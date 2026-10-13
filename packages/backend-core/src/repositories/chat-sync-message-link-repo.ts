@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import { ChatSyncMessageLink } from "@hazel/domain/models"
 import type {
@@ -34,172 +34,83 @@ export class ChatSyncMessageLinkRepo extends Context.Service<ChatSyncMessageLink
 					typeof baseRepo.insert
 				>
 
-			const findByChannelLink = (channelLinkId: SyncChannelLinkId, tx?: TxFn) =>
+			const findByChannelLink = (channelLinkId: SyncChannelLinkId) =>
 				db
-					.makeQuery((execute, data: { channelLinkId: SyncChannelLinkId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.chatSyncMessageLinksTable)
-								.where(
-									and(
-										eq(
-											schema.chatSyncMessageLinksTable.channelLinkId,
-											data.channelLinkId,
-										),
-										isNull(schema.chatSyncMessageLinksTable.deletedAt),
-									),
-								),
-						),
-					)({ channelLinkId }, tx)
+					.run(
+						PG.from(schema.chatSyncMessageLinksTable)
+							.select()
+							.where(($) => [$.channelLinkId.eq(channelLinkId), $.deletedAt.isNull()]),
+					)
 					.pipe(Effect.map(decodeMessageLinkRows))
 
-			const findByHazelMessage = (
-				channelLinkId: SyncChannelLinkId,
-				hazelMessageId: MessageId,
-				tx?: TxFn,
-			) =>
+			const findByHazelMessage = (channelLinkId: SyncChannelLinkId, hazelMessageId: MessageId) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								channelLinkId: SyncChannelLinkId
-								hazelMessageId: MessageId
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncMessageLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncMessageLinksTable.channelLinkId,
-												data.channelLinkId,
-											),
-											eq(
-												schema.chatSyncMessageLinksTable.hazelMessageId,
-												data.hazelMessageId,
-											),
-											isNull(schema.chatSyncMessageLinksTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ channelLinkId, hazelMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncMessageLinksTable)
+							.select()
+							.where(($) => [
+								$.channelLinkId.eq(channelLinkId),
+								$.hazelMessageId.eq(hazelMessageId),
+								$.deletedAt.isNull(),
+							])
+							.limit(1),
 					)
+					.pipe(Effect.map(decodeMessageLinkOption))
 
 			const findByExternalMessage = (
 				channelLinkId: SyncChannelLinkId,
 				externalMessageId: ExternalMessageId,
-				tx?: TxFn,
 			) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								channelLinkId: SyncChannelLinkId
-								externalMessageId: ExternalMessageId
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncMessageLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncMessageLinksTable.channelLinkId,
-												data.channelLinkId,
-											),
-											eq(
-												schema.chatSyncMessageLinksTable.externalMessageId,
-												data.externalMessageId,
-											),
-											isNull(schema.chatSyncMessageLinksTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ channelLinkId, externalMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncMessageLinksTable)
+							.select()
+							.where(($) => [
+								$.channelLinkId.eq(channelLinkId),
+								$.externalMessageId.eq(externalMessageId),
+								$.deletedAt.isNull(),
+							])
+							.limit(1),
 					)
+					.pipe(Effect.map(decodeMessageLinkOption))
 
 			const findByRootHazelMessage = (
 				channelLinkId: SyncChannelLinkId,
 				rootHazelMessageId: MessageId,
-				tx?: TxFn,
 			) =>
 				db
-					.makeQuery(
-						(
-							execute,
-							data: {
-								channelLinkId: SyncChannelLinkId
-								rootHazelMessageId: MessageId
-							},
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.chatSyncMessageLinksTable)
-									.where(
-										and(
-											eq(
-												schema.chatSyncMessageLinksTable.channelLinkId,
-												data.channelLinkId,
-											),
-											eq(
-												schema.chatSyncMessageLinksTable.rootHazelMessageId,
-												data.rootHazelMessageId,
-											),
-											isNull(schema.chatSyncMessageLinksTable.deletedAt),
-										),
-									),
-							),
-					)({ channelLinkId, rootHazelMessageId }, tx)
-					.pipe(
-						Effect.map((results) =>
-							Option.fromNullishOr(results[0]).pipe(decodeMessageLinkOption),
-						),
+					.first(
+						PG.from(schema.chatSyncMessageLinksTable)
+							.select()
+							.where(($) => [
+								$.channelLinkId.eq(channelLinkId),
+								$.rootHazelMessageId.eq(rootHazelMessageId),
+								$.deletedAt.isNull(),
+							]),
 					)
+					.pipe(Effect.map(decodeMessageLinkOption))
 
-			const updateLastSyncedAt = (id: SyncMessageLinkId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncMessageLinksTable)
-							.set({
-								lastSyncedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const updateLastSyncedAt = (id: SyncMessageLinkId) =>
+				db.run(
+					PG.update(schema.chatSyncMessageLinksTable)
+						.set({
+							lastSyncedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
-			const softDelete = (id: SyncMessageLinkId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { id: SyncMessageLinkId }) =>
-					execute((client) =>
-						client
-							.update(schema.chatSyncMessageLinksTable)
-							.set({
-								deletedAt: new Date(),
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.chatSyncMessageLinksTable.id, data.id))
-							.returning(),
-					),
-				)({ id }, tx)
+			const softDelete = (id: SyncMessageLinkId) =>
+				db.run(
+					PG.update(schema.chatSyncMessageLinksTable)
+						.set({
+							deletedAt: new Date(),
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.id.eq(id)])
+						.returning(),
+				)
 
 			return {
 				...baseRepo,

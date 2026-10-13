@@ -9,11 +9,12 @@ import { layerKvResultPersistence } from "@hazel/effect-cloudflare/KvPersistence
 import { cachedRecoverable } from "@hazel/infra/cached-recoverable"
 import { HAZEL_DB_BINDING, HazelStack, hazelWorkerProps, readHazelDbBinding } from "@hazel/infra/cloudflare"
 import { derived, merge, optionalPlain, telemetryEnv } from "@hazel/infra/env"
+import { hazelTelemetry } from "@hazel/infra/maple"
 import { forIsolate, isolateContext } from "@hazel/infra/worker-http"
 import { workerEnvLayer } from "@hazel/infra/worker-runtime"
 import type { KVNamespace } from "@cloudflare/workers-types"
 import * as Cloudflare from "alchemy/Cloudflare"
-import { Config, Effect, Layer, Logger, Option, Redacted, Schema } from "effect"
+import { Config, Effect, Layer, Logger, Option, Redacted, Schema, Scope } from "effect"
 import { HttpServerRequest, HttpServerResponse } from "effect/http"
 import { electricProxyEnv, mapleObservability, ProxyCache } from "../resources.ts"
 import { AccessContextCacheService } from "./cache"
@@ -36,7 +37,11 @@ const props = Effect.gen(function* () {
 		workersDev: stage.kind !== "prd",
 		// Same hostname as the Railway deployment, so the web app's VITE_ELECTRIC_URL is unchanged.
 		domain: domains.electric,
-		observability: mapleObservability,
+		// Traces reach Maple through the SDK (`hazelTelemetry`), not the Cloudflare destination.
+		observability: {
+			...mapleObservability,
+			traces: { enabled: true, persist: true, headSamplingRate: 1 },
+		},
 		env: {
 			[HAZEL_DB_BINDING]: stack.db.hyperdrive,
 			[PROXY_CACHE_BINDING]: yield* ProxyCache,
@@ -135,19 +140,19 @@ export default class ElectricProxy extends Cloudflare.Worker<ElectricProxy>()(
 			// No binding: `Database.layerRequestScoped` names the missing connection on first use.
 			if (Option.isNone(binding)) return effect
 			return Effect.acquireUseRelease(
-				Effect.sync(() => Database.makeRequestConnection(binding.value.connectionString)),
-				(connection) =>
-					Effect.provideService(effect, Database.DatabaseConnection, { db: connection.db }),
-				// Only auth and where-clauses touch the database, so the socket closes before the
-				// (possibly long-polling) body streams; `waitUntil` keeps the close off the response.
-				(connection) =>
-					exec.waitUntil(
-						Effect.tryPromise(() => connection.end()).pipe(
-							Effect.catchTag("UnknownError", (error) =>
-								Effect.logWarning("Failed to close the request's Postgres client", error),
-							),
+				Scope.make(),
+				(scope) =>
+					Effect.provideServiceEffect(
+						effect,
+						Database.DatabaseConnection,
+						Database.makeRequestConnection(binding.value.connectionString).pipe(
+							Scope.provide(scope),
+							Effect.orDie,
 						),
 					),
+				// Only auth and where-clauses touch the database, so the socket closes before the
+				// (possibly long-polling) body streams; `waitUntil` keeps the close off the response.
+				(scope, exit) => exec.waitUntil(Scope.close(scope, exit)),
 			)
 		}
 
@@ -164,5 +169,5 @@ export default class ElectricProxy extends Cloudflare.Worker<ElectricProxy>()(
 				return HttpServerResponse.raw(response, { status: response.status })
 			}).pipe(Effect.orDie),
 		}
-	}),
+	}).pipe(Effect.provide(hazelTelemetry("electric-proxy"))),
 ) {}

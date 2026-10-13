@@ -71,10 +71,7 @@ export const objectPlatformLive = (env: Record<string, unknown>, botGateways: Bo
 		workerEnvLayer(env),
 	)
 
-/**
- * Opens the request's Postgres clients (Drizzle, and Effect SQL for auth storage); both
- * connect lazily and are closed with the request scope.
- */
+/** Both ORM and auth SQL clients connect lazily and close with the request scope. */
 export const provideRequestDatabase =
 	(env: Record<string, unknown>) =>
 	<A, E, R>(effect: Effect.Effect<A, E, R>) =>
@@ -87,9 +84,6 @@ export const provideRequestDatabase =
 			),
 			Effect.provideServiceEffect(
 				Database.DatabaseConnection,
-				Effect.acquireRelease(
-					Effect.sync(() => Database.makeRequestConnection(hazelDbConnectionString(env))),
-					(connection) => Effect.promise(() => connection.end()).pipe(Effect.ignore),
-				),
+				Database.makeRequestConnection(hazelDbConnectionString(env)).pipe(Effect.orDie),
 			),
 		)

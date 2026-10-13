@@ -8,7 +8,7 @@ import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { AccessToken, CryptoLive, layerPool } from "@hazel/auth/server"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { CurrentUser } from "@hazel/domain"
 import { AuthMiddleware } from "@hazel/domain/rpc"
 import { ConfigProvider, Effect, Layer, Redacted } from "effect"
@@ -136,7 +136,7 @@ describe("Hazel sign-in in the backend", () => {
 	let web: ReturnType<typeof HttpRouter.toWebHandler>
 
 	beforeAll(async () => {
-		harness = await createChatSyncDbHarness()
+		harness = await createChatSyncDbHarness(process.env.AUTH_TEST_DATABASE_URL)
 		const url = Redacted.make(harness.container.getConnectionUri())
 
 		const pair = await Effect.runPromise(
@@ -285,9 +285,8 @@ describe("Hazel sign-in in the backend", () => {
 		const [existing] = await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				return yield* db.execute((client) =>
-					client
-						.insert(schema.usersTable)
+				return yield* db.run(
+					PG.insertInto(schema.usersTable)
 						.values({
 							externalId: "user_clerk_email_only",
 							email: "Clerk.User@Example.com",
@@ -295,7 +294,7 @@ describe("Hazel sign-in in the backend", () => {
 							lastName: "User",
 							isOnboarded: true,
 						})
-						.returning({ id: schema.usersTable.id }),
+						.returning("id"),
 				)
 			}),
 		)

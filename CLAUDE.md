@@ -9,7 +9,7 @@ This is a monorepo with the following structure:
 - `apps/web/` - React frontend using Vite, TanStack Router, and TailwindCSS
 - `apps/backendv2/` - Backend API using Bun runtime and Effect-TS
 - `apps/cluster/` - Effect Cluster service for distributed workflows and background jobs
-- `packages/db/` - Shared database package using Drizzle ORM and PostgreSQL
+- `packages/db/` - Shared database package: effect-orm table definitions, the `Database` service, and migrations
 - `packages/domain/` - Shared domain types, RPC contracts, and cluster definitions
 - `.context/` - Git Subtrees for context of how to use specific libraries (In this case Effect and Effect Atom)
 
@@ -92,7 +92,9 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 
 ### Database (packages/db)
 
-- `bun run db` - Run Drizzle Kit commands for schema management
+- `bun run db:migrate` - Apply migrations to `DATABASE_URL` (adopts a database `drizzle-kit push` built)
+- `bun run db:generate --name <name>` - Diff `src/tables` against the migrations and write the next one
+- `bun run db:check` / `db:status` / `db:verify` - Validate the folder, list applied migrations, compare with a live schema
 
 ## Tech Stack
 
@@ -112,7 +114,7 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 
 - **Runtime**: Bun
 - **Framework**: Effect-TS for functional programming
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: PostgreSQL with effect-orm (`@maple-dev/effect-orm`) over `@effect/sql-pg`
 - **Auth**: Clerk (`@clerk/backend` JWT verification + webhook sync)
 - **API**: RPC-style endpoints via Effect Http Api
 
@@ -182,7 +184,20 @@ Available branded types in `@hazel/schema`: `OrganizationId`, `ChannelId`, `User
 
 ## Database
 
-Uses Drizzle ORM with PostgreSQL. Database schema is defined in `packages/db/src/schema/`. Use `bun run db` commands for migrations and schema management.
+Uses effect-orm (`@maple-dev/effect-orm`, source in `~/Documents/GitHub/effect-clickhouse`) over `@effect/sql-pg`. Tables are `PG.table` definitions in `packages/db/src/tables/`; migrations live in `packages/db/migrations/`.
+
+```typescript
+import { Database, PG, schema } from "@hazel/db"
+
+const db = yield* Database.Database
+const channel = yield* db.first(
+	PG.from(schema.channelsTable).select().where(($) => [$.id.eq(channelId), $.deletedAt.isNull()]),
+)
+yield* db.transaction(Effect.gen(function* () { /* every statement in here joins the transaction */ }))
+```
+
+- `db.transaction(effect)` pins every statement inside `effect` (repositories included) to one connection through fiber context; there is no transaction handle to pass around.
+- Schema changes: edit `src/tables`, then `bun run db:generate --name <name>`. Enums are `PG.enumType`, unique constraints `PG.unique` in `uniqueConstraints`; `generate` migrates both. What effect-orm does not model (check constraints, removing or reordering enum labels) goes in a `--custom` migration.
 
 ## Architecture Notes
 

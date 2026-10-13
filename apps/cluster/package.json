@@ -18,13 +18,12 @@
 		"@hazel/effect-bun": "workspace:*",
 		"@hazel/integrations": "workspace:*",
 		"@hazel/schema": "workspace:*",
-		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@types/bun": "1.3.9"
 	},
 	"peerDependencies": {
-		"typescript": "5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }

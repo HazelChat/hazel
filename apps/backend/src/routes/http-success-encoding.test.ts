@@ -71,14 +71,12 @@ const makeDatabaseLayer = () =>
 		Database.Database,
 		serviceShape<typeof Database.Database>({
 			transaction: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-				Effect.provideService(effect, Database.TransactionContext, {
-					execute: (fn) =>
-						Effect.promise(() =>
-							fn({
-								execute: async () => [{ txid: "42" }],
-							} as never),
-						),
+				Effect.provideService(effect, Database.Transaction, {
+					depth: 0,
+					isolationLevel: undefined,
+					accessMode: undefined,
 				}),
+			query: () => Effect.succeed([{ txid: "42" }]),
 		}),
 	)
 

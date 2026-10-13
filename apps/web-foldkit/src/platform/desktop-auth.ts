@@ -3,7 +3,7 @@ import { type DesktopAuth, layerVault, makeDesktopAuth } from "@hazel/auth/deskt
 import { getTauriCore, getTauriDeepLink, getTauriOpener } from "@hazel/desktop/bridge"
 import { BrowserLogin } from "@yielded/auth"
 import { layerCryptoWeb } from "@yielded/crypto/WebCrypto"
-import { Context, Effect, Layer, ManagedRuntime } from "effect"
+import { Context, Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { FetchHttpClient } from "effect/http"
 
 /**
@@ -43,17 +43,18 @@ const isCallback = (url: string) => url.startsWith(`${desktopClient.returnUrl}?`
  * Opens the hosted page in the system browser and waits (up to 10 minutes) for the deep
  * link back. A callback that arrived before `open` (cold start) is used first.
  */
-const BrowserLive = Layer.effect(
+export const BrowserLive = Layer.effect(
 	BrowserLogin.Browser,
 	Effect.gen(function* () {
-		const queued: Array<string> = []
+		const queued: Array<{ url: string; at: number }> = []
 		let receive: ((url: string) => void) | undefined
 
 		const capture = (urls: ReadonlyArray<string>) => {
 			for (const url of urls) {
 				if (!isCallback(url)) continue
 				if (receive !== undefined) receive(url)
-				else if (!queued.includes(url) && queued.length < 8) queued.push(url)
+				else if (!queued.some((entry) => entry.url === url) && queued.length < 8)
+					queued.push({ url, at: Date.now() })
 			}
 		}
 
@@ -71,36 +72,52 @@ const BrowserLive = Layer.effect(
 
 		return BrowserLogin.Browser.of({
 			open: ({ url }) =>
-				Effect.callback<string, BrowserLogin.PlatformError>((resume) => {
-					if (receive !== undefined) {
-						resume(Effect.fail(BrowserLogin.PlatformError.make({ reason: "busy" })))
-						return
-					}
-					let active = true
-					const finish = (result: Effect.Effect<string, BrowserLogin.PlatformError>) => {
-						if (!active) return
-						active = false
-						receive = undefined
-						resume(result)
-					}
-					receive = (callbackUrl) => finish(Effect.succeed(callbackUrl))
-					const pending = queued.shift()
-					if (pending !== undefined) receive(pending)
-					else {
-						const opener = getTauriOpener()
-						if (opener === undefined) finish(Effect.fail(unavailable()))
-						else opener.openUrl(url).catch(() => finish(Effect.fail(unavailable())))
-					}
-					return Effect.sync(() => {
-						active = false
-						receive = undefined
-					})
-				}).pipe(
-					Effect.timeout("10 minutes"),
-					Effect.catchTag("TimeoutError", () =>
-						Effect.fail(BrowserLogin.PlatformError.make({ reason: "expired" })),
-					),
-				),
+				Effect.gen(function* () {
+					const json = yield* KeychainStore.read
+					if (json === null) return yield* Effect.fail(unavailable("storage"))
+					const record = yield* Schema.decodeEffect(
+						Schema.fromJsonString(BrowserLogin.VaultRecord),
+					)(json).pipe(Effect.mapError(() => unavailable("storage")))
+					const attempt = record.attempt
+					if (attempt === undefined) return yield* Effect.fail(unavailable("storage"))
+					const matches = (callback: string) =>
+						new URL(callback).searchParams.get("state") === attempt.state
+					return yield* Effect.callback<string, BrowserLogin.PlatformError>((resume) => {
+						if (receive !== undefined) {
+							resume(Effect.fail(BrowserLogin.PlatformError.make({ reason: "busy" })))
+							return
+						}
+						let active = true
+						const finish = (result: Effect.Effect<string, BrowserLogin.PlatformError>) => {
+							if (!active) return
+							active = false
+							receive = undefined
+							resume(result)
+						}
+						receive = (callbackUrl) => {
+							if (matches(callbackUrl)) finish(Effect.succeed(callbackUrl))
+						}
+						const pending = queued.find(
+							(entry) => Date.now() - entry.at < 10 * 60_000 && matches(entry.url),
+						)
+						queued.length = 0
+						if (pending !== undefined) receive(pending.url)
+						else {
+							const opener = getTauriOpener()
+							if (opener === undefined) finish(Effect.fail(unavailable()))
+							else opener.openUrl(url).catch(() => finish(Effect.fail(unavailable())))
+						}
+						return Effect.sync(() => {
+							active = false
+							receive = undefined
+						})
+					}).pipe(
+						Effect.timeout("10 minutes"),
+						Effect.catchTag("TimeoutError", () =>
+							Effect.fail(BrowserLogin.PlatformError.make({ reason: "expired" })),
+						),
+					)
+				}),
 		})
 	}),
 )

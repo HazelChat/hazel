@@ -3,7 +3,7 @@ import { Config, Context, Effect, Layer, Schema } from "effect"
 /**
  * Sends organization invitation emails. On the api Worker this is Cloudflare Email Sending
  * (the `EMAIL` binding; `alchemy dev` writes the message to `.alchemy/local/email` instead).
- * On Bun, and wherever the binding is absent, the link is logged so local invites still work.
+ * Without a binding, delivery fails unless IS_DEV is explicitly enabled.
  */
 
 export interface InviteEmail {
@@ -87,13 +87,19 @@ export class InviteMailer extends Context.Service<
 			}),
 		)
 
-	/** No email service: logs the accept link (Bun, tests, a Worker without the binding). */
-	static readonly layerLog = Layer.succeed(InviteMailer, {
-		send: (invite) =>
-			Effect.logInfo("[invite] email sending is not configured; share this link", {
-				to: invite.to,
-				organization: invite.organizationName,
-				acceptUrl: invite.acceptUrl,
-			}),
-	})
+	/** Without an email binding, only explicit development mode may simulate delivery. */
+	static readonly layerLog = Layer.effect(
+		InviteMailer,
+		Effect.gen(function* () {
+			const isDev = yield* Config.Boolean("IS_DEV").pipe(Config.withDefault(false))
+			return {
+				send: (invite: InviteEmail) =>
+					isDev
+						? Effect.logInfo("[invite] development invitation link", {
+								acceptUrl: invite.acceptUrl,
+							})
+						: Effect.fail(new InviteEmailError({ message: "Email sending is not configured" })),
+			}
+		}),
+	)
 }

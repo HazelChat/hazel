@@ -27,13 +27,16 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
 
 ## Remaining
 
-1. **OAuth apps.** Create these, then put the credentials in Infisical `prod`:
-    - GitHub OAuth App: callback `https://api.hazel.sh/auth/github/callback`. Store as
+1. **Production OAuth apps: created (2026-10-13).** Credentials are in Infisical `prod`:
+    - GitHub OAuth App `Hazel`, owned by `MapleTechLabs`: callback `https://api.hazel.sh/auth/github/callback`. Store as
       `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET`.
-    - Google OAuth client (web): redirect URI `https://api.hazel.sh/auth/google/callback`. Store
+    - Google OAuth client `Hazel sign-in` (web), project `hazel-392721`: redirect URI `https://api.hazel.sh/auth/google/callback`. Store
       as `AUTH_GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_CLIENT_SECRET`.
     - Setting `AUTH_GITHUB_CLIENT_ID` turns the routes on at the next deploy. Do this only
       once the web app is ready.
+    - Google uses the existing shared Maple consent screen in Production. Its prior branding/data-access verification was rejected; the existing Analytics scope is unrelated to Hazel sign-in.
+    - Preview OAuth setup is paused. Preview CI uses GitHub `pr-preview`, with no Infisical sync configured.
+    - CI production secrets must be populated separately: Infisical `prod` has no GitHub sync configured.
 2. **Web app (`apps/web-foldkit`): done.** The sign-in pages are in place: sign-in (GitHub,
    Google, passkey), `/auth/register` (name form) and `/auth/continue?provider=` (restarts
    sign-in). The RPC and HTTP API clients send the session cookie. The Electric and actors
@@ -59,6 +62,7 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
       invites from `INVITE_EMAIL_FROM`, which defaults to `invites@hazel.sh`. Until the domain is
       onboarded, sends fail: the invite is withdrawn and the admin sees it as failed.
     - Pending Clerk invitations don't carry over. Ask admins to re-invite anyone still pending.
+    - The Foldkit web deploy checks `/auth/getSession` before publishing. Keep the deployed Clerk frontend until the Hazel API is enabled; the replacement bundle intentionally has no Clerk sign-in UI.
 7. **Cutover.** Re-run the import, deploy with `AUTH_GITHUB_CLIENT_ID` set, then switch the web
    app. Keep Clerk read-only for 2–4 weeks, then remove it (middleware fallback, `ClerkSync`,
    webhooks, `CLERK_*`).

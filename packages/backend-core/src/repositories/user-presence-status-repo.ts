@@ -1,8 +1,14 @@
-import { and, Database, eq, inArray, lt, Repository, ne, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ChannelId, UserId } from "@hazel/schema"
 import { UserPresenceStatus } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option, type Schema } from "effect"
+import { Context, DateTime, Effect, Layer, type Schema } from "effect"
+
+/** Timestamp columns take a `Date`; domain models carry `Date | DateTime.Utc`. */
+const toDate = (value: Date | DateTime.Utc): Date =>
+	DateTime.isDateTime(value) ? DateTime.toDate(value) : value
+const toNullableDate = (value: Date | DateTime.Utc | null): Date | null =>
+	value === null ? null : toDate(value)
 
 export class UserPresenceStatusRepo extends Context.Service<UserPresenceStatusRepo>()(
 	"UserPresenceStatusRepo",
@@ -19,132 +25,103 @@ export class UserPresenceStatusRepo extends Context.Service<UserPresenceStatusRe
 			)
 
 			// Find status by user ID
-			const findByUserId = (userId: UserId, tx?: TxFn) =>
-				db
-					.makeQuery((execute, _data) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.userPresenceStatusTable)
-								.where(eq(schema.userPresenceStatusTable.userId, userId))
-								.limit(1),
-						),
-					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByUserId = (userId: UserId) =>
+				db.first(
+					PG.from(schema.userPresenceStatusTable)
+						.select()
+						.where(($) => [$.userId.eq(userId)])
+						.limit(1),
+				)
 
 			// Upsert user presence status
-			const upsertByUserId = (data: Schema.Schema.Type<typeof UserPresenceStatus.Insert>, tx?: TxFn) =>
+			const upsertByUserId = (data: Schema.Schema.Type<typeof UserPresenceStatus.Insert>) =>
 				db
-					.makeQuery((execute, input: typeof data) =>
-						execute((client) =>
-							client
-								.insert(schema.userPresenceStatusTable)
-								.values(input as any)
-								.onConflictDoUpdate({
-									target: schema.userPresenceStatusTable.userId,
-									set: {
-										status: input.status,
-										customMessage: input.customMessage,
-										statusEmoji: input.statusEmoji,
-										statusExpiresAt: input.statusExpiresAt as any,
-										activeChannelId: input.activeChannelId,
-										updatedAt: new Date(),
-										lastSeenAt: new Date(),
-									},
-								})
-								.returning(),
-						),
-					)(data, tx)
+					.run(
+						PG.insertInto(schema.userPresenceStatusTable)
+							.values({
+								userId: data.userId,
+								status: data.status,
+								customMessage: data.customMessage,
+								statusEmoji: data.statusEmoji,
+								statusExpiresAt: toNullableDate(data.statusExpiresAt),
+								activeChannelId: data.activeChannelId,
+								suppressNotifications: data.suppressNotifications,
+								updatedAt: toDate(data.updatedAt),
+								lastSeenAt: toDate(data.lastSeenAt),
+							})
+							.onConflictDoUpdate({
+								target: ["userId"],
+								set: {
+									status: data.status,
+									customMessage: data.customMessage,
+									statusEmoji: data.statusEmoji,
+									statusExpiresAt: toNullableDate(data.statusExpiresAt),
+									activeChannelId: data.activeChannelId,
+									updatedAt: new Date(),
+									lastSeenAt: new Date(),
+								},
+							})
+							.returning(),
+					)
 					.pipe(Effect.map((results) => results[0]))
 
 			// Update active channel for user
-			const updateActiveChannel = (
-				params: {
-					userId: UserId
-					activeChannelId: ChannelId | null
-				},
-				tx?: TxFn,
-			) =>
-				db.makeQuery((execute, _data) =>
-					execute((client) =>
-						client
-							.update(schema.userPresenceStatusTable)
-							.set({
-								activeChannelId: params.activeChannelId,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.userPresenceStatusTable.userId, params.userId))
-							.returning(),
-					),
-				)(params, tx)
+			const updateActiveChannel = (params: { userId: UserId; activeChannelId: ChannelId | null }) =>
+				db.run(
+					PG.update(schema.userPresenceStatusTable)
+						.set({
+							activeChannelId: params.activeChannelId,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.userId.eq(params.userId)])
+						.returning(),
+				)
 
 			// Update user status
-			const updateStatus = (
-				params: {
-					userId: UserId
-					status: "online" | "away" | "busy" | "dnd" | "offline"
-					customMessage?: string | null
-				},
-				tx?: TxFn,
-			) =>
-				db.makeQuery((execute, _data) =>
-					execute((client) =>
-						client
-							.update(schema.userPresenceStatusTable)
-							.set({
-								status: params.status,
-								customMessage: params.customMessage,
-								updatedAt: new Date(),
-							})
-							.where(eq(schema.userPresenceStatusTable.userId, params.userId))
-							.returning(),
-					),
-				)(params, tx)
+			const updateStatus = (params: {
+				userId: UserId
+				status: "online" | "away" | "busy" | "dnd" | "offline"
+				customMessage?: string | null
+			}) =>
+				db.run(
+					PG.update(schema.userPresenceStatusTable)
+						.set({
+							status: params.status,
+							customMessage: params.customMessage,
+							updatedAt: new Date(),
+						})
+						.where(($) => [$.userId.eq(params.userId)])
+						.returning(),
+				)
 
 			// Update heartbeat timestamp (lightweight operation for presence tracking)
-			const updateHeartbeat = (userId: UserId, tx?: TxFn) =>
-				db
-					.makeQuery((execute, _data) =>
-						execute((client) =>
-							client
-								.update(schema.userPresenceStatusTable)
-								.set({
-									lastSeenAt: new Date(),
-								})
-								.where(eq(schema.userPresenceStatusTable.userId, userId))
-								.returning(),
-						),
-					)({ userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const updateHeartbeat = (userId: UserId) =>
+				db.first(
+					PG.update(schema.userPresenceStatusTable)
+						.set({
+							lastSeenAt: new Date(),
+						})
+						.where(($) => [$.userId.eq(userId)])
+						.returning(),
+				)
 
 			// Find users with stale heartbeats (for cron job cleanup)
 			const findStaleUsers = (timeout: Date) =>
-				db.execute((client) =>
-					client
-						.select({
-							userId: schema.userPresenceStatusTable.userId,
-							status: schema.userPresenceStatusTable.status,
-							lastSeenAt: schema.userPresenceStatusTable.lastSeenAt,
-						})
-						.from(schema.userPresenceStatusTable)
-						.where(
-							and(
-								lt(schema.userPresenceStatusTable.lastSeenAt, timeout),
-								ne(schema.userPresenceStatusTable.status, "offline"),
-							),
-						),
+				db.run(
+					PG.from(schema.userPresenceStatusTable)
+						.select("userId", "status", "lastSeenAt")
+						.where(($) => [$.lastSeenAt.lt(timeout), $.status.neq("offline")]),
 				)
 
 			// Batch update users to offline status
 			const markUsersOffline = (userIds: UserId[]) =>
-				db.execute((client) =>
-					client
-						.update(schema.userPresenceStatusTable)
+				db.run(
+					PG.update(schema.userPresenceStatusTable)
 						.set({
 							status: "offline",
 							updatedAt: new Date(),
 						})
-						.where(inArray(schema.userPresenceStatusTable.userId, userIds))
+						.where(($) => [$.userId.in_(...userIds)])
 						.returning(),
 				)
 

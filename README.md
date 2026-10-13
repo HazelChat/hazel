@@ -40,7 +40,7 @@ Hazel Chat is a full-stack chat application featuring:
 - **Bun** runtime
 - **Effect-TS** functional programming framework
 - **Effect RPC** for type-safe APIs
-- **Drizzle ORM** with PostgreSQL
+- **effect-orm** (`@maple-dev/effect-orm`) with PostgreSQL
 - **Clerk** for authentication
 
 ### Cluster Service
@@ -65,7 +65,7 @@ Hazel Chat is a full-stack chat application featuring:
 │   ├── electric-proxy/      # Electric SQL proxy worker
 │   └── link-preview-worker/ # Link preview generation
 ├── packages/
-│   ├── db/                  # Drizzle ORM schemas and migration artifacts (`drizzle/`)
+│   ├── db/                  # effect-orm table definitions and migrations (`migrations/`)
 │   ├── domain/              # Shared types, RPC contracts, cluster definitions
 │   ├── backend-core/        # Reusable backend services and repositories
 │   ├── schema/              # Shared schema definitions

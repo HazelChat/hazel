@@ -1,7 +1,7 @@
-import { and, Database, eq, isNull, Repository, schema, sql, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 import type { OrganizationId, UserId } from "@hazel/schema"
 import { Organization } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option, type Schema } from "effect"
+import { Context, Effect, Layer, Option } from "effect"
 import { ChannelMemberRepo } from "./channel-member-repo"
 import { ChannelRepo } from "./channel-repo"
 
@@ -19,53 +19,43 @@ export class OrganizationRepo extends Context.Service<OrganizationRepo>()("Organ
 		const channelRepo = yield* ChannelRepo
 		const channelMemberRepo = yield* ChannelMemberRepo
 
-		const findBySlug = (slug: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, slugValue: string) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.organizationsTable)
-							.where(eq(schema.organizationsTable.slug, slugValue))
-							.limit(1),
-					),
-				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findBySlug = (slug: string) =>
+			db.first(
+				PG.from(schema.organizationsTable)
+					.select()
+					.where(($) => [$.slug.eq(slug)])
+					.limit(1),
+			)
 
 		// Find an organization by the Clerk org id stashed in `settings.clerkOrganizationId`.
 		// Used by the Clerk webhook so post-migration events resolve to the canonical row
 		// even when slugs diverge between WorkOS-era and Clerk.
-		const findByClerkOrgId = (clerkOrgId: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, payload: { clerkOrgId: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.organizationsTable)
-							.where(
-								and(
-									sql`${schema.organizationsTable.settings}->>'clerkOrganizationId' = ${payload.clerkOrgId}`,
-									isNull(schema.organizationsTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)({ clerkOrgId }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByClerkOrgId = (clerkOrgId: string) =>
+			db.first(
+				PG.from(schema.organizationsTable)
+					.select()
+					.where(($) => [
+						PG.jsonText($.settings, "clerkOrganizationId").eq(clerkOrgId),
+						$.deletedAt.isNull(),
+					])
+					.limit(1),
+			)
 
 		// Resolve a Clerk organization to a local row, creating or back-linking as needed.
 		// Lookup order is Clerk-ID first, slug second — this is the same order the Clerk
 		// webhook uses, and it must stay aligned to prevent duplicate "ghost" rows from
 		// being recreated by the session lazy-sync after a dedup pass.
-		const upsertFromClerk = (
-			clerk: { id: string; name: string; slug: string | null; imageUrl?: string | null },
-			tx?: TxFn,
-		) =>
+		const upsertFromClerk = (clerk: {
+			id: string
+			name: string
+			slug: string | null
+			imageUrl?: string | null
+		}) =>
 			Effect.gen(function* () {
-				const byClerkId = yield* findByClerkOrgId(clerk.id, tx).pipe(Effect.map(Option.getOrNull))
+				const byClerkId = yield* findByClerkOrgId(clerk.id).pipe(Effect.map(Option.getOrNull))
 				const bySlug =
 					!byClerkId && clerk.slug
-						? yield* findBySlug(clerk.slug, tx).pipe(Effect.map(Option.getOrNull))
+						? yield* findBySlug(clerk.slug).pipe(Effect.map(Option.getOrNull))
 						: null
 				const existing = byClerkId ?? bySlug
 
@@ -78,22 +68,19 @@ export class OrganizationRepo extends Context.Service<OrganizationRepo>()("Organ
 					const needsNameUpdate = clerk.name !== existing.name
 
 					if (needsClerkIdLink || needsLogoUpdate || needsNameUpdate) {
-						yield* baseRepo.update(
-							{
-								id: existing.id,
-								...(needsNameUpdate ? { name: clerk.name } : {}),
-								...(needsLogoUpdate ? { logoUrl: desiredLogoUrl } : {}),
-								...(needsClerkIdLink
-									? {
-											settings: {
-												...(currentSettings ?? {}),
-												clerkOrganizationId: clerk.id,
-											},
-										}
-									: {}),
-							},
-							tx,
-						)
+						yield* baseRepo.update({
+							id: existing.id,
+							...(needsNameUpdate ? { name: clerk.name } : {}),
+							...(needsLogoUpdate ? { logoUrl: desiredLogoUrl } : {}),
+							...(needsClerkIdLink
+								? {
+										settings: {
+											...(currentSettings ?? {}),
+											clerkOrganizationId: clerk.id,
+										},
+									}
+								: {}),
+						})
 					}
 					return existing
 				}
@@ -101,64 +88,39 @@ export class OrganizationRepo extends Context.Service<OrganizationRepo>()("Organ
 				if (!clerk.slug) return null
 
 				const inserted = yield* baseRepo
-					.insert(
-						{
-							name: clerk.name,
-							slug: clerk.slug,
-							logoUrl: clerk.imageUrl ?? null,
-							isPublic: false,
-							settings: { clerkOrganizationId: clerk.id },
-							deletedAt: null,
-						},
-						tx,
-					)
+					.insert({
+						name: clerk.name,
+						slug: clerk.slug,
+						logoUrl: clerk.imageUrl ?? null,
+						isPublic: false,
+						settings: { clerkOrganizationId: clerk.id },
+						deletedAt: null,
+					})
 					.pipe(Effect.map((rows) => rows[0]!))
 				return inserted
 			})
 
-		const findBySlugIfPublic = (slug: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, slugValue: string) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.organizationsTable)
-							.where(
-								and(
-									eq(schema.organizationsTable.slug, slugValue),
-									eq(schema.organizationsTable.isPublic, true),
-									isNull(schema.organizationsTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)(slug, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findBySlugIfPublic = (slug: string) =>
+			db.first(
+				PG.from(schema.organizationsTable)
+					.select()
+					.where(($) => [$.slug.eq(slug), $.isPublic.eq(true), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
-		const findAllActive = (tx?: TxFn) =>
-			db.makeQuery((execute, _data: {}) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.organizationsTable)
-						.where(isNull(schema.organizationsTable.deletedAt)),
-				),
-			)({}, tx)
+		const findAllActive = () =>
+			db.run(
+				PG.from(schema.organizationsTable)
+					.select()
+					.where(($) => [$.deletedAt.isNull()]),
+			)
 
-		const softDelete = (id: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, orgId: OrganizationId) =>
-				execute((client) =>
-					client
-						.update(schema.organizationsTable)
-						.set({ deletedAt: new Date() })
-						.where(
-							and(
-								eq(schema.organizationsTable.id, orgId),
-								isNull(schema.organizationsTable.deletedAt),
-							),
-						),
-				),
-			)(id, tx)
+		const softDelete = (id: OrganizationId) =>
+			db.run(
+				PG.update(schema.organizationsTable)
+					.set({ deletedAt: new Date() })
+					.where(($) => [$.id.eq(id), $.deletedAt.isNull()]),
+			)
 
 		const setupDefaultChannels = (organizationId: OrganizationId, userId: UserId) =>
 			Effect.gen(function* () {

@@ -22,7 +22,11 @@
 			},
 			"alchemy": {
 				"@cloudflare/workers-types": "4.20260603.1",
+				"@maple-dev/alchemy": "0.2.0",
 				"alchemy": "2.0.0-beta.80"
+			},
+			"tooling": {
+				"typescript": "^7.0.2"
 			}
 		}
 	},
@@ -54,6 +58,7 @@
 		"@cloudflare/workers-types": "catalog:alchemy",
 		"@effect/vitest": "catalog:effect",
 		"@hazel/infra": "workspace:*",
+		"@maple-dev/alchemy": "catalog:alchemy",
 		"@rolldown/plugin-babel": "^0.2.1",
 		"@types/node": "^24",
 		"@vitest/coverage-v8": "^4.1.0",
@@ -63,7 +68,7 @@
 		"oxlint": "^1.55.0",
 		"rollup-plugin-visualizer": "7.0.1",
 		"turbo": "^2.8.16",
-		"typescript": "^5.9.3",
+		"typescript": "catalog:tooling",
 		"vitest": "^4.1.0",
 		"web": "workspace:*",
 		"wrangler": "^4.73.0"

@@ -1,4 +1,4 @@
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { BotId, UserId } from "@hazel/schema"
 import { Effect, Option, Schema } from "effect"
 import { AccessContextCacheService, type BotAccessContext } from "../cache"
@@ -68,17 +68,12 @@ export const validateBotToken = Effect.fn("ElectricProxy.validateBotToken")(func
 
 	// Query bot by token hash
 	const db = yield* Database.Database
-	const botResult = yield* db.execute((client) =>
-		client
-			.select({
-				id: schema.botsTable.id,
-				userId: schema.botsTable.userId,
-			})
-			.from(schema.botsTable)
-			.where(and(eq(schema.botsTable.apiTokenHash, tokenHash), isNull(schema.botsTable.deletedAt)))
+	const botOption = yield* db.first(
+		PG.from(schema.botsTable)
+			.select("id", "userId")
+			.where(($) => [$.apiTokenHash.eq(tokenHash), $.deletedAt.isNull()])
 			.limit(1),
 	)
-	const botOption = Option.fromNullishOr(botResult[0])
 
 	if (Option.isNone(botOption)) {
 		yield* Effect.annotateCurrentSpan("auth.token.valid", false)

@@ -1,7 +1,7 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 import type { ChannelId, ConnectConversationId, OrganizationId } from "@hazel/schema"
 import { ConnectConversationChannel } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ConnectConversationChannelRepo extends Context.Service<ConnectConversationChannelRepo>()(
 	"ConnectConversationChannelRepo",
@@ -17,71 +17,35 @@ export class ConnectConversationChannelRepo extends Context.Service<ConnectConve
 			)
 			const db = yield* Database.Database
 
-			const findByChannelId = (channelId: ChannelId, tx?: TxFn) =>
-				db
-					.makeQuery((execute, input: ChannelId) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.connectConversationChannelsTable)
-								.where(
-									and(
-										eq(schema.connectConversationChannelsTable.channelId, input),
-										isNull(schema.connectConversationChannelsTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)(channelId, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByChannelId = (channelId: ChannelId) =>
+				db.first(
+					PG.from(schema.connectConversationChannelsTable)
+						.select()
+						.where(($) => [$.channelId.eq(channelId), $.deletedAt.isNull()])
+						.limit(1),
+				)
 
-			const findByConversationId = (conversationId: ConnectConversationId, tx?: TxFn) =>
-				db.makeQuery((execute, input: ConnectConversationId) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.connectConversationChannelsTable)
-							.where(
-								and(
-									eq(schema.connectConversationChannelsTable.conversationId, input),
-									isNull(schema.connectConversationChannelsTable.deletedAt),
-								),
-							),
-					),
-				)(conversationId, tx)
+			const findByConversationId = (conversationId: ConnectConversationId) =>
+				db.run(
+					PG.from(schema.connectConversationChannelsTable)
+						.select()
+						.where(($) => [$.conversationId.eq(conversationId), $.deletedAt.isNull()]),
+				)
 
 			const findByConversationAndOrganization = (
 				conversationId: ConnectConversationId,
 				organizationId: OrganizationId,
-				tx?: TxFn,
 			) =>
-				db
-					.makeQuery(
-						(
-							execute,
-							input: { conversationId: ConnectConversationId; organizationId: OrganizationId },
-						) =>
-							execute((client) =>
-								client
-									.select()
-									.from(schema.connectConversationChannelsTable)
-									.where(
-										and(
-											eq(
-												schema.connectConversationChannelsTable.conversationId,
-												input.conversationId,
-											),
-											eq(
-												schema.connectConversationChannelsTable.organizationId,
-												input.organizationId,
-											),
-											isNull(schema.connectConversationChannelsTable.deletedAt),
-										),
-									)
-									.limit(1),
-							),
-					)({ conversationId, organizationId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+				db.first(
+					PG.from(schema.connectConversationChannelsTable)
+						.select()
+						.where(($) => [
+							$.conversationId.eq(conversationId),
+							$.organizationId.eq(organizationId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
 			return {
 				...baseRepo,

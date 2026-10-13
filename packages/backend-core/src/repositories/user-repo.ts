@@ -1,8 +1,12 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ClerkUserId, UserId } from "@hazel/schema"
 import { User } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option, type Schema } from "effect"
+import { Context, DateTime, Effect, Layer, type Schema } from "effect"
+
+/** Timestamp columns take a `Date`; domain models carry `Date | DateTime.Utc`. */
+const toNullableDate = (value: Date | DateTime.Utc | null): Date | null =>
+	value === null ? null : DateTime.isDateTime(value) ? DateTime.toDate(value) : value
 
 export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 	make: Effect.gen(function* () {
@@ -16,18 +20,13 @@ export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 		)
 		const db = yield* Database.Database
 
-		const findByExternalId = (externalId: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, id: string) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.usersTable)
-							.where(eq(schema.usersTable.externalId, id))
-							.limit(1),
-					),
-				)(externalId, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByExternalId = (externalId: string) =>
+			db.first(
+				PG.from(schema.usersTable)
+					.select()
+					.where(($) => [$.externalId.eq(externalId)])
+					.limit(1),
+			)
 
 		/**
 		 * Upsert user by external ID.
@@ -37,66 +36,63 @@ export class UserRepo extends Context.Service<UserRepo>()("UserRepo", {
 		const upsertByExternalId = (
 			data: Schema.Schema.Type<typeof User.Insert>,
 			options?: { syncAvatarUrl?: boolean },
-			tx?: TxFn,
 		) =>
 			db
-				.makeQuery((execute, input: typeof data & { syncAvatarUrl?: boolean }) =>
-					execute((client) =>
-						client
-							.insert(schema.usersTable)
-							.values(input as any)
-							.onConflictDoUpdate({
-								target: schema.usersTable.externalId,
-								set: {
-									firstName: input.firstName,
-									lastName: input.lastName,
-									...(input.syncAvatarUrl && { avatarUrl: input.avatarUrl }),
-									email: input.email,
-									updatedAt: new Date(),
-								},
-							})
-							.returning(),
-					),
-				)({ ...data, syncAvatarUrl: options?.syncAvatarUrl }, tx)
+				.run(
+					PG.insertInto(schema.usersTable)
+						.values({
+							externalId: data.externalId,
+							email: data.email,
+							firstName: data.firstName,
+							lastName: data.lastName,
+							avatarUrl: data.avatarUrl,
+							userType: data.userType,
+							settings: data.settings,
+							isOnboarded: data.isOnboarded,
+							timezone: data.timezone,
+							deletedAt: toNullableDate(data.deletedAt),
+						})
+						.onConflictDoUpdate({
+							target: ["externalId"],
+							set: {
+								firstName: data.firstName,
+								lastName: data.lastName,
+								...(options?.syncAvatarUrl && { avatarUrl: data.avatarUrl }),
+								email: data.email,
+								updatedAt: new Date(),
+							},
+						})
+						.returning(),
+				)
 				.pipe(Effect.map((results) => results[0]))
 
 		const upsertClerkUser = (
 			data: Omit<Schema.Schema.Type<typeof User.Insert>, "externalId"> & { externalId: ClerkUserId },
 			options?: { syncAvatarUrl?: boolean },
-			tx?: TxFn,
-		) => upsertByExternalId(data, options, tx)
+		) => upsertByExternalId(data, options)
 
-		const findAllActive = (tx?: TxFn) =>
-			db.makeQuery((execute, _data: {}) =>
-				execute((client) =>
-					client.select().from(schema.usersTable).where(isNull(schema.usersTable.deletedAt)),
-				),
-			)({}, tx)
+		const findAllActive = () =>
+			db.run(
+				PG.from(schema.usersTable)
+					.select()
+					.where(($) => [$.deletedAt.isNull()]),
+			)
 
-		const softDelete = (id: UserId, tx?: TxFn) =>
-			db.makeQuery((execute, userId: UserId) =>
-				execute((client) =>
-					client
-						.update(schema.usersTable)
-						.set({ deletedAt: new Date() })
-						.where(and(eq(schema.usersTable.id, userId), isNull(schema.usersTable.deletedAt))),
-				),
-			)(id, tx)
+		const softDelete = (id: UserId) =>
+			db.run(
+				PG.update(schema.usersTable)
+					.set({ deletedAt: new Date() })
+					.where(($) => [$.id.eq(id), $.deletedAt.isNull()]),
+			)
 
-		const softDeleteByExternalId = (externalId: string, tx?: TxFn) =>
-			db.makeQuery((execute, id: string) =>
-				execute((client) =>
-					client
-						.update(schema.usersTable)
-						.set({ deletedAt: new Date() })
-						.where(
-							and(eq(schema.usersTable.externalId, id), isNull(schema.usersTable.deletedAt)),
-						),
-				),
-			)(externalId, tx)
+		const softDeleteByExternalId = (externalId: string) =>
+			db.run(
+				PG.update(schema.usersTable)
+					.set({ deletedAt: new Date() })
+					.where(($) => [$.externalId.eq(externalId), $.deletedAt.isNull()]),
+			)
 
-		const softDeleteByClerkUserId = (clerkUserId: ClerkUserId, tx?: TxFn) =>
-			softDeleteByExternalId(clerkUserId, tx)
+		const softDeleteByClerkUserId = (clerkUserId: ClerkUserId) => softDeleteByExternalId(clerkUserId)
 
 		const bulkUpsertByExternalId = (users: Schema.Schema.Type<typeof User.Insert>[]) =>
 			Effect.forEach(users, (data) => upsertByExternalId(data), { concurrency: 10 })

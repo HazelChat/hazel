@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Headers } from "effect/http"
 import type { SuccessValue } from "effect/rpc/RpcMiddleware"
 import { BotRepo, UserRepo } from "@hazel/backend-core"
-import { CurrentUser, type CurrentUser as CurrentUserNamespace } from "@hazel/domain"
+import { CurrentUser, InvalidBearerTokenError, type CurrentUser as CurrentUserNamespace } from "@hazel/domain"
 import type { UserId } from "@hazel/schema"
 import { Effect, Layer, Option, Ref, Result, Context } from "effect"
 import { AuthMiddleware, AuthMiddlewareLive } from "./auth.ts"
@@ -259,6 +259,21 @@ describe("AuthMiddlewareLive", () => {
 		})
 
 		expect(Result.isSuccess(result) && Option.getOrNull(result.success)?.email).toBe("native@example.com")
+	})
+
+	it("falls through a stale cookie to a valid bearer, but rejects a stale cookie alone", async () => {
+		const hazelSession = makeHazelSessionLayer({
+			enabled: true,
+			fromCookie: () =>
+				Effect.fail(new InvalidBearerTokenError({ message: "expired", detail: "expired" })),
+		})
+		const valid = await runAuth(Headers.fromInput({ authorization: "Bearer a.b.c" }), { hazelSession })
+		expect(Result.isSuccess(valid)).toBe(true)
+		const cookieOnly = await runAuth(Headers.fromInput({}), { hazelSession })
+		expect(
+			Result.isFailure(cookieOnly) &&
+				("_tag" in cookieOnly.failure ? cookieOnly.failure._tag : "unhandled"),
+		).toBe("InvalidBearerTokenError")
 	})
 
 	it("never checks bot tokens as Hazel sessions", async () => {

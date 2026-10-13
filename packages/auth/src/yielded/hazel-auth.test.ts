@@ -1,14 +1,13 @@
 /**
  * End-to-end over real HTTP routes and a real Postgres whose schema is pushed from
- * packages/db (drizzle-kit), so the library's mappings are checked against Hazel's actual
+ * packages/db (effect-orm), so the library's mappings are checked against Hazel's actual
  * tables. Only GitHub's network endpoints are simulated.
  *
  * Auth storage gets a fresh, lazily-connecting client per request, exactly as on the
  * Cloudflare Worker. Set AUTH_TEST_DATABASE_URL to a disposable database to run; the
  * test drops and recreates its public schema.
  */
-import { execFileSync } from "node:child_process"
-import { fileURLToPath } from "node:url"
+import { migrateUrl } from "@hazel/db/migrate"
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { PgClient } from "@effect/sql-pg"
@@ -184,11 +183,7 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 			}),
 		)
 		// The real schema, exactly as deployed.
-		execFileSync("bunx", ["drizzle-kit", "push", "--force"], {
-			cwd: fileURLToPath(new URL("../../../db", import.meta.url)),
-			env: { ...process.env, DATABASE_URL },
-			stdio: "pipe",
-		})
+		await Effect.runPromise(migrateUrl(DATABASE_URL!))
 		web = HttpRouter.toWebHandler(App, { disableLogger: true })
 	}, 120_000)
 
@@ -487,7 +482,9 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 			HttpClient.make((request, url) =>
 				Effect.promise(async () => {
 					const body =
-						request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : undefined
+						request.body._tag === "Uint8Array"
+							? new TextDecoder().decode(request.body.body)
+							: undefined
 					const response = await send(
 						new Request(url.href, { method: request.method, headers: request.headers, body }),
 					)
@@ -502,7 +499,9 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 			open: ({ url }) =>
 				Effect.promise(async () => {
 					const attemptId = new URL(url).searchParams.get("attempt")!
-					const described = await call(browser, "POST", desktopLogin.routes.describe.path, { attemptId })
+					const described = await call(browser, "POST", desktopLogin.routes.describe.path, {
+						attemptId,
+					})
 					expect(await described.json()).toMatchObject({
 						_tag: "Success",
 						value: { displayName: "Hazel Desktop", browserSession: "confirm" },
@@ -549,7 +548,9 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 				const credential = (yield* desktop.credential)!
 				const verified = yield* Effect.promise(() => verify(credential))
 				expect(verified.status).toBe(200)
-				expect((yield* Effect.promise(() => verified.json())).userId).toBe(browserSession.value.subjectId)
+				expect((yield* Effect.promise(() => verified.json())).userId).toBe(
+					browserSession.value.subjectId,
+				)
 
 				// Signing out of the desktop ends only the desktop session.
 				yield* desktop.signOut

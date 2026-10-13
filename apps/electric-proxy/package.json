@@ -19,12 +19,11 @@
 		"@hazel/infra": "workspace:*",
 		"@hazel/schema": "workspace:*",
 		"alchemy": "catalog:alchemy",
-		"drizzle-orm": "^0.45.1",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "catalog:alchemy",
 		"@types/bun": "1.3.9",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }

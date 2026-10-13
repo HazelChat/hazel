@@ -55,8 +55,7 @@ const subject = {
 	isActiveStatus: (value: unknown) => value === true,
 	activeCondition: eq(T.oauthUsers.columns.status, true),
 	decodeAuthenticationRequirement: () => requirement,
-	nextSecurityRevision: (current) =>
-		Sessions.SecurityRevision.make(current === "initial" ? "1" : String(BigInt(current) + 1n)),
+	nextSecurityRevision: (_current) => Sessions.SecurityRevision.make(globalThis.crypto.randomUUID()),
 } satisfies Mapping.OAuthSubjectTable<typeof T.oauthUsers>
 
 const authority = {

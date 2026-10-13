@@ -1,4 +1,3 @@
-import { sql } from "@hazel/db"
 import { schema } from "@hazel/db"
 import type { UserId } from "@hazel/schema"
 import { describe, expect, it } from "vitest"
@@ -10,13 +9,15 @@ import {
 	eqCol,
 	inSubquery,
 	isNullCol,
+	refs,
+	sql,
 	sqlToWhereClause,
 	WhereClauseParamMismatchError,
 } from "./where-clause-builder"
 
 describe("where-clause-builder channel access", () => {
 	it("buildChannelVisibilityClause uses single channel_access subquery", () => {
-		const result = buildChannelVisibilityClause("user-1" as UserId, schema.channelsTable.deletedAt)
+		const result = buildChannelVisibilityClause("user-1" as UserId, refs(schema.channelsTable).deletedAt)
 
 		expect(result.params).toEqual(["user-1"])
 		expect(result.whereClause).toContain(`"deletedAt" IS NULL`)
@@ -30,8 +31,8 @@ describe("where-clause-builder channel access", () => {
 	it("buildChannelAccessClause includes optional deletedAt and single subquery", () => {
 		const result = buildChannelAccessClause(
 			"user-1" as UserId,
-			schema.messagesTable.channelId,
-			schema.messagesTable.deletedAt,
+			refs(schema.messagesTable).channelId,
+			refs(schema.messagesTable).deletedAt,
 		)
 
 		expect(result.params).toEqual(["user-1"])
@@ -45,11 +46,10 @@ describe("where-clause-builder channel access", () => {
 })
 
 describe("where-clause-builder sql compiler", () => {
-	it("compiles drizzle sql to an Electric-compatible where clause", () => {
-		const channelAccessSubquery = sql`(SELECT ${col(schema.channelAccessTable.channelId)} FROM ${schema.channelAccessTable} WHERE ${eqCol(schema.channelAccessTable.userId, "user-1" as UserId)})`
+	it("compiles a sql fragment to an Electric-compatible where clause", () => {
+		const channelAccessSubquery = sql`(SELECT ${col(refs(schema.channelAccessTable).channelId)} FROM ${refs(schema.channelAccessTable).$table} WHERE ${eqCol(refs(schema.channelAccessTable).userId, "user-1" as UserId)})`
 		const result = sqlToWhereClause(
-			schema.channelsTable,
-			sql`${isNullCol(schema.channelsTable.deletedAt)} AND ${inSubquery(schema.channelsTable.id, channelAccessSubquery)}`,
+			sql`${isNullCol(refs(schema.channelsTable).deletedAt)} AND ${inSubquery(refs(schema.channelsTable).id, channelAccessSubquery)}`,
 		)
 
 		expect(result.params).toEqual(["user-1"])

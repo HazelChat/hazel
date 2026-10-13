@@ -1,5 +1,6 @@
+import { ConfigProvider, Effect, Layer, Result } from "effect"
 import { describe, expect, it } from "vitest"
-import { renderInviteEmail } from "./invite-mailer"
+import { InviteMailer, renderInviteEmail } from "./invite-mailer"
 
 describe("renderInviteEmail", () => {
 	it("escapes names in the HTML and keeps the plain text readable", () => {
@@ -15,4 +16,24 @@ describe("renderInviteEmail", () => {
 		expect(email.html).toContain('href="https://app.hazel.sh/invite/abc"')
 		expect(email.text).toContain("Accept the invitation: https://app.hazel.sh/invite/abc")
 	})
+})
+
+it("fails closed when the email binding is absent outside development", async () => {
+	const result = await Effect.runPromise(
+		Effect.gen(function* () {
+			const mailer = yield* InviteMailer
+			return yield* Effect.result(
+				mailer.send({
+					to: "ada@hazel.test",
+					organizationName: "Hazel",
+					inviterName: "Grace",
+					acceptUrl: "https://app.hazel.test/invite/example",
+				}),
+			)
+		}).pipe(
+			Effect.provide(InviteMailer.layerLog),
+			Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({ IS_DEV: false }))),
+		),
+	)
+	expect(Result.isFailure(result) && result.failure._tag).toBe("InviteEmailError")
 })

@@ -11,10 +11,9 @@
  * If a bot already exists, it will be skipped and no new token will be generated.
  */
 
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { BotId, UserId } from "@hazel/schema"
 import { createHash, randomUUID } from "crypto"
-import { eq } from "drizzle-orm"
 import { Effect, References } from "effect"
 import { DatabaseLive } from "../src/services/database"
 
@@ -96,25 +95,27 @@ const seedBot = Effect.fn("seedInternalBots.seedBot")(function* (provider: Inter
 	console.log("  -> Checking if bot exists...")
 
 	// Check if bot user already exists
-	const existingUser = yield* db.execute((client) =>
-		client.select().from(schema.usersTable).where(eq(schema.usersTable.externalId, externalId)).limit(1),
+	const existingUser = yield* db.run(
+		PG.from(schema.usersTable)
+			.select()
+			.where(($) => [$.externalId.eq(externalId)])
+			.limit(1),
 	)
 
 	if (existingUser.length > 0) {
 		console.log("  -> Bot already exists, skipping...")
-		console.log(`     Bot User ID: ${existingUser[0].id}`)
+		console.log(`     Bot User ID: ${existingUser[0]!.id}`)
 
 		// Get the bot record to show bot ID
-		const existingBot = yield* db.execute((client) =>
-			client
+		const existingBot = yield* db.run(
+			PG.from(schema.botsTable)
 				.select()
-				.from(schema.botsTable)
-				.where(eq(schema.botsTable.userId, existingUser[0].id as UserId))
+				.where(($) => [$.userId.eq(existingUser[0]!.id)])
 				.limit(1),
 		)
 
 		if (existingBot.length > 0) {
-			console.log(`     Bot ID: ${existingBot[0].id}`)
+			console.log(`     Bot ID: ${existingBot[0]!.id}`)
 		}
 
 		return { created: false, provider }
@@ -128,8 +129,8 @@ const seedBot = Effect.fn("seedInternalBots.seedBot")(function* (provider: Inter
 
 	// Create bot user
 	console.log("  -> Creating bot user...")
-	yield* db.execute((client) =>
-		client.insert(schema.usersTable).values({
+	yield* db.run(
+		PG.insertInto(schema.usersTable).values({
 			id: botUserId,
 			externalId,
 			email: botEmail,
@@ -143,8 +144,8 @@ const seedBot = Effect.fn("seedInternalBots.seedBot")(function* (provider: Inter
 
 	// Create bot record
 	console.log("  -> Creating bot record...")
-	yield* db.execute((client) =>
-		client.insert(schema.botsTable).values({
+	yield* db.run(
+		PG.insertInto(schema.botsTable).values({
 			id: botId,
 			userId: botUserId,
 			createdBy: botUserId,

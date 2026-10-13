@@ -21,10 +21,10 @@ export default defineConfig({
 		watch: { ignored: ["**/src-tauri/**"] },
 	},
 	envPrefix: ["VITE_", "TAURI_ENV_*"],
-	// Same target as apps/web so Tailwind/Lightning CSS emit byte-identical color syntax; Windows
-	// desktop runs WebView2 (Chromium).
+	// Auth and data dependencies contain BigInt literals, which cannot be lowered to Safari 13.
+	// Windows desktop runs WebView2 (Chromium).
 	build: {
-		target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
+		target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari14",
 		sourcemap: !!process.env.TAURI_ENV_DEBUG,
 	},
 	publicDir: resolve(__dirname, "../web/public"),

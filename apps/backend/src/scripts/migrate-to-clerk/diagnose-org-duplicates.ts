@@ -5,32 +5,22 @@
  * channel count, and createdAt so we can see the canonical row vs. the ghost.
  */
 
-import { Database, and, eq, isNull, sql, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Effect, Logger } from "effect"
 import { DatabaseLive } from "../../services/database"
 
 const program = Effect.gen(function* () {
 	const db = yield* Database.Database
 
-	const orgs = yield* db.makeQuery((execute, _data: {}) =>
-		execute((client) =>
-			client
-				.select({
-					id: schema.organizationsTable.id,
-					name: schema.organizationsTable.name,
-					slug: schema.organizationsTable.slug,
-					logoUrl: schema.organizationsTable.logoUrl,
-					settings: schema.organizationsTable.settings,
-					createdAt: schema.organizationsTable.createdAt,
-				})
-				.from(schema.organizationsTable)
-				.where(isNull(schema.organizationsTable.deletedAt)),
-		),
-	)({})
+	const orgs = yield* db.run(
+		PG.from(schema.organizationsTable)
+			.select("id", "name", "slug", "logoUrl", "settings", "createdAt")
+			.where(($) => [$.deletedAt.isNull()]),
+	)
 
 	yield* Effect.log(`Total active orgs: ${orgs.length}`)
 
-	const byName = new Map<string, typeof orgs>()
+	const byName = new Map<string, Array<(typeof orgs)[number]>>()
 	for (const o of orgs) {
 		const key = o.name.trim().toLowerCase()
 		const list = byName.get(key) ?? []
@@ -44,39 +34,24 @@ const program = Effect.gen(function* () {
 	for (const [name, list] of dupes) {
 		yield* Effect.log(`\n=== "${name}" — ${list.length} rows ===`)
 		for (const o of list.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
-			const memberCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
-				execute(
-					(client) =>
-						client.execute(sql`
-								select count(*)::int as n
-								from organization_members
-								where "organizationId" = ${payload.orgId} and "deletedAt" is null
-							`) as unknown as Promise<Array<{ n: number }>>,
-				),
-			)({ orgId: o.id })
+			const memberCount = yield* db.run(
+				PG.from(schema.organizationMembersTable)
+					.select(() => ({ n: PG.count() }))
+					.where(($) => [$.organizationId.eq(o.id), $.deletedAt.isNull()]),
+			)
 
-			const channelCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
-				execute(
-					(client) =>
-						client.execute(sql`
-								select count(*)::int as n
-								from channels
-								where "organizationId" = ${payload.orgId} and "deletedAt" is null
-							`) as unknown as Promise<Array<{ n: number }>>,
-				),
-			)({ orgId: o.id })
+			const channelCount = yield* db.run(
+				PG.from(schema.channelsTable)
+					.select(() => ({ n: PG.count() }))
+					.where(($) => [$.organizationId.eq(o.id), $.deletedAt.isNull()]),
+			)
 
-			const messageCount = yield* db.makeQuery((execute, payload: { orgId: string }) =>
-				execute(
-					(client) =>
-						client.execute(sql`
-								select count(*)::int as n
-								from messages m
-								join channels c on c.id = m."channelId"
-								where c."organizationId" = ${payload.orgId}
-							`) as unknown as Promise<Array<{ n: number }>>,
-				),
-			)({ orgId: o.id })
+			const messageCount = yield* db.run(
+				PG.from(schema.messagesTable, "m")
+					.innerJoin(schema.channelsTable, "c", (m, c) => c.id.eq(m.channelId))
+					.select(() => ({ n: PG.count() }))
+					.where(($) => [$.c.organizationId.eq(o.id)]),
+			)
 
 			const clerkOrgId = (o.settings as any)?.clerkOrganizationId ?? "(none)"
 			yield* Effect.log(

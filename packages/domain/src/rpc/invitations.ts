@@ -10,7 +10,10 @@ import { OrganizationNotFoundError } from "./organizations"
 export const InvitationRole = Schema.Literals(["admin", "member"])
 export type InvitationRole = typeof InvitationRole.Type
 
-const Email = Schema.Trim.check(Schema.isMaxLength(320), Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+export const InvitationEmail = Schema.Trim.check(
+	Schema.isMaxLength(320),
+	Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+)
 
 /** A pending invitation as admins see it. */
 export class Invitation extends Schema.Class<Invitation>("Invitation")({
@@ -76,7 +79,7 @@ export class InvitationRpcs extends RpcGroup.make(
 	Rpc.make("invitation.create", {
 		payload: Schema.Struct({
 			organizationId: OrganizationId,
-			emails: Schema.Array(Email).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+			emails: Schema.Array(InvitationEmail).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
 			role: InvitationRole,
 		}),
 		success: InvitationCreateResult,

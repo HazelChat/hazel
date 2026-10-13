@@ -3,12 +3,13 @@
  * skipped, one email per address), the public preview, accepting with the invited account, and
  * revoking. Emails are captured instead of sent.
  */
-import { Database } from "@hazel/db"
+import { InvitationRepo } from "@hazel/backend-core"
+import { Database, PG, schema } from "@hazel/db"
 import { CurrentUser } from "@hazel/domain"
 import { CurrentRpcScopes } from "@hazel/domain/scopes"
 import type { ApiScope } from "@hazel/domain/scopes"
 import { OrganizationId, UserId } from "@hazel/schema"
-import { ConfigProvider, Effect, Exit, Layer, Schema } from "effect"
+import { ConfigProvider, Effect, Exit, Layer, Option, Schema } from "effect"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createChatSyncDbHarness, type ChatSyncDbHarness } from "../test/chat-sync-db-harness"
 import { type InviteEmail, InviteMailer } from "./invite-mailer"
@@ -84,13 +85,12 @@ const failureTag = (exit: Exit.Exit<unknown, unknown>) =>
 
 describe("invitations", () => {
 	beforeAll(async () => {
-		harness = await createChatSyncDbHarness()
+		harness = await createChatSyncDbHarness(process.env.AUTH_TEST_DATABASE_URL)
 		await harness.reset()
 		await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				yield* db.execute((client) =>
-					client.$client.unsafe(`
+				const setupSql = `
 						INSERT INTO users (id, "externalId", email, "firstName", "lastName", "userType", "isOnboarded", "createdAt", "updatedAt")
 						VALUES
 							('${owner}', 'owner', '${users[owner]}', 'Olive', 'Owner', 'user', true, NOW(), NOW()),
@@ -102,7 +102,10 @@ describe("invitations", () => {
 						VALUES
 							('${id(20)}', '${orgId}', '${owner}', 'owner', NOW(), NOW()),
 							('${id(21)}', '${orgId}', '${member}', 'member', NOW(), NOW());
-					`),
+					`
+				yield* Effect.forEach(
+					setupSql.split(";").filter((statement) => statement.trim() !== ""),
+					(statement) => db.execute(Database.sql.raw(statement)),
 				)
 			}),
 		)
@@ -161,10 +164,10 @@ describe("invitations", () => {
 		const role = await harness.run(
 			Effect.gen(function* () {
 				const db = yield* Database.Database
-				return yield* db.execute((client) =>
-					client.$client.unsafe(
-						`select role from organization_members where "organizationId" = '${orgId}' and "userId" = '${invitee}'`,
-					),
+				return yield* db.run(
+					PG.from(schema.organizationMembersTable)
+						.select("role")
+						.where(($) => [$.organizationId.eq(orgId), $.userId.eq(invitee)]),
 				)
 			}),
 		)
@@ -202,4 +205,27 @@ describe("invitations", () => {
 		)
 		expect(Exit.isSuccess(preview) && preview.value.status).toBe("Revoked")
 	}, 60_000)
+	it("a stale send failure or acceptance cannot consume a replacement invitation", async () => {
+		const result = await harness.run(
+			Effect.gen(function* () {
+				const repo = yield* InvitationRepo
+				const data = {
+					organizationId: orgId,
+					email: "race@hazel.test",
+					role: "member" as const,
+					invitedBy: owner,
+					expiresAt: new Date(Date.now() + 60000),
+				}
+				const first = yield* repo.upsertPending({ ...data, tokenHash: "first-token" })
+				const replacement = yield* repo.upsertPending({ ...data, tokenHash: "replacement-token" })
+				const revoked = yield* repo.revoke(first.id, first.tokenHash)
+				const accepted = yield* repo.markAccepted(first.id, invitee, first.tokenHash)
+				const pending = yield* repo.findById(replacement.id)
+				return { revoked, accepted, pending }
+			}).pipe(Effect.provide(InvitationRepo.layer)),
+		)
+		expect(Option.isNone(result.revoked)).toBe(true)
+		expect(Option.isNone(result.accepted)).toBe(true)
+		expect(Option.getOrNull(result.pending)?.status).toBe("pending")
+	})
 })

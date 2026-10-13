@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { MessageOutboxRepo } from "@hazel/backend-core"
-import { Database, eq, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, UserId } from "@hazel/schema"
 import { Effect } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
@@ -108,13 +108,12 @@ describe("MessageOutboxRepo", () => {
 					},
 				})
 
-				yield* db.execute((client) =>
-					client
-						.update(schema.messageOutboxEventsTable)
+				yield* db.run(
+					PG.update(schema.messageOutboxEventsTable)
 						.set({
 							availableAt: new Date(Date.now() + 60_000),
 						})
-						.where(eq(schema.messageOutboxEventsTable.id, futureEvent.id)),
+						.where(($) => [$.id.eq(futureEvent.id)]),
 				)
 
 				yield* repo.insert({
@@ -164,15 +163,14 @@ describe("MessageOutboxRepo", () => {
 					},
 				})
 
-				yield* db.execute((client) =>
-					client
-						.update(schema.messageOutboxEventsTable)
+				yield* db.run(
+					PG.update(schema.messageOutboxEventsTable)
 						.set({
 							status: "processing",
 							lockedAt: new Date(Date.now() - 180_000),
 							lockedBy: "old-worker",
 						})
-						.where(eq(schema.messageOutboxEventsTable.id, event.id)),
+						.where(($) => [$.id.eq(event.id)]),
 				)
 
 				return yield* repo.claimNextBatch({

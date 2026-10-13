@@ -9,10 +9,15 @@ import { Effect } from "effect"
 const KEY = "hazel:auth:return-to"
 
 /** Same-origin paths only: `/x`, never `//host` or an absolute URL. */
-export const safeReturnTo = (value: string | null | undefined): string | null =>
-	value != null && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\")
-		? value
-		: null
+export const safeReturnTo = (value: string | null | undefined): string | null => {
+	if (value == null || !value.startsWith("/")) return null
+	try {
+		const url = new URL(value, "https://hazel.invalid")
+		return url.origin === "https://hazel.invalid" ? `${url.pathname}${url.search}${url.hash}` : null
+	} catch {
+		return null
+	}
+}
 
 export const rememberReturnTo = (returnTo: string | null): Effect.Effect<void> =>
 	Effect.sync(() => {

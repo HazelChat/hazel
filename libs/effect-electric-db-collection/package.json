@@ -22,6 +22,6 @@
 	},
 	"devDependencies": {
 		"@vitest/coverage-istanbul": "^4.0.17",
-		"typescript": "^5.9.3"
+		"typescript": "catalog:tooling"
 	}
 }

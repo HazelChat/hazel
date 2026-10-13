@@ -1,8 +1,14 @@
-import { and, count, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { OrganizationMember } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option, type Schema } from "effect"
+import { Context, DateTime, Effect, Layer, type Schema } from "effect"
+
+/** Timestamp columns take a `Date`; domain models carry `Date | DateTime.Utc`. */
+const toDate = (value: Date | DateTime.Utc): Date =>
+	DateTime.isDateTime(value) ? DateTime.toDate(value) : value
+const toNullableDate = (value: Date | DateTime.Utc | null): Date | null =>
+	value === null ? null : toDate(value)
 
 export class OrganizationMemberRepo extends Context.Service<OrganizationMemberRepo>()(
 	"OrganizationMemberRepo",
@@ -19,143 +25,91 @@ export class OrganizationMemberRepo extends Context.Service<OrganizationMemberRe
 			const db = yield* Database.Database
 
 			// Extended methods used by Clerk sync
-			const findByOrgAndUser = (organizationId: OrganizationId, userId: UserId, tx?: TxFn) =>
-				db
-					.makeQuery((execute, data: { organizationId: OrganizationId; userId: UserId }) =>
-						execute((client) =>
-							client
-								.select()
-								.from(schema.organizationMembersTable)
-								.where(
-									and(
-										eq(
-											schema.organizationMembersTable.organizationId,
-											data.organizationId,
-										),
-										eq(schema.organizationMembersTable.userId, data.userId),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								)
-								.limit(1),
-						),
-					)({ organizationId, userId }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const findByOrgAndUser = (organizationId: OrganizationId, userId: UserId) =>
+				db.first(
+					PG.from(schema.organizationMembersTable)
+						.select()
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.userId.eq(userId),
+							$.deletedAt.isNull(),
+						])
+						.limit(1),
+				)
 
-			const upsertByOrgAndUser = (
-				data: Schema.Schema.Type<typeof OrganizationMember.Insert>,
-				tx?: TxFn,
-			) =>
-				db.makeQuery((execute, input: typeof data) =>
-					execute(async (client) => {
-						// Atomic upsert using onConflictDoUpdate to avoid race conditions
-						const result = await client
-							.insert(schema.organizationMembersTable)
-							.values(input as any)
+			const upsertByOrgAndUser = (data: Schema.Schema.Type<typeof OrganizationMember.Insert>) =>
+				// Atomic upsert using onConflictDoUpdate to avoid race conditions
+				db
+					.run(
+						PG.insertInto(schema.organizationMembersTable)
+							.values({
+								organizationId: data.organizationId,
+								userId: data.userId,
+								role: data.role,
+								nickname: data.nickname,
+								joinedAt: toDate(data.joinedAt),
+								invitedBy: data.invitedBy,
+								deletedAt: toNullableDate(data.deletedAt),
+							})
 							.onConflictDoUpdate({
-								target: [
-									schema.organizationMembersTable.organizationId,
-									schema.organizationMembersTable.userId,
-								],
+								target: ["organizationId", "userId"],
 								set: {
-									role: input.role,
+									role: data.role,
 									deletedAt: null,
 								},
 							})
-							.returning()
-						return result[0]
-					}),
-				)(data, tx)
+							.returning(),
+					)
+					.pipe(Effect.map((results) => results[0]))
 
-			const findAllByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-				db.makeQuery((execute, orgId: OrganizationId) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.organizationMembersTable)
-							.where(
-								and(
-									eq(schema.organizationMembersTable.organizationId, orgId),
-									isNull(schema.organizationMembersTable.deletedAt),
-								),
-							),
-					),
-				)(organizationId, tx)
+			const findAllByOrganization = (organizationId: OrganizationId) =>
+				db.run(
+					PG.from(schema.organizationMembersTable)
+						.select()
+						.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+				)
 
-			const countByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
+			const countByOrganization = (organizationId: OrganizationId) =>
 				db
-					.makeQuery((execute, orgId: OrganizationId) =>
-						execute((client) =>
-							client
-								.select({ count: count() })
-								.from(schema.organizationMembersTable)
-								.where(
-									and(
-										eq(schema.organizationMembersTable.organizationId, orgId),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								),
-						),
-					)(organizationId, tx)
+					.run(
+						PG.from(schema.organizationMembersTable)
+							.select(() => ({ count: PG.count() }))
+							.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+					)
 					.pipe(Effect.map((results) => results[0]?.count ?? 0))
 
-			const findAllActive = (tx?: TxFn) =>
-				db.makeQuery((execute, _data: {}) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.organizationMembersTable)
-							.where(isNull(schema.organizationMembersTable.deletedAt)),
-					),
-				)({}, tx)
+			const findAllActive = () =>
+				db.run(
+					PG.from(schema.organizationMembersTable)
+						.select()
+						.where(($) => [$.deletedAt.isNull()]),
+				)
 
-			const softDelete = (id: OrganizationMemberId, tx?: TxFn) =>
-				db.makeQuery((execute, memberId: OrganizationMemberId) =>
-					execute((client) =>
-						client
-							.update(schema.organizationMembersTable)
-							.set({ deletedAt: new Date() })
-							.where(
-								and(
-									eq(schema.organizationMembersTable.id, memberId),
-									isNull(schema.organizationMembersTable.deletedAt),
-								),
-							),
-					),
-				)(id, tx)
+			const softDelete = (id: OrganizationMemberId) =>
+				db.run(
+					PG.update(schema.organizationMembersTable)
+						.set({ deletedAt: new Date() })
+						.where(($) => [$.id.eq(id), $.deletedAt.isNull()]),
+				)
 
-			const softDeleteByOrgAndUser = (organizationId: OrganizationId, userId: UserId, tx?: TxFn) =>
-				db.makeQuery((execute, data: { organizationId: OrganizationId; userId: UserId }) =>
-					execute((client) =>
-						client
-							.update(schema.organizationMembersTable)
-							.set({ deletedAt: new Date() })
-							.where(
-								and(
-									eq(schema.organizationMembersTable.organizationId, data.organizationId),
-									eq(schema.organizationMembersTable.userId, data.userId),
-									isNull(schema.organizationMembersTable.deletedAt),
-								),
-							),
-					),
-				)({ organizationId, userId }, tx)
+			const softDeleteByOrgAndUser = (organizationId: OrganizationId, userId: UserId) =>
+				db.run(
+					PG.update(schema.organizationMembersTable)
+						.set({ deletedAt: new Date() })
+						.where(($) => [
+							$.organizationId.eq(organizationId),
+							$.userId.eq(userId),
+							$.deletedAt.isNull(),
+						]),
+				)
 
-			const updateMetadata = (id: OrganizationMemberId, metadata: Record<string, any>, tx?: TxFn) =>
-				db
-					.makeQuery((execute, data: { id: OrganizationMemberId; metadata: Record<string, any> }) =>
-						execute((client) =>
-							client
-								.update(schema.organizationMembersTable)
-								.set({ metadata: data.metadata })
-								.where(
-									and(
-										eq(schema.organizationMembersTable.id, data.id),
-										isNull(schema.organizationMembersTable.deletedAt),
-									),
-								)
-								.returning(),
-						),
-					)({ id, metadata }, tx)
-					.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+			const updateMetadata = (id: OrganizationMemberId, metadata: Record<string, any>) =>
+				db.first(
+					PG.update(schema.organizationMembersTable)
+						.set({ metadata })
+						.where(($) => [$.id.eq(id), $.deletedAt.isNull()])
+						.returning(),
+				)
 
 			const bulkUpsertByOrgAndUser = (
 				members: Schema.Schema.Type<typeof OrganizationMember.Insert>[],

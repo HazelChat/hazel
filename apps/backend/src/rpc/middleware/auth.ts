@@ -39,14 +39,23 @@ export const AuthMiddlewareLive = Layer.effect(
 		return AuthMiddleware.of((effect, { headers }) =>
 			Effect.gen(function* () {
 				// Hazel session cookie (browser). RPC calls are POSTs, so the Origin is checked.
-				const cookieUser = yield* hazelSession.fromCookie(headers, "POST")
+				const authHeader = Headers.get(headers, "authorization")
+				const hasBearer =
+					Option.isSome(authHeader) &&
+					authHeader.value.startsWith("Bearer ") &&
+					authHeader.value.length > 7
+				const cookieUser = yield* hazelSession
+					.fromCookie(headers, "POST")
+					.pipe(
+						Effect.catchTag("InvalidBearerTokenError", (error) =>
+							hasBearer ? Effect.succeedNone : Effect.fail(error),
+						),
+					)
 				if (Option.isSome(cookieUser)) {
 					return yield* Effect.provideService(effect, CurrentUser.Context, cookieUser.value)
 				}
 
 				// Bearer token: Clerk JWT, Hazel session credential (native clients) or bot token
-				const authHeader = Headers.get(headers, "authorization")
-
 				if (Option.isSome(authHeader) && authHeader.value.startsWith("Bearer ")) {
 					const token = authHeader.value.slice(7)
 

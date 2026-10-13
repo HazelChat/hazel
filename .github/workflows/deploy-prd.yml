@@ -43,6 +43,17 @@ jobs:
             # api Worker (apps/backend/src/worker/env.ts)
             CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY }}
             CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+            # Hazel sign-in (Clerk remains available for existing sessions during cutover).
+            AUTH_GITHUB_CLIENT_ID: ${{ vars.AUTH_GITHUB_CLIENT_ID || secrets.AUTH_GITHUB_CLIENT_ID }}
+            AUTH_GITHUB_CLIENT_SECRET: ${{ secrets.AUTH_GITHUB_CLIENT_SECRET }}
+            AUTH_GOOGLE_CLIENT_ID: ${{ vars.AUTH_GOOGLE_CLIENT_ID || secrets.AUTH_GOOGLE_CLIENT_ID }}
+            AUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.AUTH_GOOGLE_CLIENT_SECRET }}
+            AUTH_BINDING_KEY: ${{ secrets.AUTH_BINDING_KEY }}
+            AUTH_TRANSACTION_KEY: ${{ secrets.AUTH_TRANSACTION_KEY }}
+            AUTH_ACCESS_TOKEN_KID: ${{ vars.AUTH_ACCESS_TOKEN_KID || secrets.AUTH_ACCESS_TOKEN_KID }}
+            AUTH_ACCESS_TOKEN_PRIVATE_JWK: ${{ secrets.AUTH_ACCESS_TOKEN_PRIVATE_JWK }}
+            AUTH_PASSKEY_RP_ID: ${{ vars.AUTH_PASSKEY_RP_ID }}
+            AUTH_TRUSTED_ORIGINS: ${{ vars.AUTH_TRUSTED_ORIGINS }}
             CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET }}
             COOKIE_DOMAIN: ${{ vars.COOKIE_DOMAIN }}
             S3_BUCKET: ${{ vars.S3_BUCKET }}
@@ -70,8 +81,10 @@ jobs:
             KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
             # electric-proxy + self-hosted Electric (DATABASE_URL comes from the stack's replication role)
             ELECTRIC_SECRET: ${{ secrets.ELECTRIC_SECRET }}
-            OTEL_BASE_URL: ${{ vars.OTEL_BASE_URL }}
-            MAPLE_INGEST_KEY: ${{ secrets.MAPLE_INGEST_KEY }}
+            # Maple: an org-admin API key with `ingest_keys:read`, `dashboards:write`, `alerts:write`; the deploy binds the ingest key onto the Workers
+            MAPLE_API_KEY: ${{ secrets.MAPLE_API_KEY }}
+            # A Hazel channel's Maple webhook URL: production alerts post there (`@hazel/infra/maple-monitoring`)
+            MAPLE_ALERTS_WEBHOOK_URL: ${{ secrets.MAPLE_ALERTS_WEBHOOK_URL }}
         steps:
             - name: Checkout
               uses: actions/checkout@v4

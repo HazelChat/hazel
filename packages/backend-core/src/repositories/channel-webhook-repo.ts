@@ -1,8 +1,8 @@
-import { and, Database, eq, isNull, Repository, schema, type TxFn } from "@hazel/db"
+import { Database, PG, Repository, schema } from "@hazel/db"
 
 import type { ChannelId, ChannelWebhookId, OrganizationId } from "@hazel/schema"
 import { ChannelWebhook } from "@hazel/domain/models"
-import { Context, Effect, Layer, Option } from "effect"
+import { Context, Effect, Layer } from "effect"
 
 export class ChannelWebhookRepo extends Context.Service<ChannelWebhookRepo>()("ChannelWebhookRepo", {
 	make: Effect.gen(function* () {
@@ -17,98 +17,63 @@ export class ChannelWebhookRepo extends Context.Service<ChannelWebhookRepo>()("C
 		const db = yield* Database.Database
 
 		// Find all webhooks for a channel
-		const findByChannel = (channelId: ChannelId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { channelId: ChannelId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.channelWebhooksTable)
-						.where(
-							and(
-								eq(schema.channelWebhooksTable.channelId, data.channelId),
-								isNull(schema.channelWebhooksTable.deletedAt),
-							),
-						),
-				),
-			)({ channelId }, tx)
+		const findByChannel = (channelId: ChannelId) =>
+			db.run(
+				PG.from(schema.channelWebhooksTable)
+					.select()
+					.where(($) => [$.channelId.eq(channelId), $.deletedAt.isNull()]),
+			)
 
 		// Find webhook by token hash (for authentication)
-		const findByTokenHash = (tokenHash: string, tx?: TxFn) =>
-			db
-				.makeQuery((execute, data: { tokenHash: string }) =>
-					execute((client) =>
-						client
-							.select()
-							.from(schema.channelWebhooksTable)
-							.where(
-								and(
-									eq(schema.channelWebhooksTable.tokenHash, data.tokenHash),
-									isNull(schema.channelWebhooksTable.deletedAt),
-								),
-							)
-							.limit(1),
-					),
-				)({ tokenHash }, tx)
-				.pipe(Effect.map((results) => Option.fromNullishOr(results[0])))
+		const findByTokenHash = (tokenHash: string) =>
+			db.first(
+				PG.from(schema.channelWebhooksTable)
+					.select()
+					.where(($) => [$.tokenHash.eq(tokenHash), $.deletedAt.isNull()])
+					.limit(1),
+			)
 
 		// Update last used timestamp
-		const updateLastUsed = (id: ChannelWebhookId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { id: ChannelWebhookId }) =>
-				execute((client) =>
-					client
-						.update(schema.channelWebhooksTable)
-						.set({ lastUsedAt: new Date(), updatedAt: new Date() })
-						.where(eq(schema.channelWebhooksTable.id, data.id))
-						.returning(),
-				),
-			)({ id }, tx)
+		const updateLastUsed = (id: ChannelWebhookId) =>
+			db.run(
+				PG.update(schema.channelWebhooksTable)
+					.set({ lastUsedAt: new Date(), updatedAt: new Date() })
+					.where(($) => [$.id.eq(id)])
+					.returning(),
+			)
 
 		// Update token hash (for token regeneration)
-		const updateToken = (id: ChannelWebhookId, tokenHash: string, tokenSuffix: string, tx?: TxFn) =>
-			db.makeQuery((execute, data: { id: ChannelWebhookId; tokenHash: string; tokenSuffix: string }) =>
-				execute((client) =>
-					client
-						.update(schema.channelWebhooksTable)
-						.set({
-							tokenHash: data.tokenHash,
-							tokenSuffix: data.tokenSuffix,
-							updatedAt: new Date(),
-						})
-						.where(eq(schema.channelWebhooksTable.id, data.id))
-						.returning(),
-				),
-			)({ id, tokenHash, tokenSuffix }, tx)
+		const updateToken = (id: ChannelWebhookId, tokenHash: string, tokenSuffix: string) =>
+			db.run(
+				PG.update(schema.channelWebhooksTable)
+					.set({
+						tokenHash,
+						tokenSuffix,
+						updatedAt: new Date(),
+					})
+					.where(($) => [$.id.eq(id)])
+					.returning(),
+			)
 
 		// Soft delete webhook
-		const softDelete = (id: ChannelWebhookId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { id: ChannelWebhookId }) =>
-				execute((client) =>
-					client
-						.update(schema.channelWebhooksTable)
-						.set({
-							deletedAt: new Date(),
-							updatedAt: new Date(),
-						})
-						.where(eq(schema.channelWebhooksTable.id, data.id))
-						.returning(),
-				),
-			)({ id }, tx)
+		const softDelete = (id: ChannelWebhookId) =>
+			db.run(
+				PG.update(schema.channelWebhooksTable)
+					.set({
+						deletedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(($) => [$.id.eq(id)])
+					.returning(),
+			)
 
 		// Find all webhooks for an organization
-		const findByOrganization = (organizationId: OrganizationId, tx?: TxFn) =>
-			db.makeQuery((execute, data: { organizationId: OrganizationId }) =>
-				execute((client) =>
-					client
-						.select()
-						.from(schema.channelWebhooksTable)
-						.where(
-							and(
-								eq(schema.channelWebhooksTable.organizationId, data.organizationId),
-								isNull(schema.channelWebhooksTable.deletedAt),
-							),
-						),
-				),
-			)({ organizationId }, tx)
+		const findByOrganization = (organizationId: OrganizationId) =>
+			db.run(
+				PG.from(schema.channelWebhooksTable)
+					.select()
+					.where(($) => [$.organizationId.eq(organizationId), $.deletedAt.isNull()]),
+			)
 
 		return {
 			...baseRepo,

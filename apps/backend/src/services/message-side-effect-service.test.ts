@@ -1,6 +1,6 @@
 import { FetchHttpClient, HttpClient, HttpClientResponse } from "effect/http"
 import { randomUUID } from "node:crypto"
-import { Database, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { ChannelId, MessageId, MessageReactionId, OrganizationId, UserId } from "@hazel/schema"
 import { Effect, Layer, Context } from "effect"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
@@ -107,8 +107,8 @@ const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 		Effect.gen(function* () {
 			const db = yield* Database.Database
 
-			yield* db.execute((client) =>
-				client.insert(schema.organizationsTable).values({
+			yield* db.run(
+				PG.insertInto(schema.organizationsTable).values({
 					id: ORG_ID,
 					name: "Outbox Org",
 					slug: "outbox-org",
@@ -119,8 +119,8 @@ const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 				}),
 			)
 
-			yield* db.execute((client) =>
-				client.insert(schema.usersTable).values([
+			yield* db.run(
+				PG.insertInto(schema.usersTable).values([
 					{
 						id: AUTHOR_ID,
 						externalId: `user-${AUTHOR_ID}`,
@@ -150,8 +150,8 @@ const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 				]),
 			)
 
-			yield* db.execute((client) =>
-				client.insert(schema.channelsTable).values([
+			yield* db.run(
+				PG.insertInto(schema.channelsTable).values([
 					{
 						id: CHANNEL_ID,
 						name: "general",
@@ -175,7 +175,7 @@ const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 				]),
 			)
 
-			const messagesToInsert: Array<typeof schema.messagesTable.$inferInsert> = [
+			const messagesToInsert: Array<schema.NewMessage> = [
 				{
 					id: ORIGINAL_MESSAGE_ID,
 					channelId: CHANNEL_ID,
@@ -205,7 +205,7 @@ const seedMessageSideEffectState = (harness: ChatSyncDbHarness) =>
 				},
 			]
 
-			yield* db.execute((client) => client.insert(schema.messagesTable).values(messagesToInsert))
+			yield* db.run(PG.insertInto(schema.messagesTable).values(messagesToInsert))
 		}),
 	)
 

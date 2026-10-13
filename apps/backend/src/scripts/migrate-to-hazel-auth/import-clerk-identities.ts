@@ -23,10 +23,10 @@
  * - conflicts: the provider account is already linked to a different Hazel user.
  * - missingInHazel / missingInClerk: present on one side only.
  */
-import { mkdirSync, writeFileSync } from "node:fs"
+import { chmodSync, closeSync, fchmodSync, mkdirSync, openSync, writeFileSync } from "node:fs"
 import { createClerkClient, type User as ClerkUser } from "@clerk/backend"
 import { PgClient } from "@effect/sql-pg"
-import { CryptoLive, isProvider, linkIdentity, type Provider } from "@hazel/auth/server"
+import { CryptoLive, identityKey, isProvider, linkIdentity, type Provider } from "@hazel/auth/server"
 import { Config, Effect, Redacted } from "effect"
 import { SqlClient } from "effect/sql"
 
@@ -49,12 +49,29 @@ const listClerkUsers = (secretKey: string) =>
 	})
 
 /** Verified GitHub and Google accounts; Clerk names providers `oauth_github` / `oauth_google`. */
-const providerAccounts = (user: ClerkUser) =>
+export const providerAccounts = (user: ClerkUser) =>
 	user.externalAccounts.flatMap((account) => {
 		const provider = account.provider.replace(/^oauth_/, "")
 		if (!isProvider(provider) || account.providerUserId === "") return []
-		if (account.verification !== null && account.verification.status !== "verified") return []
+		if (account.verification?.status !== "verified") return []
 		return [{ provider: provider as Provider, subject: account.providerUserId }]
+	})
+
+/** The dry-run path checks ownership without calling the writer. Apply still rechecks atomically. */
+export const importIdentity = (
+	account: { provider: Provider; subject: string; userId: string },
+	apply: boolean,
+) =>
+	Effect.gen(function* () {
+		const sql = yield* SqlClient.SqlClient
+		const key = yield* identityKey(account)
+		const [owner] = yield* sql<{
+			subjectId: string
+		}>`select "subjectId"::text as "subjectId" from auth_oauth_identities where "identityKey" = ${key}`
+		if (owner !== undefined && owner.subjectId !== account.userId)
+			return { _tag: "Conflict" as const, ownerId: owner.subjectId }
+		if (apply) return yield* linkIdentity(account)
+		return owner === undefined ? { _tag: "Available" as const } : { _tag: "AlreadyLinked" as const }
 	})
 
 const primaryEmail = (user: ClerkUser) =>
@@ -106,18 +123,20 @@ const program = Effect.gen(function* () {
 			continue
 		}
 
-		report.linked.push({ ...entry, detail: accounts.map((account) => account.provider).join("+") })
-		if (!apply) continue
+		let hasConflict = false
 		for (const account of accounts) {
-			const result = yield* linkIdentity({ ...account, userId: hazel.id })
-			if (result._tag === "Linked") identitiesLinked++
-			else if (result._tag === "AlreadyLinked") identitiesAlreadyLinked++
-			else
+			const result = yield* importIdentity({ ...account, userId: hazel.id }, apply)
+			if (result._tag === "Conflict") {
+				hasConflict = true
 				report.conflicts.push({
 					...entry,
 					detail: `${account.provider} account already belongs to Hazel user ${result.ownerId}`,
 				})
+			} else if (apply && result._tag === "Linked") identitiesLinked++
+			else if (apply) identitiesAlreadyLinked++
 		}
+		if (!hasConflict)
+			report.linked.push({ ...entry, detail: accounts.map((account) => account.provider).join("+") })
 	}
 
 	const clerkIds = new Set(clerkUsers.map((user) => user.id))
@@ -128,8 +147,15 @@ const program = Effect.gen(function* () {
 		report.missingInClerk.push({ hazelUserId: user.id, email: user.email, detail: user.externalId })
 	}
 
-	mkdirSync("./exports", { recursive: true })
-	writeFileSync(REPORT_PATH, JSON.stringify(report, null, "\t"))
+	mkdirSync("./exports", { recursive: true, mode: 0o700 })
+	chmodSync("./exports", 0o700)
+	const reportFile = openSync(REPORT_PATH, "w", 0o600)
+	try {
+		fchmodSync(reportFile, 0o600)
+		writeFileSync(reportFile, JSON.stringify(report, null, "\t"))
+	} finally {
+		closeSync(reportFile)
+	}
 
 	yield* Effect.log(apply ? "Applied." : "Dry run: nothing written. Re-run with --apply to link.")
 	yield* Effect.log(`  linked (GitHub/Google):  ${report.linked.length}`)
@@ -140,14 +166,15 @@ const program = Effect.gen(function* () {
 	if (apply) {
 		yield* Effect.log(`  identities linked now:   ${identitiesLinked}`)
 		yield* Effect.log(`  already linked:          ${identitiesAlreadyLinked}`)
-		yield* Effect.log(`  conflicts (manual):      ${report.conflicts.length}`)
 	}
+	yield* Effect.log(`  conflicts (manual):      ${report.conflicts.length}`)
 	yield* Effect.log(`Report: ${REPORT_PATH}`)
 })
 
 const SqlLive = PgClient.layerConfig({ url: Config.Redacted("DATABASE_URL") })
 
-Effect.runPromise(program.pipe(Effect.provide(SqlLive), Effect.provide(CryptoLive))).catch((error) => {
-	console.error(error)
-	process.exit(1)
-})
+if (import.meta.main)
+	Effect.runPromise(program.pipe(Effect.provide(SqlLive), Effect.provide(CryptoLive))).catch((error) => {
+		console.error(error)
+		process.exit(1)
+	})

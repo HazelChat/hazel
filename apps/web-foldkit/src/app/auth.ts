@@ -27,12 +27,14 @@ const readBrowserSession = Effect.gen(function* () {
 	return session === null ? ("SignedOut" as const) : ("SignedIn" as const)
 })
 
-const read: Effect.Effect<Auth, unknown, HazelAuthClient> = isDesktop ? readDesktopSession : readBrowserSession
+const read: Effect.Effect<Auth, unknown, HazelAuthClient> = isDesktop
+	? readDesktopSession
+	: readBrowserSession
 
 export const readSession: Effect.Effect<Auth, never, HazelAuthClient> = read.pipe(
 	Effect.tapError((error) => Effect.logWarning("[auth] session check failed", error)),
-	Effect.retry(retryUnavailable),
-	Effect.orDie,
+	Effect.retry({ schedule: retryUnavailable, times: 3 }),
+	Effect.orElseSucceed(() => "SignedOut" as const),
 )
 
 /** The API rejected sign-out or could not be reached; the user stays signed in. */
@@ -49,7 +51,9 @@ export const signOut: Effect.Effect<void, SignOutError, HazelAuthClient> = Effec
 		)
 	} else {
 		const client = yield* HazelAuthClient
-		yield* client.auth.signOut().pipe(Effect.mapError((error) => new SignOutError({ message: error._tag })))
+		yield* client.auth
+			.signOut()
+			.pipe(Effect.mapError((error) => new SignOutError({ message: error._tag })))
 	}
 	clearAccessToken()
 	yield* Effect.sync(() => window.location.assign("/"))

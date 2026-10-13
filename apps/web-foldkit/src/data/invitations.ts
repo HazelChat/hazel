@@ -1,6 +1,6 @@
-import type { InvitationRole } from "@hazel/domain/rpc"
+import { InvitationEmail, type InvitationRole } from "@hazel/domain/rpc"
 import type { InvitationId, OrganizationId } from "@hazel/schema"
-import { DateTime, Effect } from "effect"
+import { DateTime, Effect, Schema } from "effect"
 import { HazelRpc } from "../rpc"
 
 /** Organization email invitations (`invitation.*`), shared by settings, onboarding and the invite modal. */
@@ -23,16 +23,19 @@ export const sendInvitations = (organizationId: OrganizationId, invites: Readonl
 		const results = yield* Effect.forEach(
 			roles,
 			(role) => {
-				const emails = invites
+				const candidates = invites
 					.filter((invite) => invite.role === role)
 					.map((invite) => invite.email.trim())
+				const emails = candidates.filter(Schema.is(InvitationEmail))
+				const invalidCount = candidates.length - emails.length
+				if (emails.length === 0) return Effect.succeed({ successCount: 0, errorCount: invalidCount })
 				return client("invitation.create", { organizationId, emails, role }).pipe(
 					Effect.map((result) => ({
 						successCount: result.invited.length,
-						errorCount: result.skipped.length,
+						errorCount: result.skipped.length + invalidCount,
 					})),
 					Effect.tapError((error) => Effect.logError("Failed to send invitations", error)),
-					Effect.orElseSucceed(() => ({ successCount: 0, errorCount: emails.length })),
+					Effect.orElseSucceed(() => ({ successCount: 0, errorCount: candidates.length })),
 				)
 			},
 			{ concurrency: "unbounded" },

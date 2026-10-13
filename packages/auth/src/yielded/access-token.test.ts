@@ -60,3 +60,21 @@ describe("AccessTokenVerifier", () => {
 		expect(failureTag(exit)).toEqual(["AccessTokenInvalid"])
 	})
 })
+
+test("malformed inline key JSON is a typed, secret-free configuration error", async () => {
+	const exit = await Effect.runPromiseExit(
+		Effect.service(AccessTokenVerifier).pipe(
+			Effect.provide(AccessTokenVerifier.layer),
+			Effect.provide(
+				ConfigProvider.layer(
+					ConfigProvider.fromUnknown({
+						API_BASE_URL: api,
+						AUTH_ACCESS_TOKEN_JWKS: "sensitive-invalid-key-json",
+					}),
+				),
+			),
+		),
+	)
+	expect(failureTag(exit)).toEqual(["AccessTokenConfigurationError"])
+	expect(JSON.stringify(exit)).not.toContain("sensitive-invalid-key-json")
+})

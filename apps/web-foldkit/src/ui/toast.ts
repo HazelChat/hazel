@@ -325,7 +325,7 @@ export interface ShowOptions {
 	readonly kind?: Kind | null
 	readonly title: string
 	readonly description?: string
-	readonly actionLabel?: string
+	readonly actionLabel?: string | null
 	/** A `toast.promise` toast keeps `data-promise` after it resolves. */
 	readonly isPromise?: boolean
 	/** Milliseconds; `Infinity` keeps the toast until it is dismissed. */
@@ -347,7 +347,7 @@ export const show = (model: Model, options: ShowOptions): UpdateReturn & { reado
 			kind: options.kind === undefined ? item.kind : options.kind,
 			title: options.title,
 			description: options.description ?? item.description,
-			actionLabel: options.actionLabel ?? item.actionLabel,
+			actionLabel: options.actionLabel === undefined ? item.actionLabel : options.actionLabel,
 			isPromise: item.isPromise || (options.isPromise ?? false),
 			duration,
 			remainingMs: duration === item.duration ? item.remainingMs : (duration ?? 0),

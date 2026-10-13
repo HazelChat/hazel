@@ -1,6 +1,6 @@
 import { AiError, LanguageModel } from "effect/ai"
 import { Activity } from "effect/workflow"
-import { and, Database, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"
 
@@ -39,15 +39,10 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					const db = yield* Database.Database
 
 					const threadChannel = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.channelsTable.id,
-									name: schema.channelsTable.name,
-									parentChannelId: schema.channelsTable.parentChannelId,
-								})
-								.from(schema.channelsTable)
-								.where(eq(schema.channelsTable.id, payload.threadChannelId))
+						.run(
+							PG.from(schema.channelsTable)
+								.select("id", "name", "parentChannelId")
+								.where(($) => [$.id.eq(payload.threadChannelId)])
 								.limit(1),
 						)
 						.pipe(
@@ -74,22 +69,18 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 
 					// Get original message (the one with threadChannelId pointing to this thread)
 					const originalMessage = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.messagesTable.id,
-									content: schema.messagesTable.content,
-									authorId: schema.messagesTable.authorId,
-									createdAt: schema.messagesTable.createdAt,
-									firstName: schema.usersTable.firstName,
-									lastName: schema.usersTable.lastName,
-								})
-								.from(schema.messagesTable)
-								.innerJoin(
-									schema.usersTable,
-									eq(schema.messagesTable.authorId, schema.usersTable.id),
-								)
-								.where(eq(schema.messagesTable.id, payload.originalMessageId))
+						.run(
+							PG.from(schema.messagesTable, "m")
+								.innerJoin(schema.usersTable, "u", (m, u) => m.authorId.eq(u.id))
+								.select(($) => ({
+									id: $.id,
+									content: $.content,
+									authorId: $.authorId,
+									createdAt: $.createdAt,
+									firstName: $.u.firstName,
+									lastName: $.u.lastName,
+								}))
+								.where(($) => [$.id.eq(payload.originalMessageId)])
 								.limit(1),
 						)
 						.pipe(
@@ -117,28 +108,19 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 
 					// Get thread messages (messages in the thread channel)
 					const threadMessages = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.messagesTable.id,
-									content: schema.messagesTable.content,
-									authorId: schema.messagesTable.authorId,
-									createdAt: schema.messagesTable.createdAt,
-									firstName: schema.usersTable.firstName,
-									lastName: schema.usersTable.lastName,
-								})
-								.from(schema.messagesTable)
-								.innerJoin(
-									schema.usersTable,
-									eq(schema.messagesTable.authorId, schema.usersTable.id),
-								)
-								.where(
-									and(
-										eq(schema.messagesTable.channelId, payload.threadChannelId),
-										isNull(schema.messagesTable.deletedAt),
-									),
-								)
-								.orderBy(schema.messagesTable.createdAt)
+						.run(
+							PG.from(schema.messagesTable, "m")
+								.innerJoin(schema.usersTable, "u", (m, u) => m.authorId.eq(u.id))
+								.select(($) => ({
+									id: $.id,
+									content: $.content,
+									authorId: $.authorId,
+									createdAt: $.createdAt,
+									firstName: $.u.firstName,
+									lastName: $.u.lastName,
+								}))
+								.where(($) => [$.channelId.eq(payload.threadChannelId), $.deletedAt.isNull()])
+								.orderBy(($) => [[$.createdAt, "asc"]])
 								.limit(10),
 						)
 						.pipe(
@@ -288,14 +270,13 @@ export const ThreadNamingWorkflowLayer = Cluster.ThreadNamingWorkflow.toLayer(
 					const db = yield* Database.Database
 
 					yield* db
-						.execute((client) =>
-							client
-								.update(schema.channelsTable)
+						.run(
+							PG.update(schema.channelsTable)
 								.set({
 									name: nameResult.threadName,
 									updatedAt: new Date(),
 								})
-								.where(eq(schema.channelsTable.id, payload.threadChannelId)),
+								.where(($) => [$.id.eq(payload.threadChannelId)]),
 						)
 						.pipe(
 							Effect.catchTag("DatabaseError", (err) =>

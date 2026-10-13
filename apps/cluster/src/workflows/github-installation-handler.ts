@@ -1,5 +1,5 @@
 import { Activity } from "effect/workflow"
-import { and, Database, eq, isNull, schema, sql } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Cluster } from "@hazel/domain"
 import { Effect } from "effect"
 
@@ -39,23 +39,16 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 
 					// Query for a connection with matching installationId in metadata
 					const connections = yield* db
-						.execute((client) =>
-							client
-								.select({
-									id: schema.integrationConnectionsTable.id,
-									organizationId: schema.integrationConnectionsTable.organizationId,
-									status: schema.integrationConnectionsTable.status,
-									externalAccountName:
-										schema.integrationConnectionsTable.externalAccountName,
-								})
-								.from(schema.integrationConnectionsTable)
-								.where(
-									and(
-										eq(schema.integrationConnectionsTable.provider, "github"),
-										sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${String(payload.installationId)}`,
-										isNull(schema.integrationConnectionsTable.deletedAt),
+						.run(
+							PG.from(schema.integrationConnectionsTable)
+								.select("id", "organizationId", "status", "externalAccountName")
+								.where(($) => [
+									$.provider.eq("github"),
+									PG.jsonText($.metadata, "installationId").eq(
+										String(payload.installationId),
 									),
-								),
+									$.deletedAt.isNull(),
+								]),
 						)
 						.pipe(
 							Effect.catchTags({
@@ -129,7 +122,11 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 					)
 
 					// For "deleted" action, also set deletedAt
-					const updateValues =
+					const updateValues: {
+						status: "revoked" | "active" | "suspended"
+						deletedAt?: Date
+						updatedAt: Date
+					} =
 						payload.action === "deleted"
 							? {
 									status: newStatus as "revoked",
@@ -142,18 +139,17 @@ export const GitHubInstallationWorkflowLayer = Cluster.GitHubInstallationWorkflo
 								}
 
 					const updated = yield* db
-						.execute((client) =>
-							client
-								.update(schema.integrationConnectionsTable)
+						.run(
+							PG.update(schema.integrationConnectionsTable)
 								.set(updateValues)
-								.where(
-									and(
-										eq(schema.integrationConnectionsTable.provider, "github"),
-										sql`${schema.integrationConnectionsTable.metadata}->>'installationId' = ${String(payload.installationId)}`,
-										isNull(schema.integrationConnectionsTable.deletedAt),
+								.where(($) => [
+									$.provider.eq("github"),
+									PG.jsonText($.metadata, "installationId").eq(
+										String(payload.installationId),
 									),
-								)
-								.returning({ id: schema.integrationConnectionsTable.id }),
+									$.deletedAt.isNull(),
+								])
+								.returning("id"),
 						)
 						.pipe(
 							Effect.catchTags({

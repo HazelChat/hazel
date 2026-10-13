@@ -15,6 +15,7 @@ interface CachedToken {
 /** Renew this long before expiry, so a token is never sent seconds from expiring. */
 const RENEW_BEFORE_MS = 60_000
 
+let generation = 0
 let cached: CachedToken | null = null
 let pending: Promise<string | null> | null = null
 
@@ -28,22 +29,23 @@ const isTokenResponse = (value: unknown): value is { token: string; expiresIn: n
 	"expiresIn" in value &&
 	typeof value.expiresIn === "number"
 
-const exchange = async (): Promise<string | null> => {
+const exchange = async (startedGeneration: number): Promise<string | null> => {
 	try {
 		const authorization = await sessionAuthorization()
 		const response = await fetch(`${backendUrl()}/auth/token`, {
 			method: "POST",
 			// The desktop app's session is a bearer; a browser's is the API's cookie.
 			...(authorization === null
-				? { credentials: "include" as const }
+				? { credentials: "include" as const, headers: { "x-effect-auth-csrf": "1" } }
 				: { credentials: "omit" as const, headers: { authorization } }),
 		})
+		if (startedGeneration !== generation) return null
 		if (!response.ok) {
 			cached = null
 			return null
 		}
 		const body: unknown = await response.json()
-		if (!isTokenResponse(body)) return null
+		if (startedGeneration !== generation || !isTokenResponse(body)) return null
 		cached = { token: body.token, expiresAtMs: Date.now() + body.expiresIn * 1000 }
 		return body.token
 	} catch {
@@ -55,13 +57,18 @@ const exchange = async (): Promise<string | null> => {
 export const getAccessToken = async (): Promise<string | null> => {
 	if (typeof window === "undefined") return null
 	if (cached !== null && cached.expiresAtMs - Date.now() > RENEW_BEFORE_MS) return cached.token
-	pending ??= exchange().finally(() => {
-		pending = null
-	})
+	if (pending === null) {
+		const request = exchange(generation).finally(() => {
+			if (pending === request) pending = null
+		})
+		pending = request
+	}
 	return pending
 }
 
 /** Drops the cached token, for sign-out. */
 export const clearAccessToken = () => {
+	generation++
+	pending = null
 	cached = null
 }

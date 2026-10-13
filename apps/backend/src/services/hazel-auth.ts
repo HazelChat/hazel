@@ -89,13 +89,22 @@ const make = Effect.gen(function* () {
 		continuePath: "/auth/continue",
 	}
 
-	const accessTokens = Option.map(
-		env.accessTokenJwk,
-		(jwk): AccessToken.SigningKey => ({
-			kid: env.accessTokenKid,
-			privateJwk: Redacted.make(Schema.decodeSync(PrivateJwk)(Redacted.value(jwk))),
-		}),
-	)
+	const accessTokens = Option.isNone(env.accessTokenJwk)
+		? Option.none<AccessToken.SigningKey>()
+		: Option.some<AccessToken.SigningKey>({
+				kid: env.accessTokenKid,
+				privateJwk: Redacted.make(
+					yield* Schema.decodeEffect(PrivateJwk)(Redacted.value(env.accessTokenJwk.value)).pipe(
+						Effect.mapError(
+							() =>
+								new AccessToken.AccessTokenConfigurationError({
+									key: "AUTH_ACCESS_TOKEN_PRIVATE_JWK",
+									message: "Expected valid JSON",
+								}),
+						),
+					),
+				),
+			})
 
 	return Option.some({ ...makeHazelAuthLive(config), config, accessTokens })
 })
@@ -138,8 +147,12 @@ const accessTokenRoutes = (issuerOrigin: string, key: AccessToken.SigningKey) =>
 						const auth = yield* HazelAuth
 						// The browser sends its session cookie; the desktop app its own session as a bearer.
 						const bearer = Option.flatMap(
-							Headers.get((yield* HttpServerRequest.HttpServerRequest).headers, "authorization"),
-							(value) => (value.startsWith("Bearer ") ? Option.some(value.slice(7)) : Option.none()),
+							Headers.get(
+								(yield* HttpServerRequest.HttpServerRequest).headers,
+								"authorization",
+							),
+							(value) =>
+								value.startsWith("Bearer ") ? Option.some(value.slice(7)) : Option.none(),
 						)
 						const session = Option.isSome(bearer)
 							? yield* auth

@@ -35,7 +35,7 @@ const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
 	),
 )
 
-// Database layer for Drizzle ORM (uses same credentials as PgClient)
+// Database layer (uses same credentials as PgClient)
 const DatabaseLayer = Database.layer({
 	url: Redacted.make(process.env.DATABASE_URL as string)!,
 	ssl: !process.env.IS_DEV,

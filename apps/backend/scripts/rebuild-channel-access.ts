@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { and, Database, eq, isNull, ne, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Effect, Layer, References } from "effect"
 import { ChannelAccessSyncService } from "../src/services/channel-access-sync"
 import { DatabaseLive } from "../src/services/database"
@@ -10,13 +10,12 @@ const rebuildChannelAccess = Effect.gen(function* () {
 
 	yield* Effect.logInfo("Rebuilding channel_access table")
 
-	yield* db.execute((client) => client.delete(schema.channelAccessTable))
+	yield* db.run(PG.deleteFrom(schema.channelAccessTable).allRows())
 
-	const activeNonThreadChannels = yield* db.execute((client) =>
-		client
-			.select({ id: schema.channelsTable.id })
-			.from(schema.channelsTable)
-			.where(and(isNull(schema.channelsTable.deletedAt), ne(schema.channelsTable.type, "thread"))),
+	const activeNonThreadChannels = yield* db.run(
+		PG.from(schema.channelsTable)
+			.select("id")
+			.where(($) => [$.deletedAt.isNull(), $.type.neq("thread")]),
 	)
 
 	yield* Effect.forEach(
@@ -25,11 +24,10 @@ const rebuildChannelAccess = Effect.gen(function* () {
 		{ concurrency: 20 },
 	)
 
-	const threadChannels = yield* db.execute((client) =>
-		client
-			.select({ id: schema.channelsTable.id })
-			.from(schema.channelsTable)
-			.where(and(isNull(schema.channelsTable.deletedAt), eq(schema.channelsTable.type, "thread"))),
+	const threadChannels = yield* db.run(
+		PG.from(schema.channelsTable)
+			.select("id")
+			.where(($) => [$.deletedAt.isNull(), $.type.eq("thread")]),
 	)
 
 	yield* Effect.forEach(
@@ -40,10 +38,10 @@ const rebuildChannelAccess = Effect.gen(function* () {
 		},
 	)
 
-	const countResult = yield* db.execute(
-		(client) => client.$client`SELECT COUNT(*)::int AS count FROM channel_access`,
+	const countResult = yield* db.run(
+		PG.from(schema.channelAccessTable).select(() => ({ count: PG.count() })),
 	)
-	const count = (countResult[0] as { count: number } | undefined)?.count ?? 0
+	const count = countResult[0]?.count ?? 0
 
 	console.log(
 		`channel_access rebuilt: ${activeNonThreadChannels.length} non-thread channels, ${threadChannels.length} threads, ${count} rows`,

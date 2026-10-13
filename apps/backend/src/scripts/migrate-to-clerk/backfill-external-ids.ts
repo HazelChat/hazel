@@ -18,7 +18,7 @@
  * subsequent runs become no-ops.
  */
 
-import { Database, and, eq, isNull, schema } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import { Effect, Layer, Logger } from "effect"
 import { DatabaseLive } from "../../services/database"
 
@@ -47,14 +47,11 @@ const program = Effect.gen(function* () {
 
 	// Pre-flight: count active users in the DB. If it's > mapping.length, some
 	// users have no Clerk equivalent (import failures or users created post-export).
-	const allActive = yield* db.makeQuery((execute, _data: {}) =>
-		execute((client) =>
-			client
-				.select({ id: schema.usersTable.id, externalId: schema.usersTable.externalId })
-				.from(schema.usersTable)
-				.where(isNull(schema.usersTable.deletedAt)),
-		),
-	)({})
+	const allActive = yield* db.run(
+		PG.from(schema.usersTable)
+			.select("id", "externalId")
+			.where(($) => [$.deletedAt.isNull()]),
+	)
 
 	yield* Effect.log(`Active users in DB: ${allActive.length}`)
 
@@ -99,20 +96,12 @@ const program = Effect.gen(function* () {
 		Effect.gen(function* () {
 			let touched = 0
 			for (const { workosId, clerkId } of mapping) {
-				const result = yield* db.makeQuery((execute, args: { workosId: string; clerkId: string }) =>
-					execute((client) =>
-						client
-							.update(schema.usersTable)
-							.set({ externalId: args.clerkId, updatedAt: new Date() })
-							.where(
-								and(
-									eq(schema.usersTable.externalId, args.workosId),
-									isNull(schema.usersTable.deletedAt),
-								),
-							)
-							.returning({ id: schema.usersTable.id }),
-					),
-				)({ workosId, clerkId })
+				const result = yield* db.run(
+					PG.update(schema.usersTable)
+						.set({ externalId: clerkId, updatedAt: new Date() })
+						.where(($) => [$.externalId.eq(workosId), $.deletedAt.isNull()])
+						.returning("id"),
+				)
 				touched += result.length
 			}
 			return touched
@@ -122,23 +111,17 @@ const program = Effect.gen(function* () {
 	yield* Effect.log(`Updated ${updated} rows.`)
 
 	// Post-flight sanity check.
-	const remaining = yield* db.makeQuery((execute, _data: {}) =>
-		execute((client) =>
-			client
-				.select({ count: schema.usersTable.id })
-				.from(schema.usersTable)
-				.where(isNull(schema.usersTable.deletedAt)),
-		),
-	)({})
+	const remaining = yield* db.run(
+		PG.from(schema.usersTable)
+			.select(($) => ({ count: $.id }))
+			.where(($) => [$.deletedAt.isNull()]),
+	)
 	const clerkShape = /^user_[A-Za-z0-9]{27}$/
-	const afterAll = yield* db.makeQuery((execute, _data: {}) =>
-		execute((client) =>
-			client
-				.select({ id: schema.usersTable.id, externalId: schema.usersTable.externalId })
-				.from(schema.usersTable)
-				.where(isNull(schema.usersTable.deletedAt)),
-		),
-	)({})
+	const afterAll = yield* db.run(
+		PG.from(schema.usersTable)
+			.select("id", "externalId")
+			.where(($) => [$.deletedAt.isNull()]),
+	)
 
 	const stillWorkOS = afterAll.filter((u) => workosShape.test(u.externalId))
 	const properlyClerk = afterAll.filter((u) => clerkShape.test(u.externalId))

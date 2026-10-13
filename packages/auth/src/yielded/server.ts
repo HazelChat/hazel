@@ -207,7 +207,7 @@ export const makeHazelAuthLive = (config: HazelAuthConfig) => {
 		developmentLocalhost: config.passkey.rpId === "localhost",
 	})
 
-	// Tables come from packages/db (drizzle-kit); nothing is created at runtime.
+	// Tables come from packages/db (effect-orm); nothing is created at runtime.
 	const Storage = Layer.mergeAll(Persistence.layer, OAuthStorageLive).pipe(
 		Layer.provideMerge(Persistence.Config.layer(storage)),
 		Layer.provideMerge(passkeyConfig),

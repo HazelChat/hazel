@@ -1,5 +1,5 @@
 import { Command, Flag, Prompt } from "effect/cli"
-import { Database, schema, isNull } from "@hazel/db"
+import { Database, PG, schema } from "@hazel/db"
 import type { BotId, BotInstallationId, OrganizationId, OrganizationMemberId, UserId } from "@hazel/schema"
 import { Console, Effect, Option, Redacted } from "effect"
 import { randomUUID } from "crypto"
@@ -50,14 +50,10 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 			}))
 
 		// Step 2: List available organizations and let user choose
-		const orgs = yield* db.execute((client) =>
-			client
-				.select({
-					id: schema.organizationsTable.id,
-					name: schema.organizationsTable.name,
-				})
-				.from(schema.organizationsTable)
-				.where(isNull(schema.organizationsTable.deletedAt)),
+		const orgs = yield* db.run(
+			PG.from(schema.organizationsTable)
+				.select("id", "name")
+				.where(($) => [$.deletedAt.isNull()]),
 		)
 
 		if (orgs.length === 0) {
@@ -88,8 +84,8 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 		yield* Console.log(`\n${pc.cyan("Creating bot...")}`)
 
 		// Step 5: Create bot user (machine user)
-		yield* db.execute((client) =>
-			client.insert(schema.usersTable).values({
+		yield* db.run(
+			PG.insertInto(schema.usersTable).values({
 				id: botUserId,
 				externalId,
 				email: botEmail,
@@ -102,8 +98,8 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 		yield* Console.log(`  ${pc.green("\u2713")} Bot user created`)
 
 		// Step 6: Create bot record
-		yield* db.execute((client) =>
-			client.insert(schema.botsTable).values({
+		yield* db.run(
+			PG.insertInto(schema.botsTable).values({
 				id: botId,
 				userId: botUserId,
 				createdBy: botUserId,
@@ -116,8 +112,8 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 		yield* Console.log(`  ${pc.green("\u2713")} Bot record created`)
 
 		// Step 7: Install bot in organization
-		yield* db.execute((client) =>
-			client.insert(schema.botInstallationsTable).values({
+		yield* db.run(
+			PG.insertInto(schema.botInstallationsTable).values({
 				id: installationId,
 				botId,
 				organizationId: orgId,
@@ -127,8 +123,8 @@ export const botsCommand = Command.make("bots", { name: nameOption, org: orgOpti
 		yield* Console.log(`  ${pc.green("\u2713")} Bot installed in organization`)
 
 		// Step 8: Add bot user to organization
-		yield* db.execute((client) =>
-			client.insert(schema.organizationMembersTable).values({
+		yield* db.run(
+			PG.insertInto(schema.organizationMembersTable).values({
 				id: membershipId,
 				organizationId: orgId,
 				userId: botUserId,
