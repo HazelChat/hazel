@@ -1,10 +1,10 @@
 /**
  * The bundled migrations and how to apply them.
  *
- * `migrations/` holds one `<timestamp>_<name>/migration.sql` per migration. The first,
- * `initial_schema`, creates the schema as `drizzle-kit push` left it; `effect_orm_baseline` starts
- * effect-orm's history there. Every later migration is written by `effect-orm generate`
- * (`effect-orm.config.ts`), or by hand with `--custom` for what effect-orm does not model (enums).
+ * `migrations/` holds one `<timestamp>_<name>/migration.sql` per migration, written by
+ * `effect-orm generate` (`effect-orm.config.ts`) from `src/tables`. The first, `initial_schema`,
+ * creates the schema exactly as `drizzle-kit push` left it; a database push built adopts it as
+ * applied (see {@link adoptPushedSchema}).
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
@@ -16,8 +16,8 @@ import { postgresDialect } from "@maple-dev/effect-orm/postgres"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import * as SqlClient from "effect/sql/SqlClient"
 
-/** The migration a database `drizzle-kit push` built is adopted at. */
-export const BASELINE_MIGRATION = "20261012222436_effect_orm_baseline"
+/** The migration a database `drizzle-kit push` built is adopted at: the schema push left. */
+export const BASELINE_MIGRATION = "20261013000436_initial_schema"
 
 export const migrationsFolder = (): string =>
 	resolve(dirname(fileURLToPath(import.meta.url)), "../migrations")
