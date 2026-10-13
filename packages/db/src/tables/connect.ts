@@ -8,21 +8,24 @@ import {
 	UserId,
 } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { jsonb, now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { jsonb, now, timestamptz, uuid, varchar } from "./columns"
 
-export const connectConversationStatusEnum = pgEnum("connect_conversation_status", ["active", "disconnected"])
-export const connectConversationChannelRoleEnum = pgEnum("connect_conversation_channel_role", [
+export const connectConversationStatusEnum = PG.enumType("connect_conversation_status", [
+	"active",
+	"disconnected",
+])
+export const connectConversationChannelRoleEnum = PG.enumType("connect_conversation_channel_role", [
 	"host",
 	"guest",
 ])
-export const connectInviteStatusEnum = pgEnum("connect_invite_status", [
+export const connectInviteStatusEnum = PG.enumType("connect_invite_status", [
 	"pending",
 	"accepted",
 	"declined",
 	"revoked",
 	"expired",
 ])
-export const connectInviteTargetKindEnum = pgEnum("connect_invite_target_kind", ["slug", "email"])
+export const connectInviteTargetKindEnum = PG.enumType("connect_invite_target_kind", ["slug", "email"])
 
 export const connectConversationChannelsTable = PG.table("connect_conversation_channels", {
 	columns: {

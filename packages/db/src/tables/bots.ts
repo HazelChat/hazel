@@ -25,8 +25,8 @@ export const botsTable = PG.table("bots", {
 		deletedAt: PG.nullable(timestamptz),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("bots_userId_unique", ["userId"])],
 	indexes: [
-		PG.uniqueIndex("bots_userId_unique", ["userId"]),
 		PG.index("bots_user_id_idx", ["userId"]),
 		PG.index("bots_created_by_idx", ["createdBy"]),
 		PG.index("bots_is_public_idx", ["isPublic"]),

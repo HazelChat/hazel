@@ -1,8 +1,8 @@
 import { ChannelId, UserId, UserPresenceStatusId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
-export const userPresenceStatusEnum = pgEnum("user_presence_status_enum", [
+export const userPresenceStatusEnum = PG.enumType("user_presence_status_enum", [
 	"online",
 	"away",
 	"busy",
@@ -24,8 +24,8 @@ export const userPresenceStatusTable = PG.table("user_presence_status", {
 		lastSeenAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("user_presence_status_userId_unique", ["userId"])],
 	indexes: [
-		PG.uniqueIndex("user_presence_status_userId_unique", ["userId"]),
 		PG.index("user_presence_status_user_id_idx", ["userId"]),
 		PG.index("user_presence_status_active_channel_idx", ["activeChannelId"]),
 		PG.index("user_presence_status_last_seen_idx", ["lastSeenAt"]),

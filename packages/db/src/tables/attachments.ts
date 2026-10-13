@@ -1,8 +1,8 @@
 import { AttachmentId, ChannelId, MessageId, OrganizationId, UserId } from "@hazel/schema"
 import * as PG from "@maple-dev/effect-orm/postgres"
-import { now, pgEnum, timestamptz, uuid, varchar } from "./columns"
+import { now, timestamptz, uuid, varchar } from "./columns"
 
-export const attachmentStatusEnum = pgEnum("attachment_status", ["uploading", "complete", "failed"])
+export const attachmentStatusEnum = PG.enumType("attachment_status", ["uploading", "complete", "failed"])
 
 export const attachmentsTable = PG.table("attachments", {
 	columns: {

@@ -74,13 +74,13 @@ export const messageReactionsTable = PG.table("message_reactions", {
 		createdAt: PG.column(timestamptz, { defaultExpr: "now()" }),
 	},
 	primaryKey: ["id"],
+	uniqueConstraints: [PG.unique("reactions_message_user_emoji_unique", ["messageId", "userId", "emoji"])],
 	indexes: [
 		PG.index("reactions_channel_id_idx", ["channelId"]),
 		PG.index("reactions_conversation_id_idx", ["conversationId"]),
 		PG.index("reactions_message_id_idx", ["messageId"]),
 		PG.index("reactions_user_id_idx", ["userId"]),
 		PG.index("reactions_message_user_emoji_idx", ["messageId", "userId", "emoji"]),
-		PG.uniqueIndex("reactions_message_user_emoji_unique", ["messageId", "userId", "emoji"]),
 	],
 })
 export type MessageReaction = PG.SelectRowOf<typeof messageReactionsTable>
