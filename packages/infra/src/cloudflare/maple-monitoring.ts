@@ -31,23 +31,23 @@ const tracesQuery = (options: {
 	name: "A",
 	enabled: true,
 	hidden: false,
-	whereClause: options.where,
+	where_clause: options.where,
 	aggregation: options.aggregation,
-	stepInterval: "",
-	orderByDirection: "desc",
-	addOns: {
-		groupBy: options.groupBy !== undefined,
+	step_interval: "",
+	order_by_direction: "desc",
+	add_ons: {
+		group_by: options.groupBy !== undefined,
 		having: false,
-		orderBy: false,
+		order_by: false,
 		limit: false,
 		legend: false,
 	},
-	groupBy: options.groupBy ?? [],
+	group_by: options.groupBy ?? [],
 	having: "",
-	orderBy: "",
+	order_by: "",
 	limit: "",
 	legend: "",
-	dataSource: "traces",
+	data_source: "traces",
 })
 
 /** Root spans of one service in production: request-level signals, not internal calls. */
@@ -97,9 +97,9 @@ const chart = (options: {
 }) => ({
 	id: options.id,
 	visualization: "chart",
-	dataSource: {
+	data_source: {
 		kind: "query",
-		resultShape: "timeseries",
+		result_shape: "timeseries",
 		queries: [
 			tracesQuery({
 				where: `${PRODUCTION} AND root_only = "true"`,
@@ -110,11 +110,11 @@ const chart = (options: {
 	},
 	display: {
 		title: options.title,
-		chartId: "query-builder-line",
+		chart_id: "query-builder-line",
 		unit: options.unit,
-		chartPresentation: { legend: "visible" },
+		chart_presentation: { legend: "visible" },
 	},
-	layout: { x: options.x, y: options.y, w: 6, h: 6, minW: 2, minH: 2 },
+	layout: { x: options.x, y: options.y, w: 6, h: 6, min_w: 2, min_h: 2 },
 })
 
 /** Golden signals of every Hazel service in production, one line per `service.name`. */
