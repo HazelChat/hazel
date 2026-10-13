@@ -12,6 +12,8 @@ export const AppRoute = defineRouteUnion({
 	AuthRegister: { flowId: Schema.Option(Schema.String), reference: Schema.Option(Schema.String) },
 	/** Where the OAuth callback sends a user whose provider account it just linked (`?provider=`). */
 	AuthContinue: { provider: Schema.Option(Schema.String) },
+	/** The browser half of desktop sign-in (`?attempt=`), opened by the desktop app. */
+	AuthDesktop: { attempt: Schema.Option(Schema.String) },
 	Join: { slug: Schema.String },
 	/** The link in an invitation email. */
 	Invite: { token: Schema.String },
@@ -79,6 +81,7 @@ const RegisterQuery = Schema.Struct({
 	reference: Schema.OptionFromOptional(Schema.String),
 })
 const ContinueQuery = Schema.Struct({ provider: Schema.OptionFromOptional(Schema.String) })
+const DesktopQuery = Schema.Struct({ attempt: Schema.OptionFromOptional(Schema.String) })
 const OrgIdQuery = Schema.Struct({ orgId: Schema.OptionFromOptional(OrganizationId) })
 const OnboardingQuery = Schema.Struct({
 	orgId: Schema.OptionFromOptional(OrganizationId),
@@ -145,6 +148,12 @@ const routers = {
 		slash(literal("continue")),
 		query(ContinueQuery),
 		Route.mapTo(AppRoute.AuthContinue),
+	),
+	AuthDesktop: pipe(
+		literal("auth"),
+		slash(literal("desktop")),
+		query(DesktopQuery),
+		Route.mapTo(AppRoute.AuthDesktop),
 	),
 	Join: pipe(literal("join"), slash(string("slug")), Route.mapTo(AppRoute.Join)),
 	Invite: pipe(literal("invite"), slash(string("token")), Route.mapTo(AppRoute.Invite)),
@@ -248,6 +257,7 @@ export const urlToAppRoute = Route.parseUrlWithFallback(
 		signUp.splat,
 		routers.AuthRegister,
 		routers.AuthContinue,
+		routers.AuthDesktop,
 		routers.Join,
 		routers.Invite,
 		routers.Onboarding,
@@ -310,6 +320,7 @@ export const isPublicRoute = AppRoute.isAnyOf([
 	"SignUp",
 	"AuthRegister",
 	"AuthContinue",
+	"AuthDesktop",
 	"Join",
 	"Invite",
 	"NotFound",

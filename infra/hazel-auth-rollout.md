@@ -42,8 +42,15 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
    `<API_BASE_URL>/.well-known/jwks.json`, and the deploy sets `API_BASE_URL`. The JWKS
    fetch is HTTPS-only, so for a plain-HTTP dev API set `AUTH_ACCESS_TOKEN_JWKS` (printed by
    `generate-keys`) for both. `CLERK_SECRET_KEY` is no longer needed by either.
-4. **Preview stage.** Do one real GitHub and Google sign-in through Hyperdrive before prd.
-5. **Organizations, invites and profile editing: done in code.** These steps remain in prd:
+4. **Desktop app: done in code.** It now runs the Foldkit app and signs in through the system
+   browser (`BrowserLogin`). The browser confirms at `/auth/desktop`, and the app gets its own
+   session through the `com.hazel.app://auth/callback` link. That session is stored in the OS
+   keychain and sent as a bearer. Before release:
+    - Apply `packages/db/sql/2026-10-13-desktop-sign-in.sql` (one table, safe while live).
+    - Ship a new desktop release. Older builds sign in through Clerk and stop working at the
+      cutover.
+5. **Preview stage.** Do one real GitHub and Google sign-in through Hyperdrive before prd.
+6. **Organizations, invites and profile editing: done in code.** These steps remain in prd:
     - Apply `packages/db/sql/2026-10-13-organization-invitations.sql`. It adds one table and is
       safe while the app runs:
       `psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/sql/2026-10-13-organization-invitations.sql`.
@@ -52,6 +59,6 @@ Active users in the last 90 days: 60, of whom 53 have GitHub/Google linked.
       invites from `INVITE_EMAIL_FROM`, which defaults to `invites@hazel.sh`. Until the domain is
       onboarded, sends fail: the invite is withdrawn and the admin sees it as failed.
     - Pending Clerk invitations don't carry over. Ask admins to re-invite anyone still pending.
-6. **Cutover.** Re-run the import, deploy with `AUTH_GITHUB_CLIENT_ID` set, then switch the web
+7. **Cutover.** Re-run the import, deploy with `AUTH_GITHUB_CLIENT_ID` set, then switch the web
    app. Keep Clerk read-only for 2–4 weeks, then remove it (middleware fallback, `ClerkSync`,
    webhooks, `CLERK_*`).

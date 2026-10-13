@@ -1,7 +1,13 @@
 import { Hooks } from "@yielded/auth"
-import { AccessToken, HazelAuth, type HazelAuthConfig, makeHazelAuthLive } from "@hazel/auth/server"
+import {
+	AccessToken,
+	HazelAuth,
+	type HazelAuthConfig,
+	makeDesktopLoginRoutes,
+	makeHazelAuthLive,
+} from "@hazel/auth/server"
 import { Config, Context, Effect, Layer, Option, Redacted, Schema } from "effect"
-import { HttpRouter, HttpServerResponse } from "effect/http"
+import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 /**
  * Hazel's own sign-in (`@hazel/auth/server`), replacing Clerk. Enabled when
@@ -130,7 +136,16 @@ const accessTokenRoutes = (issuerOrigin: string, key: AccessToken.SigningKey) =>
 					"/auth/token",
 					Effect.gen(function* () {
 						const auth = yield* HazelAuth
-						const session = yield* auth.getSession()
+						// The browser sends its session cookie; the desktop app its own session as a bearer.
+						const bearer = Option.flatMap(
+							Headers.get((yield* HttpServerRequest.HttpServerRequest).headers, "authorization"),
+							(value) => (value.startsWith("Bearer ") ? Option.some(value.slice(7)) : Option.none()),
+						)
+						const session = Option.isSome(bearer)
+							? yield* auth
+									.verifySession(Redacted.make(bearer.value))
+									.pipe(Effect.catchTag("SessionInvalid", () => Effect.succeed(null)))
+							: yield* auth.getSession()
 						if (session === null) return HttpServerResponse.empty({ status: 401 })
 						const token = yield* issuer.mint(session)
 						return yield* HttpServerResponse.json({
@@ -158,6 +173,7 @@ export const HazelAuthRoutes = Layer.unwrap(
 			onSome: ({ http, config, accessTokens }) =>
 				Layer.mergeAll(
 					http.routes(),
+					makeDesktopLoginRoutes(config),
 					Option.match(accessTokens, {
 						onNone: () => Layer.empty,
 						onSome: (key) => accessTokenRoutes(config.origin, key).pipe(http.middleware),

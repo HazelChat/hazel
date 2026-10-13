@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url"
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { PgClient } from "@effect/sql-pg"
-import { Hooks } from "@yielded/auth"
+import { BrowserLogin, Hooks } from "@yielded/auth"
 import { Context, Effect, Exit, Layer, Redacted, References, Scope } from "effect"
 import { Base64Url } from "effect/encoding"
 import {
@@ -28,7 +28,10 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import * as AccessToken from "./access-token.ts"
 import { HazelAuth } from "./auth.ts"
-import { CryptoLive, makeHazelAuthLive } from "./server.ts"
+import { desktopLogin } from "./contract.ts"
+import { layerVault, makeDesktopAuth } from "./desktop-client.ts"
+import { makeDesktopLoginRoutes } from "./desktop-login.ts"
+import { CryptoLive, type HazelAuthConfig, makeHazelAuthLive } from "./server.ts"
 import { identityKey, linkIdentity } from "./identities.ts"
 import { AuthSqlConnection, makeRequestConnection } from "./sql.ts"
 
@@ -79,7 +82,7 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 	const query = <A>(effect: Effect.Effect<A, unknown, SqlClient.SqlClient>) =>
 		Effect.runPromise(effect.pipe(Effect.provide(TestSql)))
 
-	const { http, Services, sessionCookieName } = makeHazelAuthLive({
+	const config = {
 		origin,
 		appOrigin: webOrigin,
 		trustedOrigins: [webOrigin],
@@ -89,7 +92,8 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		returnTargets: ["/"],
 		registrationPath: "/auth/register-profile",
 		continuePath: "/auth/continue",
-	})
+	} satisfies HazelAuthConfig
+	const { http, Services, sessionCookieName } = makeHazelAuthLive(config)
 
 	const MeRoute = HttpRouter.add(
 		"GET",
@@ -126,7 +130,12 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		}),
 	)
 
-	const App = Layer.mergeAll(http.routes(), MeRoute.pipe(http.middleware), VerifyRoute).pipe(
+	const App = Layer.mergeAll(
+		http.routes(),
+		MeRoute.pipe(http.middleware),
+		VerifyRoute,
+		makeDesktopLoginRoutes(config),
+	).pipe(
 		Layer.provide(http.layer),
 		Layer.provideMerge(Services),
 		Layer.provide(FakeGitHub),
@@ -462,5 +471,95 @@ describe.skipIf(DATABASE_URL === undefined)("Hazel auth on Postgres", () => {
 		githubUserId = 6666
 		const browser = jar()
 		expect((await signInWithGitHub(browser)).pathname).toBe("/auth/register-profile")
+	}, 60_000)
+
+	test("the desktop app signs in through the browser and gets its own session", async () => {
+		// A signed-in browser, as on app.hazel.sh.
+		githubUserId = 7777
+		const browser = jar()
+		await register(browser, await signInWithGitHub(browser))
+		const browserSession = await (await call(browser, "POST", "/auth/getSession")).json()
+		expect(browserSession).toMatchObject({ _tag: "Success" })
+
+		// The desktop app's transport: no cookies, straight to the routes.
+		const DesktopHttp = Layer.succeed(
+			HttpClient.HttpClient,
+			HttpClient.make((request, url) =>
+				Effect.promise(async () => {
+					const body =
+						request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : undefined
+					const response = await send(
+						new Request(url.href, { method: request.method, headers: request.headers, body }),
+					)
+					return HttpClientResponse.fromWeb(request, response)
+				}),
+			),
+		)
+
+		// The hosted page's half, played by the browser: describe, then confirm the account.
+		let callbackUrl = ""
+		const FakeBrowser = Layer.succeed(BrowserLogin.Browser, {
+			open: ({ url }) =>
+				Effect.promise(async () => {
+					const attemptId = new URL(url).searchParams.get("attempt")!
+					const described = await call(browser, "POST", desktopLogin.routes.describe.path, { attemptId })
+					expect(await described.json()).toMatchObject({
+						_tag: "Success",
+						value: { displayName: "Hazel Desktop", browserSession: "confirm" },
+					})
+					const authorized = await call(browser, "POST", desktopLogin.routes.authorize.path, {
+						attemptId,
+						decision: "continue",
+						expectedSessionId: browserSession.value.sessionId,
+					})
+					const result = await authorized.json()
+					expect(result).toMatchObject({ _tag: "Success" })
+					callbackUrl = result.value.callbackUrl
+					return callbackUrl
+				}),
+		})
+
+		let stored: string | null = null
+		const MemoryVault = layerVault({
+			read: Effect.sync(() => stored),
+			write: (json) => Effect.sync(() => void (stored = json)),
+		})
+
+		const verify = (value: string) =>
+			send(
+				new Request(`${origin}/internal/verify`, {
+					method: "POST",
+					headers: { "x-session-credential": value },
+				}),
+			)
+
+		await Effect.runPromise(
+			Effect.gen(function* () {
+				const desktop = yield* makeDesktopAuth({
+					apiOrigin: origin,
+					hostedUrl: `${webOrigin}/auth/desktop`,
+				})
+				yield* desktop.signIn
+				const session = yield* desktop.session
+				expect(session?.claims.displayName).toBe("Octo Cat")
+				expect(session?.sessionId).not.toBe(browserSession.value.sessionId)
+				expect(callbackUrl.startsWith("com.hazel.app://auth/callback?")).toBe(true)
+
+				// The API accepts the desktop session as a bearer, as the RPC middleware does.
+				const credential = (yield* desktop.credential)!
+				const verified = yield* Effect.promise(() => verify(credential))
+				expect(verified.status).toBe(200)
+				expect((yield* Effect.promise(() => verified.json())).userId).toBe(browserSession.value.subjectId)
+
+				// Signing out of the desktop ends only the desktop session.
+				yield* desktop.signOut
+				expect(yield* desktop.session).toBeNull()
+				expect((yield* Effect.promise(() => verify(credential))).status).toBe(401)
+				expect((yield* Effect.promise(() => call(browser, "GET", "/me"))).status).toBe(200)
+			}).pipe(
+				Effect.provide(Layer.mergeAll(FakeBrowser, MemoryVault, DesktopHttp, CryptoLive)),
+				Effect.scoped,
+			),
+		)
 	}, 60_000)
 })

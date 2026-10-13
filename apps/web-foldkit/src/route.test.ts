@@ -224,6 +224,9 @@ describe("hrefOf", () => {
 		],
 		Join: [[AppRoute.Join({ slug: "hazel" }), "/join/hazel"]],
 		Invite: [[AppRoute.Invite({ token: "abc_DEF-123" }), "/invite/abc_DEF-123"]],
+		AuthDesktop: [
+			[AppRoute.AuthDesktop({ attempt: Option.some("a1") }), "/auth/desktop?attempt=a1"],
+		],
 		Onboarding: [
 			[AppRoute.Onboarding({ orgId: Option.none(), step: none }), "/onboarding"],
 			[

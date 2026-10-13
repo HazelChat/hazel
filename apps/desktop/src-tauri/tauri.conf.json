@@ -6,7 +6,7 @@
 	"plugins": {
 		"deep-link": {
 			"desktop": {
-				"schemes": ["hazel"]
+				"schemes": ["hazel", "com.hazel.app"]
 			}
 		},
 		"updater": {

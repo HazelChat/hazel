@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { Option } from "effect"
 import * as Scene from "foldkit/scene"
-import { describe, test } from "vitest"
+import { describe, expect, test } from "vitest"
 import { AppRoute } from "../../route"
 import { makeShared, pageScene } from "../../test/pages-fixtures"
 import { Register } from "./register/command"
 import { Message as RegisterMessage } from "./register/message"
 import { init as initRegister, update as updateRegister } from "./register/update"
 import { view as registerView } from "./register/view"
-import { StartOAuthSignIn, StartPasskeySignIn } from "./sign-in/command"
+import { RetireBrowserSignIn, StartBrowserSignIn, StartOAuthSignIn, StartPasskeySignIn } from "./sign-in/command"
 import { Message as SignInMessage } from "./sign-in/message"
 import { init as initSignIn, update as updateSignIn } from "./sign-in/update"
 import { view as signInView } from "./sign-in/view"
@@ -109,5 +109,27 @@ describe("register", () => {
 			Scene.expect(Scene.role("heading", { name: "This sign-up link doesn't work" })).toExist(),
 			Scene.expect(Scene.role("link", { name: "Back to sign in" })).toHaveAttr("href", "/sign-in"),
 		)
+	})
+})
+
+describe("desktop sign-in", () => {
+	test("waits for the browser; Cancel stops the wait and retires the attempt", () => {
+		const started = updateSignIn(signIn(Option.none()), SignInMessage.ClickedBrowserSignIn())
+		expect(started.model.pending).toBe("browser")
+		expect(started.commands?.map((command) => command.name)).toEqual([StartBrowserSignIn.name])
+
+		const cancelling = updateSignIn(started.model, SignInMessage.ClickedCancelBrowserSignIn())
+		expect(cancelling.commands).toHaveLength(1)
+
+		const cancelled = updateSignIn(cancelling.model, SignInMessage.CompletedCancelBrowserSignIn())
+		expect(cancelled.model.pending).toBeNull()
+		expect(cancelled.commands?.map((command) => command.name)).toEqual([RetireBrowserSignIn.name])
+	})
+
+	test("a failed browser sign-in says why and can be retried", () => {
+		const started = updateSignIn(signIn(Option.none()), SignInMessage.ClickedBrowserSignIn()).model
+		const failed = updateSignIn(started, SignInMessage.FailedSignIn({ message: "Signing in took too long." }))
+		expect(failed.model).toMatchObject({ pending: null, error: "Signing in took too long." })
+		expect(updateSignIn(failed.model, SignInMessage.ClickedBrowserSignIn()).model.pending).toBe("browser")
 	})
 })

@@ -36,7 +36,8 @@
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2",
 		"@yielded/auth": "0.1.0-beta.38",
-		"@yielded/auth-simplewebauthn": "0.1.0-beta.38"
+		"@yielded/auth-simplewebauthn": "0.1.0-beta.38",
+		"@yielded/crypto": "0.1.0-beta.38"
 	},
 	"devDependencies": {
 		"@foldkit/devtools": "0.167.0",

@@ -1,5 +1,5 @@
 import type { UserId } from "@hazel/schema"
-import { bigint, boolean, index, pgTable, text, unique, uuid } from "drizzle-orm/pg-core"
+import { bigint, boolean, index, pgTable, primaryKey, text, unique, uuid } from "drizzle-orm/pg-core"
 
 /**
  * Storage for Hazel's own authentication (`@hazel/auth/server`, built on `@yielded/auth`).
@@ -182,4 +182,21 @@ export const authOAuthRegistrationsTable = pgTable(
 		unique("auth_oauth_registrations_module_reference").on(table.moduleId, table.reference),
 		unique("auth_oauth_registrations_module_flow").on(table.moduleId, table.flowId),
 	],
+)
+
+/**
+ * Desktop sign-in handoffs (`BrowserLogin`), owned by `@yielded/auth-persistence`: this is its
+ * `BrowserLoginPersistence.migration`, column for column. Rows expire after five minutes and
+ * hold no bearer credentials.
+ */
+export const yieldedBrowserLoginTable = pgTable(
+	"yielded_browser_login",
+	{
+		namespace: text().notNull(),
+		attempt_id: text().notNull(),
+		version: text().notNull(),
+		expires_at_millis: millis().notNull(),
+		payload: text().notNull(),
+	},
+	(table) => [primaryKey({ columns: [table.namespace, table.attempt_id] })],
 )

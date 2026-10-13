@@ -3,7 +3,7 @@ import { modifyFields } from "foldkit/struct"
 import { safeReturnTo } from "../../../auth/return-to"
 import type { RouteOf } from "../../../route"
 import type { PageReturn } from "../../contract"
-import { StartOAuthSignIn, StartPasskeySignIn } from "./command"
+import { RetireBrowserSignIn, StartBrowserSignIn, StartOAuthSignIn, StartPasskeySignIn } from "./command"
 import { Message } from "./message"
 import type { Model } from "./model"
 
@@ -34,6 +34,22 @@ export const update = (model: Model, message: Message): Return =>
 						model: modifyFields(model, { pending: () => "passkey" as const, error: () => null }),
 						commands: [StartPasskeySignIn({ returnTo: model.redirectUrl })],
 					},
+		ClickedBrowserSignIn: () =>
+			model.pending !== null
+				? { model }
+				: {
+						model: modifyFields(model, { pending: () => "browser" as const, error: () => null }),
+						commands: [StartBrowserSignIn()],
+					},
+		ClickedCancelBrowserSignIn: () =>
+			model.pending !== "browser"
+				? { model }
+				: { model, commands: [StartBrowserSignIn.Interrupt(() => Message.CompletedCancelBrowserSignIn())] },
+		CompletedCancelBrowserSignIn: () => ({
+			model: modifyFields(model, { pending: () => null }),
+			commands: [RetireBrowserSignIn()],
+		}),
+		CompletedRetireBrowserSignIn: () => ({ model }),
 		// The page stays busy until the browser navigates away.
 		LeftForSignIn: () => ({ model }),
 		FailedSignIn: ({ message }) => ({

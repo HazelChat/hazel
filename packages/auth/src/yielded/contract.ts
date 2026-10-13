@@ -1,4 +1,4 @@
-import { AuthContract, PasskeyContract } from "@yielded/auth"
+import { AuthContract, BrowserLoginContract, OperationHttp, PasskeyContract } from "@yielded/auth"
 import { Schema } from "effect"
 
 // Browser-safe shared contract. No provider configuration, keys or persistence here.
@@ -50,3 +50,44 @@ export const HazelAuthApi = AuthContract.make("hazel", {
 		}
 	},
 })
+
+/** The desktop app, signing in through the system browser (`BrowserLogin`). */
+export const desktopClient = {
+	clientId: "desktop",
+	displayName: "Hazel Desktop",
+	/**
+	 * A deep link scheme the app registers (apps/desktop tauri.conf.json). The library accepts
+	 * only reverse-domain custom schemes, so it is the app identifier, not `hazel:`.
+	 */
+	returnUrl: "com.hazel.app://auth/callback",
+	browserSession: "confirm",
+} as const
+
+/** The browser-to-desktop handoff: the web app authorizes, the desktop app exchanges. */
+export const desktopLogin = BrowserLoginContract.make(HazelAuthApi.sessions.moduleId, HazelAuthApi.sessions.Session, {
+	basePath: "/auth/browser-login",
+})
+
+/** The desktop app's own session: who it is signed in as, and signing out. */
+export const nativeSession = OperationHttp.make({
+	session: OperationHttp.route(HazelAuthApi.sessions.operations.Verify, {
+		path: "/auth/native/session",
+		credentials: { credential: "session" },
+		allowInternal: true,
+	}),
+	signOut: OperationHttp.route(HazelAuthApi.sessions.operations.SignOut, {
+		path: "/auth/native/sign-out",
+		credentials: { credential: "session" },
+		allowInternal: true,
+	}),
+})
+
+/** Headers that carry the desktop app's credentials instead of cookies. */
+export const nativeHeaders = {
+	modeHeader: "x-auth-mode",
+	requestPrefix: "x-auth-request-",
+	responsePrefix: "x-auth-response-",
+	/** Marks requests from the desktop app; admission only, not authentication. */
+	clientHeader: "x-auth-client",
+	clientValue: "hazel-desktop",
+} as const

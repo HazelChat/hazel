@@ -66,6 +66,7 @@ export const pages = [
 	Auth.signInPage,
 	Auth.registerPage,
 	Auth.continuePage,
+	Auth.desktopPage,
 	Onboarding.page,
 	OnboardingSetupOrganization.page,
 	SelectOrganization.page,

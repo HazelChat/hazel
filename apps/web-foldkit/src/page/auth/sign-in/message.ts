@@ -9,5 +9,10 @@ export const Message = defineMessageUnion({
 	LeftForSignIn: {},
 	/** `message` is `null` when the visitor cancelled the passkey prompt. */
 	FailedSignIn: { message: Schema.NullOr(Schema.String) },
+	/** Desktop: sign in through the system browser. */
+	ClickedBrowserSignIn: {},
+	ClickedCancelBrowserSignIn: {},
+	CompletedCancelBrowserSignIn: {},
+	CompletedRetireBrowserSignIn: {},
 })
 export type Message = typeof Message.Type

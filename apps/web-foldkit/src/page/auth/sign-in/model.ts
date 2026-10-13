@@ -1,8 +1,10 @@
 import { Schema } from "effect"
 import { Provider } from "../../../auth/client"
 
-/** What the visitor started: a provider's OAuth redirect or the passkey prompt. */
-export const Pending = Schema.NullOr(Schema.Union([Schema.Literals(Provider), Schema.Literal("passkey")]))
+/** What the visitor started: a provider's OAuth redirect, the passkey prompt, or (desktop) the browser. */
+export const Pending = Schema.NullOr(
+	Schema.Union([Schema.Literals(Provider), Schema.Literals(["passkey", "browser"])]),
+)
 export type Pending = typeof Pending.Type
 
 export const Model = Schema.Struct({

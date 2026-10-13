@@ -2,7 +2,8 @@ import { Option } from "effect"
 import { Submodel } from "foldkit"
 import type { Html, HtmlBuilder } from "foldkit/html"
 import type { Provider } from "../../../auth/client"
-import { IconLock } from "../../../icons"
+import { IconExternalLink, IconLock } from "../../../icons"
+import { isDesktop } from "../../../platform/desktop"
 import { AppRoute, hrefOf } from "../../../route"
 import { button } from "../../../ui/button"
 import { loader } from "../../../ui/loader"
@@ -94,8 +95,33 @@ const switchLink = (h: HtmlBuilder<Message>, model: Model): Html => {
 	)
 }
 
+/** The desktop app signs in through the system browser, where GitHub, Google and passkeys work. */
+const desktopChoices = (h: HtmlBuilder<Message>, model: Model): ReadonlyArray<Html> => [
+	authHeading(h, "Sign in to Hazel", "Continue in your browser, then come back here."),
+	model.pending === "browser"
+		? h.div(
+				[h.Class("flex flex-col gap-3")],
+				[
+					button(h, { intent: "primary", className: "w-full", isDisabled: true }, [
+						loader(h, { className: "size-4" }),
+						"Waiting for your browser...",
+					]),
+					button(h, { intent: "outline", className: "w-full", onPress: Message.ClickedCancelBrowserSignIn() }, [
+						"Cancel",
+					]),
+				],
+			)
+		: button(h, { intent: "primary", className: "w-full", onPress: Message.ClickedBrowserSignIn() }, [
+				IconExternalLink(h, { className: "size-4", attributes: { "aria-hidden": "true" } }),
+				"Sign in with your browser",
+			]),
+	...[authError(h, model.error)].filter((html): html is Html => html !== null),
+]
+
 export const view = Submodel.defineView<Model, Message, PageViewInputs>((model, { shared }, h) =>
-	authFrame(h, shared.nowMs, [
+	isDesktop
+		? authFrame(h, shared.nowMs, desktopChoices(h, model))
+		: authFrame(h, shared.nowMs, [
 		model.mode === "SignIn"
 			? authHeading(h, "Sign in to Hazel", "Welcome back. Pick how you'd like to sign in.")
 			: authHeading(

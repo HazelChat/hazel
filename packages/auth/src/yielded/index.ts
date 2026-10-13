@@ -15,7 +15,16 @@ export {
 	type Provider,
 	providerIssuers,
 } from "./identities.ts"
-export { Claims, HazelAuthApi, Registration } from "./contract.ts"
+export {
+	Claims,
+	desktopClient,
+	desktopLogin,
+	HazelAuthApi,
+	nativeHeaders,
+	nativeSession,
+	Registration,
+} from "./contract.ts"
+export { cleanupDesktopLogins, makeDesktopLoginRoutes } from "./desktop-login.ts"
 export {
 	CryptoLive,
 	type HazelAuthConfig,

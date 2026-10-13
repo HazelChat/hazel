@@ -5,6 +5,8 @@
  * JWKS. Requests to the API itself authenticate with the cookie and need no token.
  */
 
+import { sessionAuthorization } from "./session-bearer"
+
 interface CachedToken {
 	readonly token: string
 	readonly expiresAtMs: number
@@ -28,9 +30,13 @@ const isTokenResponse = (value: unknown): value is { token: string; expiresIn: n
 
 const exchange = async (): Promise<string | null> => {
 	try {
+		const authorization = await sessionAuthorization()
 		const response = await fetch(`${backendUrl()}/auth/token`, {
 			method: "POST",
-			credentials: "include",
+			// The desktop app's session is a bearer; a browser's is the API's cookie.
+			...(authorization === null
+				? { credentials: "include" as const }
+				: { credentials: "omit" as const, headers: { authorization } }),
 		})
 		if (!response.ok) {
 			cached = null
