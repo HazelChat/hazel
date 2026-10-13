@@ -103,7 +103,11 @@ export const makeHazelAuthHttp = (
 		verifiedPrimaryEmail: true,
 	})
 	const google = (google: NonNullable<HazelAuthConfig["google"]>) =>
-		Google.provider({ clientId: google.clientId, clientSecret: google.clientSecret })
+		Google.provider({
+			clientId: google.clientId,
+			clientSecret: google.clientSecret,
+			scopes: ["openid", "email", "profile"],
+		})
 	const providers: Record<string, typeof github | ReturnType<typeof google>> = { github }
 	if (config.google !== undefined) providers.google = google(config.google)
 
