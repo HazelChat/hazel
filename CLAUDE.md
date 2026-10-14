@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a monorepo with the following structure:
 
-- `apps/web/` - React frontend using Vite, TanStack Router, and TailwindCSS
+- `apps/web-foldkit/` - Web frontend built with Foldkit (Effect-based Elm architecture), Vite and TailwindCSS. Also the desktop app's webview
 - `apps/backendv2/` - Backend API using Bun runtime and Effect-TS
 - `apps/cluster/` - Effect Cluster service for distributed workflows and background jobs
 - `packages/db/` - Shared database package: effect-orm table definitions, the `Database` service, and migrations
@@ -73,11 +73,12 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 - `bun run test:once` - Run all tests once
 - `bun run test:coverage` - Run tests with coverage report
 
-### Web App (apps/web)
+### Web App (apps/web-foldkit)
 
-- `bun run dev` - Start Vite dev server on port 3000 (DO NOT USE - already running)
-- `bun run build` - Build for production and typecheck
+- `bun run dev` - Start Vite dev server on port 3100 (DO NOT USE - already running)
+- `bun run build` - Build for production
 - `bun run typecheck` - TypeScript checking without emitting files
+- `bun run test` - Run the app's Vitest suite
 
 ### Backend (apps/backendv2)
 
@@ -100,15 +101,14 @@ When working with Effect, Effect Atom, or TanStack DB, refer to these directorie
 
 ### Frontend (Web App)
 
-- **Framework**: React 19 with TypeScript
+- **Framework**: Foldkit (Model / Message / update / view on Effect) with TypeScript
 - **Build Tool**: Vite
-- **Routing**: TanStack Router with file-based routing
-- **Styling**: TailwindCSS v4 with Radix UI themes
-- **UI Components**: React Aria Components + Ariakit
-- **State Management**: TanStack Query + React Form
-- **Rich Text**: Plate.js editor with AI features
-- **Real-time**: Cloudflare Realtimekit
-- **Auth**: Clerk (`@clerk/react`)
+- **Routing**: Flat route union in `src/route.ts`
+- **Styling**: TailwindCSS v4, `tailwind-variants` styles in `src/core/components/ui/*.styles.ts`
+- **UI Components**: `src/ui/` on `@foldkit/ui`
+- **Data**: TanStack DB collections synced through Electric (`src/core/db/collections.ts`)
+- **Rich Text**: ProseMirror composer (`src/editor/`)
+- **Auth**: Hazel auth (`@yielded/auth`)
 
 ### Backend
 
@@ -189,11 +189,20 @@ Uses effect-orm (`@maple-dev/effect-orm`, source in `~/Documents/GitHub/effect-c
 ```typescript
 import { Database, PG, schema } from "@hazel/db"
 
-const db = yield* Database.Database
-const channel = yield* db.first(
-	PG.from(schema.channelsTable).select().where(($) => [$.id.eq(channelId), $.deletedAt.isNull()]),
-)
-yield* db.transaction(Effect.gen(function* () { /* every statement in here joins the transaction */ }))
+const db = yield * Database.Database
+const channel =
+	yield *
+	db.first(
+		PG.from(schema.channelsTable)
+			.select()
+			.where(($) => [$.id.eq(channelId), $.deletedAt.isNull()]),
+	)
+yield *
+	db.transaction(
+		Effect.gen(function* () {
+			/* every statement in here joins the transaction */
+		}),
+	)
 ```
 
 - `db.transaction(effect)` pins every statement inside `effect` (repositories included) to one connection through fiber context; there is no transaction handle to pass around.
@@ -201,7 +210,6 @@ yield* db.transaction(Effect.gen(function* () { /* every statement in here joins
 
 ## Architecture Notes
 
-- Frontend uses file-based routing with TanStack Router
 - Backend follows Effect-TS patterns for error handling and dependency injection
 - Real-time features implemented via Cloudflare Realtimekit
 - Authentication handled by Clerk; backend verifies Clerk-issued JWTs and syncs users/orgs via webhook
@@ -214,7 +222,7 @@ yield* db.transaction(Effect.gen(function* () { /* every statement in here joins
 
 ### Electric SQL Proxy — Required When Adding New Collections
 
-**IMPORTANT**: When adding a new Electric-synced collection on the frontend (`apps/web/src/db/collections.ts`), you **must also** update the Electric proxy to allow the table:
+**IMPORTANT**: When adding a new Electric-synced collection on the frontend (`apps/web-foldkit/src/core/db/collections.ts`), you **must also** update the Electric proxy to allow the table:
 
 1. **Add to `ALLOWED_TABLES`** in `apps/electric-proxy/src/tables/user-tables.ts`
 2. **Add a `Match.when` case** in `getWhereClauseForTable` in the same file, using the appropriate WHERE clause builder (e.g., `buildOrgMembershipClause` for org-scoped tables, `buildChannelAccessClause` for channel-scoped tables)
@@ -341,7 +349,7 @@ yield *
 
 ## Brand Icons
 
-Use Brandfetch CDN for integration brand logos/icons. See `apps/web/src/routes/_app/$orgSlug/settings/integrations/_data.ts` for the helper function.
+Use Brandfetch CDN for integration brand logos/icons. See `apps/web-foldkit/src/core/lib/integrations/__data.ts` for the helper function.
 
 **URL Pattern**: `https://cdn.brandfetch.io/{domain}/w/{size}/h/{size}/theme/{theme}/{type}`
 
@@ -548,10 +556,10 @@ Hazel Chat serves startup teams, developer teams, and enterprise teams who need 
 
 **Key design files:**
 
-- Theme tokens: `apps/web/src/styles/theme.css`
-- Tailwind config & animations: `apps/web/src/styles/styles.css`
-- Theme presets: `apps/web/src/lib/theme/presets.ts`
-- Component library: `apps/web/src/components/ui/`
+- Theme tokens: `apps/web-foldkit/src/core/styles/theme.css`
+- Tailwind config & animations: `apps/web-foldkit/src/core/styles/styles.css`
+- Theme presets: `apps/web-foldkit/src/core/lib/theme/presets.ts`
+- Component library: `apps/web-foldkit/src/ui/`
 
 ### Design Principles
 

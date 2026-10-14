@@ -15,7 +15,7 @@ export interface EnvReadResult {
 /** Files to scan for existing env values */
 const ENV_FILE_PATHS = [
 	"apps/backend/.env",
-	"apps/web/.env",
+	"apps/web-foldkit/.env",
 	"apps/cluster/.env",
 	"apps/electric-proxy/.env",
 	"packages/db/.env",

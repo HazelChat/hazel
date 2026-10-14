@@ -13,7 +13,7 @@ import { prepareList } from "./chat-list-probes.ts"
  * Where a scroll frame goes: scrolls the heavy channel up 40 px per frame for 30 frames under a
  * CPU profile and a timeline trace, then prints the busiest functions and rendering phases.
  *
- *   PARITY_PORT_BASE=5750 bun run src/bench/render-trace.ts [--target foldkit|legacy|legacy-head]
+ *   PARITY_PORT_BASE=5750 bun run src/bench/render-trace.ts [--target foldkit|legacy]
  */
 
 const { values } = parseArgs({

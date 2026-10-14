@@ -27,13 +27,11 @@ export default defineConfig({
 		target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari14",
 		sourcemap: !!process.env.TAURI_ENV_DEBUG,
 	},
-	publicDir: resolve(__dirname, "../web/public"),
 	plugins: [tailwindcss(), foldkit({ devToolsMcpPort: false })],
 	resolve: {
 		alias: {
-			// Spike: reuse framework-free legacy modules (collections, theme, RPC client) in place.
-			// Phase 1 moves them into packages/web-core.
-			"~": resolve(__dirname, "../web/src"),
+			// Framework-free modules carried over from the React app (collections, theme, RPC client).
+			"~": resolve(__dirname, "src/core"),
 		},
 	},
 	define: {

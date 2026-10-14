@@ -15,7 +15,7 @@ import { prepareList } from "./chat-list-probes.ts"
  * (rules swapped for no-ops in place) down to the rule whose removal makes insertions cheap.
  * This found the `has-disabled` rule that restyled ~23k elements per insertion (S4 record).
  *
- *   PARITY_PORT_BASE=5750 bun run src/bench/style-bisect.ts [--target foldkit|legacy|legacy-head]
+ *   PARITY_PORT_BASE=5750 bun run src/bench/style-bisect.ts [--target foldkit|legacy]
  */
 
 const { values } = parseArgs({
